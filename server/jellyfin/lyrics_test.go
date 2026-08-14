@@ -53,8 +53,8 @@ var _ = Describe("getLyrics", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
-			{ID: "s1", Title: "Song", LibraryID: 1},
-			{ID: "s2", Title: "Silent Song", LibraryID: 1},
+			{ID: testID("s1"), Title: "Song", LibraryID: 1},
+			{ID: testID("s2"), Title: "Silent Song", LibraryID: 1},
 		})
 		fake = &fakeLyricsService{lyrics: map[string]model.LyricList{}}
 		api = &Router{
@@ -66,7 +66,7 @@ var _ = Describe("getLyrics", func() {
 
 	doRequest := func(id string) *httptest.ResponseRecorder {
 		w := httptest.NewRecorder()
-		ctx := request.WithUser(context.Background(), model.User{ID: "u1", Libraries: model.Libraries{{ID: 1}}})
+		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), Libraries: model.Libraries{{ID: 1}}})
 		// Clients send hex-encoded ids (matching real traffic and the other handler tests).
 		enc := dto.EncodeID(id)
 		r := httptest.NewRequest("GET", "/Audio/"+enc+"/Lyrics", nil).WithContext(ctx)
@@ -76,10 +76,10 @@ var _ = Describe("getLyrics", func() {
 	}
 
 	It("returns 200 with a LyricDto for a track with synced lyrics", func() {
-		fake.lyrics["s1"] = model.LyricList{
+		fake.lyrics[testID("s1")] = model.LyricList{
 			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
 		}
-		w := doRequest("s1")
+		w := doRequest(testID("s1"))
 
 		Expect(w.Code).To(Equal(http.StatusOK))
 		var res dto.LyricDto
@@ -91,11 +91,11 @@ var _ = Describe("getLyrics", func() {
 	})
 
 	It("serves the main-kind lyric when a translation is also present", func() {
-		fake.lyrics["s1"] = model.LyricList{
+		fake.lyrics[testID("s1")] = model.LyricList{
 			{Kind: "translation", Synced: true, Line: []model.Line{{Start: p(1000), Value: "bonjour"}}},
 			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
 		}
-		w := doRequest("s1")
+		w := doRequest(testID("s1"))
 
 		Expect(w.Code).To(Equal(http.StatusOK))
 		var res dto.LyricDto
@@ -105,13 +105,13 @@ var _ = Describe("getLyrics", func() {
 	})
 
 	It("returns 404 when the service returns no lyrics", func() {
-		w := doRequest("s2")
+		w := doRequest(testID("s2"))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 
 	It("returns 404 when the main lyric has no lines", func() {
-		fake.lyrics["s1"] = model.LyricList{{Kind: "main", Lang: "eng"}}
-		w := doRequest("s1")
+		fake.lyrics[testID("s1")] = model.LyricList{{Kind: "main", Lang: "eng"}}
+		w := doRequest(testID("s1"))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 	})
 
@@ -121,35 +121,35 @@ var _ = Describe("getLyrics", func() {
 	})
 
 	It("caches results so a second request doesn't re-invoke the service", func() {
-		fake.lyrics["s1"] = model.LyricList{
+		fake.lyrics[testID("s1")] = model.LyricList{
 			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
 		}
-		Expect(doRequest("s1").Code).To(Equal(http.StatusOK))
-		Expect(doRequest("s1").Code).To(Equal(http.StatusOK))
+		Expect(doRequest(testID("s1")).Code).To(Equal(http.StatusOK))
+		Expect(doRequest(testID("s1")).Code).To(Equal(http.StatusOK))
 		Expect(fake.calls).To(Equal(1))
 	})
 
 	It("caches empty results too", func() {
-		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
-		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
+		Expect(doRequest(testID("s2")).Code).To(Equal(http.StatusNotFound))
+		Expect(doRequest(testID("s2")).Code).To(Equal(http.StatusNotFound))
 		Expect(fake.calls).To(Equal(1))
 	})
 
 	It("completes and caches the fetch even when the request context is cancelled", func() {
-		fake.lyrics["s1"] = model.LyricList{
+		fake.lyrics[testID("s1")] = model.LyricList{
 			{Kind: "main", Synced: true, Line: []model.Line{{Start: p(1000), Value: "hello"}}},
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		list := api.cachedLyrics(ctx, &model.MediaFile{ID: "s1"})
+		list := api.cachedLyrics(ctx, &model.MediaFile{ID: testID("s1")})
 		Expect(list).ToNot(BeEmpty())
-		Expect(doRequest("s1").Code).To(Equal(http.StatusOK))
+		Expect(doRequest(testID("s1")).Code).To(Equal(http.StatusOK))
 		Expect(fake.calls).To(Equal(1))
 	})
 
 	It("bounds the detached fetch with a timeout", func() {
-		Expect(doRequest("s2").Code).To(Equal(http.StatusNotFound))
+		Expect(doRequest(testID("s2")).Code).To(Equal(http.StatusNotFound))
 		Expect(fake.hadDeadline).To(BeTrue())
 	})
 })

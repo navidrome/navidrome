@@ -204,6 +204,43 @@ var _ = Describe("Smart Playlists", func() {
 		})
 	})
 
+	Describe("Album aggregate fields", func() {
+		// Abbey Road and IV have two tracks each; the other four albums have one.
+		It("matches albums with more than one track", func() {
+			results := evaluateRule(`{"all":[{"gt":{"albumsongcount":1}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog"))
+		})
+
+		It("matches single-track albums", func() {
+			results := evaluateRule(`{"all":[{"is":{"albumsongcount":1}}]}`)
+			Expect(results).To(ConsistOf("So What", "Bohemian Rhapsody", "All Along the Watchtower",
+				"We Are the Champions"))
+		})
+
+		It("matches albumDateAdded inTheLast 1 day", func() {
+			results := evaluateRule(`{"all":[{"inTheLast":{"albumdateadded":1}}]}`)
+			Expect(results).To(ConsistOf("Come Together", "Something", "Stairway To Heaven", "Black Dog",
+				"So What", "Bohemian Rhapsody", "All Along the Watchtower", "We Are the Champions"))
+		})
+
+		It("matches albumDateModified before a far-future date", func() {
+			results := evaluateRule(`{"all":[{"before":{"albumdatemodified":"2099-01-01"}}]}`)
+			Expect(results).To(HaveLen(8))
+		})
+
+		// Fixture durations are randomized, so only the aggregate being populated can be asserted.
+		It("resolves albumDuration and albumSize to non-zero aggregates", func() {
+			Expect(evaluateRule(`{"all":[{"gt":{"albumduration":0}}]}`)).To(HaveLen(8))
+			Expect(evaluateRule(`{"all":[{"gt":{"albumsize":0}}]}`)).To(HaveLen(8))
+		})
+
+		It("groups by album date and orders within the album (issue #5347)", func() {
+			results := evaluateRuleOrdered(
+				`{"all":[{"is":{"album":"Abbey Road"}}],"sort":"-albumdateadded,tracknumber"}`)
+			Expect(results).To(Equal([]string{"Come Together", "Something"}))
+		})
+	})
+
 	Describe("Logic operators", func() {
 		It("matches with ALL (AND)", func() {
 			results := evaluateRule(`{"all":[{"is":{"genre":"Blues"}},{"gt":{"bpm":130}}]}`)

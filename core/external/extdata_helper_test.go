@@ -6,6 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -99,6 +100,19 @@ func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ..
 
 // GetAll implements model.MediaFileRepository.
 func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	argsSlice := make([]any, len(options))
+	for i, v := range options {
+		argsSlice[i] = v
+	}
+	args := m.Called(argsSlice...)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(model.MediaFiles), args.Error(1)
+}
+
+// GetRandom implements model.MediaFileRepository.
+func (m *mockMediaFileRepo) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
@@ -310,4 +324,8 @@ func (m *mockAgents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid
 		return args.Get(0).([]agents.Song), args.Error(1)
 	}
 	return nil, args.Error(1)
+}
+
+func ids(mfs model.MediaFiles) []string {
+	return slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 }

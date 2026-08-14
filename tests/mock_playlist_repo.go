@@ -7,6 +7,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func CreateMockPlaylistRepo() *MockPlaylistRepo {
@@ -18,16 +19,17 @@ func CreateMockPlaylistRepo() *MockPlaylistRepo {
 
 type MockPlaylistRepo struct {
 	model.PlaylistRepository
-	Data       map[string]*model.Playlist // keyed by ID
-	PathMap    map[string]*model.Playlist // keyed by path
-	All        model.Playlists
-	Options    model.QueryOptions
-	Last       *model.Playlist
-	Deleted    []string
-	Starred    map[string]bool // itemID -> starred
-	Ratings    map[string]int  // itemID -> rating
-	Err        bool
-	TracksRepo model.PlaylistTrackRepository
+	Data            map[string]*model.Playlist // keyed by ID
+	PathMap         map[string]*model.Playlist // keyed by path
+	All             model.Playlists
+	Options         model.QueryOptions
+	Last            *model.Playlist
+	Deleted         []string
+	Starred         map[string]bool // itemID -> starred
+	Ratings         map[string]int  // itemID -> rating
+	Err             bool
+	TracksRepo      model.PlaylistTrackRepository
+	TracksRefreshed bool
 }
 
 func (m *MockPlaylistRepo) SetError(err bool) {
@@ -50,6 +52,14 @@ func (m *MockPlaylistRepo) GetAll(options ...model.QueryOptions) (model.Playlist
 		return nil, errors.New("error")
 	}
 	return m.All, nil
+}
+
+func (m *MockPlaylistRepo) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+	all, err := m.GetAll(options...)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(all, func(p model.Playlist) string { return p.ID }), nil
 }
 
 func (m *MockPlaylistRepo) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
@@ -154,7 +164,8 @@ func (m *MockPlaylistRepo) ReassignAnnotation(string, string) error {
 	return nil
 }
 
-func (m *MockPlaylistRepo) Tracks(_ string, _ bool) model.PlaylistTrackRepository {
+func (m *MockPlaylistRepo) Tracks(_ string, refreshSmartPlaylist bool) model.PlaylistTrackRepository {
+	m.TracksRefreshed = refreshSmartPlaylist
 	return m.TracksRepo
 }
 

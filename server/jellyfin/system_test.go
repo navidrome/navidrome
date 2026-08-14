@@ -125,21 +125,33 @@ var _ = Describe("System", func() {
 		})
 
 		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
-			Expect(ds.Property(ctx).Put(consts.JellyfinServerIDKey, "stable-id")).To(Succeed())
+			Expect(ds.Property(ctx).Put(consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
 
 			r := &Router{ds: ds}
 			props := ds.Property(ctx).(*tests.MockedPropertyRepo)
 			props.Error = errors.New("database is locked")
 			degraded := r.serverID(ctx)
 			Expect(degraded).ToNot(BeEmpty())
-			Expect(degraded).ToNot(Equal("stable-id")) // temporary value, not the (unreadable) stored one
+			Expect(degraded).ToNot(Equal("6ba7b8109dad11d180b400c04fd430c8")) // temporary value, not the (unreadable) stored one
 			props.Error = nil
 
 			// Once the DB recovers, the stored id is intact and served again.
-			Expect(r.serverID(ctx)).To(Equal("stable-id"))
+			Expect(r.serverID(ctx)).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
 			stored, err := ds.Property(ctx).Get(consts.JellyfinServerIDKey)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stored).To(Equal("stable-id"))
+			Expect(stored).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
+		})
+
+		It("returns Jellyfin's no-dash GUID form", func() {
+			r := &Router{ds: ds}
+			Expect(r.serverID(ctx)).To(MatchRegexp("^[0-9a-f]{32}$"))
+		})
+
+		It("strips dashes from an already-persisted id", func() {
+			Expect(ds.Property(ctx).Put(
+				consts.JellyfinServerIDKey, "1b4e28ba-2fa1-11d2-883f-0016d3cca427")).To(Succeed())
+			r := &Router{ds: ds}
+			Expect(r.serverID(ctx)).To(Equal("1b4e28ba2fa111d2883f0016d3cca427"))
 		})
 	})
 })

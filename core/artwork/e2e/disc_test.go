@@ -1,18 +1,20 @@
-package artworke2e_test
+package e2e
 
 import (
 	"fmt"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/core/artwork"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
+// Disc art is a serve-time read through the library FS (no worker state row), so per-disc images
+// are asserted byte-for-byte, while album-root covers are asserted on the state row.
 var _ = Describe("Disc artwork resolution", func() {
 	BeforeEach(func() {
-		setupHarness()
+		setupResolutionHarness()
 	})
 
 	When("the album is single-disc with a disc1.jpg in the only folder", func() {
@@ -24,32 +26,25 @@ var _ = Describe("Disc artwork resolution", func() {
 			conf.Server.DiscArtPriority = "disc*.*, cd*.*, cover.*, folder.*, front.*, embedded"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/disc1.jpg":      imageFile("disc1-image"),
+				"Artist/Album/disc1.jpg":      smallPNG("disc1-image"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("disc1-image")))
+			expectDiscImage(firstAlbum(), 1, "disc1-image")
 		})
 	})
 
 	When("the album has no per-disc image and no album cover", func() {
 		// Artist/
 		// └── Album/
-		//     └── 01 - Track.mp3       (no disc or album art — returns ErrUnavailable)
-		It("returns ErrUnavailable for the disc lookup", func() {
+		//     └── 01 - Track.mp3       (no disc or album art — nothing to serve)
+		It("reports the disc lookup as unavailable", func() {
 			conf.Server.DiscArtPriority = "disc*.*, cd*.*"
 			conf.Server.CoverArtPriority = "cover.*, folder.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			_, err := readArtworkOrErr(discID)
-			Expect(err).To(HaveOccurred())
+			Expect(serveErr(discArtID(firstAlbum(), 1))).To(MatchError(artwork.ErrUnavailable))
 		})
 	})
 
@@ -63,13 +58,10 @@ var _ = Describe("Disc artwork resolution", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":      imageFile("album-cover"),
+				"Artist/Album/cover.jpg":      smallPNG("album-cover"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("album-cover")))
+			expectDiscImage(firstAlbum(), 1, "album-cover")
 		})
 	})
 
@@ -83,14 +75,11 @@ var _ = Describe("Disc artwork resolution", func() {
 			conf.Server.DiscArtPriority = "disc*.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/disc1.jpg":      imageFile("disc-one"),
-				"Artist/Album/disc10.jpg":     imageFile("disc-ten"),
+				"Artist/Album/disc1.jpg":      smallPNG("disc-one"),
+				"Artist/Album/disc10.jpg":     smallPNG("disc-ten"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("disc-one")))
+			expectDiscImage(firstAlbum(), 1, "disc-one")
 		})
 	})
 
@@ -108,14 +97,11 @@ var _ = Describe("Disc artwork resolution", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
-				"Artist/Album/CD1/disc1.jpg":      imageFile("disc-1"),
-				"Artist/Album/CD2/disc2.jpg":      imageFile("disc-2"),
+				"Artist/Album/CD1/disc1.jpg":      smallPNG("disc-1"),
+				"Artist/Album/CD2/disc2.jpg":      smallPNG("disc-2"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 2), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("disc-2")))
+			expectDiscImage(firstAlbum(), 2, "disc-2")
 		})
 	})
 
@@ -136,14 +122,11 @@ var _ = Describe("Disc artwork resolution", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
-				"Artist/Album/CD1/disc1.jpg":      imageFile("disc-1"),
-				"Artist/Album/CD2/cd2.png":        imageFile("cd-2"),
+				"Artist/Album/CD1/disc1.jpg":      smallPNG("disc-1"),
+				"Artist/Album/CD2/cd2.png":        smallPNG("cd-2"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 2), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("cd-2")))
+			expectDiscImage(firstAlbum(), 2, "cd-2")
 		})
 	})
 
@@ -161,14 +144,11 @@ var _ = Describe("Disc artwork resolution", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
-				"Artist/Album/CD1/cover.jpg":      imageFile("disc1-cover"),
-				"Artist/Album/CD2/cover.jpg":      imageFile("disc2-cover"),
+				"Artist/Album/CD1/cover.jpg":      smallPNG("disc1-cover"),
+				"Artist/Album/CD2/cover.jpg":      smallPNG("disc2-cover"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("disc1-cover")))
+			expectDiscImage(firstAlbum(), 1, "disc1-cover")
 		})
 	})
 
@@ -188,17 +168,15 @@ var _ = Describe("Disc artwork resolution", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1"}),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"disc": "2"}),
-				"Artist/Album/CD1/disc1.jpg":      imageFile("disc-1"),
-				"Artist/Album/CD2/cd2.png":        imageFile("cd-2"),
-				"Artist/Album/cover.jpg":          imageFile("album-cover"),
+				"Artist/Album/CD1/disc1.jpg":      smallPNG("disc-1"),
+				"Artist/Album/CD2/cd2.png":        smallPNG("cd-2"),
+				"Artist/Album/cover.jpg":          smallPNG("album-cover"),
 			})
 			scan()
 
 			al := firstAlbum()
 			for _, n := range []int{1, 2} {
-				discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, n), &al.UpdatedAt)
-				Expect(readArtwork(discID)).To(Equal(imageBytes("album-cover")),
-					"disc %d should use the album cover when DiscArtPriority is empty", n)
+				expectDiscImage(al, n, "album-cover")
 			}
 		})
 	})
@@ -223,17 +201,15 @@ var _ = Describe("Disc artwork resolution", func() {
 				"Artist/Album/disc1/02 - Track.mp3": trackFile(2, "T2", map[string]any{"disc": "1"}),
 				"Artist/Album/disc2/01 - Track.mp3": trackFile(1, "T3", map[string]any{"disc": "2"}),
 				"Artist/Album/disc2/02 - Track.mp3": trackFile(2, "T4", map[string]any{"disc": "2"}),
-				"Artist/Album/disc1/disc1.jpg":      imageFile("disc-1"),
-				"Artist/Album/disc2/cd2.png":        imageFile("cd-2"),
-				"Artist/Album/cover.jpg":            imageFile("album-root"),
+				"Artist/Album/disc1/disc1.jpg":      smallPNG("disc-1"),
+				"Artist/Album/disc2/cd2.png":        smallPNG("cd-2"),
+				"Artist/Album/cover.jpg":            smallPNG("album-root"),
 			})
 			scan()
 
 			al := firstAlbum()
-			disc1ID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			disc2ID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 2), &al.UpdatedAt)
-			Expect(readArtwork(disc1ID)).To(Equal(imageBytes("disc-1")))
-			Expect(readArtwork(disc2ID)).To(Equal(imageBytes("cd-2")))
+			expectDiscImage(al, 1, "disc-1")
+			expectDiscImage(al, 2, "cd-2")
 		})
 	})
 
@@ -246,13 +222,10 @@ var _ = Describe("Disc artwork resolution", func() {
 			conf.Server.DiscArtPriority = "discsubtitle"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3":   trackFile(1, "T1", map[string]any{"disc": "1", "discsubtitle": "Bonus Tracks"}),
-				"Artist/Album/Bonus Tracks.jpg": imageFile("bonus-tracks"),
+				"Artist/Album/Bonus Tracks.jpg": smallPNG("bonus-tracks"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("bonus-tracks")))
+			expectDiscImage(firstAlbum(), 1, "bonus-tracks")
 		})
 	})
 
@@ -286,26 +259,22 @@ var _ = Describe("Disc artwork resolution", func() {
 				"Disc 12 (History of the Grateful Dead, Volume One (Bear's Choice))",
 			}
 			layout := fstest.MapFS{
-				"Pop; Rock/Grateful Dead/(2001) The Golden Road/cover.jpg": imageFile("album-root-cover"),
+				"Pop; Rock/Grateful Dead/(2001) The Golden Road/cover.jpg": smallPNG("album-root-cover"),
 			}
 			for i, name := range discNames {
 				discNum := i + 1
 				prefix := fmt.Sprintf("Pop; Rock/Grateful Dead/(2001) The Golden Road/%s/", name)
 				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", discNum), map[string]any{"disc": fmt.Sprintf("%d", discNum)})
-				layout[prefix+"folder.jpg"] = imageFile(fmt.Sprintf("disc-%02d-folder", discNum))
+				layout[prefix+"folder.jpg"] = smallPNG(fmt.Sprintf("disc-%02d-folder", discNum))
 			}
 			setLayout(layout)
 			scan()
 
 			al := firstAlbum()
-
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root-cover")))
-
+			expectAlbumFolderCover(al, "(2001) The Golden Road/cover.jpg")
 			for i := range discNames {
 				discNum := i + 1
-				discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, discNum), &al.UpdatedAt)
-				Expect(readArtwork(discID)).To(Equal(imageBytes(fmt.Sprintf("disc-%02d-folder", discNum))),
-					"disc %d should use its own folder.jpg", discNum)
+				expectDiscImage(al, discNum, fmt.Sprintf("disc-%02d-folder", discNum))
 			}
 		})
 	})
@@ -328,24 +297,20 @@ var _ = Describe("Disc artwork resolution", func() {
 			conf.Server.DiscArtPriority = defaultDiscPriority
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			layout := fstest.MapFS{
-				"Album/cover.jpg": imageFile("album-root-cover"),
+				"Album/cover.jpg": smallPNG("album-root-cover"),
 			}
 			for i := 1; i <= 3; i++ {
 				prefix := fmt.Sprintf("Album/Disc %02d/", i)
 				layout[prefix+"01 - Track.mp3"] = trackFile(1, fmt.Sprintf("T%d", i), map[string]any{"disc": fmt.Sprintf("%d", i)})
-				layout[prefix+"folder.jpg"] = imageFile(fmt.Sprintf("disc-%02d-folder", i))
+				layout[prefix+"folder.jpg"] = smallPNG(fmt.Sprintf("disc-%02d-folder", i))
 			}
 			setLayout(layout)
 			scan()
 
 			al := firstAlbum()
-
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root-cover")))
-
+			expectAlbumFolderCover(al, "Album/cover.jpg")
 			for i := 1; i <= 3; i++ {
-				discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, i), &al.UpdatedAt)
-				Expect(readArtwork(discID)).To(Equal(imageBytes(fmt.Sprintf("disc-%02d-folder", i))),
-					"disc %d should use its own folder.jpg", i)
+				expectDiscImage(al, i, fmt.Sprintf("disc-%02d-folder", i))
 			}
 		})
 	})
@@ -359,13 +324,10 @@ var _ = Describe("Disc artwork resolution", func() {
 			conf.Server.DiscArtPriority = "discsubtitle, cover.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "T1", map[string]any{"disc": "1", "discsubtitle": "Bonus Tracks"}),
-				"Artist/Album/cover.jpg":      imageFile("cover"),
+				"Artist/Album/cover.jpg":      smallPNG("cover"),
 			})
 			scan()
-
-			al := firstAlbum()
-			discID := model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID(al.ID, 1), &al.UpdatedAt)
-			Expect(readArtwork(discID)).To(Equal(imageBytes("cover")))
+			expectDiscImage(firstAlbum(), 1, "cover")
 		})
 	})
 })

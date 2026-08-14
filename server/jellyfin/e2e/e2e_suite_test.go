@@ -33,7 +33,6 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -52,6 +51,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/events"
@@ -70,6 +70,10 @@ func TestJellyfinE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Jellyfin API E2E Suite")
 }
+
+// testID maps a readable label to a deterministic canonical id, so fixtures exercise the same
+// id shape production uses.
+func testID(label string) string { return id.NewHash("jellyfin-test", label) }
 
 // Easy aliases for the storagetest package
 type _t = map[string]any
@@ -92,14 +96,14 @@ var (
 	dataFolder        string
 
 	adminUser = model.User{
-		ID:       "admin-1",
+		ID:       testID("admin-1"),
 		UserName: "admin",
 		Name:     "Admin User",
 		IsAdmin:  true,
 	}
 
 	regularUser = model.User{
-		ID:       "regular-1",
+		ID:       testID("regular-1"),
 		UserName: "regular",
 		Name:     "Regular User",
 		IsAdmin:  false,
@@ -220,7 +224,9 @@ func createPlaylistAs(user model.User, name string, encodedIds ...string) string
 	var res map[string]string
 	parseInto(postAs(user, "/Playlists", string(body)), &res)
 	Expect(res["Id"]).ToNot(BeEmpty())
-	return dto.DecodeID(res["Id"])
+	id, ok := dto.DecodeID(res["Id"])
+	Expect(ok).To(BeTrue())
+	return id
 }
 
 // --- Seeded-id lookup helpers (return Navidrome ids; wrap with enc() for URLs) ---
@@ -327,7 +333,7 @@ func setupTestDB() {
 		decider,
 		core.NewPlayers(ds),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
 		providerFake,
 		sonicSvc,
 		lyrics.NewLyrics(ds, nil),
@@ -406,18 +412,18 @@ type spyArtwork struct {
 	data    []byte
 }
 
-func (s *spyArtwork) Get(context.Context, model.ArtworkID, int, bool) (io.ReadCloser, time.Time, error) {
-	return nil, time.Time{}, model.ErrNotFound
+func (s *spyArtwork) Get(context.Context, model.ArtworkID, int, bool) (*artwork.Image, error) {
+	return nil, model.ErrNotFound
 }
 
-func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ bool) (io.ReadCloser, time.Time, error) {
+func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ bool) (*artwork.Image, error) {
 	s.lastID = id
 	s.lastCtx = c
 	d := s.data
 	if d == nil {
 		d = []byte("IMG")
 	}
-	return io.NopCloser(bytes.NewReader(d)), time.Time{}, nil
+	return &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader(d))}, nil
 }
 
 var _ artwork.Artwork = &spyArtwork{}

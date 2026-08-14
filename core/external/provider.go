@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -17,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
-	"github.com/navidrome/navidrome/utils/random"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
@@ -35,8 +33,6 @@ type Provider interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
-	ArtistImage(ctx context.Context, id string) (*url.URL, error)
-	AlbumImage(ctx context.Context, id string) (*url.URL, error)
 }
 
 type provider struct {
@@ -258,7 +254,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	// Call all registered agents and collect information
 	g := errgroup.Group{}
 	g.SetLimit(2)
-	g.Go(func() error { e.callGetImage(ctx, e.ag, &artist); return nil })
+	g.Go(func() error { _ = e.callGetImage(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
 	g.Go(func() error { e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
@@ -278,166 +274,6 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
 	}
 	return artist, nil
-}
-
-func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	entity, err := model.GetEntityByID(ctx, e.ds, id)
-	if err != nil {
-		return nil, err
-	}
-
-	var songs []agents.Song
-
-	// Try entity-specific similarity first
-	switch v := entity.(type) {
-	case *model.MediaFile:
-		songs, err = e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
-	case *model.Album:
-		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
-	case *model.Artist:
-		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
-	default:
-		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
-		return nil, model.ErrNotFound
-	}
-
-	if err == nil && len(songs) > 0 {
-		return e.matcher.MatchSongs(ctx, songs, count)
-	}
-
-	// Fallback to existing similar artists + top songs algorithm
-	return e.similarSongsFallback(ctx, id, count)
-}
-
-// similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
-// get the artist of the given entity, retrieve similar artists, get their top songs, and pick
-// a weighted random selection of songs to return as similar songs.
-func (e *provider) similarSongsFallback(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	artist, err := e.getArtist(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	e.callGetSimilarArtists(ctx, e.ag, &artist, 15, false)
-	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
-		return nil, ctx.Err()
-	}
-
-	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
-	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
-		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
-			return ctx.Err()
-		}
-
-		topCount := max(count, 20)
-		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Artist: a}, topCount)
-		if err != nil {
-			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
-			return nil
-		}
-
-		weight := topCount * (4 + artistWeight)
-		for _, mf := range topSongs {
-			weightedSongs.Add(mf, weight)
-			weight -= 4
-		}
-		return nil
-	}
-
-	err = addArtist(artist.Artist, weightedSongs, count, 10)
-	if err != nil {
-		return nil, err
-	}
-	for _, a := range artist.SimilarArtists {
-		err := addArtist(a, weightedSongs, count, 0)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var similarSongs model.MediaFiles
-	for len(similarSongs) < count && weightedSongs.Size() > 0 {
-		s, err := weightedSongs.Pick()
-		if err != nil {
-			log.Warn(ctx, "Error getting weighted song", err)
-			continue
-		}
-		similarSongs = append(similarSongs, s)
-	}
-
-	return similarSongs, nil
-}
-
-func (e *provider) ArtistImage(ctx context.Context, id string) (*url.URL, error) {
-	artist, err := e.getArtist(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	imageUrl := artist.ArtistImageUrl()
-	if imageUrl == "" {
-		// No cached URL — must fetch from external source synchronously
-		e.callGetImage(ctx, e.ag, &artist)
-		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "ArtistImage call canceled", ctx.Err())
-			return nil, ctx.Err()
-		}
-		imageUrl = artist.ArtistImageUrl()
-	} else {
-		// If cached info is expired, enqueue a background refresh so that config changes
-		// (e.g. disabling an agent) take effect without waiting for a full artist info refresh.
-		updatedAt := V(artist.ExternalInfoUpdatedAt)
-		if !updatedAt.IsZero() && time.Since(updatedAt) > conf.Server.DevArtistInfoTimeToLive {
-			log.Debug(ctx, "Artist image info expired, enqueuing background refresh", "artist", artist.Name(), "updatedAt", updatedAt)
-			e.artistQueue.enqueue(&artist)
-		}
-	}
-
-	if imageUrl == "" {
-		return nil, model.ErrNotFound
-	}
-	return url.Parse(imageUrl)
-}
-
-func (e *provider) AlbumImage(ctx context.Context, id string) (*url.URL, error) {
-	album, err := e.getAlbum(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	albumName := album.Name()
-	images, err := e.ag.GetAlbumImages(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
-	if err != nil {
-		switch {
-		case errors.Is(err, agents.ErrNotFound):
-			log.Trace(ctx, "Album not found in agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-			return nil, model.ErrNotFound
-		case errors.Is(err, context.Canceled):
-			log.Debug(ctx, "GetAlbumImages call canceled", err)
-		default:
-			log.Warn(ctx, "Error getting album images from agent", "albumID", id, "name", albumName, "artist", album.AlbumArtist, err)
-		}
-		return nil, err
-	}
-
-	if len(images) == 0 {
-		log.Warn(ctx, "Agent returned no images without error", "albumID", id, "name", albumName, "artist", album.AlbumArtist)
-		return nil, model.ErrNotFound
-	}
-
-	// Return the biggest image
-	var img agents.ExternalImage
-	for _, i := range images {
-		if img.Size <= i.Size {
-			img = i
-		}
-	}
-	if img.URL == "" {
-		return nil, model.ErrNotFound
-	}
-	return url.Parse(img.URL)
 }
 
 func (e *provider) TopSongs(ctx context.Context, artistName, id string, count int) (model.MediaFiles, error) {
@@ -524,10 +360,15 @@ func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiog
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
 }
 
-func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) {
+// callGetImage populates artist's image URLs. A transient agent failure is
+// returned as-is; a definitive "no image" is normalized to model.ErrNotFound.
+func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRetriever, artist *auxArtist) error {
 	images, err := agent.GetArtistImages(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
-		return
+		if errors.Is(err, agents.ErrNotFound) {
+			return model.ErrNotFound
+		}
+		return err
 	}
 	sort.Slice(images, func(i, j int) bool { return images[i].Size > images[j].Size })
 
@@ -540,6 +381,7 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 	if len(images) >= 3 {
 		artist.SmallImageUrl = images[2].URL
 	}
+	return nil
 }
 
 func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
