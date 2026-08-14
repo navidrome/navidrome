@@ -151,7 +151,7 @@ var _ = Describe("formatExplain", func() {
 		Expect(out).To(ContainSubstring("abc123"))
 		Expect(out).To(ContainSubstring("/music/cover.jpg"))
 		Expect(out).To(ContainSubstring("2026-08-13T10:00:00Z"))
-		Expect(out).To(ContainSubstring("50"))
+		Expect(out).To(ContainSubstring("scan (50)"), "a bare 50 makes the operator look the priority up")
 		Expect(out).To(ContainSubstring("resolved from folder"))
 	})
 
@@ -502,6 +502,12 @@ var _ = Describe("collectStatus", func() {
 		Expect(rep.stored).To(BeEmpty())
 	})
 
+	It("collects the config inputs the fingerprint is computed from", func() {
+		rep, err := collectStatus(ctx, ds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.inputs).To(Equal(artwork.FingerprintInputs()))
+	})
+
 	It("queues nothing", func() {
 		_, err := collectStatus(ctx, ds)
 		Expect(err).ToNot(HaveOccurred())
@@ -526,38 +532,74 @@ var _ = Describe("formatStatus", func() {
 			absent: []absentCount{
 				{kind: model.KindArtistArtwork, ArtworkAbsentStat: model.ArtworkAbsentStat{Total: 2, Stale: 1}},
 			},
+			inputs:  []artwork.FingerprintInput{{Name: "Agents", Value: "deezer,lastfm"}},
 			stored:  "abc123",
 			current: "abc123",
 		}
 	})
 
+	// block isolates one section, so an assertion cannot be satisfied by a coincidence elsewhere.
+	block := func(out, header string) string {
+		GinkgoHelper()
+		_, after, found := strings.Cut(out, header+"\n")
+		Expect(found).To(BeTrue(), "the %q block must be printed", header)
+		body, _, _ := strings.Cut(after, "\n\n")
+		return body
+	}
+
 	It("prints every block", func() {
 		out := formatStatus(rep)
-		for _, block := range []string{"Queue", "Sources", "Absent", "Backfill"} {
-			Expect(out).To(ContainSubstring(block))
+		for _, header := range []string{"Queue", "Sources", "Absent", "Backfill"} {
+			Expect(out).To(ContainSubstring(header))
 		}
-		Expect(out).To(ContainSubstring("backfill"))
-		Expect(out).To(ContainSubstring("external:deezer"))
 		Expect(out).To(ContainSubstring("abc123"))
 	})
 
-	It("names the empty source as absent", func() {
-		Expect(formatStatus(rep)).To(ContainSubstring("absent"))
+	It("names the kind and the priority of every queued row", func() {
+		queue := block(formatStatus(rep), "Queue")
+		Expect(queue).To(MatchRegexp(`artist\s+backfill\s+2`))
+		Expect(queue).To(MatchRegexp(`album\s+scan\s+1`))
+	})
+
+	It("totals the queue", func() {
+		Expect(block(formatStatus(rep), "Queue")).To(MatchRegexp(`TOTAL\s+3`))
+	})
+
+	It("counts each source, naming the empty one absent", func() {
+		sources := block(formatStatus(rep), "Sources")
+		Expect(sources).To(MatchRegexp(`artist\s+external:deezer\s+5`))
+		Expect(sources).To(MatchRegexp(`artist\s+absent\s+2`))
+	})
+
+	It("prints the absent total and how many are due for recheck", func() {
+		absent := block(formatStatus(rep), "Absent (resolved, no image found)")
+		Expect(absent).To(MatchRegexp(`artist\s+2\s+1`))
 	})
 
 	It("states the recheck window the absent counts are bucketed against", func() {
 		Expect(formatStatus(rep)).To(ContainSubstring("24h"))
 	})
 
-	It("reports a matching fingerprint as up to date, with the backfill still draining", func() {
-		out := formatStatus(rep)
-		Expect(out).To(ContainSubstring("up to date"))
-		Expect(out).To(ContainSubstring("2 items still queued at backfill priority"),
-			"a drained-down backfill is the signal that a config change flooded the queue")
+	It("leads with the queued backlog, which is the finding, not with the fingerprint verdict", func() {
+		out := block(formatStatus(rep), "Backfill")
+		Expect(out).To(MatchRegexp(`State:\s+backfill running: 2 items queued`),
+			"an operator scanning for trouble must not read 'up to date' while 2 items churn")
+		Expect(out).To(ContainSubstring("fingerprint up to date"))
+	})
+
+	It("reports up to date only once the backfill has drained", func() {
+		rep.queue = []model.ArtworkQueueStat{{ItemKind: "al", Priority: model.ArtworkPriorityScan, Count: 1}}
+
+		Expect(block(formatStatus(rep), "Backfill")).To(MatchRegexp(`State:\s+up to date`))
+	})
+
+	It("echoes the config inputs a fingerprint change would have come from", func() {
+		Expect(block(formatStatus(rep), "Backfill")).To(MatchRegexp(`Agents:\s+deezer,lastfm`))
 	})
 
 	It("reports a changed fingerprint as a pending re-resolve of everything", func() {
 		rep.stored = "older"
+		rep.queue, rep.queueTotal = nil, 0
 
 		out := formatStatus(rep)
 		Expect(out).To(ContainSubstring("fingerprint changed"))

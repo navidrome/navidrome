@@ -415,6 +415,23 @@ var _ = Describe("ArtworkQueueRepository", func() {
 				To(Equal(model.ArtworkAbsentStat{Total: 2, Stale: 1}))
 		})
 
+		// status prints both under one "absent" heading, so a writer that stops clearing hash and
+		// source together would make the two numbers disagree with no other warning.
+		It("agrees with the source-based absent count", func() {
+			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			for _, ia := range []model.ItemArtwork{
+				{ItemKind: "ar", ItemID: "absent1", ImageType: model.ImageTypePrimary, Hash: "", Source: "", AttemptedAt: time.Now()},
+				{ItemKind: "ar", ItemID: "absent2", ImageType: model.ImageTypePrimary, Hash: "", Source: "", AttemptedAt: time.Now()},
+				{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", Source: "folder", AttemptedAt: time.Now()},
+			} {
+				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
+			}
+
+			stat, err := repo.CountAbsent(model.KindArtistArtwork, time.Now())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(repo.CountBySource(model.KindArtistArtwork, []string{""})).To(Equal(stat.Total))
+		})
+
 		It("reports a kind with no absent state as zero, not as an error", func() {
 			Expect(repo.CountAbsent(model.KindRadioArtwork, time.Now())).To(Equal(model.ArtworkAbsentStat{}))
 		})

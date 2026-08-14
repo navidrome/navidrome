@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -33,12 +35,30 @@ func hasRecheckPath(prefix string) bool {
 // artworkEpoch invalidates all resolution state when bumped; bump it whenever resolution semantics change.
 const artworkEpoch = 1
 
+// FingerprintInput is one config value the fingerprint covers, named after the setting it came from.
+type FingerprintInput struct {
+	Name  string
+	Value string
+}
+
+// FingerprintInputs is the single listing of what ConfigFingerprint hashes, so a caller can report
+// which setting a fingerprint change came from without keeping a second copy of the list.
+func FingerprintInputs() []FingerprintInput {
+	return []FingerprintInput{
+		{"CoverArtPriority", conf.Server.CoverArtPriority},
+		{"ArtistArtPriority", conf.Server.ArtistArtPriority},
+		{"ArtistImageFolder", conf.Server.ArtistImageFolder},
+		{"Agents", conf.Server.Agents},
+		{"EnableExternalServices", strconv.FormatBool(conf.Server.EnableExternalServices)},
+		{"EnableM3UExternalAlbumArt", strconv.FormatBool(conf.Server.EnableM3UExternalAlbumArt)},
+	}
+}
+
 // ConfigFingerprint covers the inputs that affect resolution outcomes; a change invalidates stored state.
 // Exported so the CLI reports the value backfill compares instead of computing one that can drift.
 func ConfigFingerprint() string {
-	raw := fmt.Sprintf("%s|%s|%s|%s|%t|%t|%d",
-		conf.Server.CoverArtPriority, conf.Server.ArtistArtPriority, conf.Server.ArtistImageFolder,
-		conf.Server.Agents, conf.Server.EnableExternalServices, conf.Server.EnableM3UExternalAlbumArt, artworkEpoch)
+	values := slice.Map(FingerprintInputs(), func(i FingerprintInput) string { return i.Value })
+	raw := fmt.Sprintf("%s|%d", strings.Join(values, "|"), artworkEpoch)
 	sum := md5.Sum([]byte(raw)) //nolint:gosec // fingerprint, not security-sensitive
 	return hex.EncodeToString(sum[:])
 }

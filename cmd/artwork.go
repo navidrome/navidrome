@@ -132,11 +132,11 @@ type statusReport struct {
 	queue      []model.ArtworkQueueStat
 	sources    []sourceCount
 	absent     []absentCount
+	inputs     []artwork.FingerprintInput
 	stored     string
 	current    string
 }
 
-// backfillQueued counts what a backfill still has to drain, the cost a config change is charging now.
 func (r statusReport) backfillQueued() int64 {
 	var n int64
 	for _, s := range r.queue {
@@ -179,7 +179,7 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 		rep.absent = append(rep.absent, absentCount{kind: k, ArtworkAbsentStat: stat})
 	}
 
-	rep.current = artwork.ConfigFingerprint()
+	rep.current, rep.inputs = artwork.ConfigFingerprint(), artwork.FingerprintInputs()
 	if rep.stored, err = ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, ""); err != nil {
 		return rep, fmt.Errorf("reading the stored artwork fingerprint: %w", err)
 	}
@@ -215,25 +215,34 @@ func formatStatus(rep statusReport) string {
 	fmt.Fprintf(w, "  (rechecked once the last attempt is older than %gh)\n", artwork.StaleAbsentAge.Hours())
 
 	fmt.Fprintln(w, "\nBackfill")
+	fmt.Fprintf(w, "  State:\t%s\n", backfillState(rep))
 	fmt.Fprintf(w, "  Stored fingerprint:\t%s\n", cmp.Or(rep.stored, "(none)"))
 	fmt.Fprintf(w, "  Current fingerprint:\t%s\n", rep.current)
-	fmt.Fprintf(w, "  State:\t%s\n", backfillState(rep))
+	if len(rep.inputs) > 0 {
+		fmt.Fprintln(w, "  Fingerprint inputs (changing any of these re-resolves the whole library):")
+		for _, in := range rep.inputs {
+			fmt.Fprintf(w, "    %s:\t%s\n", in.Name, in.Value)
+		}
+	}
 
 	w.Flush()
 	return sb.String()
 }
 
-// backfillState turns "why is my server re-resolving everything?" into a line: a stored fingerprint
-// that differs is a pending re-resolve of the whole library, and backfill rows are one already running.
+// backfillState leads with the queued backlog: by the time anyone runs this, backfill has usually
+// already stored the new fingerprint, and "up to date" would bury the flood it is still working through.
 func backfillState(rep statusReport) string {
-	state := "up to date"
+	changed := "fingerprint up to date"
 	if rep.stored != rep.current {
-		state = "fingerprint changed — every artist, album, playlist and radio will be re-enqueued on the next startup"
+		changed = "fingerprint changed"
 	}
 	if n := rep.backfillQueued(); n > 0 {
-		state += fmt.Sprintf("; %d items still queued at backfill priority", n)
+		return fmt.Sprintf("backfill running: %d items queued (%s)", n, changed)
 	}
-	return state
+	if rep.stored != rep.current {
+		return "fingerprint changed — every artist, album, playlist and radio will be re-enqueued on the next startup"
+	}
+	return "up to date"
 }
 
 func kindName(prefix string) string {
@@ -569,7 +578,7 @@ func formatExplain(rep explainReport) string {
 	if rep.queued == nil {
 		fmt.Fprintln(w, "  (not queued)")
 	} else {
-		fmt.Fprintf(w, "  Priority:\t%d\n", rep.queued.Priority)
+		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", priorityName(rep.queued.Priority), rep.queued.Priority)
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
 		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
 	}

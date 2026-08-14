@@ -113,6 +113,28 @@ var _ = Describe("Housekeeping", func() {
 			Expect(ConfigFingerprint()).NotTo(Equal(f1))
 		})
 
+		// Pinned: a changed formula re-resolves every library on upgrade, flooding external providers.
+		It("hashes a given config to a stable value", func() {
+			conf.Server.CoverArtPriority = "cover.*, embedded"
+			conf.Server.ArtistArtPriority = "artist.*, external"
+			conf.Server.ArtistImageFolder = ""
+			conf.Server.Agents = "lastfm,spotify"
+			conf.Server.EnableExternalServices = true
+			conf.Server.EnableM3UExternalAlbumArt = false
+
+			Expect(ConfigFingerprint()).To(Equal("7e537a22febc07d3d5ca40546e88da54"))
+		})
+
+		It("reports the config inputs it hashes, so a change can be traced to a setting", func() {
+			conf.Server.Agents = "lastfm,spotify"
+			conf.Server.CoverArtPriority = "cover.*, embedded"
+
+			Expect(FingerprintInputs()).To(ContainElements(
+				FingerprintInput{Name: "Agents", Value: "lastfm,spotify"},
+				FingerprintInput{Name: "CoverArtPriority", Value: "cover.*, embedded"},
+			))
+		})
+
 		It("does not change when the server version changes", func() {
 			original := consts.Version
 			DeferCleanup(func() { consts.Version = original })
