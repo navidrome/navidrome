@@ -22,6 +22,30 @@ type flatParticipant struct {
 	SubRole  string `json:"sub_role,omitempty"`
 }
 
+// ParticipantIDFilter matches rows of table where the artist participates in any of the given roles
+// (any role when empty). Semi-joins <table>_artists; json_tree over the JSON is far slower at scale.
+func ParticipantIDFilter(table string, artistID any, roles ...model.Role) Sqlizer {
+	return participantIDFilter(table, artistID, false, roles)
+}
+
+// NotParticipantIDFilter is the negation of ParticipantIDFilter.
+func NotParticipantIDFilter(table string, artistID any, roles ...model.Role) Sqlizer {
+	return participantIDFilter(table, artistID, true, roles)
+}
+
+func participantIDFilter(table string, artistID any, negate bool, roles []model.Role) Sqlizer {
+	sel := Select(table + "_id").From(table + "_artists").Where(Eq{"artist_id": artistID})
+	if len(roles) > 0 {
+		sel = sel.Where(Eq{"role": slice.Map(roles, func(r model.Role) string { return r.String() })})
+	}
+	sql, args, _ := sel.ToSql()
+	op := " IN ("
+	if negate {
+		op = " NOT IN ("
+	}
+	return Expr(table+".id"+op+sql+")", args...)
+}
+
 func marshalParticipants(participants model.Participants) string {
 	dbParticipants := make(map[model.Role][]participant)
 	for role, artists := range participants {

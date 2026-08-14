@@ -61,7 +61,9 @@ var _ = Describe("AudioMuse endpoints", func() {
 			parseInto(get("/AudioMuseAI/similar_tracks?item_id="+enc(songID("Come Together"))+"&n=10"), &body)
 			Expect(body).To(HaveLen(2))
 			Expect([]string{body[0].Title, body[1].Title}).To(ConsistOf("Something", "So What"))
-			Expect(dto.DecodeID(body[0].ItemID)).To(Equal(songID(body[0].Title)))
+			decoded, ok := dto.DecodeID(body[0].ItemID)
+			Expect(ok).To(BeTrue())
+			Expect(decoded).To(Equal(songID(body[0].Title)))
 		})
 
 		It("collapses to one track per artist by default", func() {

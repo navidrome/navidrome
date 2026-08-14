@@ -228,6 +228,89 @@ var _ = Describe("ShareRepository", func() {
 		})
 	})
 
+	Describe("Artist share library scoping", func() {
+		var otherLib model.Library
+		var owner model.User
+		const primaryID = "share-aa-primary"
+		const secondaryID = "share-aa-secondary"
+
+		BeforeEach(func() {
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			b := GetDBXBuilder()
+
+			// A second library the owner has no access to
+			lr := NewLibraryRepository(adminCtx, b)
+			otherLib = model.Library{ID: 0, Name: "Artist Share Other Library", Path: "/share/artist/other"}
+			Expect(lr.Put(&otherLib)).To(Succeed())
+
+			ar := NewArtistRepository(adminCtx, b)
+			Expect(createArtistWithLibrary(ar, &model.Artist{ID: primaryID, Name: "AA Primary", OrderArtistName: "aa primary"}, 1)).To(Succeed())
+			Expect(createArtistWithLibrary(ar, &model.Artist{ID: secondaryID, Name: "AA Secondary", OrderArtistName: "aa secondary"}, 1)).To(Succeed())
+
+			// Secondary is a co-album-artist (not the first): album_artist_id points at
+			// primary, so the legacy-column filter would miss both tracks.
+			aaParticipants := model.Participants{model.RoleAlbumArtist: {
+				{Artist: model.Artist{ID: primaryID, Name: "AA Primary"}},
+				{Artist: model.Artist{ID: secondaryID, Name: "AA Secondary"}},
+			}}
+			alr := NewAlbumRepository(adminCtx, b)
+			Expect(alr.Put(&model.Album{ID: "art-album-ok", LibraryID: 1, Name: "Art Album OK", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
+			Expect(alr.Put(&model.Album{ID: "art-album-other", LibraryID: otherLib.ID, Name: "Art Album Other", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
+
+			mr := NewMediaFileRepository(adminCtx, b)
+			Expect(mr.Put(&model.MediaFile{ID: "art-ok", LibraryID: 1, AlbumID: "art-album-ok", Path: "a/ok.mp3", Title: "ArtOK", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "art-other", LibraryID: otherLib.ID, AlbumID: "art-album-other", Path: "a/other.mp3", Title: "ArtOther", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
+
+			// Non-admin owner with access to library 1 only
+			owner = createUserWithLibraries("artist-share-owner", []int{1})
+			ur := NewUserRepository(adminCtx, b)
+			Expect(ur.Put(&owner)).To(Succeed())
+			Expect(ur.SetUserLibraries(owner.ID, []int{1})).To(Succeed())
+
+			_, err := b.NewQuery(`
+				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
+				VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
+			`).Bind(map[string]any{
+				"id": "art-share", "user": owner.ID, "desc": "Artist scope share",
+				"type": "artist", "ids": secondaryID, "created": time.Now(), "updated": time.Now(),
+			}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			b := GetDBXBuilder()
+			_, _ = b.NewQuery(`DELETE FROM share WHERE id = 'art-share'`).Execute()
+			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
+			_, _ = mr.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"art-ok", "art-other"}}))
+			alr := NewAlbumRepository(adminCtx, b).(*albumRepository)
+			_, _ = alr.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"art-album-ok", "art-album-other"}}))
+			ar := NewArtistRepository(adminCtx, b).(*artistRepository)
+			_, _ = ar.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))
+			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
+			_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
+			_ = NewUserRepository(adminCtx, b).Delete(owner.ID)
+		})
+
+		It("includes co-album-artist tracks the owner can access and excludes those they cannot", func() {
+			// Read as admin (mimics the public-share render path); loadMedia must still
+			// scope to the owner's libraries.
+			adminRepo := NewShareRepository(request.WithUser(log.NewContext(GinkgoT().Context()), adminUser), GetDBXBuilder())
+			share, err := adminRepo.Get("art-share")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(share.Tracks).To(ContainElement(HaveField("ID", "art-ok")),
+				"a co-album-artist track (not matched by album_artist_id) must be included")
+			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "art-other")),
+				"a track outside the owner's libraries must not appear in the share")
+
+			Expect(share.Albums).To(ContainElement(HaveField("ID", "art-album-ok")),
+				"a co-album-artist album must be included")
+			Expect(share.Albums).ToNot(ContainElement(HaveField("ID", "art-album-other")),
+				"an album outside the owner's libraries must not appear in the share")
+		})
+	})
+
 	Describe("Ownership Checks", func() {
 		var ownerUser = model.User{ID: "2222", UserName: "regular-user"}
 		var otherUser = model.User{ID: "3333", UserName: "third-user"}

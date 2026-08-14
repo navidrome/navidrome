@@ -57,6 +57,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 			"album_artist": "order_album_artist_name",
 			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
 			"title":        "order_title",
+			"random":       "random()",
 			// To make sure these fields will be whitelisted
 			"duration": "duration",
 			"year":     "year",
@@ -130,8 +131,11 @@ func (r *playlistTrackRepository) GetCursor(options ...model.QueryOptions) (mode
 	if err != nil {
 		return nil, err
 	}
-	return model.PlaylistTrackCursor(wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
+	tracks := wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
 		return t.PlaylistTrack
+	})
+	return model.PlaylistTrackCursor(hydrateCursor(tracks, func(batch []model.PlaylistTrack) {
+		hydratePlaylistTrackArtwork(r.ctx, r.db, batch)
 	})), nil
 }
 
