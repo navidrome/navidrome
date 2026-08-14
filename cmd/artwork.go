@@ -560,7 +560,7 @@ func formatExplain(rep explainReport) string {
 	if rep.stored == nil {
 		fmt.Fprintln(w, "  (no artwork state recorded)")
 	} else {
-		fmt.Fprintf(w, "  Source:\t%s\n", cmp.Or(rep.stored.Source, "(absent)"))
+		fmt.Fprintf(w, "  Source:\t%s\n", displaySource(rep.stored.Source))
 		fmt.Fprintf(w, "  Hash:\t%s\n", cmp.Or(rep.stored.Hash, "(absent)"))
 		if rep.stored.SourcePath != "" {
 			fmt.Fprintf(w, "  Source path:\t%s\n", rep.stored.SourcePath)

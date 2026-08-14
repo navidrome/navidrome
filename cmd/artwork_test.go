@@ -245,6 +245,38 @@ var _ = Describe("reprocessSelectsAll", func() {
 	})
 })
 
+var _ = Describe("explain/reprocess source round trip", func() {
+	ctx := context.Background()
+
+	// storedSource reads back the Source line explain printed, as an operator would copy it.
+	storedSource := func(out string) string {
+		GinkgoHelper()
+		for line := range strings.SplitSeq(out, "\n") {
+			if after, ok := strings.CutPrefix(strings.TrimSpace(line), "Source:"); ok {
+				return strings.TrimSpace(after)
+			}
+		}
+		Fail("explain printed no Source line")
+		return ""
+	}
+
+	It("names the absent state as reprocess --source accepts it", func() {
+		ds := &tests.MockDataStore{}
+		art := ds.Artwork(ctx).(*tests.MockArtworkRepo)
+		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: model.KindArtistArtwork.Prefix(),
+			ItemID: "ar-1", ImageType: model.ImageTypePrimary})).To(Succeed())
+
+		shown := storedSource(formatExplain(explainReport{kind: model.KindArtistArtwork, id: "ar-1",
+			stored: &model.ItemArtwork{AttemptedAt: time.Now()}}))
+
+		q := ds.ArtworkQueue(ctx)
+		Expect(validateSources(q, repositorySources([]string{shown}))).To(Succeed(),
+			"explain's spelling of a source must be pasteable into --source")
+		Expect(validateSources(q, repositorySources([]string{"(" + shown + ")"}))).ToNot(Succeed(),
+			"a parenthesised name would be rejected, so explain must not print one")
+	})
+})
+
 var _ = Describe("repositorySources", func() {
 	It("maps the user-facing absent name onto the stored empty source", func() {
 		Expect(repositorySources([]string{"absent", "folder"})).To(Equal([]string{"", "folder"}))
