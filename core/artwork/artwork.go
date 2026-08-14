@@ -406,12 +406,20 @@ func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg
 	return &TracingResolver{inner: newResolver(ds, ag, ffm, gate), trace: t}
 }
 
-func (r *TracingResolver) ResolveArtist(ctx context.Context, id string) (string, error) {
-	return r.explain(ctx, r.inner.resolveArtist, id)
-}
-
-func (r *TracingResolver) ResolveAlbum(ctx context.Context, id string) (string, error) {
-	return r.explain(ctx, r.inner.resolveAlbum, id)
+// Resolve walks kind's sources for id, recording the walk, and reports the winning source
+// ("" when none produced an image).
+func (r *TracingResolver) Resolve(ctx context.Context, kind model.Kind, id string) (string, error) {
+	switch kind {
+	case model.KindArtistArtwork:
+		return r.explain(ctx, r.inner.resolveArtist, id)
+	case model.KindAlbumArtwork:
+		return r.explain(ctx, r.inner.resolveAlbum, id)
+	case model.KindDiscArtwork:
+		return r.explain(ctx, r.inner.resolveDisc, id)
+	case model.KindMediaFileArtwork:
+		return r.explain(ctx, r.inner.resolveMediaFile, id)
+	}
+	return "", fmt.Errorf("artwork: %s artwork has no chain to explain", kind)
 }
 
 // explain discards the bytes: nothing downstream persists this resolution, so nothing else

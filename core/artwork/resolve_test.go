@@ -653,15 +653,17 @@ var _ = Describe("decodeTile", func() {
 	})
 })
 
-var _ = Describe("WalksPriorityChain", func() {
+var _ = Describe("Explainable", func() {
 	It("is true for the kinds the resolver walks", func() {
-		Expect(WalksPriorityChain(model.KindArtistArtwork)).To(BeTrue())
-		Expect(WalksPriorityChain(model.KindAlbumArtwork)).To(BeTrue())
+		Expect(Explainable(model.KindArtistArtwork)).To(BeTrue())
+		Expect(Explainable(model.KindAlbumArtwork)).To(BeTrue())
+		Expect(Explainable(model.KindDiscArtwork)).To(BeTrue())
+		Expect(Explainable(model.KindMediaFileArtwork)).To(BeTrue())
 	})
 
-	It("is false for the kinds resolved directly", func() {
-		Expect(WalksPriorityChain(model.KindPlaylistArtwork)).To(BeFalse())
-		Expect(WalksPriorityChain(model.KindRadioArtwork)).To(BeFalse())
+	It("is false for the kinds resolved from a fixed internal order", func() {
+		Expect(Explainable(model.KindPlaylistArtwork)).To(BeFalse())
+		Expect(Explainable(model.KindRadioArtwork)).To(BeFalse())
 	})
 })
 

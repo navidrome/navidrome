@@ -421,7 +421,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("reports the external tier without asking any agent", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -430,7 +430,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("records the local chain steps too", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			last := t.Steps()[len(t.Steps())-1]
@@ -439,7 +439,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("never persists artwork state", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artworkRepo.ItemData).To(BeEmpty(),
@@ -448,7 +448,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("resolves an artist without persisting anything", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveArtist(context.Background(), "ar1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(BeEmpty())
@@ -465,7 +465,7 @@ var _ = Describe("NewTracingResolver", func() {
 				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
 			}})
 
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al2")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -473,7 +473,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("propagates a lookup error", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "nope")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
@@ -484,10 +484,145 @@ var _ = Describe("NewTracingResolver", func() {
 			ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
 		}})
 
-		_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).ResolveAlbum(context.Background(), "al1")
+		_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(fake.albumCalls).To(Equal(1))
 		Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:live-probe", Outcome: OutcomeMiss}))
+	})
+})
+
+var _ = Describe("resolveDisc tracing", func() {
+	var (
+		ctx        context.Context
+		ds         *tests.MockDataStore
+		albumRepo  *tests.MockAlbumRepo
+		folderRepo *fakeFolderRepo
+		ffm        *tests.MockFFmpeg
+		t          *ChainTrace
+	)
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		repoRoot, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		libRepo := &tests.MockLibraryRepo{}
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
+		albumRepo = tests.CreateMockAlbumRepo()
+		albumRepo.SetData(model.Albums{{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}}})
+		folderRepo = &fakeFolderRepo{}
+		mfRepo := tests.CreateMockMediaFileRepo()
+		mfRepo.SetData(model.MediaFiles{{ID: "mf1", AlbumID: "al1", DiscNumber: 2, Path: "tests/fixtures/artist/an-album/test.mp3"}})
+		ds = &tests.MockDataStore{
+			MockedAlbum:     albumRepo,
+			MockedMediaFile: mfRepo,
+			MockedFolder:    folderRepo,
+			MockedLibrary:   libRepo,
+		}
+		ffm = tests.NewMockFFmpeg("")
+		t = &ChainTrace{}
+		ctx = withTrace(context.Background(), t)
+	})
+
+	It("accounts for every configured entry, including the ones that map to no source", func() {
+		conf.Server.DiscArtPriority = "external, discsubtitle, cover.jpg"
+
+		res, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, model.DiscArtworkID("al1", 2))
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.reader).To(BeNil())
+		Expect(t.Steps()).To(Equal([]TraceStep{
+			{Candidate: "external", Outcome: OutcomeSkipped, Detail: "external sources are not supported for disc artwork"},
+			{Candidate: "discsubtitle", Outcome: OutcomeSkipped, Detail: "disc has no subtitle"},
+			{Candidate: "cover.jpg", Outcome: OutcomeSkipped, Detail: "no images in album folder"},
+		}))
+	})
+
+	It("records the entry that won and stops there", func() {
+		conf.Server.DiscArtPriority = "disc*.*, cover.jpg, embedded"
+		folderRepo.result = []model.Folder{{
+			Path:       "tests/fixtures/artist/an-album",
+			ImageFiles: []string{"cover.jpg"},
+		}}
+
+		res, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, model.DiscArtworkID("al1", 2))
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.reader).ToNot(BeNil())
+		defer res.reader.Close()
+		Expect(res.source).To(Equal("folder"))
+		Expect(t.Steps()).To(HaveLen(2), "the walk must stop at the winner, and record nothing below it")
+		Expect(t.Steps()[0]).To(Equal(TraceStep{Candidate: "disc*.*", Outcome: OutcomeMiss}))
+		Expect(t.Steps()[1].Candidate).To(Equal("cover.jpg"))
+		Expect(t.Steps()[1].Outcome).To(Equal(OutcomeHit))
+		Expect(t.Steps()[1].Detail).To(HaveSuffix(filepath.FromSlash("tests/fixtures/artist/an-album/cover.jpg")))
+		Expect(t.Steps()[1].Detail).ToNot(Equal("tests/fixtures/artist/an-album/cover.jpg"),
+			"a library-relative path sends the operator looking in the wrong place")
+	})
+
+	It("reports an unparseable disc id rather than explaining another disc", func() {
+		conf.Server.DiscArtPriority = "cover.jpg"
+		_, err := newResolver(ds, nil, ffm, nil).resolveDisc(ctx, "al1")
+		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("resolveMediaFile tracing", func() {
+	var (
+		ctx    context.Context
+		ds     *tests.MockDataStore
+		mfRepo *tests.MockMediaFileRepo
+		ffm    *tests.MockFFmpeg
+		t      *ChainTrace
+	)
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.EnableMediaFileCoverArt = true
+		repoRoot, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		libRepo := &tests.MockLibraryRepo{}
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
+		mfRepo = tests.CreateMockMediaFileRepo()
+		mfRepo.SetData(model.MediaFiles{{
+			ID: "mf1", Title: "Song", HasCoverArt: true, Path: "tests/fixtures/artist/an-album/test.mp3",
+		}})
+		ds = &tests.MockDataStore{MockedMediaFile: mfRepo, MockedLibrary: libRepo}
+		ffm = tests.NewMockFFmpeg("")
+		t = &ChainTrace{}
+		ctx = withTrace(context.Background(), t)
+	})
+
+	It("separates a disabled setting from a track with nothing embedded", func() {
+		conf.Server.EnableMediaFileCoverArt = false
+
+		_, err := newResolver(ds, nil, ffm, nil).resolveMediaFile(ctx, "mf1")
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(t.Steps()).To(Equal([]TraceStep{
+			{Candidate: "embedded", Outcome: OutcomeSkipped, Detail: "EnableMediaFileCoverArt is off"},
+		}))
+	})
+
+	It("records a track with no embedded art as a miss", func() {
+		mfRepo.SetData(model.MediaFiles{{ID: "mf2", Title: "Song", HasCoverArt: false}})
+
+		_, err := newResolver(ds, nil, ffm, nil).resolveMediaFile(ctx, "mf2")
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(t.Steps()).To(Equal([]TraceStep{
+			{Candidate: "embedded", Outcome: OutcomeMiss, Detail: "the track has no embedded cover art"},
+		}))
+	})
+
+	It("records the embedded hit", func() {
+		res, err := newResolver(ds, nil, ffm, nil).resolveMediaFile(ctx, "mf1")
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.reader).ToNot(BeNil())
+		defer res.reader.Close()
+		Expect(res.source).To(Equal("embedded"))
+		Expect(t.Steps()).To(HaveLen(1))
+		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeHit))
 	})
 })

@@ -19,20 +19,37 @@ import (
 
 var _ = Describe("parseArtworkKind", func() {
 	It("accepts a supported kind", func() {
-		k, err := parseArtworkKind("ar")
+		k, err := parseArtworkKind("ar", artwork.RecheckKinds)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(k).To(Equal(model.KindArtistArtwork))
 	})
 
 	It("rejects an unknown kind and lists the valid ones", func() {
-		_, err := parseArtworkKind("zz")
+		_, err := parseArtworkKind("zz", artwork.RecheckKinds)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("ar"))
 		Expect(err.Error()).To(ContainSubstring("al"))
 	})
 
-	It("rejects a known kind that has no artwork command", func() {
-		_, err := parseArtworkKind("mf")
+	It("rejects a known kind the command does not accept", func() {
+		_, err := parseArtworkKind("mf", artwork.RecheckKinds)
+		Expect(err).To(HaveOccurred())
+	})
+
+	DescribeTable("accepts the kinds each command supports",
+		func(prefix string, valid []model.Kind) {
+			_, err := parseArtworkKind(prefix, valid)
+			Expect(err).ToNot(HaveOccurred())
+		},
+		Entry("explain reads disc artwork", "dc", explainKinds),
+		Entry("explain reads media file artwork", "mf", explainKinds),
+		// Disc artwork has no state to clear and the worker cannot resolve it, so refresh must not
+		// accept it: the queue row would be rejected on every drain.
+		Entry("refresh re-queues media files", "mf", artwork.RefreshableKinds),
+	)
+
+	It("rejects disc artwork for refresh", func() {
+		_, err := parseArtworkKind("dc", artwork.RefreshableKinds)
 		Expect(err).To(HaveOccurred())
 	})
 })
@@ -141,13 +158,13 @@ var _ = Describe("formatExplain", func() {
 	var rep explainReport
 
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.ArtistArtPriority = "external, artist.*"
 		rep = explainReport{
-			kind:         model.KindArtistArtwork,
-			id:           "ar-1",
-			name:         "Radiohead",
-			priorityName: "ArtistArtPriority",
-			priority:     "external, artist.*",
-			agents:       "lastfm,spotify",
+			kind:   model.KindArtistArtwork,
+			id:     "ar-1",
+			name:   "Radiohead",
+			agents: "lastfm,spotify",
 			steps: []artwork.TraceStep{
 				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
 				{Candidate: "external:deezer", Outcome: "would-try"},
@@ -204,9 +221,10 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
+		conf.Server.CoverArtPriority = "cover.*, embedded"
 		rep.kind = model.KindPlaylistArtwork
 		rep.steps = nil
-		rep.priorityName, rep.priority = "CoverArtPriority", "cover.*, embedded"
+		rep.agents = ""
 
 		out := formatExplain(rep)
 		Expect(out).To(ContainSubstring("does not walk a priority chain"))
@@ -216,6 +234,86 @@ var _ = Describe("formatExplain", func() {
 			"nothing was resolved because nothing was attempted")
 		Expect(out).ToNot(ContainSubstring("CoverArtPriority"),
 			"the priority chain config does not govern this kind")
+	})
+
+	It("says disc artwork keeps no state instead of reporting it as unresolved state", func() {
+		conf.Server.DiscArtPriority = "cover.jpg, embedded"
+		rep = explainReport{
+			kind: model.KindDiscArtwork, id: "al-1:2", name: "OK Computer (disc 2)",
+			steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
+			source: "folder",
+		}
+
+		out := formatExplain(rep)
+		Expect(out).To(ContainSubstring("never recorded"))
+		Expect(out).To(ContainSubstring("never queued"))
+		Expect(out).ToNot(ContainSubstring("no artwork state recorded"),
+			"a missing row would read as a lookup that failed, when disc artwork has no row by design")
+		Expect(out).To(ContainSubstring("DiscArtPriority"))
+		Expect(out).ToNot(ContainSubstring("Agents:"), "disc artwork never asks an agent")
+		Expect(out).To(ContainSubstring("resolved from folder"))
+	})
+
+	It("reports the setting that governs media file artwork", func() {
+		conf.Server.EnableMediaFileCoverArt = false
+		rep = explainReport{
+			kind: model.KindMediaFileArtwork, id: "mf-1", name: "Airbag",
+			steps: []artwork.TraceStep{
+				{Candidate: "embedded", Outcome: "skipped", Detail: "EnableMediaFileCoverArt is off"},
+			},
+		}
+
+		out := formatExplain(rep)
+		Expect(out).To(ContainSubstring("EnableMediaFileCoverArt"))
+		Expect(out).To(ContainSubstring("false"))
+		Expect(out).To(ContainSubstring("not resolved"))
+		Expect(out).To(ContainSubstring("no artwork state recorded"), "media files do keep state")
+	})
+})
+
+var _ = Describe("explainConfig", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DiscArtPriority = "cover.jpg"
+		conf.Server.EnableMediaFileCoverArt = true
+	})
+
+	DescribeTable("names the setting that decides where a kind's artwork comes from",
+		func(kind model.Kind, setting, value string) {
+			gotSetting, gotValue := explainConfig(kind)
+			Expect(gotSetting).To(Equal(setting))
+			Expect(gotValue).To(Equal(value))
+		},
+		Entry("disc", model.KindDiscArtwork, "DiscArtPriority", "cover.jpg"),
+		Entry("media file", model.KindMediaFileArtwork, "EnableMediaFileCoverArt", "true"),
+		Entry("playlist has none", model.KindPlaylistArtwork, "", ""),
+	)
+})
+
+var _ = Describe("discArtworkName", func() {
+	var ds *tests.MockDataStore
+
+	BeforeEach(func() {
+		albumRepo := tests.CreateMockAlbumRepo()
+		albumRepo.SetData(model.Albums{{ID: "al-1", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}}})
+		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
+	})
+
+	It("names the album, the disc and its subtitle", func() {
+		name, err := artworkItemName(context.Background(), ds, model.KindDiscArtwork, "al-1:2")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(name).To(Equal("Sandinista! (disc 2): Side Three"))
+	})
+
+	It("omits the subtitle when the disc has none", func() {
+		name, err := artworkItemName(context.Background(), ds, model.KindDiscArtwork, "al-1:1")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(name).To(Equal("Sandinista! (disc 1)"))
+	})
+
+	It("rejects an id that is not <albumID>:<disc>", func() {
+		_, err := artworkItemName(context.Background(), ds, model.KindDiscArtwork, "al-1")
+		Expect(err).To(HaveOccurred())
 	})
 })
 

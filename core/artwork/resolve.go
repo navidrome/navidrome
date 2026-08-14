@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -108,10 +109,14 @@ func (r *resolver) resolve(ctx context.Context, item model.ArtworkQueueItem) (re
 	}
 }
 
-// WalksPriorityChain reports whether the resolver picks this kind's artwork from a configurable
-// priority chain; playlists and radios resolve from a fixed order, so there is no walk to explain.
-func WalksPriorityChain(kind model.Kind) bool {
-	return kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork
+// Explainable reports whether TracingResolver can walk this kind's sources and report which one
+// won; playlists and radios resolve from a fixed internal order, with nothing configured to explain.
+func Explainable(kind model.Kind) bool {
+	switch kind {
+	case model.KindArtistArtwork, model.KindAlbumArtwork, model.KindDiscArtwork, model.KindMediaFileArtwork:
+		return true
+	}
+	return false
 }
 
 // MayFetchExternal reports whether resolving this kind can issue an external request under the
@@ -430,15 +435,62 @@ func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution,
 	if err != nil {
 		return resolution{}, err
 	}
-	if !conf.Server.EnableMediaFileCoverArt || !mf.HasCoverArt {
+	chain := chainState{trace: traceFrom(ctx)}
+	switch {
+	case !conf.Server.EnableMediaFileCoverArt:
+		chain.record("embedded", OutcomeSkipped, "EnableMediaFileCoverArt is off")
+		return resolution{}, nil
+	case !mf.HasCoverArt:
+		chain.record("embedded", OutcomeMiss, "the track has no embedded cover art")
 		return resolution{}, nil
 	}
 	lib, err := loadLibraryView(ctx, r.ds, mf.LibraryID)
 	if err != nil {
 		return resolution{}, err
 	}
-	res, _ := resolveEmbedded(ctx, lib, r.ffmpeg, mf.Path)
-	return res, nil
+	res, ok := resolveEmbedded(ctx, lib, r.ffmpeg, mf.Path)
+	if res, ok = chain.try("embedded", res, ok); ok {
+		return res, nil
+	}
+	return chain.exhausted(), nil
+}
+
+// resolveDisc walks conf.Server.DiscArtPriority. Disc artwork keeps no state row and is never
+// queued: the serving path reads it through on every request, so this only ever explains.
+func (r *resolver) resolveDisc(ctx context.Context, id string) (resolution, error) {
+	dr, err := newDiscArtworkReader(ctx, r.ds, model.ArtworkID{Kind: model.KindDiscArtwork, ID: id})
+	if err != nil {
+		return resolution{}, err
+	}
+	chain := chainState{trace: traceFrom(ctx)}
+	for _, c := range dr.discCandidates(ctx, r.ffmpeg, conf.Server.DiscArtPriority) {
+		if c.skip != "" {
+			chain.record(c.pattern, OutcomeSkipped, c.skip)
+			continue
+		}
+		res, ok := openDiscCandidate(c, dr.lib)
+		if res, ok = chain.try(c.pattern, res, ok); ok {
+			return res, nil
+		}
+	}
+	return chain.exhausted(), nil
+}
+
+func openDiscCandidate(c discCandidate, lib libraryView) (resolution, bool) {
+	source := "folder"
+	if c.pattern == "embedded" {
+		source = "embedded"
+	}
+	for _, sf := range c.sources {
+		if rd, path, _ := sf(); rd != nil {
+			// The disc sources disagree on this: only ffmpeg hands back an absolute path.
+			if !filepath.IsAbs(path) {
+				path = lib.Abs(path)
+			}
+			return resolution{reader: rd, source: source, sourcePath: path}, true
+		}
+	}
+	return resolution{}, false
 }
 
 // resolveExternalStep runs a single external sourceFunc through the named gate. extErr excludes

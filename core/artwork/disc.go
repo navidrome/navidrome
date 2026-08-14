@@ -113,25 +113,53 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	}, nil
 }
 
-func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
-	var ff []sourceFunc
+// discCandidate is one DiscArtPriority entry. skip is set when the entry maps to no source at
+// all, so a chain walk can say why instead of leaving a configured entry unaccounted for.
+type discCandidate struct {
+	pattern string
+	sources []sourceFunc
+	skip    string
+}
+
+func (d *discArtworkReader) discCandidates(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []discCandidate {
+	var cc []discCandidate
 	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
+		c := discCandidate{pattern: pattern}
 		switch {
 		case pattern == "embedded":
-			ff = append(ff,
+			c.sources = []sourceFunc{
 				fromTag(ctx, d.lib.FS, d.firstTrackRel),
 				fromFFmpegTag(ctx, ffmpeg, d.lib.Abs(d.firstTrackRel)),
-			)
-		case pattern == externalCandidate:
-			// Not supported for disc art, silently ignore
-		case pattern == "discsubtitle":
-			if subtitle := strings.TrimSpace(d.album.Discs[d.discNumber]); subtitle != "" {
-				ff = append(ff, d.fromDiscSubtitle(ctx, subtitle))
 			}
-		case len(d.imgFiles) > 0:
-			ff = append(ff, d.fromExternalFile(ctx, pattern))
+		case pattern == externalCandidate:
+			c.skip = "external sources are not supported for disc artwork"
+		case pattern == "discsubtitle":
+			subtitle := strings.TrimSpace(d.album.Discs[d.discNumber])
+			if subtitle == "" {
+				c.skip = "disc has no subtitle"
+			} else {
+				c.sources = []sourceFunc{d.fromDiscSubtitle(ctx, subtitle)}
+			}
+		case len(d.imgFiles) == 0:
+			c.skip = "no images in album folder"
+		default:
+			c.sources = []sourceFunc{d.fromExternalFile(ctx, pattern)}
 		}
+		cc = append(cc, c)
+	}
+	return cc
+}
+
+// fromDiscArtPriority flattens the candidates for the serving path, which needs the sources in
+// order and has no walk to report.
+func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
+	var ff []sourceFunc
+	for _, c := range d.discCandidates(ctx, ffmpeg, priority) {
+		ff = append(ff, c.sources...)
 	}
 	return ff
 }

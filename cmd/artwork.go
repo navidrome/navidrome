@@ -37,7 +37,7 @@ func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
 		"perform real external lookups instead of reporting what would be tried")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
-		"kinds to reprocess (ar, al, pl, ra); repeatable")
+		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
 		"only items currently resolved from these sources (e.g. folder, external:deezer, absent)")
 	artworkReprocessCmd.Flags().BoolVar(&reprocessAll, "all", false, "reprocess every kind")
@@ -59,9 +59,12 @@ var artworkCmd = &cobra.Command{
 var artworkExplainCmd = &cobra.Command{
 	Use:   "explain <kind> <id>",
 	Short: "Explain why an item's artwork resolved the way it did",
-	Args:  cobra.ExactArgs(2),
+	Long: "Explain why an item's artwork resolved the way it did.\n\n" +
+		"<kind> is one of: " + kindPrefixes(explainKinds) + ".\n" +
+		"A disc artwork id is the album id and the disc number, joined by a colon: <albumID>:2",
+	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		kind, err := parseArtworkKind(args[0])
+		kind, err := parseArtworkKind(args[0], explainKinds)
 		if err != nil {
 			log.Fatal(cmd.Context(), err)
 		}
@@ -74,7 +77,7 @@ var artworkRefreshCmd = &cobra.Command{
 	Short: "Clear an item's artwork state and re-resolve it",
 	Args:  cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		kind, err := parseArtworkKind(args[0])
+		kind, err := parseArtworkKind(args[0], artwork.RefreshableKinds)
 		if err != nil {
 			log.Fatal(cmd.Context(), err)
 		}
@@ -290,7 +293,7 @@ func selectedKinds(kinds, sources []string, all bool) ([]model.Kind, error) {
 	}
 	out := make([]model.Kind, 0, len(kinds))
 	for _, k := range kinds {
-		kind, err := parseArtworkKind(k)
+		kind, err := parseArtworkKind(k, artwork.RecheckKinds)
 		if err != nil {
 			return nil, err
 		}
@@ -488,13 +491,23 @@ func refreshItems(ctx context.Context, ds model.DataStore, kind model.Kind, ids 
 	return failed
 }
 
-func parseArtworkKind(s string) (model.Kind, error) {
+// explainKinds is every kind explain accepts: it reports stored state and config too, so a kind
+// with no chain to walk still has something to answer with.
+var explainKinds = []model.Kind{
+	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindDiscArtwork,
+	model.KindMediaFileArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
+}
+
+func kindPrefixes(kinds []model.Kind) string {
+	return strings.Join(slice.Map(kinds, func(k model.Kind) string { return k.Prefix() }), ", ")
+}
+
+func parseArtworkKind(s string, valid []model.Kind) (model.Kind, error) {
 	kind, ok := model.ParseKind(s)
-	if ok && slices.Contains(artwork.RecheckKinds, kind) {
+	if ok && slices.Contains(valid, kind) {
 		return kind, nil
 	}
-	valid := slice.Map(artwork.RecheckKinds, func(k model.Kind) string { return k.Prefix() })
-	return kind, fmt.Errorf("invalid kind %q, expected one of: %s", s, strings.Join(valid, ", "))
+	return kind, fmt.Errorf("invalid kind %q, expected one of: %s", s, kindPrefixes(valid))
 }
 
 // explainAgents accounts for every configured agent: one the CLI cannot construct (a plugin, or a
@@ -560,24 +573,42 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 	return "not resolved"
 }
 
+// keepsArtworkState reports whether a kind is recorded in item_artwork and the queue at all. Disc
+// artwork is resolved on every request and cached by content key, so it has neither.
+func keepsArtworkState(kind model.Kind) bool { return kind != model.KindDiscArtwork }
+
+// explainConfig names the setting that decides where a kind's artwork comes from, and its value.
+func explainConfig(kind model.Kind) (name, value string) {
+	switch kind {
+	case model.KindArtistArtwork:
+		return "ArtistArtPriority", conf.Server.ArtistArtPriority
+	case model.KindAlbumArtwork:
+		return "CoverArtPriority", conf.Server.CoverArtPriority
+	case model.KindDiscArtwork:
+		return "DiscArtPriority", conf.Server.DiscArtPriority
+	case model.KindMediaFileArtwork:
+		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server.EnableMediaFileCoverArt)
+	}
+	return "", ""
+}
+
 type explainReport struct {
-	kind         model.Kind
-	id           string
-	name         string
-	stored       *model.ItemArtwork
-	queued       *model.ArtworkQueueItem
-	priorityName string
-	priority     string
-	agents       string
-	steps        []artwork.TraceStep
-	source       string
-	resolveErr   error
+	kind       model.Kind
+	id         string
+	name       string
+	stored     *model.ItemArtwork
+	queued     *model.ArtworkQueueItem
+	agents     string
+	steps      []artwork.TraceStep
+	source     string
+	resolveErr error
 }
 
 func formatExplain(rep explainReport) string {
 	var sb strings.Builder
 	w := newTabWriter(&sb)
-	walksChain := artwork.WalksPriorityChain(rep.kind)
+	explainable := artwork.Explainable(rep.kind)
+	stateful := keepsArtworkState(rep.kind)
 
 	fmt.Fprintln(w, "Item")
 	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
@@ -585,9 +616,12 @@ func formatExplain(rep explainReport) string {
 	fmt.Fprintf(w, "  Name:\t%s\n", rep.name)
 
 	fmt.Fprintln(w, "\nStored")
-	if rep.stored == nil {
+	switch {
+	case !stateful:
+		fmt.Fprintf(w, "  (%s artwork is resolved on every request and never recorded)\n", rep.kind)
+	case rep.stored == nil:
 		fmt.Fprintln(w, "  (no artwork state recorded)")
-	} else {
+	default:
 		fmt.Fprintf(w, "  Source:\t%s\n", displaySource(rep.stored.Source))
 		fmt.Fprintf(w, "  Hash:\t%s\n", cmp.Or(rep.stored.Hash, "(absent)"))
 		if rep.stored.SourcePath != "" {
@@ -597,24 +631,29 @@ func formatExplain(rep explainReport) string {
 	}
 
 	fmt.Fprintln(w, "\nQueue")
-	if rep.queued == nil {
+	switch {
+	case !stateful:
+		fmt.Fprintln(w, "  (never queued)")
+	case rep.queued == nil:
 		fmt.Fprintln(w, "  (not queued)")
-	} else {
+	default:
 		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", priorityName(rep.queued.Priority), rep.queued.Priority)
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
 		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
 	}
 
 	fmt.Fprintln(w, "\nConfig")
-	if !walksChain {
-		fmt.Fprintln(w, "  (no priority chain configuration applies)")
+	if setting, value := explainConfig(rep.kind); setting == "" {
+		fmt.Fprintln(w, "  (no artwork source configuration applies)")
 	} else {
-		fmt.Fprintf(w, "  %s:\t%s\n", rep.priorityName, rep.priority)
-		fmt.Fprintf(w, "  Agents:\t%s\n", rep.agents)
+		fmt.Fprintf(w, "  %s:\t%s\n", setting, value)
+		if rep.agents != "" {
+			fmt.Fprintf(w, "  Agents:\t%s\n", rep.agents)
+		}
 	}
 
 	fmt.Fprintln(w, "\nChain")
-	if !walksChain {
+	if !explainable {
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
 	} else {
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
@@ -628,7 +667,7 @@ func formatExplain(rep explainReport) string {
 	switch {
 	case rep.resolveErr != nil:
 		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
-	case !walksChain:
+	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
 	default:
 		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
@@ -653,32 +692,24 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	if err != nil {
 		log.Fatal(ctx, "Item not found", "kind", kind, "id", id, err)
 	}
-	rep := explainReport{
-		kind: kind, id: id, name: name,
-		priorityName: "CoverArtPriority", priority: conf.Server.CoverArtPriority,
-	}
-	if kind == model.KindArtistArtwork {
-		rep.priorityName, rep.priority = "ArtistArtPriority", conf.Server.ArtistArtPriority
-	}
-
-	rep.stored, err = ds.Artwork(ctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
-		log.Fatal(ctx, "Failed to read artwork state", "kind", kind, "id", id, err)
-	}
-	rep.queued, err = ds.ArtworkQueue(ctx).Get(kind, id, model.ImageTypePrimary)
-	if err != nil && !errors.Is(err, model.ErrNotFound) {
-		log.Fatal(ctx, "Failed to read the artwork queue", "kind", kind, "id", id, err)
-	}
-
-	if artwork.WalksPriorityChain(kind) {
-		rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, kind))
-		trace := &artwork.ChainTrace{}
-		resolver := CreateArtworkResolver(trace, explainLive)
-		resolve := resolver.ResolveAlbum
-		if kind == model.KindArtistArtwork {
-			resolve = resolver.ResolveArtist
+	rep := explainReport{kind: kind, id: id, name: name}
+	if keepsArtworkState(kind) {
+		rep.stored, err = ds.Artwork(ctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+		if err != nil && !errors.Is(err, model.ErrNotFound) {
+			log.Fatal(ctx, "Failed to read artwork state", "kind", kind, "id", id, err)
 		}
-		rep.source, rep.resolveErr = resolve(ctx, id)
+		rep.queued, err = ds.ArtworkQueue(ctx).Get(kind, id, model.ImageTypePrimary)
+		if err != nil && !errors.Is(err, model.ErrNotFound) {
+			log.Fatal(ctx, "Failed to read the artwork queue", "kind", kind, "id", id, err)
+		}
+	}
+
+	if artwork.Explainable(kind) {
+		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
+			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, kind))
+		}
+		trace := &artwork.ChainTrace{}
+		rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
 		rep.steps = trace.Steps()
 	}
 
@@ -717,6 +748,31 @@ func artworkItemName(ctx context.Context, ds model.DataStore, kind model.Kind, i
 			return "", err
 		}
 		return rd.Name, nil
+	case model.KindMediaFileArtwork:
+		mf, err := ds.MediaFile(ctx).Get(id)
+		if err != nil {
+			return "", err
+		}
+		return mf.Title, nil
+	case model.KindDiscArtwork:
+		return discArtworkName(ctx, ds, id)
 	}
 	return "", fmt.Errorf("unsupported kind %q", kind.Prefix())
+}
+
+func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string, error) {
+	albumID, discNumber, err := model.ParseDiscArtworkID(id)
+	if err != nil {
+		return "", err
+	}
+	al, err := ds.Album(ctx).Get(albumID)
+	if err != nil {
+		return "", err
+	}
+	name := fmt.Sprintf("%s (disc %d)", al.Name, discNumber)
+	// The subtitle is itself a DiscArtPriority candidate, so name it where the chain can be read against it.
+	if subtitle := strings.TrimSpace(al.Discs[discNumber]); subtitle != "" {
+		name += ": " + subtitle
+	}
+	return name, nil
 }
