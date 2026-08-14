@@ -149,6 +149,22 @@ type ArtworkQueueRepository interface {
 	// DeleteIfUnchanged deletes only while retry_at still matches, sparing a concurrent re-enqueue.
 	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)
+	// CountByKindAndPriority reports the pending queue rows grouped by kind and priority.
+	CountByKindAndPriority() ([]ArtworkQueueStat, error)
+	// CountAbsent reports the absent states of a kind, and how many of those EnqueueStaleAbsent
+	// would pick up at the given cutoff.
+	CountAbsent(kind Kind, attemptedBefore time.Time) (ArtworkAbsentStat, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
+}
+
+type ArtworkQueueStat struct {
+	ItemKind string
+	Priority int
+	Count    int64
+}
+
+type ArtworkAbsentStat struct {
+	Total int64
+	Stale int64
 }

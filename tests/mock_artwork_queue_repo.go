@@ -174,6 +174,49 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
+func (m *MockArtworkQueueRepo) CountByKindAndPriority() ([]model.ArtworkQueueStat, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	var res []model.ArtworkQueueStat
+	for _, it := range m.Data {
+		i := slices.IndexFunc(res, func(s model.ArtworkQueueStat) bool {
+			return s.ItemKind == it.ItemKind && s.Priority == it.Priority
+		})
+		if i < 0 {
+			res = append(res, model.ArtworkQueueStat{ItemKind: it.ItemKind, Priority: it.Priority, Count: 1})
+			continue
+		}
+		res[i].Count++
+	}
+	slices.SortFunc(res, func(a, b model.ArtworkQueueStat) int {
+		return cmp.Or(cmp.Compare(a.ItemKind, b.ItemKind), cmp.Compare(b.Priority, a.Priority))
+	})
+	return res, nil
+}
+
+// CountAbsent mirrors the SQL predicate: an absent state is one with no hash.
+func (m *MockArtworkQueueRepo) CountAbsent(kind model.Kind, attemptedBefore time.Time) (model.ArtworkAbsentStat, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var res model.ArtworkAbsentStat
+	if m.Err != nil || m.ItemArtworkSource == nil {
+		return res, m.Err
+	}
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind != kind.Prefix() || ia.Hash != "" {
+			continue
+		}
+		res.Total++
+		if ia.AttemptedAt.Before(attemptedBefore) {
+			res.Stale++
+		}
+	}
+	return res, nil
+}
+
 func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

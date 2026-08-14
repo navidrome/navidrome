@@ -194,4 +194,20 @@ func (r *artworkQueueRepository) Count() (int64, error) {
 	return res.Count, err
 }
 
+func (r *artworkQueueRepository) CountByKindAndPriority() ([]model.ArtworkQueueStat, error) {
+	var res []model.ArtworkQueueStat
+	err := r.queryAll(Select("item_kind", "priority", "count(*) as count").From(r.tableName).
+		GroupBy("item_kind", "priority").OrderBy("item_kind", "priority desc"), &res)
+	return res, err
+}
+
+// CountAbsent matches EnqueueStaleAbsent on hash, so the stale count is what a recheck would queue.
+func (r *artworkQueueRepository) CountAbsent(kind model.Kind, attemptedBefore time.Time) (model.ArtworkAbsentStat, error) {
+	var res model.ArtworkAbsentStat
+	err := r.queryOne(Select("count(*) as total").
+		Column(Expr("coalesce(sum(attempted_at < ?), 0) as stale", attemptedBefore)).
+		From(itemArtworkTable).Where(Eq{"item_kind": kind.Prefix(), "hash": ""}), &res)
+	return res, err
+}
+
 var _ model.ArtworkQueueRepository = (*artworkQueueRepository)(nil)

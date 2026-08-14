@@ -380,4 +380,53 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		}
 		Expect(count).To(Equal(1), "the already-queued row must not be duplicated")
 	})
+
+	Describe("status counters", func() {
+		It("groups queue rows by kind and priority", func() {
+			Expect(repo.Enqueue(item("ar", "a1", model.ArtworkPriorityBackfill))).To(Succeed())
+			Expect(repo.Enqueue(item("ar", "a2", model.ArtworkPriorityBackfill))).To(Succeed())
+			Expect(repo.Enqueue(item("ar", "a3", model.ArtworkPriorityBump))).To(Succeed())
+			Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
+
+			Expect(repo.CountByKindAndPriority()).To(ConsistOf(
+				model.ArtworkQueueStat{ItemKind: "ar", Priority: model.ArtworkPriorityBackfill, Count: 2},
+				model.ArtworkQueueStat{ItemKind: "ar", Priority: model.ArtworkPriorityBump, Count: 1},
+				model.ArtworkQueueStat{ItemKind: "al", Priority: model.ArtworkPriorityScan, Count: 1},
+			))
+		})
+
+		It("reports an empty queue as no rows", func() {
+			Expect(repo.CountByKindAndPriority()).To(BeEmpty())
+		})
+
+		It("counts absent states and how many are due for recheck", func() {
+			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			old := time.Now().Add(-48 * time.Hour)
+			for _, ia := range []model.ItemArtwork{
+				{ItemKind: "ar", ItemID: "stale1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old},
+				{ItemKind: "ar", ItemID: "fresh1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()},
+				{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: old},
+				{ItemKind: "al", ItemID: "stale2", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old},
+			} {
+				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
+			}
+
+			Expect(repo.CountAbsent(model.KindArtistArtwork, time.Now().Add(-24*time.Hour))).
+				To(Equal(model.ArtworkAbsentStat{Total: 2, Stale: 1}))
+		})
+
+		It("reports a kind with no absent state as zero, not as an error", func() {
+			Expect(repo.CountAbsent(model.KindRadioArtwork, time.Now())).To(Equal(model.ArtworkAbsentStat{}))
+		})
+
+		It("counts without enqueueing", func() {
+			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "ar9",
+				ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
+
+			_, err := repo.CountAbsent(model.KindArtistArtwork, time.Now())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(repo.Count()).To(BeZero())
+		})
+	})
 })
