@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"context"
 	"errors"
 	"io"
 	"sync"
@@ -101,6 +102,10 @@ func (b *breaker) allow() bool {
 }
 
 func (b *breaker) record(name string, err error) {
+	// A cancelled run says nothing about the provider, so it neither counts nor clears.
+	if errors.Is(err, context.Canceled) {
+		return
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if !isTransientExternal(err) {
