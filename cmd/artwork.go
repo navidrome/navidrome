@@ -8,11 +8,13 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -50,6 +52,7 @@ func init() {
 	artworkCmd.AddCommand(artworkExplainCmd)
 	artworkCmd.AddCommand(artworkRefreshCmd)
 	artworkCmd.AddCommand(artworkReprocessCmd)
+	artworkCmd.AddCommand(artworkStatusCmd)
 	rootCmd.AddCommand(artworkCmd)
 }
 
@@ -91,6 +94,167 @@ var artworkReprocessCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		runReprocess(cmd.Context())
 	},
+}
+
+var artworkStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Report the artwork queue, where artwork resolves from, and the backfill state",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		runStatus(cmd.Context())
+	},
+}
+
+func runStatus(ctx context.Context) {
+	defer db.Init(ctx)()
+	ds, ctx := getAdminContext(ctx)
+
+	rep, err := collectStatus(ctx, ds)
+	if err != nil {
+		log.Fatal(ctx, err)
+	}
+	fmt.Print(formatStatus(rep))
+}
+
+type sourceCount struct {
+	kind   model.Kind
+	source string
+	count  int64
+}
+
+type absentCount struct {
+	kind model.Kind
+	model.ArtworkAbsentStat
+}
+
+type statusReport struct {
+	queueTotal int64
+	queue      []model.ArtworkQueueStat
+	sources    []sourceCount
+	absent     []absentCount
+	stored     string
+	current    string
+}
+
+// backfillQueued counts what a backfill still has to drain, the cost a config change is charging now.
+func (r statusReport) backfillQueued() int64 {
+	var n int64
+	for _, s := range r.queue {
+		if s.Priority == model.ArtworkPriorityBackfill {
+			n += s.Count
+		}
+	}
+	return n
+}
+
+func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error) {
+	q := ds.ArtworkQueue(ctx)
+	var rep statusReport
+	var err error
+	if rep.queueTotal, err = q.Count(); err != nil {
+		return rep, fmt.Errorf("counting the artwork queue: %w", err)
+	}
+	if rep.queue, err = q.CountByKindAndPriority(); err != nil {
+		return rep, fmt.Errorf("breaking the artwork queue down by kind: %w", err)
+	}
+
+	cutoff := time.Now().Add(-artwork.StaleAbsentAge)
+	for _, k := range artworkKinds {
+		sources, err := q.SourcesInUse(k)
+		if err != nil {
+			return rep, fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
+		}
+		slices.Sort(sources)
+		for _, s := range sources {
+			n, err := q.CountBySource(k, []string{s})
+			if err != nil {
+				return rep, fmt.Errorf("counting %s artwork resolved from %s: %w", k, displaySource(s), err)
+			}
+			rep.sources = append(rep.sources, sourceCount{kind: k, source: s, count: n})
+		}
+		stat, err := q.CountAbsent(k, cutoff)
+		if err != nil {
+			return rep, fmt.Errorf("counting absent %s artwork: %w", k, err)
+		}
+		rep.absent = append(rep.absent, absentCount{kind: k, ArtworkAbsentStat: stat})
+	}
+
+	rep.current = artwork.ConfigFingerprint()
+	if rep.stored, err = ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, ""); err != nil {
+		return rep, fmt.Errorf("reading the stored artwork fingerprint: %w", err)
+	}
+	return rep, nil
+}
+
+func formatStatus(rep statusReport) string {
+	var sb strings.Builder
+	w := tabwriter.NewWriter(&sb, 0, 4, 2, ' ', 0)
+
+	fmt.Fprintln(w, "Queue")
+	if len(rep.queue) == 0 {
+		fmt.Fprintln(w, "  (empty)")
+	} else {
+		fmt.Fprintln(w, "  KIND\tPRIORITY\tITEMS")
+		for _, s := range rep.queue {
+			fmt.Fprintf(w, "  %s\t%s\t%d\n", kindName(s.ItemKind), priorityName(s.Priority), s.Count)
+		}
+		fmt.Fprintf(w, "  TOTAL\t\t%d\n", rep.queueTotal)
+	}
+
+	fmt.Fprintln(w, "\nSources")
+	fmt.Fprintln(w, "  KIND\tSOURCE\tITEMS")
+	for _, s := range rep.sources {
+		fmt.Fprintf(w, "  %s\t%s\t%d\n", s.kind, displaySource(s.source), s.count)
+	}
+
+	fmt.Fprintln(w, "\nAbsent (resolved, no image found)")
+	fmt.Fprintln(w, "  KIND\tABSENT\tDUE FOR RECHECK")
+	for _, a := range rep.absent {
+		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.Total, a.Stale)
+	}
+	fmt.Fprintf(w, "  (rechecked once the last attempt is older than %gh)\n", artwork.StaleAbsentAge.Hours())
+
+	fmt.Fprintln(w, "\nBackfill")
+	fmt.Fprintf(w, "  Stored fingerprint:\t%s\n", cmp.Or(rep.stored, "(none)"))
+	fmt.Fprintf(w, "  Current fingerprint:\t%s\n", rep.current)
+	fmt.Fprintf(w, "  State:\t%s\n", backfillState(rep))
+
+	w.Flush()
+	return sb.String()
+}
+
+// backfillState turns "why is my server re-resolving everything?" into a line: a stored fingerprint
+// that differs is a pending re-resolve of the whole library, and backfill rows are one already running.
+func backfillState(rep statusReport) string {
+	state := "up to date"
+	if rep.stored != rep.current {
+		state = "fingerprint changed — every artist, album, playlist and radio will be re-enqueued on the next startup"
+	}
+	if n := rep.backfillQueued(); n > 0 {
+		state += fmt.Sprintf("; %d items still queued at backfill priority", n)
+	}
+	return state
+}
+
+func kindName(prefix string) string {
+	if k, ok := model.ParseKind(prefix); ok {
+		return k.String()
+	}
+	return prefix
+}
+
+func priorityName(p int) string {
+	switch p {
+	case model.ArtworkPriorityRecheck:
+		return "recheck"
+	case model.ArtworkPriorityBackfill:
+		return "backfill"
+	case model.ArtworkPriorityScan:
+		return "scan"
+	case model.ArtworkPriorityBump:
+		return "bump"
+	}
+	return strconv.Itoa(p)
 }
 
 func runReprocess(ctx context.Context) {

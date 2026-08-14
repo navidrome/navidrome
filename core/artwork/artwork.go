@@ -119,7 +119,7 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 }
 
 // requestRecheckAge throttles view-triggered rechecks so reopening a genuinely-absent page can't
-// hammer external services; below staleAbsentAge to catch younger absences.
+// hammer external services; below StaleAbsentAge to catch younger absences.
 const requestRecheckAge = time.Hour
 
 func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {

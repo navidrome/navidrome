@@ -16,7 +16,8 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-const staleAbsentAge = 24 * time.Hour
+// StaleAbsentAge is how long an absent state is trusted before a recheck retries it.
+const StaleAbsentAge = 24 * time.Hour
 
 // recheckKinds omits media files: they resolve embedded-only, at scan or on view.
 var recheckKinds = []model.Kind{
@@ -32,8 +33,9 @@ func hasRecheckPath(prefix string) bool {
 // artworkEpoch invalidates all resolution state when bumped; bump it whenever resolution semantics change.
 const artworkEpoch = 1
 
-// fingerprint covers the inputs that affect resolution outcomes; a change invalidates stored state.
-func fingerprint() string {
+// ConfigFingerprint covers the inputs that affect resolution outcomes; a change invalidates stored state.
+// Exported so the CLI reports the value backfill compares instead of computing one that can drift.
+func ConfigFingerprint() string {
 	raw := fmt.Sprintf("%s|%s|%s|%s|%t|%t|%d",
 		conf.Server.CoverArtPriority, conf.Server.ArtistArtPriority, conf.Server.ArtistImageFolder,
 		conf.Server.Agents, conf.Server.EnableExternalServices, conf.Server.EnableM3UExternalAlbumArt, artworkEpoch)
@@ -45,7 +47,7 @@ func fingerprint() string {
 func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 	start := time.Now()
 	ctx = auth.WithAdminUser(ctx, ds)
-	current := fingerprint()
+	current := ConfigFingerprint()
 	props := ds.Property(ctx)
 	stored, err := props.DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
@@ -95,7 +97,7 @@ func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kin
 }
 
 func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
-	cutoff := time.Now().Add(-staleAbsentAge)
+	cutoff := time.Now().Add(-StaleAbsentAge)
 	queue := ds.ArtworkQueue(ctx)
 	for _, kind := range recheckKinds {
 		if _, err := queue.EnqueueStaleAbsent(kind, cutoff); err != nil {

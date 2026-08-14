@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -437,6 +438,146 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(out.String()).To(ContainSubstring("Nothing matches"),
 			"a well-formed filter must not be reported as a typo because of the kinds selected")
 		Expect(queue.Count()).To(BeZero())
+	})
+})
+
+var _ = Describe("artwork status command", func() {
+	It("takes no arguments", func() {
+		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{})).ToNot(HaveOccurred())
+		Expect(artworkStatusCmd.Args(artworkStatusCmd, []string{"x"})).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("collectStatus", func() {
+	var ds *tests.MockDataStore
+	var art *tests.MockArtworkRepo
+	var queue *tests.MockArtworkQueueRepo
+	ctx := context.Background()
+
+	BeforeEach(func() {
+		ds = &tests.MockDataStore{}
+		art = ds.Artwork(ctx).(*tests.MockArtworkRepo)
+		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
+		put := func(kind model.Kind, id, source, hash string, attempted time.Time) {
+			Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: kind.Prefix(), ItemID: id,
+				ImageType: model.ImageTypePrimary, Source: source, Hash: hash, AttemptedAt: attempted})).To(Succeed())
+		}
+		put(model.KindArtistArtwork, "ar-1", "external:deezer", "h1", time.Now())
+		put(model.KindArtistArtwork, "ar-2", "", "", time.Now().Add(-48*time.Hour))
+		put(model.KindArtistArtwork, "ar-3", "", "", time.Now())
+		put(model.KindAlbumArtwork, "al-1", "folder", "h2", time.Now())
+		Expect(queue.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-9",
+			ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBackfill})).To(Succeed())
+	})
+
+	It("reports the queue, the source distribution and the absent ages", func() {
+		rep, err := collectStatus(ctx, ds)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(rep.queueTotal).To(Equal(int64(1)))
+		Expect(rep.queue).To(ConsistOf(model.ArtworkQueueStat{ItemKind: "ar",
+			Priority: model.ArtworkPriorityBackfill, Count: 1}))
+		Expect(rep.sources).To(ContainElements(
+			sourceCount{kind: model.KindArtistArtwork, source: "external:deezer", count: 1},
+			sourceCount{kind: model.KindArtistArtwork, source: "", count: 2},
+			sourceCount{kind: model.KindAlbumArtwork, source: "folder", count: 1},
+		))
+		Expect(rep.absent).To(ContainElement(absentCount{kind: model.KindArtistArtwork,
+			ArtworkAbsentStat: model.ArtworkAbsentStat{Total: 2, Stale: 1}}))
+	})
+
+	It("compares the stored fingerprint against the current one", func() {
+		Expect(ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, "old-fingerprint")).To(Succeed())
+
+		rep, err := collectStatus(ctx, ds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.stored).To(Equal("old-fingerprint"))
+		Expect(rep.current).To(Equal(artwork.ConfigFingerprint()),
+			"the CLI must report the value backfill itself compares")
+	})
+
+	It("reports a never-recorded fingerprint as empty instead of failing", func() {
+		rep, err := collectStatus(ctx, ds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.stored).To(BeEmpty())
+	})
+
+	It("queues nothing", func() {
+		_, err := collectStatus(ctx, ds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queue.Count()).To(Equal(int64(1)), "status must not enqueue anything")
+	})
+})
+
+var _ = Describe("formatStatus", func() {
+	var rep statusReport
+
+	BeforeEach(func() {
+		rep = statusReport{
+			queueTotal: 3,
+			queue: []model.ArtworkQueueStat{
+				{ItemKind: "ar", Priority: model.ArtworkPriorityBackfill, Count: 2},
+				{ItemKind: "al", Priority: model.ArtworkPriorityScan, Count: 1},
+			},
+			sources: []sourceCount{
+				{kind: model.KindArtistArtwork, source: "external:deezer", count: 5},
+				{kind: model.KindArtistArtwork, source: "", count: 2},
+			},
+			absent: []absentCount{
+				{kind: model.KindArtistArtwork, ArtworkAbsentStat: model.ArtworkAbsentStat{Total: 2, Stale: 1}},
+			},
+			stored:  "abc123",
+			current: "abc123",
+		}
+	})
+
+	It("prints every block", func() {
+		out := formatStatus(rep)
+		for _, block := range []string{"Queue", "Sources", "Absent", "Backfill"} {
+			Expect(out).To(ContainSubstring(block))
+		}
+		Expect(out).To(ContainSubstring("backfill"))
+		Expect(out).To(ContainSubstring("external:deezer"))
+		Expect(out).To(ContainSubstring("abc123"))
+	})
+
+	It("names the empty source as absent", func() {
+		Expect(formatStatus(rep)).To(ContainSubstring("absent"))
+	})
+
+	It("states the recheck window the absent counts are bucketed against", func() {
+		Expect(formatStatus(rep)).To(ContainSubstring("24h"))
+	})
+
+	It("reports a matching fingerprint as up to date, with the backfill still draining", func() {
+		out := formatStatus(rep)
+		Expect(out).To(ContainSubstring("up to date"))
+		Expect(out).To(ContainSubstring("2 items still queued at backfill priority"),
+			"a drained-down backfill is the signal that a config change flooded the queue")
+	})
+
+	It("reports a changed fingerprint as a pending re-resolve of everything", func() {
+		rep.stored = "older"
+
+		out := formatStatus(rep)
+		Expect(out).To(ContainSubstring("fingerprint changed"))
+		Expect(out).ToNot(ContainSubstring("up to date"))
+	})
+
+	It("reports a never-recorded fingerprint without printing an empty value", func() {
+		rep.stored = ""
+
+		out := formatStatus(rep)
+		Expect(out).To(ContainSubstring("(none)"))
+		Expect(out).To(ContainSubstring("fingerprint changed"))
+	})
+
+	It("says the queue is empty instead of printing a headless table", func() {
+		rep.queue, rep.queueTotal = nil, 0
+
+		out := formatStatus(rep)
+		Expect(out).To(ContainSubstring("empty"))
+		Expect(out).ToNot(ContainSubstring("PRIORITY"))
 	})
 })
 

@@ -93,32 +93,32 @@ var _ = Describe("Housekeeping", func() {
 
 	Describe("Fingerprint", func() {
 		It("changes when a fingerprint-affecting config value changes", func() {
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.CoverArtPriority = "folder, embedded"
-			f2 := fingerprint()
+			f2 := ConfigFingerprint()
 			Expect(f1).NotTo(Equal(f2))
 		})
 
 		It("changes when ArtistImageFolder changes", func() {
 			conf.Server.ArtistImageFolder = "/before"
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.ArtistImageFolder = "/after"
-			Expect(fingerprint()).NotTo(Equal(f1))
+			Expect(ConfigFingerprint()).NotTo(Equal(f1))
 		})
 
 		It("changes when EnableM3UExternalAlbumArt is toggled", func() {
 			conf.Server.EnableM3UExternalAlbumArt = false
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.EnableM3UExternalAlbumArt = true
-			Expect(fingerprint()).NotTo(Equal(f1))
+			Expect(ConfigFingerprint()).NotTo(Equal(f1))
 		})
 
 		It("does not change when the server version changes", func() {
 			original := consts.Version
 			DeferCleanup(func() { consts.Version = original })
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			consts.Version = original + "-next"
-			Expect(fingerprint()).To(Equal(f1),
+			Expect(ConfigFingerprint()).To(Equal(f1),
 				"the version must not invalidate artwork state: it would re-resolve every entity on every build")
 		})
 	})
@@ -126,7 +126,7 @@ var _ = Describe("Housekeeping", func() {
 	Describe("Backfill", func() {
 		It("enqueues nothing and returns false when the stored fingerprint matches", func() {
 			seedEntities()
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, fingerprint())).To(Succeed())
+			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())).To(Succeed())
 
 			did, err := backfill(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
@@ -150,7 +150,7 @@ var _ = Describe("Housekeeping", func() {
 
 			stored, err := propRepo.Get(consts.ArtConfFingerprintPropertyKey)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stored).To(Equal(fingerprint()))
+			Expect(stored).To(Equal(ConfigFingerprint()))
 		})
 
 		It("enqueues a private playlist by resolving it under an admin context", func() {
