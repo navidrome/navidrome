@@ -87,6 +87,45 @@ var _ = Describe("explainResult", func() {
 		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
 			"an offline run must not claim an item is unresolvable when external agents were skipped")
 	})
+
+	It("qualifies a win a failed higher-priority external lookup could have taken", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
+			{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"},
+		}
+		res := explainResult("artist.*", steps)
+		Expect(res).To(ContainSubstring("resolved from artist.*"))
+		Expect(res).To(ContainSubstring("indeterminate"),
+			"the resolver serves this hit but retries later, so the winner is provisional")
+	})
+
+	It("does not qualify a win that outranked the failed external lookup", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "artist.*", Outcome: "hit"},
+			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
+		}
+		Expect(explainResult("artist.*", steps)).To(Equal("resolved from artist.*"))
+	})
+})
+
+var _ = Describe("explainAgents", func() {
+	It("accounts for every configured agent, marking the ones the CLI could not use", func() {
+		out := explainAgents("artist-nfo-metadata,apple-music,deezer,lastfm", []string{"deezer"})
+		for _, name := range []string{"artist-nfo-metadata", "apple-music", "deezer", "lastfm"} {
+			Expect(out).To(ContainSubstring(name),
+				"a configured agent missing from this line reads as if it had never been configured")
+		}
+		Expect(out).To(ContainSubstring("not available to the CLI"))
+	})
+
+	It("does not mark anything when every configured agent is available", func() {
+		out := explainAgents("deezer, lastfm", []string{"lastfm", "deezer"})
+		Expect(out).To(Equal("deezer, lastfm"))
+	})
+
+	It("reports an empty configuration as none, not as an unavailable agent", func() {
+		Expect(explainAgents("", nil)).To(Equal("(none)"))
+	})
 })
 
 var _ = Describe("formatExplain", func() {

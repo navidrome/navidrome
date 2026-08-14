@@ -497,6 +497,37 @@ func parseArtworkKind(s string) (model.Kind, error) {
 	return kind, fmt.Errorf("invalid kind %q, expected one of: %s", s, strings.Join(valid, ", "))
 }
 
+// explainAgents accounts for every configured agent: one the CLI cannot construct (a plugin, or a
+// built-in missing its credentials) never reaches the Chain, so the raw list alone overstates it.
+func explainAgents(configured string, available []string) string {
+	if strings.TrimSpace(configured) == "" {
+		return "(none)"
+	}
+	var unavailable bool
+	names := slice.Map(strings.Split(configured, ","), func(name string) string {
+		name = strings.TrimSpace(name)
+		if slices.Contains(available, name) {
+			return name
+		}
+		unavailable = true
+		return name + "*"
+	})
+	line := strings.Join(names, ", ")
+	if unavailable {
+		line += "  (* not available to the CLI)"
+	}
+	return line
+}
+
+// availableImageAgents names the agents that can actually supply an image for kind.
+func availableImageAgents(ds model.DataStore, kind model.Kind) []string {
+	ag := agents.GetAgents(ds, getPluginManager())
+	if kind == model.KindArtistArtwork {
+		return slice.Map(ag.ArtistImageAgents(), func(a agents.ArtistImageAgent) string { return a.Name })
+	}
+	return slice.Map(ag.AlbumImageAgents(), func(a agents.AlbumImageAgent) string { return a.Name })
+}
+
 // explainResult states the verdict of the walk. An external tier that was skipped or that failed
 // leaves the outcome unknown: nothing observed that the item has no artwork.
 func explainResult(source string, steps []artwork.TraceStep) string {
@@ -508,6 +539,10 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 			if s.Outcome == artwork.OutcomeWouldTry {
 				return "resolved from " + source +
 					" (offline: a higher-priority external candidate was not tried; re-run with --live)"
+			}
+			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) {
+				return "resolved from " + source +
+					" (indeterminate: a higher-priority external lookup failed; this may resolve differently on a retry)"
 			}
 		}
 		return "resolved from " + source
@@ -619,7 +654,6 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	rep := explainReport{
 		kind: kind, id: id, name: name,
 		priorityName: "CoverArtPriority", priority: conf.Server.CoverArtPriority,
-		agents: conf.Server.Agents,
 	}
 	if kind == model.KindArtistArtwork {
 		rep.priorityName, rep.priority = "ArtistArtPriority", conf.Server.ArtistArtPriority
@@ -635,6 +669,7 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	}
 
 	if artwork.WalksPriorityChain(kind) {
+		rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, kind))
 		trace := &artwork.ChainTrace{}
 		resolver := CreateArtworkResolver(trace, explainLive)
 		resolve := resolver.ResolveAlbum
