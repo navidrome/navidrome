@@ -283,6 +283,21 @@ var _ = Describe("processor.acquire", func() {
 		Expect(art.BlurHash).To(BeEmpty())
 	})
 
+	It("empty local file: fails without writing state", func() {
+		libRoot := GinkgoT().TempDir()
+		Expect(os.MkdirAll(filepath.Join(libRoot, "album"), 0755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(libRoot, "album", "cover.jpg"), nil, 0600)).To(Succeed())
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alE", Name: "Album", FolderIDs: []string{"f1"}}})
+		folderRepo.result = []model.Folder{{Path: "album", ImageFiles: []string{"cover.jpg"}}}
+
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alE"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alE", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
 	// An agent answering 200 with a non-image body must keep retrying, not pin garbage as a cover.
 	It("undecodable external body: fails without writing state", func() {
 		conf.Server.CoverArtPriority = "external"

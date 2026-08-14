@@ -130,9 +130,9 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	case err == nil, errors.Is(err, model.ErrNotFound):
 		decodeStart := time.Now()
 		art, err = decodeArtwork(ctx, hash, data)
-		// A local file was picked by matching an image extension, so bytes we cannot decode are
-		// most likely a codec we lack. An external response carries no such guarantee.
-		if errors.Is(err, image.ErrFormat) && isLocalSource(res.source) {
+		// Extension-matched local bytes we cannot decode are most likely a codec we lack; an
+		// external body carries no such guarantee, and empty bytes are no image at all.
+		if errors.Is(err, image.ErrFormat) && len(data) > 0 && isLocalSource(res.source) {
 			log.Debug(ctx, "Artwork: No decoder for this image format, storing it without placeholders",
 				"kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
 			art, err = undecodedArtwork(hash), nil
