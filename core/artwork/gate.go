@@ -103,8 +103,7 @@ func (b *breaker) allow() bool {
 func (b *breaker) record(name string, err error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	// A not-found is a definitive answer, not a fault; keep in sync with isTransientExternal.
-	if err == nil || errors.Is(err, model.ErrNotFound) || errors.Is(err, agents.ErrNotFound) {
+	if !isTransientExternal(err) {
 		if b.failures >= breakerThreshold {
 			log.Info("Artwork: Circuit breaker closed for agent", "agent", name)
 		}

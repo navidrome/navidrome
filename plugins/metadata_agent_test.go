@@ -3,8 +3,6 @@
 package plugins
 
 import (
-	"errors"
-
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
@@ -168,90 +166,11 @@ var _ = Describe("MetadataAgent error handling", Ordered, func() {
 		Expect(ok).To(BeTrue())
 	})
 
-	It("returns error from GetArtistMBID", func() {
-		retriever := errorAgent.(agents.ArtistMBIDRetriever)
-		_, err := retriever.GetArtistMBID(GinkgoT().Context(), "artist-1", "Test")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetArtistURL", func() {
-		retriever := errorAgent.(agents.ArtistURLRetriever)
-		_, err := retriever.GetArtistURL(GinkgoT().Context(), "artist-1", "Test", "mbid")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetArtistBiography", func() {
-		retriever := errorAgent.(agents.ArtistBiographyRetriever)
-		_, err := retriever.GetArtistBiography(GinkgoT().Context(), "artist-1", "Test", "mbid")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetArtistImages", func() {
-		retriever := errorAgent.(agents.ArtistImageRetriever)
-		_, err := retriever.GetArtistImages(GinkgoT().Context(), "artist-1", "Test", "mbid")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetSimilarArtists", func() {
-		retriever := errorAgent.(agents.ArtistSimilarRetriever)
-		_, err := retriever.GetSimilarArtists(GinkgoT().Context(), "artist-1", "Test", "mbid", 5)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetArtistTopSongs", func() {
-		retriever := errorAgent.(agents.ArtistTopSongsRetriever)
-		_, err := retriever.GetArtistTopSongs(GinkgoT().Context(), "artist-1", "Test", "mbid", 5)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetAlbumInfo", func() {
-		retriever := errorAgent.(agents.AlbumInfoRetriever)
-		_, err := retriever.GetAlbumInfo(GinkgoT().Context(), "Album", "Artist", "mbid")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetAlbumImages", func() {
-		retriever := errorAgent.(agents.AlbumImageRetriever)
-		_, err := retriever.GetAlbumImages(GinkgoT().Context(), "Album", "Artist", "mbid")
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetSimilarSongsByTrack", func() {
-		retriever := errorAgent.(agents.SimilarSongsByTrackRetriever)
-		_, err := retriever.GetSimilarSongsByTrack(GinkgoT().Context(), "track-1", "Test", "Artist", "mbid", 5)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetSimilarSongsByAlbum", func() {
-		retriever := errorAgent.(agents.SimilarSongsByAlbumRetriever)
-		_, err := retriever.GetSimilarSongsByAlbum(GinkgoT().Context(), "album-1", "Album", "Artist", "mbid", 5)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	It("returns error from GetSimilarSongsByArtist", func() {
-		retriever := errorAgent.(agents.SimilarSongsByArtistRetriever)
-		_, err := retriever.GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "Artist", "mbid", 5)
-		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("simulated plugin error"))
-	})
-
-	// A fault reported as ErrNotFound reads as a definitive answer, so callers that back off on
-	// faults (the artwork circuit breaker) never trip and keep hammering a failing provider.
-	DescribeTable("keeps a plugin failure distinguishable from a definitive not-found",
+	DescribeTable("surfaces the plugin failure, not a definitive not-found",
 		func(call func() error) {
 			err := call()
-			Expect(err).To(HaveOccurred())
-			Expect(errors.Is(err, agents.ErrNotFound)).To(BeFalse())
+			Expect(err).To(MatchError(ContainSubstring("simulated plugin error")))
+			Expect(err).ToNot(MatchError(agents.ErrNotFound))
 		},
 		Entry("GetArtistMBID", func() error {
 			_, err := errorAgent.(agents.ArtistMBIDRetriever).GetArtistMBID(GinkgoT().Context(), "artist-1", "Test")
