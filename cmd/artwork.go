@@ -232,15 +232,16 @@ func formatStatus(rep statusReport) string {
 // backfillState leads with the queued backlog: by the time anyone runs this, backfill has usually
 // already stored the new fingerprint, and "up to date" would bury the flood it is still working through.
 func backfillState(rep statusReport) string {
-	changed := "fingerprint up to date"
-	if rep.stored != rep.current {
-		changed = "fingerprint changed"
-	}
+	// A stale stored fingerprint means backfill has not recorded the new one, so the flood repeats.
+	pending := "fingerprint changed — every artist, album, playlist and radio will be re-enqueued on the next startup"
 	if n := rep.backfillQueued(); n > 0 {
-		return fmt.Sprintf("backfill running: %d items queued (%s)", n, changed)
+		if rep.stored != rep.current {
+			return fmt.Sprintf("backfill running: %d items queued, and %s", n, pending)
+		}
+		return fmt.Sprintf("backfill running: %d items queued (fingerprint up to date)", n)
 	}
 	if rep.stored != rep.current {
-		return "fingerprint changed — every artist, album, playlist and radio will be re-enqueued on the next startup"
+		return pending
 	}
 	return "up to date"
 }

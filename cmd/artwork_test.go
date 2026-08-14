@@ -587,6 +587,15 @@ var _ = Describe("formatStatus", func() {
 		Expect(out).To(ContainSubstring("fingerprint up to date"))
 	})
 
+	It("keeps the re-enqueue warning while a backfill is already running", func() {
+		rep.stored = "older"
+
+		out := block(formatStatus(rep), "Backfill")
+		Expect(out).To(MatchRegexp(`State:\s+backfill running: 2 items queued`))
+		Expect(out).To(ContainSubstring("re-enqueued"),
+			"the stored fingerprint is still stale, so a second full re-enqueue is pending on top of this one")
+	})
+
 	It("reports up to date only once the backfill has drained", func() {
 		rep.queue = []model.ArtworkQueueStat{{ItemKind: "al", Priority: model.ArtworkPriorityScan, Count: 1}}
 
