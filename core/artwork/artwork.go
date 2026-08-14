@@ -387,36 +387,36 @@ func (s *service) parseArtworkID(ctx context.Context, id string) (model.ArtworkI
 	return model.ArtworkID{}, model.ErrNotFound
 }
 
-// Resolver is the CLI's read-only view of resolution: it walks the priority chain, records
+// TracingResolver is the CLI's read-only view of resolution: it walks the priority chain, records
 // the walk and reports the winning source, without ever writing artwork state.
-type Resolver struct {
+type TracingResolver struct {
 	inner *resolver
 	trace *ChainTrace
 }
 
-// NewTracingResolver builds a Resolver that records its priority-chain walk. With live
+// NewTracingResolver builds a TracingResolver that records its priority-chain walk. With live
 // false the external tier is reported but never called.
-func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, t *ChainTrace, live bool) *Resolver {
+func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, t *ChainTrace, live bool) *TracingResolver {
 	gate := offlineGate(t)
 	if live {
 		// A diagnostic must show the provider's real answer, and one item is at most one call
 		// per agent, so --live deliberately bypasses the rate limiter and circuit breaker.
 		gate = tracingGate(t, passthroughGate)
 	}
-	return &Resolver{inner: newResolver(ds, ag, ffm, gate), trace: t}
+	return &TracingResolver{inner: newResolver(ds, ag, ffm, gate), trace: t}
 }
 
-func (r *Resolver) ResolveArtist(ctx context.Context, id string) (string, error) {
+func (r *TracingResolver) ResolveArtist(ctx context.Context, id string) (string, error) {
 	return r.explain(ctx, r.inner.resolveArtist, id)
 }
 
-func (r *Resolver) ResolveAlbum(ctx context.Context, id string) (string, error) {
+func (r *TracingResolver) ResolveAlbum(ctx context.Context, id string) (string, error) {
 	return r.explain(ctx, r.inner.resolveAlbum, id)
 }
 
 // explain discards the bytes: nothing downstream persists this resolution, so nothing else
 // would close the reader either.
-func (r *Resolver) explain(ctx context.Context, resolve func(context.Context, string) (resolution, error), id string) (string, error) {
+func (r *TracingResolver) explain(ctx context.Context, resolve func(context.Context, string) (resolution, error), id string) (string, error) {
 	res, err := resolve(withTrace(ctx, r.trace), id)
 	if err != nil {
 		return "", err

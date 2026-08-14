@@ -144,7 +144,7 @@ func CreateArtworkWorker() *artwork.Worker {
 	))
 }
 
-func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.Resolver {
+func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.TracingResolver {
 	panic(wire.Build(
 		allProviders,
 		artwork.NewTracingResolver,

@@ -223,7 +223,7 @@ func CreateArtworkWorker() *artwork.Worker {
 	return worker
 }
 
-func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.Resolver {
+func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.TracingResolver {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)
 	broker := events.GetBroker()
@@ -231,8 +231,8 @@ func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.Resolv
 	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	fFmpeg := ffmpeg.New()
-	resolver := artwork.NewTracingResolver(dataStore, agentsAgents, fFmpeg, trace, live)
-	return resolver
+	tracingResolver := artwork.NewTracingResolver(dataStore, agentsAgents, fFmpeg, trace, live)
+	return tracingResolver
 }
 
 func getPluginManager() *plugins.Manager {
