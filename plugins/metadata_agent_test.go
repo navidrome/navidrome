@@ -243,68 +243,55 @@ var _ = Describe("MetadataAgent partial implementation", Ordered, func() {
 		Expect(bio).To(Equal("Partial agent biography for Test Artist"))
 	})
 
-	It("returns ErrNotFound for unimplemented method (GetArtistMBID)", func() {
-		retriever := partialAgent.(agents.ArtistMBIDRetriever)
-		_, err := retriever.GetArtistMBID(GinkgoT().Context(), "artist-1", "Test Artist")
-		Expect(err).To(MatchError(errNotImplemented))
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetArtistURL)", func() {
-		retriever := partialAgent.(agents.ArtistURLRetriever)
-		_, err := retriever.GetArtistURL(GinkgoT().Context(), "artist-1", "Test Artist", "mbid")
-		Expect(err).To(MatchError(errNotImplemented))
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetArtistImages)", func() {
-		retriever := partialAgent.(agents.ArtistImageRetriever)
-		_, err := retriever.GetArtistImages(GinkgoT().Context(), "artist-1", "Test Artist", "mbid")
-		Expect(err).To(MatchError(errNotImplemented))
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetSimilarArtists)", func() {
-		retriever := partialAgent.(agents.ArtistSimilarRetriever)
-		_, err := retriever.GetSimilarArtists(GinkgoT().Context(), "artist-1", "Test Artist", "mbid", 5)
-		Expect(err).To(MatchError(errNotImplemented))
-
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetArtistTopSongs)", func() {
-		retriever := partialAgent.(agents.ArtistTopSongsRetriever)
-		_, err := retriever.GetArtistTopSongs(GinkgoT().Context(), "artist-1", "Test Artist", "mbid", 5)
-		Expect(err).To(MatchError(errNotImplemented))
-
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetAlbumInfo)", func() {
-		retriever := partialAgent.(agents.AlbumInfoRetriever)
-		_, err := retriever.GetAlbumInfo(GinkgoT().Context(), "Album", "Artist", "mbid")
-		Expect(err).To(MatchError(errNotImplemented))
-
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetAlbumImages)", func() {
-		retriever := partialAgent.(agents.AlbumImageRetriever)
-		_, err := retriever.GetAlbumImages(GinkgoT().Context(), "Album", "Artist", "mbid")
-		Expect(err).To(MatchError(errNotImplemented))
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetSimilarSongsByTrack)", func() {
-		retriever := partialAgent.(agents.SimilarSongsByTrackRetriever)
-		_, err := retriever.GetSimilarSongsByTrack(GinkgoT().Context(), "track-1", "Test", "Artist", "mbid", 5)
-		Expect(err).To(MatchError(errNotImplemented))
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetSimilarSongsByAlbum)", func() {
-		retriever := partialAgent.(agents.SimilarSongsByAlbumRetriever)
-		_, err := retriever.GetSimilarSongsByAlbum(GinkgoT().Context(), "album-1", "Album", "Artist", "mbid", 5)
-		Expect(err).To(MatchError(errNotImplemented))
-	})
-
-	It("returns ErrNotFound for unimplemented method (GetSimilarSongsByArtist)", func() {
-		retriever := partialAgent.(agents.SimilarSongsByArtistRetriever)
-		_, err := retriever.GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "Artist", "mbid", 5)
-		Expect(err).To(MatchError(errNotImplemented))
-	})
+	// An unimplemented optional method is a definitive miss. Reported as a fault it would
+	// count against the artwork circuit breaker and keep the item in the retry queue.
+	DescribeTable("reports an unimplemented method as a definitive not-found",
+		func(call func() error) {
+			err := call()
+			Expect(err).To(MatchError(errNotImplemented))
+			Expect(err).To(MatchError(agents.ErrNotFound))
+		},
+		Entry("GetArtistMBID", func() error {
+			_, err := partialAgent.(agents.ArtistMBIDRetriever).GetArtistMBID(GinkgoT().Context(), "artist-1", "Test Artist")
+			return err
+		}),
+		Entry("GetArtistURL", func() error {
+			_, err := partialAgent.(agents.ArtistURLRetriever).GetArtistURL(GinkgoT().Context(), "artist-1", "Test Artist", "mbid")
+			return err
+		}),
+		Entry("GetArtistImages", func() error {
+			_, err := partialAgent.(agents.ArtistImageRetriever).GetArtistImages(GinkgoT().Context(), "artist-1", "Test Artist", "mbid")
+			return err
+		}),
+		Entry("GetSimilarArtists", func() error {
+			_, err := partialAgent.(agents.ArtistSimilarRetriever).GetSimilarArtists(GinkgoT().Context(), "artist-1", "Test Artist", "mbid", 5)
+			return err
+		}),
+		Entry("GetArtistTopSongs", func() error {
+			_, err := partialAgent.(agents.ArtistTopSongsRetriever).GetArtistTopSongs(GinkgoT().Context(), "artist-1", "Test Artist", "mbid", 5)
+			return err
+		}),
+		Entry("GetAlbumInfo", func() error {
+			_, err := partialAgent.(agents.AlbumInfoRetriever).GetAlbumInfo(GinkgoT().Context(), "Album", "Artist", "mbid")
+			return err
+		}),
+		Entry("GetAlbumImages", func() error {
+			_, err := partialAgent.(agents.AlbumImageRetriever).GetAlbumImages(GinkgoT().Context(), "Album", "Artist", "mbid")
+			return err
+		}),
+		Entry("GetSimilarSongsByTrack", func() error {
+			_, err := partialAgent.(agents.SimilarSongsByTrackRetriever).GetSimilarSongsByTrack(GinkgoT().Context(), "track-1", "Test", "Artist", "mbid", 5)
+			return err
+		}),
+		Entry("GetSimilarSongsByAlbum", func() error {
+			_, err := partialAgent.(agents.SimilarSongsByAlbumRetriever).GetSimilarSongsByAlbum(GinkgoT().Context(), "album-1", "Album", "Artist", "mbid", 5)
+			return err
+		}),
+		Entry("GetSimilarSongsByArtist", func() error {
+			_, err := partialAgent.(agents.SimilarSongsByArtistRetriever).GetSimilarSongsByArtist(GinkgoT().Context(), "artist-1", "Artist", "mbid", 5)
+			return err
+		}),
+	)
 })
 
 var _ = Describe("songRefToAgentSong multi-artist", func() {
