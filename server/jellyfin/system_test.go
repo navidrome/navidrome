@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 
@@ -86,6 +87,61 @@ var _ = Describe("System", func() {
 		Expect(w.Header().Get("Content-Type")).To(ContainSubstring("text/plain"))
 		// Plain text, not a JSON-quoted string: Jellyfin clients expect the bare server name.
 		Expect(w.Body.String()).To(HavePrefix("Navidrome"))
+	})
+
+	DescribeTable("reports the caller's network location on /System/Endpoint",
+		func(remoteAddr string, isLocal, isInNetwork bool) {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+			r.RemoteAddr = remoteAddr
+			api.getEndpointInfo(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			// Finamp's connection test only probes for the key's presence, so it must always be emitted.
+			Expect(w.Body.String()).To(ContainSubstring(`"IsInNetwork"`))
+			var info dto.EndPointInfo
+			Expect(json.Unmarshal(w.Body.Bytes(), &info)).To(Succeed())
+			Expect(info.IsLocal).To(Equal(isLocal))
+			Expect(info.IsInNetwork).To(Equal(isInNetwork))
+		},
+		Entry("loopback", "127.0.0.1:12345", true, true),
+		Entry("IPv6 loopback", "[::1]:12345", true, true),
+		Entry("LAN address", "192.168.1.20:54321", false, true),
+		Entry("bare IP, as left by the RealIP middleware", "10.0.0.5", false, true),
+		Entry("IPv4-mapped IPv6 LAN address", "[::ffff:172.16.0.9]:80", false, true),
+		Entry("IPv6 link-local", "[fe80::1]:80", false, true),
+		Entry("IPv6 unique-local", "[fd00::1]:80", false, true),
+		// Jellyfin's default LAN set omits 169.254.0.0/16, so we do too.
+		Entry("IPv4 link-local", "169.254.1.1:80", false, false),
+		Entry("public address", "8.8.8.8:443", false, false),
+		Entry("unparseable address", "not-an-ip", false, false),
+	)
+
+	It("reports IsLocal when the caller shares the connection's local address", func() {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+		r.RemoteAddr = "192.168.1.20:54321"
+		ctx := context.WithValue(r.Context(), http.LocalAddrContextKey,
+			&net.TCPAddr{IP: net.ParseIP("192.168.1.20"), Port: 4533})
+		api.getEndpointInfo(w, r.WithContext(ctx))
+
+		var info dto.EndPointInfo
+		Expect(json.Unmarshal(w.Body.Bytes(), &info)).To(Succeed())
+		Expect(info.IsLocal).To(BeTrue())
+	})
+
+	It("does not report IsLocal for a different host on the same LAN", func() {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/System/Endpoint", nil)
+		r.RemoteAddr = "192.168.1.99:54321"
+		ctx := context.WithValue(r.Context(), http.LocalAddrContextKey,
+			&net.TCPAddr{IP: net.ParseIP("192.168.1.20"), Port: 4533})
+		api.getEndpointInfo(w, r.WithContext(ctx))
+
+		var info dto.EndPointInfo
+		Expect(json.Unmarshal(w.Body.Bytes(), &info)).To(Succeed())
+		Expect(info.IsLocal).To(BeFalse())
+		Expect(info.IsInNetwork).To(BeTrue())
 	})
 
 	It("reports quick connect as disabled", func() {
