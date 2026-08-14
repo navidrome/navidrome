@@ -1,0 +1,154 @@
+package cmd
+
+import (
+	"errors"
+	"time"
+
+	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/model"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+var _ = Describe("parseArtworkKind", func() {
+	It("accepts a supported kind", func() {
+		k, err := parseArtworkKind("ar")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(k).To(Equal(model.KindArtistArtwork))
+	})
+
+	It("rejects an unknown kind and lists the valid ones", func() {
+		_, err := parseArtworkKind("zz")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("ar"))
+		Expect(err.Error()).To(ContainSubstring("al"))
+	})
+
+	It("rejects a known kind that has no artwork command", func() {
+		_, err := parseArtworkKind("mf")
+		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("explainResult", func() {
+	It("reports the winning source", func() {
+		steps := []artwork.TraceStep{{Candidate: "folder", Outcome: "hit", Detail: "/music/a.jpg"}}
+		Expect(explainResult("folder", steps)).To(ContainSubstring("resolved from folder"))
+	})
+
+	It("reports not resolved when every candidate was tried and missed", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "artist.*", Outcome: "miss"},
+			{Candidate: "external:deezer", Outcome: "miss"},
+		}
+		Expect(explainResult("", steps)).To(Equal("not resolved"))
+	})
+
+	It("reports indeterminate when external agents were never called", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "artist.*", Outcome: "miss"},
+			{Candidate: "external:deezer", Outcome: "would-try"},
+		}
+		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
+			"an offline run must not claim an item is unresolvable when external agents were skipped")
+	})
+})
+
+var _ = Describe("walksPriorityChain", func() {
+	It("is true for the kinds the resolver walks", func() {
+		Expect(walksPriorityChain(model.KindArtistArtwork)).To(BeTrue())
+		Expect(walksPriorityChain(model.KindAlbumArtwork)).To(BeTrue())
+	})
+
+	It("is false for the kinds resolved directly", func() {
+		Expect(walksPriorityChain(model.KindPlaylistArtwork)).To(BeFalse())
+		Expect(walksPriorityChain(model.KindRadioArtwork)).To(BeFalse())
+	})
+})
+
+var _ = Describe("formatExplain", func() {
+	var rep explainReport
+
+	BeforeEach(func() {
+		rep = explainReport{
+			kind:         model.KindArtistArtwork,
+			id:           "ar-1",
+			name:         "Radiohead",
+			priorityName: "ArtistArtPriority",
+			priority:     "external, artist.*",
+			agents:       "lastfm,spotify",
+			walksChain:   true,
+			steps: []artwork.TraceStep{
+				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
+				{Candidate: "external:deezer", Outcome: "would-try"},
+			},
+			source: "",
+		}
+	})
+
+	It("prints every block", func() {
+		out := formatExplain(rep)
+		for _, block := range []string{"Item", "Stored", "Queue", "Config", "Chain", "Result"} {
+			Expect(out).To(ContainSubstring(block))
+		}
+		Expect(out).To(ContainSubstring("Radiohead"))
+		Expect(out).To(ContainSubstring("ar-1"))
+		Expect(out).To(ContainSubstring("ArtistArtPriority"))
+		Expect(out).To(ContainSubstring("lastfm,spotify"))
+		Expect(out).To(ContainSubstring("external:deezer"))
+		Expect(out).To(ContainSubstring("would-try"))
+		Expect(out).To(ContainSubstring("indeterminate"))
+	})
+
+	It("reports the absence of stored state and of a queue row", func() {
+		out := formatExplain(rep)
+		Expect(out).To(ContainSubstring("no artwork state recorded"))
+		Expect(out).To(ContainSubstring("not queued"))
+	})
+
+	It("prints the stored state and the queue row when they exist", func() {
+		attempted := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
+		rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc123",
+			SourcePath: "/music/cover.jpg", AttemptedAt: attempted}
+		rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 2,
+			RetryAt: attempted.Add(time.Hour)}
+		rep.source = "folder"
+
+		out := formatExplain(rep)
+		Expect(out).To(ContainSubstring("abc123"))
+		Expect(out).To(ContainSubstring("/music/cover.jpg"))
+		Expect(out).To(ContainSubstring("2026-08-13T10:00:00Z"))
+		Expect(out).To(ContainSubstring("50"))
+		Expect(out).To(ContainSubstring("resolved from folder"))
+	})
+
+	It("marks a known-absent stored state instead of printing an empty hash", func() {
+		rep.stored = &model.ItemArtwork{AttemptedAt: time.Now()}
+		Expect(formatExplain(rep)).To(ContainSubstring("absent"))
+	})
+
+	It("reports a failed walk as failed, not as unresolved", func() {
+		rep.resolveErr = errors.New("no such directory")
+
+		out := formatExplain(rep)
+		Expect(out).To(ContainSubstring("resolution failed: no such directory"))
+		Expect(out).ToNot(ContainSubstring("indeterminate"))
+		Expect(out).To(ContainSubstring("would-try"), "the steps taken before the failure still print")
+	})
+
+	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
+		rep.kind = model.KindPlaylistArtwork
+		rep.walksChain = false
+		rep.steps = nil
+		rep.priorityName, rep.priority = "CoverArtPriority", "cover.*, embedded"
+
+		out := formatExplain(rep)
+		Expect(out).To(ContainSubstring("does not walk a priority chain"))
+		Expect(out).ToNot(ContainSubstring("CANDIDATE"),
+			"an empty chain table reads as 'nothing was tried', which is false")
+		Expect(out).ToNot(ContainSubstring("not resolved"),
+			"nothing was resolved because nothing was attempted")
+		Expect(out).ToNot(ContainSubstring("CoverArtPriority"),
+			"the priority chain config does not govern this kind")
+	})
+})
