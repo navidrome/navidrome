@@ -541,8 +541,8 @@ func availableImageAgents(ds model.DataStore, kind model.Kind) []string {
 	return slice.Map(ag.AlbumImageAgents(), func(a agents.AlbumImageAgent) string { return a.Name })
 }
 
-// explainResult states the verdict of the walk. An external tier that was skipped or that failed
-// leaves the outcome unknown: nothing observed that the item has no artwork.
+// explainResult states the verdict of the walk. A skipped or failed external tier, or a local
+// candidate that would not open, leaves the outcome unknown: nothing observed that there is no artwork.
 func explainResult(source string, steps []artwork.TraceStep) string {
 	if source != "" {
 		for _, s := range steps {
@@ -568,6 +568,10 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 			return "indeterminate (external agents not called; re-run with --live)"
 		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
 			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
+		// The worker treats an unreadable local candidate exactly as it treats a failed external one:
+		// it retries instead of settling absent, so the verdict must not read as a clean miss.
+		case s.Outcome == artwork.OutcomeUnreadable:
+			return "indeterminate (a candidate exists but could not be read; the worker retries rather than settling absent)"
 		}
 	}
 	return "not resolved"

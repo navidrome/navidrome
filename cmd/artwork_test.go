@@ -68,6 +68,25 @@ var _ = Describe("explainResult", func() {
 		Expect(explainResult("", steps)).To(Equal("not resolved"))
 	})
 
+	It("reports indeterminate when a local candidate exists but could not be read", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "cover.*", Outcome: "miss"},
+			{Candidate: "embedded", Outcome: "unreadable"},
+		}
+		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
+			"the worker retries an unreadable candidate instead of settling absent, so this is not a clean miss")
+	})
+
+	It("does not qualify a hit that an earlier unreadable candidate preceded", func() {
+		// chainState.try stamps only the external error onto a hit and drops the local one, so the
+		// worker settles this as found; warning about it would be a false alarm.
+		steps := []artwork.TraceStep{
+			{Candidate: "embedded", Outcome: "unreadable"},
+			{Candidate: "cover.*", Outcome: "hit", Detail: "/music/cover.jpg"},
+		}
+		Expect(explainResult("folder", steps)).To(Equal("resolved from folder"))
+	})
+
 	It("reports indeterminate when an external lookup failed transiently", func() {
 		steps := []artwork.TraceStep{
 			{Candidate: "artist.*", Outcome: "miss"},
