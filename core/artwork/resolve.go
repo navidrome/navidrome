@@ -511,12 +511,18 @@ func resolveEmbedded(ctx context.Context, lib libraryView, ffm ffmpeg.FFmpeg, em
 	return resolution{localError: unreadable}, false
 }
 
-func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, pattern string) (resolution, bool) {
-	r, path, err := fromExternalFile(ctx, lib.FS, imgFiles, pattern)()
+// resolveFolderSource turns a source that yields a library-relative image path into a folder
+// resolution, keeping an existing-but-unopenable file distinct from an absent one.
+func resolveFolderSource(lib libraryView, sf sourceFunc) (resolution, bool) {
+	r, path, err := sf()
 	if r == nil {
 		return resolution{localError: errors.Is(err, errSourceUnreadable)}, false
 	}
 	return resolution{reader: r, source: "folder", sourcePath: lib.Abs(path), refMtime: mtimeViaFS(lib.FS, path)}, true
+}
+
+func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, pattern string) (resolution, bool) {
+	return resolveFolderSource(lib, fromExternalFile(ctx, lib.FS, imgFiles, pattern))
 }
 
 func resolveArtistImageFolder(ar *model.Artist) (resolution, bool) {

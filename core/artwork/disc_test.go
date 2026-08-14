@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -181,17 +183,17 @@ var _ = Describe("Disc Artwork Reader", func() {
 
 			cc := reader.discCandidates(ctx, nil, "disc*.*, cover.*")
 			Expect(cc).To(HaveLen(2))
-			r, path, err := cc[0].sources[0]()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(path).To(Equal(f2))
-			r.Close()
+			res, ok := cc[0].resolve()
+			Expect(ok).To(BeTrue())
+			Expect(res.sourcePath).To(Equal(reader.lib.Abs(f2)))
+			res.reader.Close()
 
 			cc = reader.discCandidates(ctx, nil, "cover.*, disc*.*")
 			Expect(cc).To(HaveLen(2))
-			r, path, err = cc[0].sources[0]()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(path).To(Equal(f1))
-			r.Close()
+			res, ok = cc[0].resolve()
+			Expect(ok).To(BeTrue())
+			Expect(res.sourcePath).To(Equal(reader.lib.Abs(f1)))
+			res.reader.Close()
 		})
 
 		DescribeTable("numbered match wins over shared fallback within a pattern",
@@ -459,27 +461,47 @@ var _ = Describe("Disc Artwork Reader", func() {
 				Expect(err).To(MatchError(context.Canceled))
 				Expect(res.reader).To(BeNil())
 			})
+
+			// "the track has no embedded art" and "the track is there but unreadable" are the two
+			// answers a wrong-artwork report needs told apart; only the second is worth retrying.
+			It("reports a track it cannot parse as unreadable, not as a miss", func() {
+				trace := &ChainTrace{}
+				track := filepath.Join(tmpDir, filepath.FromSlash(reader.firstTrackRel))
+				Expect(os.MkdirAll(filepath.Dir(track), 0755)).To(Succeed())
+				Expect(os.WriteFile(track, []byte("not audio"), 0600)).To(Succeed())
+
+				res, err := reader.selectImage(context.Background(), tests.NewMockFFmpeg(""), "embedded",
+					&chainState{trace: trace})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.localError).To(BeTrue())
+				Expect(trace.Steps()).To(Equal([]TraceStep{{Candidate: "embedded", Outcome: OutcomeUnreadable}}))
+			})
+
+			It("reports a disc with no tracks to read as a miss", func() {
+				trace := &ChainTrace{}
+				reader.firstTrackRel = ""
+
+				res, err := reader.selectImage(context.Background(), tests.NewMockFFmpeg(""), "embedded",
+					&chainState{trace: trace})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.localError).To(BeFalse(), "there was nothing to read, so nothing failed to read")
+				Expect(trace.Steps()).To(Equal([]TraceStep{{Candidate: "embedded", Outcome: OutcomeMiss}}))
+			})
 		})
 
 		Describe("discCandidates", func() {
-			It("returns source funcs for glob patterns", func() {
+			It("returns a resolvable candidate for glob patterns", func() {
 				cc := reader.discCandidates(context.Background(), nil, "disc*.*")
 				Expect(cc).To(HaveLen(1))
-				Expect(cc[0].sources).To(HaveLen(1))
+				Expect(cc[0].resolve).ToNot(BeNil())
 			})
 
-			It("returns source funcs for embedded pattern", func() {
-				cc := reader.discCandidates(context.Background(), nil, "embedded")
-				Expect(cc).To(HaveLen(1))
-				Expect(cc[0].sources).To(HaveLen(2)) // fromTag + fromFFmpegTag
-			})
-
-			It("handles multiple comma-separated patterns", func() {
+			It("returns one candidate per entry, in order", func() {
 				cc := reader.discCandidates(context.Background(), nil, "disc*.*, cd*.*, embedded")
-				Expect(cc).To(HaveLen(3))
-				Expect(cc[0].sources).To(HaveLen(1))
-				Expect(cc[1].sources).To(HaveLen(1))
-				Expect(cc[2].sources).To(HaveLen(2))
+				Expect(slice.Map(cc, func(c discCandidate) string { return c.pattern })).
+					To(Equal([]string{"disc*.*", "cd*.*", "embedded"}))
 			})
 
 			It("skips an empty entry rather than building a glob that matches nothing", func() {
@@ -494,7 +516,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 					setup()
 					cc := reader.discCandidates(context.Background(), nil, priority)
 					Expect(cc).To(HaveLen(1))
-					Expect(cc[0].sources).To(BeEmpty())
+					Expect(cc[0].resolve).To(BeNil())
 					Expect(cc[0].skip).To(Equal(reason))
 				},
 				Entry("external is unsupported", func() {}, "external",
@@ -510,7 +532,7 @@ var _ = Describe("Disc Artwork Reader", func() {
 				reader.album = model.Album{Discs: model.Discs{2: "Bonus Tracks"}}
 				cc := reader.discCandidates(context.Background(), nil, "discsubtitle")
 				Expect(cc).To(HaveLen(1))
-				Expect(cc[0].sources).To(HaveLen(1))
+				Expect(cc[0].resolve).ToNot(BeNil())
 			})
 		})
 	})

@@ -117,11 +117,14 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 // all, so a chain walk can say why instead of leaving a configured entry unaccounted for.
 type discCandidate struct {
 	pattern string
-	sources []sourceFunc
+	resolve func() (resolution, bool)
 	skip    string
 }
 
 func (d *discArtworkReader) discCandidates(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []discCandidate {
+	folder := func(sf sourceFunc) func() (resolution, bool) {
+		return func() (resolution, bool) { return resolveFolderSource(d.lib, sf) }
+	}
 	var cc []discCandidate
 	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
@@ -131,9 +134,8 @@ func (d *discArtworkReader) discCandidates(ctx context.Context, ffmpeg ffmpeg.FF
 		c := discCandidate{pattern: pattern}
 		switch {
 		case pattern == "embedded":
-			c.sources = []sourceFunc{
-				fromTag(ctx, d.lib.FS, d.firstTrackRel),
-				fromFFmpegTag(ctx, ffmpeg, d.lib.Abs(d.firstTrackRel)),
+			c.resolve = func() (resolution, bool) {
+				return resolveEmbedded(ctx, d.lib, ffmpeg, d.firstTrackRel)
 			}
 		case pattern == externalCandidate:
 			c.skip = "external sources are not supported for disc artwork"
@@ -142,12 +144,12 @@ func (d *discArtworkReader) discCandidates(ctx context.Context, ffmpeg ffmpeg.FF
 			if subtitle == "" {
 				c.skip = "disc has no subtitle"
 			} else {
-				c.sources = []sourceFunc{d.fromDiscSubtitle(ctx, subtitle)}
+				c.resolve = folder(d.fromDiscSubtitle(ctx, subtitle))
 			}
 		case len(d.imgFiles) == 0:
 			c.skip = "no images in album folder"
 		default:
-			c.sources = []sourceFunc{d.fromExternalFile(ctx, pattern)}
+			c.resolve = folder(d.fromExternalFile(ctx, pattern))
 		}
 		cc = append(cc, c)
 	}
@@ -166,36 +168,16 @@ func (d *discArtworkReader) selectImage(ctx context.Context, ffmpeg ffmpeg.FFmpe
 			chain.record(c.pattern, OutcomeSkipped, c.skip)
 			continue
 		}
-		res, ok := d.openCandidate(ctx, c)
+		start := time.Now()
+		res, ok := c.resolve()
+		log.Trace(ctx, "Artwork: Tried a disc artwork candidate", "albumID", d.album.ID,
+			"disc", d.discNumber, "pattern", c.pattern, "hit", ok, "path", res.sourcePath,
+			"elapsed", time.Since(start))
 		if res, ok = chain.try(c.pattern, res, ok); ok {
 			return res, nil
 		}
 	}
 	return chain.exhausted(), nil
-}
-
-func (d *discArtworkReader) openCandidate(ctx context.Context, c discCandidate) (resolution, bool) {
-	source := "folder"
-	if c.pattern == "embedded" {
-		source = "embedded"
-	}
-	for _, sf := range c.sources {
-		start := time.Now()
-		rd, path, err := sf()
-		if rd == nil {
-			log.Trace(ctx, "Artwork: Failed trying to extract disc artwork", "albumID", d.album.ID,
-				"disc", d.discNumber, "pattern", c.pattern, "source", sf, "elapsed", time.Since(start), err)
-			continue
-		}
-		// The disc sources disagree on this: only ffmpeg hands back an absolute path.
-		if !filepath.IsAbs(path) {
-			path = d.lib.Abs(path)
-		}
-		log.Debug(ctx, "Artwork: Found disc artwork", "albumID", d.album.ID, "disc", d.discNumber,
-			"pattern", c.pattern, "path", path, "elapsed", time.Since(start))
-		return resolution{reader: rd, source: source, sourcePath: path}, true
-	}
-	return resolution{}, false
 }
 
 // fromDiscSubtitle returns a sourceFunc that matches image files whose stem
