@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -22,11 +21,6 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/spf13/cobra"
 )
-
-var artworkKinds = []model.Kind{
-	model.KindArtistArtwork, model.KindAlbumArtwork,
-	model.KindPlaylistArtwork, model.KindRadioArtwork,
-}
 
 var explainLive bool
 
@@ -128,13 +122,20 @@ type absentCount struct {
 }
 
 type statusReport struct {
-	queueTotal int64
-	queue      []model.ArtworkQueueStat
-	sources    []sourceCount
-	absent     []absentCount
-	inputs     []artwork.FingerprintInput
-	stored     string
-	current    string
+	queue   []model.ArtworkQueueStat
+	sources []sourceCount
+	absent  []absentCount
+	inputs  []artwork.FingerprintInput
+	stored  string
+	current string
+}
+
+func (r statusReport) queueTotal() int64 {
+	var n int64
+	for _, s := range r.queue {
+		n += s.Count
+	}
+	return n
 }
 
 func (r statusReport) backfillQueued() int64 {
@@ -151,15 +152,12 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 	q := ds.ArtworkQueue(ctx)
 	var rep statusReport
 	var err error
-	if rep.queueTotal, err = q.Count(); err != nil {
-		return rep, fmt.Errorf("counting the artwork queue: %w", err)
-	}
 	if rep.queue, err = q.CountByKindAndPriority(); err != nil {
 		return rep, fmt.Errorf("breaking the artwork queue down by kind: %w", err)
 	}
 
 	cutoff := time.Now().Add(-artwork.StaleAbsentAge)
-	for _, k := range artworkKinds {
+	for _, k := range artwork.RecheckKinds {
 		sources, err := q.SourcesInUse(k)
 		if err != nil {
 			return rep, fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
@@ -188,7 +186,7 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 
 func formatStatus(rep statusReport) string {
 	var sb strings.Builder
-	w := tabwriter.NewWriter(&sb, 0, 4, 2, ' ', 0)
+	w := newTabWriter(&sb)
 
 	fmt.Fprintln(w, "Queue")
 	if len(rep.queue) == 0 {
@@ -198,7 +196,7 @@ func formatStatus(rep statusReport) string {
 		for _, s := range rep.queue {
 			fmt.Fprintf(w, "  %s\t%s\t%d\n", kindName(s.ItemKind), priorityName(s.Priority), s.Count)
 		}
-		fmt.Fprintf(w, "  TOTAL\t\t%d\n", rep.queueTotal)
+		fmt.Fprintf(w, "  TOTAL\t\t%d\n", rep.queueTotal())
 	}
 
 	fmt.Fprintln(w, "\nSources")
@@ -232,7 +230,6 @@ func formatStatus(rep statusReport) string {
 // backfillState leads with the queued backlog: by the time anyone runs this, backfill has usually
 // already stored the new fingerprint, and "up to date" would bury the flood it is still working through.
 func backfillState(rep statusReport) string {
-	// A stale stored fingerprint means backfill has not recorded the new one, so the flood repeats.
 	pending := "fingerprint changed — every artist, album, playlist and radio will be re-enqueued on the next startup"
 	if n := rep.backfillQueued(); n > 0 {
 		if rep.stored != rep.current {
@@ -268,7 +265,7 @@ func priorityName(p int) string {
 }
 
 func runReprocess(ctx context.Context) {
-	kinds, err := selectedKinds(reprocessKinds, reprocessSelectsAll(reprocessKinds, reprocessSources, reprocessAll))
+	kinds, err := selectedKinds(reprocessKinds, reprocessSources, reprocessAll)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -282,15 +279,10 @@ func runReprocess(ctx context.Context) {
 	}
 }
 
-// reprocessSelectsAll reports whether every kind is targeted: a source filter on its own is already
-// a complete selection, so it does not also need a kind.
-func reprocessSelectsAll(kinds, sources []string, all bool) bool {
-	return all || (len(kinds) == 0 && len(sources) > 0)
-}
-
-func selectedKinds(kinds []string, all bool) ([]model.Kind, error) {
-	if all {
-		return artworkKinds, nil
+func selectedKinds(kinds, sources []string, all bool) ([]model.Kind, error) {
+	// A source filter on its own is already a complete selection, so it does not also need a kind.
+	if all || (len(kinds) == 0 && len(sources) > 0) {
+		return artwork.RecheckKinds, nil
 	}
 	if len(kinds) == 0 {
 		return nil, fmt.Errorf("no selector given: pass --kind, --source or --all")
@@ -301,12 +293,10 @@ func selectedKinds(kinds []string, all bool) ([]model.Kind, error) {
 		if err != nil {
 			return nil, err
 		}
-		// A repeated kind would be counted twice, overstating the cost the operator confirms.
-		if !slices.Contains(out, kind) {
-			out = append(out, kind)
-		}
+		out = append(out, kind)
 	}
-	return out, nil
+	// A repeated kind would be counted twice, overstating the cost the operator confirms.
+	return slice.Unique(out), nil
 }
 
 // absentSource is how the stored empty source — resolved, no image — is spelled on the CLI.
@@ -323,11 +313,8 @@ func repositorySources(sources []string) []string {
 
 func displaySource(s string) string { return cmp.Or(s, absentSource) }
 
-// confirmFunc reports whether the operator accepted queueing total items, of which external may
-// reach an external agent.
 type confirmFunc func(out io.Writer, total, external int64) bool
 
-// reprocessConfirm is the only bypass of the confirmation: --yes, for scripted use.
 func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
 	if yes {
 		return func(io.Writer, int64, int64) bool { return true }
@@ -335,11 +322,20 @@ func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
 	return promptConfirm(in)
 }
 
+// externalEstimate is an upper bound: a higher-priority local candidate may win before the walk
+// ever reaches an agent.
+func externalEstimate(n int64) string {
+	if n == 0 {
+		return "none"
+	}
+	return fmt.Sprintf("up to %d", n)
+}
+
 func promptConfirm(in io.Reader) confirmFunc {
 	return func(out io.Writer, total, external int64) bool {
-		cost := fmt.Sprintf(", requiring up to %d external lookups", external)
-		if external == 0 {
-			cost = ""
+		var cost string
+		if external > 0 {
+			cost = fmt.Sprintf(", requiring %s external lookups", externalEstimate(external))
 		}
 		fmt.Fprintf(out, "\nThis will re-resolve %d items%s. Continue? [y/N] ", total, cost)
 		var answer string
@@ -358,16 +354,12 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 		return nil
 	}
 	var inUse []string
-	for _, k := range artworkKinds {
+	for _, k := range artwork.RecheckKinds {
 		found, err := q.SourcesInUse(k)
 		if err != nil {
 			return fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
 		}
-		for _, s := range found {
-			if !slices.Contains(inUse, s) {
-				inUse = append(inUse, s)
-			}
-		}
+		inUse = slice.Unique(append(inUse, found...))
 	}
 	var unknown []string
 	for _, s := range sources {
@@ -402,15 +394,12 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		}
 		matched[i] = n
 		total += n
-		if walksPriorityChain(k) {
+		if artwork.WalksPriorityChain(k) {
 			external += n
 		}
 	}
 	printReprocessPreview(out, kinds, matched, total, external, sources)
 
-	if total == 0 {
-		fmt.Fprintln(out, "\nNothing matches this selection.")
-	}
 	switch {
 	case dryRun:
 		fmt.Fprintln(out, "\nDry run: nothing was queued.")
@@ -442,10 +431,10 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 	return nil
 }
 
-// printReprocessPreview also states the external estimate, which --dry-run must show precisely
-// because it skips the prompt that would otherwise carry it.
+// printReprocessPreview also states the external estimate, which --dry-run must show because it
+// skips the prompt that would otherwise carry it.
 func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, total, external int64, sources []string) {
-	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
+	w := newTabWriter(out)
 	shown := slice.Map(sources, displaySource)
 	fmt.Fprintf(w, "Sources:\t%s\n\n", cmp.Or(strings.Join(shown, ", "), "(any)"))
 	fmt.Fprintln(w, "KIND\tMATCHED")
@@ -455,11 +444,10 @@ func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, t
 	fmt.Fprintf(w, "TOTAL\t%d\n", total)
 	w.Flush()
 
-	estimate := fmt.Sprintf("up to %d", external)
-	if external == 0 {
-		estimate = "none"
+	fmt.Fprintf(out, "\nExternal lookups: %s\n", externalEstimate(external))
+	if total == 0 {
+		fmt.Fprintln(out, "\nNothing matches this selection.")
 	}
-	fmt.Fprintf(out, "\nExternal lookups: %s\n", estimate)
 }
 
 func runRefresh(ctx context.Context, kind model.Kind, ids []string) {
@@ -493,17 +481,11 @@ func refreshItems(ctx context.Context, ds model.DataStore, kind model.Kind, ids 
 
 func parseArtworkKind(s string) (model.Kind, error) {
 	kind, ok := model.ParseKind(s)
-	if ok && slices.Contains(artworkKinds, kind) {
+	if ok && slices.Contains(artwork.RecheckKinds, kind) {
 		return kind, nil
 	}
-	valid := slice.Map(artworkKinds, func(k model.Kind) string { return k.Prefix() })
+	valid := slice.Map(artwork.RecheckKinds, func(k model.Kind) string { return k.Prefix() })
 	return kind, fmt.Errorf("invalid kind %q, expected one of: %s", s, strings.Join(valid, ", "))
-}
-
-// walksPriorityChain reports whether the resolver picks this kind's artwork from a priority
-// chain; playlists and radios resolve from a single source, so there is no walk to explain.
-func walksPriorityChain(kind model.Kind) bool {
-	return kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork
 }
 
 // explainResult states the verdict of the walk. An external tier that was skipped or that failed
@@ -541,7 +523,6 @@ type explainReport struct {
 	priorityName string
 	priority     string
 	agents       string
-	walksChain   bool
 	steps        []artwork.TraceStep
 	source       string
 	resolveErr   error
@@ -549,7 +530,8 @@ type explainReport struct {
 
 func formatExplain(rep explainReport) string {
 	var sb strings.Builder
-	w := tabwriter.NewWriter(&sb, 0, 4, 2, ' ', 0)
+	w := newTabWriter(&sb)
+	walksChain := artwork.WalksPriorityChain(rep.kind)
 
 	fmt.Fprintln(w, "Item")
 	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
@@ -578,7 +560,7 @@ func formatExplain(rep explainReport) string {
 	}
 
 	fmt.Fprintln(w, "\nConfig")
-	if !rep.walksChain {
+	if !walksChain {
 		fmt.Fprintln(w, "  (no priority chain configuration applies)")
 	} else {
 		fmt.Fprintf(w, "  %s:\t%s\n", rep.priorityName, rep.priority)
@@ -586,7 +568,7 @@ func formatExplain(rep explainReport) string {
 	}
 
 	fmt.Fprintln(w, "\nChain")
-	if !rep.walksChain {
+	if !walksChain {
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
 	} else {
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
@@ -600,7 +582,7 @@ func formatExplain(rep explainReport) string {
 	switch {
 	case rep.resolveErr != nil:
 		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
-	case !rep.walksChain:
+	case !walksChain:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
 	default:
 		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
@@ -628,8 +610,7 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	rep := explainReport{
 		kind: kind, id: id, name: name,
 		priorityName: "CoverArtPriority", priority: conf.Server.CoverArtPriority,
-		agents:     conf.Server.Agents,
-		walksChain: walksPriorityChain(kind),
+		agents: conf.Server.Agents,
 	}
 	if kind == model.KindArtistArtwork {
 		rep.priorityName, rep.priority = "ArtistArtPriority", conf.Server.ArtistArtPriority
@@ -644,7 +625,7 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 		log.Fatal(ctx, "Failed to read the artwork queue", "kind", kind, "id", id, err)
 	}
 
-	if rep.walksChain {
+	if artwork.WalksPriorityChain(kind) {
 		trace := &artwork.ChainTrace{}
 		resolver := CreateArtworkResolver(trace, explainLive)
 		resolve := resolver.ResolveAlbum

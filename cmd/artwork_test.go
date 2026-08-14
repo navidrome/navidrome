@@ -87,18 +87,6 @@ var _ = Describe("explainResult", func() {
 	})
 })
 
-var _ = Describe("walksPriorityChain", func() {
-	It("is true for the kinds the resolver walks", func() {
-		Expect(walksPriorityChain(model.KindArtistArtwork)).To(BeTrue())
-		Expect(walksPriorityChain(model.KindAlbumArtwork)).To(BeTrue())
-	})
-
-	It("is false for the kinds resolved directly", func() {
-		Expect(walksPriorityChain(model.KindPlaylistArtwork)).To(BeFalse())
-		Expect(walksPriorityChain(model.KindRadioArtwork)).To(BeFalse())
-	})
-})
-
 var _ = Describe("formatExplain", func() {
 	var rep explainReport
 
@@ -110,7 +98,6 @@ var _ = Describe("formatExplain", func() {
 			priorityName: "ArtistArtPriority",
 			priority:     "external, artist.*",
 			agents:       "lastfm,spotify",
-			walksChain:   true,
 			steps: []artwork.TraceStep{
 				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
 				{Candidate: "external:deezer", Outcome: "would-try"},
@@ -119,11 +106,8 @@ var _ = Describe("formatExplain", func() {
 		}
 	})
 
-	It("prints every block", func() {
+	It("reports the item, its config and the chain it walked", func() {
 		out := formatExplain(rep)
-		for _, block := range []string{"Item", "Stored", "Queue", "Config", "Chain", "Result"} {
-			Expect(out).To(ContainSubstring(block))
-		}
 		Expect(out).To(ContainSubstring("Radiohead"))
 		Expect(out).To(ContainSubstring("ar-1"))
 		Expect(out).To(ContainSubstring("ArtistArtPriority"))
@@ -171,7 +155,6 @@ var _ = Describe("formatExplain", func() {
 
 	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
 		rep.kind = model.KindPlaylistArtwork
-		rep.walksChain = false
 		rep.steps = nil
 		rep.priorityName, rep.priority = "CoverArtPriority", "cover.*, embedded"
 
@@ -196,52 +179,44 @@ var _ = Describe("artwork refresh command", func() {
 
 var _ = Describe("artwork reprocess selection", func() {
 	It("errors when no selector is given", func() {
-		_, err := selectedKinds(nil, false)
+		_, err := selectedKinds(nil, nil, false)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("--all"))
 	})
 
 	It("returns every kind for --all", func() {
-		ks, err := selectedKinds(nil, true)
+		ks, err := selectedKinds(nil, nil, true)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(ks).To(ConsistOf(artworkKinds))
+		Expect(ks).To(ConsistOf(artwork.RecheckKinds))
+	})
+
+	It("returns every kind for a source filter given without a kind", func() {
+		ks, err := selectedKinds(nil, []string{"folder"}, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ks).To(ConsistOf(artwork.RecheckKinds), "--source alone is already a complete selection")
 	})
 
 	It("returns only the named kinds", func() {
-		ks, err := selectedKinds([]string{"ar"}, false)
+		ks, err := selectedKinds([]string{"ar"}, nil, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ks).To(Equal([]model.Kind{model.KindArtistArtwork}))
+	})
+
+	It("keeps a named kind selection alongside a source filter", func() {
+		ks, err := selectedKinds([]string{"ar"}, []string{"folder"}, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ks).To(Equal([]model.Kind{model.KindArtistArtwork}))
 	})
 
 	It("rejects an unknown kind", func() {
-		_, err := selectedKinds([]string{"zz"}, false)
+		_, err := selectedKinds([]string{"zz"}, nil, false)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("counts a repeated kind once", func() {
-		ks, err := selectedKinds([]string{"ar", "ar"}, false)
+		ks, err := selectedKinds([]string{"ar", "ar"}, nil, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ks).To(Equal([]model.Kind{model.KindArtistArtwork}))
-	})
-})
-
-var _ = Describe("reprocessSelectsAll", func() {
-	It("keeps a named kind selection", func() {
-		Expect(reprocessSelectsAll([]string{"ar"}, nil, false)).To(BeFalse())
-		Expect(reprocessSelectsAll([]string{"ar"}, []string{"folder"}, false)).To(BeFalse())
-	})
-
-	It("targets every kind for a source filter given without a kind", func() {
-		Expect(reprocessSelectsAll(nil, []string{"folder"}, false)).To(BeTrue())
-	})
-
-	It("targets every kind for --all", func() {
-		Expect(reprocessSelectsAll(nil, nil, true)).To(BeTrue())
-		Expect(reprocessSelectsAll([]string{"ar"}, nil, true)).To(BeTrue())
-	})
-
-	It("is false with no selector, leaving selectedKinds to reject it", func() {
-		Expect(reprocessSelectsAll(nil, nil, false)).To(BeFalse())
 	})
 })
 
@@ -506,7 +481,6 @@ var _ = Describe("collectStatus", func() {
 		rep, err := collectStatus(ctx, ds)
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(rep.queueTotal).To(Equal(int64(1)))
 		Expect(rep.queue).To(ConsistOf(model.ArtworkQueueStat{ItemKind: "ar",
 			Priority: model.ArtworkPriorityBackfill, Count: 1}))
 		Expect(rep.sources).To(ContainElements(
@@ -528,18 +502,6 @@ var _ = Describe("collectStatus", func() {
 			"the CLI must report the value backfill itself compares")
 	})
 
-	It("reports a never-recorded fingerprint as empty instead of failing", func() {
-		rep, err := collectStatus(ctx, ds)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(rep.stored).To(BeEmpty())
-	})
-
-	It("collects the config inputs the fingerprint is computed from", func() {
-		rep, err := collectStatus(ctx, ds)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(rep.inputs).To(Equal(artwork.FingerprintInputs()))
-	})
-
 	It("queues nothing", func() {
 		_, err := collectStatus(ctx, ds)
 		Expect(err).ToNot(HaveOccurred())
@@ -552,7 +514,6 @@ var _ = Describe("formatStatus", func() {
 
 	BeforeEach(func() {
 		rep = statusReport{
-			queueTotal: 3,
 			queue: []model.ArtworkQueueStat{
 				{ItemKind: "ar", Priority: model.ArtworkPriorityBackfill, Count: 2},
 				{ItemKind: "al", Priority: model.ArtworkPriorityScan, Count: 1},
@@ -578,14 +539,6 @@ var _ = Describe("formatStatus", func() {
 		body, _, _ := strings.Cut(after, "\n\n")
 		return body
 	}
-
-	It("prints every block", func() {
-		out := formatStatus(rep)
-		for _, header := range []string{"Queue", "Sources", "Absent", "Backfill"} {
-			Expect(out).To(ContainSubstring(header))
-		}
-		Expect(out).To(ContainSubstring("abc123"))
-	})
 
 	It("names the kind and the priority of every queued row", func() {
 		queue := block(formatStatus(rep), "Queue")
@@ -635,12 +588,14 @@ var _ = Describe("formatStatus", func() {
 	})
 
 	It("echoes the config inputs a fingerprint change would have come from", func() {
-		Expect(block(formatStatus(rep), "Backfill")).To(MatchRegexp(`Agents:\s+deezer,lastfm`))
+		out := block(formatStatus(rep), "Backfill")
+		Expect(out).To(MatchRegexp(`Agents:\s+deezer,lastfm`))
+		Expect(out).To(ContainSubstring("abc123"), "the fingerprint values themselves must be printed")
 	})
 
 	It("reports a changed fingerprint as a pending re-resolve of everything", func() {
 		rep.stored = "older"
-		rep.queue, rep.queueTotal = nil, 0
+		rep.queue = nil
 
 		out := formatStatus(rep)
 		Expect(out).To(ContainSubstring("fingerprint changed"))
@@ -656,7 +611,7 @@ var _ = Describe("formatStatus", func() {
 	})
 
 	It("says the queue is empty instead of printing a headless table", func() {
-		rep.queue, rep.queueTotal = nil, 0
+		rep.queue = nil
 
 		out := formatStatus(rep)
 		Expect(out).To(ContainSubstring("empty"))

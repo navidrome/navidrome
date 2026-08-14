@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -314,7 +313,7 @@ func formatPluginList(list model.Plugins, format string) (string, error) {
 		return sb.String(), w.Error()
 	case "table":
 		var sb strings.Builder
-		w := tabwriter.NewWriter(&sb, 0, 4, 2, ' ', 0)
+		w := newTabWriter(&sb)
 		fmt.Fprintln(w, "ID\tNAME\tVERSION\tENABLED\tLAST ERROR")
 		for _, p := range list {
 			name, version := manifestSummary(p)
