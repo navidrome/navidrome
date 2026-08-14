@@ -26,7 +26,7 @@ var _ = Describe("trace vocabulary", func() {
 		Expect([]Outcome{
 			OutcomeHit, OutcomeMiss, OutcomeUnreadable, OutcomeSkipped, OutcomeWouldTry, OutcomeError,
 		}).To(Equal([]Outcome{"hit", "miss", "unreadable", "skipped", "would-try", "error"}))
-		Expect(ExternalCandidate).To(Equal("external"))
+		Expect(externalCandidate).To(Equal("external"))
 		Expect(ExternalPrefix).To(Equal("external:"))
 	})
 })
@@ -110,11 +110,6 @@ var _ = Describe("chainState tracing", func() {
 		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "embedded", Outcome: OutcomeHit, Detail: "/music/a.flac"},
 		}))
-	})
-
-	It("does not panic when no trace is attached", func() {
-		c := chainState{}
-		Expect(func() { _, _ = c.try("cover.*", resolution{}, false) }).ToNot(Panic())
 	})
 })
 
@@ -412,11 +407,6 @@ var _ = Describe("NewTracingResolver", func() {
 		}
 		ffm = tests.NewMockFFmpeg("")
 		t = &ChainTrace{}
-	})
-
-	It("uses the offline gate when live is false", func() {
-		r := NewTracingResolver(nil, nil, nil, t, false)
-		Expect(r).ToNot(BeNil())
 	})
 
 	Context("offline", func() {

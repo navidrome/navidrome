@@ -8,8 +8,7 @@ import (
 	"sync"
 )
 
-// Outcome is what the priority chain observed for one candidate. The CLI branches on these,
-// so they are part of the package's API, not private labels.
+// Outcome is what the priority chain observed for one candidate; the CLI renders and branches on these.
 type Outcome string
 
 const (
@@ -22,10 +21,10 @@ const (
 )
 
 const (
-	// ExternalCandidate labels the external tier itself, for the cases that never reach an agent.
-	ExternalCandidate = "external"
+	// externalCandidate labels the external tier itself, for the cases that never reach an agent.
+	externalCandidate = "external"
 	// ExternalPrefix qualifies a candidate or a stored source with the agent that produced it.
-	ExternalPrefix = ExternalCandidate + ":"
+	ExternalPrefix = externalCandidate + ":"
 )
 
 // TraceStep is one candidate the priority chain considered.

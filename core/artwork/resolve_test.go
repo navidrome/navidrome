@@ -630,3 +630,15 @@ var _ = Describe("decodeTile", func() {
 		Expect(err).To(HaveOccurred())
 	})
 })
+
+var _ = Describe("WalksPriorityChain", func() {
+	It("is true for the kinds the resolver walks", func() {
+		Expect(WalksPriorityChain(model.KindArtistArtwork)).To(BeTrue())
+		Expect(WalksPriorityChain(model.KindAlbumArtwork)).To(BeTrue())
+	})
+
+	It("is false for the kinds resolved directly", func() {
+		Expect(WalksPriorityChain(model.KindPlaylistArtwork)).To(BeFalse())
+		Expect(WalksPriorityChain(model.KindRadioArtwork)).To(BeFalse())
+	})
+})

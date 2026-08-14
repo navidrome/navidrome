@@ -362,7 +362,7 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
-		// Media files are excluded from recheckKinds, so an absent row here would never be
+		// Media files are excluded from RecheckKinds, so an absent row here would never be
 		// revisited: a transient read error would look permanent.
 		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
 			conf.Server.EnableMediaFileCoverArt = true

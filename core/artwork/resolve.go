@@ -108,6 +108,12 @@ func (r *resolver) resolve(ctx context.Context, item model.ArtworkQueueItem) (re
 	}
 }
 
+// WalksPriorityChain reports whether the resolver picks this kind's artwork from a configurable
+// priority chain; playlists and radios resolve from a fixed order, so there is no walk to explain.
+func WalksPriorityChain(kind model.Kind) bool {
+	return kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork
+}
+
 // fetchExternalAlbum and fetchExternalArtist are the only places resolution touches the network,
 // so a local-only resolver is stopped here rather than at each point in the chain walk.
 func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, bool) {
@@ -151,7 +157,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
-		case pattern == ExternalCandidate:
+		case pattern == externalCandidate:
 			if rd, name, isErr := r.fetchExternalAlbum(ctx, *al); rd != nil {
 				return resolution{reader: rd, source: ExternalPrefix + name}, nil
 			} else if isErr {
@@ -218,7 +224,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			continue
 		}
 		switch {
-		case pattern == ExternalCandidate:
+		case pattern == externalCandidate:
 			if rd, name, isErr := r.fetchExternalArtist(ctx, *ar); rd != nil {
 				return resolution{reader: rd, source: ExternalPrefix + name}, nil
 			} else if isErr {
@@ -385,7 +391,7 @@ func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution,
 func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolution, ok bool, extErr bool) {
 	r, path, err := gate(name, sf)
 	if r != nil {
-		return resolution{reader: r, source: ExternalCandidate, sourcePath: path}, true, false
+		return resolution{reader: r, source: externalCandidate, sourcePath: path}, true, false
 	}
 	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
 }

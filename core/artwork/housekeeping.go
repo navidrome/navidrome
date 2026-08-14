@@ -21,15 +21,15 @@ import (
 // StaleAbsentAge is how long an absent state is trusted before a recheck retries it.
 const StaleAbsentAge = 24 * time.Hour
 
-// recheckKinds omits media files: they resolve embedded-only, at scan or on view.
-var recheckKinds = []model.Kind{
+// RecheckKinds omits media files: they resolve embedded-only, at scan or on view.
+var RecheckKinds = []model.Kind{
 	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
 }
 
 // hasRecheckPath reports whether a periodic job will revisit this kind, making an absent settle recoverable.
 func hasRecheckPath(prefix string) bool {
 	kind, ok := model.ParseKind(prefix)
-	return ok && slices.Contains(recheckKinds, kind)
+	return ok && slices.Contains(RecheckKinds, kind)
 }
 
 // artworkEpoch invalidates all resolution state when bumped; bump it whenever resolution semantics change.
@@ -41,8 +41,7 @@ type FingerprintInput struct {
 	Value string
 }
 
-// FingerprintInputs is the single listing of what ConfigFingerprint hashes, so a caller can report
-// which setting a fingerprint change came from without keeping a second copy of the list.
+// FingerprintInputs is the single listing of what ConfigFingerprint hashes.
 func FingerprintInputs() []FingerprintInput {
 	return []FingerprintInput{
 		{"CoverArtPriority", conf.Server.CoverArtPriority},
@@ -55,7 +54,6 @@ func FingerprintInputs() []FingerprintInput {
 }
 
 // ConfigFingerprint covers the inputs that affect resolution outcomes; a change invalidates stored state.
-// Exported so the CLI reports the value backfill compares instead of computing one that can drift.
 func ConfigFingerprint() string {
 	values := slice.Map(FingerprintInputs(), func(i FingerprintInput) string { return i.Value })
 	raw := fmt.Sprintf("%s|%d", strings.Join(values, "|"), artworkEpoch)
@@ -119,7 +117,7 @@ func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kin
 func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	cutoff := time.Now().Add(-StaleAbsentAge)
 	queue := ds.ArtworkQueue(ctx)
-	for _, kind := range recheckKinds {
+	for _, kind := range RecheckKinds {
 		if _, err := queue.EnqueueStaleAbsent(kind, cutoff); err != nil {
 			return err
 		}
@@ -130,7 +128,7 @@ func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 // enqueueMissingAll is the safety net for entities a scan never enqueued (added between scans, or scanner off).
 func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 	queue := ds.ArtworkQueue(ctx)
-	for _, kind := range recheckKinds {
+	for _, kind := range RecheckKinds {
 		if _, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityRecheck); err != nil {
 			return err
 		}
