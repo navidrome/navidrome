@@ -71,15 +71,27 @@ func walksPriorityChain(kind model.Kind) bool {
 	return kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork
 }
 
-// explainResult states the verdict of the walk. Offline runs skip the external tier, so a
-// local miss is unknown rather than unresolvable.
+// explainResult states the verdict of the walk. An external tier that was skipped or that failed
+// leaves the outcome unknown: nothing observed that the item has no artwork.
 func explainResult(source string, steps []artwork.TraceStep) string {
 	if source != "" {
+		for _, s := range steps {
+			if s.Outcome == "hit" {
+				break
+			}
+			if s.Outcome == "would-try" {
+				return "resolved from " + source +
+					" (offline: a higher-priority external candidate was not tried; re-run with --live)"
+			}
+		}
 		return "resolved from " + source
 	}
 	for _, s := range steps {
-		if s.Outcome == "would-try" {
+		switch {
+		case s.Outcome == "would-try":
 			return "indeterminate (external agents not called; re-run with --live)"
+		case s.Outcome == "error" && strings.HasPrefix(s.Candidate, "external:"):
+			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
 		}
 	}
 	return "not resolved"

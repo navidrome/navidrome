@@ -44,6 +44,34 @@ var _ = Describe("explainResult", func() {
 		Expect(explainResult("", steps)).To(Equal("not resolved"))
 	})
 
+	It("reports indeterminate when an external lookup failed transiently", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "artist.*", Outcome: "miss"},
+			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
+		}
+		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
+			"a failed network call is not evidence that the item has no artwork")
+	})
+
+	It("qualifies a win a skipped higher-priority external candidate could have taken", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "external:deezer", Outcome: "would-try"},
+			{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"},
+		}
+		res := explainResult("artist.*", steps)
+		Expect(res).To(ContainSubstring("resolved from artist.*"))
+		Expect(res).To(ContainSubstring("--live"),
+			"offline, the winner is only the winner because the external tier was skipped")
+	})
+
+	It("does not qualify a win that no skipped candidate outranked", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "artist.*", Outcome: "hit"},
+			{Candidate: "external:deezer", Outcome: "would-try"},
+		}
+		Expect(explainResult("artist.*", steps)).To(Equal("resolved from artist.*"))
+	})
+
 	It("reports indeterminate when external agents were never called", func() {
 		steps := []artwork.TraceStep{
 			{Candidate: "artist.*", Outcome: "miss"},
