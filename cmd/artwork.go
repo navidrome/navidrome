@@ -493,17 +493,10 @@ func refreshItems(ctx context.Context, ds model.DataStore, kind model.Kind, ids 
 
 func parseArtworkKind(s string) (model.Kind, error) {
 	kind, ok := model.ParseKind(s)
-	if ok {
-		for _, k := range artworkKinds {
-			if k == kind {
-				return kind, nil
-			}
-		}
+	if ok && slices.Contains(artworkKinds, kind) {
+		return kind, nil
 	}
-	valid := make([]string, 0, len(artworkKinds))
-	for _, k := range artworkKinds {
-		valid = append(valid, k.Prefix())
-	}
+	valid := slice.Map(artworkKinds, func(k model.Kind) string { return k.Prefix() })
 	return kind, fmt.Errorf("invalid kind %q, expected one of: %s", s, strings.Join(valid, ", "))
 }
 
