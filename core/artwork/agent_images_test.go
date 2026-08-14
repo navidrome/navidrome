@@ -175,12 +175,12 @@ var _ = Describe("agent images", func() {
 
 		It("records a skipped external candidate when no agent provides artist images", func() {
 			ag := imageAgents()
-			t := &chainTrace{}
+			t := &ChainTrace{}
 
 			r, _, extErr := fetchArtistImage(withTrace(ctx, t), ag, passthroughGate, model.Artist{ID: "ar1"})
 			Expect(r).To(BeNil())
 			Expect(extErr).To(BeFalse())
-			Expect(t.Steps()).To(Equal([]traceStep{{Candidate: "external", Outcome: OutcomeSkipped,
+			Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "external", Outcome: OutcomeSkipped,
 				Detail: "no enabled agent provides artist images"}}),
 				"a configured external token must never be silently absent from the chain")
 		})
@@ -188,7 +188,7 @@ var _ = Describe("agent images", func() {
 		It("records a skipped external candidate for synthetic artists", func() {
 			a := &fakeImageAgent{name: "agentA", imgs: []agents.ExternalImage{img("/a", 100)}}
 			ag := imageAgents(a)
-			t := &chainTrace{}
+			t := &ChainTrace{}
 
 			_, _, _ = fetchArtistImage(withTrace(ctx, t), ag, passthroughGate,
 				model.Artist{ID: consts.VariousArtistsID, Name: "Various Artists"})
@@ -257,12 +257,12 @@ var _ = Describe("agent images", func() {
 
 		It("records a skipped external candidate when no agent provides album images", func() {
 			ag := imageAgents()
-			t := &chainTrace{}
+			t := &ChainTrace{}
 
 			r, _, extErr := fetchAlbumImage(withTrace(ctx, t), ag, passthroughGate, model.Album{Name: "Album"})
 			Expect(r).To(BeNil())
 			Expect(extErr).To(BeFalse())
-			Expect(t.Steps()).To(Equal([]traceStep{{Candidate: "external", Outcome: OutcomeSkipped,
+			Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "external", Outcome: OutcomeSkipped,
 				Detail: "no enabled agent provides album images"}}),
 				"a configured external token must never be silently absent from the chain")
 		})

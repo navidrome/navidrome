@@ -36,7 +36,7 @@ type resolution struct {
 // transient external failure still retries; localErr is dropped, as the scanner re-lists changes.
 type chainState struct {
 	extErr, localErr bool
-	trace            *chainTrace // nil unless the CLI asked for a trace
+	trace            *ChainTrace // nil unless the CLI asked for a trace
 }
 
 // try stamps the accumulated external failure onto a hit, and records the miss otherwise.
@@ -56,7 +56,7 @@ func (c *chainState) try(candidate string, res resolution, ok bool) (resolution,
 }
 
 func (c *chainState) record(candidate string, out Outcome, detail string) {
-	c.trace.add(traceStep{Candidate: candidate, Outcome: out, Detail: detail})
+	c.trace.add(TraceStep{Candidate: candidate, Outcome: out, Detail: detail})
 }
 
 // exhausted is the outcome when no source in the chain yielded an image.

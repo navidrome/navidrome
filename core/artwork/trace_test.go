@@ -37,13 +37,13 @@ var _ = Describe("chainTrace", func() {
 	})
 
 	It("collects steps in order", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		ctx := withTrace(context.Background(), t)
 
-		traceFrom(ctx).add(traceStep{Candidate: "cover.*", Outcome: OutcomeMiss})
-		traceFrom(ctx).add(traceStep{Candidate: "embedded", Outcome: OutcomeHit, Detail: "/music/a.flac"})
+		traceFrom(ctx).add(TraceStep{Candidate: "cover.*", Outcome: OutcomeMiss})
+		traceFrom(ctx).add(TraceStep{Candidate: "embedded", Outcome: OutcomeHit, Detail: "/music/a.flac"})
 
-		Expect(t.Steps()).To(Equal([]traceStep{
+		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "cover.*", Outcome: OutcomeMiss},
 			{Candidate: "embedded", Outcome: OutcomeHit, Detail: "/music/a.flac"},
 		}))
@@ -54,18 +54,18 @@ var _ = Describe("chainTrace", func() {
 	})
 
 	It("does not panic when the trace is nil", func() {
-		var t *chainTrace
-		Expect(func() { t.add(traceStep{Candidate: "cover.*", Outcome: OutcomeMiss}) }).ToNot(Panic())
+		var t *ChainTrace
+		Expect(func() { t.add(TraceStep{Candidate: "cover.*", Outcome: OutcomeMiss}) }).ToNot(Panic())
 		Expect(t.Steps()).To(BeEmpty(), "a nil trace collects nothing, so reading it must be as safe as writing it")
 	})
 
 	It("is safe to use concurrently", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		done := make(chan struct{})
 		for range 10 {
 			go func() {
 				defer GinkgoRecover()
-				t.add(traceStep{Candidate: "x", Outcome: OutcomeMiss})
+				t.add(TraceStep{Candidate: "x", Outcome: OutcomeMiss})
 				done <- struct{}{}
 			}()
 		}
@@ -78,17 +78,17 @@ var _ = Describe("chainTrace", func() {
 
 var _ = Describe("chainState tracing", func() {
 	It("records a miss when the candidate was absent", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		c := chainState{trace: t}
 
 		_, ok := c.try("cover.*", resolution{}, false)
 
 		Expect(ok).To(BeFalse())
-		Expect(t.Steps()).To(Equal([]traceStep{{Candidate: "cover.*", Outcome: OutcomeMiss}}))
+		Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "cover.*", Outcome: OutcomeMiss}}))
 	})
 
 	It("records unreadable when the candidate existed but could not be read", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		c := chainState{trace: t}
 
 		_, ok := c.try("cover.*", resolution{localError: true}, false)
@@ -100,14 +100,14 @@ var _ = Describe("chainState tracing", func() {
 	})
 
 	It("records a hit with the backing path", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		c := chainState{trace: t}
 
 		res, ok := c.try("embedded", resolution{reader: nil, source: "embedded", sourcePath: "/music/a.flac"}, true)
 
 		Expect(ok).To(BeTrue())
 		Expect(res.source).To(Equal("embedded"))
-		Expect(t.Steps()).To(Equal([]traceStep{
+		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "embedded", Outcome: OutcomeHit, Detail: "/music/a.flac"},
 		}))
 	})
@@ -126,26 +126,26 @@ var _ = Describe("external gate tracing", func() {
 	boom := func() (io.ReadCloser, string, error) { return nil, "", errors.New("returned status 429") }
 
 	It("records a hit with the image path", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		g := tracingGate(t, passthroughGate)
 
 		r, _, err := g("deezer", hit)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(r).ToNot(BeNil())
-		Expect(t.Steps()).To(Equal([]traceStep{
+		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "external:deezer", Outcome: OutcomeHit, Detail: "http://img"},
 		}))
 	})
 
 	It("records a miss for a not-found", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		_, _, _ = tracingGate(t, passthroughGate)("deezer", miss)
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeMiss))
 	})
 
 	It("records a miss for a model not-found", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		notFound := func() (io.ReadCloser, string, error) { return nil, "", model.ErrNotFound }
 		_, _, _ = tracingGate(t, passthroughGate)("deezer", notFound)
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeMiss),
@@ -153,14 +153,14 @@ var _ = Describe("external gate tracing", func() {
 	})
 
 	It("records an error with its reason", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		_, _, _ = tracingGate(t, passthroughGate)("apple-music", boom)
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeError))
 		Expect(t.Steps()[0].Detail).To(ContainSubstring("429"))
 	})
 
 	It("never calls the agent in offline mode", func() {
-		t := &chainTrace{}
+		t := &ChainTrace{}
 		called := false
 		counting := func() (io.ReadCloser, string, error) {
 			called = true
@@ -171,7 +171,7 @@ var _ = Describe("external gate tracing", func() {
 
 		Expect(called).To(BeFalse(), "offline mode must not perform external requests")
 		Expect(err).To(MatchError(errOfflineSkipped))
-		Expect(t.Steps()).To(Equal([]traceStep{
+		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "external:deezer", Outcome: OutcomeWouldTry},
 		}))
 	})
@@ -185,7 +185,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 		folderRepo *fakeFolderRepo
 		ffm        *tests.MockFFmpeg
 		ag         *agents.Agents
-		t          *chainTrace
+		t          *ChainTrace
 	)
 
 	BeforeEach(func() {
@@ -204,7 +204,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 		}
 		ffm = tests.NewMockFFmpeg("")
 		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
-		t = &chainTrace{}
+		t = &ChainTrace{}
 		ctx = withTrace(context.Background(), t)
 	})
 
@@ -218,7 +218,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 		Expect(res.reader).ToNot(BeNil())
 		defer res.reader.Close()
 		Expect(t.Steps()).To(HaveLen(2), "a configured pattern must appear even when the chain never evaluated it")
-		Expect(t.Steps()[0]).To(Equal(traceStep{
+		Expect(t.Steps()[0]).To(Equal(TraceStep{
 			Candidate: "cover.jpg", Outcome: OutcomeSkipped, Detail: "no images in album folder",
 		}))
 		Expect(t.Steps()[1].Candidate).To(Equal("embedded"))
@@ -238,7 +238,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.reader).ToNot(BeNil())
 		defer res.reader.Close()
-		Expect(t.Steps()[0]).To(Equal(traceStep{Candidate: "cover.jpg", Outcome: OutcomeMiss}),
+		Expect(t.Steps()[0]).To(Equal(TraceStep{Candidate: "cover.jpg", Outcome: OutcomeMiss}),
 			"the folder was searched and held no cover.jpg, which is not the same as never looking")
 	})
 
@@ -248,7 +248,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(t.Steps()).To(Equal([]traceStep{
+		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "cover.jpg", Outcome: OutcomeSkipped, Detail: "no images in album folder"},
 		}))
 	})
@@ -263,7 +263,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		folderRepo *fakeFolderRepo
 		ffm        *tests.MockFFmpeg
 		ag         *agents.Agents
-		t          *chainTrace
+		t          *ChainTrace
 		repoRoot   string
 	)
 
@@ -294,7 +294,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		}
 		ffm = tests.NewMockFFmpeg("")
 		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
-		t = &chainTrace{}
+		t = &ChainTrace{}
 		ctx = withTrace(context.Background(), t)
 	})
 
@@ -306,7 +306,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.reader).ToNot(BeNil())
 		defer res.reader.Close()
-		Expect(t.Steps()).To(Equal([]traceStep{{Candidate: "upload", Outcome: OutcomeHit, Detail: path}}))
+		Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "upload", Outcome: OutcomeHit, Detail: path}}))
 	})
 
 	It("records an upload miss before walking the chain", func() {
@@ -314,7 +314,7 @@ var _ = Describe("resolveArtist tracing", func() {
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar2"})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(t.Steps()[0]).To(Equal(traceStep{Candidate: "upload", Outcome: OutcomeMiss}))
+		Expect(t.Steps()[0]).To(Equal(TraceStep{Candidate: "upload", Outcome: OutcomeMiss}))
 	})
 
 	It("labels each step with the configured priority token", func() {
@@ -342,7 +342,7 @@ var _ = Describe("resolveArtist tracing", func() {
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(t.Steps()).To(Equal([]traceStep{
+		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "upload", Outcome: OutcomeMiss},
 			{Candidate: "album/artist.*", Outcome: OutcomeSkipped, Detail: "artist has no albums"},
 		}), "a configured pattern that was never evaluated must still appear, and say why")
@@ -355,7 +355,7 @@ var _ = Describe("resolveArtist tracing", func() {
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar6"})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(t.Steps()).To(Equal([]traceStep{
+		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "upload", Outcome: OutcomeMiss},
 			{Candidate: "artist.*", Outcome: OutcomeSkipped, Detail: "no artist folder"},
 		}))

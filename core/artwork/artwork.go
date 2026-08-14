@@ -387,9 +387,6 @@ func (s *service) parseArtworkID(ctx context.Context, id string) (model.ArtworkI
 	return model.ArtworkID{}, model.ErrNotFound
 }
 
-type ChainTrace = chainTrace
-type TraceStep = traceStep
-
 // Resolver is the CLI's read-only view of resolution: it walks the priority chain, records
 // the walk and reports the winning source, without ever writing artwork state.
 type Resolver struct {
