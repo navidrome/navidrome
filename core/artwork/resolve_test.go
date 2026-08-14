@@ -707,3 +707,53 @@ var _ = Describe("MayFetchExternal", func() {
 		Expect(MayFetchExternal(model.KindMediaFileArtwork)).To(BeFalse())
 	})
 })
+
+var _ = Describe("ExternalLookupsPerItem", func() {
+	count := ImageAgentCount{Artist: 3, Album: 2}
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "cover.*, external"
+		conf.Server.ArtistArtPriority = "artist.*, external"
+		conf.Server.EnableM3UExternalAlbumArt = false
+	})
+
+	It("bills one call per agent, since the walk only stops early on a hit", func() {
+		Expect(ExternalLookupsPerItem(model.KindArtistArtwork, count)).To(Equal(int64(3)))
+		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, count)).To(Equal(int64(2)))
+	})
+
+	It("bills a playlist for every album its grid samples", func() {
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).
+			To(Equal(int64(PlaylistGridSamples) * 2))
+	})
+
+	It("adds the m3u image fetch on top of the grid", func() {
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).
+			To(Equal(int64(PlaylistGridSamples)*2 + 1))
+	})
+
+	It("bills only the m3u fetch when the album chain stays local", func() {
+		conf.Server.CoverArtPriority = "cover.*"
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).To(Equal(int64(1)))
+	})
+
+	It("still bills a call when no agent is visible, which plugins never are offline", func() {
+		none := ImageAgentCount{}
+		Expect(ExternalLookupsPerItem(model.KindArtistArtwork, none)).To(Equal(int64(1)))
+		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, none)).To(Equal(int64(1)))
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, none)).
+			To(Equal(int64(PlaylistGridSamples)))
+	})
+
+	It("is zero whenever the kind reaches no agent at all", func() {
+		conf.Server.CoverArtPriority = "cover.*"
+		conf.Server.ArtistArtPriority = "artist.*"
+		Expect(ExternalLookupsPerItem(model.KindArtistArtwork, count)).To(BeZero())
+		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, count)).To(BeZero())
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).To(BeZero())
+		Expect(ExternalLookupsPerItem(model.KindRadioArtwork, count)).To(BeZero())
+	})
+})

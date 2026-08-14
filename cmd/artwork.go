@@ -14,6 +14,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -273,7 +274,7 @@ func runReprocess(ctx context.Context) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources),
+	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgentCount(ds),
 		reprocessDryRun, reprocessConfirm(reprocessYes, os.Stdin), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -322,13 +323,19 @@ func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
 	return promptConfirm(in)
 }
 
-// externalEstimate is an upper bound: a higher-priority local candidate may win before the walk
-// ever reaches an agent.
+// externalEstimate is a floor, not a ceiling: plugin-provided agents are unregistered in a CLI that
+// never starts the plugin manager, so the calls they would add are invisible here.
 func externalEstimate(n int64) string {
 	if n == 0 {
 		return "none"
 	}
-	return fmt.Sprintf("up to %d", n)
+	return fmt.Sprintf("at least %d", n)
+}
+
+// imageAgentCount counts only the built-in image agents, for the same reason.
+func imageAgentCount(ds model.DataStore) artwork.ImageAgentCount {
+	ag := agents.GetAgents(ds, getPluginManager())
+	return artwork.ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
 }
 
 func promptConfirm(in io.Reader) confirmFunc {
@@ -379,7 +386,7 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 // reprocessArtwork previews from CountBySource — rows matched — then reports what EnqueueBySource
 // actually inserted; the two differ because an already-queued row is left untouched.
 func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, sources []string,
-	dryRun bool, confirm confirmFunc, out io.Writer) error {
+	imageAgents artwork.ImageAgentCount, dryRun bool, confirm confirmFunc, out io.Writer) error {
 	q := ds.ArtworkQueue(ctx)
 	if err := validateSources(q, sources); err != nil {
 		return err
@@ -394,9 +401,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		}
 		matched[i] = n
 		total += n
-		if artwork.MayFetchExternal(k) {
-			external += n
-		}
+		external += n * artwork.ExternalLookupsPerItem(k, imageAgents)
 	}
 	printReprocessPreview(out, kinds, matched, total, external, sources)
 

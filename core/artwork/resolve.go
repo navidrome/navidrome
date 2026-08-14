@@ -129,6 +129,33 @@ func MayFetchExternal(kind model.Kind) bool {
 	}
 }
 
+// ImageAgentCount is how many enabled agents provide artist and album images.
+type ImageAgentCount struct{ Artist, Album int }
+
+// ExternalLookupsPerItem reports what resolving one item of this kind can cost: every image agent is
+// tried, and a zero count still bills one, so agents the caller cannot see never read as free.
+func ExternalLookupsPerItem(kind model.Kind, agents ImageAgentCount) int64 {
+	if !MayFetchExternal(kind) {
+		return 0
+	}
+	switch kind {
+	case model.KindArtistArtwork:
+		return int64(max(agents.Artist, 1))
+	case model.KindAlbumArtwork:
+		return int64(max(agents.Album, 1))
+	case model.KindPlaylistArtwork:
+		var n int64
+		if conf.Server.EnableM3UExternalAlbumArt {
+			n++
+		}
+		if chainFetchesExternal(conf.Server.CoverArtPriority) {
+			n += PlaylistGridSamples * int64(max(agents.Album, 1))
+		}
+		return n
+	}
+	return 0
+}
+
 func chainFetchesExternal(priority string) bool {
 	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
 		if strings.TrimSpace(pattern) == externalCandidate {
@@ -286,6 +313,9 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	return chain.exhausted(), nil
 }
 
+// PlaylistGridSamples is how many albums resolvePlaylist samples to build the generated grid.
+const PlaylistGridSamples = 4
+
 // resolvePlaylist tries the uploaded image, the sidecar and ExternalImageURL, then a generated grid.
 func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (resolution, error) {
 	pl, err := r.ds.Playlist(ctx).Get(playlistID)
@@ -331,7 +361,8 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		}
 	}
 
-	albumIDs, err := r.ds.Playlist(ctx).Tracks(pl.ID, false).GetAlbumIDs(model.QueryOptions{Max: 4, Sort: "random()"})
+	albumIDs, err := r.ds.Playlist(ctx).Tracks(pl.ID, false).
+		GetAlbumIDs(model.QueryOptions{Max: PlaylistGridSamples, Sort: "random()"})
 	if err != nil {
 		return resolution{}, err
 	}
@@ -357,7 +388,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		if decErr == nil {
 			tiles = append(tiles, tile)
 		}
-		if len(tiles) == 4 {
+		if len(tiles) == PlaylistGridSamples {
 			break
 		}
 	}

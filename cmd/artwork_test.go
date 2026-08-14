@@ -269,10 +269,10 @@ var _ = Describe("promptConfirm", func() {
 
 	BeforeEach(func() { out.Reset() })
 
-	It("states the external cost and accepts an explicit yes", func() {
+	It("states the external cost as a floor and accepts an explicit yes", func() {
 		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 42, 7)).To(BeTrue())
 		Expect(out.String()).To(ContainSubstring("re-resolve 42 items"))
-		Expect(out.String()).To(ContainSubstring("7 external lookups"))
+		Expect(out.String()).To(ContainSubstring("at least 7 external lookups"))
 	})
 
 	It("defaults to no on anything else", func() {
@@ -309,6 +309,7 @@ var _ = Describe("reprocessArtwork", func() {
 	var art *tests.MockArtworkRepo
 	var queue *tests.MockArtworkQueueRepo
 	var out strings.Builder
+	var imageAgents artwork.ImageAgentCount
 	ctx := context.Background()
 	kinds := []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
 	accept := func(io.Writer, int64, int64) bool { return true }
@@ -324,6 +325,7 @@ var _ = Describe("reprocessArtwork", func() {
 		conf.Server.CoverArtPriority = "cover.*, external"
 		conf.Server.ArtistArtPriority = "artist.*, external"
 		conf.Server.EnableM3UExternalAlbumArt = false
+		imageAgents = artwork.ImageAgentCount{Artist: 1, Album: 1}
 		ds = &tests.MockDataStore{}
 		art = ds.Artwork(ctx).(*tests.MockArtworkRepo)
 		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
@@ -335,7 +337,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("previews the per-kind breakdown and queues nothing on a dry run", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, true, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, true, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("external:deezer"))
 		Expect(out.String()).To(ContainSubstring("artist"))
@@ -346,14 +348,14 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("queues nothing when the operator declines", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, nil, false, decline, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, decline, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Aborted"))
 		Expect(queue.Count()).To(BeZero())
 	})
 
 	It("queues the matching items at recheck priority, leaving their artwork state alone", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, accept, &out)).To(Succeed())
 
 		Expect(queue.Count()).To(Equal(int64(2)))
 		queued, err := queue.Get(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
@@ -368,7 +370,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("targets the absent state", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{""}, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{""}, imageAgents, false, accept, &out)).To(Succeed())
 
 		Expect(queue.Count()).To(Equal(int64(1)))
 		_, err := queue.Get(model.KindArtistArtwork, "ar-2", model.ImageTypePrimary)
@@ -379,7 +381,7 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(queue.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-1",
 			ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump})).To(Succeed())
 
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Queued 1 of 2 matched items"))
 		Expect(out.String()).To(ContainSubstring("Already queued, left unchanged: 1"))
@@ -390,7 +392,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("stops at a selection that matches nothing instead of prompting", func() {
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, false,
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, imageAgents, false,
 			func(io.Writer, int64, int64) bool {
 				Fail("must not prompt when there is nothing to queue")
 				return true
@@ -401,23 +403,41 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("reports an empty selection as a dry run when one was asked for", func() {
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, true, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Nothing matches"))
 		Expect(out.String()).To(ContainSubstring("Dry run"))
 	})
 
 	It("shows the external estimate on a dry run, which never reaches the prompt", func() {
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork}, nil, true, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
 
-		Expect(out.String()).To(ContainSubstring("External lookups: up to 2"))
+		Expect(out.String()).To(ContainSubstring("External lookups: at least 2"))
+	})
+
+	It("bills every agent per item, not one lookup per item", func() {
+		imageAgents = artwork.ImageAgentCount{Artist: 2, Album: 3}
+		var external int64
+		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
+
+		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, capture, &out)).To(Succeed())
+
+		Expect(external).To(Equal(int64(2*2+2*3)), "2 artists at 2 agents plus 2 albums at 3 agents")
+		Expect(out.String()).To(ContainSubstring("External lookups: at least 10"))
+	})
+
+	It("states the estimate as a floor, since plugin agents are invisible to the CLI", func() {
+		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, true, accept, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("External lookups: at least"))
+		Expect(out.String()).ToNot(ContainSubstring("up to"))
 	})
 
 	It("says so when the selection needs no external lookup", func() {
 		conf.Server.CoverArtPriority = "cover.*"
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, true, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("External lookups: none"))
 	})
@@ -429,20 +449,22 @@ var _ = Describe("reprocessArtwork", func() {
 		var external int64
 		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
 
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, false, capture, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(external).To(Equal(int64(1)))
-		Expect(out.String()).To(ContainSubstring("External lookups: up to 1"))
+		Expect(out.String()).To(ContainSubstring("External lookups: at least 1"))
 	})
 
-	It("counts playlists as external cost when their grid tiles walk an external album chain", func() {
+	It("bills a playlist for every album its grid samples, at every agent", func() {
+		imageAgents = artwork.ImageAgentCount{Album: 3}
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 		var external int64
 		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
 
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, false, capture, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, false, capture, &out)).To(Succeed())
 
-		Expect(external).To(Equal(int64(1)), "sampling album art for the grid reaches the agents")
+		Expect(external).To(Equal(int64(artwork.PlaylistGridSamples*3)),
+			"one playlist samples 4 albums, each walking all 3 album agents")
 	})
 
 	It("counts only the kinds that call an external agent as external cost", func() {
@@ -451,14 +473,14 @@ var _ = Describe("reprocessArtwork", func() {
 		capture := func(_ io.Writer, t, e int64) bool { total, external = t, e; return false }
 
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork, model.KindRadioArtwork},
-			nil, false, capture, &out)).To(Succeed())
+			nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(total).To(Equal(int64(3)))
 		Expect(external).To(Equal(int64(2)), "radio artwork never reaches an external agent")
 	})
 
 	It("rejects an unknown source and names the ones in use", func() {
-		err := reprocessArtwork(ctx, ds, kinds, []string{"externa:deezer"}, true, accept, &out)
+		err := reprocessArtwork(ctx, ds, kinds, []string{"externa:deezer"}, imageAgents, true, accept, &out)
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("externa:deezer"))
@@ -470,7 +492,7 @@ var _ = Describe("reprocessArtwork", func() {
 
 	It("accepts a source another kind uses, letting the empty selection report itself", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindArtistArtwork}, []string{"folder"},
-			false, decline, &out)).To(Succeed())
+			imageAgents, false, decline, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Nothing matches"),
 			"a well-formed filter must not be reported as a typo because of the kinds selected")
