@@ -3,11 +3,35 @@
 package plugins
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// The partial-metadata-agent fixture registers through the Go PDK, which exports every method
+// and answers -2, so only errNotImplemented reaches agentErr through a real plugin. A plugin
+// that omits the export entirely yields errFunctionNotFound, covered here directly.
+var _ = Describe("agentErr", func() {
+	DescribeTable("classifies a plugin error as a miss or a fault",
+		func(err error, wantMiss bool) {
+			got := agentErr(err)
+			Expect(errors.Is(got, agents.ErrNotFound)).To(Equal(wantMiss))
+			Expect(got).To(MatchError(err), "the underlying reason must survive for diagnostics")
+		},
+		Entry("an unimplemented method is a miss",
+			fmt.Errorf("%w: %s", errNotImplemented, FuncGetArtistImages), true),
+		Entry("a missing export is a miss",
+			fmt.Errorf("%w: %s", errFunctionNotFound, FuncGetArtistImages), true),
+		Entry("a call failure is a fault",
+			fmt.Errorf("plugin call failed: %w", errors.New("returned status 429")), false),
+		Entry("a non-zero exit is a fault",
+			errors.New("plugin call exited with code 1"), false),
+	)
+})
 
 var _ = Describe("MetadataAgent", Ordered, func() {
 	var agent agents.Interface
