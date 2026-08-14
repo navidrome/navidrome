@@ -52,6 +52,19 @@ func (o *orderTrackingQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error 
 	return o.MockArtworkQueueRepo.Enqueue(items...)
 }
 
+var _ = Describe("RefreshableKinds", func() {
+	// The two are meant to describe the same fact. Nothing but this test stops them from drifting,
+	// and a drift would have `artwork explain` report state for a kind that keeps none.
+	It("holds exactly the kinds that keep state", func() {
+		for _, k := range []model.Kind{
+			model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork,
+			model.KindRadioArtwork, model.KindMediaFileArtwork, model.KindDiscArtwork,
+		} {
+			Expect(slices.Contains(RefreshableKinds, k)).To(Equal(KeepsState(k)), k.String())
+		}
+	})
+})
+
 var _ = Describe("Housekeeping", func() {
 	var (
 		ctx       context.Context

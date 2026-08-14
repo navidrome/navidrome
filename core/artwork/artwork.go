@@ -320,13 +320,7 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	// Single-disc albums run the chain too: a disc can carry art distinct from the album cover.
 	selectImage := func() (io.ReadCloser, error) {
 		res, err := dr.selectImage(ctx, s.ffmpeg, conf.Server.DiscArtPriority, &chainState{})
-		if err != nil {
-			return nil, err
-		}
-		if res.reader == nil {
-			return nil, fmt.Errorf("could not get `%s` cover art for %s: %w", artID.Kind, artID, ErrUnavailable)
-		}
-		return res.reader, nil
+		return res.reader, err
 	}
 	albumArtID := model.ArtworkID{Kind: model.KindAlbumArtwork, ID: dr.album.ID}
 	// Disc art has no state row, hence no content hash: keying on id, album mtime and

@@ -26,8 +26,13 @@ var RecheckKinds = []model.Kind{
 	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
 }
 
-// RefreshableKinds is every kind Refresh can clear and re-queue. Media files are absent from
-// RecheckKinds but belong here: the worker resolves them, it just never revisits them on its own.
+// KeepsState reports whether a kind is recorded in item_artwork and the artwork queue. Disc
+// artwork is read through on every request and cached by content key, so it has neither.
+func KeepsState(kind model.Kind) bool { return kind != model.KindDiscArtwork }
+
+// RefreshableKinds is every kind Refresh can clear and re-queue, so it holds exactly the kinds
+// KeepsState admits. Media files are absent from RecheckKinds but belong here: the worker
+// resolves them, it just never revisits them on its own.
 var RefreshableKinds = append(slices.Clone(RecheckKinds), model.KindMediaFileArtwork)
 
 // hasRecheckPath reports whether a periodic job will revisit this kind, making an absent settle recoverable.

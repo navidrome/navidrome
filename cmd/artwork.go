@@ -573,10 +573,6 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 	return "not resolved"
 }
 
-// keepsArtworkState reports whether a kind is recorded in item_artwork and the queue at all. Disc
-// artwork is resolved on every request and cached by content key, so it has neither.
-func keepsArtworkState(kind model.Kind) bool { return kind != model.KindDiscArtwork }
-
 // explainConfig names the setting that decides where a kind's artwork comes from, and its value.
 func explainConfig(kind model.Kind) (name, value string) {
 	switch kind {
@@ -608,7 +604,7 @@ func formatExplain(rep explainReport) string {
 	var sb strings.Builder
 	w := newTabWriter(&sb)
 	explainable := artwork.Explainable(rep.kind)
-	stateful := keepsArtworkState(rep.kind)
+	stateful := artwork.KeepsState(rep.kind)
 
 	fmt.Fprintln(w, "Item")
 	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
@@ -693,7 +689,7 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 		log.Fatal(ctx, "Item not found", "kind", kind, "id", id, err)
 	}
 	rep := explainReport{kind: kind, id: id, name: name}
-	if keepsArtworkState(kind) {
+	if artwork.KeepsState(kind) {
 		rep.stored, err = ds.Artwork(ctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
 			log.Fatal(ctx, "Failed to read artwork state", "kind", kind, "id", id, err)
