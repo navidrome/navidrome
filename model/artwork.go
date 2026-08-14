@@ -130,6 +130,12 @@ type ArtworkQueueRepository interface {
 	EnqueueAllMissing(kind Kind, priority int) (int64, error)
 	// EnqueueIfMissing inserts only for items with no item_artwork row yet.
 	EnqueueIfMissing(items ...ArtworkQueueItem) error
+	// CountBySource reports how many items of a kind currently resolve from the given sources.
+	// An empty sources slice means every source; "" matches absent state.
+	CountBySource(kind Kind, sources []string) (int64, error)
+	// EnqueueBySource inserts queue rows for items of a kind whose current source matches.
+	// It does not clear existing artwork state: the current image stays until it is replaced.
+	EnqueueBySource(kind Kind, sources []string, priority int) (int64, error)
 	// DequeueBatch returns up to n items with retry_at <= now, priority desc, enqueued_at asc.
 	// Restricted to the given kinds when any are passed, so one kind cannot block another's drain.
 	DequeueBatch(n int, kinds ...string) ([]ArtworkQueueItem, error)

@@ -216,6 +216,55 @@ func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefo
 	return inserted, nil
 }
 
+// matchingSource mirrors the SQL filter: no sources means every source, "" the absent state.
+func (m *MockArtworkQueueRepo) matchingSource(kind model.Kind, sources []string) []model.ItemArtwork {
+	if m.ItemArtworkSource == nil {
+		return nil
+	}
+	var res []model.ItemArtwork
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind == kind.Prefix() && (len(sources) == 0 || slices.Contains(sources, ia.Source)) {
+			res = append(res, ia)
+		}
+	}
+	return res
+}
+
+func (m *MockArtworkQueueRepo) CountBySource(kind model.Kind, sources []string) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	return int64(len(m.matchingSource(kind, sources))), nil
+}
+
+func (m *MockArtworkQueueRepo) EnqueueBySource(kind model.Kind, sources []string, priority int) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	now := time.Now()
+	var inserted int64
+	for _, ia := range m.matchingSource(kind, sources) {
+		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
+		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
+			continue
+		}
+		m.Data[k] = model.ArtworkQueueItem{
+			ItemKind:   ia.ItemKind,
+			ItemID:     ia.ItemID,
+			ImageType:  ia.ImageType,
+			Priority:   priority,
+			RetryAt:    now,
+			EnqueuedAt: now,
+		}
+		inserted++
+	}
+	return inserted, nil
+}
+
 // EnqueueMissing mirrors the SQL set-difference insert: ExistingIDs[kind] minus ItemArtworkSource.
 func (m *MockArtworkQueueRepo) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
 	m.mu.Lock()

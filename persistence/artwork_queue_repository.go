@@ -87,12 +87,39 @@ func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueIte
 	return nil
 }
 
-// insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE. DO NOTHING is
-// deliberate: a recheck must not bump the priority or retry_at of an already-queued item.
+// DO NOTHING is deliberate: a recheck must not bump the priority or retry_at of an already-queued item.
+const skipIfQueued = ` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`
+
+// insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE.
 func (r *artworkQueueRepository) insertIfNotQueued(with, sql string, args ...any) (int64, error) {
 	return r.executeSQL(Expr(with+`INSERT INTO `+r.tableName+
-		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+
-		` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`, args...))
+		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+skipIfQueued, args...))
+}
+
+// artworkSourceFilter selects item_artwork rows of a kind; no sources means every source, "" the absent state.
+func artworkSourceFilter(kind model.Kind, sources []string) Sqlizer {
+	f := And{Eq{"item_kind": kind.Prefix()}}
+	if len(sources) > 0 {
+		f = append(f, Eq{"source": sources})
+	}
+	return f
+}
+
+func (r *artworkQueueRepository) CountBySource(kind model.Kind, sources []string) (int64, error) {
+	var res struct{ Count int64 }
+	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
+		Where(artworkSourceFilter(kind, sources)), &res)
+	return res.Count, err
+}
+
+// EnqueueBySource deliberately leaves item_artwork alone: clearing state in bulk would blank the
+// library's artwork until every item is resolved again.
+func (r *artworkQueueRepository) EnqueueBySource(kind model.Kind, sources []string, priority int) (int64, error) {
+	now := time.Now()
+	sel := Select("item_kind", "item_id", "image_type").
+		Column(Expr("?", priority)).Column("0").Column(Expr("?", now)).Column(Expr("?", now)).
+		From(itemArtworkTable).Where(artworkSourceFilter(kind, sources))
+	return r.executeSQL(Insert(r.tableName).Columns(enqueueColumns...).Select(sel).Suffix(skipIfQueued))
 }
 
 func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQueueItem) error {
