@@ -114,8 +114,32 @@ func WalksPriorityChain(kind model.Kind) bool {
 	return kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork
 }
 
-// fetchExternalAlbum and fetchExternalArtist are the only places resolution touches the network,
-// so a local-only resolver is stopped here rather than at each point in the chain walk.
+// MayFetchExternal reports whether resolving this kind can issue an external request under the
+// current config. Playlists inherit the album chain: the generated grid resolves album art.
+func MayFetchExternal(kind model.Kind) bool {
+	switch kind {
+	case model.KindArtistArtwork:
+		return chainFetchesExternal(conf.Server.ArtistArtPriority)
+	case model.KindAlbumArtwork:
+		return chainFetchesExternal(conf.Server.CoverArtPriority)
+	case model.KindPlaylistArtwork:
+		return conf.Server.EnableM3UExternalAlbumArt || chainFetchesExternal(conf.Server.CoverArtPriority)
+	default:
+		return false
+	}
+}
+
+func chainFetchesExternal(priority string) bool {
+	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
+		if strings.TrimSpace(pattern) == externalCandidate {
+			return true
+		}
+	}
+	return false
+}
+
+// Album and artist fetches stop here when the resolver is local-only, rather than at each point in
+// the chain walk; resolvePlaylist gates the third network path, the m3u image URL, itself.
 func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, bool) {
 	if r.ext == nil {
 		return nil, "", false

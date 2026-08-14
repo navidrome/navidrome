@@ -394,6 +394,28 @@ var _ = Describe("resolveItem", func() {
 			Entry("4 albums -> full grid", []string{"t1", "t2", "t3", "t4"}, tileSize-1),
 		)
 
+		// The grid samples album art through the full album chain, so a playlist reaches the
+		// network even with the m3u fetch off.
+		It("calls the album image agents for its grid tiles when m3u art is disabled", func() {
+			conf.Server.EnableM3UExternalAlbumArt = false
+			conf.Server.CoverArtPriority = "external"
+			folderRepo.result = nil
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plgrid", Name: "Playlist"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
+			ds.MockedPlaylist = plRepo
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("boom")})
+			var gatedNames []string
+			gate := func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+				gatedNames = append(gatedNames, name)
+				return f()
+			}
+
+			_, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plgrid"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(gatedNames).To(Equal([]string{"failAgent", "failAgent"}), "one lookup per sampled album")
+		})
+
 		It("resolves the uploaded image before the generated grid", func() {
 			tmpDir := GinkgoT().TempDir()
 			conf.Server.DataFolder = conf.NewDir(tmpDir)
@@ -640,5 +662,48 @@ var _ = Describe("WalksPriorityChain", func() {
 	It("is false for the kinds resolved directly", func() {
 		Expect(WalksPriorityChain(model.KindPlaylistArtwork)).To(BeFalse())
 		Expect(WalksPriorityChain(model.KindRadioArtwork)).To(BeFalse())
+	})
+})
+
+var _ = Describe("MayFetchExternal", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "cover.*, embedded"
+		conf.Server.ArtistArtPriority = "artist.*"
+		conf.Server.EnableM3UExternalAlbumArt = false
+	})
+
+	It("is true for the kinds whose chain includes the external candidate", func() {
+		conf.Server.CoverArtPriority = "cover.*, external"
+		conf.Server.ArtistArtPriority = "artist.*, external"
+		Expect(MayFetchExternal(model.KindAlbumArtwork)).To(BeTrue())
+		Expect(MayFetchExternal(model.KindArtistArtwork)).To(BeTrue())
+	})
+
+	It("is false for a chain with no external candidate", func() {
+		Expect(MayFetchExternal(model.KindAlbumArtwork)).To(BeFalse())
+		Expect(MayFetchExternal(model.KindArtistArtwork)).To(BeFalse())
+	})
+
+	It("is true for playlists when the m3u image fetch is enabled", func() {
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeTrue())
+	})
+
+	It("is true for playlists whose grid tiles resolve through an external album chain", func() {
+		conf.Server.CoverArtPriority = "cover.*, external"
+		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeTrue())
+	})
+
+	It("is false for playlists with both paths off", func() {
+		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeFalse())
+	})
+
+	It("is false for the kinds that only read local files", func() {
+		conf.Server.CoverArtPriority = "external"
+		conf.Server.ArtistArtPriority = "external"
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(MayFetchExternal(model.KindRadioArtwork)).To(BeFalse())
+		Expect(MayFetchExternal(model.KindMediaFileArtwork)).To(BeFalse())
 	})
 })

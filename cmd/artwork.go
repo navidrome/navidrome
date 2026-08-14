@@ -394,7 +394,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		}
 		matched[i] = n
 		total += n
-		if artwork.WalksPriorityChain(k) {
+		if artwork.MayFetchExternal(k) {
 			external += n
 		}
 	}

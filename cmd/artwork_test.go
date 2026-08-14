@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
@@ -318,6 +320,10 @@ var _ = Describe("reprocessArtwork", func() {
 	}
 
 	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "cover.*, external"
+		conf.Server.ArtistArtPriority = "artist.*, external"
+		conf.Server.EnableM3UExternalAlbumArt = false
 		ds = &tests.MockDataStore{}
 		art = ds.Artwork(ctx).(*tests.MockArtworkRepo)
 		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
@@ -408,6 +414,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("says so when the selection needs no external lookup", func() {
+		conf.Server.CoverArtPriority = "cover.*"
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, true, accept, &out)).To(Succeed())
@@ -415,16 +422,39 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(out.String()).To(ContainSubstring("External lookups: none"))
 	})
 
-	It("counts only the kinds that call an external agent as external cost", func() {
+	It("counts playlists as external cost when the m3u image fetch is enabled", func() {
+		conf.Server.CoverArtPriority = "cover.*"
+		conf.Server.EnableM3UExternalAlbumArt = true
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
+		var external int64
+		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
+
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, false, capture, &out)).To(Succeed())
+
+		Expect(external).To(Equal(int64(1)))
+		Expect(out.String()).To(ContainSubstring("External lookups: up to 1"))
+	})
+
+	It("counts playlists as external cost when their grid tiles walk an external album chain", func() {
+		put(model.KindPlaylistArtwork, "pl-1", "playlist")
+		var external int64
+		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
+
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, false, capture, &out)).To(Succeed())
+
+		Expect(external).To(Equal(int64(1)), "sampling album art for the grid reaches the agents")
+	})
+
+	It("counts only the kinds that call an external agent as external cost", func() {
+		put(model.KindRadioArtwork, "ra-1", "upload")
 		var total, external int64
 		capture := func(_ io.Writer, t, e int64) bool { total, external = t, e; return false }
 
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork, model.KindPlaylistArtwork},
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork, model.KindRadioArtwork},
 			nil, false, capture, &out)).To(Succeed())
 
 		Expect(total).To(Equal(int64(3)))
-		Expect(external).To(Equal(int64(2)), "playlist artwork never reaches an external agent")
+		Expect(external).To(Equal(int64(2)), "radio artwork never reaches an external agent")
 	})
 
 	It("rejects an unknown source and names the ones in use", func() {
