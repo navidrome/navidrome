@@ -37,6 +37,9 @@ types:
   .webp: image/webp
   .png: image/png
   .bmp: image/bmp
+  .jxl: image/jxl
+  .heic: image/heic
+  .heif: image/heif
 
 # List of audio formats that are considered lossless
 lossless:
