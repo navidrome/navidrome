@@ -40,6 +40,12 @@ var _ = Describe("installedPackage", func() {
 })
 
 var _ = Describe("hostingPlatform", func() {
+	BeforeEach(func() {
+		// Setenv registers the restore, then unset so an inherited value can't leak in
+		GinkgoT().Setenv("ND_PLATFORM", "")
+		Expect(os.Unsetenv("ND_PLATFORM")).To(Succeed())
+	})
+
 	It("returns empty when ND_PLATFORM is not set", func() {
 		Expect(hostingPlatform()).To(BeEmpty())
 	})
