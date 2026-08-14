@@ -269,10 +269,10 @@ var _ = Describe("promptConfirm", func() {
 
 	BeforeEach(func() { out.Reset() })
 
-	It("states the external cost as a floor and accepts an explicit yes", func() {
+	It("states the external cost and accepts an explicit yes", func() {
 		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 42, 7)).To(BeTrue())
 		Expect(out.String()).To(ContainSubstring("re-resolve 42 items"))
-		Expect(out.String()).To(ContainSubstring("at least 7 external lookups"))
+		Expect(out.String()).To(ContainSubstring("External lookups: ~7 estimated"))
 	})
 
 	It("defaults to no on anything else", func() {
@@ -284,7 +284,7 @@ var _ = Describe("promptConfirm", func() {
 	It("drops the external clause when no lookup will be made", func() {
 		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 3, 0)).To(BeTrue())
 		Expect(out.String()).To(ContainSubstring("re-resolve 3 items."))
-		Expect(out.String()).ToNot(ContainSubstring("external lookups"))
+		Expect(out.String()).ToNot(ContainSubstring("External lookups"))
 	})
 })
 
@@ -412,7 +412,7 @@ var _ = Describe("reprocessArtwork", func() {
 	It("shows the external estimate on a dry run, which never reaches the prompt", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
 
-		Expect(out.String()).To(ContainSubstring("External lookups: at least 2"))
+		Expect(out.String()).To(ContainSubstring("External lookups: ~2 estimated"))
 	})
 
 	It("bills every agent per item, not one lookup per item", func() {
@@ -423,14 +423,16 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(external).To(Equal(int64(2*2+2*3)), "2 artists at 2 agents plus 2 albums at 3 agents")
-		Expect(out.String()).To(ContainSubstring("External lookups: at least 10"))
+		Expect(out.String()).To(ContainSubstring("External lookups: ~10 estimated"))
 	})
 
-	It("states the estimate as a floor, since plugin agents are invisible to the CLI", func() {
+	It("names the estimate's blind spots instead of claiming a bound it cannot hold", func() {
 		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, true, accept, &out)).To(Succeed())
 
-		Expect(out.String()).To(ContainSubstring("External lookups: at least"))
-		Expect(out.String()).ToNot(ContainSubstring("up to"))
+		Expect(out.String()).To(ContainSubstring("plugin agents not counted"))
+		Expect(out.String()).To(ContainSubstring("local hits may need fewer"))
+		Expect(out.String()).ToNot(ContainSubstring("up to"), "plugin agents make any ceiling false")
+		Expect(out.String()).ToNot(ContainSubstring("at least"), "a local hit makes any floor false")
 	})
 
 	It("says so when the selection needs no external lookup", func() {
@@ -452,7 +454,7 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(external).To(Equal(int64(1)))
-		Expect(out.String()).To(ContainSubstring("External lookups: at least 1"))
+		Expect(out.String()).To(ContainSubstring("External lookups: ~1 estimated"))
 	})
 
 	It("bills a playlist for every album its grid samples, at every agent", func() {

@@ -323,13 +323,17 @@ func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
 	return promptConfirm(in)
 }
 
-// externalEstimate is a floor, not a ceiling: plugin-provided agents are unregistered in a CLI that
-// never starts the plugin manager, so the calls they would add are invisible here.
+// externalEstimate claims no bound: a local hit ends the walk before any agent is asked, and plugin
+// agents are unregistered in a CLI that never starts the plugin manager.
 func externalEstimate(n int64) string {
 	if n == 0 {
 		return "none"
 	}
-	return fmt.Sprintf("at least %d", n)
+	return fmt.Sprintf("~%d estimated (plugin agents not counted; local hits may need fewer)", n)
+}
+
+func externalLookupLine(n int64) string {
+	return fmt.Sprintf("External lookups: %s.", externalEstimate(n))
 }
 
 // imageAgentCount counts only the built-in image agents, for the same reason.
@@ -342,9 +346,9 @@ func promptConfirm(in io.Reader) confirmFunc {
 	return func(out io.Writer, total, external int64) bool {
 		var cost string
 		if external > 0 {
-			cost = fmt.Sprintf(", requiring %s external lookups", externalEstimate(external))
+			cost = fmt.Sprintf(" %s", externalLookupLine(external))
 		}
-		fmt.Fprintf(out, "\nThis will re-resolve %d items%s. Continue? [y/N] ", total, cost)
+		fmt.Fprintf(out, "\nThis will re-resolve %d items.%s Continue? [y/N] ", total, cost)
 		var answer string
 		if _, err := fmt.Fscanln(in, &answer); err != nil {
 			return false
@@ -449,7 +453,7 @@ func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, t
 	fmt.Fprintf(w, "TOTAL\t%d\n", total)
 	w.Flush()
 
-	fmt.Fprintf(out, "\nExternal lookups: %s\n", externalEstimate(external))
+	fmt.Fprintf(out, "\n%s\n", externalLookupLine(external))
 	if total == 0 {
 		fmt.Fprintln(out, "\nNothing matches this selection.")
 	}
