@@ -135,6 +135,8 @@ type ArtworkQueueRepository interface {
 	// CountBySource reports how many items of a kind currently resolve from the given sources.
 	// An empty sources slice means every source; "" matches absent state.
 	CountBySource(kind Kind, sources []string) (int64, error)
+	// SourcesInUse lists the distinct sources items of a kind currently resolve from, "" included.
+	SourcesInUse(kind Kind) ([]string, error)
 	// EnqueueBySource inserts queue rows for items of a kind whose current source matches.
 	// It does not clear existing artwork state: the current image stays until it is replaced.
 	EnqueueBySource(kind Kind, sources []string, priority int) (int64, error)

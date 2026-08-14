@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/spf13/cobra"
 )
 
@@ -26,11 +28,28 @@ var artworkKinds = []model.Kind{
 
 var explainLive bool
 
+var (
+	reprocessKinds   []string
+	reprocessSources []string
+	reprocessAll     bool
+	reprocessDryRun  bool
+	reprocessYes     bool
+)
+
 func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
 		"perform real external lookups instead of reporting what would be tried")
+	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
+		"kinds to reprocess (ar, al, pl, ra); repeatable")
+	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
+		"only items currently resolved from these sources (e.g. folder, external:deezer, absent)")
+	artworkReprocessCmd.Flags().BoolVar(&reprocessAll, "all", false, "reprocess every kind")
+	artworkReprocessCmd.Flags().BoolVar(&reprocessDryRun, "dry-run", false,
+		"report what would be queued and exit without queueing")
+	artworkReprocessCmd.Flags().BoolVarP(&reprocessYes, "yes", "y", false, "skip the confirmation prompt")
 	artworkCmd.AddCommand(artworkExplainCmd)
 	artworkCmd.AddCommand(artworkRefreshCmd)
+	artworkCmd.AddCommand(artworkReprocessCmd)
 	rootCmd.AddCommand(artworkCmd)
 }
 
@@ -63,6 +82,184 @@ var artworkRefreshCmd = &cobra.Command{
 		}
 		runRefresh(cmd.Context(), kind, args[1:])
 	},
+}
+
+var artworkReprocessCmd = &cobra.Command{
+	Use:   "reprocess",
+	Short: "Re-enqueue artwork in bulk, by kind and/or by the source it currently resolves from",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		runReprocess(cmd.Context())
+	},
+}
+
+func runReprocess(ctx context.Context) {
+	// A source filter alone is a complete selection, so it targets every kind.
+	all := reprocessAll || (len(reprocessKinds) == 0 && len(reprocessSources) > 0)
+	kinds, err := selectedKinds(reprocessKinds, all)
+	if err != nil {
+		log.Fatal(ctx, err)
+	}
+
+	defer db.Init(ctx)()
+	ds, ctx := getAdminContext(ctx)
+
+	confirm := promptConfirm(os.Stdin)
+	if reprocessYes {
+		confirm = func(io.Writer, int64) bool { return true }
+	}
+	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources),
+		reprocessDryRun, confirm, os.Stdout); err != nil {
+		log.Fatal(ctx, err)
+	}
+}
+
+func selectedKinds(kinds []string, all bool) ([]model.Kind, error) {
+	if all {
+		return artworkKinds, nil
+	}
+	if len(kinds) == 0 {
+		return nil, fmt.Errorf("no selector given: pass --kind, --source or --all")
+	}
+	out := make([]model.Kind, 0, len(kinds))
+	for _, k := range kinds {
+		kind, err := parseArtworkKind(k)
+		if err != nil {
+			return nil, err
+		}
+		// A repeated kind would be counted twice, overstating the cost the operator confirms.
+		if !slices.Contains(out, kind) {
+			out = append(out, kind)
+		}
+	}
+	return out, nil
+}
+
+// absentSource is how the stored empty source — resolved, no image — is spelled on the CLI.
+const absentSource = "absent"
+
+func repositorySources(sources []string) []string {
+	return slice.Map(sources, func(s string) string {
+		if s == absentSource {
+			return ""
+		}
+		return s
+	})
+}
+
+func displaySource(s string) string { return cmp.Or(s, absentSource) }
+
+// confirmFunc reports whether the operator accepted queueing total items.
+type confirmFunc func(out io.Writer, total int64) bool
+
+func promptConfirm(in io.Reader) confirmFunc {
+	return func(out io.Writer, total int64) bool {
+		fmt.Fprintf(out, "\nThis will re-resolve %d items, requiring up to %d external lookups. Continue? [y/N] ",
+			total, total)
+		var answer string
+		if _, err := fmt.Fscanln(in, &answer); err != nil {
+			return false
+		}
+		answer = strings.ToLower(strings.TrimSpace(answer))
+		return answer == "y" || answer == "yes"
+	}
+}
+
+// validateSources rejects a source no selected item resolves from: silently matching nothing reads
+// as "nothing to do" when it actually means the filter was wrong.
+func validateSources(q model.ArtworkQueueRepository, kinds []model.Kind, sources []string) error {
+	if len(sources) == 0 {
+		return nil
+	}
+	var inUse []string
+	for _, k := range kinds {
+		found, err := q.SourcesInUse(k)
+		if err != nil {
+			return fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
+		}
+		for _, s := range found {
+			if !slices.Contains(inUse, s) {
+				inUse = append(inUse, s)
+			}
+		}
+	}
+	var unknown []string
+	for _, s := range sources {
+		if !slices.Contains(inUse, s) {
+			unknown = append(unknown, displaySource(s))
+		}
+	}
+	if len(unknown) == 0 {
+		return nil
+	}
+	valid := slice.Map(inUse, displaySource)
+	slices.Sort(valid)
+	return fmt.Errorf("no selected artwork resolves from %s; sources in use: %s",
+		strings.Join(unknown, ", "), cmp.Or(strings.Join(valid, ", "), "(none)"))
+}
+
+// reprocessArtwork previews from CountBySource — rows matched — then reports what EnqueueBySource
+// actually inserted; the two differ because an already-queued row is left untouched.
+func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, sources []string,
+	dryRun bool, confirm confirmFunc, out io.Writer) error {
+	q := ds.ArtworkQueue(ctx)
+	if err := validateSources(q, kinds, sources); err != nil {
+		return err
+	}
+
+	matched := make([]int64, len(kinds))
+	var total int64
+	for i, k := range kinds {
+		n, err := q.CountBySource(k, sources)
+		if err != nil {
+			return fmt.Errorf("counting %s artwork: %w", k, err)
+		}
+		matched[i] = n
+		total += n
+	}
+	printReprocessPreview(out, kinds, matched, total, sources)
+
+	switch {
+	case total == 0:
+		fmt.Fprintln(out, "\nNothing matches this selection; nothing was queued.")
+		return nil
+	case dryRun:
+		fmt.Fprintln(out, "\nDry run: nothing was queued.")
+		return nil
+	case !confirm(out, total):
+		fmt.Fprintln(out, "Aborted: nothing was queued.")
+		return nil
+	}
+
+	var queued int64
+	for i, k := range kinds {
+		if matched[i] == 0 {
+			continue
+		}
+		n, err := q.EnqueueBySource(k, sources, model.ArtworkPriorityRecheck)
+		if err != nil {
+			return fmt.Errorf("queueing %s artwork: %w", k, err)
+		}
+		queued += n
+		fmt.Fprintf(out, "%s: %d queued\n", k, n)
+	}
+	fmt.Fprintf(out, "Queued %d of %d matched items.\n", queued, total)
+	if skipped := total - queued; skipped > 0 {
+		fmt.Fprintf(out, "Already queued, left unchanged: %d (priority and retry backoff untouched).\n", skipped)
+	}
+	return nil
+}
+
+func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, total int64, sources []string) {
+	w := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
+	shown := slice.Map(sources, displaySource)
+	fmt.Fprintf(w, "Sources:\t%s\n\n", cmp.Or(strings.Join(shown, ", "), "(any)"))
+	fmt.Fprintln(w, "KIND\tMATCHED")
+	for i, k := range kinds {
+		fmt.Fprintf(w, "%s\t%d\n", k, matched[i])
+	}
+	fmt.Fprintf(w, "TOTAL\t%d\n", total)
+	w.Flush()
 }
 
 func runRefresh(ctx context.Context, kind model.Kind, ids []string) {

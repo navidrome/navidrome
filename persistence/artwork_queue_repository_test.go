@@ -356,6 +356,12 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			Expect(repo.CountBySource(model.KindArtistArtwork, []string{""})).To(Equal(int64(1)))
 			Expect(repo.CountBySource(model.KindArtistArtwork, nil)).To(Equal(int64(3)))
 		})
+
+		It("lists the distinct sources in use by a kind", func() {
+			Expect(repo.SourcesInUse(model.KindArtistArtwork)).To(ConsistOf("", "external:deezer", "external:lastfm"))
+			Expect(repo.SourcesInUse(model.KindAlbumArtwork)).To(ConsistOf("external:deezer"))
+			Expect(repo.SourcesInUse(model.KindRadioArtwork)).To(BeEmpty())
+		})
 	})
 
 	It("does not disturb an already-queued entity when enqueueing missing rows", func() {

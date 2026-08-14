@@ -252,6 +252,21 @@ func (m *MockArtworkQueueRepo) CountBySource(kind model.Kind, sources []string) 
 	return int64(len(m.matchingSource(kind, sources))), nil
 }
 
+func (m *MockArtworkQueueRepo) SourcesInUse(kind model.Kind) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	var res []string
+	for _, ia := range m.matchingSource(kind, nil) {
+		if !slices.Contains(res, ia.Source) {
+			res = append(res, ia.Source)
+		}
+	}
+	return res, nil
+}
+
 func (m *MockArtworkQueueRepo) EnqueueBySource(kind model.Kind, sources []string, priority int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

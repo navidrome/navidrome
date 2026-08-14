@@ -10,6 +10,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -120,6 +121,16 @@ func (r *artworkQueueRepository) CountBySource(kind model.Kind, sources []string
 	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
 		Where(artworkSourceFilter(kind, sources)), &res)
 	return res.Count, err
+}
+
+func (r *artworkQueueRepository) SourcesInUse(kind model.Kind) ([]string, error) {
+	var res []struct{ Source string }
+	err := r.queryAll(Select("distinct source").From(itemArtworkTable).
+		Where(Eq{"item_kind": kind.Prefix()}), &res)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(res, func(s struct{ Source string }) string { return s.Source }), nil
 }
 
 // EnqueueBySource deliberately leaves item_artwork alone: clearing state in bulk would blank the
