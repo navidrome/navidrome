@@ -2,6 +2,8 @@ package artwork
 
 import (
 	"context"
+	"errors"
+	"io"
 	"slices"
 	"sync"
 )
@@ -54,4 +56,34 @@ func withTrace(ctx context.Context, t *chainTrace) context.Context {
 func traceFrom(ctx context.Context) *chainTrace {
 	t, _ := ctx.Value(traceCtxKey{}).(*chainTrace)
 	return t
+}
+
+var errOfflineSkipped = errors.New("artwork: external lookup skipped (offline)")
+
+// tracingGate records each external agent's outcome without changing what the gate returns.
+func tracingGate(t *chainTrace, inner gateFunc) gateFunc {
+	return func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+		r, path, err := inner(name, f)
+		candidate := "external:" + name
+		switch {
+		case r != nil:
+			t.add(traceStep{Candidate: candidate, Outcome: outcomeHit, Detail: path})
+		case errors.Is(err, errBreakerOpen):
+			t.add(traceStep{Candidate: candidate, Outcome: outcomeSkipped, Detail: "circuit breaker open"})
+		case isTransientExternal(err):
+			t.add(traceStep{Candidate: candidate, Outcome: outcomeError, Detail: err.Error()})
+		default:
+			t.add(traceStep{Candidate: candidate, Outcome: outcomeMiss})
+		}
+		return r, path, err
+	}
+}
+
+// offlineGate reports which agents would be asked without asking them, so a diagnostic
+// command cannot add load to a provider that is already rate-limiting us.
+func offlineGate(t *chainTrace) gateFunc {
+	return func(name string, _ func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+		t.add(traceStep{Candidate: "external:" + name, Outcome: outcomeWouldTry})
+		return nil, "", errOfflineSkipped
+	}
 }

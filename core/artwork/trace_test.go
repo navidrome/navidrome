@@ -2,9 +2,12 @@ package artwork
 
 import (
 	"context"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -99,6 +102,75 @@ var _ = Describe("chainState tracing", func() {
 	It("does not panic when no trace is attached", func() {
 		c := chainState{}
 		Expect(func() { _, _ = c.try("cover.*", resolution{}, false) }).ToNot(Panic())
+	})
+})
+
+var _ = Describe("external gate tracing", func() {
+	hit := func() (io.ReadCloser, string, error) {
+		return io.NopCloser(strings.NewReader("x")), "http://img", nil
+	}
+	miss := func() (io.ReadCloser, string, error) { return nil, "", agents.ErrNotFound }
+	boom := func() (io.ReadCloser, string, error) { return nil, "", errors.New("returned status 429") }
+
+	It("records a hit with the image path", func() {
+		t := &chainTrace{}
+		g := tracingGate(t, passthroughGate)
+
+		r, _, err := g("deezer", hit)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(r).ToNot(BeNil())
+		Expect(t.Steps()).To(Equal([]traceStep{
+			{Candidate: "external:deezer", Outcome: outcomeHit, Detail: "http://img"},
+		}))
+	})
+
+	It("records a miss for a not-found", func() {
+		t := &chainTrace{}
+		_, _, _ = tracingGate(t, passthroughGate)("deezer", miss)
+		Expect(t.Steps()[0].Outcome).To(Equal(outcomeMiss))
+	})
+
+	It("records a miss for a model not-found", func() {
+		t := &chainTrace{}
+		notFound := func() (io.ReadCloser, string, error) { return nil, "", model.ErrNotFound }
+		_, _, _ = tracingGate(t, passthroughGate)("deezer", notFound)
+		Expect(t.Steps()[0].Outcome).To(Equal(outcomeMiss),
+			"both not-found flavours are definitive answers, not faults")
+	})
+
+	It("records an error with its reason", func() {
+		t := &chainTrace{}
+		_, _, _ = tracingGate(t, passthroughGate)("apple-music", boom)
+		Expect(t.Steps()[0].Outcome).To(Equal(outcomeError))
+		Expect(t.Steps()[0].Detail).To(ContainSubstring("429"))
+	})
+
+	It("records skipped when the breaker is open", func() {
+		t := &chainTrace{}
+		open := func(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+			return nil, "", errBreakerOpen
+		}
+		_, _, _ = tracingGate(t, open)("apple-music", hit)
+		Expect(t.Steps()[0].Outcome).To(Equal(outcomeSkipped))
+		Expect(t.Steps()[0].Detail).To(ContainSubstring("circuit breaker"))
+	})
+
+	It("never calls the agent in offline mode", func() {
+		t := &chainTrace{}
+		called := false
+		counting := func() (io.ReadCloser, string, error) {
+			called = true
+			return hit()
+		}
+
+		_, _, err := offlineGate(t)("deezer", counting)
+
+		Expect(called).To(BeFalse(), "offline mode must not perform external requests")
+		Expect(err).To(MatchError(errOfflineSkipped))
+		Expect(t.Steps()).To(Equal([]traceStep{
+			{Candidate: "external:deezer", Outcome: outcomeWouldTry},
+		}))
 	})
 })
 
