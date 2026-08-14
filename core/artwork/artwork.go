@@ -402,6 +402,8 @@ type Resolver struct {
 func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, t *ChainTrace, live bool) *Resolver {
 	gate := offlineGate(t)
 	if live {
+		// A diagnostic must show the provider's real answer, and one item is at most one call
+		// per agent, so --live deliberately bypasses the rate limiter and circuit breaker.
 		gate = tracingGate(t, passthroughGate)
 	}
 	return &Resolver{inner: newResolver(ds, ag, ffm, gate), trace: t}

@@ -79,8 +79,6 @@ func tracingGate(t *chainTrace, inner gateFunc) gateFunc {
 		switch {
 		case r != nil:
 			t.add(traceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
-		case errors.Is(err, errBreakerOpen):
-			t.add(traceStep{Candidate: candidate, Outcome: OutcomeSkipped, Detail: "circuit breaker open"})
 		case isTransientExternal(err):
 			t.add(traceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
 		default:

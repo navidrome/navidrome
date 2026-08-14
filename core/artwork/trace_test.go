@@ -158,16 +158,6 @@ var _ = Describe("external gate tracing", func() {
 		Expect(t.Steps()[0].Detail).To(ContainSubstring("429"))
 	})
 
-	It("records skipped when the breaker is open", func() {
-		t := &chainTrace{}
-		open := func(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-			return nil, "", errBreakerOpen
-		}
-		_, _, _ = tracingGate(t, open)("apple-music", hit)
-		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeSkipped))
-		Expect(t.Steps()[0].Detail).To(ContainSubstring("circuit breaker"))
-	})
-
 	It("never calls the agent in offline mode", func() {
 		t := &chainTrace{}
 		called := false
