@@ -18,6 +18,9 @@ const (
 	outcomeNotReached = "not-reached"
 )
 
+// externalCandidate labels the external tier itself, for the cases that never reach an agent.
+const externalCandidate = "external"
+
 // traceStep is one candidate the priority chain considered.
 type traceStep struct {
 	Candidate string
