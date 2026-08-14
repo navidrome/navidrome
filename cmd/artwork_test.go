@@ -540,6 +540,19 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(queue.Count()).To(BeZero())
 	})
 
+	It("accepts the absent filter with nothing absent, still rejecting a typo", func() {
+		put(model.KindArtistArtwork, "ar-2", "folder")
+
+		Expect(reprocessArtwork(ctx, ds, kinds, repositorySources([]string{absentSource}),
+			imageAgents, false, accept, &out)).To(Succeed(),
+			"a reserved source must stay valid once the library has none of it")
+		Expect(out.String()).To(ContainSubstring("Nothing matches"))
+		Expect(queue.Count()).To(BeZero())
+
+		Expect(reprocessArtwork(ctx, ds, kinds, repositorySources([]string{"absnt"}),
+			imageAgents, true, accept, &out)).ToNot(Succeed(), "a typo must still be rejected")
+	})
+
 	It("accepts a source another kind uses, letting the empty selection report itself", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindArtistArtwork}, []string{"folder"},
 			imageAgents, false, decline, &out)).To(Succeed())

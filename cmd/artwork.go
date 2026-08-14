@@ -374,7 +374,7 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 	}
 	var unknown []string
 	for _, s := range sources {
-		if !slices.Contains(inUse, s) {
+		if s != "" && !slices.Contains(inUse, s) { // the reserved absent source is valid even when nothing is absent
 			unknown = append(unknown, displaySource(s))
 		}
 	}
