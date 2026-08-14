@@ -94,9 +94,7 @@ var artworkReprocessCmd = &cobra.Command{
 }
 
 func runReprocess(ctx context.Context) {
-	// A source filter alone is a complete selection, so it targets every kind.
-	all := reprocessAll || (len(reprocessKinds) == 0 && len(reprocessSources) > 0)
-	kinds, err := selectedKinds(reprocessKinds, all)
+	kinds, err := selectedKinds(reprocessKinds, reprocessSelectsAll(reprocessKinds, reprocessSources, reprocessAll))
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -106,12 +104,18 @@ func runReprocess(ctx context.Context) {
 
 	confirm := promptConfirm(os.Stdin)
 	if reprocessYes {
-		confirm = func(io.Writer, int64) bool { return true }
+		confirm = func(io.Writer, int64, int64) bool { return true }
 	}
 	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources),
 		reprocessDryRun, confirm, os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
+}
+
+// reprocessSelectsAll reports whether every kind is targeted: a source filter on its own is already
+// a complete selection, so it does not also need a kind.
+func reprocessSelectsAll(kinds, sources []string, all bool) bool {
+	return all || (len(kinds) == 0 && len(sources) > 0)
 }
 
 func selectedKinds(kinds []string, all bool) ([]model.Kind, error) {
@@ -149,13 +153,14 @@ func repositorySources(sources []string) []string {
 
 func displaySource(s string) string { return cmp.Or(s, absentSource) }
 
-// confirmFunc reports whether the operator accepted queueing total items.
-type confirmFunc func(out io.Writer, total int64) bool
+// confirmFunc reports whether the operator accepted queueing total items, of which external may
+// reach an external agent.
+type confirmFunc func(out io.Writer, total, external int64) bool
 
 func promptConfirm(in io.Reader) confirmFunc {
-	return func(out io.Writer, total int64) bool {
+	return func(out io.Writer, total, external int64) bool {
 		fmt.Fprintf(out, "\nThis will re-resolve %d items, requiring up to %d external lookups. Continue? [y/N] ",
-			total, total)
+			total, external)
 		var answer string
 		if _, err := fmt.Fscanln(in, &answer); err != nil {
 			return false
@@ -165,14 +170,14 @@ func promptConfirm(in io.Reader) confirmFunc {
 	}
 }
 
-// validateSources rejects a source no selected item resolves from: silently matching nothing reads
-// as "nothing to do" when it actually means the filter was wrong.
-func validateSources(q model.ArtworkQueueRepository, kinds []model.Kind, sources []string) error {
+// validateSources rejects a typo'd source: matching nothing silently reads as "nothing to do" when
+// it means the filter was wrong. Checked table-wide, so a filter is never a typo for one --kind only.
+func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 	if len(sources) == 0 {
 		return nil
 	}
 	var inUse []string
-	for _, k := range kinds {
+	for _, k := range artworkKinds {
 		found, err := q.SourcesInUse(k)
 		if err != nil {
 			return fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
@@ -194,7 +199,7 @@ func validateSources(q model.ArtworkQueueRepository, kinds []model.Kind, sources
 	}
 	valid := slice.Map(inUse, displaySource)
 	slices.Sort(valid)
-	return fmt.Errorf("no selected artwork resolves from %s; sources in use: %s",
+	return fmt.Errorf("no artwork resolves from %s; sources in use: %s",
 		strings.Join(unknown, ", "), cmp.Or(strings.Join(valid, ", "), "(none)"))
 }
 
@@ -203,12 +208,12 @@ func validateSources(q model.ArtworkQueueRepository, kinds []model.Kind, sources
 func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, sources []string,
 	dryRun bool, confirm confirmFunc, out io.Writer) error {
 	q := ds.ArtworkQueue(ctx)
-	if err := validateSources(q, kinds, sources); err != nil {
+	if err := validateSources(q, sources); err != nil {
 		return err
 	}
 
 	matched := make([]int64, len(kinds))
-	var total int64
+	var total, external int64
 	for i, k := range kinds {
 		n, err := q.CountBySource(k, sources)
 		if err != nil {
@@ -216,17 +221,20 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		}
 		matched[i] = n
 		total += n
+		if walksPriorityChain(k) {
+			external += n
+		}
 	}
 	printReprocessPreview(out, kinds, matched, total, sources)
 
 	switch {
-	case total == 0:
-		fmt.Fprintln(out, "\nNothing matches this selection; nothing was queued.")
-		return nil
 	case dryRun:
 		fmt.Fprintln(out, "\nDry run: nothing was queued.")
 		return nil
-	case !confirm(out, total):
+	case total == 0:
+		fmt.Fprintln(out, "\nNothing matches this selection; nothing was queued.")
+		return nil
+	case !confirm(out, total, external):
 		fmt.Fprintln(out, "Aborted: nothing was queued.")
 		return nil
 	}

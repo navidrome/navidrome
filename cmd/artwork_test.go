@@ -224,6 +224,26 @@ var _ = Describe("artwork reprocess selection", func() {
 	})
 })
 
+var _ = Describe("reprocessSelectsAll", func() {
+	It("keeps a named kind selection", func() {
+		Expect(reprocessSelectsAll([]string{"ar"}, nil, false)).To(BeFalse())
+		Expect(reprocessSelectsAll([]string{"ar"}, []string{"folder"}, false)).To(BeFalse())
+	})
+
+	It("targets every kind for a source filter given without a kind", func() {
+		Expect(reprocessSelectsAll(nil, []string{"folder"}, false)).To(BeTrue())
+	})
+
+	It("targets every kind for --all", func() {
+		Expect(reprocessSelectsAll(nil, nil, true)).To(BeTrue())
+		Expect(reprocessSelectsAll([]string{"ar"}, nil, true)).To(BeTrue())
+	})
+
+	It("is false with no selector, leaving selectedKinds to reject it", func() {
+		Expect(reprocessSelectsAll(nil, nil, false)).To(BeFalse())
+	})
+})
+
 var _ = Describe("repositorySources", func() {
 	It("maps the user-facing absent name onto the stored empty source", func() {
 		Expect(repositorySources([]string{"absent", "folder"})).To(Equal([]string{"", "folder"}))
@@ -240,15 +260,15 @@ var _ = Describe("promptConfirm", func() {
 	BeforeEach(func() { out.Reset() })
 
 	It("states the external cost and accepts an explicit yes", func() {
-		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 42)).To(BeTrue())
+		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 42, 7)).To(BeTrue())
 		Expect(out.String()).To(ContainSubstring("re-resolve 42 items"))
-		Expect(out.String()).To(ContainSubstring("42 external lookups"))
+		Expect(out.String()).To(ContainSubstring("7 external lookups"))
 	})
 
 	It("defaults to no on anything else", func() {
-		Expect(promptConfirm(strings.NewReader("\n"))(&out, 1)).To(BeFalse())
-		Expect(promptConfirm(strings.NewReader("nope\n"))(&out, 1)).To(BeFalse())
-		Expect(promptConfirm(strings.NewReader(""))(&out, 1)).To(BeFalse())
+		Expect(promptConfirm(strings.NewReader("\n"))(&out, 1, 1)).To(BeFalse())
+		Expect(promptConfirm(strings.NewReader("nope\n"))(&out, 1, 1)).To(BeFalse())
+		Expect(promptConfirm(strings.NewReader(""))(&out, 1, 1)).To(BeFalse())
 	})
 })
 
@@ -259,8 +279,8 @@ var _ = Describe("reprocessArtwork", func() {
 	var out strings.Builder
 	ctx := context.Background()
 	kinds := []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
-	accept := func(io.Writer, int64) bool { return true }
-	decline := func(io.Writer, int64) bool { return false }
+	accept := func(io.Writer, int64, int64) bool { return true }
+	decline := func(io.Writer, int64, int64) bool { return false }
 
 	put := func(kind model.Kind, id, source string) {
 		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: kind.Prefix(), ItemID: id,
@@ -335,13 +355,31 @@ var _ = Describe("reprocessArtwork", func() {
 
 	It("stops at a selection that matches nothing instead of prompting", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, false,
-			func(io.Writer, int64) bool {
+			func(io.Writer, int64, int64) bool {
 				Fail("must not prompt when there is nothing to queue")
 				return true
 			}, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Nothing"))
 		Expect(queue.Count()).To(BeZero())
+	})
+
+	It("reports an empty selection as a dry run when one was asked for", func() {
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, true, accept, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("Dry run"))
+	})
+
+	It("counts only the kinds that call an external agent as external cost", func() {
+		put(model.KindPlaylistArtwork, "pl-1", "playlist")
+		var total, external int64
+		capture := func(_ io.Writer, t, e int64) bool { total, external = t, e; return false }
+
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork, model.KindPlaylistArtwork},
+			nil, false, capture, &out)).To(Succeed())
+
+		Expect(total).To(Equal(int64(3)))
+		Expect(external).To(Equal(int64(2)), "playlist artwork never reaches an external agent")
 	})
 
 	It("rejects an unknown source and names the ones in use", func() {
@@ -352,6 +390,15 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(err.Error()).To(ContainSubstring("external:deezer"))
 		Expect(err.Error()).To(ContainSubstring("folder"))
 		Expect(err.Error()).To(ContainSubstring("absent"), "the empty source prints under its user-facing name")
+		Expect(queue.Count()).To(BeZero())
+	})
+
+	It("accepts a source another kind uses, letting the empty selection report itself", func() {
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindArtistArtwork}, []string{"folder"},
+			false, decline, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("Nothing matches"),
+			"a well-formed filter must not be reported as a typo because of the kinds selected")
 		Expect(queue.Count()).To(BeZero())
 	})
 })
