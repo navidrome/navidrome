@@ -102,14 +102,77 @@ var _ = Describe("chainState tracing", func() {
 	})
 })
 
+var _ = Describe("resolveAlbum tracing", func() {
+	var (
+		ctx        context.Context
+		ds         *tests.MockDataStore
+		albumRepo  *tests.MockAlbumRepo
+		folderRepo *fakeFolderRepo
+		ffm        *tests.MockFFmpeg
+		ag         *agents.Agents
+		t          *chainTrace
+	)
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "cover.jpg, embedded"
+		repoRoot, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		libRepo := &tests.MockLibraryRepo{}
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
+		albumRepo = tests.CreateMockAlbumRepo()
+		folderRepo = &fakeFolderRepo{}
+		ds = &tests.MockDataStore{
+			MockedAlbum:   albumRepo,
+			MockedFolder:  folderRepo,
+			MockedLibrary: libRepo,
+		}
+		ffm = tests.NewMockFFmpeg("")
+		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
+		t = &chainTrace{}
+		ctx = withTrace(context.Background(), t)
+	})
+
+	It("records a pattern skipped because the album folder holds no images", func() {
+		albumRepo.SetData(model.Albums{
+			{ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
+		})
+
+		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.reader).ToNot(BeNil())
+		defer res.reader.Close()
+		Expect(t.Steps()).To(HaveLen(2), "a configured pattern must appear even when the chain never evaluated it")
+		Expect(t.Steps()[0]).To(Equal(traceStep{
+			Candidate: "cover.jpg", Outcome: outcomeMiss, Detail: "no images in album folder",
+		}))
+		Expect(t.Steps()[1].Candidate).To(Equal("embedded"))
+		Expect(t.Steps()[1].Outcome).To(Equal(outcomeHit))
+	})
+
+	It("ignores an empty priority token", func() {
+		conf.Server.CoverArtPriority = "cover.jpg,"
+		albumRepo.SetData(model.Albums{{ID: "al2", Name: "Album", FolderIDs: []string{"f1"}}})
+
+		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(t.Steps()).To(Equal([]traceStep{
+			{Candidate: "cover.jpg", Outcome: outcomeMiss, Detail: "no images in album folder"},
+		}))
+	})
+})
+
 var _ = Describe("resolveArtist tracing", func() {
 	var (
 		ctx        context.Context
 		ds         *tests.MockDataStore
 		artistRepo *tests.MockArtistRepo
+		albumRepo  *tests.MockAlbumRepo
+		folderRepo *fakeFolderRepo
 		ffm        *tests.MockFFmpeg
 		ag         *agents.Agents
 		t          *chainTrace
+		repoRoot   string
 	)
 
 	uploadPath := func(file string) string {
@@ -122,12 +185,20 @@ var _ = Describe("resolveArtist tracing", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
-		conf.Server.ArtistArtPriority = ""
+		conf.Server.ArtistArtPriority = "album/artist.*"
+		var err error
+		repoRoot, err = os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		libRepo := &tests.MockLibraryRepo{}
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
 		artistRepo = tests.CreateMockArtistRepo()
+		albumRepo = tests.CreateMockAlbumRepo()
+		folderRepo = &fakeFolderRepo{}
 		ds = &tests.MockDataStore{
 			MockedArtist:  artistRepo,
-			MockedFolder:  &fakeFolderRepo{},
-			MockedLibrary: &tests.MockLibraryRepo{},
+			MockedAlbum:   albumRepo,
+			MockedFolder:  folderRepo,
+			MockedLibrary: libRepo,
 		}
 		ffm = tests.NewMockFFmpeg("")
 		ag = agents.GetAgents(&tests.MockDataStore{}, nil)
@@ -151,7 +222,51 @@ var _ = Describe("resolveArtist tracing", func() {
 
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar2"})
 		Expect(err).ToNot(HaveOccurred())
-		Expect(t.Steps()).To(Equal([]traceStep{{Candidate: "upload", Outcome: outcomeMiss}}))
+		Expect(t.Steps()[0]).To(Equal(traceStep{Candidate: "upload", Outcome: outcomeMiss}))
+	})
+
+	It("labels each step with the configured priority token", func() {
+		folderRepo.result = []model.Folder{{
+			LibraryPath: testFileLibPath(repoRoot),
+			Path:        "tests/fixtures/artist/an-album",
+			ImageFiles:  []string{"artist.png"},
+		}}
+		artistRepo.SetData(model.Artists{{ID: "ar4", Name: "Artist"}})
+		albumRepo.All = model.Albums{{ID: "al9", Name: "Album", LibraryID: 0, FolderIDs: []string{"f1"}}}
+
+		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.reader).ToNot(BeNil())
+		defer res.reader.Close()
+		Expect(t.Steps()).To(HaveLen(2))
+		Expect(t.Steps()[1].Candidate).To(Equal("album/artist.*"),
+			"the step must be labelled with the priority token, not the pattern it was rewritten into")
+		Expect(t.Steps()[1].Outcome).To(Equal(outcomeHit))
+		Expect(filepath.ToSlash(t.Steps()[1].Detail)).To(HaveSuffix("tests/fixtures/artist/an-album/artist.png"))
+	})
+
+	It("records a configured pattern that could not be evaluated", func() {
+		artistRepo.SetData(model.Artists{{ID: "ar5", Name: "Artist"}})
+
+		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(t.Steps()).To(Equal([]traceStep{
+			{Candidate: "upload", Outcome: outcomeMiss},
+			{Candidate: "album/artist.*", Outcome: outcomeMiss, Detail: "artist has no albums"},
+		}), "a configured pattern that was never evaluated must still appear, and say why")
+	})
+
+	It("records why an artist folder pattern was skipped", func() {
+		conf.Server.ArtistArtPriority = "artist.*"
+		artistRepo.SetData(model.Artists{{ID: "ar6", Name: "Artist"}})
+		albumRepo.All = model.Albums{{ID: "al10", Name: "Album", LibraryID: 0, FolderIDs: []string{"f1"}}}
+
+		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar6"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(t.Steps()).To(Equal([]traceStep{
+			{Candidate: "upload", Outcome: outcomeMiss},
+			{Candidate: "artist.*", Outcome: outcomeMiss, Detail: "no artist folder"},
+		}))
 	})
 
 	It("records an upload that exists but cannot be read as unreadable", func() {

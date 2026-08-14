@@ -144,6 +144,9 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 	chain := chainState{trace: traceFrom(ctx)}
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.CoverArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
 		switch {
 		case pattern == "embedded":
 			res, ok := resolveEmbedded(ctx, lib, r.ffmpeg, al.EmbedArtPath)
@@ -161,6 +164,8 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
+		default:
+			chain.record(pattern, outcomeMiss, "no images in album folder")
 		}
 	}
 	return chain.exhausted(), nil
@@ -211,6 +216,9 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
 		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
 		switch {
 		case pattern == "external":
 			if rd, name, isErr := r.fetchExternalArtist(ctx, *ar); rd != nil {
@@ -225,6 +233,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			}
 		case strings.HasPrefix(pattern, "album/"):
 			if lib.FS == nil {
+				chain.record(pattern, outcomeMiss, "artist has no albums")
 				continue
 			}
 			res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))
@@ -232,7 +241,12 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 				return res, nil
 			}
 		default:
-			if lib.FS == nil || artistFolder == "" {
+			if lib.FS == nil {
+				chain.record(pattern, outcomeMiss, "artist has no albums")
+				continue
+			}
+			if artistFolder == "" {
+				chain.record(pattern, outcomeMiss, "no artist folder")
 				continue
 			}
 			res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)
