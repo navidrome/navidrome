@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -178,5 +181,60 @@ var _ = Describe("formatExplain", func() {
 			"nothing was resolved because nothing was attempted")
 		Expect(out).ToNot(ContainSubstring("CoverArtPriority"),
 			"the priority chain config does not govern this kind")
+	})
+})
+
+var _ = Describe("artwork refresh command", func() {
+	It("requires at least a kind and one id", func() {
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar"})).To(HaveOccurred())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1"})).ToNot(HaveOccurred())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1", "id2"})).ToNot(HaveOccurred())
+	})
+})
+
+var _ = Describe("refreshItems", func() {
+	var ds *tests.MockDataStore
+	var queue *tests.MockArtworkQueueRepo
+	var art *tests.MockArtworkRepo
+	var out strings.Builder
+	ctx := context.Background()
+
+	BeforeEach(func() {
+		albums := tests.CreateMockAlbumRepo()
+		albums.SetData(model.Albums{{ID: "al-1"}, {ID: "al-3"}})
+		ds = &tests.MockDataStore{MockedAlbum: albums}
+		art = ds.Artwork(ctx).(*tests.MockArtworkRepo)
+		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
+		out.Reset()
+	})
+
+	It("clears the stored state and queues each id at Bump priority", func() {
+		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: model.KindAlbumArtwork.Prefix(),
+			ItemID: "al-1", ImageType: model.ImageTypePrimary, Hash: "abc123"})).To(Succeed())
+
+		Expect(refreshItems(ctx, ds, model.KindAlbumArtwork, []string{"al-1", "al-3"}, &out)).To(BeZero())
+
+		_, err := art.GetItemArtwork(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+		queued, err := queue.Get(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queued.Priority).To(Equal(model.ArtworkPriorityBump))
+		Expect(out.String()).To(Equal("al/al-1: queued\nal/al-3: queued\n"))
+	})
+
+	It("skips an id that does not exist instead of queuing it", func() {
+		Expect(refreshItems(ctx, ds, model.KindAlbumArtwork, []string{"al-2"}, &out)).To(Equal(1))
+
+		_, err := queue.Get(model.KindAlbumArtwork, "al-2", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound), "a typo must not leave an orphan queue row")
+		Expect(out.String()).To(BeEmpty())
+	})
+
+	It("continues past a failing id and counts the failures", func() {
+		Expect(refreshItems(ctx, ds, model.KindAlbumArtwork,
+			[]string{"al-1", "al-2", "al-3"}, &out)).To(Equal(1))
+
+		Expect(out.String()).To(Equal("al/al-1: queued\nal/al-3: queued\n"),
+			"the ids after a failure are still refreshed")
 	})
 })

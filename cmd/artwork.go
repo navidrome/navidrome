@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -28,6 +30,7 @@ func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
 		"perform real external lookups instead of reporting what would be tried")
 	artworkCmd.AddCommand(artworkExplainCmd)
+	artworkCmd.AddCommand(artworkRefreshCmd)
 	rootCmd.AddCommand(artworkCmd)
 }
 
@@ -47,6 +50,48 @@ var artworkExplainCmd = &cobra.Command{
 		}
 		runExplain(cmd.Context(), kind, args[1])
 	},
+}
+
+var artworkRefreshCmd = &cobra.Command{
+	Use:   "refresh <kind> <id>...",
+	Short: "Clear an item's artwork state and re-resolve it",
+	Args:  cobra.MinimumNArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		kind, err := parseArtworkKind(args[0])
+		if err != nil {
+			log.Fatal(cmd.Context(), err)
+		}
+		runRefresh(cmd.Context(), kind, args[1:])
+	},
+}
+
+func runRefresh(ctx context.Context, kind model.Kind, ids []string) {
+	defer db.Init(ctx)()
+	ds, ctx := getAdminContext(ctx)
+
+	if failed := refreshItems(ctx, ds, kind, ids, os.Stdout); failed > 0 {
+		log.Fatal(ctx, "Failed to refresh artwork", "kind", kind, "failed", failed, "total", len(ids))
+	}
+}
+
+// refreshItems keeps going after a failure — the ids are independent — and returns how many failed.
+func refreshItems(ctx context.Context, ds model.DataStore, kind model.Kind, ids []string, out io.Writer) int {
+	var failed int
+	for _, id := range ids {
+		// artwork.Refresh would happily queue an id that does not exist, orphaning a queue row.
+		if _, err := artworkItemName(ctx, ds, kind, id); err != nil {
+			log.Error(ctx, "Item not found", "kind", kind, "id", id, err)
+			failed++
+			continue
+		}
+		if err := artwork.Refresh(ctx, ds, kind, id); err != nil {
+			log.Error(ctx, "Error refreshing artwork", "kind", kind, "id", id, err)
+			failed++
+			continue
+		}
+		fmt.Fprintf(out, "%s/%s: queued\n", kind.Prefix(), id)
+	}
+	return failed
 }
 
 func parseArtworkKind(s string) (model.Kind, error) {
