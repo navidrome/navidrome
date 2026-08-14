@@ -8,23 +8,31 @@ import (
 	"sync"
 )
 
+// Outcome is what the priority chain observed for one candidate. The CLI branches on these,
+// so they are part of the package's API, not private labels.
+type Outcome string
+
 const (
-	outcomeHit        = "hit"
-	outcomeMiss       = "miss"
-	outcomeUnreadable = "unreadable"
-	outcomeSkipped    = "skipped"
-	outcomeWouldTry   = "would-try"
-	outcomeError      = "error"
-	outcomeNotReached = "not-reached"
+	OutcomeHit        Outcome = "hit"
+	OutcomeMiss       Outcome = "miss"
+	OutcomeUnreadable Outcome = "unreadable"
+	OutcomeSkipped    Outcome = "skipped"
+	OutcomeWouldTry   Outcome = "would-try"
+	OutcomeError      Outcome = "error"
+	outcomeNotReached Outcome = "not-reached"
 )
 
-// externalCandidate labels the external tier itself, for the cases that never reach an agent.
-const externalCandidate = "external"
+const (
+	// ExternalCandidate labels the external tier itself, for the cases that never reach an agent.
+	ExternalCandidate = "external"
+	// ExternalPrefix qualifies a candidate or a stored source with the agent that produced it.
+	ExternalPrefix = ExternalCandidate + ":"
+)
 
 // traceStep is one candidate the priority chain considered.
 type traceStep struct {
 	Candidate string
-	Outcome   string
+	Outcome   Outcome
 	Detail    string
 }
 
@@ -67,16 +75,16 @@ var errOfflineSkipped = errors.New("artwork: external lookup skipped (offline)")
 func tracingGate(t *chainTrace, inner gateFunc) gateFunc {
 	return func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
 		r, path, err := inner(name, f)
-		candidate := "external:" + name
+		candidate := ExternalPrefix + name
 		switch {
 		case r != nil:
-			t.add(traceStep{Candidate: candidate, Outcome: outcomeHit, Detail: path})
+			t.add(traceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
 		case errors.Is(err, errBreakerOpen):
-			t.add(traceStep{Candidate: candidate, Outcome: outcomeSkipped, Detail: "circuit breaker open"})
+			t.add(traceStep{Candidate: candidate, Outcome: OutcomeSkipped, Detail: "circuit breaker open"})
 		case isTransientExternal(err):
-			t.add(traceStep{Candidate: candidate, Outcome: outcomeError, Detail: err.Error()})
+			t.add(traceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
 		default:
-			t.add(traceStep{Candidate: candidate, Outcome: outcomeMiss})
+			t.add(traceStep{Candidate: candidate, Outcome: OutcomeMiss})
 		}
 		return r, path, err
 	}
@@ -86,7 +94,7 @@ func tracingGate(t *chainTrace, inner gateFunc) gateFunc {
 // command cannot add load to a provider that is already rate-limiting us.
 func offlineGate(t *chainTrace) gateFunc {
 	return func(name string, _ func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-		t.add(traceStep{Candidate: "external:" + name, Outcome: outcomeWouldTry})
+		t.add(traceStep{Candidate: ExternalPrefix + name, Outcome: OutcomeWouldTry})
 		return nil, "", errOfflineSkipped
 	}
 }

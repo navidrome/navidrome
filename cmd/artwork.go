@@ -517,10 +517,10 @@ func walksPriorityChain(kind model.Kind) bool {
 func explainResult(source string, steps []artwork.TraceStep) string {
 	if source != "" {
 		for _, s := range steps {
-			if s.Outcome == "hit" {
+			if s.Outcome == artwork.OutcomeHit {
 				break
 			}
-			if s.Outcome == "would-try" {
+			if s.Outcome == artwork.OutcomeWouldTry {
 				return "resolved from " + source +
 					" (offline: a higher-priority external candidate was not tried; re-run with --live)"
 			}
@@ -529,9 +529,9 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 	}
 	for _, s := range steps {
 		switch {
-		case s.Outcome == "would-try":
+		case s.Outcome == artwork.OutcomeWouldTry:
 			return "indeterminate (external agents not called; re-run with --live)"
-		case s.Outcome == "error" && strings.HasPrefix(s.Candidate, "external:"):
+		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
 			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
 		}
 	}

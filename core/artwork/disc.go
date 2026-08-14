@@ -123,7 +123,7 @@ func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmp
 				fromTag(ctx, d.lib.FS, d.firstTrackRel),
 				fromFFmpegTag(ctx, ffmpeg, d.lib.Abs(d.firstTrackRel)),
 			)
-		case pattern == "external":
+		case pattern == ExternalCandidate:
 			// Not supported for disc art, silently ignore
 		case pattern == "discsubtitle":
 			if subtitle := strings.TrimSpace(d.album.Discs[d.discNumber]); subtitle != "" {

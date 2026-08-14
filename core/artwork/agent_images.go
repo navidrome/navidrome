@@ -47,13 +47,13 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 	// Synthetic artists would otherwise get an unrelated agent result assigned to them.
 	switch ar.ID {
 	case consts.UnknownArtistID, consts.VariousArtistsID:
-		traceFrom(ctx).add(traceStep{Candidate: externalCandidate, Outcome: outcomeSkipped, Detail: "synthetic artist"})
+		traceFrom(ctx).add(traceStep{Candidate: ExternalCandidate, Outcome: OutcomeSkipped, Detail: "synthetic artist"})
 		return nil, "", false
 	}
 	name := externalName(ar.Name)
 	imageAgents := ag.ArtistImageAgents()
 	if len(imageAgents) == 0 {
-		traceFrom(ctx).add(traceStep{Candidate: externalCandidate, Outcome: outcomeSkipped,
+		traceFrom(ctx).add(traceStep{Candidate: ExternalCandidate, Outcome: OutcomeSkipped,
 			Detail: "no enabled agent provides artist images"})
 		return nil, "", false
 	}
@@ -85,7 +85,7 @@ func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al m
 	name, artist := externalName(al.Name), externalName(al.AlbumArtist)
 	imageAgents := ag.AlbumImageAgents()
 	if len(imageAgents) == 0 {
-		traceFrom(ctx).add(traceStep{Candidate: externalCandidate, Outcome: outcomeSkipped,
+		traceFrom(ctx).add(traceStep{Candidate: ExternalCandidate, Outcome: OutcomeSkipped,
 			Detail: "no enabled agent provides album images"})
 		return nil, "", false
 	}

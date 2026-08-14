@@ -43,21 +43,21 @@ type chainState struct {
 func (c *chainState) try(candidate string, res resolution, ok bool) (resolution, bool) {
 	if ok {
 		res.extError = c.extErr
-		c.record(candidate, outcomeHit, res.sourcePath)
+		c.record(candidate, OutcomeHit, res.sourcePath)
 		return res, true
 	}
 	c.localErr = c.localErr || res.localError
 	if res.localError {
-		c.record(candidate, outcomeUnreadable, "")
+		c.record(candidate, OutcomeUnreadable, "")
 	} else {
-		c.record(candidate, outcomeMiss, "")
+		c.record(candidate, OutcomeMiss, "")
 	}
 	return resolution{}, false
 }
 
-func (c *chainState) record(candidate, outcome, detail string) {
+func (c *chainState) record(candidate string, out Outcome, detail string) {
 	if c.trace != nil {
-		c.trace.add(traceStep{Candidate: candidate, Outcome: outcome, Detail: detail})
+		c.trace.add(traceStep{Candidate: candidate, Outcome: out, Detail: detail})
 	}
 }
 
@@ -153,9 +153,9 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 			if res, ok = chain.try(pattern, res, ok); ok {
 				return res, nil
 			}
-		case pattern == "external":
+		case pattern == ExternalCandidate:
 			if rd, name, isErr := r.fetchExternalAlbum(ctx, *al); rd != nil {
-				return resolution{reader: rd, source: "external:" + name}, nil
+				return resolution{reader: rd, source: ExternalPrefix + name}, nil
 			} else if isErr {
 				chain.extErr = true
 			}
@@ -165,7 +165,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 				return res, nil
 			}
 		default:
-			chain.record(pattern, outcomeSkipped, "no images in album folder")
+			chain.record(pattern, OutcomeSkipped, "no images in album folder")
 		}
 	}
 	return chain.exhausted(), nil
@@ -220,9 +220,9 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			continue
 		}
 		switch {
-		case pattern == "external":
+		case pattern == ExternalCandidate:
 			if rd, name, isErr := r.fetchExternalArtist(ctx, *ar); rd != nil {
-				return resolution{reader: rd, source: "external:" + name}, nil
+				return resolution{reader: rd, source: ExternalPrefix + name}, nil
 			} else if isErr {
 				chain.extErr = true
 			}
@@ -233,7 +233,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			}
 		case strings.HasPrefix(pattern, "album/"):
 			if lib.FS == nil {
-				chain.record(pattern, outcomeSkipped, "artist has no albums")
+				chain.record(pattern, OutcomeSkipped, "artist has no albums")
 				continue
 			}
 			res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))
@@ -242,11 +242,11 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			}
 		default:
 			if lib.FS == nil {
-				chain.record(pattern, outcomeSkipped, "artist has no albums")
+				chain.record(pattern, OutcomeSkipped, "artist has no albums")
 				continue
 			}
 			if artistFolder == "" {
-				chain.record(pattern, outcomeSkipped, "no artist folder")
+				chain.record(pattern, OutcomeSkipped, "no artist folder")
 				continue
 			}
 			res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)
@@ -387,7 +387,7 @@ func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution,
 func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolution, ok bool, extErr bool) {
 	r, path, err := gate(name, sf)
 	if r != nil {
-		return resolution{reader: r, source: "external", sourcePath: path}, true, false
+		return resolution{reader: r, source: ExternalCandidate, sourcePath: path}, true, false
 	}
 	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
 }
