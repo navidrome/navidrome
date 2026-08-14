@@ -11,6 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -384,6 +385,47 @@ func (s *service) parseArtworkID(ctx context.Context, id string) (model.ArtworkI
 		return e.CoverArtID(), nil
 	}
 	return model.ArtworkID{}, model.ErrNotFound
+}
+
+type ChainTrace = chainTrace
+type TraceStep = traceStep
+
+// Resolver is the CLI's read-only view of resolution: it walks the priority chain, records
+// the walk and reports the winning source, without ever writing artwork state.
+type Resolver struct {
+	inner *resolver
+	trace *ChainTrace
+}
+
+// NewTracingResolver builds a Resolver that records its priority-chain walk. With live
+// false the external tier is reported but never called.
+func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, t *ChainTrace, live bool) *Resolver {
+	gate := offlineGate(t)
+	if live {
+		gate = tracingGate(t, passthroughGate)
+	}
+	return &Resolver{inner: newResolver(ds, ag, ffm, gate), trace: t}
+}
+
+func (r *Resolver) ResolveArtist(ctx context.Context, id string) (string, error) {
+	return r.explain(ctx, r.inner.resolveArtist, id)
+}
+
+func (r *Resolver) ResolveAlbum(ctx context.Context, id string) (string, error) {
+	return r.explain(ctx, r.inner.resolveAlbum, id)
+}
+
+// explain discards the bytes: nothing downstream persists this resolution, so nothing else
+// would close the reader either.
+func (r *Resolver) explain(ctx context.Context, resolve func(context.Context, string) (resolution, error), id string) (string, error) {
+	res, err := resolve(withTrace(ctx, r.trace), id)
+	if err != nil {
+		return "", err
+	}
+	if res.reader != nil {
+		_ = res.reader.Close()
+	}
+	return res.source, nil
 }
 
 func unixMtime(mtime int64) time.Time {

@@ -374,3 +374,127 @@ var _ = Describe("resolveArtist tracing", func() {
 			"an upload that exists and will not open must not look like an absent upload")
 	})
 })
+
+var _ = Describe("NewTracingResolver", func() {
+	var (
+		ds          *tests.MockDataStore
+		albumRepo   *tests.MockAlbumRepo
+		artistRepo  *tests.MockArtistRepo
+		artworkRepo *tests.MockArtworkRepo
+		queueRepo   *tests.MockArtworkQueueRepo
+		ffm         *tests.MockFFmpeg
+		t           *ChainTrace
+	)
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+		conf.Server.CoverArtPriority = "external, embedded"
+		conf.Server.ArtistArtPriority = "external"
+		repoRoot, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		libRepo := &tests.MockLibraryRepo{}
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(repoRoot)}})
+		albumRepo = tests.CreateMockAlbumRepo()
+		artistRepo = tests.CreateMockArtistRepo()
+		artworkRepo = tests.CreateMockArtworkRepo()
+		queueRepo = tests.CreateMockArtworkQueueRepo()
+		ds = &tests.MockDataStore{
+			MockedAlbum:        albumRepo,
+			MockedArtist:       artistRepo,
+			MockedFolder:       &fakeFolderRepo{},
+			MockedLibrary:      libRepo,
+			MockedArtwork:      artworkRepo,
+			MockedArtworkQueue: queueRepo,
+		}
+		ffm = tests.NewMockFFmpeg("")
+		t = &ChainTrace{}
+	})
+
+	It("uses the offline gate when live is false", func() {
+		r := NewTracingResolver(nil, nil, nil, t, false)
+		Expect(r).ToNot(BeNil())
+	})
+
+	Context("offline", func() {
+		var fake *fakeImageAgent
+
+		BeforeEach(func() {
+			fake = &fakeImageAgent{name: "offline-probe"}
+			albumRepo.SetData(model.Albums{{
+				ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
+			}})
+			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
+		})
+
+		It("reports the external tier without asking any agent", func() {
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al1")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(source).To(Equal("embedded"))
+			Expect(fake.albumCalls).To(BeZero(), "offline mode must not add load to an external provider")
+			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:offline-probe", Outcome: outcomeWouldTry}))
+		})
+
+		It("records the local chain steps too", func() {
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al1")
+
+			Expect(err).ToNot(HaveOccurred())
+			last := t.Steps()[len(t.Steps())-1]
+			Expect(last.Candidate).To(Equal("embedded"), "the local chain must be traced, not just the external gate")
+			Expect(last.Outcome).To(Equal(outcomeHit))
+		})
+
+		It("never persists artwork state", func() {
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al1")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(artworkRepo.ItemData).To(BeEmpty(),
+				"an offline resolution carries extError, which must never be recorded as a real provider failure")
+			Expect(queueRepo.Data).To(BeEmpty())
+		})
+
+		It("resolves an artist without persisting anything", func() {
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveArtist(context.Background(), "ar1")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(source).To(BeEmpty())
+			Expect(fake.artistCalls).To(BeZero())
+			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:offline-probe", Outcome: outcomeWouldTry}))
+			Expect(artworkRepo.ItemData).To(BeEmpty())
+			Expect(queueRepo.Data).To(BeEmpty())
+		})
+
+		It("closes the reader it does not hand back", func() {
+			conf.Server.CoverArtPriority = "embedded"
+			ffm = tests.NewMockFFmpeg("fake image bytes")
+			albumRepo.SetData(model.Albums{{
+				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
+			}})
+
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "al2")
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(source).To(Equal("embedded"))
+			Expect(ffm.IsClosed()).To(BeTrue(), "nothing downstream closes it, so a leak is one file handle per invocation")
+		})
+
+		It("propagates a lookup error", func() {
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).ResolveAlbum(context.Background(), "nope")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
+
+	It("asks the agents when live is true", func() {
+		fake := &fakeImageAgent{name: "live-probe", err: agents.ErrNotFound}
+		albumRepo.SetData(model.Albums{{
+			ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
+		}})
+
+		_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).ResolveAlbum(context.Background(), "al1")
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fake.albumCalls).To(Equal(1))
+		Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:live-probe", Outcome: outcomeMiss}))
+	})
+})
