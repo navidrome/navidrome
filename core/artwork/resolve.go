@@ -165,7 +165,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 				return res, nil
 			}
 		default:
-			chain.record(pattern, outcomeMiss, "no images in album folder")
+			chain.record(pattern, outcomeSkipped, "no images in album folder")
 		}
 	}
 	return chain.exhausted(), nil
@@ -233,7 +233,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			}
 		case strings.HasPrefix(pattern, "album/"):
 			if lib.FS == nil {
-				chain.record(pattern, outcomeMiss, "artist has no albums")
+				chain.record(pattern, outcomeSkipped, "artist has no albums")
 				continue
 			}
 			res, ok := resolveFolderFile(ctx, lib, imgFiles, strings.TrimPrefix(pattern, "album/"))
@@ -242,11 +242,11 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 			}
 		default:
 			if lib.FS == nil {
-				chain.record(pattern, outcomeMiss, "artist has no albums")
+				chain.record(pattern, outcomeSkipped, "artist has no albums")
 				continue
 			}
 			if artistFolder == "" {
-				chain.record(pattern, outcomeMiss, "no artist folder")
+				chain.record(pattern, outcomeSkipped, "no artist folder")
 				continue
 			}
 			res, ok := resolveArtistFolderPattern(ctx, lib, artistFolder, pattern)

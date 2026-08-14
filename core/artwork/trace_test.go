@@ -144,10 +144,27 @@ var _ = Describe("resolveAlbum tracing", func() {
 		defer res.reader.Close()
 		Expect(t.Steps()).To(HaveLen(2), "a configured pattern must appear even when the chain never evaluated it")
 		Expect(t.Steps()[0]).To(Equal(traceStep{
-			Candidate: "cover.jpg", Outcome: outcomeMiss, Detail: "no images in album folder",
+			Candidate: "cover.jpg", Outcome: outcomeSkipped, Detail: "no images in album folder",
 		}))
 		Expect(t.Steps()[1].Candidate).To(Equal("embedded"))
 		Expect(t.Steps()[1].Outcome).To(Equal(outcomeHit))
+	})
+
+	It("records an evaluated pattern that matched nothing as a miss, not a skip", func() {
+		folderRepo.result = []model.Folder{{
+			Path:       "tests/fixtures/artist/an-album",
+			ImageFiles: []string{"artist.png"},
+		}}
+		albumRepo.SetData(model.Albums{
+			{ID: "al3", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"}},
+		})
+
+		res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(res.reader).ToNot(BeNil())
+		defer res.reader.Close()
+		Expect(t.Steps()[0]).To(Equal(traceStep{Candidate: "cover.jpg", Outcome: outcomeMiss}),
+			"the folder was searched and held no cover.jpg, which is not the same as never looking")
 	})
 
 	It("ignores an empty priority token", func() {
@@ -157,7 +174,7 @@ var _ = Describe("resolveAlbum tracing", func() {
 		_, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(t.Steps()).To(Equal([]traceStep{
-			{Candidate: "cover.jpg", Outcome: outcomeMiss, Detail: "no images in album folder"},
+			{Candidate: "cover.jpg", Outcome: outcomeSkipped, Detail: "no images in album folder"},
 		}))
 	})
 })
@@ -252,7 +269,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(t.Steps()).To(Equal([]traceStep{
 			{Candidate: "upload", Outcome: outcomeMiss},
-			{Candidate: "album/artist.*", Outcome: outcomeMiss, Detail: "artist has no albums"},
+			{Candidate: "album/artist.*", Outcome: outcomeSkipped, Detail: "artist has no albums"},
 		}), "a configured pattern that was never evaluated must still appear, and say why")
 	})
 
@@ -265,7 +282,7 @@ var _ = Describe("resolveArtist tracing", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(t.Steps()).To(Equal([]traceStep{
 			{Candidate: "upload", Outcome: outcomeMiss},
-			{Candidate: "artist.*", Outcome: outcomeMiss, Detail: "no artist folder"},
+			{Candidate: "artist.*", Outcome: outcomeSkipped, Detail: "no artist folder"},
 		}))
 	})
 
