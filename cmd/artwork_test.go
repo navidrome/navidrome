@@ -99,6 +99,15 @@ var _ = Describe("explainResult", func() {
 			"the resolver serves this hit but retries later, so the winner is provisional")
 	})
 
+	It("does not qualify an external win that followed a failed external lookup", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
+			{Candidate: "external:lastfm", Outcome: "hit", Detail: "http://img"},
+		}
+		Expect(explainResult("external:lastfm", steps)).To(Equal("resolved from external:lastfm"),
+			"a later agent supplying the image discards the earlier error, so there is no retry to warn about")
+	})
+
 	It("does not qualify a win that outranked the failed external lookup", func() {
 		steps := []artwork.TraceStep{
 			{Candidate: "artist.*", Outcome: "hit"},

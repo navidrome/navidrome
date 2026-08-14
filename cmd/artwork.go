@@ -540,7 +540,9 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 				return "resolved from " + source +
 					" (offline: a higher-priority external candidate was not tried; re-run with --live)"
 			}
-			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) {
+			// An external winner discards the earlier error, so the resolver settles it with no retry.
+			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) &&
+				!strings.HasPrefix(source, artwork.ExternalPrefix) {
 				return "resolved from " + source +
 					" (indeterminate: a higher-priority external lookup failed; this may resolve differently on a retry)"
 			}
