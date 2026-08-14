@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -463,34 +462,7 @@ func (r *resolver) resolveDisc(ctx context.Context, id string) (resolution, erro
 		return resolution{}, err
 	}
 	chain := chainState{trace: traceFrom(ctx)}
-	for _, c := range dr.discCandidates(ctx, r.ffmpeg, conf.Server.DiscArtPriority) {
-		if c.skip != "" {
-			chain.record(c.pattern, OutcomeSkipped, c.skip)
-			continue
-		}
-		res, ok := openDiscCandidate(c, dr.lib)
-		if res, ok = chain.try(c.pattern, res, ok); ok {
-			return res, nil
-		}
-	}
-	return chain.exhausted(), nil
-}
-
-func openDiscCandidate(c discCandidate, lib libraryView) (resolution, bool) {
-	source := "folder"
-	if c.pattern == "embedded" {
-		source = "embedded"
-	}
-	for _, sf := range c.sources {
-		if rd, path, _ := sf(); rd != nil {
-			// The disc sources disagree on this: only ffmpeg hands back an absolute path.
-			if !filepath.IsAbs(path) {
-				path = lib.Abs(path)
-			}
-			return resolution{reader: rd, source: source, sourcePath: path}, true
-		}
-	}
-	return resolution{}, false
+	return dr.selectImage(ctx, r.ffmpeg, conf.Server.DiscArtPriority, &chain)
 }
 
 // resolveExternalStep runs a single external sourceFunc through the named gate. extErr excludes

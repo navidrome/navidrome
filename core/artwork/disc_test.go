@@ -179,16 +179,16 @@ var _ = Describe("Disc Artwork Reader", func() {
 				lib:            libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
 			}
 
-			ff := reader.fromDiscArtPriority(ctx, nil, "disc*.*, cover.*")
-			Expect(ff).To(HaveLen(2))
-			r, path, err := ff[0]()
+			cc := reader.discCandidates(ctx, nil, "disc*.*, cover.*")
+			Expect(cc).To(HaveLen(2))
+			r, path, err := cc[0].sources[0]()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(path).To(Equal(f2))
 			r.Close()
 
-			ff = reader.fromDiscArtPriority(ctx, nil, "cover.*, disc*.*")
-			Expect(ff).To(HaveLen(2))
-			r, path, err = ff[0]()
+			cc = reader.discCandidates(ctx, nil, "cover.*, disc*.*")
+			Expect(cc).To(HaveLen(2))
+			r, path, err = cc[0].sources[0]()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(path).To(Equal(f1))
 			r.Close()
@@ -428,64 +428,89 @@ var _ = Describe("Disc Artwork Reader", func() {
 	})
 
 	Describe("discArtworkReader", func() {
-		Describe("fromDiscArtPriority", func() {
-			var (
-				reader *discArtworkReader
-				tmpDir string
-			)
+		var (
+			reader *discArtworkReader
+			tmpDir string
+		)
 
-			BeforeEach(func() {
-				tmpDir = GinkgoT().TempDir()
-				reader = &discArtworkReader{
-					discNumber:     2,
-					isMultiFolder:  true,
-					discFoldersRel: map[string]bool{"music/album/cd2": true},
-					imgFiles: []string{
-						"music/album/cd1/disc.jpg",
-						"music/album/cd2/disc.jpg",
-						"music/album/cd2/disc2.jpg",
-					},
-					firstTrackRel: "music/album/cd2/track1.flac",
-					lib:           libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
-				}
+		BeforeEach(func() {
+			tmpDir = GinkgoT().TempDir()
+			reader = &discArtworkReader{
+				discNumber:     2,
+				isMultiFolder:  true,
+				discFoldersRel: map[string]bool{"music/album/cd2": true},
+				imgFiles: []string{
+					"music/album/cd1/disc.jpg",
+					"music/album/cd2/disc.jpg",
+					"music/album/cd2/disc2.jpg",
+				},
+				firstTrackRel: "music/album/cd2/track1.flac",
+				lib:           libraryView{FS: osDirFS{os.DirFS(tmpDir)}, absRoot: tmpDir},
+			}
+		})
+
+		Describe("selectImage", func() {
+			It("abandons the walk when the context is cancelled", func() {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+
+				res, err := reader.selectImage(ctx, nil, "disc*.*, cover.*", &chainState{})
+
+				Expect(err).To(MatchError(context.Canceled))
+				Expect(res.reader).To(BeNil())
 			})
+		})
 
+		Describe("discCandidates", func() {
 			It("returns source funcs for glob patterns", func() {
-				ff := reader.fromDiscArtPriority(context.Background(), nil, "disc*.*")
-				Expect(ff).To(HaveLen(1))
+				cc := reader.discCandidates(context.Background(), nil, "disc*.*")
+				Expect(cc).To(HaveLen(1))
+				Expect(cc[0].sources).To(HaveLen(1))
 			})
 
 			It("returns source funcs for embedded pattern", func() {
-				ff := reader.fromDiscArtPriority(context.Background(), nil, "embedded")
-				Expect(ff).To(HaveLen(2)) // fromTag + fromFFmpegTag
+				cc := reader.discCandidates(context.Background(), nil, "embedded")
+				Expect(cc).To(HaveLen(1))
+				Expect(cc[0].sources).To(HaveLen(2)) // fromTag + fromFFmpegTag
 			})
 
 			It("handles multiple comma-separated patterns", func() {
-				ff := reader.fromDiscArtPriority(context.Background(), nil, "disc*.*, cd*.*, embedded")
-				Expect(ff).To(HaveLen(4)) // disc*.* + cd*.* + fromTag + fromFFmpegTag
+				cc := reader.discCandidates(context.Background(), nil, "disc*.*, cd*.*, embedded")
+				Expect(cc).To(HaveLen(3))
+				Expect(cc[0].sources).To(HaveLen(1))
+				Expect(cc[1].sources).To(HaveLen(1))
+				Expect(cc[2].sources).To(HaveLen(2))
 			})
 
-			It("ignores 'external' pattern silently", func() {
-				ff := reader.fromDiscArtPriority(context.Background(), nil, "external")
-				Expect(ff).To(HaveLen(0))
+			It("skips an empty entry rather than building a glob that matches nothing", func() {
+				cc := reader.discCandidates(context.Background(), nil, "disc*.*,")
+				Expect(cc).To(HaveLen(1))
 			})
 
-			It("returns no source funcs when imgFiles is empty and pattern is not embedded", func() {
-				reader.imgFiles = nil
-				ff := reader.fromDiscArtPriority(context.Background(), nil, "disc*.*")
-				Expect(ff).To(HaveLen(0))
-			})
+			// The skip reasons below are what `artwork explain` prints, so an entry that maps to no
+			// source must say why instead of vanishing from the walk.
+			DescribeTable("keeps an entry that maps to no source, with its reason",
+				func(setup func(), priority, reason string) {
+					setup()
+					cc := reader.discCandidates(context.Background(), nil, priority)
+					Expect(cc).To(HaveLen(1))
+					Expect(cc[0].sources).To(BeEmpty())
+					Expect(cc[0].skip).To(Equal(reason))
+				},
+				Entry("external is unsupported", func() {}, "external",
+					"external sources are not supported for disc artwork"),
+				Entry("no images in the album folder", func() { reader.imgFiles = nil }, "disc*.*",
+					"no images in album folder"),
+				Entry("the disc has no subtitle",
+					func() { reader.album = model.Album{Discs: model.Discs{2: ""}} }, "discsubtitle",
+					"disc has no subtitle"),
+			)
 
 			It("returns source func for discsubtitle pattern", func() {
 				reader.album = model.Album{Discs: model.Discs{2: "Bonus Tracks"}}
-				ff := reader.fromDiscArtPriority(context.Background(), nil, "discsubtitle")
-				Expect(ff).To(HaveLen(1))
-			})
-
-			It("returns no source func for discsubtitle when disc has no subtitle", func() {
-				reader.album = model.Album{Discs: model.Discs{2: ""}}
-				ff := reader.fromDiscArtPriority(context.Background(), nil, "discsubtitle")
-				Expect(ff).To(HaveLen(0))
+				cc := reader.discCandidates(context.Background(), nil, "discsubtitle")
+				Expect(cc).To(HaveLen(1))
+				Expect(cc[0].sources).To(HaveLen(1))
 			})
 		})
 	})

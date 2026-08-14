@@ -154,14 +154,48 @@ func (d *discArtworkReader) discCandidates(ctx context.Context, ffmpeg ffmpeg.FF
 	return cc
 }
 
-// fromDiscArtPriority flattens the candidates for the serving path, which needs the sources in
-// order and has no walk to report.
-func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
-	var ff []sourceFunc
+// selectImage walks the DiscArtPriority entries and returns the first that yields an image.
+// chain records the walk; the serving path passes an untraced one and pays nothing for it.
+func (d *discArtworkReader) selectImage(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string,
+	chain *chainState) (resolution, error) {
 	for _, c := range d.discCandidates(ctx, ffmpeg, priority) {
-		ff = append(ff, c.sources...)
+		if err := ctx.Err(); err != nil {
+			return resolution{}, err
+		}
+		if c.skip != "" {
+			chain.record(c.pattern, OutcomeSkipped, c.skip)
+			continue
+		}
+		res, ok := d.openCandidate(ctx, c)
+		if res, ok = chain.try(c.pattern, res, ok); ok {
+			return res, nil
+		}
 	}
-	return ff
+	return chain.exhausted(), nil
+}
+
+func (d *discArtworkReader) openCandidate(ctx context.Context, c discCandidate) (resolution, bool) {
+	source := "folder"
+	if c.pattern == "embedded" {
+		source = "embedded"
+	}
+	for _, sf := range c.sources {
+		start := time.Now()
+		rd, path, err := sf()
+		if rd == nil {
+			log.Trace(ctx, "Artwork: Failed trying to extract disc artwork", "albumID", d.album.ID,
+				"disc", d.discNumber, "pattern", c.pattern, "source", sf, "elapsed", time.Since(start), err)
+			continue
+		}
+		// The disc sources disagree on this: only ffmpeg hands back an absolute path.
+		if !filepath.IsAbs(path) {
+			path = d.lib.Abs(path)
+		}
+		log.Debug(ctx, "Artwork: Found disc artwork", "albumID", d.album.ID, "disc", d.discNumber,
+			"pattern", c.pattern, "path", path, "elapsed", time.Since(start))
+		return resolution{reader: rd, source: source, sourcePath: path}, true
+	}
+	return resolution{}, false
 }
 
 // fromDiscSubtitle returns a sourceFunc that matches image files whose stem

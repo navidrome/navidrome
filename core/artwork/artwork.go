@@ -318,16 +318,21 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 		return nil, err
 	}
 	// Single-disc albums run the chain too: a disc can carry art distinct from the album cover.
-	selectImage := func() (io.ReadCloser, string, error) {
-		funcs := dr.fromDiscArtPriority(ctx, s.ffmpeg, conf.Server.DiscArtPriority)
-		return selectImageReader(ctx, artID, funcs...)
+	selectImage := func() (io.ReadCloser, error) {
+		res, err := dr.selectImage(ctx, s.ffmpeg, conf.Server.DiscArtPriority, &chainState{})
+		if err != nil {
+			return nil, err
+		}
+		if res.reader == nil {
+			return nil, fmt.Errorf("could not get `%s` cover art for %s: %w", artID.Kind, artID, ErrUnavailable)
+		}
+		return res.reader, nil
 	}
 	albumArtID := model.ArtworkID{Kind: model.KindAlbumArtwork, ID: dr.album.ID}
 	// Disc art has no state row, hence no content hash: keying on id, album mtime and
 	// DiscArtPriority lets a warm cache answer without running the chain or touching the disk.
 	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
-	img, err := s.serveSource(ctx, key, "", dr.cacheTime(), size, square,
-		func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err })
+	img, err := s.serveSource(ctx, key, "", dr.cacheTime(), size, square, selectImage)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil, err
