@@ -19,7 +19,6 @@ const (
 	OutcomeSkipped    Outcome = "skipped"
 	OutcomeWouldTry   Outcome = "would-try"
 	OutcomeError      Outcome = "error"
-	outcomeNotReached Outcome = "not-reached"
 )
 
 const (
