@@ -56,9 +56,7 @@ func (c *chainState) try(candidate string, res resolution, ok bool) (resolution,
 }
 
 func (c *chainState) record(candidate string, out Outcome, detail string) {
-	if c.trace != nil {
-		c.trace.add(traceStep{Candidate: candidate, Outcome: out, Detail: detail})
-	}
+	c.trace.add(traceStep{Candidate: candidate, Outcome: out, Detail: detail})
 }
 
 // exhausted is the outcome when no source in the chain yielded an image.

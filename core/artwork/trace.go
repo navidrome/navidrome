@@ -52,6 +52,9 @@ func (t *chainTrace) add(step traceStep) {
 }
 
 func (t *chainTrace) Steps() []traceStep {
+	if t == nil {
+		return nil
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return slices.Clone(t.steps)

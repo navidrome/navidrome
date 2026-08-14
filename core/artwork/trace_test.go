@@ -56,6 +56,7 @@ var _ = Describe("chainTrace", func() {
 	It("does not panic when the trace is nil", func() {
 		var t *chainTrace
 		Expect(func() { t.add(traceStep{Candidate: "cover.*", Outcome: OutcomeMiss}) }).ToNot(Panic())
+		Expect(t.Steps()).To(BeEmpty(), "a nil trace collects nothing, so reading it must be as safe as writing it")
 	})
 
 	It("is safe to use concurrently", func() {
