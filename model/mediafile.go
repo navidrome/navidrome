@@ -15,6 +15,7 @@ import (
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
@@ -548,6 +549,9 @@ type MediaFileRepository interface {
 	// filters as GetAll. Sort/Order are ignored.
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
+	// MatchesCriteria reports whether the media file matches the smart-playlist
+	// criteria, evaluated with the logged user's annotations
+	MatchesCriteria(id string, c criteria.Criteria) (bool, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	// GetAllIDs returns just the media_file IDs for the same row set as GetAll.
 	GetAllIDs(options ...QueryOptions) ([]string, error)
