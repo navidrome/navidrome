@@ -147,17 +147,6 @@ const UserEdit = (props) => {
           )}
         </FormDataConsumer>
 
-        <TextInput
-          source="scrobbleFilter"
-          multiline
-          minRows={2}
-          fullWidth
-          spellCheck={false}
-          style={{ maxWidth: '40em' }}
-          inputProps={{ style: { resize: 'vertical' } }}
-          helperText={translate('resources.user.helperTexts.scrobbleFilter')}
-        />
-
         {permissions === 'admin' && (
           <BooleanInput source="isAdmin" initialValue={false} />
         )}
@@ -182,6 +171,17 @@ const UserEdit = (props) => {
             )}
           </FormDataConsumer>
         )}
+
+        <TextInput
+          source="scrobbleFilter"
+          multiline
+          minRows={2}
+          fullWidth
+          spellCheck={false}
+          style={{ maxWidth: '40em' }}
+          inputProps={{ style: { resize: 'vertical' } }}
+          helperText={translate('resources.user.helperTexts.scrobbleFilter')}
+        />
 
         <DateField variant="body1" source="lastLoginAt" showTime />
         <DateField variant="body1" source="lastAccessAt" showTime />
