@@ -521,12 +521,15 @@ func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, 
 		log.Debug(ctx, "Ignoring external Scrobble for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
 	}
+	allScrobblers := p.getActiveScrobblers()
+	if len(allScrobblers) == 0 {
+		return
+	}
 	if p.isFilteredOut(ctx, t) {
 		log.Debug(ctx, "Ignoring external Scrobble for filtered track", "track", t.Title, "artist", t.Artist)
 		return
 	}
 
-	allScrobblers := p.getActiveScrobblers()
 	u, _ := request.UserFrom(ctx)
 	scrobble := Scrobble{MediaFile: *t, TimeStamp: playTime}
 	for name, s := range allScrobblers {

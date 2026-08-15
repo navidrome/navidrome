@@ -343,18 +343,21 @@ func validateScrobbleFilter(u *model.User) error {
 	if u.ScrobbleFilter == "" {
 		return nil
 	}
-	invalid := &rest.ValidationError{Errors: map[string]string{
-		"scrobbleFilter": "resources.user.validation.invalidScrobbleFilter",
-	}}
 	var c criteria.Criteria
 	if err := json.Unmarshal([]byte(u.ScrobbleFilter), &c); err != nil {
-		return invalid
+		return invalidScrobbleFilter()
 	}
 	// Building the WHERE clause is what validates field names and operators
 	if _, err := newSmartPlaylistCriteria(c).Where(); err != nil {
-		return invalid
+		return invalidScrobbleFilter()
 	}
 	return nil
+}
+
+func invalidScrobbleFilter() error {
+	return &rest.ValidationError{Errors: map[string]string{
+		"scrobbleFilter": "resources.user.validation.invalidScrobbleFilter",
+	}}
 }
 
 func (r *userRepository) Delete(id string) error {

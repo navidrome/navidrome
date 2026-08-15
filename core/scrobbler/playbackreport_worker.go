@@ -50,6 +50,13 @@ func (p *playTracker) playbackReportWorker() {
 }
 
 func (p *playTracker) dispatchPlaybackReport(ctx context.Context, info PlaybackSession, allScrobblers map[string]Scrobbler) {
+	if len(allScrobblers) == 0 {
+		return
+	}
+	if p.isFilteredOut(ctx, &info.MediaFile) {
+		log.Debug(ctx, "Ignoring external PlaybackReport for filtered track", "track", info.MediaFile.Title, "state", info.State)
+		return
+	}
 	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, info.UserId) {
 			continue

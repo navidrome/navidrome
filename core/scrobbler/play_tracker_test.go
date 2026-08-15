@@ -385,6 +385,26 @@ var _ = Describe("PlayTracker", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
 		})
+
+		It("does not send playback reports for a filtered track", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StateStarting, ClientId: "player-1", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			Consistently(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeFalse())
+		})
+
+		It("sends playback reports for a non-matching track", func() {
+			repo.MatchesCriteriaValue = false
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StateStarting, ClientId: "player-1", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+		})
 	})
 
 	Describe("ReportPlayback", func() {
