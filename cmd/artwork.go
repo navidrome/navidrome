@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,8 @@ var (
 
 func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
-		"perform real external lookups instead of reporting what would be tried")
+		"perform real external lookups instead of reporting what would be tried; "+
+			"also initializes plugin agents, which may open external connections")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
 		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
@@ -277,7 +279,16 @@ func runReprocess(ctx context.Context) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgentCount(ds),
+	// Only a kind that can reach an agent needs the count, and loading a plugin creates its
+	// services. A preview must not reach the network, so init never runs here.
+	var imageAgents artwork.ImageAgentCount
+	if needsImageAgents(kinds) {
+		mgr := loadPluginAgents(ctx, false)
+		defer func() { _ = mgr.Stop() }()
+		imageAgents = imageAgentCount(ds, mgr)
+	}
+
+	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgents,
 		reprocessDryRun, reprocessConfirm(reprocessYes, os.Stdin), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -326,23 +337,49 @@ func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
 	return promptConfirm(in)
 }
 
-// externalEstimate claims no bound: a local hit ends the walk before any agent is asked, and plugin
-// agents are unregistered in a CLI that never starts the plugin manager.
+// externalEstimate claims no bound: a local hit ends the walk before any agent is asked, and the
+// plugin agents it counts are only the ones this process managed to load.
 func externalEstimate(n int64) string {
 	if n == 0 {
 		return "none"
 	}
-	return fmt.Sprintf("~%d estimated (plugin agents not counted; local hits may need fewer)", n)
+	return fmt.Sprintf("~%d estimated (plugin agents counted only when they load; local hits may need fewer)", n)
 }
 
 func externalLookupLine(n int64) string {
 	return fmt.Sprintf("External lookups: %s.", externalEstimate(n))
 }
 
-// imageAgentCount counts only the built-in image agents, for the same reason.
-func imageAgentCount(ds model.DataStore) artwork.ImageAgentCount {
-	ag := agents.GetAgents(ds, getPluginManager())
+func imageAgentCount(ds model.DataStore, mgr *plugins.Manager) artwork.ImageAgentCount {
+	ag := agents.GetAgents(ds, mgr)
 	return artwork.ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
+}
+
+// loadPluginAgents loads the plugins named in Agents, so the CLI resolves through the same agents a
+// running server would. A load failure is reported, not fatal: the built-in agents still answer.
+func loadPluginAgents(ctx context.Context, runInit bool) *plugins.Manager {
+	mgr := getPluginManager()
+	if err := mgr.LoadPlugins(ctx, configuredAgents(), runInit); err != nil {
+		log.Warn(ctx, "Could not load plugins; plugin-provided agents will be missing", err)
+	}
+	return mgr
+}
+
+// needsImageAgents asks exactly what ExternalLookupsPerItem asks, so the gate cannot disagree with
+// the estimate it guards. Playlists count: their generated grid resolves album art through agents.
+func needsImageAgents(kinds []model.Kind) bool {
+	return slices.ContainsFunc(kinds, artwork.MayFetchExternal)
+}
+
+// configuredAgents names the agents in priority order; one absent from it can never supply an image.
+func configuredAgents() []string {
+	var names []string
+	for name := range strings.SplitSeq(conf.Server.Agents, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 func promptConfirm(in io.Reader) confirmFunc {
@@ -533,8 +570,8 @@ func explainAgents(configured string, available []string) string {
 }
 
 // availableImageAgents names the agents that can actually supply an image for kind.
-func availableImageAgents(ds model.DataStore, kind model.Kind) []string {
-	ag := agents.GetAgents(ds, getPluginManager())
+func availableImageAgents(ds model.DataStore, mgr *plugins.Manager, kind model.Kind) []string {
+	ag := agents.GetAgents(ds, mgr)
 	if kind == model.KindArtistArtwork {
 		return slice.Map(ag.ArtistImageAgents(), func(a agents.ArtistImageAgent) string { return a.Name })
 	}
@@ -705,8 +742,12 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	}
 
 	if artwork.Explainable(kind) {
+		// Only artist and album reach an agent, and the load must precede the resolver, which reads
+		// the same manager.
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
-			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, kind))
+			mgr := loadPluginAgents(ctx, explainLive)
+			defer func() { _ = mgr.Stop() }()
+			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
 		}
 		trace := &artwork.ChainTrace{}
 		rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -232,6 +233,11 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 		if !p.Enabled {
 			continue
 		}
+		// Instantiating a plugin creates its host services, so a transient load takes only the
+		// ones it may actually consult.
+		if m.transient != nil && !slices.Contains(m.transient.only, p.ID) {
+			continue
+		}
 
 		plugin := p // Capture for goroutine
 		g.Go(func() error {
@@ -246,19 +252,21 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			}()
 
 			if err := m.loadPluginWithConfig(&plugin); err != nil {
-				// Store error in DB
-				plugin.LastError = err.Error()
-				plugin.Enabled = false
-				plugin.UpdatedAt = time.Now()
-				if putErr := repo.Put(&plugin); putErr != nil {
-					log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+				// A transient load must not disable the user's plugin just for looking at it.
+				if m.transient == nil {
+					plugin.LastError = err.Error()
+					plugin.Enabled = false
+					plugin.UpdatedAt = time.Now()
+					if putErr := repo.Put(&plugin); putErr != nil {
+						log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+					}
 				}
 				log.Error(ctx, "Failed to load plugin", "plugin", plugin.ID, err)
 				return nil
 			}
 
 			// Clear any previous error
-			if plugin.LastError != "" {
+			if plugin.LastError != "" && m.transient == nil {
 				plugin.LastError = ""
 				plugin.UpdatedAt = time.Now()
 				if putErr := repo.Put(&plugin); putErr != nil {
@@ -444,8 +452,11 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	m.mu.Unlock()
 	loaded = true
 
-	// Call plugin init function
-	callPluginInit(ctx, m.plugins[p.ID])
+	// Init is the plugin's first chance to run arbitrary code: open sockets, create task queues,
+	// schedule work. Only a caller that already intends to reach the network asks for it.
+	if m.transient == nil || m.transient.runInit {
+		callPluginInit(ctx, m.plugins[p.ID])
+	}
 
 	return nil
 }

@@ -594,7 +594,9 @@ var _ = Describe("reprocessArtwork", func() {
 	It("names the estimate's blind spots instead of claiming a bound it cannot hold", func() {
 		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, true, accept, &out)).To(Succeed())
 
-		Expect(out.String()).To(ContainSubstring("plugin agents not counted"))
+		// The count includes plugin agents once they load, so the caveat is about a failed load,
+		// not about plugins being invisible to the CLI.
+		Expect(out.String()).To(ContainSubstring("plugin agents counted only when they load"))
 		Expect(out.String()).To(ContainSubstring("local hits may need fewer"))
 		Expect(out.String()).ToNot(ContainSubstring("up to"), "plugin agents make any ceiling false")
 		Expect(out.String()).ToNot(ContainSubstring("at least"), "a local hit makes any floor false")
@@ -895,5 +897,50 @@ var _ = Describe("refreshItems", func() {
 
 		Expect(out.String()).To(Equal("al/al-1: queued\nal/al-3: queued\n"),
 			"the ids after a failure are still refreshed")
+	})
+})
+
+var _ = Describe("needsImageAgents", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "cover.*, external"
+		conf.Server.ArtistArtPriority = "artist.*, external"
+		conf.Server.EnableM3UExternalAlbumArt = false
+	})
+
+	It("is false for a selection no agent can serve", func() {
+		Expect(needsImageAgents([]model.Kind{model.KindRadioArtwork})).To(BeFalse())
+	})
+
+	// The generated playlist grid resolves album art through the image agents, so a playlist
+	// selection needs the count even though no agent is asked for a playlist image directly.
+	It("is true for playlists, whose grid tiles resolve through the album chain", func() {
+		Expect(needsImageAgents([]model.Kind{model.KindPlaylistArtwork})).To(BeTrue())
+	})
+
+	It("is true when any one of several kinds can reach an agent", func() {
+		Expect(needsImageAgents([]model.Kind{model.KindRadioArtwork, model.KindAlbumArtwork})).To(BeTrue())
+	})
+
+	It("is false once the chains no longer reach an agent", func() {
+		conf.Server.CoverArtPriority = "cover.*"
+		conf.Server.ArtistArtPriority = "artist.*"
+		Expect(needsImageAgents(artwork.RecheckKinds)).To(BeFalse())
+	})
+})
+
+var _ = Describe("configuredAgents", func() {
+	BeforeEach(func() { DeferCleanup(configtest.SetupConfig()) })
+
+	It("splits and trims the configured list", func() {
+		conf.Server.Agents = "lastfm, spotify ,deezer"
+		Expect(configuredAgents()).To(Equal([]string{"lastfm", "spotify", "deezer"}))
+	})
+
+	// An empty name would match no plugin, but it also must not make the list look non-empty:
+	// LoadPlugins treats an empty list as "load nothing".
+	It("drops empty entries rather than passing a name nothing can match", func() {
+		conf.Server.Agents = " , ,"
+		Expect(configuredAgents()).To(BeEmpty())
 	})
 })
