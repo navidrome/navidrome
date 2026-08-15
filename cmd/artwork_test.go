@@ -594,7 +594,9 @@ var _ = Describe("reprocessArtwork", func() {
 	It("names the estimate's blind spots instead of claiming a bound it cannot hold", func() {
 		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, true, accept, &out)).To(Succeed())
 
-		Expect(out.String()).To(ContainSubstring("plugin agents not counted"))
+		// The count includes plugin agents once they load, so the caveat is about a failed load,
+		// not about plugins being invisible to the CLI.
+		Expect(out.String()).To(ContainSubstring("plugin agents counted only when they load"))
 		Expect(out.String()).To(ContainSubstring("local hits may need fewer"))
 		Expect(out.String()).ToNot(ContainSubstring("up to"), "plugin agents make any ceiling false")
 		Expect(out.String()).ToNot(ContainSubstring("at least"), "a local hit makes any floor false")

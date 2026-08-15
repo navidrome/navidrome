@@ -330,13 +330,13 @@ func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
 	return promptConfirm(in)
 }
 
-// externalEstimate claims no bound: a local hit ends the walk before any agent is asked, and plugin
-// agents are unregistered in a CLI that never starts the plugin manager.
+// externalEstimate claims no bound: a local hit ends the walk before any agent is asked, and the
+// plugin agents it counts are only the ones this process managed to load.
 func externalEstimate(n int64) string {
 	if n == 0 {
 		return "none"
 	}
-	return fmt.Sprintf("~%d estimated (plugin agents not counted; local hits may need fewer)", n)
+	return fmt.Sprintf("~%d estimated (plugin agents counted only when they load; local hits may need fewer)", n)
 }
 
 func externalLookupLine(n int64) string {
