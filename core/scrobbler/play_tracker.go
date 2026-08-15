@@ -71,7 +71,6 @@ type nowPlayingEntry struct {
 	userId   string
 	track    *model.MediaFile
 	position int
-	filtered bool
 }
 
 type playbackReportEntry struct {
@@ -435,8 +434,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	// scrobbler plugins) returned by getActiveScrobblers; see dispatchNowPlaying.
 	if player.ScrobbleEnabled &&
 		(params.State == StateStarting || params.State == StatePlaying) {
-		if info, err := p.playMap.Get(clientId); err == nil {
-			p.enqueueNowPlaying(ctx, clientId, user.ID, &info.MediaFile, int(params.PositionMs/1000), filtered)
+		if filtered {
+			log.Debug(ctx, "Ignoring external NowPlaying update for filtered track", "mediaId", params.MediaId)
+		} else if info, err := p.playMap.Get(clientId); err == nil {
+			p.enqueueNowPlaying(ctx, clientId, user.ID, &info.MediaFile, int(params.PositionMs/1000))
 		}
 	}
 

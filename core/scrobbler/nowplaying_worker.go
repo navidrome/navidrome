@@ -9,7 +9,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-func (p *playTracker) enqueueNowPlaying(ctx context.Context, playerId string, userId string, track *model.MediaFile, position int, filtered bool) {
+func (p *playTracker) enqueueNowPlaying(ctx context.Context, playerId string, userId string, track *model.MediaFile, position int) {
 	p.npMu.Lock()
 	defer p.npMu.Unlock()
 	ctx = context.WithoutCancel(ctx) // Prevent cancellation from affecting background processing
@@ -18,7 +18,6 @@ func (p *playTracker) enqueueNowPlaying(ctx context.Context, playerId string, us
 		userId:   userId,
 		track:    track,
 		position: position,
-		filtered: filtered,
 	}
 	p.sendNowPlayingSignal()
 }
@@ -54,18 +53,14 @@ func (p *playTracker) nowPlayingWorker() {
 
 		// Process entries without holding lock
 		for _, entry := range entries {
-			p.dispatchNowPlaying(entry.ctx, entry.userId, entry.track, entry.position, entry.filtered)
+			p.dispatchNowPlaying(entry.ctx, entry.userId, entry.track, entry.position)
 		}
 	}
 }
 
-func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile, position int, filtered bool) {
+func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *model.MediaFile, position int) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
-		return
-	}
-	if filtered {
-		log.Debug(ctx, "Ignoring external NowPlaying update for filtered track", "track", t.Title, "artist", t.Artist)
 		return
 	}
 	allScrobblers := p.getActiveScrobblers()
