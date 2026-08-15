@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/navidrome/navidrome/utils/str"
@@ -50,7 +51,7 @@ func parseLyricsfile(lang string, contents []byte) (LyricList, error) {
 	}
 
 	if doc.Metadata.Instrumental {
-		return LyricList{normalizeLyrics(lyrics)}, nil
+		return LyricList{NormalizeLyrics(lyrics)}, nil
 	}
 
 	if len(doc.Lines) == 0 {
@@ -59,17 +60,34 @@ func parseLyricsfile(lang string, contents []byte) (LyricList, error) {
 			return nil, nil
 		}
 		lyrics.Line = lines
-		return LyricList{normalizeLyrics(lyrics)}, nil
+		return LyricList{NormalizeLyrics(lyrics)}, nil
 	}
 
+	if err := validateLyricsfileLineStarts(doc.Lines); err != nil {
+		if lines := buildPlainLyricsfileLines(doc.Plain); len(lines) > 0 {
+			lyrics.Line = lines
+			return LyricList{NormalizeLyrics(lyrics)}, nil
+		}
+		return nil, err
+	}
 	lines, agents := buildLyricsfileLines(doc.Lines)
 	lyrics.Line = lines
 	lyrics.Agents = agents
 	lyrics.Synced = true
-	return LyricList{normalizeLyrics(lyrics)}, nil
+	return LyricList{NormalizeLyrics(lyrics)}, nil
 }
 
 const lyricsfileVersion = "1.0"
+
+func hasLyricsfileVersion(contents []byte) bool {
+	var header struct {
+		Version string `yaml:"version"`
+	}
+	if err := yaml.Unmarshal(contents, &header); err != nil {
+		return false
+	}
+	return strings.TrimSpace(header.Version) == lyricsfileVersion
+}
 
 type lyricsfileDocument struct {
 	Version  string                `yaml:"version"`
@@ -90,15 +108,24 @@ type lyricsfileMetadata struct {
 
 type lyricsfileLineEntry struct {
 	Text    string                `yaml:"text"`
-	StartMs int64                 `yaml:"start_ms"`
+	StartMs *int64                `yaml:"start_ms"`
 	EndMs   *int64                `yaml:"end_ms"`
 	Words   []lyricsfileWordEntry `yaml:"words"`
 }
 
 type lyricsfileWordEntry struct {
 	Text    string `yaml:"text"`
-	StartMs int64  `yaml:"start_ms"`
+	StartMs *int64 `yaml:"start_ms"`
 	EndMs   *int64 `yaml:"end_ms"`
+}
+
+func validateLyricsfileLineStarts(entries []lyricsfileLineEntry) error {
+	for i, entry := range entries {
+		if entry.StartMs == nil || *entry.StartMs < 0 {
+			return fmt.Errorf("Lyricsfile line %d has a missing or invalid start_ms", i+1)
+		}
+	}
+	return nil
 }
 
 // buildLyricsfileLines converts YAML line entries to model.Line entries with
@@ -112,28 +139,30 @@ func buildLyricsfileLines(entries []lyricsfileLineEntry) ([]Line, []Agent) {
 		return nil, nil
 	}
 
-	// Resolved end timestamps per entry: explicit end_ms, final word end_ms,
-	// then the next entry's start. The last entry's end stays nil when no
-	// explicit or word-level end is available.
+	// Only explicit line ends and trustworthy final-word ends are exact. The
+	// next line's start remains a cue fallback and never becomes Line.End.
 	ends := make([]*int64, len(entries))
 	for i := range entries {
-		var nextStart *int64
-		if i+1 < len(entries) {
-			v := entries[i+1].StartMs
-			nextStart = &v
-		}
-		ends[i] = lyricsfileLineEnd(entries[i], nextStart)
+		ends[i] = lyricsfileLineEnd(entries[i])
 	}
 
+	// Allocate overlap voices chronologically, then write them back in source
+	// display order. Out-of-order documents therefore keep their intended layout.
+	order := make([]int, len(entries))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		return *entries[order[i]].StartMs < *entries[order[j]].StartMs
+	})
 	active := map[int]int64{}
 	maxVoice := -1
-	anyCues := false
-	lines := make([]Line, 0, len(entries))
-
-	for i, entry := range entries {
-		for vID, vEnd := range active {
-			if vEnd <= entry.StartMs {
-				delete(active, vID)
+	voiceByEntry := make([]int, len(entries))
+	for _, entryIndex := range order {
+		start := *entries[entryIndex].StartMs
+		for voiceID, voiceEnd := range active {
+			if voiceEnd <= start {
+				delete(active, voiceID)
 			}
 		}
 
@@ -144,17 +173,28 @@ func buildLyricsfileLines(entries []lyricsfileLineEntry) ([]Line, []Agent) {
 			}
 			voiceID++
 		}
-		if voiceID > maxVoice {
-			maxVoice = voiceID
-		}
+		voiceByEntry[entryIndex] = voiceID
+		maxVoice = max(maxVoice, voiceID)
 
+		end := start
+		if ends[entryIndex] != nil && *ends[entryIndex] >= start {
+			end = *ends[entryIndex]
+		}
+		active[voiceID] = end
+	}
+
+	anyCues := false
+	lines := make([]Line, 0, len(entries))
+
+	for i, entry := range entries {
+		voiceID := voiceByEntry[i]
 		agentID := fmt.Sprintf("voice-%d", voiceID)
 		cues, value := wordsToLineCues(entry, agentID)
 		if len(cues) > 0 {
 			anyCues = true
 		}
 
-		startMs := entry.StartMs
+		startMs := *entry.StartMs
 		line := Line{
 			Start: &startMs,
 			End:   ends[i],
@@ -162,14 +202,6 @@ func buildLyricsfileLines(entries []lyricsfileLineEntry) ([]Line, []Agent) {
 			Cue:   cues,
 		}
 		lines = append(lines, line)
-
-		var endMs int64
-		if ends[i] != nil {
-			endMs = *ends[i]
-		} else {
-			endMs = entry.StartMs
-		}
-		active[voiceID] = endMs
 	}
 
 	// Monophonic source, or attribution that has nowhere to land: emit no
@@ -197,23 +229,30 @@ func buildLyricsfileLines(entries []lyricsfileLineEntry) ([]Line, []Agent) {
 	return lines, agents
 }
 
-func lyricsfileLineEnd(entry lyricsfileLineEntry, nextStart *int64) *int64 {
+func lyricsfileLineEnd(entry lyricsfileLineEntry) *int64 {
 	if entry.EndMs != nil {
 		v := *entry.EndMs
 		return &v
 	}
-	if len(entry.Words) > 0 {
+	if lyricsfileWordTimingsValid(entry.Words) && len(entry.Words) > 0 {
 		lastWord := entry.Words[len(entry.Words)-1]
 		if lastWord.EndMs != nil {
 			v := *lastWord.EndMs
 			return &v
 		}
 	}
-	if nextStart != nil {
-		v := *nextStart
-		return &v
-	}
 	return nil
+}
+
+func lyricsfileWordTimingsValid(words []lyricsfileWordEntry) bool {
+	var previous int64
+	for i, word := range words {
+		if word.StartMs == nil || *word.StartMs < 0 || (i > 0 && *word.StartMs < previous) {
+			return false
+		}
+		previous = *word.StartMs
+	}
+	return true
 }
 
 func buildPlainLyricsfileLines(plain string) []Line {
@@ -241,16 +280,25 @@ func wordsToLineCues(entry lyricsfileLineEntry, agentID string) ([]Cue, string) 
 		return nil, str.SanitizeText(entry.Text)
 	}
 
+	values := make([]string, len(entry.Words))
 	var sb strings.Builder
-	for _, w := range entry.Words {
-		sb.WriteString(w.Text)
+	for i, word := range entry.Words {
+		values[i] = str.SanitizeText(word.Text)
+		sb.WriteString(values[i])
 	}
 	lineValue := sb.String()
+	if !lyricsfileWordTimingsValid(entry.Words) {
+		return nil, lineValue
+	}
 
 	cues := make([]Cue, len(entry.Words))
 	cursor := 0
 	for i, w := range entry.Words {
-		valueBytes := len(w.Text)
+		value := values[i]
+		if value == "" {
+			return nil, lineValue
+		}
+		valueBytes := len(value)
 		bs := cursor
 		be := bs
 		if valueBytes > 0 {
@@ -258,10 +306,10 @@ func wordsToLineCues(entry lyricsfileLineEntry, agentID string) ([]Cue, string) 
 			cursor = be + 1
 		}
 
-		s := w.StartMs
+		s := *w.StartMs
 		cue := Cue{
 			Start:     &s,
-			Value:     w.Text,
+			Value:     value,
 			ByteStart: bs,
 			ByteEnd:   be,
 			AgentID:   agentID,
