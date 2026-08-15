@@ -279,11 +279,16 @@ func runReprocess(ctx context.Context) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	// A preview must not reach the network, so the plugins load without running their init.
-	mgr := loadPluginAgents(ctx, false)
-	defer func() { _ = mgr.Stop() }()
+	// Only a kind that can reach an agent needs the count, and loading a plugin creates its
+	// services. A preview must not reach the network, so init never runs here.
+	var imageAgents artwork.ImageAgentCount
+	if needsImageAgents(kinds) {
+		mgr := loadPluginAgents(ctx, false)
+		defer func() { _ = mgr.Stop() }()
+		imageAgents = imageAgentCount(ds, mgr)
+	}
 
-	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgentCount(ds, mgr),
+	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgents,
 		reprocessDryRun, reprocessConfirm(reprocessYes, os.Stdin), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -359,6 +364,14 @@ func loadPluginAgents(ctx context.Context, runInit bool) *plugins.Manager {
 		log.Warn(ctx, "Could not load plugins; plugin-provided agents will be missing", err)
 	}
 	return mgr
+}
+
+// needsImageAgents reports whether the estimate for any selected kind depends on how many image
+// agents there are. It asks the same question ExternalLookupsPerItem does, so the two cannot
+// disagree; an artist/album test would look equivalent and would silently zero the playlist
+// estimate, whose generated grid resolves album art through those agents.
+func needsImageAgents(kinds []model.Kind) bool {
+	return slices.ContainsFunc(kinds, artwork.MayFetchExternal)
 }
 
 // configuredAgents names the agents in priority order. A plugin absent from this list can never
@@ -733,10 +746,11 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	}
 
 	if artwork.Explainable(kind) {
-		// Loading before the resolver is built: it reads the agent list from the same manager.
-		mgr := loadPluginAgents(ctx, explainLive)
-		defer func() { _ = mgr.Stop() }()
+		// Disc and media file artwork never reaches an agent, so only artist and album pay to load
+		// one. Loading happens before the resolver is built: it reads the same manager.
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
+			mgr := loadPluginAgents(ctx, explainLive)
+			defer func() { _ = mgr.Stop() }()
 			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
 		}
 		trace := &artwork.ChainTrace{}
