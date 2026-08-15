@@ -147,6 +147,14 @@ const UserEdit = (props) => {
           )}
         </FormDataConsumer>
 
+        <TextInput
+          source="scrobbleFilter"
+          multiline
+          fullWidth
+          spellCheck={false}
+          helperText={translate('resources.user.helperTexts.scrobbleFilter')}
+        />
+
         {permissions === 'admin' && (
           <BooleanInput source="isAdmin" initialValue={false} />
         )}
