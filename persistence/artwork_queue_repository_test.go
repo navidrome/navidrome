@@ -54,6 +54,22 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].ItemID).To(Equal("high"))
 	})
 
+	It("Get returns a queued row, including one still backing off", func() {
+		Expect(repo.Enqueue(item("ar", "g1", model.ArtworkPriorityScan))).To(Succeed())
+		backOff("ar", "g1", time.Now().Add(time.Hour))
+
+		got, err := repo.Get(model.KindArtistArtwork, "g1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got.Priority).To(Equal(model.ArtworkPriorityScan))
+		Expect(got.Attempts).To(Equal(1))
+		Expect(got.RetryAt).To(BeTemporally(">", time.Now()))
+	})
+
+	It("Get reports ErrNotFound when the item is not queued", func() {
+		_, err := repo.Get(model.KindArtistArtwork, "nope", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
 	It("keeps the higher priority on duplicate enqueue", func() {
 		Expect(repo.Enqueue(item("al", "a1", model.ArtworkPriorityBump))).To(Succeed())
 		Expect(repo.Enqueue(item("al", "a1", model.ArtworkPriorityBackfill))).To(Succeed())
@@ -265,6 +281,89 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump), "the existing priority must survive")
 	})
 
+	Describe("EnqueueBySource", func() {
+		BeforeEach(func() {
+			artRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			for _, ia := range []model.ItemArtwork{
+				{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: "h1", Source: "external:deezer"},
+				{ItemKind: "ar", ItemID: "ar2", ImageType: model.ImageTypePrimary, Hash: "h2", Source: "external:lastfm"},
+				{ItemKind: "ar", ItemID: "ar3", ImageType: model.ImageTypePrimary, Hash: "", Source: ""},
+				{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "h4", Source: "external:deezer"},
+			} {
+				Expect(artRepo.PutItemArtwork(&ia)).To(Succeed())
+			}
+		})
+
+		It("enqueues only the matching source within the kind", func() {
+			n, err := repo.EnqueueBySource(model.KindArtistArtwork, []string{"external:deezer"}, model.ArtworkPriorityRecheck)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(int64(1)), "al1 is a different kind and must not be touched")
+
+			got, err := repo.DequeueBatch(10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(slice.Map(got, func(it model.ArtworkQueueItem) string { return it.ItemID })).To(ConsistOf("ar1"))
+		})
+
+		It("treats the empty source as absent", func() {
+			n, err := repo.EnqueueBySource(model.KindArtistArtwork, []string{""}, model.ArtworkPriorityRecheck)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(int64(1)))
+
+			got, _ := repo.DequeueBatch(10)
+			Expect(slice.Map(got, func(it model.ArtworkQueueItem) string { return it.ItemID })).To(ConsistOf("ar3"))
+		})
+
+		It("enqueues every source when none is given", func() {
+			n, err := repo.EnqueueBySource(model.KindArtistArtwork, nil, model.ArtworkPriorityRecheck)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(int64(3)))
+		})
+
+		It("leaves the current artwork state in place", func() {
+			_, err := repo.EnqueueBySource(model.KindArtistArtwork, []string{"external:deezer"}, model.ArtworkPriorityRecheck)
+			Expect(err).ToNot(HaveOccurred())
+
+			artRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			ia, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "ar1", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Hash).To(Equal("h1"), "the current image must survive until it is replaced")
+			Expect(ia.Source).To(Equal("external:deezer"))
+		})
+
+		It("does not disturb an already-queued row", func() {
+			Expect(repo.Enqueue(item("ar", "ar1", model.ArtworkPriorityBump))).To(Succeed())
+
+			n, err := repo.EnqueueBySource(model.KindArtistArtwork, []string{"external:deezer"}, model.ArtworkPriorityRecheck)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(BeZero())
+
+			got, _ := repo.DequeueBatch(10)
+			Expect(got).To(HaveLen(1))
+			Expect(got[0].Priority).To(Equal(model.ArtworkPriorityBump))
+		})
+
+		It("counts without enqueueing", func() {
+			n, err := repo.CountBySource(model.KindArtistArtwork, []string{"external:deezer"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(int64(1)))
+
+			queued, err := repo.Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(queued).To(BeZero(), "CountBySource must not enqueue")
+		})
+
+		It("counts the absent source and every source", func() {
+			Expect(repo.CountBySource(model.KindArtistArtwork, []string{""})).To(Equal(int64(1)))
+			Expect(repo.CountBySource(model.KindArtistArtwork, nil)).To(Equal(int64(3)))
+		})
+
+		It("lists the distinct sources in use by a kind", func() {
+			Expect(repo.SourcesInUse(model.KindArtistArtwork)).To(ConsistOf("", "external:deezer", "external:lastfm"))
+			Expect(repo.SourcesInUse(model.KindAlbumArtwork)).To(ConsistOf("external:deezer"))
+			Expect(repo.SourcesInUse(model.KindRadioArtwork)).To(BeEmpty())
+		})
+	})
+
 	It("does not disturb an already-queued entity when enqueueing missing rows", func() {
 		Expect(repo.Enqueue(item("al", albumRadioactivity.ID, model.ArtworkPriorityBump))).To(Succeed())
 
@@ -280,5 +379,44 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			}
 		}
 		Expect(count).To(Equal(1), "the already-queued row must not be duplicated")
+	})
+
+	Describe("status counters", func() {
+		It("groups queue rows by kind and priority", func() {
+			Expect(repo.Enqueue(item("ar", "a1", model.ArtworkPriorityBackfill))).To(Succeed())
+			Expect(repo.Enqueue(item("ar", "a2", model.ArtworkPriorityBackfill))).To(Succeed())
+			Expect(repo.Enqueue(item("ar", "a3", model.ArtworkPriorityBump))).To(Succeed())
+			Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
+
+			Expect(repo.CountByKindAndPriority()).To(ConsistOf(
+				model.ArtworkQueueStat{ItemKind: "ar", Priority: model.ArtworkPriorityBackfill, Count: 2},
+				model.ArtworkQueueStat{ItemKind: "ar", Priority: model.ArtworkPriorityBump, Count: 1},
+				model.ArtworkQueueStat{ItemKind: "al", Priority: model.ArtworkPriorityScan, Count: 1},
+			))
+		})
+
+		It("reports an empty queue as no rows", func() {
+			Expect(repo.CountByKindAndPriority()).To(BeEmpty())
+		})
+
+		It("counts absent states and how many are due for recheck", func() {
+			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			old := time.Now().Add(-48 * time.Hour)
+			for _, ia := range []model.ItemArtwork{
+				{ItemKind: "ar", ItemID: "stale1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old},
+				{ItemKind: "ar", ItemID: "fresh1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()},
+				{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: old},
+				{ItemKind: "al", ItemID: "stale2", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old},
+			} {
+				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
+			}
+
+			Expect(repo.CountAbsent(model.KindArtistArtwork, time.Now().Add(-24*time.Hour))).
+				To(Equal(model.ArtworkAbsentStat{Total: 2, Stale: 1}))
+		})
+
+		It("reports a kind with no absent state as zero, not as an error", func() {
+			Expect(repo.CountAbsent(model.KindRadioArtwork, time.Now())).To(Equal(model.ArtworkAbsentStat{}))
+		})
 	})
 })
