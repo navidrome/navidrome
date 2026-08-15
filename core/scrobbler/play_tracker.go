@@ -518,16 +518,12 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 	})
 }
 
-// isFilteredOut reports whether the user's scrobble filter excludes this track.
-// Callers must take this verdict before incPlay, which mutates play counts and
-// dates a filter can test on. Any parse or query failure fails open: external
-// scrobbling must not break.
+// Take this verdict before incPlay mutates what a filter reads, and independently of
+// which scrobblers are active: it can be stored on a session and dispatched much later.
+// Any parse or query failure fails open, because filtering must not break scrobbling.
 func (p *playTracker) isFilteredOut(ctx context.Context, t *model.MediaFile) bool {
 	u, _ := request.UserFrom(ctx)
 	if u.ScrobbleFilter == "" {
-		return false
-	}
-	if len(p.getActiveScrobblers()) == 0 {
 		return false
 	}
 	var c criteria.Criteria

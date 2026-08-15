@@ -427,6 +427,21 @@ var _ = Describe("PlayTracker", func() {
 			Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
 		})
 
+		It("evaluates the filter even when no scrobbler is active yet", func() {
+			// The verdict is stored on the session and dispatched at expiry, by which
+			// time a plugin scrobbler may have been enabled.
+			tracker.builtinScrobblers = map[string]Scrobbler{}
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StatePlaying, ClientId: "player-12", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			stored, getErr := tracker.playMap.Get("player-12")
+			Expect(getErr).ToNot(HaveOccurred())
+			Expect(stored.filtered).To(BeTrue())
+		})
+
 		Context("when incPlay itself flips the filter", func() {
 			// A filter on playCount or lastPlayed changes verdict the moment incPlay
 			// commits, so the verdict has to be taken before it, not at dispatch time.
