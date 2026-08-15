@@ -88,6 +88,7 @@ func (api *Router) routes() http.Handler {
 		api.addInsightsRoute(r)
 
 		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
+			r.Delete("/song/{id}/file", deleteMediaFile(api.maintenance))
 			api.addInspectRoute(r)
 			api.addConfigRoute(r)
 			api.addUserLibraryRoute(r)

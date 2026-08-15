@@ -2,23 +2,72 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
+var (
+	ErrMediaFileDeletionDisabled    = errors.New("media file deletion is disabled")
+	ErrMediaFileDeletionUnsupported = errors.New("media file deletion is not supported by this storage")
+)
+
 type Maintenance interface {
+	// DeleteMediaFile removes a media file from storage and then cleans its database records.
+	DeleteMediaFile(ctx context.Context, id string) error
 	// DeleteMissingFiles deletes specific missing files by their IDs
 	DeleteMissingFiles(ctx context.Context, ids []string) error
 	// DeleteAllMissingFiles deletes all files marked as missing
 	DeleteAllMissingFiles(ctx context.Context) error
+}
+
+func (s *maintenanceService) DeleteMediaFile(ctx context.Context, id string) error {
+	user, ok := request.UserFrom(ctx)
+	if !ok || !user.IsAdmin {
+		return model.ErrNotAuthorized
+	}
+	if !conf.Server.EnableMediaFileDeletion {
+		return ErrMediaFileDeletionDisabled
+	}
+
+	mf, err := s.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return err
+	}
+	store, err := storage.For(mf.LibraryPath)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrMediaFileDeletionUnsupported, err)
+	}
+	musicFS, err := store.FS()
+	if err != nil {
+		return fmt.Errorf("opening media storage: %w", err)
+	}
+	mutable, ok := musicFS.(storage.MutableFS)
+	if !ok {
+		return ErrMediaFileDeletionUnsupported
+	}
+
+	if err := mutable.Remove(mf.Path); err != nil {
+		return fmt.Errorf("removing media file: %w", err)
+	}
+	log.Info(ctx, "Media file removed by administrator", "id", mf.ID, "path", mf.Path, "user", user.UserName)
+
+	// The physical operation cannot be rolled back. If database cleanup fails,
+	// the normal scanner will still discover and purge the now-missing file.
+	if err := s.ds.MediaFile(ctx).MarkMissing(true, mf); err != nil {
+		return fmt.Errorf("marking removed media file as missing: %w", err)
+	}
+	return s.deleteMissing(ctx, []string{id})
 }
 
 type maintenanceService struct {

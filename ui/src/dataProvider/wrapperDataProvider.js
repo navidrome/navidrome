@@ -221,6 +221,11 @@ const wrapperDataProvider = {
       data: json,
     }))
   },
+  deleteMediaFile: (songId) => {
+    return httpClient(`${REST_URL}/song/${songId}/file`, {
+      method: 'DELETE',
+    }).then(({ json }) => ({ data: json }))
+  },
 }
 
 export default wrapperDataProvider

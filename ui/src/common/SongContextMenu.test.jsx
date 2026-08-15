@@ -19,6 +19,7 @@ vi.mock('../config', () => ({
     enableFavourites: true,
     enableSharing: true,
     enableExternalServices: true,
+    enableMediaFileDeletion: true,
   },
 }))
 
@@ -26,13 +27,17 @@ const mockDispatch = vi.fn()
 vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
 
 const getPlaylistsMock = vi.fn()
+const deleteMediaFileMock = vi.fn()
 const mockNotify = vi.fn()
+const mockRefresh = vi.fn()
 
 vi.mock('react-admin', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
     useNotify: () => mockNotify,
+    usePermissions: () => ({ permissions: 'admin' }),
+    useRefresh: () => mockRefresh,
     useRedirect: () => (url) => {
       window.location.hash = `#${url}`
     },
@@ -41,6 +46,7 @@ vi.mock('react-admin', async (importOriginal) => {
       inspect: vi.fn().mockResolvedValue({
         data: { rawTags: {} },
       }),
+      deleteMediaFile: deleteMediaFileMock,
     }),
   }
 })
@@ -52,6 +58,7 @@ describe('SongContextMenu', () => {
     getPlaylistsMock.mockResolvedValue({
       data: [{ id: 'pl1', name: 'Pl 1' }],
     })
+    deleteMediaFileMock.mockResolvedValue({ data: { id: 'song1' } })
     subsonic.getSimilarSongs2.mockResolvedValue({
       json: {
         'subsonic-response': {
@@ -128,6 +135,36 @@ describe('SongContextMenu', () => {
       screen.getByText(/resources\.song\.actions\.showInPlaylist/),
     )
     expect(mockOnClick).not.toHaveBeenCalled()
+  })
+
+  it('requires confirmation before permanently deleting a file', async () => {
+    render(
+      <TestContext>
+        <SongContextMenu
+          record={{
+            id: 'song1',
+            title: 'Test Song',
+            path: 'album/song.mp3',
+            size: 1,
+          }}
+          resource="song"
+        />
+      </TestContext>,
+    )
+
+    fireEvent.click(screen.getAllByRole('button')[1])
+    fireEvent.click(
+      await screen.findByText(/resources\.song\.actions\.deleteFile/),
+    )
+
+    expect(deleteMediaFileMock).not.toHaveBeenCalled()
+    expect(screen.getByText(/message\.delete_media_file_content/)).toBeVisible()
+
+    fireEvent.click(screen.getByText('ra.action.confirm'))
+    await waitFor(() =>
+      expect(deleteMediaFileMock).toHaveBeenCalledWith('song1'),
+    )
+    expect(mockRefresh).toHaveBeenCalled()
   })
 
   describe('Instant Mix action', () => {

@@ -11,6 +11,7 @@ const defaultConfig = {
   maxSidebarPlaylists: 100,
   enableTranscodingConfig: true,
   enableDownloads: true,
+  enableMediaFileDeletion: false,
   enableFavourites: true,
   losslessFormats: 'FLAC,WAV,ALAC,DSF',
   welcomeMessage: '',

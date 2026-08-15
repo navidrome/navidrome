@@ -3,9 +3,14 @@ package core
 import (
 	"context"
 	"errors"
+	"io/fs"
+	"net/url"
 	"sync"
 
+	"github.com/navidrome/navidrome/conf"
+	corestorage "github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -250,6 +255,55 @@ var _ = Describe("Maintenance", func() {
 			})
 		})
 	})
+
+	Describe("DeleteMediaFile", func() {
+		var mutable *fakeMutableMusicFS
+
+		BeforeEach(func() {
+			conf.Server.EnableMediaFileDeletion = true
+			DeferCleanup(func() { conf.Server.EnableMediaFileDeletion = false })
+			mutable = &fakeMutableMusicFS{}
+			corestorage.Register("deletion-test", func(url.URL) corestorage.Storage {
+				return fakeStorage{musicFS: mutable}
+			})
+			mfRepo.SetData(model.MediaFiles{{
+				ID: "mf1", LibraryPath: "deletion-test://library", Path: "artist/song.mp3",
+			}})
+		})
+
+		It("removes the file before cleaning its database record", func() {
+			Expect(service.DeleteMediaFile(ctx, "mf1")).To(Succeed())
+			Expect(mutable.removed).To(Equal("artist/song.mp3"))
+			Expect(mfRepo.markMissingCalled).To(BeTrue())
+			Expect(mfRepo.deleteMissingCalled).To(BeTrue())
+		})
+
+		It("requires an administrator even when the feature is enabled", func() {
+			regularUserCtx := request.WithUser(context.Background(), model.User{ID: "user2", IsAdmin: false})
+			Expect(service.DeleteMediaFile(regularUserCtx, "mf1")).To(MatchError(model.ErrNotAuthorized))
+			Expect(mutable.removed).To(BeEmpty())
+		})
+
+		It("does nothing when deletion is disabled", func() {
+			conf.Server.EnableMediaFileDeletion = false
+			Expect(service.DeleteMediaFile(ctx, "mf1")).To(MatchError(ErrMediaFileDeletionDisabled))
+			Expect(mutable.removed).To(BeEmpty())
+		})
+
+		It("rejects a read-only storage backend", func() {
+			corestorage.Register("deletion-test", func(url.URL) corestorage.Storage {
+				return fakeStorage{musicFS: fakeReadOnlyMusicFS{}}
+			})
+			Expect(service.DeleteMediaFile(ctx, "mf1")).To(MatchError(ErrMediaFileDeletionUnsupported))
+		})
+
+		It("does not clean the database when physical removal fails", func() {
+			mutable.removeErr = fs.ErrPermission
+			Expect(service.DeleteMediaFile(ctx, "mf1")).To(MatchError(ContainSubstring("permission denied")))
+			Expect(mfRepo.markMissingCalled).To(BeFalse())
+			Expect(mfRepo.deleteMissingCalled).To(BeFalse())
+		})
+	})
 })
 
 // Test helper to create a mock DataStore with controllable behavior
@@ -283,6 +337,16 @@ type extendedMediaFileRepo struct {
 	deleteMissingCalled bool
 	deletedIDs          []string
 	deleteMissingError  error
+	markMissingCalled   bool
+}
+
+func (m *extendedMediaFileRepo) MarkMissing(missing bool, mediaFiles ...*model.MediaFile) error {
+	m.markMissingCalled = true
+	for _, mediaFile := range mediaFiles {
+		mediaFile.Missing = missing
+		m.Data[mediaFile.ID] = mediaFile
+	}
+	return nil
 }
 
 func (m *extendedMediaFileRepo) DeleteMissing(ids []string) error {
@@ -361,4 +425,36 @@ func (m *extendedArtistRepo) IsRefreshStatsCalled() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.refreshStatsCalled
+}
+
+type fakeStorage struct {
+	musicFS corestorage.MusicFS
+}
+
+func (s fakeStorage) FS() (corestorage.MusicFS, error) {
+	return s.musicFS, nil
+}
+
+type fakeReadOnlyMusicFS struct{}
+
+func (fakeReadOnlyMusicFS) Open(string) (fs.File, error) {
+	return nil, fs.ErrNotExist
+}
+
+func (fakeReadOnlyMusicFS) ReadTags(...string) (map[string]metadata.Info, error) {
+	return nil, nil
+}
+
+type fakeMutableMusicFS struct {
+	fakeReadOnlyMusicFS
+	removed   string
+	removeErr error
+}
+
+func (f *fakeMutableMusicFS) Remove(name string) error {
+	if f.removeErr != nil {
+		return f.removeErr
+	}
+	f.removed = name
+	return nil
 }

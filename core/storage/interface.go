@@ -17,6 +17,13 @@ type MusicFS interface {
 	ReadTags(path ...string) (map[string]metadata.Info, error)
 }
 
+// MutableFS is implemented only by storage backends that can safely remove a
+// media file. Keeping mutation out of MusicFS makes read-only and remote
+// backends opt in explicitly.
+type MutableFS interface {
+	Remove(name string) error
+}
+
 // SymlinkResolverFS is an optional interface for MusicFS implementations backed by a real
 // filesystem. ResolveSymlink resolves the whole symlink chain of the named entry at the OS
 // level and returns the final target's path — including targets outside the FS root, which

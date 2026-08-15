@@ -80,6 +80,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("maxSidebarPlaylists", func() { conf.Server.MaxSidebarPlaylists = 42 }, "maxSidebarPlaylists", float64(42)),
 		Entry("enableTranscodingConfig", func() { conf.Server.EnableTranscodingConfig = true }, "enableTranscodingConfig", true),
 		Entry("enableDownloads", func() { conf.Server.EnableDownloads = true }, "enableDownloads", true),
+		Entry("enableMediaFileDeletion", func() { conf.Server.EnableMediaFileDeletion = true }, "enableMediaFileDeletion", true),
 		Entry("enableFavourites", func() { conf.Server.EnableFavourites = true }, "enableFavourites", true),
 		Entry("enableStarRating", func() { conf.Server.EnableStarRating = true }, "enableStarRating", true),
 		Entry("defaultTheme", func() { conf.Server.DefaultTheme = "Light" }, "defaultTheme", "Light"),

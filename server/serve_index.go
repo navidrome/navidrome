@@ -49,6 +49,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"maxSidebarPlaylists":       conf.Server.MaxSidebarPlaylists,
 			"enableTranscodingConfig":   conf.Server.EnableTranscodingConfig,
 			"enableDownloads":           conf.Server.EnableDownloads,
+			"enableMediaFileDeletion":   conf.Server.EnableMediaFileDeletion,
 			"enableFavourites":          conf.Server.EnableFavourites,
 			"enableStarRating":          conf.Server.EnableStarRating,
 			"defaultTheme":              conf.Server.DefaultTheme,

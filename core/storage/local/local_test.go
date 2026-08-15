@@ -271,6 +271,50 @@ var _ = Describe("LocalStorage", func() {
 		})
 	})
 
+	Describe("localFS.Remove", func() {
+		var musicFS storage.MusicFS
+
+		BeforeEach(func() {
+			u, err := storage.LocalPathToURL(tempDir)
+			Expect(err).ToNot(HaveOccurred())
+			musicFS, err = newLocalStorage(u).FS()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("removes a regular file inside the library", func() {
+			path := filepath.Join(tempDir, "artist", "song.mp3")
+			Expect(os.MkdirAll(filepath.Dir(path), 0755)).To(Succeed())
+			Expect(os.WriteFile(path, []byte("audio"), 0600)).To(Succeed())
+
+			Expect(musicFS.(storage.MutableFS).Remove("artist/song.mp3")).To(Succeed())
+			_, err := os.Stat(path)
+			Expect(err).To(MatchError(fs.ErrNotExist))
+		})
+
+		It("rejects paths outside the library", func() {
+			Expect(musicFS.(storage.MutableFS).Remove("../outside.mp3")).To(MatchError(ContainSubstring("invalid argument")))
+		})
+
+		It("refuses to delete directories", func() {
+			Expect(os.Mkdir(filepath.Join(tempDir, "album"), 0755)).To(Succeed())
+			Expect(musicFS.(storage.MutableFS).Remove("album")).To(MatchError(ContainSubstring("not a regular file")))
+			Expect(filepath.Join(tempDir, "album")).To(BeADirectory())
+		})
+
+		It("refuses traversal through a symlink outside the library", func() {
+			if runtime.GOOS == "windows" {
+				Skip("creating symlinks requires an optional Windows privilege")
+			}
+			outside := GinkgoT().TempDir()
+			outsideFile := filepath.Join(outside, "song.mp3")
+			Expect(os.WriteFile(outsideFile, []byte("audio"), 0600)).To(Succeed())
+			Expect(os.Symlink(outside, filepath.Join(tempDir, "escape"))).To(Succeed())
+
+			Expect(musicFS.(storage.MutableFS).Remove("escape/song.mp3")).To(HaveOccurred())
+			Expect(outsideFile).To(BeAnExistingFile())
+		})
+	})
+
 	Describe("localFS.ReadTags", func() {
 		var testFile string
 

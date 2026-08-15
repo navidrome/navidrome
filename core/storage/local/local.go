@@ -73,6 +73,31 @@ func (lfs *localFS) ResolveSymlink(name string) (string, error) {
 	return filepath.EvalSymlinks(filepath.Join(lfs.root, filepath.FromSlash(name)))
 }
 
+// Remove deletes a single file beneath the library root. os.Root prevents
+// traversal through ".." or symlinks that escape the library, including races
+// where a path component is replaced while the operation is in progress.
+func (lfs *localFS) Remove(name string) error {
+	if name == "." || !fs.ValidPath(name) {
+		return &fs.PathError{Op: "remove", Path: name, Err: fs.ErrInvalid}
+	}
+
+	root, err := os.OpenRoot(lfs.root)
+	if err != nil {
+		return fmt.Errorf("opening library root: %w", err)
+	}
+	defer root.Close()
+
+	name = filepath.FromSlash(name)
+	info, err := root.Lstat(name)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
+		return &fs.PathError{Op: "remove", Path: name, Err: fmt.Errorf("not a regular file")}
+	}
+	return root.Remove(name)
+}
+
 func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 	res, err := lfs.extractor.Parse(path...)
 	if err != nil {

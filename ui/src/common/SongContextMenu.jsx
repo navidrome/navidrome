@@ -6,6 +6,8 @@ import {
   usePermissions,
   useTranslate,
   useDataProvider,
+  useRefresh,
+  Confirm,
 } from 'react-admin'
 import { IconButton, Menu, MenuItem } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
@@ -28,11 +30,14 @@ import { playSimilar } from './playbackActions.js'
 import { formatBytes } from '../utils'
 import { useRedirect } from 'react-admin'
 
-const useStyles = makeStyles({
+const useStyles = makeStyles((theme) => ({
   noWrap: {
     whiteSpace: 'nowrap',
   },
-})
+  deleteItem: {
+    color: theme.palette.error.main,
+  },
+}))
 
 const MoreButton = ({ record, onClick, info }) => {
   const handleClick = record.missing
@@ -68,8 +73,11 @@ export const SongContextMenu = ({
   const [playlistAnchorEl, setPlaylistAnchorEl] = useState(null)
   const [playlists, setPlaylists] = useState([])
   const [playlistsLoaded, setPlaylistsLoaded] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const { permissions } = usePermissions()
   const redirect = useRedirect()
+  const refresh = useRefresh()
 
   const options = {
     playNow: {
@@ -142,6 +150,14 @@ export const SongContextMenu = ({
       label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
       action: (record) =>
         dispatch(openDownloadMenu(record, DOWNLOAD_MENU_SONG)),
+    },
+    deleteFile: {
+      enabled:
+        config.enableMediaFileDeletion &&
+        permissions === 'admin' &&
+        !record.missing,
+      label: translate('resources.song.actions.deleteFile'),
+      action: () => setDeleteDialogOpen(true),
     },
     info: {
       enabled: true,
@@ -232,6 +248,24 @@ export const SongContextMenu = ({
 
   const open = Boolean(anchorEl)
 
+  const handleDeleteFile = async () => {
+    setDeleting(true)
+    try {
+      const id = record.mediaFileId || record.id
+      await dataProvider.deleteMediaFile(id)
+      setDeleteDialogOpen(false)
+      notify('message.mediaFileDeleted', { type: 'info' })
+      refresh()
+    } catch (error) {
+      notify(translate('ra.notification.http_error') + ': ' + error.message, {
+        type: 'warning',
+        multiLine: true,
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (!record) {
     return null
   }
@@ -260,6 +294,9 @@ export const SongContextMenu = ({
               <MenuItem
                 value={key}
                 key={key}
+                className={
+                  key === 'deleteFile' ? classes.deleteItem : undefined
+                }
                 onClick={
                   showInPlaylistDisabled
                     ? (e) => e.stopPropagation()
@@ -276,6 +313,15 @@ export const SongContextMenu = ({
           )
         })}
       </Menu>
+      <Confirm
+        isOpen={deleteDialogOpen}
+        loading={deleting}
+        title="message.delete_media_file_title"
+        content="message.delete_media_file_content"
+        translateOptions={{ title: record.title, path: record.path }}
+        onConfirm={handleDeleteFile}
+        onClose={() => setDeleteDialogOpen(false)}
+      />
       <Menu
         anchorEl={playlistAnchorEl}
         open={Boolean(playlistAnchorEl)}

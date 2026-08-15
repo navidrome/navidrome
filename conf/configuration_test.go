@@ -73,6 +73,19 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("media file deletion", func() {
+		It("is disabled by default", func() {
+			conf.Load(true)
+			Expect(conf.Server.EnableMediaFileDeletion).To(BeFalse())
+		})
+
+		It("can be explicitly enabled", func() {
+			viper.Set("enablemediafiledeletion", true)
+			conf.Load(true)
+			Expect(conf.Server.EnableMediaFileDeletion).To(BeTrue())
+		})
+	})
+
 	Describe("ValidateURL", func() {
 		It("accepts a valid http URL", func() {
 			fn := conf.ValidateURL("TestOption", "http://example.com/path")

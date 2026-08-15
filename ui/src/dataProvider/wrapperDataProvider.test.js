@@ -87,4 +87,16 @@ describe('wrapperDataProvider', () => {
       )
     })
   })
+
+  describe('deleteMediaFile', () => {
+    it('uses the dedicated media-file endpoint', async () => {
+      mockHttpClient.mockResolvedValue({ json: { id: 'song-1' } })
+
+      await wrapperDataProvider.deleteMediaFile('song-1')
+
+      expect(mockHttpClient).toHaveBeenCalledWith('/api/song/song-1/file', {
+        method: 'DELETE',
+      })
+    })
+  })
 })
