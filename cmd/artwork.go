@@ -357,7 +357,6 @@ func imageAgentCount(ds model.DataStore, mgr *plugins.Manager) artwork.ImageAgen
 
 // loadPluginAgents loads the plugins named in Agents, so the CLI resolves through the same agents a
 // running server would. A load failure is reported, not fatal: the built-in agents still answer.
-// runInit is passed through to the plugin's own init — see plugins.Manager.LoadPlugins.
 func loadPluginAgents(ctx context.Context, runInit bool) *plugins.Manager {
 	mgr := getPluginManager()
 	if err := mgr.LoadPlugins(ctx, configuredAgents(), runInit); err != nil {
@@ -366,16 +365,13 @@ func loadPluginAgents(ctx context.Context, runInit bool) *plugins.Manager {
 	return mgr
 }
 
-// needsImageAgents reports whether the estimate for any selected kind depends on how many image
-// agents there are. It asks the same question ExternalLookupsPerItem does, so the two cannot
-// disagree; an artist/album test would look equivalent and would silently zero the playlist
-// estimate, whose generated grid resolves album art through those agents.
+// needsImageAgents asks exactly what ExternalLookupsPerItem asks, so the gate cannot disagree with
+// the estimate it guards. Playlists count: their generated grid resolves album art through agents.
 func needsImageAgents(kinds []model.Kind) bool {
 	return slices.ContainsFunc(kinds, artwork.MayFetchExternal)
 }
 
-// configuredAgents names the agents in priority order. A plugin absent from this list can never
-// supply an image, so loading it would buy nothing and start its host services for free.
+// configuredAgents names the agents in priority order; one absent from it can never supply an image.
 func configuredAgents() []string {
 	var names []string
 	for name := range strings.SplitSeq(conf.Server.Agents, ",") {
@@ -746,8 +742,8 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	}
 
 	if artwork.Explainable(kind) {
-		// Disc and media file artwork never reaches an agent, so only artist and album pay to load
-		// one. Loading happens before the resolver is built: it reads the same manager.
+		// Only artist and album reach an agent, and the load must precede the resolver, which reads
+		// the same manager.
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
 			mgr := loadPluginAgents(ctx, explainLive)
 			defer func() { _ = mgr.Stop() }()

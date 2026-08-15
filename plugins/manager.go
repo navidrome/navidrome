@@ -180,27 +180,14 @@ func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
 	return nil
 }
 
-// inspectOpts scopes a read-only load. only lists the plugins worth instantiating — loading one
-// creates its host services, so a command loads the agents it may consult and nothing else.
-// runInit decides whether the plugin's own init runs; see LoadPlugins.
+// inspectOpts scopes a read-only load; see LoadPlugins for what only and runInit mean.
 type inspectOpts struct {
 	only    []string
 	runInit bool
 }
 
-// LoadPlugins loads the plugins named in only, so a CLI command sees the same agents a running
-// server would. It skips what Start does around the load — folder reconciliation, error recording,
-// cache purging, the watcher — but the load itself is the real thing: capabilities are detected
-// from the WASM exports, which is the only accurate source, and a plugin that declares the KVStore,
-// TaskQueue or Storage permission gets that service, database and directory included. Naming only
-// the agents a command may consult is what keeps that footprint down.
-//
-// runInit runs the plugin's init, which is its first chance to execute arbitrary code — opening
-// sockets, creating task queues, scheduling work. Pass true only from a command that already
-// intends to reach the network; a command promising no external requests must pass false.
-//
-// The SubsonicAPI host function is unavailable without a router, and reports that if a plugin
-// calls it. Call Stop when done.
+// LoadPlugins loads the plugins named in only, so a CLI sees the agents a server would. Each is
+// instantiated, creating any KVStore, TaskQueue or Storage it declares; call Stop when done.
 func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) error {
 	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" || len(only) == 0 {
 		return nil

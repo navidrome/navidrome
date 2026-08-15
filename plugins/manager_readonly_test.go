@@ -80,9 +80,8 @@ var _ = Describe("Manager.LoadPlugins", func() {
 			Expect(stored.LastError).To(BeEmpty())
 		})
 
-		// The same load, not read-only, must still record the failure — otherwise the test above
-		// passes for the wrong reason. Start is not usable here: it syncs the folder to the DB
-		// first, which drops a row whose file is missing before any load is attempted.
+		// Without this the test above would pass for the wrong reason. Start cannot be used: it
+		// syncs the folder first, dropping a row whose file is missing before any load.
 		It("still disables it when not read-only", func() {
 			mgr = newManager(brokenRows())
 
