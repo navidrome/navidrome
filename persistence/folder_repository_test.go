@@ -72,6 +72,12 @@ var _ = Describe("FolderRepository", func() {
 			Expect(ids).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
 		})
 
+		It("GetSubtreeIDs returns the descendants of a nested slash-form path", func() {
+			ids, err := repo.GetSubtreeIDs(testLib, "TestSubtree/Child")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(child.ID, grandchild.ID))
+		})
+
 		It("GetSubtreeIDs returns the whole library for the root path", func() {
 			ids, err := repo.GetSubtreeIDs(testLib, ".")
 			Expect(err).ToNot(HaveOccurred())

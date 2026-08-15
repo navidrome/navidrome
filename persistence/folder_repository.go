@@ -210,7 +210,8 @@ func (r folderRepository) GetSubtreeIDs(lib model.Library, paths ...string) ([]s
 	where := And{Eq{"library_id": lib.ID}, Eq{"missing": false}}
 	conds := make(Or, 0, len(paths)*3)
 	for _, p := range paths {
-		cleanPath := filepath.Clean(strings.TrimPrefix(p, string(os.PathSeparator)))
+		// Paths are io/fs slash-form; filepath.Clean would backslash them on Windows.
+		cleanPath := path.Clean(strings.TrimPrefix(p, "/"))
 		if cleanPath == "." {
 			conds = nil
 			break
