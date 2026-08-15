@@ -155,11 +155,13 @@
         "newPassword": "Nova Senha",
         "token": "Token",
         "lastAccessAt": "Últ. Acesso",
-        "libraries": "Bibliotecas"
+        "libraries": "Bibliotecas",
+        "scrobbleFilter": "Filtro de scrobble"
       },
       "helperTexts": {
         "name": "Alterações no seu nome só serão refletidas no próximo login",
-        "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão"
+        "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão",
+        "scrobbleFilter": "Músicas que correspondem a estas regras de playlist inteligente não são enviadas ao Last.fm, ListenBrainz ou plugins de scrobble. Usa a mesma sintaxe JSON e o mesmo comportamento das playlists inteligentes. Exemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Deixe vazio para enviar scrobbles de todas as músicas. As contagens de reprodução locais não são afetadas."
       },
       "notifications": {
         "created": "Novo usuário criado",
@@ -173,7 +175,8 @@
         "adminAutoLibraries": "Usuários administradores têm acesso automático a todas as bibliotecas"
       },
       "validation": {
-        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores"
+        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores",
+        "invalidScrobbleFilter": "Deve ser um JSON válido de critérios de playlist inteligente"
       }
     },
     "player": {
