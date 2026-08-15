@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -232,6 +233,11 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 		if !p.Enabled {
 			continue
 		}
+		// Instantiating a plugin creates its host services, so an inspecting caller loads only the
+		// ones it may actually consult.
+		if m.inspect != nil && !slices.Contains(m.inspect.only, p.ID) {
+			continue
+		}
 
 		plugin := p // Capture for goroutine
 		g.Go(func() error {
@@ -247,7 +253,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 
 			if err := m.loadPluginWithConfig(&plugin); err != nil {
 				// A read-only load must not disable the user's plugin just for inspecting it.
-				if !m.readOnly {
+				if m.inspect == nil {
 					plugin.LastError = err.Error()
 					plugin.Enabled = false
 					plugin.UpdatedAt = time.Now()
@@ -260,7 +266,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			}
 
 			// Clear any previous error
-			if plugin.LastError != "" && !m.readOnly {
+			if plugin.LastError != "" && m.inspect == nil {
 				plugin.LastError = ""
 				plugin.UpdatedAt = time.Now()
 				if putErr := repo.Put(&plugin); putErr != nil {
@@ -446,8 +452,11 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	m.mu.Unlock()
 	loaded = true
 
-	// Call plugin init function
-	callPluginInit(ctx, m.plugins[p.ID])
+	// Init is the plugin's first chance to run arbitrary code: open sockets, create task queues,
+	// schedule work. Only a caller that already intends to reach the network asks for it.
+	if m.inspect == nil || m.inspect.runInit {
+		callPluginInit(ctx, m.plugins[p.ID])
+	}
 
 	return nil
 }

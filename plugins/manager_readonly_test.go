@@ -16,15 +16,17 @@ import (
 
 var _ = Describe("Manager.LoadPlugins", func() {
 	var (
-		mgr  *Manager
-		repo *tests.MockPluginRepo
+		mgr    *Manager
+		repo   *tests.MockPluginRepo
+		tmpDir string
 	)
 
 	// newManager builds a manager over rows the caller can corrupt, with no Subsonic router: a CLI
 	// has none, and Start would log.Fatal on that.
 	newManager := func(rows model.Plugins) *Manager {
 		DeferCleanup(configtest.SetupConfig())
-		tmpDir, err := os.MkdirTemp("", "plugins-readonly-*")
+		var err error
+		tmpDir, err = os.MkdirTemp("", "plugins-readonly-*")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
 
@@ -54,7 +56,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 	It("detects capabilities without a Subsonic router configured", func() {
 		mgr = newManager(nil)
 
-		Expect(mgr.LoadPlugins(GinkgoT().Context())).To(Succeed())
+		Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
 		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
 	})
@@ -70,7 +72,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 		It("leaves the stored row untouched", func() {
 			mgr = newManager(brokenRows())
 
-			Expect(mgr.LoadPlugins(GinkgoT().Context())).To(Succeed())
+			Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
 			stored, err := repo.Get("broken")
 			Expect(err).ToNot(HaveOccurred())
@@ -93,11 +95,31 @@ var _ = Describe("Manager.LoadPlugins", func() {
 		})
 	})
 
+	// Loading a plugin creates its host services — a KVStore or task queue database on disk — so a
+	// plugin that could never supply an image must not be instantiated just to be ignored.
+	It("does not load a plugin that is not in the agent list", func() {
+		mgr = newManager(nil)
+
+		Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"some-other-agent"}, false)).To(Succeed())
+
+		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(BeEmpty())
+	})
+
+	It("does nothing when no agents are configured", func() {
+		mgr = newManager(nil)
+
+		Expect(mgr.LoadPlugins(GinkgoT().Context(), nil, false)).To(Succeed())
+
+		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(BeEmpty())
+		// Not even the wazero cache: with nothing to load there is nothing to compile.
+		Expect(filepath.Join(tmpDir, "plugins")).ToNot(BeADirectory())
+	})
+
 	It("does nothing when the plugin system is disabled", func() {
 		mgr = newManager(nil)
 		conf.Server.Plugins.Enabled = false
 
-		Expect(mgr.LoadPlugins(GinkgoT().Context())).To(Succeed())
+		Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
 		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(BeEmpty())
 	})

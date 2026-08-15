@@ -36,7 +36,8 @@ var (
 
 func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
-		"perform real external lookups instead of reporting what would be tried")
+		"perform real external lookups instead of reporting what would be tried; "+
+			"also initializes plugin agents, which may open external connections")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
 		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
@@ -278,7 +279,8 @@ func runReprocess(ctx context.Context) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	mgr := loadPluginAgents(ctx)
+	// A preview must not reach the network, so the plugins load without running their init.
+	mgr := loadPluginAgents(ctx, false)
 	defer func() { _ = mgr.Stop() }()
 
 	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgentCount(ds, mgr),
@@ -348,14 +350,27 @@ func imageAgentCount(ds model.DataStore, mgr *plugins.Manager) artwork.ImageAgen
 	return artwork.ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
 }
 
-// loadPluginAgents loads the enabled plugins so the CLI resolves through the same agents a running
-// server would. A load failure is reported, not fatal: the built-in agents still answer.
-func loadPluginAgents(ctx context.Context) *plugins.Manager {
+// loadPluginAgents loads the plugins named in Agents, so the CLI resolves through the same agents a
+// running server would. A load failure is reported, not fatal: the built-in agents still answer.
+// runInit is passed through to the plugin's own init — see plugins.Manager.LoadPlugins.
+func loadPluginAgents(ctx context.Context, runInit bool) *plugins.Manager {
 	mgr := getPluginManager()
-	if err := mgr.LoadPlugins(ctx); err != nil {
+	if err := mgr.LoadPlugins(ctx, configuredAgents(), runInit); err != nil {
 		log.Warn(ctx, "Could not load plugins; plugin-provided agents will be missing", err)
 	}
 	return mgr
+}
+
+// configuredAgents names the agents in priority order. A plugin absent from this list can never
+// supply an image, so loading it would buy nothing and start its host services for free.
+func configuredAgents() []string {
+	var names []string
+	for name := range strings.SplitSeq(conf.Server.Agents, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 func promptConfirm(in io.Reader) confirmFunc {
@@ -719,7 +734,7 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 
 	if artwork.Explainable(kind) {
 		// Loading before the resolver is built: it reads the agent list from the same manager.
-		mgr := loadPluginAgents(ctx)
+		mgr := loadPluginAgents(ctx, explainLive)
 		defer func() { _ = mgr.Stop() }()
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
 			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))

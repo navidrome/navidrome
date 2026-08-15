@@ -61,8 +61,8 @@ type Manager struct {
 	debounceTimers map[string]*time.Timer
 	debounceMu     sync.Mutex
 
-	// readOnly is set by LoadPlugins: the manager may instantiate plugins but must not write.
-	readOnly bool
+	// inspect is set by LoadPlugins, and nil for a server Start.
+	inspect *inspectOpts
 
 	// SubsonicAPI host function dependencies (set once before Start, not modified after)
 	subsonicRouter SubsonicRouter
@@ -180,18 +180,32 @@ func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
 	return nil
 }
 
-// LoadPlugins loads the enabled plugins so a CLI command sees the same agents a running server
-// would, without any of Start's side effects: it does not reconcile the plugins folder, record
-// load errors, purge the compilation cache, or watch for changes. Capabilities are detected from
-// the WASM exports, so this is also the only accurate source for what a plugin actually provides.
+// inspectOpts scopes a read-only load. only lists the plugins worth instantiating — loading one
+// creates its host services, so a command loads the agents it may consult and nothing else.
+// runInit decides whether the plugin's own init runs; see LoadPlugins.
+type inspectOpts struct {
+	only    []string
+	runInit bool
+}
+
+// LoadPlugins loads the plugins named in only, so a CLI command sees the same agents a running
+// server would. It skips what Start does around the load — folder reconciliation, error recording,
+// cache purging, the watcher — but the load itself is the real thing: capabilities are detected
+// from the WASM exports, which is the only accurate source, and a plugin that declares the KVStore,
+// TaskQueue or Storage permission gets that service, database and directory included. Naming only
+// the agents a command may consult is what keeps that footprint down.
+//
+// runInit runs the plugin's init, which is its first chance to execute arbitrary code — opening
+// sockets, creating task queues, scheduling work. Pass true only from a command that already
+// intends to reach the network; a command promising no external requests must pass false.
 //
 // The SubsonicAPI host function is unavailable without a router, and reports that if a plugin
 // calls it. Call Stop when done.
-func (m *Manager) LoadPlugins(ctx context.Context) error {
-	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" {
+func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) error {
+	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" || len(only) == 0 {
 		return nil
 	}
-	m.readOnly = true
+	m.inspect = &inspectOpts{only: only, runInit: runInit}
 
 	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
 	if err := m.initRuntime(ctx, cacheDir); err != nil {
