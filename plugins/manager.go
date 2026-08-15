@@ -61,6 +61,9 @@ type Manager struct {
 	debounceTimers map[string]*time.Timer
 	debounceMu     sync.Mutex
 
+	// readOnly is set by LoadPlugins: the manager may instantiate plugins but must not write.
+	readOnly bool
+
 	// SubsonicAPI host function dependencies (set once before Start, not modified after)
 	subsonicRouter SubsonicRouter
 	ds             model.DataStore
@@ -110,27 +113,14 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	if m.subsonicRouter == nil {
-		log.Fatal(ctx, "Plugin manager requires DataStore to be configured")
+		log.Fatal(ctx, "Plugin manager requires the SubsonicAPI router to be configured")
 	}
 
-	// Set extism log level based on plugin-specific config or global log level
-	pluginLogLevel := conf.Server.Plugins.LogLevel
-	if pluginLogLevel == "" {
-		pluginLogLevel = conf.Server.LogLevel
-	}
-	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
-
-	m.ctx, m.cancel = context.WithCancel(ctx)
-
-	// Initialize wazero compilation cache for better performance
 	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
 	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
 
-	var err error
-	m.cache, err = wazero.NewCompilationCacheWithDir(cacheDir)
-	if err != nil {
-		log.Error(ctx, "Failed to create wazero compilation cache", err)
-		return fmt.Errorf("creating wazero compilation cache: %w", err)
+	if err := m.initRuntime(ctx, cacheDir); err != nil {
+		return err
 	}
 
 	if conf.Server.Plugins.Folder.String() == "" {
@@ -168,6 +158,48 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	return nil
+}
+
+// initRuntime prepares the extism/wazero runtime that instantiating a plugin needs.
+func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
+	pluginLogLevel := conf.Server.Plugins.LogLevel
+	if pluginLogLevel == "" {
+		pluginLogLevel = conf.Server.LogLevel
+	}
+	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
+
+	m.ctx, m.cancel = context.WithCancel(ctx)
+
+	var err error
+	m.cache, err = wazero.NewCompilationCacheWithDir(cacheDir)
+	if err != nil {
+		log.Error(ctx, "Failed to create wazero compilation cache", err)
+		return fmt.Errorf("creating wazero compilation cache: %w", err)
+	}
+	return nil
+}
+
+// LoadPlugins loads the enabled plugins so a CLI command sees the same agents a running server
+// would, without any of Start's side effects: it does not reconcile the plugins folder, record
+// load errors, purge the compilation cache, or watch for changes. Capabilities are detected from
+// the WASM exports, so this is also the only accurate source for what a plugin actually provides.
+//
+// The SubsonicAPI host function is unavailable without a router, and reports that if a plugin
+// calls it. Call Stop when done.
+func (m *Manager) LoadPlugins(ctx context.Context) error {
+	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" {
+		return nil
+	}
+	m.readOnly = true
+
+	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
+	if err := m.initRuntime(ctx, cacheDir); err != nil {
+		return err
+	}
+	if err := m.loadEnabledPlugins(ctx); err != nil {
+		return fmt.Errorf("loading enabled plugins: %w", err)
+	}
 	return nil
 }
 

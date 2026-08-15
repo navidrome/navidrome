@@ -19,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/spf13/cobra"
 )
@@ -277,7 +278,10 @@ func runReprocess(ctx context.Context) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgentCount(ds),
+	mgr := loadPluginAgents(ctx)
+	defer func() { _ = mgr.Stop() }()
+
+	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgentCount(ds, mgr),
 		reprocessDryRun, reprocessConfirm(reprocessYes, os.Stdin), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -339,10 +343,19 @@ func externalLookupLine(n int64) string {
 	return fmt.Sprintf("External lookups: %s.", externalEstimate(n))
 }
 
-// imageAgentCount counts only the built-in image agents, for the same reason.
-func imageAgentCount(ds model.DataStore) artwork.ImageAgentCount {
-	ag := agents.GetAgents(ds, getPluginManager())
+func imageAgentCount(ds model.DataStore, mgr *plugins.Manager) artwork.ImageAgentCount {
+	ag := agents.GetAgents(ds, mgr)
 	return artwork.ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
+}
+
+// loadPluginAgents loads the enabled plugins so the CLI resolves through the same agents a running
+// server would. A load failure is reported, not fatal: the built-in agents still answer.
+func loadPluginAgents(ctx context.Context) *plugins.Manager {
+	mgr := getPluginManager()
+	if err := mgr.LoadPlugins(ctx); err != nil {
+		log.Warn(ctx, "Could not load plugins; plugin-provided agents will be missing", err)
+	}
+	return mgr
 }
 
 func promptConfirm(in io.Reader) confirmFunc {
@@ -533,8 +546,8 @@ func explainAgents(configured string, available []string) string {
 }
 
 // availableImageAgents names the agents that can actually supply an image for kind.
-func availableImageAgents(ds model.DataStore, kind model.Kind) []string {
-	ag := agents.GetAgents(ds, getPluginManager())
+func availableImageAgents(ds model.DataStore, mgr *plugins.Manager, kind model.Kind) []string {
+	ag := agents.GetAgents(ds, mgr)
 	if kind == model.KindArtistArtwork {
 		return slice.Map(ag.ArtistImageAgents(), func(a agents.ArtistImageAgent) string { return a.Name })
 	}
@@ -705,8 +718,11 @@ func runExplain(ctx context.Context, kind model.Kind, id string) {
 	}
 
 	if artwork.Explainable(kind) {
+		// Loading before the resolver is built: it reads the agent list from the same manager.
+		mgr := loadPluginAgents(ctx)
+		defer func() { _ = mgr.Stop() }()
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
-			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, kind))
+			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
 		}
 		trace := &artwork.ChainTrace{}
 		rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)

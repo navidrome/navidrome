@@ -246,19 +246,21 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			}()
 
 			if err := m.loadPluginWithConfig(&plugin); err != nil {
-				// Store error in DB
-				plugin.LastError = err.Error()
-				plugin.Enabled = false
-				plugin.UpdatedAt = time.Now()
-				if putErr := repo.Put(&plugin); putErr != nil {
-					log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+				// A read-only load must not disable the user's plugin just for inspecting it.
+				if !m.readOnly {
+					plugin.LastError = err.Error()
+					plugin.Enabled = false
+					plugin.UpdatedAt = time.Now()
+					if putErr := repo.Put(&plugin); putErr != nil {
+						log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+					}
 				}
 				log.Error(ctx, "Failed to load plugin", "plugin", plugin.ID, err)
 				return nil
 			}
 
 			// Clear any previous error
-			if plugin.LastError != "" {
+			if plugin.LastError != "" && !m.readOnly {
 				plugin.LastError = ""
 				plugin.UpdatedAt = time.Now()
 				if putErr := repo.Put(&plugin); putErr != nil {
