@@ -79,6 +79,17 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(saved.ScrobbleFilter).To(Equal(`{"all":[{"contains":{"title":"????"}}]}`))
 		})
+		It("reads back a user row inserted without scrobble_filter", func() {
+			// Guards the column's NOT NULL DEFAULT '': rows predating the migration must stay scannable
+			_, err := GetDBXBuilder().NewQuery(
+				"insert into user (id, user_name, name, email, password, created_at, updated_at) " +
+					"values ('u-rawsql', 'u-rawsql', 'Raw', '', '', datetime('now'), datetime('now'))").Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			saved, err := repo.Get("u-rawsql")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.ScrobbleFilter).To(Equal(""))
+		})
 	})
 
 	Describe("validatePasswordChange", func() {
