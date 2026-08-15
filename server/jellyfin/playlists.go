@@ -17,16 +17,11 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// playlistsFolderID is the reserved id of the synthetic "playlists library" folder. Clients resolve
-// it via a ManualPlaylistsFolder query, then list playlists with ParentId set to it. The literal
-// can't collide with real ids (those are hashes).
-const playlistsFolderID = "playlists"
-
 // playlistsFolder is the item returned for a ManualPlaylistsFolder query. CollectionType must be
 // "playlists" — how the client identifies it; without it Jellify's playlist-library query loops.
 func playlistsFolder() dto.BaseItemDto {
 	return dto.BaseItemDto{
-		Id:             dto.EncodeID(playlistsFolderID),
+		Id:             dto.PlaylistsFolderGUID,
 		Name:           "Playlists",
 		Type:           "ManualPlaylistsFolder",
 		CollectionType: "playlists",
@@ -61,7 +56,12 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	ids := api.expandContainerIDs(r.Context(), slice.Map(body.Ids, dto.DecodeID))
+	decoded, ok := dto.DecodeIDs(body.Ids)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	ids := api.expandContainerIDs(r.Context(), decoded)
 	id, err := api.playlists.Create(r.Context(), "", body.Name, ids)
 	if err != nil {
 		api.internalError(w, r, err)
@@ -80,7 +80,10 @@ type updatePlaylistRequest struct {
 
 func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
 	var body updatePlaylistRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -96,7 +99,12 @@ func (api *Router) updatePlaylist(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		} else {
-			ids := api.expandContainerIDs(ctx, slice.Map(*body.Ids, dto.DecodeID))
+			decoded, ok := dto.DecodeIDs(*body.Ids)
+			if !ok {
+				http.Error(w, "Not Found", http.StatusNotFound)
+				return
+			}
+			ids := api.expandContainerIDs(ctx, decoded)
 			if _, err := api.playlists.Create(ctx, id, "", ids); err != nil {
 				api.playlistError(w, r, err)
 				return
@@ -146,7 +154,7 @@ func (api *Router) playlistTrackPage(repo model.PlaylistTrackRepository, fields 
 // individually removable.
 func trackToBaseItem(t model.PlaylistTrack, fields dto.Fields) dto.BaseItemDto {
 	item := dto.SongToBaseItem(t.MediaFile, fields)
-	item.PlaylistItemId = dto.EncodeID(t.ID)
+	item.PlaylistItemId = dto.EncodePlaylistEntryID(t.ID)
 	return item
 }
 
@@ -155,7 +163,10 @@ func trackToBaseItem(t model.PlaylistTrack, fields dto.Fields) dto.BaseItemDto {
 // be probed.
 func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
 	pls, err := api.playlists.Get(ctx, id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -184,7 +195,10 @@ func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 // playlist id can't probe for private playlists.
 func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
 	repo, err := api.playlists.Tracks(ctx, id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -232,7 +246,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []strin
 		} else if pl, err := api.playlists.GetWithTracks(ctx, id); err == nil {
 			out = append(out, slice.Map(pl.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })...)
 		} else {
-			out = append(out, id) // unknown id — pass through unchanged
+			out = append(out, id) // well-formed but unresolved — left for the caller's write to handle
 		}
 	}
 	return out
@@ -251,8 +265,16 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 // AddTracks enforces ownership; any error maps to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := api.expandContainerIDs(ctx, slice.Map(queryIDs(r, "ids"), dto.DecodeID))
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
+	decoded, ok := dto.DecodeIDs(queryIDs(r, "ids"))
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	ids := api.expandContainerIDs(ctx, decoded)
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
@@ -265,8 +287,20 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 // ownership; any error maps to 404.
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "playlistId"))
-	ids := slice.Map(queryIDs(r, "entryids"), dto.DecodeID)
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
+	raw := queryIDs(r, "entryids")
+	ids := make([]string, 0, len(raw))
+	for _, entryGUID := range raw {
+		entry, ok := dto.DecodePlaylistEntryID(entryGUID)
+		if !ok {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		ids = append(ids, entry)
+	}
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return

@@ -112,7 +112,7 @@ func SongsByGenreAndYearRange(genre string, fromYear, toYear int) Options {
 	options := Options{}
 	ff := And{}
 	if genre != "" {
-		ff = append(ff, filterByGenre(genre))
+		ff = append(ff, persistence.SongGenres.ByName(genre))
 	}
 	if fromYear != 0 {
 		ff = append(ff, GtOrEq{"year": fromYear})
@@ -171,16 +171,17 @@ func ArtistsByRole(opts Options, role model.Role) Options {
 	return opts
 }
 
-func ByGenre(genre string) Options {
-	return addDefaultFilters(Options{
-		Sort:    "name",
-		Filters: filterByGenre(genre),
-	})
+// SongsByGenreID / AlbumsByGenreID (by tag id) and AlbumsByGenre / SongsByGenre (by name, wrapped
+// as Options for Subsonic) delegate to the persistence genre filters, which own the join schema.
+func SongsByGenreID(genreIds []string) Sqlizer  { return persistence.SongGenres.ByID(genreIds) }
+func AlbumsByGenreID(genreIds []string) Sqlizer { return persistence.AlbumGenres.ByID(genreIds) }
+
+func AlbumsByGenre(genre string) Options {
+	return addDefaultFilters(Options{Sort: "name", Filters: persistence.AlbumGenres.ByName(genre)})
 }
 
-// ByGenreID matches items (albums or songs) tagged with any of the given genre tag ids.
-func ByGenreID(genreIds []string) Sqlizer {
-	return genreTagFilter(Eq{"value": genreIds})
+func SongsByGenre(genre string) Options {
+	return addDefaultFilters(Options{Sort: "name", Filters: persistence.SongGenres.ByName(genre)})
 }
 
 // ByAlbumID matches media files belonging to any of the given albums.
@@ -198,14 +199,8 @@ func SongsByYears(years []int) Sqlizer {
 	return Eq{"year": years}
 }
 
-// ArtistsByGenreID matches artists credited as album artist on an album with any of the given
-// genre tag ids. Non-correlated semi-join: the correlated EXISTS form rescans albums per artist row.
 func ArtistsByGenreID(genreIds []string) Sqlizer {
-	return Expr(
-		`artist.id IN (SELECT jt.value FROM album, json_tree(album.participants, '$.albumartist') jt
-			WHERE jt.atom IS NOT NULL AND ?)`,
-		genreTagFilter(Eq{"value": genreIds}),
-	)
+	return persistence.AlbumArtistsByGenreID(genreIds)
 }
 
 // tagIDFilter builds an EXISTS over the given tag role's entries in the tags JSON, matching each
@@ -214,15 +209,9 @@ func tagIDFilter(tagName string, cond Sqlizer) Sqlizer {
 	return persistence.Exists(`json_tree(tags, "$.`+tagName+`")`, And{NotEq{"atom": nil}, cond})
 }
 
-func genreTagFilter(cond Sqlizer) Sqlizer { return tagIDFilter("genre", cond) }
-
 // ByStudioID matches items (albums or songs) whose record-label tag id is in ids.
 func ByStudioID(ids []string) Sqlizer {
 	return tagIDFilter("recordlabel", Eq{"value": ids})
-}
-
-func filterByGenre(genre string) Sqlizer {
-	return genreTagFilter(Like{"value": genre})
 }
 
 func ByRating() Options {

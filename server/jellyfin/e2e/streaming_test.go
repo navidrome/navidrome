@@ -43,7 +43,7 @@ var _ = Describe("Streaming", func() {
 		})
 
 		It("returns 404 for an unknown track", func() {
-			Expect(get("/Audio/" + enc("nope") + "/stream").Code).To(Equal(http.StatusNotFound))
+			Expect(get("/Audio/" + enc(testID("nope")) + "/stream").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
@@ -98,7 +98,7 @@ var _ = Describe("Streaming", func() {
 			parseInto(get("/Items/"+enc(id)+"/PlaybackInfo"), &info)
 			Expect(info.MediaSources).To(HaveLen(1))
 			Expect(info.MediaSources[0].Id).ToNot(BeEmpty())
-			Expect(info.PlaySessionId).ToNot(BeEmpty())
+			Expect(info.PlaySessionId).To(MatchRegexp("^[0-9a-f]{32}$"))
 		})
 
 		It("returns a MediaSource via POST", func() {

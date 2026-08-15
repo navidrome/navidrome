@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -57,8 +58,8 @@ var _ = Describe("Sessions", func() {
 	var pt *fakePlayTracker
 
 	authed := func(r *http.Request) *http.Request {
-		ctx := request.WithUser(context.Background(), model.User{ID: "u1", UserName: "alice"})
-		ctx = request.WithPlayer(ctx, model.Player{ID: "p1", Client: "Finamp"})
+		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
+		ctx = request.WithPlayer(ctx, model.Player{ID: testID("p1"), Client: "Finamp"})
 		return r.WithContext(ctx)
 	}
 
@@ -70,35 +71,46 @@ var _ = Describe("Sessions", func() {
 	Describe("reportPlaybackStart", func() {
 		It("reports playback start with the item id and position", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing", strings.NewReader(`{"ItemId":"s1","PositionTicks":10000000}`)))
+			r := authed(httptest.NewRequest("POST", "/Sessions/Playing", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":10000000}`)))
 
 			invoke(api.reportPlaybackStart, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(pt.reported).To(HaveLen(1))
-			Expect(pt.reported[0].MediaId).To(Equal("s1"))
+			Expect(pt.reported[0].MediaId).To(Equal(testID("s1")))
 			Expect(pt.reported[0].PositionMs).To(Equal(int64(1000)))
 			Expect(pt.reported[0].State).To(Equal(scrobbler.StatePlaying))
-			Expect(pt.reported[0].ClientId).To(Equal("p1"))
+			Expect(pt.reported[0].ClientId).To(Equal(testID("p1")))
 			Expect(pt.reported[0].ClientName).To(Equal("Finamp"))
 		})
 
 		It("falls back to the ItemId query param when the body has none", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing?ItemId=s2", nil))
+			r := authed(httptest.NewRequest("POST", "/Sessions/Playing?ItemId="+dto.EncodeID(testID("s2")), nil))
 
 			invoke(api.reportPlaybackStart, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(pt.reported).To(HaveLen(1))
-			Expect(pt.reported[0].MediaId).To(Equal("s2"))
+			Expect(pt.reported[0].MediaId).To(Equal(testID("s2")))
+		})
+
+		It("still reports (with an empty MediaId) for a malformed ItemId, rather than failing the request", func() {
+			w := httptest.NewRecorder()
+			r := authed(httptest.NewRequest("POST", "/Sessions/Playing", strings.NewReader(`{"ItemId":"not-a-valid-id","PositionTicks":10000000}`)))
+
+			invoke(api.reportPlaybackStart, w, r)
+
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Expect(pt.reported).To(HaveLen(1))
+			Expect(pt.reported[0].MediaId).To(BeEmpty())
 		})
 	})
 
 	Describe("reportPlaybackProgress", func() {
 		It("reports the playing state when not paused", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"s1","PositionTicks":20000000,"IsPaused":false}`)))
+			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":20000000,"IsPaused":false}`)))
 
 			invoke(api.reportPlaybackProgress, w, r)
 
@@ -110,7 +122,7 @@ var _ = Describe("Sessions", func() {
 
 		It("reports the paused state when IsPaused is true", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"s1","PositionTicks":20000000,"IsPaused":true}`)))
+			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Progress", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":20000000,"IsPaused":true}`)))
 
 			invoke(api.reportPlaybackProgress, w, r)
 
@@ -123,14 +135,14 @@ var _ = Describe("Sessions", func() {
 	Describe("reportPlaybackStopped", func() {
 		It("reports the stopped state and lets the scrobbler apply its play threshold", func() {
 			w := httptest.NewRecorder()
-			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Stopped", strings.NewReader(`{"ItemId":"s1","PositionTicks":600000000}`)))
+			r := authed(httptest.NewRequest("POST", "/Sessions/Playing/Stopped", strings.NewReader(`{"ItemId":"`+dto.EncodeID(testID("s1"))+`","PositionTicks":600000000}`)))
 
 			invoke(api.reportPlaybackStopped, w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 
 			Expect(pt.reported).To(HaveLen(1))
-			Expect(pt.reported[0].MediaId).To(Equal("s1"))
+			Expect(pt.reported[0].MediaId).To(Equal(testID("s1")))
 			Expect(pt.reported[0].State).To(Equal(scrobbler.StateStopped))
 			Expect(pt.reported[0].PositionMs).To(Equal(int64(60000)))
 			// IgnoreScrobble stays false so ReportPlayback's own StateStopped threshold decides

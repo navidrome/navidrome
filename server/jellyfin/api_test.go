@@ -48,8 +48,8 @@ var _ = Describe("Router", func() {
 		ds := &tests.MockDataStore{}
 		auth.Init(ds)
 		ur := ds.User(GinkgoT().Context()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: "u1", UserName: "alice", NewPassword: "secret"})).To(Succeed())
-		token, err := auth.CreateToken(&model.User{ID: "u1", UserName: "alice"})
+		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		token, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 		Expect(err).ToNot(HaveOccurred())
 
 		fp := &fakePlayers{}
