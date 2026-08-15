@@ -45,6 +45,10 @@ type PlaybackSession struct {
 	PositionMs   int64
 	PlaybackRate float64
 	LastReport   time.Time
+
+	// Verdict from the last report, for the expiry callback: its context carries only
+	// a stub user, so it cannot evaluate the filter itself.
+	filtered bool
 }
 
 type Submission struct {
@@ -149,9 +153,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 			log.Trace("Enqueueing PlaybackReport for expired session", "session", info)
 			info.State = StateExpired
 			info.LastReport = time.Now()
-			// This ctx carries a stub user with no filter, so an expired session's report
-			// is never filtered. Fixing that needs the real user loaded here, see #5794.
-			p.enqueuePlaybackReport(ctx, info, p.isFilteredOut(ctx, &info.MediaFile))
+			p.enqueuePlaybackReport(ctx, info, info.filtered)
 		}
 	})
 
@@ -295,8 +297,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			return err
 		}
+		filtered = p.isFilteredOut(ctx, mf)
 		info := PlaybackSession{
 			MediaFile:    *mf,
+			filtered:     filtered,
 			Start:        now,
 			UserId:       user.ID,
 			Username:     user.UserName,
@@ -319,7 +323,6 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			log.Warn(ctx, "Error adding PlaybackSession to cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
-		filtered = p.isFilteredOut(ctx, mf)
 		p.enqueuePlaybackReport(ctx, info, filtered)
 
 	case StatePlaying, StatePaused:
@@ -342,6 +345,8 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		info.PositionMs = params.PositionMs
 		info.PlaybackRate = params.PlaybackRate
 		info.LastReport = now
+		filtered = p.isFilteredOut(ctx, &info.MediaFile)
+		info.filtered = filtered
 		ttl := 30 * time.Minute
 		if params.State == StatePlaying {
 			ttl = remainingTTL(info.MediaFile.Duration, params.PositionMs, params.PlaybackRate)
@@ -353,7 +358,6 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		if err != nil {
 			log.Warn(ctx, "Error updating PlaybackSession in cache", "clientId", clientId, "mediaId", params.MediaId, "state", params.State, err)
 		}
-		filtered = p.isFilteredOut(ctx, &info.MediaFile)
 		p.enqueuePlaybackReport(ctx, info, filtered)
 
 	case StateStopped:

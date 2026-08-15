@@ -459,6 +459,40 @@ var _ = Describe("PlayTracker", func() {
 				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
 			})
 
+			It("does not report an expired session for a filtered track", func() {
+				// The expiry callback runs with a stub user, so it cannot evaluate the
+				// filter itself and must reuse the verdict stored on the session.
+				info := PlaybackSession{
+					MediaFile: track, Start: time.Now(), UserId: "u-1", Username: "user-1",
+					PlayerId: "player-9", PlayerName: "test-player", State: StatePlaying, filtered: true,
+				}
+				_ = tracker.playMap.AddWithTTL("player-9", info, 10*time.Millisecond)
+
+				Consistently(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeFalse())
+			})
+
+			It("still reports an expired session for a track that is not filtered", func() {
+				info := PlaybackSession{
+					MediaFile: track, Start: time.Now(), UserId: "u-1", Username: "user-1",
+					PlayerId: "player-10", PlayerName: "test-player", State: StatePlaying, filtered: false,
+				}
+				_ = tracker.playMap.AddWithTTL("player-10", info, 10*time.Millisecond)
+
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+			})
+
+			It("stores the verdict on the session so expiry can reuse it", func() {
+				repo.MatchesCriteriaValue = true
+
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", State: StatePlaying, ClientId: "player-11", ClientName: "player"})
+
+				Expect(err).ToNot(HaveOccurred())
+				stored, getErr := tracker.playMap.Get("player-11")
+				Expect(getErr).ToNot(HaveOccurred())
+				Expect(stored.filtered).To(BeTrue())
+			})
+
 			It("does not scrobble a Submit whose filter matched before the play was counted", func() {
 				install(true, false)
 
