@@ -805,6 +805,41 @@ func (c smartPlaylistCriteria) RequiredJoins() smartPlaylistJoinType {
 	return joins
 }
 
+// ApplyExpressionJoins adds every join the criteria's WHERE clause resolves against.
+func (c smartPlaylistCriteria) ApplyExpressionJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
+	return c.applyJoins(sq, c.ExpressionJoins(), userID)
+}
+
+// ApplyRequiredJoins adds the WHERE joins plus any the ORDER BY resolves against.
+func (c smartPlaylistCriteria) ApplyRequiredJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
+	return c.applyJoins(sq, c.RequiredJoins(), userID)
+}
+
+// applyJoins joins the media_file annotation unconditionally — annotation fields
+// COALESCE a missing row to a default, so the row has to be reachable to be absent.
+func (c smartPlaylistCriteria) applyJoins(sq squirrel.SelectBuilder, joins smartPlaylistJoinType, userID string) squirrel.SelectBuilder {
+	sq = sq.LeftJoin("annotation on ("+
+		"annotation.item_id = media_file.id"+
+		" AND annotation.item_type = 'media_file'"+
+		" AND annotation.user_id = ?)", userID)
+	if joins.has(smartPlaylistJoinAlbumAnnotation) {
+		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
+			"album_annotation.item_id = media_file.album_id"+
+			" AND album_annotation.item_type = 'album'"+
+			" AND album_annotation.user_id = ?)", userID)
+	}
+	if joins.has(smartPlaylistJoinArtistAnnotation) {
+		sq = sq.LeftJoin("annotation AS artist_annotation ON ("+
+			"artist_annotation.item_id = media_file.artist_id"+
+			" AND artist_annotation.item_type = 'artist'"+
+			" AND artist_annotation.user_id = ?)", userID)
+	}
+	if joins.has(smartPlaylistJoinAlbum) {
+		sq = sq.LeftJoin("album ON album.id = media_file.album_id")
+	}
+	return sq
+}
+
 func (c smartPlaylistCriteria) OrderBy() string {
 	sortFields := c.Criteria.OrderByFields()
 	parts := make([]string, 0, len(sortFields))

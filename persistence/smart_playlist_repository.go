@@ -119,10 +119,8 @@ func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQ
 		return nil
 	}
 
-	exprJoins := rulesSQL.ExpressionJoins()
 	countSq := Select("count(*) as count").From("media_file")
-	countSq = addMediaFileAnnotationJoin(countSq, userID)
-	countSq = addSmartPlaylistJoins(countSq, exprJoins, userID)
+	countSq = rulesSQL.ApplyExpressionJoins(countSq, userID)
 	countSq = r.applyLibraryFilter(countSq, "media_file")
 
 	cond, err := rulesSQL.Where()
@@ -149,40 +147,8 @@ func (r *playlistRepository) buildSmartPlaylistQuery(pls *model.Playlist, rulesS
 	orderBy := rulesSQL.OrderBy()
 	sq := Select("row_number() over (order by "+orderBy+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file")
-	sq = addMediaFileAnnotationJoin(sq, userID)
-
-	requiredJoins := rulesSQL.RequiredJoins()
-	sq = addSmartPlaylistJoins(sq, requiredJoins, userID)
+	sq = rulesSQL.ApplyRequiredJoins(sq, userID)
 	sq = r.applyLibraryFilter(sq, "media_file")
-	return sq
-}
-
-// addMediaFileAnnotationJoin adds a left join to the annotation table for media files, filtering by user ID to include
-// user-specific annotations in the smart playlist criteria evaluation.
-func addMediaFileAnnotationJoin(sq SelectBuilder, userID string) SelectBuilder {
-	return sq.LeftJoin("annotation on ("+
-		"annotation.item_id = media_file.id"+
-		" AND annotation.item_type = 'media_file'"+
-		" AND annotation.user_id = ?)", userID)
-}
-
-// addSmartPlaylistJoins adds the left joins required by the criteria's fields.
-func addSmartPlaylistJoins(sq SelectBuilder, joins smartPlaylistJoinType, userID string) SelectBuilder {
-	if joins.has(smartPlaylistJoinAlbumAnnotation) {
-		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
-			"album_annotation.item_id = media_file.album_id"+
-			" AND album_annotation.item_type = 'album'"+
-			" AND album_annotation.user_id = ?)", userID)
-	}
-	if joins.has(smartPlaylistJoinArtistAnnotation) {
-		sq = sq.LeftJoin("annotation AS artist_annotation ON ("+
-			"artist_annotation.item_id = media_file.artist_id"+
-			" AND artist_annotation.item_type = 'artist'"+
-			" AND artist_annotation.user_id = ?)", userID)
-	}
-	if joins.has(smartPlaylistJoinAlbum) {
-		sq = sq.LeftJoin("album ON album.id = media_file.album_id")
-	}
 	return sq
 }
 

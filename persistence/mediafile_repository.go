@@ -526,8 +526,7 @@ func (r *mediaFileRepository) MatchesCriteria(id string, c criteria.Criteria) (b
 		return false, err
 	}
 	sq := Select("count(*) as count").From("media_file")
-	sq = addMediaFileAnnotationJoin(sq, usr.ID)
-	sq = addSmartPlaylistJoins(sq, rulesSQL.ExpressionJoins(), usr.ID)
+	sq = rulesSQL.ApplyExpressionJoins(sq, usr.ID)
 	sq = sq.Where(And{Eq{"media_file.id": id}, cond})
 	var res struct{ Count int64 }
 	if err := r.queryOne(sq, &res); err != nil {
