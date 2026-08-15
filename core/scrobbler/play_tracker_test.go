@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
@@ -44,6 +45,26 @@ func (m *mockPluginLoader) LoadScrobbler(name string) (Scrobbler, bool) {
 	defer m.mu.RUnlock()
 	s, ok := m.scrobblers[name]
 	return s, ok
+}
+
+// flipOnPlayRepo reports one filter verdict before the play is counted and another
+// after, reproducing a filter that reads annotations incPlay mutates.
+type flipOnPlayRepo struct {
+	model.MediaFileRepository
+	before, after bool
+	played        atomic.Bool
+}
+
+func (r *flipOnPlayRepo) IncPlayCount(id string, ts time.Time) error {
+	r.played.Store(true)
+	return r.MediaFileRepository.IncPlayCount(id, ts)
+}
+
+func (r *flipOnPlayRepo) MatchesCriteria(string, criteria.Criteria) (bool, error) {
+	if r.played.Load() {
+		return r.after, nil
+	}
+	return r.before, nil
 }
 
 // slowMediaFileRepo widens the window between a report's session check and its
@@ -404,6 +425,49 @@ var _ = Describe("PlayTracker", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+		})
+
+		Context("when incPlay itself flips the filter", func() {
+			// A filter on playCount or lastPlayed changes verdict the moment incPlay
+			// commits, so the verdict has to be taken before it, not at dispatch time.
+			var flip *flipOnPlayRepo
+
+			install := func(before, after bool) {
+				flip = &flipOnPlayRepo{MediaFileRepository: ds.MediaFile(ctx), before: before, after: after}
+				ds.(*tests.MockDataStore).MockedMediaFile = flip
+			}
+
+			It("does not scrobble a track the filter matched before the play was counted", func() {
+				install(true, false)
+
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", State: StateStopped, PositionMs: 120_000, ClientId: "player-1", ClientName: "player"})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(flip.played.Load()).To(BeTrue(), "incPlay must still have run")
+				Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
+			})
+
+			It("still sends the stopped report when the filter only starts matching after the play", func() {
+				install(false, true)
+
+				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+					MediaId: "123", State: StateStopped, PositionMs: 120_000, ClientId: "player-1", ClientName: "player"})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(flip.played.Load()).To(BeTrue(), "incPlay must still have run")
+				Eventually(func() bool { return fake.PlaybackReportCalled.Load() }).Should(BeTrue())
+			})
+
+			It("does not scrobble a Submit whose filter matched before the play was counted", func() {
+				install(true, false)
+
+				err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(flip.played.Load()).To(BeTrue(), "incPlay must still have run")
+				Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
+			})
 		})
 	})
 

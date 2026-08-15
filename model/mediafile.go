@@ -549,8 +549,8 @@ type MediaFileRepository interface {
 	// filters as GetAll. Sort/Order are ignored.
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
-	// MatchesCriteria reports whether the media file matches the smart-playlist
-	// criteria, evaluated with the logged user's annotations
+	// MatchesCriteria reports whether the media file matches the criteria's rule
+	// expression, using the logged user's annotations. Limit and offset are ignored.
 	MatchesCriteria(id string, c criteria.Criteria) (bool, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	// GetAllIDs returns just the media_file IDs for the same row set as GetAll.

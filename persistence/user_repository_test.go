@@ -652,6 +652,21 @@ var _ = Describe("UserRepository", func() {
 			u := &model.User{ScrobbleFilter: `{"sort":"title"}`}
 			Expect(validateScrobbleFilter(u)).ToNot(Succeed())
 		})
+		It("rejects selection options that mean nothing for a single track", func() {
+			for _, f := range []string{
+				`{"all":[{"lt":{"rating":4}}],"limit":100}`,
+				`{"all":[{"lt":{"rating":4}}],"limitPercent":10}`,
+				`{"all":[{"lt":{"rating":4}}],"offset":5}`,
+				`{"all":[{"lt":{"rating":4}}],"refreshDelay":"1h"}`,
+			} {
+				u := &model.User{ScrobbleFilter: f}
+				Expect(validateScrobbleFilter(u)).ToNot(Succeed(), f)
+			}
+		})
+		It("accepts a sort, which cannot change a single-track match", func() {
+			u := &model.User{ScrobbleFilter: `{"all":[{"lt":{"rating":4}}],"sort":"title"}`}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+		})
 		It("rejects unknown fields", func() {
 			u := &model.User{ScrobbleFilter: `{"all":[{"is":{"bogusfield":1}}]}`}
 			Expect(validateScrobbleFilter(u)).ToNot(Succeed())

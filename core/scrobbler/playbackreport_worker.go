@@ -6,13 +6,14 @@ import (
 	"github.com/navidrome/navidrome/log"
 )
 
-func (p *playTracker) enqueuePlaybackReport(ctx context.Context, info PlaybackSession) {
+func (p *playTracker) enqueuePlaybackReport(ctx context.Context, info PlaybackSession, filtered bool) {
 	p.prMu.Lock()
 	defer p.prMu.Unlock()
 	ctx = context.WithoutCancel(ctx)
 	p.prQueue = append(p.prQueue, playbackReportEntry{
-		ctx:  ctx,
-		info: info,
+		ctx:      ctx,
+		info:     info,
+		filtered: filtered,
 	})
 	p.sendPlaybackReportSignal()
 }
@@ -44,16 +45,13 @@ func (p *playTracker) playbackReportWorker() {
 
 		allScrobblers := p.getActiveScrobblers()
 		for _, entry := range entries {
-			p.dispatchPlaybackReport(entry.ctx, entry.info, allScrobblers)
+			p.dispatchPlaybackReport(entry.ctx, entry.info, allScrobblers, entry.filtered)
 		}
 	}
 }
 
-func (p *playTracker) dispatchPlaybackReport(ctx context.Context, info PlaybackSession, allScrobblers map[string]Scrobbler) {
-	if len(allScrobblers) == 0 {
-		return
-	}
-	if p.isFilteredOut(ctx, &info.MediaFile) {
+func (p *playTracker) dispatchPlaybackReport(ctx context.Context, info PlaybackSession, allScrobblers map[string]Scrobbler, filtered bool) {
+	if filtered {
 		log.Debug(ctx, "Ignoring external PlaybackReport for filtered track", "track", info.MediaFile.Title, "state", info.State)
 		return
 	}

@@ -176,7 +176,7 @@
       },
       "validation": {
         "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores",
-        "invalidScrobbleFilter": "Deve ser um JSON válido de critérios de playlist inteligente"
+        "invalidScrobbleFilter": "Devem ser regras válidas de playlist inteligente. Limite, deslocamento e intervalo de atualização não são suportados."
       }
     },
     "player": {
