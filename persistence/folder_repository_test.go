@@ -44,27 +44,38 @@ var _ = Describe("FolderRepository", func() {
 		_, _ = conn.NewQuery(fmt.Sprintf("DELETE FROM library WHERE id = %d", otherLib.ID)).Execute()
 	})
 
-	Describe("GetAllIDs", func() {
-		It("returns only the IDs of folders matching the filters", func() {
-			parent := model.NewFolder(testLib, "TestGetAllIDs")
-			child := model.NewFolder(testLib, "TestGetAllIDs/Child")
-			grandchild := model.NewFolder(testLib, "TestGetAllIDs/Child/Grandchild")
-			other := model.NewFolder(testLib, "TestGetAllIDsOther")
+	Describe("GetAllIDs / GetSubtreeIDs", func() {
+		var parent, child, grandchild, other *model.Folder
+
+		BeforeEach(func() {
+			parent = model.NewFolder(testLib, "TestSubtree")
+			child = model.NewFolder(testLib, "TestSubtree/Child")
+			grandchild = model.NewFolder(testLib, "TestSubtree/Child/Grandchild")
+			other = model.NewFolder(testLib, "TestSubtreeOther")
 			for _, f := range []*model.Folder{parent, child, grandchild, other} {
 				Expect(repo.Put(f)).To(Succeed())
 			}
 			DeferCleanup(func() {
-				_, _ = conn.NewQuery("DELETE FROM folder WHERE name LIKE 'TestGetAllIDs%' OR path LIKE 'TestGetAllIDs%'").Execute()
+				_, _ = conn.NewQuery("DELETE FROM folder WHERE name LIKE 'TestSubtree%' OR path LIKE 'TestSubtree%'").Execute()
 			})
+		})
 
-			// The subtree shape used by the scanner: the folder itself, plus descendants by path prefix
-			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: squirrel.Or{
-				squirrel.Eq{"id": parent.ID},
-				squirrel.Eq{"path": "TestGetAllIDs"},
-				squirrel.Like{"path": "TestGetAllIDs/%"},
-			}})
+		It("GetAllIDs returns only the IDs of folders matching the filters", func() {
+			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: squirrel.Eq{"parent_id": parent.ID}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(child.ID))
+		})
+
+		It("GetSubtreeIDs returns the folders and all their descendants", func() {
+			ids, err := repo.GetSubtreeIDs(testLib, "TestSubtree")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
+		})
+
+		It("GetSubtreeIDs returns the whole library for the root path", func() {
+			ids, err := repo.GetSubtreeIDs(testLib, ".")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ContainElements(parent.ID, child.ID, grandchild.ID, other.ID))
 		})
 	})
 

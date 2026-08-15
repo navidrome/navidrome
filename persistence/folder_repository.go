@@ -92,7 +92,7 @@ func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, err
 }
 
 func (r folderRepository) GetAllIDs(opt ...model.QueryOptions) ([]string, error) {
-	sq := r.newSelect(opt...).Columns("folder.id")
+	sq := r.applyLibraryFilter(r.newSelect(opt...).Columns("folder.id"))
 	ids := []string{}
 	err := r.queryAllSlice(sq, &ids)
 	return ids, err
@@ -179,11 +179,13 @@ func (r folderRepository) getFolderUpdateInfoBatch(lib model.Library, targetPath
 
 // queryFolderUpdateInfo executes the query and returns the result map
 func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.FolderUpdateInfo, error) {
-	sq := r.newSelect().Columns("id", "updated_at", "hash").Where(where)
+	sq := r.newSelect().Columns("id", "updated_at", "hash", "image_files", "images_updated_at").Where(where)
 	var res []struct {
-		ID        string
-		UpdatedAt time.Time
-		Hash      string
+		ID              string
+		UpdatedAt       time.Time
+		Hash            string
+		ImageFiles      string
+		ImagesUpdatedAt time.Time
 	}
 	err := r.queryAll(sq, &res)
 	if err != nil {
@@ -191,9 +193,51 @@ func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.Fol
 	}
 	m := make(map[string]model.FolderUpdateInfo, len(res))
 	for _, f := range res {
-		m[f.ID] = model.FolderUpdateInfo{UpdatedAt: f.UpdatedAt, Hash: f.Hash}
+		info := model.FolderUpdateInfo{UpdatedAt: f.UpdatedAt, Hash: f.Hash, ImagesUpdatedAt: f.ImagesUpdatedAt}
+		if f.ImageFiles != "" {
+			if err := json.Unmarshal([]byte(f.ImageFiles), &info.ImageFiles); err != nil {
+				return nil, fmt.Errorf("parsing folder image_files: %w", err)
+			}
+		}
+		m[f.ID] = info
 	}
 	return m, nil
+}
+
+// GetSubtreeIDs returns the IDs of the folders at the given library-relative paths and all their
+// descendants. A path of "" or "." selects the whole library.
+func (r folderRepository) GetSubtreeIDs(lib model.Library, paths ...string) ([]string, error) {
+	where := And{Eq{"library_id": lib.ID}, Eq{"missing": false}}
+	conds := make(Or, 0, len(paths)*3)
+	for _, p := range paths {
+		cleanPath := filepath.Clean(strings.TrimPrefix(p, string(os.PathSeparator)))
+		if cleanPath == "." {
+			conds = nil
+			break
+		}
+		conds = append(conds,
+			Eq{"id": model.FolderID(lib, cleanPath)},
+			// Direct children have path = cleanPath; deeper descendants match the prefix
+			Eq{"path": cleanPath},
+			Expr(`path LIKE ? ESCAPE '\'`, escapeLikePrefix(cleanPath)+"/%"),
+		)
+	}
+	ids := []string{}
+	// ~3 conditions per path; batches keep the query under SQLite's expression tree depth limit.
+	for chunk := range slices.Chunk(conds, 300) {
+		sq := r.newSelect().Columns("folder.id").Where(append(where, chunk))
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	if conds == nil {
+		sq := r.newSelect().Columns("folder.id").Where(where)
+		err := r.queryAllSlice(sq, &ids)
+		return ids, err
+	}
+	return ids, nil
 }
 
 // HasAudioOutsideFolders reports whether any folder in parent's subtree

@@ -9,6 +9,7 @@ import (
 	"iter"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -432,6 +433,22 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response any) error {
 	}
 	r.logSQL(query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
 	return err
+}
+
+// idsQueryChunkSize keeps chunked `IN` lists well under SQLite's bound-parameter limit.
+const idsQueryChunkSize = 500
+
+// queryAllSliceChunked runs build for each chunk of keys and concatenates the single-column results.
+func (r sqlRepository) queryAllSliceChunked(keys []string, build func(chunk []string) SelectBuilder) ([]string, error) {
+	res := []string{}
+	for chunk := range slices.Chunk(keys, idsQueryChunkSize) {
+		var part []string
+		if err := r.queryAllSlice(build(chunk), &part); err != nil {
+			return nil, err
+		}
+		res = append(res, part...)
+	}
+	return res, nil
 }
 
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.

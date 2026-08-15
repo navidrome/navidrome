@@ -105,7 +105,7 @@ func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 func (j *scanJob) createFolderEntry(path string) *folderEntry {
 	id := model.FolderID(j.lib, path)
 	info := j.popLastUpdate(id)
-	return newFolderEntry(j, id, path, info.UpdatedAt, info.Hash)
+	return newFolderEntry(j, id, path, info)
 }
 
 // phaseFolders represents the first phase of the scanning process, which is responsible
@@ -125,8 +125,8 @@ type phaseFolders struct {
 	ctx              context.Context
 	state            *scanState
 	prevAlbumPIDConf string
-	// Appended by the persistChanges stage (serial), consumed by finalize.
-	imageChangedFolders []imageChangedFolder
+	// Appended by the persistChanges stage (serial), consumed by finalize. Keyed by library ID.
+	imageChangedFolders map[int][]imageChangedFolder
 }
 
 func (p *phaseFolders) description() string {
@@ -341,19 +341,17 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
 
-		// Detect image changes against the previous folder state, before it is overwritten.
-		var prevFolder *model.Folder
+		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
 		if !entry.isNew() {
-			var err error
-			prevFolder, err = folderRepo.Get(entry.id)
-			if err != nil && !errors.Is(err, model.ErrNotFound) {
-				log.Warn(p.ctx, "Scanner: could not load previous folder state", "folder", entry.path, err)
+			if changed, artistImage := entry.imagesChanged(); changed {
+				if p.imageChangedFolders == nil {
+					p.imageChangedFolders = map[int][]imageChangedFolder{}
+				}
+				libID := entry.job.lib.ID
+				p.imageChangedFolders[libID] = append(p.imageChangedFolders[libID], imageChangedFolder{
+					id: entry.id, path: entry.path, artistImage: artistImage,
+				})
 			}
-		}
-		if changed, artistImage := imagesChanged(prevFolder, entry); changed {
-			p.imageChangedFolders = append(p.imageChangedFolders, imageChangedFolder{
-				lib: entry.job.lib, id: entry.id, path: entry.path, artistImage: artistImage,
-			})
 		}
 
 		// Save folder to DB
@@ -385,10 +383,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
-				queueItems = append(queueItems, model.ArtworkQueueItem{
-					ItemKind: model.KindArtistArtwork.Prefix(), ItemID: entry.artists[i].ID, ImageType: model.ImageTypePrimary,
-					Priority: model.ArtworkPriorityScan,
-				})
+				queueItems = append(queueItems, scanArtworkItem(model.KindArtistArtwork, entry.artists[i].ID))
 			}
 		}
 
@@ -400,10 +395,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.albums[i].Name != consts.UnknownAlbum {
-				queueItems = append(queueItems, model.ArtworkQueueItem{
-					ItemKind: model.KindAlbumArtwork.Prefix(), ItemID: entry.albums[i].ID, ImageType: model.ImageTypePrimary,
-					Priority: model.ArtworkPriorityScan,
-				})
+				queueItems = append(queueItems, scanArtworkItem(model.KindAlbumArtwork, entry.albums[i].ID))
 			}
 		}
 

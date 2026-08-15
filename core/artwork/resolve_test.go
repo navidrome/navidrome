@@ -21,6 +21,25 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("IsArtistImageFile", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("matches bare and album/-prefixed glob tokens, case-insensitively", func() {
+		conf.Server.ArtistArtPriority = "artist.*, album/artistfolder.*, external"
+		Expect(IsArtistImageFile("Artist.jpg")).To(BeTrue())
+		Expect(IsArtistImageFile("artistfolder.png")).To(BeTrue())
+		Expect(IsArtistImageFile("cover.jpg")).To(BeFalse())
+	})
+
+	It("does not treat non-file tokens as globs", func() {
+		conf.Server.ArtistArtPriority = "image-folder, external"
+		Expect(IsArtistImageFile("image-folder")).To(BeFalse())
+		Expect(IsArtistImageFile("external")).To(BeFalse())
+	})
+})
+
 var _ = Describe("resolveItem", func() {
 	var (
 		ctx        context.Context

@@ -10,21 +10,24 @@ import (
 	"slices"
 	"time"
 
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/chrono"
 )
 
-func newFolderEntry(job *scanJob, id, path string, updTime time.Time, hash string) *folderEntry {
+func newFolderEntry(job *scanJob, id, path string, info model.FolderUpdateInfo) *folderEntry {
 	f := &folderEntry{
-		id:         id,
-		job:        job,
-		path:       path,
-		audioFiles: make(map[string]fs.DirEntry),
-		imageFiles: make(map[string]fs.DirEntry),
-		albumIDMap: make(map[string]string),
-		updTime:    updTime,
-		prevHash:   hash,
+		id:                  id,
+		job:                 job,
+		path:                path,
+		audioFiles:          make(map[string]fs.DirEntry),
+		imageFiles:          make(map[string]fs.DirEntry),
+		albumIDMap:          make(map[string]string),
+		updTime:             info.UpdatedAt,
+		prevHash:            info.Hash,
+		prevImageFiles:      info.ImageFiles,
+		prevImagesUpdatedAt: info.ImagesUpdatedAt,
 	}
 	return f
 }
@@ -42,12 +45,15 @@ type folderEntry struct {
 	numSubFolders   int
 	imagesUpdatedAt time.Time
 	prevHash        string // Previous hash from DB
-	tracks          model.MediaFiles
-	albums          model.Albums
-	albumIDMap      map[string]string
-	artists         model.Artists
-	tags            model.TagList
-	missingTracks   []*model.MediaFile
+	// Previous image state from DB, to detect image-only changes
+	prevImageFiles      []string
+	prevImagesUpdatedAt time.Time
+	tracks              model.MediaFiles
+	albums              model.Albums
+	albumIDMap          map[string]string
+	artists             model.Artists
+	tags                model.TagList
+	missingTracks       []*model.MediaFile
 }
 
 func (f *folderEntry) hasNoFiles() bool {
@@ -67,6 +73,21 @@ func (f *folderEntry) isOutdated() bool {
 		return true
 	}
 	return f.prevHash != f.hash()
+}
+
+// imagesChanged reports whether the folder's image files differ from the previously persisted
+// state, and whether an artist image is involved (present in the old or the new list).
+func (f *folderEntry) imagesChanged() (changed, artistImage bool) {
+	newNames := slices.Sorted(maps.Keys(f.imageFiles))
+	prevNames := slices.Sorted(slices.Values(f.prevImageFiles))
+	// Both empty also skips the timestamp check, which is noise for image-less folders.
+	if len(prevNames) == 0 && len(newNames) == 0 {
+		return false, false
+	}
+	if slices.Equal(prevNames, newNames) && f.prevImagesUpdatedAt.Equal(f.imagesUpdatedAt) {
+		return false, false
+	}
+	return true, slices.ContainsFunc(slices.Concat(prevNames, newNames), artwork.IsArtistImageFile)
 }
 
 func (f *folderEntry) toFolder() *model.Folder {

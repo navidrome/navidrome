@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -251,7 +252,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{
 		Filters: squirrel.And{
 			squirrel.Eq{"album_artist_id": artistID},
-			squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1},
+			model.SoleAlbumArtistFilter(),
 		},
 	})
 	if err != nil {
@@ -523,6 +524,23 @@ func resolveFolderSource(lib libraryView, sf sourceFunc) (resolution, bool) {
 
 func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, pattern string) (resolution, bool) {
 	return resolveFolderSource(lib, fromExternalFile(ctx, lib.FS, imgFiles, pattern))
+}
+
+// IsArtistImageFile reports whether a library file name matches any file-glob token of
+// ArtistArtPriority, so callers outside the resolver share the chain's token grammar.
+func IsArtistImageFile(name string) bool {
+	name = strings.ToLower(name)
+	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" || pattern == externalCandidate || pattern == "image-folder" {
+			continue
+		}
+		pattern = strings.TrimPrefix(pattern, "album/")
+		if ok, _ := path.Match(pattern, name); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveArtistImageFolder(ar *model.Artist) (resolution, bool) {

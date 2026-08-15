@@ -271,20 +271,10 @@ func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, er
 }
 
 func (r *albumRepository) GetSoleAlbumArtistIDs(albumIDs ...string) ([]string, error) {
-	ids := []string{}
-	for chunk := range slices.Chunk(albumIDs, idsQueryChunkSize) {
-		sq := Select("distinct album_artist_id").From("album").
-			Where(And{
-				Eq{"id": chunk},
-				Eq{"json_array_length(participants, '$.albumartist')": 1},
-			})
-		var chunkIDs []string
-		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
-			return nil, err
-		}
-		ids = append(ids, chunkIDs...)
-	}
-	return ids, nil
+	return r.queryAllSliceChunked(albumIDs, func(chunk []string) SelectBuilder {
+		return Select("distinct album_artist_id").From("album").
+			Where(And{Eq{"id": chunk}, model.SoleAlbumArtistFilter()})
+	})
 }
 
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
