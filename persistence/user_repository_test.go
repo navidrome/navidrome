@@ -616,6 +616,37 @@ var _ = Describe("UserRepository", func() {
 		})
 	})
 
+	Describe("validateScrobbleFilter", func() {
+		It("accepts an empty filter", func() {
+			u := &model.User{}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+		})
+		It("trims a whitespace-only filter to empty", func() {
+			u := &model.User{ScrobbleFilter: "   "}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+			Expect(u.ScrobbleFilter).To(Equal(""))
+		})
+		It("accepts valid criteria JSON", func() {
+			u := &model.User{ScrobbleFilter: `{"all":[{"lt":{"rating":4}}]}`}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+		})
+		It("rejects malformed JSON", func() {
+			u := &model.User{ScrobbleFilter: `{not json`}
+			var vErr *rest.ValidationError
+			err := validateScrobbleFilter(u)
+			Expect(errors.As(err, &vErr)).To(BeTrue())
+			Expect(vErr.Errors).To(HaveKey("scrobbleFilter"))
+		})
+		It("rejects criteria without rules", func() {
+			u := &model.User{ScrobbleFilter: `{"sort":"title"}`}
+			Expect(validateScrobbleFilter(u)).ToNot(Succeed())
+		})
+		It("rejects unknown fields", func() {
+			u := &model.User{ScrobbleFilter: `{"all":[{"is":{"bogusfield":1}}]}`}
+			Expect(validateScrobbleFilter(u)).ToNot(Succeed())
+		})
+	})
+
 	Describe("filters", func() {
 		It("qualifies id filter with table name", func() {
 			r := repo.(*userRepository)
