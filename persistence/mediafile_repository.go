@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
@@ -515,6 +516,23 @@ var mediaFileSearchConfig = searchConfig{
 	NaturalOrder: "media_file.rowid",
 	OrderBy:      []string{"title"},
 	MBIDFields:   []string{"mbz_recording_id", "mbz_release_track_id"},
+}
+
+func (r *mediaFileRepository) MatchesCriteria(id string, c criteria.Criteria) (bool, error) {
+	usr := loggedUser(r.ctx)
+	rulesSQL := newSmartPlaylistCriteria(c, withSmartPlaylistOwner(*usr))
+	cond, err := rulesSQL.where()
+	if err != nil {
+		return false, err
+	}
+	sq := Select("count(*) as count").From("media_file")
+	sq = rulesSQL.applyExpressionJoins(sq, usr.ID)
+	sq = sq.Where(And{Eq{"media_file.id": id}, cond})
+	var res struct{ Count int64 }
+	if err := r.queryOne(sq, &res); err != nil {
+		return false, err
+	}
+	return res.Count > 0, nil
 }
 
 func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {

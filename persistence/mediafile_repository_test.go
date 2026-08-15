@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
@@ -1127,6 +1128,33 @@ var _ = Describe("MediaRepository", func() {
 
 			Expect(mr.Exists(songAntenna.ID)).To(BeTrue(), "admin sees it")
 			Expect(NewMediaFileRepository(rctx, GetDBXBuilder()).Exists(songAntenna.ID)).To(BeFalse())
+		})
+	})
+
+	Describe("MatchesCriteria", func() {
+		It("returns true when the track matches", func() {
+			c := criteria.Criteria{Expression: criteria.All{criteria.Contains{"title": "Day"}}}
+			match, err := mr.MatchesCriteria(songDayInALife.ID, c)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(match).To(BeTrue())
+		})
+		It("returns false when the track does not match", func() {
+			c := criteria.Criteria{Expression: criteria.All{criteria.Contains{"title": "Nickelback"}}}
+			match, err := mr.MatchesCriteria(songDayInALife.ID, c)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(match).To(BeFalse())
+		})
+		It("treats missing annotations as their COALESCE default", func() {
+			// unrated track: rating coalesces to 0, so "rating < 4" matches
+			c := criteria.Criteria{Expression: criteria.All{criteria.Lt{"rating": 4}}}
+			match, err := mr.MatchesCriteria(songDayInALife.ID, c)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(match).To(BeTrue())
+		})
+		It("returns an error for an invalid field", func() {
+			c := criteria.Criteria{Expression: criteria.All{criteria.Is{"bogusfield": 1}}}
+			_, err := mr.MatchesCriteria(songDayInALife.ID, c)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
