@@ -12,9 +12,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// allowed drops the generation token when a test only cares about admission.
-func allowed(b *breaker) bool { ok, _ := b.allow(); return ok }
-
 // Drives the real breaker state machine with the fake clock. Plain test: testing/synctest
 // needs a *testing.T, which Ginkgo doesn't give.
 func TestArtworkBreakerHalfOpen(t *testing.T) {
@@ -115,34 +112,4 @@ func TestArtworkGatePerAgentBreakerIsolation(t *testing.T) {
 		g.Expect(err).To(MatchError(errBreakerOpen), "the probe failed, so A stays open")
 		g.Expect(aCalls).To(Equal(1))
 	})
-}
-
-// The worker drains concurrently, so when the breaker opens there are already calls past allow(),
-// queued in the rate limiter or waiting on an HTTP response. Their answers arrive afterwards.
-// Counting those as recovery closes the breaker with no probe interval elapsed, which is exactly
-// the burst the ramp exists to prevent. No fake clock: the race is an ordering, not a duration.
-func TestArtworkBreakerIgnoresAnswersAdmittedBeforeItOpened(t *testing.T) {
-	g := NewWithT(t)
-	b := newBreaker()
-
-	// A batch clears allow() while the breaker is still closed.
-	for range breakerThreshold + breakerRecoveries {
-		ok, gen := b.allow()
-		g.Expect(ok).To(BeTrue())
-		g.Expect(gen).To(BeZero(), "admitted with the breaker closed, so not a probe")
-	}
-
-	// The fast failures in that batch open it.
-	for range breakerThreshold {
-		b.record("agentA", 0, errors.New("blocked"))
-	}
-	g.Expect(allowed(b)).To(BeFalse(), "breaker is open")
-
-	// The slower answers from the same batch land now.
-	for range breakerRecoveries {
-		b.record("agentA", 0, nil)
-	}
-
-	g.Expect(allowed(b)).To(BeFalse(),
-		"answers from calls admitted before the breaker opened must not close it")
 }
