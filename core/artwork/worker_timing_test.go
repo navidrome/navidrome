@@ -35,9 +35,43 @@ func TestArtworkBreakerHalfOpen(t *testing.T) {
 		time.Sleep(breakerProbeAfter)
 		g.Expect(b.allow()).To(BeTrue(), "another probe after the next interval")
 
-		b.record("agentA", nil) // probe succeeds -> close
+		// One good answer must not reopen the floodgates: closing here is what let a burst out at
+		// full rate and got the provider to escalate from throttling to blocking.
+		b.record("agentA", nil)
+		g.Expect(b.allow()).To(BeFalse(), "a single good answer does not close the breaker")
+
+		for range breakerRecoveries - 1 {
+			time.Sleep(breakerProbeAfter)
+			g.Expect(b.allow()).To(BeTrue())
+			b.record("agentA", nil)
+		}
 		g.Expect(b.allow()).To(BeTrue(), "closed breaker admits freely")
 		g.Expect(b.allow()).To(BeTrue())
+	})
+}
+
+// The failure seen in production: while an agent was blocked, the occasional answer it did serve
+// reset the breaker, releasing a burst that immediately re-tripped it. Open and closed pairs were
+// seconds apart, over and over.
+func TestArtworkBreakerDoesNotCloseOnAnIsolatedAnswer(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		g := NewWithT(t)
+		b := newBreaker()
+		open := func() {
+			for range breakerThreshold {
+				b.record("agentA", errors.New("blocked"))
+			}
+		}
+		open()
+
+		// A not-found is an answer, so it counts toward recovery, but never on its own.
+		for range breakerRecoveries * 2 {
+			time.Sleep(breakerProbeAfter)
+			g.Expect(b.allow()).To(BeTrue(), "one probe per interval")
+			b.record("agentA", agents.ErrNotFound)
+			b.record("agentA", errors.New("blocked")) // the very next call is refused again
+			g.Expect(b.allow()).To(BeFalse(), "an answer between failures must not close the breaker")
+		}
 	})
 }
 

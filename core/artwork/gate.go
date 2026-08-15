@@ -17,6 +17,11 @@ import (
 const (
 	breakerThreshold  = 5
 	breakerProbeAfter = time.Minute
+	// breakerRecoveries is how many consecutive answers an open breaker needs before it trusts the
+	// provider again. One is not enough: a provider that is rate-limiting or blocking us still
+	// answers the occasional request, and closing on the first of those puts the agent straight
+	// back to full rate, which is what earns the next block.
+	breakerRecoveries = 3
 )
 
 var errBreakerOpen = errors.New("artwork: external circuit breaker open")
@@ -84,6 +89,8 @@ type breaker struct {
 	mu       sync.Mutex
 	failures int
 	openedAt time.Time
+	// recoveries counts consecutive good answers while open; a single failure discards them.
+	recoveries int
 }
 
 func newBreaker() *breaker { return &breaker{} }
@@ -108,17 +115,27 @@ func (b *breaker) record(name string, err error) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	if !isTransientExternal(err) {
-		if b.failures >= breakerThreshold {
-			log.Info("Artwork: Circuit breaker closed for agent", "agent", name)
+	if isTransientExternal(err) {
+		b.recoveries = 0
+		b.failures++
+		if b.failures == breakerThreshold {
+			b.openedAt = time.Now()
+			log.Warn("Artwork: Circuit breaker opened for agent", "agent", name,
+				"consecutiveFailures", b.failures, "probeAfter", breakerProbeAfter, err)
 		}
+		return
+	}
+	if b.failures < breakerThreshold {
 		b.failures = 0
 		return
 	}
-	b.failures++
-	if b.failures == breakerThreshold {
-		b.openedAt = time.Now()
-		log.Warn("Artwork: Circuit breaker opened for agent", "agent", name,
-			"consecutiveFailures", b.failures, "probeAfter", breakerProbeAfter, err)
+	// Open: ramp back up over several probes. A not-found counts here because the provider did
+	// answer, but on its own it is thin evidence that a provider which just blocked us is well.
+	b.recoveries++
+	if b.recoveries < breakerRecoveries {
+		return
 	}
+	log.Info("Artwork: Circuit breaker closed for agent", "agent", name,
+		"consecutiveAnswers", b.recoveries)
+	b.failures, b.recoveries = 0, 0
 }
