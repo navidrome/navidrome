@@ -144,6 +144,9 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllIDs(...QueryOptions) ([]string, error)
+	// GetSoleAlbumArtistIDs returns the distinct album artists of the given albums, restricted to
+	// albums with a single album artist, mirroring the artist artwork resolver's album selection.
+	GetSoleAlbumArtistIDs(albumIDs ...string) ([]string, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)
 	GetYears(libraryIDs ...int) ([]int, error)
 

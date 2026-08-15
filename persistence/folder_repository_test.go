@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -41,6 +42,30 @@ var _ = Describe("FolderRepository", func() {
 		// This prevents interference with fixture data needed by other tests
 		_, _ = conn.NewQuery("DELETE FROM folder WHERE library_id = 1 AND path LIKE 'Test%'").Execute()
 		_, _ = conn.NewQuery(fmt.Sprintf("DELETE FROM library WHERE id = %d", otherLib.ID)).Execute()
+	})
+
+	Describe("GetAllIDs", func() {
+		It("returns only the IDs of folders matching the filters", func() {
+			parent := model.NewFolder(testLib, "TestGetAllIDs")
+			child := model.NewFolder(testLib, "TestGetAllIDs/Child")
+			grandchild := model.NewFolder(testLib, "TestGetAllIDs/Child/Grandchild")
+			other := model.NewFolder(testLib, "TestGetAllIDsOther")
+			for _, f := range []*model.Folder{parent, child, grandchild, other} {
+				Expect(repo.Put(f)).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = conn.NewQuery("DELETE FROM folder WHERE name LIKE 'TestGetAllIDs%' OR path LIKE 'TestGetAllIDs%'").Execute()
+			})
+
+			// The subtree shape used by the scanner: the folder itself, plus descendants by path prefix
+			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: squirrel.Or{
+				squirrel.Eq{"id": parent.ID},
+				squirrel.Eq{"path": "TestGetAllIDs"},
+				squirrel.Like{"path": "TestGetAllIDs/%"},
+			}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
+		})
 	})
 
 	Describe("GetFolderUpdateInfo", func() {

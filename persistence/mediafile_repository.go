@@ -318,6 +318,23 @@ func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string
 	return ids, err
 }
 
+// idsQueryChunkSize keeps chunked `IN` lists well under SQLite's bound-parameter limit.
+const idsQueryChunkSize = 500
+
+func (r *mediaFileRepository) GetAlbumIDsByFolder(folderIDs ...string) ([]string, error) {
+	ids := []string{}
+	for chunk := range slices.Chunk(folderIDs, idsQueryChunkSize) {
+		sq := Select("distinct album_id").From("media_file").
+			Where(And{Eq{"folder_id": chunk}, Eq{"missing": false}})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
+}
+
 // GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
 func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
 	ids, err := r.GetAllIDs(options...)

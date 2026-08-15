@@ -30,6 +30,22 @@ var _ = Describe("MediaRepository", func() {
 		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
+	Describe("GetAlbumIDsByFolder", func() {
+		It("returns the distinct album IDs of non-missing tracks in the given folders", func() {
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-1", LibraryID: 1, AlbumID: "fol-al-1", FolderID: "fol-1", Path: "t/1.mp3"})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-2", LibraryID: 1, AlbumID: "fol-al-1", FolderID: "fol-1", Path: "t/2.mp3"})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-3", LibraryID: 1, AlbumID: "fol-al-2", FolderID: "fol-2", Path: "t/3.mp3"})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-4", LibraryID: 1, AlbumID: "fol-al-3", FolderID: "fol-1", Path: "t/4.mp3", Missing: true})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM media_file WHERE id LIKE 'fol-mf-%'").Execute()
+			})
+
+			ids, err := mr.GetAlbumIDsByFolder("fol-1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf("fol-al-1"))
+		})
+	})
+
 	Describe("GetCursor", func() {
 		It("yields the same media files as GetAll", func() {
 			opts := model.QueryOptions{Sort: "title"}

@@ -96,6 +96,24 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
+	Describe("GetSoleAlbumArtistIDs", func() {
+		It("returns only artists that are the sole album artist of the given albums", func() {
+			sole := model.Album{ID: "sole-artist-al", Name: "Sole", LibraryID: 1, AlbumArtistID: "2",
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
+			duo := model.Album{ID: "duo-artist-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "3",
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistBeatles}, {Artist: artistKraftwerk}}}}
+			Expect(albumRepo.Put(&sole)).To(Succeed())
+			Expect(albumRepo.Put(&duo)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM album WHERE id IN ('sole-artist-al', 'duo-artist-al')").Execute()
+			})
+
+			ids, err := albumRepo.GetSoleAlbumArtistIDs(sole.ID, duo.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf("2"))
+		})
+	})
+
 	Describe("GetAll", func() {
 		var GetAll = func(opts ...model.QueryOptions) (model.Albums, error) {
 			albums, err := albumRepo.GetAll(opts...)

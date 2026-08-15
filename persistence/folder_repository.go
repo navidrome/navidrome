@@ -91,6 +91,13 @@ func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, err
 	return res.toModels(), err
 }
 
+func (r folderRepository) GetAllIDs(opt ...model.QueryOptions) ([]string, error) {
+	sq := r.newSelect(opt...).Columns("folder.id")
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
+}
+
 func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
 	query := r.newSelect(opt...).Columns("count(*)")
 	query = r.applyLibraryFilter(query)

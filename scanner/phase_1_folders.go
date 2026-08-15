@@ -125,6 +125,8 @@ type phaseFolders struct {
 	ctx              context.Context
 	state            *scanState
 	prevAlbumPIDConf string
+	// Appended by the persistChanges stage (serial), consumed by finalize.
+	imageChangedFolders []imageChangedFolder
 }
 
 func (p *phaseFolders) description() string {
@@ -339,6 +341,21 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
 
+		// Detect image changes against the previous folder state, before it is overwritten.
+		var prevFolder *model.Folder
+		if !entry.isNew() {
+			var err error
+			prevFolder, err = folderRepo.Get(entry.id)
+			if err != nil && !errors.Is(err, model.ErrNotFound) {
+				log.Warn(p.ctx, "Scanner: could not load previous folder state", "folder", entry.path, err)
+			}
+		}
+		if changed, artistImage := imagesChanged(prevFolder, entry); changed {
+			p.imageChangedFolders = append(p.imageChangedFolders, imageChangedFolder{
+				lib: entry.job.lib, id: entry.id, path: entry.path, artistImage: artistImage,
+			})
+		}
+
 		// Save folder to DB
 		folder := entry.toFolder()
 		err := folderRepo.Put(folder)
@@ -518,6 +535,7 @@ func (p *phaseFolders) finalize(err error) error {
 		}
 		return nil
 	}, "scanner: finalize phaseFolders")
+	p.enqueueArtworkForImageChanges()
 	return errors.Join(err, errF)
 }
 
