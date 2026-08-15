@@ -85,7 +85,7 @@ func (w *Worker) gateFor(name string) *extGate {
 }
 
 // breaker opens after breakerThreshold consecutive errors and admits a single probe once
-// breakerProbeAfter has elapsed; a success re-closes it.
+// breakerProbeAfter has elapsed; it closes after breakerRecoveries consecutive answers.
 type breaker struct {
 	mu       sync.Mutex
 	failures int
