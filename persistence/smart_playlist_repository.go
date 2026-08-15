@@ -120,10 +120,10 @@ func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQ
 	}
 
 	countSq := Select("count(*) as count").From("media_file")
-	countSq = rulesSQL.ApplyExpressionJoins(countSq, userID)
+	countSq = rulesSQL.applyExpressionJoins(countSq, userID)
 	countSq = r.applyLibraryFilter(countSq, "media_file")
 
-	cond, err := rulesSQL.Where()
+	cond, err := rulesSQL.where()
 	if err != nil {
 		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
 		return err
@@ -144,10 +144,10 @@ func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQ
 // buildSmartPlaylistQuery constructs the SQL query to select media files matching the smart playlist criteria,
 // including the joins its fields require and library filtering.
 func (r *playlistRepository) buildSmartPlaylistQuery(pls *model.Playlist, rulesSQL smartPlaylistCriteria, userID string) SelectBuilder {
-	orderBy := rulesSQL.OrderBy()
+	orderBy := rulesSQL.orderBy()
 	sq := Select("row_number() over (order by "+orderBy+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file")
-	sq = rulesSQL.ApplyRequiredJoins(sq, userID)
+	sq = rulesSQL.applyRequiredJoins(sq, userID)
 	sq = r.applyLibraryFilter(sq, "media_file")
 	return sq
 }
@@ -155,7 +155,7 @@ func (r *playlistRepository) buildSmartPlaylistQuery(pls *model.Playlist, rulesS
 // addCriteria applies the where conditions, limit, offset, and order by clauses to the SQL query based on the
 // smart playlist criteria.
 func (r *playlistRepository) addCriteria(sql SelectBuilder, cSQL smartPlaylistCriteria) (SelectBuilder, error) {
-	cond, err := cSQL.Where()
+	cond, err := cSQL.where()
 	if err != nil {
 		return sql, err
 	}
@@ -163,7 +163,7 @@ func (r *playlistRepository) addCriteria(sql SelectBuilder, cSQL smartPlaylistCr
 	if cSQL.Criteria.Limit > 0 {
 		sql = sql.Limit(uint64(cSQL.Criteria.Limit)).Offset(uint64(cSQL.Criteria.Offset))
 	}
-	if order := cSQL.OrderBy(); order != "" {
+	if order := cSQL.orderBy(); order != "" {
 		sql = sql.OrderBy(order)
 	}
 	return sql, nil

@@ -129,7 +129,7 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"random":               {order: "random()"},
 }
 
-func (c smartPlaylistCriteria) Where() (squirrel.Sqlizer, error) {
+func (c smartPlaylistCriteria) where() (squirrel.Sqlizer, error) {
 	if c.Criteria.Expression == nil {
 		return squirrel.Expr("1 = 1"), nil
 	}
@@ -786,7 +786,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 	return field.joinType
 }
 
-func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
+func (c smartPlaylistCriteria) expressionJoins() smartPlaylistJoinType {
 	var joins smartPlaylistJoinType
 	_ = criteria.Walk(c.Criteria.Expression, func(expr criteria.Expression) error {
 		for field := range criteria.Fields(expr) {
@@ -797,22 +797,22 @@ func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
 	return joins
 }
 
-func (c smartPlaylistCriteria) RequiredJoins() smartPlaylistJoinType {
-	joins := c.ExpressionJoins()
+func (c smartPlaylistCriteria) requiredJoins() smartPlaylistJoinType {
+	joins := c.expressionJoins()
 	for _, name := range c.Criteria.SortFieldNames() {
 		joins |= fieldJoinType(name)
 	}
 	return joins
 }
 
-// ApplyExpressionJoins adds every join the criteria's WHERE clause resolves against.
-func (c smartPlaylistCriteria) ApplyExpressionJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
-	return c.applyJoins(sq, c.ExpressionJoins(), userID)
+// applyExpressionJoins adds every join the criteria's WHERE clause resolves against.
+func (c smartPlaylistCriteria) applyExpressionJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
+	return c.applyJoins(sq, c.expressionJoins(), userID)
 }
 
-// ApplyRequiredJoins adds the WHERE joins plus any the ORDER BY resolves against.
-func (c smartPlaylistCriteria) ApplyRequiredJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
-	return c.applyJoins(sq, c.RequiredJoins(), userID)
+// applyRequiredJoins adds the WHERE joins plus any the ORDER BY resolves against.
+func (c smartPlaylistCriteria) applyRequiredJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
+	return c.applyJoins(sq, c.requiredJoins(), userID)
 }
 
 // applyJoins joins the media_file annotation unconditionally — annotation fields
@@ -840,7 +840,7 @@ func (c smartPlaylistCriteria) applyJoins(sq squirrel.SelectBuilder, joins smart
 	return sq
 }
 
-func (c smartPlaylistCriteria) OrderBy() string {
+func (c smartPlaylistCriteria) orderBy() string {
 	sortFields := c.Criteria.OrderByFields()
 	parts := make([]string, 0, len(sortFields))
 	for _, sf := range sortFields {

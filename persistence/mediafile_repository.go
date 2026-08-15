@@ -521,12 +521,12 @@ var mediaFileSearchConfig = searchConfig{
 func (r *mediaFileRepository) MatchesCriteria(id string, c criteria.Criteria) (bool, error) {
 	usr := loggedUser(r.ctx)
 	rulesSQL := newSmartPlaylistCriteria(c, withSmartPlaylistOwner(*usr))
-	cond, err := rulesSQL.Where()
+	cond, err := rulesSQL.where()
 	if err != nil {
 		return false, err
 	}
 	sq := Select("count(*) as count").From("media_file")
-	sq = rulesSQL.ApplyExpressionJoins(sq, usr.ID)
+	sq = rulesSQL.applyExpressionJoins(sq, usr.ID)
 	sq = sq.Where(And{Eq{"media_file.id": id}, cond})
 	var res struct{ Count int64 }
 	if err := r.queryOne(sq, &res); err != nil {

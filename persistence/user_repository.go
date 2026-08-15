@@ -348,7 +348,7 @@ func validateScrobbleFilter(u *model.User) error {
 		return invalidScrobbleFilter()
 	}
 	// Building the WHERE clause is what validates field names and operators
-	if _, err := newSmartPlaylistCriteria(c).Where(); err != nil {
+	if _, err := newSmartPlaylistCriteria(c).where(); err != nil {
 		return invalidScrobbleFilter()
 	}
 	return nil

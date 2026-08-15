@@ -124,7 +124,7 @@ func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.
 
 	// Build the full query matching buildSmartPlaylistQuery + addCriteria
 	sq := squirrel.Select("media_file.id").From("media_file")
-	cond, err := cSQL.Where()
+	cond, err := cSQL.where()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func benchmarkCriteriaPipeline(b *testing.B, ctx context.Context, expr criteria.
 	if expr.Limit > 0 {
 		sq = sq.Limit(uint64(expr.Limit))
 	}
-	if order := cSQL.OrderBy(); order != "" {
+	if order := cSQL.orderBy(); order != "" {
 		sq = sq.OrderBy(order)
 	}
 
