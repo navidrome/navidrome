@@ -233,9 +233,9 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 		if !p.Enabled {
 			continue
 		}
-		// Instantiating a plugin creates its host services, so an inspecting caller loads only the
+		// Instantiating a plugin creates its host services, so a transient load takes only the
 		// ones it may actually consult.
-		if m.inspect != nil && !slices.Contains(m.inspect.only, p.ID) {
+		if m.transient != nil && !slices.Contains(m.transient.only, p.ID) {
 			continue
 		}
 
@@ -252,8 +252,8 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			}()
 
 			if err := m.loadPluginWithConfig(&plugin); err != nil {
-				// A read-only load must not disable the user's plugin just for inspecting it.
-				if m.inspect == nil {
+				// A transient load must not disable the user's plugin just for looking at it.
+				if m.transient == nil {
 					plugin.LastError = err.Error()
 					plugin.Enabled = false
 					plugin.UpdatedAt = time.Now()
@@ -266,7 +266,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			}
 
 			// Clear any previous error
-			if plugin.LastError != "" && m.inspect == nil {
+			if plugin.LastError != "" && m.transient == nil {
 				plugin.LastError = ""
 				plugin.UpdatedAt = time.Now()
 				if putErr := repo.Put(&plugin); putErr != nil {
@@ -454,7 +454,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 	// Init is the plugin's first chance to run arbitrary code: open sockets, create task queues,
 	// schedule work. Only a caller that already intends to reach the network asks for it.
-	if m.inspect == nil || m.inspect.runInit {
+	if m.transient == nil || m.transient.runInit {
 		callPluginInit(ctx, m.plugins[p.ID])
 	}
 

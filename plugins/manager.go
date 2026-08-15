@@ -61,8 +61,8 @@ type Manager struct {
 	debounceTimers map[string]*time.Timer
 	debounceMu     sync.Mutex
 
-	// inspect is set by LoadPlugins, and nil for a server Start.
-	inspect *inspectOpts
+	// transient is set by LoadPlugins, and nil for a server Start.
+	transient *transientLoad
 
 	// SubsonicAPI host function dependencies (set once before Start, not modified after)
 	subsonicRouter SubsonicRouter
@@ -180,8 +180,8 @@ func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
 	return nil
 }
 
-// inspectOpts scopes a read-only load; see LoadPlugins for what only and runInit mean.
-type inspectOpts struct {
+// transientLoad scopes a load that will not outlive the command asking for it; see LoadPlugins.
+type transientLoad struct {
 	only    []string
 	runInit bool
 }
@@ -192,7 +192,7 @@ func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) 
 	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" || len(only) == 0 {
 		return nil
 	}
-	m.inspect = &inspectOpts{only: only, runInit: runInit}
+	m.transient = &transientLoad{only: only, runInit: runInit}
 
 	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
 	if err := m.initRuntime(ctx, cacheDir); err != nil {
