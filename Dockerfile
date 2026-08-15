@@ -29,6 +29,9 @@ COPY --from=xx-build /out/ /usr/bin/
 FROM --platform=$BUILDPLATFORM public.ecr.aws/docker/library/node:lts-alpine AS ui
 WORKDIR /app
 
+ARG VITE_UI_PROTOTYPE=false
+ENV VITE_UI_PROTOTYPE=${VITE_UI_PROTOTYPE}
+
 # Install node dependencies
 COPY ui/package.json ui/package-lock.json ./
 COPY ui/bin/ ./bin/

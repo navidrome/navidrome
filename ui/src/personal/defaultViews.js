@@ -17,4 +17,6 @@ export const getDefaultViewChoices = (translate) => [
 ]
 
 export const getStoredDefaultView = () =>
-  localStorage.getItem('defaultView') || defaultAlbumList
+  import.meta.env.VITE_UI_PROTOTYPE === 'true'
+    ? 'song'
+    : localStorage.getItem('defaultView') || defaultAlbumList

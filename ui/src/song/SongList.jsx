@@ -38,6 +38,10 @@ import { AlbumLinkField } from './AlbumLinkField'
 import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
+import { SongListPrototype } from './SongListPrototype'
+
+const prototypeEnabled =
+  import.meta.env.DEV || import.meta.env.VITE_UI_PROTOTYPE === 'true'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -223,7 +227,9 @@ const SongList = (props) => {
           isXsmall ? 50 : 15,
         )}
       >
-        {isXsmall ? (
+        {prototypeEnabled ? (
+          <SongListPrototype />
+        ) : isXsmall ? (
           <SongSimpleList />
         ) : (
           <SongDatagrid

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "vite",
+    "prototype:ui": "vite --open /#/song?variant=A",
     "build": "vite build",
     "serve": "vite preview",
     "test:watch": "vitest",
