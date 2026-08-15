@@ -150,8 +150,11 @@ const UserEdit = (props) => {
         <TextInput
           source="scrobbleFilter"
           multiline
+          minRows={2}
           fullWidth
           spellCheck={false}
+          style={{ maxWidth: '40em' }}
+          inputProps={{ style: { resize: 'vertical' } }}
           helperText={translate('resources.user.helperTexts.scrobbleFilter')}
         />
 
