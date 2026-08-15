@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"slices"
 	"sort"
 	"strconv"
@@ -54,8 +55,10 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Playlist{}, map[string]filterFunc{
+		"id":                 idFilter("playlist"),
 		"q":                  playlistFilter,
 		"smart":              smartPlaylistFilter,
+		"starred":            annotationBoolFilter("starred"),
 		"physical_folder_id": eqFilter,
 	})
 	r.setSortMappings(map[string]string{
@@ -90,8 +93,11 @@ func (r *playlistRepository) userFilter() Sqlizer {
 }
 
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sq := r.newSelect().Where(r.userFilter())
-	return r.count(sq, options...)
+	query := Select().Where(r.userFilter())
+	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
+		query = r.withAnnotation(query, "playlist.id")
+	}
+	return r.count(query, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
@@ -186,6 +192,21 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
+func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
+	// Same userFilter as GetAll: a cursor must not widen visibility beyond public/owned playlists.
+	sel := r.selectPlaylist(options...).Where(r.userFilter())
+	cursor, err := queryWithStableResults[dbPlaylist](r.sqlRepository, sel)
+	if err != nil {
+		return nil, err
+	}
+	return wrapPlaylistCursor(cursor), nil
+}
+
+// dbPlaylist embeds a value, not a pointer, so its model is never nil.
+func wrapPlaylistCursor(cursor iter.Seq2[dbPlaylist, error]) model.PlaylistCursor {
+	return model.PlaylistCursor(wrapCursor(cursor, func(p dbPlaylist) *model.Playlist { return &p.Playlist }))
+}
+
 func (r *playlistRepository) GetPlaylists(itemID string) (model.Playlists, error) {
 	sel := r.selectPlaylist(model.QueryOptions{Sort: "name"}).
 		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").
@@ -223,8 +244,9 @@ func (r *playlistRepository) GetSyncPlaylists() (model.Playlists, error) {
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Join("user on user.id = owner_id").
+	sel := r.newSelect(options...).Join("user on user.id = owner_id").
 		Columns(r.tableName+".*", "user.user_name as owner_name")
+	return r.withAnnotation(sel, r.tableName+".id")
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.PlaylistTracks) error {
@@ -367,6 +389,36 @@ func (t dbPlaylistEpisodeTrack) toPlaylistTrack(playlistID string) model.Playlis
 			UpdatedAt: ep.UpdatedAt,
 		},
 	}
+}
+
+// tracksQuery decorates a caller-supplied base query with the standard song-track columns/joins
+// (library filter, annotation, media_file, library) plus the playlist_id filter. Used by
+// playlistTrackRepository.GetCursor for streaming song tracks only - unlike loadTracks below, it
+// has no podcast-episode-track awareness, since a cursor over a mixed song/episode result isn't
+// needed by any caller yet.
+func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectBuilder {
+	query = r.applyLibraryFilter(query, "f")
+	userID := loggedUser(r.ctx).ID
+	return query.
+		Columns(
+			"coalesce(starred, 0) as starred",
+			"starred_at",
+			"coalesce(play_count, 0) as play_count",
+			"play_date",
+			"coalesce(rating, 0) as rating",
+			"rated_at",
+			"f.*",
+			"playlist_tracks.*",
+			"library.path as library_path",
+			"library.name as library_name",
+		).
+		LeftJoin("annotation on (" +
+			"annotation.item_id = media_file_id" +
+			" AND annotation.item_type = 'media_file'" +
+			" AND annotation.user_id = '" + userID + "')").
+		Join("media_file f on f.id = media_file_id").
+		Join("library on f.library_id = library.id").
+		Where(Eq{"playlist_id": id})
 }
 
 // loadTracks loads a playlist's tracks, which may reference songs

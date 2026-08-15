@@ -326,13 +326,7 @@ func (r folderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
 }
 
 func wrapFolderCursor(cursor iter.Seq2[dbFolder, error]) model.FolderCursor {
-	return func(yield func(model.Folder, error) bool) {
-		for f, err := range cursor {
-			if !yield(f.Folder, err) || err != nil {
-				return
-			}
-		}
-	}
+	return model.FolderCursor(wrapCursor(cursor, func(f dbFolder) *model.Folder { return &f.Folder }))
 }
 
 func (r folderRepository) purgeEmpty(libraryIDs ...int) error {

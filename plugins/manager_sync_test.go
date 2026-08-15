@@ -12,6 +12,46 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("syncPlugins", func() {
+	var m *Manager
+	var repo *tests.MockPluginRepo
+	var folder string
+
+	BeforeEach(func() {
+		folder = GinkgoT().TempDir()
+		repo = tests.CreateMockPluginRepo()
+		repo.SetData(model.Plugins{})
+		m = &Manager{ds: &tests.MockDataStore{MockedPlugin: repo}}
+	})
+
+	writePackage := func(name string) {
+		GinkgoHelper()
+		manifest := &Manifest{Name: "Test Plugin", Author: "Test Author", Version: "1.0.0"}
+		wasm := []byte{0x00, 0x61, 0x73, 0x6d} // Minimal wasm header
+		Expect(createTestPackage(filepath.Join(folder, name), manifest, wasm)).To(Succeed())
+	}
+
+	It("registers a plugin with a usable ID", func() {
+		writePackage("my-plugin" + PackageExtension)
+
+		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
+
+		_, err := repo.Get("my-plugin")
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	It("skips packages whose name yields a path-like ID", func() {
+		writePackage("." + PackageExtension)
+		writePackage(".." + PackageExtension)
+
+		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
+
+		all, err := repo.GetAll()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(all).To(BeEmpty())
+	})
+})
+
 var _ = Describe("removePluginFromDB", func() {
 	It("discards buffered scrobbles for the removed plugin", func() {
 		ctx := context.Background()

@@ -34,9 +34,6 @@
     "permissions": {
       "$ref": "#/$defs/Permissions"
     },
-    "experimental": {
-      "$ref": "#/$defs/Experimental"
-    },
     "config": {
       "$ref": "#/$defs/ConfigDefinition"
     },
@@ -87,27 +84,6 @@
         }
       }
     },
-    "Experimental": {
-      "type": "object",
-      "description": "Experimental features that may change or be removed in future versions",
-      "additionalProperties": false,
-      "properties": {
-        "threads": {
-          "$ref": "#/$defs/ThreadsFeature"
-        }
-      }
-    },
-    "ThreadsFeature": {
-      "type": "object",
-      "description": "Enable experimental WebAssembly threads support",
-      "additionalProperties": false,
-      "properties": {
-        "reason": {
-          "type": "string",
-          "description": "Explanation for why threads support is needed"
-        }
-      }
-    },
     "Permissions": {
       "type": "object",
       "description": "Permissions required by the plugin",
@@ -145,6 +121,9 @@
         },
         "matcher": {
           "$ref": "#/$defs/MatcherPermission"
+        },
+        "storage": {
+          "$ref": "#/$defs/StoragePermission"
         }
       }
     },
@@ -295,6 +274,17 @@
         "reason": {
           "type": "string",
           "description": "Explanation for why matcher access is needed"
+        }
+      }
+    },
+    "StoragePermission": {
+      "type": "object",
+      "description": "Storage permissions for enabling persistent read-write storage exclusively for the plugin",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why storage access is needed"
         }
       }
     }

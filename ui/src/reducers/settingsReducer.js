@@ -1,6 +1,7 @@
 import {
   SET_NOTIFICATIONS_STATE,
   SET_OMITTED_FIELDS,
+  SET_SIDEBAR_PLAYLISTS_FAVOURITES,
   SET_TOGGLEABLE_FIELDS,
   SET_SHOW_FOLDER_VIEW,
   SET_SHOW_PODCASTS,
@@ -20,6 +21,7 @@ const initialState = {
   showMyTagsView: true,
   toggleableFields: {},
   omittedFields: {},
+  sidebarPlaylistsOnlyFavourites: false,
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -83,6 +85,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
           ...previousState.omittedFields,
           ...data,
         },
+      }
+    case SET_SIDEBAR_PLAYLISTS_FAVOURITES:
+      return {
+        ...previousState,
+        sidebarPlaylistsOnlyFavourites: data,
       }
     default:
       return previousState

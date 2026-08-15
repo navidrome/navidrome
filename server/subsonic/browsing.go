@@ -13,7 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/subsonic/filter"
+	"github.com/navidrome/navidrome/server/filter"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -445,13 +445,14 @@ func (api *Router) GetSimilarSongs2(r *http.Request) (*responses.Subsonic, error
 func (api *Router) GetTopSongs(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	p := req.Params(r)
+	id, idErr := p.String("id")
 	artist, err := p.String("artist")
-	if err != nil {
+	if err != nil && idErr != nil {
 		return nil, err
 	}
 	count := p.IntOr("count", 50)
 
-	songs, err := api.provider.TopSongs(ctx, artist, count)
+	songs, err := api.provider.TopSongs(ctx, artist, id, count)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}

@@ -5,8 +5,9 @@ import (
 )
 
 type MockedGenreRepo struct {
-	Error error
-	Data  map[string]model.Genre
+	Error   error
+	Data    map[string]model.Genre
+	Options model.QueryOptions
 }
 
 func (r *MockedGenreRepo) init() {
@@ -15,7 +16,10 @@ func (r *MockedGenreRepo) init() {
 	}
 }
 
-func (r *MockedGenreRepo) GetAll(...model.QueryOptions) (model.Genres, error) {
+func (r *MockedGenreRepo) GetAll(options ...model.QueryOptions) (model.Genres, error) {
+	if len(options) > 0 {
+		r.Options = options[0]
+	}
 	if r.Error != nil {
 		return nil, r.Error
 	}

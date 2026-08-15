@@ -20,15 +20,21 @@ const (
 	LastScanErrorKey              = "LastScanError"
 	LastScanTypeKey               = "LastScanType"
 	LastScanStartTimeKey          = "LastScanStartTime"
+	LastDBAnalyzeAtKey            = "LastDBAnalyzeAt"
+	LastDBAnalyzeAttemptAtKey     = "LastDBAnalyzeAttemptAt"
+	DBAnalyzePendingKey           = "DBAnalyzePending"
+	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
 	JWTSecretKey           = "JWTSecret"
+	JWTPublicSecretKey     = "JWTPublicSecret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
-	OptimizeDBSchedule = "@every 24h"
+	DBAnalyzeCheckSchedule = "@every 30m"
+	DBAnalyzeMaxAge        = 24 * time.Hour
 
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
@@ -44,6 +50,11 @@ const (
 	URLPathSubsonicAPI  = "/rest"
 	URLPathPublic       = "/share"
 	URLPathPublicImages = URLPathPublic + "/img"
+	URLPathJellyfinAPI  = "/jellyfin"
+
+	// JellyfinServerIDKey is the Property key for the stable, persisted server Id reported by the
+	// Jellyfin API. Jellyfin clients cache this value, so it must survive process restarts.
+	JellyfinServerIDKey = "JellyfinServerID"
 
 	// DefaultUILoginBackgroundURL uses Navidrome curated background images collection,
 	// available at https://unsplash.com/collections/20072696/navidrome

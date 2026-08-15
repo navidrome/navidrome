@@ -304,7 +304,8 @@
         "songCount": "Songs",
         "comment": "Comment",
         "sync": "Auto-import",
-        "path": "Import from"
+        "path": "Import from",
+        "starred": "Favourite"
       },
       "actions": {
         "selectPlaylist": "Select a playlist:",
@@ -798,6 +799,7 @@
     },
     "albumList": "Albums",
     "playlists": "Playlists",
+    "onlyFavourites": "Only show favourites",
     "sharedPlaylists": "Shared Playlists",
     "about": "About",
     "forkHelp": "Fork Features"

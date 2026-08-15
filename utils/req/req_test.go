@@ -60,9 +60,7 @@ var _ = Describe("Request Helpers", func() {
 		})
 
 		It("returns empty array if param does not exist", func() {
-			v, err := r.Strings("xx")
-			Expect(err).To(MatchError(req.ErrMissingParam))
-			Expect(v).To(BeEmpty())
+			Expect(r.Strings("xx")).To(BeEmpty())
 		})
 	})
 

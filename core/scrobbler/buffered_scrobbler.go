@@ -10,6 +10,30 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
+const (
+	minRetryDelay = 5 * time.Second
+	maxRetryDelay = 4 * time.Minute
+	// maxRetryShift caps the exponent so the shift never overflows int64.
+	// minRetryDelay<<6 = 320s already exceeds maxRetryDelay, so 6 reaches the ceiling.
+	maxRetryShift = 6
+)
+
+// backoffDelay returns the delay for a zero-based retry index (0 = first retry):
+// minRetryDelay doubled per prior failure, clamped to maxRetryDelay.
+func backoffDelay(failures int) time.Duration {
+	if failures < 0 {
+		failures = 0
+	}
+	if failures >= maxRetryShift {
+		return maxRetryDelay
+	}
+	d := minRetryDelay << failures
+	if d > maxRetryDelay {
+		return maxRetryDelay
+	}
+	return d
+}
+
 // Loader is a function that loads a scrobbler by name.
 // It returns the scrobbler and true if found, or nil and false if not available.
 // This allows the buffered scrobbler to always get the current plugin instance.
@@ -98,15 +122,23 @@ func (b *bufferedScrobbler) sendWakeSignal() {
 }
 
 func (b *bufferedScrobbler) run(ctx context.Context) {
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
+	defer timer.Stop()
+	failures := 0
 	for {
-		if !b.processQueue(ctx) {
-			time.AfterFunc(5*time.Second, func() {
-				b.sendWakeSignal()
-			})
+		if b.processQueue(ctx) {
+			failures = 0
+			timer.Stop()
+		} else {
+			timer.Reset(backoffDelay(failures))
+			if failures < maxRetryShift {
+				failures++
+			}
 		}
 		select {
 		case <-b.wakeSignal:
-			continue
+		case <-timer.C:
 		case <-ctx.Done():
 			return
 		}

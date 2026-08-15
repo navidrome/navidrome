@@ -13,6 +13,7 @@ import {
   CollapsibleComment,
   DurationField,
   ImageUploadOverlay,
+  LoveButton,
   SizeField,
   isWritable,
   OverflowTooltip,
@@ -81,6 +82,15 @@ const useStyles = makeStyles(
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       wordBreak: 'break-word',
+      minWidth: 0,
+    },
+    titleRow: {
+      display: 'flex',
+      alignItems: 'center',
+    },
+    loveButton: {
+      marginLeft: theme.spacing(0.5),
+      flexShrink: 0,
     },
     stats: {
       marginTop: '1em',
@@ -139,14 +149,24 @@ const PlaylistDetails = (props) => {
         </div>
         <div className={classes.details}>
           <CardContent className={classes.content}>
-            <OverflowTooltip title={record.name || ''}>
-              <Typography
-                variant={isDesktop ? 'h5' : 'h6'}
-                className={classes.title}
-              >
-                {record.name || translate('ra.page.loading')}
-              </Typography>
-            </OverflowTooltip>
+            <div className={classes.titleRow}>
+              <OverflowTooltip title={record.name || ''}>
+                <Typography
+                  variant={isDesktop ? 'h5' : 'h6'}
+                  className={classes.title}
+                >
+                  {record.name || translate('ra.page.loading')}
+                </Typography>
+              </OverflowTooltip>
+              <LoveButton
+                className={classes.loveButton}
+                record={record}
+                resource={'playlist'}
+                size={isDesktop ? 'default' : 'small'}
+                aria-label="love"
+                color="primary"
+              />
+            </div>
             <Typography component="p" className={classes.stats}>
               {record.songCount ? (
                 <span>

@@ -2,6 +2,9 @@ package scrobbler
 
 import (
 	"context"
+	"sync/atomic"
+	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
@@ -100,3 +103,91 @@ var _ = Describe("BufferedScrobbler", func() {
 		}
 	})
 })
+
+var _ = Describe("backoffDelay", func() {
+	DescribeTable("computes the exponential backoff curve clamped to the ceiling",
+		func(failures int, expected time.Duration) {
+			Expect(backoffDelay(failures)).To(Equal(expected))
+		},
+		Entry("first failure", 0, 5*time.Second),
+		Entry("second failure", 1, 10*time.Second),
+		Entry("third failure", 2, 20*time.Second),
+		Entry("fourth failure", 3, 40*time.Second),
+		Entry("fifth failure", 4, 80*time.Second),
+		Entry("sixth failure", 5, 160*time.Second),
+		Entry("reaches the ceiling", 6, 4*time.Minute),
+		Entry("stays clamped past the ceiling", 7, 4*time.Minute),
+		Entry("stays clamped for large values", 1000, 4*time.Minute),
+		Entry("negative is treated as zero", -1, 5*time.Second),
+	)
+})
+
+// Drives the real run loop and asserts the exact retry schedule + recovery. Plain
+// test: testing/synctest's fake clock needs a *testing.T, which Ginkgo doesn't give.
+func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		g := NewWithT(t)
+		buffer := tests.CreateMockedScrobbleBufferRepo()
+		userRepo := tests.CreateMockUserRepo()
+		g.Expect(userRepo.Put(&model.User{ID: "user1", UserName: "alice"})).To(Succeed())
+		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
+
+		flaky := &recoveringScrobbler{}
+		flaky.fail(ErrRetryLater)
+		bs := newBufferedScrobbler(ds, flaky, "flaky")
+		defer func() { bs.Stop(); synctest.Wait() }()
+
+		// Let the loop settle on the empty buffer, then enqueue a scrobble.
+		synctest.Wait()
+		track := model.MediaFile{ID: "123", Title: "Test Track", Artist: "Test Artist"}
+		g.Expect(bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: track, TimeStamp: time.Now()})).To(Succeed())
+
+		// First attempt fires immediately on the enqueue wake and is left buffered.
+		synctest.Wait()
+		g.Expect(flaky.count.Load()).To(Equal(int32(1)))
+		g.Expect(buffer.Length()).To(Equal(int64(1)))
+
+		// Each subsequent retry waits exactly double the previous: 5s, 10s, 20s, 40s.
+		for i, gap := range []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second} {
+			want := int32(i + 2)
+			time.Sleep(gap - time.Nanosecond)
+			synctest.Wait()
+			g.Expect(flaky.count.Load()).To(Equal(want-1), "retry fired before the %s backoff", gap)
+			time.Sleep(time.Nanosecond)
+			synctest.Wait()
+			g.Expect(flaky.count.Load()).To(Equal(want), "retry did not fire after the %s backoff", gap)
+		}
+
+		// Once the service recovers, waking the loop drains the buffered entry.
+		flaky.succeed()
+		bs.sendWakeSignal()
+		synctest.Wait()
+		g.Expect(buffer.Length()).To(Equal(int64(0)))
+	})
+}
+
+// recoveringScrobbler is a race-safe Scrobbler whose error can be toggled while
+// the buffered scrobbler's goroutine is draining, to exercise retry then recovery.
+type recoveringScrobbler struct {
+	err   atomic.Pointer[error]
+	count atomic.Int32
+}
+
+func (f *recoveringScrobbler) fail(err error) { f.err.Store(&err) }
+func (f *recoveringScrobbler) succeed()       { f.err.Store(nil) }
+
+func (f *recoveringScrobbler) IsAuthorized(context.Context, string) bool { return true }
+
+func (f *recoveringScrobbler) NowPlaying(context.Context, string, *model.MediaFile, int) error {
+	return nil
+}
+
+func (f *recoveringScrobbler) Scrobble(_ context.Context, _ string, _ Scrobble) error {
+	f.count.Add(1)
+	if e := f.err.Load(); e != nil {
+		return *e
+	}
+	return nil
+}
+
+func (f *recoveringScrobbler) PlaybackReport(context.Context, PlaybackSession) error { return nil }

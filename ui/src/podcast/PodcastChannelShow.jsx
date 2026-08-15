@@ -100,7 +100,7 @@ const SubscriptionSettings = ({ record }) => {
   const translate = useTranslate()
   const notify = useNotify()
   const refresh = useRefresh()
-  const sub = record.subscription
+  const sub = record?.subscription
   const [downloadPolicy, setDownloadPolicy] = useState(sub?.downloadPolicy)
   const [retentionCount, setRetentionCount] = useState(sub?.retentionCount)
   const [retentionDays, setRetentionDays] = useState(sub?.retentionDays)

@@ -43,3 +43,4 @@ go.work*
 PODCAST_CLIENT_INTEGRATION.md
 FOLDER_CLIENT_INTEGRATION.md
 private_beta_testing.md
+.playwright-mcp/

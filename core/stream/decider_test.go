@@ -656,6 +656,44 @@ var _ = Describe("Decider", func() {
 				Expect(decision.TargetBitDepth).To(Equal(24))
 			})
 
+			It("omits bit depth when transcoding to a lossy format", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: new(24)})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "opus", AudioCodec: "opus", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.BitDepth).To(BeZero())
+				Expect(decision.TargetBitDepth).To(BeZero())
+			})
+
+			It("ignores audioBitdepth limitation when transcoding to a lossy format", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 96000, BitDepth: new(24)})
+				ci := &ClientInfo{
+					MaxTranscodingAudioBitrate: 320,
+					TranscodingProfiles: []Profile{
+						{Container: "opus", AudioCodec: "opus", Protocol: ProtocolHTTP},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "opus",
+							Limitations: []Limitation{
+								{Name: LimitationAudioBitdepth, Comparison: ComparisonGreaterThanEqual, Values: []string{"32"}, Required: true},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.BitDepth).To(BeZero())
+			})
+
 			It("rejects transcoding profile when GreaterThanEqual cannot be satisfied", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 				ci := &ClientInfo{
@@ -695,9 +733,9 @@ var _ = Describe("Decider", func() {
 				// DSD64 2822400 / 8 = 352800, capped by MP3 max of 48000
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
 				Expect(decision.TargetSampleRate).To(Equal(48000))
-				// DSD 1-bit → 24-bit PCM
-				Expect(decision.TranscodeStream.BitDepth).To(Equal(24))
-				Expect(decision.TargetBitDepth).To(Equal(24))
+				// MP3 is lossy: no bit depth on the transcoded stream
+				Expect(decision.TranscodeStream.BitDepth).To(BeZero())
+				Expect(decision.TargetBitDepth).To(BeZero())
 			})
 
 			It("converts DSD sample rate for FLAC target without codec limit", func() {

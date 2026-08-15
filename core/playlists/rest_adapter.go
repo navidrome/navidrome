@@ -135,6 +135,7 @@ func (s *playlists) applyContentUpdate(ctx context.Context, current, entity *mod
 	}
 	if rulesChanged {
 		current.Rules = entity.Rules
+		current.EvaluatedAt = nil // force re-evaluation on next read
 	}
 	if sent("sync") && current.Path != "" && current.Sync != entity.Sync {
 		current.Sync = entity.Sync

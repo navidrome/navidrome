@@ -60,12 +60,10 @@ func (r *Values) StringOr(param, def string) string {
 	return v
 }
 
-func (r *Values) Strings(param string) ([]string, error) {
-	values := r.URL.Query()[param]
-	if len(values) == 0 {
-		return nil, newError(ErrMissingParam, param)
-	}
-	return values, nil
+// Strings returns all occurrences of the param, or a nil (empty) slice when absent. Callers that
+// require the param should check for emptiness themselves.
+func (r *Values) Strings(param string) []string {
+	return r.URL.Query()[param]
 }
 
 func (r *Values) TimeOr(param string, def time.Time) time.Time {
@@ -85,9 +83,9 @@ func (r *Values) TimeOr(param string, def time.Time) time.Time {
 }
 
 func (r *Values) Times(param string) ([]time.Time, error) {
-	pStr, err := r.Strings(param)
-	if err != nil {
-		return nil, err
+	pStr := r.Strings(param)
+	if len(pStr) == 0 {
+		return nil, newError(ErrMissingParam, param)
 	}
 	times := make([]time.Time, len(pStr))
 	for i, t := range pStr {
@@ -139,9 +137,9 @@ func (r *Values) Int64Or(param string, def int64) int64 {
 }
 
 func (r *Values) Ints(param string) ([]int, error) {
-	pStr, err := r.Strings(param)
-	if err != nil {
-		return nil, err
+	pStr := r.Strings(param)
+	if len(pStr) == 0 {
+		return nil, newError(ErrMissingParam, param)
 	}
 	ints := make([]int, 0, len(pStr))
 	for _, s := range pStr {
