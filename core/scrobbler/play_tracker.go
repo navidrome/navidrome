@@ -2,6 +2,7 @@ package scrobbler
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
 	"slices"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/cache"
@@ -494,9 +496,33 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 	})
 }
 
+// isFilteredOut reports whether the user's scrobble filter excludes this track.
+// Any parse or query failure fails open: external scrobbling must not break.
+func (p *playTracker) isFilteredOut(ctx context.Context, t *model.MediaFile) bool {
+	u, _ := request.UserFrom(ctx)
+	if u.ScrobbleFilter == "" {
+		return false
+	}
+	var c criteria.Criteria
+	if err := json.Unmarshal([]byte(u.ScrobbleFilter), &c); err != nil {
+		log.Warn(ctx, "Invalid scrobble filter, ignoring", "user", u.UserName, err)
+		return false
+	}
+	match, err := p.ds.MediaFile(ctx).MatchesCriteria(t.ID, c)
+	if err != nil {
+		log.Warn(ctx, "Error evaluating scrobble filter, ignoring", "user", u.UserName, "track", t.Title, err)
+		return false
+	}
+	return match
+}
+
 func (p *playTracker) dispatchScrobble(ctx context.Context, t *model.MediaFile, playTime time.Time) {
 	if t.Artist == consts.UnknownArtist {
 		log.Debug(ctx, "Ignoring external Scrobble for track with unknown artist", "track", t.Title, "artist", t.Artist)
+		return
+	}
+	if p.isFilteredOut(ctx, t) {
+		log.Debug(ctx, "Ignoring external Scrobble for filtered track", "track", t.Title, "artist", t.Artist)
 		return
 	}
 

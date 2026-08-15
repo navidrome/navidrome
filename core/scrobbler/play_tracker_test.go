@@ -320,6 +320,73 @@ var _ = Describe("PlayTracker", func() {
 		})
 	})
 
+	Describe("Scrobble filter", func() {
+		var repo *tests.MockMediaFileRepo
+
+		BeforeEach(func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1",
+				ScrobbleFilter: `{"all":[{"contains":{"title":"Track"}}]}`})
+			repo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+		})
+
+		It("does not send a matching track to the agent", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
+		})
+
+		It("still increments play counts for a filtered track", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(track.PlayCount).To(Equal(int64(1)))
+			Expect(album.PlayCount).To(Equal(int64(1)))
+		})
+
+		It("sends a non-matching track to the agent", func() {
+			repo.MatchesCriteriaValue = false
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
+		})
+
+		It("fails open when evaluation errors", func() {
+			repo.MatchesCriteriaErr = errors.New("boom")
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
+		})
+
+		It("fails open when the stored filter is not valid JSON", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1", ScrobbleFilter: `{broken`})
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(fake.ScrobbleCalled.Load()).To(BeTrue())
+		})
+
+		It("does not send now-playing for a filtered track", func() {
+			repo.MatchesCriteriaValue = true
+
+			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
+				MediaId: "123", State: StateStarting, ClientId: "player-1", ClientName: "player"})
+
+			Expect(err).ToNot(HaveOccurred())
+			Consistently(func() bool { return fake.GetNowPlayingCalled() }).Should(BeFalse())
+		})
+	})
+
 	Describe("ReportPlayback", func() {
 		const defaultClientId = "client-1"
 

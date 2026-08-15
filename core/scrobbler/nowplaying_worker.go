@@ -63,6 +63,10 @@ func (p *playTracker) dispatchNowPlaying(ctx context.Context, userId string, t *
 		log.Debug(ctx, "Ignoring external NowPlaying update for track with unknown artist", "track", t.Title, "artist", t.Artist)
 		return
 	}
+	if p.isFilteredOut(ctx, t) {
+		log.Debug(ctx, "Ignoring external NowPlaying update for filtered track", "track", t.Title, "artist", t.Artist)
+		return
+	}
 	allScrobblers := p.getActiveScrobblers()
 	for name, s := range allScrobblers {
 		if !s.IsAuthorized(ctx, userId) {
