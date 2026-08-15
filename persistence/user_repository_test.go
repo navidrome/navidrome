@@ -70,6 +70,15 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
 		})
+		It("persists and reads back the scrobble filter", func() {
+			usr := model.User{ID: "u-filter", UserName: "u-filter", Name: "Filter User",
+				ScrobbleFilter: `{"all":[{"contains":{"title":"????"}}]}`}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			saved, err := repo.Get("u-filter")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.ScrobbleFilter).To(Equal(`{"all":[{"contains":{"title":"????"}}]}`))
+		})
 	})
 
 	Describe("validatePasswordChange", func() {
