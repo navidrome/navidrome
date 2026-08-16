@@ -285,13 +285,21 @@ func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, pat
 	if len(paths) == 0 {
 		return nil, nil
 	}
-	inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
-		folderSubtreeFilter(lib, paths))
-	sq := Select("distinct album_artist_id").From("album").
-		Where(And{soleAlbumArtistFilter, inSubtree})
 	ids := []string{}
-	err := r.queryAllSlice(sq, &ids)
-	return ids, err
+	// Each path adds 3 OR terms, and SQLite rejects an expression tree deeper than 1000 (~166
+	// paths). Chunks stay well clear; repeated IDs across chunks are fine, the queue upserts by PK.
+	for chunk := range slices.Chunk(paths, subtreePathChunkSize) {
+		inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
+			folderSubtreeFilter(lib, chunk))
+		sq := Select("distinct album_artist_id").From("album").
+			Where(And{soleAlbumArtistFilter, inSubtree})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
 }
 
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {

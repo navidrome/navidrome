@@ -33,6 +33,12 @@ var _ = Describe("IsArtistImageFile", func() {
 		Expect(IsArtistImageFile("cover.jpg")).To(BeFalse())
 	})
 
+	It("matches a directory-bearing glob by its basename", func() {
+		conf.Server.ArtistArtPriority = "images/artist.*, external"
+		Expect(IsArtistImageFile("artist.jpg")).To(BeTrue())
+		Expect(IsArtistImageFile("cover.jpg")).To(BeFalse())
+	})
+
 	It("does not treat non-file tokens as globs", func() {
 		conf.Server.ArtistArtPriority = "image-folder, external"
 		Expect(IsArtistImageFile("image-folder")).To(BeFalse())

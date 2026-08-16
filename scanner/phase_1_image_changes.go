@@ -78,10 +78,12 @@ func (p *phaseFolders) collectImageChangeQueueItems(lib model.Library, folders [
 	}
 
 	// The artist resolver climbs from the artist folder up to the library root, so a changed
-	// artist image affects every artist with albums anywhere under the folder's subtree.
+	// artist image affects every artist with albums anywhere under the folder's subtree. A failure
+	// here must not discard the album items already collected.
 	artistIDs, err := p.artistIDsUnderPaths(lib, artistFolderPaths)
 	if err != nil {
-		return nil, err
+		log.Warn(p.ctx, "Scanner: could not map image changes to artists", "lib", lib.Name, err)
+		return items, nil
 	}
 	for _, id := range artistIDs {
 		if id == "" || id == consts.UnknownArtistID || id == consts.VariousArtistsID {

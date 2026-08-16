@@ -201,6 +201,10 @@ func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.Fol
 	return m, nil
 }
 
+// subtreePathChunkSize bounds how many paths one folderSubtreeFilter may expand into: each adds
+// 3 OR terms, and SQLite rejects an expression tree deeper than 1000 (measured: 166 paths).
+const subtreePathChunkSize = 100
+
 // folderSubtreeFilter matches the folders at the given library-relative paths and all their
 // descendants. A path of "" or "." selects the whole library, so it drops the path conditions.
 func folderSubtreeFilter(lib model.Library, paths []string) Sqlizer {

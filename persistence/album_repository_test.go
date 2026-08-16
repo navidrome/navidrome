@@ -127,6 +127,18 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(ids).To(ConsistOf("2")) // sole artist in the subtree; the duo and the outside album are excluded
 		})
 
+		It("stays under SQLite's expression tree depth limit with many paths", func() {
+			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			Expect(err).ToNot(HaveOccurred())
+			paths := make([]string, 200)
+			for i := range paths {
+				paths[i] = fmt.Sprintf("DepthProbe/Folder%d", i)
+			}
+
+			_, err = albumRepo.GetSoleAlbumArtistIDsInSubtrees(*lib, paths...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		It("returns nothing when given no paths", func() {
 			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
 			Expect(err).ToNot(HaveOccurred())
