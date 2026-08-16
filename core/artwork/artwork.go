@@ -393,11 +393,15 @@ type TracingResolver struct {
 	trace *ChainTrace
 }
 
-// NewTracingResolver builds a TracingResolver that records its priority-chain walk. A diagnostic
-// must show the provider's real answer, and one item is at most one call per agent, so it
-// deliberately bypasses the rate limiter and circuit breaker.
-func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, t *ChainTrace) *TracingResolver {
-	return &TracingResolver{inner: newResolver(ds, ag, ffm, passthroughGate), trace: t}
+// NewTracingResolver builds a TracingResolver that records its priority-chain walk. Without live
+// it gets no agents at all, so neither a chain nor any fallback added later can reach a provider;
+// with it, one item is at most one call per agent, so the rate limiter and breaker are bypassed.
+func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, t *ChainTrace, live bool) *TracingResolver {
+	inner := newLocalResolver(ds, ffm)
+	if live {
+		inner = newResolver(ds, ag, ffm, passthroughGate)
+	}
+	return &TracingResolver{inner: inner, trace: t}
 }
 
 // Resolve walks kind's sources for id, recording the walk, and reports the winning source

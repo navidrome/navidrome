@@ -450,7 +450,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("asks the agents and records what each answered", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -459,7 +459,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("records the local chain steps too", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			last := t.Steps()[len(t.Steps())-1]
@@ -468,7 +468,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("never persists artwork state", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artworkRepo.ItemData).To(BeEmpty(),
@@ -477,7 +477,7 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("resolves an artist without persisting anything", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(BeEmpty())
@@ -493,15 +493,36 @@ var _ = Describe("NewTracingResolver", func() {
 				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
 			}})
 
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
 			Expect(ffm.IsClosed()).To(BeTrue(), "nothing downstream closes it, so a leak is one file handle per invocation")
 		})
 
+		// Serving falls back disc -> album and track -> disc -> album. The resolver does not, but
+		// if it ever did, an explain without --live would start calling providers uninvited.
+		It("cannot reach a provider without live, whatever the chain does", func() {
+			conf.Server.DiscArtPriority = "external, cover.*"
+			conf.Server.CoverArtPriority = "external, cover.*"
+			conf.Server.EnableMediaFileCoverArt = true
+			mfRepo := tests.CreateMockMediaFileRepo()
+			mfRepo.SetData(model.MediaFiles{{ID: "mf1", LibraryID: 0, HasCoverArt: true,
+				Path: "tests/fixtures/artist/an-album/test.mp3"}})
+			ds.MockedMediaFile = mfRepo
+			offline := NewTracingResolver(ds, imageAgents(fake), ffm, t, false)
+
+			_, err := offline.Resolve(context.Background(), model.KindDiscArtwork, "al1:1")
+			Expect(err).ToNot(HaveOccurred())
+			_, err = offline.Resolve(context.Background(), model.KindMediaFileArtwork, "mf1")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fake.albumCalls).To(BeZero())
+			Expect(fake.artistCalls).To(BeZero())
+		})
+
 		It("propagates a lookup error", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})

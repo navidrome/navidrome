@@ -852,7 +852,7 @@ func runExplain(ctx context.Context, args []string) {
 		switch {
 		case rep.walked:
 			trace := &artwork.ChainTrace{}
-			rep.source, rep.resolveErr = CreateArtworkResolver(trace).Resolve(ctx, kind, id)
+			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
 			rep.steps = trace.Steps()
 		case rep.stored != nil:
 			rep.steps = artwork.DecodeTrace(rep.stored.Trace, rep.stored.SourcePath)
