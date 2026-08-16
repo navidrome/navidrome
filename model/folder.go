@@ -76,8 +76,10 @@ func NewFolder(lib Library, folderPath string) *Folder {
 type FolderCursor iter.Seq2[Folder, error]
 
 type FolderUpdateInfo struct {
-	UpdatedAt time.Time
-	Hash      string
+	UpdatedAt       time.Time
+	Hash            string
+	ImageFiles      []string
+	ImagesUpdatedAt time.Time
 }
 
 type FolderRepository interface {

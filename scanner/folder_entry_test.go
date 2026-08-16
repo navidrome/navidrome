@@ -41,7 +41,7 @@ var _ = Describe("folder_entry", func() {
 				Hash:      "previous-hash",
 			}
 
-			entry := newFolderEntry(job, folderID, path, updateInfo.UpdatedAt, updateInfo.Hash)
+			entry := newFolderEntry(job, folderID, path, updateInfo)
 
 			Expect(entry.id).To(Equal(folderID))
 			Expect(entry.job).To(Equal(job))
@@ -76,7 +76,7 @@ var _ = Describe("folder_entry", func() {
 
 		BeforeEach(func() {
 			folderID := model.FolderID(lib, path)
-			entry = newFolderEntry(job, folderID, path, time.Time{}, "")
+			entry = newFolderEntry(job, folderID, path, model.FolderUpdateInfo{})
 		})
 
 		Describe("hasNoFiles", func() {
@@ -457,7 +457,7 @@ var _ = Describe("folder_entry", func() {
 			// Create new folder entry
 			folderPath := "music/rock/album"
 			folderID := model.FolderID(lib, folderPath)
-			entry := newFolderEntry(job, folderID, folderPath, time.Time{}, "")
+			entry := newFolderEntry(job, folderID, folderPath, model.FolderUpdateInfo{})
 
 			// Initially new and has no files
 			Expect(entry.isNew()).To(BeTrue())

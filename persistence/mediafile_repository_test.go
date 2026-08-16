@@ -30,6 +30,54 @@ var _ = Describe("MediaRepository", func() {
 		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
+	Describe("GetAlbumIDsByFolder", func() {
+		var lib model.Library
+		var albumRoot, disc1, sibling *model.Folder
+
+		BeforeEach(func() {
+			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+			libPtr, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			Expect(err).ToNot(HaveOccurred())
+			lib = *libPtr
+
+			folderRepo := newFolderRepository(ctx, GetDBXBuilder())
+			albumRoot = model.NewFolder(lib, "ByFolder/Album")
+			disc1 = model.NewFolder(lib, "ByFolder/Album/CD1")
+			sibling = model.NewFolder(lib, "ByFolder/Other")
+			for _, f := range []*model.Folder{albumRoot, disc1, sibling} {
+				Expect(folderRepo.Put(f)).To(Succeed())
+			}
+			// Tracks live in the disc subfolder; the sibling album is the negative control.
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-1", LibraryID: 1, AlbumID: "fol-al-1", FolderID: disc1.ID, Path: "t/1.mp3"})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-2", LibraryID: 1, AlbumID: "fol-al-1", FolderID: disc1.ID, Path: "t/2.mp3"})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-3", LibraryID: 1, AlbumID: "fol-al-2", FolderID: sibling.ID, Path: "t/3.mp3"})).To(Succeed())
+			Expect(mr.Put(&model.MediaFile{ID: "fol-mf-4", LibraryID: 1, AlbumID: "fol-al-3", FolderID: disc1.ID, Path: "t/4.mp3", Missing: true})).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM media_file WHERE id LIKE 'fol-mf-%'").Execute()
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM folder WHERE path LIKE 'ByFolder%' OR name = 'ByFolder'").Execute()
+			})
+		})
+
+		It("returns the distinct album IDs of non-missing tracks in the folder", func() {
+			ids, err := mr.GetAlbumIDsByFolder(lib, disc1.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf("fol-al-1"))
+		})
+
+		It("also matches albums whose tracks are in a direct child of the folder", func() {
+			// A cover in the album root must reach the album whose tracks sit in CD1
+			ids, err := mr.GetAlbumIDsByFolder(lib, albumRoot.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf("fol-al-1"))
+		})
+
+		It("does not match albums outside the folder", func() {
+			ids, err := mr.GetAlbumIDsByFolder(lib, albumRoot.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).ToNot(ContainElement("fol-al-2"))
+		})
+	})
+
 	Describe("GetCursor", func() {
 		It("yields the same media files as GetAll", func() {
 			opts := model.QueryOptions{Sort: "title"}

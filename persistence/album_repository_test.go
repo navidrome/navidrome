@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -20,9 +21,10 @@ import (
 
 var _ = Describe("AlbumRepository", func() {
 	var albumRepo *albumRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
 		albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
 	})
 
@@ -93,6 +95,77 @@ var _ = Describe("AlbumRepository", func() {
 			ids, err := albumRepo.GetAllIDs()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf(slice.Map(want, func(a model.Album) string { return a.ID })))
+		})
+	})
+
+	Describe("GetSoleAlbumArtistIDsInSubtrees", func() {
+		It("returns the sole album artists of albums with folders in the subtree", func() {
+			folderRepo := newFolderRepository(ctx, GetDBXBuilder())
+			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			Expect(err).ToNot(HaveOccurred())
+			inTree := model.NewFolder(*lib, "SubtreeAlbums/Artist")
+			outTree := model.NewFolder(*lib, "OtherTree/Artist")
+			Expect(folderRepo.Put(inTree)).To(Succeed())
+			Expect(folderRepo.Put(outTree)).To(Succeed())
+
+			// album_artist_id is deliberately wrong: the artist must come from participants
+			inAl := model.Album{ID: "subtree-in-al", Name: "In", LibraryID: 1, AlbumArtistID: "999", FolderIDs: []string{inTree.ID},
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
+			outAl := model.Album{ID: "subtree-out-al", Name: "Out", LibraryID: 1, AlbumArtistID: "3", FolderIDs: []string{outTree.ID},
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistBeatles}}}}
+			duoAl := model.Album{ID: "subtree-duo-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "5", FolderIDs: []string{inTree.ID},
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistPunctuation}, {Artist: artistBeatles}}}}
+			for _, al := range []model.Album{inAl, outAl, duoAl} {
+				Expect(albumRepo.Put(&al)).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM album WHERE id LIKE 'subtree-%'").Execute()
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM folder WHERE path LIKE 'SubtreeAlbums%' OR path LIKE 'OtherTree%'").Execute()
+			})
+
+			ids, err := albumRepo.GetSoleAlbumArtistIDsInSubtrees(*lib, "SubtreeAlbums")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf("2")) // sole artist in the subtree; the duo and the outside album are excluded
+		})
+
+		It("stays under SQLite's expression tree depth limit with many paths", func() {
+			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			Expect(err).ToNot(HaveOccurred())
+			paths := make([]string, 200)
+			for i := range paths {
+				paths[i] = fmt.Sprintf("DepthProbe/Folder%d", i)
+			}
+
+			_, err = albumRepo.GetSoleAlbumArtistIDsInSubtrees(*lib, paths...)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns nothing when given no paths", func() {
+			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			Expect(err).ToNot(HaveOccurred())
+			ids, err := albumRepo.GetSoleAlbumArtistIDsInSubtrees(*lib)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(BeEmpty())
+		})
+	})
+
+	Describe("SoleAlbumArtistFilter", func() {
+		It("matches only albums where the artist is the sole album artist", func() {
+			// album_artist_id is deliberately wrong: matching must come from participation
+			sole := model.Album{ID: "sole-artist-al", Name: "Sole", LibraryID: 1, AlbumArtistID: "999",
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
+			duo := model.Album{ID: "duo-artist-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "999",
+				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}, {Artist: artistBeatles}}}}
+			Expect(albumRepo.Put(&sole)).To(Succeed())
+			Expect(albumRepo.Put(&duo)).To(Succeed())
+			DeferCleanup(func() {
+				_, _ = GetDBXBuilder().NewQuery("DELETE FROM album WHERE id IN ('sole-artist-al', 'duo-artist-al')").Execute()
+			})
+
+			als, err := albumRepo.GetAll(model.QueryOptions{Filters: SoleAlbumArtistFilter("2")})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(als).To(HaveLen(1))
+			Expect(als[0].ID).To(Equal(sole.ID))
 		})
 	})
 

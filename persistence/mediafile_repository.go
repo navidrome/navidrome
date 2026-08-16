@@ -318,6 +318,26 @@ func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string
 	return ids, err
 }
 
+func (r *mediaFileRepository) GetAlbumIDsByFolder(lib model.Library, folderIDs ...string) ([]string, error) {
+	ids := []string{}
+	for chunk := range slices.Chunk(folderIDs, 200) {
+		// A folder's own cover also covers albums whose tracks sit in its disc subfolders.
+		inFolders := Select("f.id").From("folder f").Where(And{
+			Eq{"f.library_id": lib.ID},
+			Eq{"f.missing": false},
+			Or{Eq{"f.id": chunk}, Eq{"f.parent_id": chunk}},
+		})
+		sq := Select("distinct album_id").From("media_file").
+			Where(And{Eq{"missing": false}, ConcatExpr("folder_id IN (", inFolders, ")")})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
+}
+
 // GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
 func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
 	ids, err := r.GetAllIDs(options...)

@@ -9,13 +9,14 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 )
 
 // resolution is one attempted acquisition outcome for an entity.
@@ -248,12 +249,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	}
 
 	// Only consider albums where the artist is the sole album artist.
-	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Eq{"album_artist_id": artistID},
-			squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1},
-		},
-	})
+	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: persistence.SoleAlbumArtistFilter(artistID)})
 	if err != nil {
 		return resolution{}, err
 	}
@@ -523,6 +519,22 @@ func resolveFolderSource(lib libraryView, sf sourceFunc) (resolution, bool) {
 
 func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, pattern string) (resolution, bool) {
 	return resolveFolderSource(lib, fromExternalFile(ctx, lib.FS, imgFiles, pattern))
+}
+
+// IsArtistImageFile reports whether a file name matches any file-glob token of ArtistArtPriority.
+// Basename-only on purpose: the chain climbs parent folders, so a token's prefix is not fixed.
+func IsArtistImageFile(name string) bool {
+	name = strings.ToLower(name)
+	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" || pattern == externalCandidate || pattern == "image-folder" {
+			continue
+		}
+		if ok, _ := path.Match(path.Base(pattern), name); ok {
+			return true
+		}
+	}
+	return false
 }
 
 func resolveArtistImageFolder(ar *model.Artist) (resolution, bool) {

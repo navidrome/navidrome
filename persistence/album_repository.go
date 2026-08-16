@@ -270,6 +270,39 @@ func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, er
 	return ids, err
 }
 
+// soleAlbumArtistFilter matches albums with exactly one album artist. The artist artwork
+// resolver and the scanner's image-change enqueue must select the same albums.
+var soleAlbumArtistFilter = Eq{"json_array_length(participants, '$.albumartist')": 1}
+
+// SoleAlbumArtistFilter matches the albums where the given artist is the only album artist.
+// Matches by album-artist participation, not the deprecated album_artist_id column.
+func SoleAlbumArtistFilter(artistID string) Sqlizer {
+	return And{ParticipantIDFilter("album", artistID, model.RoleAlbumArtist), soleAlbumArtistFilter}
+}
+
+// GetSoleAlbumArtistIDsInSubtrees matches albums by their own folder_ids, which is the resolver's
+// notion of an album's folders.
+func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, paths ...string) ([]string, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	ids := []string{}
+	// Repeated IDs across chunks are fine: the queue upserts by PK.
+	for chunk := range slices.Chunk(paths, subtreePathChunkSize) {
+		inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
+			folderSubtreeFilter(lib, chunk))
+		// Sole album artist, so participants[0] is the only one.
+		sq := Select("distinct json_extract(participants, '$.albumartist[0].id')").From("album").
+			Where(And{soleAlbumArtistFilter, inSubtree})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
+}
+
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
 	ids, err := r.GetAllIDs(options...)
 	if err != nil {
