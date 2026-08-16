@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/netip"
 	"path"
 	"strings"
 
@@ -106,6 +108,48 @@ func (api *Router) ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(api.serverName()))
+}
+
+// getEndpointInfo answers /System/Endpoint, which Finamp's connection test uses to pick between a
+// dual-connection setup's addresses; a missing IsInNetwork reads to it as "not a Jellyfin server".
+func (api *Router) getEndpointInfo(w http.ResponseWriter, r *http.Request) {
+	remote := remoteIP(r)
+	api.ok(w, r, dto.EndPointInfo{
+		IsLocal:     isSameMachine(r, remote),
+		IsInNetwork: isInLocalNetwork(remote),
+	})
+}
+
+// isInLocalNetwork mirrors Jellyfin's default LAN set (NetworkManager.UpdateSettings with no
+// LocalNetworkSubnets configured): loopback, the RFC 1918 ranges, fc00::/7 and fe80::/10.
+func isInLocalNetwork(ip netip.Addr) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || (ip.Is6() && ip.IsLinkLocalUnicast())
+}
+
+// isSameMachine mirrors Jellyfin's HttpContext.IsLocal(): the caller shares the connection's local
+// address. The local address is missing in tests and unreliable behind a proxy, so fall back to loopback.
+func isSameMachine(r *http.Request, remote netip.Addr) bool {
+	local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !ok {
+		return remote.IsLoopback()
+	}
+	return parseIP(local.String()) == remote
+}
+
+// remoteIP parses RemoteAddr, which the RealIP middleware may have rewritten to a bare IP.
+func remoteIP(r *http.Request) netip.Addr {
+	return parseIP(r.RemoteAddr)
+}
+
+func parseIP(addr string) netip.Addr {
+	if h, _, err := net.SplitHostPort(addr); err == nil {
+		addr = h
+	}
+	ip, err := netip.ParseAddr(addr)
+	if err != nil {
+		return netip.Addr{}
+	}
+	return ip.Unmap()
 }
 
 func (api *Router) quickConnectEnabled(w http.ResponseWriter, r *http.Request) {

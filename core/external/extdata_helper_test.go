@@ -6,6 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -323,4 +324,8 @@ func (m *mockAgents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid
 		return args.Get(0).([]agents.Song), args.Error(1)
 	}
 	return nil, args.Error(1)
+}
+
+func ids(mfs model.MediaFiles) []string {
+	return slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 }

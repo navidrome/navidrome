@@ -45,7 +45,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		jobs = append(jobs, job)
 	}
 
-	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
+	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state, imageChanges: &imageChangeCollector{ds: ds}}
 }
 
 type scanJob struct {
@@ -105,7 +105,7 @@ func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 func (j *scanJob) createFolderEntry(path string) *folderEntry {
 	id := model.FolderID(j.lib, path)
 	info := j.popLastUpdate(id)
-	return newFolderEntry(j, id, path, info.UpdatedAt, info.Hash)
+	return newFolderEntry(j, id, path, info)
 }
 
 // phaseFolders represents the first phase of the scanning process, which is responsible
@@ -125,6 +125,7 @@ type phaseFolders struct {
 	ctx              context.Context
 	state            *scanState
 	prevAlbumPIDConf string
+	imageChanges     *imageChangeCollector
 }
 
 func (p *phaseFolders) description() string {
@@ -169,8 +170,10 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				// Check if folder is outdated
 				if folder.isOutdated() {
 					if !p.state.fullScan {
-						if folder.hasNoFiles() && folder.isNew() {
-							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
+						// Ancestor folders need a row even with no files of their own: artwork
+						// resolution climbs them, and an image added later needs a state to diff.
+						if folder.isEmpty() && folder.isNew() {
+							log.Trace(p.ctx, "Scanner: Skipping new empty folder", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
 						log.Debug(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
@@ -197,7 +200,8 @@ func (p *phaseFolders) measure(entry *folderEntry) func() time.Duration {
 func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 	return []ppl.Stage[*folderEntry]{
 		ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(conf.Server.DevScannerThreads)),
-		ppl.NewStage(p.persistChanges, ppl.Name("persist changes")),
+		// persistChanges is not reentrant, so it always has to run with concurrency=1
+		ppl.NewStage(p.persistChanges, ppl.Name("persist changes"), ppl.Concurrency(1)),
 		ppl.NewStage(p.logFolder, ppl.Name("log results")),
 	}
 }
@@ -339,6 +343,15 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
 
+		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
+		if !entry.isNew() {
+			if changed, artistImage := entry.imagesChanged(); changed {
+				p.imageChanges.record(entry.job.lib, imageChangedFolder{
+					id: entry.id, path: entry.path, artistImage: artistImage,
+				})
+			}
+		}
+
 		// Save folder to DB
 		folder := entry.toFolder()
 		err := folderRepo.Put(folder)
@@ -368,10 +381,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
-				queueItems = append(queueItems, model.ArtworkQueueItem{
-					ItemKind: model.KindArtistArtwork.Prefix(), ItemID: entry.artists[i].ID, ImageType: model.ImageTypePrimary,
-					Priority: model.ArtworkPriorityScan,
-				})
+				queueItems = append(queueItems, scanArtworkItem(model.KindArtistArtwork, entry.artists[i].ID))
 			}
 		}
 
@@ -383,10 +393,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.albums[i].Name != consts.UnknownAlbum {
-				queueItems = append(queueItems, model.ArtworkQueueItem{
-					ItemKind: model.KindAlbumArtwork.Prefix(), ItemID: entry.albums[i].ID, ImageType: model.ImageTypePrimary,
-					Priority: model.ArtworkPriorityScan,
-				})
+				queueItems = append(queueItems, scanArtworkItem(model.KindAlbumArtwork, entry.albums[i].ID))
 			}
 		}
 
@@ -518,6 +525,7 @@ func (p *phaseFolders) finalize(err error) error {
 		}
 		return nil
 	}, "scanner: finalize phaseFolders")
+	p.imageChanges.enqueue(p.ctx)
 	return errors.Join(err, errF)
 }
 

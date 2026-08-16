@@ -173,6 +173,30 @@ var _ = Describe("agent images", func() {
 			Expect(a.artistCalls).To(Equal(0), "synthetic artists never reach the agents")
 		})
 
+		It("records a skipped external candidate when no agent provides artist images", func() {
+			ag := imageAgents()
+			t := &ChainTrace{}
+
+			r, _, extErr := fetchArtistImage(withTrace(ctx, t), ag, passthroughGate, model.Artist{ID: "ar1"})
+			Expect(r).To(BeNil())
+			Expect(extErr).To(BeFalse())
+			Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "external", Outcome: OutcomeSkipped,
+				Detail: "no enabled agent provides artist images"}}),
+				"a configured external token must never be silently absent from the chain")
+		})
+
+		It("records a skipped external candidate for synthetic artists", func() {
+			a := &fakeImageAgent{name: "agentA", imgs: []agents.ExternalImage{img("/a", 100)}}
+			ag := imageAgents(a)
+			t := &ChainTrace{}
+
+			_, _, _ = fetchArtistImage(withTrace(ctx, t), ag, passthroughGate,
+				model.Artist{ID: consts.VariousArtistsID, Name: "Various Artists"})
+			Expect(t.Steps()).To(HaveLen(1))
+			Expect(t.Steps()[0].Outcome).To(Equal(OutcomeSkipped))
+			Expect(t.Steps()[0].Detail).To(ContainSubstring("synthetic"))
+		})
+
 		It("clears typographic characters from the query name unless preserving unicode", func() {
 			conf.Server.DevPreserveUnicodeInExternalCalls = false
 			a := &fakeImageAgent{name: "agentA"}
@@ -229,6 +253,18 @@ var _ = Describe("agent images", func() {
 			Expect(name).To(Equal("agentA"))
 			Expect(extErr).To(BeFalse())
 			Expect(a.albumCalls).To(Equal(1))
+		})
+
+		It("records a skipped external candidate when no agent provides album images", func() {
+			ag := imageAgents()
+			t := &ChainTrace{}
+
+			r, _, extErr := fetchAlbumImage(withTrace(ctx, t), ag, passthroughGate, model.Album{Name: "Album"})
+			Expect(r).To(BeNil())
+			Expect(extErr).To(BeFalse())
+			Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "external", Outcome: OutcomeSkipped,
+				Detail: "no enabled agent provides album images"}}),
+				"a configured external token must never be silently absent from the chain")
 		})
 
 		It("reports extErr when the only agent fails transiently", func() {
