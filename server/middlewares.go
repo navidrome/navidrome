@@ -263,7 +263,7 @@ func ServerAddress(r *http.Request) (scheme, host string) {
 	// If the request host has changed due to the X-Forwarded-Host header, log a trace
 	// message with the original and new host values, as well as the scheme and URL.
 	if host != origHost {
-		log.Trace(r.Context(), "Request host has changed", "origHost", origHost, "host", host, "scheme", scheme, "url", r.URL)
+		log.Trace(r.Context(), "Request host has changed", "origHost", origHost, "host", host, "scheme", scheme, "url", r.URL.String())
 	}
 
 	// Return the scheme and host of the server handling the request.

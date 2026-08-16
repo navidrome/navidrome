@@ -25,12 +25,13 @@ type playbackServer struct {
 	ctx             *context.Context
 	datastore       model.DataStore
 	playbackDevices []playbackDevice
+	trackFactory    TrackFactory
 }
 
 // GetInstance returns the playback-server singleton
 func GetInstance(ds model.DataStore) PlaybackServer {
 	return singleton.GetInstance(func() *playbackServer {
-		return &playbackServer{datastore: ds}
+		return &playbackServer{datastore: ds, trackFactory: defaultTrackFactory}
 	})
 }
 
@@ -38,7 +39,11 @@ func GetInstance(ds model.DataStore) PlaybackServer {
 func (ps *playbackServer) Run(ctx context.Context) error {
 	ps.ctx = &ctx
 
-	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default)
+	if ps.trackFactory == nil {
+		ps.trackFactory = defaultTrackFactory
+	}
+
+	devices, err := ps.initDeviceStatus(ctx, conf.Server.Jukebox.Devices, conf.Server.Jukebox.Default, ps.trackFactory)
 	if err != nil {
 		return err
 	}
@@ -55,14 +60,14 @@ func (ps *playbackServer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.AudioDeviceDefinition, defaultDevice string) ([]playbackDevice, error) {
+func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.AudioDeviceDefinition, defaultDevice string, trackFactory TrackFactory) ([]playbackDevice, error) {
 	pbDevices := make([]playbackDevice, max(1, len(devices)))
 	defaultDeviceFound := false
 
 	if defaultDevice == "" {
 		// if there are no devices given and no default device, we create a synthetic device named "auto"
 		if len(devices) == 0 {
-			pbDevices[0] = *NewPlaybackDevice(ctx, ps, "auto", "auto")
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, "auto", "auto", trackFactory)
 		}
 
 		// if there is but only one entry and no default given, just use that.
@@ -70,7 +75,11 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 			if len(devices[0]) != 2 {
 				return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(devices[0]))
 			}
-			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1])
+			deviceFactory, err := resolveTrackFactory(devices[0][0], devices[0][1], trackFactory)
+			if err != nil {
+				return []playbackDevice{}, err
+			}
+			pbDevices[0] = *NewPlaybackDevice(ctx, ps, devices[0][0], devices[0][1], deviceFactory)
 		}
 
 		if len(devices) > 1 {
@@ -86,7 +95,12 @@ func (ps *playbackServer) initDeviceStatus(ctx context.Context, devices []conf.A
 			return []playbackDevice{}, fmt.Errorf("audio device definition ought to contain 2 fields, found: %d ", len(audioDevice))
 		}
 
-		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1])
+		deviceFactory, err := resolveTrackFactory(audioDevice[0], audioDevice[1], trackFactory)
+		if err != nil {
+			return []playbackDevice{}, err
+		}
+
+		pbDevices[idx] = *NewPlaybackDevice(ctx, ps, audioDevice[0], audioDevice[1], deviceFactory)
 
 		if audioDevice[0] == defaultDevice {
 			pbDevices[idx].Default = true

@@ -260,6 +260,16 @@ var _ = Describe("Logger", func() {
 			Expect(Redact(msg)).To(Equal("getLyrics.view?v=1.2.0&c=iSub&u=user_name&p=[REDACTED]&title=Title"))
 		})
 
+		It("redacts playback capability tokens in the path", func() {
+			msg := "HTTP: GET http://example.com/share/playback/eyJhbGciOiJIUzI1NiJ9.eyJpZCI6Im1mLTEifQ.sig?foo=bar"
+			Expect(Redact(msg)).To(Equal("HTTP: GET http://example.com/share/playback/[REDACTED]?foo=bar"))
+		})
+
+		It("leaves ordinary routes unchanged", func() {
+			msg := "HTTP: GET http://example.com/share/abc123?foo=bar"
+			Expect(Redact(msg)).To(Equal(msg))
+		})
+
 		It("redacts a whole JWT in api_key, not just up to its first dot", func() {
 			msg := "/jellyfin/Audio/abc/universal?static=true&api_key=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.c2ln-X_1&other=1"
 			Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/universal?static=true&api_key=[REDACTED]&other=1"))

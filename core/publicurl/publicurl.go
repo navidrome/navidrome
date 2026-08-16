@@ -2,6 +2,7 @@ package publicurl
 
 import (
 	"cmp"
+	"errors"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,6 +16,8 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
+var errBaseHostRequired = errors.New("playback URL requires BaseHost")
+
 // ImageURL generates a public URL for artwork images.
 // It creates a signed token for the artwork ID and builds a complete public URL.
 func ImageURL(req *http.Request, artID model.ArtworkID, size int) string {
@@ -25,6 +28,20 @@ func ImageURL(req *http.Request, artID model.ArtworkID, size int) string {
 		params.Add("size", strconv.Itoa(size))
 	}
 	return PublicURL(req, uri, params)
+}
+
+// PlaybackURL generates an absolute, short-lived playback capability URL for one media file.
+// The URL is intended for external renderers fetching the original media bytes over HTTP.
+func PlaybackURL(mediaID string) (string, error) {
+	if conf.Server.BaseHost == "" {
+		return "", errBaseHostRequired
+	}
+	token, err := auth.CreatePlaybackToken(mediaID)
+	if err != nil {
+		return "", err
+	}
+	uri := path.Join(consts.URLPathPublic, "playback", token)
+	return AbsoluteURL(nil, uri, nil), nil
 }
 
 // PublicURL builds a full URL for public-facing resources.

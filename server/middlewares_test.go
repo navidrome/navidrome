@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -13,17 +14,45 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("middlewares", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 	})
+	Describe("requestLogger", func() {
+		It("redacts playback capability tokens while leaving ordinary routes untouched", func() {
+			var buf bytes.Buffer
+			prev := log.SetDefaultLogger(logrus.New())
+			DeferCleanup(func() { log.SetDefaultLogger(prev) })
+			prevLevel := log.CurrentLevel()
+			DeferCleanup(func() { log.SetLevel(prevLevel) })
+			log.SetOutput(&buf)
+			DeferCleanup(func() { log.SetOutput(GinkgoWriter) })
+			log.SetLevel(log.LevelDebug)
+			log.SetRedacting(true)
+
+			h := requestLogger(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/share/playback/secret.token.value?foo=bar", nil))
+			Expect(buf.String()).To(ContainSubstring("/share/playback/[REDACTED]?foo=bar"))
+			Expect(buf.String()).NotTo(ContainSubstring("secret.token.value"))
+
+			buf.Reset()
+			h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/share/ordinary?foo=bar", nil))
+			Expect(buf.String()).To(ContainSubstring("/share/ordinary?foo=bar"))
+		})
+	})
+
 	Describe("robotsTXT", func() {
 		var nextCalled bool
 		next := func(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +122,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with X-Forwarded-Host header", func() {
 			BeforeEach(func() {
-				req, _ = http.NewRequest("GET", "http://example.com", nil)
+				req, _ = http.NewRequest("GET", "http://example.com/share/playback/secret.token.value?foo=bar", nil)
 				req.Header.Set("X-Forwarded-Host", "forwarded.example.com")
 			})
 
@@ -101,6 +130,22 @@ var _ = Describe("middlewares", func() {
 				middleware.ServeHTTP(recorder, req)
 				Expect(req.Host).To(Equal("forwarded.example.com"))
 				Expect(req.URL.Scheme).To(Equal("http"))
+			})
+
+			It("redacts playback capability tokens in trace logs", func() {
+				var buf bytes.Buffer
+				prev := log.SetDefaultLogger(logrus.New())
+				DeferCleanup(func() { log.SetDefaultLogger(prev) })
+				prevLevel := log.CurrentLevel()
+				DeferCleanup(func() { log.SetLevel(prevLevel) })
+				log.SetOutput(&buf)
+				DeferCleanup(func() { log.SetOutput(GinkgoWriter) })
+				log.SetLevel(log.LevelTrace)
+				log.SetRedacting(true)
+
+				middleware.ServeHTTP(recorder, req)
+				Expect(buf.String()).To(ContainSubstring("/share/playback/[REDACTED]?foo=bar"))
+				Expect(buf.String()).NotTo(ContainSubstring("secret.token.value"))
 			})
 		})
 

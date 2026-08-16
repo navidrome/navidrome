@@ -1,2 +1,22 @@
 DataFolder = "/var/lib/navidrome"
 MusicFolder = "/opt/navidrome/music"
+
+# Jukebox Google Cast targets use the reserved exact prefix:
+#   cast:host[:port]
+# Examples:
+#   cast:192.168.1.50
+#   cast:192.168.1.50:8009
+#   cast:chromecast.local
+#   cast:[2001:db8::10]:8009
+# The default Cast port is 8009.
+#
+# Cast playback requires BaseHost when playback is actually attempted because
+# the receiver fetches media from Navidrome's generated playback URL. BaseHost
+# must be reachable from the Cast receiver on the LAN. BaseScheme and BasePath
+# also affect that generated playback URL.
+#
+# Example:
+# BaseHost = "navidrome.local:4533"
+# Jukebox.Enabled = true
+# Jukebox.Devices = [["Living Room", "cast:192.168.1.50"]]
+# Jukebox.Default = "Living Room"

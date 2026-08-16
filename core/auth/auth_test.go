@@ -134,6 +134,79 @@ var _ = Describe("Auth", func() {
 		})
 	})
 
+	Describe("CreatePlaybackToken", func() {
+		It("creates a playback-scoped public token with the fixed TTL", func() {
+			before := time.Now()
+			tokenStr, err := auth.CreatePlaybackToken("mf-123")
+			Expect(err).NotTo(HaveOccurred())
+
+			claims, err := auth.ValidatePlaybackToken(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(claims.ID).To(Equal("mf-123"))
+			Expect(claims.Scope).To(Equal("playback"))
+			Expect(claims.ExpiresAt).To(BeTemporally("~", before.Add(2*time.Hour), time.Minute))
+		})
+
+		It("rejects an empty media id", func() {
+			tokenStr, err := auth.CreatePlaybackToken("")
+			Expect(err).To(MatchError("media id is required"))
+			Expect(tokenStr).To(BeEmpty())
+		})
+	})
+
+	Describe("ValidatePlaybackToken", func() {
+		It("rejects playback tokens without the playback scope", func() {
+			tokenStr, err := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), auth.Claims{ID: "mf-123"})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = auth.ValidatePlaybackToken(tokenStr)
+			Expect(err).To(MatchError("invalid playback token"))
+		})
+
+		It("rejects playback tokens without an id", func() {
+			tokenStr, err := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), auth.Claims{Scope: "playback"})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = auth.ValidatePlaybackToken(tokenStr)
+			Expect(err).To(MatchError("invalid playback token"))
+		})
+
+		It("rejects playback tokens without an expiry", func() {
+			tokenStr, err := auth.CreatePublicToken(auth.Claims{ID: "mf-123", Scope: "playback"})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = auth.ValidatePlaybackToken(tokenStr)
+			Expect(err).To(MatchError("invalid playback token"))
+		})
+
+		It("rejects expired playback tokens", func() {
+			tokenStr, err := auth.CreateExpiringPublicToken(time.Now().Add(-time.Hour), auth.Claims{ID: "mf-123", Scope: "playback"})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = auth.ValidatePlaybackToken(tokenStr)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("rejects tampered playback tokens", func() {
+			tokenStr, err := auth.CreatePlaybackToken("mf-123")
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = auth.ValidatePlaybackToken(tokenStr + "tampered")
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("allows replay within the TTL", func() {
+			tokenStr, err := auth.CreatePlaybackToken("mf-123")
+			Expect(err).NotTo(HaveOccurred())
+
+			claims1, err := auth.ValidatePlaybackToken(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			claims2, err := auth.ValidatePlaybackToken(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(claims2).To(Equal(claims1))
+		})
+	})
+
 	Describe("TouchToken", func() {
 		It("updates the expiration time", func() {
 			yesterday := time.Now().Add(-oneDay)

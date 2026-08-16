@@ -29,6 +29,7 @@ var _ = Describe("Claims", func() {
 			Expect(m).NotTo(HaveKey("f"))
 			Expect(m).NotTo(HaveKey("b"))
 			Expect(m).NotTo(HaveKey("sid"))
+			Expect(m).NotTo(HaveKey("scope"))
 		})
 
 		It("includes expiration and issued-at when set", func() {
@@ -58,6 +59,12 @@ var _ = Describe("Claims", func() {
 			c := auth.Claims{ShareID: "abc1234567"}
 			m := c.ToMap()
 			Expect(m).To(HaveKeyWithValue("sid", "abc1234567"))
+		})
+
+		It("includes scope claim when set", func() {
+			c := auth.Claims{Scope: "playback"}
+			m := c.ToMap()
+			Expect(m).To(HaveKeyWithValue("scope", "playback"))
 		})
 	})
 
@@ -92,6 +99,7 @@ var _ = Describe("Claims", func() {
 				Format:  "opus",
 				BitRate: 128,
 				ShareID: "abc1234567",
+				Scope:   "playback",
 			}
 			token, _, err := tokenAuth.Encode(original.ToMap())
 			Expect(err).NotTo(HaveOccurred())
@@ -100,6 +108,7 @@ var _ = Describe("Claims", func() {
 			Expect(c.Issuer).To(Equal("ND"))
 			Expect(c.ID).To(Equal("al-456"))
 			Expect(c.ShareID).To(Equal("abc1234567"))
+			Expect(c.Scope).To(Equal("playback"))
 			Expect(c.Format).To(Equal("opus"))
 			Expect(c.BitRate).To(Equal(128))
 		})
