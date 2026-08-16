@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -59,17 +58,7 @@ func (p *phaseFolders) collectImageChangeQueueItems(lib model.Library, folders [
 
 	var items []model.ArtworkQueueItem
 
-	// An album's cover search space is its track folders plus their common parent, so a changed
-	// folder affects albums with tracks in it or in its direct children.
-	albumFolderIDs, err := p.ds.Folder(p.ctx).GetAllIDs(model.QueryOptions{Filters: squirrel.And{
-		squirrel.Eq{"library_id": lib.ID},
-		squirrel.Eq{"missing": false},
-		squirrel.Or{squirrel.Eq{"id": folderIDs}, squirrel.Eq{"parent_id": folderIDs}},
-	}})
-	if err != nil {
-		return nil, err
-	}
-	albumIDs, err := p.ds.MediaFile(p.ctx).GetAlbumIDsByFolder(albumFolderIDs...)
+	albumIDs, err := p.ds.MediaFile(p.ctx).GetAlbumIDsByFolder(lib, folderIDs...)
 	if err != nil {
 		return nil, err
 	}

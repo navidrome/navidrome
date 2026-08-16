@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
 )
 
 // resolution is one attempted acquisition outcome for an entity.
@@ -247,7 +248,8 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 		return upload, nil
 	}
 
-	als, err := r.ds.Album(ctx).GetBySoleAlbumArtist(artistID)
+	// Only consider albums where the artist is the sole album artist.
+	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: persistence.SoleAlbumArtistFilter(artistID)})
 	if err != nil {
 		return resolution{}, err
 	}

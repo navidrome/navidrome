@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -44,8 +44,15 @@ var _ = Describe("FolderRepository", func() {
 		_, _ = conn.NewQuery(fmt.Sprintf("DELETE FROM library WHERE id = %d", otherLib.ID)).Execute()
 	})
 
-	Describe("GetAllIDs / GetSubtreeIDs", func() {
+	Describe("folderSubtreeFilter", func() {
 		var parent, child, grandchild, other *model.Folder
+
+		matching := func(paths ...string) []string {
+			GinkgoHelper()
+			folders, err := repo.GetAll(model.QueryOptions{Filters: folderSubtreeFilter(testLib, paths)})
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(folders, func(f model.Folder) string { return f.ID })
+		}
 
 		BeforeEach(func() {
 			parent = model.NewFolder(testLib, "TestSubtree")
@@ -60,28 +67,16 @@ var _ = Describe("FolderRepository", func() {
 			})
 		})
 
-		It("GetAllIDs returns only the IDs of folders matching the filters", func() {
-			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: squirrel.Eq{"parent_id": parent.ID}})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(ConsistOf(child.ID))
+		It("matches a folder and all its descendants", func() {
+			Expect(matching("TestSubtree")).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
 		})
 
-		It("folderSubtreeFilter matches a folder and all its descendants", func() {
-			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: folderSubtreeFilter(testLib, []string{"TestSubtree"})})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
+		It("matches the descendants of a nested slash-form path", func() {
+			Expect(matching("TestSubtree/Child")).To(ConsistOf(child.ID, grandchild.ID))
 		})
 
-		It("folderSubtreeFilter matches the descendants of a nested slash-form path", func() {
-			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: folderSubtreeFilter(testLib, []string{"TestSubtree/Child"})})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(ConsistOf(child.ID, grandchild.ID))
-		})
-
-		It("folderSubtreeFilter matches the whole library for the root path", func() {
-			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: folderSubtreeFilter(testLib, []string{"."})})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ids).To(ContainElements(parent.ID, child.ID, grandchild.ID, other.ID))
+		It("matches the whole library for the root path", func() {
+			Expect(matching(".")).To(ContainElements(parent.ID, child.ID, grandchild.ID, other.ID))
 		})
 	})
 

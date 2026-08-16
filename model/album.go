@@ -144,8 +144,6 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllIDs(...QueryOptions) ([]string, error)
-	// GetBySoleAlbumArtist returns the albums where the given artist is the only album artist.
-	GetBySoleAlbumArtist(artistID string) (Albums, error)
 	// GetSoleAlbumArtistIDsInSubtrees returns the sole album artists of the albums with folders in
 	// any of the given library-relative subtrees.
 	GetSoleAlbumArtistIDsInSubtrees(lib Library, paths ...string) ([]string, error)

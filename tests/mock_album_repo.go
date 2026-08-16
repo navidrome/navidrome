@@ -82,11 +82,6 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.All, nil
 }
 
-// GetBySoleAlbumArtist is loose like GetAll: it returns all data, ignoring the artist filter.
-func (m *MockAlbumRepo) GetBySoleAlbumArtist(string) (model.Albums, error) {
-	return m.GetAll()
-}
-
 func (m *MockAlbumRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
 	all, err := m.GetAll(qo...)
 	if err != nil {

@@ -148,8 +148,8 @@ var _ = Describe("AlbumRepository", func() {
 		})
 	})
 
-	Describe("GetBySoleAlbumArtist", func() {
-		It("returns only albums where the artist is the sole album artist", func() {
+	Describe("SoleAlbumArtistFilter", func() {
+		It("matches only albums where the artist is the sole album artist", func() {
 			sole := model.Album{ID: "sole-artist-al", Name: "Sole", LibraryID: 1, AlbumArtistID: "2",
 				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
 			duo := model.Album{ID: "duo-artist-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "2",
@@ -160,7 +160,7 @@ var _ = Describe("AlbumRepository", func() {
 				_, _ = GetDBXBuilder().NewQuery("DELETE FROM album WHERE id IN ('sole-artist-al', 'duo-artist-al')").Execute()
 			})
 
-			als, err := albumRepo.GetBySoleAlbumArtist("2")
+			als, err := albumRepo.GetAll(model.QueryOptions{Filters: SoleAlbumArtistFilter("2")})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(als).To(HaveLen(1))
 			Expect(als[0].ID).To(Equal(sole.ID))

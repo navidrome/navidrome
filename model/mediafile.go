@@ -555,8 +555,9 @@ type MediaFileRepository interface {
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	// GetAllIDs returns just the media_file IDs for the same row set as GetAll.
 	GetAllIDs(options ...QueryOptions) ([]string, error)
-	// GetAlbumIDsByFolder returns the distinct IDs of albums with non-missing tracks in the given folders.
-	GetAlbumIDsByFolder(folderIDs ...string) ([]string, error)
+	// GetAlbumIDsByFolder returns the distinct IDs of albums with non-missing tracks in the given
+	// folders or their direct children.
+	GetAlbumIDsByFolder(lib Library, folderIDs ...string) ([]string, error)
 	// GetCursorWithArtwork streams like GetCursor, hydrated, so callers that render images don't
 	// pay the scanner's per-row cost; it uses the same id pre-pass as the other cursors.
 	GetCursorWithArtwork(options ...QueryOptions) (MediaFileCursor, error)

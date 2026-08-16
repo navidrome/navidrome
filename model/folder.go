@@ -86,8 +86,6 @@ type FolderRepository interface {
 	Get(id string) (*Folder, error)
 	GetByPath(lib Library, path string) (*Folder, error)
 	GetAll(...QueryOptions) ([]Folder, error)
-	// GetAllIDs returns just the folder IDs for the same row set as GetAll.
-	GetAllIDs(...QueryOptions) ([]string, error)
 	CountAll(...QueryOptions) (int64, error)
 	GetFolderUpdateInfo(lib Library, targetPaths ...string) (map[string]FolderUpdateInfo, error)
 	// HasAudioOutsideFolders reports whether any folder in parent's subtree

@@ -274,8 +274,9 @@ func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, er
 // resolver and the scanner's image-change enqueue must select the same albums.
 var soleAlbumArtistFilter = Eq{"json_array_length(participants, '$.albumartist')": 1}
 
-func (r *albumRepository) GetBySoleAlbumArtist(artistID string) (model.Albums, error) {
-	return r.GetAll(model.QueryOptions{Filters: And{Eq{"album_artist_id": artistID}, soleAlbumArtistFilter}})
+// SoleAlbumArtistFilter matches the albums where the given artist is the only album artist.
+func SoleAlbumArtistFilter(artistID string) Sqlizer {
+	return And{Eq{"album_artist_id": artistID}, soleAlbumArtistFilter}
 }
 
 // GetSoleAlbumArtistIDsInSubtrees resolves the affected artists in one statement: matching albums
