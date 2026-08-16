@@ -125,16 +125,8 @@ type phaseFolders struct {
 	ctx              context.Context
 	state            *scanState
 	prevAlbumPIDConf string
-	// Appended by the persistChanges stage (serial), consumed by finalize. Keyed by library ID.
-	imageChangedFolders map[int][]imageChangedFolder
-}
-
-// imageChangedFolder records a folder whose image files changed during the scan, so the
-// affected albums/artists can be re-enqueued for artwork resolution at the end of phase 1.
-type imageChangedFolder struct {
-	id          string
-	path        string
-	artistImage bool
+	// Written by the persistChanges stage (serial), consumed by finalize.
+	imageChanges imageChangeCollector
 }
 
 func scanArtworkItem(kind model.Kind, id string) model.ArtworkQueueItem {
@@ -361,11 +353,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
 		if !entry.isNew() {
 			if changed, artistImage := entry.imagesChanged(); changed {
-				if p.imageChangedFolders == nil {
-					p.imageChangedFolders = map[int][]imageChangedFolder{}
-				}
-				libID := entry.job.lib.ID
-				p.imageChangedFolders[libID] = append(p.imageChangedFolders[libID], imageChangedFolder{
+				p.imageChanges.record(entry.job.lib, imageChangedFolder{
 					id: entry.id, path: entry.path, artistImage: artistImage,
 				})
 			}
@@ -517,74 +505,6 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 	return entry, nil
 }
 
-// enqueueArtworkForImageChanges re-enqueues artwork for entities affected by image-only folder
-// changes. Best-effort: failures are logged and never fail the scan.
-func (p *phaseFolders) enqueueArtworkForImageChanges() {
-	for _, job := range p.jobs {
-		folders := p.imageChangedFolders[job.lib.ID]
-		if len(folders) == 0 {
-			continue
-		}
-		items, err := p.collectImageChangeQueueItems(job.lib, folders)
-		if err != nil {
-			log.Warn(p.ctx, "Scanner: could not map image changes to artwork items", "lib", job.lib.Name, err)
-			continue
-		}
-		if len(items) == 0 {
-			continue
-		}
-		if err := p.ds.ArtworkQueue(p.ctx).Enqueue(items...); err != nil {
-			log.Warn(p.ctx, "Scanner: could not enqueue artwork for image changes", "lib", job.lib.Name, err)
-			continue
-		}
-		log.Debug(p.ctx, "Scanner: Enqueued artwork resolution for image changes", "lib", job.lib.Name,
-			"changedFolders", len(folders), "items", len(items))
-	}
-}
-
-func (p *phaseFolders) collectImageChangeQueueItems(lib model.Library, folders []imageChangedFolder) ([]model.ArtworkQueueItem, error) {
-	folderIDs := make([]string, len(folders))
-	var artistFolderPaths []string
-	for i, f := range folders {
-		folderIDs[i] = f.id
-		if f.artistImage {
-			artistFolderPaths = append(artistFolderPaths, f.path)
-		}
-	}
-
-	var items []model.ArtworkQueueItem
-
-	albumIDs, err := p.ds.MediaFile(p.ctx).GetAlbumIDsByFolder(lib, folderIDs...)
-	if err != nil {
-		return nil, err
-	}
-	for _, id := range albumIDs {
-		items = append(items, scanArtworkItem(model.KindAlbumArtwork, id))
-	}
-
-	// The resolver climbs to the library root, so the subtree below the folder is the affected set.
-	// A failure here must not discard the album items already collected.
-	artistIDs, err := p.artistIDsUnderPaths(lib, artistFolderPaths)
-	if err != nil {
-		log.Warn(p.ctx, "Scanner: could not map image changes to artists", "lib", lib.Name, err)
-		return items, nil
-	}
-	for _, id := range artistIDs {
-		if id == "" || id == consts.UnknownArtistID || id == consts.VariousArtistsID {
-			continue
-		}
-		items = append(items, scanArtworkItem(model.KindArtistArtwork, id))
-	}
-	return items, nil
-}
-
-func (p *phaseFolders) artistIDsUnderPaths(lib model.Library, paths []string) ([]string, error) {
-	if len(paths) == 0 {
-		return nil, nil
-	}
-	return p.ds.Album(p.ctx).GetSoleAlbumArtistIDsInSubtrees(lib, paths...)
-}
-
 func (p *phaseFolders) finalize(err error) error {
 	errF := p.ds.WithTx(func(tx model.DataStore) error {
 		for _, job := range p.jobs {
@@ -612,7 +532,7 @@ func (p *phaseFolders) finalize(err error) error {
 		}
 		return nil
 	}, "scanner: finalize phaseFolders")
-	p.enqueueArtworkForImageChanges()
+	p.imageChanges.enqueue(p.ctx, p.ds)
 	return errors.Join(err, errF)
 }
 
