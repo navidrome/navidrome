@@ -96,13 +96,5 @@ func (p *phaseFolders) artistIDsUnderPaths(lib model.Library, paths []string) ([
 	if len(paths) == 0 {
 		return nil, nil
 	}
-	subtreeIDs, err := p.ds.Folder(p.ctx).GetSubtreeIDs(lib, paths...)
-	if err != nil {
-		return nil, err
-	}
-	albumIDs, err := p.ds.MediaFile(p.ctx).GetAlbumIDsByFolder(subtreeIDs...)
-	if err != nil {
-		return nil, err
-	}
-	return p.ds.Album(p.ctx).GetSoleAlbumArtistIDs(albumIDs...)
+	return p.ds.Album(p.ctx).GetSoleAlbumArtistIDsInSubtrees(lib, paths...)
 }

@@ -204,41 +204,24 @@ func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.Fol
 	return m, nil
 }
 
-// GetSubtreeIDs returns the IDs of the folders at the given library-relative paths and all their
-// descendants. A path of "" or "." selects the whole library.
-func (r folderRepository) GetSubtreeIDs(lib model.Library, paths ...string) ([]string, error) {
-	where := And{Eq{"library_id": lib.ID}, Eq{"missing": false}}
+// folderSubtreeFilter matches the folders at the given library-relative paths and all their
+// descendants. A path of "" or "." selects the whole library, so it drops the path conditions.
+func folderSubtreeFilter(lib model.Library, paths []string) Sqlizer {
 	conds := make(Or, 0, len(paths)*3)
 	for _, p := range paths {
 		// Paths are io/fs slash-form; filepath.Clean would backslash them on Windows.
 		cleanPath := path.Clean(strings.TrimPrefix(p, "/"))
 		if cleanPath == "." {
-			conds = nil
-			break
+			return And{Eq{"folder.library_id": lib.ID}, Eq{"folder.missing": false}}
 		}
 		conds = append(conds,
-			Eq{"id": model.FolderID(lib, cleanPath)},
+			Eq{"folder.id": model.FolderID(lib, cleanPath)},
 			// Direct children have path = cleanPath; deeper descendants match the prefix
-			Eq{"path": cleanPath},
-			Expr(`path LIKE ? ESCAPE '\'`, escapeLikePrefix(cleanPath)+"/%"),
+			Eq{"folder.path": cleanPath},
+			Expr(`folder.path LIKE ? ESCAPE '\'`, escapeLikePrefix(cleanPath)+"/%"),
 		)
 	}
-	ids := []string{}
-	// ~3 conditions per path; batches keep the query under SQLite's expression tree depth limit.
-	for chunk := range slices.Chunk(conds, 300) {
-		sq := r.newSelect().Columns("folder.id").Where(append(where, chunk))
-		var chunkIDs []string
-		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
-			return nil, err
-		}
-		ids = append(ids, chunkIDs...)
-	}
-	if conds == nil {
-		sq := r.newSelect().Columns("folder.id").Where(where)
-		err := r.queryAllSlice(sq, &ids)
-		return ids, err
-	}
-	return ids, nil
+	return And{Eq{"folder.library_id": lib.ID}, Eq{"folder.missing": false}, conds}
 }
 
 // HasAudioOutsideFolders reports whether any folder in parent's subtree

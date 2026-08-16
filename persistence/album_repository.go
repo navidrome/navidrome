@@ -278,11 +278,20 @@ func (r *albumRepository) GetBySoleAlbumArtist(artistID string) (model.Albums, e
 	return r.GetAll(model.QueryOptions{Filters: And{Eq{"album_artist_id": artistID}, soleAlbumArtistFilter}})
 }
 
-func (r *albumRepository) GetSoleAlbumArtistIDs(albumIDs ...string) ([]string, error) {
-	return r.queryAllSliceChunked(albumIDs, func(chunk []string) SelectBuilder {
-		return Select("distinct album_artist_id").From("album").
-			Where(And{Eq{"id": chunk}, soleAlbumArtistFilter})
-	})
+// GetSoleAlbumArtistIDsInSubtrees resolves the affected artists in one statement: matching albums
+// by their own folder_ids is both the resolver's notion of an album's folders and ~5x faster than
+// walking media_file rows for the subtree.
+func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, paths ...string) ([]string, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
+		folderSubtreeFilter(lib, paths))
+	sq := Select("distinct album_artist_id").From("album").
+		Where(And{soleAlbumArtistFilter, inSubtree})
+	ids := []string{}
+	err := r.queryAllSlice(sq, &ids)
+	return ids, err
 }
 
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {

@@ -66,20 +66,20 @@ var _ = Describe("FolderRepository", func() {
 			Expect(ids).To(ConsistOf(child.ID))
 		})
 
-		It("GetSubtreeIDs returns the folders and all their descendants", func() {
-			ids, err := repo.GetSubtreeIDs(testLib, "TestSubtree")
+		It("folderSubtreeFilter matches a folder and all its descendants", func() {
+			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: folderSubtreeFilter(testLib, []string{"TestSubtree"})})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
 		})
 
-		It("GetSubtreeIDs returns the descendants of a nested slash-form path", func() {
-			ids, err := repo.GetSubtreeIDs(testLib, "TestSubtree/Child")
+		It("folderSubtreeFilter matches the descendants of a nested slash-form path", func() {
+			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: folderSubtreeFilter(testLib, []string{"TestSubtree/Child"})})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf(child.ID, grandchild.ID))
 		})
 
-		It("GetSubtreeIDs returns the whole library for the root path", func() {
-			ids, err := repo.GetSubtreeIDs(testLib, ".")
+		It("folderSubtreeFilter matches the whole library for the root path", func() {
+			ids, err := repo.GetAllIDs(model.QueryOptions{Filters: folderSubtreeFilter(testLib, []string{"."})})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ContainElements(parent.ID, child.ID, grandchild.ID, other.ID))
 		})
