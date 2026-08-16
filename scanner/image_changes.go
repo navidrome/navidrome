@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"sync"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -17,14 +18,17 @@ type imageChangedFolder struct {
 }
 
 // imageChangeCollector gathers those folders per library while phase 1 persists them, then turns
-// them into artwork queue items once. record must be called from a single goroutine.
+// them into artwork queue items once.
 type imageChangeCollector struct {
 	libs    map[int]model.Library
 	folders map[int][]imageChangedFolder
 	ds      model.DataStore
+	mutex   sync.Mutex
 }
 
 func (c *imageChangeCollector) record(lib model.Library, folder imageChangedFolder) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 	if c.folders == nil {
 		c.folders = map[int][]imageChangedFolder{}
 		c.libs = map[int]model.Library{}
@@ -35,8 +39,13 @@ func (c *imageChangeCollector) record(lib model.Library, folder imageChangedFold
 
 // enqueue is best-effort: failures are logged and never fail the scan.
 func (c *imageChangeCollector) enqueue(ctx context.Context) {
-	for libID, folders := range c.folders {
-		lib := c.libs[libID]
+	c.mutex.Lock()
+	foldersMap, libsMap := c.folders, c.libs
+	c.folders, c.libs = nil, nil
+	c.mutex.Unlock()
+
+	for libID, folders := range foldersMap {
+		lib := libsMap[libID]
 		items, err := c.queueItems(ctx, lib, folders)
 		if err != nil {
 			log.Warn(ctx, "Scanner: could not map image changes to artwork items", "lib", lib.Name, err)

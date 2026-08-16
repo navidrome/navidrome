@@ -200,7 +200,8 @@ func (p *phaseFolders) measure(entry *folderEntry) func() time.Duration {
 func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 	return []ppl.Stage[*folderEntry]{
 		ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(conf.Server.DevScannerThreads)),
-		ppl.NewStage(p.persistChanges, ppl.Name("persist changes")),
+		// persistChanges is not reentrant, so it always has to run with concurrency=1
+		ppl.NewStage(p.persistChanges, ppl.Name("persist changes"), ppl.Concurrency(1)),
 		ppl.NewStage(p.logFolder, ppl.Name("log results")),
 	}
 }
