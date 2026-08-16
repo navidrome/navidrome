@@ -45,7 +45,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		jobs = append(jobs, job)
 	}
 
-	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
+	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state, imageChanges: &imageChangeCollector{ds: ds}}
 }
 
 type scanJob struct {
@@ -125,15 +125,7 @@ type phaseFolders struct {
 	ctx              context.Context
 	state            *scanState
 	prevAlbumPIDConf string
-	// Written by the persistChanges stage (serial), consumed by finalize.
-	imageChanges imageChangeCollector
-}
-
-func scanArtworkItem(kind model.Kind, id string) model.ArtworkQueueItem {
-	return model.ArtworkQueueItem{
-		ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary,
-		Priority: model.ArtworkPriorityScan,
-	}
+	imageChanges     *imageChangeCollector
 }
 
 func (p *phaseFolders) description() string {
@@ -532,7 +524,7 @@ func (p *phaseFolders) finalize(err error) error {
 		}
 		return nil
 	}, "scanner: finalize phaseFolders")
-	p.imageChanges.enqueue(p.ctx, p.ds)
+	p.imageChanges.enqueue(p.ctx)
 	return errors.Join(err, errF)
 }
 

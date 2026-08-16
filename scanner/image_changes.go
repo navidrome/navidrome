@@ -22,6 +22,7 @@ type imageChangedFolder struct {
 type imageChangeCollector struct {
 	libs    map[int]model.Library
 	folders map[int][]imageChangedFolder
+	ds      model.DataStore
 }
 
 func (c *imageChangeCollector) record(lib model.Library, folder imageChangedFolder) {
@@ -34,10 +35,10 @@ func (c *imageChangeCollector) record(lib model.Library, folder imageChangedFold
 }
 
 // enqueue is best-effort: failures are logged and never fail the scan.
-func (c *imageChangeCollector) enqueue(ctx context.Context, ds model.DataStore) {
+func (c *imageChangeCollector) enqueue(ctx context.Context) {
 	for libID, folders := range c.folders {
 		lib := c.libs[libID]
-		items, err := c.queueItems(ctx, ds, lib, folders)
+		items, err := c.queueItems(ctx, lib, folders)
 		if err != nil {
 			log.Warn(ctx, "Scanner: could not map image changes to artwork items", "lib", lib.Name, err)
 			continue
@@ -45,7 +46,7 @@ func (c *imageChangeCollector) enqueue(ctx context.Context, ds model.DataStore) 
 		if len(items) == 0 {
 			continue
 		}
-		if err := ds.ArtworkQueue(ctx).Enqueue(items...); err != nil {
+		if err := c.ds.ArtworkQueue(ctx).Enqueue(items...); err != nil {
 			log.Warn(ctx, "Scanner: could not enqueue artwork for image changes", "lib", lib.Name, err)
 			continue
 		}
@@ -54,7 +55,7 @@ func (c *imageChangeCollector) enqueue(ctx context.Context, ds model.DataStore) 
 	}
 }
 
-func (c *imageChangeCollector) queueItems(ctx context.Context, ds model.DataStore, lib model.Library,
+func (c *imageChangeCollector) queueItems(ctx context.Context, lib model.Library,
 	folders []imageChangedFolder,
 ) ([]model.ArtworkQueueItem, error) {
 	folderIDs := make([]string, len(folders))
@@ -68,7 +69,7 @@ func (c *imageChangeCollector) queueItems(ctx context.Context, ds model.DataStor
 
 	var items []model.ArtworkQueueItem
 
-	albumIDs, err := ds.MediaFile(ctx).GetAlbumIDsByFolder(lib, folderIDs...)
+	albumIDs, err := c.ds.MediaFile(ctx).GetAlbumIDsByFolder(lib, folderIDs...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func (c *imageChangeCollector) queueItems(ctx context.Context, ds model.DataStor
 	}
 	// The resolver climbs to the library root, so the subtree below the folder is the affected set.
 	// A failure here must not discard the album items already collected.
-	artistIDs, err := ds.Album(ctx).GetSoleAlbumArtistIDsInSubtrees(lib, artistFolderPaths...)
+	artistIDs, err := c.ds.Album(ctx).GetSoleAlbumArtistIDsInSubtrees(lib, artistFolderPaths...)
 	if err != nil {
 		log.Warn(ctx, "Scanner: could not map image changes to artists", "lib", lib.Name, err)
 		return items, nil
@@ -93,4 +94,11 @@ func (c *imageChangeCollector) queueItems(ctx context.Context, ds model.DataStor
 		items = append(items, scanArtworkItem(model.KindArtistArtwork, id))
 	}
 	return items, nil
+}
+
+func scanArtworkItem(kind model.Kind, id string) model.ArtworkQueueItem {
+	return model.ArtworkQueueItem{
+		ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary,
+		Priority: model.ArtworkPriorityScan,
+	}
 }
