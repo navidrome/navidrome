@@ -171,8 +171,10 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				// Check if folder is outdated
 				if folder.isOutdated() {
 					if !p.state.fullScan {
-						if folder.hasNoFiles() && folder.isNew() {
-							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
+						// Ancestor folders need a row even with no files of their own: artwork
+						// resolution climbs them, and an image added later needs a state to diff.
+						if folder.isEmpty() && folder.isNew() {
+							log.Trace(p.ctx, "Scanner: Skipping new empty folder", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
 						log.Debug(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)

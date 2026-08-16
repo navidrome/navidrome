@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
-	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -154,9 +152,8 @@ func (r folderRepository) getFolderUpdateInfoBatch(lib model.Library, targetPath
 	pathConditions := make(Or, 0, len(targetPaths)*2)
 
 	for _, targetPath := range targetPaths {
-		// Clean the path to normalize it. Paths stored in the folder table do not have leading/trailing slashes.
-		cleanPath := strings.TrimPrefix(targetPath, string(os.PathSeparator))
-		cleanPath = filepath.Clean(cleanPath)
+		// Slash-form like the stored paths; filepath.Clean would backslash them on Windows.
+		cleanPath := path.Clean(strings.TrimPrefix(targetPath, "/"))
 
 		// Include the target folder itself by ID
 		folderIDs = append(folderIDs, model.FolderID(lib, cleanPath))

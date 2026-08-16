@@ -380,6 +380,22 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(queued).To(queueItemFor("ar", artistID("Pink Floyd")))
 		})
 
+		It("enqueues the artist when an image lands in a folder first seen by a quick scan", func() {
+			// A quick scan must persist an artist folder that holds only subfolders, or the
+			// artist.jpg added later has no previous state to diff against.
+			kraftwerk := template(_t{"albumartist": "Kraftwerk", "album": "Autobahn", "year": 1974})
+			files := fsys.MapFS
+			files["Kraftwerk/Autobahn/01 - Autobahn.mp3"] = kraftwerk(track(1, "Autobahn"))
+			fsys.SetFiles(files)
+			Expect(runScanner(ctx, false)).To(Succeed())
+			resolveQueuedArtwork()
+
+			fsys.Add("Kraftwerk/artist.jpg", image("kraftwerk-artist-v1"))
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			Expect(queuedItems()).To(queueItemFor("ar", artistID("Kraftwerk")))
+		})
+
 		It("does not enqueue anything on a repeat full scan with no image changes", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
