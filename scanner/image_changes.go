@@ -17,8 +17,7 @@ type imageChangedFolder struct {
 }
 
 // imageChangeCollector gathers those folders per library while phase 1 persists them, then turns
-// them into artwork queue items once. Its zero value is ready to use, and record must be called
-// from a single goroutine.
+// them into artwork queue items once. record must be called from a single goroutine.
 type imageChangeCollector struct {
 	libs    map[int]model.Library
 	folders map[int][]imageChangedFolder
