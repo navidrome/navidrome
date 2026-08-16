@@ -3,7 +3,6 @@ package artwork
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"slices"
 	"sync"
@@ -19,7 +18,6 @@ const (
 	OutcomeMiss       Outcome = "miss"
 	OutcomeUnreadable Outcome = "unreadable"
 	OutcomeSkipped    Outcome = "skipped"
-	OutcomeWouldTry   Outcome = "would-try"
 	OutcomeError      Outcome = "error"
 )
 
@@ -121,8 +119,6 @@ func traceFrom(ctx context.Context) *ChainTrace {
 	return t
 }
 
-var errOfflineSkipped = errors.New("artwork: external lookup skipped (offline)")
-
 // recordAgent files what one external agent answered. The agent loops call this rather than a
 // gate wrapper, because only they hold the context that carries the trace.
 func recordAgent(ctx context.Context, name string, r io.ReadCloser, path string, err error) {
@@ -131,8 +127,6 @@ func recordAgent(ctx context.Context, name string, r io.ReadCloser, path string,
 	switch {
 	case r != nil:
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
-	case errors.Is(err, errOfflineSkipped):
-		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeWouldTry})
 	case isTransientExternal(err):
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
 	default:
@@ -144,10 +138,4 @@ func recordAgent(ctx context.Context, name string, r io.ReadCloser, path string,
 // picked a winner: most ways an item can fail are here, not in the chain walk.
 func traceStage(ctx context.Context, stage string, err error) {
 	traceFrom(ctx).add(TraceStep{Candidate: stage, Outcome: OutcomeError, Detail: err.Error()})
-}
-
-// offlineGate reports which agents would be asked without asking them, so a diagnostic
-// command cannot add load to a provider that is already rate-limiting us.
-func offlineGate(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-	return nil, "", errOfflineSkipped
 }

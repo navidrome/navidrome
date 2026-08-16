@@ -24,8 +24,8 @@ var _ = Describe("trace vocabulary", func() {
 	// what `artwork explain` tells an operator, so it must be made deliberately.
 	It("pins the wire values the CLI reads", func() {
 		Expect([]Outcome{
-			OutcomeHit, OutcomeMiss, OutcomeUnreadable, OutcomeSkipped, OutcomeWouldTry, OutcomeError,
-		}).To(Equal([]Outcome{"hit", "miss", "unreadable", "skipped", "would-try", "error"}))
+			OutcomeHit, OutcomeMiss, OutcomeUnreadable, OutcomeSkipped, OutcomeError,
+		}).To(Equal([]Outcome{"hit", "miss", "unreadable", "skipped", "error"}))
 		Expect(externalCandidate).To(Equal("external"))
 		Expect(ExternalPrefix).To(Equal("external:"))
 	})
@@ -197,21 +197,6 @@ var _ = Describe("external agent tracing", func() {
 		recordAgent(ctx, "apple-music", nil, "", errors.New("returned status 429"))
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeError))
 		Expect(t.Steps()[0].Detail).To(ContainSubstring("429"))
-	})
-
-	It("records would-try for the offline gate, without calling the agent", func() {
-		called := false
-		_, _, err := offlineGate("deezer", func() (io.ReadCloser, string, error) {
-			called = true
-			return body, "http://img", nil
-		})
-		recordAgent(ctx, "deezer", nil, "", err)
-
-		Expect(called).To(BeFalse(), "offline mode must not perform external requests")
-		Expect(err).To(MatchError(errOfflineSkipped))
-		Expect(t.Steps()).To(Equal([]TraceStep{
-			{Candidate: "external:deezer", Outcome: OutcomeWouldTry},
-		}))
 	})
 })
 
@@ -452,51 +437,51 @@ var _ = Describe("NewTracingResolver", func() {
 		t = &ChainTrace{}
 	})
 
-	Context("offline", func() {
+	Context("resolving", func() {
 		var fake *fakeImageAgent
 
 		BeforeEach(func() {
-			fake = &fakeImageAgent{name: "offline-probe"}
+			// Misses, so the chain falls through to the local tier and both are traced.
+			fake = &fakeImageAgent{name: "probe", err: agents.ErrNotFound}
 			albumRepo.SetData(model.Albums{{
 				ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
 			}})
 			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
 		})
 
-		It("reports the external tier without asking any agent", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+		It("asks the agents and records what each answered", func() {
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
-			Expect(fake.albumCalls).To(BeZero(), "offline mode must not add load to an external provider")
-			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:offline-probe", Outcome: OutcomeWouldTry}))
+			Expect(fake.albumCalls).To(Equal(1))
+			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:probe", Outcome: OutcomeMiss}))
 		})
 
 		It("records the local chain steps too", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			last := t.Steps()[len(t.Steps())-1]
-			Expect(last.Candidate).To(Equal("embedded"), "the local chain must be traced, not just the external gate")
+			Expect(last.Candidate).To(Equal("embedded"), "the local chain must be traced, not just the external tier")
 			Expect(last.Outcome).To(Equal(OutcomeHit))
 		})
 
 		It("never persists artwork state", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artworkRepo.ItemData).To(BeEmpty(),
-				"an offline resolution carries extError, which must never be recorded as a real provider failure")
+				"explain is read-only; a diagnostic walk must never become the stored answer")
 			Expect(queueRepo.Data).To(BeEmpty())
 		})
 
 		It("resolves an artist without persisting anything", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(BeEmpty())
-			Expect(fake.artistCalls).To(BeZero())
-			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:offline-probe", Outcome: OutcomeWouldTry}))
+			Expect(fake.artistCalls).To(Equal(1))
 			Expect(artworkRepo.ItemData).To(BeEmpty())
 			Expect(queueRepo.Data).To(BeEmpty())
 		})
@@ -508,7 +493,7 @@ var _ = Describe("NewTracingResolver", func() {
 				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
 			}})
 
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
@@ -516,22 +501,9 @@ var _ = Describe("NewTracingResolver", func() {
 		})
 
 		It("propagates a lookup error", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
-	})
-
-	It("asks the agents when live is true", func() {
-		fake := &fakeImageAgent{name: "live-probe", err: agents.ErrNotFound}
-		albumRepo.SetData(model.Albums{{
-			ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
-		}})
-
-		_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
-
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fake.albumCalls).To(Equal(1))
-		Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:live-probe", Outcome: OutcomeMiss}))
 	})
 })
 

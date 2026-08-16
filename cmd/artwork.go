@@ -641,10 +641,6 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 			if s.Outcome == artwork.OutcomeHit {
 				break
 			}
-			if s.Outcome == artwork.OutcomeWouldTry {
-				return "resolved from " + source +
-					" (offline: a higher-priority external candidate was not tried; re-run with --live)"
-			}
 			// An external winner discards the earlier error, so the resolver settles it with no retry.
 			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) &&
 				!strings.HasPrefix(source, artwork.ExternalPrefix) {
@@ -656,8 +652,6 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 	}
 	for _, s := range steps {
 		switch {
-		case s.Outcome == artwork.OutcomeWouldTry:
-			return "indeterminate (external agents not called; re-run with --live)"
 		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
 			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
 		// The worker treats an unreadable local candidate exactly as it treats a failed external one:
@@ -858,7 +852,7 @@ func runExplain(ctx context.Context, args []string) {
 		switch {
 		case rep.walked:
 			trace := &artwork.ChainTrace{}
-			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
+			rep.source, rep.resolveErr = CreateArtworkResolver(trace).Resolve(ctx, kind, id)
 			rep.steps = trace.Steps()
 		case rep.stored != nil:
 			rep.steps = artwork.DecodeTrace(rep.stored.Trace, rep.stored.SourcePath)

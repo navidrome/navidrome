@@ -164,34 +164,6 @@ var _ = Describe("explainResult", func() {
 			"a failed network call is not evidence that the item has no artwork")
 	})
 
-	It("qualifies a win a skipped higher-priority external candidate could have taken", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "external:deezer", Outcome: "would-try"},
-			{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"},
-		}
-		res := explainResult("artist.*", steps)
-		Expect(res).To(ContainSubstring("resolved from artist.*"))
-		Expect(res).To(ContainSubstring("--live"),
-			"offline, the winner is only the winner because the external tier was skipped")
-	})
-
-	It("does not qualify a win that no skipped candidate outranked", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "artist.*", Outcome: "hit"},
-			{Candidate: "external:deezer", Outcome: "would-try"},
-		}
-		Expect(explainResult("artist.*", steps)).To(Equal("resolved from artist.*"))
-	})
-
-	It("reports indeterminate when external agents were never called", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "artist.*", Outcome: "miss"},
-			{Candidate: "external:deezer", Outcome: "would-try"},
-		}
-		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
-			"an offline run must not claim an item is unresolvable when external agents were skipped")
-	})
-
 	It("qualifies a win a failed higher-priority external lookup could have taken", func() {
 		steps := []artwork.TraceStep{
 			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
@@ -255,7 +227,7 @@ var _ = Describe("formatExplain", func() {
 			walked: true,
 			steps: []artwork.TraceStep{
 				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
-				{Candidate: "external:deezer", Outcome: "would-try"},
+				{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
 			},
 			source: "",
 		}
@@ -268,7 +240,6 @@ var _ = Describe("formatExplain", func() {
 		Expect(out).To(ContainSubstring("ArtistArtPriority"))
 		Expect(out).To(ContainSubstring("lastfm,spotify"))
 		Expect(out).To(ContainSubstring("external:deezer"))
-		Expect(out).To(ContainSubstring("would-try"))
 		Expect(out).To(ContainSubstring("indeterminate"))
 	})
 
@@ -305,7 +276,7 @@ var _ = Describe("formatExplain", func() {
 		out := formatExplain(rep)
 		Expect(out).To(ContainSubstring("resolution failed: no such directory"))
 		Expect(out).ToNot(ContainSubstring("indeterminate"))
-		Expect(out).To(ContainSubstring("would-try"), "the steps taken before the failure still print")
+		Expect(out).To(ContainSubstring("external:deezer"), "the steps taken before the failure still print")
 	})
 
 	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
