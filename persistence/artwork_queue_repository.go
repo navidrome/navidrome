@@ -18,6 +18,7 @@ import (
 const enqueueChunkSize = 100
 
 // Every insert writes these, in this order; the INSERT..SELECT forms must project them to match.
+// DequeueBatch also selects exactly these, to leave the drain's rows free of the trace it never reads.
 var enqueueColumns = []string{"item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at"}
 
 type artworkQueueRepository struct {

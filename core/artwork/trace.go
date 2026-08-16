@@ -7,6 +7,8 @@ import (
 	"io"
 	"slices"
 	"sync"
+
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 // Outcome is what the priority chain observed for one candidate; the CLI renders and branches on these.
@@ -35,8 +37,8 @@ type TraceStep struct {
 	Detail    string
 }
 
-// ChainTrace collects the walk of a single resolution. The artwork worker never attaches
-// one; only the CLI does, so resolution stays allocation-free in the hot path.
+// ChainTrace collects the walk of a single resolution: the worker attaches one per queue
+// item so it can be stored, and the CLI attaches one per explain.
 type ChainTrace struct {
 	mu    sync.Mutex
 	steps []TraceStep
@@ -60,6 +62,10 @@ func (t *ChainTrace) Steps() []TraceStep {
 	return slices.Clone(t.steps)
 }
 
+// maxTraceDetail bounds a stored Detail, which on the failure paths is an error string of
+// unknown length. Past ~1kB a row spills to an overflow page, slowing every scan of the table.
+const maxTraceDetail = 200
+
 // storedStep is the persisted shape of a TraceStep. The keys are single letters because a trace
 // is written for every item, and the encoded length is repeated across the whole library.
 type storedStep struct {
@@ -77,12 +83,9 @@ func EncodeTrace(steps []TraceStep, sourcePath string) string {
 		if s.Outcome == OutcomeHit && d == sourcePath {
 			d = ""
 		}
-		out = append(out, storedStep{C: s.Candidate, O: s.Outcome, D: d})
+		out = append(out, storedStep{C: s.Candidate, O: s.Outcome, D: str.TruncateRunes(d, maxTraceDetail, "...")})
 	}
-	b, err := json.Marshal(out)
-	if err != nil {
-		return "[]"
-	}
+	b, _ := json.Marshal(out) // []storedStep is all strings, so this cannot fail
 	return string(b)
 }
 
@@ -145,8 +148,6 @@ func traceStage(ctx context.Context, stage string, err error) {
 
 // offlineGate reports which agents would be asked without asking them, so a diagnostic
 // command cannot add load to a provider that is already rate-limiting us.
-func offlineGate() gateFunc {
-	return func(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-		return nil, "", errOfflineSkipped
-	}
+func offlineGate(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+	return nil, "", errOfflineSkipped
 }

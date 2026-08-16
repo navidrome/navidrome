@@ -37,7 +37,7 @@ type resolution struct {
 // transient external failure still retries; localErr is dropped, as the scanner re-lists changes.
 type chainState struct {
 	extErr, localErr bool
-	trace            *ChainTrace // nil unless the CLI asked for a trace
+	trace            *ChainTrace // nil only where no caller attached one
 }
 
 // try stamps the accumulated external failure onto a hit, and records the miss otherwise.

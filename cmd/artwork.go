@@ -691,19 +691,19 @@ type explainReport struct {
 	stored *model.ItemArtwork
 	queued *model.ArtworkQueueItem
 	agents string
-	// steps is the chain walk: recorded when the item was resolved, or performed just now when live.
+	// steps is the chain walk: recorded when the item was resolved, or performed just now when walked.
 	steps        []artwork.TraceStep
 	queuedSteps  []artwork.TraceStep
 	failureSteps []artwork.TraceStep
 	source       string
-	live         bool
+	walked       bool
 	resolveErr   error
 }
 
 // explainChainOrigin says whether the operator is reading history or a walk performed just now,
 // since the two can disagree after a config change.
 func explainChainOrigin(rep explainReport) string {
-	if rep.live {
+	if rep.walked {
 		return "walked now"
 	}
 	if rep.stored != nil {
@@ -778,9 +778,9 @@ func formatExplain(rep explainReport) string {
 	switch {
 	case !explainable:
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
-	case !rep.live && rep.stored == nil:
+	case !rep.walked && rep.stored == nil:
 		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
-	case !rep.live && len(rep.steps) == 0:
+	case !rep.walked && len(rep.steps) == 0:
 		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
 	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
@@ -796,7 +796,7 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
 	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
-	case !rep.live && rep.stored == nil:
+	case !rep.walked && rep.stored == nil:
 		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
@@ -846,17 +846,17 @@ func runExplain(ctx context.Context, args []string) {
 	}
 
 	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
-	rep.live = explainLive || !artwork.KeepsState(kind)
+	rep.walked = explainLive || !artwork.KeepsState(kind)
 	if artwork.Explainable(kind) {
 		// Only artist and album reach an agent, and the load must precede the resolver, which reads
 		// the same manager.
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
-			mgr := loadPluginAgents(ctx, rep.live)
+			mgr := loadPluginAgents(ctx, explainLive)
 			defer func() { _ = mgr.Stop() }()
 			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
 		}
 		switch {
-		case rep.live:
+		case rep.walked:
 			trace := &artwork.ChainTrace{}
 			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
 			rep.steps = trace.Steps()

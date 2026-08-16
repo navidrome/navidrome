@@ -252,7 +252,7 @@ var _ = Describe("formatExplain", func() {
 			id:     "ar-1",
 			name:   "Radiohead",
 			agents: "lastfm,spotify",
-			live:   true,
+			walked: true,
 			steps: []artwork.TraceStep{
 				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
 				{Candidate: "external:deezer", Outcome: "would-try"},
@@ -330,7 +330,7 @@ var _ = Describe("formatExplain", func() {
 			kind: model.KindDiscArtwork, id: "al-1:2", name: "OK Computer (disc 2)",
 			steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
 			source: "folder",
-			live:   true,
+			walked: true,
 		}
 
 		out := formatExplain(rep)
@@ -345,7 +345,7 @@ var _ = Describe("formatExplain", func() {
 
 	Context("stored traces", func() {
 		BeforeEach(func() {
-			rep.live = false
+			rep.walked = false
 			rep.steps = nil
 		})
 
@@ -399,7 +399,7 @@ var _ = Describe("formatExplain", func() {
 		conf.Server.EnableMediaFileCoverArt = false
 		rep = explainReport{
 			kind: model.KindMediaFileArtwork, id: "mf-1", name: "Airbag",
-			live: true,
+			walked: true,
 			steps: []artwork.TraceStep{
 				{Candidate: "embedded", Outcome: "skipped", Detail: "EnableMediaFileCoverArt is off"},
 			},

@@ -95,6 +95,17 @@ func (f *fakeEventBroker) getEvents() []events.Event {
 
 var _ events.Broker = (*fakeEventBroker)(nil)
 
+// expireQueued ages a row past the retry budget, so the next drain settles it instead of retrying.
+func expireQueued(q *tests.MockArtworkQueueRepo, id string) {
+	GinkgoHelper()
+	for k, v := range q.Data {
+		if v.ItemID == id {
+			v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+			q.Data[k] = v
+		}
+	}
+}
+
 func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQueueItem {
 	for _, it := range q.Data {
 		if it.ItemKind == kind && it.ItemID == id {
@@ -318,12 +329,7 @@ var _ = Describe("Worker", func() {
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
 			// Age the row past the retry budget.
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al9" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al9")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -345,12 +351,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al10"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al10" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al10")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -389,12 +390,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al13"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al13" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al13")
 
 			_, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -415,12 +411,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al12"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al12" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al12")
 
 			_, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -442,12 +433,7 @@ var _ = Describe("Worker", func() {
 				{ID: "mfX", LibraryID: 0, Path: "tests/fixtures/artist/an-album/gone.mp3", HasCoverArt: true},
 			})
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mfX"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "mfX" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "mfX")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())

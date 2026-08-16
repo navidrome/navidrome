@@ -63,6 +63,18 @@ var _ = Describe("EncodeTrace/DecodeTrace", func() {
 		Expect(DecodeTrace(EncodeTrace(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
 	})
 
+	// A row past ~1kB spills to an overflow page on these WITHOUT ROWID tables, which would
+	// slow every scan; Detail is an error string on the failure paths, so it needs a bound.
+	It("bounds a detail so one long error cannot inflate the row", func() {
+		steps := []TraceStep{{Candidate: "decode", Outcome: OutcomeError, Detail: strings.Repeat("x", 5000)}}
+
+		got := DecodeTrace(EncodeTrace(steps, ""), "")
+
+		Expect(len(got[0].Detail)).To(BeNumerically("<=", 210))
+		Expect(got[0].Detail).To(HaveSuffix("..."))
+		Expect(got[0].Candidate).To(Equal("decode"), "truncating the detail must not disturb the step")
+	})
+
 	It("only restores sourcePath onto a detail-less hit", func() {
 		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeMiss}}
 		Expect(DecodeTrace(EncodeTrace(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
@@ -189,7 +201,7 @@ var _ = Describe("external agent tracing", func() {
 
 	It("records would-try for the offline gate, without calling the agent", func() {
 		called := false
-		_, _, err := offlineGate()("deezer", func() (io.ReadCloser, string, error) {
+		_, _, err := offlineGate("deezer", func() (io.ReadCloser, string, error) {
 			called = true
 			return body, "http://img", nil
 		})
