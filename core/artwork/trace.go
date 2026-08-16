@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"slices"
@@ -59,6 +60,53 @@ func (t *ChainTrace) Steps() []TraceStep {
 	return slices.Clone(t.steps)
 }
 
+// storedStep is the persisted shape of a TraceStep. The keys are single letters because a trace
+// is written for every item, and the encoded length is repeated across the whole library.
+type storedStep struct {
+	C string  `json:"c"`
+	O Outcome `json:"o"`
+	D string  `json:"d,omitempty"`
+}
+
+// EncodeTrace serializes steps for storage. A hit's Detail is the winning source's path, which
+// the same row already stores as source_path, so it is dropped and DecodeTrace puts it back.
+func EncodeTrace(steps []TraceStep, sourcePath string) string {
+	out := make([]storedStep, 0, len(steps))
+	for _, s := range steps {
+		d := s.Detail
+		if s.Outcome == OutcomeHit && d == sourcePath {
+			d = ""
+		}
+		out = append(out, storedStep{C: s.Candidate, O: s.Outcome, D: d})
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}
+
+// DecodeTrace reverses EncodeTrace. A trace that will not parse is reported as no trace at all,
+// since a diagnostic command must not fail on a bad row.
+func DecodeTrace(encoded, sourcePath string) []TraceStep {
+	if encoded == "" {
+		return nil
+	}
+	var stored []storedStep
+	if err := json.Unmarshal([]byte(encoded), &stored); err != nil {
+		return nil
+	}
+	steps := make([]TraceStep, 0, len(stored))
+	for _, s := range stored {
+		d := s.D
+		if d == "" && s.O == OutcomeHit {
+			d = sourcePath
+		}
+		steps = append(steps, TraceStep{Candidate: s.C, Outcome: s.O, Detail: d})
+	}
+	return steps
+}
+
 type traceCtxKey struct{}
 
 func withTrace(ctx context.Context, t *ChainTrace) context.Context {
@@ -72,28 +120,33 @@ func traceFrom(ctx context.Context) *ChainTrace {
 
 var errOfflineSkipped = errors.New("artwork: external lookup skipped (offline)")
 
-// tracingGate records each external agent's outcome without changing what the gate returns.
-func tracingGate(t *ChainTrace, inner gateFunc) gateFunc {
-	return func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-		r, path, err := inner(name, f)
-		candidate := ExternalPrefix + name
-		switch {
-		case r != nil:
-			t.add(TraceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
-		case isTransientExternal(err):
-			t.add(TraceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
-		default:
-			t.add(TraceStep{Candidate: candidate, Outcome: OutcomeMiss})
-		}
-		return r, path, err
+// recordAgent files what one external agent answered. The agent loops call this rather than a
+// gate wrapper, because only they hold the context that carries the trace.
+func recordAgent(ctx context.Context, name string, r io.ReadCloser, path string, err error) {
+	t := traceFrom(ctx)
+	candidate := ExternalPrefix + name
+	switch {
+	case r != nil:
+		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
+	case errors.Is(err, errOfflineSkipped):
+		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeWouldTry})
+	case isTransientExternal(err):
+		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
+	default:
+		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeMiss})
 	}
+}
+
+// traceStage records a failure from the stages that run after the priority chain has already
+// picked a winner: most ways an item can fail are here, not in the chain walk.
+func traceStage(ctx context.Context, stage string, err error) {
+	traceFrom(ctx).add(TraceStep{Candidate: stage, Outcome: OutcomeError, Detail: err.Error()})
 }
 
 // offlineGate reports which agents would be asked without asking them, so a diagnostic
 // command cannot add load to a provider that is already rate-limiting us.
-func offlineGate(t *ChainTrace) gateFunc {
-	return func(name string, _ func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
-		t.add(TraceStep{Candidate: ExternalPrefix + name, Outcome: OutcomeWouldTry})
+func offlineGate() gateFunc {
+	return func(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
 		return nil, "", errOfflineSkipped
 	}
 }

@@ -89,6 +89,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 
 	res, err := p.resolver.resolve(ctx, item)
 	if err != nil {
+		traceStage(ctx, "resolve", err)
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
@@ -106,6 +107,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	readStart := time.Now()
 	data, err := readCapped(res.reader)
 	if err != nil {
+		traceStage(ctx, "read", err)
 		log.Warn(ctx, "Artwork: Failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
 		return outcomeFailed, nil
 	}
@@ -115,6 +117,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	hashStart := time.Now()
 	hash, err := hashImage(bytes.NewReader(data))
 	if err != nil {
+		traceStage(ctx, "hash", err)
 		log.Warn(ctx, "Artwork: Failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
@@ -138,19 +141,22 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 			art, err = undecodedArtwork(hash), nil
 		}
 		if err != nil {
+			traceStage(ctx, "decode", err)
 			log.Warn(ctx, "Artwork: Failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 			return outcomeFailed, nil
 		}
 		log.Debug(ctx, "Artwork: Decoded new image", "kind", item.ItemKind, "id", item.ItemID, "hash", hash,
 			"width", art.Width, "height", art.Height, "mime", art.Mime, "elapsed", time.Since(decodeStart))
 	default:
+		traceStage(ctx, "lookup", err)
 		log.Warn(ctx, "Artwork: Failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
 	art.SizeBytes = int64(len(data))
 
-	ia, err := p.persist(repo, item, art, res, data)
+	ia, err := p.persist(ctx, repo, item, art, res, data)
 	if err != nil {
+		traceStage(ctx, "store", err)
 		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
@@ -165,7 +171,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 
 // persist places the bytes and commits the rows referencing them, excluding Prune for that
 // window only so a slow resolution can never hold it off.
-func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueueItem,
+func (p *processor) persist(ctx context.Context, repo model.ArtworkRepository, item model.ArtworkQueueItem,
 	art *model.Artwork, res resolution, data []byte,
 ) (*model.ItemArtwork, error) {
 	if p.pruneLock != nil {
@@ -188,6 +194,7 @@ func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueu
 		SourcePath:  sourcePath,
 		RefMtime:    refMtime,
 		AttemptedAt: time.Now(),
+		Trace:       EncodeTrace(traceFrom(ctx).Steps(), sourcePath),
 	}
 	// PutItemArtwork stamps UpdatedAt on ia, so the returned struct matches the persisted row.
 	if err := repo.PutItemArtwork(ia); err != nil {
@@ -203,6 +210,7 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 		ItemID:      item.ItemID,
 		ImageType:   item.ImageType,
 		AttemptedAt: time.Now(),
+		Trace:       EncodeTrace(traceFrom(ctx).Steps(), ""),
 	})
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to persist absent state", "kind", item.ItemKind, "id", item.ItemID, err)

@@ -362,6 +362,53 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
+		It("records on the queue row why the last attempt failed", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al11", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al11"})).To(Succeed())
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			it := findQueued(queueRepo, "al", "al11")
+			Expect(it).ToNot(BeNil())
+			Expect(DecodeTrace(it.Trace, "")).To(ContainElement(SatisfyAll(
+				HaveField("Candidate", "external:failAgent"),
+				HaveField("Outcome", OutcomeError),
+				HaveField("Detail", ContainSubstring("agent timed out")),
+			)), "a retrying row must say why it is retrying")
+		})
+
+		It("keeps the failure on the state row after the queue row is deleted", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al12", Name: "Album"}})
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "al12", ImageType: model.ImageTypePrimary,
+				Hash: "cafebabe", Source: "external:lastfm",
+			})).To(Succeed())
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al12"})).To(Succeed())
+			for k, v := range queueRepo.Data {
+				if v.ItemID == "al12" {
+					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+					queueRepo.Data[k] = v
+				}
+			}
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(findQueued(queueRepo, "al", "al12")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al12", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty(),
+				"the queue row is gone, so this is the only remaining record of the failure")
+			Expect(ia.Hash).To(Equal("cafebabe"), "recording the failure must not disturb the served art")
+		})
+
 		// Media files are excluded from RecheckKinds, so an absent row here would never be
 		// revisited: a transient read error would look permanent.
 		It("does not settle absent on exhaustion for a kind with no recheck path", func() {

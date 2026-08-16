@@ -127,13 +127,13 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(repo.Enqueue(item("al", "m1", model.ArtworkPriorityScan))).To(Succeed())
 
 		future := time.Now().Add(48 * time.Hour)
-		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, original, future)).To(Succeed())
+		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, original, future, "[]")).To(Succeed())
 		got, _ = repo.DequeueBatch(10)
 		Expect(got).To(HaveLen(1), "the fresh re-enqueue stays immediately eligible")
 		Expect(got[0].Attempts).To(BeZero(), "re-enqueue clears attempts, and the stale failure must not bump them")
 		current := got[0].RetryAt
 
-		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, current, future)).To(Succeed())
+		Expect(repo.MarkFailedIfUnchanged("al", "m1", model.ImageTypePrimary, current, future, `[{"c":"read","o":"error"}]`)).To(Succeed())
 		got, _ = repo.DequeueBatch(10)
 		Expect(got).To(BeEmpty(), "backed-off row is hidden until the future retry_at")
 		all, _ := repo.Count()

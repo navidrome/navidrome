@@ -118,7 +118,7 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.Art
 	return res, nil
 }
 
-func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -128,6 +128,7 @@ func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string,
 	if it, ok := m.Data[k]; ok && it.RetryAt.Equal(seenRetryAt) {
 		it.Attempts++
 		it.RetryAt = retryAt
+		it.Trace = trace
 		m.Data[k] = it
 	}
 	return nil

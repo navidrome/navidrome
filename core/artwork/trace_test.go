@@ -31,6 +31,44 @@ var _ = Describe("trace vocabulary", func() {
 	})
 })
 
+var _ = Describe("EncodeTrace/DecodeTrace", func() {
+	It("round-trips a trace", func() {
+		steps := []TraceStep{
+			{Candidate: "cover.png", Outcome: OutcomeMiss},
+			{Candidate: "cover.*", Outcome: OutcomeHit, Detail: "/music/a/cover.jpg"},
+		}
+		Expect(DecodeTrace(EncodeTrace(steps, ""), "")).To(Equal(steps))
+	})
+
+	It("encodes an empty trace as an empty JSON array", func() {
+		Expect(EncodeTrace(nil, "")).To(Equal("[]"))
+		Expect(DecodeTrace("[]", "")).To(BeEmpty())
+	})
+
+	It("tolerates a row written before the column existed", func() {
+		Expect(DecodeTrace("", "")).To(BeEmpty())
+	})
+
+	// The hit detail repeats source_path byte for byte, and that column is on the same row.
+	It("drops a hit detail that repeats sourcePath, and restores it on read", func() {
+		path := "/music/artist/album/cover.jpg"
+		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeHit, Detail: path}}
+		encoded := EncodeTrace(steps, path)
+		Expect(encoded).NotTo(ContainSubstring(path))
+		Expect(DecodeTrace(encoded, path)).To(Equal(steps))
+	})
+
+	It("keeps a detail that differs from sourcePath", func() {
+		steps := []TraceStep{{Candidate: "external:deezer", Outcome: OutcomeHit, Detail: "https://cdn/x.jpg"}}
+		Expect(DecodeTrace(EncodeTrace(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
+	})
+
+	It("only restores sourcePath onto a detail-less hit", func() {
+		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeMiss}}
+		Expect(DecodeTrace(EncodeTrace(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
+	})
+})
+
 var _ = Describe("chainTrace", func() {
 	It("returns nil when no trace is attached", func() {
 		Expect(traceFrom(context.Background())).To(BeNil())
@@ -113,56 +151,49 @@ var _ = Describe("chainState tracing", func() {
 	})
 })
 
-var _ = Describe("external gate tracing", func() {
-	hit := func() (io.ReadCloser, string, error) {
-		return io.NopCloser(strings.NewReader("x")), "http://img", nil
-	}
-	miss := func() (io.ReadCloser, string, error) { return nil, "", agents.ErrNotFound }
-	boom := func() (io.ReadCloser, string, error) { return nil, "", errors.New("returned status 429") }
+var _ = Describe("external agent tracing", func() {
+	var (
+		t    *ChainTrace
+		ctx  context.Context
+		body io.ReadCloser
+	)
+	BeforeEach(func() {
+		t = &ChainTrace{}
+		ctx = withTrace(context.Background(), t)
+		body = io.NopCloser(strings.NewReader("x"))
+	})
 
 	It("records a hit with the image path", func() {
-		t := &ChainTrace{}
-		g := tracingGate(t, passthroughGate)
-
-		r, _, err := g("deezer", hit)
-
-		Expect(err).ToNot(HaveOccurred())
-		Expect(r).ToNot(BeNil())
+		recordAgent(ctx, "deezer", body, "http://img", nil)
 		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "external:deezer", Outcome: OutcomeHit, Detail: "http://img"},
 		}))
 	})
 
 	It("records a miss for a not-found", func() {
-		t := &ChainTrace{}
-		_, _, _ = tracingGate(t, passthroughGate)("deezer", miss)
+		recordAgent(ctx, "deezer", nil, "", agents.ErrNotFound)
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeMiss))
 	})
 
 	It("records a miss for a model not-found", func() {
-		t := &ChainTrace{}
-		notFound := func() (io.ReadCloser, string, error) { return nil, "", model.ErrNotFound }
-		_, _, _ = tracingGate(t, passthroughGate)("deezer", notFound)
+		recordAgent(ctx, "deezer", nil, "", model.ErrNotFound)
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeMiss),
 			"both not-found flavours are definitive answers, not faults")
 	})
 
 	It("records an error with its reason", func() {
-		t := &ChainTrace{}
-		_, _, _ = tracingGate(t, passthroughGate)("apple-music", boom)
+		recordAgent(ctx, "apple-music", nil, "", errors.New("returned status 429"))
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeError))
 		Expect(t.Steps()[0].Detail).To(ContainSubstring("429"))
 	})
 
-	It("never calls the agent in offline mode", func() {
-		t := &ChainTrace{}
+	It("records would-try for the offline gate, without calling the agent", func() {
 		called := false
-		counting := func() (io.ReadCloser, string, error) {
+		_, _, err := offlineGate()("deezer", func() (io.ReadCloser, string, error) {
 			called = true
-			return hit()
-		}
-
-		_, _, err := offlineGate(t)("deezer", counting)
+			return body, "http://img", nil
+		})
+		recordAgent(ctx, "deezer", nil, "", err)
 
 		Expect(called).To(BeFalse(), "offline mode must not perform external requests")
 		Expect(err).To(MatchError(errOfflineSkipped))

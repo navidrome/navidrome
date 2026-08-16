@@ -159,7 +159,7 @@ func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQ
 }
 
 func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
-	sel := Select("*").From(r.tableName).
+	sel := Select(enqueueColumns...).From(r.tableName).
 		Where(LtOrEq{"retry_at": time.Now()}).
 		OrderBy("priority DESC", "enqueued_at ASC").
 		Limit(uint64(n))
@@ -171,10 +171,11 @@ func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.A
 	return res, err
 }
 
-func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	upd := Update(r.tableName).
 		Set("attempts", Expr("attempts + 1")).
 		Set("retry_at", retryAt).
+		Set("trace", trace).
 		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": seenRetryAt})
 	_, err := r.executeSQL(upd)
 	return err

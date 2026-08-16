@@ -36,8 +36,9 @@ var (
 
 func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
-		"perform real external lookups instead of reporting what would be tried; "+
-			"also initializes plugin agents, which may open external connections")
+		"walk the chain again now, performing real external lookups, instead of reporting the "+
+			"stored trace of the last resolution; also initializes plugin agents, which may open "+
+			"external connections")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
 		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
@@ -684,15 +685,43 @@ func explainConfig(kind model.Kind) (name, value string) {
 }
 
 type explainReport struct {
-	kind       model.Kind
-	id         string
-	name       string
-	stored     *model.ItemArtwork
-	queued     *model.ArtworkQueueItem
-	agents     string
-	steps      []artwork.TraceStep
-	source     string
-	resolveErr error
+	kind   model.Kind
+	id     string
+	name   string
+	stored *model.ItemArtwork
+	queued *model.ArtworkQueueItem
+	agents string
+	// steps is the chain walk: recorded when the item was resolved, or performed just now when live.
+	steps        []artwork.TraceStep
+	queuedSteps  []artwork.TraceStep
+	failureSteps []artwork.TraceStep
+	source       string
+	live         bool
+	resolveErr   error
+}
+
+// explainChainOrigin says whether the operator is reading history or a walk performed just now,
+// since the two can disagree after a config change.
+func explainChainOrigin(rep explainReport) string {
+	if rep.live {
+		return "walked now"
+	}
+	if rep.stored != nil {
+		return "recorded " + formatTime(rep.stored.AttemptedAt)
+	}
+	return "not recorded"
+}
+
+// writeStepTable prints a secondary trace, and nothing at all when there is none to show.
+func writeStepTable(w io.Writer, title string, steps []artwork.TraceStep) {
+	if len(steps) == 0 {
+		return
+	}
+	// No tab on the title: it closes the preceding column block, so these rows align among themselves.
+	fmt.Fprintf(w, "  %s:\n", title)
+	for _, s := range steps {
+		fmt.Fprintf(w, "    %s\t%s\t%s\n", s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
+	}
 }
 
 func formatExplain(rep explainReport) string {
@@ -732,6 +761,8 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
 		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
 	}
+	writeStepTable(w, "Last attempt failed", rep.queuedSteps)
+	writeStepTable(w, "Gave up after", rep.failureSteps)
 
 	fmt.Fprintln(w, "\nConfig")
 	if setting, value := explainConfig(rep.kind); setting == "" {
@@ -743,10 +774,15 @@ func formatExplain(rep explainReport) string {
 		}
 	}
 
-	fmt.Fprintln(w, "\nChain")
-	if !explainable {
+	fmt.Fprintf(w, "\nChain (%s)\n", explainChainOrigin(rep))
+	switch {
+	case !explainable:
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
-	} else {
+	case !rep.live && rep.stored == nil:
+		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
+	case !rep.live && len(rep.steps) == 0:
+		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
+	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
 		for _, s := range rep.steps {
 			// A row with an empty last cell would end tabwriter's column block, breaking alignment.
@@ -760,6 +796,8 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
 	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
+	case !rep.live && rep.stored == nil:
+		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
 	}
@@ -807,17 +845,31 @@ func runExplain(ctx context.Context, args []string) {
 		}
 	}
 
+	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
+	rep.live = explainLive || !artwork.KeepsState(kind)
 	if artwork.Explainable(kind) {
 		// Only artist and album reach an agent, and the load must precede the resolver, which reads
 		// the same manager.
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
-			mgr := loadPluginAgents(ctx, explainLive)
+			mgr := loadPluginAgents(ctx, rep.live)
 			defer func() { _ = mgr.Stop() }()
 			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
 		}
-		trace := &artwork.ChainTrace{}
-		rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
-		rep.steps = trace.Steps()
+		switch {
+		case rep.live:
+			trace := &artwork.ChainTrace{}
+			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
+			rep.steps = trace.Steps()
+		case rep.stored != nil:
+			rep.steps = artwork.DecodeTrace(rep.stored.Trace, rep.stored.SourcePath)
+			rep.source = rep.stored.Source
+		}
+	}
+	if rep.queued != nil {
+		rep.queuedSteps = artwork.DecodeTrace(rep.queued.Trace, "")
+	}
+	if rep.stored != nil {
+		rep.failureSteps = artwork.DecodeTrace(rep.stored.LastFailure, "")
 	}
 
 	fmt.Print(formatExplain(rep))

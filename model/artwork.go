@@ -51,6 +51,10 @@ type ItemArtwork struct {
 	SourcePath string `structs:"source_path"`
 	// RefMtime is SourcePath's mtime (unix-nanoseconds) at resolution; 0 when there is no SourcePath.
 	RefMtime int64 `structs:"ref_mtime"`
+	// Trace is the encoded walk that produced this state; LastFailure is the walk of the attempt
+	// that exhausted the retry budget. Both are JSON, read back with artwork.DecodeTrace.
+	Trace       string `structs:"trace"`
+	LastFailure string `structs:"last_failure"`
 	// Nullable in the schema, but every insert must set them: these non-pointer fields cannot scan NULL.
 	AttemptedAt time.Time `structs:"attempted_at"`
 	UpdatedAt   time.Time `structs:"updated_at"`
@@ -91,6 +95,8 @@ type ArtworkQueueItem struct {
 	Attempts   int       `structs:"attempts"`
 	RetryAt    time.Time `structs:"retry_at"`
 	EnqueuedAt time.Time `structs:"enqueued_at"`
+	// Trace is why the last attempt failed. Only Get reads it; the drain projects it away.
+	Trace string `structs:"trace"`
 }
 
 // Queue priorities: higher drains first.
@@ -109,6 +115,8 @@ type ArtworkRepository interface {
 	PurgeOrphans(createdBefore time.Time) (int64, error)
 	GetItemArtwork(kind Kind, id, imageType string) (*ItemArtwork, error)
 	PutItemArtwork(ia *ItemArtwork) error
+	// PutLastFailure records the trace of the attempt that exhausted the retry budget.
+	PutLastFailure(kind Kind, id, imageType, trace string) error
 	DeleteForItems(kind Kind, ids []string) error
 	// GetInfoForItems hydrates a page in one batched query.
 	GetInfoForItems(kind Kind, ids []string) (map[string]ItemArtworkInfo, error)
@@ -145,7 +153,7 @@ type ArtworkQueueRepository interface {
 	DequeueBatch(n int, kinds ...string) ([]ArtworkQueueItem, error)
 	// MarkFailedIfUnchanged applies the failure backoff only while retry_at still matches
 	// seenRetryAt, so a concurrent re-enqueue keeps its fresh eligibility.
-	MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error
+	MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error
 	// DeleteIfUnchanged deletes only while retry_at still matches, sparing a concurrent re-enqueue.
 	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)

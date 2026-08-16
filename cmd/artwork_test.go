@@ -252,6 +252,7 @@ var _ = Describe("formatExplain", func() {
 			id:     "ar-1",
 			name:   "Radiohead",
 			agents: "lastfm,spotify",
+			live:   true,
 			steps: []artwork.TraceStep{
 				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
 				{Candidate: "external:deezer", Outcome: "would-try"},
@@ -329,6 +330,7 @@ var _ = Describe("formatExplain", func() {
 			kind: model.KindDiscArtwork, id: "al-1:2", name: "OK Computer (disc 2)",
 			steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
 			source: "folder",
+			live:   true,
 		}
 
 		out := formatExplain(rep)
@@ -341,10 +343,63 @@ var _ = Describe("formatExplain", func() {
 		Expect(out).To(ContainSubstring("resolved from folder"))
 	})
 
+	Context("stored traces", func() {
+		BeforeEach(func() {
+			rep.live = false
+			rep.steps = nil
+		})
+
+		It("labels a recorded chain with when it was recorded, not as a walk done now", func() {
+			attempted := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
+			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: attempted}
+			rep.steps = []artwork.TraceStep{{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"}}
+			rep.source = "folder"
+
+			out := formatExplain(rep)
+			Expect(out).To(ContainSubstring("Chain (recorded 2026-08-13T10:00:00Z)"))
+			Expect(out).To(ContainSubstring("/music/artist.jpg"))
+			Expect(out).To(ContainSubstring("resolved from folder"))
+		})
+
+		It("says so when the item has never been resolved", func() {
+			out := formatExplain(rep)
+			Expect(out).To(ContainSubstring("no resolution recorded yet"))
+			Expect(out).To(ContainSubstring("--live"))
+			Expect(out).ToNot(ContainSubstring("not resolved"),
+				"nothing was recorded, which is not the same as resolving to nothing")
+		})
+
+		It("distinguishes a row written before traces existed from one with an empty chain", func() {
+			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now()}
+
+			Expect(formatExplain(rep)).To(ContainSubstring("resolved before traces were recorded"))
+		})
+
+		It("prints why the last attempt failed and why it gave up", func() {
+			rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 3}
+			rep.queuedSteps = []artwork.TraceStep{{Candidate: "decode", Outcome: "error", Detail: "bad header"}}
+			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now()}
+			rep.failureSteps = []artwork.TraceStep{{Candidate: "read", Outcome: "error", Detail: "i/o timeout"}}
+
+			out := formatExplain(rep)
+			Expect(out).To(ContainSubstring("Last attempt failed"))
+			Expect(out).To(ContainSubstring("bad header"))
+			Expect(out).To(ContainSubstring("Gave up after"))
+			Expect(out).To(ContainSubstring("i/o timeout"))
+		})
+
+		It("omits the failure tables when there is no failure to report", func() {
+			out := formatExplain(rep)
+			Expect(out).ToNot(ContainSubstring("Last attempt failed"))
+			Expect(out).ToNot(ContainSubstring("Gave up after"))
+		})
+	})
+
 	It("reports the setting that governs media file artwork", func() {
 		conf.Server.EnableMediaFileCoverArt = false
 		rep = explainReport{
 			kind: model.KindMediaFileArtwork, id: "mf-1", name: "Airbag",
+			live: true,
 			steps: []artwork.TraceStep{
 				{Candidate: "embedded", Outcome: "skipped", Detail: "EnableMediaFileCoverArt is off"},
 			},
