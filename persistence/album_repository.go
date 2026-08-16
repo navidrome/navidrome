@@ -275,8 +275,9 @@ func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, er
 var soleAlbumArtistFilter = Eq{"json_array_length(participants, '$.albumartist')": 1}
 
 // SoleAlbumArtistFilter matches the albums where the given artist is the only album artist.
+// Matches by album-artist participation, not the deprecated album_artist_id column.
 func SoleAlbumArtistFilter(artistID string) Sqlizer {
-	return And{Eq{"album_artist_id": artistID}, soleAlbumArtistFilter}
+	return And{ParticipantIDFilter("album", artistID, model.RoleAlbumArtist), soleAlbumArtistFilter}
 }
 
 // GetSoleAlbumArtistIDsInSubtrees resolves the affected artists in one statement: matching albums
@@ -292,7 +293,9 @@ func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, pat
 	for chunk := range slices.Chunk(paths, subtreePathChunkSize) {
 		inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
 			folderSubtreeFilter(lib, chunk))
-		sq := Select("distinct album_artist_id").From("album").
+		// The sole album artist is participants[0]; reading it here avoids the deprecated
+		// album_artist_id column without paying for a join back to album_artists.
+		sq := Select("distinct json_extract(participants, '$.albumartist[0].id')").From("album").
 			Where(And{soleAlbumArtistFilter, inSubtree})
 		var chunkIDs []string
 		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {

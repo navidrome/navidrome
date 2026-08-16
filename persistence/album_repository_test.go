@@ -108,7 +108,8 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(folderRepo.Put(inTree)).To(Succeed())
 			Expect(folderRepo.Put(outTree)).To(Succeed())
 
-			inAl := model.Album{ID: "subtree-in-al", Name: "In", LibraryID: 1, AlbumArtistID: "2", FolderIDs: []string{inTree.ID},
+			// album_artist_id is deliberately wrong: the artist must come from participants
+			inAl := model.Album{ID: "subtree-in-al", Name: "In", LibraryID: 1, AlbumArtistID: "999", FolderIDs: []string{inTree.ID},
 				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
 			outAl := model.Album{ID: "subtree-out-al", Name: "Out", LibraryID: 1, AlbumArtistID: "3", FolderIDs: []string{outTree.ID},
 				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistBeatles}}}}
@@ -150,9 +151,10 @@ var _ = Describe("AlbumRepository", func() {
 
 	Describe("SoleAlbumArtistFilter", func() {
 		It("matches only albums where the artist is the sole album artist", func() {
-			sole := model.Album{ID: "sole-artist-al", Name: "Sole", LibraryID: 1, AlbumArtistID: "2",
+			// album_artist_id is deliberately wrong: matching must come from participation
+			sole := model.Album{ID: "sole-artist-al", Name: "Sole", LibraryID: 1, AlbumArtistID: "999",
 				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}}}}
-			duo := model.Album{ID: "duo-artist-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "2",
+			duo := model.Album{ID: "duo-artist-al", Name: "Duo", LibraryID: 1, AlbumArtistID: "999",
 				Participants: model.Participants{model.RoleAlbumArtist: []model.Participant{{Artist: artistKraftwerk}, {Artist: artistBeatles}}}}
 			Expect(albumRepo.Put(&sole)).To(Succeed())
 			Expect(albumRepo.Put(&duo)).To(Succeed())
