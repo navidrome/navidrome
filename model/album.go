@@ -6,17 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 
 	"github.com/gohugoio/hashstructure"
 )
-
-// SoleAlbumArtistFilter matches albums with exactly one album artist. The artist artwork
-// resolver and the scanner's image-change enqueue must select the same albums.
-func SoleAlbumArtistFilter() squirrel.Sqlizer {
-	return squirrel.Eq{"json_array_length(participants, '$.albumartist')": 1}
-}
 
 type Album struct {
 	Annotations `structs:"-" hash:"ignore"`
@@ -151,8 +144,10 @@ type AlbumRepository interface {
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 	GetAllIDs(...QueryOptions) ([]string, error)
+	// GetBySoleAlbumArtist returns the albums where the given artist is the only album artist.
+	GetBySoleAlbumArtist(artistID string) (Albums, error)
 	// GetSoleAlbumArtistIDs returns the distinct album artists of the given albums, restricted to
-	// albums matching SoleAlbumArtistFilter.
+	// albums with a single album artist (the same selection as GetBySoleAlbumArtist).
 	GetSoleAlbumArtistIDs(albumIDs ...string) ([]string, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)
 	GetYears(libraryIDs ...int) ([]int, error)

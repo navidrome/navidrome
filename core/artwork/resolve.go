@@ -12,7 +12,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/ffmpeg"
@@ -248,13 +247,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 		return upload, nil
 	}
 
-	// Only consider albums where the artist is the sole album artist.
-	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{
-			squirrel.Eq{"album_artist_id": artistID},
-			model.SoleAlbumArtistFilter(),
-		},
-	})
+	als, err := r.ds.Album(ctx).GetBySoleAlbumArtist(artistID)
 	if err != nil {
 		return resolution{}, err
 	}

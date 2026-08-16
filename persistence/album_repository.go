@@ -270,10 +270,18 @@ func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, er
 	return ids, err
 }
 
+// soleAlbumArtistFilter matches albums with exactly one album artist. The artist artwork
+// resolver and the scanner's image-change enqueue must select the same albums.
+var soleAlbumArtistFilter = Eq{"json_array_length(participants, '$.albumartist')": 1}
+
+func (r *albumRepository) GetBySoleAlbumArtist(artistID string) (model.Albums, error) {
+	return r.GetAll(model.QueryOptions{Filters: And{Eq{"album_artist_id": artistID}, soleAlbumArtistFilter}})
+}
+
 func (r *albumRepository) GetSoleAlbumArtistIDs(albumIDs ...string) ([]string, error) {
 	return r.queryAllSliceChunked(albumIDs, func(chunk []string) SelectBuilder {
 		return Select("distinct album_artist_id").From("album").
-			Where(And{Eq{"id": chunk}, model.SoleAlbumArtistFilter()})
+			Where(And{Eq{"id": chunk}, soleAlbumArtistFilter})
 	})
 }
 

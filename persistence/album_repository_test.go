@@ -111,6 +111,11 @@ var _ = Describe("AlbumRepository", func() {
 			ids, err := albumRepo.GetSoleAlbumArtistIDs(sole.ID, duo.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf("2"))
+
+			als, err := albumRepo.GetBySoleAlbumArtist("2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(als).To(HaveLen(1))
+			Expect(als[0].ID).To(Equal(sole.ID))
 		})
 	})
 
