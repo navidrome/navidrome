@@ -24,12 +24,12 @@ var _ = Describe("authenticate middleware", func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: "u1", UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
 	tokenFor := func(name string) string {
-		t, err := auth.CreateToken(&model.User{ID: "u1", UserName: name})
+		t, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: name})
 		Expect(err).ToNot(HaveOccurred())
 		return t
 	}
@@ -129,7 +129,7 @@ var _ = Describe("withPlayer middleware", func() {
 	})
 
 	It("injects the player's server-forced transcoding into the context", func() {
-		players.trc = &model.Transcoding{ID: "t1", TargetFormat: "opus"}
+		players.trc = &model.Transcoding{ID: testID("t1"), TargetFormat: "opus"}
 		_, trc, hasTrc := callWith()
 		Expect(hasTrc).To(BeTrue())
 		Expect(trc.TargetFormat).To(Equal("opus"))

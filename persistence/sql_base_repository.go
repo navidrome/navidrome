@@ -284,7 +284,9 @@ func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	if len(options) == 0 || options[0].Sort != "random" {
 		return
 	}
-	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.seedKey(), r.tableName)
+	// CAST: playlist_tracks.id is an INTEGER (unlike other tables' TEXT ids); passing it to
+	// SEEDEDRAND's string param uncast silently drops every row (go-sqlite3 binding gotcha).
+	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', CAST(%s.id AS TEXT))", r.seedKey(), r.tableName)
 	if options[0].Seed != "" {
 		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return

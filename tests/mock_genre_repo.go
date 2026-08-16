@@ -32,6 +32,17 @@ func (r *MockedGenreRepo) GetAll(options ...model.QueryOptions) (model.Genres, e
 	return all, nil
 }
 
+func (r *MockedGenreRepo) Get(id string) (*model.Genre, error) {
+	if r.Error != nil {
+		return nil, r.Error
+	}
+	r.init()
+	if g, ok := r.Data[id]; ok {
+		return &g, nil
+	}
+	return nil, model.ErrNotFound
+}
+
 func (r *MockedGenreRepo) Put(g *model.Genre) error {
 	if r.Error != nil {
 		return r.Error

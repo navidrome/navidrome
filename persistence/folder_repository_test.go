@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -41,6 +42,42 @@ var _ = Describe("FolderRepository", func() {
 		// This prevents interference with fixture data needed by other tests
 		_, _ = conn.NewQuery("DELETE FROM folder WHERE library_id = 1 AND path LIKE 'Test%'").Execute()
 		_, _ = conn.NewQuery(fmt.Sprintf("DELETE FROM library WHERE id = %d", otherLib.ID)).Execute()
+	})
+
+	Describe("folderSubtreeFilter", func() {
+		var parent, child, grandchild, other *model.Folder
+
+		matching := func(paths ...string) []string {
+			GinkgoHelper()
+			folders, err := repo.GetAll(model.QueryOptions{Filters: folderSubtreeFilter(testLib, paths)})
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(folders, func(f model.Folder) string { return f.ID })
+		}
+
+		BeforeEach(func() {
+			parent = model.NewFolder(testLib, "TestSubtree")
+			child = model.NewFolder(testLib, "TestSubtree/Child")
+			grandchild = model.NewFolder(testLib, "TestSubtree/Child/Grandchild")
+			other = model.NewFolder(testLib, "TestSubtreeOther")
+			for _, f := range []*model.Folder{parent, child, grandchild, other} {
+				Expect(repo.Put(f)).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = conn.NewQuery("DELETE FROM folder WHERE name LIKE 'TestSubtree%' OR path LIKE 'TestSubtree%'").Execute()
+			})
+		})
+
+		It("matches a folder and all its descendants", func() {
+			Expect(matching("TestSubtree")).To(ConsistOf(parent.ID, child.ID, grandchild.ID))
+		})
+
+		It("matches the descendants of a nested slash-form path", func() {
+			Expect(matching("TestSubtree/Child")).To(ConsistOf(child.ID, grandchild.ID))
+		})
+
+		It("matches the whole library for the root path", func() {
+			Expect(matching(".")).To(ContainElements(parent.ID, child.ID, grandchild.ID, other.ID))
+		})
 	})
 
 	Describe("GetFolderUpdateInfo", func() {

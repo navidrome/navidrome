@@ -3,6 +3,7 @@ package e2e
 import (
 	"fmt"
 
+	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -12,7 +13,7 @@ import (
 var _ = Describe("Search", func() {
 	BeforeEach(func() { setupTestDB() })
 
-	lib1 := func() string { return enc("1") } // Library id 1 encodes to "31"
+	lib1 := func() string { return dto.EncodeLibraryID(1) }
 
 	Describe("artists", func() {
 		It("searches all album artists", func() {

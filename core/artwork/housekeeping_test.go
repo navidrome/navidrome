@@ -52,6 +52,19 @@ func (o *orderTrackingQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error 
 	return o.MockArtworkQueueRepo.Enqueue(items...)
 }
 
+var _ = Describe("RefreshableKinds", func() {
+	// The two are meant to describe the same fact. Nothing but this test stops them from drifting,
+	// and a drift would have `artwork explain` report state for a kind that keeps none.
+	It("holds exactly the kinds that keep state", func() {
+		for _, k := range []model.Kind{
+			model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork,
+			model.KindRadioArtwork, model.KindMediaFileArtwork, model.KindDiscArtwork,
+		} {
+			Expect(slices.Contains(RefreshableKinds, k)).To(Equal(KeepsState(k)), k.String())
+		}
+	})
+})
+
 var _ = Describe("Housekeeping", func() {
 	var (
 		ctx       context.Context
@@ -93,32 +106,54 @@ var _ = Describe("Housekeeping", func() {
 
 	Describe("Fingerprint", func() {
 		It("changes when a fingerprint-affecting config value changes", func() {
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.CoverArtPriority = "folder, embedded"
-			f2 := fingerprint()
+			f2 := ConfigFingerprint()
 			Expect(f1).NotTo(Equal(f2))
 		})
 
 		It("changes when ArtistImageFolder changes", func() {
 			conf.Server.ArtistImageFolder = "/before"
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.ArtistImageFolder = "/after"
-			Expect(fingerprint()).NotTo(Equal(f1))
+			Expect(ConfigFingerprint()).NotTo(Equal(f1))
 		})
 
 		It("changes when EnableM3UExternalAlbumArt is toggled", func() {
 			conf.Server.EnableM3UExternalAlbumArt = false
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.EnableM3UExternalAlbumArt = true
-			Expect(fingerprint()).NotTo(Equal(f1))
+			Expect(ConfigFingerprint()).NotTo(Equal(f1))
+		})
+
+		// Pinned: a changed formula re-resolves every library on upgrade, flooding external providers.
+		It("hashes a given config to a stable value", func() {
+			conf.Server.CoverArtPriority = "cover.*, embedded"
+			conf.Server.ArtistArtPriority = "artist.*, external"
+			conf.Server.ArtistImageFolder = ""
+			conf.Server.Agents = "lastfm,spotify"
+			conf.Server.EnableExternalServices = true
+			conf.Server.EnableM3UExternalAlbumArt = false
+
+			Expect(ConfigFingerprint()).To(Equal("7e537a22febc07d3d5ca40546e88da54"))
+		})
+
+		It("reports the config inputs it hashes, so a change can be traced to a setting", func() {
+			conf.Server.Agents = "lastfm,spotify"
+			conf.Server.CoverArtPriority = "cover.*, embedded"
+
+			Expect(FingerprintInputs()).To(ContainElements(
+				FingerprintInput{Name: "Agents", Value: "lastfm,spotify"},
+				FingerprintInput{Name: "CoverArtPriority", Value: "cover.*, embedded"},
+			))
 		})
 
 		It("does not change when the server version changes", func() {
 			original := consts.Version
 			DeferCleanup(func() { consts.Version = original })
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			consts.Version = original + "-next"
-			Expect(fingerprint()).To(Equal(f1),
+			Expect(ConfigFingerprint()).To(Equal(f1),
 				"the version must not invalidate artwork state: it would re-resolve every entity on every build")
 		})
 	})
@@ -126,7 +161,7 @@ var _ = Describe("Housekeeping", func() {
 	Describe("Backfill", func() {
 		It("enqueues nothing and returns false when the stored fingerprint matches", func() {
 			seedEntities()
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, fingerprint())).To(Succeed())
+			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())).To(Succeed())
 
 			did, err := backfill(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())
@@ -150,7 +185,7 @@ var _ = Describe("Housekeeping", func() {
 
 			stored, err := propRepo.Get(consts.ArtConfFingerprintPropertyKey)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stored).To(Equal(fingerprint()))
+			Expect(stored).To(Equal(ConfigFingerprint()))
 		})
 
 		It("enqueues a private playlist by resolving it under an admin context", func() {

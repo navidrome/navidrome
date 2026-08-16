@@ -151,7 +151,8 @@ var _ = Describe("Worker", func() {
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 				return arg.(artworkReader).Reader(ctx)
 			})}
-		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		// Init walks the cache dir on a goroutine; loaded CI runners can take >1s.
+		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 		w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 	})
 
@@ -361,7 +362,7 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
-		// Media files are excluded from recheckKinds, so an absent row here would never be
+		// Media files are excluded from RecheckKinds, so an absent row here would never be
 		// revisited: a transient read error would look permanent.
 		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
 			conf.Server.EnableMediaFileCoverArt = true
@@ -538,6 +539,43 @@ var _ = Describe("Worker", func() {
 			Expect(calls).To(Equal(5), "the breaker should have re-closed after the success")
 		})
 
+		It("does not open the breaker when the run is cancelled", func() {
+			cancelled := func() (io.ReadCloser, string, error) { return nil, "", context.Canceled }
+			for range breakerThreshold + 3 {
+				_, _, err := w.gate("A", cancelled)
+				Expect(err).To(MatchError(context.Canceled), "a cancellation passes through, never errBreakerOpen")
+			}
+
+			var calls int
+			counting := func() (io.ReadCloser, string, error) {
+				calls++
+				return nil, "", errors.New("boom")
+			}
+			_, _, _ = w.gate("A", counting)
+			Expect(calls).To(Equal(1), "the breaker stayed closed, so the step still runs")
+		})
+
+		It("ignores a cancellation mid-run, neither counting nor clearing the failures", func() {
+			failing := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
+			cancelled := func() (io.ReadCloser, string, error) { return nil, "", context.Canceled }
+			for range breakerThreshold - 1 {
+				_, _, _ = w.gate("A", failing)
+			}
+			_, _, _ = w.gate("A", cancelled)
+
+			var calls int
+			counting := func() (io.ReadCloser, string, error) {
+				calls++
+				return nil, "", errors.New("boom")
+			}
+			_, _, _ = w.gate("A", counting)
+			Expect(calls).To(Equal(1), "the cancellation must not have counted as the final failure")
+
+			_, _, err := w.gate("A", counting)
+			Expect(err).To(MatchError(errBreakerOpen), "the cancellation must not have cleared the earlier failures")
+			Expect(calls).To(Equal(1), "an open breaker must not call the external step")
+		})
+
 		It("does not open the breaker on a run of agent not-found misses", func() {
 			// agents.ErrNotFound is a definitive miss, not a fault: artless items must not
 			// trip the breaker, or they would loop in retry instead of settling absent.
@@ -706,13 +744,16 @@ var _ = Describe("Worker", func() {
 
 	Describe("batching", func() {
 		It("leaves undispatched items queued when cancelled mid-batch", func() {
+			// Every album must resolve, so any dispatched item deletes its row regardless of dequeue order.
+			albums := model.Albums{}
 			for i := range 8 {
 				id := fmt.Sprintf("alc%d", i)
-				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: id, Name: "Album"}})
+				albums = append(albums, model.Album{ID: id, Name: "Album"})
 				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
 					ItemKind: "al", ItemID: id, Priority: model.ArtworkPriorityScan,
 				})).To(Succeed())
 			}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(albums)
 			cancelledCtx, cancel := context.WithCancel(ctx)
 			cancel()
 

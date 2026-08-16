@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
@@ -111,9 +112,9 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 		"title":      fullTextFilter("media_file", "mbz_recording_id", "mbz_release_track_id"),
 		"starred":    annotationBoolFilter("starred"),
 		"has_rating": annotationBoolFilter("rating"),
-		"genre_id":   tagIDFilter,
+		"genre_id":   genreFilter(SongGenres),
 		"missing":    booleanFilter,
-		"artists_id": artistFilter,
+		"artists_id": mediaFileArtistFilter,
 		"library_id": libraryIdFilter,
 		"path":       startsWithFilter("media_file.path"),
 	}
@@ -125,6 +126,10 @@ var mediaFileFilter = sync.OnceValue(func() map[string]filterFunc {
 	}
 	return filters
 })
+
+func mediaFileArtistFilter(_ string, value any) Sqlizer {
+	return ParticipantIDFilter("media_file", value, model.RoleAlbumArtist, model.RoleArtist)
+}
 
 func mediaFileRecentlyAddedSort() string {
 	if conf.Server.RecentlyAddedByModTime {
@@ -177,7 +182,10 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 		return err
 	}
 	m.ID = id
-	return r.updateParticipants(m.ID, m.Participants)
+	if err := r.updateParticipants(m.ID, m.Participants); err != nil {
+		return err
+	}
+	return r.updateTags(m.ID, m.Tags)
 }
 
 func (r *mediaFileRepository) UpdateProbeData(id string, data string) error {
@@ -308,6 +316,26 @@ func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string
 	ids := []string{}
 	err := r.queryAllSlice(sq, &ids)
 	return ids, err
+}
+
+func (r *mediaFileRepository) GetAlbumIDsByFolder(lib model.Library, folderIDs ...string) ([]string, error) {
+	ids := []string{}
+	for chunk := range slices.Chunk(folderIDs, 200) {
+		// A folder's own cover also covers albums whose tracks sit in its disc subfolders.
+		inFolders := Select("f.id").From("folder f").Where(And{
+			Eq{"f.library_id": lib.ID},
+			Eq{"f.missing": false},
+			Or{Eq{"f.id": chunk}, Eq{"f.parent_id": chunk}},
+		})
+		sq := Select("distinct album_id").From("media_file").
+			Where(And{Eq{"missing": false}, ConcatExpr("folder_id IN (", inFolders, ")")})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
 }
 
 // GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
@@ -508,6 +536,23 @@ var mediaFileSearchConfig = searchConfig{
 	NaturalOrder: "media_file.rowid",
 	OrderBy:      []string{"title"},
 	MBIDFields:   []string{"mbz_recording_id", "mbz_release_track_id"},
+}
+
+func (r *mediaFileRepository) MatchesCriteria(id string, c criteria.Criteria) (bool, error) {
+	usr := loggedUser(r.ctx)
+	rulesSQL := newSmartPlaylistCriteria(c, withSmartPlaylistOwner(*usr))
+	cond, err := rulesSQL.where()
+	if err != nil {
+		return false, err
+	}
+	sq := Select("count(*) as count").From("media_file")
+	sq = rulesSQL.applyExpressionJoins(sq, usr.ID)
+	sq = sq.Where(And{Eq{"media_file.id": id}, cond})
+	var res struct{ Count int64 }
+	if err := r.queryOne(sq, &res); err != nil {
+		return false, err
+	}
+	return res.Count > 0, nil
 }
 
 func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
