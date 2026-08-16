@@ -381,6 +381,30 @@ var _ = Describe("Worker", func() {
 			)), "a retrying row must say why it is retrying")
 		})
 
+		// The give-up path settles absent before recording, so the row exists by the time the
+		// failure is written. Recording first would silently lose it for every unresolved item.
+		It("keeps the failure for an item that never resolved at all", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al13", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al13"})).To(Succeed())
+			for k, v := range queueRepo.Data {
+				if v.ItemID == "al13" {
+					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+					queueRepo.Data[k] = v
+				}
+			}
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al13", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred(), "settling absent must create the row the failure is written to")
+			Expect(ia.Hash).To(BeEmpty())
+			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty())
+		})
+
 		It("keeps the failure on the state row after the queue row is deleted", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al12", Name: "Album"}})
@@ -433,6 +457,8 @@ var _ = Describe("Worker", func() {
 			_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mfX", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound),
 				"no row leaves the track unresolved, so a later view can still recover it")
+			// Known gap: with no row and no absent settle, there is nowhere to keep the failure.
+			// Creating one here would write an empty hash, which every reader treats as absent.
 		})
 
 		It("resolves a private playlist under an admin context instead of failing forever", func() {
