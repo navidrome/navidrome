@@ -32,12 +32,25 @@ func (p *dbPlaylist) PostScan() error {
 	return nil
 }
 
+// playlistCounterColumns are derived from the playlist's tracks and are only ever written by
+// refreshCounters. Writing them from a model instance would zero them for smart playlists, as
+// Put does not refresh their tracks (and thus their counters). New rows fall back to the column
+// defaults (0), which refreshCounters fixes on the first evaluation.
+var playlistCounterColumns = []string{"song_count", "duration", "size"}
+
 func (p dbPlaylist) PostMapArgs(args map[string]any) error {
 	var err error
 	if p.Playlist.IsSmartPlaylist() {
 		args["rules"], err = json.Marshal(p.Playlist.Rules)
 		if err != nil {
 			return fmt.Errorf("invalid criteria expression: %w", err)
+		}
+		// Keep the counters from the last evaluation. Without this, re-importing an .nsp file
+		// (the scanner re-imports every playlist in a touched folder) would save the freshly
+		// parsed playlist with zeroed counters, showing 0 songs in the playlist list until the
+		// playlist was opened and re-evaluated.
+		for _, col := range playlistCounterColumns {
+			delete(args, col)
 		}
 		return nil
 	}
