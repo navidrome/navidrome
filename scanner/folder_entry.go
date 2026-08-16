@@ -48,6 +48,9 @@ type folderEntry struct {
 	artists         model.Artists
 	tags            model.TagList
 	missingTracks   []*model.MediaFile
+	// DB IDs of the albums whose tracks in this folder are all unchanged. The import path
+	// enqueues no artwork for them, so a folder image change would otherwise go unnoticed.
+	keptAlbumIDs []string
 }
 
 func (f *folderEntry) hasNoFiles() bool {

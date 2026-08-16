@@ -276,6 +276,109 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
+
+		When("a cover art file was added", func() {
+			albumID := func(name string) string {
+				GinkgoHelper()
+				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albums).ToNot(BeEmpty())
+				return albums[0].ID
+			}
+
+			It("should record the new image in the folder on a quick scan", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				fsys.Add("The Beatles/Help!/cover.jpg", &fstest.MapFile{Data: []byte("cover")})
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.name": "Help!"}})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(folders).To(HaveLen(1))
+				Expect(folders[0].ImageFiles).To(ConsistOf("cover.jpg"))
+			})
+
+			It("should enqueue the album artwork on a quick scan, even with no audio file changes", func() {
+				Expect(runScanner(ctx, true)).To(Succeed())
+				resolveQueuedArtwork()
+				id := albumID("Help!")
+
+				fsys.Add("The Beatles/Help!/cover.jpg", &fstest.MapFile{Data: []byte("cover")})
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(requeued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "al"),
+					HaveField("ItemID", id),
+					HaveField("Priority", model.ArtworkPriorityScan),
+				)))
+			})
+
+			It("should enqueue the album artwork when an existing cover art file is replaced", func() {
+				fsys.Add("The Beatles/Help!/cover.jpg", &fstest.MapFile{Data: []byte("cover")})
+				Expect(runScanner(ctx, true)).To(Succeed())
+				resolveQueuedArtwork()
+				id := albumID("Help!")
+
+				fsys.Add("The Beatles/Help!/cover.jpg", &fstest.MapFile{Data: []byte("a different cover")})
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(requeued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "al"),
+					HaveField("ItemID", id),
+				)))
+			})
+
+			It("should not enqueue the album artwork when nothing changed", func() {
+				fsys.Add("The Beatles/Help!/cover.jpg", &fstest.MapFile{Data: []byte("cover")})
+				Expect(runScanner(ctx, true)).To(Succeed())
+				Expect(resolveQueuedArtwork()).ToNot(BeEmpty())
+
+				Expect(runScanner(ctx, false)).To(Succeed())
+
+				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(requeued).To(BeEmpty())
+			})
+		})
+	})
+
+	Context("Two albums sharing one folder", func() {
+		var fsys storagetest.FakeFS
+		BeforeEach(func() {
+			first := template(_t{"albumartist": "Various", "album": "First", "year": 2001})
+			second := template(_t{"albumartist": "Various", "album": "Second", "year": 2002})
+			fsys = createFS(fstest.MapFS{
+				"Various/Mixed/01 - One.mp3": first(track(1, "One")),
+				"Various/Mixed/02 - Two.mp3": second(track(2, "Two")),
+			})
+		})
+
+		It("should enqueue the artwork of every album in the folder, not just the re-imported one", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			Expect(resolveQueuedArtwork()).ToNot(BeEmpty())
+
+			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "name"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).To(HaveLen(2))
+
+			// The new cover art is shared by both albums, but only one track is re-imported.
+			fsys.UpdateTags("Various/Mixed/01 - One.mp3", _t{"comment": "touched"})
+			fsys.Add("Various/Mixed/cover.jpg", &fstest.MapFile{Data: []byte("cover")})
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+			Expect(err).ToNot(HaveOccurred())
+			for _, al := range albums {
+				Expect(requeued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "al"),
+					HaveField("ItemID", al.ID),
+				)))
+			}
+		})
 	})
 
 	Context("Artist with atomic non-ASCII letters, 'GØGGS'", func() {

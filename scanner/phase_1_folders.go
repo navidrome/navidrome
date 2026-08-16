@@ -225,6 +225,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	// Get list of files to import, based on modtime (or all if fullScan),
 	// leave in dbTracks only tracks that are missing (not found in the FS)
 	filesToImport := make(map[string]*model.MediaFile, len(entry.audioFiles))
+	keptAlbumIDs := make(map[string]struct{})
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
@@ -240,6 +241,11 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
 				filesToImport[fullPath] = dbTrack
 			}
+		}
+		// Track the albums this scan leaves alone. "Unknown Album" is left out for the same
+		// reason the import path below leaves it out: it lumps unrelated tracks together.
+		if _, importing := filesToImport[fullPath]; !importing && dbTrack.Album != consts.UnknownAlbum {
+			keptAlbumIDs[dbTrack.AlbumID] = struct{}{}
 		}
 		delete(dbTracks, fullPath)
 	}
@@ -258,7 +264,13 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 
 		p.createAlbumsFromMediaFiles(entry)
 		p.createArtistsFromMediaFiles(entry)
+
+		// Re-imported albums are enqueued for artwork on their own, so they are not "kept".
+		for _, album := range entry.albums {
+			delete(keptAlbumIDs, album.ID)
+		}
 	}
+	entry.keptAlbumIDs = slices.Collect(maps.Keys(keptAlbumIDs))
 
 	return entry, nil
 }
@@ -388,6 +400,16 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 					Priority: model.ArtworkPriorityScan,
 				})
 			}
+		}
+
+		// Image files are part of the folder content hash, so a folder can arrive here with
+		// new or replaced cover art and no track to import. Nothing above would ask for the
+		// artwork of these albums again. A full scan imports every track, so the list is empty.
+		for _, albumID := range entry.keptAlbumIDs {
+			queueItems = append(queueItems, model.ArtworkQueueItem{
+				ItemKind: model.KindAlbumArtwork.Prefix(), ItemID: albumID, ImageType: model.ImageTypePrimary,
+				Priority: model.ArtworkPriorityScan,
+			})
 		}
 
 		// Save all tracks to DB
