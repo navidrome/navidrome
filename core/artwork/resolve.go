@@ -521,9 +521,8 @@ func resolveFolderFile(ctx context.Context, lib libraryView, imgFiles []string, 
 	return resolveFolderSource(lib, fromExternalFile(ctx, lib.FS, imgFiles, pattern))
 }
 
-// IsArtistImageFile reports whether a library file name matches any file-glob token of
-// ArtistArtPriority, so callers outside the resolver share the chain's token grammar. Matching is
-// basename-only on purpose: the chain climbs parent folders, so a token's prefix is not fixed.
+// IsArtistImageFile reports whether a file name matches any file-glob token of ArtistArtPriority.
+// Basename-only on purpose: the chain climbs parent folders, so a token's prefix is not fixed.
 func IsArtistImageFile(name string) bool {
 	name = strings.ToLower(name)
 	for pattern := range strings.SplitSeq(strings.ToLower(conf.Server.ArtistArtPriority), ",") {

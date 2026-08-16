@@ -280,21 +280,18 @@ func SoleAlbumArtistFilter(artistID string) Sqlizer {
 	return And{ParticipantIDFilter("album", artistID, model.RoleAlbumArtist), soleAlbumArtistFilter}
 }
 
-// GetSoleAlbumArtistIDsInSubtrees resolves the affected artists in one statement: matching albums
-// by their own folder_ids is both the resolver's notion of an album's folders and ~5x faster than
-// walking media_file rows for the subtree.
+// GetSoleAlbumArtistIDsInSubtrees matches albums by their own folder_ids, which is the resolver's
+// notion of an album's folders.
 func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, paths ...string) ([]string, error) {
 	if len(paths) == 0 {
 		return nil, nil
 	}
 	ids := []string{}
-	// Each path adds 3 OR terms, and SQLite rejects an expression tree deeper than 1000 (~166
-	// paths). Chunks stay well clear; repeated IDs across chunks are fine, the queue upserts by PK.
+	// Repeated IDs across chunks are fine: the queue upserts by PK.
 	for chunk := range slices.Chunk(paths, subtreePathChunkSize) {
 		inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
 			folderSubtreeFilter(lib, chunk))
-		// The sole album artist is participants[0]; reading it here avoids the deprecated
-		// album_artist_id column without paying for a join back to album_artists.
+		// Sole album artist, so participants[0] is the only one.
 		sq := Select("distinct json_extract(participants, '$.albumartist[0].id')").From("album").
 			Where(And{soleAlbumArtistFilter, inSubtree})
 		var chunkIDs []string
