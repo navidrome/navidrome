@@ -194,7 +194,7 @@ func (p *processor) persist(ctx context.Context, repo model.ArtworkRepository, i
 		SourcePath:  sourcePath,
 		RefMtime:    refMtime,
 		AttemptedAt: time.Now(),
-		Trace:       EncodeTrace(traceFrom(ctx).Steps(), sourcePath),
+		Trace:       traceFrom(ctx).encode(sourcePath),
 	}
 	// PutItemArtwork stamps UpdatedAt on ia, so the returned struct matches the persisted row.
 	if err := repo.PutItemArtwork(ia); err != nil {
@@ -210,7 +210,7 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 		ItemID:      item.ItemID,
 		ImageType:   item.ImageType,
 		AttemptedAt: time.Now(),
-		Trace:       EncodeTrace(traceFrom(ctx).Steps(), ""),
+		Trace:       traceFrom(ctx).encode(""),
 	})
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to persist absent state", "kind", item.ItemKind, "id", item.ItemID, err)

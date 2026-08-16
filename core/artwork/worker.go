@@ -249,7 +249,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		}
 	case outcomeFoundStale, outcomeFailed:
 		retryAt := time.Now().Add(backoff(item.Attempts))
-		encoded := EncodeTrace(trace.Steps(), "")
+		encoded := trace.encode("")
 		if retryAt.Before(item.EnqueuedAt.Add(giveUpAfter)) {
 			// A mid-flight re-enqueue reset retry_at; stale backoff must not stomp its
 			// fresh, immediate eligibility.

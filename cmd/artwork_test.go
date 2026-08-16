@@ -347,10 +347,10 @@ var _ = Describe("formatExplain", func() {
 		})
 
 		It("prints why the last attempt failed and why it gave up", func() {
-			rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 3}
-			rep.queuedSteps = []artwork.TraceStep{{Candidate: "decode", Outcome: "error", Detail: "bad header"}}
-			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now()}
-			rep.failureSteps = []artwork.TraceStep{{Candidate: "read", Outcome: "error", Detail: "i/o timeout"}}
+			rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 3,
+				Trace: `[{"c":"decode","o":"error","d":"bad header"}]`}
+			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now(),
+				LastFailure: `[{"c":"read","o":"error","d":"i/o timeout"}]`}
 
 			out := formatExplain(rep)
 			Expect(out).To(ContainSubstring("Last attempt failed"))

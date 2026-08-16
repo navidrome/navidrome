@@ -72,9 +72,20 @@ type storedStep struct {
 	D string  `json:"d,omitempty"`
 }
 
-// EncodeTrace serializes steps for storage. A hit's Detail is the winning source's path, which
-// the same row already stores as source_path, so it is dropped and DecodeTrace puts it back.
-func EncodeTrace(steps []TraceStep, sourcePath string) string {
+// encode serializes the trace for storage, without the copy Steps would make for a caller
+// that only wants to write it.
+func (t *ChainTrace) encode(sourcePath string) string {
+	if t == nil {
+		return encodeSteps(nil, sourcePath)
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return encodeSteps(t.steps, sourcePath)
+}
+
+// encodeSteps writes the stored form. A hit's Detail is the winning source's path, which the
+// same row already stores as source_path, so it is dropped and DecodeTrace puts it back.
+func encodeSteps(steps []TraceStep, sourcePath string) string {
 	out := make([]storedStep, 0, len(steps))
 	for _, s := range steps {
 		d := s.Detail
@@ -87,7 +98,7 @@ func EncodeTrace(steps []TraceStep, sourcePath string) string {
 	return string(b)
 }
 
-// DecodeTrace reverses EncodeTrace. A trace that will not parse is reported as no trace at all,
+// DecodeTrace reverses the stored form. A trace that will not parse is reported as no trace at all,
 // since a diagnostic command must not fail on a bad row.
 func DecodeTrace(encoded, sourcePath string) []TraceStep {
 	if encoded == "" {

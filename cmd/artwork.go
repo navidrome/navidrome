@@ -686,12 +686,10 @@ type explainReport struct {
 	queued *model.ArtworkQueueItem
 	agents string
 	// steps is the chain walk: recorded when the item was resolved, or performed just now when walked.
-	steps        []artwork.TraceStep
-	queuedSteps  []artwork.TraceStep
-	failureSteps []artwork.TraceStep
-	source       string
-	walked       bool
-	resolveErr   error
+	steps      []artwork.TraceStep
+	source     string
+	walked     bool
+	resolveErr error
 }
 
 // explainChainOrigin says whether the operator is reading history or a walk performed just now,
@@ -706,6 +704,14 @@ func explainChainOrigin(rep explainReport) string {
 	return "not recorded"
 }
 
+// writeSteps prints the trace rows. An empty last cell would end tabwriter's column block and
+// break the alignment, so a missing detail is rendered as a dash.
+func writeSteps(w io.Writer, indent string, steps []artwork.TraceStep) {
+	for _, s := range steps {
+		fmt.Fprintf(w, "%s%s\t%s\t%s\n", indent, s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
+	}
+}
+
 // writeStepTable prints a secondary trace, and nothing at all when there is none to show.
 func writeStepTable(w io.Writer, title string, steps []artwork.TraceStep) {
 	if len(steps) == 0 {
@@ -713,9 +719,7 @@ func writeStepTable(w io.Writer, title string, steps []artwork.TraceStep) {
 	}
 	// No tab on the title: it closes the preceding column block, so these rows align among themselves.
 	fmt.Fprintf(w, "  %s:\n", title)
-	for _, s := range steps {
-		fmt.Fprintf(w, "    %s\t%s\t%s\n", s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
-	}
+	writeSteps(w, "    ", steps)
 }
 
 func formatExplain(rep explainReport) string {
@@ -723,6 +727,7 @@ func formatExplain(rep explainReport) string {
 	w := newTabWriter(&sb)
 	explainable := artwork.Explainable(rep.kind)
 	stateful := artwork.KeepsState(rep.kind)
+	unrecorded := !rep.walked && rep.stored == nil
 
 	fmt.Fprintln(w, "Item")
 	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
@@ -755,8 +760,12 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
 		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
 	}
-	writeStepTable(w, "Last attempt failed", rep.queuedSteps)
-	writeStepTable(w, "Gave up after", rep.failureSteps)
+	if rep.queued != nil {
+		writeStepTable(w, "Last attempt failed", artwork.DecodeTrace(rep.queued.Trace, ""))
+	}
+	if rep.stored != nil {
+		writeStepTable(w, "Gave up after", artwork.DecodeTrace(rep.stored.LastFailure, ""))
+	}
 
 	fmt.Fprintln(w, "\nConfig")
 	if setting, value := explainConfig(rep.kind); setting == "" {
@@ -772,16 +781,13 @@ func formatExplain(rep explainReport) string {
 	switch {
 	case !explainable:
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
-	case !rep.walked && rep.stored == nil:
+	case unrecorded:
 		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
 	case !rep.walked && len(rep.steps) == 0:
 		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
 	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
-		for _, s := range rep.steps {
-			// A row with an empty last cell would end tabwriter's column block, breaking alignment.
-			fmt.Fprintf(w, "  %s\t%s\t%s\n", s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
-		}
+		writeSteps(w, "  ", rep.steps)
 	}
 
 	fmt.Fprintln(w, "\nResult")
@@ -790,7 +796,7 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
 	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
-	case !rep.walked && rep.stored == nil:
+	case unrecorded:
 		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
@@ -859,13 +865,6 @@ func runExplain(ctx context.Context, args []string) {
 			rep.source = rep.stored.Source
 		}
 	}
-	if rep.queued != nil {
-		rep.queuedSteps = artwork.DecodeTrace(rep.queued.Trace, "")
-	}
-	if rep.stored != nil {
-		rep.failureSteps = artwork.DecodeTrace(rep.stored.LastFailure, "")
-	}
-
 	fmt.Print(formatExplain(rep))
 	// The steps taken before a failed walk are the diagnosis, so report them before exiting.
 	if rep.resolveErr != nil {

@@ -31,17 +31,17 @@ var _ = Describe("trace vocabulary", func() {
 	})
 })
 
-var _ = Describe("EncodeTrace/DecodeTrace", func() {
+var _ = Describe("encodeSteps/DecodeTrace", func() {
 	It("round-trips a trace", func() {
 		steps := []TraceStep{
 			{Candidate: "cover.png", Outcome: OutcomeMiss},
 			{Candidate: "cover.*", Outcome: OutcomeHit, Detail: "/music/a/cover.jpg"},
 		}
-		Expect(DecodeTrace(EncodeTrace(steps, ""), "")).To(Equal(steps))
+		Expect(DecodeTrace(encodeSteps(steps, ""), "")).To(Equal(steps))
 	})
 
 	It("encodes an empty trace as an empty JSON array", func() {
-		Expect(EncodeTrace(nil, "")).To(Equal("[]"))
+		Expect(encodeSteps(nil, "")).To(Equal("[]"))
 		Expect(DecodeTrace("[]", "")).To(BeEmpty())
 	})
 
@@ -53,14 +53,14 @@ var _ = Describe("EncodeTrace/DecodeTrace", func() {
 	It("drops a hit detail that repeats sourcePath, and restores it on read", func() {
 		path := "/music/artist/album/cover.jpg"
 		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeHit, Detail: path}}
-		encoded := EncodeTrace(steps, path)
+		encoded := encodeSteps(steps, path)
 		Expect(encoded).NotTo(ContainSubstring(path))
 		Expect(DecodeTrace(encoded, path)).To(Equal(steps))
 	})
 
 	It("keeps a detail that differs from sourcePath", func() {
 		steps := []TraceStep{{Candidate: "external:deezer", Outcome: OutcomeHit, Detail: "https://cdn/x.jpg"}}
-		Expect(DecodeTrace(EncodeTrace(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
+		Expect(DecodeTrace(encodeSteps(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
 	})
 
 	// A row past ~1kB spills to an overflow page on these WITHOUT ROWID tables, which would
@@ -68,7 +68,7 @@ var _ = Describe("EncodeTrace/DecodeTrace", func() {
 	It("bounds a detail so one long error cannot inflate the row", func() {
 		steps := []TraceStep{{Candidate: "decode", Outcome: OutcomeError, Detail: strings.Repeat("x", 5000)}}
 
-		got := DecodeTrace(EncodeTrace(steps, ""), "")
+		got := DecodeTrace(encodeSteps(steps, ""), "")
 
 		Expect(len(got[0].Detail)).To(BeNumerically("<=", 210))
 		Expect(got[0].Detail).To(HaveSuffix("..."))
@@ -77,7 +77,7 @@ var _ = Describe("EncodeTrace/DecodeTrace", func() {
 
 	It("only restores sourcePath onto a detail-less hit", func() {
 		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeMiss}}
-		Expect(DecodeTrace(EncodeTrace(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
+		Expect(DecodeTrace(encodeSteps(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
 	})
 })
 
