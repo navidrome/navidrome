@@ -335,6 +335,25 @@ var _ = Describe("Maintenance", func() {
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ContainSubstring("gc failed")))
 		})
+
+		It("preserves the target's participants on the remapped track", func() {
+			participant := model.Participant{
+				Artist: model.Artist{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"},
+			}
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album2", Missing: false, Participants: model.Participants{
+					model.RoleArtist: model.ParticipantList{participant},
+				}},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			// The surviving row is the missing file's ID, holding the target's data
+			got, err := mfRepo.GetWithParticipants("m1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Participants).To(HaveKeyWithValue(model.RoleArtist, model.ParticipantList{participant}))
+		})
 	})
 })
 

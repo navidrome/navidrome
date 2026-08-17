@@ -67,7 +67,7 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 		return fmt.Errorf("%w: %q", ErrNotMissing, missingID)
 	}
 
-	target, err := s.ds.MediaFile(ctx).Get(targetID)
+	target, err := s.ds.MediaFile(ctx).GetWithParticipants(targetID)
 	if err != nil {
 		return fmt.Errorf("loading target file %q: %w", targetID, err)
 	}
