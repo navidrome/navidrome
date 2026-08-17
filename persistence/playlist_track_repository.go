@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"database/sql"
+	"slices"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -224,10 +225,14 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 	return r.addMediaFileIds(clauses)
 }
 
+// deleteChunkSize keeps each DELETE under SQLITE_MAX_VARIABLE_NUMBER, matching addTracks.
+const deleteChunkSize = 200
+
 func (r *playlistTrackRepository) Delete(ids ...string) error {
-	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": ids}})
-	if err != nil {
-		return err
+	for chunk := range slices.Chunk(ids, deleteChunkSize) {
+		if err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": chunk}}); err != nil {
+			return err
+		}
 	}
 
 	return r.playlistRepo.renumber(r.playlistId)
