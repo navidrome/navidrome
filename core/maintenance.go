@@ -93,13 +93,20 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 			return fmt.Errorf("delete discarded track: %w", err)
 		}
 
-		// Reassign album annotations (starred, rating) and preserve album created_at on album change
 		if oldAlbumID != newAlbumID {
-			if err := tx.Album(ctx).ReassignAnnotation(oldAlbumID, newAlbumID); err != nil {
-				log.Warn(ctx, "Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
+			// Reassign album annotations (starred, rating) if the old album is now empty
+			oldAlbumTracks, err := tx.MediaFile(ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": oldAlbumID}})
+			if err != nil {
+				return fmt.Errorf("get old album tracks: %w", err)
 			}
-			if err := tx.Album(ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil && !errors.Is(err, model.ErrNotFound) {
-				log.Warn(ctx, "Could not copy album created_at", "from", oldAlbumID, "to", newAlbumID, err)
+			if oldAlbumTracks == 0 {
+				if err := tx.Album(ctx).ReassignAnnotation(oldAlbumID, newAlbumID); err != nil {
+					return fmt.Errorf("reassign album annotations: %w", err)
+				}
+				// Copy across the create_at timestamp from the old album
+				if err := tx.Album(ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil && !errors.Is(err, model.ErrNotFound) {
+					return fmt.Errorf("copy album attributes: %w", err)
+				}
 			}
 		}
 		return nil

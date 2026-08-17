@@ -272,16 +272,30 @@ var _ = Describe("Maintenance", func() {
 			Expect(ds.GCCalled).To(BeTrue())
 		})
 
-		It("reassigns album annotations when the album changes", func() {
+		It("reassigns album annotations when the old album is emptied", func() {
 			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
 			mfRepo.SetData(model.MediaFiles{
 				{ID: "m1", AlbumID: "album1", Missing: true},
 				{ID: "t1", AlbumID: "album2", Missing: false},
 			})
 
+			mfRepo.SetCountAll(0)
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
 			Expect(albumRepo.ReassignAnnotationCalls).To(HaveKeyWithValue("album1", "album2"))
+		})
+
+		It("does not reassign album annotations when the old album is not emptied", func() {
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "m2", AlbumID: "album1", Missing: false},
+				{ID: "t1", AlbumID: "album2", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotationCalls).To(BeEmpty())
 		})
 
 		It("does not reassign annotations when the album is unchanged", func() {
