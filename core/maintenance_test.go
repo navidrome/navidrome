@@ -326,6 +326,38 @@ var _ = Describe("Maintenance", func() {
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ErrTargetMissing))
 		})
 
+		It("refreshes artist and album stats right after the remap", func() {
+			artistRepo := ds.MockedArtist.(*extendedArtistRepo)
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			albumRepo.SetData(model.Albums{
+				{ID: "album1", Name: "Old Album", SongCount: 2, Size: 1100, Duration: 110},
+				{ID: "album2", Name: "New Album", SongCount: 1, Size: 2000, Duration: 200},
+			})
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Path: "old/1.mp3", Album: "Old Album", AlbumID: "album1", Missing: true, Size: 100, Duration: 10},
+				{ID: "k1", Path: "old/2.mp3", Album: "Old Album", AlbumID: "album1", Missing: false, Size: 1000, Duration: 100},
+				{ID: "t1", Path: "new/1.mp3", Album: "New Album", AlbumID: "album2", Missing: false, Size: 2000, Duration: 200},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(artistRepo.IsRefreshStatsCalled()).To(BeTrue(), "Artist stats should be refreshed")
+
+			// The old album lost the remapped track, so its stats are recalculated from the remaining one
+			oldAlbum, err := albumRepo.Get("album1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(oldAlbum.SongCount).To(Equal(1))
+			Expect(oldAlbum.Size).To(Equal(int64(1000)))
+			Expect(oldAlbum.Duration).To(BeNumerically("==", 100))
+
+			// The target album keeps the track, now under the missing file's ID
+			newAlbum, err := albumRepo.Get("album2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newAlbum.SongCount).To(Equal(1))
+			Expect(newAlbum.Size).To(Equal(int64(2000)))
+			Expect(newAlbum.Duration).To(BeNumerically("==", 200))
+		})
+
 		It("returns an error if GC fails", func() {
 			mfRepo.SetData(model.MediaFiles{
 				{ID: "m1", AlbumID: "album1", Missing: true},

@@ -115,10 +115,22 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 		return err
 	}
 
-	// Refresh statistics in background. album/artist play count aggregates are not recalculated
-	// here; they are refreshed by the next scan.
+	// Refresh artist stats
+	if _, err := s.ds.Artist(ctx).RefreshStats(true); err != nil {
+		log.Error(ctx, "Error refreshing artist stats after deleting missing files", err)
+	} else {
+		log.Debug(ctx, "Successfully refreshed artist stats after deleting missing files")
+	}
+
+	// Refresh album stats if we have affected albums
 	affectedAlbumIDs := slice.Unique(slice.Filter([]string{oldAlbumID, newAlbumID}, func(id string) bool { return id != "" }))
-	s.refreshStatsAsync(ctx, affectedAlbumIDs)
+	if len(affectedAlbumIDs) > 0 {
+		if err := s.refreshAlbums(ctx, affectedAlbumIDs); err != nil {
+			log.Error(ctx, "Error refreshing album stats after deleting missing files", err)
+		} else {
+			log.Debug(ctx, "Successfully refreshed album stats after deleting missing files", "count", len(affectedAlbumIDs))
+		}
+	}
 
 	return nil
 }
