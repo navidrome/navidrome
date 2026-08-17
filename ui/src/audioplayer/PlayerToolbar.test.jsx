@@ -30,6 +30,11 @@ vi.mock('../common', () => ({
       Love
     </button>
   ),
+  RatingField: ({ className }) => (
+    <span data-testid="rating-field" className={className}>
+      Rating
+    </span>
+  ),
   useToggleLove: vi.fn(),
 }))
 
@@ -61,19 +66,27 @@ describe('<PlayerToolbar />', () => {
       useMediaQuery.mockReturnValue(true) // isDesktop = true
     })
 
-    it('renders desktop toolbar with both buttons', () => {
+    it('renders desktop toolbar with rating and buttons', () => {
       render(<PlayerToolbar id="song-1" />)
 
-      // Both buttons should be in a single list item
+      // Rating + both buttons should be in a single list item
       const listItems = screen.getAllByRole('listitem')
       expect(listItems).toHaveLength(1)
 
-      // Verify both buttons are rendered
+      // Verify rating and both buttons are rendered
+      expect(screen.getByTestId('rating-field')).toBeInTheDocument()
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
 
       // Verify desktop classes are applied
       expect(listItems[0].className).toContain('toolbar')
+    })
+
+    it('hides the rating for radio streams', () => {
+      render(<PlayerToolbar id="song-1" isRadio={true} />)
+
+      expect(screen.queryByTestId('rating-field')).not.toBeInTheDocument()
+      expect(screen.getByTestId('love-button')).toBeInTheDocument()
     })
 
     it('disables save queue button when isRadio is true', () => {
@@ -109,20 +122,22 @@ describe('<PlayerToolbar />', () => {
       useMediaQuery.mockReturnValue(false) // isDesktop = false
     })
 
-    it('renders mobile toolbar with buttons in separate list items', () => {
+    it('renders mobile toolbar with rating and buttons in separate list items', () => {
       render(<PlayerToolbar id="song-1" />)
 
-      // Each button should be in its own list item
+      // Rating + each button should be in its own list item
       const listItems = screen.getAllByRole('listitem')
-      expect(listItems).toHaveLength(2)
+      expect(listItems).toHaveLength(3)
 
-      // Verify both buttons are rendered
+      // Verify rating and both buttons are rendered
+      expect(screen.getByTestId('rating-field')).toBeInTheDocument()
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
 
       // Verify mobile classes are applied
       expect(listItems[0].className).toContain('mobileListItem')
       expect(listItems[1].className).toContain('mobileListItem')
+      expect(listItems[2].className).toContain('mobileListItem')
     })
 
     it('disables save queue button when isRadio is true', () => {
