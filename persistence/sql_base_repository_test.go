@@ -163,8 +163,15 @@ var _ = Describe("sqlRepository", func() {
 			Expect(r.sortMapping("recently_added, name")).
 				To(Equal("album.created_at, album.id, order_album_name, order_album_artist_name"))
 		})
-		It("leaves a comma list untouched when any part is not a known key", func() {
-			Expect(r.sortMapping("recently_added, play_count")).To(Equal("recently_added, play_count"))
+		It("resolves the known parts of a mixed list and leaves the rest as columns", func() {
+			Expect(r.sortMapping("recently_added, play_count")).
+				To(Equal("album.created_at, album.id, play_count"))
+		})
+		// Jellyfin's MusicAlbum SortBy=Runtime,SortName arrives as "duration, name"; duration is a
+		// plain album column while name is mapped, and the mapping must survive the mix.
+		It("keeps a mapping when an earlier part is a plain column", func() {
+			Expect(r.sortMapping("duration, name")).
+				To(Equal("duration, order_album_name, order_album_artist_name"))
 		})
 		It("leaves a raw column list with directions untouched", func() {
 			Expect(r.sortMapping("starred desc, rating desc")).To(Equal("starred desc, rating desc"))

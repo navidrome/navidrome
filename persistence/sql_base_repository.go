@@ -97,8 +97,8 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 }
 
 // setSortMappings sets the mappings for the sort fields. If the sort field is not in the map, it will be used as is.
-// Adding a key also changes how a caller-supplied comma list containing that bare name reads:
-// sortMapping resolves such a list only while every one of its parts is a key.
+// This applies per comma-separated part, so a key added here also defines that bare name wherever a
+// caller uses it inside a sort list.
 //
 // If PreferSortTags is enabled, it will map the order fields to the corresponding sort expression,
 // which gives precedence to sort tags.
@@ -149,20 +149,21 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 
 // TODO Change all sortMappings to have a consistent case
 func (r sqlRepository) sortMapping(sort string) string {
-	mapping, snakeCased, ok := r.lookupSortMapping(sort)
-	if ok {
+	if mapping, _, ok := r.lookupSortMapping(sort); ok {
 		return mapping
 	}
-	// A comma list resolves only when every part is a known key, so callers passing raw column
-	// lists — some carrying their own direction — keep falling through to the column names.
+	// Each part of a comma list is resolved on its own, so a mix of mapped keys and plain columns
+	// keeps the mappings the recognized parts have.
 	parts := strings.FieldsFunc(sort, splitFunc(','))
 	mapped := make([]string, 0, len(parts))
 	for _, part := range parts {
-		partMapping, _, ok := r.lookupSortMapping(strings.TrimSpace(part))
-		if !ok {
-			return snakeCased
+		part = strings.TrimSpace(part)
+		if partMapping, _, ok := r.lookupSortMapping(part); ok {
+			part = partMapping
+		} else {
+			part = toSnakeCase(part)
 		}
-		mapped = append(mapped, partMapping)
+		mapped = append(mapped, part)
 	}
 	return strings.Join(mapped, ", ")
 }

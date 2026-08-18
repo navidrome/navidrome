@@ -669,7 +669,11 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	if len(q.studioIds) > 0 {
 		filters = append(filters, filter.ByStudioID(q.studioIds))
 	}
-	filters = append(filters, q.filters.predicates()...)
+	// Not on the search path: its first FTS phase selects rowids with no annotation join, so a
+	// starred/play_count predicate there is "no such column" rather than a filter.
+	if q.search == "" {
+		filters = append(filters, q.filters.predicates()...)
+	}
 	opts.Filters = filters
 	opts = filter.ApplyLibraryFilter(opts, q.scopeIDs)
 
@@ -714,7 +718,11 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	if len(q.studioIds) > 0 {
 		filters = append(filters, filter.ByStudioID(q.studioIds))
 	}
-	filters = append(filters, q.filters.predicates()...)
+	// Not on the search path: its first FTS phase selects rowids with no annotation join, so a
+	// starred/play_count predicate there is "no such column" rather than a filter.
+	if q.search == "" {
+		filters = append(filters, q.filters.predicates()...)
+	}
 	opts.Filters = filters
 	opts = filter.ApplyLibraryFilter(opts, q.scopeIDs)
 

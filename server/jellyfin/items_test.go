@@ -365,6 +365,38 @@ var _ = Describe("Items", func() {
 				[]string{"starred", "missing"}, nil),
 		)
 
+		// Search runs a two-phase FTS query whose first phase has no annotation join, so an
+		// annotation predicate there is "no such column: starred" -> 500.
+		DescribeTable("does not push annotation filters into a search",
+			func(itemType, filters string) {
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes="+itemType+"&SearchTerm=one&Filters="+filters, nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var opts model.QueryOptions
+				if itemType == "MusicAlbum" {
+					opts = ds.Album(context.Background()).(*tests.MockAlbumRepo).Options
+				} else {
+					opts = ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).Options
+				}
+				if opts.Filters == nil {
+					return
+				}
+				sql, _, err := opts.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).NotTo(ContainSubstring("starred"))
+				Expect(sql).NotTo(ContainSubstring("play_count"))
+			},
+			Entry("albums, IsFavorite", "MusicAlbum", "IsFavorite"),
+			Entry("albums, IsUnplayed", "MusicAlbum", "IsUnplayed"),
+			Entry("albums, IsPlayed", "MusicAlbum", "IsPlayed"),
+			Entry("songs, IsFavorite", "Audio", "IsFavorite"),
+			Entry("songs, IsUnplayed", "Audio", "IsUnplayed"),
+		)
+
 		It("forwards SearchTerm to the repo's Search method", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
