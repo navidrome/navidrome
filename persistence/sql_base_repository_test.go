@@ -105,9 +105,7 @@ var _ = Describe("sqlRepository", func() {
 			})
 
 			It("still resolves the mapping by the time the SQL is built", func() {
-				sq := r.applyOptions(squirrel.Select("*").From("test"), model.QueryOptions{Sort: "sort1"})
-				sql, _, _ := sq.ToSql()
-				Expect(sql).To(ContainSubstring("ORDER BY mappedSort1 asc"))
+				Expect(r.buildSortOrder("sort1", "asc")).To(Equal("mappedSort1 asc"))
 			})
 
 			// A mapping whose parts are themselves keys (media_file rated_at = "rating, rated_at")

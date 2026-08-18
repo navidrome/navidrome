@@ -627,128 +627,40 @@ var _ = Describe("Items", func() {
 		})
 
 		Describe("sorting", func() {
-			It("maps SortBy=PlayCount to the play_count column", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=PlayCount", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal("play_count"))
-			})
-
-			It("maps SortBy=DatePlayed to the play_date column", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=DatePlayed", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("play_date"))
-			})
-
-			It("maps SortBy=Runtime to the duration column for albums", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal("duration"))
-			})
-
-			// Finamp's track sort sends Runtime,AlbumArtist,Album,SortName: unless Runtime resolves, the
-			// first-recognized-key rule silently sorts by album artist instead.
-			It("maps Finamp's Runtime-led track SortBy to duration, not album_artist", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=Runtime,AlbumArtist,Album,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("duration, album_artist, album, title"))
-			})
-
-			It("maps SortBy=RunTimeTicks to the duration column", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=RunTimeTicks", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal("duration"))
-			})
-
-			It("orders by every recognized key in a comma-separated SortBy list", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=DateCreated,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal("recently_added, name"))
-			})
-
-			It("drops keys that repeat a column already in the sort", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=PremiereDate,Album,ParentIndexNumber,IndexNumber,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("year, album, title"))
-			})
-
-			// random is matched by exact string equality in the repo, so it can never share a sort.
-			It("keeps Random alone when a secondary key follows it", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=Random,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal("random"))
-			})
-
-			It("ignores unrecognized keys but keeps the recognized ones in order", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=Runtime,Nonsense,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("duration, title"))
-			})
-
-			It("skips unrecognized keys in a comma-separated SortBy list to find one that is", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=Unknown1,Unknown2,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("title"))
-			})
-
-			It("maps Finamp's album view SortBy (ParentIndexNumber,IndexNumber) to disc+track order", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("album, title"))
-			})
-
-			It("leaves Sort at the repo default when no SortBy key is recognized", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=SeriesSortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal(""))
-			})
+			DescribeTable("translates SortBy into the repo's sort keys",
+				func(itemType, sortBy, want string) {
+					albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+					albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+					mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+					mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+					w := httptest.NewRecorder()
+					r := httptest.NewRequest("GET", "/Items?IncludeItemTypes="+itemType+"&SortBy="+sortBy, nil).WithContext(ctxUser())
+					invoke(api.getItems, w, r)
+					Expect(w.Code).To(Equal(http.StatusOK))
+					got := mfRepo.Options.Sort
+					if itemType == "MusicAlbum" {
+						got = albumRepo.Options.Sort
+					}
+					Expect(got).To(Equal(want))
+				},
+				Entry("PlayCount", "MusicAlbum", "PlayCount", "play_count"),
+				Entry("DatePlayed", "Audio", "DatePlayed", "play_date"),
+				Entry("Runtime on albums", "MusicAlbum", "Runtime", "duration"),
+				Entry("RunTimeTicks alias", "MusicAlbum", "RunTimeTicks", "duration"),
+				// Finamp leads its track sort with Runtime: unless that resolves, the first recognized
+				// key is AlbumArtist and the list looks sorted while being sorted by the wrong thing.
+				Entry("Finamp's Runtime-led track sort", "Audio", "Runtime,AlbumArtist,Album,SortName",
+					"duration, album_artist, album, title"),
+				Entry("every recognized key, in order", "MusicAlbum", "DateCreated,SortName", "recently_added, name"),
+				Entry("a key repeating a column is dropped", "Audio",
+					"PremiereDate,Album,ParentIndexNumber,IndexNumber,SortName", "year, album, title"),
+				// random is matched by exact string equality in the repo, so it can never share a sort.
+				Entry("Random stays alone", "MusicAlbum", "Random,SortName", "random"),
+				Entry("unrecognized keys are skipped", "Audio", "Runtime,Nonsense,SortName", "duration, title"),
+				Entry("only the last key recognized", "Audio", "Unknown1,Unknown2,SortName", "title"),
+				Entry("Finamp's album view is disc+track", "Audio", "ParentIndexNumber,IndexNumber,SortName", "album, title"),
+				Entry("nothing recognized leaves the repo default", "MusicAlbum", "SeriesSortName", ""),
+			)
 		})
 
 		Describe("library scoping", func() {

@@ -107,8 +107,8 @@ and `MusicArtist` queries accept it too, matching artists credited on an album o
 `Filters` (`IsFavorite`, `IsFavoriteOrLikes`, `IsPlayed`, `IsUnplayed`) and the standalone
 `isFavorite`/`isPlayed` booleans it can also be expressed as — `Filters` wins when both are sent, as
 in Jellyfin; `Likes`, `Dislikes`, `IsFolder`, `IsNotFolder` and `IsResumable` have no Navidrome
-equivalent and are ignored; `SortBy`/`SortOrder` (Jellyfin orders by every key in turn — Navidrome
-applies only the first recognized one, so secondary keys do not break ties);
+equivalent and are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
+unrecognized keys are skipped, and `Random` always sorts alone);
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
 returns direct children only (no tracks — no track is a library's direct child).
 

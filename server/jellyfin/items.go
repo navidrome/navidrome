@@ -276,8 +276,7 @@ type itemsQuery struct {
 	studioIds        []string
 }
 
-// listParams reads the itemsQuery fields that come straight from query params, so a handler doing
-// its own scoping shares one parser with parseItemsQuery instead of hand-listing the fields it needs.
+// listParams reads the itemsQuery fields that come straight from query params.
 func listParams(p *req.Values) itemsQuery {
 	return itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
@@ -952,24 +951,19 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 	var cols []string
 	for key := range strings.SplitSeq(sortBy, ",") {
 		col, ok := sortColumn(itemType, strings.TrimSpace(key))
-		if !ok || slices.Contains(cols, col) {
+		// The repo matches random by exact string equality, so it can only ever sort alone.
+		if !ok || slices.Contains(cols, col) || (col == "random" && len(cols) > 0) {
 			continue
 		}
-		// The repo matches random by exact string equality, so it can only ever sort alone.
+		cols = append(cols, col)
 		if col == "random" {
-			if len(cols) > 0 {
-				continue
-			}
-			cols = []string{col}
 			break
 		}
-		cols = append(cols, col)
 	}
-	if len(cols) > 0 {
+	switch {
+	case len(cols) > 0:
 		opts.Sort = strings.Join(cols, ", ")
-	}
-	// One unmapped key is survivable; none matching means the requested order was silently dropped.
-	if len(cols) == 0 && sortBy != "" {
+	case sortBy != "":
 		log.Debug("Jellyfin API: no usable SortBy key, falling back to the default order",
 			"itemType", itemType, "sortBy", sortBy)
 	}
