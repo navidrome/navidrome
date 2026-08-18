@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -96,6 +97,14 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	if res.reader == nil {
 		if res.extError || res.localError {
 			// A fault is not a definitive "no image": never settle absent, keep serving old state.
+			// A chainless resolver (playlist/radio) records no step, so leave a fallback or explain is blank.
+			if t := traceFrom(ctx); len(t.Steps()) == 0 {
+				outcome := OutcomeError
+				if res.localError {
+					outcome = OutcomeUnreadable
+				}
+				t.add(TraceStep{Candidate: cmp.Or(res.source, "source"), Outcome: outcome})
+			}
 			log.Debug(ctx, "Artwork: No image, but a source faulted; keeping previous state",
 				"kind", item.ItemKind, "id", item.ItemID, "extError", res.extError, "localError", res.localError)
 			return outcomeFailed, nil

@@ -561,7 +561,9 @@ func resolveLocalFile(path, source string) (resolution, bool) {
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return resolution{localError: !errors.Is(err, fs.ErrNotExist)}, false
+		// Carry the source label even on a fault, so a resolver with no chain (playlist/radio) can
+		// still name what faulted in the trace.
+		return resolution{source: source, localError: !errors.Is(err, fs.ErrNotExist)}, false
 	}
 	return resolution{reader: f, source: source, sourcePath: path, refMtime: mtimeOf(path)}, true
 }
