@@ -232,6 +232,10 @@ var _ = Describe("processor.acquire", func() {
 	// Playlist/radio resolvers walk no chain, so a fault records no step; without a fallback,
 	// explain would show a give-up with an empty "Gave up after" table.
 	It("chainless fault: records a fallback trace step naming the faulted source", func() {
+		if runtime.GOOS == "windows" {
+			// os.Open under a non-directory maps to a not-exist error on Windows, so no localError.
+			Skip("cannot provoke an open fault via a non-directory parent on Windows")
+		}
 		radioRepo := tests.CreateMockedRadioRepo()
 		radioRepo.Data = map[string]*model.Radio{}
 		ds.MockedRadio = radioRepo
