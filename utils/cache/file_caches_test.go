@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -17,7 +19,7 @@ import (
 // Call NewFileCache and wait for it to be ready
 func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
 	fc := NewFileCache(name, cacheSize, cacheFolder, maxItems, getReader).(*fileCache)
-	Eventually(func() bool { return fc.ready.Load() }).Should(BeTrue())
+	Eventually(func() bool { return fc.ready.Load() }, 10*time.Second).Should(BeTrue())
 	return fc
 }
 
@@ -113,11 +115,10 @@ var _ = Describe("File Caches", func() {
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
 
+			// EOF must imply the entry is settled on disk (Windows temp-dir cleanups rely on it).
 			dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"markme"}).Key())
-			Eventually(func() bool {
-				_, statErr := os.Stat(dataPath + ".complete")
-				return statErr == nil
-			}).Should(BeTrue())
+			_, statErr := os.Stat(dataPath + ".complete")
+			Expect(statErr).ToNot(HaveOccurred())
 		})
 
 		It("serves a concurrent reader from an in-progress write and marks complete once", func() {
@@ -276,6 +277,92 @@ var _ = Describe("File Caches", func() {
 					_, e := os.Stat(dataPath + ".complete")
 					return os.IsNotExist(e)
 				}).Should(BeTrue())
+			})
+		})
+
+		Context("entry outliving its data file", func() {
+			It("re-fetches when the data file vanished behind the cache's back", func() {
+				var calls atomic.Int32
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					calls.Add(1)
+					return strings.NewReader("payload"), nil
+				})
+
+				s, err := fc.Get(context.Background(), &testArg{"vanish"})
+				Expect(err).To(BeNil())
+				Expect(io.ReadAll(s)).To(Equal([]byte("payload")))
+				Expect(s.Close()).To(Succeed())
+
+				dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"vanish"}).Key())
+				Eventually(func() error { _, e := os.Stat(dataPath); return e }).Should(Succeed())
+				Expect(os.Remove(dataPath)).To(Succeed())
+
+				s2, err := fc.Get(context.Background(), &testArg{"vanish"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(io.ReadAll(s2)).To(Equal([]byte("payload")))
+				_ = s2.Close()
+				Expect(calls.Load()).To(BeNumerically("==", 2))
+			})
+
+			It("survives an invalidated entry's deferred file removal", func() {
+				// invalidate() drops the map entry but defers the unlink until readers close;
+				// a Get in that window re-creates the file, which the deferred unlink then eats.
+				var n atomic.Int32
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					if n.Add(1) == 1 {
+						return &partialThenErrReader{data: []byte("PARTIAL"), err: errors.New("died")}, nil
+					}
+					return strings.NewReader("GOOD"), nil
+				})
+
+				key := (&testArg{"deferred"}).Key()
+				s1, err := fc.Get(context.Background(), &testArg{"deferred"})
+				Expect(err).To(BeNil())
+
+				// The failed write invalidates the entry; the removal now waits on s1.
+				Eventually(func() bool { return fc.cache.Exists(key) }).Should(BeFalse())
+
+				s2, err := fc.Get(context.Background(), &testArg{"deferred"})
+				Expect(err).To(BeNil())
+				Expect(io.ReadAll(s2)).To(Equal([]byte("GOOD")))
+				Expect(s2.Close()).To(Succeed())
+
+				Expect(s1.Close()).To(Succeed())
+
+				dataPath := fcSpreadFS(fc).KeyMapper(key)
+				Eventually(func() bool {
+					_, e := os.Stat(dataPath)
+					return os.IsNotExist(e)
+				}).Should(BeTrue(), "expected the deferred removal to take the re-created file")
+
+				s3, err := fc.Get(context.Background(), &testArg{"deferred"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(io.ReadAll(s3)).To(Equal([]byte("GOOD")))
+				_ = s3.Close()
+			})
+
+			It("re-fetches when an adopted entry's data file vanished", func() {
+				// Entries adopted on startup take a different code path than in-process ones.
+				var calls atomic.Int32
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					calls.Add(1)
+					return strings.NewReader("payload"), nil
+				})
+				dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"adopted"}).Key())
+				Expect(os.MkdirAll(filepath.Dir(dataPath), 0755)).To(Succeed())
+				Expect(os.WriteFile(dataPath, []byte("payload"), 0600)).To(Succeed())
+				Expect(fcSpreadFS(fc).MarkComplete(dataPath)).To(Succeed())
+
+				adopted := callNewFileCache("test2", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					calls.Add(1)
+					return strings.NewReader("payload"), nil
+				})
+				Expect(os.Remove(dataPath)).To(Succeed())
+
+				s, err := adopted.Get(context.Background(), &testArg{"adopted"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(io.ReadAll(s)).To(Equal([]byte("payload")))
+				_ = s.Close()
 			})
 		})
 	})

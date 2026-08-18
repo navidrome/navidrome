@@ -9,6 +9,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -31,6 +32,8 @@ type MockMediaFileRepo struct {
 	// Add fields for cross-library move detection tests
 	FindRecentFilesByMBZTrackIDFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
 	FindRecentFilesByPropertiesFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
+	MatchesCriteriaValue            bool
+	MatchesCriteriaErr              error
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -121,6 +124,18 @@ func (m *MockMediaFileRepo) GetCursor(qo ...model.QueryOptions) (model.MediaFile
 			}
 		}
 	}, nil
+}
+
+func (m *MockMediaFileRepo) GetCursorWithArtwork(qo ...model.QueryOptions) (model.MediaFileCursor, error) {
+	return m.GetCursor(qo...)
+}
+
+func (m *MockMediaFileRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
+	all, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(all, func(mf model.MediaFile) string { return mf.ID }), nil
 }
 
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
@@ -355,6 +370,13 @@ func (m *MockMediaFileRepo) FindRecentFilesByProperties(missing model.MediaFile,
 		}
 	}
 	return result, nil
+}
+
+func (m *MockMediaFileRepo) MatchesCriteria(string, criteria.Criteria) (bool, error) {
+	if m.MatchesCriteriaErr != nil {
+		return false, m.MatchesCriteriaErr
+	}
+	return m.MatchesCriteriaValue, nil
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)

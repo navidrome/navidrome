@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -252,6 +253,9 @@ func (r *userRepository) Save(entity any) (string, error) {
 	if err := validateUsernameUnique(r, u); err != nil {
 		return "", err
 	}
+	if err := validateScrobbleFilter(u); err != nil {
+		return "", err
+	}
 	err := r.Put(u)
 	if err != nil {
 		return "", err
@@ -282,6 +286,9 @@ func (r *userRepository) Update(id string, entity any, _ ...string) error {
 		return err
 	}
 	if err := validateUsernameUnique(r, u); err != nil {
+		return err
+	}
+	if err := validateScrobbleFilter(u); err != nil {
 		return err
 	}
 	err := r.Put(u)
@@ -329,6 +336,33 @@ func validateUsernameUnique(r model.UserRepository, u *model.User) error {
 		return &rest.ValidationError{Errors: map[string]string{"userName": "ra.validation.unique"}}
 	}
 	return nil
+}
+
+func validateScrobbleFilter(u *model.User) error {
+	u.ScrobbleFilter = strings.TrimSpace(u.ScrobbleFilter)
+	if u.ScrobbleFilter == "" {
+		return nil
+	}
+	var c criteria.Criteria
+	if err := json.Unmarshal([]byte(u.ScrobbleFilter), &c); err != nil {
+		return invalidScrobbleFilter()
+	}
+	// A filter is a per-track test, so a result-set size means nothing here. Reject it
+	// rather than silently ignoring part of a rule copied from a smart playlist.
+	if c.Limit > 0 || c.LimitPercent > 0 || c.Offset > 0 || c.RefreshDelay > 0 {
+		return invalidScrobbleFilter()
+	}
+	// Building the WHERE clause is what validates field names and operators
+	if _, err := newSmartPlaylistCriteria(c).where(); err != nil {
+		return invalidScrobbleFilter()
+	}
+	return nil
+}
+
+func invalidScrobbleFilter() error {
+	return &rest.ValidationError{Errors: map[string]string{
+		"scrobbleFilter": "resources.user.validation.invalidScrobbleFilter",
+	}}
 }
 
 func (r *userRepository) Delete(id string) error {

@@ -11,7 +11,6 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -28,12 +27,11 @@ var (
 	ErrAlreadyScanning = errors.New("already scanning")
 )
 
-func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,
+func New(rootCtx context.Context, ds model.DataStore, broker events.Broker,
 	pls playlists.Playlists, m metrics.Metrics) model.Scanner {
 	c := &controller{
 		rootCtx:            rootCtx,
 		ds:                 ds,
-		cw:                 cw,
 		broker:             broker,
 		pls:                pls,
 		metrics:            m,
@@ -49,7 +47,7 @@ func (s *controller) getScanner() scanner {
 	if s.devExternalScanner {
 		return &scannerExternal{}
 	}
-	return &scannerImpl{ds: s.ds, cw: s.cw, pls: s.pls}
+	return &scannerImpl{ds: s.ds, pls: s.pls}
 }
 
 // CallScan starts an in-process scan of specific library/folder pairs.
@@ -66,7 +64,7 @@ func CallScan(ctx context.Context, ds model.DataStore, pls playlists.Playlists, 
 	progress := make(chan *ProgressInfo, 100)
 	go func() {
 		defer close(progress)
-		scanner := &scannerImpl{ds: ds, cw: artwork.NoopCacheWarmer(), pls: pls}
+		scanner := &scannerImpl{ds: ds, pls: pls}
 		scanner.scanFolders(ctx, fullScan, targets, progress)
 	}()
 	return progress, nil
@@ -97,7 +95,6 @@ type scanner interface {
 type controller struct {
 	rootCtx            context.Context
 	ds                 model.DataStore
-	cw                 artwork.CacheWarmer
 	broker             events.Broker
 	metrics            metrics.Metrics
 	pls                playlists.Playlists

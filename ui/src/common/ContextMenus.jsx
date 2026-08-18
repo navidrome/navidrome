@@ -24,6 +24,7 @@ import {
 import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
+import { artistDownloadSize } from './artist'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -70,6 +71,9 @@ const ContextMenu = ({
   const notify = useNotify()
   const [anchorEl, setAnchorEl] = useState(null)
 
+  const isArtist = resource === 'artist'
+  const downloadSize = isArtist ? artistDownloadSize(record) : record?.size
+
   const options = {
     play: {
       enabled: true,
@@ -103,7 +107,7 @@ const ContextMenu = ({
     },
     ...(!hideShare && {
       share: {
-        enabled: config.enableSharing,
+        enabled: config.enableSharing && (!isArtist || downloadSize),
         needData: false,
         label: translate('ra.action.share'),
         action: (record) =>
@@ -111,9 +115,9 @@ const ContextMenu = ({
       },
     }),
     download: {
-      enabled: config.enableDownloads && record.size,
+      enabled: config.enableDownloads && downloadSize,
       needData: false,
-      label: `${translate('ra.action.download')} (${formatBytes(record.size)})`,
+      label: `${translate('ra.action.download')} (${formatBytes(downloadSize)})`,
       action: () => {
         dispatch(
           openDownloadMenu(

@@ -13,6 +13,7 @@ import (
 
 type Playlist struct {
 	Annotations `structs:"-"`
+	ItemImage   `structs:"-"`
 
 	ID               string         `structs:"id" json:"id"`
 	Name             string         `structs:"name" json:"name"`
@@ -144,6 +145,7 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
+	GetAllIDs(options ...QueryOptions) ([]string, error)
 	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error

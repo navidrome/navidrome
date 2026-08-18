@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -43,7 +44,7 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 		noopProvider{},
 		nil, // scanner
 		events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),

@@ -53,7 +53,7 @@ var _ = Describe("Lyrics", func() {
 		})
 
 		It("returns 404 for a fabricated id", func() {
-			Expect(get("/Audio/" + enc("nope") + "/Lyrics").Code).To(Equal(http.StatusNotFound))
+			Expect(get("/Audio/" + enc(testID("nope")) + "/Lyrics").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 

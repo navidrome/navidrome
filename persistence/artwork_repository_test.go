@@ -1,0 +1,248 @@
+package persistence
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/navidrome/navidrome/model"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
+)
+
+func clearArtworkTables() {
+	db := GetDBXBuilder()
+	for _, t := range []string{"artwork_queue", "item_artwork", "artwork"} {
+		_, err := db.NewQuery("DELETE FROM " + t).Execute()
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
+
+var _ = Describe("ArtworkRepository", func() {
+	var repo model.ArtworkRepository
+
+	BeforeEach(func() {
+		clearArtworkTables()
+		DeferCleanup(clearArtworkTables)
+		repo = NewArtworkRepository(context.Background(), GetDBXBuilder())
+	})
+
+	Context("image identity", func() {
+		It("stores and retrieves an artwork by hash", func() {
+			a := &model.Artwork{Hash: "abc123", Mime: "image/jpeg", Width: 500, Height: 500, SizeBytes: 1234, BlurHash: "LKO2?U%2Tw=w"}
+			Expect(repo.PutImage(a)).To(Succeed())
+
+			got, err := repo.GetImage("abc123")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Mime).To(Equal("image/jpeg"))
+			Expect(got.BlurHash).To(Equal("LKO2?U%2Tw=w"))
+			Expect(got.CreatedAt).ToNot(BeZero())
+		})
+
+		It("round-trips the thumbhash alongside the blurhash", func() {
+			a := &model.Artwork{Hash: "both1", Mime: "image/jpeg", BlurHash: "LKO2?U%2Tw=w",
+				ThumbHash: "1QcSHQRnh493V4dIh4eXh1h4kJUI", DominantColor: "#336699"}
+			Expect(repo.PutImage(a)).To(Succeed())
+
+			got, err := repo.GetImage("both1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.BlurHash).To(Equal("LKO2?U%2Tw=w"))
+			Expect(got.ThumbHash).To(Equal("1QcSHQRnh493V4dIh4eXh1h4kJUI"))
+			Expect(got.DominantColor).To(Equal("#336699"))
+		})
+
+		It("overwrites the thumbhash on re-acquisition", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "th2", Mime: "image/png", ThumbHash: "first", DominantColor: "#111111"})).To(Succeed())
+			Expect(repo.PutImage(&model.Artwork{Hash: "th2", Mime: "image/png", ThumbHash: "second", DominantColor: "#222222"})).To(Succeed())
+
+			got, err := repo.GetImage("th2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.ThumbHash).To(Equal("second"))
+			Expect(got.DominantColor).To(Equal("#222222"))
+		})
+
+		It("is idempotent on Put (upsert by hash)", func() {
+			a := &model.Artwork{Hash: "dup1", Mime: "image/png"}
+			Expect(repo.PutImage(a)).To(Succeed())
+			a.BlurHash = "XYZ"
+			Expect(repo.PutImage(a)).To(Succeed())
+			got, _ := repo.GetImage("dup1")
+			Expect(got.BlurHash).To(Equal("XYZ"))
+		})
+
+		It("refreshes created_at when reacquiring an existing hash", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "reacq", Mime: "image/jpeg"})).To(Succeed())
+			_, err := GetDBXBuilder().NewQuery("UPDATE artwork SET created_at={:t} WHERE hash='reacq'").
+				Bind(dbx.Params{"t": "2000-01-01 00:00:00"}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(repo.PutImage(&model.Artwork{Hash: "reacq", Mime: "image/png"})).To(Succeed())
+
+			got, err := repo.GetImage("reacq")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.CreatedAt).To(BeTemporally(">", time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)))
+		})
+
+		It("returns ErrNotFound for a missing hash", func() {
+			_, err := repo.GetImage("nope")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+
+		It("returns every stored hash with its current mime", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "all1", Mime: "image/jpeg"})).To(Succeed())
+			Expect(repo.PutImage(&model.Artwork{Hash: "all2", Mime: "image/png"})).To(Succeed())
+			mimes, err := repo.GetMimeByHash()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mimes).To(HaveKeyWithValue("all1", "image/jpeg"))
+			Expect(mimes).To(HaveKeyWithValue("all2", "image/png"))
+		})
+
+		It("deletes only unreferenced rows older than the cutoff, reporting the count", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "d1", Mime: "image/jpeg"})).To(Succeed())
+			Expect(repo.PutImage(&model.Artwork{Hash: "dref", Mime: "image/jpeg"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
+				ImageType: model.ImageTypePrimary, Hash: "dref", Source: "folder"})).To(Succeed())
+
+			Expect(repo.PurgeOrphans(time.Now().Add(time.Minute))).To(BeNumerically("==", 1))
+
+			_, err := repo.GetImage("d1")
+			Expect(err).To(MatchError(model.ErrNotFound))
+			_, err = repo.GetImage("dref")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("spares an unreferenced row younger than the cutoff", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "young", Mime: "image/jpeg"})).To(Succeed())
+			Expect(repo.PurgeOrphans(time.Now().Add(-time.Hour))).To(BeNumerically("==", 0))
+			_, err := repo.GetImage("young")
+			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	Context("dangling state cleanup", func() {
+		It("purges item_artwork rows per kind whose entity no longer exists, summing counts", func() {
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumSgtPeppers.ID, ImageType: model.ImageTypePrimary, Hash: "keepAl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "no-such-album", ImageType: model.ImageTypePrimary, Hash: "danglingAl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: artistKraftwerk.ID, ImageType: model.ImageTypePrimary, Hash: "keepAr"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "no-such-artist", ImageType: model.ImageTypePrimary, Hash: "danglingAr"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: plsBest.ID, ImageType: model.ImageTypePrimary, Hash: "keepPl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: "no-such-playlist", ImageType: model.ImageTypePrimary, Hash: "danglingPl"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ra", ItemID: radioWithHomePage.ID, ImageType: model.ImageTypePrimary, Hash: "keepRa"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ra", ItemID: "no-such-radio", ImageType: model.ImageTypePrimary, Hash: "danglingRa"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: songDayInALife.ID, ImageType: model.ImageTypePrimary, Hash: "keepMf"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "no-such-mediafile", ImageType: model.ImageTypePrimary, Hash: "danglingMf"})).To(Succeed())
+
+			purged, err := repo.PurgeDanglingItems()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(purged).To(Equal(int64(5)))
+
+			for _, kept := range []model.ItemArtwork{
+				{ItemKind: "al", ItemID: albumSgtPeppers.ID},
+				{ItemKind: "ar", ItemID: artistKraftwerk.ID},
+				{ItemKind: "pl", ItemID: plsBest.ID},
+				{ItemKind: "ra", ItemID: radioWithHomePage.ID},
+				{ItemKind: "mf", ItemID: songDayInALife.ID},
+			} {
+				k, _ := model.ParseKind(kept.ItemKind)
+				_, err := repo.GetItemArtwork(k, kept.ItemID, model.ImageTypePrimary)
+				Expect(err).ToNot(HaveOccurred())
+			}
+			for _, gone := range []model.ItemArtwork{
+				{ItemKind: "al", ItemID: "no-such-album"},
+				{ItemKind: "ar", ItemID: "no-such-artist"},
+				{ItemKind: "pl", ItemID: "no-such-playlist"},
+				{ItemKind: "ra", ItemID: "no-such-radio"},
+				{ItemKind: "mf", ItemID: "no-such-mediafile"},
+			} {
+				k, _ := model.ParseKind(gone.ItemKind)
+				_, err := repo.GetItemArtwork(k, gone.ItemID, model.ImageTypePrimary)
+				Expect(err).To(MatchError(model.ErrNotFound))
+			}
+		})
+	})
+
+	Context("item state", func() {
+		It("upserts and reads state, including per-item provenance", func() {
+			ia := &model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary,
+				Hash: "h1", Source: "folder", SourcePath: "/music/a/cover.jpg", RefMtime: 111, AttemptedAt: time.Now()}
+			Expect(repo.PutItemArtwork(ia)).To(Succeed())
+			ia.Source = "embedded"
+			ia.SourcePath = "/music/a/track.mp3"
+			ia.RefMtime = 222
+			Expect(repo.PutItemArtwork(ia)).To(Succeed())
+
+			got, err := repo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Source).To(Equal("embedded"))
+			Expect(got.SourcePath).To(Equal("/music/a/track.mp3"))
+			Expect(got.RefMtime).To(Equal(int64(222)))
+			Expect(got.UpdatedAt).ToNot(BeZero())
+		})
+
+		It("defaults attempted_at to now when unset", func() {
+			before := time.Now().Add(-time.Second)
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "noattempt",
+				ImageType: model.ImageTypePrimary, Hash: ""})).To(Succeed())
+			got, err := repo.GetItemArtwork(model.KindArtistArtwork, "noattempt", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.AttemptedAt).To(BeTemporally(">", before))
+		})
+
+		It("represents known-absent as empty hash", func() {
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "ar1",
+				ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
+			got, err := repo.GetItemArtwork(model.KindArtistArtwork, "ar1", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Hash).To(BeEmpty())
+		})
+
+		It("hydrates a page in one batch, including blurhash, dimensions and absence", func() {
+			Expect(repo.PutImage(&model.Artwork{Hash: "h9", Mime: "image/jpeg", BlurHash: "BH9",
+				DominantColor: "#abcdef", Width: 1200, Height: 800})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x1", ImageType: model.ImageTypePrimary, Hash: "h9", Source: "folder"})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "x2", ImageType: model.ImageTypePrimary, Hash: "", Source: ""})).To(Succeed())
+
+			info, err := repo.GetInfoForItems(model.KindAlbumArtwork, []string{"x1", "x2", "x3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info).To(HaveLen(2))
+			Expect(info["x1"].Hash).To(Equal("h9"))
+			Expect(info["x1"].BlurHash).To(Equal("BH9"))
+			Expect(info["x1"].DominantColor).To(Equal("#abcdef"))
+			Expect(info["x1"].Width).To(Equal(1200))
+			Expect(info["x1"].Height).To(Equal(800))
+			Expect(info["x1"].Absent()).To(BeFalse())
+			Expect(info["x2"].Absent()).To(BeTrue())
+			_, unresolved := info["x3"]
+			Expect(unresolved).To(BeFalse())
+		})
+
+		It("deletes all rows for a single item", func() {
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "pl", ItemID: "p1", ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
+			Expect(repo.DeleteForItems(model.KindPlaylistArtwork, []string{"p1"})).To(Succeed())
+			_, err := repo.GetItemArtwork(model.KindPlaylistArtwork, "p1", model.ImageTypePrimary)
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+
+		It("deletes rows for many items in chunks, leaving others untouched", func() {
+			const n = artworkBatchSize + 5
+			ids := make([]string, n)
+			for i := range n {
+				id := fmt.Sprintf("mf-%d", i)
+				ids[i] = id
+				Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: id, ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
+			}
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "keep", ImageType: model.ImageTypePrimary, Hash: "h1"})).To(Succeed())
+
+			Expect(repo.DeleteForItems(model.KindMediaFileArtwork, ids)).To(Succeed())
+
+			for _, id := range ids {
+				_, err := repo.GetItemArtwork(model.KindMediaFileArtwork, id, model.ImageTypePrimary)
+				Expect(err).To(MatchError(model.ErrNotFound))
+			}
+			kept, err := repo.GetItemArtwork(model.KindMediaFileArtwork, "keep", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(kept.ItemID).To(Equal("keep"))
+		})
+	})
+})

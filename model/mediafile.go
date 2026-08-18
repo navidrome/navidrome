@@ -15,6 +15,7 @@ import (
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
@@ -24,6 +25,11 @@ import (
 type MediaFile struct {
 	Annotations  `structs:"-" hash:"ignore"`
 	Bookmarkable `structs:"-" hash:"ignore"`
+	ItemImage    `structs:"-" hash:"ignore"`
+
+	// AlbumImage is the parent album's artwork state, hydrated alongside the track's own so a
+	// song's Jellyfin album-art tag can be pixel-versioned without a second query.
+	AlbumImage ItemImage `structs:"-" json:"-" hash:"ignore"`
 
 	ID          string `structs:"id"  json:"id" hash:"ignore"`
 	PID         string `structs:"pid" json:"-" hash:"ignore"`
@@ -139,13 +145,15 @@ func (mf MediaFile) CoverArtID() ArtworkID {
 // otherwise it returns the album artwork ID.
 func (mf MediaFile) DiscCoverArtID() ArtworkID {
 	if mf.DiscNumber > 0 {
-		return NewArtworkID(KindDiscArtwork, DiscArtworkID(mf.AlbumID, mf.DiscNumber), nil)
+		return ArtworkID{Kind: KindDiscArtwork, ID: DiscArtworkID(mf.AlbumID, mf.DiscNumber), Hash: mf.ImageHash}
 	}
 	return mf.AlbumCoverArtID()
 }
 
+// AlbumCoverArtID uses AlbumImage, not the track's own ItemImage: an album id must carry the
+// album's content hash even when the track resolved art of its own.
 func (mf MediaFile) AlbumCoverArtID() ArtworkID {
-	return artworkIDFromAlbum(Album{ID: mf.AlbumID})
+	return artworkIDFromAlbum(Album{ID: mf.AlbumID, ItemImage: mf.AlbumImage})
 }
 
 func (mf MediaFile) StructuredLyrics() (LyricList, error) {
@@ -541,7 +549,18 @@ type MediaFileRepository interface {
 	// filters as GetAll. Sort/Order are ignored.
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
+	// MatchesCriteria reports whether the media file matches the criteria's rule
+	// expression, using the logged user's annotations. Limit and offset are ignored.
+	MatchesCriteria(id string, c criteria.Criteria) (bool, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
+	// GetAllIDs returns just the media_file IDs for the same row set as GetAll.
+	GetAllIDs(options ...QueryOptions) ([]string, error)
+	// GetAlbumIDsByFolder returns the distinct IDs of albums with non-missing tracks in the given
+	// folders or their direct children.
+	GetAlbumIDsByFolder(lib Library, folderIDs ...string) ([]string, error)
+	// GetCursorWithArtwork streams like GetCursor, hydrated, so callers that render images don't
+	// pay the scanner's per-row cost; it uses the same id pre-pass as the other cursors.
+	GetCursorWithArtwork(options ...QueryOptions) (MediaFileCursor, error)
 	Delete(id string) error
 	DeleteMissing(ids []string) error
 	DeleteAllMissing() (int64, error)
