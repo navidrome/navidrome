@@ -38,13 +38,14 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	// Only the fields listArtists reads; /Artists has no favorites filter, so favOnly stays false.
-	// Finamp's artist tab sends GenreIds when a genre filter is active.
+	// Only the fields listArtists reads. Finamp's artist tab sends GenreIds when a genre filter is
+	// active, and its home screen sends Filters=IsFavorite.
 	q := itemsQuery{
 		scopeIDs: scopeIDs,
 		genreIds: genreIds,
 		search:   searchTerm(p),
 		fields:   dto.ParseFields(p.Strings("fields")...),
+		favOnly:  parseFavOnly(p),
 	}
 	if q.search != "" {
 		opts.Max = clampLimit(opts.Max, defaultSearchLimit, maxSearchLimit)

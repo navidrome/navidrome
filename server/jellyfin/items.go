@@ -31,6 +31,12 @@ func searchTerm(p *req.Values) string {
 	return strings.TrimSpace(p.StringOr("searchterm", ""))
 }
 
+// parseFavOnly reads the two ways clients express "favorites only": Filters=IsFavorite and the
+// standalone isFavorite=true param (Finamp's "Favourite tracks" widget uses the latter).
+func parseFavOnly(p *req.Values) bool {
+	return strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false)
+}
+
 func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
 	res, err := api.queryItems(r.Context(), r)
 	if err != nil {
@@ -270,9 +276,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 		sortOrder: p.StringOr("sortorder", ""),
 		offset:    p.IntOr("startindex", 0),
 		limit:     p.IntOr("limit", 0),
-		// Clients express "favorites only" two ways: Filters=IsFavorite and the standalone
-		// isFavorite=true param (Finamp's "Favourite tracks" widget uses the latter).
-		favOnly:   strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false),
+		favOnly:   parseFavOnly(p),
 		parentId:  parentId,
 		genreIds:  genreIds,
 		albumIds:  albumIds,
@@ -720,10 +724,9 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 		return materialized(result(slice.Map(artists, toItem), total, opts.Offset)), nil
 	}
 
+	opts.Filters = notMissing
 	if q.favOnly {
-		opts.Filters = filter.ArtistsByStarred().Filters
-	} else {
-		opts.Filters = notMissing
+		opts.Filters = squirrel.And{opts.Filters, filter.ArtistsByStarred().Filters}
 	}
 	if len(q.genreIds) > 0 {
 		opts.Filters = squirrel.And{opts.Filters, filter.ArtistsByGenreID(q.genreIds)}
