@@ -355,6 +355,17 @@ var _ = Describe("formatExplain", func() {
 			Expect(formatExplain(rep)).To(ContainSubstring("resolved before traces were recorded"))
 		})
 
+		It("does not call an absent row with an empty recorded chain a pre-tracing row", func() {
+			// An empty priority list records a real but empty chain and resolves absent; that is not a
+			// legacy row, so it must not be reported as resolved before tracing existed.
+			rep.stored = &model.ItemArtwork{Source: "", Hash: "", AttemptedAt: time.Now()}
+
+			out := formatExplain(rep)
+			Expect(out).ToNot(ContainSubstring("resolved before traces were recorded"))
+			Expect(out).To(ContainSubstring("no candidates were recorded"))
+			Expect(out).To(ContainSubstring("not resolved"), "the Result still reports the absence plainly")
+		})
+
 		It("prints why the last attempt failed and why it gave up", func() {
 			rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 3,
 				Trace: `[{"c":"decode","o":"error","d":"bad header"}]`}

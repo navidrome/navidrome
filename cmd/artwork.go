@@ -783,8 +783,13 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
 	case unrecorded:
 		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
-	case !rep.walked && len(rep.steps) == 0:
+	case !rep.walked && len(rep.steps) == 0 && rep.stored.Hash != "":
+		// A stored image with no chain can only predate trace recording: a recorded resolution that
+		// found an image always records its winning candidate.
 		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
+	case !rep.walked && len(rep.steps) == 0:
+		// Absent with no chain: an empty priority list walked nothing, or a pre-tracing absent row.
+		fmt.Fprintln(w, "  (no candidates were recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
 		writeSteps(w, "  ", rep.steps)
