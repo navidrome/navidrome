@@ -312,7 +312,7 @@ var _ = Describe("Playlists - Import", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
 				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 
 				plsFile := filepath.Join(tmpDir, "test.m3u")
 				Expect(os.WriteFile(plsFile, []byte("test.mp3\n"), 0600)).To(Succeed())
@@ -403,7 +403,7 @@ var _ = Describe("Playlists - Import", func() {
 			It("preserves counters when re-importing an existing smart playlist", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 
 				nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}],"sort":"title","order":"asc"}`
 				plsFile := filepath.Join(tmpDir, "smart.nsp")
@@ -435,7 +435,7 @@ var _ = Describe("Playlists - Import", func() {
 			It("skips re-import when the smart playlist file content is unchanged", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 
 				nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}]}`
 				plsFile := filepath.Join(tmpDir, "smart.nsp")
@@ -458,7 +458,7 @@ var _ = Describe("Playlists - Import", func() {
 			It("re-imports when the smart playlist file content changed", func() {
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
-				ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 
 				nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}]}`
 				plsFile := filepath.Join(tmpDir, "smart.nsp")
@@ -878,7 +878,7 @@ var _ = Describe("Playlists - Import", func() {
 				},
 			}
 			ds.MockedFolder = mockFolderRepo
-			ps = playlists.NewPlaylists(ds, core.NewImageUploadService())
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 
 			nsp := `{"name":"My Smart","all":[{"is":{"loved":true}}]}`
 			plsFile := filepath.Join(tmpDir, "smart.nsp")
