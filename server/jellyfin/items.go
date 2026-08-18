@@ -946,21 +946,30 @@ func result(items []dto.BaseItemDto, total, start int) dto.QueryResult {
 	return dto.QueryResult{Items: items, TotalRecordCount: total, StartIndex: start}
 }
 
-// applySort translates Jellyfin's SortBy/SortOrder into a model.QueryOptions sort key for the item
-// type. Jellyfin orders by every SortBy key in turn (RequestHelpers.GetOrderBy pairs each with a
-// direction); this applies only the first recognized key, so secondary keys never break ties.
-// An unrecognized SortBy leaves the repo default rather than passing through raw, where it could
-// produce an invalid ORDER BY.
+// applySort keeps every recognized SortBy key, so secondary keys break ties as Jellyfin intends.
+// Unrecognized keys are skipped, not passed through raw where they could make an invalid ORDER BY.
 func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
-	matched := false
+	var cols []string
 	for key := range strings.SplitSeq(sortBy, ",") {
-		if col, ok := sortColumn(itemType, strings.TrimSpace(key)); ok {
-			opts.Sort, matched = col, true
+		col, ok := sortColumn(itemType, strings.TrimSpace(key))
+		if !ok || slices.Contains(cols, col) {
+			continue
+		}
+		// The repo matches random by exact string equality, so it can only ever sort alone.
+		if col == "random" {
+			if len(cols) > 0 {
+				continue
+			}
+			cols = []string{col}
 			break
 		}
+		cols = append(cols, col)
+	}
+	if len(cols) > 0 {
+		opts.Sort = strings.Join(cols, ", ")
 	}
 	// One unmapped key is survivable; none matching means the requested order was silently dropped.
-	if !matched && sortBy != "" {
+	if len(cols) == 0 && sortBy != "" {
 		log.Debug("Jellyfin API: no usable SortBy key, falling back to the default order",
 			"itemType", itemType, "sortBy", sortBy)
 	}

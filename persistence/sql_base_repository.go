@@ -147,17 +147,34 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 
 // TODO Change all sortMappings to have a consistent case
 func (r sqlRepository) sortMapping(sort string) string {
-	if mapping, ok := r.sortMappings[sort]; ok {
+	if mapping, ok := r.lookupSortMapping(sort); ok {
 		return mapping
+	}
+	// A comma list resolves only when every part is a known key, so callers passing raw column
+	// lists — some carrying their own direction — keep falling through to the column names.
+	if parts := strings.Split(sort, ","); len(parts) > 1 {
+		mapped := make([]string, 0, len(parts))
+		for _, part := range parts {
+			mapping, ok := r.lookupSortMapping(strings.TrimSpace(part))
+			if !ok {
+				return toSnakeCase(sort)
+			}
+			mapped = append(mapped, mapping)
+		}
+		return strings.Join(mapped, ", ")
+	}
+	return toSnakeCase(sort)
+}
+
+func (r sqlRepository) lookupSortMapping(sort string) (string, bool) {
+	if mapping, ok := r.sortMappings[sort]; ok {
+		return mapping, true
 	}
 	if mapping, ok := r.sortMappings[toCamelCase(sort)]; ok {
-		return mapping
+		return mapping, true
 	}
-	sort = toSnakeCase(sort)
-	if mapping, ok := r.sortMappings[sort]; ok {
-		return mapping
-	}
-	return sort
+	mapping, ok := r.sortMappings[toSnakeCase(sort)]
+	return mapping, ok
 }
 
 func (r sqlRepository) buildSortOrder(sort, order string) string {

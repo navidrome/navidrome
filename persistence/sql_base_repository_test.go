@@ -135,6 +135,28 @@ var _ = Describe("sqlRepository", func() {
 		})
 	})
 
+	Describe("sortMapping", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{
+				"name":           "order_album_name, order_album_artist_name",
+				"recently_added": "album.created_at, album.id",
+			}
+		})
+		It("maps a single key", func() {
+			Expect(r.sortMapping("recently_added")).To(Equal("album.created_at, album.id"))
+		})
+		It("maps every part of a comma list when all of them are known keys", func() {
+			Expect(r.sortMapping("recently_added, name")).
+				To(Equal("album.created_at, album.id, order_album_name, order_album_artist_name"))
+		})
+		It("leaves a comma list untouched when any part is not a known key", func() {
+			Expect(r.sortMapping("recently_added, play_count")).To(Equal("recently_added, play_count"))
+		})
+		It("leaves a raw column list with directions untouched", func() {
+			Expect(r.sortMapping("starred desc, rating desc")).To(Equal("starred desc, rating desc"))
+		})
+	})
+
 	Describe("buildSortOrder", func() {
 		BeforeEach(func() {
 			r.sortMappings = map[string]string{}
