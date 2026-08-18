@@ -693,6 +693,25 @@ var _ = Describe("Items", func() {
 				Entry("Finamp's album view is disc+track", "Audio", "ParentIndexNumber,IndexNumber,SortName", "album, title"),
 				Entry("nothing recognized leaves the repo default", "MusicAlbum", "SeriesSortName", ""),
 			)
+
+			// Jellyfin allows a per-key SortOrder list; we cannot express that through one Order, so
+			// we honor the first value for all keys, matching Jellyfin's fallback for extra keys.
+			DescribeTable("reads the first SortOrder value for the whole sort",
+				func(sortOrder, want string) {
+					albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+					albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+					w := httptest.NewRecorder()
+					r := httptest.NewRequest("GET",
+						"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder="+sortOrder, nil).WithContext(ctxUser())
+					invoke(api.getItems, w, r)
+					Expect(w.Code).To(Equal(http.StatusOK))
+					Expect(albumRepo.Options.Order).To(Equal(want))
+				},
+				Entry("ascending", "Ascending", ""),
+				Entry("descending", "Descending", "desc"),
+				Entry("descending leading a list", "Descending,Ascending", "desc"),
+				Entry("ascending leading a list", "Ascending,Descending", ""),
+			)
 		})
 
 		Describe("library scoping", func() {

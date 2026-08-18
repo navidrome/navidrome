@@ -975,7 +975,10 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 		log.Debug("Jellyfin API: no usable SortBy key, falling back to the default order",
 			"itemType", itemType, "sortBy", sortBy)
 	}
-	if strings.EqualFold(order, "Descending") {
+	// Jellyfin allows a per-key SortOrder list, which one Order can't express; honor the first value
+	// for every key, as Jellyfin does for keys past the end of the list.
+	first, _, _ := strings.Cut(order, ",")
+	if strings.EqualFold(first, "Descending") {
 		opts.Order = "desc"
 	}
 }
