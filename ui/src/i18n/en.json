@@ -156,11 +156,13 @@
         "currentPassword": "Current Password",
         "newPassword": "New Password",
         "token": "Token",
-        "libraries": "Libraries"
+        "libraries": "Libraries",
+        "scrobbleFilter": "Scrobble filter"
       },
       "helperTexts": {
         "name": "Changes to your name will only be reflected on next login",
-        "libraries": "Select specific libraries for this user, or leave empty to use default libraries"
+        "libraries": "Select specific libraries for this user, or leave empty to use default libraries",
+        "scrobbleFilter": "Songs matching these smart playlist rules are not sent to Last.fm, ListenBrainz or scrobbler plugins. Uses the same JSON syntax and behavior as smart playlists. Example: {\"all\":[{\"lt\":{\"rating\":4}}]}. Leave empty to scrobble everything. Local play counts are not affected."
       },
       "notifications": {
         "created": "User created",
@@ -168,7 +170,8 @@
         "deleted": "User deleted"
       },
       "validation": {
-        "librariesRequired": "At least one library must be selected for non-admin users"
+        "librariesRequired": "At least one library must be selected for non-admin users",
+        "invalidScrobbleFilter": "Must be valid smart playlist rules. Limit, offset and refresh delay are not supported."
       },
       "message": {
         "listenBrainzToken": "Enter your ListenBrainz user token.",

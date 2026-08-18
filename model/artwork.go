@@ -119,6 +119,8 @@ type ArtworkRepository interface {
 }
 
 type ArtworkQueueRepository interface {
+	// Get returns the pending row for an item, or ErrNotFound when it is not queued.
+	Get(kind Kind, id, imageType string) (*ArtworkQueueItem, error)
 	// Enqueue upserts; an existing row keeps the higher priority and has its retry_at reset.
 	Enqueue(items ...ArtworkQueueItem) error
 	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a
@@ -130,6 +132,14 @@ type ArtworkQueueRepository interface {
 	EnqueueAllMissing(kind Kind, priority int) (int64, error)
 	// EnqueueIfMissing inserts only for items with no item_artwork row yet.
 	EnqueueIfMissing(items ...ArtworkQueueItem) error
+	// CountBySource reports how many items of a kind currently resolve from the given sources.
+	// An empty sources slice means every source; "" matches absent state.
+	CountBySource(kind Kind, sources []string) (int64, error)
+	// SourcesInUse lists the distinct sources items of a kind currently resolve from, "" included.
+	SourcesInUse(kind Kind) ([]string, error)
+	// EnqueueBySource inserts queue rows for items of a kind whose current source matches.
+	// It does not clear existing artwork state: the current image stays until it is replaced.
+	EnqueueBySource(kind Kind, sources []string, priority int) (int64, error)
 	// DequeueBatch returns up to n items with retry_at <= now, priority desc, enqueued_at asc.
 	// Restricted to the given kinds when any are passed, so one kind cannot block another's drain.
 	DequeueBatch(n int, kinds ...string) ([]ArtworkQueueItem, error)
@@ -139,6 +149,22 @@ type ArtworkQueueRepository interface {
 	// DeleteIfUnchanged deletes only while retry_at still matches, sparing a concurrent re-enqueue.
 	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)
+	// CountByKindAndPriority reports the pending queue rows grouped by kind and priority.
+	CountByKindAndPriority() ([]ArtworkQueueStat, error)
+	// CountAbsent reports the absent states of a kind, and how many of those EnqueueStaleAbsent
+	// would pick up at the given cutoff.
+	CountAbsent(kind Kind, attemptedBefore time.Time) (ArtworkAbsentStat, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
+}
+
+type ArtworkQueueStat struct {
+	ItemKind string
+	Priority int
+	Count    int64
+}
+
+type ArtworkAbsentStat struct {
+	Total int64
+	Stale int64
 }

@@ -10,14 +10,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-var refreshableArtworkKinds = []model.Kind{
-	model.KindAlbumArtwork,
-	model.KindArtistArtwork,
-	model.KindPlaylistArtwork,
-	model.KindRadioArtwork,
-	model.KindMediaFileArtwork,
-}
-
 func (api *Router) addArtworkRoute(r chi.Router) {
 	r.Post("/artwork/{kind}/{id}/refresh", api.refreshArtwork())
 }
@@ -28,7 +20,7 @@ func (api *Router) refreshArtwork() http.HandlerFunc {
 		ctx := r.Context()
 		kind, _ := model.ParseKind(chi.URLParam(r, "kind"))
 		id := chi.URLParam(r, "id")
-		if !slices.Contains(refreshableArtworkKinds, kind) {
+		if !slices.Contains(artwork.RefreshableKinds, kind) {
 			http.Error(w, "invalid artwork kind", http.StatusBadRequest)
 			return
 		}

@@ -14,6 +14,8 @@ type User struct {
 	LastAccessAt *time.Time `structs:"last_access_at" json:"lastAccessAt"`
 	CreatedAt    time.Time  `structs:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time  `structs:"updated_at" json:"updatedAt"`
+	// Smart-playlist criteria JSON; matching songs are not sent to external scrobblers
+	ScrobbleFilter string `structs:"scrobble_filter" json:"scrobbleFilter"`
 
 	// Library associations (many-to-many relationship)
 	Libraries Libraries `structs:"-" json:"libraries,omitempty"`

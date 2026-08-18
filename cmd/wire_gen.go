@@ -225,6 +225,18 @@ func CreateArtworkWorker() *artwork.Worker {
 	return worker
 }
 
+func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.TracingResolver {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	broker := events.GetBroker()
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	agentsAgents := agents.GetAgents(dataStore, manager)
+	fFmpeg := ffmpeg.New()
+	tracingResolver := artwork.NewTracingResolver(dataStore, agentsAgents, fFmpeg, trace, live)
+	return tracingResolver
+}
+
 func getPluginManager() *plugins.Manager {
 	sqlDB := db.Db()
 	dataStore := persistence.New(sqlDB)

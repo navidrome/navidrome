@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -115,6 +116,25 @@ var _ = Describe("Acquisition → serve loop", func() {
 		folderRepo.result = []model.Folder{{Path: albumFolderPath, ImageFiles: []string{"cover.jpg"}}}
 		albumRepo.SetData(model.Albums{{ID: albumID, Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0}})
 	}
+
+	It("acquires and serves a cover whose format has no registered decoder (#5950)", func() {
+		libDir := GinkgoT().TempDir()
+		Expect(os.MkdirAll(filepath.Join(libDir, "an-album"), 0755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(libDir, "an-album", "cover.jxl"), jxlFixture, 0600)).To(Succeed())
+
+		conf.Server.CoverArtPriority = "cover.*"
+		libRepo.SetData(model.Libraries{{ID: 0, Path: libDir}})
+		folderRepo.result = []model.Folder{{Path: "an-album", ImageFiles: []string{"cover.jxl"}}}
+		albumRepo.SetData(model.Albums{{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0}})
+
+		bump("al", "al1")
+		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
+
+		img, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 0, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(img.Placeholder).To(BeFalse())
+		Expect(readAll(img)).To(Equal(jxlFixture))
+	})
 
 	It("acquires album folder art and serves the exact bytes under its hash", func() {
 		seedFolderAlbum("al1")
@@ -317,6 +337,9 @@ func mustGet(img *artwork.Image, err error) *artwork.Image {
 }
 
 // Raw bytes on purpose: encoding a GIF here would register image/gif in the test binary, masking
+// jxlFixture is a JPEG XL bare codestream header: a real image format, with no stdlib decoder.
+var jxlFixture = []byte{0xff, 0x0a, 0x00, 0x10, 0x00}
+
 // the production import the spec above guards.
 var gifFixture = []byte{
 	0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x04, 0x00, 0x04, 0x00, 0x80, 0x00,
