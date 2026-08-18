@@ -104,7 +104,10 @@ album's tracks — Feishin fetches them this way instead of `ParentId`); `GenreI
 genre's albums or tracks — Finamp's genre screen sends it the same way; `/Artists/AlbumArtists`
 and `MusicArtist` queries accept it too, matching artists credited on an album of that genre);
 `SearchTerm`;
-favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `SortBy`/`SortOrder`;
+`Filters` (`IsFavorite`, `IsFavoriteOrLikes`, `IsPlayed`, `IsUnplayed`) and the standalone
+`isFavorite`/`isPlayed` booleans it can also be expressed as — `Filters` wins when both are sent, as
+in Jellyfin; `Likes`, `Dislikes`, `IsFolder`, `IsNotFolder` and `IsResumable` have no Navidrome
+equivalent and are ignored; `SortBy`/`SortOrder`;
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
 returns direct children only (no tracks — no track is a library's direct child).
 

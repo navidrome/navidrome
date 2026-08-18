@@ -167,6 +167,8 @@ var _ = Describe("Browsing", func() {
 				sql, args, err := artistRepo.Options.Filters.ToSql()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sql).To(ContainSubstring("starred"))
+				// listArtists always ANDs notMissing, favorites filter or not.
+				Expect(sql).To(ContainSubstring("missing"))
 				Expect(args).To(ContainElement(true))
 			},
 			Entry("Filters=IsFavorite", "/Artists?Filters=IsFavorite",
@@ -176,18 +178,6 @@ var _ = Describe("Browsing", func() {
 			Entry("on /Artists/AlbumArtists", "/Artists/AlbumArtists?Filters=IsFavorite",
 				func(a *Router) http.HandlerFunc { return a.getAlbumArtists }),
 		)
-
-		It("still excludes missing artists when filtering by favorites", func() {
-			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
-			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Artists?Filters=IsFavorite", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
-			invoke(api.getArtists, w, r)
-			Expect(w.Code).To(Equal(http.StatusOK))
-			sql, _, err := artistRepo.Options.Filters.ToSql()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(sql).To(ContainSubstring("missing"))
-		})
 
 		It("404s a malformed ParentId instead of listing every library's artists", func() {
 			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)

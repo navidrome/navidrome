@@ -327,18 +327,6 @@ var _ = Describe("Items", func() {
 			Expect(albumRepo.Options.Max).To(Equal(3))
 		})
 
-		It("applies a starred filter when Filters=IsFavorite", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite", nil).WithContext(ctxUser())
-			invoke(api.getItems, w, r)
-			Expect(w.Code).To(Equal(http.StatusOK))
-			sql, _, err := albumRepo.Options.Filters.ToSql()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(sql).To(ContainSubstring("starred"))
-		})
-
 		DescribeTable("translates the Filters list and its standalone equivalents",
 			func(query string, wantSQL, notWantSQL []string) {
 				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
@@ -356,6 +344,9 @@ var _ = Describe("Items", func() {
 					Expect(sql).NotTo(ContainSubstring(not))
 				}
 			},
+			Entry("IsFavorite", "Filters=IsFavorite", []string{"starred"}, nil),
+			Entry("IsFavorite,IsUnplayed combined", "Filters=IsFavorite,IsUnplayed",
+				[]string{"starred", "play_count"}, nil),
 			Entry("IsUnplayed", "Filters=IsUnplayed", []string{"play_count"}, []string{"starred"}),
 			Entry("IsPlayed", "Filters=IsPlayed", []string{"play_count"}, []string{"starred"}),
 			Entry("IsFavoriteOrLikes is treated as favorites", "Filters=IsFavoriteOrLikes", []string{"starred"}, nil),
@@ -367,20 +358,12 @@ var _ = Describe("Items", func() {
 			// No Navidrome equivalent: these must be dropped, not half-applied.
 			Entry("Likes is ignored", "Filters=Likes", nil, []string{"starred", "play_count"}),
 			Entry("IsResumable is ignored", "Filters=IsResumable", nil, []string{"starred", "play_count"}),
+			// The artist-parent branch gets notMissing from filter.AlbumsByArtistID, not the default
+			// branch, so favorites must not be the only predicate left on it.
+			Entry("keeps missing excluded under an artist parent",
+				"Filters=IsFavorite&ArtistIds="+dto.EncodeID(testID("ar1")),
+				[]string{"starred", "missing"}, nil),
 		)
-
-		It("combines an unplayed filter with a favorites filter", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite,IsUnplayed", nil).WithContext(ctxUser())
-			invoke(api.getItems, w, r)
-			Expect(w.Code).To(Equal(http.StatusOK))
-			sql, _, err := albumRepo.Options.Filters.ToSql()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(sql).To(ContainSubstring("starred"))
-			Expect(sql).To(ContainSubstring("play_count"))
-		})
 
 		It("forwards SearchTerm to the repo's Search method", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)

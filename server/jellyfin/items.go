@@ -276,6 +276,20 @@ type itemsQuery struct {
 	studioIds        []string
 }
 
+// listParams reads the itemsQuery fields that come straight from query params, so a handler doing
+// its own scoping shares one parser with parseItemsQuery instead of hand-listing the fields it needs.
+func listParams(p *req.Values) itemsQuery {
+	return itemsQuery{
+		fields:    dto.ParseFields(p.Strings("fields")...),
+		search:    searchTerm(p),
+		sortBy:    p.StringOr("sortby", ""),
+		sortOrder: p.StringOr("sortorder", ""),
+		offset:    p.IntOr("startindex", 0),
+		limit:     p.IntOr("limit", 0),
+		filters:   parseItemFilters(p),
+	}
+}
+
 // parseItemsQuery also resolves the entity types (inferring them from the parent when
 // IncludeItemTypes is absent) and the library scope. Query keys are read lowercase because
 // normalizeQueryKeys folded them (Jellyfin binds case-insensitively). A non-empty id param that
@@ -306,22 +320,14 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	if !ok {
 		return itemsQuery{}, model.ErrNotFound
 	}
-	q := itemsQuery{
-		fields:    dto.ParseFields(p.Strings("fields")...),
-		ids:       ids,
-		rawTypes:  p.StringOr("includeitemtypes", ""),
-		search:    searchTerm(p),
-		sortBy:    p.StringOr("sortby", ""),
-		sortOrder: p.StringOr("sortorder", ""),
-		offset:    p.IntOr("startindex", 0),
-		limit:     p.IntOr("limit", 0),
-		filters:   parseItemFilters(p),
-		parentId:  parentId,
-		genreIds:  genreIds,
-		albumIds:  albumIds,
-		years:     parseYears(r),
-		studioIds: studioIds,
-	}
+	q := listParams(p)
+	q.ids = ids
+	q.rawTypes = p.StringOr("includeitemtypes", "")
+	q.parentId = parentId
+	q.genreIds = genreIds
+	q.albumIds = albumIds
+	q.years = parseYears(r)
+	q.studioIds = studioIds
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
 	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
 	albumArtistScope := firstNonEmpty(p.StringOr("albumartistids", ""), p.StringOr("artistids", ""))
@@ -759,13 +765,12 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 		return materialized(result(slice.Map(artists, toItem), total, opts.Offset)), nil
 	}
 
-	opts.Filters = notMissing
-	for _, pred := range q.filters.predicates() {
-		opts.Filters = squirrel.And{opts.Filters, pred}
-	}
+	filters := squirrel.And{notMissing}
+	filters = append(filters, q.filters.predicates()...)
 	if len(q.genreIds) > 0 {
-		opts.Filters = squirrel.And{opts.Filters, filter.ArtistsByGenreID(q.genreIds)}
+		filters = append(filters, filter.ArtistsByGenreID(q.genreIds))
 	}
+	opts.Filters = filters
 	opts = filter.ArtistsByRole(opts, role)
 	opts = filter.ApplyArtistLibraryFilter(opts, q.scopeIDs)
 	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
@@ -790,12 +795,8 @@ func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (ite
 // listPlaylists lists playlists visible to the current user. Visibility (public or owned) is
 // enforced by playlistRepository, not scopeIDs.
 func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
-	for _, pred := range q.filters.predicates() {
-		if opts.Filters == nil {
-			opts.Filters = pred
-		} else {
-			opts.Filters = squirrel.And{opts.Filters, pred}
-		}
+	if preds := q.filters.predicates(); len(preds) > 0 {
+		opts.Filters = squirrel.And(preds)
 	}
 	repo := api.ds.Playlist(ctx)
 	total, err := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
@@ -947,14 +948,21 @@ func result(items []dto.BaseItemDto, total, start int) dto.QueryResult {
 
 // applySort translates Jellyfin's SortBy/SortOrder into a valid model.QueryOptions sort key for the
 // item type. Clients send SortBy as a comma-separated fallback list (e.g. "DateCreated,SortName");
-// this uses the first recognized key. An unrecognized SortBy is left untouched (the repo's default),
-// not passed through raw where it could produce an invalid ORDER BY.
+// this uses the first recognized key; joining them instead would break every aliased mapping, since
+// sortMapping keys on the whole Sort string. An unrecognized SortBy is left untouched (the repo's
+// default), not passed through raw where it could produce an invalid ORDER BY.
 func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
+	matched := false
 	for key := range strings.SplitSeq(sortBy, ",") {
 		if col, ok := sortColumn(itemType, strings.TrimSpace(key)); ok {
-			opts.Sort = col
+			opts.Sort, matched = col, true
 			break
 		}
+	}
+	// A miss inside a fallback list is normal; no key matching at all is a silently ignored sort.
+	if !matched && sortBy != "" {
+		log.Debug("Jellyfin API: no usable SortBy key, falling back to the default order",
+			"itemType", itemType, "sortBy", sortBy)
 	}
 	if strings.EqualFold(order, "Descending") {
 		opts.Order = "desc"
@@ -978,7 +986,8 @@ var sortColumnsByType = map[string]map[string]string{
 		"dateplayed":        "play_date",
 		"communityrating":   "rating",
 		"random":            "random",
-		"runtime":           "duration", "runtimeticks": "duration",
+		"runtime":           "duration",
+		"runtimeticks":      "duration",
 		// Finamp's "Latest Releases" sorts by PremiereDate; "year" matches songs' ProductionYear.
 		"premieredate":   "year",
 		"productionyear": "year",
@@ -1002,8 +1011,9 @@ var sortColumnsByType = map[string]map[string]string{
 		"playcount":       "play_count",
 		"dateplayed":      "play_date",
 		"communityrating": "rating",
-		"runtime":         "duration", "runtimeticks": "duration",
-		"premieredate": "max_year", "productionyear": "max_year",
+		"runtime":         "duration",
+		"runtimeticks":    "duration",
+		"premieredate":    "max_year", "productionyear": "max_year",
 	},
 	"MusicGenre": {
 		"sortname": "name", "name": "name",
