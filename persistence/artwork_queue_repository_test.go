@@ -140,6 +140,29 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(all).To(Equal(int64(1)))
 	})
 
+	It("Enqueue clears a prior lifecycle's failure trace; EnqueuePreservingBackoff keeps it", func() {
+		// Fail an attempt so the queue row carries a failure trace.
+		Expect(repo.Enqueue(item("al", "t1", model.ArtworkPriorityScan))).To(Succeed())
+		backOff("al", "t1", time.Now().Add(-time.Hour))
+		got, _ := repo.DequeueBatch(10)
+		Expect(got).To(HaveLen(1))
+		future := time.Now().Add(48 * time.Hour)
+		Expect(repo.MarkFailedIfUnchanged("al", "t1", model.ImageTypePrimary, got[0].RetryAt, future, `[{"c":"read","o":"error"}]`)).To(Succeed())
+
+		// A continuation of the same lifecycle must retain the trace.
+		Expect(repo.EnqueuePreservingBackoff(item("al", "t1", model.ArtworkPriorityBump))).To(Succeed())
+		kept, err := repo.Get(model.KindAlbumArtwork, "t1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(kept.Trace).To(Equal(`[{"c":"read","o":"error"}]`))
+
+		// A fresh Enqueue resets attempts to 0, so the stale failure trace must be cleared with it.
+		Expect(repo.Enqueue(item("al", "t1", model.ArtworkPriorityScan))).To(Succeed())
+		fresh, err := repo.Get(model.KindAlbumArtwork, "t1", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(fresh.Attempts).To(BeZero())
+		Expect(fresh.Trace).To(Equal("[]"), "a fresh lifecycle has no last-attempt trace")
+	})
+
 	It("Enqueue restarts the retry budget an existing row had spent", func() {
 		Expect(repo.Enqueue(item("al", "e1", model.ArtworkPriorityScan))).To(Succeed())
 		backOff("al", "e1", time.Now().Add(-time.Hour))
