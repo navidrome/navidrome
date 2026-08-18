@@ -145,6 +145,15 @@ var _ = Describe("explainResult", func() {
 			"the worker retries an unreadable candidate instead of settling absent, so this is not a clean miss")
 	})
 
+	It("reports indeterminate when a processing stage errored after a candidate was found", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "cover.*", Outcome: "hit", Detail: "/music/cover.jpg"},
+			{Candidate: "store", Outcome: "error", Detail: "disk full"},
+		}
+		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
+			"a stage error is a processing failure the worker retries, not a definitive miss")
+	})
+
 	It("does not qualify a hit that an earlier unreadable candidate preceded", func() {
 		// chainState.try stamps only the external error onto a hit and drops the local one, so the
 		// worker settles this as found; warning about it would be a false alarm.

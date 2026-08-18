@@ -654,10 +654,10 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 		switch {
 		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
 			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
-		// The worker treats an unreadable local candidate exactly as it treats a failed external one:
-		// it retries instead of settling absent, so the verdict must not read as a clean miss.
-		case s.Outcome == artwork.OutcomeUnreadable:
-			return "indeterminate (a candidate exists but could not be read; the worker retries rather than settling absent)"
+		// A stage error or an unreadable candidate means a source was found but not processed; the
+		// worker retries rather than settling absent, so neither reads as a clean miss.
+		case s.Outcome == artwork.OutcomeError, s.Outcome == artwork.OutcomeUnreadable:
+			return "indeterminate (a candidate was found but could not be processed; the worker retries rather than settling absent)"
 		}
 	}
 	return "not resolved"
