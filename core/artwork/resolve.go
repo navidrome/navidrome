@@ -358,6 +358,9 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 			return res, nil
 		} else if isErr {
 			extErr = true
+			// Record it here: once album sampling adds its own steps, the processor's empty-trace
+			// fallback no longer fires, and the error that forced the retry would be lost.
+			traceFrom(ctx).add(TraceStep{Candidate: ExternalPrefix + "m3u", Outcome: OutcomeError})
 		}
 	}
 
