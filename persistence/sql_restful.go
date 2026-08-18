@@ -69,13 +69,11 @@ func (r *sqlRepository) parseRestOptions(ctx context.Context, options ...rest.Qu
 func (r sqlRepository) sanitizeSort(sort, order string) (string, string) {
 	if sort != "" {
 		sort = toSnakeCase(sort)
-		if mapped, ok := r.sortMappings[sort]; ok {
-			sort = mapped
-		} else {
-			if !r.isFieldWhiteListed(sort) {
-				log.Warn(r.ctx, "Ignoring sort not whitelisted", "sort", sort, "table", r.tableName)
-				sort = ""
-			}
+		// Validate only: buildSortOrder resolves the mapping later, and mapping here as well would
+		// feed sortMapping its own output.
+		if _, ok := r.sortMappings[sort]; !ok && !r.isFieldWhiteListed(sort) {
+			log.Warn(r.ctx, "Ignoring sort not whitelisted", "sort", sort, "table", r.tableName)
+			sort = ""
 		}
 	}
 	if order != "" {

@@ -152,7 +152,7 @@ func (r sqlRepository) sortMapping(sort string) string {
 	}
 	// A comma list resolves only when every part is a known key, so callers passing raw column
 	// lists — some carrying their own direction — keep falling through to the column names.
-	if parts := strings.Split(sort, ","); len(parts) > 1 {
+	if parts := strings.FieldsFunc(sort, splitFunc(',')); len(parts) > 1 {
 		mapped := make([]string, 0, len(parts))
 		for _, part := range parts {
 			mapping, ok := r.lookupSortMapping(strings.TrimSpace(part))
