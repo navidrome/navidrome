@@ -621,6 +621,38 @@ var _ = Describe("Items", func() {
 				Expect(mfRepo.Options.Sort).To(Equal("play_date"))
 			})
 
+			It("maps SortBy=Runtime to the duration column for albums", func() {
+				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal("duration"))
+			})
+
+			// Finamp's track sort sends Runtime,AlbumArtist,Album,SortName: unless Runtime resolves, the
+			// first-recognized-key rule silently sorts by album artist instead.
+			It("maps Finamp's Runtime-led track SortBy to duration, not album_artist", func() {
+				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=Runtime,AlbumArtist,Album,SortName", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(mfRepo.Options.Sort).To(Equal("duration"))
+			})
+
+			It("maps SortBy=RunTimeTicks to the duration column", func() {
+				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=RunTimeTicks", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal("duration"))
+			})
+
 			It("uses the first recognized key in a comma-separated SortBy list", func() {
 				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})

@@ -944,6 +944,7 @@ var sortColumnsByType = map[string]map[string]string{
 		"dateplayed":        "play_date",
 		"communityrating":   "rating",
 		"random":            "random",
+		"runtime":           "duration", "runtimeticks": "duration",
 		// Finamp's "Latest Releases" sorts by PremiereDate; "year" matches songs' ProductionYear.
 		"premieredate":   "year",
 		"productionyear": "year",
@@ -967,7 +968,8 @@ var sortColumnsByType = map[string]map[string]string{
 		"playcount":       "play_count",
 		"dateplayed":      "play_date",
 		"communityrating": "rating",
-		"premieredate":    "max_year", "productionyear": "max_year",
+		"runtime":         "duration", "runtimeticks": "duration",
+		"premieredate": "max_year", "productionyear": "max_year",
 	},
 	"MusicGenre": {
 		"sortname": "name", "name": "name",
