@@ -31,10 +31,49 @@ func searchTerm(p *req.Values) string {
 	return strings.TrimSpace(p.StringOr("searchterm", ""))
 }
 
-// parseFavOnly reads the two ways clients express "favorites only": Filters=IsFavorite and the
-// standalone isFavorite=true param (Finamp's "Favourite tracks" widget uses the latter).
-func parseFavOnly(p *req.Values) bool {
-	return strings.Contains(p.StringOr("filters", ""), "IsFavorite") || p.BoolOr("isfavorite", false)
+// itemFilters is the parsed Filters=... list together with the standalone isFavorite/isPlayed params
+// clients may send instead. A nil field means the client asked for no filtering on that dimension.
+type itemFilters struct {
+	favorite *bool
+	played   *bool
+}
+
+// parseItemFilters reads the standalone params first and lets the Filters list win, matching real
+// Jellyfin. Tokens with no Navidrome equivalent (Likes, IsFolder, IsResumable) are dropped.
+func parseItemFilters(p *req.Values) itemFilters {
+	f := itemFilters{favorite: p.BoolPtr("isfavorite"), played: p.BoolPtr("isplayed")}
+	for token := range strings.SplitSeq(p.StringOr("filters", ""), ",") {
+		switch strings.TrimSpace(token) {
+		case "IsFavorite", "IsFavoriteOrLikes":
+			f.favorite = new(true)
+		case "IsPlayed":
+			f.played = new(true)
+		case "IsUnplayed":
+			f.played = new(false)
+		}
+	}
+	return f
+}
+
+// predicates renders the filters as annotation-column conditions. The negative cases have to match
+// NULL as well: annotations are LEFT JOINed, so an item nobody has touched has no row at all.
+func (f itemFilters) predicates() []squirrel.Sqlizer {
+	var out []squirrel.Sqlizer
+	if f.favorite != nil {
+		if *f.favorite {
+			out = append(out, squirrel.Eq{"starred": true})
+		} else {
+			out = append(out, squirrel.Or{squirrel.Eq{"starred": nil}, squirrel.Eq{"starred": false}})
+		}
+	}
+	if f.played != nil {
+		if *f.played {
+			out = append(out, squirrel.Gt{"play_count": 0})
+		} else {
+			out = append(out, squirrel.Or{squirrel.Eq{"play_count": nil}, squirrel.Eq{"play_count": 0}})
+		}
+	}
+	return out
 }
 
 func (api *Router) getItems(w http.ResponseWriter, r *http.Request) {
@@ -220,7 +259,7 @@ type itemsQuery struct {
 	sortOrder string
 	offset    int
 	limit     int
-	favOnly   bool
+	filters   itemFilters
 	// parentId scopes the query. entityParent is the same id only when it names an entity (an artist
 	// for MusicAlbum, an album for Audio) rather than a library.
 	parentId        string
@@ -276,7 +315,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 		sortOrder: p.StringOr("sortorder", ""),
 		offset:    p.IntOr("startindex", 0),
 		limit:     p.IntOr("limit", 0),
-		favOnly:   parseFavOnly(p),
+		filters:   parseItemFilters(p),
 		parentId:  parentId,
 		genreIds:  genreIds,
 		albumIds:  albumIds,
@@ -625,9 +664,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	if len(q.studioIds) > 0 {
 		filters = append(filters, filter.ByStudioID(q.studioIds))
 	}
-	if q.favOnly {
-		filters = append(filters, filter.ByStarred().Filters)
-	}
+	filters = append(filters, q.filters.predicates()...)
 	opts.Filters = filters
 	opts = filter.ApplyLibraryFilter(opts, q.scopeIDs)
 
@@ -672,9 +709,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	if len(q.studioIds) > 0 {
 		filters = append(filters, filter.ByStudioID(q.studioIds))
 	}
-	if q.favOnly {
-		filters = append(filters, filter.ByStarred().Filters)
-	}
+	filters = append(filters, q.filters.predicates()...)
 	opts.Filters = filters
 	opts = filter.ApplyLibraryFilter(opts, q.scopeIDs)
 
@@ -725,8 +760,8 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 	}
 
 	opts.Filters = notMissing
-	if q.favOnly {
-		opts.Filters = squirrel.And{opts.Filters, filter.ArtistsByStarred().Filters}
+	for _, pred := range q.filters.predicates() {
+		opts.Filters = squirrel.And{opts.Filters, pred}
 	}
 	if len(q.genreIds) > 0 {
 		opts.Filters = squirrel.And{opts.Filters, filter.ArtistsByGenreID(q.genreIds)}
@@ -755,12 +790,11 @@ func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (ite
 // listPlaylists lists playlists visible to the current user. Visibility (public or owned) is
 // enforced by playlistRepository, not scopeIDs.
 func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
-	if q.favOnly {
-		starred := squirrel.Eq{"starred": true}
+	for _, pred := range q.filters.predicates() {
 		if opts.Filters == nil {
-			opts.Filters = starred
+			opts.Filters = pred
 		} else {
-			opts.Filters = squirrel.And{opts.Filters, starred}
+			opts.Filters = squirrel.And{opts.Filters, pred}
 		}
 	}
 	repo := api.ds.Playlist(ctx)

@@ -23,6 +23,19 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
+// imageSize picks the tighter of Jellyfin's two bounds, because Navidrome resizes on a single
+// dimension: reading only MaxWidth serves the full-size original to a client that sent MaxHeight.
+func imageSize(maxWidth, maxHeight int) int {
+	switch {
+	case maxWidth <= 0:
+		return max(maxHeight, 0)
+	case maxHeight <= 0:
+		return maxWidth
+	default:
+		return min(maxWidth, maxHeight)
+	}
+}
+
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	// Public endpoint, like real Jellyfin's image routes: clients fetch cover URLs without credentials
 	// and item ids are unguessable, so resolution runs elevated to bypass the visibility filter.
@@ -31,7 +44,9 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
+	maxWidth, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
+	maxHeight, _ := strconv.Atoi(r.URL.Query().Get("maxheight"))
+	size := imageSize(maxWidth, maxHeight)
 
 	artID := api.resolveArtworkID(ctx, itemId)
 	img, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
