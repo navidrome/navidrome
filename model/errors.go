@@ -9,4 +9,7 @@ var (
 	ErrExpired       = errors.New("access expired")
 	ErrNotAvailable  = errors.New("functionality not available")
 	ErrValidation    = errors.New("validation error")
+
+	// ErrPlaylistNotEditable: tracks are server-managed, so nobody can edit them (not an ACL failure).
+	ErrPlaylistNotEditable = errors.New("playlist tracks are not editable")
 )
