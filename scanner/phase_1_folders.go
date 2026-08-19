@@ -235,11 +235,17 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		if !foundInDB || p.state.fullScan {
 			filesToImport[fullPath] = dbTrack
 		} else {
-			info, err := af.Info()
-			if err != nil {
-				log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
-				p.state.sendWarning(fmt.Sprintf("Error getting file info for %s/%s: %v", entry.path, af.Name(), err))
-				return entry, nil
+			info, ok := entry.fileInfos[afPath]
+			if !ok {
+				// Fall back to a live stat only if the entry was not captured during the walk
+				// (e.g. a symlink target resolved later), preserving prior behavior.
+				var err error
+				info, err = af.Info()
+				if err != nil {
+					log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
+					p.state.sendWarning(fmt.Sprintf("Error getting file info for %s/%s: %v", entry.path, af.Name(), err))
+					return entry, nil
+				}
 			}
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
 				filesToImport[fullPath] = dbTrack
