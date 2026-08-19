@@ -109,7 +109,7 @@ func (f *folderEntry) hash() string {
 		h,
 		"%s:%d:%d:%s",
 		f.modTime.UTC(),
-		len(f.playlistFiles),
+		len(f.playlistFiles), // redundant with the loop below, but dropping it re-hashes every folder
 		f.numSubFolders,
 		f.imagesUpdatedAt.UTC(),
 	)
@@ -138,9 +138,8 @@ func (f *folderEntry) hash() string {
 		}
 	}
 
-	// Include playlist files with their size and modtime, so an in-place edit
-	// (which changes at least the size) is detected even when the containing
-	// folder's mtime is preserved (rsync -a) or is not the newest in the folder.
+	// Include playlist files, so a content edit is detected even when the folder's
+	// mtime is preserved (rsync -a) or the playlist is not the newest file.
 	for _, key := range playlistKeys {
 		_, _ = io.WriteString(h, key)
 		if info, err := f.playlistFiles[key].Info(); err == nil {
