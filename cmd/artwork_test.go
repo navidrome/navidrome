@@ -54,6 +54,57 @@ var _ = Describe("parseArtworkKind", func() {
 	})
 })
 
+var _ = Describe("resolveArtworkTargets", func() {
+	var ds *tests.MockDataStore
+	ctx := context.Background()
+
+	BeforeEach(func() {
+		artists := tests.CreateMockArtistRepo()
+		artists.SetData(model.Artists{{ID: "artist1"}})
+		ds = &tests.MockDataStore{MockedArtist: artists}
+	})
+
+	It("accepts the explicit <kind> <id> leader shared by every id", func() {
+		targets, err := resolveArtworkTargets(ctx, ds, []string{"al", "x", "y"}, explainKinds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(targets).To(Equal([]model.ArtworkID{
+			{Kind: model.KindAlbumArtwork, ID: "x"}, {Kind: model.KindAlbumArtwork, ID: "y"}}))
+	})
+
+	It("rejects an explicit kind the command does not accept", func() {
+		_, err := resolveArtworkTargets(ctx, ds, []string{"dc", "x"}, artwork.RefreshableKinds)
+		Expect(err).To(MatchError(ContainSubstring("invalid kind")))
+	})
+
+	It("resolves a bare id by looking it up across tables", func() {
+		targets, err := resolveArtworkTargets(ctx, ds, []string{"artist1"}, explainKinds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(targets).To(Equal([]model.ArtworkID{{Kind: model.KindArtistArtwork, ID: "artist1"}}))
+	})
+
+	It("reads the kind from a full artwork id prefix without a database lookup", func() {
+		targets, err := resolveArtworkTargets(ctx, ds, []string{"al-realalbum"}, explainKinds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(targets).To(Equal([]model.ArtworkID{{Kind: model.KindAlbumArtwork, ID: "realalbum"}}))
+	})
+
+	It("strips the hash suffix from a full artwork id", func() {
+		targets, err := resolveArtworkTargets(ctx, ds, []string{"al-realalbum_0123456789abcdef"}, explainKinds)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(targets).To(Equal([]model.ArtworkID{{Kind: model.KindAlbumArtwork, ID: "realalbum"}}))
+	})
+
+	It("rejects a full artwork id whose kind the command does not accept", func() {
+		_, err := resolveArtworkTargets(ctx, ds, []string{"dc-realalbum:2"}, artwork.RefreshableKinds)
+		Expect(err).To(MatchError(ContainSubstring("invalid kind")))
+	})
+
+	It("errors when an id matches nothing and has no kind prefix", func() {
+		_, err := resolveArtworkTargets(ctx, ds, []string{"nope"}, explainKinds)
+		Expect(err).To(MatchError(ContainSubstring("could not determine kind")))
+	})
+})
+
 var _ = Describe("explainResult", func() {
 	It("reports the winning source", func() {
 		steps := []artwork.TraceStep{{Candidate: "folder", Outcome: "hit", Detail: "/music/a.jpg"}}
@@ -337,10 +388,10 @@ var _ = Describe("discArtworkName", func() {
 })
 
 var _ = Describe("artwork refresh command", func() {
-	It("requires at least a kind and one id", func() {
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar"})).To(HaveOccurred())
+	It("requires at least one argument", func() {
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{})).To(HaveOccurred())
+		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"id1"})).ToNot(HaveOccurred())
 		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1"})).ToNot(HaveOccurred())
-		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{"ar", "id1", "id2"})).ToNot(HaveOccurred())
 	})
 })
 
@@ -873,7 +924,8 @@ var _ = Describe("refreshItems", func() {
 		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: model.KindAlbumArtwork.Prefix(),
 			ItemID: "al-1", ImageType: model.ImageTypePrimary, Hash: "abc123"})).To(Succeed())
 
-		Expect(refreshItems(ctx, ds, model.KindAlbumArtwork, []string{"al-1", "al-3"}, &out)).To(BeZero())
+		Expect(refreshItems(ctx, ds, []model.ArtworkID{
+			{Kind: model.KindAlbumArtwork, ID: "al-1"}, {Kind: model.KindAlbumArtwork, ID: "al-3"}}, &out)).To(BeZero())
 
 		_, err := art.GetItemArtwork(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
@@ -884,7 +936,7 @@ var _ = Describe("refreshItems", func() {
 	})
 
 	It("skips an id that does not exist instead of queuing it", func() {
-		Expect(refreshItems(ctx, ds, model.KindAlbumArtwork, []string{"al-2"}, &out)).To(Equal(1))
+		Expect(refreshItems(ctx, ds, []model.ArtworkID{{Kind: model.KindAlbumArtwork, ID: "al-2"}}, &out)).To(Equal(1))
 
 		_, err := queue.Get(model.KindAlbumArtwork, "al-2", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "a typo must not leave an orphan queue row")
@@ -892,8 +944,8 @@ var _ = Describe("refreshItems", func() {
 	})
 
 	It("continues past a failing id and counts the failures", func() {
-		Expect(refreshItems(ctx, ds, model.KindAlbumArtwork,
-			[]string{"al-1", "al-2", "al-3"}, &out)).To(Equal(1))
+		Expect(refreshItems(ctx, ds, []model.ArtworkID{{Kind: model.KindAlbumArtwork, ID: "al-1"},
+			{Kind: model.KindAlbumArtwork, ID: "al-2"}, {Kind: model.KindAlbumArtwork, ID: "al-3"}}, &out)).To(Equal(1))
 
 		Expect(out.String()).To(Equal("al/al-1: queued\nal/al-3: queued\n"),
 			"the ids after a failure are still refreshed")

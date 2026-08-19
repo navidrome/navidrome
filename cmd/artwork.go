@@ -59,31 +59,27 @@ var artworkCmd = &cobra.Command{
 }
 
 var artworkExplainCmd = &cobra.Command{
-	Use:   "explain <kind> <id>",
+	Use:   "explain [<kind>] <id>",
 	Short: "Explain why an item's artwork resolved the way it did",
 	Long: "Explain why an item's artwork resolved the way it did.\n\n" +
+		"The item can be given as a bare id, a full artwork id (e.g. al-<id>), or a <kind> <id> pair.\n" +
 		"<kind> is one of: " + kindPrefixes(explainKinds) + ".\n" +
 		"A disc artwork id is the album id and the disc number, joined by a colon: <albumID>:2",
-	Args: cobra.ExactArgs(2),
+	Args: cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
-		kind, err := parseArtworkKind(args[0], explainKinds)
-		if err != nil {
-			log.Fatal(cmd.Context(), err)
-		}
-		runExplain(cmd.Context(), kind, args[1])
+		runExplain(cmd.Context(), args)
 	},
 }
 
 var artworkRefreshCmd = &cobra.Command{
-	Use:   "refresh <kind> <id>...",
+	Use:   "refresh [<kind>] <id>...",
 	Short: "Clear an item's artwork state and re-resolve it",
-	Args:  cobra.MinimumNArgs(2),
+	Long: "Clear an item's artwork state and re-resolve it.\n\n" +
+		"Each item can be given as a bare id, a full artwork id (e.g. al-<id>), or a shared\n" +
+		"<kind> <id>... leader. <kind> is one of: " + kindPrefixes(artwork.RefreshableKinds) + ".",
+	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		kind, err := parseArtworkKind(args[0], artwork.RefreshableKinds)
-		if err != nil {
-			log.Fatal(cmd.Context(), err)
-		}
-		runRefresh(cmd.Context(), kind, args[1:])
+		runRefresh(cmd.Context(), args)
 	},
 }
 
@@ -499,19 +495,24 @@ func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, t
 	}
 }
 
-func runRefresh(ctx context.Context, kind model.Kind, ids []string) {
+func runRefresh(ctx context.Context, args []string) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	if failed := refreshItems(ctx, ds, kind, ids, os.Stdout); failed > 0 {
-		log.Fatal(ctx, "Failed to refresh artwork", "kind", kind, "failed", failed, "total", len(ids))
+	targets, err := resolveArtworkTargets(ctx, ds, args, artwork.RefreshableKinds)
+	if err != nil {
+		log.Fatal(ctx, err)
+	}
+	if failed := refreshItems(ctx, ds, targets, os.Stdout); failed > 0 {
+		log.Fatal(ctx, "Failed to refresh artwork", "failed", failed, "total", len(targets))
 	}
 }
 
-// refreshItems keeps going after a failure — the ids are independent — and returns how many failed.
-func refreshItems(ctx context.Context, ds model.DataStore, kind model.Kind, ids []string, out io.Writer) int {
+// refreshItems keeps going after a failure — the items are independent — and returns how many failed.
+func refreshItems(ctx context.Context, ds model.DataStore, targets []model.ArtworkID, out io.Writer) int {
 	var failed int
-	for _, id := range ids {
+	for _, t := range targets {
+		kind, id := t.Kind, t.ID
 		// artwork.Refresh would happily queue an id that does not exist, orphaning a queue row.
 		if _, err := artworkItemName(ctx, ds, kind, id); err != nil {
 			log.Error(ctx, "Item not found", "kind", kind, "id", id, err)
@@ -544,7 +545,52 @@ func parseArtworkKind(s string, valid []model.Kind) (model.Kind, error) {
 	if ok && slices.Contains(valid, kind) {
 		return kind, nil
 	}
-	return kind, fmt.Errorf("invalid kind %q, expected one of: %s", s, kindPrefixes(valid))
+	return kind, invalidKindErr(s, valid)
+}
+
+func invalidKindErr(s string, valid []model.Kind) error {
+	return fmt.Errorf("invalid kind %q, expected one of: %s", s, kindPrefixes(valid))
+}
+
+// resolveArtworkTargets resolves explain/refresh positional args into artwork ids, accepting a
+// shared "<kind> <id>..." leader or self-describing args (a bare id, or a full artwork id).
+func resolveArtworkTargets(ctx context.Context, ds model.DataStore, args []string, valid []model.Kind) ([]model.ArtworkID, error) {
+	if kind, ok := model.ParseKind(args[0]); ok && len(args) > 1 {
+		if !slices.Contains(valid, kind) {
+			return nil, invalidKindErr(args[0], valid)
+		}
+		return slice.Map(args[1:], func(id string) model.ArtworkID {
+			return model.ArtworkID{Kind: kind, ID: id}
+		}), nil
+	}
+	targets := make([]model.ArtworkID, 0, len(args))
+	for _, arg := range args {
+		target, err := artworkKindAndID(ctx, ds, arg)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.Contains(valid, target.Kind) {
+			return nil, invalidKindErr(target.Kind.Prefix(), valid)
+		}
+		targets = append(targets, target)
+	}
+	return targets, nil
+}
+
+// artworkKindAndID resolves one self-describing argument: a full artwork id (al-<id>) takes its kind
+// from the prefix, a bare id is looked up. Entity ids never start with "<kind>-", so no collision.
+func artworkKindAndID(ctx context.Context, ds model.DataStore, arg string) (model.ArtworkID, error) {
+	if artID, err := model.ParseArtworkID(arg); err == nil && artID.ID != "" {
+		return model.ArtworkID{Kind: artID.Kind, ID: artID.ID}, nil
+	}
+	kind, err := model.GetEntityKindByID(ctx, ds, arg)
+	if errors.Is(err, model.ErrNotFound) {
+		return model.ArtworkID{}, fmt.Errorf("could not determine kind for %q; pass an explicit <kind>", arg)
+	}
+	if err != nil {
+		return model.ArtworkID{}, err
+	}
+	return model.ArtworkID{Kind: kind, ID: arg}, nil
 }
 
 // explainAgents accounts for every configured agent: one the CLI cannot construct (a plugin, or a
@@ -721,9 +767,18 @@ func formatTime(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
-func runExplain(ctx context.Context, kind model.Kind, id string) {
+func runExplain(ctx context.Context, args []string) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
+
+	targets, err := resolveArtworkTargets(ctx, ds, args, explainKinds)
+	if err != nil {
+		log.Fatal(ctx, err)
+	}
+	if len(targets) != 1 {
+		log.Fatal(ctx, "explain takes a single item; pass one id or a <kind> <id> pair")
+	}
+	kind, id := targets[0].Kind, targets[0].ID
 
 	name, err := artworkItemName(ctx, ds, kind, id)
 	if err != nil {
