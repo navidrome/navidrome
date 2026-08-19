@@ -64,7 +64,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
 		return nil, err
 	}
-	pls.ImportedHash = id.Encode(hasher.Sum128().Bytes())
+	pls.ImportedHash = fingerprint(hasher)
 	if err := s.updatePlaylist(ctx, pls, sync); err != nil {
 		return nil, err
 	}
@@ -155,8 +155,12 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	if err != nil {
 		return pls, err
 	}
-	pls.ImportedHash = id.Encode(hasher.Sum128().Bytes())
+	pls.ImportedHash = fingerprint(hasher)
 	return pls, nil
+}
+
+func fingerprint(h *xxh3.Hasher) string {
+	return id.Encode(h.Sum128().Bytes())
 }
 
 // findByPathNormalized looks up a playlist by path, trying both NFC and NFD Unicode
