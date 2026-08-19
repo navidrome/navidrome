@@ -2,7 +2,6 @@ package playlists_test
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,10 +15,12 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/zeebo/xxh3"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -1223,5 +1224,5 @@ func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.F
 }
 
 func hashOf(content string) string {
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
+	return id.Encode(xxh3.Hash128([]byte(content)).Bytes())
 }

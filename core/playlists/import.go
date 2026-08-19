@@ -2,8 +2,6 @@ package playlists
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -14,8 +12,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/ioutils"
+	"github.com/zeebo/xxh3"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -59,12 +59,12 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	}
 	defer file.Close()
 
-	hasher := sha256.New()
+	hasher := xxh3.New()
 	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
 	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
 		return nil, err
 	}
-	pls.ImportedHash = hex.EncodeToString(hasher.Sum(nil))
+	pls.ImportedHash = id.Encode(hasher.Sum128().Bytes())
 	if err := s.updatePlaylist(ctx, pls, sync); err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	defer file.Close()
 
 	// Hash the bytes the parser consumes, giving every imported playlist a content fingerprint
-	hasher := sha256.New()
+	hasher := xxh3.New()
 	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
@@ -155,7 +155,7 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	if err != nil {
 		return pls, err
 	}
-	pls.ImportedHash = hex.EncodeToString(hasher.Sum(nil))
+	pls.ImportedHash = id.Encode(hasher.Sum128().Bytes())
 	return pls, nil
 }
 
