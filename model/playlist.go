@@ -42,6 +42,12 @@ func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
 }
 
+// TracksEditable reports whether a user may modify the track list: false for smart
+// playlists (tracks come from rules) and synced playlists (tracks come from the file).
+func (pls Playlist) TracksEditable() bool {
+	return !pls.IsSmartPlaylist() && !pls.Sync
+}
+
 // RefreshDelay returns the playlist's own refresh window when set, falling
 // back to the global SmartPlaylistRefreshDelay.
 func (pls Playlist) RefreshDelay() time.Duration {

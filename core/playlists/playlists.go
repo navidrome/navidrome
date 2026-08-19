@@ -130,7 +130,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 			if err != nil {
 				return err
 			}
-			if pls.IsSmartPlaylist() {
+			if !pls.TracksEditable() {
 				return model.ErrNotAuthorized
 			}
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
@@ -230,13 +230,13 @@ func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playli
 	return pls, nil
 }
 
-// checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
+// checkTracksEditable verifies the user owns the playlist and its tracks are editable.
 func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
 	pls, err := s.checkWritable(ctx, playlistID)
 	if err != nil {
 		return nil, err
 	}
-	if pls.IsSmartPlaylist() {
+	if !pls.TracksEditable() {
 		return nil, model.ErrNotAuthorized
 	}
 	return pls, nil

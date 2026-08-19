@@ -102,6 +102,7 @@ var _ = Describe("Playlists", func() {
 				"pls-2": {ID: "pls-2", Name: "Other's", OwnerID: "other-user"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-synced": {ID: "pls-synced", Name: "Synced", OwnerID: "user-1", Sync: true},
 			}
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
@@ -147,6 +148,12 @@ var _ = Describe("Playlists", func() {
 			_, err := ps.Create(ctx, "pls-smart", "", []string{"song-1"})
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
+
+		It("denies replacing tracks on a synced playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.Create(ctx, "pls-synced", "", []string{"song-1"})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
 	})
 
 	Describe("Update", func() {
@@ -159,6 +166,7 @@ var _ = Describe("Playlists", func() {
 				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+				"pls-synced": {ID: "pls-synced", Name: "Synced", OwnerID: "user-1", Sync: true},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
@@ -205,6 +213,18 @@ var _ = Describe("Playlists", func() {
 			err := ps.Update(ctx, "pls-smart", new("Updated Smart"), nil, nil, nil, nil)
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("denies adding tracks to a synced playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Update(ctx, "pls-synced", nil, nil, nil, []string{"song-1"}, nil)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("allows metadata updates on a synced playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			err := ps.Update(ctx, "pls-synced", new("Renamed Synced"), nil, nil, nil, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
 	Describe("AddTracks", func() {
@@ -216,7 +236,8 @@ var _ = Describe("Playlists", func() {
 				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
-				"pls-other": {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
+				"pls-other":  {ID: "pls-other", Name: "Other's", OwnerID: "other-user"},
+				"pls-synced": {ID: "pls-synced", Name: "Synced", OwnerID: "user-1", Sync: true},
 			}
 			mockPlsRepo.TracksRepo = mockTracks
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
@@ -246,6 +267,12 @@ var _ = Describe("Playlists", func() {
 		It("denies editing smart playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "pls-smart", []string{"song-1"})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+		})
+
+		It("denies editing synced playlists", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.AddTracks(ctx, "pls-synced", []string{"song-1"})
 			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 
