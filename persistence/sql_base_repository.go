@@ -97,6 +97,8 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 }
 
 // setSortMappings sets the mappings for the sort fields. If the sort field is not in the map, it will be used as is.
+// This applies per comma-separated part, so a key added here also defines that bare name wherever a
+// caller uses it inside a sort list.
 //
 // If PreferSortTags is enabled, it will map the order fields to the corresponding sort expression,
 // which gives precedence to sort tags.
@@ -147,17 +149,37 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 
 // TODO Change all sortMappings to have a consistent case
 func (r sqlRepository) sortMapping(sort string) string {
-	if mapping, ok := r.sortMappings[sort]; ok {
+	if mapping, _, ok := r.lookupSortMapping(sort); ok {
 		return mapping
 	}
-	if mapping, ok := r.sortMappings[toCamelCase(sort)]; ok {
-		return mapping
+	// Each part of a comma list is resolved on its own, so a mix of mapped keys and plain columns
+	// keeps the mappings the recognized parts have.
+	parts := strings.FieldsFunc(sort, splitFunc(','))
+	mapped := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if partMapping, _, ok := r.lookupSortMapping(part); ok {
+			part = partMapping
+		} else {
+			part = toSnakeCase(part)
+		}
+		mapped = append(mapped, part)
 	}
-	sort = toSnakeCase(sort)
-	if mapping, ok := r.sortMappings[sort]; ok {
-		return mapping
+	return strings.Join(mapped, ", ")
+}
+
+// lookupSortMapping also returns the snake_case form when it had to derive one, so a caller's
+// fallback doesn't recompute it: toSnakeCase runs two regexps.
+func (r sqlRepository) lookupSortMapping(sort string) (mapping, snakeCased string, ok bool) {
+	if mapping, ok = r.sortMappings[sort]; ok {
+		return mapping, sort, true
 	}
-	return sort
+	if mapping, ok = r.sortMappings[toCamelCase(sort)]; ok {
+		return mapping, "", true
+	}
+	snakeCased = toSnakeCase(sort)
+	mapping, ok = r.sortMappings[snakeCased]
+	return mapping, snakeCased, ok
 }
 
 func (r sqlRepository) buildSortOrder(sort, order string) string {

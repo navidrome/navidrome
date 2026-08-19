@@ -30,14 +30,16 @@ import (
 
 type fakeArtwork struct {
 	artwork.Artwork
-	recvId  string
-	recvCtx context.Context
-	data    []byte
-	hash    string
+	recvId   string
+	recvSize int
+	recvCtx  context.Context
+	data     []byte
+	hash     string
 }
 
 func (f *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*artwork.Image, error) {
 	f.recvId = id
+	f.recvSize = size
 	f.recvCtx = ctx
 	data := f.data
 	if data == nil {
@@ -61,6 +63,29 @@ func newImageRequest(itemId string) (*httptest.ResponseRecorder, *http.Request) 
 }
 
 var _ = Describe("Images", func() {
+	// Real Jellyfin fits the image inside either bound, so a client that sends only MaxHeight must
+	// still get a resized image rather than the full-size original.
+	DescribeTable("derives the requested size from MaxWidth or MaxHeight",
+		func(query string, wantSize int) {
+			ds := &tests.MockDataStore{}
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			fa := &fakeArtwork{}
+			api := &Router{ds: ds, artwork: fa}
+
+			w, r := newImageRequest(dto.EncodeID(testID("a1")))
+			r.URL.RawQuery = query
+			api.getItemImage(w, r)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(fa.recvSize).To(Equal(wantSize))
+		},
+		Entry("MaxWidth only", "maxwidth=300", 300),
+		Entry("MaxHeight only", "maxheight=300", 300),
+		Entry("both, smaller bound wins", "maxwidth=200&maxheight=300", 200),
+		Entry("both, smaller bound wins regardless of order", "maxwidth=300&maxheight=200", 200),
+		Entry("neither", "", 0),
+	)
+
 	It("streams album artwork", func() {
 		ds := &tests.MockDataStore{}
 		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
