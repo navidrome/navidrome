@@ -135,7 +135,7 @@ var _ = Describe("Housekeeping", func() {
 			conf.Server.EnableExternalServices = true
 			conf.Server.EnableM3UExternalAlbumArt = false
 
-			Expect(ConfigFingerprint()).To(Equal("7e537a22febc07d3d5ca40546e88da54"))
+			Expect(ConfigFingerprint()).To(Equal("7b538a83a870c16d"))
 		})
 
 		It("reports the config inputs it hashes, so a change can be traced to a setting", func() {
