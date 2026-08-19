@@ -52,7 +52,7 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 			}
 
 			// Recursively walk this folder and all its children
-			err = walkFolder(ctx, job, folderPath, checker, results)
+			err = walkFolder(ctx, job, newDirRef(job.fs, folderPath), checker, results, map[string]struct{}{})
 			if err != nil {
 				log.Error(ctx, "Scanner: Error walking target folder", "path", folderPath, err)
 				continue
@@ -63,28 +63,42 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 	return results, nil
 }
 
-func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker *IgnoreChecker, results chan<- *folderEntry) error {
+// dirRef is a folder to be walked: its path in the library's filesystem and its resolved
+// path, with all symlinks followed. The resolved path is the folder's identity: two paths
+// that resolve to the same one are the same folder on disk, which is how symlink cycles
+// are detected while walking (see #5334).
+type dirRef struct {
+	path     string
+	realPath string
+}
+
+func walkFolder(ctx context.Context, job *scanJob, dir dirRef, checker *IgnoreChecker, results chan<- *folderEntry, branch map[string]struct{}) error {
 	// Push patterns for this folder onto the stack
-	_ = checker.Push(ctx, currentFolder)
+	_ = checker.Push(ctx, dir.path)
 	defer checker.Pop() // Pop patterns when leaving this folder
 
-	folder, children, err := loadDir(ctx, job, currentFolder, checker)
+	// Keep track of the folders in the current branch, so any symlink pointing back into
+	// one of them is recognized as a cycle and skipped
+	branch[dir.realPath] = struct{}{}
+	defer delete(branch, dir.realPath)
+
+	folder, children, err := loadDir(ctx, job, dir, checker, branch)
 	if err != nil {
-		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
+		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", dir.path, err)
 		return nil
 	}
 	for _, c := range children {
-		err := walkFolder(ctx, job, c, checker, results)
+		err := walkFolder(ctx, job, c, checker, results, branch)
 		if err != nil {
 			return err
 		}
 	}
 
-	dir := path.Clean(currentFolder)
-	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
+	cleanPath := path.Clean(dir.path)
+	log.Trace(ctx, "Scanner: Found directory", " path", cleanPath, "audioFiles", maps.Keys(folder.audioFiles),
 		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
 		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
-	folder.path = dir
+	folder.path = cleanPath
 	folder.elapsed.Start()
 
 	results <- folder
@@ -92,7 +106,8 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 	return nil
 }
 
-func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
+func loadDir(ctx context.Context, job *scanJob, dir dirRef, checker *IgnoreChecker, branch map[string]struct{}) (folder *folderEntry, children []dirRef, err error) {
+	dirPath := dir.path
 	// Check if directory exists before creating the folder entry
 	// This is important to avoid removing the folder from lastUpdates if it doesn't exist
 	dirInfo, err := fs.Stat(job.fs, dirPath)
@@ -105,20 +120,20 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 	folder = job.createFolderEntry(dirPath)
 	folder.modTime = dirInfo.ModTime()
 
-	dir, err := job.fs.Open(dirPath)
+	dirFile, err := job.fs.Open(dirPath)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error in Opening directory", "path", dirPath, err)
 		return folder, children, err
 	}
-	defer dir.Close()
-	dirFile, ok := dir.(fs.ReadDirFile)
+	defer dirFile.Close()
+	readDirFile, ok := dirFile.(fs.ReadDirFile)
 	if !ok {
 		log.Error(ctx, "Not a directory", "path", dirPath)
 		return folder, children, err
 	}
 
-	entries := fullReadDir(ctx, dirFile)
-	children = make([]string, 0, len(entries))
+	entries := fullReadDir(ctx, readDirFile)
+	children = make([]dirRef, 0, len(entries))
 	for _, entry := range entries {
 		entryPath := path.Join(dirPath, entry.Name())
 		if checker.ShouldIgnore(ctx, entryPath) {
@@ -138,7 +153,13 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			continue
 		}
 		if isDir && isDirReadable(ctx, job.fs, entryPath) {
-			children = append(children, entryPath)
+			child := newChildDirRef(job.fs, dir, entry)
+			if _, isCycle := branch[child.realPath]; isCycle {
+				log.Debug(ctx, "Scanner: Skipping symlink pointing back into a folder being scanned",
+					"path", entryPath, "target", child.realPath)
+				continue
+			}
+			children = append(children, child)
 			folder.numSubFolders++
 		} else {
 			fileInfo, err := entry.Info()
@@ -221,6 +242,72 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 
 const maxSymlinkHops = 40
 
+// newDirRef returns the reference for the folder a walk starts at, resolving it in case
+// the folder itself is (or is reached through) a symlink.
+func newDirRef(fsys fs.FS, dirPath string) dirRef {
+	dir := dirRef{path: dirPath, realPath: path.Clean(dirPath)}
+	dir.realPath = resolveDirPath(fsys, dir)
+	return dir
+}
+
+// newChildDirRef returns the reference for a subfolder of dir. Only symlinks need to be
+// resolved: a real subfolder is always a new folder, it can never point back into one of
+// its own ancestors.
+func newChildDirRef(fsys fs.FS, dir dirRef, entry fs.DirEntry) dirRef {
+	child := dirRef{
+		path:     path.Join(dir.path, entry.Name()),
+		realPath: path.Join(dir.realPath, entry.Name()),
+	}
+	if entry.Type()&fs.ModeSymlink != 0 {
+		child.realPath = resolveDirPath(fsys, child)
+	}
+	return child
+}
+
+// resolveDirPath returns the path of the folder dir points to, with all symlinks
+// resolved. Storages backed by a real filesystem resolve the whole path at the OS level.
+// For any other filesystem the symlink chain is followed with fs.ReadLink, starting from
+// the parent's already resolved path, so the walk keeps comparing paths in the same
+// (FS-relative) space. If the path cannot be resolved it is returned as is, and the
+// folder is walked as any other.
+func resolveDirPath(fsys fs.FS, dir dirRef) string {
+	if resolver, ok := fsys.(storage.SymlinkResolverFS); ok {
+		target, err := resolver.ResolveSymlink(dir.path)
+		if err != nil {
+			return dir.realPath
+		}
+		return filepath.ToSlash(target)
+	}
+	target, hops := followSymlinkChain(fsys, dir.realPath)
+	if hops >= maxSymlinkHops {
+		return dir.realPath
+	}
+	return target
+}
+
+// followSymlinkChain follows the symlink chain starting at linkPath using fs.ReadLink,
+// and returns the last path it could reach, plus the number of hops it took to get there.
+// Zero hops means linkPath is not a symlink this filesystem can read; maxSymlinkHops means
+// the chain is too long to be resolved and is most likely a loop.
+func followSymlinkChain(fsys fs.FS, linkPath string) (string, int) {
+	cur := linkPath
+	hop := 0
+	for ; hop < maxSymlinkHops; hop++ {
+		target, err := fs.ReadLink(fsys, cur)
+		if err != nil {
+			break
+		}
+		if path.IsAbs(target) {
+			// Absolute targets are not valid fs.FS paths, so the next ReadLink fails and
+			// resolution stops here, leaving cur as the final target.
+			cur = target
+		} else {
+			cur = path.Join(path.Dir(cur), target)
+		}
+	}
+	return cur, hop
+}
+
 // resolveEntryName returns the name to classify the entry by, and whether to
 // consider it at all. Symlinks are resolved to their final target so the caller
 // classifies by the target's extension, not the link's name. Returns ok=false
@@ -236,7 +323,7 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 	}
 	// OS-backed filesystems can resolve the whole chain, even when it leaves the FS root
 	// (e.g. a link into another folder/drive), so the final target is always what gets
-	// classified. The fs.ReadLink loop below can't see past the root: it classifies by the
+	// classified. The fs.ReadLink chain below can't see past the root: it classifies by the
 	// last in-chain name it can reach.
 	if resolver, ok := fsys.(storage.SymlinkResolverFS); ok {
 		target, err := resolver.ResolveSymlink(linkPath)
@@ -248,28 +335,18 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 		log.Trace(ctx, "Scanner: Resolved symlink", "path", linkPath, "target", target, "name", resolved)
 		return resolved, true
 	}
-	cur := linkPath
-	for hop := 0; hop < maxSymlinkHops; hop++ {
-		target, err := fs.ReadLink(fsys, cur)
-		if err != nil {
-			if hop == 0 {
-				log.Trace(ctx, "Scanner: Skipping symlink, cannot resolve target", "path", linkPath, err)
-				return "", false
-			}
-			resolved := path.Base(cur)
-			log.Trace(ctx, "Scanner: Resolved symlink", "path", linkPath, "target", cur, "name", resolved)
-			return resolved, true
-		}
-		if path.IsAbs(target) {
-			// Absolute targets are not valid fs.FS paths, so the next ReadLink fails and
-			// resolution stops here, leaving cur as the target to classify by name.
-			cur = target
-		} else {
-			cur = path.Join(path.Dir(cur), target)
-		}
+	target, hops := followSymlinkChain(fsys, linkPath)
+	switch {
+	case hops == 0:
+		log.Trace(ctx, "Scanner: Skipping symlink, cannot resolve target", "path", linkPath)
+		return "", false
+	case hops >= maxSymlinkHops:
+		log.Trace(ctx, "Scanner: Skipping symlink, too many hops (possible loop)", "path", linkPath)
+		return "", false
 	}
-	log.Trace(ctx, "Scanner: Skipping symlink, too many hops (possible loop)", "path", linkPath)
-	return "", false
+	resolved := path.Base(target)
+	log.Trace(ctx, "Scanner: Resolved symlink", "path", linkPath, "target", target, "name", resolved)
+	return resolved, true
 }
 
 // isDirReadable returns true if the directory represented by dirEnt is readable
