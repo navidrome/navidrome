@@ -10,7 +10,6 @@ var (
 	ErrNotAvailable  = errors.New("functionality not available")
 	ErrValidation    = errors.New("validation error")
 
-	// ErrPlaylistNotEditable means the playlist's tracks are managed automatically
-	// (smart playlist rules, or a synced file) and cannot be modified by a user.
+	// ErrPlaylistNotEditable: tracks are server-managed, so nobody can edit them (not an ACL failure).
 	ErrPlaylistNotEditable = errors.New("playlist tracks are not editable")
 )

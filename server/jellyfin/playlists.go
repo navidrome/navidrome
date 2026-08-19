@@ -29,9 +29,8 @@ func playlistsFolder() dto.BaseItemDto {
 	}
 }
 
-// playlistError maps core/playlists write errors to HTTP status: ownership -> 403, missing/invisible
-// -> 404 (never revealing another user's private playlist), else -> 500. A locked playlist is also
-// 403, matching Jellyfin, which refuses edits on its own file-backed playlists with Forbid().
+// playlistError maps core/playlists write errors to HTTP status: ownership or locked -> 403,
+// missing/invisible -> 404 (never revealing another user's private playlist), else -> 500.
 func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, model.ErrPlaylistNotEditable):
@@ -263,8 +262,7 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 }
 
 // addToPlaylist appends items by id, expanding containers into tracks (see expandContainerIDs).
-// AddTracks enforces ownership; a locked (synced/smart) playlist maps to 403 like Jellyfin, any
-// other error to 404.
+// AddTracks enforces ownership; a locked playlist maps to 403, any other error to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -290,7 +288,7 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 
 // removeFromPlaylist removes entries by entryIds — playlist-entry ids (PlaylistItemId), not media
 // file ids, since RemoveTracks deletes playlist_tracks rows by that id. RemoveTracks enforces
-// ownership; a locked (synced/smart) playlist maps to 403 like Jellyfin, any other error to 404.
+// ownership; a locked playlist maps to 403, any other error to 404.
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -318,10 +316,8 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// getPlaylistUsers and getPlaylistUser answer client probes (e.g. Finamp) made before allowing
-// edits. Navidrome has no per-playlist ACL, so CanEdit reflects only whether the playlist's tracks
-// are editable (false for smart/synced); ownership is still enforced by AddTracks/RemoveTracks. Any
-// lookup error maps to 404 so private playlists can't be probed.
+// Clients probe these before offering edits. Navidrome has no per-playlist ACL, so CanEdit carries
+// only editability; ownership is enforced on write, and a lookup error 404s to prevent probing.
 func (api *Router) getPlaylistUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")

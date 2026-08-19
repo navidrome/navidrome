@@ -20,8 +20,7 @@ import (
 
 type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
 
-// writePlaylistError maps a playlist service error to an HTTP status. defaultStatus
-// is used for errors that aren't one of the recognized sentinels.
+// writePlaylistError maps a playlist service error to an HTTP status, or defaultStatus if unknown.
 func writePlaylistError(w http.ResponseWriter, err error, defaultStatus int) {
 	switch {
 	case errors.Is(err, model.ErrNotFound):

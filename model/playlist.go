@@ -42,8 +42,7 @@ func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
 }
 
-// TracksEditable reports whether a user may modify the track list: false for smart
-// playlists (tracks come from rules) and synced playlists (tracks come from the file).
+// TracksEditable reports whether the track list is user-owned rather than server-managed.
 func (pls Playlist) TracksEditable() bool {
 	return !pls.IsSmartPlaylist() && !pls.Sync
 }

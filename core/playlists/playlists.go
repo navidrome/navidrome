@@ -130,8 +130,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 			if err != nil {
 				return err
 			}
-			// Ownership before editability, matching checkTracksEditable, so a non-owner gets
-			// ErrNotAuthorized rather than a read-only conflict on someone else's public playlist.
+			// Ownership first: a non-owner must get ErrNotAuthorized, not a read-only conflict.
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
 				return model.ErrNotAuthorized
 			}
