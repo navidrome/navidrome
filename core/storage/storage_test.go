@@ -61,9 +61,8 @@ var _ = Describe("Storage", func() {
 			Expect(s).To(BeAssignableToTypeOf(&fakeLocalStorage{}))
 			u := s.(*fakeLocalStorage).u
 			Expect(u.Scheme).To(Equal("file"))
-			// On Windows the drive letter is carried in u.Host (e.g. "C:") and
-			// re-joined with u.Path by newLocalStorage; reconstruct it the same way
-			// so the assertion holds on every OS.
+			// On Windows the drive letter lands in u.Host, so re-join it with
+			// u.Path (as newLocalStorage does) to keep the assertion OS-independent.
 			got := filepath.Join(u.Host, filepath.FromSlash(u.Path))
 			Expect(got).To(Equal(filepath.Join(cwd, "tmp")))
 		})
