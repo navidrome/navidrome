@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -380,6 +381,31 @@ var _ = Describe("Configuration", func() {
 			viper.SetDefault("maximagesize", "30MB")
 			conf.Load(true)
 			Expect(conf.Server.MaxImageSize).To(Equal("30MB"))
+		})
+	})
+
+	Describe("MinScrobbleDuration", func() {
+		It("defaults to 30 seconds", func() {
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(30 * time.Second))
+		})
+
+		It("clamps negative values to zero", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "-10s")
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(time.Duration(0)))
+		})
+
+		It("disables with zero value", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "0s")
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(time.Duration(0)))
+		})
+
+		It("preserves positive values", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "45s")
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(45 * time.Second))
 		})
 	})
 
