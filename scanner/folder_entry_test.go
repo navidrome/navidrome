@@ -390,15 +390,16 @@ var _ = Describe("folder_entry", func() {
 			})
 
 			It("produces different hash when playlist file size changes", func() {
+				baseTime := time.Now()
 				entry.playlistFiles["list.m3u"] = &fakeDirEntry{
 					name:     "list.m3u",
-					fileInfo: &fakeFileInfo{name: "list.m3u", size: 1000, modTime: time.Now()},
+					fileInfo: &fakeFileInfo{name: "list.m3u", size: 1000, modTime: baseTime},
 				}
 				hash1 := entry.hash()
 
 				entry.playlistFiles["list.m3u"] = &fakeDirEntry{
 					name:     "list.m3u",
-					fileInfo: &fakeFileInfo{name: "list.m3u", size: 2000, modTime: time.Now()},
+					fileInfo: &fakeFileInfo{name: "list.m3u", size: 2000, modTime: baseTime},
 				}
 				hash2 := entry.hash()
 
@@ -416,6 +417,24 @@ var _ = Describe("folder_entry", func() {
 				entry.playlistFiles["list.m3u"] = &fakeDirEntry{
 					name:     "list.m3u",
 					fileInfo: &fakeFileInfo{name: "list.m3u", size: 1000, modTime: baseTime.Add(1 * time.Hour)},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when a playlist is renamed", func() {
+				baseTime := time.Now()
+				entry.playlistFiles["old.m3u"] = &fakeDirEntry{
+					name:     "old.m3u",
+					fileInfo: &fakeFileInfo{name: "old.m3u", size: 1000, modTime: baseTime},
+				}
+				hash1 := entry.hash()
+
+				delete(entry.playlistFiles, "old.m3u")
+				entry.playlistFiles["new.m3u"] = &fakeDirEntry{
+					name:     "new.m3u",
+					fileInfo: &fakeFileInfo{name: "new.m3u", size: 1000, modTime: baseTime},
 				}
 				hash2 := entry.hash()
 
