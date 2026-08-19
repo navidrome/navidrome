@@ -183,6 +183,20 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	})
 })
 
+var _ = Describe("writePlaylistError", func() {
+	DescribeTable("maps a service error to an HTTP status",
+		func(err error, expected int) {
+			w := httptest.NewRecorder()
+			writePlaylistError(w, err, http.StatusBadRequest)
+			Expect(w.Code).To(Equal(expected))
+		},
+		Entry("not found -> 404", model.ErrNotFound, http.StatusNotFound),
+		Entry("not authorized -> 403", model.ErrNotAuthorized, http.StatusForbidden),
+		Entry("not editable -> 409", model.ErrPlaylistNotEditable, http.StatusConflict),
+		Entry("unrecognized -> default", model.ErrValidation, http.StatusBadRequest),
+	)
+})
+
 type mockPlaylistTrackRepo struct {
 	model.PlaylistTrackRepository
 	tracks model.PlaylistTracks

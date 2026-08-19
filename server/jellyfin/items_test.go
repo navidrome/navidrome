@@ -327,17 +327,75 @@ var _ = Describe("Items", func() {
 			Expect(albumRepo.Options.Max).To(Equal(3))
 		})
 
-		It("applies a starred filter when Filters=IsFavorite", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite", nil).WithContext(ctxUser())
-			invoke(api.getItems, w, r)
-			Expect(w.Code).To(Equal(http.StatusOK))
-			sql, _, err := albumRepo.Options.Filters.ToSql()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(sql).To(ContainSubstring("starred"))
-		})
+		DescribeTable("translates the Filters list and its standalone equivalents",
+			func(query string, wantSQL, notWantSQL []string) {
+				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&"+query, nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, _, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				for _, want := range wantSQL {
+					Expect(sql).To(ContainSubstring(want))
+				}
+				for _, not := range notWantSQL {
+					Expect(sql).NotTo(ContainSubstring(not))
+				}
+			},
+			Entry("IsFavorite", "Filters=IsFavorite", []string{"starred"}, nil),
+			Entry("IsFavorite,IsUnplayed combined", "Filters=IsFavorite,IsUnplayed",
+				[]string{"starred", "play_count"}, nil),
+			Entry("IsUnplayed", "Filters=IsUnplayed", []string{"play_count"}, []string{"starred"}),
+			Entry("IsPlayed", "Filters=IsPlayed", []string{"play_count"}, []string{"starred"}),
+			Entry("IsFavoriteOrLikes is treated as favorites", "Filters=IsFavoriteOrLikes", []string{"starred"}, nil),
+			Entry("isPlayed=false", "isPlayed=false", []string{"play_count"}, nil),
+			Entry("isFavorite=false still filters", "isFavorite=false", []string{"starred"}, nil),
+			// Jellyfin builds the query from the standalone params, then applies Filters over the top.
+			Entry("Filters wins over the standalone param", "isFavorite=false&Filters=IsFavorite",
+				[]string{"starred = "}, nil),
+			// No Navidrome equivalent: these must be dropped, not half-applied.
+			Entry("Likes is ignored", "Filters=Likes", nil, []string{"starred", "play_count"}),
+			Entry("IsResumable is ignored", "Filters=IsResumable", nil, []string{"starred", "play_count"}),
+			// The artist-parent branch gets notMissing from filter.AlbumsByArtistID, not the default
+			// branch, so favorites must not be the only predicate left on it.
+			Entry("keeps missing excluded under an artist parent",
+				"Filters=IsFavorite&ArtistIds="+dto.EncodeID(testID("ar1")),
+				[]string{"starred", "missing"}, nil),
+		)
+
+		// Search runs a two-phase FTS query whose first phase has no annotation join, so an
+		// annotation predicate there is "no such column: starred" -> 500.
+		DescribeTable("does not push annotation filters into a search",
+			func(itemType, filters string) {
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes="+itemType+"&SearchTerm=one&Filters="+filters, nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var opts model.QueryOptions
+				if itemType == "MusicAlbum" {
+					opts = ds.Album(context.Background()).(*tests.MockAlbumRepo).Options
+				} else {
+					opts = ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).Options
+				}
+				if opts.Filters == nil {
+					return
+				}
+				sql, _, err := opts.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).NotTo(ContainSubstring("starred"))
+				Expect(sql).NotTo(ContainSubstring("play_count"))
+			},
+			Entry("albums, IsFavorite", "MusicAlbum", "IsFavorite"),
+			Entry("albums, IsUnplayed", "MusicAlbum", "IsUnplayed"),
+			Entry("albums, IsPlayed", "MusicAlbum", "IsPlayed"),
+			Entry("songs, IsFavorite", "Audio", "IsFavorite"),
+			Entry("songs, IsUnplayed", "Audio", "IsUnplayed"),
+		)
 
 		It("forwards SearchTerm to the repo's Search method", func() {
 			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
@@ -601,65 +659,59 @@ var _ = Describe("Items", func() {
 		})
 
 		Describe("sorting", func() {
-			It("maps SortBy=PlayCount to the play_count column", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=PlayCount", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal("play_count"))
-			})
+			DescribeTable("translates SortBy into the repo's sort keys",
+				func(itemType, sortBy, want string) {
+					albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+					albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+					mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+					mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+					w := httptest.NewRecorder()
+					r := httptest.NewRequest("GET", "/Items?IncludeItemTypes="+itemType+"&SortBy="+sortBy, nil).WithContext(ctxUser())
+					invoke(api.getItems, w, r)
+					Expect(w.Code).To(Equal(http.StatusOK))
+					got := mfRepo.Options.Sort
+					if itemType == "MusicAlbum" {
+						got = albumRepo.Options.Sort
+					}
+					Expect(got).To(Equal(want))
+				},
+				Entry("PlayCount", "MusicAlbum", "PlayCount", "play_count"),
+				Entry("DatePlayed", "Audio", "DatePlayed", "play_date"),
+				Entry("Runtime on albums", "MusicAlbum", "Runtime", "duration"),
+				Entry("RunTimeTicks alias", "MusicAlbum", "RunTimeTicks", "duration"),
+				// Finamp leads its track sort with Runtime: unless that resolves, the first recognized
+				// key is AlbumArtist and the list looks sorted while being sorted by the wrong thing.
+				Entry("Finamp's Runtime-led track sort", "Audio", "Runtime,AlbumArtist,Album,SortName",
+					"duration, album_artist, album, title"),
+				Entry("every recognized key, in order", "MusicAlbum", "DateCreated,SortName", "recently_added, name"),
+				Entry("a key repeating a column is dropped", "Audio",
+					"PremiereDate,Album,ParentIndexNumber,IndexNumber,SortName", "year, album, title"),
+				// random is matched by exact string equality in the repo, so it can never share a sort.
+				Entry("Random stays alone", "MusicAlbum", "Random,SortName", "random"),
+				Entry("unrecognized keys are skipped", "Audio", "Runtime,Nonsense,SortName", "duration, title"),
+				Entry("only the last key recognized", "Audio", "Unknown1,Unknown2,SortName", "title"),
+				Entry("Finamp's album view is disc+track", "Audio", "ParentIndexNumber,IndexNumber,SortName", "album, title"),
+				Entry("nothing recognized leaves the repo default", "MusicAlbum", "SeriesSortName", ""),
+			)
 
-			It("maps SortBy=DatePlayed to the play_date column", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=DatePlayed", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("play_date"))
-			})
-
-			It("uses the first recognized key in a comma-separated SortBy list", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=DateCreated,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal("recently_added"))
-			})
-
-			It("skips unrecognized keys in a comma-separated SortBy list to find one that is", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=Unknown1,Unknown2,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("title"))
-			})
-
-			It("maps Finamp's album view SortBy (ParentIndexNumber,IndexNumber) to disc+track order", func() {
-				mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
-				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&SortBy=ParentIndexNumber,IndexNumber,SortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(mfRepo.Options.Sort).To(Equal("album"))
-			})
-
-			It("leaves Sort at the repo default when no SortBy key is recognized", func() {
-				albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
-				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&SortBy=SeriesSortName", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(albumRepo.Options.Sort).To(Equal(""))
-			})
+			// Jellyfin allows a per-key SortOrder list; we cannot express that through one Order, so
+			// we honor the first value for all keys, matching Jellyfin's fallback for extra keys.
+			DescribeTable("reads the first SortOrder value for the whole sort",
+				func(sortOrder, want string) {
+					albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+					albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+					w := httptest.NewRecorder()
+					r := httptest.NewRequest("GET",
+						"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder="+sortOrder, nil).WithContext(ctxUser())
+					invoke(api.getItems, w, r)
+					Expect(w.Code).To(Equal(http.StatusOK))
+					Expect(albumRepo.Options.Order).To(Equal(want))
+				},
+				Entry("ascending", "Ascending", ""),
+				Entry("descending", "Descending", "desc"),
+				Entry("descending leading a list", "Descending,Ascending", "desc"),
+				Entry("ascending leading a list", "Ascending,Descending", ""),
+			)
 		})
 
 		Describe("library scoping", func() {

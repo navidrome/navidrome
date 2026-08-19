@@ -2,8 +2,6 @@ package artwork
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"slices"
 	"strconv"
@@ -16,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/zeebo/xxh3"
 )
 
 // StaleAbsentAge is how long an absent state is trusted before a recheck retries it.
@@ -66,8 +65,7 @@ func FingerprintInputs() []FingerprintInput {
 func ConfigFingerprint() string {
 	values := slice.Map(FingerprintInputs(), func(i FingerprintInput) string { return i.Value })
 	raw := fmt.Sprintf("%s|%d", strings.Join(values, "|"), artworkEpoch)
-	sum := md5.Sum([]byte(raw)) //nolint:gosec // fingerprint, not security-sensitive
-	return hex.EncodeToString(sum[:])
+	return fmt.Sprintf("%016x", xxh3.Hash([]byte(raw)))
 }
 
 // backfill enqueues artwork resolution for every entity when the config fingerprint changed.
