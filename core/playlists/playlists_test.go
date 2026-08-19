@@ -102,7 +102,8 @@ var _ = Describe("Playlists", func() {
 				"pls-2": {ID: "pls-2", Name: "Other's", OwnerID: "other-user"},
 				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
 					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
-				"pls-synced": {ID: "pls-synced", Name: "Synced", OwnerID: "user-1", Sync: true},
+				"pls-synced":       {ID: "pls-synced", Name: "Synced", OwnerID: "user-1", Sync: true},
+				"pls-synced-other": {ID: "pls-synced-other", Name: "Other's Synced", OwnerID: "other-user", Sync: true, Public: true},
 			}
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 		})
@@ -153,6 +154,12 @@ var _ = Describe("Playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.Create(ctx, "pls-synced", "", []string{"song-1"})
 			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
+		})
+
+		It("denies a non-owner with authorization, not a conflict, on a public synced playlist", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.Create(ctx, "pls-synced-other", "", []string{"song-1"})
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
 		})
 	})
 
