@@ -111,6 +111,15 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Public).To(BeTrue())
 				Expect(result.Readonly).To(BeFalse())
 			})
+
+			It("is read-only for a synced playlist even as owner", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "1234", UserName: "admin"})
+				playlist.Sync = true
+
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Readonly).To(BeTrue())
+			})
 		})
 
 		Context("when minimal clients list is empty", func() {

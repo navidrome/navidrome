@@ -92,14 +92,28 @@ var _ = Describe("sqlRepository", func() {
 				Expect(sort).To(BeEmpty())
 			})
 
-			It("returns the mapped value when sort key exists", func() {
+			// Validation only: buildSortOrder resolves the mapping, so mapping here too would hand
+			// sortMapping its own output and re-map values whose parts are themselves keys.
+			It("accepts a known sort key without resolving it", func() {
 				sort, _ := r.sanitizeSort("sort1", "")
-				Expect(sort).To(Equal("mappedSort1"))
+				Expect(sort).To(Equal("sort1"))
 			})
 
 			It("is case insensitive", func() {
 				sort, _ := r.sanitizeSort("Sort1", "")
-				Expect(sort).To(Equal("mappedSort1"))
+				Expect(sort).To(Equal("sort1"))
+			})
+
+			It("still resolves the mapping by the time the SQL is built", func() {
+				Expect(r.buildSortOrder("sort1", "asc")).To(Equal("mappedSort1 asc"))
+			})
+
+			// A mapping whose parts are themselves keys (media_file rated_at = "rating, rated_at")
+			// must survive the round trip through sanitizeSort and buildSortOrder unduplicated.
+			It("does not re-map a value whose parts are also keys", func() {
+				r.sortMappings = map[string]string{"rating": "rating", "rated_at": "rating, rated_at"}
+				sort, _ := r.sanitizeSort("rated_at", "")
+				Expect(r.buildSortOrder(sort, "asc")).To(Equal("rating asc, rated_at asc"))
 			})
 
 			It("returns the field if it is a valid field", func() {
@@ -132,6 +146,45 @@ var _ = Describe("sqlRepository", func() {
 				_, order := r.sanitizeSort("", "something")
 				Expect(order).To(Equal("asc"))
 			})
+		})
+	})
+
+	Describe("sortMapping", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{
+				"name":           "order_album_name, order_album_artist_name",
+				"recently_added": "album.created_at, album.id",
+			}
+		})
+		It("maps a single key", func() {
+			Expect(r.sortMapping("recently_added")).To(Equal("album.created_at, album.id"))
+		})
+		It("maps every part of a comma list when all of them are known keys", func() {
+			Expect(r.sortMapping("recently_added, name")).
+				To(Equal("album.created_at, album.id, order_album_name, order_album_artist_name"))
+		})
+		It("resolves the known parts of a mixed list and leaves the rest as columns", func() {
+			Expect(r.sortMapping("recently_added, play_count")).
+				To(Equal("album.created_at, album.id, play_count"))
+		})
+		// Jellyfin's MusicAlbum SortBy=Runtime,SortName arrives as "duration, name"; duration is a
+		// plain album column while name is mapped, and the mapping must survive the mix.
+		It("keeps a mapping when an earlier part is a plain column", func() {
+			Expect(r.sortMapping("duration, name")).
+				To(Equal("duration, order_album_name, order_album_artist_name"))
+		})
+		It("leaves a raw column list with directions untouched", func() {
+			Expect(r.sortMapping("starred desc, rating desc")).To(Equal("starred desc, rating desc"))
+		})
+		It("does not split an expression on a comma inside its parentheses", func() {
+			Expect(r.sortMapping("coalesce(name, ''), title")).To(Equal("coalesce(name, ''), title"))
+			Expect(r.sortMapping("coalesce(nullif(a,''), b) desc, c")).To(Equal("coalesce(nullif(a,''), b) desc, c"))
+		})
+		It("keeps a mapping whose value nests commas inside parentheses", func() {
+			r.sortMappings["max_year"] = "coalesce(nullif(original_date,''), cast(max_year as text)), release_date"
+			Expect(r.sortMapping("max_year, name")).To(Equal(
+				"coalesce(nullif(original_date,''), cast(max_year as text)), release_date, " +
+					"order_album_name, order_album_artist_name"))
 		})
 	})
 

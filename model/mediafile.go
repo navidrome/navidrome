@@ -2,7 +2,6 @@ package model
 
 import (
 	"cmp"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -20,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/zeebo/xxh3"
 )
 
 type MediaFile struct {
@@ -232,7 +232,7 @@ func (mf MediaFile) Hash() string {
 		ZeroNil:         true,
 	}
 	hash, _ := hashstructure.Hash(mf, opts)
-	sum := md5.New()
+	sum := xxh3.New()
 	sum.Write(fmt.Appendf(nil, "%d", hash))
 	sum.Write(mf.Tags.Hash())
 	sum.Write(mf.Participants.Hash())

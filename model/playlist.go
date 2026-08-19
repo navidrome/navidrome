@@ -42,6 +42,11 @@ func (pls Playlist) IsSmartPlaylist() bool {
 	return pls.Rules != nil && pls.Rules.Expression != nil
 }
 
+// TracksEditable reports whether the track list is user-owned rather than server-managed.
+func (pls Playlist) TracksEditable() bool {
+	return !pls.IsSmartPlaylist() && !pls.Sync
+}
+
 // RefreshDelay returns the playlist's own refresh window when set, falling
 // back to the global SmartPlaylistRefreshDelay.
 func (pls Playlist) RefreshDelay() time.Duration {
