@@ -264,7 +264,7 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 }
 
 // addToPlaylist appends items by id, expanding containers into tracks (see expandContainerIDs).
-// AddTracks enforces ownership; any error maps to 404.
+// AddTracks enforces ownership; a locked (synced/smart) playlist maps to 409, any other error to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -278,6 +278,10 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	ids := api.expandContainerIDs(ctx, decoded)
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
+		if errors.Is(err, model.ErrPlaylistNotEditable) {
+			http.Error(w, "Conflict", http.StatusConflict)
+			return
+		}
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
@@ -286,7 +290,7 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 
 // removeFromPlaylist removes entries by entryIds — playlist-entry ids (PlaylistItemId), not media
 // file ids, since RemoveTracks deletes playlist_tracks rows by that id. RemoveTracks enforces
-// ownership; any error maps to 404.
+// ownership; a locked (synced/smart) playlist maps to 409, any other error to 404.
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -304,6 +308,10 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 		ids = append(ids, entry)
 	}
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
+		if errors.Is(err, model.ErrPlaylistNotEditable) {
+			http.Error(w, "Conflict", http.StatusConflict)
+			return
+		}
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}

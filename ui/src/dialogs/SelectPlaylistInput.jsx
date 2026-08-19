@@ -16,7 +16,7 @@ import {
 import AddIcon from '@material-ui/icons/Add'
 import { useGetList, useTranslate } from 'react-admin'
 import PropTypes from 'prop-types'
-import { isWritable } from '../common'
+import { canChangeTracks } from '../common'
 import { makeStyles } from '@material-ui/core'
 
 const useStyles = makeStyles((theme) => ({
@@ -268,8 +268,7 @@ export const SelectPlaylistInput = ({ onChange }) => {
   )
 
   const options =
-    ids &&
-    ids.map((id) => data[id]).filter((option) => isWritable(option.ownerId))
+    ids && ids.map((id) => data[id]).filter((option) => canChangeTracks(option))
 
   // Filter playlists based on search text
   const filteredOptions =
