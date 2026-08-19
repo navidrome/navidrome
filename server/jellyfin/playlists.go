@@ -30,13 +30,12 @@ func playlistsFolder() dto.BaseItemDto {
 }
 
 // playlistError maps core/playlists write errors to HTTP status: ownership -> 403, missing/invisible
-// -> 404 (never revealing another user's private playlist), else -> 500.
+// -> 404 (never revealing another user's private playlist), else -> 500. A locked playlist is also
+// 403, matching Jellyfin, which refuses edits on its own file-backed playlists with Forbid().
 func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
-	case errors.Is(err, model.ErrNotAuthorized):
+	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, model.ErrPlaylistNotEditable):
 		http.Error(w, "Forbidden", http.StatusForbidden)
-	case errors.Is(err, model.ErrPlaylistNotEditable):
-		http.Error(w, "Conflict", http.StatusConflict)
 	case errors.Is(err, model.ErrNotFound):
 		http.Error(w, "Not Found", http.StatusNotFound)
 	default:
@@ -264,7 +263,8 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 }
 
 // addToPlaylist appends items by id, expanding containers into tracks (see expandContainerIDs).
-// AddTracks enforces ownership; a locked (synced/smart) playlist maps to 409, any other error to 404.
+// AddTracks enforces ownership; a locked (synced/smart) playlist maps to 403 like Jellyfin, any
+// other error to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -279,7 +279,7 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ids := api.expandContainerIDs(ctx, decoded)
 	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
 		if errors.Is(err, model.ErrPlaylistNotEditable) {
-			http.Error(w, "Conflict", http.StatusConflict)
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -290,7 +290,7 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 
 // removeFromPlaylist removes entries by entryIds — playlist-entry ids (PlaylistItemId), not media
 // file ids, since RemoveTracks deletes playlist_tracks rows by that id. RemoveTracks enforces
-// ownership; a locked (synced/smart) playlist maps to 409, any other error to 404.
+// ownership; a locked (synced/smart) playlist maps to 403 like Jellyfin, any other error to 404.
 func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -309,7 +309,7 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := api.playlists.RemoveTracks(ctx, id, ids); err != nil {
 		if errors.Is(err, model.ErrPlaylistNotEditable) {
-			http.Error(w, "Conflict", http.StatusConflict)
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 		http.Error(w, "Not Found", http.StatusNotFound)

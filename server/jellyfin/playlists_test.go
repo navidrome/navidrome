@@ -381,13 +381,13 @@ var _ = Describe("Playlists", func() {
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
-		It("returns 409 when the playlist is not editable (synced/smart)", func() {
+		It("returns 403 when the playlist is not editable (synced/smart), like Jellyfin", func() {
 			fp.addErr = model.ErrPlaylistNotEditable
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?ids="+dto.EncodeID(testID("s1")), nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.addToPlaylist, w, r)
-			Expect(w.Code).To(Equal(http.StatusConflict))
+			Expect(w.Code).To(Equal(http.StatusForbidden))
 		})
 
 		It("passes no ids (not a spurious empty string) when the ids param is absent", func() {
@@ -439,13 +439,13 @@ var _ = Describe("Playlists", func() {
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 
-		It("returns 409 when the playlist is not editable (synced/smart)", func() {
+		It("returns 403 when the playlist is not editable (synced/smart), like Jellyfin", func() {
 			fp.removeErr = model.ErrPlaylistNotEditable
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Playlists/"+dto.EncodeID(testID("pl1"))+"/Items?entryIds="+dto.EncodePlaylistEntryID("1"), nil).WithContext(context.Background())
 			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
 			invoke(api.removeFromPlaylist, w, r)
-			Expect(w.Code).To(Equal(http.StatusConflict))
+			Expect(w.Code).To(Equal(http.StatusForbidden))
 		})
 
 		It("passes no ids (not a spurious empty string) when the entryIds param is absent", func() {
