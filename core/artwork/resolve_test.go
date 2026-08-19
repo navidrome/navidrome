@@ -539,13 +539,16 @@ var _ = Describe("resolveItem", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.extError).To(BeTrue())
 
-			var found bool
-			for _, s := range trace.Steps() {
-				if s.Candidate == ExternalPrefix+"m3u" && s.Outcome == OutcomeError {
-					found = true
+			steps := trace.Steps()
+			var m3u *TraceStep
+			for i := range steps {
+				if steps[i].Candidate == ExternalPrefix+"m3u" && steps[i].Outcome == OutcomeError {
+					m3u = &steps[i]
 				}
 			}
-			Expect(found).To(BeTrue(), "the m3u fetch error must be traced at its source, not left to the empty-trace fallback")
+			Expect(m3u).ToNot(BeNil(), "the m3u fetch error must be traced at its source, not left to the empty-trace fallback")
+			Expect(m3u.Detail).To(Equal("network down"),
+				"the trace must carry the underlying error so explain can tell a timeout from an HTTP error")
 		})
 
 		It("treats a missing local ExternalImageURL as a definitive miss, not extError", func() {

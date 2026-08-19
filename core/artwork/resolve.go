@@ -354,13 +354,13 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 	}
 	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
 		sf := func() (io.ReadCloser, string, error) { return fromURL(ctx, remoteImg) }
-		if res, ok, isErr := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
+		if res, ok, err := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
 			return res, nil
-		} else if isErr {
+		} else if err != nil {
 			extErr = true
-			// Record it here: once album sampling adds its own steps, the processor's empty-trace
-			// fallback no longer fires, and the error that forced the retry would be lost.
-			traceFrom(ctx).add(TraceStep{Candidate: ExternalPrefix + "m3u", Outcome: OutcomeError})
+			// Record it here with its detail: once album sampling adds its own steps, the processor's
+			// empty-trace fallback no longer fires, and the error that forced the retry would be lost.
+			traceFrom(ctx).add(TraceStep{Candidate: ExternalPrefix + "m3u", Outcome: OutcomeError, Detail: err.Error()})
 		}
 	}
 
@@ -464,14 +464,17 @@ func (r *resolver) resolveDisc(ctx context.Context, id string) (resolution, erro
 	return dr.selectImage(ctx, r.ffmpeg, conf.Server.DiscArtPriority, &chain)
 }
 
-// resolveExternalStep runs a single external sourceFunc through the named gate. extErr excludes
-// a not-found, which is a definitive "no" rather than a failure.
-func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolution, ok bool, extErr bool) {
+// resolveExternalStep runs a single external sourceFunc through the named gate. A not-found is a
+// definitive "no", returned as (_, false, nil); any other error is a failure the caller records.
+func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (resolution, bool, error) {
 	r, path, err := gate(name, sf)
 	if r != nil {
-		return resolution{reader: r, source: externalCandidate, sourcePath: path}, true, false
+		return resolution{reader: r, source: externalCandidate, sourcePath: path}, true, nil
 	}
-	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
+	if errors.Is(err, model.ErrNotFound) {
+		return resolution{}, false, nil
+	}
+	return resolution{}, false, err
 }
 
 // classifyPlaylistImage splits a playlist ExternalImageURL into a local filesystem path or a
