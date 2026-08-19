@@ -70,6 +70,26 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
 		})
+		It("persists and reads back the scrobble filter", func() {
+			usr := model.User{ID: "u-filter", UserName: "u-filter", Name: "Filter User",
+				ScrobbleFilter: `{"all":[{"contains":{"title":"????"}}]}`}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			saved, err := repo.Get("u-filter")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.ScrobbleFilter).To(Equal(`{"all":[{"contains":{"title":"????"}}]}`))
+		})
+		It("reads back a user row inserted without scrobble_filter", func() {
+			// Guards the column's NOT NULL DEFAULT '': rows predating the migration must stay scannable
+			_, err := GetDBXBuilder().NewQuery(
+				"insert into user (id, user_name, name, email, password, created_at, updated_at) " +
+					"values ('u-rawsql', 'u-rawsql', 'Raw', '', '', datetime('now'), datetime('now'))").Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			saved, err := repo.Get("u-rawsql")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.ScrobbleFilter).To(Equal(""))
+		})
 	})
 
 	Describe("validatePasswordChange", func() {
@@ -604,6 +624,52 @@ var _ = Describe("UserRepository", func() {
 			// Regular users should be assigned to default libraries (library ID 1 from migration)
 			Expect(user.Libraries).To(HaveLen(1))
 			Expect(user.Libraries[0].ID).To(Equal(1))
+		})
+	})
+
+	Describe("validateScrobbleFilter", func() {
+		It("accepts an empty filter", func() {
+			u := &model.User{}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+		})
+		It("trims a whitespace-only filter to empty", func() {
+			u := &model.User{ScrobbleFilter: "   "}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+			Expect(u.ScrobbleFilter).To(Equal(""))
+		})
+		It("accepts valid criteria JSON", func() {
+			u := &model.User{ScrobbleFilter: `{"all":[{"lt":{"rating":4}}]}`}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+		})
+		It("rejects malformed JSON", func() {
+			u := &model.User{ScrobbleFilter: `{not json`}
+			var vErr *rest.ValidationError
+			err := validateScrobbleFilter(u)
+			Expect(errors.As(err, &vErr)).To(BeTrue())
+			Expect(vErr.Errors).To(HaveKey("scrobbleFilter"))
+		})
+		It("rejects criteria without rules", func() {
+			u := &model.User{ScrobbleFilter: `{"sort":"title"}`}
+			Expect(validateScrobbleFilter(u)).ToNot(Succeed())
+		})
+		It("rejects selection options that mean nothing for a single track", func() {
+			for _, f := range []string{
+				`{"all":[{"lt":{"rating":4}}],"limit":100}`,
+				`{"all":[{"lt":{"rating":4}}],"limitPercent":10}`,
+				`{"all":[{"lt":{"rating":4}}],"offset":5}`,
+				`{"all":[{"lt":{"rating":4}}],"refreshDelay":"1h"}`,
+			} {
+				u := &model.User{ScrobbleFilter: f}
+				Expect(validateScrobbleFilter(u)).ToNot(Succeed(), f)
+			}
+		})
+		It("accepts a sort, which cannot change a single-track match", func() {
+			u := &model.User{ScrobbleFilter: `{"all":[{"lt":{"rating":4}}],"sort":"title"}`}
+			Expect(validateScrobbleFilter(u)).To(Succeed())
+		})
+		It("rejects unknown fields", func() {
+			u := &model.User{ScrobbleFilter: `{"all":[{"is":{"bogusfield":1}}]}`}
+			Expect(validateScrobbleFilter(u)).ToNot(Succeed())
 		})
 	})
 

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"testing/fstest"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/resources"
@@ -44,6 +45,17 @@ var _ = Describe("Translations", func() {
 			Expect(tr.Name).To(Equal("English"))
 			var out map[string]any
 			Expect(json.Unmarshal([]byte(tr.Data), &out)).To(BeNil())
+		})
+
+		It("counts only non-empty leaf terms", func() {
+			fsys := fstest.MapFS{
+				"i18n/test.json": &fstest.MapFile{
+					Data: []byte(`{"languageName":"Test","a":"x","b":"","nested":{"c":"y","d":""}}`),
+				},
+			}
+			tr, err := loadTranslation(fsys, "test.json")
+			Expect(err).To(BeNil())
+			Expect(tr.TermCount).To(Equal(3))
 		})
 	})
 })
