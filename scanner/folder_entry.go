@@ -23,6 +23,7 @@ func newFolderEntry(job *scanJob, id, path string, info model.FolderUpdateInfo) 
 		path:                path,
 		audioFiles:          make(map[string]fs.DirEntry),
 		imageFiles:          make(map[string]fs.DirEntry),
+		fileInfos:           make(map[string]fs.FileInfo),
 		albumIDMap:          make(map[string]string),
 		updTime:             info.UpdatedAt,
 		prevHash:            info.Hash,
@@ -41,6 +42,7 @@ type folderEntry struct {
 	updTime         time.Time // from DB
 	audioFiles      map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
+	fileInfos       map[string]fs.FileInfo // name -> FileInfo, captured once during loadDir to avoid re-stats
 	numPlaylists    int
 	numSubFolders   int
 	imagesUpdatedAt time.Time
@@ -122,7 +124,9 @@ func (f *folderEntry) hash() string {
 	// Include audio files with their size and modtime
 	for _, key := range audioKeys {
 		_, _ = io.WriteString(h, key)
-		if info, err := f.audioFiles[key].Info(); err == nil {
+		if info, ok := f.fileInfos[key]; ok {
+			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+		} else if info, err := f.audioFiles[key].Info(); err == nil {
 			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
 		}
 	}
@@ -130,7 +134,9 @@ func (f *folderEntry) hash() string {
 	// Include image files with their size and modtime
 	for _, key := range imageKeys {
 		_, _ = io.WriteString(h, key)
-		if info, err := f.imageFiles[key].Info(); err == nil {
+		if info, ok := f.fileInfos[key]; ok {
+			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+		} else if info, err := f.imageFiles[key].Info(); err == nil {
 			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
 		}
 	}

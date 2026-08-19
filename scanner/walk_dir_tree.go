@@ -146,6 +146,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 				log.Warn(ctx, "Scanner: Error getting fileInfo", "name", entry.Name(), err)
 				return folder, children, err
 			}
+			folder.fileInfos[entry.Name()] = fileInfo
 			if fileInfo.ModTime().After(folder.modTime) {
 				folder.modTime = fileInfo.ModTime()
 			}
