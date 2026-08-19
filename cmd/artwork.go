@@ -499,12 +499,16 @@ func runRefresh(ctx context.Context, args []string) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	targets, err := resolveArtworkTargets(ctx, ds, args, artwork.RefreshableKinds)
+	targets, failures, err := resolveArtworkTargets(ctx, ds, args, artwork.RefreshableKinds)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
-	if failed := refreshItems(ctx, ds, targets, os.Stdout); failed > 0 {
-		log.Fatal(ctx, "Failed to refresh artwork", "failed", failed, "total", len(targets))
+	for _, f := range failures {
+		log.Error(ctx, "Skipping unresolved item", f)
+	}
+	failed := refreshItems(ctx, ds, targets, os.Stdout) + len(failures)
+	if failed > 0 {
+		log.Fatal(ctx, "Failed to refresh artwork", "failed", failed, "total", len(targets)+len(failures))
 	}
 }
 
@@ -553,28 +557,32 @@ func invalidKindErr(s string, valid []model.Kind) error {
 }
 
 // resolveArtworkTargets resolves explain/refresh positional args into artwork ids, accepting a
-// shared "<kind> <id>..." leader or self-describing args (a bare id, or a full artwork id).
-func resolveArtworkTargets(ctx context.Context, ds model.DataStore, args []string, valid []model.Kind) ([]model.ArtworkID, error) {
+// shared "<kind> <id>..." leader or self-describing args (a bare id, or a full artwork id). A
+// self-describing arg that cannot be resolved is returned as a failure rather than aborting the
+// batch, so refresh can process the resolvable ids; a malformed <kind> leader is a usage error.
+func resolveArtworkTargets(ctx context.Context, ds model.DataStore, args []string, valid []model.Kind) ([]model.ArtworkID, []error, error) {
 	if kind, ok := model.ParseKind(args[0]); ok && len(args) > 1 {
 		if !slices.Contains(valid, kind) {
-			return nil, invalidKindErr(args[0], valid)
+			return nil, nil, invalidKindErr(args[0], valid)
 		}
 		return slice.Map(args[1:], func(id string) model.ArtworkID {
 			return model.ArtworkID{Kind: kind, ID: id}
-		}), nil
+		}), nil, nil
 	}
-	targets := make([]model.ArtworkID, 0, len(args))
+	var targets []model.ArtworkID
+	var failures []error
 	for _, arg := range args {
 		target, err := artworkKindAndID(ctx, ds, arg)
-		if err != nil {
-			return nil, err
+		if err == nil && !slices.Contains(valid, target.Kind) {
+			err = invalidKindErr(target.Kind.Prefix(), valid)
 		}
-		if !slices.Contains(valid, target.Kind) {
-			return nil, invalidKindErr(target.Kind.Prefix(), valid)
+		if err != nil {
+			failures = append(failures, err)
+			continue
 		}
 		targets = append(targets, target)
 	}
-	return targets, nil
+	return targets, failures, nil
 }
 
 // artworkKindAndID resolves one self-describing argument: a full artwork id (al-<id>) takes its kind
@@ -771,9 +779,12 @@ func runExplain(ctx context.Context, args []string) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	targets, err := resolveArtworkTargets(ctx, ds, args, explainKinds)
+	targets, failures, err := resolveArtworkTargets(ctx, ds, args, explainKinds)
 	if err != nil {
 		log.Fatal(ctx, err)
+	}
+	if len(failures) > 0 {
+		log.Fatal(ctx, failures[0])
 	}
 	if len(targets) != 1 {
 		log.Fatal(ctx, "explain takes a single item; pass one id or a <kind> <id> pair")
