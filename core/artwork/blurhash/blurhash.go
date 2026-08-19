@@ -52,6 +52,12 @@ func Encode(img image.Image) (string, error) {
 
 	lin := srgbToLinearTable()
 	factors := make([][3]float64, xComp*yComp)
+	linR := make([]float64, w)
+	linG := make([]float64, w)
+	linB := make([]float64, w)
+	rowR := make([]float64, xComp)
+	rowG := make([]float64, xComp)
+	rowB := make([]float64, xComp)
 	for y := range h {
 		row := src.pix[y*src.stride:]
 		for x := range w {
@@ -60,15 +66,26 @@ func Encode(img image.Image) (string, error) {
 			if src.straight {
 				r, g, b = premultiply(r, g, b, row[p+3])
 			}
-			lr, lg, lb := lin[r], lin[g], lin[b]
-			for j := range yComp {
-				for i := range xComp {
-					basis := cosX[i][x] * cosY[j][y]
-					f := &factors[j*xComp+i]
-					f[0] += basis * lr
-					f[1] += basis * lg
-					f[2] += basis * lb
-				}
+			linR[x], linG[x], linB[x] = lin[r], lin[g], lin[b]
+		}
+		// The basis is separable, so a row costs xComp dot products plus one fold over yComp,
+		// rather than xComp*yComp multiply-accumulates per pixel.
+		for i := range xComp {
+			var sr, sg, sb float64
+			for x, c := range cosX[i] {
+				sr += c * linR[x]
+				sg += c * linG[x]
+				sb += c * linB[x]
+			}
+			rowR[i], rowG[i], rowB[i] = sr, sg, sb
+		}
+		for j := range yComp {
+			cy := cosY[j][y]
+			for i := range xComp {
+				f := &factors[j*xComp+i]
+				f[0] += cy * rowR[i]
+				f[1] += cy * rowG[i]
+				f[2] += cy * rowB[i]
 			}
 		}
 	}
