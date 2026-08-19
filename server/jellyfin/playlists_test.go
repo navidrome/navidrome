@@ -460,7 +460,8 @@ var _ = Describe("Playlists", func() {
 	})
 
 	Describe("getPlaylistUsers", func() {
-		It("returns the current user with CanEdit true", func() {
+		It("returns the current user with CanEdit true for an editable playlist", func() {
+			fp.getByIDPls = &model.Playlist{ID: testID("pl1")}
 			w := httptest.NewRecorder()
 			ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
 			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(ctx)
@@ -471,21 +472,59 @@ var _ = Describe("Playlists", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res).To(Equal([]dto.PlaylistUserPermissions{{UserId: dto.EncodeID(testID("u1")), CanEdit: true}}))
 		})
+
+		It("reports CanEdit false for a synced playlist", func() {
+			fp.getByIDPls = &model.Playlist{ID: testID("pl1"), Sync: true}
+			w := httptest.NewRecorder()
+			ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
+			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(ctx)
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
+			api.getPlaylistUsers(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res []dto.PlaylistUserPermissions
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res[0].CanEdit).To(BeFalse())
+		})
+
+		It("returns 404 when the playlist is not visible", func() {
+			fp.getByIDErr = model.ErrNotFound
+			w := httptest.NewRecorder()
+			ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice"})
+			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users", nil).WithContext(ctx)
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
+			api.getPlaylistUsers(w, r)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
 	})
 
 	Describe("getPlaylistUser", func() {
-		It("returns CanEdit true for the requested user", func() {
+		requestUser := func() *httptest.ResponseRecorder {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Users/"+testID("u1"), nil).WithContext(context.Background())
 			rctx := chi.NewRouteContext()
-			rctx.URLParams.Add("playlistId", testID("pl1"))
+			rctx.URLParams.Add("playlistId", dto.EncodeID(testID("pl1")))
 			rctx.URLParams.Add("userId", testID("u1"))
 			r = r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 			api.getPlaylistUser(w, r)
+			return w
+		}
+
+		It("returns CanEdit true for an editable playlist", func() {
+			fp.getByIDPls = &model.Playlist{ID: testID("pl1")}
+			w := requestUser()
 			Expect(w.Code).To(Equal(http.StatusOK))
 			var res dto.PlaylistUserPermissions
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res).To(Equal(dto.PlaylistUserPermissions{UserId: testID("u1"), CanEdit: true}))
+		})
+
+		It("reports CanEdit false for a synced playlist", func() {
+			fp.getByIDPls = &model.Playlist{ID: testID("pl1"), Sync: true}
+			w := requestUser()
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.PlaylistUserPermissions
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.CanEdit).To(BeFalse())
 		})
 	})
 })

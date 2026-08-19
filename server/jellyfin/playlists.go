@@ -319,14 +319,35 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 }
 
 // getPlaylistUsers and getPlaylistUser answer client probes (e.g. Finamp) made before allowing
-// edits. Navidrome has no per-playlist ACL, so every user is reported CanEdit; ownership is still
-// enforced by AddTracks/RemoveTracks.
+// edits. Navidrome has no per-playlist ACL, so CanEdit reflects only whether the playlist's tracks
+// are editable (false for smart/synced); ownership is still enforced by AddTracks/RemoveTracks. Any
+// lookup error maps to 404 so private playlists can't be probed.
 func (api *Router) getPlaylistUsers(w http.ResponseWriter, r *http.Request) {
-	u, _ := request.UserFrom(r.Context())
-	api.ok(w, r, []dto.PlaylistUserPermissions{{UserId: dto.EncodeID(u.ID), CanEdit: true}})
+	ctx := r.Context()
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
+	pls, err := api.playlists.Get(ctx, id)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	u, _ := request.UserFrom(ctx)
+	api.ok(w, r, []dto.PlaylistUserPermissions{{UserId: dto.EncodeID(u.ID), CanEdit: pls.TracksEditable()}})
 }
 
 func (api *Router) getPlaylistUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
+	pls, err := api.playlists.Get(ctx, id)
+	if err != nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
 	userId := chi.URLParam(r, "userId")
-	api.ok(w, r, dto.PlaylistUserPermissions{UserId: userId, CanEdit: true})
+	api.ok(w, r, dto.PlaylistUserPermissions{UserId: userId, CanEdit: pls.TracksEditable()})
 }
