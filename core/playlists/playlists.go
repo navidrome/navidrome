@@ -131,7 +131,7 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 				return err
 			}
 			if !pls.TracksEditable() {
-				return model.ErrNotAuthorized
+				return model.ErrPlaylistNotEditable
 			}
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
 				return model.ErrNotAuthorized
@@ -237,7 +237,7 @@ func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) 
 		return nil, err
 	}
 	if !pls.TracksEditable() {
-		return nil, model.ErrNotAuthorized
+		return nil, model.ErrPlaylistNotEditable
 	}
 	return pls, nil
 }

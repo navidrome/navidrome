@@ -35,6 +35,8 @@ func (api *Router) playlistError(w http.ResponseWriter, r *http.Request, err err
 	switch {
 	case errors.Is(err, model.ErrNotAuthorized):
 		http.Error(w, "Forbidden", http.StatusForbidden)
+	case errors.Is(err, model.ErrPlaylistNotEditable):
+		http.Error(w, "Conflict", http.StatusConflict)
 	case errors.Is(err, model.ErrNotFound):
 		http.Error(w, "Not Found", http.StatusNotFound)
 	default:

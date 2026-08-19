@@ -146,13 +146,13 @@ var _ = Describe("Playlists", func() {
 		It("denies replacing tracks on a smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.Create(ctx, "pls-smart", "", []string{"song-1"})
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 
 		It("denies replacing tracks on a synced playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.Create(ctx, "pls-synced", "", []string{"song-1"})
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 	})
 
@@ -199,13 +199,13 @@ var _ = Describe("Playlists", func() {
 		It("denies adding tracks to a smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.Update(ctx, "pls-smart", nil, nil, nil, []string{"song-1"}, nil)
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 
 		It("denies removing tracks from a smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.Update(ctx, "pls-smart", nil, nil, nil, nil, []int{0})
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 
 		It("allows metadata updates on a smart playlist", func() {
@@ -217,7 +217,7 @@ var _ = Describe("Playlists", func() {
 		It("denies adding tracks to a synced playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.Update(ctx, "pls-synced", nil, nil, nil, []string{"song-1"}, nil)
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 
 		It("allows metadata updates on a synced playlist", func() {
@@ -267,13 +267,13 @@ var _ = Describe("Playlists", func() {
 		It("denies editing smart playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "pls-smart", []string{"song-1"})
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 
 		It("denies editing synced playlists", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			_, err := ps.AddTracks(ctx, "pls-synced", []string{"song-1"})
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 
 		It("returns error when playlist not found", func() {
@@ -307,7 +307,7 @@ var _ = Describe("Playlists", func() {
 		It("denies on smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.RemoveTracks(ctx, "pls-smart", []string{"track-1"})
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 
 		It("denies non-owner", func() {
@@ -341,7 +341,7 @@ var _ = Describe("Playlists", func() {
 		It("denies on smart playlist", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
 			err := ps.ReorderTrack(ctx, "pls-smart", 1, 3)
-			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
 		})
 	})
 
