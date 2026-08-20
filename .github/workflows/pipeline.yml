@@ -68,10 +68,16 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # Keep CI on the same version `make lint` installs, so a clean local run
+      # cannot turn red in CI just because a new golangci-lint was released.
+      - name: Resolve golangci-lint version
+        id: golangci-version
+        run: echo "version=$(grep '^GOLANGCI_LINT_VERSION' Makefile | cut -d ' ' -f 3)" >> "$GITHUB_OUTPUT"
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: ${{ steps.golangci-version.outputs.version }}
           problem-matchers: true
           args: --timeout 2m
 
