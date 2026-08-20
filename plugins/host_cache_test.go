@@ -8,9 +8,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -597,5 +599,41 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output.Exists).To(BeFalse())
 		})
+	})
+})
+
+var _ = Describe("newCacheService", func() {
+	// Background goroutines wind down late, so poll for two consecutive equal samples.
+	settleGoroutines := func() int {
+		prev := -1
+		for range 100 {
+			runtime.GC()
+			n := runtime.NumGoroutine()
+			if n == prev {
+				return n
+			}
+			prev = n
+			time.Sleep(10 * time.Millisecond)
+		}
+		return prev
+	}
+
+	It("stops the janitor goroutine once the service is unreachable", func() {
+		const numServices = 20
+
+		baseline := settleGoroutines()
+
+		services := make([]*cacheServiceImpl, 0, numServices)
+		for i := range numServices {
+			services = append(services, newCacheService(fmt.Sprintf("plugin_%d", i)))
+		}
+		Expect(runtime.NumGoroutine()).To(BeNumerically(">=", baseline+numServices),
+			"expected one janitor goroutine per cache service")
+
+		services = nil
+		Expect(services).To(BeNil())
+
+		Expect(settleGoroutines()).To(BeNumerically("<", baseline+numServices),
+			"janitor goroutines leaked after the services became unreachable")
 	})
 })
