@@ -3,7 +3,6 @@ package scanner_test
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -21,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/tests"
 	"go.uber.org/goleak"
 )
 
@@ -31,10 +31,17 @@ func BenchmarkScan(b *testing.B) {
 		goleak.IgnoreAnyFunction("testing.(*B).doBench"),
 		// Ignore database/sql.(*DB).connectionOpener, as we are not closing the database connection
 		goleak.IgnoreAnyFunction("database/sql.(*DB).connectionOpener"),
+		// The notify library keeps internal watcher goroutines alive after Stop()
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*recursiveTree).dispatch"),
 	)
 
-	tmpDir := os.TempDir()
+	// Benchmarks run without the suite's TestMain, so the config defaults must be loaded here
+	tests.Init(b, false)
+
+	tmpDir := b.TempDir()
 	conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
+	// The default library is seeded from MusicFolder, and its path cannot be changed afterwards
+	conf.Server.MusicFolder = "fake:///music"
 	db.Init(context.Background())
 
 	ds := persistence.New(db.Db())
