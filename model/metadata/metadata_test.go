@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -120,6 +121,27 @@ var _ = Describe("Metadata", func() {
 				// Note: a total of 6 characters are lost from maxLength from
 				// the key portion and separator.
 				Expect(pair[0].Value()).To(HaveLen(1048570))
+			})
+
+			It("should not split a multi-byte character when truncating", func() {
+				// 1024 is not a multiple of 3, so a byte-wise cut lands mid-rune.
+				props.Tags = model.RawTags{
+					"Title": {strings.Repeat("日", 2048)},
+				}
+				md = metadata.New(filePath, props)
+
+				title := md.String(model.TagTitle)
+				Expect(utf8.ValidString(title)).To(BeTrue(), "truncation produced invalid UTF-8")
+				Expect(len(title)).To(BeNumerically("<=", 1024))
+			})
+
+			It("should keep invalid bytes that are not at the truncation point", func() {
+				props.Tags = model.RawTags{
+					"Title": {"a\xffb" + strings.Repeat("c", 2048)},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.String(model.TagTitle)).To(HaveLen(1024))
 			})
 
 			It("should split multiple values", func() {

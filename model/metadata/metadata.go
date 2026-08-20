@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
@@ -366,6 +367,14 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 	if len(value) > maxLength {
 		log.Trace("Truncated tag value", "tag", tagName, "value", value, "length", len(value), "maxLength", maxLength)
 		value = value[:maxLength]
+		// Drop the trailing partial rune the cut may have left behind. Only trailing
+		// invalid bytes are removed, so pre-existing bad bytes elsewhere are preserved.
+		for len(value) > 0 {
+			if r, size := utf8.DecodeLastRuneInString(value); r != utf8.RuneError || size > 1 {
+				break
+			}
+			value = value[:len(value)-1]
+		}
 	}
 
 	switch tag.Type {
