@@ -58,6 +58,41 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			})
 		})
 
+		Context("re-imported from disk", func() {
+			// The scanner re-imports every playlist in a touched folder, and a freshly parsed
+			// .nsp carries no counters — saving it must not wipe the ones already evaluated.
+			It("keeps the stored counters when a freshly parsed playlist is saved over it", func() {
+				rules = &criteria.Criteria{
+					Expression: criteria.All{
+						criteria.Contains{"title": "Antenna"},
+					},
+				}
+				pls := model.Playlist{Name: "Smart", OwnerID: "userid", Rules: rules, Path: "/music/smart.nsp", Sync: true}
+				Expect(repo.Put(&pls)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+
+				evaluated, err := repo.GetWithTracks(pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(evaluated.SongCount).To(BeNumerically(">", 0))
+
+				stored, err := repo.Get(pls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stored.SongCount).To(Equal(evaluated.SongCount))
+
+				reimported := model.Playlist{
+					ID: pls.ID, Name: pls.Name, OwnerID: "userid", Rules: rules,
+					Path: pls.Path, Sync: true,
+				}
+				Expect(repo.Put(&reimported)).To(Succeed())
+
+				afterImport, err := repo.Get(pls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(afterImport.SongCount).To(Equal(stored.SongCount))
+				Expect(afterImport.Duration).To(Equal(stored.Duration))
+				Expect(afterImport.Size).To(Equal(stored.Size))
+			})
+		})
+
 		Context("child smart playlists", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())

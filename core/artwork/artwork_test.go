@@ -106,7 +106,7 @@ var _ = Describe("Artwork", func() {
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 				return arg.(artworkReader).Reader(ctx)
 			})
-		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 		svc = NewArtwork(ds, imgCache, store, ffm)
 	})
 

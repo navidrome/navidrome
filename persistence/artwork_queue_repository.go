@@ -10,6 +10,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -29,6 +30,16 @@ func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.Artwor
 	r.db = db
 	r.tableName = "artwork_queue"
 	return r
+}
+
+func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
+	var res model.ArtworkQueueItem
+	err := r.queryOne(Select("*").From(r.tableName).
+		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType}), &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
 
 // Enqueue also resets enqueued_at, so a fresh request does not inherit an old row's spent retry budget.
@@ -87,12 +98,49 @@ func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueIte
 	return nil
 }
 
-// insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE. DO NOTHING is
-// deliberate: a recheck must not bump the priority or retry_at of an already-queued item.
+// DO NOTHING is deliberate: a recheck must not bump the priority or retry_at of an already-queued item.
+const skipIfQueued = ` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`
+
+// insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE.
 func (r *artworkQueueRepository) insertIfNotQueued(with, sql string, args ...any) (int64, error) {
 	return r.executeSQL(Expr(with+`INSERT INTO `+r.tableName+
-		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+
-		` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`, args...))
+		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+skipIfQueued, args...))
+}
+
+// artworkSourceFilter selects item_artwork rows of a kind; no sources means every source, "" the absent state.
+func artworkSourceFilter(kind model.Kind, sources []string) Sqlizer {
+	f := And{Eq{"item_kind": kind.Prefix()}}
+	if len(sources) > 0 {
+		f = append(f, Eq{"source": sources})
+	}
+	return f
+}
+
+func (r *artworkQueueRepository) CountBySource(kind model.Kind, sources []string) (int64, error) {
+	var res struct{ Count int64 }
+	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
+		Where(artworkSourceFilter(kind, sources)), &res)
+	return res.Count, err
+}
+
+func (r *artworkQueueRepository) SourcesInUse(kind model.Kind) ([]string, error) {
+	var res []struct{ Source string }
+	err := r.queryAll(Select("distinct source").From(itemArtworkTable).
+		Where(Eq{"item_kind": kind.Prefix()}), &res)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map(res, func(s struct{ Source string }) string { return s.Source }), nil
+}
+
+// EnqueueBySource deliberately leaves item_artwork alone: clearing state in bulk would blank the
+// library's artwork until every item is resolved again.
+func (r *artworkQueueRepository) EnqueueBySource(kind model.Kind, sources []string, priority int) (int64, error) {
+	now := time.Now()
+	sel := Select("item_kind", "item_id", "image_type").
+		Column(Expr("?", priority)).Column("0").Column(Expr("?", now)).Column(Expr("?", now)).
+		From(itemArtworkTable).Where(artworkSourceFilter(kind, sources))
+	return r.executeSQL(Insert(r.tableName).Columns(enqueueColumns...).Select(sel).Suffix(skipIfQueued))
 }
 
 func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQueueItem) error {
@@ -144,6 +192,22 @@ func (r *artworkQueueRepository) Count() (int64, error) {
 	var res struct{ Count int64 }
 	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)
 	return res.Count, err
+}
+
+func (r *artworkQueueRepository) CountByKindAndPriority() ([]model.ArtworkQueueStat, error) {
+	var res []model.ArtworkQueueStat
+	err := r.queryAll(Select("item_kind", "priority", "count(*) as count").From(r.tableName).
+		GroupBy("item_kind", "priority").OrderBy("item_kind", "priority desc"), &res)
+	return res, err
+}
+
+// CountAbsent matches EnqueueStaleAbsent on hash, so the stale count is what a recheck would queue.
+func (r *artworkQueueRepository) CountAbsent(kind model.Kind, attemptedBefore time.Time) (model.ArtworkAbsentStat, error) {
+	var res model.ArtworkAbsentStat
+	err := r.queryOne(Select("count(*) as total").
+		Column(Expr("coalesce(sum(attempted_at < ?), 0) as stale", attemptedBefore)).
+		From(itemArtworkTable).Where(Eq{"item_kind": kind.Prefix(), "hash": ""}), &res)
+	return res, err
 }
 
 var _ model.ArtworkQueueRepository = (*artworkQueueRepository)(nil)

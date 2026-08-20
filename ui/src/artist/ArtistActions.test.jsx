@@ -4,6 +4,11 @@ import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ArtistActions from './ArtistActions'
 import subsonic from '../subsonic'
+import {
+  openShareMenu,
+  openDownloadMenu,
+  DOWNLOAD_MENU_ARTIST,
+} from '../actions'
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 
 const mockDispatch = vi.fn()
@@ -12,6 +17,11 @@ vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
 vi.mock('../subsonic', () => ({
   default: { getSimilarSongs2: vi.fn(), getTopSongs: vi.fn() },
 }))
+
+const { mockConfig } = vi.hoisted(() => ({
+  mockConfig: { enableSharing: true, enableDownloads: true },
+}))
+vi.mock('../config', () => ({ default: mockConfig }))
 
 const mockNotify = vi.fn()
 const mockGetList = vi.fn().mockResolvedValue({ data: [{ id: 's1' }] })
@@ -27,7 +37,11 @@ vi.mock('react-admin', async (importOriginal) => {
 })
 
 describe('ArtistActions', () => {
-  const defaultRecord = { id: 'ar1', name: 'Artist' }
+  const defaultRecord = {
+    id: 'ar1',
+    name: 'Artist',
+    stats: { albumartist: { songCount: 3, albumCount: 1, size: 1024 } },
+  }
 
   const renderArtistActions = (record = defaultRecord) => {
     const theme = createTheme()
@@ -48,6 +62,8 @@ describe('ArtistActions', () => {
     vi.clearAllMocks()
     // Mock console.error to suppress error logging in tests
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockConfig.enableSharing = true
+    mockConfig.enableDownloads = true
 
     const songWithReplayGain = {
       id: 'rec1',
@@ -225,6 +241,53 @@ describe('ArtistActions', () => {
         'warning',
       )
       expect(mockDispatch).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Share action', () => {
+    it('shows the share button and dispatches openShareMenu when clicked', () => {
+      renderArtistActions()
+      fireEvent.click(screen.getByText('ra.action.share'))
+      expect(mockDispatch).toHaveBeenCalledWith(
+        openShareMenu(['ar1'], 'artist', 'Artist'),
+      )
+    })
+
+    it('hides the share button when sharing is disabled', () => {
+      mockConfig.enableSharing = false
+      renderArtistActions()
+      expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Download action', () => {
+    it('shows the download button with album-artist size and dispatches openDownloadMenu when clicked', () => {
+      renderArtistActions()
+      expect(screen.getByText('ra.action.download (1 KB)')).toBeInTheDocument()
+      fireEvent.click(screen.getByText(/ra\.action\.download/))
+      expect(mockDispatch).toHaveBeenCalledWith(
+        openDownloadMenu(defaultRecord, DOWNLOAD_MENU_ARTIST),
+      )
+    })
+
+    it('hides the download button when downloads are disabled', () => {
+      mockConfig.enableDownloads = false
+      renderArtistActions()
+      expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Album-artist gating', () => {
+    it('hides Share and Download for artists with no album-artist content', () => {
+      renderArtistActions({ id: 'ar1', name: 'Artist', stats: {} })
+      expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
+      expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
+    })
+
+    it('hides Share and Download for a missing artist', () => {
+      renderArtistActions({ ...defaultRecord, missing: true })
+      expect(screen.queryByText('ra.action.share')).not.toBeInTheDocument()
+      expect(screen.queryByText(/ra\.action\.download/)).not.toBeInTheDocument()
     })
   })
 })

@@ -85,15 +85,6 @@ player id is the device id from `X-Emby-Authorization` (`DeviceId="..."`); the p
 client/device info (e.g. the `GET socket` handshake, which authenticates via `?api_key=` only) is
 skipped, so it doesn't create a nameless player.
 
-## ID encoding
-
-Navidrome item ids are **hex-encoded at the API boundary** (`dto.EncodeID`/`DecodeID`): every id
-is hex-encoded on the way out and hex-decoded on the way in. This is required because some clients
-parse ids as radix-16 — Finamp's queue `packIds`, for instance, does `int.parse(chunk, radix:16)`,
-which chokes on Navidrome's base62 ids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a base62 id can
-itself be valid hex, correctness depends on every emit path encoding and every receive path
-decoding — see `dto/ids.go`.
-
 ## Multi-library behavior
 
 Jellyfin has no native concept of multiple music libraries the way Navidrome does, so each
@@ -113,7 +104,11 @@ album's tracks — Feishin fetches them this way instead of `ParentId`); `GenreI
 genre's albums or tracks — Finamp's genre screen sends it the same way; `/Artists/AlbumArtists`
 and `MusicArtist` queries accept it too, matching artists credited on an album of that genre);
 `SearchTerm`;
-favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `SortBy`/`SortOrder`;
+`Filters` (`IsFavorite`, `IsFavoriteOrLikes`, `IsPlayed`, `IsUnplayed`) and the standalone
+`isFavorite`/`isPlayed` booleans it can also be expressed as — `Filters` wins when both are sent, as
+in Jellyfin; `Likes`, `Dislikes`, `IsFolder`, `IsNotFolder` and `IsResumable` have no Navidrome
+equivalent and are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
+unrecognized keys are skipped, and `Random` always sorts alone);
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
 returns direct children only (no tracks — no track is a library's direct child).
 
@@ -121,7 +116,7 @@ returns direct children only (no tracks — no track is a library's direct child
 
 | Area | Endpoints |
 |---|---|
-| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET QuickConnect/Enabled` |
+| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET System/Endpoint` (authenticated), `GET QuickConnect/Enabled` |
 | Auth | `POST Users/AuthenticateByName`, `GET Users/Public` |
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
 | Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
@@ -180,26 +175,25 @@ warmer uses — so user-scoped items like private playlists still resolve their 
 falling back to the placeholder. Album, artist, media-file and playlist ids are all resolved to
 their Navidrome `ArtworkID`.
 
-## Finamp saved-queue id truncation
+## Item ids are GUIDs
 
-Real Jellyfin item ids are GUIDs — 128-bit values, always 32 hex characters. Finamp relies on that
-when persisting its play queue across restarts: `packIds()` bit-packs every id into exactly 16
-bytes. Navidrome ids are 22-character base62 strings, not 32-hex GUIDs, which means Finamp silently
-stores only the first 16 characters of each id and asks for those **truncated ids** back when
-restoring the queue — item lookups, then streaming, images, favorites and playback reports for the
-restored tracks.
+Jellyfin item ids are GUIDs, serialized as 32 lowercase hex chars with no dashes
+(`Guid.ToString("N")`). Navidrome ids are canonical 22-char base62 encodings of a 128-bit value,
+so `dto.EncodeID`/`dto.DecodeID` map between the two via `model/id` — losslessly except for the
+~2⁻⁹⁶ chance an id's 128-bit value falls in the reserved space below (leading 12 bytes all zero).
 
-This API compensates server-side (`truncated_ids.go`): a 16-character id — a length no Navidrome
-id uses — is resolved to the full id by unique-prefix lookup (an indexed range scan;
-ambiguity is detected and fails safe). The `/Items?ids=` batch response echoes the id **as
-requested**, because Finamp matches restored items back to its stored ids, and the other item
-endpoints accept truncated ids transparently.
+Three emitted ids aren't 128-bit values: integer library ids, the synthetic playlists folder, and
+`PlaylistItemId` (a playlist *entry position* — `playlist_tracks.id` is an `integer` column).
+They use a reserved GUID space — 12 zero bytes, a non-zero kind tag, a 24-bit payload — so
+library `1` is `00000000000000000000000001000001`. The tag is never zero, because Jellyfin
+serializes the all-zero GUID as `null`.
 
-**Proper fix (upstream):** Finamp's `packIds()`/`_unpackIds()` (`lib/models/finamp_models.dart`)
-should handle ids that aren't 32-hex GUIDs — e.g. store variable-length ids when any id in the
-queue doesn't match the GUID shape. Jellyfin-compatible servers aren't guaranteed to use GUID ids,
-so this is worth a Finamp issue/PR; once a fixed release is widespread, this compatibility layer
-can be removed.
+`DecodeID` accepts dashed and uppercase GUIDs (Jellyfin's `Guid.Parse` does) and returns
+`ok=false` for anything malformed — including "" — which handlers surface as a 404.
+
+The wire format must stay GUID-shaped for this reason: Finamp's saved-queue persistence bit-packs
+each item id into exactly 16 bytes (`packIds()` in `lib/models/finamp_models.dart`), so a 32-hex
+GUID round-trips exactly, whereas a longer id would be silently truncated.
 
 ## Streaming and transcoding
 
@@ -242,7 +236,7 @@ plugin being loaded, like the Subsonic `sonicSimilarity` OpenSubsonic extension.
   loaded; otherwise `{"path": [{author, item_id, title, tempo?}], "total_distance": <float>}` (200), or 400
   with `start_song_id and end_song_id are required.` when either id is missing.
 
-`item_id`/`start_song_id`/`end_song_id` are the hex-encoded ids Navidrome hands Jellyfin clients.
+`item_id`/`start_song_id`/`end_song_id` are the GUID-form ids Navidrome hands Jellyfin clients.
 `tempo` comes from the track's BPM when known; the richer AudioMuse per-track features
 (`energy`, `key`, `mood_vector`, `scale`, `other_features`) are not provided. In multi-library
 setups, `find_path`'s `path` and `total_distance` only reflect hops through tracks in libraries

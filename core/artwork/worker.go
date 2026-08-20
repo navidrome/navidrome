@@ -137,7 +137,7 @@ func (w *Worker) Backfill(ctx context.Context) (bool, error) {
 	return backfill(ctx, w.proc.ds)
 }
 
-// EnqueueStaleAbsentAll requeues known-absent entries older than staleAbsentAge.
+// EnqueueStaleAbsentAll requeues known-absent entries older than StaleAbsentAge.
 func (w *Worker) EnqueueStaleAbsentAll(ctx context.Context) error {
 	return enqueueStaleAbsentAll(ctx, w.proc.ds)
 }
@@ -170,8 +170,11 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
+		}
+		// select picks randomly when both cases are ready, so re-check to never dispatch after cancellation.
+		if ctx.Err() != nil {
 			wg.Wait()
-			return len(items), nil
+			return len(items), nil //nolint:nilerr // a cancelled drain is a clean stop, not an error
 		}
 		wg.Go(func() {
 			defer func() { <-sem }()
