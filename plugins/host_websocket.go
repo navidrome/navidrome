@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -244,14 +243,7 @@ func (s *webSocketServiceImpl) getConnection(connectionID string) (*wsConnection
 }
 
 func (s *webSocketServiceImpl) isHostAllowed(host string) bool {
-	// Strip port from host if present
-	hostWithoutPort := host
-	if h, _, err := net.SplitHostPort(host); err == nil {
-		hostWithoutPort = h
-	} else if h, ok := strings.CutPrefix(host, "["); ok {
-		// Bracketed IPv6 literal with no port
-		hostWithoutPort = strings.TrimSuffix(h, "]")
-	}
+	hostWithoutPort := extractHostname(host)
 
 	for _, pattern := range s.requiredHosts {
 		if matchHostPattern(pattern, hostWithoutPort) {

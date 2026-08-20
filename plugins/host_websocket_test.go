@@ -144,20 +144,18 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			Expect(allowed).To(BeFalse())
 		})
 
-		It("should strip port before checking host", func() {
-			// Implementation strips port before matching against patterns
-			// test-websocket manifest has "localhost:*" which matches "localhost"
-			// after port stripping
-			// Note: The port wildcard pattern isn't actually implemented, but
-			// since port is stripped, "localhost:*" is compared against "localhost"
-			// which won't match. To make localhost work, we'd need exact "localhost"
-			// in the allowed hosts list.
-
-			// Testing that port is properly stripped
-			// The pattern "localhost:*" won't match "localhost" due to exact match
-			allowed := testService.isHostAllowed("localhost:8080")
-			Expect(allowed).To(BeFalse())
-		})
+		DescribeTable("should match against the host with its port stripped",
+			func(allowed []string, host string, expected bool) {
+				svc := &webSocketServiceImpl{requiredHosts: allowed}
+				Expect(svc.isHostAllowed(host)).To(Equal(expected))
+			},
+			Entry("hostname with port", []string{"example.com"}, "example.com:8080", true),
+			Entry("IPv6 with port", []string{"::1"}, "[::1]:8080", true),
+			Entry("IPv6 without port", []string{"::1"}, "[::1]", true),
+			Entry("host not in the list", []string{"::2"}, "[::1]:8080", false),
+			// "localhost:*" is matched against the stripped "localhost", so it never hits
+			Entry("port wildcards are not supported", []string{"localhost:*"}, "localhost:8080", false),
+		)
 	})
 
 	Describe("Connection Management", func() {
@@ -614,18 +612,3 @@ func findWebSocketService(m *Manager, pluginName string) *webSocketServiceImpl {
 	}
 	return nil
 }
-
-var _ = Describe("isHostAllowed", func() {
-	DescribeTable("strips the port before matching",
-		func(allowed []string, host string, expected bool) {
-			svc := &webSocketServiceImpl{requiredHosts: allowed}
-			Expect(svc.isHostAllowed(host)).To(Equal(expected))
-		},
-		Entry("hostname with port", []string{"example.com"}, "example.com:8080", true),
-		Entry("hostname without port", []string{"example.com"}, "example.com", true),
-		Entry("IPv4 with port", []string{"127.0.0.1"}, "127.0.0.1:4533", true),
-		Entry("IPv6 with port", []string{"::1"}, "[::1]:8080", true),
-		Entry("IPv6 without port", []string{"::1"}, "[::1]", true),
-		Entry("IPv6 not in the list", []string{"::2"}, "[::1]:8080", false),
-	)
-})
