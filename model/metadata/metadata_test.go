@@ -144,6 +144,22 @@ var _ = Describe("Metadata", func() {
 				Expect(md.String(model.TagTitle)).To(HaveLen(1024))
 			})
 
+			DescribeTable("should normalize UUID tags to their canonical form",
+				func(raw, expected string) {
+					props.Tags = model.RawTags{"musicbrainz_artistid": {raw}}
+					md = metadata.New(filePath, props)
+
+					Expect(md.String(model.TagMusicBrainzArtistID)).To(Equal(expected))
+				},
+				Entry("canonical", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("uppercase", "F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("braced", "{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("urn prefix", "urn:uuid:f81d4fae-7dec-11d0-a765-00a0c91e6bf6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("quoted", `"f81d4fae-7dec-11d0-a765-00a0c91e6bf6"`, "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("no dashes", "f81d4fae7dec11d0a76500a0c91e6bf6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("not a uuid", "the beatles", ""),
+			)
+
 			It("should split multiple values", func() {
 				props.Tags = model.RawTags{
 					"Genre": {"Rock/Pop;;Punk"},

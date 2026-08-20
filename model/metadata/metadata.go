@@ -396,11 +396,14 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 			return ""
 		}
 	case model.TagTypeUUID:
-		_, err := uuid.Parse(value)
+		u, err := uuid.Parse(value)
 		if err != nil {
 			log.Trace("Invalid UUID tag value", "tag", tagName, "value", value)
 			return ""
 		}
+		// Store the canonical form: uuid.Parse accepts braces, urn: prefixes and any
+		// two-byte wrapper, and a wrapped value would never match an exact-match query
+		value = u.String()
 	}
 	return value
 }
