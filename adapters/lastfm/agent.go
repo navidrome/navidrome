@@ -372,9 +372,24 @@ func (l *lastfmAgent) NowPlaying(ctx context.Context, userId string, track *mode
 	})
 	if err != nil {
 		log.Warn(ctx, "Last.fm client.updateNowPlaying returned error", "track", track.Title, err)
+		l.dropSessionKeyIfInvalid(ctx, userId, err)
 		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
 	return nil
+}
+
+// dropSessionKeyIfInvalid discards a session key that Last.fm has rejected, so the
+// account stops reporting as linked and the user is prompted to re-authenticate
+// instead of scrobbles failing silently.
+func (l *lastfmAgent) dropSessionKeyIfInvalid(ctx context.Context, userId string, err error) {
+	var lfErr *lastFMError
+	if !errors.As(err, &lfErr) || lfErr.Code != errorInvalidSessionKey {
+		return
+	}
+	log.Warn(ctx, "Last.fm session key was rejected, unlinking account", "userId", userId, err)
+	if delErr := l.sessionKeys.Delete(ctx, userId); delErr != nil {
+		log.Error(ctx, "Could not delete rejected Last.fm session key", "userId", userId, delErr)
+	}
 }
 
 func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.Scrobble) error {
@@ -409,6 +424,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 	if lfErr.Code == 11 || lfErr.Code == 16 {
 		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
+	l.dropSessionKeyIfInvalid(ctx, userId, err)
 	return errors.Join(err, scrobbler.ErrUnrecoverable)
 }
 

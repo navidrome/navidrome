@@ -24,6 +24,7 @@ import (
 const (
 	lastfmError3 = `{"error":3,"message":"Invalid Method - No method with that name in this package","links":[]}`
 	lastfmError6 = `{"error":6,"message":"The artist you supplied could not be found","links":[]}`
+	lastfmError9 = `{"error":9,"message":"Invalid session key - Please re-authenticate","links":[]}`
 )
 
 var _ = Describe("lastfmAgent", func() {
@@ -515,6 +516,32 @@ var _ = Describe("lastfmAgent", func() {
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 				Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+			})
+
+			It("unlinks the account when the session key is rejected", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(lastfmError9)),
+					StatusCode: 403,
+				}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+				Expect(agent.IsAuthorized(ctx, "user-1")).To(BeFalse())
+			})
+		})
+
+		Describe("session key rejected during NowPlaying", func() {
+			It("unlinks the account", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(lastfmError9)),
+					StatusCode: 403,
+				}
+
+				err := agent.NowPlaying(ctx, "user-1", track, 0)
+
+				Expect(err).To(HaveOccurred())
+				Expect(agent.IsAuthorized(ctx, "user-1")).To(BeFalse())
 			})
 		})
 	})
