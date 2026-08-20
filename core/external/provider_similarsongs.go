@@ -167,6 +167,7 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 	if len(matched) == 0 {
 		matched = seeds
 	}
+	//nolint:gosec // shuffle order is not a security decision
 	rand.Shuffle(len(matched), func(i, j int) { matched[i], matched[j] = matched[j], matched[i] })
 	if len(matched) > count {
 		matched = matched[:count]
