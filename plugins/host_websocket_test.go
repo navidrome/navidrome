@@ -614,3 +614,18 @@ func findWebSocketService(m *Manager, pluginName string) *webSocketServiceImpl {
 	}
 	return nil
 }
+
+var _ = Describe("isHostAllowed", func() {
+	DescribeTable("strips the port before matching",
+		func(allowed []string, host string, expected bool) {
+			svc := &webSocketServiceImpl{requiredHosts: allowed}
+			Expect(svc.isHostAllowed(host)).To(Equal(expected))
+		},
+		Entry("hostname with port", []string{"example.com"}, "example.com:8080", true),
+		Entry("hostname without port", []string{"example.com"}, "example.com", true),
+		Entry("IPv4 with port", []string{"127.0.0.1"}, "127.0.0.1:4533", true),
+		Entry("IPv6 with port", []string{"::1"}, "[::1]:8080", true),
+		Entry("IPv6 without port", []string{"::1"}, "[::1]", true),
+		Entry("IPv6 not in the list", []string{"::2"}, "[::1]:8080", false),
+	)
+})
