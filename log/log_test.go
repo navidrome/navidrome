@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -92,7 +94,7 @@ var _ = Describe("Logger", func() {
 			SetLogSourceLine(true)
 			Error("A crash happened")
 			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:93"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:95"))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
@@ -263,6 +265,41 @@ var _ = Describe("Logger", func() {
 		It("redacts a whole JWT in api_key, not just up to its first dot", func() {
 			msg := "/jellyfin/Audio/abc/universal?static=true&api_key=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.c2ln-X_1&other=1"
 			Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/universal?static=true&api_key=[REDACTED]&other=1"))
+		})
+	})
+
+	Describe("SetOutputFile", func() {
+		var path string
+
+		BeforeEach(func() {
+			path = filepath.Join(GinkgoT().TempDir(), "logs", "navidrome.log")
+			Expect(SetOutputFile(path)).To(Succeed())
+		})
+
+		It("creates the log file directory and writes log messages to the file", func() {
+			Error("first message")
+
+			content, err := os.ReadFile(path)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("first message"))
+		})
+
+		It("recreates the log file after it has been rotated away", func() {
+			Error("first message")
+			rotated := path + ".1"
+			Expect(os.Rename(path, rotated)).To(Succeed())
+
+			Expect(SetOutputFile(path)).To(Succeed())
+			Error("second message")
+
+			rotatedContent, err := os.ReadFile(rotated)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(rotatedContent)).To(ContainSubstring("first message"))
+			Expect(string(rotatedContent)).ToNot(ContainSubstring("second message"))
+
+			content, err := os.ReadFile(path)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("second message"))
 		})
 	})
 })
