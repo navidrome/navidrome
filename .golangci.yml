@@ -27,6 +27,9 @@ linters:
   disable:
     - staticcheck
   settings:
+    errcheck:
+      exclude-functions:
+        - (*github.com/zeebo/xxh3.Hasher).Write
     gocritic:
       disable-all: true
       enabled-checks:

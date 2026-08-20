@@ -21,6 +21,12 @@ var (
 	timeRegex  = regexp.MustCompile(timeRegexString)
 	lrcIdRegex = regexp.MustCompile(`\[(ar|ti|offset|lang):([^]]+)]`)
 
+	// Non-standard background-vocal tag: [bg: <mm:ss.mm>word...] attaches to the preceding line
+	bgTagRegex = regexp.MustCompile(`^\[bg:(.*)]$`)
+
+	// Any other [name:value] line is a tag we don't support (e.g. [al:], [by:]) and must be skipped whole
+	unknownTagRegex = regexp.MustCompile(`^\[[A-Za-z][^]:]*:[^]]*]`)
+
 	// Enhanced LRC: inline word-level timing markers like <00:12.34>
 	enhancedLRCTimeString = `<([0-9]{1,2}:)?([0-9]{1,2}):([0-9]{1,2})(\.[0-9]{1,3})?>`
 	enhancedLRCRegex      = regexp.MustCompile(enhancedLRCTimeString)
@@ -40,7 +46,26 @@ func parseLRC(language, text string) (*Lyrics, error) {
 	priorLine := ""
 	validLine := false
 	repeated := false
+	hasBg := false
 	var timestamps []int64
+	var pendingBg []string
+
+	flushLine := func() {
+		value, cues := parseEnhancedLine(priorLine)
+		var merged bool
+		value, cues, merged = mergeBgLayers(value, cues, pendingBg)
+		hasBg = hasBg || merged
+		for idx := range timestamps {
+			startCopy := timestamps[idx]
+			structuredLines = append(structuredLines, Line{
+				Start: &startCopy,
+				Value: value,
+				Cue:   shiftELRCCues(cues, timestamps[idx]-timestamps[0]),
+			})
+		}
+		timestamps = nil
+		pendingBg = nil
+	}
 
 	for _, line := range lines {
 		line := strings.TrimSpace(line)
@@ -77,6 +102,17 @@ func parseLRC(language, text string) (*Lyrics, error) {
 				continue
 			}
 
+			if bgMatch := bgTagRegex.FindStringSubmatch(line); bgMatch != nil {
+				if validLine {
+					pendingBg = append(pendingBg, bgMatch[1])
+				}
+				continue
+			}
+
+			if unknownTagRegex.MatchString(line) {
+				continue
+			}
+
 			times := timeRegex.FindAllStringSubmatchIndex(line, -1)
 			if len(times) > 1 {
 				repeated = true
@@ -92,16 +128,7 @@ func parseLRC(language, text string) (*Lyrics, error) {
 			}
 
 			if validLine {
-				value, baseCues := parseEnhancedLine(priorLine)
-				for idx := range timestamps {
-					startCopy := timestamps[idx]
-					structuredLines = append(structuredLines, Line{
-						Start: &startCopy,
-						Value: value,
-						Cue:   shiftELRCCues(baseCues, timestamps[idx]-timestamps[0]),
-					})
-				}
-				timestamps = nil
+				flushLine()
 			}
 
 			end := 0
@@ -143,15 +170,11 @@ func parseLRC(language, text string) (*Lyrics, error) {
 	}
 
 	if validLine {
-		value, baseCues := parseEnhancedLine(priorLine)
-		for idx := range timestamps {
-			startCopy := timestamps[idx]
-			structuredLines = append(structuredLines, Line{
-				Start: &startCopy,
-				Value: value,
-				Cue:   shiftELRCCues(baseCues, timestamps[idx]-timestamps[0]),
-			})
-		}
+		flushLine()
+	}
+
+	if hasBg {
+		fillMainAgentID(structuredLines)
 	}
 
 	// If there are repeated values, there is no guarantee that they are in order
@@ -170,7 +193,49 @@ func parseLRC(language, text string) (*Lyrics, error) {
 		Offset:        offset,
 		Synced:        synced,
 	}
+	if hasBg {
+		lyrics.Agents = []Agent{
+			{ID: "main", Role: "main"},
+			{ID: backgroundAgentID("main"), Role: "bg"},
+		}
+	}
 	return &lyrics, nil
+}
+
+// mergeBgLayers appends parsed [bg:] content to a line's value and cues as a
+// background agent layer, mirroring the TTML background-vocal representation.
+func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, bool) {
+	merged := false
+	for _, bg := range bgLines {
+		bgValue, bgCues := parseEnhancedLine(bg)
+		if len(bgCues) == 0 {
+			continue
+		}
+		offset := 0
+		if value != "" {
+			offset = len(value) + 1
+			value += " "
+		}
+		value += bgValue
+		for _, c := range bgCues {
+			c.ByteStart += offset
+			c.ByteEnd += offset
+			c.AgentID = backgroundAgentID("main")
+			cues = append(cues, c)
+		}
+		merged = true
+	}
+	return value, cues, merged
+}
+
+func fillMainAgentID(lines []Line) {
+	for i := range lines {
+		for j := range lines[i].Cue {
+			if lines[i].Cue[j].AgentID == "" {
+				lines[i].Cue[j].AgentID = "main"
+			}
+		}
+	}
 }
 
 // parseEnhancedLine extracts word-level timing cues from Enhanced LRC inline markers

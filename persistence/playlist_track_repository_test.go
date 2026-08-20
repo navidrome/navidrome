@@ -1,12 +1,17 @@
 package persistence
 
 import (
+	"strconv"
+
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// sqliteMaxVariables is SQLITE_MAX_VARIABLE_NUMBER as compiled into the driver
+const sqliteMaxVariables = 32766
 
 var _ = Describe("PlaylistTrackRepository", func() {
 	var repo model.PlaylistTrackRepository
@@ -70,6 +75,51 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		It("honors Max and Offset", func() {
 			Expect(repo.GetMediaFileIDs(model.QueryOptions{Sort: "id", Max: 1, Offset: 1})).
 				To(Equal([]string{songRadioactivity.ID}))
+		})
+	})
+
+	Describe("Delete", func() {
+		var tracks model.PlaylistTrackRepository
+		const numTracks = deleteChunkSize*2 + 1
+
+		positionsUpTo := func(n int) []string {
+			positions := make([]string, 0, n)
+			for i := 1; i <= n; i++ {
+				positions = append(positions, strconv.Itoa(i))
+			}
+			return positions
+		}
+
+		BeforeEach(func() {
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			plsRepo := NewPlaylistRepository(ctx, GetDBXBuilder())
+
+			pls := model.Playlist{Name: "Chunked Delete", OwnerID: "userid", OwnerName: "userid"}
+			Expect(plsRepo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+
+			tracks = plsRepo.Tracks(pls.ID, false)
+			songIds := make([]string, numTracks)
+			for i := range songIds {
+				songIds[i] = songDayInALife.ID
+			}
+			Expect(tracks.Add(songIds)).To(Equal(numTracks))
+		})
+
+		It("removes positions spanning several chunks, and renumbers what is left", func() {
+			Expect(tracks.Delete(positionsUpTo(numTracks - 1)...)).To(Succeed())
+
+			Expect(tracks.CountAll()).To(Equal(int64(1)))
+			remaining, err := tracks.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(remaining[0].ID).To(Equal("1"), "the surviving track must be renumbered to position 1")
+		})
+
+		It("accepts more ids than SQLite allows as bind variables", func() {
+			Expect(tracks.Delete(positionsUpTo(sqliteMaxVariables + 100)...)).To(Succeed())
+
+			Expect(tracks.CountAll()).To(BeZero())
 		})
 	})
 })

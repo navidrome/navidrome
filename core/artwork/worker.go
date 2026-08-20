@@ -137,7 +137,7 @@ func (w *Worker) Backfill(ctx context.Context) (bool, error) {
 	return backfill(ctx, w.proc.ds)
 }
 
-// EnqueueStaleAbsentAll requeues known-absent entries older than staleAbsentAge.
+// EnqueueStaleAbsentAll requeues known-absent entries older than StaleAbsentAge.
 func (w *Worker) EnqueueStaleAbsentAll(ctx context.Context) error {
 	return enqueueStaleAbsentAll(ctx, w.proc.ds)
 }
