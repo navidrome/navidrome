@@ -35,7 +35,7 @@ func BenchmarkScan(b *testing.B) {
 		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*recursiveTree).dispatch"),
 	)
 
-	// Benchmarks run without the suite's TestMain, so the config defaults must be loaded here
+	// go test -bench runs with -run=XXX, so TestScanner never loads the test config
 	tests.Init(b, false)
 
 	tmpDir := b.TempDir()

@@ -13,6 +13,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = pprof.NewProfile("nd-profiler-test")
+
 var _ = Describe("profilerHandler", func() {
 	// Mirrors how server.MountRouter mounts the handler.
 	mount := func() http.Handler {
@@ -23,9 +25,6 @@ var _ = Describe("profilerHandler", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		if pprof.Lookup("nd-profiler-test") == nil {
-			pprof.NewProfile("nd-profiler-test")
-		}
 	})
 
 	DescribeTable("serves a named profile",
@@ -33,7 +32,7 @@ var _ = Describe("profilerHandler", func() {
 			conf.Server.BasePath = basePath
 
 			w := httptest.NewRecorder()
-			target := path.Join(basePath, "/debug/pprof/nd-profiler-test") + "?debug=1"
+			target := basePath + "/debug/pprof/nd-profiler-test?debug=1"
 			mount().ServeHTTP(w, httptest.NewRequest(http.MethodGet, target, nil))
 
 			Expect(w.Code).To(Equal(http.StatusOK))

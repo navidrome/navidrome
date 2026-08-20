@@ -603,37 +603,33 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 })
 
 var _ = Describe("newCacheService", func() {
-	// Background goroutines wind down late, so poll for two consecutive equal samples.
-	settleGoroutines := func() int {
-		prev := -1
-		for range 100 {
+	// The suite above leaves goroutines winding down, so settle before sampling.
+	settledBaseline := func() int {
+		var n int
+		Eventually(func() int {
 			runtime.GC()
-			n := runtime.NumGoroutine()
-			if n == prev {
-				return n
-			}
-			prev = n
-			time.Sleep(10 * time.Millisecond)
-		}
-		return prev
+			prev := n
+			n = runtime.NumGoroutine()
+			return n - prev
+		}).WithTimeout(10 * time.Second).WithPolling(20 * time.Millisecond).Should(BeZero())
+		return n
 	}
 
 	It("stops the janitor goroutine once the service is unreachable", func() {
-		const numServices = 20
+		const numServices = 5
+		baseline := settledBaseline()
 
-		baseline := settleGoroutines()
+		func() {
+			services := make([]*cacheServiceImpl, 0, numServices)
+			for i := range numServices {
+				services = append(services, newCacheService(fmt.Sprintf("plugin_%d", i)))
+			}
+			Expect(runtime.NumGoroutine()).To(BeNumerically(">=", baseline+numServices),
+				"expected one janitor goroutine per cache service")
+		}()
 
-		services := make([]*cacheServiceImpl, 0, numServices)
-		for i := range numServices {
-			services = append(services, newCacheService(fmt.Sprintf("plugin_%d", i)))
-		}
-		Expect(runtime.NumGoroutine()).To(BeNumerically(">=", baseline+numServices),
-			"expected one janitor goroutine per cache service")
-
-		services = nil
-		Expect(services).To(BeNil())
-
-		Expect(settleGoroutines()).To(BeNumerically("<", baseline+numServices),
-			"janitor goroutines leaked after the services became unreachable")
+		Eventually(func() int { runtime.GC(); return runtime.NumGoroutine() }).
+			WithTimeout(10*time.Second).WithPolling(20*time.Millisecond).
+			Should(BeNumerically("<=", baseline), "janitor goroutines leaked")
 	})
 })
