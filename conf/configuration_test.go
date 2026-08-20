@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -390,10 +391,10 @@ var _ = Describe("Configuration", func() {
 			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(30 * time.Second))
 		})
 
-		It("clamps negative values to zero", func() {
+		It("sets negative values to default", func() {
 			viper.SetDefault("lastfm.minscrobbleduration", "-10s")
 			conf.Load(true)
-			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(time.Duration(0)))
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(consts.DefaultMinScrobbleDuration))
 		})
 
 		It("disables with zero value", func() {
