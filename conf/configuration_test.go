@@ -388,7 +388,7 @@ var _ = Describe("Configuration", func() {
 	Describe("MinScrobbleDuration", func() {
 		It("defaults to 30 seconds", func() {
 			conf.Load(true)
-			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(30 * time.Second))
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(consts.DefaultMinScrobbleDuration))
 		})
 
 		It("sets negative values to default", func() {
