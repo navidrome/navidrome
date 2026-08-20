@@ -178,7 +178,10 @@ var (
 			Name:           "mp3 audio",
 			TargetFormat:   "mp3",
 			DefaultBitRate: 192,
-			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -f mp3 -",
+			// 0:v:0? also carries over embedded cover art, when the source has any. Only
+			// mp3 and flac are given this treatment: the opus and adts muxers reject a
+			// video stream outright.
+			Command: "ffmpeg -ss %t -i %s -map 0:a:0 -map 0:v:0? -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:v copy -disposition:v attached_pic -f mp3 -",
 		},
 		{
 			Name:           "opus audio",
@@ -196,7 +199,7 @@ var (
 			Name:           "flac audio",
 			TargetFormat:   "flac",
 			DefaultBitRate: 0,
-			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -f flac -",
+			Command:        "ffmpeg -ss %t -i %s -map 0:a:0 -map 0:v:0? -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -c:v copy -disposition:v attached_pic -f flac -",
 		},
 	}
 )
