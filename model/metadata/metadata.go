@@ -367,9 +367,9 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 	if len(value) > maxLength {
 		log.Trace("Truncated tag value", "tag", tagName, "value", value, "length", len(value), "maxLength", maxLength)
 		value = value[:maxLength]
-		// Drop the trailing partial rune the cut may have left behind. Only trailing
-		// invalid bytes are removed, so pre-existing bad bytes elsewhere are preserved.
-		for len(value) > 0 {
+		// Drop the partial rune the cut may have left: at most 3 trailing bytes,
+		// so a pre-existing invalid run elsewhere is never consumed.
+		for range 3 {
 			if r, size := utf8.DecodeLastRuneInString(value); r != utf8.RuneError || size > 1 {
 				break
 			}
