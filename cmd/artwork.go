@@ -117,8 +117,9 @@ var artworkCancelCmd = &cobra.Command{
 		"Only the queue is touched: resolved artwork and the state behind `artwork explain` are\n" +
 		"left alone, and the trace of why a cancelled item last failed goes with its queue row.\n\n" +
 		"Work already picked up is not interrupted, and an item with no artwork yet can be\n" +
-		"queued again by the hourly re-check. Use it to call off a bulk backfill, not to stop\n" +
-		"the worker.",
+		"queued again by the hourly re-check. The selection is applied again when you confirm,\n" +
+		"so anything queued after the preview is cancelled too. Use it to call off a bulk\n" +
+		"backfill, not to stop the worker.",
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		runCancel(cmd.Context())
