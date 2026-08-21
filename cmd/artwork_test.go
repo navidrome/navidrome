@@ -145,6 +145,15 @@ var _ = Describe("explainResult", func() {
 			"the worker retries an unreadable candidate instead of settling absent, so this is not a clean miss")
 	})
 
+	It("reports indeterminate when a processing stage errored after a candidate was found", func() {
+		steps := []artwork.TraceStep{
+			{Candidate: "cover.*", Outcome: "hit", Detail: "/music/cover.jpg"},
+			{Candidate: "store", Outcome: "error", Detail: "disk full"},
+		}
+		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
+			"a stage error is a processing failure the worker retries, not a definitive miss")
+	})
+
 	It("does not qualify a hit that an earlier unreadable candidate preceded", func() {
 		// chainState.try stamps only the external error onto a hit and drops the local one, so the
 		// worker settles this as found; warning about it would be a false alarm.
@@ -162,34 +171,6 @@ var _ = Describe("explainResult", func() {
 		}
 		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
 			"a failed network call is not evidence that the item has no artwork")
-	})
-
-	It("qualifies a win a skipped higher-priority external candidate could have taken", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "external:deezer", Outcome: "would-try"},
-			{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"},
-		}
-		res := explainResult("artist.*", steps)
-		Expect(res).To(ContainSubstring("resolved from artist.*"))
-		Expect(res).To(ContainSubstring("--live"),
-			"offline, the winner is only the winner because the external tier was skipped")
-	})
-
-	It("does not qualify a win that no skipped candidate outranked", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "artist.*", Outcome: "hit"},
-			{Candidate: "external:deezer", Outcome: "would-try"},
-		}
-		Expect(explainResult("artist.*", steps)).To(Equal("resolved from artist.*"))
-	})
-
-	It("reports indeterminate when external agents were never called", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "artist.*", Outcome: "miss"},
-			{Candidate: "external:deezer", Outcome: "would-try"},
-		}
-		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
-			"an offline run must not claim an item is unresolvable when external agents were skipped")
 	})
 
 	It("qualifies a win a failed higher-priority external lookup could have taken", func() {
@@ -252,9 +233,10 @@ var _ = Describe("formatExplain", func() {
 			id:     "ar-1",
 			name:   "Radiohead",
 			agents: "lastfm,spotify",
+			walked: true,
 			steps: []artwork.TraceStep{
 				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
-				{Candidate: "external:deezer", Outcome: "would-try"},
+				{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
 			},
 			source: "",
 		}
@@ -267,7 +249,6 @@ var _ = Describe("formatExplain", func() {
 		Expect(out).To(ContainSubstring("ArtistArtPriority"))
 		Expect(out).To(ContainSubstring("lastfm,spotify"))
 		Expect(out).To(ContainSubstring("external:deezer"))
-		Expect(out).To(ContainSubstring("would-try"))
 		Expect(out).To(ContainSubstring("indeterminate"))
 	})
 
@@ -304,7 +285,7 @@ var _ = Describe("formatExplain", func() {
 		out := formatExplain(rep)
 		Expect(out).To(ContainSubstring("resolution failed: no such directory"))
 		Expect(out).ToNot(ContainSubstring("indeterminate"))
-		Expect(out).To(ContainSubstring("would-try"), "the steps taken before the failure still print")
+		Expect(out).To(ContainSubstring("external:deezer"), "the steps taken before the failure still print")
 	})
 
 	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
@@ -329,6 +310,7 @@ var _ = Describe("formatExplain", func() {
 			kind: model.KindDiscArtwork, id: "al-1:2", name: "OK Computer (disc 2)",
 			steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
 			source: "folder",
+			walked: true,
 		}
 
 		out := formatExplain(rep)
@@ -341,10 +323,74 @@ var _ = Describe("formatExplain", func() {
 		Expect(out).To(ContainSubstring("resolved from folder"))
 	})
 
+	Context("stored traces", func() {
+		BeforeEach(func() {
+			rep.walked = false
+			rep.steps = nil
+		})
+
+		It("labels a recorded chain with when it was recorded, not as a walk done now", func() {
+			attempted := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
+			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: attempted}
+			rep.steps = []artwork.TraceStep{{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"}}
+			rep.source = "folder"
+
+			out := formatExplain(rep)
+			Expect(out).To(ContainSubstring("Chain (recorded 2026-08-13T10:00:00Z)"))
+			Expect(out).To(ContainSubstring("/music/artist.jpg"))
+			Expect(out).To(ContainSubstring("resolved from folder"))
+		})
+
+		It("says so when the item has never been resolved", func() {
+			out := formatExplain(rep)
+			Expect(out).To(ContainSubstring("no resolution recorded yet"))
+			Expect(out).To(ContainSubstring("--live"))
+			Expect(out).ToNot(ContainSubstring("not resolved"),
+				"nothing was recorded, which is not the same as resolving to nothing")
+		})
+
+		It("distinguishes a row written before traces existed from one with an empty chain", func() {
+			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now()}
+
+			Expect(formatExplain(rep)).To(ContainSubstring("resolved before traces were recorded"))
+		})
+
+		It("does not call an absent row with an empty recorded chain a pre-tracing row", func() {
+			// An empty priority list records a real but empty chain and resolves absent; that is not a
+			// legacy row, so it must not be reported as resolved before tracing existed.
+			rep.stored = &model.ItemArtwork{Source: "", Hash: "", AttemptedAt: time.Now()}
+
+			out := formatExplain(rep)
+			Expect(out).ToNot(ContainSubstring("resolved before traces were recorded"))
+			Expect(out).To(ContainSubstring("no candidates were recorded"))
+			Expect(out).To(ContainSubstring("not resolved"), "the Result still reports the absence plainly")
+		})
+
+		It("prints why the last attempt failed and why it gave up", func() {
+			rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 3,
+				Trace: `[{"c":"decode","o":"error","d":"bad header"}]`}
+			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now(),
+				LastFailure: `[{"c":"read","o":"error","d":"i/o timeout"}]`}
+
+			out := formatExplain(rep)
+			Expect(out).To(ContainSubstring("Last attempt failed"))
+			Expect(out).To(ContainSubstring("bad header"))
+			Expect(out).To(ContainSubstring("Gave up after"))
+			Expect(out).To(ContainSubstring("i/o timeout"))
+		})
+
+		It("omits the failure tables when there is no failure to report", func() {
+			out := formatExplain(rep)
+			Expect(out).ToNot(ContainSubstring("Last attempt failed"))
+			Expect(out).ToNot(ContainSubstring("Gave up after"))
+		})
+	})
+
 	It("reports the setting that governs media file artwork", func() {
 		conf.Server.EnableMediaFileCoverArt = false
 		rep = explainReport{
 			kind: model.KindMediaFileArtwork, id: "mf-1", name: "Airbag",
+			walked: true,
 			steps: []artwork.TraceStep{
 				{Candidate: "embedded", Outcome: "skipped", Detail: "EnableMediaFileCoverArt is off"},
 			},

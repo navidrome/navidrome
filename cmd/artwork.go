@@ -36,8 +36,9 @@ var (
 
 func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
-		"perform real external lookups instead of reporting what would be tried; "+
-			"also initializes plugin agents, which may open external connections")
+		"walk the chain again now, performing real external lookups, instead of reporting the "+
+			"stored trace of the last resolution; also initializes plugin agents, which may open "+
+			"external connections")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
 		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
 	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
@@ -640,10 +641,6 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 			if s.Outcome == artwork.OutcomeHit {
 				break
 			}
-			if s.Outcome == artwork.OutcomeWouldTry {
-				return "resolved from " + source +
-					" (offline: a higher-priority external candidate was not tried; re-run with --live)"
-			}
 			// An external winner discards the earlier error, so the resolver settles it with no retry.
 			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) &&
 				!strings.HasPrefix(source, artwork.ExternalPrefix) {
@@ -655,14 +652,12 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 	}
 	for _, s := range steps {
 		switch {
-		case s.Outcome == artwork.OutcomeWouldTry:
-			return "indeterminate (external agents not called; re-run with --live)"
 		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
 			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
-		// The worker treats an unreadable local candidate exactly as it treats a failed external one:
-		// it retries instead of settling absent, so the verdict must not read as a clean miss.
-		case s.Outcome == artwork.OutcomeUnreadable:
-			return "indeterminate (a candidate exists but could not be read; the worker retries rather than settling absent)"
+		// A stage error or an unreadable candidate means a source was found but not processed; the
+		// worker retries rather than settling absent, so neither reads as a clean miss.
+		case s.Outcome == artwork.OutcomeError, s.Outcome == artwork.OutcomeUnreadable:
+			return "indeterminate (a candidate was found but could not be processed; the worker retries rather than settling absent)"
 		}
 	}
 	return "not resolved"
@@ -684,15 +679,47 @@ func explainConfig(kind model.Kind) (name, value string) {
 }
 
 type explainReport struct {
-	kind       model.Kind
-	id         string
-	name       string
-	stored     *model.ItemArtwork
-	queued     *model.ArtworkQueueItem
-	agents     string
+	kind   model.Kind
+	id     string
+	name   string
+	stored *model.ItemArtwork
+	queued *model.ArtworkQueueItem
+	agents string
+	// steps is the chain walk: recorded when the item was resolved, or performed just now when walked.
 	steps      []artwork.TraceStep
 	source     string
+	walked     bool
 	resolveErr error
+}
+
+// explainChainOrigin says whether the operator is reading history or a walk performed just now,
+// since the two can disagree after a config change.
+func explainChainOrigin(rep explainReport) string {
+	if rep.walked {
+		return "walked now"
+	}
+	if rep.stored != nil {
+		return "recorded " + formatTime(rep.stored.AttemptedAt)
+	}
+	return "not recorded"
+}
+
+// writeSteps prints the trace rows. An empty last cell would end tabwriter's column block and
+// break the alignment, so a missing detail is rendered as a dash.
+func writeSteps(w io.Writer, indent string, steps []artwork.TraceStep) {
+	for _, s := range steps {
+		fmt.Fprintf(w, "%s%s\t%s\t%s\n", indent, s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
+	}
+}
+
+// writeStepTable prints a secondary trace, and nothing at all when there is none to show.
+func writeStepTable(w io.Writer, title string, steps []artwork.TraceStep) {
+	if len(steps) == 0 {
+		return
+	}
+	// No tab on the title: it closes the preceding column block, so these rows align among themselves.
+	fmt.Fprintf(w, "  %s:\n", title)
+	writeSteps(w, "    ", steps)
 }
 
 func formatExplain(rep explainReport) string {
@@ -700,6 +727,7 @@ func formatExplain(rep explainReport) string {
 	w := newTabWriter(&sb)
 	explainable := artwork.Explainable(rep.kind)
 	stateful := artwork.KeepsState(rep.kind)
+	unrecorded := !rep.walked && rep.stored == nil
 
 	fmt.Fprintln(w, "Item")
 	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
@@ -732,6 +760,12 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
 		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
 	}
+	if rep.queued != nil {
+		writeStepTable(w, "Last attempt failed", artwork.DecodeTrace(rep.queued.Trace, ""))
+	}
+	if rep.stored != nil {
+		writeStepTable(w, "Gave up after", artwork.DecodeTrace(rep.stored.LastFailure, ""))
+	}
 
 	fmt.Fprintln(w, "\nConfig")
 	if setting, value := explainConfig(rep.kind); setting == "" {
@@ -743,15 +777,22 @@ func formatExplain(rep explainReport) string {
 		}
 	}
 
-	fmt.Fprintln(w, "\nChain")
-	if !explainable {
+	fmt.Fprintf(w, "\nChain (%s)\n", explainChainOrigin(rep))
+	switch {
+	case !explainable:
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
-	} else {
+	case unrecorded:
+		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
+	case !rep.walked && len(rep.steps) == 0 && rep.stored.Hash != "":
+		// A stored image with no chain can only predate trace recording: a recorded resolution that
+		// found an image always records its winning candidate.
+		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
+	case !rep.walked && len(rep.steps) == 0:
+		// Absent with no chain: an empty priority list walked nothing, or a pre-tracing absent row.
+		fmt.Fprintln(w, "  (no candidates were recorded; re-run with --live to walk the chain now)")
+	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
-		for _, s := range rep.steps {
-			// A row with an empty last cell would end tabwriter's column block, breaking alignment.
-			fmt.Fprintf(w, "  %s\t%s\t%s\n", s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
-		}
+		writeSteps(w, "  ", rep.steps)
 	}
 
 	fmt.Fprintln(w, "\nResult")
@@ -760,6 +801,8 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
 	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
+	case unrecorded:
+		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
 	}
@@ -807,6 +850,8 @@ func runExplain(ctx context.Context, args []string) {
 		}
 	}
 
+	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
+	rep.walked = explainLive || !artwork.KeepsState(kind)
 	if artwork.Explainable(kind) {
 		// Only artist and album reach an agent, and the load must precede the resolver, which reads
 		// the same manager.
@@ -815,11 +860,16 @@ func runExplain(ctx context.Context, args []string) {
 			defer func() { _ = mgr.Stop() }()
 			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
 		}
-		trace := &artwork.ChainTrace{}
-		rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
-		rep.steps = trace.Steps()
+		switch {
+		case rep.walked:
+			trace := &artwork.ChainTrace{}
+			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
+			rep.steps = trace.Steps()
+		case rep.stored != nil:
+			rep.steps = artwork.DecodeTrace(rep.stored.Trace, rep.stored.SourcePath)
+			rep.source = rep.stored.Source
+		}
 	}
-
 	fmt.Print(formatExplain(rep))
 	// The steps taken before a failed walk are the diagnosis, so report them before exiting.
 	if rep.resolveErr != nil {

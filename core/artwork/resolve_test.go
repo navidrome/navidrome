@@ -520,6 +520,37 @@ var _ = Describe("resolveItem", func() {
 			Expect(gatedNames).To(Equal([]string{"m3u"}), "the playlist URL fetch is gated under \"m3u\"")
 		})
 
+		It("records the m3u failure in the trace even when album sampling adds its own steps", func() {
+			conf.Server.EnableM3UExternalAlbumArt = true
+			folderRepo.result = nil // the sampled album yields no tile, so the m3u failure is what forced the retry
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plm3u", Name: "Playlist", ExternalImageURL: "http://example.com/cover.jpg"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			gate := func(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+				return nil, "", errors.New("network down")
+			}
+
+			trace := &ChainTrace{}
+			res, err := newResolver(ds, ag, ffm, gate).resolve(withTrace(ctx, trace),
+				model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm3u"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.extError).To(BeTrue())
+
+			steps := trace.Steps()
+			var m3u *TraceStep
+			for i := range steps {
+				if steps[i].Candidate == ExternalPrefix+"m3u" && steps[i].Outcome == OutcomeError {
+					m3u = &steps[i]
+				}
+			}
+			Expect(m3u).ToNot(BeNil(), "the m3u fetch error must be traced at its source, not left to the empty-trace fallback")
+			Expect(m3u.Detail).To(Equal("network down"),
+				"the trace must carry the underlying error so explain can tell a timeout from an HTTP error")
+		})
+
 		It("treats a missing local ExternalImageURL as a definitive miss, not extError", func() {
 			folderRepo.result = nil // no grid tiles, so the local-file miss is what surfaces
 

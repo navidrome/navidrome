@@ -18,6 +18,7 @@ import (
 const enqueueChunkSize = 100
 
 // Every insert writes these, in this order; the INSERT..SELECT forms must project them to match.
+// DequeueBatch also selects exactly these, to leave the drain's rows free of the trace it never reads.
 var enqueueColumns = []string{"item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at"}
 
 type artworkQueueRepository struct {
@@ -42,11 +43,12 @@ func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*mo
 	return &res, nil
 }
 
-// Enqueue also resets enqueued_at, so a fresh request does not inherit an old row's spent retry budget.
+// Enqueue starts a fresh lifecycle: it resets enqueued_at (so a fresh request does not inherit an old
+// row's spent retry budget) and clears trace (so explain does not show a prior failure at attempts 0).
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
-		attempts = 0, enqueued_at = excluded.enqueued_at`, items)
+		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, items)
 }
 
 func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
@@ -159,7 +161,7 @@ func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQ
 }
 
 func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
-	sel := Select("*").From(r.tableName).
+	sel := Select(enqueueColumns...).From(r.tableName).
 		Where(LtOrEq{"retry_at": time.Now()}).
 		OrderBy("priority DESC", "enqueued_at ASC").
 		Limit(uint64(n))
@@ -171,10 +173,11 @@ func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.A
 	return res, err
 }
 
-func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	upd := Update(r.tableName).
 		Set("attempts", Expr("attempts + 1")).
 		Set("retry_at", retryAt).
+		Set("trace", trace).
 		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": seenRetryAt})
 	_, err := r.executeSQL(upd)
 	return err
