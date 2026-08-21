@@ -2,8 +2,10 @@ package agents
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -20,6 +22,8 @@ type PluginLoader interface {
 	PluginNames(capability string) []string
 	// LoadMediaAgent loads and returns a media agent plugin
 	LoadMediaAgent(name string) (Interface, bool)
+	// PluginsLoaded reports whether the initial plugin load has completed
+	PluginsLoaded() bool
 }
 
 // Agents is a meta-agent that aggregates multiple built-in and plugin agents. It tries each enabled agent in order
@@ -27,6 +31,28 @@ type PluginLoader interface {
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
+	cache        agentsCache
+}
+
+// agentsCache holds a resolved agent list next to the inputs it came from, so the
+// two can only ever be replaced together.
+type agentsCache struct {
+	mu      sync.Mutex
+	config  string
+	plugins []string
+	agents  []enabledAgent
+}
+
+// get returns the list cached for these inputs, calling resolve under the lock when
+// they changed. A nil agents slice means nothing has been cached yet.
+func (c *agentsCache) get(config string, plugins []string, resolve func() []enabledAgent) []enabledAgent {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.agents != nil && c.config == config && slices.Equal(c.plugins, plugins) {
+		return c.agents
+	}
+	c.config, c.plugins, c.agents = config, plugins, resolve()
+	return c.agents
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -55,20 +81,32 @@ type enabledAgent struct {
 // 2. Always include LocalAgentName
 // 3. If config is empty, include ONLY LocalAgentName
 // Each enabledAgent contains the name and whether it's a plugin (true) or built-in (false)
+// Recomputed only when the config or the set of loaded plugins changes.
 func (a *Agents) getEnabledAgentNames() []enabledAgent {
+	config := conf.Server.Agents
+	var availablePlugins []string
+	if a.pluginLoader != nil {
+		availablePlugins = slices.Sorted(slices.Values(a.pluginLoader.PluginNames("MetadataAgent")))
+		// While plugins are still loading, a valid name can look unknown. Skip the cache
+		// (so nothing wrong is remembered) and keep the noise at Debug.
+		if !a.pluginLoader.PluginsLoaded() {
+			return resolveEnabledAgents(config, availablePlugins, log.LevelDebug)
+		}
+	}
+
+	return a.cache.get(config, availablePlugins, func() []enabledAgent {
+		log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
+		return resolveEnabledAgents(config, availablePlugins, log.LevelWarn)
+	})
+}
+
+func resolveEnabledAgents(configured string, availablePlugins []string, unknownLevel log.Level) []enabledAgent {
 	// If no agents configured, ONLY use the local agent
-	if conf.Server.Agents == "" {
+	if configured == "" {
 		return []enabledAgent{{name: LocalAgentName, isPlugin: false}}
 	}
 
-	// Get all available plugin names
-	var availablePlugins []string
-	if a.pluginLoader != nil {
-		availablePlugins = a.pluginLoader.PluginNames("MetadataAgent")
-	}
-	log.Trace("Available MetadataAgent plugins", "plugins", availablePlugins)
-
-	configuredAgents := strings.Split(conf.Server.Agents, ",")
+	configuredAgents := strings.Split(configured, ",")
 
 	// Always add LocalAgentName if not already included
 	hasLocalAgent := slices.Contains(configuredAgents, LocalAgentName)
@@ -76,8 +114,10 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		configuredAgents = append(configuredAgents, LocalAgentName)
 	}
 
-	// Filter to only include valid agents (built-in or plugins)
-	var validAgents []enabledAgent
+	known := sync.OnceValue(func() []string { return availableAgentNames(availablePlugins) })
+
+	// Non-nil even when every name is invalid, so an all-bad config still caches
+	validAgents := make([]enabledAgent, 0, len(configuredAgents))
 	for _, name := range configuredAgents {
 		// Check if it's a built-in agent
 		isBuiltIn := Map[name] != nil
@@ -90,10 +130,17 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		} else if isPlugin {
 			validAgents = append(validAgents, enabledAgent{name: name, isPlugin: true})
 		} else {
-			log.Debug("Unknown agent ignored", "name", name)
+			log.Log(unknownLevel, "Unknown agent ignored", "name", name, "available", known())
 		}
 	}
 	return validAgents
+}
+
+// availableAgentNames returns every name accepted by the Agents config option.
+func availableAgentNames(plugins []string) []string {
+	names := append(slices.Collect(maps.Keys(Map)), plugins...)
+	slices.Sort(names)
+	return names
 }
 
 func (a *Agents) getAgent(ea enabledAgent) Interface {

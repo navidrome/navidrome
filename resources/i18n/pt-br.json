@@ -393,6 +393,7 @@
         "invalidJson": "A configuração deve ser um JSON válido"
       },
       "messages": {
+        "idHelp": "O ID do plugin, derivado do nome do arquivo. Use-o ao referenciar este plugin em opções de configuração, como Agents.",
         "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
         "clickPermissions": "Clique em uma permissão para ver detalhes",
         "noConfig": "Nenhuma configuração definida",

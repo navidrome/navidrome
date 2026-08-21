@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -65,6 +66,95 @@ var _ = Describe("Agents", func() {
 			// local agent is always appended to the end of the agents list
 			Expect(ags).To(HaveExactElements("empty", "fake", "local"))
 			Expect(ags).ToNot(ContainElement("disabled"))
+		})
+
+		Describe("availableAgentNames", func() {
+			It("combines built-in agents with the given plugins", func() {
+				names := availableAgentNames([]string{"apple-music"})
+				Expect(names).To(ContainElements("apple-music", LocalAgentName, "fake", "empty"))
+			})
+
+			It("returns the names sorted", func() {
+				names := availableAgentNames([]string{"zz-plugin", "aa-plugin"})
+				Expect(slices.IsSorted(names)).To(BeTrue())
+			})
+
+			It("works when there are no plugins", func() {
+				Expect(availableAgentNames(nil)).To(ContainElement(LocalAgentName))
+			})
+		})
+
+		Describe("caching", func() {
+			var loader *MockPluginLoader
+			var cached *Agents
+			BeforeEach(func() {
+				loader = NewMockPluginLoader()
+				loader.pluginNames = []string{"plugin-a"}
+				conf.Server.Agents = "fake,plugin-a"
+				cached = createAgents(ds, loader)
+			})
+
+			It("reuses the previous result when nothing changed", func() {
+				first := cached.getEnabledAgentNames()
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).To(BeIdenticalTo(&second[0]))
+			})
+
+			It("recomputes when the Agents config changes", func() {
+				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
+					enabledAgent{name: "fake"},
+					enabledAgent{name: "plugin-a", isPlugin: true},
+					enabledAgent{name: LocalAgentName},
+				))
+				conf.Server.Agents = "fake"
+				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
+					enabledAgent{name: "fake"},
+					enabledAgent{name: LocalAgentName},
+				))
+			})
+
+			It("recomputes when a plugin is installed", func() {
+				cached.getEnabledAgentNames()
+				conf.Server.Agents = "fake,plugin-a,plugin-b"
+				loader.pluginNames = []string{"plugin-a", "plugin-b"}
+				Expect(cached.getEnabledAgentNames()).To(ContainElement(
+					enabledAgent{name: "plugin-b", isPlugin: true},
+				))
+			})
+
+			It("recomputes when a plugin is removed", func() {
+				cached.getEnabledAgentNames()
+				loader.pluginNames = nil
+				Expect(cached.getEnabledAgentNames()).To(HaveExactElements(
+					enabledAgent{name: "fake"},
+					enabledAgent{name: LocalAgentName},
+				))
+			})
+
+			It("is not fooled by the plugin list coming back in a different order", func() {
+				loader.pluginNames = []string{"plugin-a", "plugin-b"}
+				first := cached.getEnabledAgentNames()
+				loader.pluginNames = []string{"plugin-b", "plugin-a"}
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).To(BeIdenticalTo(&second[0]))
+			})
+
+			It("does not cache while plugins are still loading", func() {
+				loader.loaded = false
+				first := cached.getEnabledAgentNames()
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).ToNot(BeIdenticalTo(&second[0]))
+			})
+
+			It("starts caching once plugins finish loading, even if the plugin list did not change", func() {
+				loader.loaded = false
+				loader.pluginNames = nil
+				cached.getEnabledAgentNames()
+				loader.loaded = true
+				first := cached.getEnabledAgentNames()
+				second := cached.getEnabledAgentNames()
+				Expect(&first[0]).To(BeIdenticalTo(&second[0]))
+			})
 		})
 
 		Describe("GetArtistMBID", func() {

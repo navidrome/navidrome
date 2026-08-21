@@ -396,6 +396,7 @@
         "invalidJson": "Configuration must be valid JSON"
       },
       "messages": {
+        "idHelp": "The plugin ID, derived from its file name. Use it when referencing this plugin in configuration options, such as Agents.",
         "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
         "configValidationError": "Configuration validation failed:",
         "schemaRenderError": "Unable to render configuration form. The plugin's schema may be invalid.",
