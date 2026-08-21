@@ -85,18 +85,6 @@ func newResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, gate 
 	return &resolver{ds: ds, ffmpeg: ffm, ext: &externalSource{agents: ag, gate: gate}}
 }
 
-// imageAgentCount reports how many agents an external step would consult; zero for a resolver
-// built without agents, which reaches no network at all.
-func (r *resolver) imageAgentCount() ImageAgentCount {
-	if r.ext == nil || r.ext.agents == nil {
-		return ImageAgentCount{}
-	}
-	return ImageAgentCount{
-		Artist: len(r.ext.agents.ArtistImageAgents()),
-		Album:  len(r.ext.agents.AlbumImageAgents()),
-	}
-}
-
 // newLocalResolver builds a resolver that can neither reach the network nor sample album art
 // for the worker-built grid.
 func newLocalResolver(ds model.DataStore, ffm ffmpeg.FFmpeg) *resolver {
@@ -148,6 +136,15 @@ func MayFetchExternal(kind model.Kind) bool {
 
 // ImageAgentCount is how many enabled agents provide artist and album images.
 type ImageAgentCount struct{ Artist, Album int }
+
+// NewImageAgentCount counts what an external step would consult, so an estimate and the gate that
+// guards it cannot disagree about which agents exist.
+func NewImageAgentCount(ag *agents.Agents) ImageAgentCount {
+	if ag == nil {
+		return ImageAgentCount{}
+	}
+	return ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
+}
 
 // ExternalLookupsPerItem reports what resolving one item of this kind can cost: every image agent is
 // tried, and a zero count still bills one, so agents the caller cannot see never read as free.

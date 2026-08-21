@@ -82,7 +82,7 @@ type backfillSummary struct {
 }
 
 // backfill enqueues artwork resolution for every entity when the config fingerprint changed.
-func backfill(ctx context.Context, ds model.DataStore, agentCount ImageAgentCount) (backfillSummary, error) {
+func backfill(ctx context.Context, ds model.DataStore, agentCount func() ImageAgentCount) (backfillSummary, error) {
 	start := time.Now()
 	ctx = auth.WithAdminUser(ctx, ds)
 	current := ConfigFingerprint()
@@ -105,6 +105,9 @@ func backfill(ctx context.Context, ds model.DataStore, agentCount ImageAgentCoun
 		{model.KindPlaylistArtwork, func() ([]string, error) { return ds.Playlist(ctx).GetAllIDs() }},
 		{model.KindRadioArtwork, func() ([]string, error) { return ds.Radio(ctx).GetAllIDs() }},
 	}
+	// Counted here, not by the caller: building the agent list constructs every enabled agent, and
+	// an unchanged fingerprint returns above without ever needing the number.
+	agents := agentCount()
 	summary := backfillSummary{Ran: true, PerKind: map[string]int64{}}
 	for _, k := range kinds {
 		ids, err := k.fetch()
@@ -117,7 +120,7 @@ func backfill(ctx context.Context, ds model.DataStore, agentCount ImageAgentCoun
 		n := int64(len(ids))
 		summary.PerKind[k.kind.Prefix()] = n
 		summary.Items += n
-		summary.MaxExternalLookups += n * ExternalLookupsPerItem(k.kind, agentCount)
+		summary.MaxExternalLookups += n * ExternalLookupsPerItem(k.kind, agents)
 	}
 
 	if err := props.Put(consts.ArtConfFingerprintPropertyKey, current); err != nil {
