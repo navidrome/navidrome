@@ -172,7 +172,7 @@ func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubso
 		}
 	} else {
 		user, ok := request.UserFrom(ctx)
-		pls.Readonly = !ok || p.OwnerID != user.ID
+		pls.Readonly = !ok || p.OwnerID != user.ID || !p.TracksEditable()
 	}
 
 	return &pls

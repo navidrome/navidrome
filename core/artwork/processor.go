@@ -123,12 +123,20 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 
 	art, err := repo.GetImage(hash)
 	switch {
-	case err == nil:
+	case err == nil && art.Width > 0:
 		log.Debug(ctx, "Artwork: Reusing a known image, skipping decode", "kind", item.ItemKind,
 			"id", item.ItemID, "hash", hash)
-	case errors.Is(err, model.ErrNotFound):
+	// A row with no dimensions was stored when no decoder matched; retry in case one exists now.
+	case err == nil, errors.Is(err, model.ErrNotFound):
 		decodeStart := time.Now()
 		art, err = decodeArtwork(ctx, hash, data)
+		// Extension-matched local bytes we cannot decode are most likely a codec we lack; an
+		// external body carries no such guarantee, and empty bytes are no image at all.
+		if errors.Is(err, image.ErrFormat) && len(data) > 0 && isLocalSource(res.source) {
+			log.Debug(ctx, "Artwork: No decoder for this image format, storing it without placeholders",
+				"kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
+			art, err = undecodedArtwork(hash), nil
+		}
 		if err != nil {
 			log.Warn(ctx, "Artwork: Failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 			return outcomeFailed, nil
@@ -234,6 +242,12 @@ func decodeCapped(data []byte) (image.Image, string, error) {
 	return img, format, nil
 }
 
+// undecodedArtwork is the row for bytes no decoder matched: servable, but with no dimensions
+// and none of the placeholders a decode would have produced.
+func undecodedArtwork(hash string) *model.Artwork {
+	return &model.Artwork{Hash: hash, Mime: mimeForFormat("")}
+}
+
 // decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and the two
 // placeholder hashes, both encoded from one shared downscaled thumbnail.
 func decodeArtwork(ctx context.Context, hash string, data []byte) (*model.Artwork, error) {
@@ -286,6 +300,11 @@ func makeThumbnail(img image.Image, maxSize int) image.Image {
 // content-addressed store must not duplicate them.
 func isFileBacked(source string) bool {
 	return source == "folder" || source == "upload"
+}
+
+// isLocalSource reports whether the bytes came off disk rather than off the network.
+func isLocalSource(source string) bool {
+	return isFileBacked(source) || source == "embedded"
 }
 
 // placeBytes reports the item's backing-file provenance and writes the bytes into the store

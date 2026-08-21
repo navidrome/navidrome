@@ -2,7 +2,6 @@ package model
 
 import (
 	"cmp"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -15,10 +14,12 @@ import (
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/zeebo/xxh3"
 )
 
 type MediaFile struct {
@@ -231,7 +232,7 @@ func (mf MediaFile) Hash() string {
 		ZeroNil:         true,
 	}
 	hash, _ := hashstructure.Hash(mf, opts)
-	sum := md5.New()
+	sum := xxh3.New()
 	sum.Write(fmt.Appendf(nil, "%d", hash))
 	sum.Write(mf.Tags.Hash())
 	sum.Write(mf.Participants.Hash())
@@ -548,9 +549,15 @@ type MediaFileRepository interface {
 	// filters as GetAll. Sort/Order are ignored.
 	GetRandom(options ...QueryOptions) (MediaFiles, error)
 	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
+	// MatchesCriteria reports whether the media file matches the criteria's rule
+	// expression, using the logged user's annotations. Limit and offset are ignored.
+	MatchesCriteria(id string, c criteria.Criteria) (bool, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
 	// GetAllIDs returns just the media_file IDs for the same row set as GetAll.
 	GetAllIDs(options ...QueryOptions) ([]string, error)
+	// GetAlbumIDsByFolder returns the distinct IDs of albums with non-missing tracks in the given
+	// folders or their direct children.
+	GetAlbumIDsByFolder(lib Library, folderIDs ...string) ([]string, error)
 	// GetCursorWithArtwork streams like GetCursor, hydrated, so callers that render images don't
 	// pay the scanner's per-row cost; it uses the same id pre-pass as the other cursors.
 	GetCursorWithArtwork(options ...QueryOptions) (MediaFileCursor, error)

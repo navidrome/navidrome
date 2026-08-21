@@ -104,6 +104,7 @@ func (api *Router) routes() http.Handler {
 		// player) even before the first playback report.
 		r.Use(api.withPlayer)
 		r.Get("/system/info", api.getSystemInfo)
+		r.Get("/system/endpoint", api.getEndpointInfo)
 		r.Get("/userviews", api.getUserViews)
 		r.Get("/users/{userId}/views", api.getUserViews)
 		r.Get("/users/me", api.getCurrentUser)

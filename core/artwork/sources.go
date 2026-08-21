@@ -27,23 +27,6 @@ import (
 // to open it is not evidence the entity has no artwork, so callers must not settle on absent.
 var errSourceUnreadable = errors.New("artwork source unreadable")
 
-func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
-	for _, f := range extractFuncs {
-		if ctx.Err() != nil {
-			return nil, "", ctx.Err()
-		}
-		start := time.Now()
-		r, path, err := f()
-		if r != nil {
-			msg := fmt.Sprintf("Artwork: Found %s artwork", artID.Kind)
-			log.Debug(ctx, msg, "artID", artID, "path", path, "source", f, "elapsed", time.Since(start))
-			return r, path, nil
-		}
-		log.Trace(ctx, "Artwork: Failed trying to extract artwork", "artID", artID, "source", f, "elapsed", time.Since(start), err)
-	}
-	return nil, "", fmt.Errorf("could not get `%s` cover art for %s: %w", artID.Kind, artID, ErrUnavailable)
-}
-
 type sourceFunc func() (r io.ReadCloser, path string, err error)
 
 func (f sourceFunc) String() string {
