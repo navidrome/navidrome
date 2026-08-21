@@ -9,6 +9,9 @@ import "github.com/navidrome/navidrome/plugins/types"
 // Plugins implementing this capability can choose which methods to implement.
 // Each method is optional - plugins only need to provide the functionality they support.
 //
+// To say "no data for this item", return a nil response and a nil error. Return an error only when
+// the plugin itself failed, because Navidrome retries failed calls with backoff.
+//
 //nd:capability name=metadata
 type MetadataAgent interface {
 	// GetArtistMBID retrieves the MusicBrainz ID for an artist.
