@@ -191,6 +191,18 @@ func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
 	return purgeDangling(r.sqlRepository)
 }
 
+// PurgeQueued ignores retry_at: a row still backing off is pending work that would drain later.
+func (r *artworkQueueRepository) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+	del := Delete(r.tableName)
+	if len(kinds) > 0 {
+		del = del.Where(Eq{"item_kind": slice.Map(kinds, func(k model.Kind) string { return k.Prefix() })})
+	}
+	if len(priorities) > 0 {
+		del = del.Where(Eq{"priority": priorities})
+	}
+	return r.executeSQL(del)
+}
+
 func (r *artworkQueueRepository) Count() (int64, error) {
 	var res struct{ Count int64 }
 	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)

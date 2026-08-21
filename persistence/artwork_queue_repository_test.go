@@ -442,4 +442,64 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			Expect(repo.CountAbsent(model.KindRadioArtwork, time.Now())).To(Equal(model.ArtworkAbsentStat{}))
 		})
 	})
+
+	Describe("PurgeQueued", func() {
+		queuedIDs := func() []string {
+			GinkgoHelper()
+			got, err := repo.DequeueBatch(100)
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(got, func(it model.ArtworkQueueItem) string { return it.ItemID })
+		}
+
+		BeforeEach(func() {
+			Expect(repo.Enqueue(
+				item("ar", "ar-backfill", model.ArtworkPriorityBackfill),
+				item("ar", "ar-bump", model.ArtworkPriorityBump),
+				item("al", "al-backfill", model.ArtworkPriorityBackfill),
+				item("mf", "mf-scan", model.ArtworkPriorityScan),
+			)).To(Succeed())
+		})
+
+		It("deletes only the given kinds", func() {
+			Expect(repo.PurgeQueued([]model.Kind{model.KindArtistArtwork}, nil)).To(BeNumerically("==", 2))
+			Expect(queuedIDs()).To(ConsistOf("al-backfill", "mf-scan"))
+		})
+
+		It("deletes only the given priorities", func() {
+			Expect(repo.PurgeQueued(nil, []int{model.ArtworkPriorityBackfill})).To(BeNumerically("==", 2))
+			Expect(queuedIDs()).To(ConsistOf("ar-bump", "mf-scan"))
+		})
+
+		It("intersects kinds and priorities", func() {
+			Expect(repo.PurgeQueued([]model.Kind{model.KindArtistArtwork}, []int{model.ArtworkPriorityBackfill})).
+				To(BeNumerically("==", 1))
+			Expect(queuedIDs()).To(ConsistOf("ar-bump", "al-backfill", "mf-scan"))
+		})
+
+		It("deletes every row when neither filter is given", func() {
+			Expect(repo.PurgeQueued(nil, nil)).To(BeNumerically("==", 4))
+			Expect(queuedIDs()).To(BeEmpty())
+		})
+
+		It("accepts several kinds and priorities at once", func() {
+			Expect(repo.PurgeQueued(
+				[]model.Kind{model.KindArtistArtwork, model.KindMediaFileArtwork},
+				[]int{model.ArtworkPriorityBackfill, model.ArtworkPriorityScan},
+			)).To(BeNumerically("==", 2))
+			Expect(queuedIDs()).To(ConsistOf("ar-bump", "al-backfill"))
+		})
+
+		It("reports zero when nothing matches, and leaves the queue alone", func() {
+			Expect(repo.PurgeQueued([]model.Kind{model.KindPlaylistArtwork}, nil)).To(BeNumerically("==", 0))
+			Expect(queuedIDs()).To(HaveLen(4))
+		})
+
+		It("deletes a row that is still backing off", func() {
+			backOff("ar", "ar-bump", time.Now().Add(time.Hour))
+
+			Expect(repo.PurgeQueued([]model.Kind{model.KindArtistArtwork}, nil)).To(BeNumerically("==", 2))
+			Expect(repo.Get(model.KindArtistArtwork, "ar-bump", model.ImageTypePrimary)).
+				Error().To(MatchError(model.ErrNotFound))
+		})
+	})
 })

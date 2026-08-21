@@ -164,6 +164,8 @@ type ArtworkQueueRepository interface {
 	CountAbsent(kind Kind, attemptedBefore time.Time) (ArtworkAbsentStat, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
+	// PurgeQueued removes pending rows matching the kinds and priorities; an empty filter means every one.
+	PurgeQueued(kinds []Kind, priorities []int) (int64, error)
 }
 
 type ArtworkQueueStat struct {

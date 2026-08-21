@@ -167,6 +167,27 @@ func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
 	return purged, nil
 }
 
+func (m *MockArtworkQueueRepo) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	prefixes := slice.Map(kinds, func(k model.Kind) string { return k.Prefix() })
+	var purged int64
+	for k, it := range m.Data {
+		if len(prefixes) > 0 && !slices.Contains(prefixes, it.ItemKind) {
+			continue
+		}
+		if len(priorities) > 0 && !slices.Contains(priorities, it.Priority) {
+			continue
+		}
+		delete(m.Data, k)
+		purged++
+	}
+	return purged, nil
+}
+
 func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

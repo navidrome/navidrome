@@ -549,36 +549,36 @@ var _ = Describe("promptConfirm", func() {
 	BeforeEach(func() { out.Reset() })
 
 	It("states the external cost and accepts an explicit yes", func() {
-		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 42, 7)).To(BeTrue())
+		Expect(promptConfirm(strings.NewReader("y\n"), "re-resolve")(&out, 42, 7)).To(BeTrue())
 		Expect(out.String()).To(ContainSubstring("re-resolve 42 items"))
 		Expect(out.String()).To(ContainSubstring("External lookups: ~7 estimated"))
 	})
 
 	It("defaults to no on anything else", func() {
-		Expect(promptConfirm(strings.NewReader("\n"))(&out, 1, 1)).To(BeFalse())
-		Expect(promptConfirm(strings.NewReader("nope\n"))(&out, 1, 1)).To(BeFalse())
-		Expect(promptConfirm(strings.NewReader(""))(&out, 1, 1)).To(BeFalse())
+		Expect(promptConfirm(strings.NewReader("\n"), "re-resolve")(&out, 1, 1)).To(BeFalse())
+		Expect(promptConfirm(strings.NewReader("nope\n"), "re-resolve")(&out, 1, 1)).To(BeFalse())
+		Expect(promptConfirm(strings.NewReader(""), "re-resolve")(&out, 1, 1)).To(BeFalse())
 	})
 
 	It("drops the external clause when no lookup will be made", func() {
-		Expect(promptConfirm(strings.NewReader("y\n"))(&out, 3, 0)).To(BeTrue())
-		Expect(out.String()).To(ContainSubstring("re-resolve 3 items."))
+		Expect(promptConfirm(strings.NewReader("y\n"), "cancel")(&out, 3, 0)).To(BeTrue())
+		Expect(out.String()).To(ContainSubstring("cancel 3 items."))
 		Expect(out.String()).ToNot(ContainSubstring("External lookups"))
 	})
 })
 
-var _ = Describe("reprocessConfirm", func() {
+var _ = Describe("confirmUnlessYes", func() {
 	var out strings.Builder
 
 	BeforeEach(func() { out.Reset() })
 
 	It("prompts when --yes was not given", func() {
-		Expect(reprocessConfirm(false, strings.NewReader("n\n"))(&out, 5, 5)).To(BeFalse())
+		Expect(confirmUnlessYes(false, strings.NewReader("n\n"), "re-resolve")(&out, 5, 5)).To(BeFalse())
 		Expect(out.String()).To(ContainSubstring("Continue?"))
 	})
 
 	It("bypasses the prompt only for --yes", func() {
-		Expect(reprocessConfirm(true, strings.NewReader(""))(&out, 5, 5)).To(BeTrue())
+		Expect(confirmUnlessYes(true, strings.NewReader(""), "re-resolve")(&out, 5, 5)).To(BeTrue())
 		Expect(out.String()).To(BeEmpty(), "--yes must not print a prompt it never reads")
 	})
 })
@@ -1057,5 +1057,153 @@ var _ = Describe("configuredAgents", func() {
 	It("drops empty entries rather than passing a name nothing can match", func() {
 		conf.Server.Agents = " , ,"
 		Expect(configuredAgents()).To(BeEmpty())
+	})
+})
+
+var _ = Describe("parseArtworkPriority", func() {
+	It("accepts every name status prints", func() {
+		for _, p := range []int{model.ArtworkPriorityRecheck, model.ArtworkPriorityBackfill,
+			model.ArtworkPriorityScan, model.ArtworkPriorityBump} {
+			Expect(parseArtworkPriority(priorityName(p))).To(Equal(p))
+		}
+	})
+
+	It("rejects an unknown name and lists the valid ones", func() {
+		_, err := parseArtworkPriority("urgent")
+		Expect(err).To(MatchError(ContainSubstring(`invalid priority "urgent"`)))
+		Expect(err).To(MatchError(ContainSubstring("backfill")))
+	})
+
+	// Accepting the raw numbers would make the help text a lie and let a typo like 11 select nothing.
+	It("rejects the numeric form", func() {
+		_, err := parseArtworkPriority("10")
+		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("artwork cancel selection", func() {
+	It("errors when no selector is given", func() {
+		_, _, err := cancelSelection(nil, nil, false)
+		Expect(err).To(MatchError(ContainSubstring("no selector given")))
+	})
+
+	It("returns every kind and every priority for --all", func() {
+		kinds, priorities, err := cancelSelection(nil, nil, true)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(kinds).To(Equal(artwork.RefreshableKinds))
+		Expect(priorities).To(BeEmpty(), "no priority filter means every priority")
+	})
+
+	// The queue holds media file rows, so --all must reach them.
+	It("accepts media file artwork, which reprocess does not", func() {
+		kinds, _, err := cancelSelection([]string{"mf"}, nil, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(kinds).To(Equal([]model.Kind{model.KindMediaFileArtwork}))
+	})
+
+	It("treats a priority filter on its own as a complete selection", func() {
+		kinds, priorities, err := cancelSelection(nil, []string{"backfill"}, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(kinds).To(BeEmpty(), "no kind filter means every kind")
+		Expect(priorities).To(Equal([]int{model.ArtworkPriorityBackfill}))
+	})
+
+	It("returns only the named kinds and priorities", func() {
+		kinds, priorities, err := cancelSelection([]string{"ar", "al"}, []string{"backfill", "scan"}, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(kinds).To(Equal([]model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}))
+		Expect(priorities).To(Equal([]int{model.ArtworkPriorityBackfill, model.ArtworkPriorityScan}))
+	})
+
+	It("counts a repeated kind and a repeated priority once", func() {
+		kinds, priorities, err := cancelSelection([]string{"ar", "ar"}, []string{"bump", "bump"}, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(kinds).To(HaveLen(1))
+		Expect(priorities).To(HaveLen(1))
+	})
+
+	It("rejects an unknown kind", func() {
+		_, _, err := cancelSelection([]string{"zz"}, nil, false)
+		Expect(err).To(MatchError(ContainSubstring(`invalid kind "zz"`)))
+	})
+
+	It("rejects a kind that is never queued", func() {
+		_, _, err := cancelSelection([]string{"dc"}, nil, false)
+		Expect(err).To(MatchError(ContainSubstring("invalid kind")))
+	})
+
+	It("rejects an unknown priority", func() {
+		_, _, err := cancelSelection(nil, []string{"urgent"}, false)
+		Expect(err).To(MatchError(ContainSubstring("invalid priority")))
+	})
+})
+
+var _ = Describe("cancelArtwork", func() {
+	var ds *tests.MockDataStore
+	var queue *tests.MockArtworkQueueRepo
+	var out strings.Builder
+	ctx := context.Background()
+	accept := func(io.Writer, int64, int64) bool { return true }
+	decline := func(io.Writer, int64, int64) bool { return false }
+
+	BeforeEach(func() {
+		ds = &tests.MockDataStore{}
+		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
+		out.Reset()
+		Expect(queue.Enqueue(
+			model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-1", ImageType: model.ImageTypePrimary,
+				Priority: model.ArtworkPriorityBackfill},
+			model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-2", ImageType: model.ImageTypePrimary,
+				Priority: model.ArtworkPriorityBump},
+			model.ArtworkQueueItem{ItemKind: "al", ItemID: "al-1", ImageType: model.ImageTypePrimary,
+				Priority: model.ArtworkPriorityBackfill},
+		)).To(Succeed())
+	})
+
+	It("previews the per-kind breakdown and cancels nothing on a dry run", func() {
+		Expect(cancelArtwork(ctx, ds, []model.Kind{model.KindArtistArtwork}, nil, true, accept, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("artist"))
+		Expect(out.String()).To(ContainSubstring("backfill"))
+		Expect(out.String()).To(ContainSubstring("TOTAL"))
+		Expect(out.String()).To(ContainSubstring("Dry run"))
+		Expect(queue.Count()).To(BeNumerically("==", 3))
+	})
+
+	It("cancels nothing when the operator declines", func() {
+		Expect(cancelArtwork(ctx, ds, nil, nil, false, decline, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("Aborted"))
+		Expect(queue.Count()).To(BeNumerically("==", 3))
+	})
+
+	It("deletes the selected rows and leaves the rest queued", func() {
+		Expect(cancelArtwork(ctx, ds, nil, []int{model.ArtworkPriorityBackfill}, false, accept, &out)).To(Succeed())
+
+		Expect(queue.Count()).To(BeNumerically("==", 1))
+		_, err := queue.Get(model.KindArtistArtwork, "ar-2", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred(), "a non-matching priority must stay queued")
+		Expect(out.String()).To(ContainSubstring("Cancelled 2 of 2 matched items."))
+	})
+
+	It("cancels every kind and priority when neither filter is given", func() {
+		Expect(cancelArtwork(ctx, ds, nil, nil, false, accept, &out)).To(Succeed())
+		Expect(queue.Count()).To(BeZero())
+	})
+
+	It("stops at a selection that matches nothing instead of prompting", func() {
+		refuse := func(io.Writer, int64, int64) bool {
+			Fail("must not prompt when nothing matches")
+			return false
+		}
+		Expect(cancelArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, false, refuse, &out)).To(Succeed())
+
+		Expect(out.String()).To(ContainSubstring("Nothing matches this selection."))
+		Expect(queue.Count()).To(BeNumerically("==", 3))
+	})
+
+	It("reports a queue read failure instead of reporting nothing to cancel", func() {
+		queue.Err = errors.New("read failed")
+		Expect(cancelArtwork(ctx, ds, nil, nil, false, accept, &out)).To(MatchError(ContainSubstring("read failed")))
 	})
 })

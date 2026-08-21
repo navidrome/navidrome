@@ -34,6 +34,14 @@ var (
 	reprocessYes     bool
 )
 
+var (
+	cancelKinds      []string
+	cancelPriorities []string
+	cancelAll        bool
+	cancelDryRun     bool
+	cancelYes        bool
+)
+
 func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
 		"walk the chain again now, performing real external lookups, instead of reporting the "+
@@ -47,9 +55,18 @@ func init() {
 	artworkReprocessCmd.Flags().BoolVar(&reprocessDryRun, "dry-run", false,
 		"report what would be queued and exit without queueing")
 	artworkReprocessCmd.Flags().BoolVarP(&reprocessYes, "yes", "y", false, "skip the confirmation prompt")
+	artworkCancelCmd.Flags().StringSliceVar(&cancelKinds, "kind", nil,
+		"kinds to cancel ("+kindPrefixes(artwork.RefreshableKinds)+"); repeatable")
+	artworkCancelCmd.Flags().StringSliceVar(&cancelPriorities, "priority", nil,
+		"only rows queued at these priorities ("+priorityNames()+"); repeatable")
+	artworkCancelCmd.Flags().BoolVar(&cancelAll, "all", false, "cancel every kind at every priority")
+	artworkCancelCmd.Flags().BoolVar(&cancelDryRun, "dry-run", false,
+		"report what would be cancelled and exit without cancelling")
+	artworkCancelCmd.Flags().BoolVarP(&cancelYes, "yes", "y", false, "skip the confirmation prompt")
 	artworkCmd.AddCommand(artworkExplainCmd)
 	artworkCmd.AddCommand(artworkRefreshCmd)
 	artworkCmd.AddCommand(artworkReprocessCmd)
+	artworkCmd.AddCommand(artworkCancelCmd)
 	artworkCmd.AddCommand(artworkStatusCmd)
 	rootCmd.AddCommand(artworkCmd)
 }
@@ -90,6 +107,21 @@ var artworkReprocessCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		runReprocess(cmd.Context())
+	},
+}
+
+var artworkCancelCmd = &cobra.Command{
+	Use:   "cancel",
+	Short: "Cancel pending artwork work in bulk, by kind and/or queue priority",
+	Long: "Cancel pending artwork work in bulk, by kind and/or queue priority.\n\n" +
+		"Only the queue is touched: resolved artwork and the state behind `artwork explain` are\n" +
+		"left alone, and the trace of why a cancelled item last failed goes with its queue row.\n\n" +
+		"Work already picked up is not interrupted, and an item with no artwork yet can be\n" +
+		"queued again by the hourly re-check. Use it to call off a bulk backfill, not to stop\n" +
+		"the worker.",
+	Args: cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		runCancel(cmd.Context())
 	},
 }
 
@@ -253,18 +285,40 @@ func kindName(prefix string) string {
 	return prefix
 }
 
+type artworkPriority struct {
+	name  string
+	value int
+}
+
+// artworkPriorities is the one listing behind both the name and the parse, so they cannot drift.
+var artworkPriorities = []artworkPriority{
+	{"bump", model.ArtworkPriorityBump},
+	{"scan", model.ArtworkPriorityScan},
+	{"backfill", model.ArtworkPriorityBackfill},
+	{"recheck", model.ArtworkPriorityRecheck},
+}
+
+// priorityName falls back to the number: a row written by a newer version still has to print.
 func priorityName(p int) string {
-	switch p {
-	case model.ArtworkPriorityRecheck:
-		return "recheck"
-	case model.ArtworkPriorityBackfill:
-		return "backfill"
-	case model.ArtworkPriorityScan:
-		return "scan"
-	case model.ArtworkPriorityBump:
-		return "bump"
+	for _, ap := range artworkPriorities {
+		if ap.value == p {
+			return ap.name
+		}
 	}
 	return strconv.Itoa(p)
+}
+
+func priorityNames() string {
+	return strings.Join(slice.Map(artworkPriorities, func(ap artworkPriority) string { return ap.name }), ", ")
+}
+
+func parseArtworkPriority(s string) (int, error) {
+	for _, ap := range artworkPriorities {
+		if ap.name == s {
+			return ap.value, nil
+		}
+	}
+	return 0, fmt.Errorf("invalid priority %q, expected one of: %s", s, priorityNames())
 }
 
 func runReprocess(ctx context.Context) {
@@ -286,7 +340,7 @@ func runReprocess(ctx context.Context) {
 	}
 
 	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgents,
-		reprocessDryRun, reprocessConfirm(reprocessYes, os.Stdin), os.Stdout); err != nil {
+		reprocessDryRun, confirmUnlessYes(reprocessYes, os.Stdin, "re-resolve"), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
 }
@@ -327,11 +381,11 @@ func displaySource(s string) string { return cmp.Or(s, absentSource) }
 
 type confirmFunc func(out io.Writer, total, external int64) bool
 
-func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
+func confirmUnlessYes(yes bool, in io.Reader, verb string) confirmFunc {
 	if yes {
 		return func(io.Writer, int64, int64) bool { return true }
 	}
-	return promptConfirm(in)
+	return promptConfirm(in, verb)
 }
 
 // externalEstimate claims no bound: a local hit ends the walk before any agent is asked, and the
@@ -379,13 +433,13 @@ func configuredAgents() []string {
 	return names
 }
 
-func promptConfirm(in io.Reader) confirmFunc {
+func promptConfirm(in io.Reader, verb string) confirmFunc {
 	return func(out io.Writer, total, external int64) bool {
 		var cost string
 		if external > 0 {
 			cost = fmt.Sprintf(" %s", externalLookupLine(external))
 		}
-		fmt.Fprintf(out, "\nThis will re-resolve %d items.%s Continue? [y/N] ", total, cost)
+		fmt.Fprintf(out, "\nThis will %s %d items.%s Continue? [y/N] ", verb, total, cost)
 		var answer string
 		if _, err := fmt.Fscanln(in, &answer); err != nil {
 			return false
@@ -475,6 +529,107 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		fmt.Fprintf(out, "Already queued, left unchanged: %d (priority and retry backoff untouched).\n", skipped)
 	}
 	return nil
+}
+
+func runCancel(ctx context.Context) {
+	kinds, priorities, err := cancelSelection(cancelKinds, cancelPriorities, cancelAll)
+	if err != nil {
+		log.Fatal(ctx, err)
+	}
+
+	defer db.Init(ctx)()
+	ds, ctx := getAdminContext(ctx)
+
+	if err := cancelArtwork(ctx, ds, kinds, priorities, cancelDryRun,
+		confirmUnlessYes(cancelYes, os.Stdin, "cancel"), os.Stdout); err != nil {
+		log.Fatal(ctx, err)
+	}
+}
+
+// An empty filter means every one, and either flag alone is a complete selection.
+func cancelSelection(kinds, priorities []string, all bool) ([]model.Kind, []int, error) {
+	if all {
+		return artwork.RefreshableKinds, nil, nil
+	}
+	if len(kinds) == 0 && len(priorities) == 0 {
+		return nil, nil, fmt.Errorf("no selector given: pass --kind, --priority or --all")
+	}
+	outKinds := make([]model.Kind, 0, len(kinds))
+	for _, k := range kinds {
+		// RefreshableKinds, not RecheckKinds: media files are queued, so --kind must reach them.
+		kind, err := parseArtworkKind(k, artwork.RefreshableKinds)
+		if err != nil {
+			return nil, nil, err
+		}
+		outKinds = append(outKinds, kind)
+	}
+	outPriorities := make([]int, 0, len(priorities))
+	for _, p := range priorities {
+		priority, err := parseArtworkPriority(p)
+		if err != nil {
+			return nil, nil, err
+		}
+		outPriorities = append(outPriorities, priority)
+	}
+	// A repeated selector would be counted twice, overstating the total the operator confirms.
+	return slice.Unique(outKinds), slice.Unique(outPriorities), nil
+}
+
+func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, priorities []int,
+	dryRun bool, confirm confirmFunc, out io.Writer) error {
+	q := ds.ArtworkQueue(ctx)
+	stats, err := q.CountByKindAndPriority()
+	if err != nil {
+		return fmt.Errorf("counting queued artwork: %w", err)
+	}
+	matched := matchingQueueStats(stats, kinds, priorities)
+	var total int64
+	for _, s := range matched {
+		total += s.Count
+	}
+	printCancelPreview(out, matched, total)
+
+	switch {
+	case dryRun:
+		fmt.Fprintln(out, "\nDry run: nothing was cancelled.")
+		return nil
+	case total == 0:
+		fmt.Fprintln(out, "Nothing was cancelled.")
+		return nil
+	case !confirm(out, total, 0):
+		fmt.Fprintln(out, "Aborted: nothing was cancelled.")
+		return nil
+	}
+
+	cancelled, err := q.PurgeQueued(kinds, priorities)
+	if err != nil {
+		return fmt.Errorf("cancelling queued artwork: %w", err)
+	}
+	// Count and delete are separate statements, so a drain in between makes these two differ.
+	fmt.Fprintf(out, "Cancelled %d of %d matched items.\n", cancelled, total)
+	return nil
+}
+
+func matchingQueueStats(stats []model.ArtworkQueueStat, kinds []model.Kind, priorities []int) []model.ArtworkQueueStat {
+	prefixes := slice.Map(kinds, func(k model.Kind) string { return k.Prefix() })
+	return slice.Filter(stats, func(s model.ArtworkQueueStat) bool {
+		return (len(prefixes) == 0 || slices.Contains(prefixes, s.ItemKind)) &&
+			(len(priorities) == 0 || slices.Contains(priorities, s.Priority))
+	})
+}
+
+func printCancelPreview(out io.Writer, matched []model.ArtworkQueueStat, total int64) {
+	w := newTabWriter(out)
+	fmt.Fprintln(w, "KIND\tPRIORITY\tMATCHED")
+	for _, s := range matched {
+		fmt.Fprintf(w, "%s\t%s\t%d\n", kindName(s.ItemKind), priorityName(s.Priority), s.Count)
+	}
+	fmt.Fprintf(w, "TOTAL\t\t%d\n", total)
+	w.Flush()
+
+	if total == 0 {
+		fmt.Fprintln(out, "\nNothing matches this selection.")
+	}
 }
 
 // printReprocessPreview also states the external estimate, which --dry-run must show because it
