@@ -456,7 +456,8 @@ var _ = Describe("Configuration", func() {
 	)
 
 	It("should use default values for negative duration fields", func() {
-		conf.InitConfig(filepath.Join("testdata", "invalid_duration.toml"), true)
+		filename := filepath.Join("testdata", "invalid_duration.toml")
+		conf.InitConfig(filename, false)
 		conf.Load(true)
 
 		server := conf.Server
@@ -476,7 +477,7 @@ var _ = Describe("Configuration", func() {
 	})
 
 	It("should use parsed values (0) for duration fields", func() {
-		conf.InitConfig(filepath.Join("testdata", "valid_duration.toml"), true)
+		conf.InitConfig(filepath.Join("testdata", "valid_duration.toml"), false)
 		conf.Load(true)
 
 		configured := 0 * time.Second
