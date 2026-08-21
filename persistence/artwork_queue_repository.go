@@ -191,17 +191,43 @@ func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
 	return purgeDangling(r.sqlRepository)
 }
 
+// artworkQueueFilter returns no conditions for an empty filter, so an unfiltered DELETE keeps
+// SQLite's truncate path. It ignores retry_at: a backing-off row is pending work too.
+func artworkQueueFilter(kinds []model.Kind, priorities []int) And {
+	var f And
+	if len(kinds) > 0 {
+		f = append(f, Eq{"item_kind": model.KindPrefixes(kinds)})
+	}
+	if len(priorities) > 0 {
+		f = append(f, Eq{"priority": priorities})
+	}
+	return f
+}
+
+// CountQueued shares its filter with PurgeQueued, so a preview cannot count rows the delete misses.
+func (r *artworkQueueRepository) CountQueued(kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
+	sel := Select("item_kind", "priority", "count(*) as count").From(r.tableName).
+		GroupBy("item_kind", "priority").OrderBy("item_kind", "priority desc")
+	if f := artworkQueueFilter(kinds, priorities); len(f) > 0 {
+		sel = sel.Where(f)
+	}
+	var res []model.ArtworkQueueStat
+	err := r.queryAll(sel, &res)
+	return res, err
+}
+
+func (r *artworkQueueRepository) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+	del := Delete(r.tableName)
+	if f := artworkQueueFilter(kinds, priorities); len(f) > 0 {
+		del = del.Where(f)
+	}
+	return r.executeSQL(del)
+}
+
 func (r *artworkQueueRepository) Count() (int64, error) {
 	var res struct{ Count int64 }
 	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)
 	return res.Count, err
-}
-
-func (r *artworkQueueRepository) CountByKindAndPriority() ([]model.ArtworkQueueStat, error) {
-	var res []model.ArtworkQueueStat
-	err := r.queryAll(Select("item_kind", "priority", "count(*) as count").From(r.tableName).
-		GroupBy("item_kind", "priority").OrderBy("item_kind", "priority desc"), &res)
-	return res, err
 }
 
 // CountAbsent matches EnqueueStaleAbsent on hash, so the stale count is what a recheck would queue.

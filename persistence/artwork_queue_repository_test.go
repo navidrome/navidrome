@@ -411,7 +411,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			Expect(repo.Enqueue(item("ar", "a3", model.ArtworkPriorityBump))).To(Succeed())
 			Expect(repo.Enqueue(item("al", "b1", model.ArtworkPriorityScan))).To(Succeed())
 
-			Expect(repo.CountByKindAndPriority()).To(ConsistOf(
+			Expect(repo.CountQueued(nil, nil)).To(ConsistOf(
 				model.ArtworkQueueStat{ItemKind: "ar", Priority: model.ArtworkPriorityBackfill, Count: 2},
 				model.ArtworkQueueStat{ItemKind: "ar", Priority: model.ArtworkPriorityBump, Count: 1},
 				model.ArtworkQueueStat{ItemKind: "al", Priority: model.ArtworkPriorityScan, Count: 1},
@@ -419,7 +419,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		})
 
 		It("reports an empty queue as no rows", func() {
-			Expect(repo.CountByKindAndPriority()).To(BeEmpty())
+			Expect(repo.CountQueued(nil, nil)).To(BeEmpty())
 		})
 
 		It("counts absent states and how many are due for recheck", func() {
@@ -440,6 +440,73 @@ var _ = Describe("ArtworkQueueRepository", func() {
 
 		It("reports a kind with no absent state as zero, not as an error", func() {
 			Expect(repo.CountAbsent(model.KindRadioArtwork, time.Now())).To(Equal(model.ArtworkAbsentStat{}))
+		})
+	})
+
+	Describe("PurgeQueued", func() {
+		queuedIDs := func() []string {
+			GinkgoHelper()
+			got, err := repo.DequeueBatch(100)
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(got, func(it model.ArtworkQueueItem) string { return it.ItemID })
+		}
+
+		BeforeEach(func() {
+			Expect(repo.Enqueue(
+				item("ar", "ar-backfill", model.ArtworkPriorityBackfill),
+				item("ar", "ar-bump", model.ArtworkPriorityBump),
+				item("al", "al-backfill", model.ArtworkPriorityBackfill),
+				item("mf", "mf-scan", model.ArtworkPriorityScan),
+			)).To(Succeed())
+		})
+
+		// CountQueued feeds the preview and PurgeQueued does the delete; they share one filter, so
+		// every selection must count exactly what it deletes.
+		DescribeTable("selects the same rows to count and to delete",
+			func(kinds []model.Kind, priorities []int, deleted int, remaining []string) {
+				counted, err := repo.CountQueued(kinds, priorities)
+				Expect(err).ToNot(HaveOccurred())
+				var total int64
+				for _, s := range counted {
+					total += s.Count
+				}
+				Expect(total).To(BeNumerically("==", deleted), "the preview must match the delete")
+
+				Expect(repo.PurgeQueued(kinds, priorities)).To(BeNumerically("==", deleted))
+				Expect(queuedIDs()).To(ConsistOf(remaining))
+			},
+			Entry("only the given kinds", []model.Kind{model.KindArtistArtwork}, nil,
+				2, []string{"al-backfill", "mf-scan"}),
+			Entry("only the given priorities", nil, []int{model.ArtworkPriorityBackfill},
+				2, []string{"ar-bump", "mf-scan"}),
+			Entry("the intersection of both", []model.Kind{model.KindArtistArtwork}, []int{model.ArtworkPriorityBackfill},
+				1, []string{"ar-bump", "al-backfill", "mf-scan"}),
+			Entry("everything, when neither filter is given", nil, nil,
+				4, []string{}),
+			Entry("several kinds and priorities at once",
+				[]model.Kind{model.KindArtistArtwork, model.KindMediaFileArtwork},
+				[]int{model.ArtworkPriorityBackfill, model.ArtworkPriorityScan},
+				2, []string{"ar-bump", "al-backfill"}),
+			Entry("nothing, leaving the queue alone", []model.Kind{model.KindPlaylistArtwork}, nil,
+				0, []string{"ar-backfill", "ar-bump", "al-backfill", "mf-scan"}),
+		)
+
+		It("deletes a row that is still backing off", func() {
+			backOff("ar", "ar-bump", time.Now().Add(time.Hour))
+
+			Expect(repo.PurgeQueued([]model.Kind{model.KindArtistArtwork}, nil)).To(BeNumerically("==", 2))
+			Expect(repo.Get(model.KindArtistArtwork, "ar-bump", model.ImageTypePrimary)).
+				Error().To(MatchError(model.ErrNotFound))
+		})
+
+		// A WHERE clause, even one that matches everything, costs SQLite its truncate optimization
+		// and turns `artwork cancel --all` into a full scan of the queue.
+		It("adds no conditions at all for an empty filter", func() {
+			Expect(artworkQueueFilter(nil, nil)).To(BeEmpty())
+			Expect(artworkQueueFilter([]model.Kind{model.KindArtistArtwork}, nil)).To(HaveLen(1))
+			Expect(artworkQueueFilter(nil, []int{model.ArtworkPriorityBump})).To(HaveLen(1))
+			Expect(artworkQueueFilter([]model.Kind{model.KindArtistArtwork}, []int{model.ArtworkPriorityBump})).
+				To(HaveLen(2))
 		})
 	})
 })
