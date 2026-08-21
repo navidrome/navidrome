@@ -18,6 +18,22 @@ var _ = Describe("sqlRepository", func() {
 		r.tableName = "table"
 	})
 
+	Describe("countExpression", func() {
+		It("uses a plain count when the query has no joins", func() {
+			sq := squirrel.Select().From("table").Where(squirrel.Eq{"library_id": []int{1, 4}})
+			Expect(r.countExpression(sq)).To(Equal("count(*) as count"))
+		})
+		It("uses a distinct count when the query has a join", func() {
+			sq := squirrel.Select().From("table").
+				LeftJoin("annotation on annotation.item_id = table.id")
+			Expect(r.countExpression(sq)).To(Equal("count(distinct table.id) as count"))
+		})
+		It("is not fooled by parametrized values containing the word join", func() {
+			sq := squirrel.Select().From("table").Where(squirrel.Eq{"name": "the join band"})
+			Expect(r.countExpression(sq)).To(Equal("count(*) as count"))
+		})
+	})
+
 	Describe("applyOptions", func() {
 		var sq squirrel.SelectBuilder
 		BeforeEach(func() {
