@@ -134,8 +134,8 @@ type ArtworkQueueRepository interface {
 	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a
 	// request-triggered read-through never resets a failed resolution's backoff.
 	EnqueuePreservingBackoff(items ...ArtworkQueueItem) error
-	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff,
-	// oldest attempts first, at most limit rows.
+	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff, oldest
+	// first; limit caps the selection, so already-queued rows use up budget (backpressure when the drain stalls).
 	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time, limit int) (int64, error)
 	// EnqueueAllMissing inserts queue rows for all entities with no item_artwork row, at the given priority.
 	EnqueueAllMissing(kind Kind, priority int) (int64, error)

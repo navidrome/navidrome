@@ -285,12 +285,11 @@ func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefo
 		}
 	}
 	slices.SortFunc(stale, func(a, b model.ItemArtwork) int { return a.AttemptedAt.Compare(b.AttemptedAt) })
+	// The limit caps the selection, like the SQL's LIMIT before ON CONFLICT: queued rows use up budget.
+	stale = stale[:min(limit, len(stale))]
 	now := time.Now()
 	var inserted int64
 	for _, ia := range stale {
-		if inserted >= int64(limit) {
-			break
-		}
 		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
 		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
 			continue

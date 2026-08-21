@@ -238,7 +238,8 @@ func formatStatus(rep statusReport) string {
 	for _, a := range rep.absent {
 		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.Total, a.Stale)
 	}
-	fmt.Fprintf(w, "  (rechecked once the last attempt is older than %gh)\n", artwork.StaleAbsentAge.Hours())
+	fmt.Fprintf(w, "  (eligible once the last attempt is older than %gh; re-queued %d per kind per hour, oldest first)\n",
+		artwork.StaleAbsentAge.Hours(), artwork.StaleAbsentRecheckBatch)
 
 	fmt.Fprintln(w, "\nBackfill")
 	fmt.Fprintf(w, "  State:\t%s\n", backfillState(rep))
