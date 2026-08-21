@@ -43,7 +43,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary for Docker image (dynamic musl, enables native libwebp via dlopen)
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build-alpine
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build-alpine
 COPY --from=xx / /
 
 ARG TARGETPLATFORM
@@ -85,7 +85,7 @@ EOT
 
 ########################################################################################################################
 ### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
-FROM --platform=$BUILDPLATFORM golang:1.26-trixie AS base
+FROM --platform=$BUILDPLATFORM golang:1.27-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
