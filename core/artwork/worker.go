@@ -134,7 +134,8 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 // Backfill enqueues every entity for re-resolution when the artwork config fingerprint changed,
 // artists first. It reports whether anything was enqueued.
 func (w *Worker) Backfill(ctx context.Context) (bool, error) {
-	return backfill(ctx, w.proc.ds)
+	s, err := backfill(ctx, w.proc.ds, w.proc.resolver.imageAgentCount())
+	return s.Ran, err
 }
 
 // EnqueueStaleAbsentAll requeues known-absent entries older than StaleAbsentAge, at most

@@ -85,6 +85,18 @@ func newResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, gate 
 	return &resolver{ds: ds, ffmpeg: ffm, ext: &externalSource{agents: ag, gate: gate}}
 }
 
+// imageAgentCount reports how many agents an external step would consult; zero for a resolver
+// built without agents, which reaches no network at all.
+func (r *resolver) imageAgentCount() ImageAgentCount {
+	if r.ext == nil || r.ext.agents == nil {
+		return ImageAgentCount{}
+	}
+	return ImageAgentCount{
+		Artist: len(r.ext.agents.ArtistImageAgents()),
+		Album:  len(r.ext.agents.AlbumImageAgents()),
+	}
+}
+
 // newLocalResolver builds a resolver that can neither reach the network nor sample album art
 // for the worker-built grid.
 func newLocalResolver(ds model.DataStore, ffm ffmpeg.FFmpeg) *resolver {
