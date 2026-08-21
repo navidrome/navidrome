@@ -134,8 +134,9 @@ type ArtworkQueueRepository interface {
 	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a
 	// request-triggered read-through never resets a failed resolution's backoff.
 	EnqueuePreservingBackoff(items ...ArtworkQueueItem) error
-	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff.
-	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time) (int64, error)
+	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff,
+	// oldest attempts first, at most limit rows.
+	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time, limit int) (int64, error)
 	// EnqueueAllMissing inserts queue rows for all entities with no item_artwork row, at the given priority.
 	EnqueueAllMissing(kind Kind, priority int) (int64, error)
 	// EnqueueIfMissing inserts only for items with no item_artwork row yet.
@@ -160,8 +161,8 @@ type ArtworkQueueRepository interface {
 	// CountQueued reports the pending rows matching the kinds and priorities, grouped by both;
 	// an empty filter means every one.
 	CountQueued(kinds []Kind, priorities []int) ([]ArtworkQueueStat, error)
-	// CountAbsent reports the absent states of a kind, and how many of those EnqueueStaleAbsent
-	// would pick up at the given cutoff.
+	// CountAbsent reports the absent states of a kind, and how many are past the given cutoff,
+	// eligible for EnqueueStaleAbsent (which drains them limit rows per call).
 	CountAbsent(kind Kind, attemptedBefore time.Time) (ArtworkAbsentStat, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)

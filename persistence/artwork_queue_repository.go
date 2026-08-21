@@ -56,11 +56,12 @@ func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.Artwork
 		priority = MAX(priority, excluded.priority)`, items)
 }
 
-func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
+func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time, limit int) (int64, error) {
 	now := time.Now()
 	return r.insertIfNotQueued("", `SELECT item_kind, item_id, image_type, ?, 0, ?, ?
-		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?`,
-		model.ArtworkPriorityRecheck, now, now, kind.Prefix(), attemptedBefore)
+		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?
+		ORDER BY attempted_at LIMIT ?`,
+		model.ArtworkPriorityRecheck, now, now, kind.Prefix(), attemptedBefore, limit)
 }
 
 func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
@@ -230,7 +231,7 @@ func (r *artworkQueueRepository) Count() (int64, error) {
 	return res.Count, err
 }
 
-// CountAbsent matches EnqueueStaleAbsent on hash, so the stale count is what a recheck would queue.
+// CountAbsent matches EnqueueStaleAbsent on hash, so the stale count is the pool a recheck drains from.
 func (r *artworkQueueRepository) CountAbsent(kind model.Kind, attemptedBefore time.Time) (model.ArtworkAbsentStat, error) {
 	var res model.ArtworkAbsentStat
 	err := r.queryOne(Select("count(*) as total").

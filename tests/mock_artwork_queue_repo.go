@@ -272,17 +272,24 @@ func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQu
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
+func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time, limit int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil || m.ItemArtworkSource == nil {
 		return 0, m.Err
 	}
+	var stale []model.ItemArtwork
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind == kind.Prefix() && ia.Hash == "" && ia.AttemptedAt.Before(attemptedBefore) {
+			stale = append(stale, ia)
+		}
+	}
+	slices.SortFunc(stale, func(a, b model.ItemArtwork) int { return a.AttemptedAt.Compare(b.AttemptedAt) })
 	now := time.Now()
 	var inserted int64
-	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind != kind.Prefix() || ia.Hash != "" || !ia.AttemptedAt.Before(attemptedBefore) {
-			continue
+	for _, ia := range stale {
+		if inserted >= int64(limit) {
+			break
 		}
 		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
 		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
