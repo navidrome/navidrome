@@ -26,20 +26,14 @@ import (
 
 var explainLive bool
 
+// Only one subcommand runs per invocation, so reprocess and cancel bind the same flag targets.
 var (
-	reprocessKinds   []string
-	reprocessSources []string
-	reprocessAll     bool
-	reprocessDryRun  bool
-	reprocessYes     bool
-)
-
-var (
-	cancelKinds      []string
-	cancelPriorities []string
-	cancelAll        bool
-	cancelDryRun     bool
-	cancelYes        bool
+	artworkKinds      []string
+	artworkSources    []string
+	artworkPriorities []string
+	artworkAll        bool
+	artworkDryRun     bool
+	artworkYes        bool
 )
 
 func init() {
@@ -47,22 +41,22 @@ func init() {
 		"walk the chain again now, performing real external lookups, instead of reporting the "+
 			"stored trace of the last resolution; also initializes plugin agents, which may open "+
 			"external connections")
-	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
+	artworkReprocessCmd.Flags().StringSliceVar(&artworkKinds, "kind", nil,
 		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
-	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
+	artworkReprocessCmd.Flags().StringSliceVar(&artworkSources, "source", nil,
 		"only items currently resolved from these sources (e.g. folder, external:deezer, absent)")
-	artworkReprocessCmd.Flags().BoolVar(&reprocessAll, "all", false, "reprocess every kind")
-	artworkReprocessCmd.Flags().BoolVar(&reprocessDryRun, "dry-run", false,
+	artworkReprocessCmd.Flags().BoolVar(&artworkAll, "all", false, "reprocess every kind")
+	artworkReprocessCmd.Flags().BoolVar(&artworkDryRun, "dry-run", false,
 		"report what would be queued and exit without queueing")
-	artworkReprocessCmd.Flags().BoolVarP(&reprocessYes, "yes", "y", false, "skip the confirmation prompt")
-	artworkCancelCmd.Flags().StringSliceVar(&cancelKinds, "kind", nil,
+	artworkReprocessCmd.Flags().BoolVarP(&artworkYes, "yes", "y", false, "skip the confirmation prompt")
+	artworkCancelCmd.Flags().StringSliceVar(&artworkKinds, "kind", nil,
 		"kinds to cancel ("+kindPrefixes(artwork.RefreshableKinds)+"); repeatable")
-	artworkCancelCmd.Flags().StringSliceVar(&cancelPriorities, "priority", nil,
+	artworkCancelCmd.Flags().StringSliceVar(&artworkPriorities, "priority", nil,
 		"only rows queued at these priorities ("+priorityNames()+"); repeatable")
-	artworkCancelCmd.Flags().BoolVar(&cancelAll, "all", false, "cancel every kind at every priority")
-	artworkCancelCmd.Flags().BoolVar(&cancelDryRun, "dry-run", false,
+	artworkCancelCmd.Flags().BoolVar(&artworkAll, "all", false, "cancel every kind at every priority")
+	artworkCancelCmd.Flags().BoolVar(&artworkDryRun, "dry-run", false,
 		"report what would be cancelled and exit without cancelling")
-	artworkCancelCmd.Flags().BoolVarP(&cancelYes, "yes", "y", false, "skip the confirmation prompt")
+	artworkCancelCmd.Flags().BoolVarP(&artworkYes, "yes", "y", false, "skip the confirmation prompt")
 	artworkCmd.AddCommand(artworkExplainCmd)
 	artworkCmd.AddCommand(artworkRefreshCmd)
 	artworkCmd.AddCommand(artworkReprocessCmd)
@@ -298,8 +292,8 @@ type artworkPriority struct {
 	value int
 }
 
-// artworkPriorities is the one listing behind both the name and the parse, so they cannot drift.
-var artworkPriorities = []artworkPriority{
+// knownPriorities is the one listing behind both the name and the parse, so they cannot drift.
+var knownPriorities = []artworkPriority{
 	{"bump", model.ArtworkPriorityBump},
 	{"scan", model.ArtworkPriorityScan},
 	{"backfill", model.ArtworkPriorityBackfill},
@@ -308,7 +302,7 @@ var artworkPriorities = []artworkPriority{
 
 // priorityName falls back to the number: a row written by a newer version still has to print.
 func priorityName(p int) string {
-	for _, ap := range artworkPriorities {
+	for _, ap := range knownPriorities {
 		if ap.value == p {
 			return ap.name
 		}
@@ -317,11 +311,11 @@ func priorityName(p int) string {
 }
 
 func priorityNames() string {
-	return strings.Join(slice.Map(artworkPriorities, func(ap artworkPriority) string { return ap.name }), ", ")
+	return strings.Join(slice.Map(knownPriorities, func(ap artworkPriority) string { return ap.name }), ", ")
 }
 
 func parseArtworkPriority(s string) (int, error) {
-	for _, ap := range artworkPriorities {
+	for _, ap := range knownPriorities {
 		if ap.name == s {
 			return ap.value, nil
 		}
@@ -330,7 +324,7 @@ func parseArtworkPriority(s string) (int, error) {
 }
 
 func runReprocess(ctx context.Context) {
-	kinds, err := selectedKinds(reprocessKinds, reprocessSources, reprocessAll)
+	kinds, err := selectedKinds(artworkKinds, artworkSources, artworkAll)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -347,8 +341,8 @@ func runReprocess(ctx context.Context) {
 		imageAgents = imageAgentCount(ds, mgr)
 	}
 
-	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgents,
-		reprocessDryRun, confirmUnlessYes(reprocessYes, os.Stdin, "re-resolve"), os.Stdout); err != nil {
+	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(artworkSources), imageAgents,
+		artworkDryRun, confirmUnlessYes(artworkYes, os.Stdin, "re-resolve"), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
 }
@@ -533,7 +527,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 }
 
 func runCancel(ctx context.Context) {
-	kinds, priorities, err := cancelSelection(cancelKinds, cancelPriorities, cancelAll)
+	kinds, priorities, err := cancelSelection(artworkKinds, artworkPriorities, artworkAll)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -541,8 +535,8 @@ func runCancel(ctx context.Context) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	if err := cancelArtwork(ctx, ds, kinds, priorities, cancelDryRun,
-		confirmUnlessYes(cancelYes, os.Stdin, "cancel"), os.Stdout); err != nil {
+	if err := cancelArtwork(ctx, ds, kinds, priorities, artworkDryRun,
+		confirmUnlessYes(artworkYes, os.Stdin, "cancel"), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
 }
