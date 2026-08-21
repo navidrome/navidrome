@@ -268,7 +268,8 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			writeAbsent(ctx, w.proc.ds.Artwork(ctx), item)
 			settled = "recorded absent"
 		}
-		// The queue row is about to go, taking the only record of the failure with it.
+		// The queue row is about to go, taking the only record of the failure with it. This write is
+		// unconditional (not CAS-guarded) — safe only because the drain resolves each item serially.
 		w.recordGiveUp(ctx, item, encoded)
 		log.Info(ctx, "Artwork: Retry budget exhausted, giving up", "kind", item.ItemKind, "id", item.ItemID,
 			"outcome", out, "attempts", item.Attempts+1, "budget", giveUpAfter, "settled", settled)
