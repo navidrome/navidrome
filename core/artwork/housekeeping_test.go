@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -235,8 +236,8 @@ var _ = Describe("Housekeeping", func() {
 		})
 
 		It("enqueues only absent entries older than the recheck window, across all kinds", func() {
-			old := time.Now().Add(-48 * time.Hour)
-			recent := time.Now().Add(-time.Hour)
+			old := time.Now().Add(-StaleAbsentAge - time.Hour)
+			recent := time.Now().Add(-StaleAbsentAge + time.Hour)
 
 			artRepo.ItemData["ar-stale"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old}
 			artRepo.ItemData["al-stale"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old}
@@ -258,6 +259,20 @@ var _ = Describe("Housekeeping", func() {
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ra", "ra1")).ToNot(BeNil())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ar", "ar2")).To(BeNil())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "al", "al2")).To(BeNil())
+		})
+
+		It("caps each tick at the recheck batch, oldest attempts first", func() {
+			for i := range StaleAbsentRecheckBatch + 1 {
+				id := fmt.Sprintf("ar%d", i)
+				artRepo.ItemData[id] = model.ItemArtwork{ItemKind: "ar", ItemID: id, ImageType: model.ImageTypePrimary,
+					Hash: "", AttemptedAt: time.Now().Add(-StaleAbsentAge - time.Duration(i+1)*time.Minute)}
+			}
+
+			Expect(enqueueStaleAbsentAll(ctx, ds)).To(Succeed())
+
+			Expect(queueRepo.Data).To(HaveLen(StaleAbsentRecheckBatch))
+			// ar0 has the newest attempted_at of the cohort, so it is the one left out.
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ar", "ar0")).To(BeNil())
 		})
 	})
 

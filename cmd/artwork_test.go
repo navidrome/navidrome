@@ -818,7 +818,7 @@ var _ = Describe("collectStatus", func() {
 				ImageType: model.ImageTypePrimary, Source: source, Hash: hash, AttemptedAt: attempted})).To(Succeed())
 		}
 		put(model.KindArtistArtwork, "ar-1", "external:deezer", "h1", time.Now())
-		put(model.KindArtistArtwork, "ar-2", "", "", time.Now().Add(-48*time.Hour))
+		put(model.KindArtistArtwork, "ar-2", "", "", time.Now().Add(-artwork.StaleAbsentAge-time.Hour))
 		put(model.KindArtistArtwork, "ar-3", "", "", time.Now())
 		put(model.KindAlbumArtwork, "al-1", "folder", "h2", time.Now())
 		Expect(queue.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-9",
@@ -909,8 +909,9 @@ var _ = Describe("formatStatus", func() {
 		Expect(absent).To(MatchRegexp(`artist\s+2\s+1`))
 	})
 
-	It("states the recheck window the absent counts are bucketed against", func() {
-		Expect(formatStatus(rep)).To(ContainSubstring("24h"))
+	It("states the recheck window and the drip rate the absent counts are bucketed against", func() {
+		Expect(formatStatus(rep)).To(ContainSubstring("168h"))
+		Expect(formatStatus(rep)).To(ContainSubstring("100 per kind per hour"))
 	})
 
 	It("leads with the queued backlog, which is the finding, not with the fingerprint verdict", func() {

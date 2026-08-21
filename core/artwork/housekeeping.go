@@ -18,7 +18,11 @@ import (
 )
 
 // StaleAbsentAge is how long an absent state is trusted before a recheck retries it.
-const StaleAbsentAge = 24 * time.Hour
+const StaleAbsentAge = 7 * 24 * time.Hour
+
+// StaleAbsentRecheckBatch caps how many absent states each hourly tick re-queues per kind,
+// oldest first, so external agents see a flat drip instead of a daily burst.
+const StaleAbsentRecheckBatch = 100
 
 // RecheckKinds omits media files: they resolve embedded-only, at scan or on view.
 var RecheckKinds = []model.Kind{
@@ -125,7 +129,7 @@ func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	cutoff := time.Now().Add(-StaleAbsentAge)
 	queue := ds.ArtworkQueue(ctx)
 	for _, kind := range RecheckKinds {
-		if _, err := queue.EnqueueStaleAbsent(kind, cutoff); err != nil {
+		if _, err := queue.EnqueueStaleAbsent(kind, cutoff, StaleAbsentRecheckBatch); err != nil {
 			return err
 		}
 	}
