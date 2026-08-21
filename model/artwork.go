@@ -157,8 +157,9 @@ type ArtworkQueueRepository interface {
 	// DeleteIfUnchanged deletes only while retry_at still matches, sparing a concurrent re-enqueue.
 	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
 	Count() (int64, error)
-	// CountByKindAndPriority reports the pending queue rows grouped by kind and priority.
-	CountByKindAndPriority() ([]ArtworkQueueStat, error)
+	// CountQueued reports the pending rows matching the kinds and priorities, grouped by both;
+	// an empty filter means every one.
+	CountQueued(kinds []Kind, priorities []int) ([]ArtworkQueueStat, error)
 	// CountAbsent reports the absent states of a kind, and how many of those EnqueueStaleAbsent
 	// would pick up at the given cutoff.
 	CountAbsent(kind Kind, attemptedBefore time.Time) (ArtworkAbsentStat, error)

@@ -165,9 +165,11 @@ type statusReport struct {
 	current string
 }
 
-func (r statusReport) queueTotal() int64 {
+func (r statusReport) queueTotal() int64 { return queueTotal(r.queue) }
+
+func queueTotal(stats []model.ArtworkQueueStat) int64 {
 	var n int64
-	for _, s := range r.queue {
+	for _, s := range stats {
 		n += s.Count
 	}
 	return n
@@ -187,7 +189,7 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 	q := ds.ArtworkQueue(ctx)
 	var rep statusReport
 	var err error
-	if rep.queue, err = q.CountByKindAndPriority(); err != nil {
+	if rep.queue, err = q.CountQueued(nil, nil); err != nil {
 		return rep, fmt.Errorf("breaking the artwork queue down by kind: %w", err)
 	}
 
@@ -227,11 +229,7 @@ func formatStatus(rep statusReport) string {
 	if len(rep.queue) == 0 {
 		fmt.Fprintln(w, "  (empty)")
 	} else {
-		fmt.Fprintln(w, "  KIND\tPRIORITY\tITEMS")
-		for _, s := range rep.queue {
-			fmt.Fprintf(w, "  %s\t%s\t%d\n", kindName(s.ItemKind), priorityName(s.Priority), s.Count)
-		}
-		fmt.Fprintf(w, "  TOTAL\t\t%d\n", rep.queueTotal())
+		printQueueStats(w, rep.queue, rep.queueTotal(), "ITEMS", "  ")
 	}
 
 	fmt.Fprintln(w, "\nSources")
@@ -276,6 +274,15 @@ func backfillState(rep statusReport) string {
 		return pending
 	}
 	return "up to date"
+}
+
+// printQueueStats writes the shared queue breakdown; the caller owns the tab writer and flushes it.
+func printQueueStats(w io.Writer, stats []model.ArtworkQueueStat, total int64, countHeader, indent string) {
+	fmt.Fprintf(w, "%sKIND\tPRIORITY\t%s\n", indent, countHeader)
+	for _, s := range stats {
+		fmt.Fprintf(w, "%s%s\t%s\t%d\n", indent, kindName(s.ItemKind), priorityName(s.Priority), s.Count)
+	}
+	fmt.Fprintf(w, "%sTOTAL\t\t%d\n", indent, total)
 }
 
 func kindName(prefix string) string {
@@ -353,16 +360,9 @@ func selectedKinds(kinds, sources []string, all bool) ([]model.Kind, error) {
 	if len(kinds) == 0 {
 		return nil, fmt.Errorf("no selector given: pass --kind, --source or --all")
 	}
-	out := make([]model.Kind, 0, len(kinds))
-	for _, k := range kinds {
-		kind, err := parseArtworkKind(k, artwork.RecheckKinds)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, kind)
-	}
-	// A repeated kind would be counted twice, overstating the cost the operator confirms.
-	return slice.Unique(out), nil
+	return parseAll(kinds, func(s string) (model.Kind, error) {
+		return parseArtworkKind(s, artwork.RecheckKinds)
+	})
 }
 
 // absentSource is how the stored empty source — resolved, no image — is spelled on the CLI.
@@ -546,55 +546,60 @@ func runCancel(ctx context.Context) {
 	}
 }
 
-// An empty filter means every one, and either flag alone is a complete selection.
+// cancelSelection leaves --all as the empty filter the repository reads as "every one", so a row
+// whose kind this build does not know still gets cancelled.
 func cancelSelection(kinds, priorities []string, all bool) ([]model.Kind, []int, error) {
 	if all {
-		return artwork.RefreshableKinds, nil, nil
+		return nil, nil, nil
 	}
 	if len(kinds) == 0 && len(priorities) == 0 {
 		return nil, nil, fmt.Errorf("no selector given: pass --kind, --priority or --all")
 	}
-	outKinds := make([]model.Kind, 0, len(kinds))
-	for _, k := range kinds {
-		// RefreshableKinds, not RecheckKinds: media files are queued, so --kind must reach them.
-		kind, err := parseArtworkKind(k, artwork.RefreshableKinds)
-		if err != nil {
-			return nil, nil, err
-		}
-		outKinds = append(outKinds, kind)
+	// RefreshableKinds, not RecheckKinds: media files are queued, so --kind must reach them.
+	outKinds, err := parseAll(kinds, func(s string) (model.Kind, error) {
+		return parseArtworkKind(s, artwork.RefreshableKinds)
+	})
+	if err != nil {
+		return nil, nil, err
 	}
-	outPriorities := make([]int, 0, len(priorities))
-	for _, p := range priorities {
-		priority, err := parseArtworkPriority(p)
-		if err != nil {
-			return nil, nil, err
-		}
-		outPriorities = append(outPriorities, priority)
+	outPriorities, err := parseAll(priorities, parseArtworkPriority)
+	if err != nil {
+		return nil, nil, err
 	}
-	// A repeated selector would be counted twice, overstating the total the operator confirms.
-	return slice.Unique(outKinds), slice.Unique(outPriorities), nil
+	return outKinds, outPriorities, nil
+}
+
+// parseAll drops repeats: a doubled selector would overstate the total the operator confirms.
+func parseAll[T comparable](values []string, parse func(string) (T, error)) ([]T, error) {
+	out := make([]T, 0, len(values))
+	for _, v := range values {
+		parsed, err := parse(v)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, parsed)
+	}
+	return slice.Unique(out), nil
 }
 
 func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, priorities []int,
 	dryRun bool, confirm confirmFunc, out io.Writer) error {
 	q := ds.ArtworkQueue(ctx)
-	stats, err := q.CountByKindAndPriority()
+	matched, err := q.CountQueued(kinds, priorities)
 	if err != nil {
 		return fmt.Errorf("counting queued artwork: %w", err)
 	}
-	matched := matchingQueueStats(stats, kinds, priorities)
-	var total int64
-	for _, s := range matched {
-		total += s.Count
-	}
-	printCancelPreview(out, matched, total)
+	total := queueTotal(matched)
+	w := newTabWriter(out)
+	printQueueStats(w, matched, total, "MATCHED", "")
+	w.Flush()
 
 	switch {
+	case total == 0:
+		fmt.Fprintln(out, "\nNothing matches this selection.")
+		return nil
 	case dryRun:
 		fmt.Fprintln(out, "\nDry run: nothing was cancelled.")
-		return nil
-	case total == 0:
-		fmt.Fprintln(out, "Nothing was cancelled.")
 		return nil
 	case !confirm(out, total, 0):
 		fmt.Fprintln(out, "Aborted: nothing was cancelled.")
@@ -608,28 +613,6 @@ func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, 
 	// Count and delete are separate statements, so a drain in between makes these two differ.
 	fmt.Fprintf(out, "Cancelled %d of %d matched items.\n", cancelled, total)
 	return nil
-}
-
-func matchingQueueStats(stats []model.ArtworkQueueStat, kinds []model.Kind, priorities []int) []model.ArtworkQueueStat {
-	prefixes := slice.Map(kinds, func(k model.Kind) string { return k.Prefix() })
-	return slice.Filter(stats, func(s model.ArtworkQueueStat) bool {
-		return (len(prefixes) == 0 || slices.Contains(prefixes, s.ItemKind)) &&
-			(len(priorities) == 0 || slices.Contains(priorities, s.Priority))
-	})
-}
-
-func printCancelPreview(out io.Writer, matched []model.ArtworkQueueStat, total int64) {
-	w := newTabWriter(out)
-	fmt.Fprintln(w, "KIND\tPRIORITY\tMATCHED")
-	for _, s := range matched {
-		fmt.Fprintf(w, "%s\t%s\t%d\n", kindName(s.ItemKind), priorityName(s.Priority), s.Count)
-	}
-	fmt.Fprintf(w, "TOTAL\t\t%d\n", total)
-	w.Flush()
-
-	if total == 0 {
-		fmt.Fprintln(out, "\nNothing matches this selection.")
-	}
 }
 
 // printReprocessPreview also states the external estimate, which --dry-run must show because it
@@ -697,7 +680,7 @@ var explainKinds = []model.Kind{
 }
 
 func kindPrefixes(kinds []model.Kind) string {
-	return strings.Join(slice.Map(kinds, func(k model.Kind) string { return k.Prefix() }), ", ")
+	return strings.Join(model.KindPrefixes(kinds), ", ")
 }
 
 func parseArtworkKind(s string, valid []model.Kind) (model.Kind, error) {

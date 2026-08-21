@@ -167,19 +167,22 @@ func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
 	return purged, nil
 }
 
+// queueFilterMatches mirrors artworkQueueFilter, so the mock cannot let a preview and a delete disagree.
+func queueFilterMatches(it model.ArtworkQueueItem, kinds []model.Kind, priorities []int) bool {
+	prefixes := model.KindPrefixes(kinds)
+	return (len(prefixes) == 0 || slices.Contains(prefixes, it.ItemKind)) &&
+		(len(priorities) == 0 || slices.Contains(priorities, it.Priority))
+}
+
 func (m *MockArtworkQueueRepo) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
 		return 0, m.Err
 	}
-	prefixes := slice.Map(kinds, func(k model.Kind) string { return k.Prefix() })
 	var purged int64
 	for k, it := range m.Data {
-		if len(prefixes) > 0 && !slices.Contains(prefixes, it.ItemKind) {
-			continue
-		}
-		if len(priorities) > 0 && !slices.Contains(priorities, it.Priority) {
+		if !queueFilterMatches(it, kinds, priorities) {
 			continue
 		}
 		delete(m.Data, k)
@@ -197,7 +200,7 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtworkQueueRepo) CountByKindAndPriority() ([]model.ArtworkQueueStat, error) {
+func (m *MockArtworkQueueRepo) CountQueued(kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -205,6 +208,9 @@ func (m *MockArtworkQueueRepo) CountByKindAndPriority() ([]model.ArtworkQueueSta
 	}
 	var res []model.ArtworkQueueStat
 	for _, it := range m.Data {
+		if !queueFilterMatches(it, kinds, priorities) {
+			continue
+		}
 		i := slices.IndexFunc(res, func(s model.ArtworkQueueStat) bool {
 			return s.ItemKind == it.ItemKind && s.Priority == it.Priority
 		})

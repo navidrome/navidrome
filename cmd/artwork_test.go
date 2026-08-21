@@ -1087,11 +1087,13 @@ var _ = Describe("artwork cancel selection", func() {
 		Expect(err).To(MatchError(ContainSubstring("no selector given")))
 	})
 
-	It("returns every kind and every priority for --all", func() {
+	// Empty, not an enumeration of the known kinds: --all must also take a queue row whose kind
+	// this build does not recognise.
+	It("selects with no filter at all for --all", func() {
 		kinds, priorities, err := cancelSelection(nil, nil, true)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(kinds).To(Equal(artwork.RefreshableKinds))
-		Expect(priorities).To(BeEmpty(), "no priority filter means every priority")
+		Expect(kinds).To(BeEmpty())
+		Expect(priorities).To(BeEmpty())
 	})
 
 	// The queue holds media file rows, so --all must reach them.
