@@ -93,6 +93,7 @@ func (api *Router) routes() http.Handler {
 			api.addUserLibraryRoute(r)
 			api.addPluginRoute(r)
 			api.addArtworkRoute(r)
+      api.addLDAPRoute(r)
 			api.RX(r, "/library", api.libs.NewRepository, true)
 		})
 	})
