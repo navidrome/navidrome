@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -141,14 +142,16 @@ func findPlaylist(ctx context.Context, ds model.DataStore, nameOrID string) *mod
 func runExporter(ctx context.Context) {
 	ds, ctx := getAdminContext(ctx)
 	playlist := findPlaylist(ctx, ds, playlistID)
-	pls := playlist.ToM3U8()
-	if outputFile == "-" || outputFile == "" {
-		println(pls)
+	writePlaylist(playlist.ToM3U8(), os.Stdout, outputFile)
+}
+
+func writePlaylist(m3u string, out io.Writer, file string) {
+	if file == "" || file == "-" {
+		fmt.Fprint(out, m3u)
 		return
 	}
-	err := os.WriteFile(outputFile, []byte(pls), 0600)
-	if err != nil {
-		log.Fatal("Error writing to the output file", "file", outputFile, err)
+	if err := os.WriteFile(file, []byte(m3u), 0600); err != nil {
+		log.Fatal("Error writing to the output file", "file", file, err)
 	}
 }
 
@@ -157,7 +160,7 @@ func runExport(ctx context.Context) {
 
 	if playlistID != "" && outputFile == "" {
 		playlist := findPlaylist(ctx, ds, playlistID)
-		println(playlist.ToM3U8())
+		writePlaylist(playlist.ToM3U8(), os.Stdout, outputFile)
 		return
 	}
 

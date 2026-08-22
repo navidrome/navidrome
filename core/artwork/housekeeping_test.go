@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -38,6 +39,8 @@ func adminUserRepo() *tests.MockedUserRepo {
 	return repo
 }
 
+func noAgents() ImageAgentCount { return ImageAgentCount{} }
+
 // orderTrackingQueueRepo records the item kind of each Enqueue call, so tests can
 // assert phase ordering (artists-first) that same-priority timestamps can't guarantee.
 type orderTrackingQueueRepo struct {
@@ -51,6 +54,19 @@ func (o *orderTrackingQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error 
 	}
 	return o.MockArtworkQueueRepo.Enqueue(items...)
 }
+
+var _ = Describe("RefreshableKinds", func() {
+	// The two are meant to describe the same fact. Nothing but this test stops them from drifting,
+	// and a drift would have `artwork explain` report state for a kind that keeps none.
+	It("holds exactly the kinds that keep state", func() {
+		for _, k := range []model.Kind{
+			model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork,
+			model.KindRadioArtwork, model.KindMediaFileArtwork, model.KindDiscArtwork,
+		} {
+			Expect(slices.Contains(RefreshableKinds, k)).To(Equal(KeepsState(k)), k.String())
+		}
+	})
+})
 
 var _ = Describe("Housekeeping", func() {
 	var (
@@ -93,32 +109,54 @@ var _ = Describe("Housekeeping", func() {
 
 	Describe("Fingerprint", func() {
 		It("changes when a fingerprint-affecting config value changes", func() {
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.CoverArtPriority = "folder, embedded"
-			f2 := fingerprint()
+			f2 := ConfigFingerprint()
 			Expect(f1).NotTo(Equal(f2))
 		})
 
 		It("changes when ArtistImageFolder changes", func() {
 			conf.Server.ArtistImageFolder = "/before"
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.ArtistImageFolder = "/after"
-			Expect(fingerprint()).NotTo(Equal(f1))
+			Expect(ConfigFingerprint()).NotTo(Equal(f1))
 		})
 
 		It("changes when EnableM3UExternalAlbumArt is toggled", func() {
 			conf.Server.EnableM3UExternalAlbumArt = false
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			conf.Server.EnableM3UExternalAlbumArt = true
-			Expect(fingerprint()).NotTo(Equal(f1))
+			Expect(ConfigFingerprint()).NotTo(Equal(f1))
+		})
+
+		// Pinned: a changed formula re-resolves every library on upgrade, flooding external providers.
+		It("hashes a given config to a stable value", func() {
+			conf.Server.CoverArtPriority = "cover.*, embedded"
+			conf.Server.ArtistArtPriority = "artist.*, external"
+			conf.Server.ArtistImageFolder = ""
+			conf.Server.Agents = "lastfm,spotify"
+			conf.Server.EnableExternalServices = true
+			conf.Server.EnableM3UExternalAlbumArt = false
+
+			Expect(ConfigFingerprint()).To(Equal("7b538a83a870c16d"))
+		})
+
+		It("reports the config inputs it hashes, so a change can be traced to a setting", func() {
+			conf.Server.Agents = "lastfm,spotify"
+			conf.Server.CoverArtPriority = "cover.*, embedded"
+
+			Expect(FingerprintInputs()).To(ContainElements(
+				FingerprintInput{Name: "Agents", Value: "lastfm,spotify"},
+				FingerprintInput{Name: "CoverArtPriority", Value: "cover.*, embedded"},
+			))
 		})
 
 		It("does not change when the server version changes", func() {
 			original := consts.Version
 			DeferCleanup(func() { consts.Version = original })
-			f1 := fingerprint()
+			f1 := ConfigFingerprint()
 			consts.Version = original + "-next"
-			Expect(fingerprint()).To(Equal(f1),
+			Expect(ConfigFingerprint()).To(Equal(f1),
 				"the version must not invalidate artwork state: it would re-resolve every entity on every build")
 		})
 	})
@@ -126,11 +164,16 @@ var _ = Describe("Housekeeping", func() {
 	Describe("Backfill", func() {
 		It("enqueues nothing and returns false when the stored fingerprint matches", func() {
 			seedEntities()
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, fingerprint())).To(Succeed())
+			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())).To(Succeed())
 
-			did, err := backfill(ctx, ds)
+			counted := false
+			s, err := backfill(ctx, ds, func() ImageAgentCount {
+				counted = true
+				return ImageAgentCount{Artist: 3, Album: 2}
+			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeFalse())
+			Expect(s).To(Equal(backfillSummary{}))
+			Expect(counted).To(BeFalse(), "building the agent list constructs every agent; an unchanged fingerprint must not pay for it")
 
 			count, err := queueRepo.Count()
 			Expect(err).ToNot(HaveOccurred())
@@ -140,9 +183,9 @@ var _ = Describe("Housekeeping", func() {
 		It("runs the backfill when no fingerprint was ever stored", func() {
 			seedEntities()
 
-			did, err := backfill(ctx, ds)
+			s, err := backfill(ctx, ds, noAgents)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeTrue())
+			Expect(s.Ran).To(BeTrue())
 
 			count, err := queueRepo.Count()
 			Expect(err).ToNot(HaveOccurred())
@@ -150,7 +193,7 @@ var _ = Describe("Housekeeping", func() {
 
 			stored, err := propRepo.Get(consts.ArtConfFingerprintPropertyKey)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(stored).To(Equal(fingerprint()))
+			Expect(stored).To(Equal(ConfigFingerprint()))
 		})
 
 		It("enqueues a private playlist by resolving it under an admin context", func() {
@@ -161,9 +204,9 @@ var _ = Describe("Housekeeping", func() {
 				tracks:        &tests.MockPlaylistTrackRepo{},
 			}
 
-			did, err := backfill(ctx, vds)
+			s, err := backfill(ctx, vds, noAgents)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeTrue())
+			Expect(s.Ran).To(BeTrue())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "pl", "plPrivate")).ToNot(BeNil())
 		})
 
@@ -171,9 +214,9 @@ var _ = Describe("Housekeeping", func() {
 			seedEntities()
 			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
-			did, err := backfill(ctx, ds)
+			s, err := backfill(ctx, ds, noAgents)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeTrue())
+			Expect(s.Ran).To(BeTrue())
 
 			Expect(queueRepo.callKinds).ToNot(BeEmpty())
 			firstOther := slices.IndexFunc(queueRepo.callKinds, func(k string) bool { return k != "ar" })
@@ -188,6 +231,22 @@ var _ = Describe("Housekeeping", func() {
 				Expect(it.ItemKind).To(BeElementOf("ar", "al", "pl", "ra"))
 			}
 		})
+
+		It("reports what it enqueued, per kind and as an external-lookup ceiling", func() {
+			conf.Server.ArtistArtPriority = "artist.*, external"
+			conf.Server.CoverArtPriority = "cover.*, external"
+			conf.Server.EnableM3UExternalAlbumArt = false
+			seedEntities()
+
+			s, err := backfill(ctx, ds, func() ImageAgentCount { return ImageAgentCount{Artist: 3, Album: 2} })
+			Expect(err).ToNot(HaveOccurred())
+			Expect(s.Ran).To(BeTrue())
+
+			Expect(s.PerKind).To(Equal(map[string]int64{"ar": 2, "al": 1, "pl": 1, "ra": 1}))
+			Expect(s.Items).To(Equal(int64(5)))
+			// 2 artists x 3 agents, 1 album x 2, 1 playlist grid x 2, and radios never fetch.
+			Expect(s.MaxExternalLookups).To(Equal(int64(6 + 2 + PlaylistGridSamples*2)))
+		})
 	})
 
 	Describe("EnqueueStaleAbsentAll", func() {
@@ -200,8 +259,8 @@ var _ = Describe("Housekeeping", func() {
 		})
 
 		It("enqueues only absent entries older than the recheck window, across all kinds", func() {
-			old := time.Now().Add(-48 * time.Hour)
-			recent := time.Now().Add(-time.Hour)
+			old := time.Now().Add(-StaleAbsentAge - time.Hour)
+			recent := time.Now().Add(-StaleAbsentAge + time.Hour)
 
 			artRepo.ItemData["ar-stale"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old}
 			artRepo.ItemData["al-stale"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old}
@@ -223,6 +282,20 @@ var _ = Describe("Housekeeping", func() {
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ra", "ra1")).ToNot(BeNil())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ar", "ar2")).To(BeNil())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "al", "al2")).To(BeNil())
+		})
+
+		It("caps each tick at the recheck batch, oldest attempts first", func() {
+			for i := range StaleAbsentRecheckBatch + 1 {
+				id := fmt.Sprintf("ar%d", i)
+				artRepo.ItemData[id] = model.ItemArtwork{ItemKind: "ar", ItemID: id, ImageType: model.ImageTypePrimary,
+					Hash: "", AttemptedAt: time.Now().Add(-StaleAbsentAge - time.Duration(i+1)*time.Minute)}
+			}
+
+			Expect(enqueueStaleAbsentAll(ctx, ds)).To(Succeed())
+
+			Expect(queueRepo.Data).To(HaveLen(StaleAbsentRecheckBatch))
+			// ar0 has the newest attempted_at of the cohort, so it is the one left out.
+			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ar", "ar0")).To(BeNil())
 		})
 	})
 

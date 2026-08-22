@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -89,12 +90,21 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 
 	res, err := p.resolver.resolve(ctx, item)
 	if err != nil {
+		traceStage(ctx, "resolve", err)
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
 	if res.reader == nil {
 		if res.extError || res.localError {
 			// A fault is not a definitive "no image": never settle absent, keep serving old state.
+			// A chainless resolver (playlist/radio) records no step, so leave a fallback or explain is blank.
+			if t := traceFrom(ctx); len(t.Steps()) == 0 {
+				outcome := OutcomeError
+				if res.localError {
+					outcome = OutcomeUnreadable
+				}
+				t.add(TraceStep{Candidate: cmp.Or(res.source, "source"), Outcome: outcome})
+			}
 			log.Debug(ctx, "Artwork: No image, but a source faulted; keeping previous state",
 				"kind", item.ItemKind, "id", item.ItemID, "extError", res.extError, "localError", res.localError)
 			return outcomeFailed, nil
@@ -106,6 +116,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	readStart := time.Now()
 	data, err := readCapped(res.reader)
 	if err != nil {
+		traceStage(ctx, "read", err)
 		log.Warn(ctx, "Artwork: Failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
 		return outcomeFailed, nil
 	}
@@ -115,6 +126,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	hashStart := time.Now()
 	hash, err := hashImage(bytes.NewReader(data))
 	if err != nil {
+		traceStage(ctx, "hash", err)
 		log.Warn(ctx, "Artwork: Failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
@@ -123,26 +135,37 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 
 	art, err := repo.GetImage(hash)
 	switch {
-	case err == nil:
+	case err == nil && art.Width > 0:
 		log.Debug(ctx, "Artwork: Reusing a known image, skipping decode", "kind", item.ItemKind,
 			"id", item.ItemID, "hash", hash)
-	case errors.Is(err, model.ErrNotFound):
+	// A row with no dimensions was stored when no decoder matched; retry in case one exists now.
+	case err == nil, errors.Is(err, model.ErrNotFound):
 		decodeStart := time.Now()
 		art, err = decodeArtwork(ctx, hash, data)
+		// Extension-matched local bytes we cannot decode are most likely a codec we lack; an
+		// external body carries no such guarantee, and empty bytes are no image at all.
+		if errors.Is(err, image.ErrFormat) && len(data) > 0 && isLocalSource(res.source) {
+			log.Debug(ctx, "Artwork: No decoder for this image format, storing it without placeholders",
+				"kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
+			art, err = undecodedArtwork(hash), nil
+		}
 		if err != nil {
+			traceStage(ctx, "decode", err)
 			log.Warn(ctx, "Artwork: Failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 			return outcomeFailed, nil
 		}
 		log.Debug(ctx, "Artwork: Decoded new image", "kind", item.ItemKind, "id", item.ItemID, "hash", hash,
 			"width", art.Width, "height", art.Height, "mime", art.Mime, "elapsed", time.Since(decodeStart))
 	default:
+		traceStage(ctx, "lookup", err)
 		log.Warn(ctx, "Artwork: Failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
 	art.SizeBytes = int64(len(data))
 
-	ia, err := p.persist(repo, item, art, res, data)
+	ia, err := p.persist(ctx, repo, item, art, res, data)
 	if err != nil {
+		traceStage(ctx, "store", err)
 		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil
 	}
@@ -157,7 +180,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 
 // persist places the bytes and commits the rows referencing them, excluding Prune for that
 // window only so a slow resolution can never hold it off.
-func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueueItem,
+func (p *processor) persist(ctx context.Context, repo model.ArtworkRepository, item model.ArtworkQueueItem,
 	art *model.Artwork, res resolution, data []byte,
 ) (*model.ItemArtwork, error) {
 	if p.pruneLock != nil {
@@ -180,6 +203,7 @@ func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueu
 		SourcePath:  sourcePath,
 		RefMtime:    refMtime,
 		AttemptedAt: time.Now(),
+		Trace:       traceFrom(ctx).encode(sourcePath),
 	}
 	// PutItemArtwork stamps UpdatedAt on ia, so the returned struct matches the persisted row.
 	if err := repo.PutItemArtwork(ia); err != nil {
@@ -195,6 +219,7 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 		ItemID:      item.ItemID,
 		ImageType:   item.ImageType,
 		AttemptedAt: time.Now(),
+		Trace:       traceFrom(ctx).encode(""),
 	})
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to persist absent state", "kind", item.ItemKind, "id", item.ItemID, err)
@@ -232,6 +257,12 @@ func decodeCapped(data []byte) (image.Image, string, error) {
 		return nil, "", fmt.Errorf("decode image: %w", err)
 	}
 	return img, format, nil
+}
+
+// undecodedArtwork is the row for bytes no decoder matched: servable, but with no dimensions
+// and none of the placeholders a decode would have produced.
+func undecodedArtwork(hash string) *model.Artwork {
+	return &model.Artwork{Hash: hash, Mime: mimeForFormat("")}
 }
 
 // decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and the two
@@ -286,6 +317,11 @@ func makeThumbnail(img image.Image, maxSize int) image.Image {
 // content-addressed store must not duplicate them.
 func isFileBacked(source string) bool {
 	return source == "folder" || source == "upload"
+}
+
+// isLocalSource reports whether the bytes came off disk rather than off the network.
+func isLocalSource(source string) bool {
+	return isFileBacked(source) || source == "embedded"
 }
 
 // placeBytes reports the item's backing-file provenance and writes the bytes into the store

@@ -16,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
-	"github.com/navidrome/navidrome/utils/random"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"golang.org/x/sync/errgroup"
@@ -275,96 +274,6 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
 	}
 	return artist, nil
-}
-
-func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	entity, err := model.GetEntityByID(ctx, e.ds, id)
-	if err != nil {
-		return nil, err
-	}
-
-	var songs []agents.Song
-
-	// Try entity-specific similarity first
-	switch v := entity.(type) {
-	case *model.MediaFile:
-		songs, err = e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
-	case *model.Album:
-		songs, err = e.ag.GetSimilarSongsByAlbum(ctx, v.ID, v.Name, v.AlbumArtist, v.MbzAlbumID, count)
-	case *model.Artist:
-		songs, err = e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
-	default:
-		log.Warn(ctx, "Unknown entity type", "id", id, "type", fmt.Sprintf("%T", entity))
-		return nil, model.ErrNotFound
-	}
-
-	if err == nil && len(songs) > 0 {
-		return e.matcher.MatchSongs(ctx, songs, count)
-	}
-
-	// Fallback to existing similar artists + top songs algorithm
-	return e.similarSongsFallback(ctx, id, count)
-}
-
-// similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
-// get the artist of the given entity, retrieve similar artists, get their top songs, and pick
-// a weighted random selection of songs to return as similar songs.
-func (e *provider) similarSongsFallback(ctx context.Context, id string, count int) (model.MediaFiles, error) {
-	artist, err := e.getArtist(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	e.callGetSimilarArtists(ctx, e.ag, &artist, 15, false)
-	if utils.IsCtxDone(ctx) {
-		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
-		return nil, ctx.Err()
-	}
-
-	weightedSongs := random.NewWeightedChooser[model.MediaFile]()
-	addArtist := func(a model.Artist, weightedSongs *random.WeightedChooser[model.MediaFile], count, artistWeight int) error {
-		if utils.IsCtxDone(ctx) {
-			log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
-			return ctx.Err()
-		}
-
-		topCount := max(count, 20)
-		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Artist: a}, topCount)
-		if err != nil {
-			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
-			return nil
-		}
-
-		weight := topCount * (4 + artistWeight)
-		for _, mf := range topSongs {
-			weightedSongs.Add(mf, weight)
-			weight -= 4
-		}
-		return nil
-	}
-
-	err = addArtist(artist.Artist, weightedSongs, count, 10)
-	if err != nil {
-		return nil, err
-	}
-	for _, a := range artist.SimilarArtists {
-		err := addArtist(a, weightedSongs, count, 0)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var similarSongs model.MediaFiles
-	for len(similarSongs) < count && weightedSongs.Size() > 0 {
-		s, err := weightedSongs.Pick()
-		if err != nil {
-			log.Warn(ctx, "Error getting weighted song", err)
-			continue
-		}
-		similarSongs = append(similarSongs, s)
-	}
-
-	return similarSongs, nil
 }
 
 func (e *provider) TopSongs(ctx context.Context, artistName, id string, count int) (model.MediaFiles, error) {

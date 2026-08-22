@@ -20,6 +20,12 @@ type SystemInfo struct {
 	CachePath              string `json:"CachePath,omitempty"`
 }
 
+// EndPointInfo describes the caller's network location (GET /System/Endpoint).
+type EndPointInfo struct {
+	IsLocal     bool `json:"IsLocal"`
+	IsInNetwork bool `json:"IsInNetwork"`
+}
+
 type NameGuidPair struct {
 	Name string `json:"Name"`
 	Id   string `json:"Id"`

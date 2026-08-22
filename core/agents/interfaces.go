@@ -53,6 +53,8 @@ func (s Song) Equals(other Song) bool {
 }
 
 var (
+	// ErrNotFound means the provider answered and had nothing. Return the underlying error
+	// for a fault instead, or callers that back off on faults will treat it as definitive.
 	ErrNotFound = errors.New("not found")
 )
 

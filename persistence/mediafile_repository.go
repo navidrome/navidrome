@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
@@ -317,6 +318,26 @@ func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string
 	return ids, err
 }
 
+func (r *mediaFileRepository) GetAlbumIDsByFolder(lib model.Library, folderIDs ...string) ([]string, error) {
+	ids := []string{}
+	for chunk := range slices.Chunk(folderIDs, 200) {
+		// A folder's own cover also covers albums whose tracks sit in its disc subfolders.
+		inFolders := Select("f.id").From("folder f").Where(And{
+			Eq{"f.library_id": lib.ID},
+			Eq{"f.missing": false},
+			Or{Eq{"f.id": chunk}, Eq{"f.parent_id": chunk}},
+		})
+		sq := Select("distinct album_id").From("media_file").
+			Where(And{Eq{"missing": false}, ConcatExpr("folder_id IN (", inFolders, ")")})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
+}
+
 // GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
 func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
 	ids, err := r.GetAllIDs(options...)
@@ -515,6 +536,23 @@ var mediaFileSearchConfig = searchConfig{
 	NaturalOrder: "media_file.rowid",
 	OrderBy:      []string{"title"},
 	MBIDFields:   []string{"mbz_recording_id", "mbz_release_track_id"},
+}
+
+func (r *mediaFileRepository) MatchesCriteria(id string, c criteria.Criteria) (bool, error) {
+	usr := loggedUser(r.ctx)
+	rulesSQL := newSmartPlaylistCriteria(c, withSmartPlaylistOwner(*usr))
+	cond, err := rulesSQL.where()
+	if err != nil {
+		return false, err
+	}
+	sq := Select("count(*) as count").From("media_file")
+	sq = rulesSQL.applyExpressionJoins(sq, usr.ID)
+	sq = sq.Where(And{Eq{"media_file.id": id}, cond})
+	var res struct{ Count int64 }
+	if err := r.queryOne(sq, &res); err != nil {
+		return false, err
+	}
+	return res.Count > 0, nil
 }
 
 func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {

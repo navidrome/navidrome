@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"crypto/md5"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -23,6 +22,7 @@ import (
 	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
+	"github.com/zeebo/xxh3"
 )
 
 // sqlRepository is the base repository for all SQL repositories. It provides common functions to interact with the DB.
@@ -97,6 +97,8 @@ func (r *sqlRepository) registerModel(instance any, filters map[string]filterFun
 }
 
 // setSortMappings sets the mappings for the sort fields. If the sort field is not in the map, it will be used as is.
+// This applies per comma-separated part, so a key added here also defines that bare name wherever a
+// caller uses it inside a sort list.
 //
 // If PreferSortTags is enabled, it will map the order fields to the corresponding sort expression,
 // which gives precedence to sort tags.
@@ -147,17 +149,37 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 
 // TODO Change all sortMappings to have a consistent case
 func (r sqlRepository) sortMapping(sort string) string {
-	if mapping, ok := r.sortMappings[sort]; ok {
+	if mapping, _, ok := r.lookupSortMapping(sort); ok {
 		return mapping
 	}
-	if mapping, ok := r.sortMappings[toCamelCase(sort)]; ok {
-		return mapping
+	// Each part of a comma list is resolved on its own, so a mix of mapped keys and plain columns
+	// keeps the mappings the recognized parts have.
+	parts := strings.FieldsFunc(sort, splitFunc(','))
+	mapped := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if partMapping, _, ok := r.lookupSortMapping(part); ok {
+			part = partMapping
+		} else {
+			part = toSnakeCase(part)
+		}
+		mapped = append(mapped, part)
 	}
-	sort = toSnakeCase(sort)
-	if mapping, ok := r.sortMappings[sort]; ok {
-		return mapping
+	return strings.Join(mapped, ", ")
+}
+
+// lookupSortMapping also returns the snake_case form when it had to derive one, so a caller's
+// fallback doesn't recompute it: toSnakeCase runs two regexps.
+func (r sqlRepository) lookupSortMapping(sort string) (mapping, snakeCased string, ok bool) {
+	if mapping, ok = r.sortMappings[sort]; ok {
+		return mapping, sort, true
 	}
-	return sort
+	if mapping, ok = r.sortMappings[toCamelCase(sort)]; ok {
+		return mapping, "", true
+	}
+	snakeCased = toSnakeCase(sort)
+	mapping, ok = r.sortMappings[snakeCased]
+	return mapping, snakeCased, ok
 }
 
 func (r sqlRepository) buildSortOrder(sort, order string) string {
@@ -276,15 +298,17 @@ func (r sqlRepository) visibleLibraryIDs() ([]int, error) {
 func (r sqlRepository) seedKey() string {
 	// Seed keys must be all lowercase, or else SQLite3 will encode it, making it not match the seed
 	// used in the query. Hashing the user ID and converting it to a hex string will do the trick
-	userIDHash := md5.Sum([]byte(loggedUser(r.ctx).ID))
-	return fmt.Sprintf("%s|%x", r.tableName, userIDHash)
+	userIDHash := xxh3.Hash([]byte(loggedUser(r.ctx).ID))
+	return fmt.Sprintf("%s|%016x", r.tableName, userIDHash)
 }
 
 func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 	if len(options) == 0 || options[0].Sort != "random" {
 		return
 	}
-	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', %s.id)", r.seedKey(), r.tableName)
+	// CAST: playlist_tracks.id is an INTEGER (unlike other tables' TEXT ids); passing it to
+	// SEEDEDRAND's string param uncast silently drops every row (go-sqlite3 binding gotcha).
+	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', CAST(%s.id AS TEXT))", r.seedKey(), r.tableName)
 	if options[0].Seed != "" {
 		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return

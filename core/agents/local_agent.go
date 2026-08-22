@@ -5,6 +5,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const LocalAgentName = "local"
@@ -37,14 +39,51 @@ func (p *localAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 	if err != nil {
 		return nil, err
 	}
-	var result []Song
-	for _, s := range top {
-		result = append(result, Song{
-			Name: s.Title,
-			MBID: s.MbzReleaseTrackID,
-		})
+	return songsFrom(top), nil
+}
+
+func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	seed, err := p.ds.MediaFile(ctx).Get(id)
+	if err != nil {
+		return nil, err
 	}
-	return result, nil
+	// Tag ids derive from (name, value), so the seed's genre ids need no extra query.
+	genreIDs := slice.Map(seed.Tags.Flatten(model.TagGenre), func(t model.Tag) string { return t.ID })
+	if len(genreIDs) == 0 {
+		return nil, nil
+	}
+	// Ask for extra so we can drop the seed itself and still fill the count.
+	candidates, err := p.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+		Filters: squirrel.And{
+			persistence.SongGenres.ByID(genreIDs),
+			squirrel.Eq{"missing": false},
+		},
+		Max: count + 1,
+	})
+	if err != nil {
+		return nil, err
+	}
+	filtered := make(model.MediaFiles, 0, len(candidates))
+	for _, s := range candidates {
+		if s.ID == id {
+			continue
+		}
+		filtered = append(filtered, s)
+		if len(filtered) >= count {
+			break
+		}
+	}
+	return songsFrom(filtered), nil
+}
+
+func songsFrom(mfs model.MediaFiles) []Song {
+	if len(mfs) == 0 {
+		return nil
+	}
+
+	return slice.Map(mfs, func(mf model.MediaFile) Song {
+		return Song{ID: mf.ID, Name: mf.Title}
+	})
 }
 
 func init() {

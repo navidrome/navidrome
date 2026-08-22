@@ -11,6 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -118,7 +119,7 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 }
 
 // requestRecheckAge throttles view-triggered rechecks so reopening a genuinely-absent page can't
-// hammer external services; below staleAbsentAge to catch younger absences.
+// hammer external services; below StaleAbsentAge to catch younger absences.
 const requestRecheckAge = time.Hour
 
 func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
@@ -317,16 +318,15 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 		return nil, err
 	}
 	// Single-disc albums run the chain too: a disc can carry art distinct from the album cover.
-	selectImage := func() (io.ReadCloser, string, error) {
-		funcs := dr.fromDiscArtPriority(ctx, s.ffmpeg, conf.Server.DiscArtPriority)
-		return selectImageReader(ctx, artID, funcs...)
+	selectImage := func() (io.ReadCloser, error) {
+		res, err := dr.selectImage(ctx, s.ffmpeg, conf.Server.DiscArtPriority, &chainState{})
+		return res.reader, err
 	}
 	albumArtID := model.ArtworkID{Kind: model.KindAlbumArtwork, ID: dr.album.ID}
 	// Disc art has no state row, hence no content hash: keying on id, album mtime and
 	// DiscArtPriority lets a warm cache answer without running the chain or touching the disk.
 	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
-	img, err := s.serveSource(ctx, key, "", dr.cacheTime(), size, square,
-		func() (io.ReadCloser, error) { rc, _, err := selectImage(); return rc, err })
+	img, err := s.serveSource(ctx, key, "", dr.cacheTime(), size, square, selectImage)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil, err
@@ -384,6 +384,53 @@ func (s *service) parseArtworkID(ctx context.Context, id string) (model.ArtworkI
 		return e.CoverArtID(), nil
 	}
 	return model.ArtworkID{}, model.ErrNotFound
+}
+
+// TracingResolver is the CLI's read-only view of resolution: it walks the priority chain, records
+// the walk and reports the winning source, without ever writing artwork state.
+type TracingResolver struct {
+	inner *resolver
+	trace *ChainTrace
+}
+
+// NewTracingResolver builds a TracingResolver that records its priority-chain walk. Without live
+// it gets no agents at all, so neither a chain nor any fallback added later can reach a provider;
+// with it, one item is at most one call per agent, so the rate limiter and breaker are bypassed.
+func NewTracingResolver(ds model.DataStore, ag *agents.Agents, ffm ffmpeg.FFmpeg, t *ChainTrace, live bool) *TracingResolver {
+	inner := newLocalResolver(ds, ffm)
+	if live {
+		inner = newResolver(ds, ag, ffm, passthroughGate)
+	}
+	return &TracingResolver{inner: inner, trace: t}
+}
+
+// Resolve walks kind's sources for id, recording the walk, and reports the winning source
+// ("" when none produced an image).
+func (r *TracingResolver) Resolve(ctx context.Context, kind model.Kind, id string) (string, error) {
+	switch kind {
+	case model.KindArtistArtwork:
+		return r.explain(ctx, r.inner.resolveArtist, id)
+	case model.KindAlbumArtwork:
+		return r.explain(ctx, r.inner.resolveAlbum, id)
+	case model.KindDiscArtwork:
+		return r.explain(ctx, r.inner.resolveDisc, id)
+	case model.KindMediaFileArtwork:
+		return r.explain(ctx, r.inner.resolveMediaFile, id)
+	}
+	return "", fmt.Errorf("artwork: %s artwork has no chain to explain", kind)
+}
+
+// explain discards the bytes: nothing downstream persists this resolution, so nothing else
+// would close the reader either.
+func (r *TracingResolver) explain(ctx context.Context, resolve func(context.Context, string) (resolution, error), id string) (string, error) {
+	res, err := resolve(withTrace(ctx, r.trace), id)
+	if err != nil {
+		return "", err
+	}
+	if res.reader != nil {
+		_ = res.reader.Close()
+	}
+	return res.source, nil
 }
 
 func unixMtime(mtime int64) time.Time {

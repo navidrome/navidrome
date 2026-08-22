@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -23,6 +24,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// jxlCodestream is a JPEG XL bare codestream header: a real image format, with no stdlib decoder.
+var jxlCodestream = []byte{0xff, 0x0a, 0x00, 0x10, 0x00}
 
 // DecodeConfig reads only the header, so the pixel data can be omitted entirely.
 func pngHeaderWithDims(w, h uint32) []byte {
@@ -225,6 +229,35 @@ var _ = Describe("processor.acquire", func() {
 		Expect(err).To(MatchError(model.ErrNotFound), "an unreadable upload must not be recorded as absent")
 	})
 
+	// Playlist/radio resolvers walk no chain, so a fault records no step; without a fallback,
+	// explain would show a give-up with an empty "Gave up after" table.
+	It("chainless fault: records a fallback trace step naming the faulted source", func() {
+		if runtime.GOOS == "windows" {
+			// os.Open under a non-directory maps to a not-exist error on Windows, so no localError.
+			Skip("cannot provoke an open fault via a non-directory parent on Windows")
+		}
+		radioRepo := tests.CreateMockedRadioRepo()
+		radioRepo.Data = map[string]*model.Radio{}
+		ds.MockedRadio = radioRepo
+		dir := GinkgoT().TempDir()
+		conf.Server.DataFolder = conf.NewDir(dir)
+		upload := model.UploadedImagePath(consts.EntityRadio, "ra-tr.jpg")
+		// A plain file where the upload's parent should be makes os.Open fault with ENOTDIR,
+		// deterministically and regardless of the test user's privileges.
+		Expect(os.MkdirAll(filepath.Dir(filepath.Dir(upload)), 0o755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Dir(upload), []byte("x"), 0o600)).To(Succeed())
+		radioRepo.Data["ra-tr"] = &model.Radio{ID: "ra-tr", Name: "Station", UploadedImage: "ra-tr.jpg"}
+
+		trace := &ChainTrace{}
+		out, _ := proc.acquire(withTrace(ctx, trace), model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra-tr"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		steps := trace.Steps()
+		Expect(steps).To(HaveLen(1), "a radio fault must leave one step so explain is not blank")
+		Expect(steps[0].Candidate).To(Equal("upload"))
+		Expect(steps[0].Outcome).To(Equal(OutcomeUnreadable))
+	})
+
 	It("failed-on-extError: leaves the item's state untouched", func() {
 		conf.Server.CoverArtPriority = "external"
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
@@ -257,6 +290,59 @@ var _ = Describe("processor.acquire", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).ToNot(BeEmpty())
 		Expect(ia.Source).To(Equal("folder"))
+	})
+
+	It("undecodable local file: acquires it anyway, with no placeholder metadata", func() {
+		libRoot := GinkgoT().TempDir()
+		Expect(os.MkdirAll(filepath.Join(libRoot, "album"), 0755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(libRoot, "album", "cover.jpg"), jxlCodestream, 0600)).To(Succeed())
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alU", Name: "Album", FolderIDs: []string{"f1"}}})
+		folderRepo.result = []model.Folder{{Path: "album", ImageFiles: []string{"cover.jpg"}}}
+
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alU"})
+		Expect(out).To(Equal(outcomeFound))
+
+		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alU", model.ImageTypePrimary)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ia.Source).To(Equal("folder"))
+		art, err := artRepo.GetImage(ia.Hash)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(art.Width).To(BeZero())
+		Expect(art.BlurHash).To(BeEmpty())
+	})
+
+	It("empty local file: fails without writing state", func() {
+		libRoot := GinkgoT().TempDir()
+		Expect(os.MkdirAll(filepath.Join(libRoot, "album"), 0755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(libRoot, "album", "cover.jpg"), nil, 0600)).To(Succeed())
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alE", Name: "Album", FolderIDs: []string{"f1"}}})
+		folderRepo.result = []model.Folder{{Path: "album", ImageFiles: []string{"cover.jpg"}}}
+
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alE"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alE", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	// An agent answering 200 with a non-image body must keep retrying, not pin garbage as a cover.
+	It("undecodable external body: fails without writing state", func() {
+		conf.Server.CoverArtPriority = "external"
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("<html>rate limited</html>"))
+		}))
+		DeferCleanup(srv.Close)
+
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alX", Name: "Album"}})
+		imageAgents(&fakeImageAgent{name: "deezerFake", imgs: []agents.ExternalImage{{URL: srv.URL, Size: 500}}})
+
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alX"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alX", model.ImageTypePrimary)
+		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	It("found-external: persists source as external:<agentName> and stores the fetched bytes", func() {
@@ -374,7 +460,8 @@ var _ = Describe("processor.acquire", func() {
 		conf.Server.DataFolder = conf.NewDir(tmpDir)
 		Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "radio"), 0755)).To(Succeed())
 		imgPath := filepath.Join(tmpDir, "artwork", "radio", "ra1_test.jpg")
-		Expect(os.WriteFile(imgPath, []byte("not actually an image"), 0600)).To(Succeed())
+		// Truncated PNG: a known format, so this is a real decode failure, not a missing decoder.
+		Expect(os.WriteFile(imgPath, pngHeaderWithDims(100, 100), 0600)).To(Succeed())
 
 		radioRepo := tests.CreateMockedRadioRepo()
 		radioRepo.Data = map[string]*model.Radio{"ra1": {ID: "ra1", Name: "Radio", UploadedImage: "ra1_test.jpg"}}
@@ -426,6 +513,54 @@ var _ = Describe("processor.acquire", func() {
 		_, err := decodeArtwork(ctx, "bomb", data)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("dimensions"))
+	})
+
+	It("unknown format: reports ErrFormat so the caller can decide", func() {
+		_, err := decodeArtwork(ctx, "jxl", jxlCodestream)
+		Expect(err).To(MatchError(image.ErrFormat))
+	})
+
+	It("undecodedArtwork: carries the hash and mime, and nothing a decode would add", func() {
+		art := undecodedArtwork("jxl")
+		Expect(art.Hash).To(Equal("jxl"))
+		Expect(art.Mime).To(Equal("application/octet-stream"))
+		Expect(art.Width).To(BeZero())
+		Expect(art.Height).To(BeZero())
+		Expect(art.BlurHash).To(BeEmpty())
+		Expect(art.ThumbHash).To(BeEmpty())
+		Expect(art.DominantColor).To(BeEmpty())
+	})
+
+	It("corrupt image of a known format: still fails", func() {
+		data := pngHeaderWithDims(100, 100) // header declares a decodable size, body is missing
+		_, err := decodeArtwork(ctx, "truncated", data)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("decode image"))
+	})
+
+	// Without this a metadata-less row would be reused forever, so a decoder added later
+	// could never upgrade it.
+	It("metadata-less row: re-decodes on reuse instead of skipping", func() {
+		libRoot := GinkgoT().TempDir()
+		imgBytes, err := os.ReadFile(filepath.Join(repoRoot, "tests/fixtures/artist/an-album/cover.jpg"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(os.MkdirAll(filepath.Join(libRoot, "album"), 0755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(libRoot, "album", "cover.jpg"), imgBytes, 0600)).To(Succeed())
+		libRepo.SetData(model.Libraries{{ID: 0, Path: testFileLibPath(libRoot)}})
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alM", Name: "Album", FolderIDs: []string{"f1"}}})
+		folderRepo.result = []model.Folder{{Path: "album", ImageFiles: []string{"cover.jpg"}}}
+
+		hash, err := hashImage(bytes.NewReader(imgBytes))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(artRepo.PutImage(&model.Artwork{Hash: hash, Mime: "application/octet-stream"})).To(Succeed())
+
+		out, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alM"})
+		Expect(out).To(Equal(outcomeFound))
+
+		upgraded, err := artRepo.GetImage(hash)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(upgraded.Width).To(BeNumerically(">", 0))
+		Expect(upgraded.BlurHash).ToNot(BeEmpty())
 	})
 
 	It("store write failure: fails without writing state", func() {

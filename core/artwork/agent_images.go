@@ -47,11 +47,18 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 	// Synthetic artists would otherwise get an unrelated agent result assigned to them.
 	switch ar.ID {
 	case consts.UnknownArtistID, consts.VariousArtistsID:
+		traceFrom(ctx).add(TraceStep{Candidate: externalCandidate, Outcome: OutcomeSkipped, Detail: "synthetic artist"})
 		return nil, "", false
 	}
 	name := externalName(ar.Name)
-	for _, a := range ag.ArtistImageAgents() {
-		reader, _, err := gate(a.Name, func() (io.ReadCloser, string, error) {
+	imageAgents := ag.ArtistImageAgents()
+	if len(imageAgents) == 0 {
+		traceFrom(ctx).add(TraceStep{Candidate: externalCandidate, Outcome: OutcomeSkipped,
+			Detail: "no enabled agent provides artist images"})
+		return nil, "", false
+	}
+	for _, a := range imageAgents {
+		reader, path, err := gate(a.Name, func() (io.ReadCloser, string, error) {
 			imgs, err := a.Retriever.GetArtistImages(ctx, ar.ID, name, ar.MbzArtistID)
 			if err != nil {
 				return nil, "", err
@@ -62,6 +69,7 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 			}
 			return fromURL(ctx, u)
 		})
+		recordAgent(ctx, a.Name, reader, path, err)
 		if reader != nil {
 			return reader, a.Name, false
 		}
@@ -76,8 +84,14 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 // fetchAlbumImage is the album counterpart of fetchArtistImage.
 func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al model.Album) (r io.ReadCloser, agentName string, extErr bool) {
 	name, artist := externalName(al.Name), externalName(al.AlbumArtist)
-	for _, a := range ag.AlbumImageAgents() {
-		reader, _, err := gate(a.Name, func() (io.ReadCloser, string, error) {
+	imageAgents := ag.AlbumImageAgents()
+	if len(imageAgents) == 0 {
+		traceFrom(ctx).add(TraceStep{Candidate: externalCandidate, Outcome: OutcomeSkipped,
+			Detail: "no enabled agent provides album images"})
+		return nil, "", false
+	}
+	for _, a := range imageAgents {
+		reader, path, err := gate(a.Name, func() (io.ReadCloser, string, error) {
 			imgs, err := a.Retriever.GetAlbumImages(ctx, name, artist, al.MbzAlbumID)
 			if err != nil {
 				return nil, "", err
@@ -88,6 +102,7 @@ func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al m
 			}
 			return fromURL(ctx, u)
 		})
+		recordAgent(ctx, a.Name, reader, path, err)
 		if reader != nil {
 			return reader, a.Name, false
 		}

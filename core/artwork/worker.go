@@ -40,6 +40,7 @@ type drainPool struct {
 // independently, and pruneMu serializes prune against the store-write window.
 type Worker struct {
 	proc    *processor
+	agents  *agents.Agents
 	cache   cache.FileCache
 	ffmpeg  ffmpeg.FFmpeg
 	broker  events.Broker
@@ -54,6 +55,7 @@ type Worker struct {
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
 		proc:   &processor{ds: ds, store: store},
+		agents: ag,
 		cache:  imgCache,
 		ffmpeg: ffmpeg,
 		broker: broker,
@@ -132,12 +134,14 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 }
 
 // Backfill enqueues every entity for re-resolution when the artwork config fingerprint changed,
-// artists first. It reports whether anything was enqueued.
+// artists first. It reports whether the backfill ran.
 func (w *Worker) Backfill(ctx context.Context) (bool, error) {
-	return backfill(ctx, w.proc.ds)
+	s, err := backfill(ctx, w.proc.ds, func() ImageAgentCount { return NewImageAgentCount(w.agents) })
+	return s.Ran, err
 }
 
-// EnqueueStaleAbsentAll requeues known-absent entries older than staleAbsentAge.
+// EnqueueStaleAbsentAll requeues known-absent entries older than StaleAbsentAge, at most
+// StaleAbsentRecheckBatch per kind, oldest first.
 func (w *Worker) EnqueueStaleAbsentAll(ctx context.Context) error {
 	return enqueueStaleAbsentAll(ctx, w.proc.ds)
 }
@@ -235,6 +239,8 @@ func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueu
 
 func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired) {
 	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
+	trace := &ChainTrace{}
+	ctx = withTrace(ctx, trace)
 	out, got := w.proc.acquire(ctx, item)
 
 	queue := w.proc.ds.ArtworkQueue(ctx)
@@ -247,10 +253,11 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		}
 	case outcomeFoundStale, outcomeFailed:
 		retryAt := time.Now().Add(backoff(item.Attempts))
+		encoded := trace.encode("")
 		if retryAt.Before(item.EnqueuedAt.Add(giveUpAfter)) {
 			// A mid-flight re-enqueue reset retry_at; stale backoff must not stomp its
 			// fresh, immediate eligibility.
-			if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt); err != nil {
+			if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt, encoded); err != nil {
 				log.Warn(ctx, "Artwork: Could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 			}
 			log.Debug(ctx, "Artwork: Rescheduled item", "kind", item.ItemKind, "id", item.ItemID,
@@ -265,6 +272,9 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			writeAbsent(ctx, w.proc.ds.Artwork(ctx), item)
 			settled = "recorded absent"
 		}
+		// The queue row is about to go, taking the only record of the failure with it. This write is
+		// unconditional (not CAS-guarded) — safe only because the drain resolves each item serially.
+		w.recordGiveUp(ctx, item, encoded)
 		log.Info(ctx, "Artwork: Retry budget exhausted, giving up", "kind", item.ItemKind, "id", item.ItemID,
 			"outcome", out, "attempts", item.Attempts+1, "budget", giveUpAfter, "settled", settled)
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
@@ -272,6 +282,18 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		}
 	}
 	return out, got
+}
+
+// recordGiveUp keeps the last failure on the state row after the queue row is deleted. An item
+// that never resolved has no row to update, and creating one would settle it absent.
+func (w *Worker) recordGiveUp(ctx context.Context, item model.ArtworkQueueItem, trace string) {
+	kind, ok := model.ParseKind(item.ItemKind)
+	if !ok {
+		return
+	}
+	if err := w.proc.ds.Artwork(ctx).PutLastFailure(kind, item.ItemID, item.ImageType, trace); err != nil {
+		log.Warn(ctx, "Artwork: Could not record the last failure", "kind", item.ItemKind, "id", item.ItemID, err)
+	}
 }
 
 func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueueItem) bool {

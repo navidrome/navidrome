@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type MockArtworkQueueRepo struct {
@@ -23,6 +24,19 @@ type MockArtworkQueueRepo struct {
 
 func CreateMockArtworkQueueRepo() *MockArtworkQueueRepo {
 	return &MockArtworkQueueRepo{Data: map[string]model.ArtworkQueueItem{}}
+}
+
+func (m *MockArtworkQueueRepo) Get(kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	it, ok := m.Data[iaKey(kind.Prefix(), id, imageType)]
+	if !ok {
+		return nil, model.ErrNotFound
+	}
+	return &it, nil
 }
 
 func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
@@ -104,7 +118,7 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.Art
 	return res, nil
 }
 
-func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -114,6 +128,7 @@ func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string,
 	if it, ok := m.Data[k]; ok && it.RetryAt.Equal(seenRetryAt) {
 		it.Attempts++
 		it.RetryAt = retryAt
+		it.Trace = trace
 		m.Data[k] = it
 	}
 	return nil
@@ -152,6 +167,30 @@ func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
 	return purged, nil
 }
 
+// queueFilterMatches mirrors artworkQueueFilter, so the mock cannot let a preview and a delete disagree.
+func queueFilterMatches(it model.ArtworkQueueItem, kinds []model.Kind, priorities []int) bool {
+	prefixes := model.KindPrefixes(kinds)
+	return (len(prefixes) == 0 || slices.Contains(prefixes, it.ItemKind)) &&
+		(len(priorities) == 0 || slices.Contains(priorities, it.Priority))
+}
+
+func (m *MockArtworkQueueRepo) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	var purged int64
+	for k, it := range m.Data {
+		if !queueFilterMatches(it, kinds, priorities) {
+			continue
+		}
+		delete(m.Data, k)
+		purged++
+	}
+	return purged, nil
+}
+
 func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -159,6 +198,52 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 		return 0, m.Err
 	}
 	return int64(len(m.Data)), nil
+}
+
+func (m *MockArtworkQueueRepo) CountQueued(kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	var res []model.ArtworkQueueStat
+	for _, it := range m.Data {
+		if !queueFilterMatches(it, kinds, priorities) {
+			continue
+		}
+		i := slices.IndexFunc(res, func(s model.ArtworkQueueStat) bool {
+			return s.ItemKind == it.ItemKind && s.Priority == it.Priority
+		})
+		if i < 0 {
+			res = append(res, model.ArtworkQueueStat{ItemKind: it.ItemKind, Priority: it.Priority, Count: 1})
+			continue
+		}
+		res[i].Count++
+	}
+	slices.SortFunc(res, func(a, b model.ArtworkQueueStat) int {
+		return cmp.Or(cmp.Compare(a.ItemKind, b.ItemKind), cmp.Compare(b.Priority, a.Priority))
+	})
+	return res, nil
+}
+
+// CountAbsent mirrors the SQL predicate: an absent state is one with no hash.
+func (m *MockArtworkQueueRepo) CountAbsent(kind model.Kind, attemptedBefore time.Time) (model.ArtworkAbsentStat, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var res model.ArtworkAbsentStat
+	if m.Err != nil || m.ItemArtworkSource == nil {
+		return res, m.Err
+	}
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind != kind.Prefix() || ia.Hash != "" {
+			continue
+		}
+		res.Total++
+		if ia.AttemptedAt.Before(attemptedBefore) {
+			res.Stale++
+		}
+	}
+	return res, nil
 }
 
 func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
@@ -187,18 +272,24 @@ func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQu
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
+func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time, limit int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil || m.ItemArtworkSource == nil {
 		return 0, m.Err
 	}
+	var stale []model.ItemArtwork
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind == kind.Prefix() && ia.Hash == "" && ia.AttemptedAt.Before(attemptedBefore) {
+			stale = append(stale, ia)
+		}
+	}
+	slices.SortFunc(stale, func(a, b model.ItemArtwork) int { return a.AttemptedAt.Compare(b.AttemptedAt) })
+	// The limit caps the selection, like the SQL's LIMIT before ON CONFLICT: queued rows use up budget.
+	stale = stale[:min(limit, len(stale))]
 	now := time.Now()
 	var inserted int64
-	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind != kind.Prefix() || ia.Hash != "" || !ia.AttemptedAt.Before(attemptedBefore) {
-			continue
-		}
+	for _, ia := range stale {
 		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
 		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
 			continue
@@ -208,6 +299,65 @@ func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefo
 			ItemID:     ia.ItemID,
 			ImageType:  ia.ImageType,
 			Priority:   model.ArtworkPriorityRecheck,
+			RetryAt:    now,
+			EnqueuedAt: now,
+		}
+		inserted++
+	}
+	return inserted, nil
+}
+
+// matchingSource mirrors the SQL filter: no sources means every source, "" the absent state.
+func (m *MockArtworkQueueRepo) matchingSource(kind model.Kind, sources []string) []model.ItemArtwork {
+	if m.ItemArtworkSource == nil {
+		return nil
+	}
+	var res []model.ItemArtwork
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind == kind.Prefix() && (len(sources) == 0 || slices.Contains(sources, ia.Source)) {
+			res = append(res, ia)
+		}
+	}
+	return res
+}
+
+func (m *MockArtworkQueueRepo) CountBySource(kind model.Kind, sources []string) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	return int64(len(m.matchingSource(kind, sources))), nil
+}
+
+func (m *MockArtworkQueueRepo) SourcesInUse(kind model.Kind) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	sources := slice.Map(m.matchingSource(kind, nil), func(ia model.ItemArtwork) string { return ia.Source })
+	return slice.Unique(sources), nil
+}
+
+func (m *MockArtworkQueueRepo) EnqueueBySource(kind model.Kind, sources []string, priority int) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	now := time.Now()
+	var inserted int64
+	for _, ia := range m.matchingSource(kind, sources) {
+		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
+		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
+			continue
+		}
+		m.Data[k] = model.ArtworkQueueItem{
+			ItemKind:   ia.ItemKind,
+			ItemID:     ia.ItemID,
+			ImageType:  ia.ImageType,
+			Priority:   priority,
 			RetryAt:    now,
 			EnqueuedAt: now,
 		}

@@ -11,26 +11,38 @@ import (
 	_ "image/png"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/dustin/go-humanize"
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/imghttp"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/utils/req"
 	_ "golang.org/x/image/webp"
 )
+
+// imageSize picks the tighter of Jellyfin's two bounds, because Navidrome resizes on a single
+// dimension: reading only MaxWidth serves the full-size original to a client that sent MaxHeight.
+func imageSize(maxWidth, maxHeight int) int {
+	w, h := max(maxWidth, 0), max(maxHeight, 0)
+	if w == 0 || h == 0 {
+		return max(w, h)
+	}
+	return min(w, h)
+}
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	// Public endpoint, like real Jellyfin's image routes: clients fetch cover URLs without credentials
 	// and item ids are unguessable, so resolution runs elevated to bypass the visibility filter.
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
-	itemId := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
-	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
+	itemId, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
+	p := req.Params(r)
+	size := imageSize(p.IntOr("maxwidth", 0), p.IntOr("maxheight", 0))
 
 	artID := api.resolveArtworkID(ctx, itemId)
 	img, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
@@ -84,11 +96,14 @@ func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
 }
 
 // postItemImage handles cover upload. Only playlists are writable here; album/artist covers come
-// from scanning. The body is always drained first (even on the not-implemented path) because
-// Finamp writes it synchronously and sees a broken pipe if we respond before reading it.
+// from scanning. Past the auth and id gates the body is drained before answering — including on the
+// not-implemented path — because Finamp writes it synchronously and would see a broken pipe.
 func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 
 	// Honor the same artwork-upload gate and size cap as the native endpoint.
 	u, _ := request.UserFrom(ctx)
@@ -143,7 +158,10 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 // deleteItemImage removes a playlist's uploaded cover. Only playlists are supported.
 func (api *Router) deleteItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 
 	if _, err := api.playlists.Get(ctx, id); err != nil {
 		http.Error(w, "Not Implemented", http.StatusNotImplemented)

@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
-	"os"
 	"path"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -147,9 +145,8 @@ func (r folderRepository) getFolderUpdateInfoBatch(lib model.Library, targetPath
 	pathConditions := make(Or, 0, len(targetPaths)*2)
 
 	for _, targetPath := range targetPaths {
-		// Clean the path to normalize it. Paths stored in the folder table do not have leading/trailing slashes.
-		cleanPath := strings.TrimPrefix(targetPath, string(os.PathSeparator))
-		cleanPath = filepath.Clean(cleanPath)
+		// Slash-form like the stored paths; filepath.Clean would backslash them on Windows.
+		cleanPath := path.Clean(strings.TrimPrefix(targetPath, "/"))
 
 		// Include the target folder itself by ID
 		folderIDs = append(folderIDs, model.FolderID(lib, cleanPath))
@@ -172,11 +169,13 @@ func (r folderRepository) getFolderUpdateInfoBatch(lib model.Library, targetPath
 
 // queryFolderUpdateInfo executes the query and returns the result map
 func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.FolderUpdateInfo, error) {
-	sq := r.newSelect().Columns("id", "updated_at", "hash").Where(where)
+	sq := r.newSelect().Columns("id", "updated_at", "hash", "image_files", "images_updated_at").Where(where)
 	var res []struct {
-		ID        string
-		UpdatedAt time.Time
-		Hash      string
+		ID              string
+		UpdatedAt       time.Time
+		Hash            string
+		ImageFiles      string
+		ImagesUpdatedAt time.Time
 	}
 	err := r.queryAll(sq, &res)
 	if err != nil {
@@ -184,9 +183,39 @@ func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.Fol
 	}
 	m := make(map[string]model.FolderUpdateInfo, len(res))
 	for _, f := range res {
-		m[f.ID] = model.FolderUpdateInfo{UpdatedAt: f.UpdatedAt, Hash: f.Hash}
+		info := model.FolderUpdateInfo{UpdatedAt: f.UpdatedAt, Hash: f.Hash, ImagesUpdatedAt: f.ImagesUpdatedAt}
+		if f.ImageFiles != "" {
+			if err := json.Unmarshal([]byte(f.ImageFiles), &info.ImageFiles); err != nil {
+				return nil, fmt.Errorf("parsing folder image_files: %w", err)
+			}
+		}
+		m[f.ID] = info
 	}
 	return m, nil
+}
+
+// subtreePathChunkSize bounds how many paths one folderSubtreeFilter may expand into: each adds
+// 3 OR terms, and SQLite rejects an expression tree deeper than 1000 (measured: 166 paths).
+const subtreePathChunkSize = 100
+
+// folderSubtreeFilter matches the folders at the given library-relative paths and all their
+// descendants. A path of "" or "." selects the whole library, so it drops the path conditions.
+func folderSubtreeFilter(lib model.Library, paths []string) Sqlizer {
+	conds := make(Or, 0, len(paths)*3)
+	for _, p := range paths {
+		// Paths are io/fs slash-form; filepath.Clean would backslash them on Windows.
+		cleanPath := path.Clean(strings.TrimPrefix(p, "/"))
+		if cleanPath == "." {
+			return And{Eq{"folder.library_id": lib.ID}, Eq{"folder.missing": false}}
+		}
+		conds = append(conds,
+			Eq{"folder.id": model.FolderID(lib, cleanPath)},
+			// Direct children have path = cleanPath; deeper descendants match the prefix
+			Eq{"folder.path": cleanPath},
+			Expr(`folder.path LIKE ? ESCAPE '\'`, escapeLikePrefix(cleanPath)+"/%"),
+		)
+	}
+	return And{Eq{"folder.library_id": lib.ID}, Eq{"folder.missing": false}, conds}
 }
 
 // HasAudioOutsideFolders reports whether any folder in parent's subtree

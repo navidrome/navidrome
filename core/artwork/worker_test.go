@@ -95,6 +95,17 @@ func (f *fakeEventBroker) getEvents() []events.Event {
 
 var _ events.Broker = (*fakeEventBroker)(nil)
 
+// expireQueued ages a row past the retry budget, so the next drain settles it instead of retrying.
+func expireQueued(q *tests.MockArtworkQueueRepo, id string) {
+	GinkgoHelper()
+	for k, v := range q.Data {
+		if v.ItemID == id {
+			v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+			q.Data[k] = v
+		}
+	}
+}
+
 func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQueueItem {
 	for _, it := range q.Data {
 		if it.ItemKind == kind && it.ItemID == id {
@@ -318,12 +329,7 @@ var _ = Describe("Worker", func() {
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
 			// Age the row past the retry budget.
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al9" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al9")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -345,12 +351,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al10"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al10" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al10")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -362,7 +363,68 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
-		// Media files are excluded from recheckKinds, so an absent row here would never be
+		It("records on the queue row why the last attempt failed", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al11", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al11"})).To(Succeed())
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			it := findQueued(queueRepo, "al", "al11")
+			Expect(it).ToNot(BeNil())
+			Expect(DecodeTrace(it.Trace, "")).To(ContainElement(SatisfyAll(
+				HaveField("Candidate", "external:failAgent"),
+				HaveField("Outcome", OutcomeError),
+				HaveField("Detail", ContainSubstring("agent timed out")),
+			)), "a retrying row must say why it is retrying")
+		})
+
+		// The give-up path settles absent before recording, so the row exists by the time the
+		// failure is written. Recording first would silently lose it for every unresolved item.
+		It("keeps the failure for an item that never resolved at all", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al13", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al13"})).To(Succeed())
+			expireQueued(queueRepo, "al13")
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al13", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred(), "settling absent must create the row the failure is written to")
+			Expect(ia.Hash).To(BeEmpty())
+			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty())
+		})
+
+		It("keeps the failure on the state row after the queue row is deleted", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al12", Name: "Album"}})
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "al12", ImageType: model.ImageTypePrimary,
+				Hash: "cafebabe", Source: "external:lastfm",
+			})).To(Succeed())
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al12"})).To(Succeed())
+			expireQueued(queueRepo, "al12")
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(findQueued(queueRepo, "al", "al12")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al12", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty(),
+				"the queue row is gone, so this is the only remaining record of the failure")
+			Expect(ia.Hash).To(Equal("cafebabe"), "recording the failure must not disturb the served art")
+		})
+
+		// Media files are excluded from RecheckKinds, so an absent row here would never be
 		// revisited: a transient read error would look permanent.
 		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
 			conf.Server.EnableMediaFileCoverArt = true
@@ -371,12 +433,7 @@ var _ = Describe("Worker", func() {
 				{ID: "mfX", LibraryID: 0, Path: "tests/fixtures/artist/an-album/gone.mp3", HasCoverArt: true},
 			})
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mfX"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "mfX" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "mfX")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -386,6 +443,8 @@ var _ = Describe("Worker", func() {
 			_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mfX", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound),
 				"no row leaves the track unresolved, so a later view can still recover it")
+			// Known gap: with no row and no absent settle, there is nowhere to keep the failure.
+			// Creating one here would write an empty hash, which every reader treats as absent.
 		})
 
 		It("resolves a private playlist under an admin context instead of failing forever", func() {
@@ -537,6 +596,43 @@ var _ = Describe("Worker", func() {
 				_, _, _ = w.gate("A", counting)
 			}
 			Expect(calls).To(Equal(5), "the breaker should have re-closed after the success")
+		})
+
+		It("does not open the breaker when the run is cancelled", func() {
+			cancelled := func() (io.ReadCloser, string, error) { return nil, "", context.Canceled }
+			for range breakerThreshold + 3 {
+				_, _, err := w.gate("A", cancelled)
+				Expect(err).To(MatchError(context.Canceled), "a cancellation passes through, never errBreakerOpen")
+			}
+
+			var calls int
+			counting := func() (io.ReadCloser, string, error) {
+				calls++
+				return nil, "", errors.New("boom")
+			}
+			_, _, _ = w.gate("A", counting)
+			Expect(calls).To(Equal(1), "the breaker stayed closed, so the step still runs")
+		})
+
+		It("ignores a cancellation mid-run, neither counting nor clearing the failures", func() {
+			failing := func() (io.ReadCloser, string, error) { return nil, "", errors.New("boom") }
+			cancelled := func() (io.ReadCloser, string, error) { return nil, "", context.Canceled }
+			for range breakerThreshold - 1 {
+				_, _, _ = w.gate("A", failing)
+			}
+			_, _, _ = w.gate("A", cancelled)
+
+			var calls int
+			counting := func() (io.ReadCloser, string, error) {
+				calls++
+				return nil, "", errors.New("boom")
+			}
+			_, _, _ = w.gate("A", counting)
+			Expect(calls).To(Equal(1), "the cancellation must not have counted as the final failure")
+
+			_, _, err := w.gate("A", counting)
+			Expect(err).To(MatchError(errBreakerOpen), "the cancellation must not have cleared the earlier failures")
+			Expect(calls).To(Equal(1), "an open breaker must not call the external step")
 		})
 
 		It("does not open the breaker on a run of agent not-found misses", func() {
