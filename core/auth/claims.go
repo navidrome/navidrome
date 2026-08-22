@@ -16,12 +16,14 @@ type Claims struct {
 	ExpiresAt time.Time
 
 	// Custom claims
-	UserID  string // "uid"
-	IsAdmin bool   // "adm"
-	ID      string // "id" - artwork/mediafile ID
-	Format  string // "f" - audio format
-	BitRate int    // "b" - audio bitrate
-	ShareID string // "sid" - share ID for share stream tokens
+	UserID   string   // "uid"
+	IsAdmin  bool     // "adm"
+	ID       string   // "id" - artwork/mediafile ID
+	Format   string   // "f" - audio format
+	BitRate  int      // "b" - audio bitrate
+	ShareID  string   // "sid" - share ID for share stream tokens
+	Audience []string // "aud" - which API may accept this token; empty means any
+	Epoch    int      // "ep" - the user's token_epoch at mint time
 }
 
 // ToMap converts Claims to a map[string]any for use with TokenAuth.Encode().
@@ -58,6 +60,12 @@ func (c Claims) ToMap() map[string]any {
 	if c.ShareID != "" {
 		m["sid"] = c.ShareID
 	}
+	if len(c.Audience) > 0 {
+		m[jwt.AudienceKey] = c.Audience
+	}
+	if c.Epoch != 0 {
+		m["ep"] = c.Epoch
+	}
 	return m
 }
 
@@ -73,6 +81,10 @@ func ClaimsFromToken(token jwt.Token) Claims {
 	c.Subject, _ = token.Subject()
 	c.IssuedAt, _ = token.IssuedAt()
 	c.ExpiresAt, _ = token.Expiration()
+
+	if aud, ok := token.Audience(); ok {
+		c.Audience = aud
+	}
 
 	var uid string
 	if err := token.Get("uid", &uid); err == nil {
@@ -99,6 +111,12 @@ func ClaimsFromToken(token jwt.Token) Claims {
 	var sid string
 	if err := token.Get("sid", &sid); err == nil {
 		c.ShareID = sid
+	}
+	if err := token.Get("ep", &c.Epoch); err != nil {
+		var ef float64
+		if err := token.Get("ep", &ef); err == nil {
+			c.Epoch = int(ef)
+		}
 	}
 	return c
 }
