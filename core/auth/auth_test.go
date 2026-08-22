@@ -151,4 +151,114 @@ var _ = Describe("Auth", func() {
 			Expect(decodedClaims.ExpiresAt.Sub(yesterday)).To(BeNumerically(">=", oneDay))
 		})
 	})
+
+	Describe("CreateAPIToken", func() {
+		var usr *model.User
+
+		BeforeEach(func() {
+			usr = &model.User{ID: "123", UserName: "johndoe", TokenEpoch: 4}
+		})
+
+		It("does not expire", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.ExpiresAt.IsZero()).To(BeTrue())
+		})
+
+		It("carries the audience and the user's epoch", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Audience).To(Equal([]string{"jellyfin"}))
+			Expect(claims.Epoch).To(Equal(4))
+			Expect(claims.Subject).To(Equal("johndoe"))
+			Expect(claims.UserID).To(Equal("123"))
+		})
+	})
+
+	Describe("CreateToken with an epoch", func() {
+		It("carries the epoch and still expires", func() {
+			usr := &model.User{ID: "123", UserName: "johndoe", TokenEpoch: 9}
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(9))
+			Expect(claims.Audience).To(BeEmpty())
+			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
+		})
+	})
+
+	Describe("TouchClaims", func() {
+		It("preserves custom claims and refreshes the expiry", func() {
+			tokenStr, err := auth.TouchClaims(auth.Claims{Subject: "johndoe", UserID: "123", Epoch: 5})
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(5))
+			Expect(claims.Subject).To(Equal("johndoe"))
+			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
+		})
+	})
+
+	Describe("CheckClaims", func() {
+		usr := model.User{ID: "123", UserName: "johndoe", TokenEpoch: 2}
+
+		It("accepts a matching epoch and audience", func() {
+			c := auth.Claims{Epoch: 2, Audience: []string{auth.AudienceJellyfin}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceJellyfin)).To(Succeed())
+		})
+
+		It("accepts a token with no audience on any API", func() {
+			c := auth.Claims{Epoch: 2}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceNative)).To(Succeed())
+			Expect(auth.CheckClaims(c, usr, auth.AudienceJellyfin)).To(Succeed())
+			Expect(auth.CheckClaims(c, usr, auth.AudienceSubsonic)).To(Succeed())
+		})
+
+		It("rejects a stale epoch", func() {
+			c := auth.Claims{Epoch: 1, Audience: []string{auth.AudienceJellyfin}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceJellyfin)).To(MatchError(auth.ErrTokenRevoked))
+		})
+
+		It("rejects a token minted for another API", func() {
+			c := auth.Claims{Epoch: 2, Audience: []string{auth.AudienceJellyfin}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceNative)).To(MatchError(auth.ErrWrongAudience))
+			Expect(auth.CheckClaims(c, usr, auth.AudienceSubsonic)).To(MatchError(auth.ErrWrongAudience))
+		})
+
+		It("accepts a multi-audience token that includes this API", func() {
+			c := auth.Claims{Epoch: 2, Audience: []string{"other", auth.AudienceNative}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceNative)).To(Succeed())
+		})
+
+		It("accepts a pre-upgrade token against a never-bumped user", func() {
+			fresh := model.User{ID: "456", UserName: "newbie"}
+			Expect(auth.CheckClaims(auth.Claims{}, fresh, auth.AudienceNative)).To(Succeed())
+		})
+
+		It("accepts a token whose user id matches", func() {
+			c := auth.Claims{UserID: "123", Epoch: 2}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceNative)).To(Succeed())
+		})
+
+		It("rejects a token for a deleted user recreated under the same name", func() {
+			// Same username and a fresh epoch 0, but a new random ID.
+			recreated := model.User{ID: "new-random-id", UserName: "johndoe"}
+			c := auth.Claims{UserID: "123", Audience: []string{auth.AudienceJellyfin}}
+			Expect(auth.CheckClaims(c, recreated, auth.AudienceJellyfin)).To(MatchError(auth.ErrWrongUser))
+		})
+
+		It("accepts a token that carries no user id", func() {
+			fresh := model.User{ID: "456", UserName: "newbie"}
+			Expect(auth.CheckClaims(auth.Claims{}, fresh, auth.AudienceNative)).To(Succeed())
+		})
+	})
 })

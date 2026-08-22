@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
@@ -126,14 +127,31 @@ func (r *userRepository) Put(u *model.User) error {
 	}
 	delete(values, "current_password")
 
-	// Save/update the user
+	// Save/update the user. A password change bumps the token epoch in the same statement:
+	// as two statements they can interleave with a concurrent change and leave a session
+	// valid that the other change should have revoked.
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
-	count, err := r.executeSQL(update)
-	if err != nil {
-		return err
+	var isNewUser bool
+	var epoch int
+	if u.NewPassword != "" {
+		var res struct{ TokenEpoch int }
+		err = r.queryOne(update.Set("token_epoch", Expr("token_epoch + 1")).
+			Suffix("RETURNING token_epoch"), &res)
+		switch {
+		case errors.Is(err, model.ErrNotFound):
+			isNewUser = true
+		case err != nil:
+			return err
+		default:
+			epoch = res.TokenEpoch
+		}
+	} else {
+		count, err := r.executeSQL(update)
+		if err != nil {
+			return err
+		}
+		isNewUser = count == 0
 	}
-
-	isNewUser := count == 0
 	if isNewUser {
 		values["created_at"] = time.Now()
 		insert := Insert(r.tableName).SetMap(values)
@@ -161,6 +179,12 @@ func (r *userRepository) Put(u *model.User) error {
 		if _, err := r.executeSQL(sql); err != nil {
 			return fmt.Errorf("failed to assign default libraries to new user: %w", err)
 		}
+	}
+
+	// Only the caller's own token can be refreshed in-flight; an admin resetting another
+	// user must keep their own epoch.
+	if u.NewPassword != "" && !isNewUser && loggedUser(r.ctx).ID == u.ID {
+		request.SetTokenEpoch(r.ctx, epoch)
 	}
 
 	return nil
