@@ -155,11 +155,13 @@
         "newPassword": "Neues Passwort",
         "token": "Token",
         "lastAccessAt": "Letzter Zugriff am",
-        "libraries": "Bibliotheken"
+        "libraries": "Bibliotheken",
+        "scrobbleFilter": ""
       },
       "helperTexts": {
         "name": "Die Änderung wird erst nach dem nächsten Login gültig",
-        "libraries": "Wähle spezifische Bibliotheken für diesen Benutzer, oder leer lassen für Standard Bibliotheken"
+        "libraries": "Wähle spezifische Bibliotheken für diesen Benutzer, oder leer lassen für Standard Bibliotheken",
+        "scrobbleFilter": ""
       },
       "notifications": {
         "created": "Benutzer erstellt",
@@ -173,7 +175,8 @@
         "adminAutoLibraries": "Administrator-Benutzer haben automatisch Zugriff auf alle Bibliotheken"
       },
       "validation": {
-        "librariesRequired": "Mindestens eine Bibliothek muss für nicht-administrator Benutzer ausgewählt sein"
+        "librariesRequired": "Mindestens eine Bibliothek muss für nicht-administrator Benutzer ausgewählt sein",
+        "invalidScrobbleFilter": ""
       }
     },
     "player": {
@@ -210,7 +213,8 @@
         "songCount": "Titelanzahl",
         "comment": "Kommentar",
         "sync": "Auto-Import",
-        "path": "Importieren aus"
+        "path": "Importieren aus",
+        "starred": "Favorit"
       },
       "actions": {
         "selectPlaylist": "Wiedergabeliste auswählen:",
@@ -634,7 +638,8 @@
       "multipleLibraries": "%{selected} von %{total} Bibliotheken",
       "selectLibraries": "Bibliotheken auswählen",
       "none": "Keine"
-    }
+    },
+    "onlyFavourites": "Nur Favoriten anzeigen"
   },
   "player": {
     "playListsText": "Warteschlange abspielen",

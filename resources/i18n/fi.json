@@ -155,11 +155,13 @@
         "newPassword": "Uusi salasana",
         "token": "Avain",
         "lastAccessAt": "Viimeisin käyttö",
-        "libraries": "Kirjastot"
+        "libraries": "Kirjastot",
+        "scrobbleFilter": "Scrobble-suodatin"
       },
       "helperTexts": {
         "name": "Nimen muutos tulee voimaan kun seuraavan kerran kirjaudut sisään",
-        "libraries": "Valitse tietyt kirjastot tälle käyttäjälle tai jätä tyhjäksi käyttääksesi oletuskirjastoja"
+        "libraries": "Valitse tietyt kirjastot tälle käyttäjälle tai jätä tyhjäksi käyttääksesi oletuskirjastoja",
+        "scrobbleFilter": "Älykkään soittolistan sääntöihin osumat kappaleet ohitetaan Last.fm-, ListenBrainz- ja skrobbausliitännäisissä. Käyttää samaa JSON-syntaksia ja toimintalogiikkaa kuin älykkäät soittolistat. Esimerkki: {\"all\":[{\"lt\":{\"rating\":4}}]}. Jätä tyhjäksi, jos haluat skrobata kaiken. Paikallisiin toistokertoihin tämä ei vaikuta."
       },
       "notifications": {
         "created": "Käyttäjä luotu",
@@ -173,7 +175,8 @@
         "adminAutoLibraries": "Admin-käyttäjillä on automaattisesti pääsy kaikkiin kirjastoihin"
       },
       "validation": {
-        "librariesRequired": "Vähintään yksi kirjasto on valittava ei-admin käyttäjille"
+        "librariesRequired": "Vähintään yksi kirjasto on valittava ei-admin käyttäjille",
+        "invalidScrobbleFilter": "Sääntöjen pitää olla kelvollisia älykkään soittolistan sääntöjä. Rajaus (limit), siirtymä (offset) ja päivitysviive eivät toimi tässä."
       }
     },
     "player": {
@@ -210,7 +213,8 @@
         "songCount": "Kappaleita",
         "comment": "Kommentti",
         "sync": "Automaattinen tuonti",
-        "path": "Tuo"
+        "path": "Tuo",
+        "starred": "Suosikki"
       },
       "actions": {
         "selectPlaylist": "Valitse soittolista:",
@@ -634,7 +638,8 @@
       "multipleLibraries": "%{selected} / %{total} kirjastoa",
       "selectLibraries": "Valitse kirjastot",
       "none": "Ei mitään"
-    }
+    },
+    "onlyFavourites": "Näytä vain suosikit"
   },
   "player": {
     "playListsText": "Jono",
