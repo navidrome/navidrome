@@ -131,6 +131,13 @@ const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
 }
 
+const getLyricsBySongId = (id, requestOptions) => {
+  const requestUrl = url('getLyricsBySongId', id, { enhanced: true })
+  return requestOptions
+    ? httpClient(requestUrl, requestOptions)
+    : httpClient(requestUrl)
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -160,4 +167,5 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getLyricsBySongId,
 }

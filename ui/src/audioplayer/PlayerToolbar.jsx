@@ -4,11 +4,14 @@ import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import IconButton from '@material-ui/core/IconButton'
 import { useMediaQuery } from '@material-ui/core'
+import Tooltip from '@material-ui/core/Tooltip'
+import { RiFileMusicLine } from 'react-icons/ri'
 import { RiSaveLine } from 'react-icons/ri'
 import { LoveButton, useToggleLove } from '../common'
 import { openSaveQueueDialog } from '../actions'
 import { keyMap } from '../hotkeys'
 import { makeStyles } from '@material-ui/core/styles'
+import { PLAYER_DESKTOP_MEDIA_QUERY } from './playerBreakpoints'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -55,11 +58,21 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-const PlayerToolbar = ({ id, isRadio }) => {
+const PlayerToolbar = ({
+  id,
+  isRadio,
+  onToggleLyrics,
+  lyricsActive = false,
+  lyricsDisabled = false,
+  lyricsLoading = false,
+  lyricsLabel = 'Toggle lyrics',
+  lyricsLoadingLabel = 'Loading lyrics',
+  lyricsToggleRef,
+}) => {
   const dispatch = useDispatch()
   const { data, loading } = useGetOne('song', id, { enabled: !!id && !isRadio })
   const [toggleLove, toggling] = useToggleLove('song', data)
-  const isDesktop = useMediaQuery('(min-width:810px)')
+  const isDesktop = useMediaQuery(PLAYER_DESKTOP_MEDIA_QUERY)
   const classes = useStyles()
 
   const handlers = {
@@ -76,6 +89,7 @@ const PlayerToolbar = ({ id, isRadio }) => {
 
   const buttonClass = isDesktop ? classes.button : classes.mobileButton
   const listItemClass = isDesktop ? classes.toolbar : classes.mobileListItem
+  const lyricsUnavailable = lyricsDisabled || (lyricsLoading && !lyricsActive)
 
   const saveQueueButton = (
     <IconButton
@@ -99,6 +113,30 @@ const PlayerToolbar = ({ id, isRadio }) => {
     />
   )
 
+  const currentLyricsLabel = lyricsLoading ? lyricsLoadingLabel : lyricsLabel
+  const lyricsButton = (
+    <Tooltip title={currentLyricsLabel}>
+      <span>
+        <IconButton
+          ref={lyricsToggleRef}
+          size={isDesktop ? 'small' : undefined}
+          onClick={onToggleLyrics}
+          disabled={!onToggleLyrics || lyricsUnavailable}
+          data-testid="toggle-lyrics-button"
+          className={buttonClass}
+          color={lyricsActive ? 'primary' : 'default'}
+          aria-label={currentLyricsLabel}
+          aria-busy={lyricsLoading}
+          aria-pressed={lyricsActive}
+        >
+          <RiFileMusicLine
+            className={!isDesktop ? classes.mobileIcon : undefined}
+          />
+        </IconButton>
+      </span>
+    </Tooltip>
+  )
+
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
@@ -106,11 +144,13 @@ const PlayerToolbar = ({ id, isRadio }) => {
         <li className={`${listItemClass} item`}>
           {saveQueueButton}
           {loveButton}
+          {lyricsButton}
         </li>
       ) : (
         <>
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
+          <li className={`${listItemClass} item`}>{lyricsButton}</li>
         </>
       )}
     </>
