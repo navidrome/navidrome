@@ -458,13 +458,23 @@ var _ = Describe("Auth", func() {
 			Expect(claims.Epoch).To(Equal(1))
 		})
 
-		It("keeps the ResponseWriter flushable", func() {
-			var flushable bool
-			_ = serveWith(func(w http.ResponseWriter, _ *http.Request) {
-				_, flushable = w.(http.Flusher)
+		It("propagates Flush to the underlying ResponseWriter", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.(http.Flusher).Flush()
+			})
+			Expect(w.Flushed).To(BeTrue())
+		})
+
+		It("exposes the underlying ResponseWriter via Unwrap, for http.ResponseController lookups", func() {
+			var unwrapped http.ResponseWriter
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				u, ok := w.(interface{ Unwrap() http.ResponseWriter })
+				Expect(ok).To(BeTrue())
+				unwrapped = u.Unwrap()
 				w.WriteHeader(http.StatusOK)
 			})
-			Expect(flushable).To(BeTrue())
+			Expect(unwrapped).To(BeIdenticalTo(w))
 		})
 	})
 })

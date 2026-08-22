@@ -340,6 +340,12 @@ func (w *refreshingWriter) Flush() {
 	}
 }
 
+// Unwrap lets http.ResponseController (e.g. SSE's write-deadline lookup) see past this
+// wrap to the underlying writer's capabilities, such as SetWriteDeadline.
+func (w *refreshingWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
 // JWTRefresher updates the expiry date of the received JWT token, and adds the new one to
 // the Authorization Header.
 func JWTRefresher(next http.Handler) http.Handler {
