@@ -81,10 +81,7 @@ func ClaimsFromToken(token jwt.Token) Claims {
 	c.Subject, _ = token.Subject()
 	c.IssuedAt, _ = token.IssuedAt()
 	c.ExpiresAt, _ = token.Expiration()
-
-	if aud, ok := token.Audience(); ok {
-		c.Audience = aud
-	}
+	c.Audience, _ = token.Audience()
 
 	var uid string
 	if err := token.Get("uid", &uid); err == nil {
