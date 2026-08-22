@@ -34,6 +34,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 	var router http.Handler
 
 	BeforeEach(func() {
+		// db.Db() is a process-wide singleton that this DeferCleanup closes for the whole binary; keep this the only real-DB spec in this package.
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableUserEditing = true
 		conf.Server.EnableSharing = false

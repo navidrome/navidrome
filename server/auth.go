@@ -266,7 +266,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}
-			if !tokenAllowed(ctx, r) {
+			if !tokenAllowed(ctx) {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}
@@ -278,7 +278,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 
 // tokenAllowed re-checks a JWT that actually identifies the resolved user. Header and
 // config auth carry no token, so they short-circuit to true.
-func tokenAllowed(ctx context.Context, r *http.Request) bool {
+func tokenAllowed(ctx context.Context) bool {
 	token, _, err := jwtauth.FromContext(ctx)
 	if err != nil || token == nil {
 		return true
