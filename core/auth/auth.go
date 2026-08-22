@@ -133,11 +133,17 @@ func ValidatePublic(tokenStr string) (Claims, error) {
 var (
 	ErrTokenRevoked  = errors.New("token revoked")
 	ErrWrongAudience = errors.New("token not valid for this API")
+	ErrWrongUser     = errors.New("token issued for a different user")
 )
 
 // CheckClaims gates a session token against the user it names. Callers must have already
 // verified the signature; this adds revocation and API scoping on top.
 func CheckClaims(c Claims, usr model.User, audience string) error {
+	// Usernames can be reused: deleting a user and recreating the name yields a new random id
+	// at epoch 0, which an old token would otherwise match.
+	if c.UserID != "" && c.UserID != usr.ID {
+		return ErrWrongUser
+	}
 	if c.Epoch != usr.TokenEpoch {
 		return ErrTokenRevoked
 	}
