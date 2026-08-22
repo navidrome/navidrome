@@ -286,7 +286,7 @@ func tokenAllowed(ctx context.Context, r *http.Request) bool {
 		return true
 	}
 	claims := auth.ClaimsFromToken(token)
-	if claims.Subject != usr.UserName {
+	if !strings.EqualFold(claims.Subject, usr.UserName) {
 		return true
 	}
 	if err := auth.CheckClaims(claims, usr, auth.AudienceNative); err != nil {

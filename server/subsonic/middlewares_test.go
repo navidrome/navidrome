@@ -470,6 +470,7 @@ var _ = Describe("Middlewares", func() {
 			var validToken string
 
 			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
 				conf.Server.SessionTimeout = time.Minute
 				auth.Init(ds)
 
@@ -504,6 +505,7 @@ var _ = Describe("Middlewares", func() {
 			var usr *model.User
 
 			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
 				conf.Server.SessionTimeout = time.Minute
 				auth.Init(ds)
 				usr = &model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}

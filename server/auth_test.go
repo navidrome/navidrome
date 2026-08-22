@@ -387,5 +387,19 @@ var _ = Describe("Auth", func() {
 			usr.TokenEpoch = 3
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
 		})
+
+		It("ignores a stray token for someone else when config auto-login resolves the user", func() {
+			conf.Server.DevAutoLoginUsername = usr.UserName
+			tokenStr, err := auth.CreateToken(&model.User{UserName: "someone-else"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+
+		It("rejects a stale-epoch token whose subject differs only in case from the resolved user", func() {
+			tokenStr, err := auth.CreateToken(&model.User{UserName: strings.ToUpper(usr.UserName), TokenEpoch: usr.TokenEpoch})
+			Expect(err).ToNot(HaveOccurred())
+			usr.TokenEpoch = 5
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
 	})
 })
