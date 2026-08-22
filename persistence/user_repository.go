@@ -221,19 +221,17 @@ func (r *userRepository) UpdateLastAccessAt(id string) error {
 	return err
 }
 
+// BumpTokenEpoch invalidates every token issued for this user, returning the new epoch.
+// RETURNING keeps the increment and the read in one statement: a separate read can observe a
+// concurrent bump and hand back an epoch this call did not produce, leaving that session valid.
 func (r *userRepository) BumpTokenEpoch(id string) (int, error) {
-	upd := Update(r.tableName).Set("token_epoch", Expr("token_epoch + 1")).Where(Eq{"id": id})
-	count, err := r.executeSQL(upd)
-	if err != nil {
+	upd := Update(r.tableName).Set("token_epoch", Expr("token_epoch + 1")).Where(Eq{"id": id}).
+		Suffix("RETURNING token_epoch")
+	var res struct{ TokenEpoch int }
+	if err := r.queryOne(upd, &res); err != nil {
 		return 0, err
 	}
-	if count == 0 {
-		return 0, model.ErrNotFound
-	}
-
-	var res struct{ TokenEpoch int }
-	err = r.queryOne(Select("token_epoch").From(r.tableName).Where(Eq{"id": id}), &res)
-	return res.TokenEpoch, err
+	return res.TokenEpoch, nil
 }
 
 func (r *userRepository) Count(options ...rest.QueryOptions) (int64, error) {

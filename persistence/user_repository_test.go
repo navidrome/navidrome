@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -13,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -721,6 +723,30 @@ var _ = Describe("UserRepository", func() {
 		It("returns ErrNotFound for an unknown user", func() {
 			_, err := repo.BumpTokenEpoch("does-not-exist")
 			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+
+		It("never hands the same epoch to two concurrent callers", func() {
+			// Each caller must get the value its own increment produced. If the read is a
+			// separate statement, a concurrent bump lands in between and both read the same
+			// value, so a session that should have been revoked keeps a valid token.
+			const callers = 4
+			var mu sync.Mutex
+			var got []int
+			var wg sync.WaitGroup
+			for range callers {
+				wg.Go(func() {
+					epoch, err := repo.BumpTokenEpoch(usr.ID)
+					if err != nil {
+						return // the shared in-memory test DB can raise SQLITE_LOCKED
+					}
+					mu.Lock()
+					defer mu.Unlock()
+					got = append(got, epoch)
+				})
+			}
+			wg.Wait()
+
+			Expect(got).To(HaveLen(len(slice.Unique(got))), "an epoch was handed to more than one caller: %v", got)
 		})
 	})
 
