@@ -127,9 +127,8 @@ func (r *userRepository) Put(u *model.User) error {
 	}
 	delete(values, "current_password")
 
-	// Save/update the user. A password change bumps the token epoch in the same statement:
-	// as two statements they can interleave with a concurrent change and leave a session
-	// valid that the other change should have revoked.
+	// The epoch bump rides the password UPDATE: as two statements they can interleave with a
+	// concurrent change and leave a session valid that the other change should have revoked.
 	update := Update(r.tableName).Where(Eq{"id": u.ID}).SetMap(values)
 	var isNewUser bool
 	var epoch int

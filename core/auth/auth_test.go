@@ -250,7 +250,6 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("rejects a token for a deleted user recreated under the same name", func() {
-			// Same username and a fresh epoch 0, but a new random ID.
 			recreated := model.User{ID: "new-random-id", UserName: "johndoe"}
 			c := auth.Claims{UserID: "123", Audience: []string{auth.AudienceJellyfin}}
 			Expect(auth.CheckClaims(c, recreated, auth.AudienceJellyfin)).To(MatchError(auth.ErrWrongUser))

@@ -27,8 +27,7 @@ type noopPluginUnloader struct{}
 
 func (noopPluginUnloader) UnloadDisabledPlugins(context.Context) {}
 
-// Drives a real self password change through the real middleware chain, to pin that the
-// token-epoch handoff survives an actual request instead of two separately-tested halves.
+// Pins that the token-epoch handoff survives a real request through the real middleware chain.
 var _ = Describe("PUT /user/{id}: token refresh on self password change", func() {
 	var ds model.DataStore
 	var router http.Handler

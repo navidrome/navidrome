@@ -294,8 +294,8 @@ func tokenAllowed(ctx context.Context) bool {
 	return true
 }
 
-// refreshingWriter defers the refreshed-token header until the handler's first write, so a
-// handler that bumps the token epoch is reflected in the token the client stores.
+// refreshingWriter defers the refreshed-token header until the handler's first write, so an
+// epoch the handler bumped reaches the token the client stores.
 type refreshingWriter struct {
 	http.ResponseWriter
 	ctx   context.Context
@@ -336,8 +336,7 @@ func (w *refreshingWriter) Flush() {
 	}
 }
 
-// Unwrap lets http.ResponseController (e.g. SSE's write-deadline lookup) see past this
-// wrap to the underlying writer's capabilities, such as SetWriteDeadline.
+// Unwrap lets capability lookups, such as SSE's write deadline, see past this wrap.
 func (w *refreshingWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }

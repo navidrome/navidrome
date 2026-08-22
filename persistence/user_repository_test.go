@@ -736,9 +736,7 @@ var _ = Describe("UserRepository", func() {
 		})
 
 		It("never signals the same epoch to two concurrent password changes", func() {
-			// Each writer's epoch must be the one its own UPDATE produced. As two statements the
-			// bump can interleave with a concurrent change, leaving a session the other change
-			// should have revoked holding a still-valid epoch.
+			// Each writer's epoch must be the one its own UPDATE produced.
 			const callers = 4
 			var mu sync.Mutex
 			var signalled []int
