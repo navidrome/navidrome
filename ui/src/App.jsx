@@ -19,6 +19,7 @@ import album from './album'
 import artist from './artist'
 import playlist from './playlist'
 import radio from './radio'
+import podcast from './podcast'
 import share from './share'
 import library from './library'
 import plugin from './plugin'
@@ -33,6 +34,7 @@ import {
   saveQueueDialogReducer,
   playerReducer,
   albumViewReducer,
+  podcastViewReducer,
   activityReducer,
   settingsReducer,
   replayGainReducer,
@@ -69,6 +71,7 @@ const adminStore = createAdminStore({
     library: libraryReducer,
     player: playerReducer,
     albumView: albumViewReducer,
+    podcastView: podcastViewReducer,
     theme: themeReducer,
     addToPlaylistDialog: addToPlaylistDialogReducer,
     downloadMenuDialog: downloadMenuDialogReducer,
@@ -130,6 +133,10 @@ const Admin = (props) => {
         <Resource
           name="radio"
           {...(permissions === 'admin' ? radio.admin : radio.all)}
+        />,
+        <Resource
+          name="podcast"
+          {...(permissions === 'admin' ? podcast.admin : podcast.all)}
         />,
         config.enableSharing && <Resource name="share" {...share} />,
         <Resource
