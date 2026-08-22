@@ -151,4 +151,60 @@ var _ = Describe("Auth", func() {
 			Expect(decodedClaims.ExpiresAt.Sub(yesterday)).To(BeNumerically(">=", oneDay))
 		})
 	})
+
+	Describe("CreateAPIToken", func() {
+		var usr *model.User
+
+		BeforeEach(func() {
+			usr = &model.User{ID: "123", UserName: "johndoe", TokenEpoch: 4}
+		})
+
+		It("does not expire", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.ExpiresAt.IsZero()).To(BeTrue())
+		})
+
+		It("carries the audience and the user's epoch", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Audience).To(Equal([]string{"jellyfin"}))
+			Expect(claims.Epoch).To(Equal(4))
+			Expect(claims.Subject).To(Equal("johndoe"))
+			Expect(claims.UserID).To(Equal("123"))
+		})
+	})
+
+	Describe("CreateToken with an epoch", func() {
+		It("carries the epoch and still expires", func() {
+			usr := &model.User{ID: "123", UserName: "johndoe", TokenEpoch: 9}
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(9))
+			Expect(claims.Audience).To(BeEmpty())
+			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
+		})
+	})
+
+	Describe("TouchClaims", func() {
+		It("preserves custom claims and refreshes the expiry", func() {
+			tokenStr, err := auth.TouchClaims(auth.Claims{Subject: "johndoe", UserID: "123", Epoch: 5})
+			Expect(err).ToNot(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(5))
+			Expect(claims.Subject).To(Equal("johndoe"))
+			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
+		})
+	})
 })

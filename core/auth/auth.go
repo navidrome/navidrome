@@ -26,6 +26,13 @@ var (
 	PublicTokenAuth *jwtauth.JWTAuth
 )
 
+// Audiences a session token can be scoped to. A token with no audience is accepted anywhere.
+const (
+	AudienceJellyfin = "jellyfin"
+	AudienceSubsonic = "subsonic"
+	AudienceNative   = "native"
+)
+
 // Init creates the JWTAuth objects from the secrets stored in the DB.
 // Missing or undecryptable secrets are regenerated and stored.
 func Init(ds model.DataStore) {
@@ -73,6 +80,7 @@ func CreateToken(u *model.User) (string, error) {
 		IssuedAt: time.Now(),
 		UserID:   u.ID,
 		IsAdmin:  u.IsAdmin,
+		Epoch:    u.TokenEpoch,
 	}
 	token, _, err := TokenAuth.Encode(claims.ToMap())
 	if err != nil {
@@ -82,10 +90,29 @@ func CreateToken(u *model.User) (string, error) {
 	return TouchToken(token)
 }
 
+// CreateAPIToken mints a non-expiring token scoped to one API, matching how Jellyfin
+// clients expect tokens to behave. Revocation is by token epoch, not expiry.
+func CreateAPIToken(u *model.User, audience string) (string, error) {
+	claims := Claims{
+		Issuer:   consts.JWTIssuer,
+		Subject:  u.UserName,
+		IssuedAt: time.Now(),
+		UserID:   u.ID,
+		IsAdmin:  u.IsAdmin,
+		Epoch:    u.TokenEpoch,
+		Audience: []string{audience},
+	}
+	_, token, err := TokenAuth.Encode(claims.ToMap())
+	return token, err
+}
+
 func TouchToken(token jwt.Token) (string, error) {
-	claims := ClaimsFromToken(token).
-		WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
-	_, newToken, err := TokenAuth.Encode(claims.ToMap())
+	return TouchClaims(ClaimsFromToken(token))
+}
+
+func TouchClaims(c Claims) (string, error) {
+	c = c.WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
+	_, newToken, err := TokenAuth.Encode(c.ToMap())
 	return newToken, err
 }
 
