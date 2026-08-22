@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"context"
 	"crypto/sha256"
+	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -131,6 +133,23 @@ func ValidatePublic(tokenStr string) (Claims, error) {
 		return Claims{}, err
 	}
 	return ClaimsFromToken(token), nil
+}
+
+var (
+	ErrTokenRevoked  = errors.New("token revoked")
+	ErrWrongAudience = errors.New("token not valid for this API")
+)
+
+// CheckClaims gates a session token against the user it names. Callers must have already
+// verified the signature; this adds revocation and API scoping on top.
+func CheckClaims(c Claims, usr model.User, audience string) error {
+	if c.Epoch != usr.TokenEpoch {
+		return ErrTokenRevoked
+	}
+	if len(c.Audience) > 0 && !slices.Contains(c.Audience, audience) {
+		return ErrWrongAudience
+	}
+	return nil
 }
 
 func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {

@@ -207,4 +207,41 @@ var _ = Describe("Auth", func() {
 			Expect(claims.ExpiresAt).To(BeTemporally(">", time.Now()))
 		})
 	})
+
+	Describe("CheckClaims", func() {
+		usr := model.User{ID: "123", UserName: "johndoe", TokenEpoch: 2}
+
+		It("accepts a matching epoch and audience", func() {
+			c := auth.Claims{Epoch: 2, Audience: []string{auth.AudienceJellyfin}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceJellyfin)).To(Succeed())
+		})
+
+		It("accepts a token with no audience on any API", func() {
+			c := auth.Claims{Epoch: 2}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceNative)).To(Succeed())
+			Expect(auth.CheckClaims(c, usr, auth.AudienceJellyfin)).To(Succeed())
+			Expect(auth.CheckClaims(c, usr, auth.AudienceSubsonic)).To(Succeed())
+		})
+
+		It("rejects a stale epoch", func() {
+			c := auth.Claims{Epoch: 1, Audience: []string{auth.AudienceJellyfin}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceJellyfin)).To(MatchError(auth.ErrTokenRevoked))
+		})
+
+		It("rejects a token minted for another API", func() {
+			c := auth.Claims{Epoch: 2, Audience: []string{auth.AudienceJellyfin}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceNative)).To(MatchError(auth.ErrWrongAudience))
+			Expect(auth.CheckClaims(c, usr, auth.AudienceSubsonic)).To(MatchError(auth.ErrWrongAudience))
+		})
+
+		It("accepts a multi-audience token that includes this API", func() {
+			c := auth.Claims{Epoch: 2, Audience: []string{"other", auth.AudienceNative}}
+			Expect(auth.CheckClaims(c, usr, auth.AudienceNative)).To(Succeed())
+		})
+
+		It("accepts a pre-upgrade token against a never-bumped user", func() {
+			fresh := model.User{ID: "456", UserName: "newbie"}
+			Expect(auth.CheckClaims(auth.Claims{}, fresh, auth.AudienceNative)).To(Succeed())
+		})
+	})
 })
