@@ -171,7 +171,7 @@ func (r *userRepository) Put(u *model.User) error {
 		}
 		// Only the caller's own token can be refreshed in-flight; an admin resetting another
 		// user must keep their own epoch.
-		if actor, ok := request.UserFrom(r.ctx); ok && actor.ID == u.ID {
+		if loggedUser(r.ctx).ID == u.ID {
 			request.SetTokenEpoch(r.ctx, epoch)
 		}
 	}
@@ -230,11 +230,10 @@ func (r *userRepository) BumpTokenEpoch(id string) (int, error) {
 	if count == 0 {
 		return 0, model.ErrNotFound
 	}
-	usr, err := r.Get(id)
-	if err != nil {
-		return 0, err
-	}
-	return usr.TokenEpoch, nil
+
+	var res struct{ TokenEpoch int }
+	err = r.queryOne(Select("token_epoch").From(r.tableName).Where(Eq{"id": id}), &res)
+	return res.TokenEpoch, err
 }
 
 func (r *userRepository) Count(options ...rest.QueryOptions) (int64, error) {

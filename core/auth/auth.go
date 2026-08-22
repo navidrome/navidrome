@@ -75,16 +75,20 @@ func CreateExpiringPublicToken(exp time.Time, claims Claims) (string, error) {
 	return token, err
 }
 
-func CreateToken(u *model.User) (string, error) {
-	claims := Claims{
+func userClaims(u *model.User, audience []string) Claims {
+	return Claims{
 		Issuer:   consts.JWTIssuer,
 		Subject:  u.UserName,
 		IssuedAt: time.Now(),
 		UserID:   u.ID,
 		IsAdmin:  u.IsAdmin,
 		Epoch:    u.TokenEpoch,
+		Audience: audience,
 	}
-	token, _, err := TokenAuth.Encode(claims.ToMap())
+}
+
+func CreateToken(u *model.User) (string, error) {
+	token, _, err := TokenAuth.Encode(userClaims(u, nil).ToMap())
 	if err != nil {
 		return "", err
 	}
@@ -95,16 +99,7 @@ func CreateToken(u *model.User) (string, error) {
 // CreateAPIToken mints a non-expiring token scoped to one API, matching how Jellyfin
 // clients expect tokens to behave. Revocation is by token epoch, not expiry.
 func CreateAPIToken(u *model.User, audience string) (string, error) {
-	claims := Claims{
-		Issuer:   consts.JWTIssuer,
-		Subject:  u.UserName,
-		IssuedAt: time.Now(),
-		UserID:   u.ID,
-		IsAdmin:  u.IsAdmin,
-		Epoch:    u.TokenEpoch,
-		Audience: []string{audience},
-	}
-	_, token, err := TokenAuth.Encode(claims.ToMap())
+	_, token, err := TokenAuth.Encode(userClaims(u, []string{audience}).ToMap())
 	return token, err
 }
 

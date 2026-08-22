@@ -262,11 +262,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, err := authenticateRequest(ds, r, UsernameFromConfig, UsernameFromToken, UsernameFromExtAuthHeader)
-			if err != nil {
-				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
-				return
-			}
-			if !tokenAllowed(ctx) {
+			if err != nil || !tokenAllowed(ctx) {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}

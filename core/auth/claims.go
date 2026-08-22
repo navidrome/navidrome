@@ -102,21 +102,24 @@ func ClaimsFromToken(token jwt.Token) Claims {
 	if err := token.Get("f", &f); err == nil {
 		c.Format = f
 	}
-	if err := token.Get("b", &c.BitRate); err != nil {
-		var bf float64
-		if err := token.Get("b", &bf); err == nil {
-			c.BitRate = int(bf)
-		}
-	}
+	c.BitRate = intClaim(token, "b")
 	var sid string
 	if err := token.Get("sid", &sid); err == nil {
 		c.ShareID = sid
 	}
-	if err := token.Get("ep", &c.Epoch); err != nil {
-		var ef float64
-		if err := token.Get("ep", &ef); err == nil {
-			c.Epoch = int(ef)
-		}
-	}
+	c.Epoch = intClaim(token, "ep")
 	return c
+}
+
+// intClaim reads a numeric claim, which a parsed token may decode as either int or float64.
+func intClaim(token jwt.Token, key string) int {
+	var i int
+	if err := token.Get(key, &i); err == nil {
+		return i
+	}
+	var f float64
+	if err := token.Get(key, &f); err == nil {
+		return int(f)
+	}
+	return 0
 }
