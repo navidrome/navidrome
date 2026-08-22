@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
@@ -296,24 +298,61 @@ func tokenAllowed(ctx context.Context, r *http.Request) bool {
 	return true
 }
 
-// JWTRefresher updates the expiry date of the received JWT token, and add the new one to the Authorization Header
+// refreshingWriter defers the refreshed-token header until the handler's first write, so a
+// handler that bumps the token epoch is reflected in the token the client stores.
+type refreshingWriter struct {
+	http.ResponseWriter
+	ctx   context.Context
+	token jwt.Token
+	once  sync.Once
+}
+
+func (w *refreshingWriter) setToken() {
+	w.once.Do(func() {
+		claims := auth.ClaimsFromToken(w.token)
+		if epoch, ok := request.TokenEpochFrom(w.ctx); ok {
+			claims.Epoch = epoch
+		}
+		newToken, err := auth.TouchClaims(claims)
+		if err != nil {
+			log.Error(w.ctx, "Could not sign new token", err)
+			return
+		}
+		w.Header().Set(consts.UIAuthorizationHeader, newToken)
+	})
+}
+
+func (w *refreshingWriter) WriteHeader(code int) {
+	w.setToken()
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *refreshingWriter) Write(b []byte) (int, error) {
+	w.setToken()
+	return w.ResponseWriter.Write(b)
+}
+
+// Flush keeps the SSE events route working through the wrap.
+func (w *refreshingWriter) Flush() {
+	w.setToken()
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// JWTRefresher updates the expiry date of the received JWT token, and adds the new one to
+// the Authorization Header.
 func JWTRefresher(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		token, _, err := jwtauth.FromContext(ctx)
-		if err != nil {
+		token, _, err := jwtauth.FromContext(r.Context())
+		if err != nil || token == nil {
 			next.ServeHTTP(w, r)
 			return
 		}
-		newTokenString, err := auth.TouchToken(token)
-		if err != nil {
-			log.Error(r, "Could not sign new token", err)
-			_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
-			return
-		}
-
-		w.Header().Set(consts.UIAuthorizationHeader, newTokenString)
-		next.ServeHTTP(w, r)
+		ctx := request.WithTokenEpochHolder(r.Context())
+		rw := &refreshingWriter{ResponseWriter: w, ctx: ctx, token: token}
+		next.ServeHTTP(rw, r.WithContext(ctx))
+		rw.setToken()
 	})
 }
 

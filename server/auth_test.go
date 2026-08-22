@@ -402,4 +402,69 @@ var _ = Describe("Auth", func() {
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
 		})
 	})
+
+	Describe("JWTRefresher", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			// TouchClaims reads this; left at zero every refreshed token is born expired.
+			conf.Server.SessionTimeout = time.Hour
+			auth.Init(&tests.MockDataStore{})
+		})
+
+		serveWith := func(handler http.HandlerFunc) *httptest.ResponseRecorder {
+			usr := model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}
+			tokenStr, err := auth.CreateToken(&usr)
+			Expect(err).ToNot(HaveOccurred())
+
+			r := httptest.NewRequest("GET", "/api/song", nil)
+			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+tokenStr)
+			w := httptest.NewRecorder()
+			JWTVerifier(JWTRefresher(handler)).ServeHTTP(w, r)
+			return w
+		}
+
+		It("writes a refreshed token when the handler writes a body", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("ok"))
+			})
+			Expect(w.Header().Get(consts.UIAuthorizationHeader)).ToNot(BeEmpty())
+		})
+
+		It("writes a refreshed token when the handler writes no body", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+			Expect(w.Header().Get(consts.UIAuthorizationHeader)).ToNot(BeEmpty())
+		})
+
+		It("picks up an epoch the handler reported", func() {
+			w := serveWith(func(w http.ResponseWriter, r *http.Request) {
+				request.SetTokenEpoch(r.Context(), 42)
+				w.WriteHeader(http.StatusOK)
+			})
+
+			claims, err := auth.Validate(w.Header().Get(consts.UIAuthorizationHeader))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(42))
+		})
+
+		It("keeps the original epoch when the handler reports nothing", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			claims, err := auth.Validate(w.Header().Get(consts.UIAuthorizationHeader))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(1))
+		})
+
+		It("keeps the ResponseWriter flushable", func() {
+			var flushable bool
+			_ = serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				_, flushable = w.(http.Flusher)
+				w.WriteHeader(http.StatusOK)
+			})
+			Expect(flushable).To(BeTrue())
+		})
+	})
 })
