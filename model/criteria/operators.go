@@ -1,5 +1,7 @@
 package criteria
 
+import "github.com/navidrome/navidrome/log"
+
 // Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
 type conjunction interface {
 	ChildPlaylistIds() []string
@@ -20,6 +22,10 @@ func (all All) ChildPlaylistIds() (ids []string) {
 	return extractPlaylistIds(all)
 }
 
+func (all All) ChildPlaylistPaths() (paths []string) {
+	return extractPlaylistPaths(all)
+}
+
 type (
 	Any []Expression
 	Or  = Any
@@ -33,6 +39,10 @@ func (any Any) MarshalJSON() ([]byte, error) {
 
 func (any Any) ChildPlaylistIds() (ids []string) {
 	return extractPlaylistIds(any)
+}
+
+func (any Any) ChildPlaylistPaths() (paths []string) {
+	return extractPlaylistPaths(any)
 }
 
 type Is map[string]any
@@ -172,28 +182,36 @@ func (ip IsPresent) MarshalJSON() ([]byte, error) {
 
 func (ip IsPresent) fields() map[string]any { return ip }
 
-func extractPlaylistIds(inputRule any) (ids []string) {
-	var id string
-	var ok bool
-
+func extractPlaylistField(inputRule any, field string) (values []string) {
 	switch rule := inputRule.(type) {
 	case Any:
 		for _, rules := range rule {
-			ids = append(ids, extractPlaylistIds(rules)...)
+			values = append(values, extractPlaylistField(rules, field)...)
 		}
 	case All:
 		for _, rules := range rule {
-			ids = append(ids, extractPlaylistIds(rules)...)
+			values = append(values, extractPlaylistField(rules, field)...)
 		}
 	case InPlaylist:
-		if id, ok = rule["id"].(string); ok {
-			ids = append(ids, id)
+		if value, ok := rule[field].(string); ok {
+			values = append(values, value)
+		} else {
+			log.Warn("Playlist field not a string", field)
 		}
 	case NotInPlaylist:
-		if id, ok = rule["id"].(string); ok {
-			ids = append(ids, id)
+		if value, ok := rule[field].(string); ok {
+			values = append(values, value)
+		} else {
+			log.Warn("Playlist field not a string", field)
 		}
 	}
-
 	return
+}
+
+func extractPlaylistIds(inputRule any) (ids []string) {
+	return extractPlaylistField(inputRule, "id")
+}
+
+func extractPlaylistPaths(inputRule any) (paths []string) {
+	return extractPlaylistField(inputRule, "path")
 }
