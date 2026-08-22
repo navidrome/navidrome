@@ -208,6 +208,7 @@ type lastfmOptions struct {
 	Secret                  string //nolint:gosec
 	Language                string
 	ScrobbleFirstArtistOnly bool
+	MinScrobbleDuration     time.Duration
 
 	// Computed values
 	Languages []string `conf:"-"` // Computed from Language, split by comma
@@ -482,6 +483,12 @@ func Load(noConfigDump bool) {
 		newValue := max(200, min(1200, Server.UICoverArtSize))
 		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
 		Server.UICoverArtSize = newValue
+	}
+
+	// Check for negative values in durations and set to default (TODO: more than just LastFM.MinScrobbleduration)
+	if Server.LastFM.MinScrobbleDuration < 0 {
+		log.Warn("MinScrobbleDuration must be non-negative, setting to default", "value", Server.LastFM.MinScrobbleDuration, "newValue", consts.DefaultMinScrobbleDuration)
+		Server.LastFM.MinScrobbleDuration = consts.DefaultMinScrobbleDuration
 	}
 
 	// Floor MaxImageSize at MaxImageUploadSize so accepted uploads can always be read back.
@@ -1050,6 +1057,7 @@ func setViperDefaults() {
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
+	viper.SetDefault("lastfm.minscrobbleduration", consts.DefaultMinScrobbleDuration)
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)

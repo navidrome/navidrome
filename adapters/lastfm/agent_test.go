@@ -472,6 +472,28 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(httpClient.SavedRequest).To(BeNil())
 			})
 
+			It("skips songs according to the configured minimum duration", func() {
+				conf.Server.LastFM.MinScrobbleDuration = 60 * time.Second
+				track.Duration = 59
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("does not skip short songs when the minimum duration is disabled", func() {
+				conf.Server.LastFM.MinScrobbleDuration = 0
+				track.Duration = 29
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).ToNot(BeNil())
+			})
+
 			It("returns ErrNotAuthorized if user is not linked", func() {
 				err := agent.Scrobble(ctx, "user-2", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
