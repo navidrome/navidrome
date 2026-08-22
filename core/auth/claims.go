@@ -11,19 +11,19 @@ import (
 type Claims struct {
 	// Standard JWT claims
 	Issuer    string
-	Subject   string // username for session tokens
+	Subject   string   // username for session tokens
+	Audience  []string // which API may accept this token; empty means any
 	IssuedAt  time.Time
 	ExpiresAt time.Time
 
 	// Custom claims
-	UserID   string   // "uid"
-	IsAdmin  bool     // "adm"
-	ID       string   // "id" - artwork/mediafile ID
-	Format   string   // "f" - audio format
-	BitRate  int      // "b" - audio bitrate
-	ShareID  string   // "sid" - share ID for share stream tokens
-	Audience []string // "aud" - which API may accept this token; empty means any
-	Epoch    int      // "ep" - the user's token_epoch at mint time
+	UserID  string // "uid"
+	IsAdmin bool   // "adm"
+	ID      string // "id" - artwork/mediafile ID
+	Format  string // "f" - audio format
+	BitRate int    // "b" - audio bitrate
+	ShareID string // "sid" - share ID for share stream tokens
+	Epoch   int    // "ep" - the user's token_epoch at mint time
 }
 
 // ToMap converts Claims to a map[string]any for use with TokenAuth.Encode().
@@ -35,6 +35,9 @@ func (c Claims) ToMap() map[string]any {
 	}
 	if c.Subject != "" {
 		m[jwt.SubjectKey] = c.Subject
+	}
+	if len(c.Audience) > 0 {
+		m[jwt.AudienceKey] = c.Audience
 	}
 	if !c.IssuedAt.IsZero() {
 		m[jwt.IssuedAtKey] = c.IssuedAt.UTC().Unix()
@@ -59,9 +62,6 @@ func (c Claims) ToMap() map[string]any {
 	}
 	if c.ShareID != "" {
 		m["sid"] = c.ShareID
-	}
-	if len(c.Audience) > 0 {
-		m[jwt.AudienceKey] = c.Audience
 	}
 	if c.Epoch != 0 {
 		m["ep"] = c.Epoch
