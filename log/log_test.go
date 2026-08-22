@@ -264,5 +264,16 @@ var _ = Describe("Logger", func() {
 			msg := "/jellyfin/Audio/abc/universal?static=true&api_key=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.c2ln-X_1&other=1"
 			Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/universal?static=true&api_key=[REDACTED]&other=1"))
 		})
+
+		DescribeTable("redacts every api_key spelling the Jellyfin API accepts",
+			func(param string) {
+				msg := "/jellyfin/Audio/abc/File?" + param + "=SECRET&other=1"
+				Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/File?" + param + "=[REDACTED]&other=1"))
+			},
+			Entry("api_key", "api_key"),
+			Entry("apikey", "apikey"),
+			Entry("ApiKey", "ApiKey"),
+			Entry("APIKEY", "APIKEY"),
+		)
 	})
 })
