@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
@@ -160,6 +161,18 @@ func (r *userRepository) Put(u *model.User) error {
 		)
 		if _, err := r.executeSQL(sql); err != nil {
 			return fmt.Errorf("failed to assign default libraries to new user: %w", err)
+		}
+	}
+
+	if u.NewPassword != "" && !isNewUser {
+		epoch, err := r.BumpTokenEpoch(u.ID)
+		if err != nil {
+			return err
+		}
+		// Only the caller's own token can be refreshed in-flight; an admin resetting another
+		// user must keep their own epoch.
+		if actor, ok := request.UserFrom(r.ctx); ok && actor.ID == u.ID {
+			request.SetTokenEpoch(r.ctx, epoch)
 		}
 	}
 

@@ -723,4 +723,76 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
+
+	Describe("Put and the token epoch", func() {
+		newRepo := func(actingUserID string) model.UserRepository {
+			ctx := log.NewContext(context.TODO())
+			ctx = request.WithUser(ctx, model.User{ID: actingUserID, IsAdmin: true})
+			ctx = request.WithTokenEpochHolder(ctx)
+			return NewUserRepository(ctx, GetDBXBuilder())
+		}
+
+		It("does not bump when creating a user", func() {
+			repo := newRepo("admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "fresh", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+		})
+
+		It("bumps when the password changes", func() {
+			repo := newRepo("admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "changer", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = "pw2"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(1))
+		})
+
+		It("does not bump on an edit that leaves the password alone", func() {
+			repo := newRepo("admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "renamer", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = ""
+			usr.Name = "New Display Name"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+		})
+
+		It("signals the new epoch when a user changes their own password", func() {
+			userID := id.NewRandom()
+			repo := newRepo(userID)
+			usr := model.User{ID: userID, UserName: "self", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = "pw2"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			epoch, ok := request.TokenEpochFrom(repo.(*userRepository).ctx)
+			Expect(ok).To(BeTrue())
+			Expect(epoch).To(Equal(1))
+		})
+
+		It("does not signal when an admin changes someone else's password", func() {
+			repo := newRepo("some-admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "other", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = "pw2"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			_, ok := request.TokenEpochFrom(repo.(*userRepository).ctx)
+			Expect(ok).To(BeFalse())
+		})
+	})
 })
