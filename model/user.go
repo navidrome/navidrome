@@ -22,6 +22,8 @@ type User struct {
 
 	// This is only available on the backend, and it is never sent over the wire
 	Password string `structs:"-" json:"-"`
+	// Bumped on password change to invalidate every issued token for this user.
+	TokenEpoch int `structs:"-" json:"-"`
 	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
 	// It is received from the UI with the name "password"
 	NewPassword string `structs:"password,omitempty" json:"password,omitempty"` //nolint:gosec
@@ -52,6 +54,8 @@ type UserRepository interface {
 	Put(*User) error
 	UpdateLastLoginAt(id string) error
 	UpdateLastAccessAt(id string) error
+	// BumpTokenEpoch invalidates every token issued for this user, returning the new epoch.
+	BumpTokenEpoch(id string) (int, error)
 	FindFirstAdmin() (*User, error)
 	// FindByUsername must be case-insensitive
 	FindByUsername(username string) (*User, error)

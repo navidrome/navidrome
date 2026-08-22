@@ -208,6 +208,22 @@ func (r *userRepository) UpdateLastAccessAt(id string) error {
 	return err
 }
 
+func (r *userRepository) BumpTokenEpoch(id string) (int, error) {
+	upd := Update(r.tableName).Set("token_epoch", Expr("token_epoch + 1")).Where(Eq{"id": id})
+	count, err := r.executeSQL(upd)
+	if err != nil {
+		return 0, err
+	}
+	if count == 0 {
+		return 0, model.ErrNotFound
+	}
+	usr, err := r.Get(id)
+	if err != nil {
+		return 0, err
+	}
+	return usr.TokenEpoch, nil
+}
+
 func (r *userRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	usr := loggedUser(r.ctx)
 	if !usr.IsAdmin {

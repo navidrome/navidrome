@@ -683,4 +683,44 @@ var _ = Describe("UserRepository", func() {
 			Expect(query).To(ContainSubstring("user.id = {:p0}"))
 		})
 	})
+
+	Describe("BumpTokenEpoch", func() {
+		var repo model.UserRepository
+		var usr model.User
+
+		BeforeEach(func() {
+			ctx := log.NewContext(context.TODO())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
+			repo = NewUserRepository(ctx, GetDBXBuilder())
+			uid := id.NewRandom()
+			// user_name is unique; suffix it so each It gets its own row in the shared suite DB.
+			usr = model.User{ID: uid, UserName: "epoch-user-" + uid, Name: "Epoch", NewPassword: "hunter2"}
+			Expect(repo.Put(&usr)).To(Succeed())
+		})
+
+		It("starts at zero", func() {
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+		})
+
+		It("increments and returns the new value", func() {
+			epoch, err := repo.BumpTokenEpoch(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(epoch).To(Equal(1))
+
+			epoch, err = repo.BumpTokenEpoch(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(epoch).To(Equal(2))
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(2))
+		})
+
+		It("returns ErrNotFound for an unknown user", func() {
+			_, err := repo.BumpTokenEpoch("does-not-exist")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
 })
