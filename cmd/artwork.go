@@ -339,7 +339,7 @@ func runReprocess(ctx context.Context) {
 	if needsImageAgents(kinds) {
 		mgr := loadPluginAgents(ctx, false)
 		defer func() { _ = mgr.Stop() }()
-		imageAgents = imageAgentCount(ds, mgr)
+		imageAgents = artwork.NewImageAgentCount(agents.GetAgents(ds, mgr))
 	}
 
 	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(artworkSources), imageAgents,
@@ -395,11 +395,6 @@ func externalEstimate(n int64) string {
 
 func externalLookupLine(n int64) string {
 	return fmt.Sprintf("External lookups: %s.", externalEstimate(n))
-}
-
-func imageAgentCount(ds model.DataStore, mgr *plugins.Manager) artwork.ImageAgentCount {
-	ag := agents.GetAgents(ds, mgr)
-	return artwork.ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
 }
 
 // loadPluginAgents loads the plugins named in Agents, so the CLI resolves through the same agents a

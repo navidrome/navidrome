@@ -72,18 +72,27 @@ func ConfigFingerprint() string {
 	return fmt.Sprintf("%016x", xxh3.Hash([]byte(raw)))
 }
 
+// backfillSummary is what a backfill enqueued. MaxExternalLookups is an upper estimate for one
+// attempt per item, not a bound: a local hit ends the walk, and a retry asks the agents again.
+type backfillSummary struct {
+	Ran                bool
+	PerKind            map[string]int64
+	Items              int64
+	MaxExternalLookups int64
+}
+
 // backfill enqueues artwork resolution for every entity when the config fingerprint changed.
-func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
+func backfill(ctx context.Context, ds model.DataStore, agentCount func() ImageAgentCount) (backfillSummary, error) {
 	start := time.Now()
 	ctx = auth.WithAdminUser(ctx, ds)
 	current := ConfigFingerprint()
 	props := ds.Property(ctx)
 	stored, err := props.DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
-		return false, err
+		return backfillSummary{}, err
 	}
 	if stored == current {
-		return false, nil
+		return backfillSummary{}, nil
 	}
 
 	// Artists first: few entities, most external-dependent, so they get a queue headstart.
@@ -96,21 +105,31 @@ func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 		{model.KindPlaylistArtwork, func() ([]string, error) { return ds.Playlist(ctx).GetAllIDs() }},
 		{model.KindRadioArtwork, func() ([]string, error) { return ds.Radio(ctx).GetAllIDs() }},
 	}
+	// Counted here, not by the caller: building the agent list constructs every enabled agent, and
+	// an unchanged fingerprint returns above without ever needing the number.
+	agents := agentCount()
+	summary := backfillSummary{Ran: true, PerKind: map[string]int64{}}
 	for _, k := range kinds {
 		ids, err := k.fetch()
 		if err != nil {
-			return false, err
+			return backfillSummary{}, err
 		}
 		if err := enqueueBackfillKind(ctx, ds, k.kind, ids); err != nil {
-			return false, err
+			return backfillSummary{}, err
 		}
+		n := int64(len(ids))
+		summary.PerKind[k.kind.Prefix()] = n
+		summary.Items += n
+		summary.MaxExternalLookups += n * ExternalLookupsPerItem(k.kind, agents)
 	}
 
 	if err := props.Put(consts.ArtConfFingerprintPropertyKey, current); err != nil {
-		return false, err
+		return backfillSummary{}, err
 	}
-	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued", "elapsed", time.Since(start))
-	return true, nil
+	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued", "items", summary.Items,
+		"byKind", summary.PerKind, "maxExternalLookups", summary.MaxExternalLookups,
+		"elapsed", time.Since(start))
+	return summary, nil
 }
 
 func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kind, ids []string) error {

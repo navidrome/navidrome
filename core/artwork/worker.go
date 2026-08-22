@@ -40,6 +40,7 @@ type drainPool struct {
 // independently, and pruneMu serializes prune against the store-write window.
 type Worker struct {
 	proc    *processor
+	agents  *agents.Agents
 	cache   cache.FileCache
 	ffmpeg  ffmpeg.FFmpeg
 	broker  events.Broker
@@ -54,6 +55,7 @@ type Worker struct {
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
 		proc:   &processor{ds: ds, store: store},
+		agents: ag,
 		cache:  imgCache,
 		ffmpeg: ffmpeg,
 		broker: broker,
@@ -132,9 +134,10 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 }
 
 // Backfill enqueues every entity for re-resolution when the artwork config fingerprint changed,
-// artists first. It reports whether anything was enqueued.
+// artists first. It reports whether the backfill ran.
 func (w *Worker) Backfill(ctx context.Context) (bool, error) {
-	return backfill(ctx, w.proc.ds)
+	s, err := backfill(ctx, w.proc.ds, func() ImageAgentCount { return NewImageAgentCount(w.agents) })
+	return s.Ran, err
 }
 
 // EnqueueStaleAbsentAll requeues known-absent entries older than StaleAbsentAge, at most

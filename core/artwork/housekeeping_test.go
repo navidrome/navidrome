@@ -39,6 +39,8 @@ func adminUserRepo() *tests.MockedUserRepo {
 	return repo
 }
 
+func noAgents() ImageAgentCount { return ImageAgentCount{} }
+
 // orderTrackingQueueRepo records the item kind of each Enqueue call, so tests can
 // assert phase ordering (artists-first) that same-priority timestamps can't guarantee.
 type orderTrackingQueueRepo struct {
@@ -164,9 +166,14 @@ var _ = Describe("Housekeeping", func() {
 			seedEntities()
 			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())).To(Succeed())
 
-			did, err := backfill(ctx, ds)
+			counted := false
+			s, err := backfill(ctx, ds, func() ImageAgentCount {
+				counted = true
+				return ImageAgentCount{Artist: 3, Album: 2}
+			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeFalse())
+			Expect(s).To(Equal(backfillSummary{}))
+			Expect(counted).To(BeFalse(), "building the agent list constructs every agent; an unchanged fingerprint must not pay for it")
 
 			count, err := queueRepo.Count()
 			Expect(err).ToNot(HaveOccurred())
@@ -176,9 +183,9 @@ var _ = Describe("Housekeeping", func() {
 		It("runs the backfill when no fingerprint was ever stored", func() {
 			seedEntities()
 
-			did, err := backfill(ctx, ds)
+			s, err := backfill(ctx, ds, noAgents)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeTrue())
+			Expect(s.Ran).To(BeTrue())
 
 			count, err := queueRepo.Count()
 			Expect(err).ToNot(HaveOccurred())
@@ -197,9 +204,9 @@ var _ = Describe("Housekeeping", func() {
 				tracks:        &tests.MockPlaylistTrackRepo{},
 			}
 
-			did, err := backfill(ctx, vds)
+			s, err := backfill(ctx, vds, noAgents)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeTrue())
+			Expect(s.Ran).To(BeTrue())
 			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "pl", "plPrivate")).ToNot(BeNil())
 		})
 
@@ -207,9 +214,9 @@ var _ = Describe("Housekeeping", func() {
 			seedEntities()
 			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
-			did, err := backfill(ctx, ds)
+			s, err := backfill(ctx, ds, noAgents)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(did).To(BeTrue())
+			Expect(s.Ran).To(BeTrue())
 
 			Expect(queueRepo.callKinds).ToNot(BeEmpty())
 			firstOther := slices.IndexFunc(queueRepo.callKinds, func(k string) bool { return k != "ar" })
@@ -223,6 +230,22 @@ var _ = Describe("Housekeeping", func() {
 				Expect(it.Priority).To(Equal(model.ArtworkPriorityBackfill))
 				Expect(it.ItemKind).To(BeElementOf("ar", "al", "pl", "ra"))
 			}
+		})
+
+		It("reports what it enqueued, per kind and as an external-lookup ceiling", func() {
+			conf.Server.ArtistArtPriority = "artist.*, external"
+			conf.Server.CoverArtPriority = "cover.*, external"
+			conf.Server.EnableM3UExternalAlbumArt = false
+			seedEntities()
+
+			s, err := backfill(ctx, ds, func() ImageAgentCount { return ImageAgentCount{Artist: 3, Album: 2} })
+			Expect(err).ToNot(HaveOccurred())
+			Expect(s.Ran).To(BeTrue())
+
+			Expect(s.PerKind).To(Equal(map[string]int64{"ar": 2, "al": 1, "pl": 1, "ra": 1}))
+			Expect(s.Items).To(Equal(int64(5)))
+			// 2 artists x 3 agents, 1 album x 2, 1 playlist grid x 2, and radios never fetch.
+			Expect(s.MaxExternalLookups).To(Equal(int64(6 + 2 + PlaylistGridSamples*2)))
 		})
 	})
 

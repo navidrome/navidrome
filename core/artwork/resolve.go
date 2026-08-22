@@ -137,6 +137,15 @@ func MayFetchExternal(kind model.Kind) bool {
 // ImageAgentCount is how many enabled agents provide artist and album images.
 type ImageAgentCount struct{ Artist, Album int }
 
+// NewImageAgentCount counts what an external step would consult, so an estimate and the gate that
+// guards it cannot disagree about which agents exist.
+func NewImageAgentCount(ag *agents.Agents) ImageAgentCount {
+	if ag == nil {
+		return ImageAgentCount{}
+	}
+	return ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
+}
+
 // ExternalLookupsPerItem reports what resolving one item of this kind can cost: every image agent is
 // tried, and a zero count still bills one, so agents the caller cannot see never read as free.
 func ExternalLookupsPerItem(kind model.Kind, agents ImageAgentCount) int64 {
