@@ -279,7 +279,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 // tokenAllowed re-checks a JWT that actually identifies the resolved user. Header and
 // config auth carry no token, so they short-circuit to true.
 func tokenAllowed(ctx context.Context, r *http.Request) bool {
-	token, _, err := jwtauth.FromContext(r.Context())
+	token, _, err := jwtauth.FromContext(ctx)
 	if err != nil || token == nil {
 		return true
 	}
@@ -292,7 +292,7 @@ func tokenAllowed(ctx context.Context, r *http.Request) bool {
 		return true
 	}
 	if err := auth.CheckClaims(claims, usr, auth.AudienceNative); err != nil {
-		log.Warn(r, "Native API: rejected token", "user", claims.Subject, err)
+		log.Warn(ctx, "Native API: rejected token", "user", claims.Subject, err)
 		return false
 	}
 	return true
