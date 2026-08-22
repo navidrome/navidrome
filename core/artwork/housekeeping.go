@@ -72,8 +72,8 @@ func ConfigFingerprint() string {
 	return fmt.Sprintf("%016x", xxh3.Hash([]byte(raw)))
 }
 
-// backfillSummary is what a backfill enqueued. MaxExternalLookups is a ceiling, not a forecast:
-// an item served by a local source never reaches an agent.
+// backfillSummary is what a backfill enqueued. MaxExternalLookups is an upper estimate for one
+// attempt per item, not a bound: a local hit ends the walk, and a retry asks the agents again.
 type backfillSummary struct {
 	Ran                bool
 	PerKind            map[string]int64
