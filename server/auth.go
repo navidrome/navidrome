@@ -264,10 +264,36 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}
+			if !tokenAllowed(ctx, r) {
+				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
+				return
+			}
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// tokenAllowed re-checks a JWT that actually identifies the resolved user. Header and
+// config auth carry no token, so they short-circuit to true.
+func tokenAllowed(ctx context.Context, r *http.Request) bool {
+	token, _, err := jwtauth.FromContext(r.Context())
+	if err != nil || token == nil {
+		return true
+	}
+	usr, ok := request.UserFrom(ctx)
+	if !ok {
+		return true
+	}
+	claims := auth.ClaimsFromToken(token)
+	if claims.Subject != usr.UserName {
+		return true
+	}
+	if err := auth.CheckClaims(claims, usr, auth.AudienceNative); err != nil {
+		log.Warn(r, "Native API: rejected token", "user", claims.Subject, err)
+		return false
+	}
+	return true
 }
 
 // JWTRefresher updates the expiry date of the received JWT token, and add the new one to the Authorization Header

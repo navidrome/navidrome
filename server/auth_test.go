@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
@@ -340,6 +341,51 @@ var _ = Describe("Auth", func() {
 			u, err := ds.User(context.Background()).FindByUsername("seconduser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeFalse())
+		})
+	})
+
+	Describe("Authenticator token gating", func() {
+		var ds *tests.MockDataStore
+		var usr *model.User
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SessionTimeout = time.Hour
+			ds = &tests.MockDataStore{}
+			auth.Init(ds)
+			ur := ds.User(context.TODO()).(*tests.MockedUserRepo)
+			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
+			Expect(ur.Put(usr)).To(Succeed())
+		})
+
+		serve := func(token string) *httptest.ResponseRecorder {
+			r := httptest.NewRequest("GET", "/api/song", nil)
+			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
+			w := httptest.NewRecorder()
+			handler := JWTVerifier(Authenticator(ds)(http.HandlerFunc(
+				func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) },
+			)))
+			handler.ServeHTTP(w, r)
+			return w
+		}
+
+		It("accepts a current session token", func() {
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+
+		It("rejects a jellyfin-scoped token", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("rejects a token with a stale epoch", func() {
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+			usr.TokenEpoch = 3
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
 		})
 	})
 })
