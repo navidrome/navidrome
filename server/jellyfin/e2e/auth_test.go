@@ -86,8 +86,11 @@ var _ = Describe("Authentication", func() {
 			router.ServeHTTP(pw, r)
 			Expect(pw.Code).To(Equal(http.StatusOK))
 
-			_, err := ds.User(ctx).BumpTokenEpoch(testID("admin-1"))
+			// A real password change through the repository, which is what revokes in production.
+			admin, err := ds.User(ctx).Get(testID("admin-1"))
 			Expect(err).ToNot(HaveOccurred())
+			admin.NewPassword = "rotated"
+			Expect(ds.User(ctx).Put(admin)).To(Succeed())
 
 			r = httptest.NewRequest("GET", "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)

@@ -54,8 +54,6 @@ type UserRepository interface {
 	Put(*User) error
 	UpdateLastLoginAt(id string) error
 	UpdateLastAccessAt(id string) error
-	// BumpTokenEpoch invalidates every token issued for this user, returning the new epoch.
-	BumpTokenEpoch(id string) (int, error)
 	FindFirstAdmin() (*User, error)
 	// FindByUsername must be case-insensitive
 	FindByUsername(username string) (*User, error)

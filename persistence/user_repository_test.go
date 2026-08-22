@@ -686,67 +686,88 @@ var _ = Describe("UserRepository", func() {
 		})
 	})
 
-	Describe("BumpTokenEpoch", func() {
+	Describe("token epoch", func() {
 		var repo model.UserRepository
 		var usr model.User
+
+		newUser := func() model.User {
+			uid := id.NewRandom()
+			// user_name is unique; suffix it so each It gets its own row in the shared suite DB.
+			return model.User{ID: uid, UserName: "epoch-user-" + uid, Name: "Epoch", NewPassword: "hunter2"}
+		}
 
 		BeforeEach(func() {
 			ctx := log.NewContext(context.TODO())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
 			repo = NewUserRepository(ctx, GetDBXBuilder())
-			uid := id.NewRandom()
-			// user_name is unique; suffix it so each It gets its own row in the shared suite DB.
-			usr = model.User{ID: uid, UserName: "epoch-user-" + uid, Name: "Epoch", NewPassword: "hunter2"}
+			usr = newUser()
 			Expect(repo.Put(&usr)).To(Succeed())
 		})
 
-		It("starts at zero", func() {
+		It("starts at zero for a new user", func() {
 			got, err := repo.Get(usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(0))
 		})
 
-		It("increments and returns the new value", func() {
-			epoch, err := repo.BumpTokenEpoch(usr.ID)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(epoch).To(Equal(1))
-
-			epoch, err = repo.BumpTokenEpoch(usr.ID)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(epoch).To(Equal(2))
-
+		It("increments once per password change", func() {
+			usr.NewPassword = "second"
+			Expect(repo.Put(&usr)).To(Succeed())
 			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(1))
+
+			usr.NewPassword = "third"
+			Expect(repo.Put(&usr)).To(Succeed())
+			got, err = repo.Get(usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(2))
 		})
 
-		It("returns ErrNotFound for an unknown user", func() {
-			_, err := repo.BumpTokenEpoch("does-not-exist")
-			Expect(err).To(MatchError(model.ErrNotFound))
+		It("leaves the epoch alone when the password is untouched", func() {
+			usr.NewPassword = ""
+			usr.Name = "Renamed"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+			Expect(got.Name).To(Equal("Renamed"))
 		})
 
-		It("never hands the same epoch to two concurrent callers", func() {
-			// Each caller must get the value its own increment produced. If the read is a
-			// separate statement, a concurrent bump lands in between and both read the same
-			// value, so a session that should have been revoked keeps a valid token.
+		It("never signals the same epoch to two concurrent password changes", func() {
+			// Each writer's epoch must be the one its own UPDATE produced. As two statements the
+			// bump can interleave with a concurrent change, leaving a session the other change
+			// should have revoked holding a still-valid epoch.
 			const callers = 4
 			var mu sync.Mutex
-			var got []int
+			var signalled []int
 			var wg sync.WaitGroup
 			for range callers {
 				wg.Go(func() {
-					epoch, err := repo.BumpTokenEpoch(usr.ID)
-					if err != nil {
+					ctx := log.NewContext(context.TODO())
+					ctx = request.WithUser(ctx, model.User{ID: usr.ID})
+					ctx = request.WithTokenEpochHolder(ctx)
+					own := NewUserRepository(ctx, GetDBXBuilder())
+
+					u := usr
+					u.NewPassword = "concurrent"
+					if err := own.Put(&u); err != nil {
 						return // the shared in-memory test DB can raise SQLITE_LOCKED
+					}
+					epoch, ok := request.TokenEpochFrom(ctx)
+					if !ok {
+						return
 					}
 					mu.Lock()
 					defer mu.Unlock()
-					got = append(got, epoch)
+					signalled = append(signalled, epoch)
 				})
 			}
 			wg.Wait()
 
-			Expect(got).To(HaveLen(len(slice.Unique(got))), "an epoch was handed to more than one caller: %v", got)
+			Expect(signalled).To(HaveLen(len(slice.Unique(signalled))),
+				"an epoch was signalled to more than one writer: %v", signalled)
 		})
 	})
 

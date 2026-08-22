@@ -112,19 +112,6 @@ func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
 	return u.Error
 }
 
-func (u *MockedUserRepo) BumpTokenEpoch(id string) (int, error) {
-	if u.Error != nil {
-		return 0, u.Error
-	}
-	for _, usr := range u.Data {
-		if usr.ID == id {
-			usr.TokenEpoch++
-			return usr.TokenEpoch, nil
-		}
-	}
-	return 0, model.ErrNotFound
-}
-
 // Library association methods - mock implementations
 
 func (u *MockedUserRepo) GetUserLibraries(userID string) (model.Libraries, error) {
