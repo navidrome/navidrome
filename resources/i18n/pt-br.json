@@ -35,12 +35,12 @@
         "rawTags": "Tags originais",
         "bitDepth": "Profundidade de bits",
         "sampleRate": "Taxa de amostragem",
-        "albumGain": "Ganho do álbum",
-        "trackGain": "Ganho da faixa",
         "missing": "Ausente",
         "libraryName": "Biblioteca",
         "composer": "Compositor",
-        "disc": "Disco %{discNumber}"
+        "disc": "Disco %{discNumber}",
+        "albumGain": "Ganho do álbum",
+        "trackGain": "Ganho da faixa"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -213,7 +213,8 @@
         "songCount": "Músicas",
         "comment": "Comentário",
         "sync": "Auto-importar",
-        "path": "Importar de"
+        "path": "Importar de",
+        "starred": "Favorita"
       },
       "actions": {
         "selectPlaylist": "Selecione a playlist:",
@@ -637,7 +638,8 @@
       "multipleLibraries": "%{selected} de %{total} Bibliotecas",
       "selectLibraries": "Selecionar Bibliotecas",
       "none": "Nenhuma"
-    }
+    },
+    "onlyFavourites": "Somente favoritas"
   },
   "player": {
     "playListsText": "Fila de Execução",
