@@ -9,6 +9,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/fatih/structs"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 )
 
 type PostMapper interface {
@@ -82,11 +84,32 @@ func (e existsCond) ToSql() (string, []any, error) {
 
 var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 
+func sortCollation() string {
+	if conf.Server.EnableNaturalSorting {
+		return db.NaturalCollation
+	}
+	return "nocase"
+}
+
+// collatedSort wraps a plain text column so it sorts with the configured
+// collation. The parens are required: buildSortOrder splits on spaces.
+func collatedSort(col string) string {
+	return fmt.Sprintf("(%s collate %s)", col, sortCollation())
+}
+
+// mapNaturalOrder qualifies the order_* columns and applies the natural collation.
+// Used when sort_* columns are not preferred, so mapSortOrder does not run.
+func mapNaturalOrder(tableName, order string) string {
+	order = strings.ToLower(order)
+	repl := fmt.Sprintf("(%[1]s.order_$1 collate %[2]s)", tableName, db.NaturalCollation)
+	return sortOrderRegex.ReplaceAllString(order, repl)
+}
+
 // Convert the order_* columns to an expression using sort_* columns. Example:
 // sort_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
 // It finds order column names anywhere in the substring
 func mapSortOrder(tableName, order string) string {
 	order = strings.ToLower(order)
-	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate nocase)", tableName)
+	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate %[2]s)", tableName, sortCollation())
 	return sortOrderRegex.ReplaceAllString(order, repl)
 }

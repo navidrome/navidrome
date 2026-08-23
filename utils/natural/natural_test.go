@@ -114,3 +114,37 @@ var _ = Describe("Compare", func() {
 			"a099999999999999999999x", "a99999999999999999999x", 0),
 	)
 })
+
+var _ = Describe("CompareFold", func() {
+	DescribeTable("orders case-insensitively",
+		func(a, b string, expected int) {
+			result := natural.CompareFold(a, b)
+			switch {
+			case expected < 0:
+				Expect(result).To(BeNumerically("<", 0), "expected %q < %q", a, b)
+			case expected > 0:
+				Expect(result).To(BeNumerically(">", 0), "expected %q > %q", a, b)
+			default:
+				Expect(result).To(Equal(0), "expected %q == %q", a, b)
+			}
+		},
+		Entry("numbers compare numerically", "foo 2", "foo 10", -1),
+		Entry("numbers compare numerically, reversed", "foo 10", "foo 2", 1),
+		Entry("case is ignored", "apple 2", "Banana 10", -1),
+		Entry("case is ignored, reversed", "Banana 10", "apple 2", 1),
+		Entry("same word, different case, is equal", "ABC", "abc", 0),
+		Entry("case ignored while comparing numbers", "Vol 2", "vol 10", -1),
+		Entry("uppercase digits boundary", "Track9", "track10", -1),
+		Entry("empty vs empty", "", "", 0),
+		Entry("empty sorts first", "", "a", -1),
+		Entry("non-ASCII is left untouched", "café 2", "café 10", -1),
+	)
+
+	It("matches Compare when both sides are already lowercase", func() {
+		pairs := [][2]string{{"foo 2", "foo 10"}, {"a01", "a1"}, {"a", "aa"}, {"vol 3", "vol 3"}}
+		for _, p := range pairs {
+			Expect(natural.CompareFold(p[0], p[1])).To(Equal(natural.Compare(p[0], p[1])),
+				"CompareFold(%q,%q) should match Compare", p[0], p[1])
+		}
+	})
+})

@@ -60,7 +60,8 @@ func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRe
 		"starred": annotationBoolFilter("starred"),
 	})
 	r.setSortMappings(map[string]string{
-		"owner_name": "owner_name",
+		"name":       collatedSort("playlist.name"),
+		"owner_name": collatedSort("owner_name"),
 	})
 	return r
 }

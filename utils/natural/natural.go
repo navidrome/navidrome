@@ -15,10 +15,23 @@ import "strings"
 // lexically, which makes leading zeros significant as a tie-breaker
 // (e.g. "a01" < "a1", "a0" < "a00").
 func Compare(a, b string) int {
+	return compare(a, b, false)
+}
+
+// CompareFold is Compare with ASCII case folding, matching SQLite's NOCASE
+// collation: only A-Z fold, bytes >= 0x80 are compared as-is.
+func CompareFold(a, b string) int {
+	return compare(a, b, true)
+}
+
+func compare(a, b string, fold bool) int {
 	ia, ib := 0, 0
 	for ia < len(a) && ib < len(b) {
 		ca, cb := a[ia], b[ib]
 		da, db := isDigit(ca), isDigit(cb)
+		if fold {
+			ca, cb = lower(ca), lower(cb)
+		}
 
 		switch {
 		case da && db:
@@ -45,7 +58,7 @@ func Compare(a, b string) int {
 				ib = endB
 				continue
 			}
-			return strings.Compare(a[ia:], b[ib:])
+			return compareRest(a[ia:], b[ib:], fold)
 		case da != db:
 			return int(ca) - int(cb)
 		default:
@@ -57,6 +70,19 @@ func Compare(a, b string) int {
 		}
 	}
 	return (len(a) - ia) - (len(b) - ib)
+}
+
+func compareRest(a, b string, fold bool) int {
+	if !fold {
+		return strings.Compare(a, b)
+	}
+	for i := 0; i < len(a) && i < len(b); i++ {
+		ca, cb := lower(a[i]), lower(b[i])
+		if ca != cb {
+			return int(ca) - int(cb)
+		}
+	}
+	return len(a) - len(b)
 }
 
 // compareNumbers compares two digit strings numerically.
@@ -95,4 +121,11 @@ func stripZeros(s string) string {
 
 func isDigit(c byte) bool {
 	return c >= '0' && c <= '9'
+}
+
+func lower(c byte) byte {
+	if c >= 'A' && c <= 'Z' {
+		return c + 'a' - 'A'
+	}
+	return c
 }

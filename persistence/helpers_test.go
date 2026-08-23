@@ -4,6 +4,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/db"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -101,6 +104,54 @@ var _ = Describe("Helpers", func() {
 			mapped := mapSortOrder("album", sort)
 			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
 				` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
+		})
+		Context("with EnableNaturalSorting", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.EnableNaturalSorting = true
+			})
+			It("uses the natural collation for order columns", func() {
+				mapped := mapSortOrder("album", "order_album_name asc")
+				Expect(mapped).To(Equal(`(coalesce(nullif(album.sort_album_name,''),album.order_album_name)` +
+					` collate NATSORT) asc`))
+			})
+			It("leaves plain columns alone", func() {
+				Expect(mapSortOrder("album", "year desc")).To(Equal("year desc"))
+			})
+		})
+	})
+
+	Describe("mapNaturalOrder", func() {
+		It("qualifies order columns and applies the natural collation", func() {
+			Expect(mapNaturalOrder("album", "order_album_name asc, year desc")).To(
+				Equal("(album.order_album_name collate NATSORT) asc, year desc"))
+		})
+		It("does not change a sort string without order columns", func() {
+			Expect(mapNaturalOrder("album", "year desc")).To(Equal("year desc"))
+		})
+	})
+
+	Describe("collatedSort", func() {
+		It("wraps a plain column with the default collation", func() {
+			DeferCleanup(configtest.SetupConfig())
+			Expect(collatedSort("name")).To(Equal("(name collate nocase)"))
+		})
+		It("wraps a plain column with the natural collation when enabled", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableNaturalSorting = true
+			Expect(collatedSort("name")).To(Equal("(name collate NATSORT)"))
+		})
+	})
+
+	Describe("sortCollation", func() {
+		It("is nocase by default", func() {
+			DeferCleanup(configtest.SetupConfig())
+			Expect(sortCollation()).To(Equal("nocase"))
+		})
+		It("is the natural collation when enabled", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableNaturalSorting = true
+			Expect(sortCollation()).To(Equal(db.NaturalCollation))
 		})
 	})
 })

@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -36,6 +37,55 @@ var _ = Describe("AlbumRepository", func() {
 	BeforeEach(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
 		albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+	})
+
+	Describe("natural sorting", func() {
+		var ids []string
+
+		insertAlbums := func() {
+			ids = nil
+			for _, n := range []string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"} {
+				aid := "nat-" + n
+				ids = append(ids, aid)
+				Expect(albumRepo.Put(&model.Album{
+					ID: aid, LibraryID: 1, Name: n, OrderAlbumName: n,
+				})).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": ids}))
+			})
+		}
+
+		sortedNames := func() []string {
+			albums, err := albumRepo.GetAll(model.QueryOptions{
+				Sort: "name", Filters: squirrel.Eq{"album.id": ids},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(albums, func(a model.Album) string { return a.Name })
+		}
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			insertAlbums()
+		})
+
+		It("sorts lexicographically by default", func() {
+			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(sortedNames()).To(Equal([]string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"}))
+		})
+
+		It("sorts numbers by value when EnableNaturalSorting is enabled", func() {
+			conf.Server.EnableNaturalSorting = true
+			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(sortedNames()).To(Equal([]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}))
+		})
+
+		It("sorts numbers by value with PreferSortTags enabled too", func() {
+			conf.Server.EnableNaturalSorting = true
+			conf.Server.PreferSortTags = true
+			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+			Expect(sortedNames()).To(Equal([]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}))
+		})
 	})
 
 	Describe("Get", func() {
