@@ -10,6 +10,7 @@ export const emptyLyricLayers = Object.freeze({
 
 const MAX_LYRIC_CACHE_ENTRIES = 75
 const NEGATIVE_CACHE_TTL_MS = 30_000
+const COOLDOWN_PATTERN = /(?:cooldown active for|retry after)\s+(\d+)s/gi
 
 const cache = new Map()
 const inFlight = new Map()
@@ -22,6 +23,15 @@ const normalizeLyricLayers = (layers) => ({
 
 const readStructuredLyrics = (response) =>
   response?.json?.['subsonic-response']?.lyricsList?.structuredLyrics || []
+
+const retryDelayFromError = (error) => {
+  const serverMessage =
+    error?.body?.['subsonic-response']?.error?.message || error?.message || ''
+  const matches = [...String(serverMessage).matchAll(COOLDOWN_PATTERN)]
+  if (matches.length === 0) return null
+  const seconds = Math.max(...matches.map((match) => Number(match[1])))
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null
+}
 
 const buildCacheKey = ({ trackId, preferredLanguage, updatedAt }) =>
   [trackId || '', updatedAt || '', preferredLanguage || ''].join('\u0000')
@@ -117,8 +127,10 @@ const useEnhancedLyrics = ({
     layers: emptyLyricLayers,
     loading: false,
     error: null,
+    retryAt: null,
   }))
   const [requestGeneration, setRequestGeneration] = useState(0)
+  const [, setCountdownTick] = useState(0)
 
   const retry = useCallback(() => {
     cache.delete(cacheKey)
@@ -132,13 +144,20 @@ const useEnhancedLyrics = ({
         layers: emptyLyricLayers,
         loading: false,
         error: null,
+        retryAt: null,
       })
       return undefined
     }
 
     const cached = readCachedLyrics(cacheKey)
     if (cached) {
-      setState({ cacheKey, layers: cached, loading: false, error: null })
+      setState({
+        cacheKey,
+        layers: cached,
+        loading: false,
+        error: null,
+        retryAt: null,
+      })
       return undefined
     }
 
@@ -153,12 +172,19 @@ const useEnhancedLyrics = ({
       layers: emptyLyricLayers,
       loading: true,
       error: null,
+      retryAt: null,
     })
 
     request.promise
       .then((layers) => {
         if (!active) return
-        setState({ cacheKey, layers, loading: false, error: null })
+        setState({
+          cacheKey,
+          layers,
+          loading: false,
+          error: null,
+          retryAt: null,
+        })
       })
       .catch((error) => {
         if (!active || error?.name === 'AbortError') return
@@ -168,6 +194,10 @@ const useEnhancedLyrics = ({
           layers: emptyLyricLayers,
           loading: false,
           error,
+          retryAt: (() => {
+            const delay = retryDelayFromError(error)
+            return delay == null ? null : Date.now() + delay
+          })(),
         })
       })
 
@@ -184,11 +214,34 @@ const useEnhancedLyrics = ({
     trackId,
   ])
 
+  useEffect(() => {
+    if (
+      state.cacheKey !== cacheKey ||
+      state.retryAt == null ||
+      disabled ||
+      !requested
+    ) {
+      return undefined
+    }
+
+    const retryDelay = Math.max(0, state.retryAt - Date.now())
+    const retryTimer = window.setTimeout(retry, retryDelay)
+    const countdownTimer = window.setInterval(
+      () => setCountdownTick((current) => current + 1),
+      1_000,
+    )
+    return () => {
+      window.clearTimeout(retryTimer)
+      window.clearInterval(countdownTimer)
+    }
+  }, [cacheKey, disabled, requested, retry, state.cacheKey, state.retryAt])
+
   if (state.cacheKey !== cacheKey) {
     return {
       layers: emptyLyricLayers,
       loading: Boolean(trackId && !disabled && requested),
       error: null,
+      retryAfterSeconds: null,
       retry,
     }
   }
@@ -196,6 +249,10 @@ const useEnhancedLyrics = ({
     layers: state.layers,
     loading: state.loading,
     error: state.error,
+    retryAfterSeconds:
+      state.retryAt == null
+        ? null
+        : Math.max(1, Math.ceil((state.retryAt - Date.now()) / 1_000)),
     retry,
   }
 }

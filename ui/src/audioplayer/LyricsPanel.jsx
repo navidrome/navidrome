@@ -417,6 +417,7 @@ const LyricsPanel = ({
   inline = false,
   loading = false,
   error = null,
+  errorMessage = null,
   labels = {},
 }) => {
   const classes = useStyles()
@@ -675,7 +676,7 @@ const LyricsPanel = ({
     const message = loading
       ? labels.loading || 'Loading lyrics'
       : error
-        ? labels.unavailable || 'Lyrics unavailable'
+        ? errorMessage || labels.unavailable || 'Lyrics unavailable'
         : labels.empty || 'No lyrics available'
     return (
       <div

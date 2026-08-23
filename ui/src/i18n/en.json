@@ -658,6 +658,7 @@
     "lyricsTitleText": "Lyrics",
     "lyricsLoadingText": "Loading lyrics",
     "lyricsUnavailableText": "Lyrics unavailable",
+    "lyricsRateLimitedText": "Remote lyrics are rate-limited. Retrying in %{smart_count} second. |||| Remote lyrics are rate-limited. Retrying in %{smart_count} seconds.",
     "resizeLyricsSidebarText": "Resize lyrics sidebar",
     "showLyricsTranslationText": "Show translation",
     "hideLyricsTranslationText": "Hide translation",

@@ -27,6 +27,7 @@ const usePlayerLyrics = ({
     layers: lyricLayers,
     loading: lyricsLoading,
     error: lyricsError,
+    retryAfterSeconds: lyricsRetryAfterSeconds,
     retry: retryLyrics,
   } = useEnhancedLyrics({
     trackId,
@@ -56,6 +57,12 @@ const usePlayerLyrics = ({
       toggle: translate('player.toggleLyricText'),
       loading: translate('player.lyricsLoadingText'),
       unavailable: translate('player.lyricsUnavailableText'),
+      rateLimited:
+        lyricsRetryAfterSeconds == null
+          ? null
+          : translate('player.lyricsRateLimitedText', {
+              smart_count: lyricsRetryAfterSeconds,
+            }),
       empty: translate('player.emptyLyricText'),
       resize: translate('player.resizeLyricsSidebarText'),
       showTranslation: translate('player.showLyricsTranslationText'),
@@ -63,7 +70,7 @@ const usePlayerLyrics = ({
       showPronunciation: translate('player.showLyricsPronunciationText'),
       hidePronunciation: translate('player.hideLyricsPronunciationText'),
     }),
-    [translate],
+    [lyricsRetryAfterSeconds, translate],
   )
 
   const toggleLyrics = useCallback(() => {
@@ -118,6 +125,7 @@ const usePlayerLyrics = ({
       audioInstance,
       loading: lyricsLoading,
       error: lyricsError,
+      errorMessage: labels.rateLimited,
       labels,
       obscuredByQueue,
       returnFocusRef: lyricsToggleRef,
@@ -160,6 +168,7 @@ const usePlayerLyrics = ({
           audioInstance={audioInstance}
           loading={lyricsLoading}
           error={lyricsError}
+          errorMessage={labels.rateLimited}
           labels={labels}
           inline
         />

@@ -944,6 +944,18 @@ describe('<LyricsPanel />', () => {
     )
   })
 
+  it('explains a temporary lyrics cooldown', () => {
+    renderPanel({
+      mainLyric: null,
+      error: new Error('rate limited'),
+      errorMessage: 'Remote lyrics are rate-limited. Retrying in 30 seconds.',
+    })
+
+    expect(screen.getByTestId('lyrics-empty-state')).toHaveTextContent(
+      'Remote lyrics are rate-limited. Retrying in 30 seconds.',
+    )
+  })
+
   it.each(['light', 'dark'])(
     'keeps future tokens readable and translations subordinate in the %s theme',
     (type) => {

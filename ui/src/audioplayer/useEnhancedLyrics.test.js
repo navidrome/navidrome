@@ -54,6 +54,7 @@ describe('useEnhancedLyrics', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     localStorage.clear()
     clearEnhancedLyricsCache()
   })
@@ -128,6 +129,33 @@ describe('useEnhancedLyrics', () => {
 
     await expectLyric(result, 'Recovered lyrics')
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports a cooldown countdown and retries the current song when it expires', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-23T06:00:00Z'))
+    const cooldownError = new Error('better lyrics API cooldown active for 2s')
+    subsonic.getLyricsBySongId
+      .mockRejectedValueOnce(cooldownError)
+      .mockResolvedValueOnce(responseFor('Recovered after cooldown'))
+
+    const { result } = renderLyrics({ trackId: 'rate-limited-song' })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(result.current.error).toBe(cooldownError)
+    expect(result.current.retryAfterSeconds).toBe(2)
+
+    await act(async () => {
+      vi.advanceTimersByTime(2_000)
+      await Promise.resolve()
+    })
+
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+    expect(result.current.layers.main?.line[0].value).toBe(
+      'Recovered after cooldown',
+    )
   })
 
   it('keeps cached lyrics separate by preferred language', async () => {
