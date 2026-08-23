@@ -68,7 +68,7 @@ var _ = Describe("database backups", func() {
 
 			timesShuffled = make([]time.Time, len(timesDecreasingChronologically))
 			copy(timesShuffled, timesDecreasingChronologically)
-			rand.Shuffle(len(timesShuffled), func(i, j int) {
+			rand.Shuffle(len(timesShuffled), func(i, j int) { //nolint:gosec // shuffling test fixture data, not security-sensitive
 				timesShuffled[i], timesShuffled[j] = timesShuffled[j], timesShuffled[i]
 			})
 

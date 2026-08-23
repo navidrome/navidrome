@@ -100,7 +100,7 @@ func (pd *Queue) Shuffle() {
 		backupID = current.ID
 	}
 
-	rand.Shuffle(len(pd.Items), func(i, j int) { pd.Items[i], pd.Items[j] = pd.Items[j], pd.Items[i] })
+	rand.Shuffle(len(pd.Items), func(i, j int) { pd.Items[i], pd.Items[j] = pd.Items[j], pd.Items[i] }) //nolint:gosec // shuffling a play queue, not security-sensitive
 
 	var err error
 	pd.Index, err = pd.getMediaFileIndexByID(backupID)
