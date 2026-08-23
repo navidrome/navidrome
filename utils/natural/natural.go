@@ -10,10 +10,11 @@ import "strings"
 // or a positive value if a > b using natural sort ordering.
 //
 // When two numeric segments are numerically equal (e.g. "01" vs "1"),
-// comparison continues with the remaining suffixes. If one or both
-// strings end at the digit boundary, the raw strings are compared
-// lexically, which makes leading zeros significant as a tie-breaker
-// (e.g. "a01" < "a1", "a0" < "a00").
+// comparison continues with the remaining suffixes, and the padding
+// difference is kept as a final tie-breaker that only decides strings
+// that are otherwise equal (e.g. "a01" < "a1", "a0" < "a00"). Deferring
+// it that way is what keeps the ordering transitive, which SQLite
+// requires of a collating function.
 func Compare(a, b string) int {
 	return compare(a, b, false)
 }
@@ -26,6 +27,9 @@ func CompareFold(a, b string) int {
 
 func compare(a, b string, fold bool) int {
 	ia, ib := 0, 0
+	// Set when two runs are numerically equal but differently padded. Applying it
+	// immediately would break transitivity, so it only decides otherwise-equal strings.
+	padTie := 0
 	for ia < len(a) && ib < len(b) {
 		ca, cb := a[ia], b[ib]
 		da, db := isDigit(ca), isDigit(cb)
@@ -48,17 +52,11 @@ func compare(a, b string, fold bool) int {
 			if c := compareNumbers(a[ia:endA], b[ib:endB]); c != 0 {
 				return c
 			}
-
-			// Numerically equal. If both sides have trailing data, continue
-			// comparing after the digit runs. Otherwise fall through to
-			// lexical comparison of the full remaining strings (which makes
-			// leading-zero differences significant as a tie-breaker).
-			if endA < len(a) && endB < len(b) {
-				ia = endA
-				ib = endB
-				continue
+			if t := strings.Compare(a[ia:endA], b[ib:endB]); t != 0 {
+				padTie = t
 			}
-			return compareRest(a[ia:], b[ib:], fold)
+			ia = endA
+			ib = endB
 		case da != db:
 			return int(ca) - int(cb)
 		default:
@@ -69,20 +67,10 @@ func compare(a, b string, fold bool) int {
 			ib++
 		}
 	}
-	return (len(a) - ia) - (len(b) - ib)
-}
-
-func compareRest(a, b string, fold bool) int {
-	if !fold {
-		return strings.Compare(a, b)
+	if c := (len(a) - ia) - (len(b) - ib); c != 0 {
+		return c
 	}
-	for i := 0; i < len(a) && i < len(b); i++ {
-		ca, cb := lower(a[i]), lower(b[i])
-		if ca != cb {
-			return int(ca) - int(cb)
-		}
-	}
-	return len(a) - len(b)
+	return padTie
 }
 
 // compareNumbers compares two digit strings numerically.
