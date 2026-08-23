@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -51,10 +52,18 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 		return nil, err
 	}
 
-	result := l.calls.DoChan(lyricsPluginCallKey(mf), func() (any, error) {
+	req := capabilities.GetLyricsRequest{
+		Track: mediaFileToTrackInfo(l.plugin, mf),
+	}
+	key, err := lyricsPluginCallKey(req)
+	if err != nil {
+		return nil, err
+	}
+
+	result := l.calls.DoChan(key, func() (any, error) {
 		callCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lyricsPluginCallTimeout)
 		defer cancel()
-		return l.getLyrics(callCtx, mf)
+		return l.getLyrics(callCtx, mf, req)
 	})
 
 	select {
@@ -72,30 +81,22 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 	}
 }
 
-func lyricsPluginCallKey(mf *model.MediaFile) string {
-	return fmt.Sprintf(
-		"%s\x00%s\x00%d\x00%s\x00%s\x00%s\x00%.3f",
-		mf.ID,
-		mf.Path,
-		mf.UpdatedAt.UnixNano(),
-		mf.Title,
-		mf.Artist,
-		mf.Album,
-		mf.Duration,
-	)
+func lyricsPluginCallKey(req capabilities.GetLyricsRequest) (string, error) {
+	value, err := json.Marshal(req)
+	if err != nil {
+		return "", fmt.Errorf("encode lyrics plugin request key: %w", err)
+	}
+	return string(value), nil
 }
 
 // getLyrics calls the plugin, then content-sniffs each response via
 // model.ParseLyrics (TTML/SRT/YAML/LRC/plain).
-func (l *LyricsPlugin) getLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+func (l *LyricsPlugin) getLyrics(ctx context.Context, mf *model.MediaFile, req capabilities.GetLyricsRequest) (model.LyricList, error) {
 	select {
 	case l.plugin.lyricsSem <- struct{}{}:
 		defer func() { <-l.plugin.lyricsSem }()
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	}
-	req := capabilities.GetLyricsRequest{
-		Track: mediaFileToTrackInfo(l.plugin, mf),
 	}
 	resp, err := callPluginFunction[capabilities.GetLyricsRequest, capabilities.GetLyricsResponse](
 		ctx, l.plugin, FuncLyricsGetLyrics, req,

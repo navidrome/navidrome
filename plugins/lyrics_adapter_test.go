@@ -111,6 +111,54 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(calls[0].method).To(Equal(FuncLyricsGetLyrics))
 		})
 
+		It("does not coalesce requests with different plugin metadata", func() {
+			metrics := &mockMetricsRecorder{}
+			manager, _ := createTestManagerWithPluginsAndMetrics(
+				nil,
+				metrics,
+				"test-lyrics"+PackageExtension,
+			)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+			coalescingProvider := p.(*LyricsPlugin)
+
+			sem := coalescingProvider.plugin.lyricsSem
+			for range cap(sem) {
+				sem <- struct{}{}
+			}
+			DeferCleanup(func() {
+				for len(sem) > 0 {
+					<-sem
+				}
+			})
+
+			start := make(chan struct{})
+			results := make(chan error, 2)
+			tracks := []*model.MediaFile{
+				{ID: "same-id", Title: "Test Song", Artist: "Test Artist", TrackNumber: 1},
+				{ID: "same-id", Title: "Test Song", Artist: "Test Artist", TrackNumber: 2},
+			}
+			for _, track := range tracks {
+				go func() {
+					<-start
+					_, err := coalescingProvider.GetLyrics(GinkgoT().Context(), track)
+					results <- err
+				}()
+			}
+			close(start)
+
+			Consistently(results, "500ms").ShouldNot(Receive())
+			for range cap(sem) {
+				<-sem
+			}
+
+			for range tracks {
+				Eventually(results).Should(Receive(BeNil()))
+			}
+			Expect(metrics.getCalls()).To(HaveLen(2))
+		})
+
 		It("keeps a shared request alive when one caller cancels", func() {
 			metrics := &mockMetricsRecorder{}
 			manager, _ := createTestManagerWithPluginsAndMetrics(
