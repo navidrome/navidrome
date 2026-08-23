@@ -10,6 +10,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -36,6 +37,44 @@ var _ = Describe("AlbumRepository", func() {
 	BeforeEach(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
 		albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+	})
+
+	Describe("natural sorting", func() {
+		var ids []string
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			ids = nil
+			for _, n := range []string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"} {
+				aid := "nat-" + n
+				ids = append(ids, aid)
+				Expect(albumRepo.Put(&model.Album{
+					ID: aid, LibraryID: 1, Name: n, OrderAlbumName: n,
+				})).To(Succeed())
+			}
+			DeferCleanup(func() {
+				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": ids}))
+			})
+		})
+
+		DescribeTable("sorts albums by name",
+			func(naturalSorting, preferSortTags bool, expected []string) {
+				conf.Server.EnableNaturalSorting = naturalSorting
+				conf.Server.PreferSortTags = preferSortTags
+				albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+				albums, err := albumRepo.GetAll(model.QueryOptions{
+					Sort: "name", Filters: squirrel.Eq{"album.id": ids},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(albums, func(a model.Album) string { return a.Name })).To(Equal(expected))
+			},
+			Entry("lexicographically by default", false, false,
+				[]string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"}),
+			Entry("by number value when natural sorting is enabled", true, false,
+				[]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}),
+			Entry("by number value with sort tags preferred too", true, true,
+				[]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}),
+		)
 	})
 
 	Describe("Get", func() {
