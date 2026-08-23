@@ -18,7 +18,7 @@ import (
 )
 
 // StaleAbsentAge is how long an absent state is trusted before a recheck retries it.
-const StaleAbsentAge = 7 * 24 * time.Hour
+const StaleAbsentAge = 30 * 24 * time.Hour
 
 // StaleAbsentRecheckBatch caps how many absent states each hourly tick re-queues per kind,
 // oldest first, so external agents see a flat drip instead of a daily burst.
