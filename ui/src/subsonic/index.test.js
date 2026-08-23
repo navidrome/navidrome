@@ -207,6 +207,25 @@ describe('getLyricsBySongId', () => {
     expect(requestedUrl).toContain('id=song-123')
     expect(requestedUrl).toContain('enhanced=true')
   })
+
+  it('rejects a failed Subsonic lyrics response with its server message', async () => {
+    httpClient.mockResolvedValueOnce({
+      json: {
+        'subsonic-response': {
+          status: 'failed',
+          error: {
+            code: 0,
+            message:
+              'Internal Server Error: better lyrics API cooldown active for 30s',
+          },
+        },
+      },
+    })
+
+    await expect(subsonic.getLyricsBySongId('song-123')).rejects.toThrow(
+      'better lyrics API cooldown active for 30s',
+    )
+  })
 })
 
 describe('getDiscCoverArtUrl', () => {

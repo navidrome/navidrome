@@ -102,6 +102,7 @@ const LyricsSidebar = ({
   audioInstance,
   loading = false,
   error = null,
+  errorMessage = null,
   labels = {},
   returnFocusRef,
 }) => {
@@ -291,6 +292,7 @@ const LyricsSidebar = ({
           audioInstance={audioInstance}
           loading={loading}
           error={error}
+          errorMessage={errorMessage}
           labels={labels}
         />
       </div>
