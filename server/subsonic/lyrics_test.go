@@ -218,6 +218,9 @@ var _ = Describe("GetLyricsBySongId", func() {
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
+		for _, lyric := range response.LyricsList.StructuredLyrics {
+			Expect(lyric.Source).To(BeNil())
+		}
 
 		porTime := int64(18800)
 		ttmlTime := int64(22800)
@@ -274,6 +277,12 @@ var _ = Describe("GetLyricsBySongId", func() {
 
 		response, err := router.GetLyricsBySongId(r)
 		Expect(err).ToNot(HaveOccurred())
+		for _, lyric := range response.LyricsList.StructuredLyrics {
+			Expect(lyric.Source).To(Equal(&responses.LyricsSource{
+				Type:   "sidecar",
+				Format: "ttml",
+			}))
+		}
 
 		mainStartA := int64(1000)
 		mainStartB := int64(2000)

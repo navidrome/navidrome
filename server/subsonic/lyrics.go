@@ -56,6 +56,14 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 
 	if enhanced {
 		structured.Kind = lyrics.EffectiveKind()
+		if lyrics.Source != nil && lyrics.Source.Type != "" {
+			structured.Source = &responses.LyricsSource{
+				Type:     string(lyrics.Source.Type),
+				Name:     lyrics.Source.Name,
+				Provider: lyrics.Source.Provider,
+				Format:   lyrics.Source.Format,
+			}
+		}
 		if len(cueLines) > 0 && len(agents.response) > 0 {
 			structured.Agents = agents.response
 		}

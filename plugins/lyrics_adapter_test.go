@@ -56,6 +56,10 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].Line).ToNot(BeEmpty())
 			Expect(result[0].Line[0].Value).To(ContainSubstring("Test Song"))
+			Expect(result[0].Source).To(Equal(&model.LyricsSource{
+				Type: model.LyricsSourcePlugin,
+				Name: "Test Lyrics",
+			}))
 		})
 
 		It("defaults language to 'xxx' when plugin does not provide one", func() {
@@ -71,6 +75,30 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].Lang).To(Equal("xxx"))
+		})
+
+		It("preserves optional provider provenance from the plugin", func() {
+			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-lyrics": {
+					"source_provider": "unison",
+					"source_format":   "ttml",
+				},
+			}, "test-lyrics"+PackageExtension)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+
+			result, err := p.GetLyrics(GinkgoT().Context(), &model.MediaFile{
+				ID: "track-1", Title: "Test Song", Artist: "Test Artist",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Source).To(Equal(&model.LyricsSource{
+				Type:     model.LyricsSourcePlugin,
+				Name:     "Test Lyrics",
+				Provider: "unison",
+				Format:   "ttml",
+			}))
 		})
 
 		It("blocks new calls while the per-plugin concurrency cap is saturated", func() {

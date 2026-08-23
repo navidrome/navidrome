@@ -21,6 +21,17 @@ var _ = Describe("Lyrics", func() {
 	var mf model.MediaFile
 	var ctx context.Context
 
+	expectLyricsWithSource := func(actual, expected model.LyricList, source model.LyricsSource) {
+		GinkgoHelper()
+		withoutSource := make(model.LyricList, len(actual))
+		copy(withoutSource, actual)
+		for i := range withoutSource {
+			Expect(withoutSource[i].Source).To(Equal(&source))
+			withoutSource[i].Source = nil
+		}
+		Expect(withoutSource).To(Equal(expected))
+	}
+
 	embeddedLyrics := model.LyricList{
 		model.Lyrics{
 			Lang: "xxx",
@@ -162,19 +173,19 @@ var _ = Describe("Lyrics", func() {
 		ctx = GinkgoT().Context()
 	})
 
-	DescribeTable("Lyrics Priority", func(priority string, expected model.LyricList) {
+	DescribeTable("Lyrics Priority", func(priority string, expected model.LyricList, source model.LyricsSource) {
 		conf.Server.LyricsPriority = priority
 		svc := lyrics.NewLyrics(nil, nil)
 		list, err := svc.GetLyrics(ctx, &mf)
 		Expect(err).To(BeNil())
-		Expect(list).To(Equal(expected))
+		expectLyricsWithSource(list, expected, source)
 	},
-		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics),
-		Entry("lrc > embedded > txt", ".lrc,embedded,.txt", syncedLyrics),
-		Entry("elrc > lrc > embedded", ".elrc,.lrc,embedded", elrcLyrics),
-		Entry("srt > txt > embedded", ".srt,.txt,embedded", srtLyrics),
-		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics),
-		Entry("ttml > elrc > lrc > srt > embedded", ".ttml,.elrc,.lrc,.srt,embedded", ttmlLyrics))
+		Entry("embedded > lrc > txt", "embedded,.lrc,.txt", embeddedLyrics, model.LyricsSource{Type: model.LyricsSourceEmbedded}),
+		Entry("lrc > embedded > txt", ".lrc,embedded,.txt", syncedLyrics, model.LyricsSource{Type: model.LyricsSourceSidecar, Format: "lrc"}),
+		Entry("elrc > lrc > embedded", ".elrc,.lrc,embedded", elrcLyrics, model.LyricsSource{Type: model.LyricsSourceSidecar, Format: "elrc"}),
+		Entry("srt > txt > embedded", ".srt,.txt,embedded", srtLyrics, model.LyricsSource{Type: model.LyricsSourceSidecar, Format: "srt"}),
+		Entry("txt > lrc > embedded", ".txt,.lrc,embedded", unsyncedLyrics, model.LyricsSource{Type: model.LyricsSourceSidecar, Format: "txt"}),
+		Entry("ttml > elrc > lrc > srt > embedded", ".ttml,.elrc,.lrc,.srt,embedded", ttmlLyrics, model.LyricsSource{Type: model.LyricsSourceSidecar, Format: "ttml"}))
 
 	It("resolves source priority across duplicate media files", func() {
 		conf.Server.LyricsPriority = ".ttml,embedded"
@@ -196,7 +207,10 @@ var _ = Describe("Lyrics", func() {
 
 		list, err := svc.GetLyricsByArtistTitle(ctx, "Rick Astley", "Never Gonna Give You Up")
 		Expect(err).To(BeNil())
-		Expect(list).To(Equal(ttmlLyrics))
+		expectLyricsWithSource(list, ttmlLyrics, model.LyricsSource{
+			Type:   model.LyricsSourceSidecar,
+			Format: "ttml",
+		})
 	})
 
 	It("preserves configured sidecar suffix casing on case-sensitive filesystems", func() {
@@ -289,7 +303,9 @@ var _ = Describe("Lyrics", func() {
 				svc := lyrics.NewLyrics(nil, nil)
 				list, err := svc.GetLyrics(ctx, &mf)
 				Expect(err).To(BeNil())
-				Expect(list).To(Equal(embeddedLyrics))
+				expectLyricsWithSource(list, embeddedLyrics, model.LyricsSource{
+					Type: model.LyricsSourceEmbedded,
+				})
 			})
 
 			It("should return nothing if error happens when trying to parse file", func() {
@@ -316,7 +332,10 @@ var _ = Describe("Lyrics", func() {
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).To(BeNil())
-			Expect(list).To(Equal(unsyncedLyrics))
+			expectLyricsWithSource(list, unsyncedLyrics, model.LyricsSource{
+				Type: model.LyricsSourcePlugin,
+				Name: "test-lyrics-plugin",
+			})
 		})
 
 		It("should try plugin after embedded returns nothing", func() {
@@ -326,7 +345,10 @@ var _ = Describe("Lyrics", func() {
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).To(BeNil())
-			Expect(list).To(Equal(unsyncedLyrics))
+			expectLyricsWithSource(list, unsyncedLyrics, model.LyricsSource{
+				Type: model.LyricsSourcePlugin,
+				Name: "test-lyrics-plugin",
+			})
 		})
 
 		It("should skip plugin if embedded has lyrics", func() {
@@ -335,7 +357,9 @@ var _ = Describe("Lyrics", func() {
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).To(BeNil())
-			Expect(list).To(Equal(embeddedLyrics)) // embedded wins
+			expectLyricsWithSource(list, embeddedLyrics, model.LyricsSource{
+				Type: model.LyricsSourceEmbedded,
+			})
 		})
 
 		It("should skip unknown plugin names gracefully", func() {
@@ -344,7 +368,9 @@ var _ = Describe("Lyrics", func() {
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).To(BeNil())
-			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
+			expectLyricsWithSource(list, embeddedLyrics, model.LyricsSource{
+				Type: model.LyricsSourceEmbedded,
+			})
 		})
 
 		It("should preserve plugin name case from config", func() {
@@ -354,7 +380,10 @@ var _ = Describe("Lyrics", func() {
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).To(BeNil())
-			Expect(list).To(Equal(unsyncedLyrics))
+			expectLyricsWithSource(list, unsyncedLyrics, model.LyricsSource{
+				Type: model.LyricsSourcePlugin,
+				Name: "MyLyricsPlugin",
+			})
 		})
 
 		It("should handle plugin error gracefully", func() {
@@ -363,7 +392,9 @@ var _ = Describe("Lyrics", func() {
 			svc := lyrics.NewLyrics(nil, mockLoader)
 			list, err := svc.GetLyrics(ctx, &mf)
 			Expect(err).To(BeNil())
-			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
+			expectLyricsWithSource(list, embeddedLyrics, model.LyricsSource{
+				Type: model.LyricsSourceEmbedded,
+			})
 		})
 
 		It("should return a plugin error when no later source has lyrics", func() {
