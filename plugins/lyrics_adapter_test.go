@@ -66,11 +66,15 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 				"test-lyrics"+PackageExtension,
 			)
 
-			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			first, ok := manager.LoadLyricsProvider("test-lyrics")
 			Expect(ok).To(BeTrue())
-			coalescingProvider := p.(*LyricsPlugin)
+			second, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+			firstProvider := first.(*LyricsPlugin)
+			secondProvider := second.(*LyricsPlugin)
+			Expect(firstProvider).ToNot(BeIdenticalTo(secondProvider))
 
-			sem := coalescingProvider.plugin.lyricsSem
+			sem := firstProvider.plugin.lyricsSem
 			for range cap(sem) {
 				sem <- struct{}{}
 			}
@@ -87,10 +91,10 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			start := make(chan struct{})
 			results := make(chan callResult, 2)
 			track := &model.MediaFile{ID: "shared-track", Title: "Test Song", Artist: "Test Artist"}
-			for range 2 {
+			for _, provider := range []*LyricsPlugin{firstProvider, secondProvider} {
 				go func() {
 					<-start
-					lyrics, err := coalescingProvider.GetLyrics(GinkgoT().Context(), track)
+					lyrics, err := provider.GetLyrics(GinkgoT().Context(), track)
 					results <- callResult{lyrics: lyrics, err: err}
 				}()
 			}

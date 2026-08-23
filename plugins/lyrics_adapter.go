@@ -9,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/capabilities"
-	"golang.org/x/sync/singleflight"
 )
 
 const CapabilityLyrics Capability = "Lyrics"
@@ -41,7 +40,6 @@ func newLyricsPlugin(p *plugin) *LyricsPlugin {
 type LyricsPlugin struct {
 	name   string
 	plugin *plugin
-	calls  singleflight.Group
 }
 
 // GetLyrics coalesces concurrent lookups for the same track. The shared call is
@@ -60,7 +58,7 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 		return nil, err
 	}
 
-	result := l.calls.DoChan(key, func() (any, error) {
+	result := l.plugin.lyricsCalls.DoChan(key, func() (any, error) {
 		callCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lyricsPluginCallTimeout)
 		defer cancel()
 		return l.getLyrics(callCtx, mf, req)
