@@ -2,10 +2,13 @@ package plugins
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/capabilities"
+	"golang.org/x/sync/singleflight"
 )
 
 const CapabilityLyrics Capability = "Lyrics"
@@ -17,6 +20,10 @@ const (
 // maxConcurrentLyricsCalls caps in-flight lyrics calls per plugin: clients prefetch
 // lyrics for whole queues, and the resulting burst can rate-limit upstream providers.
 const maxConcurrentLyricsCalls = 2
+
+// lyricsPluginCallTimeout bounds work detached from one caller's request so a
+// disconnected client cannot leave a shared plugin lookup running forever.
+const lyricsPluginCallTimeout = time.Minute
 
 func init() {
 	registerCapability(
@@ -33,11 +40,54 @@ func newLyricsPlugin(p *plugin) *LyricsPlugin {
 type LyricsPlugin struct {
 	name   string
 	plugin *plugin
+	calls  singleflight.Group
 }
 
-// GetLyrics calls the plugin to fetch lyrics, then content-sniffs each response
-// via model.ParseLyrics (TTML/SRT/YAML/LRC/plain).
+// GetLyrics coalesces concurrent lookups for the same track. The shared call is
+// detached from any one request so one disconnected client does not cancel it
+// for the remaining callers.
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	result := l.calls.DoChan(lyricsPluginCallKey(mf), func() (any, error) {
+		callCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lyricsPluginCallTimeout)
+		defer cancel()
+		return l.getLyrics(callCtx, mf)
+	})
+
+	select {
+	case call := <-result:
+		if call.Err != nil {
+			return nil, call.Err
+		}
+		lyricsList, ok := call.Val.(model.LyricList)
+		if !ok {
+			return nil, fmt.Errorf("unexpected lyrics plugin result type %T", call.Val)
+		}
+		return lyricsList, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func lyricsPluginCallKey(mf *model.MediaFile) string {
+	return fmt.Sprintf(
+		"%s\x00%s\x00%d\x00%s\x00%s\x00%s\x00%.3f",
+		mf.ID,
+		mf.Path,
+		mf.UpdatedAt.UnixNano(),
+		mf.Title,
+		mf.Artist,
+		mf.Album,
+		mf.Duration,
+	)
+}
+
+// getLyrics calls the plugin, then content-sniffs each response via
+// model.ParseLyrics (TTML/SRT/YAML/LRC/plain).
+func (l *LyricsPlugin) getLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	select {
 	case l.plugin.lyricsSem <- struct{}{}:
 		defer func() { <-l.plugin.lyricsSem }()
