@@ -113,14 +113,9 @@ func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ..
 	if len(tableName) > 0 {
 		tn = tableName[0]
 	}
-	switch {
-	case conf.Server.PreferSortTags:
+	if conf.Server.PreferSortTags || conf.Server.EnableNaturalSorting {
 		for k, v := range mappings {
 			mappings[k] = mapSortOrder(tn, v)
-		}
-	case conf.Server.EnableNaturalSorting:
-		for k, v := range mappings {
-			mappings[k] = mapNaturalOrder(tn, v)
 		}
 	}
 	r.sortMappings = mappings

@@ -97,19 +97,14 @@ func collatedSort(col string) string {
 	return fmt.Sprintf("(%s collate %s)", col, sortCollation())
 }
 
-// mapNaturalOrder qualifies the order_* columns and applies the natural collation.
-// Used when sort_* columns are not preferred, so mapSortOrder does not run.
-func mapNaturalOrder(tableName, order string) string {
-	order = strings.ToLower(order)
-	repl := fmt.Sprintf("(%[1]s.order_$1 collate %[2]s)", tableName, db.NaturalCollation)
-	return sortOrderRegex.ReplaceAllString(order, repl)
-}
-
-// Convert the order_* columns to an expression using sort_* columns. Example:
-// sort_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
+// Convert the order_* columns to a collated sort expression, falling back to the
+// sort_* column when those are preferred. Example:
+// order_album_name -> (coalesce(nullif(sort_album_name,”),order_album_name) collate nocase)
 // It finds order column names anywhere in the substring
 func mapSortOrder(tableName, order string) string {
-	order = strings.ToLower(order)
-	repl := fmt.Sprintf("(coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1) collate %[2]s)", tableName, sortCollation())
-	return sortOrderRegex.ReplaceAllString(order, repl)
+	col := tableName + ".order_$1"
+	if conf.Server.PreferSortTags {
+		col = fmt.Sprintf("coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1)", tableName)
+	}
+	return sortOrderRegex.ReplaceAllString(strings.ToLower(order), collatedSort(col))
 }

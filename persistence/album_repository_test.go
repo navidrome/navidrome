@@ -69,23 +69,20 @@ var _ = Describe("AlbumRepository", func() {
 			insertAlbums()
 		})
 
-		It("sorts lexicographically by default", func() {
-			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
-			Expect(sortedNames()).To(Equal([]string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"}))
-		})
-
-		It("sorts numbers by value when EnableNaturalSorting is enabled", func() {
-			conf.Server.EnableNaturalSorting = true
-			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
-			Expect(sortedNames()).To(Equal([]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}))
-		})
-
-		It("sorts numbers by value with PreferSortTags enabled too", func() {
-			conf.Server.EnableNaturalSorting = true
-			conf.Server.PreferSortTags = true
-			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
-			Expect(sortedNames()).To(Equal([]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}))
-		})
+		DescribeTable("sorts albums by name",
+			func(naturalSorting, preferSortTags bool, expected []string) {
+				conf.Server.EnableNaturalSorting = naturalSorting
+				conf.Server.PreferSortTags = preferSortTags
+				albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+				Expect(sortedNames()).To(Equal(expected))
+			},
+			Entry("lexicographically by default", false, false,
+				[]string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"}),
+			Entry("by number value when natural sorting is enabled", true, false,
+				[]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}),
+			Entry("by number value with sort tags preferred too", true, true,
+				[]string{"foo 1", "foo 2", "foo 3", "foo 10", "foo 20"}),
+		)
 	})
 
 	Describe("Get", func() {
