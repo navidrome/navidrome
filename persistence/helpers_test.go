@@ -6,7 +6,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/db"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -121,27 +120,18 @@ var _ = Describe("Helpers", func() {
 		})
 	})
 
-	Describe("collatedSort", func() {
-		It("wraps a plain column with the default collation", func() {
+	Describe("naturalSort", func() {
+		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			Expect(collatedSort("name")).To(Equal("(name collate nocase)"))
 		})
-		It("wraps a plain column with the natural collation when enabled", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableNaturalSorting = true
-			Expect(collatedSort("name")).To(Equal("(name collate NATSORT)"))
-		})
-	})
 
-	Describe("sortCollation", func() {
-		It("is nocase by default", func() {
-			DeferCleanup(configtest.SetupConfig())
-			Expect(sortCollation()).To(Equal("nocase"))
+		It("leaves the column alone by default, keeping its declared collation", func() {
+			Expect(naturalSort("media_file.title")).To(Equal("media_file.title"))
 		})
-		It("is the natural collation when enabled", func() {
-			DeferCleanup(configtest.SetupConfig())
+
+		It("applies the natural collation when enabled", func() {
 			conf.Server.EnableNaturalSorting = true
-			Expect(sortCollation()).To(Equal(db.NaturalCollation))
+			Expect(naturalSort("media_file.title")).To(Equal("(media_file.title collate NATSORT)"))
 		})
 	})
 })

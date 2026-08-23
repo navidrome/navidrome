@@ -86,7 +86,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"title":          "order_title",
 		"artist":         "order_artist_name, order_album_name, release_date, disc_number, track_number",
 		"album_artist":   "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, " + collatedSort("media_file.title"),
+		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, " + naturalSort("media_file.title"),
 		"random":         "random",
 		"created_at":     "media_file.created_at",
 		"recently_added": mediaFileRecentlyAddedSort(),

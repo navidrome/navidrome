@@ -84,17 +84,13 @@ func (e existsCond) ToSql() (string, []any, error) {
 
 var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 
-func sortCollation() string {
-	if conf.Server.EnableNaturalSorting {
-		return db.NaturalCollation
+// naturalSort makes a plain text column sort numbers by value, leaving it alone
+// otherwise so it keeps its declared collation. Parens guard buildSortOrder's space split.
+func naturalSort(col string) string {
+	if !conf.Server.EnableNaturalSorting {
+		return col
 	}
-	return "nocase"
-}
-
-// collatedSort wraps a plain text column so it sorts with the configured
-// collation. The parens are required: buildSortOrder splits on spaces.
-func collatedSort(col string) string {
-	return fmt.Sprintf("(%s collate %s)", col, sortCollation())
+	return fmt.Sprintf("(%s collate %s)", col, db.NaturalCollation)
 }
 
 // Convert the order_* columns to a collated sort expression, falling back to the
@@ -106,5 +102,10 @@ func mapSortOrder(tableName, order string) string {
 	if conf.Server.PreferSortTags {
 		col = fmt.Sprintf("coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1)", tableName)
 	}
-	return sortOrderRegex.ReplaceAllString(strings.ToLower(order), collatedSort(col))
+	collation := "nocase"
+	if conf.Server.EnableNaturalSorting {
+		collation = db.NaturalCollation
+	}
+	repl := fmt.Sprintf("(%s collate %s)", col, collation)
+	return sortOrderRegex.ReplaceAllString(strings.ToLower(order), repl)
 }

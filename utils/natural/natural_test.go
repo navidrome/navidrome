@@ -13,17 +13,23 @@ func TestNatural(t *testing.T) {
 	RunSpecs(t, "Natural Suite")
 }
 
+// expectOrder asserts the sign of cmp(a, b) matches expected.
+func expectOrder(cmp func(string, string) int, a, b string, expected int) {
+	result := cmp(a, b)
+	switch {
+	case expected < 0:
+		ExpectWithOffset(1, result).To(BeNumerically("<", 0), "expected %q < %q", a, b)
+	case expected > 0:
+		ExpectWithOffset(1, result).To(BeNumerically(">", 0), "expected %q > %q", a, b)
+	default:
+		ExpectWithOffset(1, result).To(Equal(0), "expected %q == %q", a, b)
+	}
+}
+
 var _ = Describe("Compare", func() {
 	DescribeTable("returns correct ordering",
 		func(a, b string, expected int) {
-			result := natural.Compare(a, b)
-			if expected < 0 {
-				Expect(result).To(BeNumerically("<", 0), "expected %q < %q", a, b)
-			} else if expected > 0 {
-				Expect(result).To(BeNumerically(">", 0), "expected %q > %q", a, b)
-			} else {
-				Expect(result).To(Equal(0), "expected %q == %q", a, b)
-			}
+			expectOrder(natural.Compare, a, b, expected)
 		},
 		// Basic string ordering
 		Entry("a < b", "a", "b", -1),
@@ -118,15 +124,7 @@ var _ = Describe("Compare", func() {
 var _ = Describe("CompareFold", func() {
 	DescribeTable("orders case-insensitively",
 		func(a, b string, expected int) {
-			result := natural.CompareFold(a, b)
-			switch {
-			case expected < 0:
-				Expect(result).To(BeNumerically("<", 0), "expected %q < %q", a, b)
-			case expected > 0:
-				Expect(result).To(BeNumerically(">", 0), "expected %q > %q", a, b)
-			default:
-				Expect(result).To(Equal(0), "expected %q == %q", a, b)
-			}
+			expectOrder(natural.CompareFold, a, b, expected)
 		},
 		Entry("numbers compare numerically", "foo 2", "foo 10", -1),
 		Entry("numbers compare numerically, reversed", "foo 10", "foo 2", 1),

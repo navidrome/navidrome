@@ -42,7 +42,8 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("natural sorting", func() {
 		var ids []string
 
-		insertAlbums := func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
 			ids = nil
 			for _, n := range []string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"} {
 				aid := "nat-" + n
@@ -54,19 +55,6 @@ var _ = Describe("AlbumRepository", func() {
 			DeferCleanup(func() {
 				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": ids}))
 			})
-		}
-
-		sortedNames := func() []string {
-			albums, err := albumRepo.GetAll(model.QueryOptions{
-				Sort: "name", Filters: squirrel.Eq{"album.id": ids},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			return slice.Map(albums, func(a model.Album) string { return a.Name })
-		}
-
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			insertAlbums()
 		})
 
 		DescribeTable("sorts albums by name",
@@ -74,7 +62,11 @@ var _ = Describe("AlbumRepository", func() {
 				conf.Server.EnableNaturalSorting = naturalSorting
 				conf.Server.PreferSortTags = preferSortTags
 				albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
-				Expect(sortedNames()).To(Equal(expected))
+				albums, err := albumRepo.GetAll(model.QueryOptions{
+					Sort: "name", Filters: squirrel.Eq{"album.id": ids},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(albums, func(a model.Album) string { return a.Name })).To(Equal(expected))
 			},
 			Entry("lexicographically by default", false, false,
 				[]string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"}),
