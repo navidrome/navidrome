@@ -418,8 +418,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
-	m.mu.Lock()
-	m.plugins[p.ID] = &plugin{
+	newPlugin := &plugin{
 		name:           p.ID,
 		path:           p.Path,
 		manifest:       pkg.Manifest,
@@ -433,11 +432,15 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		fsConfig:       fsConfig,
 		lyricsSem:      make(chan struct{}, maxConcurrentLyricsCalls),
 	}
+	m.mu.Lock()
+	m.plugins[p.ID] = newPlugin
 	m.mu.Unlock()
 	loaded = true
 
-	// Call plugin init function
-	callPluginInit(ctx, m.plugins[p.ID])
+	// Call plugin init function - use the local reference rather than reading m.plugins[p.ID]
+	// back out, since other plugins loading concurrently via loadEnabledPlugins's errgroup may
+	// be writing to that same map right now; reading it here without the lock raced with them.
+	callPluginInit(ctx, newPlugin)
 
 	return nil
 }

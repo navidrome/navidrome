@@ -92,10 +92,16 @@ func (r *podcastChannelRepository) isPermitted() bool {
 func (r *podcastChannelRepository) selectChannel(options ...model.QueryOptions) SelectBuilder {
 	user := loggedUser(r.ctx)
 	userID := user.ID
+	// sub_id/sub_download_policy/the retention & storage counts are non-nullable Go types (see
+	// dbPodcastChannel), but the left join below legitimately has no matching row whenever the
+	// caller has no subscription to this channel (e.g. every adminContext-driven read, which
+	// joins against an empty/sentinel user id that no real subscription row ever has) - without
+	// the COALESCE, that NULL fails to scan into those columns instead of leaving SubID empty the
+	// way PostScan expects.
 	sql := r.newSelect(options...).Columns("podcast_channel.*",
-		"ps.id as sub_id", "ps.download_policy as sub_download_policy",
-		"ps.retention_count as sub_retention_count", "ps.retention_days as sub_retention_days",
-		"ps.max_storage_mb as sub_max_storage_mb", "ps.created_at as sub_created_at", "ps.updated_at as sub_updated_at",
+		"coalesce(ps.id, '') as sub_id", "coalesce(ps.download_policy, '') as sub_download_policy",
+		"coalesce(ps.retention_count, 0) as sub_retention_count", "coalesce(ps.retention_days, 0) as sub_retention_days",
+		"coalesce(ps.max_storage_mb, 0) as sub_max_storage_mb", "ps.created_at as sub_created_at", "ps.updated_at as sub_updated_at",
 	)
 	if user.IsAdmin || userID == invalidUserId {
 		return sql.LeftJoin("podcast_subscription ps on ps.channel_id = podcast_channel.id and ps.user_id = ?", userID)
