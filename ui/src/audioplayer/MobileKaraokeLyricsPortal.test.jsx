@@ -38,6 +38,22 @@ const { defaultLyricsResponse, useEnhancedLyricsMock } = vi.hoisted(() => {
   }
 })
 
+const sourcedLyricsResponse = {
+  ...defaultLyricsResponse,
+  layers: {
+    ...defaultLyricsResponse.layers,
+    main: {
+      ...defaultLyricsResponse.layers.main,
+      source: {
+        type: 'plugin',
+        name: 'Better Lyrics',
+        provider: 'ttml',
+        format: 'ttml',
+      },
+    },
+  },
+}
+
 vi.mock('./useEnhancedLyrics', () => ({
   default: useEnhancedLyricsMock,
 }))
@@ -196,6 +212,23 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     await waitFor(() => expect(layer).toHaveAttribute('aria-hidden', 'false'))
     expect(layer).not.toHaveAttribute('inert')
     expect(layer).toHaveStyle({ pointerEvents: 'auto' })
+  })
+
+  it('closes the source popover when the queue obscures mobile lyrics', async () => {
+    useEnhancedLyricsMock.mockImplementation(() => sourcedLyricsResponse)
+    const host = createHost()
+    const { rerender } = render(<MobileLyricsHarness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle lyrics' }))
+    const sourceButton = await within(host).findByTestId('lyrics-source-button')
+    fireEvent.click(sourceButton)
+    expect(screen.getByRole('dialog')).toBeVisible()
+
+    rerender(<MobileLyricsHarness obscuredByQueue />)
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    )
   })
 
   it('attaches when the mobile cover host appears after activation', async () => {

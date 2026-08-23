@@ -31,6 +31,12 @@ const lyric = {
   synced: true,
   line: [{ start: 0, end: 1000, value: 'Main line' }],
 }
+const source = {
+  type: 'plugin',
+  name: 'Better Lyrics',
+  provider: 'ttml',
+  format: 'ttml',
+}
 const originalPointerEvent = window.PointerEvent
 
 const ControlledLyricsSidebar = ({
@@ -182,6 +188,21 @@ describe('<LyricsSidebar />', () => {
     expect(sidebar).toHaveStyle({ pointerEvents: 'auto' })
     expect(sidebar).toHaveAttribute('aria-hidden', 'false')
     expect(sidebar).not.toHaveAttribute('inert')
+  })
+
+  it('closes the source popover when the queue obscures the sidebar', async () => {
+    const { rerender } = renderSidebar({ source })
+
+    fireEvent.click(screen.getByRole('button', { name: 'View lyrics source' }))
+    expect(screen.getByRole('dialog', { name: 'Lyrics source' })).toBeVisible()
+
+    rerender(sidebarView({ source, obscuredByQueue: true }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Lyrics source' }),
+      ).not.toBeInTheDocument(),
+    )
   })
 
   it('clamps controlled keyboard resizing to the available width', () => {

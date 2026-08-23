@@ -176,13 +176,14 @@ const LyricsLayerControls = ({
   onToggleTranslation,
   onTogglePronunciation,
   source,
+  active = true,
   labels = {},
   testId = 'lyrics-layer-controls',
 }) => {
   const classes = useStyles()
   const [sourceAnchor, setSourceAnchor] = useState(null)
   const sourcePopoverId = `${testId}-source-popover`
-  const sourceOpen = Boolean(source && sourceAnchor)
+  const sourceOpen = Boolean(active && source && sourceAnchor)
   const sourceDetails = [
     {
       label: labels.provider || 'Provider',
@@ -195,8 +196,8 @@ const LyricsLayerControls = ({
   ].filter((detail) => detail.value)
 
   useEffect(() => {
-    if (!source) setSourceAnchor(null)
-  }, [source])
+    if (!active || !source) setSourceAnchor(null)
+  }, [active, source])
 
   return (
     <div

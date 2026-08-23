@@ -280,6 +280,7 @@ const LyricsSidebar = ({
           onTogglePronunciation={onTogglePronunciation}
           onToggleTranslation={onToggleTranslation}
           source={source}
+          active={interactive}
           labels={labels}
           testId="lyrics-sidebar-floating-controls"
         />

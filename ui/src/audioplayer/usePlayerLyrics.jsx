@@ -195,6 +195,7 @@ const usePlayerLyrics = ({
           onToggleTranslation={toggleTranslation}
           onTogglePronunciation={togglePronunciation}
           source={lyricsSource}
+          active={useInlineMobileLyrics && !obscuredByQueue}
           labels={labels}
           testId="lyrics-mobile-layer-controls"
         />
