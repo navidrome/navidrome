@@ -2,7 +2,9 @@ package log
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -92,7 +94,7 @@ var _ = Describe("Logger", func() {
 			SetLogSourceLine(true)
 			Error("A crash happened")
 			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:93"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:95"))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
@@ -275,5 +277,19 @@ var _ = Describe("Logger", func() {
 			Entry("ApiKey", "ApiKey"),
 			Entry("APIKEY", "APIKEY"),
 		)
+
+		It("redacts sensitive request headers in a logged header blob", func() {
+			h := http.Header{
+				"Authorization":        {`MediaBrowser Client="Finamp", Token="jwt-secret"`},
+				"X-Emby-Token":         {"emby-secret"},
+				"X-Mediabrowser-Token": {"mb-secret"},
+				"X-Nd-Authorization":   {"Bearer nd-secret"},
+				"User-Agent":           {"Finamp/1.0"},
+			}
+			blob, _ := json.Marshal(h)
+			got := Redact(string(blob))
+			Expect(got).ToNot(ContainSubstring("secret"))
+			Expect(got).To(ContainSubstring(`"User-Agent":["Finamp/1.0"]`))
+		})
 	})
 })
