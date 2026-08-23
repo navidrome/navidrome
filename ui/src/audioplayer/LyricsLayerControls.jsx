@@ -1,10 +1,47 @@
 import IconButton from '@material-ui/core/IconButton'
+import Popover from '@material-ui/core/Popover'
 import Tooltip from '@material-ui/core/Tooltip'
+import Typography from '@material-ui/core/Typography'
 import { alpha, makeStyles } from '@material-ui/core/styles'
+import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined'
 import RecordVoiceOverIcon from '@material-ui/icons/RecordVoiceOver'
 import TranslateIcon from '@material-ui/icons/Translate'
 import clsx from 'clsx'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+
+const UPPERCASE_SOURCE_VALUES = new Set([
+  'elrc',
+  'lrc',
+  'srt',
+  'ttml',
+  'txt',
+  'yaml',
+])
+
+const formatSourceValue = (value) => {
+  const normalized = typeof value === 'string' ? value.trim() : ''
+  if (!normalized) return ''
+  if (UPPERCASE_SOURCE_VALUES.has(normalized.toLowerCase())) {
+    return normalized.toUpperCase()
+  }
+  if (normalized.toLowerCase() === 'plain') return 'Plain text'
+  return normalized
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+const getSourceName = (source, labels) => {
+  switch (source?.type) {
+    case 'embedded':
+      return labels.embeddedSource || 'Embedded lyrics'
+    case 'sidecar':
+      return labels.sidecarSource || 'Sidecar file'
+    case 'plugin':
+      return source.name || labels.pluginSource || 'Lyrics plugin'
+    default:
+      return source?.name || formatSourceValue(source?.type) || 'Lyrics'
+  }
+}
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -66,6 +103,36 @@ const useStyles = makeStyles(
       },
     },
     controlActive: {},
+    sourcePopover: {
+      minWidth: 200,
+      maxWidth: 280,
+      padding: theme.spacing(1.5, 2),
+    },
+    sourceHeading: {
+      display: 'block',
+      color: alpha(theme.palette.text.primary, 0.58),
+      lineHeight: 1.4,
+    },
+    sourceName: {
+      marginTop: theme.spacing(0.25),
+      color: theme.palette.text.primary,
+      overflowWrap: 'anywhere',
+    },
+    sourceDetails: {
+      display: 'grid',
+      gridTemplateColumns: 'auto minmax(0, 1fr)',
+      columnGap: theme.spacing(1.5),
+      rowGap: theme.spacing(0.5),
+      marginTop: theme.spacing(1),
+    },
+    sourceDetailLabel: {
+      color: alpha(theme.palette.text.primary, 0.58),
+    },
+    sourceDetailValue: {
+      color: theme.palette.text.primary,
+      textAlign: 'right',
+      overflowWrap: 'anywhere',
+    },
   }),
   { name: 'NDLyricsLayerControls' },
 )
@@ -108,10 +175,28 @@ const LyricsLayerControls = ({
   pronunciationEnabled,
   onToggleTranslation,
   onTogglePronunciation,
+  source,
   labels = {},
   testId = 'lyrics-layer-controls',
 }) => {
   const classes = useStyles()
+  const [sourceAnchor, setSourceAnchor] = useState(null)
+  const sourcePopoverId = `${testId}-source-popover`
+  const sourceOpen = Boolean(source && sourceAnchor)
+  const sourceDetails = [
+    {
+      label: labels.provider || 'Provider',
+      value: formatSourceValue(source?.provider),
+    },
+    {
+      label: labels.format || 'Format',
+      value: formatSourceValue(source?.format),
+    },
+  ].filter((detail) => detail.value)
+
+  useEffect(() => {
+    if (!source) setSourceAnchor(null)
+  }, [source])
 
   return (
     <div
@@ -122,6 +207,68 @@ const LyricsLayerControls = ({
       data-testid={testId}
       onClick={(event) => event.stopPropagation()}
     >
+      {source && (
+        <>
+          <Tooltip title={labels.viewSource || 'View lyrics source'}>
+            <IconButton
+              size="small"
+              onClick={(event) => setSourceAnchor(event.currentTarget)}
+              aria-label={labels.viewSource || 'View lyrics source'}
+              aria-haspopup="dialog"
+              aria-expanded={sourceOpen}
+              aria-controls={sourceOpen ? sourcePopoverId : undefined}
+              data-testid="lyrics-source-button"
+              className={clsx(classes.controlButton, {
+                [classes.controlActive]: sourceOpen,
+              })}
+            >
+              <InfoOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Popover
+            id={sourcePopoverId}
+            open={sourceOpen}
+            anchorEl={sourceAnchor}
+            onClose={() => setSourceAnchor(null)}
+            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            PaperProps={{ className: classes.sourcePopover }}
+          >
+            <div
+              role="dialog"
+              aria-label={labels.sourceTitle || 'Lyrics source'}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Typography variant="overline" className={classes.sourceHeading}>
+                {labels.sourceTitle || 'Lyrics source'}
+              </Typography>
+              <Typography variant="subtitle2" className={classes.sourceName}>
+                {getSourceName(source, labels)}
+              </Typography>
+              {sourceDetails.length > 0 && (
+                <div className={classes.sourceDetails}>
+                  {sourceDetails.map((detail) => (
+                    <React.Fragment key={detail.label}>
+                      <Typography
+                        variant="caption"
+                        className={classes.sourceDetailLabel}
+                      >
+                        {detail.label}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        className={classes.sourceDetailValue}
+                      >
+                        {detail.value}
+                      </Typography>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Popover>
+        </>
+      )}
       <LayerButton
         active={showPronunciation}
         classes={classes}

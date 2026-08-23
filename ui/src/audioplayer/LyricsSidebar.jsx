@@ -97,6 +97,7 @@ const LyricsSidebar = ({
   showPronunciation,
   translationEnabled,
   pronunciationEnabled,
+  source,
   onToggleTranslation,
   onTogglePronunciation,
   audioInstance,
@@ -278,6 +279,7 @@ const LyricsSidebar = ({
           translationEnabled={translationEnabled}
           onTogglePronunciation={onTogglePronunciation}
           onToggleTranslation={onToggleTranslation}
+          source={source}
           labels={labels}
           testId="lyrics-sidebar-floating-controls"
         />

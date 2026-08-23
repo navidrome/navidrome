@@ -40,6 +40,11 @@ const usePlayerLyrics = ({
   const hasPronunciationLyric = hasStructuredLyricContent(
     lyricLayers.pronunciation,
   )
+  const lyricsSource =
+    lyricLayers.main?.source ||
+    lyricLayers.translation?.source ||
+    lyricLayers.pronunciation?.source ||
+    null
   const { lyricsVisible, showTranslation, showPronunciation } =
     resolveLyricsSidebarState({
       lyricsVisiblePreference,
@@ -69,6 +74,13 @@ const usePlayerLyrics = ({
       hideTranslation: translate('player.hideLyricsTranslationText'),
       showPronunciation: translate('player.showLyricsPronunciationText'),
       hidePronunciation: translate('player.hideLyricsPronunciationText'),
+      viewSource: translate('player.viewLyricsSourceText'),
+      sourceTitle: translate('player.lyricsSourceText'),
+      embeddedSource: translate('player.embeddedLyricsSourceText'),
+      sidecarSource: translate('player.sidecarLyricsSourceText'),
+      pluginSource: translate('player.pluginLyricsSourceText'),
+      provider: translate('player.lyricsProviderText'),
+      format: translate('player.lyricsFormatText'),
     }),
     [lyricsRetryAfterSeconds, translate],
   )
@@ -120,6 +132,7 @@ const usePlayerLyrics = ({
       showPronunciation,
       translationEnabled: hasTranslationLyric,
       pronunciationEnabled: hasPronunciationLyric,
+      source: lyricsSource,
       onToggleTranslation: toggleTranslation,
       onTogglePronunciation: togglePronunciation,
       audioInstance,
@@ -141,6 +154,7 @@ const usePlayerLyrics = ({
       lyricLayers.translation,
       lyricsError,
       lyricsLoading,
+      lyricsSource,
       lyricsVisible,
       obscuredByQueue,
       showPronunciation,
@@ -180,6 +194,7 @@ const usePlayerLyrics = ({
           pronunciationEnabled={hasPronunciationLyric}
           onToggleTranslation={toggleTranslation}
           onTogglePronunciation={togglePronunciation}
+          source={lyricsSource}
           labels={labels}
           testId="lyrics-mobile-layer-controls"
         />
@@ -194,6 +209,7 @@ const usePlayerLyrics = ({
       lyricLayers.translation,
       lyricsError,
       lyricsLoading,
+      lyricsSource,
       labels,
       obscuredByQueue,
       showPronunciation,

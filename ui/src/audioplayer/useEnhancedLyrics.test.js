@@ -13,7 +13,7 @@ vi.mock('../subsonic', () => ({
   },
 }))
 
-const responseFor = (value, lang = 'en') => ({
+const responseFor = (value, lang = 'en', source) => ({
   json: {
     'subsonic-response': {
       lyricsList: {
@@ -23,6 +23,7 @@ const responseFor = (value, lang = 'en') => ({
             lang,
             synced: true,
             line: [{ start: 0, value }],
+            ...(source ? { source } : {}),
           },
         ],
       },
@@ -78,6 +79,23 @@ describe('useEnhancedLyrics', () => {
     rerender({ trackId: 'song-1' })
     await expectLyric(result, 'Track one')
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('preserves source provenance on the selected lyric layer', async () => {
+    const source = {
+      type: 'plugin',
+      name: 'Better Lyrics',
+      provider: 'kugou',
+      format: 'lrc',
+    }
+    subsonic.getLyricsBySongId.mockResolvedValueOnce(
+      responseFor('Sourced lyrics', 'en', source),
+    )
+
+    const { result } = renderLyrics({ trackId: 'song-source' })
+
+    await expectLyric(result, 'Sourced lyrics')
+    expect(result.current.layers.main.source).toEqual(source)
   })
 
   it('clears previous lyrics while loading an uncached track', async () => {
