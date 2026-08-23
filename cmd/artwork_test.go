@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -910,7 +911,7 @@ var _ = Describe("formatStatus", func() {
 	})
 
 	It("states the recheck window and the drip rate the absent counts are bucketed against", func() {
-		Expect(formatStatus(rep)).To(ContainSubstring("168h"))
+		Expect(formatStatus(rep)).To(ContainSubstring(fmt.Sprintf("%gh", artwork.StaleAbsentAge.Hours())))
 		Expect(formatStatus(rep)).To(ContainSubstring("100 per kind per hour"))
 	})
 
