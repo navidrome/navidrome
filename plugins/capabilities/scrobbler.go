@@ -1,10 +1,6 @@
 package capabilities
 
-import (
-	"fmt"
-
-	"github.com/navidrome/navidrome/plugins/types"
-)
+import "github.com/navidrome/navidrome/plugins/types"
 
 // Scrobbler provides scrobbling functionality to external services.
 // This capability allows plugins to submit listening history to services like Last.fm,
@@ -130,8 +126,3 @@ const (
 
 // Error implements the error interface for ScrobblerError.
 func (e ScrobblerError) Error() string { return string(e) }
-
-// ScrobblerErrorRetryLaterIn is ScrobblerErrorRetryLater carrying a delay in seconds.
-func ScrobblerErrorRetryLaterIn(seconds int) ScrobblerError {
-	return ScrobblerError(fmt.Sprintf("scrobbler(retry_later:%d)", seconds))
-}

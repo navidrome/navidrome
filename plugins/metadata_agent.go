@@ -55,6 +55,9 @@ func newMetadataAgent(p *plugin) *MetadataAgent {
 
 var agentRetryLaterRe = regexp.MustCompile(`agent\(retry_later(?::(\d+))?\)`)
 
+// maxRetryInSeconds caps a plugin-requested delay; capping in seconds also avoids overflow.
+const maxRetryInSeconds = 3600
+
 // agentErr keeps a plugin fault distinguishable from a definitive miss: a method the plugin
 // simply does not implement has answered, so it must not count against a caller's back-off.
 func agentErr(err error) error {
@@ -63,10 +66,8 @@ func agentErr(err error) error {
 	}
 	if m := agentRetryLaterRe.FindStringSubmatch(err.Error()); m != nil {
 		var d time.Duration
-		if m[1] != "" {
-			if secs, aerr := strconv.Atoi(m[1]); aerr == nil {
-				d = min(time.Duration(secs)*time.Second, time.Hour)
-			}
+		if secs, aerr := strconv.Atoi(m[1]); aerr == nil {
+			d = time.Duration(min(secs, maxRetryInSeconds)) * time.Second
 		}
 		return errors.Join(&agents.RetryLaterError{RetryIn: d}, err)
 	}

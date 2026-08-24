@@ -238,6 +238,62 @@ func TestBufferedScrobblerHonorsServerDelay(t *testing.T) {
 	})
 }
 
+// The drain visits users in an arbitrary order, so the longest delay must win regardless
+// of which user was seen last.
+func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		buffer := tests.CreateMockedScrobbleBufferRepo()
+		userRepo := tests.CreateMockUserRepo()
+		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
+		_ = userRepo.Put(&model.User{ID: "user2", UserName: "bob"})
+		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
+		scr := &perUserScrobbler{delays: map[string]time.Duration{
+			"user1": 10 * time.Second,
+			"user2": 45 * time.Second,
+		}}
+		bs := newBufferedScrobbler(ds, scr, "test")
+		defer bs.Stop()
+
+		// user2 is enqueued directly so both are buffered before the first drain wakes.
+		_ = buffer.Enqueue("test", "user2", "2", time.Now())
+		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
+		synctest.Wait()
+		if got := scr.attempts.Load(); got != 2 {
+			t.Fatalf("expected both users drained, got %d attempts", got)
+		}
+
+		time.Sleep(30 * time.Second)
+		synctest.Wait()
+		if got := scr.attempts.Load(); got != 2 {
+			t.Fatalf("retried on the shorter delay: %d attempts", got)
+		}
+		time.Sleep(15100 * time.Millisecond)
+		synctest.Wait()
+		if got := scr.attempts.Load(); got != 4 {
+			t.Fatalf("expected a retry after the longest delay, got %d attempts", got)
+		}
+	})
+}
+
+// perUserScrobbler fails every scrobble, asking for a delay that depends on the user.
+type perUserScrobbler struct {
+	delays   map[string]time.Duration
+	attempts atomic.Int32
+}
+
+func (p *perUserScrobbler) IsAuthorized(context.Context, string) bool { return true }
+
+func (p *perUserScrobbler) NowPlaying(context.Context, string, *model.MediaFile, int) error {
+	return nil
+}
+
+func (p *perUserScrobbler) Scrobble(_ context.Context, userId string, _ Scrobble) error {
+	p.attempts.Add(1)
+	return errors.Join(errors.New("429"), &agents.RetryLaterError{RetryIn: p.delays[userId]})
+}
+
+func (p *perUserScrobbler) PlaybackReport(context.Context, PlaybackSession) error { return nil }
+
 // recoveringScrobbler is a race-safe Scrobbler whose error can be toggled while
 // the buffered scrobbler's goroutine is draining, to exercise retry then recovery.
 type recoveringScrobbler struct {

@@ -26,6 +26,10 @@ type PluginLoader interface {
 
 const agentCooldown = time.Minute
 
+// errUnsupported marks an agent that does not implement the requested method: it never ran,
+// so it neither answered nor throttled.
+var errUnsupported = errors.New("agent does not support this method")
+
 // Agents is a meta-agent that aggregates multiple built-in and plugin agents. It tries each enabled agent in order
 // until one returns valid data.
 type Agents struct {
@@ -199,7 +203,7 @@ func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (str
 	return callAgentMethod(ctx, a, "GetArtistMBID", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistMBIDRetriever)
 		if !ok {
-			return "", ErrNotFound
+			return "", errUnsupported
 		}
 		return retriever.GetArtistMBID(ctx, id, name)
 	})
@@ -216,7 +220,7 @@ func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (strin
 	return callAgentMethod(ctx, a, "GetArtistURL", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistURLRetriever)
 		if !ok {
-			return "", ErrNotFound
+			return "", errUnsupported
 		}
 		return retriever.GetArtistURL(ctx, id, name, mbid)
 	})
@@ -233,7 +237,7 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 	return callAgentMethod(ctx, a, "GetArtistBiography", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistBiographyRetriever)
 		if !ok {
-			return "", ErrNotFound
+			return "", errUnsupported
 		}
 		return retriever.GetArtistBiography(ctx, id, name, mbid)
 	})
@@ -252,10 +256,10 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 	overLimit := int(float64(limit) * conf.Server.DevExternalArtistFetchMultiplier)
 
 	start := time.Now()
-	throttled := false
+	var round agentRound
 	for _, enabledAgent := range a.getEnabledAgentNames() {
 		if a.inCooldown(enabledAgent.name) {
-			throttled = true
+			round.throttled = true
 			continue
 		}
 		ag := a.getAgent(enabledAgent)
@@ -270,9 +274,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			continue
 		}
 		similar, err := retriever.GetSimilarArtists(ctx, id, name, mbid, overLimit)
-		if err != nil {
-			throttled = a.noteAgentError(enabledAgent.name, err) || throttled
-		}
+		round.note(a, enabledAgent.name, err)
 		if len(similar) > 0 && err == nil {
 			if log.IsGreaterOrEqualTo(log.LevelTrace) {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
@@ -282,10 +284,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			return similar, err
 		}
 	}
-	if throttled {
-		return nil, ErrRetryLater
-	}
-	return nil, ErrNotFound
+	return nil, round.emptyResult()
 }
 
 func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error) {
@@ -299,7 +298,7 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 	return callAgentSliceMethod(ctx, a, "GetArtistImages", func(ag Interface) ([]ExternalImage, error) {
 		retriever, ok := ag.(ArtistImageRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetArtistImages(ctx, id, name, mbid)
 	})
@@ -320,7 +319,7 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 	return callAgentSliceMethod(ctx, a, "GetArtistTopSongs", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(ArtistTopSongsRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetArtistTopSongs(ctx, id, artistName, mbid, overLimit)
 	})
@@ -334,7 +333,7 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 	return callAgentMethod(ctx, a, "GetAlbumInfo", func(ag Interface) (*AlbumInfo, error) {
 		retriever, ok := ag.(AlbumInfoRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetAlbumInfo(ctx, name, artist, mbid)
 	})
@@ -348,7 +347,7 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 	return callAgentSliceMethod(ctx, a, "GetAlbumImages", func(ag Interface) ([]ExternalImage, error) {
 		retriever, ok := ag.(AlbumImageRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetAlbumImages(ctx, name, artist, mbid)
 	})
@@ -359,7 +358,7 @@ func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, m
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByTrack", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByTrackRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetSimilarSongsByTrack(ctx, id, name, artist, mbid, count)
 	})
@@ -370,7 +369,7 @@ func (a *Agents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, m
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByAlbum", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByAlbumRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetSimilarSongsByAlbum(ctx, id, name, artist, mbid, count)
 	})
@@ -388,19 +387,44 @@ func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid str
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByArtist", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByArtistRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetSimilarSongsByArtist(ctx, id, name, mbid, count)
 	})
 }
 
+// agentRound tallies what the enabled agents did in one dispatch.
+type agentRound struct {
+	throttled bool
+	answered  bool
+}
+
+// note records one agent's outcome, starting its cooldown if it asked to be retried later.
+func (r *agentRound) note(a *Agents, name string, err error) {
+	switch {
+	case errors.Is(err, errUnsupported):
+	case a.noteAgentError(name, err):
+		r.throttled = true
+	default:
+		r.answered = true
+	}
+}
+
+// emptyResult tells a retryable empty round (nobody answered) from a definitive miss.
+func (r *agentRound) emptyResult() error {
+	if r.throttled && !r.answered {
+		return ErrRetryLater
+	}
+	return ErrNotFound
+}
+
 func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
 	var zero T
 	start := time.Now()
-	throttled := false
+	var round agentRound
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
 		if agents.inCooldown(enabledAgent.name) {
-			throttled = true
+			round.throttled = true
 			continue
 		}
 		ag := agents.getAgent(enabledAgent)
@@ -411,8 +435,8 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 			break
 		}
 		result, err := fn(ag)
+		round.note(agents, enabledAgent.name, err)
 		if err != nil {
-			throttled = agents.noteAgentError(enabledAgent.name, err) || throttled
 			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
 			continue
 		}
@@ -422,18 +446,15 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 			return result, nil
 		}
 	}
-	if throttled {
-		return zero, ErrRetryLater
-	}
-	return zero, ErrNotFound
+	return zero, round.emptyResult()
 }
 
 func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
 	start := time.Now()
-	throttled := false
+	var round agentRound
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
 		if agents.inCooldown(enabledAgent.name) {
-			throttled = true
+			round.throttled = true
 			continue
 		}
 		ag := agents.getAgent(enabledAgent)
@@ -444,8 +465,8 @@ func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName
 			break
 		}
 		results, err := fn(ag)
+		round.note(agents, enabledAgent.name, err)
 		if err != nil {
-			throttled = agents.noteAgentError(enabledAgent.name, err) || throttled
 			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
 			continue
 		}
@@ -455,10 +476,7 @@ func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName
 			return results, nil
 		}
 	}
-	if throttled {
-		return nil, ErrRetryLater
-	}
-	return nil, ErrNotFound
+	return nil, round.emptyResult()
 }
 
 var _ Interface = (*Agents)(nil)

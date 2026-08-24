@@ -405,8 +405,8 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		log.Warn(ctx, "Last.fm client.scrobble returned error", "track", s.Title, err)
 		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
-	// 11: service offline; 16: temporarily unavailable; 29: rate limit exceeded.
-	if lfErr.Code == 11 || lfErr.Code == 16 || lfErr.Code == 29 {
+	// 11: service offline; 16: temporarily unavailable. Rate limiting is mapped by the client.
+	if lfErr.Code == 11 || lfErr.Code == 16 || errors.Is(err, scrobbler.ErrRetryLater) {
 		return errors.Join(err, scrobbler.ErrRetryLater)
 	}
 	return errors.Join(err, scrobbler.ErrUnrecoverable)

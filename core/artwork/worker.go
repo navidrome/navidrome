@@ -252,7 +252,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			log.Warn(ctx, "Artwork: Could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	case outcomeFoundStale, outcomeFailed:
-		retryAt := time.Now().Add(max(backoff(item.Attempts), trace.RetryIn()))
+		retryAt := time.Now().Add(retryDelay(item.Attempts, trace.RetryIn()))
 		encoded := trace.encode("")
 		if retryAt.Before(item.EnqueuedAt.Add(giveUpAfter)) {
 			// A mid-flight re-enqueue reset retry_at; stale backoff must not stomp its
@@ -340,4 +340,9 @@ func backoffFor(attempts int, jitter float64) time.Duration {
 
 func backoff(attempts int) time.Duration {
 	return backoffFor(attempts, rand.Float64()*0.8-0.4) //nolint:gosec // retry jitter, not security-sensitive
+}
+
+// retryDelay is how long a failed item waits: our backoff, unless the provider asked for longer.
+func retryDelay(attempts int, hint time.Duration) time.Duration {
+	return max(backoff(attempts), hint)
 }

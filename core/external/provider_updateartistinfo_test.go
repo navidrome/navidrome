@@ -104,6 +104,25 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ag.AssertExpectations(GinkgoT())
 	})
 
+	// Stamping a throttled round would cache the empty result for the whole TTL.
+	It("does not stamp ExternalInfoUpdatedAt when the agents are throttled", func() {
+		originalArtist := &model.Artist{ID: "ar-throttled", Name: "Throttled Artist"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist})
+
+		ag.On("GetArtistMBID", ctx, "ar-throttled", "Throttled Artist").Return("", agents.ErrRetryLater).Once()
+		ag.On("GetArtistImages", ctx, "ar-throttled", "Throttled Artist", "").Return(nil, agents.ErrRetryLater).Once()
+		ag.On("GetArtistBiography", ctx, "ar-throttled", "Throttled Artist", "").Return("", agents.ErrRetryLater).Once()
+		ag.On("GetArtistURL", ctx, "ar-throttled", "Throttled Artist", "").Return("", agents.ErrRetryLater).Once()
+		ag.On("GetSimilarArtists", ctx, "ar-throttled", "Throttled Artist", "", 100).Return(nil, agents.ErrRetryLater).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-throttled", 10, false)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updatedArtist).NotTo(BeNil())
+		Expect(updatedArtist.ExternalInfoUpdatedAt).To(BeNil())
+		ag.AssertExpectations(GinkgoT())
+	})
+
 	It("preserves decoded plain text in biography storage", func() {
 		originalArtist := &model.Artist{
 			ID:   "ar-encoded-bio",

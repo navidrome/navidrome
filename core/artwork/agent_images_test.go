@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -239,6 +240,20 @@ var _ = Describe("agent images", func() {
 			r, _, extErr := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
 			Expect(r).To(BeNil())
 			Expect(extErr).To(BeTrue())
+		})
+
+		// The worker reschedules on trace.RetryIn(), so a server-requested delay is only
+		// honored if the agent loop files it here.
+		It("records the server-requested retry delay on the trace", func() {
+			a := &fakeImageAgent{name: "agentA", err: &agents.RetryLaterError{RetryIn: 10 * time.Second}}
+			b := &fakeImageAgent{name: "agentB", err: agents.ErrNotFound}
+			ag := imageAgents(a, b)
+			t := &ChainTrace{}
+
+			r, _, extErr := fetchArtistImage(withTrace(ctx, t), ag, passthroughGate, model.Artist{ID: "ar1"})
+			Expect(r).To(BeNil())
+			Expect(extErr).To(BeTrue())
+			Expect(t.RetryIn()).To(Equal(10 * time.Second))
 		})
 	})
 

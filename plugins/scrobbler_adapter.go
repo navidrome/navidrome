@@ -180,14 +180,13 @@ func mapScrobblerError(err error) error {
 		return nil
 	}
 	errMsg := err.Error()
+	retryLater := scrobblerRetryLaterRe.FindStringSubmatch(errMsg)
 	switch {
 	case strings.Contains(errMsg, capabilities.ScrobblerErrorNotAuthorized.Error()):
 		return scrobbler.ErrNotAuthorized
-	case scrobblerRetryLaterRe.MatchString(errMsg):
-		if m := scrobblerRetryLaterRe.FindStringSubmatch(errMsg); m[1] != "" {
-			if secs, aerr := strconv.Atoi(m[1]); aerr == nil {
-				return &agents.RetryLaterError{RetryIn: min(time.Duration(secs)*time.Second, time.Hour)}
-			}
+	case retryLater != nil:
+		if secs, aerr := strconv.Atoi(retryLater[1]); aerr == nil {
+			return &agents.RetryLaterError{RetryIn: time.Duration(min(secs, maxRetryInSeconds)) * time.Second}
 		}
 		return scrobbler.ErrRetryLater
 	case strings.Contains(errMsg, capabilities.ScrobblerErrorUnrecoverable.Error()):

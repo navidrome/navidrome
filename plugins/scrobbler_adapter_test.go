@@ -374,6 +374,8 @@ var _ = Describe("mapScrobblerError", func() {
 		Entry("bare token", "scrobbler(retry_later)", time.Duration(0)),
 		Entry("with seconds", "scrobbler(retry_later:30)", 30*time.Second),
 		Entry("capped at 1h", "scrobbler(retry_later:999999)", time.Hour),
+		// Scaling to nanoseconds before capping wraps past 2^64, landing on ~0.29s.
+		Entry("capped before it can overflow", "scrobbler(retry_later:18446744074)", time.Hour),
 		Entry("wrapped in context", "plugin xyz: scrobbler(retry_later:5)", 5*time.Second),
 	)
 

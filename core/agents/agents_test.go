@@ -163,7 +163,7 @@ var _ = Describe("Agents", func() {
 
 		Describe("cooldown", func() {
 			It("skips an agent that returned RetryLaterError until the deadline", func() {
-				mock.Err = &RetryLaterError{RetryIn: 50 * time.Millisecond}
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
 				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
 				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
 
@@ -173,16 +173,71 @@ var _ = Describe("Agents", func() {
 				_, err = ag.GetArtistBiography(ctx, "id", "name", "mbid")
 				Expect(mock.Calls).To(Equal(calls))
 				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+			})
 
-				// After the deadline: called again and succeeds
-				time.Sleep(60 * time.Millisecond)
-				_, err = ag.GetArtistBiography(ctx, "id", "name", "mbid")
-				Expect(err).ToNot(HaveOccurred())
+			It("calls the agent again once the cooldown expires", func() {
+				mock.Err = &RetryLaterError{RetryIn: 10 * time.Millisecond}
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+
+				mock.Err = nil
+				Eventually(func() (string, error) {
+					return ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				}, 5*time.Second, 10*time.Millisecond).Should(Equal("bio"))
 			})
 
 			It("returns ErrNotFound, not ErrRetryLater, when agents failed for other reasons", func() {
 				mock.Err = errors.New("boom")
 				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
+			})
+
+			// ErrRetryLater tells the caller "nobody answered, do not cache this". A definitive
+			// answer from any other agent is an answer, throttled peer or not.
+			It("returns ErrNotFound when another agent answered with a definitive miss", func() {
+				other := &mockAgent{Err: ErrNotFound}
+				Register("fake2", func(model.DataStore) Interface { return other })
+				conf.Server.Agents = "fake,fake2"
+				ag = createAgents(ds, nil)
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
+
+				// The cooldown was still recorded for the throttled agent
+				calls := mock.Calls
+				_, _ = ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(mock.Calls).To(Equal(calls))
+			})
+
+			It("returns ErrNotFound when another agent answered with an empty slice", func() {
+				empty := &testImageAgent{Name: "emptyImages"}
+				Register("emptyImages", func(model.DataStore) Interface { return empty })
+				conf.Server.Agents = "fake,emptyImages"
+				ag = createAgents(ds, nil)
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+
+				_, err := ag.GetArtistImages(ctx, "123", "test", "mb123")
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
+			})
+
+			It("returns ErrRetryLater from GetSimilarArtists when only cooling agents remain", func() {
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+				_, err := ag.GetSimilarArtists(ctx, "123", "test", "mb123", 2)
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+			})
+
+			It("returns ErrNotFound from GetSimilarArtists when another agent answered", func() {
+				other := &mockAgent{Err: ErrNotFound}
+				Register("fake2", func(model.DataStore) Interface { return other })
+				conf.Server.Agents = "fake,fake2"
+				ag = createAgents(ds, nil)
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+
+				_, err := ag.GetSimilarArtists(ctx, "123", "test", "mb123", 2)
 				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
 				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
 			})

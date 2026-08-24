@@ -20,17 +20,18 @@ import (
 )
 
 const (
-	lbzApiUrl  = "https://api.listenbrainz.org/1/"
-	labsBase   = "https://labs.api.listenbrainz.org/"
-	maxRetryIn = time.Hour
+	lbzApiUrl         = "https://api.listenbrainz.org/1/"
+	labsBase          = "https://labs.api.listenbrainz.org/"
+	maxRetryInSeconds = 3600
 )
 
 // retryInFromHeaders reads the server-requested wait: LB sends X-RateLimit-Reset-In (seconds);
 // Retry-After is checked for good measure.
 func retryInFromHeaders(h http.Header) time.Duration {
 	for _, name := range []string{"X-RateLimit-Reset-In", "Retry-After"} {
+		// Capped in seconds: scaling first would let a huge value wrap around to a tiny delay.
 		if secs, err := strconv.Atoi(h.Get(name)); err == nil && secs > 0 {
-			return min(time.Duration(secs)*time.Second, maxRetryIn)
+			return time.Duration(min(secs, maxRetryInSeconds)) * time.Second
 		}
 	}
 	return 0
@@ -203,6 +204,10 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 		return nil, jsonErr
 	}
 	if response.Code != 0 && response.Code != 200 {
+		// LB also reports rate limiting as a body code, not only as an HTTP status.
+		if response.Code == http.StatusTooManyRequests {
+			return &response, &agents.RetryLaterError{RetryIn: retryInFromHeaders(resp.Header)}
+		}
 		return &response, &listenBrainzError{Code: response.Code, Message: response.Error}
 	}
 

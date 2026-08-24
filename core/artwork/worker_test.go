@@ -911,3 +911,19 @@ var _ = Describe("backoff", func() {
 		}
 	})
 })
+
+var _ = Describe("retryDelay", func() {
+	It("uses the backoff schedule when the provider asked for nothing", func() {
+		d := retryDelay(0, 0)
+		Expect(d).To(BeNumerically(">=", 3*time.Second))
+		Expect(d).To(BeNumerically("<=", 7*time.Second))
+	})
+
+	It("waits the provider's delay when it is longer than the backoff", func() {
+		Expect(retryDelay(0, time.Hour)).To(Equal(time.Hour))
+	})
+
+	It("keeps the backoff when it is longer than the provider's delay", func() {
+		Expect(retryDelay(4, time.Second)).To(BeNumerically(">=", 3*time.Second))
+	})
+})
