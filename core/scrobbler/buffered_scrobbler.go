@@ -127,27 +127,26 @@ func (b *bufferedScrobbler) run(ctx context.Context) {
 	timer.Stop()
 	defer timer.Stop()
 	failures := 0
-	var retryDeadline time.Time
+	backingOff := false
 	for {
-		if now := time.Now(); !retryDeadline.IsZero() && now.Before(retryDeadline) {
-			// Woken mid-backoff (a new play enqueued): don't drain early, re-arm for the remainder.
-			timer.Reset(retryDeadline.Sub(now))
-		} else if ok, retryIn := b.processQueue(ctx); ok {
-			failures = 0
-			retryDeadline = time.Time{}
-			timer.Stop()
-		} else {
-			delay := max(backoffDelay(failures), retryIn)
-			retryDeadline = time.Now().Add(delay)
-			timer.Reset(delay)
-			if failures < maxRetryShift {
-				failures++
+		// While a backoff window is open the timer is already armed for the rest of it, so a
+		// wake (a new play enqueued) must not drain: that is the hammering this avoids.
+		if !backingOff {
+			if ok, retryIn := b.processQueue(ctx); ok {
+				failures = 0
+				timer.Stop()
+			} else {
+				timer.Reset(max(backoffDelay(failures), retryIn))
+				backingOff = true
+				if failures < maxRetryShift {
+					failures++
+				}
 			}
 		}
 		select {
 		case <-b.wakeSignal:
 		case <-timer.C:
-			retryDeadline = time.Time{}
+			backingOff = false
 		case <-ctx.Done():
 			return
 		}

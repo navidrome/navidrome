@@ -174,7 +174,7 @@ func mapScrobblerError(err error) error {
 		return nil
 	}
 	errMsg := err.Error()
-	retryLater, isRetryLater := parseRetryLater("scrobbler", errMsg)
+	retryLater, isRetryLater := parseRetryLater(scrobblerRetryLaterRe, errMsg)
 	switch {
 	case strings.Contains(errMsg, capabilities.ScrobblerErrorNotAuthorized.Error()):
 		return scrobbler.ErrNotAuthorized

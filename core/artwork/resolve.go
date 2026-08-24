@@ -25,10 +25,9 @@ type resolution struct {
 	source     string        // model.ItemArtwork.Source value: "folder", "embedded", "external", "upload", "generated"
 	sourcePath string        // backing library/upload file (folder/upload: the image; embedded: the audio file); "" otherwise
 	refMtime   int64         // sourcePath mtime (unix-nanoseconds) at resolution; 0 when no sourcePath
-	// external source errored/timed out. With no reader it forces failed (never absent);
-	// on a hit a higher-priority external step failed—serve this, but retry later. It carries
-	// the provider's requested delay when there was one.
-	extError error
+	// a faulted external source, carrying the provider's requested delay when it named one.
+	// With no reader it forces failed (never absent); on a hit, serve this but retry later.
+	extErr error
 	// a local source that should have been readable wasn't. With no reader it forces failed,
 	// so a transient I/O fault never records absent.
 	localError bool
@@ -45,7 +44,7 @@ type chainState struct {
 // try stamps the accumulated external failure onto a hit, and records the miss otherwise.
 func (c *chainState) try(candidate string, res resolution, ok bool) (resolution, bool) {
 	if ok {
-		res.extError = c.extErr
+		res.extErr = c.extErr
 		c.record(candidate, OutcomeHit, res.sourcePath)
 		return res, true
 	}
@@ -64,7 +63,7 @@ func (c *chainState) record(candidate string, out Outcome, detail string) {
 
 // exhausted is the outcome when no source in the chain yielded an image.
 func (c *chainState) exhausted() resolution {
-	return resolution{extError: c.extErr, localError: c.localErr}
+	return resolution{extErr: c.extErr, localError: c.localErr}
 }
 
 // externalSource holds the agents to ask and the rate limiter/circuit breaker to ask them through.
@@ -391,8 +390,8 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 			}
 			continue
 		}
-		if res.extError != nil {
-			extErr = longerRetry(extErr, res.extError)
+		if res.extErr != nil {
+			extErr = longerRetry(extErr, res.extErr)
 		}
 		if res.reader == nil {
 			continue
@@ -411,7 +410,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		if tileErr != nil {
 			return resolution{}, fmt.Errorf("resolvePlaylist: sampled album art failed: %w", tileErr)
 		}
-		return resolution{extError: extErr}, nil
+		return resolution{extErr: extErr}, nil
 	}
 	// Grow to 4 tiles by repeating what we have.
 	switch len(tiles) {
@@ -422,9 +421,9 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 	}
 	grid, err := assembleTiles(tiles)
 	if err != nil {
-		return resolution{extError: extErr}, nil //nolint:nilerr // encode failure is a soft "no image", not a resolution error
+		return resolution{extErr: extErr}, nil //nolint:nilerr // encode failure is a soft "no image", not a resolution error
 	}
-	return resolution{reader: grid, source: "generated", extError: extErr}, nil
+	return resolution{reader: grid, source: "generated", extErr: extErr}, nil
 }
 
 // resolveRadio serves only an uploaded image; there is no fallback.

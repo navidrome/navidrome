@@ -3,8 +3,6 @@ package plugins
 import (
 	"regexp"
 	"slices"
-	"strconv"
-	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 )
@@ -47,19 +45,23 @@ func hasCapability(capabilities []Capability, cap Capability) bool {
 	return slices.Contains(capabilities, cap)
 }
 
-// retryLaterRe matches the `<capability>(retry_later[:seconds])` token a plugin can put in
-// its error string, which is all a plugin fault carries back across the WASM boundary.
-var retryLaterRe = regexp.MustCompile(`(\w+)\(retry_later(?::(\d+))?\)`)
+// retryLaterRe matches one capability's `<capability>(retry_later[:seconds])` token, which is
+// all a plugin fault carries back across the WASM boundary. The capability is part of the
+// pattern, so another capability's token in the same message cannot mask this one.
+var (
+	agentRetryLaterRe     = retryLaterRe("agent")
+	scrobblerRetryLaterRe = retryLaterRe("scrobbler")
+)
 
-// parseRetryLater reports whether msg carries prefix's retry_later token, with its delay.
-func parseRetryLater(prefix, msg string) (*agents.RetryLaterError, bool) {
-	m := retryLaterRe.FindStringSubmatch(msg)
-	if m == nil || m[1] != prefix {
+func retryLaterRe(capability string) *regexp.Regexp {
+	return regexp.MustCompile(capability + `\(retry_later(?::(\d+))?\)`)
+}
+
+// parseRetryLater reports whether msg carries the capability's retry_later token, with its delay.
+func parseRetryLater(re *regexp.Regexp, msg string) (*agents.RetryLaterError, bool) {
+	m := re.FindStringSubmatch(msg)
+	if m == nil {
 		return nil, false
 	}
-	retry := &agents.RetryLaterError{}
-	if secs, err := strconv.Atoi(m[2]); err == nil && secs > 0 {
-		retry.RetryIn = time.Duration(min(secs, agents.MaxRetryInSeconds)) * time.Second
-	}
-	return retry, true
+	return &agents.RetryLaterError{RetryIn: agents.ParseRetryIn(m[1])}, true
 }

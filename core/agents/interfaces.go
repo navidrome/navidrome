@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gohugoio/hashstructure"
@@ -61,6 +62,7 @@ var ErrNotFound = errors.New("not found")
 // ErrRetryLater is the zero-delay RetryLaterError: the provider is temporarily unavailable
 // or throttling us, but did not say for how long. Both errors.Is(err, ErrRetryLater) and
 // errors.AsType[*RetryLaterError] match it and every delay-carrying variant.
+// Treat it as immutable; build a new RetryLaterError to name a delay.
 var ErrRetryLater = &RetryLaterError{}
 
 // RetryLaterError asks callers to back off, optionally for the delay the provider requested.
@@ -81,9 +83,20 @@ func (e *RetryLaterError) Is(target error) bool {
 }
 
 // MaxRetryIn caps a delay parsed from a provider, so a bogus value cannot park it indefinitely.
-// Clamp in seconds before scaling, or a huge value wraps around to a tiny delay.
 const MaxRetryIn = time.Hour
-const MaxRetryInSeconds = int(MaxRetryIn / time.Second)
+const maxRetryInSeconds = int(MaxRetryIn / time.Second)
+
+// ParseRetryIn reads a provider's delay given in seconds, from a header or a plugin token.
+// Anything unparseable or non-positive means unspecified.
+func ParseRetryIn(seconds string) time.Duration {
+	// Clamp in seconds: scaling first would wrap a huge value past int64 nanoseconds,
+	// turning "wait an age" into a fraction of a second.
+	secs, err := strconv.Atoi(seconds)
+	if err != nil || secs <= 0 {
+		return 0
+	}
+	return time.Duration(min(secs, maxRetryInSeconds)) * time.Second
+}
 
 // AlbumInfoRetriever provides album info (no images)
 type AlbumInfoRetriever interface {

@@ -95,11 +95,11 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
 		return outcomeFailed, nil, 0
 	}
-	if retry, ok := errors.AsType[*agents.RetryLaterError](res.extError); ok {
+	if retry, ok := errors.AsType[*agents.RetryLaterError](res.extErr); ok {
 		retryIn = retry.RetryIn
 	}
 	if res.reader == nil {
-		if res.extError != nil || res.localError {
+		if res.extErr != nil || res.localError {
 			// A fault is not a definitive "no image": never settle absent, keep serving old state.
 			// A chainless resolver (playlist/radio) records no step, so leave a fallback or explain is blank.
 			if t := traceFrom(ctx); len(t.Steps()) == 0 {
@@ -110,7 +110,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 				t.add(TraceStep{Candidate: cmp.Or(res.source, "source"), Outcome: outcome})
 			}
 			log.Debug(ctx, "Artwork: No image, but a source faulted; keeping previous state",
-				"kind", item.ItemKind, "id", item.ItemID, "extError", res.extError, "localError", res.localError)
+				"kind", item.ItemKind, "id", item.ItemID, "extErr", res.extErr, "localError", res.localError)
 			return outcomeFailed, nil, retryIn
 		}
 		return writeAbsent(ctx, repo, item), nil, 0
@@ -174,7 +174,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 		return outcomeFailed, nil, retryIn
 	}
 	got = &acquired{ia: ia, mime: art.Mime, data: data}
-	if res.extError != nil {
+	if res.extErr != nil {
 		log.Debug(ctx, "Artwork: Serving a lower-priority source after an external failure",
 			"kind", item.ItemKind, "id", item.ItemID, "source", res.source)
 		return outcomeFoundStale, got, retryIn

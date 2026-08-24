@@ -11,8 +11,6 @@ import (
 	"net/url"
 	"path"
 	"slices"
-	"strconv"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
@@ -27,11 +25,7 @@ const (
 // retryLaterErr reads the wait ListenBrainz asked for. It sends X-RateLimit-Reset-In
 // (delta-seconds) on every response, including the 429, and never Retry-After.
 func retryLaterErr(h http.Header) *agents.RetryLaterError {
-	retry := &agents.RetryLaterError{}
-	if secs, err := strconv.Atoi(h.Get("X-RateLimit-Reset-In")); err == nil && secs > 0 {
-		retry.RetryIn = time.Duration(min(secs, agents.MaxRetryInSeconds)) * time.Second
-	}
-	return retry
+	return &agents.RetryLaterError{RetryIn: agents.ParseRetryIn(h.Get("X-RateLimit-Reset-In"))}
 }
 
 var (
