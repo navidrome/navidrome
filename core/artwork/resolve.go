@@ -37,7 +37,7 @@ type resolution struct {
 // transient external failure still retries; localErr is dropped, as the scanner re-lists changes.
 type chainState struct {
 	extErr, localErr bool
-	trace            *ChainTrace // nil unless the CLI asked for a trace
+	trace            *ChainTrace // nil only where no caller attached one
 }
 
 // try stamps the accumulated external failure onto a hit, and records the miss otherwise.
@@ -136,6 +136,15 @@ func MayFetchExternal(kind model.Kind) bool {
 
 // ImageAgentCount is how many enabled agents provide artist and album images.
 type ImageAgentCount struct{ Artist, Album int }
+
+// NewImageAgentCount counts what an external step would consult, so an estimate and the gate that
+// guards it cannot disagree about which agents exist.
+func NewImageAgentCount(ag *agents.Agents) ImageAgentCount {
+	if ag == nil {
+		return ImageAgentCount{}
+	}
+	return ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
+}
 
 // ExternalLookupsPerItem reports what resolving one item of this kind can cost: every image agent is
 // tried, and a zero count still bills one, so agents the caller cannot see never read as free.
@@ -354,10 +363,13 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 	}
 	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
 		sf := func() (io.ReadCloser, string, error) { return fromURL(ctx, remoteImg) }
-		if res, ok, isErr := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
+		if res, ok, err := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
 			return res, nil
-		} else if isErr {
+		} else if err != nil {
 			extErr = true
+			// Record it here with its detail: once album sampling adds its own steps, the processor's
+			// empty-trace fallback no longer fires, and the error that forced the retry would be lost.
+			traceFrom(ctx).add(TraceStep{Candidate: ExternalPrefix + "m3u", Outcome: OutcomeError, Detail: err.Error()})
 		}
 	}
 
@@ -461,14 +473,17 @@ func (r *resolver) resolveDisc(ctx context.Context, id string) (resolution, erro
 	return dr.selectImage(ctx, r.ffmpeg, conf.Server.DiscArtPriority, &chain)
 }
 
-// resolveExternalStep runs a single external sourceFunc through the named gate. extErr excludes
-// a not-found, which is a definitive "no" rather than a failure.
-func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolution, ok bool, extErr bool) {
+// resolveExternalStep runs a single external sourceFunc through the named gate. A not-found is a
+// definitive "no", returned as (_, false, nil); any other error is a failure the caller records.
+func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (resolution, bool, error) {
 	r, path, err := gate(name, sf)
 	if r != nil {
-		return resolution{reader: r, source: externalCandidate, sourcePath: path}, true, false
+		return resolution{reader: r, source: externalCandidate, sourcePath: path}, true, nil
 	}
-	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
+	if errors.Is(err, model.ErrNotFound) {
+		return resolution{}, false, nil
+	}
+	return resolution{}, false, err
 }
 
 // classifyPlaylistImage splits a playlist ExternalImageURL into a local filesystem path or a
@@ -561,7 +576,9 @@ func resolveLocalFile(path, source string) (resolution, bool) {
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return resolution{localError: !errors.Is(err, fs.ErrNotExist)}, false
+		// Carry the source label even on a fault, so a resolver with no chain (playlist/radio) can
+		// still name what faulted in the trace.
+		return resolution{source: source, localError: !errors.Is(err, fs.ErrNotExist)}, false
 	}
 	return resolution{reader: f, source: source, sourcePath: path, refMtime: mtimeOf(path)}, true
 }

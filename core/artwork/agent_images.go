@@ -58,7 +58,7 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 		return nil, "", false
 	}
 	for _, a := range imageAgents {
-		reader, _, err := gate(a.Name, func() (io.ReadCloser, string, error) {
+		reader, path, err := gate(a.Name, func() (io.ReadCloser, string, error) {
 			imgs, err := a.Retriever.GetArtistImages(ctx, ar.ID, name, ar.MbzArtistID)
 			if err != nil {
 				return nil, "", err
@@ -69,6 +69,7 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 			}
 			return fromURL(ctx, u)
 		})
+		recordAgent(ctx, a.Name, reader, path, err)
 		if reader != nil {
 			return reader, a.Name, false
 		}
@@ -90,7 +91,7 @@ func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al m
 		return nil, "", false
 	}
 	for _, a := range imageAgents {
-		reader, _, err := gate(a.Name, func() (io.ReadCloser, string, error) {
+		reader, path, err := gate(a.Name, func() (io.ReadCloser, string, error) {
 			imgs, err := a.Retriever.GetAlbumImages(ctx, name, artist, al.MbzAlbumID)
 			if err != nil {
 				return nil, "", err
@@ -101,6 +102,7 @@ func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al m
 			}
 			return fromURL(ctx, u)
 		})
+		recordAgent(ctx, a.Name, reader, path, err)
 		if reader != nil {
 			return reader, a.Name, false
 		}

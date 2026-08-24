@@ -118,7 +118,7 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.Art
 	return res, nil
 }
 
-func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -128,6 +128,7 @@ func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string,
 	if it, ok := m.Data[k]; ok && it.RetryAt.Equal(seenRetryAt) {
 		it.Attempts++
 		it.RetryAt = retryAt
+		it.Trace = trace
 		m.Data[k] = it
 	}
 	return nil
@@ -166,6 +167,30 @@ func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
 	return purged, nil
 }
 
+// queueFilterMatches mirrors artworkQueueFilter, so the mock cannot let a preview and a delete disagree.
+func queueFilterMatches(it model.ArtworkQueueItem, kinds []model.Kind, priorities []int) bool {
+	prefixes := model.KindPrefixes(kinds)
+	return (len(prefixes) == 0 || slices.Contains(prefixes, it.ItemKind)) &&
+		(len(priorities) == 0 || slices.Contains(priorities, it.Priority))
+}
+
+func (m *MockArtworkQueueRepo) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return 0, m.Err
+	}
+	var purged int64
+	for k, it := range m.Data {
+		if !queueFilterMatches(it, kinds, priorities) {
+			continue
+		}
+		delete(m.Data, k)
+		purged++
+	}
+	return purged, nil
+}
+
 func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -175,7 +200,7 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtworkQueueRepo) CountByKindAndPriority() ([]model.ArtworkQueueStat, error) {
+func (m *MockArtworkQueueRepo) CountQueued(kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -183,6 +208,9 @@ func (m *MockArtworkQueueRepo) CountByKindAndPriority() ([]model.ArtworkQueueSta
 	}
 	var res []model.ArtworkQueueStat
 	for _, it := range m.Data {
+		if !queueFilterMatches(it, kinds, priorities) {
+			continue
+		}
 		i := slices.IndexFunc(res, func(s model.ArtworkQueueStat) bool {
 			return s.ItemKind == it.ItemKind && s.Priority == it.Priority
 		})
@@ -244,18 +272,24 @@ func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQu
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
+func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time, limit int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil || m.ItemArtworkSource == nil {
 		return 0, m.Err
 	}
+	var stale []model.ItemArtwork
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind == kind.Prefix() && ia.Hash == "" && ia.AttemptedAt.Before(attemptedBefore) {
+			stale = append(stale, ia)
+		}
+	}
+	slices.SortFunc(stale, func(a, b model.ItemArtwork) int { return a.AttemptedAt.Compare(b.AttemptedAt) })
+	// The limit caps the selection, like the SQL's LIMIT before ON CONFLICT: queued rows use up budget.
+	stale = stale[:min(limit, len(stale))]
 	now := time.Now()
 	var inserted int64
-	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind != kind.Prefix() || ia.Hash != "" || !ia.AttemptedAt.Before(attemptedBefore) {
-			continue
-		}
+	for _, ia := range stale {
 		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
 		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
 			continue

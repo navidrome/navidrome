@@ -229,6 +229,35 @@ var _ = Describe("processor.acquire", func() {
 		Expect(err).To(MatchError(model.ErrNotFound), "an unreadable upload must not be recorded as absent")
 	})
 
+	// Playlist/radio resolvers walk no chain, so a fault records no step; without a fallback,
+	// explain would show a give-up with an empty "Gave up after" table.
+	It("chainless fault: records a fallback trace step naming the faulted source", func() {
+		if runtime.GOOS == "windows" {
+			// os.Open under a non-directory maps to a not-exist error on Windows, so no localError.
+			Skip("cannot provoke an open fault via a non-directory parent on Windows")
+		}
+		radioRepo := tests.CreateMockedRadioRepo()
+		radioRepo.Data = map[string]*model.Radio{}
+		ds.MockedRadio = radioRepo
+		dir := GinkgoT().TempDir()
+		conf.Server.DataFolder = conf.NewDir(dir)
+		upload := model.UploadedImagePath(consts.EntityRadio, "ra-tr.jpg")
+		// A plain file where the upload's parent should be makes os.Open fault with ENOTDIR,
+		// deterministically and regardless of the test user's privileges.
+		Expect(os.MkdirAll(filepath.Dir(filepath.Dir(upload)), 0o755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Dir(upload), []byte("x"), 0o600)).To(Succeed())
+		radioRepo.Data["ra-tr"] = &model.Radio{ID: "ra-tr", Name: "Station", UploadedImage: "ra-tr.jpg"}
+
+		trace := &ChainTrace{}
+		out, _ := proc.acquire(withTrace(ctx, trace), model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra-tr"})
+		Expect(out).To(Equal(outcomeFailed))
+
+		steps := trace.Steps()
+		Expect(steps).To(HaveLen(1), "a radio fault must leave one step so explain is not blank")
+		Expect(steps[0].Candidate).To(Equal("upload"))
+		Expect(steps[0].Outcome).To(Equal(OutcomeUnreadable))
+	})
+
 	It("failed-on-extError: leaves the item's state untouched", func() {
 		conf.Server.CoverArtPriority = "external"
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{

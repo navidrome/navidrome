@@ -18,6 +18,7 @@ import (
 const enqueueChunkSize = 100
 
 // Every insert writes these, in this order; the INSERT..SELECT forms must project them to match.
+// DequeueBatch also selects exactly these, to leave the drain's rows free of the trace it never reads.
 var enqueueColumns = []string{"item_kind", "item_id", "image_type", "priority", "attempts", "retry_at", "enqueued_at"}
 
 type artworkQueueRepository struct {
@@ -42,11 +43,12 @@ func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*mo
 	return &res, nil
 }
 
-// Enqueue also resets enqueued_at, so a fresh request does not inherit an old row's spent retry budget.
+// Enqueue starts a fresh lifecycle: it resets enqueued_at (so a fresh request does not inherit an old
+// row's spent retry budget) and clears trace (so explain does not show a prior failure at attempts 0).
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
-		attempts = 0, enqueued_at = excluded.enqueued_at`, items)
+		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, items)
 }
 
 func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
@@ -54,11 +56,12 @@ func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.Artwork
 		priority = MAX(priority, excluded.priority)`, items)
 }
 
-func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time) (int64, error) {
+func (r *artworkQueueRepository) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time, limit int) (int64, error) {
 	now := time.Now()
 	return r.insertIfNotQueued("", `SELECT item_kind, item_id, image_type, ?, 0, ?, ?
-		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?`,
-		model.ArtworkPriorityRecheck, now, now, kind.Prefix(), attemptedBefore)
+		FROM `+itemArtworkTable+` WHERE item_kind = ? AND hash = '' AND attempted_at < ?
+		ORDER BY attempted_at LIMIT ?`,
+		model.ArtworkPriorityRecheck, now, now, kind.Prefix(), attemptedBefore, limit)
 }
 
 func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
@@ -159,7 +162,7 @@ func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQ
 }
 
 func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
-	sel := Select("*").From(r.tableName).
+	sel := Select(enqueueColumns...).From(r.tableName).
 		Where(LtOrEq{"retry_at": time.Now()}).
 		OrderBy("priority DESC", "enqueued_at ASC").
 		Limit(uint64(n))
@@ -171,10 +174,11 @@ func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.A
 	return res, err
 }
 
-func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time) error {
+func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	upd := Update(r.tableName).
 		Set("attempts", Expr("attempts + 1")).
 		Set("retry_at", retryAt).
+		Set("trace", trace).
 		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": seenRetryAt})
 	_, err := r.executeSQL(upd)
 	return err
@@ -188,20 +192,46 @@ func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
 	return purgeDangling(r.sqlRepository)
 }
 
+// artworkQueueFilter returns no conditions for an empty filter, so an unfiltered DELETE keeps
+// SQLite's truncate path. It ignores retry_at: a backing-off row is pending work too.
+func artworkQueueFilter(kinds []model.Kind, priorities []int) And {
+	var f And
+	if len(kinds) > 0 {
+		f = append(f, Eq{"item_kind": model.KindPrefixes(kinds)})
+	}
+	if len(priorities) > 0 {
+		f = append(f, Eq{"priority": priorities})
+	}
+	return f
+}
+
+// CountQueued shares its filter with PurgeQueued, so a preview cannot count rows the delete misses.
+func (r *artworkQueueRepository) CountQueued(kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
+	sel := Select("item_kind", "priority", "count(*) as count").From(r.tableName).
+		GroupBy("item_kind", "priority").OrderBy("item_kind", "priority desc")
+	if f := artworkQueueFilter(kinds, priorities); len(f) > 0 {
+		sel = sel.Where(f)
+	}
+	var res []model.ArtworkQueueStat
+	err := r.queryAll(sel, &res)
+	return res, err
+}
+
+func (r *artworkQueueRepository) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+	del := Delete(r.tableName)
+	if f := artworkQueueFilter(kinds, priorities); len(f) > 0 {
+		del = del.Where(f)
+	}
+	return r.executeSQL(del)
+}
+
 func (r *artworkQueueRepository) Count() (int64, error) {
 	var res struct{ Count int64 }
 	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)
 	return res.Count, err
 }
 
-func (r *artworkQueueRepository) CountByKindAndPriority() ([]model.ArtworkQueueStat, error) {
-	var res []model.ArtworkQueueStat
-	err := r.queryAll(Select("item_kind", "priority", "count(*) as count").From(r.tableName).
-		GroupBy("item_kind", "priority").OrderBy("item_kind", "priority desc"), &res)
-	return res, err
-}
-
-// CountAbsent matches EnqueueStaleAbsent on hash, so the stale count is what a recheck would queue.
+// CountAbsent matches EnqueueStaleAbsent on hash, so the stale count is the pool a recheck drains from.
 func (r *artworkQueueRepository) CountAbsent(kind model.Kind, attemptedBefore time.Time) (model.ArtworkAbsentStat, error) {
 	var res model.ArtworkAbsentStat
 	err := r.queryOne(Select("count(*) as total").
