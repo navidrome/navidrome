@@ -431,7 +431,8 @@ func (t *agentAttempts) noResultErr() error {
 	return ErrNotFound
 }
 
-func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
+// callAgent tries each enabled agent in order until found reports a usable result.
+func callAgent[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error), found func(T) bool) (T, error) {
 	var zero T
 	start := time.Now()
 	attempts := newAttempts(&agents.cooldowns)
@@ -453,7 +454,7 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 			continue
 		}
 
-		if result != zero {
+		if found(result) {
 			log.Debug(ctx, "Got result", "method", methodName, "agent", ag.AgentName(), "elapsed", time.Since(start))
 			return result, nil
 		}
@@ -461,33 +462,15 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 	return zero, attempts.noResultErr()
 }
 
-func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
-	start := time.Now()
-	attempts := newAttempts(&agents.cooldowns)
-	for _, enabledAgent := range agents.getEnabledAgentNames() {
-		if attempts.skip(enabledAgent.name) {
-			continue
-		}
-		ag := agents.getAgent(enabledAgent)
-		if ag == nil {
-			continue
-		}
-		if utils.IsCtxDone(ctx) {
-			break
-		}
-		results, err := fn(ag)
-		attempts.record(enabledAgent.name, err)
-		if err != nil {
-			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
-			continue
-		}
+func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
+	return callAgent(ctx, agents, methodName, fn, func(result T) bool {
+		var zero T
+		return result != zero
+	})
+}
 
-		if len(results) > 0 {
-			log.Debug(ctx, "Got results", "method", methodName, "agent", ag.AgentName(), "count", len(results), "elapsed", time.Since(start))
-			return results, nil
-		}
-	}
-	return nil, attempts.noResultErr()
+func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
+	return callAgent(ctx, agents, methodName, fn, func(results []T) bool { return len(results) > 0 })
 }
 
 var _ Interface = (*Agents)(nil)
