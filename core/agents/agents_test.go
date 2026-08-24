@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -157,6 +158,33 @@ var _ = Describe("Agents", func() {
 				_, err := ag.GetArtistBiography(ctx, "123", "test", "mb123")
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
+			})
+		})
+
+		Describe("cooldown", func() {
+			It("skips an agent that returned RetryLaterError until the deadline", func() {
+				mock.Err = &RetryLaterError{RetryIn: 50 * time.Millisecond}
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+
+				// Immediately after: agent is skipped, not called
+				mock.Err = nil
+				calls := mock.Calls
+				_, err = ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(mock.Calls).To(Equal(calls))
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+
+				// After the deadline: called again and succeeds
+				time.Sleep(60 * time.Millisecond)
+				_, err = ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("returns ErrNotFound, not ErrRetryLater, when agents failed for other reasons", func() {
+				mock.Err = errors.New("boom")
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
 			})
 		})
 
@@ -423,8 +451,9 @@ var _ = Describe("Agents", func() {
 })
 
 type mockAgent struct {
-	Args []any
-	Err  error
+	Args  []any
+	Err   error
+	Calls int
 }
 
 func (a *mockAgent) AgentName() string {
@@ -449,6 +478,7 @@ func (a *mockAgent) GetArtistURL(_ context.Context, id, name, mbid string) (stri
 
 func (a *mockAgent) GetArtistBiography(_ context.Context, id, name, mbid string) (string, error) {
 	a.Args = []any{id, name, mbid}
+	a.Calls++
 	if a.Err != nil {
 		return "", a.Err
 	}

@@ -2,8 +2,10 @@ package agents
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -22,11 +24,15 @@ type PluginLoader interface {
 	LoadMediaAgent(name string) (Interface, bool)
 }
 
+const agentCooldown = time.Minute
+
 // Agents is a meta-agent that aggregates multiple built-in and plugin agents. It tries each enabled agent in order
 // until one returns valid data.
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
+	cooldownMu   sync.RWMutex
+	cooldowns    map[string]time.Time
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -41,7 +47,29 @@ func createAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
 	return &Agents{
 		ds:           ds,
 		pluginLoader: pluginLoader,
+		cooldowns:    map[string]time.Time{},
 	}
+}
+
+func (a *Agents) inCooldown(name string) bool {
+	a.cooldownMu.RLock()
+	defer a.cooldownMu.RUnlock()
+	return time.Now().Before(a.cooldowns[name])
+}
+
+// noteAgentError starts a cooldown when err asks for a later retry; reports whether it did.
+func (a *Agents) noteAgentError(name string, err error) bool {
+	if !errors.Is(err, ErrRetryLater) {
+		return false
+	}
+	d, _ := RetryIn(err)
+	if d <= 0 {
+		d = agentCooldown
+	}
+	a.cooldownMu.Lock()
+	a.cooldowns[name] = time.Now().Add(d)
+	a.cooldownMu.Unlock()
+	return true
 }
 
 // enabledAgent represents an enabled agent with its type information
@@ -224,7 +252,12 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 	overLimit := int(float64(limit) * conf.Server.DevExternalArtistFetchMultiplier)
 
 	start := time.Now()
+	throttled := false
 	for _, enabledAgent := range a.getEnabledAgentNames() {
+		if a.inCooldown(enabledAgent.name) {
+			throttled = true
+			continue
+		}
 		ag := a.getAgent(enabledAgent)
 		if ag == nil {
 			continue
@@ -237,6 +270,9 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			continue
 		}
 		similar, err := retriever.GetSimilarArtists(ctx, id, name, mbid, overLimit)
+		if err != nil {
+			throttled = a.noteAgentError(enabledAgent.name, err) || throttled
+		}
 		if len(similar) > 0 && err == nil {
 			if log.IsGreaterOrEqualTo(log.LevelTrace) {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
@@ -245,6 +281,9 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			}
 			return similar, err
 		}
+	}
+	if throttled {
+		return nil, ErrRetryLater
 	}
 	return nil, ErrNotFound
 }
@@ -358,7 +397,12 @@ func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid str
 func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
 	var zero T
 	start := time.Now()
+	throttled := false
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
+		if agents.inCooldown(enabledAgent.name) {
+			throttled = true
+			continue
+		}
 		ag := agents.getAgent(enabledAgent)
 		if ag == nil {
 			continue
@@ -368,6 +412,7 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 		}
 		result, err := fn(ag)
 		if err != nil {
+			throttled = agents.noteAgentError(enabledAgent.name, err) || throttled
 			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
 			continue
 		}
@@ -377,12 +422,20 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 			return result, nil
 		}
 	}
+	if throttled {
+		return zero, ErrRetryLater
+	}
 	return zero, ErrNotFound
 }
 
 func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
 	start := time.Now()
+	throttled := false
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
+		if agents.inCooldown(enabledAgent.name) {
+			throttled = true
+			continue
+		}
 		ag := agents.getAgent(enabledAgent)
 		if ag == nil {
 			continue
@@ -392,6 +445,7 @@ func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName
 		}
 		results, err := fn(ag)
 		if err != nil {
+			throttled = agents.noteAgentError(enabledAgent.name, err) || throttled
 			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
 			continue
 		}
@@ -400,6 +454,9 @@ func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName
 			log.Debug(ctx, "Got results", "method", methodName, "agent", ag.AgentName(), "count", len(results), "elapsed", time.Since(start))
 			return results, nil
 		}
+	}
+	if throttled {
+		return nil, ErrRetryLater
 	}
 	return nil, ErrNotFound
 }
