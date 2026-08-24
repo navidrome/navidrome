@@ -3,6 +3,9 @@ package plugins
 import (
 	"context"
 	"errors"
+	"regexp"
+	"strconv"
+	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
@@ -50,11 +53,22 @@ func newMetadataAgent(p *plugin) *MetadataAgent {
 	return &MetadataAgent{name: p.name, plugin: p}
 }
 
+var agentRetryLaterRe = regexp.MustCompile(`agent\(retry_later(?::(\d+))?\)`)
+
 // agentErr keeps a plugin fault distinguishable from a definitive miss: a method the plugin
 // simply does not implement has answered, so it must not count against a caller's back-off.
 func agentErr(err error) error {
 	if errors.Is(err, errNotImplemented) || errors.Is(err, errFunctionNotFound) {
 		return errors.Join(agents.ErrNotFound, err)
+	}
+	if m := agentRetryLaterRe.FindStringSubmatch(err.Error()); m != nil {
+		var d time.Duration
+		if m[1] != "" {
+			if secs, aerr := strconv.Atoi(m[1]); aerr == nil {
+				d = min(time.Duration(secs)*time.Second, time.Hour)
+			}
+		}
+		return errors.Join(&agents.RetryLaterError{RetryIn: d}, err)
 	}
 	return err
 }

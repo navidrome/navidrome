@@ -5,6 +5,7 @@ package plugins
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
@@ -31,6 +32,22 @@ var _ = Describe("agentErr", func() {
 		Entry("a non-zero exit is a fault",
 			errors.New("plugin call exited with code 1"), false),
 	)
+
+	DescribeTable("agentErr retry-later",
+		func(msg string, wantDelay time.Duration) {
+			err := agentErr(errors.New(msg))
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+			d, _ := agents.RetryIn(err)
+			Expect(d).To(Equal(wantDelay))
+		},
+		Entry("bare token", "agent(retry_later)", time.Duration(0)),
+		Entry("with seconds", "agent(retry_later:120)", 120*time.Second),
+	)
+
+	It("leaves other plugin errors untouched", func() {
+		orig := errors.New("some plugin failure")
+		Expect(agentErr(orig)).To(Equal(orig))
+	})
 })
 
 var _ = Describe("MetadataAgent", Ordered, func() {
