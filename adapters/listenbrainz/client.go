@@ -13,6 +13,7 @@ import (
 	"slices"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 )
 
@@ -162,6 +163,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 	}
 	req, _ := http.NewRequestWithContext(ctx, method, uri, bytes.NewBuffer(b))
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("User-Agent", consts.HTTPUserAgent)
 
 	if r.ApiKey != "" {
 		req.Header.Add("Authorization", fmt.Sprintf("Token %s", r.ApiKey))
@@ -199,6 +201,8 @@ type lbzHttpError struct {
 func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint string, params url.Values) (*http.Response, error) {
 	req, _ := http.NewRequestWithContext(ctx, method, lbzApiUrl+endpoint, nil)
 	req.Header.Add("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Add("User-Agent", consts.HTTPUserAgent)
+
 	req.URL.RawQuery = params.Encode()
 
 	log.Trace(ctx, fmt.Sprintf("Sending ListenBrainz %s request", req.Method), "url", req.URL)
