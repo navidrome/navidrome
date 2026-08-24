@@ -172,6 +172,14 @@ someone else already downloaded episodes for doesn't silently dump their whole b
 Unsubscribing removes just your own subscription; the shared feed and its files stick around as long as anyone
 else is still subscribed, and clean up automatically once the last subscriber leaves.
 
+### ⏰ Automatic refresh isn't on by default — you turn it on
+Checking subscribed feeds for new episodes runs on a schedule you configure, not automatically out of the box. Set
+`ND_PODCASTS_SCHEDULE` (or `Podcasts.Schedule` in a config file) to a cron expression or an `@every` duration — same
+syntax and format as `ND_SCANSCHEDULE` (e.g. `@every 1h`). Leave it unset (or `"0"`) and periodic checking stays off
+— a brand-new subscription still gets one immediate refresh the moment you add it, but nothing checks for new
+episodes on existing subscriptions after that until you set this. Retention cleanup (below) rides along on this same
+schedule, so it's worth setting even if picking up new episodes quickly isn't a priority for you.
+
 ### 💾 Never worry about disk space
 Set retention per subscription — yours, specifically — by episode count, age, or total storage, and let
 oldest-downloaded-first cleanup run automatically on the same schedule as feed refreshes. Because retention is
