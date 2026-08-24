@@ -7,21 +7,36 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"path"
 	"slices"
+	"strconv"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/httpclient"
 )
 
 const (
 	lbzApiUrl = "https://api.listenbrainz.org/1/"
 	labsBase  = "https://labs.api.listenbrainz.org/"
+
+	// maxResetInSeconds only keeps the conversion to nanoseconds from wrapping;
+	// agents.NewRetryLater applies the policy cap.
+	maxResetInSeconds int64 = math.MaxInt64 / int64(time.Second)
 )
+
+// retryInFromHeaders reads the wait ListenBrainz asked for. It sends X-RateLimit-Reset-In
+// (delta-seconds) on every response, including the 429, and never Retry-After.
+func retryInFromHeaders(h http.Header) time.Duration {
+	if secs, err := strconv.Atoi(h.Get("X-RateLimit-Reset-In")); err == nil && secs > 0 {
+		return time.Duration(min(int64(secs), maxResetInSeconds)) * time.Second
+	}
+	return 0
+}
 
 var (
 	ErrorNotFound = errors.New("listenbrainz: not found")
@@ -177,7 +192,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, agents.NewRetryLater(httpclient.RetryAfter(resp.Header))
+		return nil, agents.NewRetryLater(retryInFromHeaders(resp.Header))
 	}
 	decoder := json.NewDecoder(resp.Body)
 
@@ -192,7 +207,7 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 	if response.Code != 0 && response.Code != 200 {
 		// LB also reports rate limiting as a body code, not only as an HTTP status.
 		if response.Code == http.StatusTooManyRequests {
-			return &response, agents.NewRetryLater(httpclient.RetryAfter(resp.Header))
+			return &response, agents.NewRetryLater(retryInFromHeaders(resp.Header))
 		}
 		return &response, &listenBrainzError{Code: response.Code, Message: response.Error}
 	}
@@ -221,7 +236,7 @@ func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint
 	if resp.StatusCode != 200 {
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusTooManyRequests {
-			return nil, agents.NewRetryLater(httpclient.RetryAfter(resp.Header))
+			return nil, agents.NewRetryLater(retryInFromHeaders(resp.Header))
 		}
 		decoder := json.NewDecoder(resp.Body)
 
