@@ -1414,22 +1414,20 @@ type fakeScrobbler struct {
 	position             atomic.Int32
 	LastScrobble         atomic.Pointer[Scrobble]
 	LastPlaybackReport   atomic.Pointer[PlaybackSession]
-	errMu                sync.Mutex
-	err                  error
+	err                  atomic.Pointer[error]
 	scrobbleAttempts     atomic.Int32
 }
 
 // SetError sets the error returned by IsAuthorized/NowPlaying/Scrobble/PlaybackReport.
 func (f *fakeScrobbler) SetError(err error) {
-	f.errMu.Lock()
-	defer f.errMu.Unlock()
-	f.err = err
+	f.err.Store(&err)
 }
 
 func (f *fakeScrobbler) getError() error {
-	f.errMu.Lock()
-	defer f.errMu.Unlock()
-	return f.err
+	if e := f.err.Load(); e != nil {
+		return *e
+	}
+	return nil
 }
 
 // ScrobbleAttempts returns how many times Scrobble was called.

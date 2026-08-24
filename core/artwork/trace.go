@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -160,6 +161,8 @@ func recordAgent(ctx context.Context, name string, r io.ReadCloser, path string,
 	case r != nil:
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
 	case isTransientExternal(err):
+		d, _ := agents.RetryIn(err)
+		t.noteRetryIn(d)
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
 	default:
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeMiss})

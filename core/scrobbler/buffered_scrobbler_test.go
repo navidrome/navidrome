@@ -247,7 +247,7 @@ func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
 		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
 		_ = userRepo.Put(&model.User{ID: "user2", UserName: "bob"})
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
-		scr := &perUserScrobbler{delays: map[string]time.Duration{
+		scr := &recoveringScrobbler{delays: map[string]time.Duration{
 			"user1": 10 * time.Second,
 			"user2": 45 * time.Second,
 		}}
@@ -258,47 +258,30 @@ func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
 		_ = buffer.Enqueue("test", "user2", "2", time.Now())
 		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
 		synctest.Wait()
-		if got := scr.attempts.Load(); got != 2 {
+		if got := scr.count.Load(); got != 2 {
 			t.Fatalf("expected both users drained, got %d attempts", got)
 		}
 
 		time.Sleep(30 * time.Second)
 		synctest.Wait()
-		if got := scr.attempts.Load(); got != 2 {
+		if got := scr.count.Load(); got != 2 {
 			t.Fatalf("retried on the shorter delay: %d attempts", got)
 		}
 		time.Sleep(15100 * time.Millisecond)
 		synctest.Wait()
-		if got := scr.attempts.Load(); got != 4 {
+		if got := scr.count.Load(); got != 4 {
 			t.Fatalf("expected a retry after the longest delay, got %d attempts", got)
 		}
 	})
 }
 
-// perUserScrobbler fails every scrobble, asking for a delay that depends on the user.
-type perUserScrobbler struct {
-	delays   map[string]time.Duration
-	attempts atomic.Int32
-}
-
-func (p *perUserScrobbler) IsAuthorized(context.Context, string) bool { return true }
-
-func (p *perUserScrobbler) NowPlaying(context.Context, string, *model.MediaFile, int) error {
-	return nil
-}
-
-func (p *perUserScrobbler) Scrobble(_ context.Context, userId string, _ Scrobble) error {
-	p.attempts.Add(1)
-	return errors.Join(errors.New("429"), &agents.RetryLaterError{RetryIn: p.delays[userId]})
-}
-
-func (p *perUserScrobbler) PlaybackReport(context.Context, PlaybackSession) error { return nil }
-
 // recoveringScrobbler is a race-safe Scrobbler whose error can be toggled while
 // the buffered scrobbler's goroutine is draining, to exercise retry then recovery.
+// With delays set, it instead fails every scrobble asking for that user's delay.
 type recoveringScrobbler struct {
-	err   atomic.Pointer[error]
-	count atomic.Int32
+	err    atomic.Pointer[error]
+	count  atomic.Int32
+	delays map[string]time.Duration
 }
 
 func (f *recoveringScrobbler) fail(err error) { f.err.Store(&err) }
@@ -310,8 +293,11 @@ func (f *recoveringScrobbler) NowPlaying(context.Context, string, *model.MediaFi
 	return nil
 }
 
-func (f *recoveringScrobbler) Scrobble(_ context.Context, _ string, _ Scrobble) error {
+func (f *recoveringScrobbler) Scrobble(_ context.Context, userId string, _ Scrobble) error {
 	f.count.Add(1)
+	if f.delays != nil {
+		return errors.Join(errors.New("429"), &agents.RetryLaterError{RetryIn: f.delays[userId]})
+	}
 	if e := f.err.Load(); e != nil {
 		return *e
 	}

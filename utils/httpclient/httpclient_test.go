@@ -73,4 +73,26 @@ var _ = Describe("httpclient", func() {
 			Expect(consts.HTTPUserAgent).To(Equal("Navidrome/" + consts.Version + " - https://github.com/navidrome"))
 		})
 	})
+
+	Describe("RetryAfter", func() {
+		DescribeTable("reads the delta-seconds the server asked for",
+			func(header http.Header, expected time.Duration) {
+				Expect(httpclient.RetryAfter(header)).To(Equal(expected))
+			},
+			Entry("no headers", http.Header{}, time.Duration(0)),
+			Entry("X-RateLimit-Reset-In", http.Header{"X-Ratelimit-Reset-In": []string{"3"}}, 3*time.Second),
+			Entry("Retry-After", http.Header{"Retry-After": []string{"12"}}, 12*time.Second),
+			Entry("X-RateLimit-Reset-In wins",
+				http.Header{"X-Ratelimit-Reset-In": []string{"3"}, "Retry-After": []string{"12"}}, 3*time.Second),
+			Entry("falls through an unparseable first header",
+				http.Header{"X-Ratelimit-Reset-In": []string{"soon"}, "Retry-After": []string{"12"}}, 12*time.Second),
+			Entry("HTTP-date form is not supported",
+				http.Header{"Retry-After": []string{"Wed, 21 Oct 2015 07:28:00 GMT"}}, time.Duration(0)),
+			Entry("zero", http.Header{"Retry-After": []string{"0"}}, time.Duration(0)),
+			Entry("negative", http.Header{"Retry-After": []string{"-5"}}, time.Duration(0)),
+			// Scaling before clamping would wrap past int64 nanoseconds, landing on a tiny delay.
+			Entry("a value that would overflow int64 nanoseconds",
+				http.Header{"Retry-After": []string{"18446744074"}}, 9223372036*time.Second),
+		)
+	})
 })

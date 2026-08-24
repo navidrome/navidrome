@@ -3,12 +3,8 @@ package plugins
 import (
 	"context"
 	"errors"
-	"regexp"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -171,8 +167,6 @@ func participantsToArtistRefs(participants model.ParticipantList) []types.Artist
 	return refs
 }
 
-var scrobblerRetryLaterRe = regexp.MustCompile(`scrobbler\(retry_later(?::(\d+))?\)`)
-
 // mapScrobblerError converts plugin errors to scrobbler errors based on error message, as errors are returned as
 // strings from plugins.
 func mapScrobblerError(err error) error {
@@ -180,15 +174,12 @@ func mapScrobblerError(err error) error {
 		return nil
 	}
 	errMsg := err.Error()
-	retryLater := scrobblerRetryLaterRe.FindStringSubmatch(errMsg)
+	retryLater, isRetryLater := parseRetryLater("scrobbler", errMsg)
 	switch {
 	case strings.Contains(errMsg, capabilities.ScrobblerErrorNotAuthorized.Error()):
 		return scrobbler.ErrNotAuthorized
-	case retryLater != nil:
-		if secs, aerr := strconv.Atoi(retryLater[1]); aerr == nil {
-			return &agents.RetryLaterError{RetryIn: time.Duration(min(secs, maxRetryInSeconds)) * time.Second}
-		}
-		return scrobbler.ErrRetryLater
+	case isRetryLater:
+		return retryLater
 	case strings.Contains(errMsg, capabilities.ScrobblerErrorUnrecoverable.Error()):
 		return scrobbler.ErrUnrecoverable
 	default:

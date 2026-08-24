@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -246,28 +245,26 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	start := time.Now()
 	// Get MBID first, if it is not yet available
 	artistName := artist.Name()
-	var throttled atomic.Bool
-	note := func(err error) {
-		if errors.Is(err, agents.ErrRetryLater) {
-			throttled.Store(true)
-		}
-	}
+	var mbidErr error
 	if artist.MbzArtistID == "" {
 		mbid, err := e.ag.GetArtistMBID(ctx, artist.ID, artistName)
-		note(err)
+		mbidErr = err
 		if mbid != "" && err == nil {
 			artist.MbzArtistID = mbid
 		}
 	}
 
-	// Call all registered agents and collect information
+	// Call all registered agents and collect information. The group carries no context, so a
+	// returned error does not cancel the siblings; only throttling is reported back.
 	g := errgroup.Group{}
 	g.SetLimit(2)
-	g.Go(func() error { note(e.callGetImage(ctx, e.ag, &artist)); return nil })
-	g.Go(func() error { note(e.callGetBiography(ctx, e.ag, &artist)); return nil })
-	g.Go(func() error { note(e.callGetURL(ctx, e.ag, &artist)); return nil })
-	g.Go(func() error { note(e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true)); return nil })
-	_ = g.Wait()
+	g.Go(func() error { return retryLaterOnly(e.callGetImage(ctx, e.ag, &artist)) })
+	g.Go(func() error { return retryLaterOnly(e.callGetBiography(ctx, e.ag, &artist)) })
+	g.Go(func() error { return retryLaterOnly(e.callGetURL(ctx, e.ag, &artist)) })
+	g.Go(func() error {
+		return retryLaterOnly(e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true))
+	})
+	throttled := errors.Is(g.Wait(), agents.ErrRetryLater) || errors.Is(mbidErr, agents.ErrRetryLater)
 
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistInfo update canceled", "id", artist.ID, "name", artistName, "elapsed", time.Since(start), ctx.Err())
@@ -276,7 +273,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 
 	// A throttled round keeps the previous timestamp, so the next call retries instead of
 	// serving an empty cache entry for the whole TTL.
-	if !throttled.Load() {
+	if !throttled {
 		artist.ExternalInfoUpdatedAt = new(time.Now())
 	}
 	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
@@ -354,6 +351,15 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 	}
 
 	return mfs, nil
+}
+
+// retryLaterOnly discards every failure the caller does not act on, so errgroup's
+// first-error slot is reserved for the throttling signal.
+func retryLaterOnly(err error) error {
+	if errors.Is(err, agents.ErrRetryLater) {
+		return err
+	}
+	return nil
 }
 
 func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) error {

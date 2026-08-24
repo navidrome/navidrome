@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gohugoio/hashstructure"
@@ -76,6 +77,25 @@ func (e *RetryLaterError) Error() string {
 }
 
 func (e *RetryLaterError) Is(target error) bool { return target == ErrRetryLater }
+
+// maxRetryIn caps a requested delay, so a bogus value cannot park a provider indefinitely.
+const maxRetryIn = time.Hour
+const maxRetryInSeconds = int(maxRetryIn / time.Second)
+
+// NewRetryLater returns a RetryLaterError asking for d, clamped to [0, maxRetryIn].
+func NewRetryLater(d time.Duration) *RetryLaterError {
+	return &RetryLaterError{RetryIn: min(max(d, 0), maxRetryIn)}
+}
+
+// RetryLaterFromSeconds builds a RetryLaterError from a delay in seconds, as sent by plugins
+// and HTTP headers. An empty or unparseable s means the delay is unspecified.
+func RetryLaterFromSeconds(s string) *RetryLaterError {
+	// Clamped in seconds: scaling first would let a huge value wrap around to a tiny delay.
+	if secs, err := strconv.Atoi(s); err == nil && secs > 0 {
+		return &RetryLaterError{RetryIn: time.Duration(min(secs, maxRetryInSeconds)) * time.Second}
+	}
+	return &RetryLaterError{}
+}
 
 // RetryIn extracts the server-requested delay from err, if one is attached.
 func RetryIn(err error) (time.Duration, bool) {
