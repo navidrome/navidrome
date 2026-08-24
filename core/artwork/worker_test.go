@@ -245,6 +245,23 @@ var _ = Describe("Worker", func() {
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
 		})
 
+		It("reschedules past the provider's requested delay when it exceeds the backoff", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
+			// Well above backoff(0)'s jittered ceiling, so only the hint can produce this retry_at.
+			const askedFor = 90 * time.Minute
+			imageAgents(&fakeImageAgent{name: "throttledAgent", err: &agents.RetryLaterError{RetryIn: askedFor}})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			it := findQueued(queueRepo, "al", "al9")
+			Expect(it).ToNot(BeNil())
+			Expect(it.RetryAt).To(BeTemporally("~", time.Now().Add(askedFor), time.Minute))
+		})
+
 		It("reschedules a found-stale item via MarkFailed while keeping its served state", func() {
 			conf.Server.CoverArtPriority = "external, cover.jpg"
 			folderRepo.result = []model.Folder{{

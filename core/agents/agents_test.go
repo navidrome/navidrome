@@ -175,6 +175,20 @@ var _ = Describe("Agents", func() {
 				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
 			})
 
+			// Providers that throttle without saying for how long (Last.fm sends no delay at all)
+			// must still be parked, or the aggregate keeps calling them on every request.
+			It("parks an agent that asked to be retried without a delay", func() {
+				mock.Err = ErrRetryLater
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+
+				mock.Err = nil
+				calls := mock.Calls
+				_, err = ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(mock.Calls).To(Equal(calls), "the default cooldown must outlast the request")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+			})
+
 			It("calls the agent again once the cooldown expires", func() {
 				mock.Err = &RetryLaterError{RetryIn: 10 * time.Millisecond}
 				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
