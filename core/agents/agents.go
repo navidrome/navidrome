@@ -53,10 +53,15 @@ func (c *cooldowns) active(name string) bool {
 	return time.Now().Before(c.until[name])
 }
 
+// park keeps whichever deadline is later, so a call still in flight when a longer cooldown
+// starts cannot cut it short when it finally answers.
 func (c *cooldowns) park(name string, d time.Duration) {
+	until := time.Now().Add(d)
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.until[name] = time.Now().Add(d)
+	if until.After(c.until[name]) {
+		c.until[name] = until
+	}
 }
 
 // GetAgents returns the singleton instance of Agents

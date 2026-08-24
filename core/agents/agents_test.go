@@ -15,6 +15,29 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("cooldowns", func() {
+	// Calls to one agent overlap, so a short cooldown can land after a long one started.
+	It("keeps the longer deadline when a shorter park lands after it", func() {
+		c := cooldowns{until: map[string]time.Time{}}
+
+		c.park("fake", time.Hour)
+		c.park("fake", time.Millisecond)
+
+		time.Sleep(10 * time.Millisecond)
+		Expect(c.active("fake")).To(BeTrue())
+	})
+
+	It("extends the deadline when the later park is longer", func() {
+		c := cooldowns{until: map[string]time.Time{}}
+
+		c.park("fake", time.Millisecond)
+		c.park("fake", time.Hour)
+
+		time.Sleep(10 * time.Millisecond)
+		Expect(c.active("fake")).To(BeTrue())
+	})
+})
+
 var _ = Describe("Agents", func() {
 	var ctx context.Context
 	var cancel context.CancelFunc
