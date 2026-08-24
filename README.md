@@ -178,7 +178,9 @@ Checking subscribed feeds for new episodes runs on a schedule you configure, not
 syntax and format as `ND_SCANSCHEDULE` (e.g. `@every 1h`). Leave it unset (or `"0"`) and periodic checking stays off
 — a brand-new subscription still gets one immediate refresh the moment you add it, but nothing checks for new
 episodes on existing subscriptions after that until you set this. Retention cleanup (below) rides along on this same
-schedule, so it's worth setting even if picking up new episodes quickly isn't a priority for you.
+schedule, so it's worth setting even if picking up new episodes quickly isn't a priority for you. Don't want to wait
+for the schedule (or haven't set one)? Open any subscribed show's page and hit **Refresh Now** to check that one feed
+immediately — available to any subscriber, not just admins.
 
 ### 💾 Never worry about disk space
 Set retention per subscription — yours, specifically — by episode count, age, or total storage, and let
