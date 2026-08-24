@@ -38,8 +38,25 @@ var errUnsupported = errors.New("agent does not support this method")
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
-	cooldownMu   sync.RWMutex
-	cooldowns    map[string]time.Time
+	cooldowns    cooldowns
+}
+
+// cooldowns remembers, across dispatches, which agents asked to be left alone and until when.
+type cooldowns struct {
+	mu    sync.RWMutex
+	until map[string]time.Time
+}
+
+func (c *cooldowns) active(name string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return time.Now().Before(c.until[name])
+}
+
+func (c *cooldowns) park(name string, d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.until[name] = time.Now().Add(d)
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -54,27 +71,8 @@ func createAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
 	return &Agents{
 		ds:           ds,
 		pluginLoader: pluginLoader,
-		cooldowns:    map[string]time.Time{},
+		cooldowns:    cooldowns{until: map[string]time.Time{}},
 	}
-}
-
-func (a *Agents) inCooldown(name string) bool {
-	a.cooldownMu.RLock()
-	defer a.cooldownMu.RUnlock()
-	return time.Now().Before(a.cooldowns[name])
-}
-
-// noteAgentError starts a cooldown when err asks for a later retry; reports whether it did.
-func (a *Agents) noteAgentError(name string, err error) bool {
-	retry, ok := errors.AsType[*RetryLaterError](err)
-	if !ok {
-		return false
-	}
-	d := cmp.Or(retry.RetryIn, agentCooldown)
-	a.cooldownMu.Lock()
-	a.cooldowns[name] = time.Now().Add(d)
-	a.cooldownMu.Unlock()
-	return true
 }
 
 // enabledAgent represents an enabled agent with its type information
@@ -257,10 +255,9 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 	overLimit := int(float64(limit) * conf.Server.DevExternalArtistFetchMultiplier)
 
 	start := time.Now()
-	var round agentRound
+	attempts := newAttempts(&a.cooldowns)
 	for _, enabledAgent := range a.getEnabledAgentNames() {
-		if a.inCooldown(enabledAgent.name) {
-			round.throttled = true
+		if attempts.skip(enabledAgent.name) {
 			continue
 		}
 		ag := a.getAgent(enabledAgent)
@@ -275,7 +272,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			continue
 		}
 		similar, err := retriever.GetSimilarArtists(ctx, id, name, mbid, overLimit)
-		round.note(a, enabledAgent.name, err)
+		attempts.record(enabledAgent.name, err)
 		if len(similar) > 0 && err == nil {
 			if log.IsGreaterOrEqualTo(log.LevelTrace) {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
@@ -285,7 +282,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			return similar, err
 		}
 	}
-	return nil, round.emptyResult()
+	return nil, attempts.noResultErr()
 }
 
 func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error) {
@@ -394,26 +391,41 @@ func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid str
 	})
 }
 
-// agentRound tallies what the enabled agents did in one dispatch.
-type agentRound struct {
+// agentAttempts tallies what the enabled agents did in one dispatch.
+type agentAttempts struct {
+	cooldowns *cooldowns
 	throttled bool
 	answered  bool
 }
 
-// note records one agent's outcome, starting its cooldown if it asked to be retried later.
-func (r *agentRound) note(a *Agents, name string, err error) {
-	switch {
+func newAttempts(c *cooldowns) agentAttempts {
+	return agentAttempts{cooldowns: c}
+}
+
+// skip reports whether name is still cooling down, counting it as throttled for this dispatch.
+func (t *agentAttempts) skip(name string) bool {
+	if !t.cooldowns.active(name) {
+		return false
+	}
+	t.throttled = true
+	return true
+}
+
+// record files one agent's outcome, parking it when it asked to be retried later.
+func (t *agentAttempts) record(name string, err error) {
+	switch retry, isRetryLater := errors.AsType[*RetryLaterError](err); {
 	case errors.Is(err, errUnsupported):
-	case a.noteAgentError(name, err):
-		r.throttled = true
+	case isRetryLater:
+		t.cooldowns.park(name, cmp.Or(retry.RetryIn, agentCooldown))
+		t.throttled = true
 	default:
-		r.answered = true
+		t.answered = true
 	}
 }
 
-// emptyResult tells a retryable empty round (nobody answered) from a definitive miss.
-func (r *agentRound) emptyResult() error {
-	if r.throttled && !r.answered {
+// noResultErr tells a retryable empty dispatch (nobody answered) from a definitive miss.
+func (t *agentAttempts) noResultErr() error {
+	if t.throttled && !t.answered {
 		return ErrRetryLater
 	}
 	return ErrNotFound
@@ -422,10 +434,9 @@ func (r *agentRound) emptyResult() error {
 func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
 	var zero T
 	start := time.Now()
-	var round agentRound
+	attempts := newAttempts(&agents.cooldowns)
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
-		if agents.inCooldown(enabledAgent.name) {
-			round.throttled = true
+		if attempts.skip(enabledAgent.name) {
 			continue
 		}
 		ag := agents.getAgent(enabledAgent)
@@ -436,7 +447,7 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 			break
 		}
 		result, err := fn(ag)
-		round.note(agents, enabledAgent.name, err)
+		attempts.record(enabledAgent.name, err)
 		if err != nil {
 			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
 			continue
@@ -447,15 +458,14 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 			return result, nil
 		}
 	}
-	return zero, round.emptyResult()
+	return zero, attempts.noResultErr()
 }
 
 func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
 	start := time.Now()
-	var round agentRound
+	attempts := newAttempts(&agents.cooldowns)
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
-		if agents.inCooldown(enabledAgent.name) {
-			round.throttled = true
+		if attempts.skip(enabledAgent.name) {
 			continue
 		}
 		ag := agents.getAgent(enabledAgent)
@@ -466,7 +476,7 @@ func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName
 			break
 		}
 		results, err := fn(ag)
-		round.note(agents, enabledAgent.name, err)
+		attempts.record(enabledAgent.name, err)
 		if err != nil {
 			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
 			continue
@@ -477,7 +487,7 @@ func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName
 			return results, nil
 		}
 	}
-	return nil, round.emptyResult()
+	return nil, attempts.noResultErr()
 }
 
 var _ Interface = (*Agents)(nil)
