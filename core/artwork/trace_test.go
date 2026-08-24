@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -79,19 +78,6 @@ var _ = Describe("encodeSteps/DecodeTrace", func() {
 	It("only restores sourcePath onto a detail-less hit", func() {
 		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeMiss}}
 		Expect(DecodeTrace(encodeSteps(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
-	})
-})
-
-var _ = Describe("ChainTrace retry hint", func() {
-	It("keeps the largest hint and survives nil traces", func() {
-		var nilTrace *ChainTrace
-		nilTrace.noteRetryIn(time.Minute) // must not panic
-
-		t := &ChainTrace{}
-		Expect(t.RetryIn()).To(BeZero())
-		t.noteRetryIn(10 * time.Second)
-		t.noteRetryIn(5 * time.Second)
-		Expect(t.RetryIn()).To(Equal(10 * time.Second))
 	})
 })
 

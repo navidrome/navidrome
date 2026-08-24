@@ -3,13 +3,10 @@ package artwork
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"slices"
 	"sync"
-	"time"
 
-	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
@@ -41,9 +38,8 @@ type TraceStep struct {
 // ChainTrace collects the walk of a single resolution: the worker attaches one per queue
 // item so it can be stored, and the CLI attaches one per explain.
 type ChainTrace struct {
-	mu      sync.Mutex
-	steps   []TraceStep
-	retryIn time.Duration
+	mu    sync.Mutex
+	steps []TraceStep
 }
 
 func (t *ChainTrace) add(step TraceStep) {
@@ -62,25 +58,6 @@ func (t *ChainTrace) Steps() []TraceStep {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return slices.Clone(t.steps)
-}
-
-// noteRetryIn records the largest server-requested retry delay seen during the chain.
-func (t *ChainTrace) noteRetryIn(d time.Duration) {
-	if t == nil {
-		return
-	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.retryIn = max(t.retryIn, d)
-}
-
-func (t *ChainTrace) RetryIn() time.Duration {
-	if t == nil {
-		return 0
-	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.retryIn
 }
 
 // maxTraceDetail bounds a stored Detail, which on the failure paths is an error string of
@@ -162,9 +139,6 @@ func recordAgent(ctx context.Context, name string, r io.ReadCloser, path string,
 	case r != nil:
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
 	case isTransientExternal(err):
-		if retry, ok := errors.AsType[*agents.RetryLaterError](err); ok {
-			t.noteRetryIn(retry.RetryIn)
-		}
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
 	default:
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeMiss})

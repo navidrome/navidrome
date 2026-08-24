@@ -100,7 +100,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.source).To(Equal("embedded"))
 			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/test.mp3"))
 			Expect(res.refMtime).To(BeNumerically(">", 0))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		It("resolves absent when the track has no cover art", func() {
@@ -111,7 +111,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		It("resolves absent when media file cover art is disabled", func() {
@@ -154,7 +154,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.source).To(Equal("folder"))
 			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/cover.jpg"))
 			Expect(res.refMtime).To(BeNumerically(">", 0))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		It("falls back to embedded art when no folder image matches", func() {
@@ -182,7 +182,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 		})
 
 		It("does not set extError when the external source reports not-found", func() {
@@ -195,7 +195,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		It("carries extError onto a fallback folder hit after a transient external failure", func() {
@@ -214,7 +214,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("folder"))
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 		})
 
 		It("does not carry extError onto a fallback folder hit after a definitive external not-found", func() {
@@ -233,7 +233,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("folder"))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
@@ -250,7 +250,7 @@ var _ = Describe("resolveItem", func() {
 
 			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 			Expect(gatedNames).To(Equal([]string{"failAgent"}))
 		})
 	})
@@ -308,7 +308,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 		})
 
 		It("does not set extError when the external source reports not-found", func() {
@@ -321,7 +321,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
@@ -338,7 +338,7 @@ var _ = Describe("resolveItem", func() {
 
 			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 			Expect(gatedNames).To(Equal([]string{"failAgent"}))
 		})
 	})
@@ -516,7 +516,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "ple"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 			Expect(gatedNames).To(Equal([]string{"m3u"}), "the playlist URL fetch is gated under \"m3u\"")
 		})
 
@@ -537,7 +537,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, gate).resolve(withTrace(ctx, trace),
 				model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm3u"})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 
 			steps := trace.Steps()
 			var m3u *TraceStep
@@ -562,7 +562,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		It("treats an ExternalImageURL 404 as a definitive miss and falls through to the grid", func() {
@@ -582,7 +582,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("generated"))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extError).ToNot(HaveOccurred())
 		})
 
 		// A local resolver holds no agents: reaching the external branch would panic, not degrade.
@@ -594,7 +594,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newLocalResolver(ds, ffm).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse(), "a skipped step is not a failed one")
+			Expect(res.extError).ToNot(HaveOccurred(), "a skipped step is not a failed one")
 		})
 
 		// The worker resolving the same playlist is asserted alongside, so this cannot pass vacuously.
@@ -642,7 +642,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl500"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extError).To(HaveOccurred())
 		})
 
 		It("yields an empty resolution when no album has art", func() {

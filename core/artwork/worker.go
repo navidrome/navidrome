@@ -241,7 +241,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
 	trace := &ChainTrace{}
 	ctx = withTrace(ctx, trace)
-	out, got := w.proc.acquire(ctx, item)
+	out, got, retryIn := w.proc.acquire(ctx, item)
 
 	queue := w.proc.ds.ArtworkQueue(ctx)
 	switch out {
@@ -252,7 +252,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			log.Warn(ctx, "Artwork: Could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	case outcomeFoundStale, outcomeFailed:
-		retryAt := time.Now().Add(retryDelay(item.Attempts, trace.RetryIn()))
+		retryAt := time.Now().Add(retryDelay(item.Attempts, retryIn))
 		encoded := trace.encode("")
 		if retryAt.Before(item.EnqueuedAt.Add(giveUpAfter)) {
 			// A mid-flight re-enqueue reset retry_at; stale backoff must not stomp its

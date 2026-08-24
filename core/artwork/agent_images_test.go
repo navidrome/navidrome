@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -154,11 +155,11 @@ var _ = Describe("agent images", func() {
 			a := &fakeImageAgent{name: "agentA", imgs: []agents.ExternalImage{img("/a", 100)}}
 			ag := imageAgents(a)
 
-			r, name, extErr := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1", Name: "Artist"})
+			r, name, err := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1", Name: "Artist"})
 			Expect(r).ToNot(BeNil())
 			defer r.Close()
 			Expect(name).To(Equal("agentA"))
-			Expect(extErr).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("skips the external lookup for synthetic artists", func() {
@@ -166,10 +167,10 @@ var _ = Describe("agent images", func() {
 			ag := imageAgents(a)
 
 			for _, id := range []string{consts.UnknownArtistID, consts.VariousArtistsID} {
-				r, name, extErr := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: id, Name: "Various Artists"})
+				r, name, err := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: id, Name: "Various Artists"})
 				Expect(r).To(BeNil())
 				Expect(name).To(BeEmpty())
-				Expect(extErr).To(BeFalse())
+				Expect(err).ToNot(HaveOccurred())
 			}
 			Expect(a.artistCalls).To(Equal(0), "synthetic artists never reach the agents")
 		})
@@ -178,9 +179,9 @@ var _ = Describe("agent images", func() {
 			ag := imageAgents()
 			t := &ChainTrace{}
 
-			r, _, extErr := fetchArtistImage(withTrace(ctx, t), ag, passthroughGate, model.Artist{ID: "ar1"})
+			r, _, err := fetchArtistImage(withTrace(ctx, t), ag, passthroughGate, model.Artist{ID: "ar1"})
 			Expect(r).To(BeNil())
-			Expect(extErr).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "external", Outcome: OutcomeSkipped,
 				Detail: "no enabled agent provides artist images"}}),
 				"a configured external token must never be silently absent from the chain")
@@ -212,11 +213,11 @@ var _ = Describe("agent images", func() {
 			b := &fakeImageAgent{name: "agentB", imgs: []agents.ExternalImage{img("/b", 50)}}
 			ag := imageAgents(a, b)
 
-			r, name, extErr := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
+			r, name, err := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
 			Expect(r).ToNot(BeNil())
 			defer r.Close()
 			Expect(name).To(Equal("agentB"))
-			Expect(extErr).To(BeFalse(), "a later hit clears an earlier agent's error")
+			Expect(err).ToNot(HaveOccurred(), "a later hit clears an earlier agent's error")
 			Expect(a.artistCalls).To(Equal(1))
 			Expect(b.artistCalls).To(Equal(1))
 		})
@@ -226,34 +227,43 @@ var _ = Describe("agent images", func() {
 			b := &fakeImageAgent{name: "agentB", err: agents.ErrNotFound}
 			ag := imageAgents(a, b)
 
-			r, name, extErr := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
+			r, name, err := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
 			Expect(r).To(BeNil())
 			Expect(name).To(BeEmpty())
-			Expect(extErr).To(BeFalse(), "not-found is definitive, never a transient failure")
+			Expect(err).ToNot(HaveOccurred(), "not-found is definitive, never a transient failure")
 		})
 
-		It("reports extErr when one agent fails transiently and the rest find nothing", func() {
+		It("reports an error when one agent fails transiently and the rest find nothing", func() {
 			a := &fakeImageAgent{name: "agentA", err: agents.ErrNotFound}
 			b := &fakeImageAgent{name: "agentB", err: context.DeadlineExceeded}
 			ag := imageAgents(a, b)
 
-			r, _, extErr := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
+			r, _, err := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
 			Expect(r).To(BeNil())
-			Expect(extErr).To(BeTrue())
+			Expect(err).To(HaveOccurred())
 		})
 
-		// The worker reschedules on trace.RetryIn(), so a server-requested delay is only
-		// honored if the agent loop files it here.
-		It("records the server-requested retry delay on the trace", func() {
+		// The worker reschedules on this delay, so it is only honored if the agent loop
+		// returns it. Two throttled agents: the longest wait is the one that must survive.
+		It("returns the longest retry delay the providers asked for", func() {
 			a := &fakeImageAgent{name: "agentA", err: &agents.RetryLaterError{RetryIn: 10 * time.Second}}
-			b := &fakeImageAgent{name: "agentB", err: agents.ErrNotFound}
+			b := &fakeImageAgent{name: "agentB", err: &agents.RetryLaterError{RetryIn: 5 * time.Second}}
 			ag := imageAgents(a, b)
-			t := &ChainTrace{}
 
-			r, _, extErr := fetchArtistImage(withTrace(ctx, t), ag, passthroughGate, model.Artist{ID: "ar1"})
+			r, _, err := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
 			Expect(r).To(BeNil())
-			Expect(extErr).To(BeTrue())
-			Expect(t.RetryIn()).To(Equal(10 * time.Second))
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
+			Expect(ok).To(BeTrue())
+			Expect(retry.RetryIn).To(Equal(10 * time.Second))
+		})
+
+		It("returns no delay when the provider did not ask for one", func() {
+			ag := imageAgents(&fakeImageAgent{name: "agentA", err: errors.New("boom")})
+
+			_, _, err := fetchArtistImage(ctx, ag, passthroughGate, model.Artist{ID: "ar1"})
+			Expect(err).To(HaveOccurred())
+			_, ok := errors.AsType[*agents.RetryLaterError](err)
+			Expect(ok).To(BeFalse(), "a plain failure must not look like a throttle")
 		})
 	})
 
@@ -262,11 +272,11 @@ var _ = Describe("agent images", func() {
 			a := &fakeImageAgent{name: "agentA", imgs: []agents.ExternalImage{img("/a", 100)}}
 			ag := imageAgents(a)
 
-			r, name, extErr := fetchAlbumImage(ctx, ag, passthroughGate, model.Album{Name: "Album", AlbumArtist: "Artist"})
+			r, name, err := fetchAlbumImage(ctx, ag, passthroughGate, model.Album{Name: "Album", AlbumArtist: "Artist"})
 			Expect(r).ToNot(BeNil())
 			defer r.Close()
 			Expect(name).To(Equal("agentA"))
-			Expect(extErr).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(a.albumCalls).To(Equal(1))
 		})
 
@@ -274,21 +284,21 @@ var _ = Describe("agent images", func() {
 			ag := imageAgents()
 			t := &ChainTrace{}
 
-			r, _, extErr := fetchAlbumImage(withTrace(ctx, t), ag, passthroughGate, model.Album{Name: "Album"})
+			r, _, err := fetchAlbumImage(withTrace(ctx, t), ag, passthroughGate, model.Album{Name: "Album"})
 			Expect(r).To(BeNil())
-			Expect(extErr).To(BeFalse())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(t.Steps()).To(Equal([]TraceStep{{Candidate: "external", Outcome: OutcomeSkipped,
 				Detail: "no enabled agent provides album images"}}),
 				"a configured external token must never be silently absent from the chain")
 		})
 
-		It("reports extErr when the only agent fails transiently", func() {
+		It("reports an error when the only agent fails transiently", func() {
 			a := &fakeImageAgent{name: "agentA", err: context.DeadlineExceeded}
 			ag := imageAgents(a)
 
-			r, _, extErr := fetchAlbumImage(ctx, ag, passthroughGate, model.Album{Name: "Album"})
+			r, _, err := fetchAlbumImage(ctx, ag, passthroughGate, model.Album{Name: "Album"})
 			Expect(r).To(BeNil())
-			Expect(extErr).To(BeTrue())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
