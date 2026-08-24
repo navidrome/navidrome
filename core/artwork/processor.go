@@ -90,13 +90,13 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	}()
 
 	res, err := p.resolver.resolve(ctx, item)
-	if retry, ok := errors.AsType[*agents.RetryLaterError](res.extError); ok {
-		retryIn = retry.RetryIn
-	}
 	if err != nil {
 		traceStage(ctx, "resolve", err)
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil, retryIn
+		return outcomeFailed, nil, 0
+	}
+	if retry, ok := errors.AsType[*agents.RetryLaterError](res.extError); ok {
+		retryIn = retry.RetryIn
 	}
 	if res.reader == nil {
 		if res.extError != nil || res.localError {
