@@ -202,11 +202,10 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 			MediaFile: entry.MediaFile,
 			TimeStamp: entry.PlayTime,
 		})
-		if errors.Is(err, ErrRetryLater) {
+		if retry, ok := errors.AsType[*agents.RetryLaterError](err); ok {
 			log.Warn(ctx, "Could not send scrobble. Will be retried", "userId", entry.UserID,
 				"track", entry.Title, "artist", entry.Artist, "scrobbler", b.service, err)
-			d, _ := agents.RetryIn(err)
-			return false, d
+			return false, retry.RetryIn
 		}
 		if err != nil {
 			log.Error(ctx, "Error sending scrobble to service. Discarding", "scrobbler", b.service,

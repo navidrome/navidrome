@@ -3,6 +3,8 @@ package plugins
 import (
 	"regexp"
 	"slices"
+	"strconv"
+	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 )
@@ -55,5 +57,9 @@ func parseRetryLater(prefix, msg string) (*agents.RetryLaterError, bool) {
 	if m == nil || m[1] != prefix {
 		return nil, false
 	}
-	return agents.RetryLaterFromSeconds(m[2]), true
+	retry := &agents.RetryLaterError{}
+	if secs, err := strconv.Atoi(m[2]); err == nil && secs > 0 {
+		retry.RetryIn = time.Duration(min(secs, agents.MaxRetryInSeconds)) * time.Second
+	}
+	return retry, true
 }

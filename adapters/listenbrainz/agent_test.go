@@ -173,9 +173,9 @@ var _ = Describe("listenBrainzAgent", func() {
 			}
 			err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 			Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
-			d, ok := agents.RetryIn(err)
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
 			Expect(ok).To(BeTrue())
-			Expect(d).To(Equal(7 * time.Second))
+			Expect(retry.RetryIn).To(Equal(7 * time.Second))
 		})
 	})
 

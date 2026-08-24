@@ -475,9 +475,9 @@ var _ = Describe("client", func() {
 			}
 			_, err := client.validateToken(context.Background(), "token")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
-			d, ok := agents.RetryIn(err)
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
 			Expect(ok).To(BeTrue())
-			Expect(d).To(Equal(3 * time.Second))
+			Expect(retry.RetryIn).To(Equal(3 * time.Second))
 		})
 
 		It("returns RetryLaterError with zero delay when no header is present", func() {
@@ -487,8 +487,8 @@ var _ = Describe("client", func() {
 			}
 			_, err := client.validateToken(context.Background(), "token")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
-			d, _ := agents.RetryIn(err)
-			Expect(d).To(BeZero())
+			retry, _ := errors.AsType[*agents.RetryLaterError](err)
+			Expect(retry.RetryIn).To(BeZero())
 		})
 
 		DescribeTable("caps absurd header values at one hour",
@@ -499,8 +499,8 @@ var _ = Describe("client", func() {
 					Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"rate limited"}`)),
 				}
 				_, err := client.validateToken(context.Background(), "token")
-				d, _ := agents.RetryIn(err)
-				Expect(d).To(Equal(time.Hour))
+				retry, _ := errors.AsType[*agents.RetryLaterError](err)
+				Expect(retry.RetryIn).To(Equal(time.Hour))
 			},
 			Entry("a large value", "999999"),
 			Entry("a huge value", "99999999999"),
@@ -516,9 +516,9 @@ var _ = Describe("client", func() {
 			}
 			_, err := client.validateToken(context.Background(), "token")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
-			d, ok := agents.RetryIn(err)
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
 			Expect(ok).To(BeTrue())
-			Expect(d).To(Equal(7 * time.Second))
+			Expect(retry.RetryIn).To(Equal(7 * time.Second))
 		})
 
 		It("returns RetryLaterError on a 429 from makeGenericRequest", func() {
@@ -529,9 +529,9 @@ var _ = Describe("client", func() {
 			}
 			_, err := client.getArtistUrl(context.Background(), "1")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
-			d, ok := agents.RetryIn(err)
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
 			Expect(ok).To(BeTrue())
-			Expect(d).To(Equal(5 * time.Second))
+			Expect(retry.RetryIn).To(Equal(5 * time.Second))
 		})
 	})
 })

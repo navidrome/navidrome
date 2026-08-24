@@ -37,7 +37,8 @@ var _ = Describe("agentErr", func() {
 		func(msg string, wantDelay time.Duration) {
 			err := agentErr(errors.New(msg))
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
-			d, _ := agents.RetryIn(err)
+			retry, _ := errors.AsType[*agents.RetryLaterError](err)
+			d := retry.RetryIn
 			Expect(d).To(Equal(wantDelay))
 		},
 		Entry("bare token", "agent(retry_later)", time.Duration(0)),

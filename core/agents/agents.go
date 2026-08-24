@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"slices"
@@ -24,6 +25,8 @@ type PluginLoader interface {
 	LoadMediaAgent(name string) (Interface, bool)
 }
 
+// agentCooldown is the default cooldown duration for an agent that returns a RetryLaterError without a specific
+// RetryIn duration.
 const agentCooldown = time.Minute
 
 // errUnsupported marks an agent that does not implement the requested method: it never ran,
@@ -63,13 +66,11 @@ func (a *Agents) inCooldown(name string) bool {
 
 // noteAgentError starts a cooldown when err asks for a later retry; reports whether it did.
 func (a *Agents) noteAgentError(name string, err error) bool {
-	if !errors.Is(err, ErrRetryLater) {
+	retry, ok := errors.AsType[*RetryLaterError](err)
+	if !ok {
 		return false
 	}
-	d, _ := RetryIn(err)
-	if d <= 0 {
-		d = agentCooldown
-	}
+	d := cmp.Or(retry.RetryIn, agentCooldown)
 	a.cooldownMu.Lock()
 	a.cooldowns[name] = time.Now().Add(d)
 	a.cooldownMu.Unlock()

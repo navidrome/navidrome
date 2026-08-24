@@ -3,6 +3,7 @@ package artwork
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"slices"
 	"sync"
@@ -161,8 +162,9 @@ func recordAgent(ctx context.Context, name string, r io.ReadCloser, path string,
 	case r != nil:
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeHit, Detail: path})
 	case isTransientExternal(err):
-		d, _ := agents.RetryIn(err)
-		t.noteRetryIn(d)
+		if retry, ok := errors.AsType[*agents.RetryLaterError](err); ok {
+			t.noteRetryIn(retry.RetryIn)
+		}
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeError, Detail: err.Error()})
 	default:
 		t.add(TraceStep{Candidate: candidate, Outcome: OutcomeMiss})

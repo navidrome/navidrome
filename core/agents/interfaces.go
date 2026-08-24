@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/gohugoio/hashstructure"
@@ -55,16 +54,16 @@ func (s Song) Equals(other Song) bool {
 	return h1 == h2
 }
 
-var (
-	// ErrNotFound means the provider answered and had nothing. Return the underlying error
-	// for a fault instead, or callers that back off on faults will treat it as definitive.
-	ErrNotFound = errors.New("not found")
+// ErrNotFound means the provider answered and had nothing. Return the underlying error
+// for a fault instead, or callers that back off on faults will treat it as definitive.
+var ErrNotFound = errors.New("not found")
 
-	// ErrRetryLater means the provider is temporarily unavailable or throttling us.
-	ErrRetryLater = errors.New("retry later")
-)
+// ErrRetryLater is the zero-delay RetryLaterError: the provider is temporarily unavailable
+// or throttling us, but did not say for how long. Both errors.Is(err, ErrRetryLater) and
+// errors.AsType[*RetryLaterError] match it and every delay-carrying variant.
+var ErrRetryLater = &RetryLaterError{}
 
-// RetryLaterError is an ErrRetryLater carrying the server-requested delay (0 = unspecified).
+// RetryLaterError asks callers to back off, optionally for the delay the provider requested.
 type RetryLaterError struct {
 	RetryIn time.Duration
 }
@@ -76,35 +75,15 @@ func (e *RetryLaterError) Error() string {
 	return "retry later"
 }
 
-func (e *RetryLaterError) Is(target error) bool { return target == ErrRetryLater }
-
-// maxRetryIn caps a requested delay, so a bogus value cannot park a provider indefinitely.
-const maxRetryIn = time.Hour
-const maxRetryInSeconds = int(maxRetryIn / time.Second)
-
-// NewRetryLater returns a RetryLaterError asking for d, clamped to [0, maxRetryIn].
-func NewRetryLater(d time.Duration) *RetryLaterError {
-	return &RetryLaterError{RetryIn: min(max(d, 0), maxRetryIn)}
+func (e *RetryLaterError) Is(target error) bool {
+	_, ok := target.(*RetryLaterError)
+	return ok
 }
 
-// RetryLaterFromSeconds builds a RetryLaterError from a delay in seconds, as sent by plugins
-// and HTTP headers. An empty or unparseable s means the delay is unspecified.
-func RetryLaterFromSeconds(s string) *RetryLaterError {
-	// Clamped in seconds: scaling first would let a huge value wrap around to a tiny delay.
-	if secs, err := strconv.Atoi(s); err == nil && secs > 0 {
-		return &RetryLaterError{RetryIn: time.Duration(min(secs, maxRetryInSeconds)) * time.Second}
-	}
-	return &RetryLaterError{}
-}
-
-// RetryIn extracts the server-requested delay from err, if one is attached.
-func RetryIn(err error) (time.Duration, bool) {
-	var rle *RetryLaterError
-	if errors.As(err, &rle) {
-		return rle.RetryIn, true
-	}
-	return 0, false
-}
+// MaxRetryIn caps a delay parsed from a provider, so a bogus value cannot park it indefinitely.
+// Clamp in seconds before scaling, or a huge value wraps around to a tiny delay.
+const MaxRetryIn = time.Hour
+const MaxRetryInSeconds = int(MaxRetryIn / time.Second)
 
 // AlbumInfoRetriever provides album info (no images)
 type AlbumInfoRetriever interface {

@@ -22,17 +22,17 @@ var _ = Describe("RetryLaterError", func() {
 		Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 	})
 
-	It("exposes the delay via RetryIn", func() {
+	It("exposes the delay through the wrapped error", func() {
 		err := errors.Join(errors.New("http 429"), &agents.RetryLaterError{RetryIn: 42 * time.Second})
-		d, ok := agents.RetryIn(err)
+		retry, ok := errors.AsType[*agents.RetryLaterError](err)
 		Expect(ok).To(BeTrue())
-		Expect(d).To(Equal(42 * time.Second))
+		Expect(retry.RetryIn).To(Equal(42 * time.Second))
 	})
 
-	It("reports no delay for a plain sentinel", func() {
-		d, ok := agents.RetryIn(agents.ErrRetryLater)
-		Expect(ok).To(BeFalse())
-		Expect(d).To(BeZero())
+	It("matches the sentinel too, reporting no delay", func() {
+		retry, ok := errors.AsType[*agents.RetryLaterError](agents.ErrRetryLater)
+		Expect(ok).To(BeTrue())
+		Expect(retry.RetryIn).To(BeZero())
 	})
 
 	It("is the same sentinel as scrobbler.ErrRetryLater", func() {

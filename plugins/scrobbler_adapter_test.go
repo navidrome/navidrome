@@ -368,7 +368,8 @@ var _ = Describe("mapScrobblerError", func() {
 		func(msg string, wantDelay time.Duration) {
 			err := mapScrobblerError(errors.New(msg))
 			Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
-			d, _ := agents.RetryIn(err)
+			retry, _ := errors.AsType[*agents.RetryLaterError](err)
+			d := retry.RetryIn
 			Expect(d).To(Equal(wantDelay))
 		},
 		Entry("bare token", "scrobbler(retry_later)", time.Duration(0)),
