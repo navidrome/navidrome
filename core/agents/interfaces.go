@@ -3,6 +3,8 @@ package agents
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/model"
@@ -56,7 +58,33 @@ var (
 	// ErrNotFound means the provider answered and had nothing. Return the underlying error
 	// for a fault instead, or callers that back off on faults will treat it as definitive.
 	ErrNotFound = errors.New("not found")
+
+	// ErrRetryLater means the provider is temporarily unavailable or throttling us.
+	ErrRetryLater = errors.New("retry later")
 )
+
+// RetryLaterError is an ErrRetryLater carrying the server-requested delay (0 = unspecified).
+type RetryLaterError struct {
+	RetryIn time.Duration
+}
+
+func (e *RetryLaterError) Error() string {
+	if e.RetryIn > 0 {
+		return fmt.Sprintf("retry later (in %s)", e.RetryIn)
+	}
+	return "retry later"
+}
+
+func (e *RetryLaterError) Is(target error) bool { return target == ErrRetryLater }
+
+// RetryIn extracts the server-requested delay from err, if one is attached.
+func RetryIn(err error) (time.Duration, bool) {
+	var rle *RetryLaterError
+	if errors.As(err, &rle) {
+		return rle.RetryIn, true
+	}
+	return 0, false
+}
 
 // AlbumInfoRetriever provides album info (no images)
 type AlbumInfoRetriever interface {
