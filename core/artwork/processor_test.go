@@ -265,11 +265,24 @@ var _ = Describe("processor.acquire", func() {
 		})
 		imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 
-		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
+		out, _, retryIn := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
 		Expect(out).To(Equal(outcomeFailed))
+		Expect(retryIn).To(BeZero(), "a plain failure asks for no particular delay")
 
 		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("failed-on-extError: reports the delay a throttled provider asked for", func() {
+		conf.Server.CoverArtPriority = "external"
+		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+			{ID: "al4r", Name: "Album"},
+		})
+		imageAgents(&fakeImageAgent{name: "throttled", err: &agents.RetryLaterError{RetryIn: 42 * time.Second}})
+
+		out, _, retryIn := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4r"})
+		Expect(out).To(Equal(outcomeFailed))
+		Expect(retryIn).To(Equal(42 * time.Second))
 	})
 
 	It("found-stale: a fallback hit after a transient external failure persists state and returns outcomeFoundStale", func() {
