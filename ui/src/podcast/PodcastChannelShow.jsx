@@ -22,6 +22,7 @@ import {
   Avatar,
   Button,
   Chip,
+  CircularProgress,
   FormControl,
   IconButton,
   InputLabel,
@@ -37,6 +38,7 @@ import DeleteIcon from '@material-ui/icons/Delete'
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
 import CheckCircleIcon from '@material-ui/icons/CheckCircle'
 import CheckCircleOutlineIcon from '@material-ui/icons/CheckCircleOutline'
+import RefreshIcon from '@material-ui/icons/Refresh'
 import { Title, useResourceRefresh } from '../common'
 import { setTrack, openAddToPlaylist } from '../actions'
 import subsonic from '../subsonic'
@@ -52,6 +54,9 @@ const useStyles = makeStyles({
     gap: '1rem',
     marginBottom: '1rem',
   },
+  headerText: {
+    flexGrow: 1,
+  },
   cover: {
     width: '5rem',
     height: '5rem',
@@ -65,20 +70,47 @@ const statusColor = {
   error: 'secondary',
 }
 
+// refreshNow triggers RefreshChannel synchronously on the server (real feed fetch, not just a UI
+// reload) - available to any subscriber, not just admins, matching the backend endpoint's own
+// permission model (any subscriber can trigger a refresh of a shared channel).
 const PodcastChannelHeader = () => {
   const { record } = useShowContext()
   const classes = useStyles()
+  const translate = useTranslate()
+  const notify = useNotify()
+  const refreshList = useRefresh()
+  const [refreshing, setRefreshing] = useState(false)
   if (!record) return null
   const cover =
     record.uploadedImage || record.coverArtUrl
       ? subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
       : undefined
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    httpClient(`${REST_URL}/podcastChannel/${record.id}/refresh`, {
+      method: 'POST',
+    })
+      .then(() => {
+        notify('resources.podcastChannel.notifications.refreshed', {
+          type: 'info',
+        })
+        refreshList()
+      })
+      .catch(() =>
+        notify('resources.podcastChannel.notifications.refreshFailed', {
+          type: 'warning',
+        }),
+      )
+      .finally(() => setRefreshing(false))
+  }
+
   return (
     <Box className={classes.header}>
       <Avatar src={cover} variant="rounded" className={classes.cover}>
         <MicIcon />
       </Avatar>
-      <Box>
+      <Box className={classes.headerText}>
         <Typography variant="h6">{record.title}</Typography>
         {record.description && (
           <Typography variant="body2" color="textSecondary">
@@ -86,6 +118,20 @@ const PodcastChannelHeader = () => {
           </Typography>
         )}
       </Box>
+      <Button
+        variant="outlined"
+        onClick={handleRefresh}
+        disabled={refreshing}
+        startIcon={
+          refreshing ? <CircularProgress size={16} /> : <RefreshIcon />
+        }
+      >
+        {translate(
+          refreshing
+            ? 'resources.podcastChannel.refreshing'
+            : 'resources.podcastChannel.refreshNow',
+        )}
+      </Button>
     </Box>
   )
 }

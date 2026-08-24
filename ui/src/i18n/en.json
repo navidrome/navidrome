@@ -368,11 +368,15 @@
       "emptyTitle": "No podcasts yet",
       "emptyBody": "Search for a podcast by name, paste a feed URL, or try one of these",
       "subscriptionSettings": "My download settings",
+      "refreshNow": "Refresh Now",
+      "refreshing": "Refreshing...",
       "notifications": {
         "searchFailed": "Could not search for podcasts",
         "subscribeFailed": "Could not subscribe to this podcast",
         "subscribed": "Subscribed",
-        "subscriptionSaved": "Settings saved"
+        "subscriptionSaved": "Settings saved",
+        "refreshed": "Refreshed",
+        "refreshFailed": "Could not refresh this podcast"
       }
     },
     "podcastEpisode": {
