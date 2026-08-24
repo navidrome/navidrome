@@ -11,15 +11,30 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"strconv"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 )
 
 const (
-	lbzApiUrl = "https://api.listenbrainz.org/1/"
-	labsBase  = "https://labs.api.listenbrainz.org/"
+	lbzApiUrl  = "https://api.listenbrainz.org/1/"
+	labsBase   = "https://labs.api.listenbrainz.org/"
+	maxRetryIn = time.Hour
 )
+
+// retryInFromHeaders reads the server-requested wait: LB sends X-RateLimit-Reset-In (seconds);
+// Retry-After is checked for good measure.
+func retryInFromHeaders(h http.Header) time.Duration {
+	for _, name := range []string{"X-RateLimit-Reset-In", "Retry-After"} {
+		if secs, err := strconv.Atoi(h.Get(name)); err == nil && secs > 0 {
+			return min(time.Duration(secs)*time.Second, maxRetryIn)
+		}
+	}
+	return 0
+}
 
 var (
 	ErrorNotFound = errors.New("listenbrainz: not found")
@@ -174,6 +189,9 @@ func (c *client) makeAuthenticatedRequest(ctx context.Context, method string, en
 	}
 
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, &agents.RetryLaterError{RetryIn: retryInFromHeaders(resp.Header)}
+	}
 	decoder := json.NewDecoder(resp.Body)
 
 	var response listenBrainzResponse
@@ -211,6 +229,9 @@ func (c *client) makeGenericRequest(ctx context.Context, method string, endpoint
 	// On a 200 code, there is no code. Decode using using error message if it exists
 	if resp.StatusCode != 200 {
 		defer resp.Body.Close()
+		if resp.StatusCode == http.StatusTooManyRequests {
+			return nil, &agents.RetryLaterError{RetryIn: retryInFromHeaders(resp.Header)}
+		}
 		decoder := json.NewDecoder(resp.Body)
 
 		var lbzError lbzHttpError

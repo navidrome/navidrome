@@ -164,6 +164,19 @@ var _ = Describe("listenBrainzAgent", func() {
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 		})
+
+		It("keeps a 429 scrobble for retry and carries the delay", func() {
+			httpClient.Res = http.Response{
+				StatusCode: 429,
+				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"7"}},
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code":429,"error":"rate limited"}`)),
+			}
+			err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+			Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
+			d, ok := agents.RetryIn(err)
+			Expect(ok).To(BeTrue())
+			Expect(d).To(Equal(7 * time.Second))
+		})
 	})
 
 	Describe("GetArtistUrl", func() {

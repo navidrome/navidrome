@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -126,12 +127,19 @@ func (b *bufferedScrobbler) run(ctx context.Context) {
 	timer.Stop()
 	defer timer.Stop()
 	failures := 0
+	var retryDeadline time.Time
 	for {
-		if b.processQueue(ctx) {
+		if now := time.Now(); !retryDeadline.IsZero() && now.Before(retryDeadline) {
+			// Woken mid-backoff (a new play enqueued): don't drain early, re-arm for the remainder.
+			timer.Reset(retryDeadline.Sub(now))
+		} else if ok, retryIn := b.processQueue(ctx); ok {
 			failures = 0
+			retryDeadline = time.Time{}
 			timer.Stop()
 		} else {
-			timer.Reset(backoffDelay(failures))
+			delay := max(backoffDelay(failures), retryIn)
+			retryDeadline = time.Now().Add(delay)
+			timer.Reset(delay)
 			if failures < maxRetryShift {
 				failures++
 			}
@@ -139,29 +147,33 @@ func (b *bufferedScrobbler) run(ctx context.Context) {
 		select {
 		case <-b.wakeSignal:
 		case <-timer.C:
+			retryDeadline = time.Time{}
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (b *bufferedScrobbler) processQueue(ctx context.Context) bool {
+func (b *bufferedScrobbler) processQueue(ctx context.Context) (bool, time.Duration) {
 	buffer := b.ds.ScrobbleBuffer(ctx)
 	userIds, err := buffer.UserIDs(b.service)
 	if err != nil {
 		log.Error(ctx, "Error retrieving userIds from scrobble buffer", "scrobbler", b.service, err)
-		return false
+		return false, 0
 	}
 	result := true
+	var retryIn time.Duration
 	for _, userId := range userIds {
-		if !b.processUserQueue(ctx, userId) {
+		ok, d := b.processUserQueue(ctx, userId)
+		if !ok {
 			result = false
+			retryIn = max(retryIn, d)
 		}
 	}
-	return result
+	return result, retryIn
 }
 
-func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string) bool {
+func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string) (bool, time.Duration) {
 	// Scrobbles are drained on a background context that no longer carries the
 	// request's authenticated user. Restore it from the buffered userId so that
 	// scrobblers relying on the user in the context (e.g. plugins) still get it.
@@ -175,15 +187,15 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 		entry, err := buffer.Next(b.service, userId)
 		if err != nil {
 			log.Error(ctx, "Error reading from scrobble buffer", "scrobbler", b.service, err)
-			return false
+			return false, 0
 		}
 		if entry == nil {
-			return true
+			return true, 0
 		}
 		s, ok := b.loader()
 		if !ok {
 			log.Warn(ctx, "Scrobbler not available, will retry later", "scrobbler", b.service)
-			return false
+			return false, 0
 		}
 		log.Debug(ctx, "Sending scrobble", "scrobbler", b.service, "track", entry.Title, "artist", entry.Artist)
 		err = s.Scrobble(ctx, entry.UserID, Scrobble{
@@ -193,7 +205,8 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 		if errors.Is(err, ErrRetryLater) {
 			log.Warn(ctx, "Could not send scrobble. Will be retried", "userId", entry.UserID,
 				"track", entry.Title, "artist", entry.Artist, "scrobbler", b.service, err)
-			return false
+			d, _ := agents.RetryIn(err)
+			return false, d
 		}
 		if err != nil {
 			log.Error(ctx, "Error sending scrobble to service. Discarding", "scrobbler", b.service,
@@ -203,7 +216,7 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 		if err != nil {
 			log.Error(ctx, "Error removing entry from scrobble buffer", "userId", entry.UserID,
 				"track", entry.Title, "artist", entry.Artist, "scrobbler", b.service, err)
-			return false
+			return false, 0
 		}
 	}
 }
