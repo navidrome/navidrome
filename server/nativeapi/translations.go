@@ -17,9 +17,10 @@ import (
 )
 
 type translation struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Data string `json:"data"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Data      string `json:"data"`
+	TermCount int    `json:"termCount"`
 }
 
 func newTranslationRepository(context.Context) rest.Repository {
@@ -97,27 +98,46 @@ func loadTranslation(fsys fs.FS, fileName string) (translation translation, err 
 	// Load translation from json file
 	file, err := fsys.Open(filePath)
 	if err != nil {
-		return
+		return translation, err
 	}
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return
+		return translation, err
 	}
 	var out map[string]any
 	if err = json.Unmarshal(data, &out); err != nil {
-		return
+		return translation, err
 	}
 
 	// Compress JSON
 	buf := new(bytes.Buffer)
 	if err = json.Compact(buf, data); err != nil {
-		return
+		return translation, err
 	}
 
 	translation.Data = buf.String()
 	translation.Name = out["languageName"].(string)
 	translation.ID = id
-	return
+	translation.TermCount = countTranslatedTerms(out)
+	return translation, nil
+}
+
+// countTranslatedTerms counts non-empty leaf values, matching the UI's notion of a translated term
+func countTranslatedTerms(obj map[string]any) int {
+	count := 0
+	for _, v := range obj {
+		switch v := v.(type) {
+		case map[string]any:
+			count += countTranslatedTerms(v)
+		case string:
+			if v != "" {
+				count++
+			}
+		default:
+			count++
+		}
+	}
+	return count
 }
 
 var _ rest.Repository = (*translationRepository)(nil)

@@ -16,7 +16,6 @@ import (
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -26,7 +25,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore, cw artwork.CacheWarmer) *phaseFolders {
+func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore) *phaseFolders {
 	var jobs []*scanJob
 
 	// Create scan jobs for all libraries
@@ -37,7 +36,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 			targetFolders = state.targets[lib.ID]
 		}
 
-		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan, targetFolders)
+		job, err := newScanJob(ctx, ds, lib, state.fullScan, targetFolders)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			state.sendError(err)
@@ -46,20 +45,19 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		jobs = append(jobs, job)
 	}
 
-	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state}
+	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state, imageChanges: &imageChangeCollector{ds: ds}}
 }
 
 type scanJob struct {
 	lib           model.Library
 	fs            storage.MusicFS
-	cw            artwork.CacheWarmer
 	lastUpdates   map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
 	targetFolders []string                          // Specific folders to scan (including all descendants)
 	lock          sync.Mutex
 	numFolders    atomic.Int64
 }
 
-func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
+func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
 	// Get folder updates, optionally filtered to specific target folders
 	lastUpdates, err := ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
 	if err != nil {
@@ -85,7 +83,6 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	return &scanJob{
 		lib:           lib,
 		fs:            fsys,
-		cw:            cw,
 		lastUpdates:   lastUpdates,
 		targetFolders: targetFolders,
 	}, nil
@@ -108,7 +105,7 @@ func (j *scanJob) popLastUpdate(folderID string) model.FolderUpdateInfo {
 func (j *scanJob) createFolderEntry(path string) *folderEntry {
 	id := model.FolderID(j.lib, path)
 	info := j.popLastUpdate(id)
-	return newFolderEntry(j, id, path, info.UpdatedAt, info.Hash)
+	return newFolderEntry(j, id, path, info)
 }
 
 // phaseFolders represents the first phase of the scanning process, which is responsible
@@ -128,6 +125,7 @@ type phaseFolders struct {
 	ctx              context.Context
 	state            *scanState
 	prevAlbumPIDConf string
+	imageChanges     *imageChangeCollector
 }
 
 func (p *phaseFolders) description() string {
@@ -167,13 +165,15 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 				log.Trace(p.ctx, "Scanner: Checking folder state", " folder", folder.path, "_updTime", folder.updTime,
 					"_modTime", folder.modTime, "_lastScanStartedAt", folder.job.lib.LastScanStartedAt,
 					"numAudioFiles", len(folder.audioFiles), "numImageFiles", len(folder.imageFiles),
-					"numPlaylists", folder.numPlaylists, "numSubfolders", folder.numSubFolders)
+					"numPlaylists", len(folder.playlistFiles), "numSubfolders", folder.numSubFolders)
 
 				// Check if folder is outdated
 				if folder.isOutdated() {
 					if !p.state.fullScan {
-						if folder.hasNoFiles() && folder.isNew() {
-							log.Trace(p.ctx, "Scanner: Skipping new folder with no files", "folder", folder.path, "lib", job.lib.Name)
+						// Ancestor folders need a row even with no files of their own: artwork
+						// resolution climbs them, and an image added later needs a state to diff.
+						if folder.isEmpty() && folder.isNew() {
+							log.Trace(p.ctx, "Scanner: Skipping new empty folder", "folder", folder.path, "lib", job.lib.Name)
 							continue
 						}
 						log.Debug(p.ctx, "Scanner: Detected changes in folder", "folder", folder.path, "lastUpdate", folder.modTime, "lib", job.lib.Name)
@@ -200,7 +200,8 @@ func (p *phaseFolders) measure(entry *folderEntry) func() time.Duration {
 func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 	return []ppl.Stage[*folderEntry]{
 		ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(conf.Server.DevScannerThreads)),
-		ppl.NewStage(p.persistChanges, ppl.Name("persist changes")),
+		// persistChanges is not reentrant, so it always has to run with concurrency=1
+		ppl.NewStage(p.persistChanges, ppl.Name("persist changes"), ppl.Concurrency(1)),
 		ppl.NewStage(p.logFolder, ppl.Name("log results")),
 	}
 }
@@ -330,8 +331,8 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	defer p.measure(entry)()
 	p.state.changesDetected.Store(true)
 
-	// Collect artwork IDs to pre-cache after the transaction commits
-	var artworkIDs []model.ArtworkID
+	// Collect artwork queue items for changed albums/artists, enqueued in the same transaction
+	var queueItems []model.ArtworkQueueItem
 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
@@ -341,6 +342,15 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		libraryRepo := tx.Library(p.ctx)
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
+
+		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
+		if !entry.isNew() {
+			if changed, artistImage := entry.imagesChanged(); changed {
+				p.imageChanges.record(entry.job.lib, imageChangedFolder{
+					id: entry.id, path: entry.path, artistImage: artistImage,
+				})
+			}
+		}
 
 		// Save folder to DB
 		folder := entry.toFolder()
@@ -371,7 +381,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
-				artworkIDs = append(artworkIDs, entry.artists[i].CoverArtID())
+				queueItems = append(queueItems, scanArtworkItem(model.KindArtistArtwork, entry.artists[i].ID))
 			}
 		}
 
@@ -383,7 +393,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 			if entry.albums[i].Name != consts.UnknownAlbum {
-				artworkIDs = append(artworkIDs, entry.albums[i].CoverArtID())
+				queueItems = append(queueItems, scanArtworkItem(model.KindAlbumArtwork, entry.albums[i].ID))
 			}
 		}
 
@@ -393,6 +403,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
 				return err
+			}
+		}
+
+		// A re-imported track returns to unresolved so new embedded art is picked up lazily.
+		if len(entry.tracks) > 0 {
+			trackIDs := slice.Map(entry.tracks, func(t model.MediaFile) string { return t.ID })
+			if err := tx.Artwork(p.ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
+				log.Warn(p.ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
 			}
 		}
 
@@ -415,17 +433,23 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return err
 			}
 		}
+
+		// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
+		// A full scan re-imports every track, so a re-import is no evidence the art changed.
+		if len(queueItems) > 0 {
+			queue := tx.ArtworkQueue(p.ctx)
+			enqueue := queue.Enqueue
+			if p.state.fullScan {
+				enqueue = queue.EnqueueIfMissing
+			}
+			if err := enqueue(queueItems...); err != nil {
+				log.Warn(p.ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
+			}
+		}
 		return nil
 	}, "scanner: persist changes")
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
-	}
-
-	// Pre-cache artwork after the transaction commits successfully
-	if err == nil {
-		for _, artID := range artworkIDs {
-			entry.job.cw.PreCache(artID)
-		}
 	}
 
 	return entry, err
@@ -468,7 +492,7 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 		logCall = log.Trace
 	}
 	logCall(p.ctx, "Scanner: Completed processing folder",
-		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", entry.numPlaylists,
+		"audioCount", len(entry.audioFiles), "imageCount", len(entry.imageFiles), "plsCount", len(entry.playlistFiles),
 		"elapsed", entry.elapsed.Elapsed(), "tracksMissing", len(entry.missingTracks),
 		"tracksImported", len(entry.tracks), "library", entry.job.lib.Name, consts.Zwsp+"folder", entry.path)
 	return entry, nil
@@ -501,6 +525,7 @@ func (p *phaseFolders) finalize(err error) error {
 		}
 		return nil
 	}, "scanner: finalize phaseFolders")
+	p.imageChanges.enqueue(p.ctx)
 	return errors.Join(err, errF)
 }
 

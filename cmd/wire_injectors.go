@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/db"
@@ -56,6 +57,7 @@ var allProviders = wire.NewSet(
 	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
+	wire.Bind(new(playlists.ImageUploadService), new(artwork.Uploader)),
 )
 
 func CreateDataStore() model.DataStore {
@@ -133,6 +135,19 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 func GetPlaybackServer() playback.PlaybackServer {
 	panic(wire.Build(
 		allProviders,
+	))
+}
+
+func CreateArtworkWorker() *artwork.Worker {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.TracingResolver {
+	panic(wire.Build(
+		allProviders,
+		artwork.NewTracingResolver,
 	))
 }
 

@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"context"
 	"crypto/sha256"
+	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -19,35 +21,48 @@ import (
 )
 
 var (
-	once      sync.Once
+	once sync.Once
+	// TokenAuth signs UI/API session tokens. Rotated by the id migration so stale sessions die.
 	TokenAuth *jwtauth.JWTAuth
+	// PublicTokenAuth signs public-link tokens (artwork, share streams), on a separate secret that survives the rotation.
+	PublicTokenAuth *jwtauth.JWTAuth
 )
 
-// Init creates a JWTAuth object from the secret stored in the DB.
-// If the secret is not found, it will create a new one and store it in the DB.
+// Audiences a session token can be scoped to. A token with no audience is accepted anywhere.
+const (
+	AudienceJellyfin = "jellyfin"
+	AudienceSubsonic = "subsonic"
+	AudienceNative   = "native"
+)
+
+// Init creates the JWTAuth objects from the secrets stored in the DB.
+// Missing or undecryptable secrets are regenerated and stored.
 func Init(ds model.DataStore) {
 	once.Do(func() {
 		ctx := context.TODO()
 		log.Info("Setting Session Timeout", "value", conf.Server.SessionTimeout)
 
-		secret, err := ds.Property(ctx).Get(consts.JWTSecretKey)
-		if err != nil || secret == "" {
-			log.Info(ctx, "Creating new JWT secret, used for encrypting UI sessions")
-			secret = createNewSecret(ctx, ds)
-		} else {
-			if secret, err = utils.Decrypt(ctx, getEncKey(), secret); err != nil {
-				log.Error(ctx, "Could not decrypt JWT secret, creating a new one", err)
-				secret = createNewSecret(ctx, ds)
-			}
-		}
-
-		TokenAuth = jwtauth.New("HS256", []byte(secret), nil)
+		TokenAuth = jwtauth.New("HS256", []byte(loadOrCreateSecret(ctx, ds, consts.JWTSecretKey)), nil)
+		PublicTokenAuth = jwtauth.New("HS256", []byte(loadOrCreateSecret(ctx, ds, consts.JWTPublicSecretKey)), nil)
 	})
+}
+
+func loadOrCreateSecret(ctx context.Context, ds model.DataStore, key string) string {
+	secret, err := ds.Property(ctx).Get(key)
+	if err != nil || secret == "" {
+		log.Info(ctx, "Creating new JWT secret", "key", key)
+		return createNewSecret(ctx, ds, key)
+	}
+	if secret, err = utils.Decrypt(ctx, getEncKey(), secret); err != nil {
+		log.Error(ctx, "Could not decrypt JWT secret, creating a new one", "key", key, err)
+		return createNewSecret(ctx, ds, key)
+	}
+	return secret
 }
 
 func CreatePublicToken(claims Claims) (string, error) {
 	claims.Issuer = consts.JWTIssuer
-	_, token, err := TokenAuth.Encode(claims.ToMap())
+	_, token, err := PublicTokenAuth.Encode(claims.ToMap())
 	return token, err
 }
 
@@ -56,19 +71,24 @@ func CreateExpiringPublicToken(exp time.Time, claims Claims) (string, error) {
 	if !exp.IsZero() {
 		claims.ExpiresAt = exp
 	}
-	_, token, err := TokenAuth.Encode(claims.ToMap())
+	_, token, err := PublicTokenAuth.Encode(claims.ToMap())
 	return token, err
 }
 
-func CreateToken(u *model.User) (string, error) {
-	claims := Claims{
+func userClaims(u *model.User, audience []string) Claims {
+	return Claims{
 		Issuer:   consts.JWTIssuer,
 		Subject:  u.UserName,
 		IssuedAt: time.Now(),
 		UserID:   u.ID,
 		IsAdmin:  u.IsAdmin,
+		Epoch:    u.TokenEpoch,
+		Audience: audience,
 	}
-	token, _, err := TokenAuth.Encode(claims.ToMap())
+}
+
+func CreateToken(u *model.User) (string, error) {
+	token, _, err := TokenAuth.Encode(userClaims(u, nil).ToMap())
 	if err != nil {
 		return "", err
 	}
@@ -76,10 +96,20 @@ func CreateToken(u *model.User) (string, error) {
 	return TouchToken(token)
 }
 
+// CreateAPIToken mints a non-expiring token scoped to one API, matching how Jellyfin
+// clients expect tokens to behave. Revocation is by token epoch, not expiry.
+func CreateAPIToken(u *model.User, audience string) (string, error) {
+	_, token, err := TokenAuth.Encode(userClaims(u, []string{audience}).ToMap())
+	return token, err
+}
+
 func TouchToken(token jwt.Token) (string, error) {
-	claims := ClaimsFromToken(token).
-		WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
-	_, newToken, err := TokenAuth.Encode(claims.ToMap())
+	return TouchClaims(ClaimsFromToken(token))
+}
+
+func TouchClaims(c Claims) (string, error) {
+	c = c.WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
+	_, newToken, err := TokenAuth.Encode(c.ToMap())
 	return newToken, err
 }
 
@@ -89,6 +119,38 @@ func Validate(tokenStr string) (Claims, error) {
 		return Claims{}, err
 	}
 	return ClaimsFromToken(token), nil
+}
+
+// ValidatePublic verifies a public-link token against the public secret.
+func ValidatePublic(tokenStr string) (Claims, error) {
+	token, err := jwtauth.VerifyToken(PublicTokenAuth, tokenStr)
+	if err != nil {
+		return Claims{}, err
+	}
+	return ClaimsFromToken(token), nil
+}
+
+var (
+	ErrTokenRevoked  = errors.New("token revoked")
+	ErrWrongAudience = errors.New("token not valid for this API")
+	ErrWrongUser     = errors.New("token issued for a different user")
+)
+
+// CheckClaims gates a session token against the user it names. Callers must have already
+// verified the signature; this adds revocation and API scoping on top.
+func CheckClaims(c Claims, usr model.User, audience string) error {
+	// Usernames can be reused: deleting a user and recreating the name yields a new random id
+	// at epoch 0, which an old token would otherwise match.
+	if c.UserID != "" && c.UserID != usr.ID {
+		return ErrWrongUser
+	}
+	if c.Epoch != usr.TokenEpoch {
+		return ErrTokenRevoked
+	}
+	if len(c.Audience) > 0 && !slices.Contains(c.Audience, audience) {
+		return ErrWrongAudience
+	}
+	return nil
 }
 
 func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
@@ -107,14 +169,14 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 	return request.WithUser(ctx, *u)
 }
 
-func createNewSecret(ctx context.Context, ds model.DataStore) string {
+func createNewSecret(ctx context.Context, ds model.DataStore, key string) string {
 	secret := id.NewRandom()
 	encSecret, err := utils.Encrypt(ctx, getEncKey(), secret)
 	if err != nil {
 		log.Error(ctx, "Could not encrypt JWT secret", err)
 		return secret
 	}
-	if err := ds.Property(ctx).Put(consts.JWTSecretKey, encSecret); err != nil {
+	if err := ds.Property(ctx).Put(key, encSecret); err != nil {
 		log.Error(ctx, "Could not save JWT secret in DB", err)
 	}
 	return secret

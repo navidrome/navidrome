@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"database/sql"
+	"slices"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -55,8 +56,9 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 			"id":           "playlist_tracks.id",
 			"artist":       "order_artist_name",
 			"album_artist": "order_album_artist_name",
-			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
+			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, " + naturalSort("f.title"),
 			"title":        "order_title",
+			"random":       "random()",
 			// To make sure these fields will be whitelisted
 			"duration": "duration",
 			"year":     "year",
@@ -130,8 +132,11 @@ func (r *playlistTrackRepository) GetCursor(options ...model.QueryOptions) (mode
 	if err != nil {
 		return nil, err
 	}
-	return model.PlaylistTrackCursor(wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
+	tracks := wrapCursor(cursor, func(t dbPlaylistTrack) *model.PlaylistTrack {
 		return t.PlaylistTrack
+	})
+	return model.PlaylistTrackCursor(hydrateCursor(tracks, func(batch []model.PlaylistTrack) {
+		hydratePlaylistTrackArtwork(r.ctx, r.db, batch)
 	})), nil
 }
 
@@ -220,10 +225,14 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 	return r.addMediaFileIds(clauses)
 }
 
+// deleteChunkSize keeps each DELETE under SQLITE_MAX_VARIABLE_NUMBER, matching addTracks.
+const deleteChunkSize = 200
+
 func (r *playlistTrackRepository) Delete(ids ...string) error {
-	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": ids}})
-	if err != nil {
-		return err
+	for chunk := range slices.Chunk(ids, deleteChunkSize) {
+		if err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": chunk}}); err != nil {
+			return err
+		}
 	}
 
 	return r.playlistRepo.renumber(r.playlistId)

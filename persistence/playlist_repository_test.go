@@ -5,9 +5,13 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -22,6 +26,39 @@ var _ = Describe("PlaylistRepository", func() {
 		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
 	})
 
+	Describe("natural sorting", func() {
+		var ids []string
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableNaturalSorting = true
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			repo = NewPlaylistRepository(ctx, GetDBXBuilder())
+
+			ids = nil
+			for _, n := range []string{"mix 1", "mix 10", "mix 2"} {
+				pls := model.Playlist{Name: n, OwnerID: "userid"}
+				Expect(repo.Put(&pls)).To(Succeed())
+				ids = append(ids, pls.ID)
+			}
+			DeferCleanup(func() {
+				for _, id := range ids {
+					_ = repo.Delete(id)
+				}
+			})
+		})
+
+		It("sorts playlist names by number value", func() {
+			all, err := repo.GetAll(model.QueryOptions{
+				Sort: "name", Filters: squirrel.Eq{"playlist.id": ids},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(slice.Map(all, func(p model.Playlist) string { return p.Name })).To(
+				Equal([]string{"mix 1", "mix 2", "mix 10"}))
+		})
+	})
+
 	Describe("Count", func() {
 		It("returns the number of playlists in the DB", func() {
 			Expect(repo.CountAll()).To(Equal(int64(2)))
@@ -34,6 +71,17 @@ var _ = Describe("PlaylistRepository", func() {
 			want, err := repo.GetAll(opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Playlist(want)))
+		})
+	})
+
+	Describe("GetAllIDs", func() {
+		It("returns the same id set as GetAll", func() {
+			want, err := repo.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(want).ToNot(BeEmpty())
+			ids, err := repo.GetAllIDs()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ids).To(ConsistOf(slice.Map(want, func(p model.Playlist) string { return p.ID })))
 		})
 	})
 
@@ -218,6 +266,32 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("Put", func() {
+		It("does not overwrite counters when saving a smart playlist", func() {
+			pls := model.Playlist{Name: "Smart Counters", OwnerID: "userid", Rules: &criteria.Criteria{
+				Expression: criteria.All{criteria.Contains{"title": "love"}},
+			}}
+			Expect(repo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { Expect(repo.Delete(pls.ID)).To(Succeed()) })
+
+			// Simulate a previous evaluation having stored the counters
+			_, err := GetDBXBuilder().NewQuery("update playlist set song_count = 42, duration = 123, size = 456 where id = {:id}").
+				Bind(dbx.Params{"id": pls.ID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			pls.SongCount = 0
+			pls.Duration = 0
+			pls.Size = 0
+			Expect(repo.Put(&pls)).To(Succeed())
+
+			saved, err := repo.Get(pls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.SongCount).To(Equal(42))
+			Expect(saved.Duration).To(Equal(float32(123)))
+			Expect(saved.Size).To(Equal(int64(456)))
+		})
+	})
+
 	It("Put/Exists/Delete", func() {
 		By("saves the playlist to the DB")
 		newPls := model.Playlist{Name: "Great!", OwnerID: "userid"}
@@ -243,6 +317,59 @@ var _ = Describe("PlaylistRepository", func() {
 
 		By("returns error if tries to retrieve the deleted playlist")
 		Expect(repo.Exists(newPls.ID)).To(BeFalse())
+	})
+
+	It("enqueues a new empty playlist's artwork under its generated id, not an empty id", func() {
+		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		newPls := model.Playlist{Name: "Empty PL", OwnerID: "userid"} // no tracks → refreshCounters path
+		Expect(repo.Put(&newPls)).To(Succeed())
+		Expect(newPls.ID).ToNot(BeEmpty())
+		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+
+		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queued).To(ContainElement(SatisfyAll(HaveField("ItemKind", "pl"), HaveField("ItemID", newPls.ID))))
+		Expect(queued).ToNot(ContainElement(HaveField("ItemID", "")), "must not enqueue an empty playlist id")
+	})
+
+	// The grid samples albums at random, so re-resolving after a rename would change the cover.
+	It("does not enqueue artwork when only metadata changes", func() {
+		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		newPls := model.Playlist{Name: "Rename Me", OwnerID: "userid"}
+		Expect(repo.Put(&newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+		// Clear the row creation just enqueued, so anything present afterwards came from the update.
+		queueRepo := NewArtworkQueueRepository(ctx, GetDBXBuilder())
+		queued, err := queueRepo.DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		for _, q := range queued {
+			if q.ItemID == newPls.ID {
+				Expect(queueRepo.DeleteIfUnchanged(q.ItemKind, q.ItemID, q.ImageType, q.RetryAt)).To(Succeed())
+			}
+		}
+
+		newPls.Name = "Renamed"
+		newPls.Comment = "edited"
+		Expect(repo.Put(&newPls)).To(Succeed())
+
+		queued, err = queueRepo.DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queued).ToNot(ContainElement(HaveField("ItemID", newPls.ID)))
+	})
+
+	It("enqueues the playlist's artwork when its track set changes", func() {
+		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		newPls := model.Playlist{Name: "Grid PL", OwnerID: "userid"}
+		newPls.AddMediaFilesByID([]string{"1001", "1002"})
+		Expect(repo.Put(&newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+
+		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(queued).To(ContainElement(SatisfyAll(
+			HaveField("ItemKind", "pl"),
+			HaveField("ItemID", newPls.ID),
+		)))
 	})
 
 	Describe("GetAll", func() {
@@ -339,6 +466,29 @@ var _ = Describe("PlaylistRepository", func() {
 			ids, mediaFileIDs := getTrackInfo(newPls.ID)
 			Expect(ids).To(Equal([]string{"1", "2"}))
 			Expect(mediaFileIDs).To(Equal([]string{"1001", "1002"}))
+		})
+	})
+
+	// Exists is ctx-sensitive through userFilter, so callers that only want "does it still exist"
+	// -- the public image route serving a share -- must elevate, or a private playlist looks gone.
+	Describe("Exists visibility", func() {
+		It("hides a private playlist from an unauthenticated context", func() {
+			// "userid" is the fixture user; playlist.owner_id has a FK to user(id).
+			owner := model.User{ID: "userid", UserName: "userid"}
+			octx := request.WithUser(GinkgoT().Context(), owner)
+			ownerRepo := NewPlaylistRepository(octx, GetDBXBuilder())
+			pls := model.Playlist{Name: "Private One", OwnerID: owner.ID, Public: false}
+			Expect(ownerRepo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { _ = ownerRepo.Delete(pls.ID) })
+
+			Expect(ownerRepo.Exists(pls.ID)).To(BeTrue(), "the owner sees it")
+
+			anon := NewPlaylistRepository(GinkgoT().Context(), GetDBXBuilder())
+			Expect(anon.Exists(pls.ID)).To(BeFalse(), "no user: userFilter hides it")
+
+			admin := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", IsAdmin: true})
+			Expect(NewPlaylistRepository(admin, GetDBXBuilder()).Exists(pls.ID)).To(BeTrue(),
+				"elevating is what the public image route relies on")
 		})
 	})
 })

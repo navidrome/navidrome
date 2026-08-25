@@ -52,11 +52,12 @@ type Playlists interface {
 	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
 }
 
-// ImageUploadService is a local interface satisfied by core.ImageUploadService.
-// Defined here to avoid an import cycle between core and core/playlists.
+// ImageUploadService is a local interface satisfied by artwork.Uploader.
+// Defined here to avoid an import cycle between core/artwork and core/playlists.
 type ImageUploadService interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
+	EnqueueArtwork(ctx context.Context, entityType, entityID string)
 }
 
 type playlists struct {
@@ -129,11 +130,12 @@ func (s *playlists) Create(ctx context.Context, playlistId string, name string, 
 			if err != nil {
 				return err
 			}
-			if pls.IsSmartPlaylist() {
-				return model.ErrNotAuthorized
-			}
+			// Ownership first: a non-owner must get ErrNotAuthorized, not a read-only conflict.
 			if !usr.IsAdmin && pls.OwnerID != usr.ID {
 				return model.ErrNotAuthorized
+			}
+			if !pls.TracksEditable() {
+				return model.ErrPlaylistNotEditable
 			}
 		} else {
 			pls = &model.Playlist{Name: name}
@@ -229,14 +231,14 @@ func (s *playlists) checkWritable(ctx context.Context, id string) (*model.Playli
 	return pls, nil
 }
 
-// checkTracksEditable verifies the user can modify tracks (ownership + not smart playlist).
+// checkTracksEditable verifies the user owns the playlist and its tracks are editable.
 func (s *playlists) checkTracksEditable(ctx context.Context, playlistID string) (*model.Playlist, error) {
 	pls, err := s.checkWritable(ctx, playlistID)
 	if err != nil {
 		return nil, err
 	}
-	if pls.IsSmartPlaylist() {
-		return nil, model.ErrNotAuthorized
+	if !pls.TracksEditable() {
+		return nil, model.ErrPlaylistNotEditable
 	}
 	return pls, nil
 }
@@ -320,7 +322,11 @@ func (s *playlists) SetImage(ctx context.Context, playlistID string, reader io.R
 	}
 
 	pls.UploadedImage = filename
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist(ctx).Put(pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }
 
 func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
@@ -334,5 +340,9 @@ func (s *playlists) RemoveImage(ctx context.Context, playlistID string) error {
 	}
 
 	pls.UploadedImage = ""
-	return s.ds.Playlist(ctx).Put(pls)
+	if err := s.ds.Playlist(ctx).Put(pls); err != nil {
+		return err
+	}
+	s.imgUpload.EnqueueArtwork(ctx, consts.EntityPlaylist, pls.ID)
+	return nil
 }

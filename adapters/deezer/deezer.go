@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"slices"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -36,9 +36,7 @@ func deezerConstructor(dataStore model.DataStore) agents.Interface {
 		dataStore: dataStore,
 		languages: conf.Server.Deezer.Languages,
 	}
-	httpClient := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	httpClient := httpclient.New(consts.DefaultHttpClientTimeOut)
 	cachedHttpClient := cache.NewHTTPClient(httpClient, consts.DefaultHttpClientTimeOut)
 	agent.client = newClient(cachedHttpClient)
 	return agent
@@ -70,14 +68,25 @@ func (s *deezerAgent) GetArtistImages(ctx context.Context, _, name, _ string) ([
 		{artist.PictureSmall, deezerApiPictureSmallSize},
 	}
 	for _, imgData := range possibleImages {
-		if imgData.URL != "" {
+		if imgData.URL != "" && !isPlaceholderPicture(imgData.URL) {
 			res = append(res, agents.ExternalImage{
 				URL:  imgData.URL,
 				Size: imgData.Size,
 			})
 		}
 	}
+	if len(res) == 0 {
+		return nil, agents.ErrNotFound
+	}
 	return res, nil
+}
+
+// deezerEmptyPicturePath is Deezer's empty-image-id path shape for artists with no picture
+// (…/images/artist//1000x1000-…), which serves a generic silhouette on any CDN host.
+const deezerEmptyPicturePath = "/images/artist//"
+
+func isPlaceholderPicture(url string) bool {
+	return strings.Contains(url, deezerEmptyPicturePath)
 }
 
 func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {

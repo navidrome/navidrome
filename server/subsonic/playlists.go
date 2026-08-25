@@ -151,7 +151,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	pls.Comment = p.Comment
 	pls.Owner = p.OwnerName
 	pls.Public = p.Public
-	pls.CoverArt = p.CoverArtID().String()
+	pls.CoverArt = coverArtOrEmpty(p.CoverArtID(), p.ImageAbsent)
 	pls.OpenSubsonicPlaylist = buildOSPlaylist(ctx, p)
 
 	return pls
@@ -172,7 +172,7 @@ func buildOSPlaylist(ctx context.Context, p model.Playlist) *responses.OpenSubso
 		}
 	} else {
 		user, ok := request.UserFrom(ctx)
-		pls.Readonly = !ok || p.OwnerID != user.ID
+		pls.Readonly = !ok || p.OwnerID != user.ID || !p.TracksEditable()
 	}
 
 	return &pls

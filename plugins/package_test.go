@@ -11,6 +11,36 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("pluginIDFromPath", func() {
+	DescribeTable("derives the ID from the package filename",
+		func(path, expected string) {
+			id, ok := pluginIDFromPath(path)
+			Expect(ok).To(BeTrue())
+			Expect(id).To(Equal(expected))
+		},
+		Entry("plain name", "/plugins/discord-rich-presence.ndp", "discord-rich-presence"),
+		Entry("name with spaces", "/plugins/My Plugin.ndp", "My Plugin"),
+		Entry("leading dot", "/plugins/.hidden.ndp", ".hidden"),
+		Entry("dots inside", "/plugins/v1.2.3.ndp", "v1.2.3"),
+	)
+
+	// The ID becomes a directory name under DataFolder/plugins, so a path-like
+	// one would let a plugin reach another plugin's data
+	DescribeTable("rejects IDs that are unsafe as a directory name",
+		func(path string) {
+			_, ok := pluginIDFromPath(path)
+			Expect(ok).To(BeFalse())
+		},
+		Entry("empty", "/plugins/.ndp"),
+		Entry("current directory", "/plugins/..ndp"),
+		Entry("parent directory", "/plugins/...ndp"),
+		// Windows drops trailing dots and spaces, so these would share a
+		// directory with "foo"
+		Entry("trailing dot", "/plugins/foo..ndp"),
+		Entry("trailing space", "/plugins/foo .ndp"),
+	)
+})
+
 var _ = Describe("ndpPackage", func() {
 	var tmpDir string
 

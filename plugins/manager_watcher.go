@@ -89,7 +89,11 @@ func (m *Manager) handleWatcherEvent(event notify.EventInfo) {
 		return
 	}
 
-	pluginName := strings.TrimSuffix(filepath.Base(path), PackageExtension)
+	pluginName, ok := pluginIDFromPath(path)
+	if !ok {
+		log.Warn(m.ctx, "Ignoring plugin file with unusable name", "path", path)
+		return
+	}
 
 	log.Trace(m.ctx, "Plugin file event", "plugin", pluginName, "event", event.Event(), "path", path)
 

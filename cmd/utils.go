@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"text/tabwriter"
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/db"
@@ -12,6 +14,11 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 )
+
+// newTabWriter keeps every CLI table on the same column settings.
+func newTabWriter(out io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
+}
 
 func getAdminContext(ctx context.Context) (model.DataStore, context.Context) {
 	sqlDB := db.Db()

@@ -30,14 +30,18 @@ The plugin system is built on **[Extism](https://extism.org/)**, a cross-languag
   - [Scheduler](#scheduler)
   - [Cache](#cache)
   - [KVStore](#kvstore)
+  - [Storage](#storage)
   - [Task](#task)
   - [WebSocket](#websocket)
   - [Library](#library)
+  - [Matcher](#matcher)
   - [Artwork](#artwork)
   - [SubsonicAPI](#subsonicapi)
   - [Config](#config)
   - [Users](#users)
+  - [ScrobbleRetriever](#scrobbleretriever)
 - [Configuration](#configuration)
+- [Command Line Interface](#command-line-interface)
 - [Building Plugins](#building-plugins)
 - [Examples](#examples)
 - [Security](#security)
@@ -170,6 +174,14 @@ Capabilities define what your plugin can do. They're automatically detected base
 
 Provides artist and album metadata. All methods are **optional** — implement only the ones your data source supports.
 
+> **Returning "not found".** When you have no data for an item, return an empty response and no
+> error. In the Go PDK that is `return nil, nil`. Navidrome reads it as a definitive "not found"
+> and stops asking.
+>
+> Return an error only when the plugin itself failed, such as an unreachable API or a broken host
+> call. Navidrome retries failed calls with backoff. A plugin that errors on "no data" makes
+> Navidrome retry every item it has no data for.
+
 | Function                          | Input                      | Output                           | Description              |
 |-----------------------------------|----------------------------|----------------------------------|--------------------------|
 | `nd_get_artist_mbid`              | `{id, name}`               | `{mbid}`                         | Get MusicBrainz ID       |
@@ -224,13 +236,14 @@ func ndGetArtistBiography() int32 {
 
 ### Scrobbler
 
-Integrates with external scrobbling services. All three methods are **required**.
+Integrates with external scrobbling services. All four methods are **required**.
 
-| Function                     | Input                 | Output | Description                 |
-|------------------------------|-----------------------|--------|-----------------------------|
-| `nd_scrobbler_is_authorized` | `{username}`          | `bool` | Check if user is authorized |
-| `nd_scrobbler_now_playing`   | See below             | (none) | Send now playing            |
-| `nd_scrobbler_scrobble`      | See below             | (none) | Submit a scrobble           |
+| Function                        | Input        | Output | Description                  |
+|---------------------------------|--------------|--------|------------------------------|
+| `nd_scrobbler_is_authorized`    | `{username}` | `bool` | Check if user is authorized  |
+| `nd_scrobbler_now_playing`      | See below    | (none) | Send now playing             |
+| `nd_scrobbler_scrobble`         | See below    | (none) | Submit a scrobble            |
+| `nd_scrobbler_playback_report`  | See below    | (none) | Send playback state report   |
 
 > **Important:** Scrobbler plugins require the `users` permission in their manifest. Scrobble events are only sent for users assigned to the plugin through Navidrome's configuration.
 
@@ -267,6 +280,25 @@ Integrates with external scrobbling services. All three methods are **required**
   "timestamp": 1703270400
 }
 ```
+
+**PlaybackReport Input:**
+
+Same `username` and `track` fields, plus playback state details:
+
+```json
+{
+  "username": "john",
+  "track": { ... },
+  "state": "playing",
+  "positionMs": 45000,
+  "playbackRate": 1.0,
+  "playerId": "player-id",
+  "playerName": "My Client",
+  "timestamp": 1703270400
+}
+```
+
+`state` is one of `starting`, `playing`, `paused`, `stopped`, or `expired`.
 
 **Error Handling:**
 
@@ -307,7 +339,7 @@ Each match contains a `song` reference and a `similarity` score (float64, 0.0–
 
 ### TaskWorker
 
-Processes tasks from a queue. The method is **optional** — export it if your plugin uses the [Task](#task) host service for background work.
+Processes tasks from a queue. **Required** if your plugin uses the [Task](#task) host service: declaring the `taskqueue` permission without exporting this function fails the plugin load.
 
 | Function            | Input                                       | Output  | Description          |
 |---------------------|---------------------------------------------|---------|----------------------|
@@ -327,7 +359,7 @@ Useful for initializing connections, scheduling recurring tasks, etc. Errors are
 
 ### SchedulerCallback
 
-Receives scheduled task events. **Required** if your plugin uses the [Scheduler](#scheduler) host service.
+Receives scheduled task events. **Required** if your plugin uses the [Scheduler](#scheduler) host service: declaring the `scheduler` permission without exporting this function fails the plugin load.
 
 | Function                  | Input                                        | Output | Description                 |
 |---------------------------|----------------------------------------------|--------|-----------------------------|
@@ -343,6 +375,8 @@ Receives WebSocket events. Export any subset of these to handle events from the 
 | `nd_websocket_on_binary_message` | `{connectionId, data}`          | Binary message received (base64) |
 | `nd_websocket_on_error`          | `{connectionId, error}`         | Connection error                 |
 | `nd_websocket_on_close`          | `{connectionId, code, reason}`  | Connection closed                |
+
+Each callback invocation is subject to a 30-second timeout.
 
 ---
 
@@ -387,6 +421,8 @@ Make HTTP requests to external services. This is a dedicated host service (separ
 | Function    | Parameters                                               | Returns                          |
 |-------------|----------------------------------------------------------|----------------------------------|
 | `http_send` | `method, url, headers, body, timeoutMs, noFollowRedirects` | `statusCode, headers, body`    |
+
+**Limits:** Requests time out after 10 seconds by default (override per request with `timeoutMs`). Redirects are followed up to 5 times, re-checking the allowed hosts on every hop. Response bodies are capped at 10MB.
 
 **Usage:**
 
@@ -548,6 +584,52 @@ usage, err := host.KVStoreGetStorageUsed()
 fmt.Printf("Using %d bytes\n", usage)
 ```
 
+### Storage
+
+A private read-write directory, mounted into the sandbox at `/storage` and backed by `${DataFolder}/plugins/${pluginID}/storage`. Survives server restarts. Use it for data that doesn't fit a key-value store: caches, downloaded files, generated indexes.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "storage": {
+      "reason": "Cache generated playlists between restarts"
+    }
+  }
+}
+```
+
+**Host functions:**
+
+| Function                 | Parameters | Description                        |
+|--------------------------|------------|------------------------------------|
+| `storage_getstoragepath` | –          | Get the guest path of the mount    |
+
+**Usage:**
+
+Normal WASI filesystem calls work inside the mount, so use the `os` package directly:
+
+```go
+import (
+	"os"
+	"path/filepath"
+
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+)
+
+// The path never changes, so read it once instead of per operation
+var storageDir = host.StorageGetStoragePath() // "/storage"
+
+err := os.WriteFile(filepath.Join(storageDir, "cache.json"), data, 0600)
+content, err := os.ReadFile(filepath.Join(storageDir, "cache.json"))
+entries, err := os.ReadDir(storageDir)
+```
+
+> **Security:** Plugins cannot create symlinks inside the mount, and `..` or absolute paths are rejected. Symlinks that already exist in the directory are still followed, so anything linked in from elsewhere remains reachable.
+
+> **Note:** There is no size limit, unlike [KVStore](#kvstore). The directory is not deleted when a plugin is uninstalled.
+
 ### Task
 
 Background task queue with retry support. Plugins enqueue tasks and process them by exporting the [`nd_task_execute`](#taskworker) capability function.
@@ -567,13 +649,21 @@ Background task queue with retry support. Plugins enqueue tasks and process them
 
 **Host functions:**
 
-| Function            | Parameters                                        | Description                |
-|---------------------|---------------------------------------------------|----------------------------|
-| `task_createqueue`  | `name, concurrency, maxRetries, backoffMs, ...`   | Create a named task queue  |
-| `task_enqueue`      | `queueName, payload`                              | Add a task to the queue    |
-| `task_get`          | `taskID`                                          | Get task status and result |
-| `task_cancel`       | `taskID`                                          | Cancel a pending task      |
-| `task_clearqueue`   | `queueName`                                       | Remove all tasks from queue|
+| Function            | Parameters                                                    | Description                |
+|---------------------|---------------------------------------------------------------|----------------------------|
+| `task_createqueue`  | `name, concurrency, maxRetries, backoffMs, delayMs, retentionMs` | Create a named task queue  |
+| `task_enqueue`      | `queueName, payload`                                          | Add a task to the queue    |
+| `task_get`          | `taskID`                                                      | Get task status and result |
+| `task_cancel`       | `taskID`                                                      | Cancel a pending task      |
+| `task_clearqueue`   | `queueName`                                                   | Remove all tasks from queue|
+
+Tasks are persisted to SQLite, so pending tasks survive server restarts. Queue behavior:
+
+- `concurrency` – Parallel workers (default 1), capped by the manifest's `maxConcurrency`
+- `maxRetries` – Retries for a failed task (default 0); `backoffMs` (default 1000) doubles on each retry
+- `delayMs` – Minimum delay between consecutive task starts, useful for rate limiting (default 0)
+- `retentionMs` – How long finished tasks are kept (default 1 hour, min 1 minute, max 1 week)
+- Payloads are capped at 1MB
 
 **Usage:**
 
@@ -644,7 +734,7 @@ Access music library metadata and optionally read files from library directories
 }
 ```
 
-- `filesystem` – Set to `true` to enable read-only access to library directories (default: `false`)
+- `filesystem` – Set to `true` to enable access to library directories, read-only unless an administrator grants write access (default: `false`)
 
 **Host functions:**
 
@@ -683,7 +773,7 @@ content, err := os.ReadFile("/libraries/1/Artist/Album/track.mp3")
 entries, err := os.ReadDir("/libraries/1/Artist")
 ```
 
-> **Security:** Filesystem access is read-only and restricted to configured library paths only.
+> **Security:** Plugins cannot create symlinks inside the mount, and `..` or absolute paths are rejected. Symlinks already present in the library are still followed, so folders linked in from elsewhere work as expected. Access is read-only unless an administrator grants the plugin write access (`navidrome plugin edit <name> --write-access`).
 
 **Usage:**
 
@@ -697,6 +787,45 @@ libraries, err := host.LibraryGetAllLibraries()
 for _, lib := range libraries {
     fmt.Printf("Library: %s (%d songs)\n", lib.Name, lib.TotalSongs)
 }
+```
+
+### Matcher
+
+Match externally-obtained songs (e.g. results from a recommendation or similarity API) to tracks in the local library, reusing Navidrome's matching algorithm (ID > MBID > ISRC > fuzzy title).
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "matcher": {
+      "reason": "Resolve external recommendations to library tracks"
+    },
+    "library": {
+      "reason": "Required by the matcher permission"
+    }
+  }
+}
+```
+
+> **Important:** The `matcher` permission requires the `library` permission.
+
+**Host functions:**
+
+| Function             | Parameters    | Returns                 |
+|----------------------|---------------|-------------------------|
+| `matcher_matchsongs` | `songs, opts` | Array of matched tracks |
+
+The result has one entry per input song, in the same order; the entry for a song with no match is empty. Results are limited to the libraries the plugin (and the scoped user, if any) can access. Set `opts.username` to run the match as a specific user: their favorites and ratings inform tiebreaking, and the returned tracks carry their annotations. User scoping additionally requires the [`users`](#users) permission, with users assigned to the plugin.
+
+**Usage:**
+
+```go
+import "github.com/navidrome/navidrome/plugins/pdk/go/types"
+
+matches, err := host.MatcherMatchSongs([]types.SongRef{
+    {Name: "Song Title", Artists: []types.ArtistRef{{Name: "Artist Name"}}},
+}, host.MatchOptions{})
 ```
 
 ### Artwork
@@ -849,6 +978,82 @@ for _, user := range users {
 admins, err := host.UsersGetAdmins()
 ```
 
+### ScrobbleRetriever
+
+Retrieve the scrobble history of users the plugin has been granted access to. Each scrobble carries only the media file ID and the submission time; use the Matcher host service to resolve them to track metadata.
+
+**Manifest permission:**
+
+```json
+{
+  "permissions": {
+    "scrobbleRetriever": {
+      "reason": "Sync scrobble history to an external service"
+    },
+    "users": {
+      "reason": "Access user information for scrobble retrieval"
+    }
+  }
+}
+```
+
+> **Important:** The `scrobbleRetriever` permission requires the `users` permission. Which users the plugin can act as is controlled through the Navidrome UI.
+
+**Host functions:**
+
+| Function                              | Parameters            | Returns                          |
+|---------------------------------------|-----------------------|----------------------------------|
+| `scrobbleretriever_getfirsttimestamp` | `username`            | Unix timestamp of oldest scrobble, or null |
+| `scrobbleretriever_getlasttimestamp`  | `username`            | Unix timestamp of newest scrobble, or null |
+| `scrobbleretriever_getscrobbles`      | `username`, `options` | One page of scrobbles + options for the next page |
+| `scrobbleretriever_getscrobblecount`  | `username`, `options` | Number of scrobbles in the range |
+
+**ScrobbleOptions fields** (all optional):
+
+| Field           | Type    | Description                                              |
+|-----------------|---------|----------------------------------------------------------|
+| `fromTimestamp` | int64   | Start of the range (inclusive). Default: first scrobble  |
+| `toTimestamp`   | int64   | End of the range (inclusive). Default: last scrobble     |
+| `descending`    | boolean | Newest first. Default: oldest first                      |
+| `maxItems`      | int     | Page size, capped at 5000 (the default)                  |
+| `offset`        | int     | Managed by the host for pagination. Never set it manually |
+
+**ScrobbleRef fields:**
+
+| Field            | Type   | Description                                    |
+|------------------|--------|------------------------------------------------|
+| `id`             | int64  | Scrobble ID, unique even for duplicate submissions |
+| `mediaFileId`    | string | The media file that was scrobbled              |
+| `submissionTime` | int64  | Unix timestamp of the submission               |
+
+**Usage:**
+
+`GetScrobbles` returns one page plus the options to fetch the following page. Pass them back unchanged and repeat until they are nil:
+
+```go
+opts := host.ScrobbleOptions{MaxItems: 500}
+var all []host.ScrobbleRef
+for {
+    page, next, err := host.ScrobbleRetrieverGetScrobbles("username", opts)
+    if err != nil {
+        return err
+    }
+    all = append(all, page...)
+    if next == nil {
+        break // no more scrobbles
+    }
+    opts = *next
+}
+
+// Range boundaries and counts
+first, err := host.ScrobbleRetrieverGetFirstTimestamp("username") // nil if no scrobbles
+count, err := host.ScrobbleRetrieverGetScrobbleCount("username", host.ScrobbleCountOptions{
+    FromTimestamp: first,
+})
+```
+
+> **Note:** The returned `next` options carry an adjusted `fromTimestamp`/`toTimestamp`, so keep a copy of your original options if you still need the range.
+
 ---
 
 ## Configuration
@@ -881,6 +1086,29 @@ if !ok {
 ```
 
 For more advanced access (listing keys, integer values), use the [Config](#config) host service.
+
+---
+
+## Command Line Interface
+
+Manage plugins from the command line with `navidrome plugin`:
+
+| Command                                                | Description                                                |
+|--------------------------------------------------------|------------------------------------------------------------|
+| `navidrome plugin list [-f table\|csv\|json]`          | List installed plugins                                     |
+| `navidrome plugin info <id\|file.ndp> [-f text\|json]` | Show details for an installed plugin or a `.ndp` package   |
+| `navidrome plugin validate <id\|file.ndp>`             | Validate an installed plugin or a `.ndp` package manifest  |
+| `navidrome plugin enable <id>`                         | Enable a plugin                                            |
+| `navidrome plugin disable <id>`                        | Disable a plugin                                           |
+| `navidrome plugin edit <id>`                           | Update a plugin's config and/or permissions                |
+| `navidrome plugin rescan`                              | Re-discover plugins in the plugins folder                  |
+
+**`plugin edit` flags:**
+
+- `--config <json>` / `--config-file <path>` – Set the plugin configuration (`-` reads from stdin)
+- `--users <list>` / `--all-users` – Usernames the plugin may access (comma-separated or JSON array), or all users
+- `--libraries <list>` / `--all-libraries` – Library IDs the plugin may access (comma-separated or JSON array), or all libraries
+- `--write-access` / `--no-write-access` – Allow or deny the plugin write access to libraries
 
 ---
 
@@ -946,6 +1174,8 @@ replace github.com/navidrome/navidrome => ../../..
 | `scheduler`       | `plugins/pdk/go/scheduler`           | Scheduled task callbacks             |
 | `websocket`       | `plugins/pdk/go/websocket`           | WebSocket event handlers             |
 | `host`            | `plugins/pdk/go/host`                | Host service SDK (all services)      |
+| `types`           | `plugins/pdk/go/types`               | Shared data types (tracks, artists, song refs) |
+| `pdk`             | `plugins/pdk/go/pdk`                 | Low-level helpers (wraps extism/go-pdk: config, logging, memory) |
 
 See the example plugins in [examples/](examples/) for complete usage patterns.
 
@@ -1044,12 +1274,11 @@ See [examples/](examples/) for complete working plugins:
 | [minimal](examples/minimal/)                                   | Go             | MetadataAgent | –                                          | Basic structure example        |
 | [wikimedia](examples/wikimedia/)                               | Go             | MetadataAgent | HTTP                                       | Wikidata/Wikipedia integration |
 | [coverartarchive-py](examples/coverartarchive-py/)             | Python         | MetadataAgent | HTTP                                       | Cover Art Archive              |
-| [coverartarchive-as](examples/coverartarchive-as/)             | AssemblyScript | MetadataAgent | HTTP                                       | Cover Art Archive              |
-| [webhook-rs](examples/webhook-rs/)                             | Rust           | Scrobbler     | HTTP                                       | HTTP webhooks                  |
-| [nowplaying-py](examples/nowplaying-py/)                       | Python         | Lifecycle     | Scheduler, SubsonicAPI                     | Periodic now-playing logger    |
-| [library-inspector-rs](examples/library-inspector-rs/)         | Rust           | Lifecycle     | Library, Scheduler                         | Periodic library stats logging |
-| [crypto-ticker](examples/crypto-ticker/)                       | Go             | Lifecycle     | WebSocket, Scheduler                       | Real-time crypto prices demo   |
-| [discord-rich-presence-rs](examples/discord-rich-presence-rs/) | Rust           | Scrobbler     | HTTP, WebSocket, Cache, Scheduler, Artwork | Discord integration            |
+| [webhook-rs](examples/webhook-rs/)                             | Rust           | Scrobbler                                        | HTTP                                               | HTTP webhooks                  |
+| [nowplaying-py](examples/nowplaying-py/)                       | Python         | Lifecycle, SchedulerCallback                     | Scheduler, SubsonicAPI                             | Periodic now-playing logger    |
+| [library-inspector-rs](examples/library-inspector-rs/)         | Rust           | Lifecycle, SchedulerCallback                     | Library, Scheduler                                 | Periodic library stats logging |
+| [crypto-ticker](examples/crypto-ticker/)                       | Go             | Lifecycle, SchedulerCallback, WebSocketCallback  | WebSocket, Scheduler                               | Real-time crypto prices demo   |
+| [discord-rich-presence-rs](examples/discord-rich-presence-rs/) | Rust           | Scrobbler, SchedulerCallback, WebSocketCallback  | HTTP, WebSocket, Cache, Scheduler, Artwork, Config | Discord integration            |
 
 ---
 
@@ -1058,11 +1287,11 @@ See [examples/](examples/) for complete working plugins:
 Plugins run in a secure WebAssembly sandbox provided by [Extism](https://extism.org/) and the [Wazero](https://wazero.io/) runtime:
 
 1. **Host Allowlisting** – Only explicitly allowed hosts are accessible via HTTP/WebSocket
-2. **Limited File System** – Read-only access to library directories, only when explicitly granted the `library.filesystem` permission
+2. **Limited File System** – Plugins cannot create symlinks inside a mount and `..` or absolute paths are rejected, though symlinks already present are followed. Library access requires the `library.filesystem` permission and is read-only unless an administrator grants write access; the `storage` permission grants a read-write directory private to the plugin
 3. **No Network Listeners** – Plugins cannot bind ports
 4. **Config Isolation** – Plugins only receive their own config section
 5. **Memory Limits** – Controlled by the WebAssembly runtime
-6. **User-Scoped Authorization** – Plugins with `subsonicapi` or `scrobbler` capabilities can only access/receive events for users assigned to them through Navidrome's configuration
+6. **User-Scoped Authorization** – Plugins with `subsonicapi`, `scrobbleRetriever`, or `scrobbler` capabilities can only access/receive events for users assigned to them through Navidrome's configuration
 7. **Users Permission** – Plugins requesting user access must be explicitly configured with allowed users; sensitive data (passwords, emails) is never exposed
 
 ---
@@ -1077,7 +1306,7 @@ If `AutoReload` is disabled, Navidrome needs to be restarted to pick up plugin c
 
 ### Enabling/Disabling Plugins
 
-Plugins can be enabled/disabled via the Navidrome UI. The plugin state is persisted in the database.
+Plugins can be enabled/disabled via the Navidrome UI or the [`navidrome plugin` CLI](#command-line-interface). The plugin state is persisted in the database.
 
 ### Important Notes
 

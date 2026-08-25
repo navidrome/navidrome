@@ -24,12 +24,12 @@ var _ = Describe("authenticate middleware", func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: "u1", UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
 	tokenFor := func(name string) string {
-		t, err := auth.CreateToken(&model.User{ID: "u1", UserName: name})
+		t, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: name})
 		Expect(err).ToNot(HaveOccurred())
 		return t
 	}
@@ -95,6 +95,52 @@ var _ = Describe("authenticate middleware", func() {
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
+
+	Context("token scoping and revocation", func() {
+		var usr *model.User
+
+		BeforeEach(func() {
+			ur := ds.User(context.Background()).(*tests.MockedUserRepo)
+			usr = &model.User{ID: testID("u2"), UserName: "bob", NewPassword: "secret", TokenEpoch: 3}
+			Expect(ur.Put(usr)).To(Succeed())
+		})
+
+		serve := func(token string) *httptest.ResponseRecorder {
+			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items", nil)
+			r.Header.Set("X-Emby-Token", token)
+			api.authenticate(next).ServeHTTP(w, r)
+			return w
+		}
+
+		It("accepts a jellyfin-scoped token with the current epoch", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+
+		It("rejects a token whose epoch is stale", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+			usr.TokenEpoch = 4
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("rejects a token minted for another API", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceNative)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("still accepts an unscoped session token", func() {
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+	})
 })
 
 var _ = Describe("withPlayer middleware", func() {
@@ -129,7 +175,7 @@ var _ = Describe("withPlayer middleware", func() {
 	})
 
 	It("injects the player's server-forced transcoding into the context", func() {
-		players.trc = &model.Transcoding{ID: "t1", TargetFormat: "opus"}
+		players.trc = &model.Transcoding{ID: testID("t1"), TargetFormat: "opus"}
 		_, trc, hasTrc := callWith()
 		Expect(hasTrc).To(BeTrue())
 		Expect(trc.TargetFormat).To(Equal("opus"))

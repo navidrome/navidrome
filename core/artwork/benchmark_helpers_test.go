@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/jpeg"
 	"image/png"
 	"testing"
@@ -44,4 +45,12 @@ func generateGradientImage(width, height int) *image.RGBA {
 		}
 	}
 	return img
+}
+
+// gradientNRGBA mirrors generateGradientImage in the type makeThumbnail hands the encoders.
+func gradientNRGBA(size int) *image.NRGBA {
+	src := generateGradientImage(size, size)
+	dst := image.NewNRGBA(src.Bounds())
+	draw.Draw(dst, dst.Bounds(), src, src.Bounds().Min, draw.Src)
+	return dst
 }

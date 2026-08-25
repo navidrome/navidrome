@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -72,6 +73,7 @@ type configOptions struct {
 	Matcher                         matcherOptions `json:",omitzero"`
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
+	EnableNaturalSorting            bool
 	IgnoredArticles                 string
 	IndexGroups                     string
 	FFmpegPath                      string
@@ -90,6 +92,7 @@ type configOptions struct {
 	EnableUserEditing               bool
 	EnableArtworkUpload             bool
 	MaxImageUploadSize              string
+	MaxImageSize                    string
 	EnableSharing                   bool
 	ShareURL                        string
 	DefaultShareExpiration          time.Duration
@@ -144,6 +147,8 @@ type configOptions struct {
 	DevArtworkThrottleBacklogLimit    int
 	DevArtworkThrottleBacklogTimeout  time.Duration
 	DevArtworkThrottleBuffered        bool
+	DevArtworkWorkerConcurrency       int
+	DevArtworkExternalMaxRPS          int
 	DevArtistInfoTimeToLive           time.Duration
 	DevAlbumInfoTimeToLive            time.Duration
 	DevExternalScanner                bool
@@ -419,7 +424,8 @@ func Load(noConfigDump bool) {
 		validateBackupSchedule,
 		validatePlaylistsPath,
 		validatePurgeMissingOption,
-		validateMaxImageUploadSize,
+		validateByteSize("MaxImageUploadSize", Server.MaxImageUploadSize),
+		validateByteSize("MaxImageSize", Server.MaxImageSize),
 		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
 	)
 	if err != nil {
@@ -477,6 +483,14 @@ func Load(noConfigDump bool) {
 		newValue := max(200, min(1200, Server.UICoverArtSize))
 		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
 		Server.UICoverArtSize = newValue
+	}
+
+	// Floor MaxImageSize at MaxImageUploadSize so accepted uploads can always be read back.
+	imgSize, _ := humanize.ParseBytes(Server.MaxImageSize)
+	uploadSize, _ := humanize.ParseBytes(Server.MaxImageUploadSize)
+	if imgSize < uploadSize {
+		log.Warn("MaxImageSize must be at least MaxImageUploadSize, raising", "value", Server.MaxImageSize, "newValue", Server.MaxImageUploadSize)
+		Server.MaxImageSize = Server.MaxImageUploadSize
 	}
 
 	// Call init hooks
@@ -804,11 +818,20 @@ func validatePurgeMissingOption() error {
 	return nil
 }
 
-func validateMaxImageUploadSize() error {
-	if _, err := humanize.ParseBytes(Server.MaxImageUploadSize); err != nil {
-		return fmt.Errorf("invalid MaxImageUploadSize %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", Server.MaxImageUploadSize, err)
+func validateByteSize(name, value string) func() error {
+	return func() error {
+		size, err := humanize.ParseBytes(value)
+		if err != nil {
+			return fmt.Errorf("invalid %s %q: use values like '10MB', '1GB', or raw bytes like '10485760': %w", name, value, err)
+		}
+		if size == 0 {
+			return fmt.Errorf("invalid %s %q: must be greater than zero", name, value)
+		}
+		if size > math.MaxInt64 {
+			return fmt.Errorf("invalid %s %q: value is too large", name, value)
+		}
+		return nil
 	}
-	return nil
 }
 
 func validateEnforceNonRootUser() error {
@@ -951,6 +974,7 @@ func setViperDefaults() {
 	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
+	viper.SetDefault("enablenaturalsorting", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")
@@ -978,6 +1002,7 @@ func setViperDefaults() {
 	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)
 	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
+	viper.SetDefault("maximagesize", consts.DefaultMaxImageSize)
 	viper.SetDefault("enablesharing", true)
 	viper.SetDefault("shareurl", "")
 	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
@@ -1071,6 +1096,12 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkthrottlebackloglimit", consts.RequestThrottleBacklogLimit)
 	viper.SetDefault("devartworkthrottlebacklogtimeout", consts.RequestThrottleBacklogTimeout)
 	viper.SetDefault("devartworkthrottlebuffered", true)
+	// Half the CPU count (min 2), so local resolution scales with the host but stays under the
+	// SQLite pool (MaxOpenConns) — leaving connections for the scanner, scrobbles and the UI.
+	viper.SetDefault("devartworkworkerconcurrency", max(2, runtime.NumCPU()/2))
+	// External RPS gates outbound calls to third-party services (per service); it is bounded by
+	// their tolerance, not the host, so it stays a small constant regardless of CPU count.
+	viper.SetDefault("devartworkexternalmaxrps", 2)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
 	viper.SetDefault("devexternalscanner", true)

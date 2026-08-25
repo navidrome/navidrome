@@ -13,6 +13,15 @@ var _ = Describe("Browsing Endpoints", func() {
 		setupTestDB()
 	})
 
+	getBeatlesId := func() string {
+		artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.Eq{"name": "The Beatles"},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(artists).ToNot(BeEmpty())
+		return artists[0].ID
+	}
+
 	Describe("getMusicFolders", func() {
 		It("returns the configured music library", func() {
 			resp := doReq("getMusicFolders")
@@ -85,12 +94,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getMusicDirectory", func() {
 		It("returns an artist directory with its albums as children", func() {
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
-				Filters: squirrel.Eq{"name": "The Beatles"},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(artists).ToNot(BeEmpty())
-			beatlesID := artists[0].ID
+			beatlesID := getBeatlesId()
 
 			resp := doReq("getMusicDirectory", "id", beatlesID)
 
@@ -125,12 +129,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getArtist", func() {
 		It("returns artist with albums in ID3 format", func() {
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
-				Filters: squirrel.Eq{"name": "The Beatles"},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(artists).ToNot(BeEmpty())
-			beatlesID := artists[0].ID
+			beatlesID := getBeatlesId()
 
 			resp := doReq("getArtist", "id", beatlesID)
 
@@ -141,12 +140,7 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns album names for the artist", func() {
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
-				Filters: squirrel.Eq{"name": "The Beatles"},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(artists).ToNot(BeEmpty())
-			beatlesID := artists[0].ID
+			beatlesID := getBeatlesId()
 
 			resp := doReq("getArtist", "id", beatlesID)
 
@@ -381,13 +375,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getArtistInfo", func() {
 		It("returns artist info for a valid artist", func() {
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
-				Filters: squirrel.Eq{"name": "The Beatles"},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(artists).ToNot(BeEmpty())
-			beatlesID := artists[0].ID
-
+			beatlesID := getBeatlesId()
 			resp := doReq("getArtistInfo", "id", beatlesID)
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
@@ -397,13 +385,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getArtistInfo2", func() {
 		It("returns artist info2 for a valid artist", func() {
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
-				Filters: squirrel.Eq{"name": "The Beatles"},
-			})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(artists).ToNot(BeEmpty())
-			beatlesID := artists[0].ID
-
+			beatlesID := getBeatlesId()
 			resp := doReq("getArtistInfo2", "id", beatlesID)
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
@@ -425,6 +407,28 @@ var _ = Describe("Browsing Endpoints", func() {
 
 			Expect(resp.TopSongs).ToNot(BeNil())
 			Expect(resp.TopSongs.Song).To(BeEmpty())
+		})
+
+		It("returns an error if no arguments are specified", func() {
+			resp := doReq("getTopSongs")
+			Expect(resp.Status).To(Equal(responses.StatusFailed))
+			Expect(resp.TopSongs).To(BeNil())
+		})
+
+		It("returns a response only by id", func() {
+			beatlesID := getBeatlesId()
+			resp := doReq("getTopSongs", "id", beatlesID)
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.TopSongs).ToNot(BeNil())
+		})
+
+		It("returns a response when both id and name are included", func() {
+			beatlesID := getBeatlesId()
+			resp := doReq("getTopSongs", "id", beatlesID, "artist", "The Beatles")
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			Expect(resp.TopSongs).ToNot(BeNil())
 		})
 	})
 

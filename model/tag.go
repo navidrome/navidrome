@@ -2,13 +2,13 @@ package model
 
 import (
 	"cmp"
-	"crypto/md5"
 	"fmt"
 	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/zeebo/xxh3"
 )
 
 type Tag struct {
@@ -121,7 +121,7 @@ func (t Tags) Hash() []byte {
 	}
 	ids := t.IDs()
 	slices.Sort(ids)
-	sum := md5.New()
+	sum := xxh3.New()
 	sum.Write([]byte(strings.Join(ids, "|")))
 	return sum.Sum(nil)
 }

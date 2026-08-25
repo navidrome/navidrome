@@ -715,14 +715,10 @@ var _ = Describe("MediaFile.Movements", func() {
 })
 
 var _ = Describe("MediaFile.Hash", func() {
-	// Guards the upgrade guarantee: converting BPM/BitDepth from int to *int must not change hashes,
-	// or every file would be spuriously re-imported on the next scan.
-	// Golden hashes were captured at 46221d516 when those fields were plain ints.
-	It("keeps hashes identical to the pre-pointer-conversion values", func() {
-		// Golden hashes computed at 46221d516, when BPM/BitDepth were plain ints — pinning
-		// them guarantees the pointer conversion cannot trigger a full-library re-import.
-		Expect(MediaFile{Title: "Song"}.Hash()).To(Equal("1d856ced42cb96db39e354a4bac9a622"))
-		Expect(MediaFile{Title: "Song", BPM: new(120), BitDepth: new(16)}.Hash()).To(Equal("b2b0b1d1dd7fd767093588e4af3a0689"))
+	// Pins the hash formula: an accidental change spuriously re-imports every file on the next scan.
+	It("hashes to a stable value", func() {
+		Expect(MediaFile{Title: "Song"}.Hash()).To(Equal("05fdf70bb0cbe090"))
+		Expect(MediaFile{Title: "Song", BPM: new(120), BitDepth: new(16)}.Hash()).To(Equal("b5daf6ac1009a538"))
 	})
 	It("changes the hash when a pointer field has a value", func() {
 		base := MediaFile{Title: "Song"}

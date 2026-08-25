@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,46 +82,43 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	return createTestManagerWithPluginsAndMetrics(pluginConfig, noopMetricsRecorder{}, plugins...)
 }
 
+// installTestPlugins copies the given .ndp packages into dir and returns their
+// enabled DB rows, so callers can grant whatever access the test needs.
+func installTestPlugins(dir string, plugins ...string) model.Plugins {
+	var rows model.Plugins
+	for _, plugin := range plugins {
+		data, err := os.ReadFile(filepath.Join(testdataDir, plugin))
+		Expect(err).ToNot(HaveOccurred())
+		destPath := filepath.Join(dir, plugin)
+		Expect(os.WriteFile(destPath, data, 0600)).To(Succeed())
+
+		hash := sha256.Sum256(data)
+		rows = append(rows, model.Plugin{
+			ID:      strings.TrimSuffix(plugin, PackageExtension),
+			Path:    destPath,
+			SHA256:  hex.EncodeToString(hash[:]),
+			Enabled: true,
+		})
+	}
+	return rows
+}
+
 // createTestManagerWithPluginsAndMetrics creates a new plugin Manager with the given plugin config,
-// metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
-// Returns the manager and temp directory path.
+// metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins,
+// and starts the manager. Returns the manager and temp directory path.
 func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]string, metrics PluginMetricsRecorder, plugins ...string) (*Manager, string) {
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
 	Expect(err).ToNot(HaveOccurred())
 
-	// Copy test plugins to temp dir and build plugin list with SHA256
-	var enabledPlugins model.Plugins
-	for _, plugin := range plugins {
-		srcPath := filepath.Join(testdataDir, plugin)
-		destPath := filepath.Join(tmpDir, plugin)
-		data, err := os.ReadFile(srcPath)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(destPath, data, 0600)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Compute SHA256 for the plugin
-		hash := sha256.Sum256(data)
-		hashHex := hex.EncodeToString(hash[:])
-		pluginName := plugin[:len(plugin)-len(PackageExtension)] // Remove .ndp extension
-
-		// Build config JSON if provided
-		configJSON := ""
-		if pluginConfig != nil && pluginConfig[pluginName] != nil {
-			// Encode config to JSON
-			configBytes, err := json.Marshal(pluginConfig[pluginName])
+	enabledPlugins := installTestPlugins(tmpDir, plugins...)
+	for i, p := range enabledPlugins {
+		enabledPlugins[i].AllUsers = true // Allow all users by default in tests
+		if pluginConfig[p.ID] != nil {
+			configBytes, err := json.Marshal(pluginConfig[p.ID])
 			Expect(err).ToNot(HaveOccurred())
-			configJSON = string(configBytes)
+			enabledPlugins[i].Config = string(configBytes)
 		}
-
-		enabledPlugins = append(enabledPlugins, model.Plugin{
-			ID:       pluginName,
-			Path:     destPath,
-			SHA256:   hashHex,
-			Enabled:  true,
-			Config:   configJSON,
-			AllUsers: true, // Allow all users by default in tests
-		})
 	}
 
 	// Setup config

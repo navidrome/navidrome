@@ -53,9 +53,13 @@ func ParseManifest(data []byte) (*Manifest, error) {
 // This validates rules like "SubsonicAPI permission requires users permission".
 func (m *Manifest) Validate() error {
 	// SubsonicAPI permission requires users permission
-	if m.Permissions != nil && m.Permissions.Subsonicapi != nil {
-		if m.Permissions.Users == nil {
+	if m.Permissions != nil && m.Permissions.Users == nil {
+		if m.Permissions.Subsonicapi != nil {
 			return fmt.Errorf("'subsonicapi' permission requires 'users' permission to be declared")
+		}
+
+		if m.Permissions.ScrobbleRetriever != nil {
+			return fmt.Errorf("'scrobbleRetriever' permission requires 'users' permission to be declared")
 		}
 	}
 
@@ -122,4 +126,8 @@ func (m *Manifest) HasLibraryFilesystemPermission() bool {
 	return m.Permissions != nil &&
 		m.Permissions.Library != nil &&
 		m.Permissions.Library.Filesystem
+}
+
+func (m *Manifest) HasStoragePermission() bool {
+	return m.Permissions != nil && m.Permissions.Storage != nil
 }

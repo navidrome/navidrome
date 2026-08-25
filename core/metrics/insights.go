@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -94,9 +96,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		log.Trace(ctx, "No users found, skipping Insights data collection")
 		return
 	}
-	hc := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	data := c.collect(ctx)
 	if data == nil {
 		return
@@ -153,6 +153,17 @@ func getFSInfo(path string) *insights.FSInfo {
 	return &info
 }
 
+// installedPackage returns the official installer format used, as written by our own packagers.
+func installedPackage() string {
+	data, _ := os.ReadFile(filepath.Join(conf.Server.DataFolder.String(), ".package"))
+	return strings.TrimSpace(string(data))
+}
+
+// hostingPlatform is env-based, not a file, as app stores can only inject env vars into our image.
+func hostingPlatform() string {
+	return strings.TrimSpace(os.Getenv("ND_PLATFORM"))
+}
+
 var staticData = sync.OnceValue(func() insights.Data {
 	// Basic info
 	data := insights.Data{
@@ -165,11 +176,8 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Containerized = consts.InContainer
 
 	// Install info
-	packageFilename := filepath.Join(conf.Server.DataFolder.String(), ".package")
-	packageFileData, err := os.ReadFile(packageFilename)
-	if err == nil {
-		data.OS.Package = string(packageFileData)
-	}
+	data.OS.Package = installedPackage()
+	data.Platform = hostingPlatform()
 
 	// OS info
 	data.OS.Type = runtime.GOOS
