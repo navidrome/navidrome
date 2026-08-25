@@ -41,6 +41,8 @@ A share of the revenue helps fund the development of Navidrome at no additional 
 
 [![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
 
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/Navidrome/)
+
 ## Features
  
  - Handles very **large music collections**
