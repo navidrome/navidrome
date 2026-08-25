@@ -211,15 +211,15 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 
 	// If it is in the cache, check if the stream is done being written. If so, return a ReadSeeker
 	if cached {
-		// Closing a failed writer also marks the entry final, so refuse it before it
-		// looks like a complete, seekable file.
+		size := getFinalCachedSize(r)
+		// Read the outcome after the size: a final entry means the writer already closed,
+		// and it stores any failure before closing.
 		if writeErr != nil {
 			if err := writeErr.Load(); err != nil {
 				_ = r.Close()
 				return nil, *err
 			}
 		}
-		size := getFinalCachedSize(r)
 		if size >= 0 {
 			log.Trace(ctx, "Cache HIT", "cache", fc.name, "key", key, "size", size)
 			sr := io.NewSectionReader(r, 0, size)
