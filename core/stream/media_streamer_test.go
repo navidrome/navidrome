@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"testing/iotest"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/navidrome/navidrome/conf"
@@ -155,8 +155,10 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("aborts the response when the source fails after sending data", func() {
-			src := &failingReader{data: bytes.Repeat([]byte("a"), 64*1024), err: errors.New("no data available")}
+		// expectAbortedBody serves src over a real HTTP connection and requires the
+		// client to fail reading the body, which only happens if the response was aborted.
+		expectAbortedBody := func(src io.ReadCloser) {
+			GinkgoHelper()
 			server := httptest.NewServer(serveHandler(stream.NewStream(mf, "mp3", 128, src)))
 			DeferCleanup(server.Close)
 
@@ -166,6 +168,13 @@ var _ = Describe("MediaStreamer", func() {
 
 			_, err = io.ReadAll(resp.Body)
 			Expect(err).To(HaveOccurred())
+		}
+
+		It("aborts the response when the source fails after sending data", func() {
+			expectAbortedBody(io.NopCloser(io.MultiReader(
+				bytes.NewReader(bytes.Repeat([]byte("a"), 64*1024)),
+				iotest.ErrReader(errors.New("no data available")),
+			)))
 		})
 
 		It("keeps empty output a non-error, so callers still reply 200 with an empty body", func() {
@@ -182,19 +191,10 @@ var _ = Describe("MediaStreamer", func() {
 		})
 
 		It("aborts the response when the source reports a failure after a clean EOF", func() {
-			src := &truncatedSource{
+			expectAbortedBody(&truncatedSource{
 				Reader: bytes.NewReader(bytes.Repeat([]byte("a"), 64*1024)),
 				err:    errors.New("transcoder died"),
-			}
-			server := httptest.NewServer(serveHandler(stream.NewStream(mf, "mp3", 128, src)))
-			DeferCleanup(server.Close)
-
-			resp, err := http.Get(server.URL)
-			Expect(err).ToNot(HaveOccurred())
-			defer resp.Body.Close()
-
-			_, err = io.ReadAll(resp.Body)
-			Expect(err).To(HaveOccurred())
+			})
 		})
 	})
 })
@@ -202,30 +202,10 @@ var _ = Describe("MediaStreamer", func() {
 // serveHandler exercises Serve through the same Recoverer used by the real server,
 // so an aborted response is only observable if the middleware lets the panic through.
 func serveHandler(s *stream.Stream) http.Handler {
-	r := chi.NewRouter()
-	r.Use(middleware.Recoverer)
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	return middleware.Recoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = s.Serve(r.Context(), w, r)
-	})
-	return r
+	}))
 }
-
-type failingReader struct {
-	data []byte
-	err  error
-	pos  int
-}
-
-func (r *failingReader) Read(p []byte) (int, error) {
-	if r.pos >= len(r.data) {
-		return 0, r.err
-	}
-	n := copy(p, r.data[r.pos:])
-	r.pos += n
-	return n, nil
-}
-
-func (r *failingReader) Close() error { return nil }
 
 // truncatedSource reads to a clean EOF but reports that the data behind it is incomplete.
 type truncatedSource struct {

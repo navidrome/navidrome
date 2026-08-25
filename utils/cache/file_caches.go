@@ -117,6 +117,9 @@ type fileCache struct {
 	disabled    bool
 	ready       atomic.Bool
 	mutex       *sync.RWMutex
+	// inflight holds the write outcome of each entry still being filled, keyed by
+	// cache key, so every reader attached to it learns the writer failed.
+	inflight sync.Map
 }
 
 func (fc *fileCache) Available(_ context.Context) bool {
@@ -184,7 +187,9 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			return nil, err
 		}
 		writeErr = &atomic.Pointer[error]{}
+		fc.inflight.Store(key, writeErr)
 		go func() {
+			defer fc.inflight.Delete(key)
 			if err := fc.copyAndClose(ctx, key, w, reader, writeErr); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
 				_ = fc.invalidate(ctx, key)
@@ -208,6 +213,13 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			}, nil
 		} else {
 			log.Trace(ctx, "Cache HIT", "cache", fc.name, "key", key)
+		}
+	}
+
+	// Readers that joined an entry another request is still filling share its outcome.
+	if writeErr == nil {
+		if v, ok := fc.inflight.Load(key); ok {
+			writeErr = v.(*atomic.Pointer[error])
 		}
 	}
 

@@ -291,6 +291,30 @@ var _ = Describe("File Caches", func() {
 				Expect(io.ReadAll(s)).To(Equal([]byte("PARTIAL-OUTPUT")))
 				Expect(s.Err()).To(MatchError(ContainSubstring("transcoder died")))
 			})
+
+			It("reports the write failure to a second reader that joined mid-write", func() {
+				pr, pw := io.Pipe()
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return pr, nil
+				})
+				s1, err := fc.Get(context.Background(), &testArg{"shared"})
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = s1.Close() })
+
+				// The blocking pipe write gives a happens-before: the entry is now in flight.
+				_, err = pw.Write([]byte("PARTIAL"))
+				Expect(err).To(BeNil())
+
+				s2, err := fc.Get(context.Background(), &testArg{"shared"})
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = s2.Close() })
+				Expect(s2.Cached).To(BeTrue())
+
+				Expect(pw.CloseWithError(errors.New("transcoder died"))).To(Succeed())
+
+				Expect(io.ReadAll(s2)).To(Equal([]byte("PARTIAL")))
+				Expect(s2.Err()).To(MatchError(ContainSubstring("transcoder died")))
+			})
 		})
 
 		Context("entry outliving its data file", func() {

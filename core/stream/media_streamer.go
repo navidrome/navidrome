@@ -195,7 +195,6 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		panic(http.ErrAbortHandler)
 	}
 	if c == 0 {
-		// Empty output is not an error: callers reply 200 with an empty body.
 		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
 			"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
 			"id", id, "format", s.ContentType(), srcErr)
