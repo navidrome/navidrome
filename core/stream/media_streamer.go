@@ -152,8 +152,10 @@ func (s *Stream) EstimatedContentLength() int {
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
 // (supporting range requests). For non-seekable streams it writes directly and logs any errors.
-// Returns the number of bytes written and an error only when io.Copy fails with 0 bytes written
+// Returns the number of bytes written and an error only when it fails with 0 bytes written
 // (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
+// Once bytes are on the wire it panics with http.ErrAbortHandler instead, so a truncated body reaches
+// the client as a dropped connection and not as a complete file.
 // Empty output (0 bytes, no error) is logged but not treated as an error.
 func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
 	if s.Seekable() {
@@ -183,16 +185,33 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 			w.Header().Del("Content-Length")
 			return 0, fmt.Errorf("sending transcoded file: %w", err)
 		}
-		return c, nil
+		// The 200 is already on the wire, so killing the connection is the only way
+		// to tell the client the body is truncated instead of complete.
+		panic(http.ErrAbortHandler)
+	}
+	srcErr := sourceErr(s.ReadCloser)
+	if srcErr != nil && c > 0 {
+		log.Error(ctx, "Transcoded file is truncated", "id", id, "size", c, srcErr)
+		panic(http.ErrAbortHandler)
 	}
 	if c == 0 {
+		// Empty output is not an error: callers reply 200 with an empty body.
 		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
 			"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
-			"id", id, "format", s.ContentType())
+			"id", id, "format", s.ContentType(), srcErr)
 	} else {
 		log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
 	}
 	return c, nil
+}
+
+// sourceErr reports a failure that a source can only surface after the reader saw
+// EOF, like a cache entry whose writer died mid-transcode.
+func sourceErr(r io.ReadCloser) error {
+	if er, ok := r.(interface{ Err() error }); ok {
+		return er.Err()
+	}
+	return nil
 }
 
 // NewStream creates a non-seekable Stream from the given components.

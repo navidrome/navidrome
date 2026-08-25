@@ -278,6 +278,19 @@ var _ = Describe("File Caches", func() {
 					return os.IsNotExist(e)
 				}).Should(BeTrue())
 			})
+
+			It("reports the write failure to the in-flight reader", func() {
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return &partialThenErrReader{data: []byte("PARTIAL-OUTPUT"), err: errors.New("transcoder died")}, nil
+				})
+				s, err := fc.Get(context.Background(), &testArg{"partial-reader"})
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = s.Close() })
+
+				// The reader still sees a clean EOF: only Err can tell it the entry is truncated.
+				Expect(io.ReadAll(s)).To(Equal([]byte("PARTIAL-OUTPUT")))
+				Expect(s.Err()).To(MatchError(ContainSubstring("transcoder died")))
+			})
 		})
 
 		Context("entry outliving its data file", func() {

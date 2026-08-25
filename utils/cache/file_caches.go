@@ -172,6 +172,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	}
 
 	cached := w == nil
+	var writeErr *atomic.Pointer[error]
 
 	if !cached {
 		log.Trace(ctx, "Cache MISS", "cache", fc.name, "key", key)
@@ -182,8 +183,9 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			_ = fc.invalidate(ctx, key)
 			return nil, err
 		}
+		writeErr = &atomic.Pointer[error]{}
 		go func() {
-			if err := fc.copyAndClose(ctx, key, w, reader); err != nil {
+			if err := fc.copyAndClose(ctx, key, w, reader, writeErr); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
 				_ = fc.invalidate(ctx, key)
 			} else {
@@ -210,7 +212,7 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	}
 
 	// All other cases, just return the cache reader, without Seek capabilities
-	return &CachedStream{Reader: r, Cached: cached}, nil
+	return &CachedStream{Reader: r, Cached: cached, writeErr: writeErr}, nil
 }
 
 // CachedStream is a wrapper around an io.ReadCloser that allows reading from a cache.
@@ -218,7 +220,20 @@ type CachedStream struct {
 	io.Reader
 	io.Seeker
 	io.Closer
-	Cached bool
+	Cached   bool
+	writeErr *atomic.Pointer[error]
+}
+
+// Err reports a failure of the goroutine that filled the cache entry. It is only
+// meaningful after the reader reached EOF: a truncated entry ends in a clean EOF.
+func (s *CachedStream) Err() error {
+	if s.writeErr == nil {
+		return nil
+	}
+	if err := s.writeErr.Load(); err != nil {
+		return *err
+	}
+	return nil
 }
 
 func (s *CachedStream) Close() error {
@@ -243,7 +258,7 @@ func getFinalCachedSize(r fscache.ReadAtCloser) int64 {
 }
 
 // copyAndClose marks the entry complete before closing w, so EOF implies the entry is settled on disk.
-func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteCloser, r io.Reader) error {
+func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteCloser, r io.Reader, writeErr *atomic.Pointer[error]) error {
 	_, err := io.Copy(w, r)
 	if err != nil {
 		err = fmt.Errorf("copying data to cache: %w", err)
@@ -255,6 +270,9 @@ func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteClo
 	}
 	if err == nil {
 		fc.markComplete(ctx, key)
+	} else {
+		// Store before Close: closing w is what releases readers waiting on EOF.
+		writeErr.Store(&err)
 	}
 	if cErr := w.Close(); cErr != nil {
 		err = multierror.Append(err, fmt.Errorf("closing cache writer: %w", cErr))
