@@ -318,7 +318,9 @@ func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteClo
 		writeErr.Store(&err)
 	}
 	if cErr := w.Close(); cErr != nil {
-		err = multierror.Append(err, fmt.Errorf("closing cache writer: %w", cErr))
+		// Join instead of Append: the published error must not be mutated once readers
+		// have been released, and Append writes through to the same value.
+		return errors.Join(err, fmt.Errorf("closing cache writer: %w", cErr))
 	}
 	return err
 }

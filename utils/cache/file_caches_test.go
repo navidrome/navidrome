@@ -338,6 +338,25 @@ var _ = Describe("File Caches", func() {
 				Expect(err).To(MatchError(ContainSubstring("transcoder died")))
 			})
 
+			It("publishes an error that a later close failure cannot mutate", func() {
+				fc := callNewFileCache("test", "10MB", "test", 0, nil)
+				outcome := &atomic.Pointer[error]{}
+				w := failingCloseWriter{err: errors.New("CLOSE-BOOM")}
+				src := errFakeReader{err: errors.New("SOURCE-BOOM")}
+
+				err := fc.copyAndClose(context.Background(), "k", w, src, outcome)
+
+				// The caller still learns about both failures.
+				Expect(err).To(MatchError(ContainSubstring("SOURCE-BOOM")))
+				Expect(err).To(MatchError(ContainSubstring("CLOSE-BOOM")))
+
+				// Readers only learn what actually shortened the stream.
+				published := outcome.Load()
+				Expect(published).ToNot(BeNil())
+				Expect((*published).Error()).To(ContainSubstring("SOURCE-BOOM"))
+				Expect((*published).Error()).ToNot(ContainSubstring("closing cache writer"))
+			})
+
 			It("binds the outcome to the entry it opened, not to a later one", func() {
 				pr, pw := io.Pipe()
 				var n atomic.Int32
@@ -512,6 +531,11 @@ var _ = Describe("File Caches", func() {
 type testArg struct{ s string }
 
 func (t *testArg) Key() string { return t.s }
+
+type failingCloseWriter struct{ err error }
+
+func (f failingCloseWriter) Write(p []byte) (int, error) { return len(p), nil }
+func (f failingCloseWriter) Close() error                { return f.err }
 
 type errFakeReader struct{ err error }
 
