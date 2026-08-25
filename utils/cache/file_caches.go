@@ -263,6 +263,9 @@ func (fc *fileCache) copyAndClose(ctx context.Context, key string, w io.WriteClo
 			return errors.Join(err, fmt.Errorf("closing cache writer: %w", cErr))
 		}
 		return err
+	} else {
+		log.Warn(ctx, "Cache writer cannot report failures; readers will see a truncated entry as a clean EOF",
+			"cache", fc.name, "key", key, err)
 	}
 	if cErr := w.Close(); cErr != nil {
 		err = multierror.Append(err, fmt.Errorf("closing cache writer: %w", cErr))

@@ -259,6 +259,18 @@ var _ = Describe("File Caches", func() {
 				}).Should(BeTrue())
 			})
 
+			It("gets a writer that can report failures to readers", func() {
+				// Guards the fork adoption: if the fscache replace directive is ever lost,
+				// this fails in CI instead of silently reviving the truncation bug.
+				fc := callNewFileCache("test", "10MB", "test", 0, nil)
+				_, w, err := fc.cache.Get("capability")
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = w.Close() })
+
+				_, ok := w.(interface{ CloseWithError(error) error })
+				Expect(ok).To(BeTrue(), "fscache writer lost CloseWithError; check the go.mod replace directive")
+			})
+
 			It("fails the reader with the cause instead of a clean EOF", func() {
 				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
 					return &partialThenErrReader{data: []byte("PARTIAL"), err: errors.New("transcoder died")}, nil
