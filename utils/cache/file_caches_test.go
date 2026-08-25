@@ -330,10 +330,54 @@ var _ = Describe("File Caches", func() {
 				failed := errors.New("transcoder died")
 				outcome := &atomic.Pointer[error]{}
 				outcome.Store(&failed)
-				fc.inflight.Store((&testArg{"failed"}).Key(), outcome)
+				fc.inflightMu.Lock()
+				fc.inflight[(&testArg{"failed"}).Key()] = outcome
+				fc.inflightMu.Unlock()
 
 				_, err = fc.Get(context.Background(), &testArg{"failed"})
 				Expect(err).To(MatchError(ContainSubstring("transcoder died")))
+			})
+
+			It("binds the outcome to the entry it opened, not to a later one", func() {
+				pr, pw := io.Pipe()
+				var n atomic.Int32
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					if n.Add(1) == 1 {
+						return pr, nil
+					}
+					return strings.NewReader("GOOD"), nil
+				})
+				key := (&testArg{"generations"}).Key()
+
+				s1, err := fc.Get(context.Background(), &testArg{"generations"})
+				Expect(err).To(BeNil())
+				_, err = pw.Write([]byte("PARTIAL"))
+				Expect(err).To(BeNil())
+
+				// A reader joining now binds this entry's outcome as it opens it.
+				r, w, outcome, err := fc.reserve(context.Background(), key)
+				Expect(err).To(BeNil())
+				Expect(w).To(BeNil())
+				Expect(outcome).ToNot(BeNil())
+
+				// The entry fails, and a later one takes over the same key while the
+				// joining reader still holds the old one open.
+				Expect(pw.CloseWithError(errors.New("transcoder died"))).To(Succeed())
+				Eventually(func() bool { return fc.cache.Exists(key) }).Should(BeFalse())
+				s2, err := fc.Get(context.Background(), &testArg{"generations"})
+				Expect(err).To(BeNil())
+				Expect(io.ReadAll(s2)).To(Equal([]byte("GOOD")))
+				Expect(s2.Close()).To(Succeed())
+
+				Eventually(func() error {
+					if e := outcome.Load(); e != nil {
+						return *e
+					}
+					return nil
+				}).Should(MatchError(ContainSubstring("transcoder died")))
+
+				Expect(r.Close()).To(Succeed())
+				Expect(s1.Close()).To(Succeed())
 			})
 
 			It("reports the write failure to a reader that joined while the source was starting", func() {

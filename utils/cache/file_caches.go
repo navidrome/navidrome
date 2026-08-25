@@ -83,6 +83,7 @@ func NewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader R
 		maxItems:    maxItems,
 		getReader:   getReader,
 		mutex:       &sync.RWMutex{},
+		inflight:    map[string]*atomic.Pointer[error]{},
 	}
 
 	go func() {
@@ -118,7 +119,8 @@ type fileCache struct {
 	ready       atomic.Bool
 	mutex       *sync.RWMutex
 	// Write outcome of each entry still being filled, so every reader of it learns a failure.
-	inflight sync.Map
+	inflightMu sync.Mutex
+	inflight   map[string]*atomic.Pointer[error]
 }
 
 func (fc *fileCache) Available(_ context.Context) bool {
@@ -150,6 +152,43 @@ func (fc *fileCache) invalidate(ctx context.Context, key string) error {
 	return err
 }
 
+// reserve opens the cache entry and binds its write outcome in one step, so a reader
+// cannot pick up the outcome of a newer entry that reused the same key.
+func (fc *fileCache) reserve(ctx context.Context, key string) (fscache.ReadAtCloser, io.WriteCloser, *atomic.Pointer[error], error) {
+	fc.inflightMu.Lock()
+	defer fc.inflightMu.Unlock()
+
+	r, w, err := fc.cache.Get(key)
+	if errors.Is(err, fs.ErrNotExist) {
+		// The entry outlived its data file. Drop it and retry, or every future Get
+		// for this key fails for the rest of the process's life.
+		log.Debug(ctx, "Cache entry lost its data file. Re-fetching", "cache", fc.name, "key", key)
+		// invalidate waits on open handles, so it must never run under the lock.
+		fc.inflightMu.Unlock()
+		_ = fc.invalidate(ctx, key)
+		fc.inflightMu.Lock()
+		r, w, err = fc.cache.Get(key)
+	}
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if w != nil {
+		outcome := &atomic.Pointer[error]{}
+		fc.inflight[key] = outcome
+		return r, w, outcome, nil
+	}
+	return r, w, fc.inflight[key], nil
+}
+
+// forget drops the outcome only if it is still ours: a later entry may have replaced it.
+func (fc *fileCache) forget(key string, outcome *atomic.Pointer[error]) {
+	fc.inflightMu.Lock()
+	defer fc.inflightMu.Unlock()
+	if fc.inflight[key] == outcome {
+		delete(fc.inflight, key)
+	}
+}
+
 func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	if !fc.Available(ctx) {
 		log.Debug(ctx, "Cache not initialized yet. Reading data directly from reader", "cache", fc.name)
@@ -161,39 +200,26 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	}
 
 	key := arg.Key()
-	r, w, err := fc.cache.Get(key)
-	if errors.Is(err, fs.ErrNotExist) {
-		// The entry outlived its data file. Drop it and retry, or every future Get
-		// for this key fails for the rest of the process's life.
-		log.Debug(ctx, "Cache entry lost its data file. Re-fetching", "cache", fc.name, "key", key)
-		_ = fc.invalidate(ctx, key)
-		r, w, err = fc.cache.Get(key)
-	}
+	r, w, writeErr, err := fc.reserve(ctx, key)
 	if err != nil {
 		return nil, err
 	}
 
 	cached := w == nil
-	var writeErr *atomic.Pointer[error]
 
 	if !cached {
 		log.Trace(ctx, "Cache MISS", "cache", fc.name, "key", key)
-		// Register before the source starts: cache.Get already exposed the entry, so a
-		// concurrent request can attach while getReader is still bringing it up.
-		writeErr = &atomic.Pointer[error]{}
-		fc.inflight.Store(key, writeErr)
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
 			writeErr.Store(&err)
-			fc.inflight.CompareAndDelete(key, writeErr)
 			_ = r.Close()
 			_ = w.Close()
 			_ = fc.invalidate(ctx, key)
+			fc.forget(key, writeErr)
 			return nil, err
 		}
 		go func() {
-			// Delete only our own entry: a later miss may already have replaced it.
-			defer fc.inflight.CompareAndDelete(key, writeErr)
+			defer fc.forget(key, writeErr)
 			if err := fc.copyAndClose(ctx, key, w, reader, writeErr); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
 				_ = fc.invalidate(ctx, key)
@@ -201,12 +227,6 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 				log.Trace(ctx, "File successfully stored in cache", "cache", fc.name, "key", key)
 			}
 		}()
-	}
-
-	if writeErr == nil {
-		if v, ok := fc.inflight.Load(key); ok {
-			writeErr = v.(*atomic.Pointer[error])
-		}
 	}
 
 	// If it is in the cache, check if the stream is done being written. If so, return a ReadSeeker
