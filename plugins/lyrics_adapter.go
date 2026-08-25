@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
@@ -25,6 +26,86 @@ const maxConcurrentLyricsCalls = 2
 // disconnected client cannot leave a shared plugin lookup running forever.
 const lyricsPluginCallTimeout = time.Minute
 
+// lyricsCallGroup coalesces lookups while keeping their lifetime tied to the
+// callers that are still waiting. One caller may leave without interrupting the
+// others, but the shared work is cancelled once the last waiter is gone.
+type lyricsCallGroup struct {
+	mu    sync.Mutex
+	calls map[string]*lyricsCall
+}
+
+type lyricsCall struct {
+	group    *lyricsCallGroup
+	key      string
+	ctx      context.Context
+	cancel   context.CancelFunc
+	done     chan struct{}
+	lyrics   model.LyricList
+	err      error
+	waiters  int
+	finished bool
+}
+
+func (g *lyricsCallGroup) join(
+	parent context.Context,
+	key string,
+	lookup func(context.Context) (model.LyricList, error),
+) *lyricsCall {
+	g.mu.Lock()
+	if call := g.calls[key]; call != nil {
+		call.waiters++
+		g.mu.Unlock()
+		return call
+	}
+
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), lyricsPluginCallTimeout)
+	call := &lyricsCall{
+		group:   g,
+		key:     key,
+		ctx:     ctx,
+		cancel:  cancel,
+		done:    make(chan struct{}),
+		waiters: 1,
+	}
+	if g.calls == nil {
+		g.calls = make(map[string]*lyricsCall)
+	}
+	g.calls[key] = call
+	g.mu.Unlock()
+
+	go call.run(lookup)
+	return call
+}
+
+func (c *lyricsCall) run(lookup func(context.Context) (model.LyricList, error)) {
+	lyrics, err := lookup(c.ctx)
+
+	c.group.mu.Lock()
+	c.lyrics = lyrics
+	c.err = err
+	c.finished = true
+	if c.group.calls[c.key] == c {
+		delete(c.group.calls, c.key)
+	}
+	close(c.done)
+	c.group.mu.Unlock()
+	c.cancel()
+}
+
+func (c *lyricsCall) release() {
+	c.group.mu.Lock()
+	c.waiters--
+	shouldCancel := c.waiters == 0 && !c.finished
+	if shouldCancel && c.group.calls[c.key] == c {
+		delete(c.group.calls, c.key)
+	}
+	c.group.mu.Unlock()
+
+	if shouldCancel {
+		c.cancel()
+	}
+}
+
 func init() {
 	registerCapability(
 		CapabilityLyrics,
@@ -42,9 +123,8 @@ type LyricsPlugin struct {
 	plugin *plugin
 }
 
-// GetLyrics coalesces concurrent lookups for the same track. The shared call is
-// detached from any one request so one disconnected client does not cancel it
-// for the remaining callers.
+// GetLyrics coalesces concurrent lookups for the same track. The shared call
+// survives individual disconnections while another caller is still waiting.
 func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -58,22 +138,14 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 		return nil, err
 	}
 
-	result := l.plugin.lyricsCalls.DoChan(key, func() (any, error) {
-		callCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), lyricsPluginCallTimeout)
-		defer cancel()
+	call := l.plugin.lyricsCalls.join(ctx, key, func(callCtx context.Context) (model.LyricList, error) {
 		return l.getLyrics(callCtx, mf, req)
 	})
+	defer call.release()
 
 	select {
-	case call := <-result:
-		if call.Err != nil {
-			return nil, call.Err
-		}
-		lyricsList, ok := call.Val.(model.LyricList)
-		if !ok {
-			return nil, fmt.Errorf("unexpected lyrics plugin result type %T", call.Val)
-		}
-		return lyricsList, nil
+	case <-call.done:
+		return call.lyrics, call.err
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

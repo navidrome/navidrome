@@ -210,6 +210,36 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(metrics.getCalls()).To(HaveLen(1))
 		})
 
+		It("cancels a shared request after its last caller leaves", func() {
+			var group lyricsCallGroup
+			firstCtx, cancelFirst := context.WithCancel(GinkgoT().Context())
+			secondCtx, cancelSecond := context.WithCancel(GinkgoT().Context())
+			started := make(chan struct{})
+			stopped := make(chan error, 1)
+
+			firstCall := group.join(firstCtx, "shared", func(ctx context.Context) (model.LyricList, error) {
+				close(started)
+				<-ctx.Done()
+				stopped <- ctx.Err()
+				return nil, ctx.Err()
+			})
+			Eventually(started).Should(BeClosed())
+
+			secondCall := group.join(secondCtx, "shared", func(context.Context) (model.LyricList, error) {
+				Fail("started a second lookup for the same key")
+				return nil, nil
+			})
+			Expect(secondCall).To(BeIdenticalTo(firstCall))
+
+			cancelFirst()
+			firstCall.release()
+			Consistently(stopped, "100ms").ShouldNot(Receive())
+
+			cancelSecond()
+			secondCall.release()
+			Eventually(stopped).Should(Receive(MatchError(context.Canceled)))
+		})
+
 		It("defaults language to 'xxx' when plugin does not provide one", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
 				"test-lyrics": {"no_lang": "true"},

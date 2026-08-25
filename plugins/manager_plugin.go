@@ -10,7 +10,6 @@ import (
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/model"
 	"github.com/tetratelabs/wazero"
-	"golang.org/x/sync/singleflight"
 )
 
 // plugin represents a loaded plugin
@@ -25,9 +24,9 @@ type plugin struct {
 	allowedUserIDs []string // User IDs this plugin can access (from DB configuration)
 	allUsers       bool     // If true, plugin can access all users
 	libraries      libraryAccess
-	lyricsSem      chan struct{}      // Caps concurrent lyrics calls (see LyricsPlugin.GetLyrics)
-	lyricsCalls    singleflight.Group // Shared by the transient LyricsPlugin adapters
-	fsConfig       wazero.FSConfig    // Sandboxed library mounts, nil if no filesystem permission
+	lyricsSem      chan struct{}   // Caps concurrent lyrics calls (see LyricsPlugin.GetLyrics)
+	lyricsCalls    lyricsCallGroup // Shared by the transient LyricsPlugin adapters
+	fsConfig       wazero.FSConfig // Sandboxed library mounts, nil if no filesystem permission
 }
 
 // instanceConfig is used by every call site, so all instances get the sandboxed mounts.
