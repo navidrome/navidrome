@@ -147,3 +147,5 @@ tool (
 	github.com/onsi/ginkgo/v2/ginkgo
 	golang.org/x/tools/cmd/goimports
 )
+
+replace github.com/djherbis/fscache => github.com/deluan/fscache v0.9.1-0.20260825213353-67eb811bfba6
