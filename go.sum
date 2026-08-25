@@ -29,8 +29,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 h1:5RVFMOWjMyRy8cARdy79nAmgYw3hK/4HUq48LQ6Wwqo=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
-github.com/deluan/fscache v0.9.1-0.20260825213353-67eb811bfba6 h1:j+ChJMenvC5tJYt0JFOQxox+6ih9teAwJAcRrttibD4=
-github.com/deluan/fscache v0.9.1-0.20260825213353-67eb811bfba6/go.mod h1:eNFa48vJrse+8ysT4IJnnUeXwLZNcR0JQumU/W/QoUI=
+github.com/deluan/fscache v0.9.1-0.20260825221051-a07d597526e2 h1:s254V2hsrrCJXYtAn9WPG/5p4QHenfL9E+j6Tiq5MW4=
+github.com/deluan/fscache v0.9.1-0.20260825221051-a07d597526e2/go.mod h1:eNFa48vJrse+8ysT4IJnnUeXwLZNcR0JQumU/W/QoUI=
 github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3 h1:j7eSXqgtjhlNfwnMEzRdXnJGZTEw4I7J9TeQAll83bU=
 github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3/go.mod h1:QGxQ4Z1IWyY9w56xNEFjYAaWE8uSxA/gneQ7RPcFJrY=
 github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf h1:tb246l2Zmpt/GpF9EcHCKTtwzrd0HGfEmoODFA/qnk4=
