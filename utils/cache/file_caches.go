@@ -203,8 +203,22 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		}()
 	}
 
+	if writeErr == nil {
+		if v, ok := fc.inflight.Load(key); ok {
+			writeErr = v.(*atomic.Pointer[error])
+		}
+	}
+
 	// If it is in the cache, check if the stream is done being written. If so, return a ReadSeeker
 	if cached {
+		// Closing a failed writer also marks the entry final, so refuse it before it
+		// looks like a complete, seekable file.
+		if writeErr != nil {
+			if err := writeErr.Load(); err != nil {
+				_ = r.Close()
+				return nil, *err
+			}
+		}
 		size := getFinalCachedSize(r)
 		if size >= 0 {
 			log.Trace(ctx, "Cache HIT", "cache", fc.name, "key", key, "size", size)
@@ -217,12 +231,6 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			}, nil
 		} else {
 			log.Trace(ctx, "Cache HIT", "cache", fc.name, "key", key)
-		}
-	}
-
-	if writeErr == nil {
-		if v, ok := fc.inflight.Load(key); ok {
-			writeErr = v.(*atomic.Pointer[error])
 		}
 	}
 

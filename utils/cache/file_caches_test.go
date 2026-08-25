@@ -316,6 +316,26 @@ var _ = Describe("File Caches", func() {
 				Expect(s2.Err()).To(MatchError(ContainSubstring("transcoder died")))
 			})
 
+			It("refuses an entry whose writer already failed", func() {
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return strings.NewReader("PARTIAL"), nil
+				})
+				s, err := fc.Get(context.Background(), &testArg{"failed"})
+				Expect(err).To(BeNil())
+				Expect(io.ReadAll(s)).To(Equal([]byte("PARTIAL")))
+				Expect(s.Close()).To(Succeed())
+
+				// Closing a failed writer also marks the entry final at its partial size,
+				// so without the guard the next reader gets a seekable short file.
+				failed := errors.New("transcoder died")
+				outcome := &atomic.Pointer[error]{}
+				outcome.Store(&failed)
+				fc.inflight.Store((&testArg{"failed"}).Key(), outcome)
+
+				_, err = fc.Get(context.Background(), &testArg{"failed"})
+				Expect(err).To(MatchError(ContainSubstring("transcoder died")))
+			})
+
 			It("reports the write failure to a reader that joined while the source was starting", func() {
 				pr, pw := io.Pipe()
 				starting := make(chan struct{})
