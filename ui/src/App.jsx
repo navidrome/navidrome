@@ -49,6 +49,8 @@ import SharePlayer from './share/SharePlayer'
 import { HTML5Backend } from 'react-dnd-html5-backend'
 import { DndProvider } from 'react-dnd'
 import missing from './missing/index.js'
+import { LdapList } from './ldap'
+import SettingsEthernetIcon from '@material-ui/icons/SettingsEthernet'
 import { useEffect } from 'react'
 
 const history = createHashHistory()
@@ -166,6 +168,15 @@ const Admin = (props) => {
             options={{ subMenu: 'settings' }}
           />
         ) : null,
+        permissions === 'admin' ? (
+          <Resource
+            name="ldap"
+            list={LdapList}
+            icon={SettingsEthernetIcon}
+            options={{ subMenu: 'settings' }}
+          />
+        ) : null,
+
         permissions === 'admin' && config.pluginsEnabled ? (
           <Resource
             name="plugin"
