@@ -117,8 +117,7 @@ type fileCache struct {
 	disabled    bool
 	ready       atomic.Bool
 	mutex       *sync.RWMutex
-	// inflight holds the write outcome of each entry still being filled, keyed by
-	// cache key, so every reader attached to it learns the writer failed.
+	// Write outcome of each entry still being filled, so every reader of it learns a failure.
 	inflight sync.Map
 }
 
@@ -216,7 +215,6 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		}
 	}
 
-	// Readers that joined an entry another request is still filling share its outcome.
 	if writeErr == nil {
 		if v, ok := fc.inflight.Load(key); ok {
 			writeErr = v.(*atomic.Pointer[error])
@@ -236,8 +234,8 @@ type CachedStream struct {
 	writeErr *atomic.Pointer[error]
 }
 
-// Err reports a failure of the goroutine that filled the cache entry. It is only
-// meaningful after the reader reached EOF: a truncated entry ends in a clean EOF.
+// Err reports a failure of the goroutine filling the entry. Only meaningful after EOF,
+// since a truncated entry ends in a clean EOF.
 func (s *CachedStream) Err() error {
 	if s.writeErr == nil {
 		return nil

@@ -154,8 +154,7 @@ func (s *Stream) EstimatedContentLength() int {
 // (supporting range requests). For non-seekable streams it writes directly and logs any errors.
 // Returns the number of bytes written and an error only when it fails with 0 bytes written
 // (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
-// Once bytes are on the wire it panics with http.ErrAbortHandler instead, so a truncated body reaches
-// the client as a dropped connection and not as a complete file.
+// Once bytes are on the wire it panics with http.ErrAbortHandler instead, aborting the response.
 // Empty output (0 bytes, no error) is logged but not treated as an error.
 func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
 	if s.Seekable() {
@@ -185,8 +184,7 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 			w.Header().Del("Content-Length")
 			return 0, fmt.Errorf("sending transcoded file: %w", err)
 		}
-		// The 200 is already on the wire, so killing the connection is the only way
-		// to tell the client the body is truncated instead of complete.
+		// The 200 is already sent, so dropping the connection is the only way to say "truncated".
 		panic(http.ErrAbortHandler)
 	}
 	srcErr := sourceErr(s.ReadCloser)
@@ -204,8 +202,7 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	return c, nil
 }
 
-// sourceErr reports a failure that a source can only surface after the reader saw
-// EOF, like a cache entry whose writer died mid-transcode.
+// sourceErr reports a failure a source can only surface after the reader saw EOF.
 func sourceErr(r io.ReadCloser) error {
 	if er, ok := r.(interface{ Err() error }); ok {
 		return er.Err()

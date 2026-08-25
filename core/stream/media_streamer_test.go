@@ -155,8 +155,7 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		// expectAbortedBody serves src over a real HTTP connection and requires the
-		// client to fail reading the body, which only happens if the response was aborted.
+		// A client-side read failure is the only observable proof the response was aborted.
 		expectAbortedBody := func(src io.ReadCloser) {
 			GinkgoHelper()
 			server := httptest.NewServer(serveHandler(stream.NewStream(mf, "mp3", 128, src)))
@@ -199,8 +198,7 @@ var _ = Describe("MediaStreamer", func() {
 	})
 })
 
-// serveHandler exercises Serve through the same Recoverer used by the real server,
-// so an aborted response is only observable if the middleware lets the panic through.
+// Serve runs behind the real server's Recoverer, which must let ErrAbortHandler through.
 func serveHandler(s *stream.Stream) http.Handler {
 	return middleware.Recoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = s.Serve(r.Context(), w, r)
