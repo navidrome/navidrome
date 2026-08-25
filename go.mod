@@ -5,7 +5,7 @@ go 1.26
 // Fork to implement raw tags support
 replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3
 
-// Fork to implement CloseWithError. See https://github.com/navidrome/navidrome/pull/6035
+// Fork to implement CloseWithError, proposed upstream in https://github.com/djherbis/fscache/pull/22
 replace github.com/djherbis/fscache => github.com/deluan/fscache v0.9.1-0.20260825221051-a07d597526e2
 
 require (
