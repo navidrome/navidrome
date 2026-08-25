@@ -90,12 +90,13 @@ const maxRetryInSeconds = int(MaxRetryIn / time.Second)
 // Anything unparseable or non-positive means unspecified.
 func ParseRetryIn(seconds string) time.Duration {
 	// Clamp in seconds: scaling first would wrap a huge value past int64 nanoseconds,
-	// turning "wait an age" into a fraction of a second.
-	secs, err := strconv.Atoi(seconds)
+	// turning "wait an age" into a fraction of a second. Parse at a fixed width so the
+	// cap holds on the 32-bit targets we ship, where a plain Atoi would overflow first.
+	secs, err := strconv.ParseInt(seconds, 10, 64)
 	if err != nil || secs <= 0 {
 		return 0
 	}
-	return time.Duration(min(secs, maxRetryInSeconds)) * time.Second
+	return time.Duration(min(secs, int64(maxRetryInSeconds))) * time.Second
 }
 
 // AlbumInfoRetriever provides album info (no images)
