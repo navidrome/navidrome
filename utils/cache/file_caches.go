@@ -178,17 +178,22 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 
 	if !cached {
 		log.Trace(ctx, "Cache MISS", "cache", fc.name, "key", key)
+		// Register before the source starts: cache.Get already exposed the entry, so a
+		// concurrent request can attach while getReader is still bringing it up.
+		writeErr = &atomic.Pointer[error]{}
+		fc.inflight.Store(key, writeErr)
 		reader, err := fc.getReader(ctx, arg)
 		if err != nil {
+			writeErr.Store(&err)
+			fc.inflight.CompareAndDelete(key, writeErr)
 			_ = r.Close()
 			_ = w.Close()
 			_ = fc.invalidate(ctx, key)
 			return nil, err
 		}
-		writeErr = &atomic.Pointer[error]{}
-		fc.inflight.Store(key, writeErr)
 		go func() {
-			defer fc.inflight.Delete(key)
+			// Delete only our own entry: a later miss may already have replaced it.
+			defer fc.inflight.CompareAndDelete(key, writeErr)
 			if err := fc.copyAndClose(ctx, key, w, reader, writeErr); err != nil {
 				log.Debug(ctx, "Error storing file in cache", "cache", fc.name, "key", key, err)
 				_ = fc.invalidate(ctx, key)

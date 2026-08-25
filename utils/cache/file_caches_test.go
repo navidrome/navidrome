@@ -315,6 +315,46 @@ var _ = Describe("File Caches", func() {
 				Expect(io.ReadAll(s2)).To(Equal([]byte("PARTIAL")))
 				Expect(s2.Err()).To(MatchError(ContainSubstring("transcoder died")))
 			})
+
+			It("reports the write failure to a reader that joined while the source was starting", func() {
+				pr, pw := io.Pipe()
+				starting := make(chan struct{})
+				release := make(chan struct{})
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					close(starting)
+					<-release
+					return pr, nil
+				})
+
+				var s1 *CachedStream
+				done := make(chan struct{})
+				go func() {
+					defer GinkgoRecover()
+					defer close(done)
+					var err error
+					s1, err = fc.Get(context.Background(), &testArg{"starting"})
+					Expect(err).To(BeNil())
+				}()
+
+				// The entry is visible to other requests as soon as the first Get reserves
+				// it, which is before the source has produced anything.
+				Eventually(starting).Should(BeClosed())
+				s2, err := fc.Get(context.Background(), &testArg{"starting"})
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = s2.Close() })
+				Expect(s2.Cached).To(BeTrue())
+
+				close(release)
+				Eventually(done).Should(BeClosed())
+				DeferCleanup(func() { _ = s1.Close() })
+
+				_, err = pw.Write([]byte("PARTIAL"))
+				Expect(err).To(BeNil())
+				Expect(pw.CloseWithError(errors.New("transcoder died"))).To(Succeed())
+
+				Expect(io.ReadAll(s2)).To(Equal([]byte("PARTIAL")))
+				Expect(s2.Err()).To(MatchError(ContainSubstring("transcoder died")))
+			})
 		})
 
 		Context("entry outliving its data file", func() {
