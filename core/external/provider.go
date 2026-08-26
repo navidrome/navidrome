@@ -286,12 +286,12 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	return artist, nil
 }
 
-// InfoKinds are the kinds RefreshInfo can act on. Callers check this instead of restating
+// infoKinds are the kinds RefreshInfo can act on. Callers check this instead of restating
 // the set, so the switch below stays the only place that has to know how each kind loads.
-var InfoKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
+var infoKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
 
 // HasInfo reports whether a kind has external info to refresh.
-func HasInfo(kind model.Kind) bool { return slices.Contains(InfoKinds, kind) }
+func HasInfo(kind model.Kind) bool { return slices.Contains(infoKinds, kind) }
 
 // RefreshInfo re-fetches external info for one item, ignoring the TTL. It is synchronous:
 // callers that must not block are responsible for detaching it.
