@@ -26,29 +26,41 @@ import (
 
 var explainLive bool
 
+// Only one subcommand runs per invocation, so reprocess and cancel bind the same flag targets.
 var (
-	reprocessKinds   []string
-	reprocessSources []string
-	reprocessAll     bool
-	reprocessDryRun  bool
-	reprocessYes     bool
+	artworkKinds      []string
+	artworkSources    []string
+	artworkPriorities []string
+	artworkAll        bool
+	artworkDryRun     bool
+	artworkYes        bool
 )
 
 func init() {
 	artworkExplainCmd.Flags().BoolVar(&explainLive, "live", false,
-		"perform real external lookups instead of reporting what would be tried; "+
-			"also initializes plugin agents, which may open external connections")
-	artworkReprocessCmd.Flags().StringSliceVar(&reprocessKinds, "kind", nil,
+		"walk the chain again now, performing real external lookups, instead of reporting the "+
+			"stored trace of the last resolution; also initializes plugin agents, which may open "+
+			"external connections")
+	artworkReprocessCmd.Flags().StringSliceVar(&artworkKinds, "kind", nil,
 		"kinds to reprocess ("+kindPrefixes(artwork.RecheckKinds)+"); repeatable")
-	artworkReprocessCmd.Flags().StringSliceVar(&reprocessSources, "source", nil,
+	artworkReprocessCmd.Flags().StringSliceVar(&artworkSources, "source", nil,
 		"only items currently resolved from these sources (e.g. folder, external:deezer, absent)")
-	artworkReprocessCmd.Flags().BoolVar(&reprocessAll, "all", false, "reprocess every kind")
-	artworkReprocessCmd.Flags().BoolVar(&reprocessDryRun, "dry-run", false,
+	artworkReprocessCmd.Flags().BoolVar(&artworkAll, "all", false, "reprocess every kind")
+	artworkReprocessCmd.Flags().BoolVar(&artworkDryRun, "dry-run", false,
 		"report what would be queued and exit without queueing")
-	artworkReprocessCmd.Flags().BoolVarP(&reprocessYes, "yes", "y", false, "skip the confirmation prompt")
+	artworkReprocessCmd.Flags().BoolVarP(&artworkYes, "yes", "y", false, "skip the confirmation prompt")
+	artworkCancelCmd.Flags().StringSliceVar(&artworkKinds, "kind", nil,
+		"kinds to cancel ("+kindPrefixes(artwork.RefreshableKinds)+"); repeatable")
+	artworkCancelCmd.Flags().StringSliceVar(&artworkPriorities, "priority", nil,
+		"only rows queued at these priorities ("+priorityNames()+"); repeatable")
+	artworkCancelCmd.Flags().BoolVar(&artworkAll, "all", false, "cancel every kind at every priority")
+	artworkCancelCmd.Flags().BoolVar(&artworkDryRun, "dry-run", false,
+		"report what would be cancelled and exit without cancelling")
+	artworkCancelCmd.Flags().BoolVarP(&artworkYes, "yes", "y", false, "skip the confirmation prompt")
 	artworkCmd.AddCommand(artworkExplainCmd)
 	artworkCmd.AddCommand(artworkRefreshCmd)
 	artworkCmd.AddCommand(artworkReprocessCmd)
+	artworkCmd.AddCommand(artworkCancelCmd)
 	artworkCmd.AddCommand(artworkStatusCmd)
 	rootCmd.AddCommand(artworkCmd)
 }
@@ -92,6 +104,22 @@ var artworkReprocessCmd = &cobra.Command{
 	},
 }
 
+var artworkCancelCmd = &cobra.Command{
+	Use:   "cancel",
+	Short: "Cancel pending artwork work in bulk, by kind and/or queue priority",
+	Long: "Cancel pending artwork work in bulk, by kind and/or queue priority.\n\n" +
+		"Only the queue is touched: resolved artwork and the state behind `artwork explain` are\n" +
+		"left alone, and the trace of why a cancelled item last failed goes with its queue row.\n\n" +
+		"Work already picked up is not interrupted, and an item with no artwork yet can be\n" +
+		"queued again by the hourly re-check. The selection is applied again when you confirm,\n" +
+		"so anything queued after the preview is cancelled too. Use it to call off a bulk\n" +
+		"backfill, not to stop the worker.",
+	Args: cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		runCancel(cmd.Context())
+	},
+}
+
 var artworkStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Report the artwork queue, where artwork resolves from, and the backfill state",
@@ -132,9 +160,11 @@ type statusReport struct {
 	current string
 }
 
-func (r statusReport) queueTotal() int64 {
+func (r statusReport) queueTotal() int64 { return queueTotal(r.queue) }
+
+func queueTotal(stats []model.ArtworkQueueStat) int64 {
 	var n int64
-	for _, s := range r.queue {
+	for _, s := range stats {
 		n += s.Count
 	}
 	return n
@@ -154,7 +184,7 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 	q := ds.ArtworkQueue(ctx)
 	var rep statusReport
 	var err error
-	if rep.queue, err = q.CountByKindAndPriority(); err != nil {
+	if rep.queue, err = q.CountQueued(nil, nil); err != nil {
 		return rep, fmt.Errorf("breaking the artwork queue down by kind: %w", err)
 	}
 
@@ -194,11 +224,7 @@ func formatStatus(rep statusReport) string {
 	if len(rep.queue) == 0 {
 		fmt.Fprintln(w, "  (empty)")
 	} else {
-		fmt.Fprintln(w, "  KIND\tPRIORITY\tITEMS")
-		for _, s := range rep.queue {
-			fmt.Fprintf(w, "  %s\t%s\t%d\n", kindName(s.ItemKind), priorityName(s.Priority), s.Count)
-		}
-		fmt.Fprintf(w, "  TOTAL\t\t%d\n", rep.queueTotal())
+		printQueueStats(w, rep.queue, rep.queueTotal(), "ITEMS", "  ")
 	}
 
 	fmt.Fprintln(w, "\nSources")
@@ -212,7 +238,8 @@ func formatStatus(rep statusReport) string {
 	for _, a := range rep.absent {
 		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.Total, a.Stale)
 	}
-	fmt.Fprintf(w, "  (rechecked once the last attempt is older than %gh)\n", artwork.StaleAbsentAge.Hours())
+	fmt.Fprintf(w, "  (eligible once the last attempt is older than %gh; re-queued %d per kind per hour, oldest first)\n",
+		artwork.StaleAbsentAge.Hours(), artwork.StaleAbsentRecheckBatch)
 
 	fmt.Fprintln(w, "\nBackfill")
 	fmt.Fprintf(w, "  State:\t%s\n", backfillState(rep))
@@ -245,6 +272,15 @@ func backfillState(rep statusReport) string {
 	return "up to date"
 }
 
+// printQueueStats writes the shared queue breakdown; the caller owns the tab writer and flushes it.
+func printQueueStats(w io.Writer, stats []model.ArtworkQueueStat, total int64, countHeader, indent string) {
+	fmt.Fprintf(w, "%sKIND\tPRIORITY\t%s\n", indent, countHeader)
+	for _, s := range stats {
+		fmt.Fprintf(w, "%s%s\t%s\t%d\n", indent, kindName(s.ItemKind), priorityName(s.Priority), s.Count)
+	}
+	fmt.Fprintf(w, "%sTOTAL\t\t%d\n", indent, total)
+}
+
 func kindName(prefix string) string {
 	if k, ok := model.ParseKind(prefix); ok {
 		return k.String()
@@ -252,22 +288,44 @@ func kindName(prefix string) string {
 	return prefix
 }
 
+type artworkPriority struct {
+	name  string
+	value int
+}
+
+// knownPriorities is the one listing behind both the name and the parse, so they cannot drift.
+var knownPriorities = []artworkPriority{
+	{"bump", model.ArtworkPriorityBump},
+	{"scan", model.ArtworkPriorityScan},
+	{"backfill", model.ArtworkPriorityBackfill},
+	{"recheck", model.ArtworkPriorityRecheck},
+}
+
+// priorityName falls back to the number: a row written by a newer version still has to print.
 func priorityName(p int) string {
-	switch p {
-	case model.ArtworkPriorityRecheck:
-		return "recheck"
-	case model.ArtworkPriorityBackfill:
-		return "backfill"
-	case model.ArtworkPriorityScan:
-		return "scan"
-	case model.ArtworkPriorityBump:
-		return "bump"
+	for _, ap := range knownPriorities {
+		if ap.value == p {
+			return ap.name
+		}
 	}
 	return strconv.Itoa(p)
 }
 
+func priorityNames() string {
+	return strings.Join(slice.Map(knownPriorities, func(ap artworkPriority) string { return ap.name }), ", ")
+}
+
+func parseArtworkPriority(s string) (int, error) {
+	for _, ap := range knownPriorities {
+		if ap.name == s {
+			return ap.value, nil
+		}
+	}
+	return 0, fmt.Errorf("invalid priority %q, expected one of: %s", s, priorityNames())
+}
+
 func runReprocess(ctx context.Context) {
-	kinds, err := selectedKinds(reprocessKinds, reprocessSources, reprocessAll)
+	kinds, err := selectedKinds(artworkKinds, artworkSources, artworkAll)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -281,11 +339,11 @@ func runReprocess(ctx context.Context) {
 	if needsImageAgents(kinds) {
 		mgr := loadPluginAgents(ctx, false)
 		defer func() { _ = mgr.Stop() }()
-		imageAgents = imageAgentCount(ds, mgr)
+		imageAgents = artwork.NewImageAgentCount(agents.GetAgents(ds, mgr))
 	}
 
-	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(reprocessSources), imageAgents,
-		reprocessDryRun, reprocessConfirm(reprocessYes, os.Stdin), os.Stdout); err != nil {
+	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(artworkSources), imageAgents,
+		artworkDryRun, confirmUnlessYes(artworkYes, os.Stdin, "re-resolve"), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
 }
@@ -298,16 +356,9 @@ func selectedKinds(kinds, sources []string, all bool) ([]model.Kind, error) {
 	if len(kinds) == 0 {
 		return nil, fmt.Errorf("no selector given: pass --kind, --source or --all")
 	}
-	out := make([]model.Kind, 0, len(kinds))
-	for _, k := range kinds {
-		kind, err := parseArtworkKind(k, artwork.RecheckKinds)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, kind)
-	}
-	// A repeated kind would be counted twice, overstating the cost the operator confirms.
-	return slice.Unique(out), nil
+	return parseAll(kinds, func(s string) (model.Kind, error) {
+		return parseArtworkKind(s, artwork.RecheckKinds)
+	})
 }
 
 // absentSource is how the stored empty source — resolved, no image — is spelled on the CLI.
@@ -326,11 +377,11 @@ func displaySource(s string) string { return cmp.Or(s, absentSource) }
 
 type confirmFunc func(out io.Writer, total, external int64) bool
 
-func reprocessConfirm(yes bool, in io.Reader) confirmFunc {
+func confirmUnlessYes(yes bool, in io.Reader, verb string) confirmFunc {
 	if yes {
 		return func(io.Writer, int64, int64) bool { return true }
 	}
-	return promptConfirm(in)
+	return promptConfirm(in, verb)
 }
 
 // externalEstimate claims no bound: a local hit ends the walk before any agent is asked, and the
@@ -344,11 +395,6 @@ func externalEstimate(n int64) string {
 
 func externalLookupLine(n int64) string {
 	return fmt.Sprintf("External lookups: %s.", externalEstimate(n))
-}
-
-func imageAgentCount(ds model.DataStore, mgr *plugins.Manager) artwork.ImageAgentCount {
-	ag := agents.GetAgents(ds, mgr)
-	return artwork.ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
 }
 
 // loadPluginAgents loads the plugins named in Agents, so the CLI resolves through the same agents a
@@ -378,13 +424,13 @@ func configuredAgents() []string {
 	return names
 }
 
-func promptConfirm(in io.Reader) confirmFunc {
+func promptConfirm(in io.Reader, verb string) confirmFunc {
 	return func(out io.Writer, total, external int64) bool {
 		var cost string
 		if external > 0 {
 			cost = fmt.Sprintf(" %s", externalLookupLine(external))
 		}
-		fmt.Fprintf(out, "\nThis will re-resolve %d items.%s Continue? [y/N] ", total, cost)
+		fmt.Fprintf(out, "\nThis will %s %d items.%s Continue? [y/N] ", verb, total, cost)
 		var answer string
 		if _, err := fmt.Fscanln(in, &answer); err != nil {
 			return false
@@ -476,6 +522,90 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 	return nil
 }
 
+func runCancel(ctx context.Context) {
+	kinds, priorities, err := cancelSelection(artworkKinds, artworkPriorities, artworkAll)
+	if err != nil {
+		log.Fatal(ctx, err)
+	}
+
+	defer db.Init(ctx)()
+	ds, ctx := getAdminContext(ctx)
+
+	if err := cancelArtwork(ctx, ds, kinds, priorities, artworkDryRun,
+		confirmUnlessYes(artworkYes, os.Stdin, "cancel"), os.Stdout); err != nil {
+		log.Fatal(ctx, err)
+	}
+}
+
+// cancelSelection leaves --all as the empty filter the repository reads as "every one", so a row
+// whose kind this build does not know still gets cancelled.
+func cancelSelection(kinds, priorities []string, all bool) ([]model.Kind, []int, error) {
+	if all {
+		return nil, nil, nil
+	}
+	if len(kinds) == 0 && len(priorities) == 0 {
+		return nil, nil, fmt.Errorf("no selector given: pass --kind, --priority or --all")
+	}
+	// RefreshableKinds, not RecheckKinds: media files are queued, so --kind must reach them.
+	outKinds, err := parseAll(kinds, func(s string) (model.Kind, error) {
+		return parseArtworkKind(s, artwork.RefreshableKinds)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	outPriorities, err := parseAll(priorities, parseArtworkPriority)
+	if err != nil {
+		return nil, nil, err
+	}
+	return outKinds, outPriorities, nil
+}
+
+// parseAll drops repeats: a doubled selector would overstate the total the operator confirms.
+func parseAll[T comparable](values []string, parse func(string) (T, error)) ([]T, error) {
+	out := make([]T, 0, len(values))
+	for _, v := range values {
+		parsed, err := parse(v)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, parsed)
+	}
+	return slice.Unique(out), nil
+}
+
+func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, priorities []int,
+	dryRun bool, confirm confirmFunc, out io.Writer) error {
+	q := ds.ArtworkQueue(ctx)
+	matched, err := q.CountQueued(kinds, priorities)
+	if err != nil {
+		return fmt.Errorf("counting queued artwork: %w", err)
+	}
+	total := queueTotal(matched)
+	w := newTabWriter(out)
+	printQueueStats(w, matched, total, "MATCHED", "")
+	w.Flush()
+
+	switch {
+	case total == 0:
+		fmt.Fprintln(out, "\nNothing matches this selection.")
+		return nil
+	case dryRun:
+		fmt.Fprintln(out, "\nDry run: nothing was cancelled.")
+		return nil
+	case !confirm(out, total, 0):
+		fmt.Fprintln(out, "Aborted: nothing was cancelled.")
+		return nil
+	}
+
+	cancelled, err := q.PurgeQueued(kinds, priorities)
+	if err != nil {
+		return fmt.Errorf("cancelling queued artwork: %w", err)
+	}
+	// Count and delete are separate statements, so a drain in between makes these two differ.
+	fmt.Fprintf(out, "Cancelled %d of %d matched items.\n", cancelled, total)
+	return nil
+}
+
 // printReprocessPreview also states the external estimate, which --dry-run must show because it
 // skips the prompt that would otherwise carry it.
 func printReprocessPreview(out io.Writer, kinds []model.Kind, matched []int64, total, external int64, sources []string) {
@@ -541,7 +671,7 @@ var explainKinds = []model.Kind{
 }
 
 func kindPrefixes(kinds []model.Kind) string {
-	return strings.Join(slice.Map(kinds, func(k model.Kind) string { return k.Prefix() }), ", ")
+	return strings.Join(model.KindPrefixes(kinds), ", ")
 }
 
 func parseArtworkKind(s string, valid []model.Kind) (model.Kind, error) {
@@ -640,10 +770,6 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 			if s.Outcome == artwork.OutcomeHit {
 				break
 			}
-			if s.Outcome == artwork.OutcomeWouldTry {
-				return "resolved from " + source +
-					" (offline: a higher-priority external candidate was not tried; re-run with --live)"
-			}
 			// An external winner discards the earlier error, so the resolver settles it with no retry.
 			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) &&
 				!strings.HasPrefix(source, artwork.ExternalPrefix) {
@@ -655,14 +781,12 @@ func explainResult(source string, steps []artwork.TraceStep) string {
 	}
 	for _, s := range steps {
 		switch {
-		case s.Outcome == artwork.OutcomeWouldTry:
-			return "indeterminate (external agents not called; re-run with --live)"
 		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
 			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
-		// The worker treats an unreadable local candidate exactly as it treats a failed external one:
-		// it retries instead of settling absent, so the verdict must not read as a clean miss.
-		case s.Outcome == artwork.OutcomeUnreadable:
-			return "indeterminate (a candidate exists but could not be read; the worker retries rather than settling absent)"
+		// A stage error or an unreadable candidate means a source was found but not processed; the
+		// worker retries rather than settling absent, so neither reads as a clean miss.
+		case s.Outcome == artwork.OutcomeError, s.Outcome == artwork.OutcomeUnreadable:
+			return "indeterminate (a candidate was found but could not be processed; the worker retries rather than settling absent)"
 		}
 	}
 	return "not resolved"
@@ -684,15 +808,47 @@ func explainConfig(kind model.Kind) (name, value string) {
 }
 
 type explainReport struct {
-	kind       model.Kind
-	id         string
-	name       string
-	stored     *model.ItemArtwork
-	queued     *model.ArtworkQueueItem
-	agents     string
+	kind   model.Kind
+	id     string
+	name   string
+	stored *model.ItemArtwork
+	queued *model.ArtworkQueueItem
+	agents string
+	// steps is the chain walk: recorded when the item was resolved, or performed just now when walked.
 	steps      []artwork.TraceStep
 	source     string
+	walked     bool
 	resolveErr error
+}
+
+// explainChainOrigin says whether the operator is reading history or a walk performed just now,
+// since the two can disagree after a config change.
+func explainChainOrigin(rep explainReport) string {
+	if rep.walked {
+		return "walked now"
+	}
+	if rep.stored != nil {
+		return "recorded " + formatTime(rep.stored.AttemptedAt)
+	}
+	return "not recorded"
+}
+
+// writeSteps prints the trace rows. An empty last cell would end tabwriter's column block and
+// break the alignment, so a missing detail is rendered as a dash.
+func writeSteps(w io.Writer, indent string, steps []artwork.TraceStep) {
+	for _, s := range steps {
+		fmt.Fprintf(w, "%s%s\t%s\t%s\n", indent, s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
+	}
+}
+
+// writeStepTable prints a secondary trace, and nothing at all when there is none to show.
+func writeStepTable(w io.Writer, title string, steps []artwork.TraceStep) {
+	if len(steps) == 0 {
+		return
+	}
+	// No tab on the title: it closes the preceding column block, so these rows align among themselves.
+	fmt.Fprintf(w, "  %s:\n", title)
+	writeSteps(w, "    ", steps)
 }
 
 func formatExplain(rep explainReport) string {
@@ -700,6 +856,7 @@ func formatExplain(rep explainReport) string {
 	w := newTabWriter(&sb)
 	explainable := artwork.Explainable(rep.kind)
 	stateful := artwork.KeepsState(rep.kind)
+	unrecorded := !rep.walked && rep.stored == nil
 
 	fmt.Fprintln(w, "Item")
 	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
@@ -732,6 +889,12 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
 		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
 	}
+	if rep.queued != nil {
+		writeStepTable(w, "Last attempt failed", artwork.DecodeTrace(rep.queued.Trace, ""))
+	}
+	if rep.stored != nil {
+		writeStepTable(w, "Gave up after", artwork.DecodeTrace(rep.stored.LastFailure, ""))
+	}
 
 	fmt.Fprintln(w, "\nConfig")
 	if setting, value := explainConfig(rep.kind); setting == "" {
@@ -743,15 +906,22 @@ func formatExplain(rep explainReport) string {
 		}
 	}
 
-	fmt.Fprintln(w, "\nChain")
-	if !explainable {
+	fmt.Fprintf(w, "\nChain (%s)\n", explainChainOrigin(rep))
+	switch {
+	case !explainable:
 		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
-	} else {
+	case unrecorded:
+		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
+	case !rep.walked && len(rep.steps) == 0 && rep.stored.Hash != "":
+		// A stored image with no chain can only predate trace recording: a recorded resolution that
+		// found an image always records its winning candidate.
+		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
+	case !rep.walked && len(rep.steps) == 0:
+		// Absent with no chain: an empty priority list walked nothing, or a pre-tracing absent row.
+		fmt.Fprintln(w, "  (no candidates were recorded; re-run with --live to walk the chain now)")
+	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
-		for _, s := range rep.steps {
-			// A row with an empty last cell would end tabwriter's column block, breaking alignment.
-			fmt.Fprintf(w, "  %s\t%s\t%s\n", s.Candidate, s.Outcome, cmp.Or(s.Detail, "-"))
-		}
+		writeSteps(w, "  ", rep.steps)
 	}
 
 	fmt.Fprintln(w, "\nResult")
@@ -760,6 +930,8 @@ func formatExplain(rep explainReport) string {
 		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
 	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
+	case unrecorded:
+		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
 	}
@@ -807,6 +979,8 @@ func runExplain(ctx context.Context, args []string) {
 		}
 	}
 
+	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
+	rep.walked = explainLive || !artwork.KeepsState(kind)
 	if artwork.Explainable(kind) {
 		// Only artist and album reach an agent, and the load must precede the resolver, which reads
 		// the same manager.
@@ -815,11 +989,16 @@ func runExplain(ctx context.Context, args []string) {
 			defer func() { _ = mgr.Stop() }()
 			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
 		}
-		trace := &artwork.ChainTrace{}
-		rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
-		rep.steps = trace.Steps()
+		switch {
+		case rep.walked:
+			trace := &artwork.ChainTrace{}
+			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
+			rep.steps = trace.Steps()
+		case rep.stored != nil:
+			rep.steps = artwork.DecodeTrace(rep.stored.Trace, rep.stored.SourcePath)
+			rep.source = rep.stored.Source
+		}
 	}
-
 	fmt.Print(formatExplain(rep))
 	// The steps taken before a failed walk are the diagnosis, so report them before exiting.
 	if rep.resolveErr != nil {
