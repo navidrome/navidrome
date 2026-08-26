@@ -232,7 +232,8 @@
         "duplicate_song": "Add duplicated songs",
         "song_exist": "There are duplicates being added to the playlist. Would you like to add the duplicates or skip them?",
         "noPlaylistsFound": "No playlists found",
-        "noPlaylists": "No playlists available"
+        "noPlaylists": "No playlists available",
+        "smartPlaylist": "Smart playlist"
       }
     },
     "radio": {
