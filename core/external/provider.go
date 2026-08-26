@@ -33,6 +33,7 @@ type Provider interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
+	RefreshInfo(ctx context.Context, kind model.Kind, id string) error
 }
 
 type provider struct {
@@ -274,6 +275,32 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
 	}
 	return artist, nil
+}
+
+// RefreshInfo re-fetches external info for one item, ignoring the TTL. It is synchronous:
+// callers that must not block are responsible for detaching it.
+func (e *provider) RefreshInfo(ctx context.Context, kind model.Kind, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, refreshTimeout)
+	defer cancel()
+
+	switch kind {
+	case model.KindArtistArtwork:
+		artist, err := e.getArtist(ctx, id)
+		if err != nil {
+			return err
+		}
+		_, err = e.populateArtistInfo(ctx, artist)
+		return err
+	case model.KindAlbumArtwork:
+		album, err := e.getAlbum(ctx, id)
+		if err != nil {
+			return err
+		}
+		_, err = e.populateAlbumInfo(ctx, album)
+		return err
+	default:
+		return model.ErrNotFound
+	}
 }
 
 func (e *provider) TopSongs(ctx context.Context, artistName, id string, count int) (model.MediaFiles, error) {

@@ -140,6 +140,7 @@ func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
 	if m.Err {
 		return errors.New("mock repo error")
 	}
+	m.Data[artist.ID] = artist
 	return nil
 }
 
