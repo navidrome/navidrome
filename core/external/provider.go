@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -33,12 +35,14 @@ type Provider interface {
 	UpdateArtistInfo(ctx context.Context, id string, count int, includeNotPresent bool) (*model.Artist, error)
 	SimilarSongs(ctx context.Context, id string, count int) (model.MediaFiles, error)
 	TopSongs(ctx context.Context, artist, artistId string, count int) (model.MediaFiles, error)
+	RefreshInfo(ctx context.Context, kind model.Kind, id string) error
 }
 
 type provider struct {
 	ds          model.DataStore
 	ag          Agents
 	matcher     *matcher.Matcher
+	broker      events.Broker
 	artistQueue refreshQueue[auxArtist]
 	albumQueue  refreshQueue[auxAlbum]
 }
@@ -83,11 +87,15 @@ type Agents interface {
 	agents.SimilarSongsByArtistRetriever
 }
 
-func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher) Provider {
-	e := &provider{ds: ds, ag: agents, matcher: m}
+func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
+	e := &provider{ds: ds, ag: agents, matcher: m, broker: broker}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
 	return e
+}
+
+func (e *provider) broadcastRefresh(ctx context.Context, resource, id string) {
+	e.broker.SendBroadcastMessage(ctx, (&events.RefreshResource{}).With(resource, id))
 }
 
 func (e *provider) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
@@ -180,6 +188,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 			"elapsed", time.Since(start), err)
 	} else {
 		log.Trace(ctx, "AlbumInfo collected", "album", album, "elapsed", time.Since(start))
+		e.broadcastRefresh(ctx, "album", album.ID)
 	}
 
 	return album, nil
@@ -282,8 +291,42 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 			"elapsed", time.Since(start), err)
 	} else {
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
+		e.broadcastRefresh(ctx, "artist", artist.ID)
 	}
 	return artist, nil
+}
+
+// infoKinds are the kinds RefreshInfo can act on. Callers check this instead of restating
+// the set, so the switch below stays the only place that has to know how each kind loads.
+var infoKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
+
+// HasInfo reports whether a kind has external info to refresh.
+func HasInfo(kind model.Kind) bool { return slices.Contains(infoKinds, kind) }
+
+// RefreshInfo re-fetches external info for one item, ignoring the TTL. It is synchronous:
+// callers that must not block are responsible for detaching it.
+func (e *provider) RefreshInfo(ctx context.Context, kind model.Kind, id string) error {
+	ctx, cancel := context.WithTimeout(ctx, refreshTimeout)
+	defer cancel()
+
+	switch kind {
+	case model.KindArtistArtwork:
+		artist, err := e.getArtist(ctx, id)
+		if err != nil {
+			return err
+		}
+		_, err = e.populateArtistInfo(ctx, artist)
+		return err
+	case model.KindAlbumArtwork:
+		album, err := e.getAlbum(ctx, id)
+		if err != nil {
+			return err
+		}
+		_, err = e.populateAlbumInfo(ctx, album)
+		return err
+	default:
+		return model.ErrNotFound
+	}
 }
 
 func (e *provider) TopSongs(ctx context.Context, artistName, id string, count int) (model.MediaFiles, error) {

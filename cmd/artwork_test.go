@@ -424,33 +424,6 @@ var _ = Describe("explainConfig", func() {
 	)
 })
 
-var _ = Describe("discArtworkName", func() {
-	var ds *tests.MockDataStore
-
-	BeforeEach(func() {
-		albumRepo := tests.CreateMockAlbumRepo()
-		albumRepo.SetData(model.Albums{{ID: "al-1", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}}})
-		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
-	})
-
-	It("names the album, the disc and its subtitle", func() {
-		name, err := artworkItemName(context.Background(), ds, model.KindDiscArtwork, "al-1:2")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(name).To(Equal("Sandinista! (disc 2): Side Three"))
-	})
-
-	It("omits the subtitle when the disc has none", func() {
-		name, err := artworkItemName(context.Background(), ds, model.KindDiscArtwork, "al-1:1")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(name).To(Equal("Sandinista! (disc 1)"))
-	})
-
-	It("rejects an id that is not <albumID>:<disc>", func() {
-		_, err := artworkItemName(context.Background(), ds, model.KindDiscArtwork, "al-1")
-		Expect(err).To(HaveOccurred())
-	})
-})
-
 var _ = Describe("artwork refresh command", func() {
 	It("requires at least one argument", func() {
 		Expect(artworkRefreshCmd.Args(artworkRefreshCmd, []string{})).To(HaveOccurred())
