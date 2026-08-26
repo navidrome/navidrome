@@ -101,6 +101,21 @@ describe('lyrics helpers', () => {
     expect(layers.main.line[0].value).toBe('繁體')
   })
 
+  it('matches ISO 639-2 lyric languages to regional browser locales', () => {
+    const lyrics = [
+      structured('main', 'spa', 'Español'),
+      structured('main', 'eng', 'English'),
+      structured('main', 'por', 'Português'),
+    ]
+
+    expect(selectLyricLayers(lyrics, 'en-US').main.line[0].value).toBe(
+      'English',
+    )
+    expect(selectLyricLayers(lyrics, 'pt-BR').main.line[0].value).toBe(
+      'Português',
+    )
+  })
+
   it('resolves UTF-8 byte ranges without confusing repeated words', () => {
     const text = 'caf\u00e9 caf\u00e9'
 
