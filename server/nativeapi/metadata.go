@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"slices"
 
@@ -16,8 +17,8 @@ func (api *Router) addMetadataRoute(r chi.Router) {
 	r.Post("/metadata/{kind}/{id}/refresh", api.refreshMetadata())
 }
 
-// refreshMetadata clears the artwork state deliberately, so a wrong pick disappears
-// immediately (placeholder until re-resolved) rather than lingering until the worker runs.
+// refreshMetadata clears the artwork state deliberately, so a wrong pick cannot be served from
+// cache again; reads fall back to local resolution while the worker re-runs the chain at Bump.
 func (api *Router) refreshMetadata() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -28,7 +29,12 @@ func (api *Router) refreshMetadata() http.HandlerFunc {
 			return
 		}
 		if _, err := artwork.ItemName(ctx, api.ds, kind, id); err != nil {
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			if errors.Is(err, model.ErrNotFound) {
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
+			}
+			log.Error(ctx, "Error looking up item to refresh", "kind", kind, "id", id, err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		if err := artwork.Refresh(ctx, api.ds, kind, id); err != nil {

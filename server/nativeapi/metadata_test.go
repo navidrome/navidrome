@@ -41,6 +41,7 @@ var _ = Describe("Metadata API", func() {
 	var ds *tests.MockDataStore
 	var artRepo *tests.MockArtworkRepo
 	var queueRepo *tests.MockArtworkQueueRepo
+	var albumRepo *tests.MockAlbumRepo
 	var provider *fakeProvider
 	var router http.Handler
 	var adminToken, userToken string
@@ -50,7 +51,7 @@ var _ = Describe("Metadata API", func() {
 		conf.Server.EnableSharing = false
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
-		albumRepo := tests.CreateMockAlbumRepo()
+		albumRepo = tests.CreateMockAlbumRepo()
 		artistRepo := tests.CreateMockArtistRepo()
 		playlistRepo := tests.CreateMockPlaylistRepo()
 		Expect(albumRepo.Put(&model.Album{ID: "al-1", Name: "Kid A"})).To(Succeed())
@@ -161,6 +162,16 @@ var _ = Describe("Metadata API", func() {
 			router.ServeHTTP(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns 500 when the lookup fails for a reason other than not-found", func() {
+			albumRepo.SetError(true)
+
+			req := createAuthenticatedRequest("POST", "/metadata/al/al-1/refresh", nil, adminToken)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
 })
