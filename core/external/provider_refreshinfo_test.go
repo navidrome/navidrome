@@ -138,7 +138,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 		Expect(sent[0].Data(sent[0])).To(ContainSubstring("al-1"))
 	})
 
-	It("does not broadcast when the repository errors", func() {
+	It("does not broadcast when the artist cannot be loaded", func() {
 		mockArtistRepo.SetData(model.Artists{{ID: "ar-1", Name: "Test Artist"}})
 		expectArtistAgents()
 		mockArtistRepo.SetError(true)

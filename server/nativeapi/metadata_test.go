@@ -52,13 +52,16 @@ var _ = Describe("Metadata API", func() {
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		albumRepo := tests.CreateMockAlbumRepo()
 		artistRepo := tests.CreateMockArtistRepo()
+		playlistRepo := tests.CreateMockPlaylistRepo()
 		Expect(albumRepo.Put(&model.Album{ID: "al-1", Name: "Kid A"})).To(Succeed())
 		Expect(artistRepo.Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		Expect(playlistRepo.Put(&model.Playlist{ID: "pl-1", Name: "My Playlist"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedArtwork:      artRepo,
 			MockedArtworkQueue: queueRepo,
 			MockedAlbum:        albumRepo,
 			MockedArtist:       artistRepo,
+			MockedPlaylist:     playlistRepo,
 		}
 		auth.Init(ds)
 		provider = &fakeProvider{}
@@ -141,6 +144,15 @@ var _ = Describe("Metadata API", func() {
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Eventually(provider.calls).Should(ContainElement("ar/ar-1"))
+		})
+
+		It("skips the external info refresh for kinds without external info", func() {
+			req := createAuthenticatedRequest("POST", "/metadata/pl/pl-1/refresh", nil, adminToken)
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+			Consistently(provider.calls).ShouldNot(ContainElement("pl/pl-1"))
 		})
 
 		It("returns 404 for an unknown id", func() {

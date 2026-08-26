@@ -145,6 +145,9 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
+	if m.Data == nil {
+		m.Data = make(map[string]*model.Album)
+	}
 	m.Data[album.ID] = album
 	return nil
 }
