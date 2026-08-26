@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -94,9 +95,6 @@ func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker e
 }
 
 func (e *provider) broadcastRefresh(ctx context.Context, resource, id string) {
-	if e.broker == nil {
-		return
-	}
 	e.broker.SendBroadcastMessage(ctx, (&events.RefreshResource{}).With(resource, id))
 }
 
@@ -287,6 +285,13 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	}
 	return artist, nil
 }
+
+// InfoKinds are the kinds RefreshInfo can act on. Callers check this instead of restating
+// the set, so the switch below stays the only place that has to know how each kind loads.
+var InfoKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork}
+
+// HasInfo reports whether a kind has external info to refresh.
+func HasInfo(kind model.Kind) bool { return slices.Contains(InfoKinds, kind) }
 
 // RefreshInfo re-fetches external info for one item, ignoring the TTL. It is synchronous:
 // callers that must not block are responsible for detaching it.

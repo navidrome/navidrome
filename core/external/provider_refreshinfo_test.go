@@ -148,11 +148,9 @@ var _ = Describe("Provider - RefreshInfo", func() {
 		Expect(broker.sent()).To(BeEmpty())
 	})
 
-	It("tolerates a nil broker", func() {
-		p = external.NewProvider(ds, ag, matcher.New(ds), nil)
-		mockArtistRepo.SetData(model.Artists{{ID: "ar-1", Name: "Test Artist"}})
-		expectArtistAgents()
-
-		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(Succeed())
+	It("reports which kinds have external info", func() {
+		Expect(external.HasInfo(model.KindArtistArtwork)).To(BeTrue())
+		Expect(external.HasInfo(model.KindAlbumArtwork)).To(BeTrue())
+		Expect(external.HasInfo(model.KindPlaylistArtwork)).To(BeFalse())
 	})
 })

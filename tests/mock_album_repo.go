@@ -65,6 +65,9 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 	if al.ID == "" {
 		al.ID = id.NewRandom()
 	}
+	if m.Data == nil {
+		m.Data = make(map[string]*model.Album)
+	}
 	m.Data[al.ID] = al
 	return nil
 }
@@ -142,14 +145,7 @@ func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 }
 
 func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
-	if m.Err {
-		return errors.New("unexpected error")
-	}
-	if m.Data == nil {
-		m.Data = make(map[string]*model.Album)
-	}
-	m.Data[album.ID] = album
-	return nil
+	return m.Put(album)
 }
 
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {

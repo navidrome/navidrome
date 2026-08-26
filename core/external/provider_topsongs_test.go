@@ -45,7 +45,7 @@ var _ = Describe("Provider - TopSongs", func() {
 
 		ag = new(mockAgents)
 
-		p = NewProvider(ds, ag, matcher.New(ds), nil)
+		p = NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
 	})
 
 	It("returns top songs for a known artist", func() {

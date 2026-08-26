@@ -106,5 +106,18 @@ describe('wrapperDataProvider', () => {
         { method: 'POST' },
       )
     })
+
+    // react-admin rejects a custom method whose response has no `data` key, and the
+    // endpoint answers 204 with no body.
+    it('resolves to a react-admin shaped response', async () => {
+      mockHttpClient.mockResolvedValue({
+        status: 204,
+        body: '',
+        json: undefined,
+      })
+      await expect(
+        wrapperDataProvider.refreshMetadata('album', 'al-1'),
+      ).resolves.toEqual({ data: { id: 'al-1' } })
+    })
   })
 })

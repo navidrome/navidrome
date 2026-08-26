@@ -15,8 +15,12 @@ var _ = Describe("ItemName", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		ds = &tests.MockDataStore{}
-		Expect(ds.Album(ctx).(*tests.MockAlbumRepo).Put(&model.Album{ID: "al-1", Name: "Kid A"})).To(Succeed())
+		albumRepo := tests.CreateMockAlbumRepo()
+		albumRepo.SetData(model.Albums{
+			{ID: "al-1", Name: "Kid A"},
+			{ID: "al-2", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}},
+		})
+		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
 		Expect(ds.Artist(ctx).(*tests.MockArtistRepo).Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
 	})
 
@@ -39,31 +43,21 @@ var _ = Describe("ItemName", func() {
 		_, err := ItemName(ctx, ds, model.Kind{}, "al-1")
 		Expect(err).To(HaveOccurred())
 	})
-})
 
-var _ = Describe("discArtworkName", func() {
-	var ds *tests.MockDataStore
+	Context("disc artwork", func() {
+		It("names the album, the disc and its subtitle", func() {
+			Expect(ItemName(ctx, ds, model.KindDiscArtwork, "al-2:2")).
+				To(Equal("Sandinista! (disc 2): Side Three"))
+		})
 
-	BeforeEach(func() {
-		albumRepo := tests.CreateMockAlbumRepo()
-		albumRepo.SetData(model.Albums{{ID: "al-1", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}}})
-		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
-	})
+		It("omits the subtitle when the disc has none", func() {
+			Expect(ItemName(ctx, ds, model.KindDiscArtwork, "al-2:1")).
+				To(Equal("Sandinista! (disc 1)"))
+		})
 
-	It("names the album, the disc and its subtitle", func() {
-		name, err := ItemName(context.Background(), ds, model.KindDiscArtwork, "al-1:2")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(name).To(Equal("Sandinista! (disc 2): Side Three"))
-	})
-
-	It("omits the subtitle when the disc has none", func() {
-		name, err := ItemName(context.Background(), ds, model.KindDiscArtwork, "al-1:1")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(name).To(Equal("Sandinista! (disc 1)"))
-	})
-
-	It("rejects an id that is not <albumID>:<disc>", func() {
-		_, err := ItemName(context.Background(), ds, model.KindDiscArtwork, "al-1")
-		Expect(err).To(HaveOccurred())
+		It("rejects an id that is not <albumID>:<disc>", func() {
+			_, err := ItemName(ctx, ds, model.KindDiscArtwork, "al-2")
+			Expect(err).To(HaveOccurred())
+		})
 	})
 })
