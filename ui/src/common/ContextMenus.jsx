@@ -135,14 +135,6 @@ const ContextMenu = ({
         )
       },
     },
-    ...(!hideInfo && {
-      info: {
-        enabled: true,
-        needData: true,
-        label: translate('resources.album.actions.info'),
-        action: () => dispatch(openExtendedInfoDialog(record)),
-      },
-    }),
     refresh: {
       enabled: permissions === 'admin',
       needData: false,
@@ -153,6 +145,14 @@ const ContextMenu = ({
           .then(() => notify('message.metadataRefreshStarted'))
           .catch(() => notify('ra.page.error', 'warning')),
     },
+    ...(!hideInfo && {
+      info: {
+        enabled: true,
+        needData: true,
+        label: translate('resources.album.actions.info'),
+        action: () => dispatch(openExtendedInfoDialog(record)),
+      },
+    }),
   }
 
   const handleClick = (e) => {

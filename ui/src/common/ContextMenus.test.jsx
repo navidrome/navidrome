@@ -94,6 +94,20 @@ describe('ContextMenus', () => {
       ).toBeInTheDocument()
     })
 
+    // Menu order comes from key insertion order in the options object, so it is easy to
+    // change by accident when adding an entry.
+    it('places the item directly above Get Info', () => {
+      renderMenu(AlbumContextMenu, { id: 'al1', name: 'Album', songCount: 1 })
+      const labels = screen
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent)
+      const refreshAt = labels.indexOf('resources.album.actions.refresh')
+      const infoAt = labels.indexOf('resources.album.actions.info')
+
+      expect(refreshAt).toBeGreaterThanOrEqual(0)
+      expect(infoAt).toEqual(refreshAt + 1)
+    })
+
     it('shows the item for admins on the artist menu', () => {
       renderMenu(ArtistContextMenu, { id: 'ar1', name: 'Artist', stats: {} })
       expect(
