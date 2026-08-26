@@ -7,7 +7,12 @@ import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { MdQuestionMark } from 'react-icons/md'
 import { makeStyles } from '@material-ui/core/styles'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import {
+  useDataProvider,
+  useNotify,
+  usePermissions,
+  useTranslate,
+} from 'react-admin'
 import clsx from 'clsx'
 import {
   playNext,
@@ -69,6 +74,7 @@ const ContextMenu = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
+  const { permissions } = usePermissions()
   const [anchorEl, setAnchorEl] = useState(null)
 
   const isArtist = resource === 'artist'
@@ -137,6 +143,16 @@ const ContextMenu = ({
         action: () => dispatch(openExtendedInfoDialog(record)),
       },
     }),
+    refresh: {
+      enabled: permissions === 'admin',
+      needData: false,
+      label: translate('resources.album.actions.refresh'),
+      action: (record) =>
+        dataProvider
+          .refreshMetadata(resource, record.id)
+          .then(() => notify('message.metadataRefreshStarted'))
+          .catch(() => notify('ra.page.error', 'warning')),
+    },
   }
 
   const handleClick = (e) => {

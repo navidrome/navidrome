@@ -17,12 +17,21 @@ const { mockConfig } = vi.hoisted(() => ({
 }))
 vi.mock('../config', () => ({ default: mockConfig }))
 
+const { mockPermissions, mockRefreshMetadata } = vi.hoisted(() => ({
+  mockPermissions: { value: 'admin' },
+  mockRefreshMetadata: vi.fn(),
+}))
+
 vi.mock('react-admin', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
     useNotify: () => vi.fn(),
-    useDataProvider: () => ({ getList: vi.fn() }),
+    usePermissions: () => ({ permissions: mockPermissions.value }),
+    useDataProvider: () => ({
+      getList: vi.fn(),
+      refreshMetadata: mockRefreshMetadata,
+    }),
     useTranslate: () => (x) => x,
   }
 })
@@ -43,6 +52,7 @@ describe('ContextMenus', () => {
     vi.clearAllMocks()
     mockConfig.enableSharing = true
     mockConfig.enableDownloads = true
+    mockPermissions.value = 'admin'
   })
 
   describe('ArtistContextMenu', () => {
@@ -73,6 +83,37 @@ describe('ContextMenus', () => {
         size: 1024 * 1024,
       })
       expect(screen.getByText('ra.action.download (1 MB)')).toBeInTheDocument()
+    })
+  })
+
+  describe('refresh metadata', () => {
+    it('shows the item for admins on the album menu', () => {
+      renderMenu(AlbumContextMenu, { id: 'al1', name: 'Album', songCount: 1 })
+      expect(
+        screen.getByText('resources.album.actions.refresh'),
+      ).toBeInTheDocument()
+    })
+
+    it('shows the item for admins on the artist menu', () => {
+      renderMenu(ArtistContextMenu, { id: 'ar1', name: 'Artist', stats: {} })
+      expect(
+        screen.getByText('resources.album.actions.refresh'),
+      ).toBeInTheDocument()
+    })
+
+    it('hides the item for regular users', () => {
+      mockPermissions.value = 'regular'
+      renderMenu(AlbumContextMenu, { id: 'al1', name: 'Album', songCount: 1 })
+      expect(
+        screen.queryByText('resources.album.actions.refresh'),
+      ).not.toBeInTheDocument()
+    })
+
+    it('calls refreshMetadata with the resource and id', () => {
+      mockRefreshMetadata.mockResolvedValue({})
+      renderMenu(AlbumContextMenu, { id: 'al1', name: 'Album', songCount: 1 })
+      fireEvent.click(screen.getByText('resources.album.actions.refresh'))
+      expect(mockRefreshMetadata).toHaveBeenCalledWith('album', 'al1')
     })
   })
 })

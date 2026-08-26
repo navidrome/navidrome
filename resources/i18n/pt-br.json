@@ -93,6 +93,7 @@
         "addToPlaylist": "Adicionar à playlist",
         "download": "Baixar",
         "info": "Detalhes",
+        "refresh": "Atualizar Metadados",
         "share": "Compartilhar"
       },
       "lists": {
@@ -602,7 +603,8 @@
     "coverUploaded": "Capa atualizada",
     "coverRemoved": "Capa removida",
     "coverUploadError": "Erro ao enviar capa",
-    "coverRemoveError": "Erro ao remover capa"
+    "coverRemoveError": "Erro ao remover capa",
+    "metadataRefreshStarted": "Atualizando metadados em segundo plano"
   },
   "menu": {
     "library": "Biblioteca",
