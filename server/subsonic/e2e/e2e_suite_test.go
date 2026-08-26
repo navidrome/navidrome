@@ -357,6 +357,10 @@ func (n noopProvider) TopSongs(context.Context, string, string, int) (model.Medi
 	return nil, nil
 }
 
+func (n noopProvider) RefreshInfo(context.Context, model.Kind, string) error {
+	return nil
+}
+
 // Compile-time interface checks
 var (
 	_ artwork.Artwork   = noopArtwork{}
