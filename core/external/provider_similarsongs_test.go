@@ -61,7 +61,7 @@ var _ = Describe("Provider - SimilarSongs", func() {
 			similarAgent:  mockSimilarAgent,
 		}
 
-		provider = NewProvider(ds, agentsCombined, matcher.New(ds))
+		provider = NewProvider(ds, agentsCombined, matcher.New(ds), nil)
 	})
 
 	// Resolves track-1 through the GetEntityByID probe order and on to its artist. Left permissive:

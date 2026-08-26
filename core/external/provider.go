@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -40,6 +41,7 @@ type provider struct {
 	ds          model.DataStore
 	ag          Agents
 	matcher     *matcher.Matcher
+	broker      events.Broker
 	artistQueue refreshQueue[auxArtist]
 	albumQueue  refreshQueue[auxAlbum]
 }
@@ -84,11 +86,18 @@ type Agents interface {
 	agents.SimilarSongsByArtistRetriever
 }
 
-func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher) Provider {
-	e := &provider{ds: ds, ag: agents, matcher: m}
+func NewProvider(ds model.DataStore, agents Agents, m *matcher.Matcher, broker events.Broker) Provider {
+	e := &provider{ds: ds, ag: agents, matcher: m, broker: broker}
 	e.artistQueue = newRefreshQueue(context.TODO(), e.populateArtistInfo)
 	e.albumQueue = newRefreshQueue(context.TODO(), e.populateAlbumInfo)
 	return e
+}
+
+func (e *provider) broadcastRefresh(ctx context.Context, resource, id string) {
+	if e.broker == nil {
+		return
+	}
+	e.broker.SendBroadcastMessage(ctx, (&events.RefreshResource{}).With(resource, id))
 }
 
 func (e *provider) getAlbum(ctx context.Context, id string) (auxAlbum, error) {
@@ -180,6 +189,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 			"elapsed", time.Since(start), err)
 	} else {
 		log.Trace(ctx, "AlbumInfo collected", "album", album, "elapsed", time.Since(start))
+		e.broadcastRefresh(ctx, "album", album.ID)
 	}
 
 	return album, nil
@@ -273,6 +283,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 			"elapsed", time.Since(start), err)
 	} else {
 		log.Trace(ctx, "ArtistInfo collected", "artist", artist, "elapsed", time.Since(start))
+		e.broadcastRefresh(ctx, "artist", artist.ID)
 	}
 	return artist, nil
 }
