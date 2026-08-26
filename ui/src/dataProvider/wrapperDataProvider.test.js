@@ -87,4 +87,24 @@ describe('wrapperDataProvider', () => {
       )
     })
   })
+
+  describe('refreshMetadata', () => {
+    it('posts to the album metadata refresh endpoint', () => {
+      mockHttpClient.mockResolvedValue({ json: {} })
+      wrapperDataProvider.refreshMetadata('album', 'al-1')
+      expect(mockHttpClient).toHaveBeenCalledWith(
+        expect.stringContaining('/metadata/al/al-1/refresh'),
+        { method: 'POST' },
+      )
+    })
+
+    it('posts to the artist metadata refresh endpoint', () => {
+      mockHttpClient.mockResolvedValue({ json: {} })
+      wrapperDataProvider.refreshMetadata('artist', 'ar-1')
+      expect(mockHttpClient).toHaveBeenCalledWith(
+        expect.stringContaining('/metadata/ar/ar-1/refresh'),
+        { method: 'POST' },
+      )
+    })
+  })
 })
