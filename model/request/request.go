@@ -2,6 +2,7 @@ package request
 
 import (
 	"context"
+	"sync/atomic"
 
 	"github.com/navidrome/navidrome/model"
 )
@@ -9,15 +10,16 @@ import (
 type contextKey string
 
 const (
-	User           = contextKey("user")
-	Username       = contextKey("username")
-	Client         = contextKey("client")
-	Version        = contextKey("version")
-	Player         = contextKey("player")
-	Transcoding    = contextKey("transcoding")
-	ClientUniqueId = contextKey("clientUniqueId")
-	ReverseProxyIp = contextKey("reverseProxyIp")
-	InternalAuth   = contextKey("internalAuth") // Used for internal API calls, e.g., from the plugins
+	User             = contextKey("user")
+	Username         = contextKey("username")
+	Client           = contextKey("client")
+	Version          = contextKey("version")
+	Player           = contextKey("player")
+	Transcoding      = contextKey("transcoding")
+	ClientUniqueId   = contextKey("clientUniqueId")
+	ReverseProxyIp   = contextKey("reverseProxyIp")
+	InternalAuth     = contextKey("internalAuth") // Used for internal API calls, e.g., from the plugins
+	TokenEpochHolder = contextKey("tokenEpochHolder")
 )
 
 var allKeys = []contextKey{
@@ -124,4 +126,33 @@ func AddValues(ctx, requestCtx context.Context) context.Context {
 		}
 	}
 	return ctx
+}
+
+type tokenEpochHolder struct {
+	value atomic.Int64
+}
+
+// WithTokenEpochHolder installs a slot a handler can use to report a bumped token epoch
+// back to middleware that has already returned from the handler's perspective.
+func WithTokenEpochHolder(ctx context.Context) context.Context {
+	h := &tokenEpochHolder{}
+	h.value.Store(-1)
+	return context.WithValue(ctx, TokenEpochHolder, h)
+}
+
+func SetTokenEpoch(ctx context.Context, epoch int) {
+	if h, ok := ctx.Value(TokenEpochHolder).(*tokenEpochHolder); ok {
+		h.value.Store(int64(epoch))
+	}
+}
+
+func TokenEpochFrom(ctx context.Context) (int, bool) {
+	h, ok := ctx.Value(TokenEpochHolder).(*tokenEpochHolder)
+	if !ok {
+		return 0, false
+	}
+	if v := h.value.Load(); v >= 0 {
+		return int(v), true
+	}
+	return 0, false
 }

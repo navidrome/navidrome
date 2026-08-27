@@ -29,6 +29,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 h1:5RVFMOWjMyRy8cARdy79nAmgYw3hK/4HUq48LQ6Wwqo=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
+github.com/deluan/fscache v0.9.1-0.20260825221051-a07d597526e2 h1:s254V2hsrrCJXYtAn9WPG/5p4QHenfL9E+j6Tiq5MW4=
+github.com/deluan/fscache v0.9.1-0.20260825221051-a07d597526e2/go.mod h1:eNFa48vJrse+8ysT4IJnnUeXwLZNcR0JQumU/W/QoUI=
 github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3 h1:j7eSXqgtjhlNfwnMEzRdXnJGZTEw4I7J9TeQAll83bU=
 github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3/go.mod h1:QGxQ4Z1IWyY9w56xNEFjYAaWE8uSxA/gneQ7RPcFJrY=
 github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf h1:tb246l2Zmpt/GpF9EcHCKTtwzrd0HGfEmoODFA/qnk4=
@@ -39,8 +41,6 @@ github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36 h1:KtPfdSST6e0vJbM
 github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36/go.mod h1:RkQWLNITKkXHLP7LXxZSgEq+uFWU25M5qW7qfEhL9Wc=
 github.com/djherbis/atime v1.1.0 h1:rgwVbP/5by8BvvjBNrbh64Qz33idKT3pSnMSJsxhi0g=
 github.com/djherbis/atime v1.1.0/go.mod h1:28OF6Y8s3NQWwacXc5eZTsEsiMzp7LF8MbXE+XJPdBE=
-github.com/djherbis/fscache v0.10.2-0.20231127215153-442a07e326c4 h1:wdZllsLrDJtYfHiAKogB4PNHSDeO+v+5S3eqSWHGDlc=
-github.com/djherbis/fscache v0.10.2-0.20231127215153-442a07e326c4/go.mod h1:dHWjlanKIxaHVH1xJOTb4kzP800XdcXlgJ6JYlR2DPU=
 github.com/djherbis/stream v1.4.0 h1:aVD46WZUiq5kJk55yxJAyw6Kuera6kmC3i2vEQyW/AE=
 github.com/djherbis/stream v1.4.0/go.mod h1:cqjC1ZRq3FFwkGmUtHwcldbnW8f0Q4YuVsGW1eAFtOk=
 github.com/djherbis/times v1.6.0 h1:w2ctJ92J8fBvWPxugmXIv7Nz7Q3iDMKNx9v5ocVH20c=

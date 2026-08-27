@@ -28,6 +28,51 @@ var _ = Describe("ArtworkRepository", func() {
 		repo = NewArtworkRepository(context.Background(), GetDBXBuilder())
 	})
 
+	Context("resolution traces", func() {
+		const traceJSON = `[{"c":"cover.*","o":"hit"}]`
+
+		It("round-trips the trace with the state row", func() {
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "t1",
+				ImageType: model.ImageTypePrimary, Hash: "h1", Trace: traceJSON})).To(Succeed())
+
+			got, err := repo.GetItemArtwork(model.KindAlbumArtwork, "t1", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Trace).To(Equal(traceJSON))
+			Expect(got.LastFailure).To(BeEmpty())
+		})
+
+		It("replaces the trace when the item is resolved again", func() {
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "t2",
+				ImageType: model.ImageTypePrimary, Trace: traceJSON})).To(Succeed())
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "t2",
+				ImageType: model.ImageTypePrimary, Trace: `[{"c":"embedded","o":"hit"}]`})).To(Succeed())
+
+			got, _ := repo.GetItemArtwork(model.KindAlbumArtwork, "t2", model.ImageTypePrimary)
+			Expect(got.Trace).To(Equal(`[{"c":"embedded","o":"hit"}]`))
+		})
+
+		It("records a last failure on an existing row", func() {
+			Expect(repo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "t3",
+				ImageType: model.ImageTypePrimary, Hash: "h3"})).To(Succeed())
+
+			Expect(repo.PutLastFailure(model.KindAlbumArtwork, "t3", model.ImageTypePrimary,
+				`[{"c":"decode","o":"error"}]`)).To(Succeed())
+
+			got, _ := repo.GetItemArtwork(model.KindAlbumArtwork, "t3", model.ImageTypePrimary)
+			Expect(got.LastFailure).To(Equal(`[{"c":"decode","o":"error"}]`))
+			Expect(got.Hash).To(Equal("h3"), "recording a failure must not disturb the served artwork")
+		})
+
+		// Inserting here would write hash='', which every reader treats as a settled absent.
+		It("never creates a row for an item that has no state", func() {
+			Expect(repo.PutLastFailure(model.KindAlbumArtwork, "ghost", model.ImageTypePrimary,
+				`[{"c":"decode","o":"error"}]`)).To(Succeed())
+
+			_, err := repo.GetItemArtwork(model.KindAlbumArtwork, "ghost", model.ImageTypePrimary)
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Context("image identity", func() {
 		It("stores and retrieves an artwork by hash", func() {
 			a := &model.Artwork{Hash: "abc123", Mime: "image/jpeg", Width: 500, Height: 500, SizeBytes: 1234, BlurHash: "LKO2?U%2Tw=w"}
