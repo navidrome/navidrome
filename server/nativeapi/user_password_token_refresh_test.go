@@ -45,7 +45,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 		auth.Init(ds)
 
 		userService := core.NewUser(ds, noopPluginUnloader{})
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), userService, nil, nil, nil)
+		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), userService, nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 	})
 
