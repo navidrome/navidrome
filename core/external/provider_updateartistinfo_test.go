@@ -37,7 +37,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag, matcher.New(ds))
+		p = external.NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
 		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
 	})
 
