@@ -74,6 +74,40 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(playTracker.Submissions).To(BeEmpty())
 		})
 
+		Context("with a mix of music and podcast episode ids", func() {
+			var notifier *fakePodcastNotifier
+
+			BeforeEach(func() {
+				notifier = &fakePodcastNotifier{}
+				router.podcastNotifier = notifier
+				_ = ds.PodcastChannel(ctx).Put(&model.PodcastChannel{ID: "ch1", Title: "My Channel"})
+				_ = ds.PodcastEpisode(ctx).Put(&model.PodcastEpisode{ID: "ep1", ChannelID: "ch1", Title: "Episode One"})
+			})
+
+			It("routes the podcast id to the podcast notifier instead of the music scrobbler", func() {
+				r := newGetRequest("id=12", "id=ep1")
+
+				_, err := router.Scrobble(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playTracker.Submissions).To(HaveLen(1))
+				Expect(playTracker.Submissions[0].TrackID).To(Equal("12"))
+				Expect(notifier.Played).To(HaveLen(1))
+				Expect(notifier.Played[0].Episode.ID).To(Equal("ep1"))
+				Expect(notifier.Played[0].ChannelTitle).To(Equal("My Channel"))
+			})
+
+			It("submits nothing to the music scrobbler when every id is a podcast episode", func() {
+				r := newGetRequest("id=ep1")
+
+				_, err := router.Scrobble(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(playTracker.Submissions).To(BeEmpty())
+				Expect(notifier.Played).To(HaveLen(1))
+			})
+		})
+
 		Context("submission=false", func() {
 			var req *http.Request
 			BeforeEach(func() {
@@ -352,6 +386,30 @@ func (f *fakePlayTracker) ReportPlayback(_ context.Context, params scrobbler.Rep
 }
 
 var _ scrobbler.PlayTracker = (*fakePlayTracker)(nil)
+
+type podcastPlayedCall struct {
+	Username     string
+	PlayerName   string
+	Source       string
+	Episode      *model.PodcastEpisode
+	ChannelTitle string
+}
+
+type fakePodcastNotifier struct {
+	Played []podcastPlayedCall
+}
+
+func (f *fakePodcastNotifier) DispatchPodcastPlayed(_ context.Context, username, playerName, source string, episode *model.PodcastEpisode, channelTitle string) {
+	f.Played = append(f.Played, podcastPlayedCall{
+		Username:     username,
+		PlayerName:   playerName,
+		Source:       source,
+		Episode:      episode,
+		ChannelTitle: channelTitle,
+	})
+}
+
+var _ PodcastPlayNotifier = (*fakePodcastNotifier)(nil)
 
 type fakeEventBroker struct {
 	http.Handler

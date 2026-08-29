@@ -420,6 +420,12 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 }
 
 func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []time.Time, source, origin, playbackMode string) error {
+	username, _ := request.UsernameFrom(ctx)
+	playerName := ""
+	if player, ok := request.PlayerFrom(ctx); ok {
+		playerName = player.Name
+	}
+
 	var submissions []scrobbler.Submission
 	log.Debug(ctx, "Scrobbling tracks", "ids", ids, "times", times)
 	for i, id := range ids {
@@ -429,6 +435,17 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 		} else {
 			t = time.Now()
 		}
+
+		// A submitted id may be a podcast episode rather than a music track -
+		// e.g. a client flushing a queued offline scrobble for a downloaded
+		// episode it never streamed live through this server. Route those to
+		// the podcast play pipeline instead of the music scrobbler, which
+		// only knows about MediaFile ids.
+		if episode, err := api.ds.PodcastEpisode(ctx).Get(id); err == nil {
+			api.scrobblePodcastEpisode(ctx, username, playerName, source, episode, t)
+			continue
+		}
+
 		submissions = append(submissions, scrobbler.Submission{
 			TrackID:      id,
 			Timestamp:    t,
@@ -438,7 +455,28 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 		})
 	}
 
+	if len(submissions) == 0 {
+		return nil
+	}
 	return api.scrobbler.Submit(ctx, submissions)
+}
+
+// scrobblePodcastEpisode records a podcast episode play submitted via
+// scrobble.view, mirroring the auto-detected play that streamPodcastEpisode
+// records for a live stream - so a play reported after offline/downloaded
+// listening is tracked the same way.
+func (api *Router) scrobblePodcastEpisode(ctx context.Context, username, playerName, source string, episode *model.PodcastEpisode, ts time.Time) {
+	if err := api.ds.PodcastEpisode(ctx).IncPlayCount(episode.ID, ts); err != nil {
+		log.Warn(ctx, "Error recording podcast episode play", "id", episode.ID, err)
+	}
+	if api.podcastNotifier == nil {
+		return
+	}
+	channelTitle := ""
+	if ch, err := api.ds.PodcastChannel(ctx).Get(episode.ChannelID); err == nil {
+		channelTitle = ch.Title
+	}
+	api.podcastNotifier.DispatchPodcastPlayed(ctx, username, playerName, source, episode, channelTitle)
 }
 
 func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int, source, origin, playbackMode string) error {
