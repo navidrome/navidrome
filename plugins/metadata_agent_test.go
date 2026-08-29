@@ -52,6 +52,11 @@ var _ = Describe("agentErr", func() {
 		orig := errors.New("some plugin failure")
 		Expect(agentErr(orig)).To(Equal(orig))
 	})
+
+	It("does not treat a superstring token as a throttle", func() {
+		orig := errors.New("useragent(retry_later)")
+		Expect(agentErr(orig)).To(Equal(orig))
+	})
 })
 
 var _ = Describe("MetadataAgent", Ordered, func() {

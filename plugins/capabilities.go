@@ -47,14 +47,15 @@ func hasCapability(capabilities []Capability, cap Capability) bool {
 
 // retryLaterRe matches one capability's `<capability>(retry_later[:seconds])` token, which is
 // all a plugin fault carries back across the WASM boundary. The capability is part of the
-// pattern, so another capability's token in the same message cannot mask this one.
+// pattern, so another capability's token in the same message cannot mask this one. The leading
+// \b keeps a superstring like `useragent(retry_later)` from matching `agent`.
 var (
 	agentRetryLaterRe     = retryLaterRe("agent")
 	scrobblerRetryLaterRe = retryLaterRe("scrobbler")
 )
 
 func retryLaterRe(capability string) *regexp.Regexp {
-	return regexp.MustCompile(capability + `\(retry_later(?::(\d+))?\)`)
+	return regexp.MustCompile(`\b` + capability + `\(retry_later(?::(\d+))?\)`)
 }
 
 // parseRetryLater reports whether msg carries the capability's retry_later token, with its delay.
