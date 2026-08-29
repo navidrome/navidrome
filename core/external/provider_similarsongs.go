@@ -239,7 +239,7 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 		return nil, err
 	}
 
-	e.callGetSimilarArtists(ctx, e.ag, &artist, 15, false)
+	_ = e.callGetSimilarArtists(ctx, e.ag, &artist, 15, false)
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "SimilarSongs call canceled", ctx.Err())
 		return nil, ctx.Err()
