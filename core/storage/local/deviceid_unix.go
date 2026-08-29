@@ -8,10 +8,11 @@ import (
 )
 
 // deviceID identifies the filesystem a file lives on, used to key birth time support per mount.
-func deviceID(fi fs.FileInfo) (uint64, bool) {
+// It is returned opaquely because its width varies by platform, and it is only used as a map key.
+func deviceID(fi fs.FileInfo) (any, bool) {
 	st, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
-		return 0, false
+		return nil, false
 	}
-	return uint64(st.Dev), true //nolint:gosec // Dev is an opaque identifier, only used as a map key
+	return st.Dev, true
 }
