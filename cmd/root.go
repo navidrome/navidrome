@@ -151,7 +151,11 @@ func startServer(ctx context.Context) func() error {
 // profilerHandler returns the pprof handler. net/http/pprof resolves the profile
 // name from the raw request path, so the BasePath has to come off first.
 func profilerHandler() http.Handler {
-	return http.StripPrefix(conf.Server.BasePath, middleware.Profiler())
+	basePath := conf.Server.BasePath
+	if basePath == "/" { // StripPrefix("/") would drop the leading slash chi needs
+		basePath = ""
+	}
+	return http.StripPrefix(basePath, middleware.Profiler())
 }
 
 // schedulePeriodicScan schedules a periodic scan of the music library, if configured.

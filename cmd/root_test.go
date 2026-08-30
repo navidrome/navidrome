@@ -32,7 +32,7 @@ var _ = Describe("profilerHandler", func() {
 			conf.Server.BasePath = basePath
 
 			w := httptest.NewRecorder()
-			target := basePath + "/debug/pprof/nd-profiler-test?debug=1"
+			target := path.Join(basePath, "/debug/pprof/nd-profiler-test") + "?debug=1"
 			mount().ServeHTTP(w, httptest.NewRequest(http.MethodGet, target, nil))
 
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -40,5 +40,6 @@ var _ = Describe("profilerHandler", func() {
 		},
 		Entry("without a BasePath", ""),
 		Entry("with a BasePath", "/music"),
+		Entry("with a root BasePath", "/"),
 	)
 })
