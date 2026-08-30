@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -126,10 +127,17 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		} else if isPlugin {
 			validAgents = append(validAgents, enabledAgent{name: name, isPlugin: true})
 		} else {
-			log.Debug("Unknown agent ignored", "name", name)
+			log.Debug("Unknown agent ignored", "name", name, "available", availableAgentNames(availablePlugins))
 		}
 	}
 	return validAgents
+}
+
+// availableAgentNames returns every name accepted by the Agents config option.
+func availableAgentNames(plugins []string) []string {
+	names := append(slices.Collect(maps.Keys(Map)), plugins...)
+	slices.Sort(names)
+	return names
 }
 
 func (a *Agents) getAgent(ea enabledAgent) Interface {
