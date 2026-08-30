@@ -205,8 +205,7 @@ func (m *MockArtistRepo) Search(q string, options ...model.QueryOptions) (model.
 		return nil, errors.New("unexpected error")
 	}
 	// Simple mock implementation - just return all artists for testing
-	allArtists, err := m.GetAll()
-	return allArtists, err
+	return m.GetAll()
 }
 
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)
