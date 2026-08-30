@@ -50,7 +50,8 @@ func BenchmarkScan(b *testing.B) {
 	// TestScanner may run first and close the shared DB singleton; drop it so db.Init
 	// opens a fresh one whether or not the test suite ran before this benchmark.
 	singleton.DeleteInstance[*sql.DB]()
-	db.Init(context.Background())
+	// Close before b.TempDir cleanup runs, or Windows cannot delete the open DB/WAL files.
+	defer db.Init(context.Background())()
 
 	ds := persistence.New(db.Db())
 	conf.Server.DevExternalScanner = false

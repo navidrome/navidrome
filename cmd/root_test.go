@@ -41,5 +41,6 @@ var _ = Describe("profilerHandler", func() {
 		Entry("without a BasePath", ""),
 		Entry("with a BasePath", "/music"),
 		Entry("with a root BasePath", "/"),
+		Entry("with a trailing-slash BasePath", "/music/"),
 	)
 })

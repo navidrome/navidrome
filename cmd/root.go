@@ -151,10 +151,8 @@ func startServer(ctx context.Context) func() error {
 // profilerHandler returns the pprof handler. net/http/pprof resolves the profile
 // name from the raw request path, so the BasePath has to come off first.
 func profilerHandler() http.Handler {
-	basePath := conf.Server.BasePath
-	if basePath == "/" { // StripPrefix("/") would drop the leading slash chi needs
-		basePath = ""
-	}
+	// A trailing or root slash would make StripPrefix drop the leading slash chi needs.
+	basePath := strings.TrimRight(conf.Server.BasePath, "/")
 	return http.StripPrefix(basePath, middleware.Profiler())
 }
 
