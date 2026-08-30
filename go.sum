@@ -29,8 +29,6 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 h1:5RVFMOWjMyRy8cARdy79nAmgYw3hK/4HUq48LQ6Wwqo=
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
-github.com/deluan/fscache v0.9.1-0.20260829205053-654a9d517048 h1:u3oDvM7pOIouwDGeIoMu9SYgSzVMtiSkOc+xywtKiJk=
-github.com/deluan/fscache v0.9.1-0.20260829205053-654a9d517048/go.mod h1:Bbk9SqpJcg/saiPfG6byM1G4G/LQndknrsLVOQ+VJqY=
 github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3 h1:j7eSXqgtjhlNfwnMEzRdXnJGZTEw4I7J9TeQAll83bU=
 github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3/go.mod h1:QGxQ4Z1IWyY9w56xNEFjYAaWE8uSxA/gneQ7RPcFJrY=
 github.com/deluan/rest v0.0.0-20211102003136-6260bc399cbf h1:tb246l2Zmpt/GpF9EcHCKTtwzrd0HGfEmoODFA/qnk4=
@@ -41,8 +39,10 @@ github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36 h1:KtPfdSST6e0vJbM
 github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36/go.mod h1:RkQWLNITKkXHLP7LXxZSgEq+uFWU25M5qW7qfEhL9Wc=
 github.com/djherbis/atime v1.1.0 h1:rgwVbP/5by8BvvjBNrbh64Qz33idKT3pSnMSJsxhi0g=
 github.com/djherbis/atime v1.1.0/go.mod h1:28OF6Y8s3NQWwacXc5eZTsEsiMzp7LF8MbXE+XJPdBE=
-github.com/djherbis/stream v1.5.0 h1:+ewqpS/ndTmEiJRH142JyOpmmjnkTxdbJtqoAG5sg0Y=
-github.com/djherbis/stream v1.5.0/go.mod h1:cqjC1ZRq3FFwkGmUtHwcldbnW8f0Q4YuVsGW1eAFtOk=
+github.com/djherbis/fscache v0.10.2-0.20260829235704-6d85d5878c22 h1:GNKxzBirvK9arfVRGVebhFYBp3tnOZG3nlIog6N5/6I=
+github.com/djherbis/fscache v0.10.2-0.20260829235704-6d85d5878c22/go.mod h1:Bbk9SqpJcg/saiPfG6byM1G4G/LQndknrsLVOQ+VJqY=
+github.com/djherbis/stream v1.5.1 h1:9AoCl0bnm7imWT2uUORqT8aLuTh+YllyynYpolpjIqY=
+github.com/djherbis/stream v1.5.1/go.mod h1:cqjC1ZRq3FFwkGmUtHwcldbnW8f0Q4YuVsGW1eAFtOk=
 github.com/djherbis/times v1.6.0 h1:w2ctJ92J8fBvWPxugmXIv7Nz7Q3iDMKNx9v5ocVH20c=
 github.com/djherbis/times v1.6.0/go.mod h1:gOHeRAz2h+VJNZ5Gmc/o7iD9k4wW7NMVqieYCY99oc0=
 github.com/dlclark/regexp2 v1.11.0 h1:G/nrcoOa7ZXlpoa/91N3X7mM3r8eIlMBBJZvsz/mxKI=
