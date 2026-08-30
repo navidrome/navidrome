@@ -148,7 +148,12 @@ jobs:
           restore-keys: wazero-${{ runner.os }}-
 
       - name: Test
-        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v $(go list ./... | grep -v '/plugins$')
+
+      # Run separately: this suite is long enough that splitting it across
+      # processes beats running it alongside the other packages.
+      - name: Test plugins
+        run: go tool ginkgo -p -race -tags netgo,sqlite_fts5 ./plugins/
 
       - name: Test ndpgen
         run: |
