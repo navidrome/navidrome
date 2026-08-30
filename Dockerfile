@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcros
 
 ########################################################################################################################
 ### Build xx (original image: tonistiigi/xx)
-FROM --platform=$BUILDPLATFORM alpine:3.22 AS xx-build
+FROM --platform=$BUILDPLATFORM alpine:3.24 AS xx-build
 
 # v1.9.0
 ENV XX_VERSION=a5592eab7a57895e8d385394ff12241bc65ecd50
@@ -156,7 +156,7 @@ COPY --from=build /out /
 ### Build no-op stubs for mpv's video-output libraries
 # mpv links libEGL/libgbm for video output only; Navidrome drives it headless, for audio.
 # Real mesa pulls in LLVM + gallium (+218MB uncompressed), so ship stubs it never calls.
-FROM --platform=$BUILDPLATFORM alpine:3.22 AS mpv-stubs
+FROM --platform=$BUILDPLATFORM alpine:3.24 AS mpv-stubs
 COPY --from=xx / /
 RUN apk add --no-cache clang lld binutils mesa-egl mesa-gbm
 ARG TARGETPLATFORM
@@ -179,7 +179,7 @@ EOT
 
 ########################################################################################################################
 ### Build Final Image
-FROM alpine:3.22 AS final
+FROM alpine:3.24 AS final
 LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
