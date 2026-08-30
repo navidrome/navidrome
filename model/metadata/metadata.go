@@ -370,7 +370,7 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 		// Drop the partial rune the cut may have left: at most 3 trailing bytes,
 		// so a pre-existing invalid run elsewhere is never consumed.
 		for range 3 {
-			if r, size := utf8.DecodeLastRuneInString(value); r != utf8.RuneError || size > 1 {
+			if r, size := utf8.DecodeLastRuneInString(value); r != utf8.RuneError || size != 1 {
 				break
 			}
 			value = value[:len(value)-1]
