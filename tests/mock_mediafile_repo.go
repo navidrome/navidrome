@@ -319,8 +319,7 @@ func (m *MockMediaFileRepo) Search(q string, options ...model.QueryOptions) (mod
 		return nil, errors.New("unexpected error")
 	}
 	// Simple mock implementation - just return all media files for testing
-	allFiles, err := m.GetAll()
-	return allFiles, err
+	return m.GetAll()
 }
 
 // Cross-library move detection mock methods

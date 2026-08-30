@@ -68,10 +68,16 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # Keep CI on the same version `make lint` installs, so a clean local run
+      # cannot turn red in CI just because a new golangci-lint was released.
+      - name: Resolve golangci-lint version
+        id: golangci-version
+        run: echo "version=$(grep '^GOLANGCI_LINT_VERSION' Makefile | cut -d ' ' -f 3)" >> "$GITHUB_OUTPUT"
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: ${{ steps.golangci-version.outputs.version }}
           problem-matchers: true
           args: --timeout 2m
 
@@ -125,11 +131,21 @@ jobs:
         uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
+        id: setup-go
         with:
           go-version-file: go.mod
 
       - name: Download dependencies
         run: go mod download
+
+      # Without this, the plugins suite recompiles every test plugin WASM module,
+      # which dominates the job runtime under -race.
+      - name: Cache the plugins test suite WASM compilation cache
+        uses: actions/cache@v6
+        with:
+          path: plugins/testdata/.wazero-cache
+          key: wazero-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('plugins/testdata/*/*.go', 'plugins/testdata/*/go.*', 'plugins/pdk/go/**/*.go', 'plugins/pdk/go/go.*') }}
+          restore-keys: wazero-${{ runner.os }}-
 
       - name: Test
         run: go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v

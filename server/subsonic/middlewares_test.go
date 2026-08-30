@@ -470,6 +470,7 @@ var _ = Describe("Middlewares", func() {
 			var validToken string
 
 			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
 				conf.Server.SessionTimeout = time.Minute
 				auth.Init(ds)
 
@@ -497,6 +498,36 @@ var _ = Describe("Middlewares", func() {
 				validToken, _ = auth.CreateToken(u)
 				err := validateCredentials(usr, "", "", "", validToken)
 				Expect(err).To(MatchError(model.ErrInvalidAuth))
+			})
+		})
+
+		Context("JWT credentials", func() {
+			var usr *model.User
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.SessionTimeout = time.Minute
+				auth.Init(ds)
+				usr = &model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}
+			})
+
+			It("accepts an unscoped session token", func() {
+				tokenStr, err := auth.CreateToken(usr)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(validateCredentials(usr, "", "", "", tokenStr)).To(Succeed())
+			})
+
+			It("rejects a jellyfin-scoped token", func() {
+				tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(validateCredentials(usr, "", "", "", tokenStr)).To(MatchError(model.ErrInvalidAuth))
+			})
+
+			It("rejects a token with a stale epoch", func() {
+				tokenStr, err := auth.CreateToken(usr)
+				Expect(err).ToNot(HaveOccurred())
+				usr.TokenEpoch = 2
+				Expect(validateCredentials(usr, "", "", "", tokenStr)).To(MatchError(model.ErrInvalidAuth))
 			})
 		})
 	})
