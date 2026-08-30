@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -39,7 +40,6 @@ var (
 
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
-	buildTestPlugins(t, testDataDir)
 
 	// Set globally so tests using configtest.SetupConfig inherit it. The cache
 	// persists between runs; entries are content-addressed, so a stale one only misses.
@@ -51,16 +51,11 @@ func TestPlugins(t *testing.T) {
 	RunSpecs(t, "Plugins Suite")
 }
 
-func buildTestPlugins(t *testing.T, path string) {
-	t.Helper()
+func buildTestPlugins(path string) {
 	start := time.Now()
-	t.Logf("[BeforeSuite] Current working directory: %s", path)
-	cmd := exec.Command("make", "-C", path)
-	out, err := cmd.CombinedOutput()
-	t.Logf("[BeforeSuite] Make output: %s elapsed: %s", string(out), time.Since(start))
-	if err != nil {
-		t.Fatalf("Failed to build test plugins: %v", err)
-	}
+	out, err := exec.Command("make", "-C", path).CombinedOutput()
+	fmt.Fprintf(GinkgoWriter, "[BeforeSuite] built test plugins in %s:\n%s", time.Since(start), out)
+	Expect(err).ToNot(HaveOccurred(), "failed to build test plugins")
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
@@ -146,7 +141,10 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	return manager, tmpDir
 }
 
-var _ = BeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func() {
+	// Build once: the testdata Makefile is not safe to run concurrently.
+	buildTestPlugins(testDataDir)
+}, func() {
 	// Get testdata directory (where test plugin .ndp packages live)
 	_, currentFile, _, ok := runtime.Caller(0)
 	Expect(ok).To(BeTrue())
