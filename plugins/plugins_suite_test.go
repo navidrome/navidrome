@@ -25,7 +25,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const testDataDir = "plugins/testdata"
+const (
+	testDataDir    = "plugins/testdata"
+	wazeroCacheDir = ".wazero-cache"
+)
 
 // Shared test state initialized in BeforeSuite
 var (
@@ -38,18 +41,10 @@ func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
 	buildTestPlugins(t, testDataDir)
 
-	// Create a shared wazero compilation cache directory.
-	// All test managers will point CacheFolder here so that WASM compilation
-	// is done once per binary and then reused from disk cache.
-	sharedCacheDir, err := os.MkdirTemp("", "plugins-shared-cache-*")
-	if err != nil {
-		t.Fatalf("Failed to create shared cache dir: %v", err)
-	}
-	t.Cleanup(func() { os.RemoveAll(sharedCacheDir) })
-
-	// Set CacheFolder globally so all tests (including those using
-	// configtest.SetupConfig) inherit it without needing to set it manually.
-	conf.Server.CacheFolder = conf.NewDir(sharedCacheDir)
+	// Set globally so tests using configtest.SetupConfig inherit it. The cache
+	// persists between runs; entries are content-addressed, so a stale one only misses.
+	conf.Server.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
+	conf.Server.Plugins.CacheSize = "1GB" // the default evicts the cache mid-run
 
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)

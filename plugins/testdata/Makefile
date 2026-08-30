@@ -10,6 +10,7 @@ all: $(PLUGINS:%=%.ndp)
 
 clean:
 	rm -f $(PLUGINS:%=%.ndp) $(PLUGINS:%=%.wasm)
+	rm -rf .wazero-cache
 
 # PDK source files that trigger rebuild when changed (recursive)
 PDK_SOURCES := $(shell find ../pdk/go -name '*.go' 2>/dev/null)
@@ -22,10 +23,11 @@ PDK_SOURCES := $(shell find ../pdk/go -name '*.go' 2>/dev/null)
 	@rm -f plugin.wasm
 	@mv $< $<.tmp && mv $<.tmp $<  # Touch wasm to ensure it's older than ndp
 
-# Build the wasm binary
+# Build the wasm binary. -buildvcs=false keeps the bytes stable across commits, so
+# the test suite's wazero compilation cache still hits after a rebuild.
 %.wasm: %/*.go %/go.mod $(PDK_SOURCES)
 ifdef TINYGO
 	cd $* && tinygo build -target wasip1 -buildmode=c-shared -o ../$@ .
 else
-	cd $* && GOOS=wasip1 GOARCH=wasm go build -buildmode=c-shared -o ../$@ .
+	cd $* && GOOS=wasip1 GOARCH=wasm go build -buildvcs=false -buildmode=c-shared -o ../$@ .
 endif

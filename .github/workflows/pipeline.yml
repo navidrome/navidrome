@@ -137,6 +137,15 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      # Without this, the plugins suite recompiles every test plugin WASM module,
+      # which dominates the job runtime under -race.
+      - name: Cache the plugins test suite WASM compilation cache
+        uses: actions/cache@v6
+        with:
+          path: plugins/testdata/.wazero-cache
+          key: wazero-${{ runner.os }}-${{ hashFiles('plugins/testdata/*/*.go', 'plugins/testdata/*/go.sum', 'plugins/pdk/go/**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: wazero-${{ runner.os }}-
+
       - name: Test
         run: go test -shuffle=on -tags netgo,sqlite_fts5 -race ./... -v
 
