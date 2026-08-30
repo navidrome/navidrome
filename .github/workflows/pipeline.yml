@@ -143,7 +143,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: plugins/testdata/.wazero-cache
-          key: wazero-${{ runner.os }}-${{ hashFiles('plugins/testdata/*/*.go', 'plugins/testdata/*/go.sum', 'plugins/pdk/go/**/*.go', 'go.mod', 'go.sum') }}
+          key: wazero-${{ runner.os }}-${{ hashFiles('plugins/testdata/*/*.go', 'plugins/testdata/*/go.*', 'plugins/pdk/go/**/*.go', 'plugins/pdk/go/go.*', 'go.mod') }}
           restore-keys: wazero-${{ runner.os }}-
 
       - name: Test
