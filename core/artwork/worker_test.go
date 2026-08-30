@@ -441,9 +441,9 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "recording the failure must not disturb the served art")
 		})
 
-		// Media files are excluded from RecheckKinds, so an absent row here would never be
-		// revisited: a transient read error would look permanent.
-		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
+		// Only a view enqueues a media file, and an absent row is exactly what stops a view from
+		// doing so: a transient read error would look permanent.
+		It("does not settle absent on exhaustion for a media file", func() {
 			conf.Server.EnableMediaFileCoverArt = true
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{

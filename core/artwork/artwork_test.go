@@ -204,28 +204,19 @@ var _ = Describe("Artwork", func() {
 			Expect(err).To(MatchError(ErrUnavailable))
 		})
 
-		It("does not re-enqueue a recently-attempted absent state", func() {
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
-				ItemKind: "al", ItemID: "al4", AttemptedAt: time.Now(),
-			})).To(Succeed())
+		DescribeTable("never re-enqueues an absent state on view, however old",
+			func(id string, attemptedAt time.Time) {
+				Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+					ItemKind: "al", ItemID: id, AttemptedAt: attemptedAt,
+				})).To(Succeed())
 
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al4"), 0, false)
-			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data).To(BeEmpty())
-		})
-
-		It("promotes a stale absent state at Bump priority on view", func() {
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
-				ItemKind: "al", ItemID: "al4b", AttemptedAt: time.Now().Add(-2 * requestRecheckAge),
-			})).To(Succeed())
-
-			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al4b"), 0, false)
-			Expect(err).To(MatchError(ErrUnavailable))
-			Expect(queueRepo.Data[primaryKey("al", "al4b")].Priority).To(Equal(model.ArtworkPriorityBump))
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4b", model.ImageTypePrimary)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ia.Hash).To(BeEmpty())
-		})
+				_, err := svc.Get(ctx, model.MustParseArtworkID("al-"+id), 0, false)
+				Expect(err).To(MatchError(ErrUnavailable))
+				Expect(queueRepo.Data).To(BeEmpty())
+			},
+			Entry("just attempted", "al4", time.Now()),
+			Entry("attempted a year ago", "al4b", time.Now().Add(-365*24*time.Hour)),
+		)
 	})
 
 	Describe("provisional read-through", func() {

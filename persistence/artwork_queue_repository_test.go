@@ -237,41 +237,6 @@ var _ = Describe("ArtworkQueueRepository", func() {
 		Expect(ids).To(ConsistOf(albumSgtPeppers.ID, artistKraftwerk.ID, plsBest.ID, radioWithHomePage.ID, songDayInALife.ID))
 	})
 
-	It("enqueues stale absent states for recheck", func() {
-		awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
-		old := time.Now().Add(-48 * time.Hour)
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "stale1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old})).To(Succeed())
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "fresh1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()})).To(Succeed())
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: old})).To(Succeed())
-
-		n, err := repo.EnqueueStaleAbsent(model.KindArtistArtwork, time.Now().Add(-24*time.Hour), 100)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(n).To(Equal(int64(1)))
-
-		items, err := repo.DequeueBatch(10)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(items).To(HaveLen(1))
-		Expect(items[0].ItemID).To(Equal("stale1"))
-		Expect(items[0].Priority).To(Equal(model.ArtworkPriorityRecheck))
-	})
-
-	It("enqueues only the oldest stale absent states up to the limit", func() {
-		awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
-		now := time.Now()
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "oldest", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: now.Add(-72 * time.Hour)})).To(Succeed())
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "older", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: now.Add(-60 * time.Hour)})).To(Succeed())
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "old", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: now.Add(-48 * time.Hour)})).To(Succeed())
-
-		n, err := repo.EnqueueStaleAbsent(model.KindArtistArtwork, now.Add(-24*time.Hour), 2)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(n).To(Equal(int64(2)))
-
-		items, err := repo.DequeueBatch(10)
-		Expect(err).ToNot(HaveOccurred())
-		ids := slice.Map(items, func(it model.ArtworkQueueItem) string { return it.ItemID })
-		Expect(ids).To(ConsistOf("oldest", "older"))
-	})
-
 	It("enqueues entities that have no item_artwork row at all", func() {
 		awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
 		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: albumSgtPeppers.ID, ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: time.Now()})).To(Succeed())
@@ -439,7 +404,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			Expect(repo.CountQueued(nil, nil)).To(BeEmpty())
 		})
 
-		It("counts absent states and how many are due for recheck", func() {
+		It("counts absent states", func() {
 			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
 			old := time.Now().Add(-48 * time.Hour)
 			for _, ia := range []model.ItemArtwork{
@@ -451,12 +416,11 @@ var _ = Describe("ArtworkQueueRepository", func() {
 				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
 			}
 
-			Expect(repo.CountAbsent(model.KindArtistArtwork, time.Now().Add(-24*time.Hour))).
-				To(Equal(model.ArtworkAbsentStat{Total: 2, Stale: 1}))
+			Expect(repo.CountAbsent(model.KindArtistArtwork)).To(Equal(int64(2)))
 		})
 
 		It("reports a kind with no absent state as zero, not as an error", func() {
-			Expect(repo.CountAbsent(model.KindRadioArtwork, time.Now())).To(Equal(model.ArtworkAbsentStat{}))
+			Expect(repo.CountAbsent(model.KindRadioArtwork)).To(Equal(int64(0)))
 		})
 	})
 
