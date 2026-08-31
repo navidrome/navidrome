@@ -89,9 +89,10 @@ var _ = Describe("Public URL Utilities", func() {
 				Expect(result).To(Equal("https://myserver.com/path/to/resource"))
 			})
 
-			It("falls back to localhost without request", func() {
+			It("falls back to localhost on the configured port without request", func() {
+				conf.Server.Port = 4533
 				result := publicurl.PublicURL(context.Background(), "/path/to/resource", nil)
-				Expect(result).To(Equal("http://localhost/path/to/resource"))
+				Expect(result).To(Equal("http://localhost:4533/path/to/resource"))
 			})
 		})
 	})
@@ -128,9 +129,16 @@ var _ = Describe("Public URL Utilities", func() {
 				Expect(result).To(Equal("https://request.example.com/path/to/resource"))
 			})
 
-			It("falls back to localhost without request", func() {
+			It("falls back to localhost on the configured port without request", func() {
+				conf.Server.Port = 4533
 				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
-				Expect(result).To(Equal("http://localhost/path/to/resource"))
+				Expect(result).To(Equal("http://localhost:4533/path/to/resource"))
+			})
+
+			It("uses a non-default port in the fallback", func() {
+				conf.Server.Port = 8080
+				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				Expect(result).To(Equal("http://localhost:8080/path/to/resource"))
 			})
 		})
 
@@ -211,9 +219,10 @@ var _ = Describe("Public URL Utilities", func() {
 			Expect(result).To(HavePrefix("https://share.example.com/share/img/"))
 		})
 
-		It("falls back to localhost when no address is available", func() {
+		It("falls back to localhost on the configured port when no address is available", func() {
+			conf.Server.Port = 4533
 			result := publicurl.ImageURL(context.Background(), artID, 0)
-			Expect(result).To(HavePrefix("http://localhost/share/img/"))
+			Expect(result).To(HavePrefix("http://localhost:4533/share/img/"))
 		})
 	})
 })

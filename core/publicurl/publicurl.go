@@ -74,7 +74,7 @@ func AbsoluteURL(ctx context.Context, u string, params url.Values) string {
 		} else {
 			log.Debug(ctx, "Building a public URL with no public address available; set ShareURL to make it reachable", "url", u)
 			buildUrl.Scheme = "http"
-			buildUrl.Host = "localhost"
+			buildUrl.Host = "localhost:" + strconv.Itoa(conf.Server.Port)
 		}
 	}
 	if len(params) > 0 {
