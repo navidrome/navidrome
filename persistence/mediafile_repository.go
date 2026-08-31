@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -355,7 +356,10 @@ func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions
 // Library-qualified paths search within the specified library, while unqualified paths
 // search across all libraries for backward compatibility.
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
-	query := Or{}
+	// One IN list per library instead of one OR term per path: SQLite abandons the
+	// path index at just two OR-ed equality terms and scans the whole table.
+	byLibrary := map[int][]string{}
+	var unqualified []string
 
 	for _, path := range paths {
 		parts := strings.SplitN(path, ":", 2)
@@ -366,15 +370,22 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 				// Invalid format, skip
 				continue
 			}
-			relativePath := parts[1]
-			query = append(query, And{
-				Eq{"path collate nocase": relativePath},
-				Eq{"library_id": libraryID},
-			})
+			byLibrary[libraryID] = append(byLibrary[libraryID], parts[1])
 		} else {
 			// Unqualified path: search across all libraries
-			query = append(query, Eq{"path collate nocase": path})
+			unqualified = append(unqualified, path)
 		}
+	}
+
+	query := Or{}
+	for _, libraryID := range slices.Sorted(maps.Keys(byLibrary)) {
+		query = append(query, And{
+			Eq{"path collate nocase": byLibrary[libraryID]},
+			Eq{"library_id": libraryID},
+		})
+	}
+	if len(unqualified) > 0 {
+		query = append(query, Eq{"path collate nocase": unqualified})
 	}
 
 	if len(query) == 0 {
