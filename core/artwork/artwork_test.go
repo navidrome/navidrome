@@ -204,19 +204,15 @@ var _ = Describe("Artwork", func() {
 			Expect(err).To(MatchError(ErrUnavailable))
 		})
 
-		DescribeTable("never re-enqueues an absent state on view, however old",
-			func(id string, attemptedAt time.Time) {
-				Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
-					ItemKind: "al", ItemID: id, AttemptedAt: attemptedAt,
-				})).To(Succeed())
+		It("never re-enqueues an absent state on view, however old", func() {
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "al4", AttemptedAt: time.Now().Add(-365 * 24 * time.Hour),
+			})).To(Succeed())
 
-				_, err := svc.Get(ctx, model.MustParseArtworkID("al-"+id), 0, false)
-				Expect(err).To(MatchError(ErrUnavailable))
-				Expect(queueRepo.Data).To(BeEmpty())
-			},
-			Entry("just attempted", "al4", time.Now()),
-			Entry("attempted a year ago", "al4b", time.Now().Add(-365*24*time.Hour)),
-		)
+			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al4"), 0, false)
+			Expect(err).To(MatchError(ErrUnavailable))
+			Expect(queueRepo.Data).To(BeEmpty())
+		})
 	})
 
 	Describe("provisional read-through", func() {

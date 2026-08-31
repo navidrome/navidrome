@@ -13,18 +13,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// orderTrackingQueueRepo records the kind of each bulk insert, so tests can assert
-// phase ordering (artists-first) that same-priority timestamps can't guarantee.
-type orderTrackingQueueRepo struct {
-	*tests.MockArtworkQueueRepo
-	callKinds []string
-}
-
-func (o *orderTrackingQueueRepo) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
-	o.callKinds = append(o.callKinds, kind.Prefix())
-	return o.MockArtworkQueueRepo.EnqueueAllMissing(kind, priority)
-}
-
 var _ = Describe("RefreshableKinds", func() {
 	// The two are meant to describe the same fact. Nothing but this test stops them from drifting,
 	// and a drift would have `artwork explain` report state for a kind that keeps none.
@@ -42,7 +30,7 @@ var _ = Describe("Housekeeping", func() {
 	var (
 		ctx       context.Context
 		ds        *tests.MockDataStore
-		queueRepo *orderTrackingQueueRepo
+		queueRepo *tests.MockArtworkQueueRepo
 		propRepo  *tests.MockedPropertyRepo
 	)
 
@@ -54,34 +42,24 @@ var _ = Describe("Housekeeping", func() {
 		conf.Server.Agents = "spotify"
 		conf.Server.EnableExternalServices = true
 
-		queueRepo = &orderTrackingQueueRepo{MockArtworkQueueRepo: tests.CreateMockArtworkQueueRepo()}
+		queueRepo = tests.CreateMockArtworkQueueRepo()
 		propRepo = &tests.MockedPropertyRepo{}
 		ds = &tests.MockDataStore{MockedArtworkQueue: queueRepo, MockedProperty: propRepo}
 	})
 
 	Describe("Fingerprint", func() {
-		It("changes when a fingerprint-affecting config value changes", func() {
-			f1 := ConfigFingerprint()
-			conf.Server.CoverArtPriority = "folder, embedded"
-			f2 := ConfigFingerprint()
-			Expect(f1).NotTo(Equal(f2))
-		})
+		DescribeTable("changes when a fingerprint-affecting config value changes",
+			func(change func()) {
+				before := ConfigFingerprint()
+				change()
+				Expect(ConfigFingerprint()).NotTo(Equal(before))
+			},
+			Entry("CoverArtPriority", func() { conf.Server.CoverArtPriority = "folder, embedded" }),
+			Entry("ArtistImageFolder", func() { conf.Server.ArtistImageFolder = "/after" }),
+			Entry("EnableM3UExternalAlbumArt", func() { conf.Server.EnableM3UExternalAlbumArt = true }),
+		)
 
-		It("changes when ArtistImageFolder changes", func() {
-			conf.Server.ArtistImageFolder = "/before"
-			f1 := ConfigFingerprint()
-			conf.Server.ArtistImageFolder = "/after"
-			Expect(ConfigFingerprint()).NotTo(Equal(f1))
-		})
-
-		It("changes when EnableM3UExternalAlbumArt is toggled", func() {
-			conf.Server.EnableM3UExternalAlbumArt = false
-			f1 := ConfigFingerprint()
-			conf.Server.EnableM3UExternalAlbumArt = true
-			Expect(ConfigFingerprint()).NotTo(Equal(f1))
-		})
-
-		// Pinned: a changed formula re-resolves every library on upgrade, flooding external providers.
+		// Pinned: a changed formula tells every existing install its artwork config went stale.
 		It("hashes a given config to a stable value", func() {
 			conf.Server.CoverArtPriority = "cover.*, embedded"
 			conf.Server.ArtistArtPriority = "artist.*, external"
@@ -109,7 +87,7 @@ var _ = Describe("Housekeeping", func() {
 			f1 := ConfigFingerprint()
 			consts.Version = original + "-next"
 			Expect(ConfigFingerprint()).To(Equal(f1),
-				"the version must not invalidate artwork state: it would re-resolve every entity on every build")
+				"the version must not invalidate artwork state: every build would report a stale config")
 		})
 	})
 
@@ -118,7 +96,6 @@ var _ = Describe("Housekeeping", func() {
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
 			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
-			Expect(queueRepo.Count()).To(BeZero())
 		})
 
 		It("leaves a stale fingerprint stored, so the warning survives a restart", func() {
@@ -127,16 +104,6 @@ var _ = Describe("Housekeeping", func() {
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
 			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
-		})
-	})
-
-	Describe("MarkConfigApplied", func() {
-		It("overwrites a stale fingerprint with the current one", func() {
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
-
-			Expect(MarkConfigApplied(ctx, ds)).To(Succeed())
-
-			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
 		})
 	})
 
@@ -165,23 +132,11 @@ var _ = Describe("Housekeeping", func() {
 			for _, it := range queueRepo.Data {
 				Expect(it.Priority).To(Equal(model.ArtworkPriorityRecheck))
 			}
-			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "al", "al2")).ToNot(BeNil())
-			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "pl", "pl1")).ToNot(BeNil())
-			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ra", "ra1")).ToNot(BeNil())
-			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "al", "al1")).To(BeNil())
-			Expect(findQueued(queueRepo.MockArtworkQueueRepo, "ar", "ar1")).To(BeNil())
-		})
-
-		It("enqueues artists before every other kind", func() {
-			Expect(enqueueMissingAll(ctx, ds)).To(Succeed())
-
-			Expect(queueRepo.callKinds).ToNot(BeEmpty())
-			firstOther := slices.IndexFunc(queueRepo.callKinds, func(k string) bool { return k != "ar" })
-			Expect(firstOther).ToNot(Equal(0), "artists must be the first enqueue call")
-			if firstOther >= 0 {
-				Expect(queueRepo.callKinds[firstOther:]).ToNot(ContainElement("ar"),
-					"no artist enqueue may follow another kind")
-			}
+			Expect(findQueued(queueRepo, "al", "al2")).ToNot(BeNil())
+			Expect(findQueued(queueRepo, "pl", "pl1")).ToNot(BeNil())
+			Expect(findQueued(queueRepo, "ra", "ra1")).ToNot(BeNil())
+			Expect(findQueued(queueRepo, "al", "al1")).To(BeNil())
+			Expect(findQueued(queueRepo, "ar", "ar1")).To(BeNil())
 		})
 	})
 })

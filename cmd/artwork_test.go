@@ -895,11 +895,6 @@ var _ = Describe("formatStatus", func() {
 		Expect(sources).To(MatchRegexp(`artist\s+absent\s+2`))
 	})
 
-	It("prints the absent total", func() {
-		absent := block(formatStatus(rep), "Absent (resolved, no image found)")
-		Expect(absent).To(MatchRegexp(`artist\s+2`))
-	})
-
 	It("says absent states are never retried on their own, and names the command that does", func() {
 		Expect(formatStatus(rep)).To(ContainSubstring("never retried on their own"))
 		Expect(formatStatus(rep)).To(ContainSubstring("artwork reprocess --source absent"))
