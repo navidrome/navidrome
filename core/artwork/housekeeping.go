@@ -18,7 +18,11 @@ import (
 )
 
 // StaleAbsentAge is how long an absent state is trusted before a recheck retries it.
-const StaleAbsentAge = 24 * time.Hour
+const StaleAbsentAge = 30 * 24 * time.Hour
+
+// StaleAbsentRecheckBatch caps how many absent states each hourly tick re-queues per kind,
+// oldest first, so external agents see a flat drip instead of a daily burst.
+const StaleAbsentRecheckBatch = 100
 
 // RecheckKinds omits media files: they resolve embedded-only, at scan or on view.
 var RecheckKinds = []model.Kind{
@@ -68,18 +72,27 @@ func ConfigFingerprint() string {
 	return fmt.Sprintf("%016x", xxh3.Hash([]byte(raw)))
 }
 
+// backfillSummary is what a backfill enqueued. MaxExternalLookups is an upper estimate for one
+// attempt per item, not a bound: a local hit ends the walk, and a retry asks the agents again.
+type backfillSummary struct {
+	Ran                bool
+	PerKind            map[string]int64
+	Items              int64
+	MaxExternalLookups int64
+}
+
 // backfill enqueues artwork resolution for every entity when the config fingerprint changed.
-func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
+func backfill(ctx context.Context, ds model.DataStore, agentCount func() ImageAgentCount) (backfillSummary, error) {
 	start := time.Now()
 	ctx = auth.WithAdminUser(ctx, ds)
 	current := ConfigFingerprint()
 	props := ds.Property(ctx)
 	stored, err := props.DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
-		return false, err
+		return backfillSummary{}, err
 	}
 	if stored == current {
-		return false, nil
+		return backfillSummary{}, nil
 	}
 
 	// Artists first: few entities, most external-dependent, so they get a queue headstart.
@@ -92,21 +105,31 @@ func backfill(ctx context.Context, ds model.DataStore) (bool, error) {
 		{model.KindPlaylistArtwork, func() ([]string, error) { return ds.Playlist(ctx).GetAllIDs() }},
 		{model.KindRadioArtwork, func() ([]string, error) { return ds.Radio(ctx).GetAllIDs() }},
 	}
+	// Counted here, not by the caller: building the agent list constructs every enabled agent, and
+	// an unchanged fingerprint returns above without ever needing the number.
+	agents := agentCount()
+	summary := backfillSummary{Ran: true, PerKind: map[string]int64{}}
 	for _, k := range kinds {
 		ids, err := k.fetch()
 		if err != nil {
-			return false, err
+			return backfillSummary{}, err
 		}
 		if err := enqueueBackfillKind(ctx, ds, k.kind, ids); err != nil {
-			return false, err
+			return backfillSummary{}, err
 		}
+		n := int64(len(ids))
+		summary.PerKind[k.kind.Prefix()] = n
+		summary.Items += n
+		summary.MaxExternalLookups += n * ExternalLookupsPerItem(k.kind, agents)
 	}
 
 	if err := props.Put(consts.ArtConfFingerprintPropertyKey, current); err != nil {
-		return false, err
+		return backfillSummary{}, err
 	}
-	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued", "elapsed", time.Since(start))
-	return true, nil
+	log.Info(ctx, "Artwork: Config fingerprint changed, backfill enqueued", "items", summary.Items,
+		"byKind", summary.PerKind, "maxExternalLookups", summary.MaxExternalLookups,
+		"elapsed", time.Since(start))
+	return summary, nil
 }
 
 func enqueueBackfillKind(ctx context.Context, ds model.DataStore, kind model.Kind, ids []string) error {
@@ -125,7 +148,7 @@ func enqueueStaleAbsentAll(ctx context.Context, ds model.DataStore) error {
 	cutoff := time.Now().Add(-StaleAbsentAge)
 	queue := ds.ArtworkQueue(ctx)
 	for _, kind := range RecheckKinds {
-		if _, err := queue.EnqueueStaleAbsent(kind, cutoff); err != nil {
+		if _, err := queue.EnqueueStaleAbsent(kind, cutoff, StaleAbsentRecheckBatch); err != nil {
 			return err
 		}
 	}
@@ -141,6 +164,63 @@ func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 		}
 	}
 	return nil
+}
+
+// ItemName resolves a kind+id to the entity's display name, and errors when the item
+// does not exist. Callers use it to reject ids that would otherwise orphan a queue row.
+func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id string) (string, error) {
+	switch kind {
+	case model.KindArtistArtwork:
+		ar, err := ds.Artist(ctx).Get(id)
+		if err != nil {
+			return "", err
+		}
+		return ar.Name, nil
+	case model.KindAlbumArtwork:
+		al, err := ds.Album(ctx).Get(id)
+		if err != nil {
+			return "", err
+		}
+		return al.Name, nil
+	case model.KindPlaylistArtwork:
+		pls, err := ds.Playlist(ctx).Get(id)
+		if err != nil {
+			return "", err
+		}
+		return pls.Name, nil
+	case model.KindRadioArtwork:
+		rd, err := ds.Radio(ctx).Get(id)
+		if err != nil {
+			return "", err
+		}
+		return rd.Name, nil
+	case model.KindMediaFileArtwork:
+		mf, err := ds.MediaFile(ctx).Get(id)
+		if err != nil {
+			return "", err
+		}
+		return mf.Title, nil
+	case model.KindDiscArtwork:
+		return discArtworkName(ctx, ds, id)
+	}
+	return "", fmt.Errorf("unsupported kind %q", kind.Prefix())
+}
+
+func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string, error) {
+	albumID, discNumber, err := model.ParseDiscArtworkID(id)
+	if err != nil {
+		return "", err
+	}
+	al, err := ds.Album(ctx).Get(albumID)
+	if err != nil {
+		return "", err
+	}
+	name := fmt.Sprintf("%s (disc %d)", al.Name, discNumber)
+	// The subtitle is itself a DiscArtPriority candidate, so name it where the chain can be read against it.
+	if subtitle := strings.TrimSpace(al.Discs[discNumber]); subtitle != "" {
+		name += ": " + subtitle
+	}
+	return name, nil
 }
 
 // Refresh drops an item's resolved artwork state and re-queues it at Bump priority.

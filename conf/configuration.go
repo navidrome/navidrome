@@ -73,6 +73,7 @@ type configOptions struct {
 	Matcher                         matcherOptions `json:",omitzero"`
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
+	EnableNaturalSorting            bool
 	IgnoredArticles                 string
 	IndexGroups                     string
 	FFmpegPath                      string
@@ -973,6 +974,7 @@ func setViperDefaults() {
 	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
+	viper.SetDefault("enablenaturalsorting", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")

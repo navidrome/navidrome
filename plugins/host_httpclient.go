@@ -14,6 +14,7 @@ import (
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/navidrome/navidrome/utils/httpclient"
 )
 
 const (
@@ -45,24 +46,21 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		pluginName:    pluginName,
 		requiredHosts: requiredHosts,
 	}
-	svc.client = &http.Client{
-		Transport: http.DefaultTransport,
-		// Timeout is set per-request via context deadline, not here.
-		// CheckRedirect validates hosts and enforces redirect limits.
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if req.Context().Value(noFollowRedirectsKey) != nil {
-				return http.ErrUseLastResponse
-			}
-			if len(via) >= httpClientMaxRedirects {
-				log.Warn(req.Context(), "HTTP redirect limit exceeded", "plugin", svc.pluginName, "url", req.URL.String(), "redirectCount", len(via))
-				return http.ErrUseLastResponse
-			}
-			if err := svc.validateHost(req.Context(), req.URL.Host); err != nil {
-				log.Warn(req.Context(), "HTTP redirect blocked", "plugin", svc.pluginName, "url", req.URL.String(), "err", err)
-				return err
-			}
-			return nil
-		},
+	// No client timeout: it is set per-request via context deadline.
+	svc.client = httpclient.New(0)
+	svc.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.Context().Value(noFollowRedirectsKey) != nil {
+			return http.ErrUseLastResponse
+		}
+		if len(via) >= httpClientMaxRedirects {
+			log.Warn(req.Context(), "HTTP redirect limit exceeded", "plugin", svc.pluginName, "url", req.URL.String(), "redirectCount", len(via))
+			return http.ErrUseLastResponse
+		}
+		if err := svc.validateHost(req.Context(), req.URL.Host); err != nil {
+			log.Warn(req.Context(), "HTTP redirect blocked", "plugin", svc.pluginName, "url", req.URL.String(), "err", err)
+			return err
+		}
+		return nil
 	}
 	return svc
 }

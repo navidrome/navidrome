@@ -1,6 +1,6 @@
 module github.com/navidrome/navidrome
 
-go 1.26
+go 1.27
 
 // Fork to implement raw tags support
 replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3
@@ -13,14 +13,14 @@ require (
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36
 	github.com/djherbis/atime v1.1.0
-	github.com/djherbis/fscache v0.10.2-0.20231127215153-442a07e326c4
-	github.com/djherbis/stream v1.4.0
+	github.com/djherbis/fscache v0.10.2-0.20260829235704-6d85d5878c22
+	github.com/djherbis/stream v1.5.1
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/structs v1.1.0
 	github.com/gen2brain/webp v0.6.4
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-chi/cors v1.2.2
 	github.com/go-chi/httprate v0.16.0
 	github.com/go-chi/jwtauth/v5 v5.4.0
@@ -40,7 +40,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/mileusna/useragent v1.3.5
 	github.com/onsi/ginkgo/v2 v2.32.1
-	github.com/onsi/gomega v1.42.1
+	github.com/onsi/gomega v1.43.0
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/pocketbase/dbx v1.12.0
@@ -50,10 +50,10 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
-	github.com/sirupsen/logrus v1.10.0
+	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
-	github.com/stretchr/testify v1.12.0
+	github.com/stretchr/testify v1.12.1
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/unrolled/secure v1.17.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342
@@ -89,7 +89,7 @@ require (
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3 // indirect
+	github.com/google/pprof v0.0.0-20260825171938-4d453200e7d9 // indirect
 	github.com/google/subcommands v1.2.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -101,7 +101,7 @@ require (
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
-	github.com/lestrrat-go/dsig v1.3.0 // indirect
+	github.com/lestrrat-go/dsig v1.4.0 // indirect
 	github.com/lestrrat-go/dsig-secp256k1 v1.0.0 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
 	github.com/lestrrat-go/httprc/v3 v3.0.6 // indirect

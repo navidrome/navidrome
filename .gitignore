@@ -48,3 +48,6 @@ zz_*_test.go
 # Downloaded podcast episode audio files should not be tracked (DataFolder defaults to ".")
 /podcasts/
 /ui/podcasts/
+# wazero compilation cache for the plugins test suite
+/plugins/testdata/.wazero-cache/
+/plugins/testdata/*.stage/

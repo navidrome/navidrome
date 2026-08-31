@@ -13,17 +13,23 @@ func TestNatural(t *testing.T) {
 	RunSpecs(t, "Natural Suite")
 }
 
+// expectOrder asserts the sign of cmp(a, b) matches expected.
+func expectOrder(cmp func(string, string) int, a, b string, expected int) {
+	result := cmp(a, b)
+	switch {
+	case expected < 0:
+		ExpectWithOffset(1, result).To(BeNumerically("<", 0), "expected %q < %q", a, b)
+	case expected > 0:
+		ExpectWithOffset(1, result).To(BeNumerically(">", 0), "expected %q > %q", a, b)
+	default:
+		ExpectWithOffset(1, result).To(Equal(0), "expected %q == %q", a, b)
+	}
+}
+
 var _ = Describe("Compare", func() {
 	DescribeTable("returns correct ordering",
 		func(a, b string, expected int) {
-			result := natural.Compare(a, b)
-			if expected < 0 {
-				Expect(result).To(BeNumerically("<", 0), "expected %q < %q", a, b)
-			} else if expected > 0 {
-				Expect(result).To(BeNumerically(">", 0), "expected %q > %q", a, b)
-			} else {
-				Expect(result).To(Equal(0), "expected %q == %q", a, b)
-			}
+			expectOrder(natural.Compare, a, b, expected)
 		},
 		// Basic string ordering
 		Entry("a < b", "a", "b", -1),
@@ -67,7 +73,9 @@ var _ = Describe("Compare", func() {
 		Entry("a00b00 < a0b1", "a00b00", "a0b1", -1),
 		Entry("a00b00 > a0b0", "a00b00", "a0b0", 1),
 		Entry("a00b01 > a0b00", "a00b01", "a0b00", 1),
-		Entry("a00b00 == a0b00", "a00b00", "a0b00", 0),
+		// Distinct strings must not compare equal: the padding difference in the first
+		// run decides once everything else matches.
+		Entry("a00b00 > a0b00", "a00b00", "a0b00", 1),
 
 		// Leading zeros at end of string — lexical tie-break
 		Entry("file01 < file1", "file01", "file1", -1),
@@ -109,8 +117,78 @@ var _ = Describe("Compare", func() {
 		Entry("large: equal",
 			"a100000000000000000000", "a100000000000000000000", 0),
 		Entry("large: leading zeros with trailing data",
-			"a00000000000000000000001x", "a1x", 0),
+			"a00000000000000000000001x", "a1x", -1),
 		Entry("large: leading zeros with trailing data (2)",
-			"a099999999999999999999x", "a99999999999999999999x", 0),
+			"a099999999999999999999x", "a99999999999999999999x", -1),
 	)
+})
+
+var _ = Describe("CompareFold", func() {
+	DescribeTable("orders case-insensitively",
+		func(a, b string, expected int) {
+			expectOrder(natural.CompareFold, a, b, expected)
+		},
+		Entry("numbers compare numerically", "foo 2", "foo 10", -1),
+		Entry("numbers compare numerically, reversed", "foo 10", "foo 2", 1),
+		Entry("case is ignored", "apple 2", "Banana 10", -1),
+		Entry("case is ignored, reversed", "Banana 10", "apple 2", 1),
+		Entry("same word, different case, is equal", "ABC", "abc", 0),
+		Entry("case ignored while comparing numbers", "Vol 2", "vol 10", -1),
+		Entry("uppercase digits boundary", "Track9", "track10", -1),
+		Entry("empty vs empty", "", "", 0),
+		Entry("empty sorts first", "", "a", -1),
+		Entry("non-ASCII is left untouched", "café 2", "café 10", -1),
+	)
+
+	// SQLite requires a collating function to be transitive; if it is not, the behavior of
+	// ORDER BY is undefined and paginated queries can drop or duplicate rows.
+	It("is transitive, as a SQLite collation requires", func() {
+		var corpus []string
+		var build func(prefix string, depth int)
+		build = func(prefix string, depth int) {
+			if prefix != "" {
+				corpus = append(corpus, prefix)
+			}
+			if depth == 0 {
+				return
+			}
+			for _, c := range []string{"0", "1", "a"} {
+				build(prefix+c, depth-1)
+			}
+		}
+		build("", 3)
+
+		sign := func(n int) int {
+			switch {
+			case n < 0:
+				return -1
+			case n > 0:
+				return 1
+			}
+			return 0
+		}
+		for _, a := range corpus {
+			for _, b := range corpus {
+				ab := sign(natural.CompareFold(a, b))
+				for _, c := range corpus {
+					bc := sign(natural.CompareFold(b, c))
+					ac := sign(natural.CompareFold(a, c))
+					if ab == 0 && bc == 0 {
+						Expect(ac).To(Equal(0), "%q==%q and %q==%q but %q vs %q is %d", a, b, b, c, a, c, ac)
+					}
+					if ab < 0 && bc < 0 {
+						Expect(ac).To(BeNumerically("<", 0), "%q<%q<%q but %q vs %q is %d", a, b, c, a, c, ac)
+					}
+				}
+			}
+		}
+	})
+
+	It("matches Compare when both sides are already lowercase", func() {
+		pairs := [][2]string{{"foo 2", "foo 10"}, {"a01", "a1"}, {"a", "aa"}, {"vol 3", "vol 3"}}
+		for _, p := range pairs {
+			Expect(natural.CompareFold(p[0], p[1])).To(Equal(natural.Compare(p[0], p[1])),
+				"CompareFold(%q,%q) should match Compare", p[0], p[1])
+		}
+	})
 })

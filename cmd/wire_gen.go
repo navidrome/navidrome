@@ -77,7 +77,10 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
 	user := core.NewUser(dataStore, manager)
 	maintenance := core.NewMaintenance(dataStore)
-	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, uploader)
+	agentsAgents := agents.GetAgents(dataStore, manager)
+	matcherMatcher := matcher.New(dataStore)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher, broker)
+	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, uploader, provider)
 	return router
 }
 
@@ -98,7 +101,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	matcherMatcher := matcher.New(dataStore)
-	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher, broker)
 	uploader := artwork.NewUploader(dataStore)
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, uploader)
 	modelScanner := scanner.New(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
@@ -131,7 +134,7 @@ func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, uploader)
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	matcherMatcher := matcher.New(dataStore)
-	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher)
+	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher, broker)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
 	router := jellyfin.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, players, playTracker, playlistsPlaylists, provider, sonicSonic, lyricsLyrics, broker)

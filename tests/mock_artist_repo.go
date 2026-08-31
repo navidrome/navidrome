@@ -58,6 +58,9 @@ func (m *MockArtistRepo) Put(ar *model.Artist, columsToUpdate ...string) error {
 	if ar.ID == "" {
 		ar.ID = id.NewRandom()
 	}
+	if m.Data == nil {
+		m.Data = make(map[string]*model.Artist)
+	}
 	m.Data[ar.ID] = ar
 	return nil
 }
@@ -137,10 +140,7 @@ func (m *MockArtistRepo) GetCursor(options ...model.QueryOptions) (model.ArtistC
 }
 
 func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
-	if m.Err {
-		return errors.New("mock repo error")
-	}
-	return nil
+	return m.Put(artist)
 }
 
 func (m *MockArtistRepo) RefreshStats(allArtists bool) (int64, error) {
@@ -205,8 +205,7 @@ func (m *MockArtistRepo) Search(q string, options ...model.QueryOptions) (model.
 		return nil, errors.New("unexpected error")
 	}
 	// Simple mock implementation - just return all artists for testing
-	allArtists, err := m.GetAll()
-	return allArtists, err
+	return m.GetAll()
 }
 
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)
