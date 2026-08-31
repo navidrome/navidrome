@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -452,4 +453,30 @@ var _ = Describe("Configuration", func() {
 		Entry("INI format", "ini"),
 		Entry("JSON format", "json"),
 	)
+})
+
+var _ = Describe("TLSEnabled", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("is false when neither the certificate nor the key is set", func() {
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is true when both the certificate and the key are set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeTrue())
+	})
+
+	It("is false when only the certificate is set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is false when only the key is set", func() {
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
 })

@@ -74,9 +74,7 @@ func AbsoluteURL(ctx context.Context, u string, params url.Values) string {
 			buildUrl.Host = host
 		} else {
 			log.Debug(ctx, "Building a public URL with no public address available; set ShareURL to make it reachable", "url", u)
-			// Both a cert and a key are required, matching the server's own TLS switch.
-			tls := conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
-			buildUrl.Scheme = gg.If(tls, "https", "http")
+			buildUrl.Scheme = gg.If(conf.Server.TLSEnabled(), "https", "http")
 			buildUrl.Host = "localhost:" + strconv.Itoa(conf.Server.Port)
 		}
 	}
