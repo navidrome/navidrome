@@ -25,8 +25,8 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		return err
 	}
 	var mfs model.MediaFiles
-	// Chunk size of 100 lines, as each line can generate up to 4 lookup candidates
-	// (NFC/NFD × raw/lowercase), and SQLite has a max expression tree depth of 1000.
+	// Chunked so a huge playlist is not held in memory at once. Each line yields up to
+	// 4 lookup candidates (NFC/NFD × raw/lowercase), far below SQLite's 32766 variables.
 	for lines := range slice.CollectChunks(slice.LinesFrom(reader), 100) {
 		filteredLines := make([]string, 0, len(lines))
 		for _, line := range lines {
