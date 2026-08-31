@@ -140,6 +140,21 @@ var _ = Describe("Public URL Utilities", func() {
 				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
 				Expect(result).To(Equal("http://localhost:8080/path/to/resource"))
 			})
+
+			It("uses https in the fallback when TLS is configured", func() {
+				conf.Server.Port = 4533
+				conf.Server.TLSCert = "cert.pem"
+				conf.Server.TLSKey = "key.pem"
+				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				Expect(result).To(Equal("https://localhost:4533/path/to/resource"))
+			})
+
+			It("stays on http when only the certificate is configured", func() {
+				conf.Server.Port = 4533
+				conf.Server.TLSCert = "cert.pem"
+				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
+				Expect(result).To(Equal("http://localhost:4533/path/to/resource"))
+			})
 		})
 
 		When("BasePath is set", func() {
