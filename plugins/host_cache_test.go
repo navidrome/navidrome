@@ -8,9 +8,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -597,5 +599,37 @@ var _ = Describe("CacheService Integration", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output.Exists).To(BeFalse())
 		})
+	})
+})
+
+var _ = Describe("newCacheService", func() {
+	// The suite above leaves goroutines winding down, so settle before sampling.
+	settledBaseline := func() int {
+		var n int
+		Eventually(func() int {
+			runtime.GC()
+			prev := n
+			n = runtime.NumGoroutine()
+			return n - prev
+		}).WithTimeout(10 * time.Second).WithPolling(20 * time.Millisecond).Should(BeZero())
+		return n
+	}
+
+	It("stops the janitor goroutine once the service is unreachable", func() {
+		const numServices = 5
+		baseline := settledBaseline()
+
+		func() {
+			services := make([]*cacheServiceImpl, 0, numServices)
+			for i := range numServices {
+				services = append(services, newCacheService(fmt.Sprintf("plugin_%d", i)))
+			}
+			Expect(runtime.NumGoroutine()).To(BeNumerically(">=", baseline+numServices),
+				"expected one janitor goroutine per cache service")
+		}()
+
+		Eventually(func() int { runtime.GC(); return runtime.NumGoroutine() }).
+			WithTimeout(10*time.Second).WithPolling(20*time.Millisecond).
+			Should(BeNumerically("<=", baseline), "janitor goroutines leaked")
 	})
 })
