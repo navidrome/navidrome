@@ -385,7 +385,7 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 			log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
 		}
 
-		if err := worker.CheckConfig(ctx); err != nil {
+		if err := worker.ReconcileConfig(ctx); err != nil {
 			log.Error(ctx, "Error checking the artwork config fingerprint", err)
 		}
 		return nil

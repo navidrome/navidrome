@@ -103,7 +103,8 @@ type ArtworkQueueItem struct {
 // Queue priorities: higher drains first.
 const (
 	ArtworkPriorityRecheck = 0
-	// ArtworkPriorityBackfill is never enqueued; the CLI keeps it to name and cancel rows still on it.
+	// ArtworkPriorityBackfill sits between the hourly sweep and scan-driven work. Nothing enqueues
+	// it today; it stays named so a row still carrying it can be reported and cancelled.
 	ArtworkPriorityBackfill = 10
 	ArtworkPriorityScan     = 50
 	ArtworkPriorityBump     = 100
@@ -160,8 +161,6 @@ type ArtworkQueueRepository interface {
 	// CountQueued reports the pending rows matching the kinds and priorities, grouped by both;
 	// an empty filter means every one.
 	CountQueued(kinds []Kind, priorities []int) ([]ArtworkQueueStat, error)
-	// CountAbsent reports how many states of a kind resolved to no image.
-	CountAbsent(kind Kind) (int64, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
 	// PurgeQueued removes pending rows matching the kinds and priorities; an empty filter means every one.

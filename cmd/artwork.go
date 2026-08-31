@@ -113,7 +113,7 @@ var artworkCancelCmd = &cobra.Command{
 		"Work already picked up is not interrupted, and an item with no artwork yet can be\n" +
 		"queued again by the hourly re-check. The selection is applied again when you confirm,\n" +
 		"so anything queued after the preview is cancelled too. Use it to call off a bulk\n" +
-		"backfill, not to stop the worker.",
+		"reprocess, not to stop the worker.",
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		runCancel(cmd.Context())
@@ -122,7 +122,7 @@ var artworkCancelCmd = &cobra.Command{
 
 var artworkStatusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Report the artwork queue, where artwork resolves from, and the backfill state",
+	Short: "Report the artwork queue, where artwork resolves from, and the config state",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		runStatus(cmd.Context())
@@ -190,12 +190,11 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 				return rep, fmt.Errorf("counting %s artwork resolved from %s: %w", k, displaySource(s), err)
 			}
 			rep.sources = append(rep.sources, sourceCount{kind: k, source: s, count: n})
+			// An absent state is exactly a row with no source, so it needs no second query.
+			if s == "" {
+				rep.absent = append(rep.absent, absentCount{kind: k, count: n})
+			}
 		}
-		n, err := q.CountAbsent(k)
-		if err != nil {
-			return rep, fmt.Errorf("counting absent %s artwork: %w", k, err)
-		}
-		rep.absent = append(rep.absent, absentCount{kind: k, count: n})
 	}
 
 	rep.current, rep.inputs = artwork.ConfigFingerprint(), artwork.FingerprintInputs()
@@ -227,7 +226,7 @@ func formatStatus(rep statusReport) string {
 	for _, a := range rep.absent {
 		fmt.Fprintf(w, "  %s\t%d\n", a.kind, a.count)
 	}
-	fmt.Fprintln(w, "  (never retried on their own, not even by a backfill; run 'artwork reprocess --source absent')")
+	fmt.Fprintln(w, "  (never retried on their own; run 'artwork reprocess --source absent')")
 
 	fmt.Fprintln(w, "\nConfig")
 	fmt.Fprintf(w, "  State:\t%s\n", configState(rep))
@@ -277,8 +276,8 @@ type artworkPriority struct {
 var knownPriorities = []artworkPriority{
 	{"bump", model.ArtworkPriorityBump},
 	{"scan", model.ArtworkPriorityScan},
-	{"backfill", model.ArtworkPriorityBackfill},
 	{"recheck", model.ArtworkPriorityRecheck},
+	{"backfill", model.ArtworkPriorityBackfill},
 }
 
 // priorityName falls back to the number: a row written by a newer version still has to print.
@@ -322,10 +321,8 @@ func runReprocess(ctx context.Context) {
 		imageAgents = artwork.NewImageAgentCount(agents.GetAgents(ds, mgr))
 	}
 
-	// Only a whole-library, unfiltered run leaves nothing resolved under the old config.
-	full := artworkAll && len(artworkSources) == 0
 	if err := reprocessArtwork(ctx, ds, kinds, repositorySources(artworkSources), imageAgents,
-		artworkDryRun, full, confirmUnlessYes(artworkYes, os.Stdin, "re-resolve"), os.Stdout); err != nil {
+		artworkDryRun, confirmUnlessYes(artworkYes, os.Stdin, "re-resolve"), os.Stdout); err != nil {
 		log.Fatal(ctx, err)
 	}
 }
@@ -454,10 +451,22 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 // reprocessArtwork previews from CountBySource — rows matched — then reports what EnqueueBySource
 // actually inserted; the two differ because an already-queued row is left untouched.
 func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, sources []string,
-	imageAgents artwork.ImageAgentCount, dryRun, full bool, confirm confirmFunc, out io.Writer) error {
+	imageAgents artwork.ImageAgentCount, dryRun bool, confirm confirmFunc, out io.Writer) error {
 	q := ds.ArtworkQueue(ctx)
 	if err := validateSources(q, sources); err != nil {
 		return err
+	}
+
+	// Derived from what actually drives the queries, so a filter added to this signature cannot
+	// silently keep stamping the fingerprint for a partial run.
+	markApplied := func() error {
+		if len(sources) > 0 || len(kinds) < len(artwork.ReprocessKinds) {
+			return nil
+		}
+		if err := artwork.MarkConfigApplied(ctx, ds); err != nil {
+			return fmt.Errorf("recording the applied artwork config: %w", err)
+		}
+		return nil
 	}
 
 	matched := make([]int64, len(kinds))
@@ -478,8 +487,9 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		fmt.Fprintln(out, "\nDry run: nothing was queued.")
 		return nil
 	case total == 0:
+		// An empty match set still leaves nothing resolved under the old config.
 		fmt.Fprintln(out, "Nothing was queued.")
-		return nil
+		return markApplied()
 	case !confirm(out, total, external):
 		fmt.Fprintln(out, "Aborted: nothing was queued.")
 		return nil
@@ -501,12 +511,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 	if skipped := total - queued; skipped > 0 {
 		fmt.Fprintf(out, "Already queued, left unchanged: %d (priority and retry backoff untouched).\n", skipped)
 	}
-	if full {
-		if err := artwork.MarkConfigApplied(ctx, ds); err != nil {
-			return fmt.Errorf("recording the applied artwork config: %w", err)
-		}
-	}
-	return nil
+	return markApplied()
 }
 
 func runCancel(ctx context.Context) {

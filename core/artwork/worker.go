@@ -40,7 +40,6 @@ type drainPool struct {
 // independently, and pruneMu serializes prune against the store-write window.
 type Worker struct {
 	proc    *processor
-	agents  *agents.Agents
 	cache   cache.FileCache
 	ffmpeg  ffmpeg.FFmpeg
 	broker  events.Broker
@@ -55,7 +54,6 @@ type Worker struct {
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
 		proc:   &processor{ds: ds, store: store},
-		agents: ag,
 		cache:  imgCache,
 		ffmpeg: ffmpeg,
 		broker: broker,
@@ -133,9 +131,9 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 	return prune(ctx, w.proc.ds, w.proc.store)
 }
 
-// CheckConfig warns when the artwork config changed since the library was last resolved under it.
-func (w *Worker) CheckConfig(ctx context.Context) error {
-	return CheckConfigFingerprint(ctx, w.proc.ds)
+// ReconcileConfig records the artwork config fingerprint, or warns when it changed.
+func (w *Worker) ReconcileConfig(ctx context.Context) error {
+	return ReconcileConfigFingerprint(ctx, w.proc.ds)
 }
 
 // EnqueueMissingAll requeues entities with no artwork state row: the safety net for anything

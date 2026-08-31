@@ -31,10 +31,10 @@ func KeepsState(kind model.Kind) bool { return kind != model.KindDiscArtwork }
 var RefreshableKinds = append(slices.Clone(ReprocessKinds), model.KindMediaFileArtwork)
 
 // settlesAbsentOnGiveUp reports whether an exhausted retry budget records an absent state. Media
-// files are excluded: only a view enqueues them, and an absent row is what stops a view from doing so.
+// files are excluded: a track with no row still falls back to its disc or album art.
 func settlesAbsentOnGiveUp(prefix string) bool {
 	kind, ok := model.ParseKind(prefix)
-	return ok && slices.Contains(ReprocessKinds, kind)
+	return ok && KeepsState(kind) && kind != model.KindMediaFileArtwork
 }
 
 // artworkEpoch invalidates all resolution state when bumped; bump it whenever resolution semantics change.
@@ -65,9 +65,9 @@ func ConfigFingerprint() string {
 	return fmt.Sprintf("%016x", xxh3.Hash([]byte(raw)))
 }
 
-// CheckConfigFingerprint warns when the artwork config changed since the library was last
+// ReconcileConfigFingerprint warns when the artwork config changed since the library was last
 // resolved under it. Nothing re-resolves on its own; applying a change is an explicit reprocess.
-func CheckConfigFingerprint(ctx context.Context, ds model.DataStore) error {
+func ReconcileConfigFingerprint(ctx context.Context, ds model.DataStore) error {
 	current := ConfigFingerprint()
 	stored, err := ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
@@ -76,7 +76,7 @@ func CheckConfigFingerprint(ctx context.Context, ds model.DataStore) error {
 	switch stored {
 	case current:
 	case "":
-		// A library with no stored fingerprint has nothing resolved under an older one to warn about.
+		// An unset fingerprint counts as current; the alternative warns every upgrading install once.
 		return MarkConfigApplied(ctx, ds)
 	default:
 		log.Warn(ctx, "Artwork: Config changed since the last full reprocess. Stored artwork keeps "+

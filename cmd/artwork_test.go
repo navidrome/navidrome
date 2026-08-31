@@ -556,10 +556,6 @@ var _ = Describe("confirmUnlessYes", func() {
 	})
 })
 
-// unchangedFingerprint is the seeded value, deferred like the real one: an Entry argument is
-// evaluated at tree-construction time, before the suite sets the config the fingerprint hashes.
-func unchangedFingerprint() string { return "stale-fingerprint" }
-
 var _ = Describe("reprocessArtwork", func() {
 	var ds *tests.MockDataStore
 	var art *tests.MockArtworkRepo
@@ -593,7 +589,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("previews the per-kind breakdown and queues nothing on a dry run", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, true, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, true, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("external:deezer"))
 		Expect(out.String()).To(ContainSubstring("artist"))
@@ -604,27 +600,33 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("queues nothing when the operator declines", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, false, decline, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, decline, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Aborted"))
 		Expect(queue.Count()).To(BeZero())
 	})
 
 	DescribeTable("records the applied config only for a run that leaves nothing on the old one",
-		func(sources []string, dryRun, full bool, expected func() string) {
+		func(selected []model.Kind, sources []string, dryRun, applied bool) {
 			Expect(ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
-			Expect(reprocessArtwork(ctx, ds, kinds, sources, imageAgents, dryRun, full, accept, &out)).To(Succeed())
+			Expect(reprocessArtwork(ctx, ds, selected, sources, imageAgents, dryRun, accept, &out)).To(Succeed())
 
-			Expect(ds.Property(ctx).Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(expected()))
+			want := "stale-fingerprint"
+			if applied {
+				want = artwork.ConfigFingerprint()
+			}
+			Expect(ds.Property(ctx).Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(want))
 		},
-		Entry("--all, unfiltered", nil, false, true, artwork.ConfigFingerprint),
-		Entry("filtered by source", []string{"external:deezer"}, false, false, unchangedFingerprint),
-		Entry("a dry run applies nothing", nil, true, true, unchangedFingerprint),
+		Entry("every kind, unfiltered", artwork.ReprocessKinds, nil, false, true),
+		Entry("every kind, but nothing matched", artwork.ReprocessKinds, []string{}, false, true),
+		Entry("filtered by source", artwork.ReprocessKinds, []string{"external:deezer"}, false, false),
+		Entry("a subset of kinds", []model.Kind{model.KindAlbumArtwork}, nil, false, false),
+		Entry("a dry run applies nothing", artwork.ReprocessKinds, nil, true, false),
 	)
 
 	It("queues the matching items at recheck priority, leaving their artwork state alone", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, accept, &out)).To(Succeed())
 
 		Expect(queue.Count()).To(Equal(int64(2)))
 		queued, err := queue.Get(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
@@ -639,7 +641,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("targets the absent state", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{""}, imageAgents, false, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{""}, imageAgents, false, accept, &out)).To(Succeed())
 
 		Expect(queue.Count()).To(Equal(int64(1)))
 		_, err := queue.Get(model.KindArtistArtwork, "ar-2", model.ImageTypePrimary)
@@ -650,7 +652,7 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(queue.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-1",
 			ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump})).To(Succeed())
 
-		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Queued 1 of 2 matched items"))
 		Expect(out.String()).To(ContainSubstring("Already queued, left unchanged: 1"))
@@ -661,7 +663,7 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("stops at a selection that matches nothing instead of prompting", func() {
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, imageAgents, false, false,
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, imageAgents, false,
 			func(io.Writer, int64, int64) bool {
 				Fail("must not prompt when there is nothing to queue")
 				return true
@@ -672,14 +674,14 @@ var _ = Describe("reprocessArtwork", func() {
 	})
 
 	It("reports an empty selection as a dry run when one was asked for", func() {
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, imageAgents, true, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindRadioArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Nothing matches"))
 		Expect(out.String()).To(ContainSubstring("Dry run"))
 	})
 
 	It("shows the external estimate on a dry run, which never reaches the prompt", func() {
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork}, nil, imageAgents, true, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("External lookups: ~2 estimated"))
 	})
@@ -689,14 +691,14 @@ var _ = Describe("reprocessArtwork", func() {
 		var external int64
 		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
 
-		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, false, capture, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(external).To(Equal(int64(2*2+2*3)), "2 artists at 2 agents plus 2 albums at 3 agents")
 		Expect(out.String()).To(ContainSubstring("External lookups: ~10 estimated"))
 	})
 
 	It("names the estimate's blind spots instead of claiming a bound it cannot hold", func() {
-		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, true, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, true, accept, &out)).To(Succeed())
 
 		// The count includes plugin agents once they load, so the caveat is about a failed load,
 		// not about plugins being invisible to the CLI.
@@ -710,7 +712,7 @@ var _ = Describe("reprocessArtwork", func() {
 		conf.Server.CoverArtPriority = "cover.*"
 		put(model.KindPlaylistArtwork, "pl-1", "playlist")
 
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, true, false, accept, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, true, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("External lookups: none"))
 	})
@@ -722,7 +724,7 @@ var _ = Describe("reprocessArtwork", func() {
 		var external int64
 		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
 
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, false, false, capture, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(external).To(Equal(int64(1)))
 		Expect(out.String()).To(ContainSubstring("External lookups: ~1 estimated"))
@@ -734,7 +736,7 @@ var _ = Describe("reprocessArtwork", func() {
 		var external int64
 		capture := func(_ io.Writer, _, e int64) bool { external = e; return false }
 
-		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, false, false, capture, &out)).To(Succeed())
+		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(external).To(Equal(int64(artwork.PlaylistGridSamples*3)),
 			"one playlist samples 4 albums, each walking all 3 album agents")
@@ -746,14 +748,14 @@ var _ = Describe("reprocessArtwork", func() {
 		capture := func(_ io.Writer, t, e int64) bool { total, external = t, e; return false }
 
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindAlbumArtwork, model.KindRadioArtwork},
-			nil, imageAgents, false, false, capture, &out)).To(Succeed())
+			nil, imageAgents, false, capture, &out)).To(Succeed())
 
 		Expect(total).To(Equal(int64(3)))
 		Expect(external).To(Equal(int64(2)), "radio artwork never reaches an external agent")
 	})
 
 	It("rejects an unknown source and names the ones in use", func() {
-		err := reprocessArtwork(ctx, ds, kinds, []string{"externa:deezer"}, imageAgents, true, false, accept, &out)
+		err := reprocessArtwork(ctx, ds, kinds, []string{"externa:deezer"}, imageAgents, true, accept, &out)
 
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("externa:deezer"))
@@ -767,18 +769,18 @@ var _ = Describe("reprocessArtwork", func() {
 		put(model.KindArtistArtwork, "ar-2", "folder")
 
 		Expect(reprocessArtwork(ctx, ds, kinds, repositorySources([]string{absentSource}),
-			imageAgents, false, false, accept, &out)).To(Succeed(),
+			imageAgents, false, accept, &out)).To(Succeed(),
 			"a reserved source must stay valid once the library has none of it")
 		Expect(out.String()).To(ContainSubstring("Nothing matches"))
 		Expect(queue.Count()).To(BeZero())
 
 		Expect(reprocessArtwork(ctx, ds, kinds, repositorySources([]string{"absnt"}),
-			imageAgents, true, false, accept, &out)).ToNot(Succeed(), "a typo must still be rejected")
+			imageAgents, true, accept, &out)).ToNot(Succeed(), "a typo must still be rejected")
 	})
 
 	It("accepts a source another kind uses, letting the empty selection report itself", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindArtistArtwork}, []string{"folder"},
-			imageAgents, false, false, decline, &out)).To(Succeed())
+			imageAgents, false, decline, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Nothing matches"),
 			"a well-formed filter must not be reported as a typo because of the kinds selected")

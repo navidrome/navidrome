@@ -226,22 +226,6 @@ func (m *MockArtworkQueueRepo) CountQueued(kinds []model.Kind, priorities []int)
 	return res, nil
 }
 
-// CountAbsent mirrors the SQL predicate: an absent state is one with no hash.
-func (m *MockArtworkQueueRepo) CountAbsent(kind model.Kind) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Err != nil || m.ItemArtworkSource == nil {
-		return 0, m.Err
-	}
-	var total int64
-	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind == kind.Prefix() && ia.Hash == "" {
-			total++
-		}
-	}
-	return total, nil
-}
-
 func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

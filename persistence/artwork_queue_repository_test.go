@@ -404,24 +404,6 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			Expect(repo.CountQueued(nil, nil)).To(BeEmpty())
 		})
 
-		It("counts absent states", func() {
-			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
-			old := time.Now().Add(-48 * time.Hour)
-			for _, ia := range []model.ItemArtwork{
-				{ItemKind: "ar", ItemID: "stale1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old},
-				{ItemKind: "ar", ItemID: "fresh1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()},
-				{ItemKind: "ar", ItemID: "found1", ImageType: model.ImageTypePrimary, Hash: "hX", AttemptedAt: old},
-				{ItemKind: "al", ItemID: "stale2", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: old},
-			} {
-				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
-			}
-
-			Expect(repo.CountAbsent(model.KindArtistArtwork)).To(Equal(int64(2)))
-		})
-
-		It("reports a kind with no absent state as zero, not as an error", func() {
-			Expect(repo.CountAbsent(model.KindRadioArtwork)).To(Equal(int64(0)))
-		})
 	})
 
 	Describe("PurgeQueued", func() {

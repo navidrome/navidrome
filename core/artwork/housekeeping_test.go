@@ -3,40 +3,15 @@ package artwork
 import (
 	"context"
 	"slices"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-// visibilityPlaylistDS models playlist_repository's userFilter: a private playlist is only
-// visible when the ctx carries an admin, so headless work must wrap ctx with one first.
-type visibilityPlaylistDS struct {
-	*tests.MockDataStore
-	private model.Playlist
-	tracks  model.PlaylistTrackRepository
-}
-
-func (v *visibilityPlaylistDS) Playlist(ctx context.Context) model.PlaylistRepository {
-	repo := tests.CreateMockPlaylistRepo()
-	repo.TracksRepo = v.tracks
-	if u, ok := request.UserFrom(ctx); ok && u.IsAdmin {
-		repo.SetData(model.Playlists{v.private})
-	}
-	return repo
-}
-
-func adminUserRepo() *tests.MockedUserRepo {
-	repo := tests.CreateMockUserRepo()
-	Expect(repo.Put(&model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
-	return repo
-}
 
 // orderTrackingQueueRepo records the kind of each bulk insert, so tests can assert
 // phase ordering (artists-first) that same-priority timestamps can't guarantee.
@@ -138,9 +113,9 @@ var _ = Describe("Housekeeping", func() {
 		})
 	})
 
-	Describe("CheckConfigFingerprint", func() {
+	Describe("ReconcileConfigFingerprint", func() {
 		It("records the current fingerprint when none was ever stored", func() {
-			Expect(CheckConfigFingerprint(ctx, ds)).To(Succeed())
+			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
 			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
 			Expect(queueRepo.Count()).To(BeZero())
@@ -149,23 +124,10 @@ var _ = Describe("Housekeeping", func() {
 		It("leaves a stale fingerprint stored, so the warning survives a restart", func() {
 			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
-			Expect(CheckConfigFingerprint(ctx, ds)).To(Succeed())
+			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
 			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
 		})
-
-		DescribeTable("never enqueues anything, whatever the stored fingerprint",
-			func(stored func() string) {
-				if v := stored(); v != "" {
-					Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, v)).To(Succeed())
-				}
-				Expect(CheckConfigFingerprint(ctx, ds)).To(Succeed())
-				Expect(queueRepo.Count()).To(BeZero())
-			},
-			Entry("never stored", func() string { return "" }),
-			Entry("changed", func() string { return "stale-fingerprint" }),
-			Entry("unchanged", ConfigFingerprint),
-		)
 	})
 
 	Describe("MarkConfigApplied", func() {
@@ -194,8 +156,8 @@ var _ = Describe("Housekeeping", func() {
 		})
 
 		It("enqueues only entities that have no item_artwork row, across all kinds", func() {
-			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "somehash", AttemptedAt: time.Now()}
-			artRepo.ItemData["ar-absent"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: "", AttemptedAt: time.Now()}
+			artRepo.ItemData["al-resolved"] = model.ItemArtwork{ItemKind: "al", ItemID: "al1", ImageType: model.ImageTypePrimary, Hash: "somehash"}
+			artRepo.ItemData["ar-absent"] = model.ItemArtwork{ItemKind: "ar", ItemID: "ar1", ImageType: model.ImageTypePrimary, Hash: ""}
 
 			err := enqueueMissingAll(ctx, ds)
 			Expect(err).ToNot(HaveOccurred())

@@ -223,11 +223,4 @@ func (r *artworkQueueRepository) Count() (int64, error) {
 	return res.Count, err
 }
 
-func (r *artworkQueueRepository) CountAbsent(kind model.Kind) (int64, error) {
-	var res struct{ Count int64 }
-	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
-		Where(Eq{"item_kind": kind.Prefix(), "hash": ""}), &res)
-	return res.Count, err
-}
-
 var _ model.ArtworkQueueRepository = (*artworkQueueRepository)(nil)

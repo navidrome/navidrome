@@ -5,7 +5,6 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type MockedRadioRepo struct {
@@ -72,14 +71,6 @@ func (m *MockedRadioRepo) GetAll(qo ...model.QueryOptions) (model.Radios, error)
 		return nil, errors.New("Error!")
 	}
 	return m.All, nil
-}
-
-func (m *MockedRadioRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
-	all, err := m.GetAll(qo...)
-	if err != nil {
-		return nil, err
-	}
-	return slice.Map(all, func(r model.Radio) string { return r.ID }), nil
 }
 
 func (m *MockedRadioRepo) Put(radio *model.Radio, _ ...string) error {
