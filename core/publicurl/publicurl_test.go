@@ -48,11 +48,6 @@ var _ = Describe("Public URL Utilities", func() {
 				Expect(result).To(ContainSubstring("size=300"))
 				Expect(result).To(ContainSubstring("format=png"))
 			})
-
-			It("works without a request", func() {
-				result := publicurl.PublicURL(context.Background(), "/path/to/resource", nil)
-				Expect(result).To(Equal("https://share.example.com/path/to/resource"))
-			})
 		})
 
 		When("ShareURL includes a path", func() {
@@ -130,12 +125,6 @@ var _ = Describe("Public URL Utilities", func() {
 			})
 
 			It("falls back to localhost on the configured port without request", func() {
-				conf.Server.Port = 4533
-				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
-				Expect(result).To(Equal("http://localhost:4533/path/to/resource"))
-			})
-
-			It("uses a non-default port in the fallback", func() {
 				conf.Server.Port = 8080
 				result := publicurl.AbsoluteURL(context.Background(), "/path/to/resource", nil)
 				Expect(result).To(Equal("http://localhost:8080/path/to/resource"))

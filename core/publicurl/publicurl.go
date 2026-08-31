@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 // ImageURL generates a public URL for artwork images.
@@ -74,10 +75,8 @@ func AbsoluteURL(ctx context.Context, u string, params url.Values) string {
 		} else {
 			log.Debug(ctx, "Building a public URL with no public address available; set ShareURL to make it reachable", "url", u)
 			// Both a cert and a key are required, matching the server's own TLS switch.
-			buildUrl.Scheme = "http"
-			if conf.Server.TLSCert != "" && conf.Server.TLSKey != "" {
-				buildUrl.Scheme = "https"
-			}
+			tls := conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
+			buildUrl.Scheme = gg.If(tls, "https", "http")
 			buildUrl.Host = "localhost:" + strconv.Itoa(conf.Server.Port)
 		}
 	}
