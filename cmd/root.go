@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -138,13 +139,21 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
 		}
 		if conf.Server.DevEnableProfiler {
-			a.MountRouter("Profiling", "/debug", middleware.Profiler())
+			a.MountRouter("Profiling", "/debug", profilerHandler())
 		}
 		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
 			a.MountRouter("Background images", conf.Server.UILoginBackgroundURL, backgrounds.NewHandler())
 		}
 		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
 	}
+}
+
+// profilerHandler returns the pprof handler. net/http/pprof resolves the profile
+// name from the raw request path, so the BasePath has to come off first.
+func profilerHandler() http.Handler {
+	// A trailing or root slash would make StripPrefix drop the leading slash chi needs.
+	basePath := strings.TrimRight(conf.Server.BasePath, "/")
+	return http.StripPrefix(basePath, middleware.Profiler())
 }
 
 // schedulePeriodicScan schedules a periodic scan of the music library, if configured.

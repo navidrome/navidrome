@@ -1,12 +1,9 @@
 module github.com/navidrome/navidrome
 
-go 1.26
+go 1.27
 
 // Fork to implement raw tags support
 replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260720134629-a133b9719ea3
-
-// Fork to implement CloseWithError, proposed upstream in https://github.com/djherbis/fscache/pull/22
-replace github.com/djherbis/fscache => github.com/deluan/fscache v0.9.1-0.20260825221051-a07d597526e2
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
@@ -16,8 +13,8 @@ require (
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36
 	github.com/djherbis/atime v1.1.0
-	github.com/djherbis/fscache v0.10.2-0.20231127215153-442a07e326c4
-	github.com/djherbis/stream v1.4.0
+	github.com/djherbis/fscache v0.10.2-0.20260829235704-6d85d5878c22
+	github.com/djherbis/stream v1.5.1
 	github.com/djherbis/times v1.6.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/extism/go-sdk v1.7.1

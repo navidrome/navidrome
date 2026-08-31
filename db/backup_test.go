@@ -68,6 +68,7 @@ var _ = Describe("database backups", func() {
 
 			timesShuffled = make([]time.Time, len(timesDecreasingChronologically))
 			copy(timesShuffled, timesDecreasingChronologically)
+			//nolint:gosec // shuffle order is not a security decision
 			rand.Shuffle(len(timesShuffled), func(i, j int) {
 				timesShuffled[i], timesShuffled[j] = timesShuffled[j], timesShuffled[i]
 			})
