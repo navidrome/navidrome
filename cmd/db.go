@@ -28,7 +28,7 @@ var (
 		Short: "Check the database for corruption and inconsistencies",
 		Long: "Run read-only database health checks (integrity and foreign key checks) and " +
 			"report what was found, including whether 'navidrome search rebuild' can fix it. " +
-			"This command never modifies the database",
+			"This command never alters your data",
 		Run: func(cmd *cobra.Command, _ []string) {
 			runDoctor(cmd.Context())
 		},
