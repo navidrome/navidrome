@@ -1,4 +1,7 @@
 # Code coverage reporting for pull requests. See https://github.com/k1LoW/octocov
+# The 30s default is not enough: scanning this repo's artifacts for the baseline
+# eats most of it, leaving none for the report upload.
+timeout: 5m
 coverage:
   # Artifact names uploaded by the test jobs; octocov merges the profiles it finds in each.
   paths:
@@ -14,7 +17,7 @@ codeToTestRatio:
 testExecutionTime:
   if: true
   steps:
-    - Test
+    - Test with coverage
     - Test plugins
 diff:
   datastores:
