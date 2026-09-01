@@ -202,6 +202,14 @@ jobs:
         with:
           pattern: octocov-*
 
+      # Merge here rather than letting octocov do it: octocov reports statement
+      # coverage for a single profile, but switches to line counting for several.
+      - name: Merge coverage profiles
+        run: |
+          echo "mode: atomic" > coverage.out
+          awk 'FNR==1 && /^mode:/ {next} {k=$1" "$2; c[k]+=$3} END {for (k in c) print k, c[k]}' \
+            octocov-*/coverage.out | sort >> coverage.out
+
       - uses: k1LoW/octocov-action@v1
 
   go-windows:

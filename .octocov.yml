@@ -3,10 +3,10 @@
 # eats most of it, leaving none for the report upload.
 timeout: 5m
 coverage:
-  # Artifact names uploaded by the test jobs; octocov merges the profiles it finds in each.
+  # A single pre-merged profile: octocov reports statements for one path, but
+  # switches to line counting when it merges several itself.
   paths:
-    - octocov-go
-    - octocov-plugins
+    - coverage.out
 codeToTestRatio:
   code:
     - '**/*.go'
