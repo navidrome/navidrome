@@ -24,15 +24,31 @@ jobs:
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
+      # Into a subdirectory. A pull_request run executes the fork's own copy of
+      # pipeline.yml, so every file in here is attacker-controlled.
       - uses: actions/download-artifact@v8
         with:
           name: octocov-pr
+          path: untrusted
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
-      - name: Read the pull request number
+      - name: Verify the artifact and take the coverage profile
         id: pr
-        run: echo "number=$(cat pr_number)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          number=$(head -c 20 untrusted/pr_number | tr -d '[:space:]')
+          case "$number" in ''|*[!0-9]*)
+            echo "::error::artifact pr_number is not a number"; exit 1;;
+          esac
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number" --jq .head.sha)
+          if [ "$sha" != "$HEAD_SHA" ]; then
+            echo "::error::artifact claims PR #$number, but its head $sha is not $HEAD_SHA"; exit 1
+          fi
+          cp untrusted/coverage.out coverage.out
+          echo "number=$number" >> "$GITHUB_OUTPUT"
 
       - uses: k1LoW/octocov-action@v1
         env:
