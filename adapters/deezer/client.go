@@ -24,10 +24,6 @@ const authBaseURL = "https://auth.deezer.com"
 // and no rate-limit headers, so the body code is the only signal.
 const errCodeQuota = 4
 
-var (
-	errNotFound = errors.New("deezer: not found")
-)
-
 type deezerError struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
@@ -71,7 +67,7 @@ func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]A
 	}
 
 	if len(results.Data) == 0 {
-		return nil, errNotFound
+		return nil, agents.ErrNotFound
 	}
 	return results.Data, nil
 }
