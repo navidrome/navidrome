@@ -28,6 +28,6 @@ comment:
 summary:
   if: true
 report:
-  if: true # TEMP: seed a baseline artifact so the diff table can be demoed on this PR
+  if: is_default_branch
   datastores:
     - artifact://${GITHUB_REPOSITORY}
