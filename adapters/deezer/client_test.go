@@ -2,12 +2,14 @@ package deezer
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -42,6 +44,36 @@ var _ = Describe("client", func() {
 
 			_, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
 			Expect(err).To(MatchError(ErrNotFound))
+		})
+
+		// Deezer answers 200 with no rate-limit headers when throttling, so this body is the only signal.
+		It("reports an exhausted quota as a retryable error, not as a missing artist", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(
+					`{"error":{"type":"Exception","message":"Quota limit exceeded","code":4}}`)),
+			})
+
+			_, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
+			Expect(err).To(HaveOccurred())
+			Expect(err).ToNot(MatchError(ErrNotFound),
+				"a throttled lookup would otherwise settle the artist as having no image")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+			Expect(err.Error()).To(ContainSubstring("Quota limit exceeded"))
+		})
+
+		It("reports a non-quota body error as a plain error", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(
+					`{"error":{"type":"Exception","message":"Invalid query","code":100}}`)),
+			})
+
+			_, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
+			Expect(err).To(HaveOccurred())
+			Expect(err).ToNot(MatchError(ErrNotFound))
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeFalse(),
+				"only a throttle asks the caller to come back later")
 		})
 	})
 
