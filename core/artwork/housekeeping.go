@@ -31,7 +31,8 @@ func KeepsState(kind model.Kind) bool { return kind != model.KindDiscArtwork }
 var RefreshableKinds = append(slices.Clone(ReprocessKinds), model.KindMediaFileArtwork)
 
 // settlesAbsentOnGiveUp reports whether an exhausted retry budget records an absent state. Media
-// files are excluded: a track with no row still falls back to its disc or album art.
+// files are excluded because retrying one costs nothing: they resolve embedded-only, from a local
+// read, and only a view ever enqueues them.
 func settlesAbsentOnGiveUp(prefix string) bool {
 	kind, ok := model.ParseKind(prefix)
 	return ok && KeepsState(kind) && kind != model.KindMediaFileArtwork
