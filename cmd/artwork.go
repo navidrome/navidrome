@@ -229,13 +229,13 @@ func formatStatus(rep statusReport) string {
 	}
 
 	fmt.Fprintln(w, "\nAbsent (resolved, no image found)")
-	fmt.Fprintln(w, "  KIND\tABSENT\tFAILED")
+	fmt.Fprintln(w, "  KIND\tABSENT\tOF WHICH FAILED")
 	for _, a := range rep.absent {
 		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.count, a.afterFailure)
 	}
-	fmt.Fprintln(w, "  (never retried on their own; run 'artwork reprocess --source absent')")
-	fmt.Fprintln(w, "  (failed: the retry budget ran out rather than a source answering; retry just those\n"+
-		"   with 'artwork reprocess --source failed')")
+	fmt.Fprintln(w, "  (nothing retries these; 'artwork reprocess --source absent' retries all of them)")
+	fmt.Fprintln(w, "  (failed = gave up rather than being answered, so the subset most likely to resolve;\n"+
+		"   'artwork reprocess --source failed' retries just those)")
 
 	fmt.Fprintln(w, "\nConfig")
 	fmt.Fprintf(w, "  State:\t%s\n", configState(rep))

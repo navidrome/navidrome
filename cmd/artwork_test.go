@@ -900,15 +900,18 @@ var _ = Describe("formatStatus", func() {
 		Expect(sources).To(MatchRegexp(`artist\s+absent\s+2`))
 	})
 
-	It("splits the absent total by how it was reached", func() {
+	It("presents the failed count as a subset of the absent total, not a second bucket", func() {
 		out := block(formatStatus(rep), "Absent (resolved, no image found)")
-		Expect(out).To(MatchRegexp(`artist\s+2\s+1`), "2 absent, of which 1 gave up")
+		Expect(out).To(ContainSubstring("OF WHICH FAILED"))
+		Expect(out).To(MatchRegexp(`artist\s+2\s+1`), "2 absent, of which 1 failed")
 		Expect(formatStatus(rep)).To(ContainSubstring("artwork reprocess --source failed"))
 	})
 
-	It("says absent states are never retried on their own, and names the command that does", func() {
-		Expect(formatStatus(rep)).To(ContainSubstring("never retried on their own"))
-		Expect(formatStatus(rep)).To(ContainSubstring("artwork reprocess --source absent"))
+	It("says absent states are never retried on their own, and names both commands that do", func() {
+		out := formatStatus(rep)
+		Expect(out).To(ContainSubstring("nothing retries these"))
+		Expect(out).To(ContainSubstring("artwork reprocess --source absent"))
+		Expect(out).To(ContainSubstring("artwork reprocess --source failed"))
 	})
 
 	It("reports a matching fingerprint as up to date, whatever else is queued", func() {
