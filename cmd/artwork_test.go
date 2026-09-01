@@ -511,6 +511,11 @@ var _ = Describe("repositorySources", func() {
 		Expect(repositorySources([]string{"absent", "folder"})).To(Equal([]string{"", "folder"}))
 	})
 
+	It("maps the failed name onto the pseudo-source, and back for display", func() {
+		Expect(repositorySources([]string{failedSource})).To(Equal([]string{model.ArtworkSourceFailed}))
+		Expect(displaySource(model.ArtworkSourceFailed)).To(Equal(failedSource))
+	})
+
 	It("keeps an empty selection empty, meaning every source", func() {
 		Expect(repositorySources(nil)).To(BeEmpty())
 	})
@@ -898,7 +903,7 @@ var _ = Describe("formatStatus", func() {
 	It("splits the absent total by how it was reached", func() {
 		out := block(formatStatus(rep), "Absent (resolved, no image found)")
 		Expect(out).To(MatchRegexp(`artist\s+2\s+1`), "2 absent, of which 1 gave up")
-		Expect(formatStatus(rep)).To(ContainSubstring("the retry budget ran out"))
+		Expect(formatStatus(rep)).To(ContainSubstring("artwork reprocess --source failed"))
 	})
 
 	It("says absent states are never retried on their own, and names the command that does", func() {

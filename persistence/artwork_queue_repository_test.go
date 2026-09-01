@@ -400,7 +400,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			))
 		})
 
-		It("counts only the absent states that gave up, not those a source answered", func() {
+		It("selects only the absent states that gave up, not those a source answered", func() {
 			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
 			for _, ia := range []model.ItemArtwork{
 				{ItemKind: "ar", ItemID: "gaveup", ImageType: model.ImageTypePrimary, LastFailure: "[]"},
@@ -410,17 +410,33 @@ var _ = Describe("ArtworkQueueRepository", func() {
 				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
 			}
 
-			Expect(repo.CountAbsentAfterFailure(model.KindArtistArtwork)).To(Equal(int64(1)),
+			Expect(repo.CountBySource(model.KindArtistArtwork, []string{model.ArtworkSourceFailed})).To(Equal(int64(1)),
 				"an item still serving art is not absent, however its last attempt went")
 
 			// A later success rewrites the row, clearing the record.
 			Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "gaveup",
 				ImageType: model.ImageTypePrimary, Hash: "hZ"})).To(Succeed())
-			Expect(repo.CountAbsentAfterFailure(model.KindArtistArtwork)).To(Equal(int64(0)))
+			Expect(repo.CountBySource(model.KindArtistArtwork, []string{model.ArtworkSourceFailed})).To(Equal(int64(0)))
 		})
 
-		It("reports a kind that never gave up as zero", func() {
-			Expect(repo.CountAbsentAfterFailure(model.KindRadioArtwork)).To(Equal(int64(0)))
+		It("unions the failed pseudo-source with a real one, so absent plus failed is just absent", func() {
+			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			for _, ia := range []model.ItemArtwork{
+				{ItemKind: "ar", ItemID: "gaveup", ImageType: model.ImageTypePrimary, LastFailure: "[]"},
+				{ItemKind: "ar", ItemID: "toldno", ImageType: model.ImageTypePrimary},
+				{ItemKind: "ar", ItemID: "folder", ImageType: model.ImageTypePrimary, Hash: "hX", Source: "folder"},
+			} {
+				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
+			}
+			failedAndAbsent := []string{model.ArtworkSourceFailed, ""}
+			Expect(repo.CountBySource(model.KindArtistArtwork, failedAndAbsent)).To(Equal(int64(2)),
+				"failed is a subset of absent, so asking for both is asking for absent")
+			Expect(repo.CountBySource(model.KindArtistArtwork, []string{model.ArtworkSourceFailed, "folder"})).
+				To(Equal(int64(2)), "a pseudo-source and a stored source combine as a union")
+		})
+
+		It("reports a kind with nothing failed as zero", func() {
+			Expect(repo.CountBySource(model.KindRadioArtwork, []string{model.ArtworkSourceFailed})).To(Equal(int64(0)))
 		})
 
 		It("reports an empty queue as no rows", func() {

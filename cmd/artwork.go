@@ -44,7 +44,8 @@ func init() {
 	artworkReprocessCmd.Flags().StringSliceVar(&artworkKinds, "kind", nil,
 		"kinds to reprocess ("+kindPrefixes(artwork.ReprocessKinds)+"); repeatable")
 	artworkReprocessCmd.Flags().StringSliceVar(&artworkSources, "source", nil,
-		"only items currently resolved from these sources (e.g. folder, external:deezer, absent)")
+		"only items currently resolved from these sources (e.g. folder, external:deezer, absent, "+
+			"or failed for the absent ones that gave up)")
 	artworkReprocessCmd.Flags().BoolVar(&artworkAll, "all", false, "reprocess every kind")
 	artworkReprocessCmd.Flags().BoolVar(&artworkDryRun, "dry-run", false,
 		"report what would be queued and exit without queueing")
@@ -194,9 +195,9 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 			rep.sources = append(rep.sources, sourceCount{kind: k, source: s, count: n})
 			// An absent state is exactly a row with no source, so it needs no second query.
 			if s == "" {
-				failed, err := q.CountAbsentAfterFailure(k)
+				failed, err := q.CountBySource(k, []string{model.ArtworkSourceFailed})
 				if err != nil {
-					return rep, fmt.Errorf("counting absent %s artwork that gave up: %w", k, err)
+					return rep, fmt.Errorf("counting failed %s artwork: %w", k, err)
 				}
 				rep.absent = append(rep.absent, absentCount{kind: k, count: n, afterFailure: failed})
 			}
@@ -228,12 +229,13 @@ func formatStatus(rep statusReport) string {
 	}
 
 	fmt.Fprintln(w, "\nAbsent (resolved, no image found)")
-	fmt.Fprintln(w, "  KIND\tABSENT\tGAVE UP")
+	fmt.Fprintln(w, "  KIND\tABSENT\tFAILED")
 	for _, a := range rep.absent {
 		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.count, a.afterFailure)
 	}
 	fmt.Fprintln(w, "  (never retried on their own; run 'artwork reprocess --source absent')")
-	fmt.Fprintln(w, "  (gave up: the retry budget ran out rather than a source answering; most likely to resolve)")
+	fmt.Fprintln(w, "  (failed: the retry budget ran out rather than a source answering; retry just those\n"+
+		"   with 'artwork reprocess --source failed')")
 
 	fmt.Fprintln(w, "\nConfig")
 	fmt.Fprintf(w, "  State:\t%s\n", configState(rep))
@@ -347,19 +349,31 @@ func selectedKinds(kinds, sources []string, all bool) ([]model.Kind, error) {
 	})
 }
 
-// absentSource is how the stored empty source — resolved, no image — is spelled on the CLI.
-const absentSource = "absent"
+// absentSource is how the stored empty source — resolved, no image — is spelled on the CLI, and
+// failedSource the subset of it that gave up rather than being answered.
+const (
+	absentSource = "absent"
+	failedSource = "failed"
+)
 
 func repositorySources(sources []string) []string {
 	return slice.Map(sources, func(s string) string {
-		if s == absentSource {
+		switch s {
+		case absentSource:
 			return ""
+		case failedSource:
+			return model.ArtworkSourceFailed
 		}
 		return s
 	})
 }
 
-func displaySource(s string) string { return cmp.Or(s, absentSource) }
+func displaySource(s string) string {
+	if s == model.ArtworkSourceFailed {
+		return failedSource
+	}
+	return cmp.Or(s, absentSource)
+}
 
 type confirmFunc func(out io.Writer, total, external int64) bool
 
@@ -442,7 +456,8 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 	}
 	var unknown []string
 	for _, s := range sources {
-		if s != "" && !slices.Contains(inUse, s) { // the reserved absent source is valid even when nothing is absent
+		// The reserved absent and failed sources are valid even when nothing currently matches them.
+		if s != "" && s != model.ArtworkSourceFailed && !slices.Contains(inUse, s) {
 			unknown = append(unknown, displaySource(s))
 		}
 	}

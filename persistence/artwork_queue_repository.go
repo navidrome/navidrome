@@ -102,13 +102,23 @@ func (r *artworkQueueRepository) insertIfNotQueued(with, sql string, args ...any
 		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+skipIfQueued, args...))
 }
 
-// artworkSourceFilter selects item_artwork rows of a kind; no sources means every source, "" the absent state.
+// artworkSourceFilter selects item_artwork rows of a kind; no sources means every source, "" the
+// absent state, and ArtworkSourceFailed the absent states that gave up. Several are a union, so
+// asking for both absent and failed is just absent.
 func artworkSourceFilter(kind model.Kind, sources []string) Sqlizer {
 	f := And{Eq{"item_kind": kind.Prefix()}}
-	if len(sources) > 0 {
-		f = append(f, Eq{"source": sources})
+	if len(sources) == 0 {
+		return f
 	}
-	return f
+	stored := slices.DeleteFunc(slices.Clone(sources), func(s string) bool { return s == model.ArtworkSourceFailed })
+	var match Or
+	if len(stored) > 0 {
+		match = append(match, Eq{"source": stored})
+	}
+	if len(stored) != len(sources) {
+		match = append(match, And{Eq{"hash": ""}, NotEq{"last_failure": ""}})
+	}
+	return append(f, match)
 }
 
 func (r *artworkQueueRepository) CountBySource(kind model.Kind, sources []string) (int64, error) {
@@ -220,13 +230,6 @@ func (r *artworkQueueRepository) PurgeQueued(kinds []model.Kind, priorities []in
 func (r *artworkQueueRepository) Count() (int64, error) {
 	var res struct{ Count int64 }
 	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)
-	return res.Count, err
-}
-
-func (r *artworkQueueRepository) CountAbsentAfterFailure(kind model.Kind) (int64, error) {
-	var res struct{ Count int64 }
-	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
-		Where(And{Eq{"item_kind": kind.Prefix(), "hash": ""}, NotEq{"last_failure": ""}}), &res)
 	return res.Count, err
 }
 

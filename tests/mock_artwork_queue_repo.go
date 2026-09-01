@@ -252,14 +252,24 @@ func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQu
 	return nil
 }
 
-// matchingSource mirrors the SQL filter: no sources means every source, "" the absent state.
+// matchingSource mirrors the SQL filter: no sources means every source, "" the absent state, and
+// ArtworkSourceFailed the absent states that gave up.
 func (m *MockArtworkQueueRepo) matchingSource(kind model.Kind, sources []string) []model.ItemArtwork {
 	if m.ItemArtworkSource == nil {
 		return nil
 	}
+	matches := func(ia model.ItemArtwork) bool {
+		if len(sources) == 0 {
+			return true
+		}
+		if slices.Contains(sources, ia.Source) {
+			return true
+		}
+		return slices.Contains(sources, model.ArtworkSourceFailed) && ia.Hash == "" && ia.LastFailure != ""
+	}
 	var res []model.ItemArtwork
 	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind == kind.Prefix() && (len(sources) == 0 || slices.Contains(sources, ia.Source)) {
+		if ia.ItemKind == kind.Prefix() && matches(ia) {
 			res = append(res, ia)
 		}
 	}
@@ -273,21 +283,6 @@ func (m *MockArtworkQueueRepo) CountBySource(kind model.Kind, sources []string) 
 		return 0, m.Err
 	}
 	return int64(len(m.matchingSource(kind, sources))), nil
-}
-
-func (m *MockArtworkQueueRepo) CountAbsentAfterFailure(kind model.Kind) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Err != nil || m.ItemArtworkSource == nil {
-		return 0, m.Err
-	}
-	var n int64
-	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind == kind.Prefix() && ia.Hash == "" && ia.LastFailure != "" {
-			n++
-		}
-	}
-	return n, nil
 }
 
 func (m *MockArtworkQueueRepo) SourcesInUse(kind model.Kind) ([]string, error) {

@@ -18,6 +18,10 @@ type Artwork struct {
 
 const ImageTypePrimary = "primary"
 
+// ArtworkSourceFailed is a pseudo-source selecting absent states that exhausted the retry budget
+// rather than being answered. The "!" keeps it from colliding with a stored source value.
+const ArtworkSourceFailed = "!failed"
+
 // ItemImage is per-entity artwork state hydrated at query time; never persisted.
 type ItemImage struct {
 	ImageHash   string `structs:"-" json:"imageHash,omitempty"`
@@ -142,13 +146,11 @@ type ArtworkQueueRepository interface {
 	// EnqueueIfMissing inserts only for items with no item_artwork row yet.
 	EnqueueIfMissing(items ...ArtworkQueueItem) error
 	// CountBySource reports how many items of a kind currently resolve from the given sources.
-	// An empty sources slice means every source; "" matches absent state.
+	// An empty sources slice means every source; "" matches absent state, and the pseudo-source
+	// ArtworkSourceFailed matches the absent states that gave up.
 	CountBySource(kind Kind, sources []string) (int64, error)
 	// SourcesInUse lists the distinct sources items of a kind currently resolve from, "" included.
 	SourcesInUse(kind Kind) ([]string, error)
-	// CountAbsentAfterFailure reports absent states a kind recorded because the retry budget ran
-	// out, not because every source answered. Those are the ones a reprocess is likely to resolve.
-	CountAbsentAfterFailure(kind Kind) (int64, error)
 	// EnqueueBySource inserts queue rows for items of a kind whose current source matches.
 	// It does not clear existing artwork state: the current image stays until it is replaced.
 	EnqueueBySource(kind Kind, sources []string, priority int) (int64, error)
