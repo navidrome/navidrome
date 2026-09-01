@@ -43,7 +43,7 @@ var _ = Describe("client", func() {
 			})
 
 			_, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
-			Expect(err).To(MatchError(ErrNotFound))
+			Expect(err).To(MatchError(errNotFound))
 		})
 
 		// Deezer answers 200 with no rate-limit headers when throttling, so this body is the only signal.
@@ -56,7 +56,7 @@ var _ = Describe("client", func() {
 
 			_, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
 			Expect(err).To(HaveOccurred())
-			Expect(err).ToNot(MatchError(ErrNotFound),
+			Expect(err).ToNot(MatchError(errNotFound),
 				"a throttled lookup would otherwise settle the artist as having no image")
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 			Expect(err.Error()).To(ContainSubstring("Quota limit exceeded"))
@@ -71,7 +71,7 @@ var _ = Describe("client", func() {
 
 			_, err := client.searchArtists(GinkgoT().Context(), "Michael Jackson", 20)
 			Expect(err).To(HaveOccurred())
-			Expect(err).ToNot(MatchError(ErrNotFound))
+			Expect(err).ToNot(MatchError(errNotFound))
 			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeFalse(),
 				"only a throttle asks the caller to come back later")
 		})

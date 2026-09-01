@@ -91,15 +91,11 @@ func isPlaceholderPicture(url string) bool {
 
 func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
 	artists, err := s.client.searchArtists(ctx, name, deezerArtistSearchLimit)
-	switch {
-	case errors.Is(err, ErrNotFound):
+	if errors.Is(err, errNotFound) {
 		return nil, agents.ErrNotFound
-	// Ordered before the empty-result check: a failed search also returns no artists, and
-	// reporting that as not-found would settle the artist as having no image.
-	case err != nil:
+	}
+	if err != nil {
 		return nil, err
-	case len(artists) == 0:
-		return nil, agents.ErrNotFound
 	}
 
 	log.Trace(ctx, "Artists found", "count", len(artists), "searched_name", name)

@@ -25,12 +25,13 @@ const authBaseURL = "https://auth.deezer.com"
 const errCodeQuota = 4
 
 var (
-	ErrNotFound = errors.New("deezer: not found")
+	errNotFound = errors.New("deezer: not found")
 )
 
 type deezerError struct {
-	Code    int
-	Message string
+	Type    string `json:"type"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
 }
 
 func (e *deezerError) Error() string {
@@ -70,7 +71,7 @@ func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]A
 	}
 
 	if len(results.Data) == 0 {
-		return nil, ErrNotFound
+		return nil, errNotFound
 	}
 	return results.Data, nil
 }
@@ -102,17 +103,17 @@ func (c *client) makeRequest(req *http.Request, response any) error {
 
 // parseBodyError returns the error Deezer reported in the body, or nil when it reported none.
 func parseBodyError(data []byte) error {
-	var body Error
-	// Discarded: a payload that is not an error object leaves Code zero, which is the "no error" answer.
+	var body errorResponse
+	// Discarded: a payload that is not an error object leaves Error nil, which is the "none" answer.
 	_ = json.Unmarshal(data, &body)
-	if body.Error.Code == 0 {
+	switch {
+	case body.Error == nil:
 		return nil
+	case body.Error.Code == errCodeQuota:
+		return errors.Join(body.Error, agents.ErrRetryLater)
+	default:
+		return body.Error
 	}
-	err := error(&deezerError{Code: body.Error.Code, Message: body.Error.Message})
-	if body.Error.Code == errCodeQuota {
-		err = errors.Join(err, &agents.RetryLaterError{})
-	}
-	return err
 }
 
 func (c *client) getRelatedArtists(ctx context.Context, artistID int) ([]Artist, error) {
