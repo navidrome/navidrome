@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 	"text/tabwriter"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -14,6 +17,24 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 )
+
+// existingDBPath returns the on-disk database file path (DbPath minus DSN params),
+// aborting the command when the file does not exist.
+func existingDBPath() string {
+	path, _, _ := strings.Cut(conf.Server.DbPath, "?")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Fatal("No existing database", "path", path)
+	}
+	return path
+}
+
+func confirmYES(warning string) bool {
+	fmt.Println(warning)
+	fmt.Printf("Please enter YES (all caps) to continue: ")
+	var input string
+	_, err := fmt.Scanln(&input)
+	return input == "YES" && err == nil
+}
 
 // newTabWriter keeps every CLI table on the same column settings.
 func newTabWriter(out io.Writer) *tabwriter.Writer {
