@@ -315,6 +315,12 @@ var currentGOOS = func() string {
 	return runtime.GOOS
 }
 
+// TLSEnabled reports whether the server serves HTTPS. Both halves are required,
+// so callers cannot infer it from the certificate alone.
+func (c *configOptions) TLSEnabled() bool {
+	return c.TLSCert != "" && c.TLSKey != ""
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()

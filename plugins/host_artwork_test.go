@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -120,7 +121,7 @@ var _ = Describe("ArtworkService", Ordered, func() {
 				Size:        size,
 			}
 			inputBytes, _ := json.Marshal(input)
-			_, outputBytes, err := instance.Call("nd_test_artwork", inputBytes)
+			_, outputBytes, err := instance.CallWithContext(ctx, "nd_test_artwork", inputBytes)
 			if err != nil {
 				return "", err
 			}
@@ -185,6 +186,14 @@ var _ = Describe("ArtworkService", Ordered, func() {
 			artID := decodeArtworkURL(url)
 			Expect(artID.Kind).To(Equal(model.KindAlbumArtwork))
 			Expect(artID.ID).To(Equal("al-456"))
+		})
+
+		It("uses the address of the request that triggered the plugin", func() {
+			ctx := request.WithServerAddress(GinkgoT().Context(), "https", "music.example.com")
+
+			url, err := callTestArtwork(ctx, "track", "mf-789", 300)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(url).To(HavePrefix("https://music.example.com/share/img/"))
 		})
 
 		It("should handle unknown artwork type", func() {
