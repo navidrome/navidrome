@@ -65,7 +65,7 @@ func VerifyFTS(ctx context.Context, database *sql.DB) error {
 	return nil
 }
 
-const ftsSearchMigration = 20260220173400
+const ftsSearchMigration int64 = 20260220173400
 
 // RebuildFTS drops the FTS5 search tables and their triggers, recreates them, and
 // repopulates the indexes from the base tables. The FTS tables are contentless, so
