@@ -21,9 +21,10 @@ diff:
     - artifact://${GITHUB_REPOSITORY}
 comment:
   if: is_pull_request
+  updatePrevious: true
 summary:
   if: true
 report:
-  if: is_default_branch
+  if: true # TEMP: seed a baseline artifact so the diff table can be demoed on this PR
   datastores:
     - artifact://${GITHUB_REPOSITORY}
