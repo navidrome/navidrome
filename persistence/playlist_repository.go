@@ -208,8 +208,8 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
-// GetAllIDs returns the IDs of GetAll's row set, skipping its per-row processing.
-func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+// getAllIDs returns the IDs of GetAll's row set, skipping its per-row processing.
+func (r *playlistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	// Joins a projection of user, not the table: its name/created_at columns would make an ORDER BY
 	// on the playlist's own ambiguous.
 	sq := r.newSelect(options...).Columns("playlist.id", "user.user_name as owner_name").
@@ -224,7 +224,7 @@ func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string,
 
 func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
 	// Both passes apply userFilter, so a visibility change between them cannot widen the cursor.
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
