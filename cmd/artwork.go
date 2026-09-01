@@ -147,11 +147,11 @@ type sourceCount struct {
 	count  int64
 }
 
+// absentCount partitions a kind's absent states: noImage was answered, failed gave up.
 type absentCount struct {
-	kind  model.Kind
-	count int64
-	// afterFailure is the subset that gave up rather than being told "no image".
-	afterFailure int64
+	kind    model.Kind
+	noImage int64
+	failed  int64
 }
 
 type statusReport struct {
@@ -199,7 +199,7 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 				if err != nil {
 					return rep, fmt.Errorf("counting failed %s artwork: %w", k, err)
 				}
-				rep.absent = append(rep.absent, absentCount{kind: k, count: n, afterFailure: failed})
+				rep.absent = append(rep.absent, absentCount{kind: k, noImage: n - failed, failed: failed})
 			}
 		}
 	}
@@ -229,12 +229,12 @@ func formatStatus(rep statusReport) string {
 	}
 
 	fmt.Fprintln(w, "\nAbsent (resolved, no image found)")
-	fmt.Fprintln(w, "  KIND\tABSENT\tOF WHICH FAILED")
+	fmt.Fprintln(w, "  KIND\tNO IMAGE\tFAILED")
 	for _, a := range rep.absent {
-		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.count, a.afterFailure)
+		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.noImage, a.failed)
 	}
-	fmt.Fprintln(w, "  (nothing retries these; 'artwork reprocess --source absent' retries all of them)")
-	fmt.Fprintln(w, "  (failed = gave up rather than being answered, so the subset most likely to resolve;\n"+
+	fmt.Fprintln(w, "  (nothing retries these; 'artwork reprocess --source absent' retries both columns)")
+	fmt.Fprintln(w, "  (failed = gave up rather than being answered, so the ones most likely to resolve;\n"+
 		"   'artwork reprocess --source failed' retries just those)")
 
 	fmt.Fprintln(w, "\nConfig")

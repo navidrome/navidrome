@@ -816,7 +816,9 @@ var _ = Describe("collectStatus", func() {
 		}
 		put(model.KindArtistArtwork, "ar-1", "external:deezer", "h1", time.Now())
 		put(model.KindArtistArtwork, "ar-2", "", "", time.Now().Add(-24*time.Hour))
-		put(model.KindArtistArtwork, "ar-3", "", "", time.Now())
+		// ar-3 is absent because it gave up, so the two absent artists split across the columns.
+		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "ar-3",
+			ImageType: model.ImageTypePrimary, LastFailure: "[]", AttemptedAt: time.Now()})).To(Succeed())
 		put(model.KindAlbumArtwork, "al-1", "folder", "h2", time.Now())
 		Expect(queue.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-9",
 			ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBackfill})).To(Succeed())
@@ -833,7 +835,8 @@ var _ = Describe("collectStatus", func() {
 			sourceCount{kind: model.KindArtistArtwork, source: "", count: 2},
 			sourceCount{kind: model.KindAlbumArtwork, source: "folder", count: 1},
 		))
-		Expect(rep.absent).To(ContainElement(absentCount{kind: model.KindArtistArtwork, count: 2}))
+		Expect(rep.absent).To(ContainElement(absentCount{kind: model.KindArtistArtwork, noImage: 1, failed: 1}),
+			"two absent artists, one answered and one that gave up")
 	})
 
 	It("compares the stored fingerprint against the current one", func() {
@@ -867,7 +870,7 @@ var _ = Describe("formatStatus", func() {
 				{kind: model.KindArtistArtwork, source: "", count: 2},
 			},
 			absent: []absentCount{
-				{kind: model.KindArtistArtwork, count: 2, afterFailure: 1},
+				{kind: model.KindArtistArtwork, noImage: 1, failed: 1},
 			},
 			inputs:  []artwork.FingerprintInput{{Name: "Agents", Value: "deezer,lastfm"}},
 			stored:  "abc123",
@@ -900,10 +903,10 @@ var _ = Describe("formatStatus", func() {
 		Expect(sources).To(MatchRegexp(`artist\s+absent\s+2`))
 	})
 
-	It("presents the failed count as a subset of the absent total, not a second bucket", func() {
+	It("partitions the absent states into answered and gave up", func() {
 		out := block(formatStatus(rep), "Absent (resolved, no image found)")
-		Expect(out).To(ContainSubstring("OF WHICH FAILED"))
-		Expect(out).To(MatchRegexp(`artist\s+2\s+1`), "2 absent, of which 1 failed")
+		Expect(out).To(ContainSubstring("NO IMAGE"))
+		Expect(out).To(MatchRegexp(`artist\s+1\s+1`), "1 answered plus 1 failed, summing to 2 absent")
 		Expect(formatStatus(rep)).To(ContainSubstring("artwork reprocess --source failed"))
 	})
 
