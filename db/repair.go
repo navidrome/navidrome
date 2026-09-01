@@ -39,6 +39,32 @@ func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, error) {
 	return issues, nil
 }
 
+// ForeignKeyCheck runs PRAGMA foreign_key_check and returns one line per row that
+// references a missing parent, or an empty slice when there are none.
+func ForeignKeyCheck(ctx context.Context, database *sql.DB) ([]string, error) {
+	rows, err := database.QueryContext(ctx, "PRAGMA foreign_key_check")
+	if err != nil {
+		return nil, fmt.Errorf("running foreign_key_check: %w", err)
+	}
+	defer rows.Close()
+
+	var violations []string
+	for rows.Next() {
+		var table, parent string
+		var rowid sql.NullInt64
+		var fkid int
+		if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+			return nil, fmt.Errorf("reading foreign_key_check results: %w", err)
+		}
+		violations = append(violations,
+			fmt.Sprintf("%s (rowid %d) references a missing row in %s", table, rowid.Int64, parent))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("reading foreign_key_check results: %w", err)
+	}
+	return violations, nil
+}
+
 // IsFTSCorruptionOnly reports whether every integrity issue refers to one of the
 // FTS5 search tables, meaning RebuildFTS can fully repair the database.
 func IsFTSCorruptionOnly(issues []string) bool {

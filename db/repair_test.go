@@ -127,6 +127,26 @@ var _ = Describe("Repair", func() {
 		})
 	})
 
+	Describe("ForeignKeyCheck", func() {
+		It("returns no violations for a healthy database", func() {
+			violations, err := db.ForeignKeyCheck(ctx, database)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(violations).To(BeEmpty())
+		})
+
+		It("reports rows referencing missing parents", func() {
+			_, err := database.ExecContext(ctx,
+				`insert into media_file(id, title, library_id) values ('mf-bad', 'Orphan', 999)`)
+			Expect(err).ToNot(HaveOccurred())
+
+			violations, err := db.ForeignKeyCheck(ctx, database)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(violations).To(HaveLen(1))
+			Expect(violations[0]).To(ContainSubstring("media_file"))
+			Expect(violations[0]).To(ContainSubstring("library"))
+		})
+	})
+
 	Describe("VerifyFTS", func() {
 		It("passes on a healthy index", func() {
 			Expect(db.VerifyFTS(ctx, database)).To(Succeed())
