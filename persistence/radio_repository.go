@@ -144,7 +144,7 @@ func (r *radioRepository) Update(id string, entity any, cols ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
-	err := r.Put(t)
+	err := r.Put(t, cols...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}

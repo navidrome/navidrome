@@ -129,6 +129,24 @@ var _ = Describe("RadioRepository", func() {
 				)))
 			})
 		})
+
+		Describe("Update", func() {
+			It("only writes the columns sent by the client", func() {
+				radio := radioWithHomePage
+				radio.UploadedImage = "cover.png"
+				Expect(repo.Put(&radio)).To(Succeed())
+
+				persistable := repo.(rest.Persistable)
+				Expect(persistable.Update(radio.ID, &model.Radio{Name: "Renamed"}, "name")).To(Succeed())
+
+				item, err := repo.Get(radio.ID)
+				Expect(err).To(BeNil())
+				Expect(item.Name).To(Equal("Renamed"))
+				Expect(item.UploadedImage).To(Equal("cover.png"))
+				Expect(item.StreamUrl).To(Equal(radio.StreamUrl))
+				Expect(item.HomePageUrl).To(Equal(radio.HomePageUrl))
+			})
+		})
 	})
 
 	Describe("Regular User", func() {

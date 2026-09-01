@@ -2,8 +2,11 @@ package plugins
 
 import (
 	"archive/zip"
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -266,6 +269,14 @@ func (h *testZipHelper) close() error {
 // createTestPackage creates an .ndp package file from a manifest and wasm bytes.
 // This is primarily used for testing.
 func createTestPackage(ndpPath string, manifest *Manifest, wasmBytes []byte) error {
+	manifestBytes, err := json.Marshal(manifest)
+	if err != nil {
+		return fmt.Errorf("marshaling manifest: %w", err)
+	}
+	return writeNdp(ndpPath, bytes.NewReader(manifestBytes), bytes.NewReader(wasmBytes))
+}
+
+func writeNdp(ndpPath string, manifest, wasm io.Reader) error {
 	f, err := os.Create(ndpPath)
 	if err != nil {
 		return fmt.Errorf("creating package file: %w", err)
@@ -273,30 +284,23 @@ func createTestPackage(ndpPath string, manifest *Manifest, wasmBytes []byte) err
 	defer f.Close()
 
 	zw := zip.NewWriter(f)
-	defer zw.Close()
-
-	// Write manifest.json
-	manifestBytes, err := json.Marshal(manifest)
-	if err != nil {
-		return fmt.Errorf("marshaling manifest: %w", err)
+	add := func(name string, r io.Reader) error {
+		w, err := zw.Create(name)
+		if err != nil {
+			return fmt.Errorf("creating %s in package: %w", name, err)
+		}
+		if _, err := io.Copy(w, r); err != nil {
+			return fmt.Errorf("writing %s: %w", name, err)
+		}
+		return nil
 	}
-
-	mw, err := zw.Create(manifestFileName)
-	if err != nil {
-		return fmt.Errorf("creating manifest in zip: %w", err)
+	// Entry order is fixed: the loader hashes the package bytes, so they must
+	// be reproducible across rebuilds.
+	if err := add(manifestFileName, manifest); err != nil {
+		return err
 	}
-	if _, err := mw.Write(manifestBytes); err != nil {
-		return fmt.Errorf("writing manifest: %w", err)
+	if err := add(wasmFileName, wasm); err != nil {
+		return err
 	}
-
-	// Write plugin.wasm
-	ww, err := zw.Create(wasmFileName)
-	if err != nil {
-		return fmt.Errorf("creating wasm in zip: %w", err)
-	}
-	if _, err := ww.Write(wasmBytes); err != nil {
-		return fmt.Errorf("writing wasm: %w", err)
-	}
-
-	return nil
+	return errors.Join(zw.Close(), f.Close())
 }
