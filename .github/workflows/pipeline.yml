@@ -193,8 +193,9 @@ jobs:
     needs: [go, go-plugins]
     permissions:
       contents: read
-      pull-requests: write
       actions: write
+    env:
+      COVERAGE_COMMENT: 'false'
     steps:
       - uses: actions/checkout@v7
 
@@ -211,6 +212,20 @@ jobs:
             octocov-*/coverage.out | sort >> coverage.out
 
       - uses: k1LoW/octocov-action@v1
+
+      - name: Save the PR number for the comment workflow
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > pr_number
+
+      - name: Upload the merged profile for the comment workflow
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-pr
+          path: |
+            coverage.out
+            pr_number
+          if-no-files-found: error
 
   go-windows:
     name: Test Go code (Windows)

@@ -8,6 +8,9 @@ coverage:
   paths:
     - coverage.out
 codeToTestRatio:
+  # Needs the pull request's own source, which the comment workflow must not
+  # check out: it holds a write token.
+  if: env.COVERAGE_COMMENT != 'true'
   code:
     - '**/*.go'
     - '!**/*_test.go'
@@ -23,7 +26,9 @@ diff:
   datastores:
     - artifact://${GITHUB_REPOSITORY}
 comment:
-  if: is_pull_request
+  # Only the 'Report coverage on PR' workflow sets this: a pull_request run from
+  # a fork gets a read-only token, so commenting from here 403s.
+  if: env.COVERAGE_COMMENT == 'true'
   updatePrevious: true
 summary:
   if: true
