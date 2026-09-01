@@ -8,6 +8,9 @@ coverage:
   paths:
     - coverage.out
 codeToTestRatio:
+  # Needs the pull request's own source, which the comment workflow must not
+  # check out: it holds a write token.
+  if: env.COVERAGE_COMMENT != 'true'
   code:
     - '**/*.go'
     - '!**/*_test.go'

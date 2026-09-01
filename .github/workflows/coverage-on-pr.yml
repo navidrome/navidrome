@@ -15,18 +15,11 @@ jobs:
     env:
       COVERAGE_COMMENT: 'true'
     steps:
-      - name: Check out the pull request code
+      # Only the config, from the base branch: this job holds a write token, so
+      # it must never check out the fork.
+      - name: Check out the octocov config
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-          persist-credentials: false
-
-      # This job holds a write token, so the config that drives it must come
-      # from the base branch and never from the fork.
-      - name: Check out the trusted octocov config
-        uses: actions/checkout@v7
-        with:
-          path: .base
           sparse-checkout: .octocov.yml
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -42,8 +35,6 @@ jobs:
         run: echo "number=$(cat pr_number)" >> "$GITHUB_OUTPUT"
 
       - uses: k1LoW/octocov-action@v1
-        with:
-          config: .base/.octocov.yml
         env:
           # A workflow_run job looks like a push to the default branch. Point
           # octocov back at the pull request and at the run that produced it.
