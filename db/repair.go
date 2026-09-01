@@ -11,8 +11,6 @@ import (
 
 var ftsTables = []string{"media_file_fts", "album_fts", "artist_fts"}
 
-var ftsTriggerSuffixes = []string{"_ai", "_ad", "_au"}
-
 // IntegrityCheck runs PRAGMA integrity_check and returns the reported problems,
 // or an empty slice when the database is healthy.
 func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, error) {
@@ -39,10 +37,13 @@ func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, error) {
 	return issues, nil
 }
 
-// ForeignKeyCheck runs PRAGMA foreign_key_check and returns one line per row that
-// references a missing parent, or an empty slice when there are none.
+// ForeignKeyCheck runs PRAGMA foreign_key_check and returns one line per
+// (table, parent) pair with a violation count, or an empty slice when there are
+// none. Aggregated because the raw pragma emits one row per orphan, which is
+// unbounded on a large corrupted library.
 func ForeignKeyCheck(ctx context.Context, database *sql.DB) ([]string, error) {
-	rows, err := database.QueryContext(ctx, "PRAGMA foreign_key_check")
+	rows, err := database.QueryContext(ctx,
+		`SELECT "table", "parent", count(*) FROM pragma_foreign_key_check GROUP BY "table", "parent"`)
 	if err != nil {
 		return nil, fmt.Errorf("running foreign_key_check: %w", err)
 	}
@@ -51,13 +52,12 @@ func ForeignKeyCheck(ctx context.Context, database *sql.DB) ([]string, error) {
 	var violations []string
 	for rows.Next() {
 		var table, parent string
-		var rowid sql.NullInt64
-		var fkid int
-		if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+		var count int64
+		if err := rows.Scan(&table, &parent, &count); err != nil {
 			return nil, fmt.Errorf("reading foreign_key_check results: %w", err)
 		}
 		violations = append(violations,
-			fmt.Sprintf("%s (rowid %d) references a missing row in %s", table, rowid.Int64, parent))
+			fmt.Sprintf("%s: %d row(s) reference missing rows in %s", table, count, parent))
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("reading foreign_key_check results: %w", err)
@@ -118,7 +118,7 @@ func RebuildFTS(ctx context.Context, database *sql.DB) error {
 
 	var stmts []string
 	for _, table := range ftsTables {
-		for _, suffix := range ftsTriggerSuffixes {
+		for _, suffix := range []string{"_ai", "_ad", "_au"} {
 			stmts = append(stmts, "DROP TRIGGER IF EXISTS "+table+suffix)
 		}
 		stmts = append(stmts, "DROP TABLE IF EXISTS "+table)

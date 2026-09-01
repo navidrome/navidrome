@@ -18,21 +18,20 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 )
 
-// existingDBPath returns the on-disk database file path (DbPath minus DSN params),
-// aborting the command when the file does not exist.
-func existingDBPath() string {
+// requireExistingDB aborts the command when the database file (DbPath minus DSN
+// params) does not exist.
+func requireExistingDB() {
 	path, _, _ := strings.Cut(conf.Server.DbPath, "?")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Fatal("No existing database", "path", path)
 	}
-	return path
 }
 
-func confirmYES(warning string) bool {
+func confirmYES(in io.Reader, warning string) bool {
 	fmt.Println(warning)
 	fmt.Printf("Please enter YES (all caps) to continue: ")
 	var input string
-	_, err := fmt.Scanln(&input)
+	_, err := fmt.Fscanln(in, &input)
 	return input == "YES" && err == nil
 }
 

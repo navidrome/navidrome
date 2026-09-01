@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -29,7 +30,8 @@ var (
 		Use:   "rebuild",
 		Short: "Rebuild the full-text search index",
 		Long: "Drop and rebuild the full-text search index from the library data. Fixes a corrupted " +
-			"or desynced search index without any data loss. This must be done offline",
+			"or desynced search index without any data loss ('navidrome db doctor' tells you when " +
+			"this is needed). This must be done offline",
 		Run: func(cmd *cobra.Command, _ []string) {
 			runSearchRebuild(cmd.Context())
 		},
@@ -37,9 +39,9 @@ var (
 )
 
 func runSearchRebuild(ctx context.Context) {
-	existingDBPath()
+	requireExistingDB()
 
-	if !searchRebuildForce && !confirmYES("This will rebuild the search index. Make sure Navidrome is not running.") {
+	if !searchRebuildForce && !confirmYES(os.Stdin, "This will rebuild the search index. Make sure Navidrome is not running.") {
 		log.Warn("Rebuild cancelled")
 		return
 	}
