@@ -1,0 +1,53 @@
+name: Report coverage on PR
+on:
+  workflow_run:
+    workflows: ['Pipeline: Test, Lint, Build']
+    types: [completed]
+jobs:
+  comment:
+    name: Comment coverage report
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    env:
+      COVERAGE_COMMENT: 'true'
+    steps:
+      - name: Check out the pull request code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+
+      # This job holds a write token, so the config that drives it must come
+      # from the base branch and never from the fork.
+      - name: Check out the trusted octocov config
+        uses: actions/checkout@v7
+        with:
+          path: .base
+          sparse-checkout: .octocov.yml
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: octocov-pr
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Read the pull request number
+        id: pr
+        run: echo "number=$(cat pr_number)" >> "$GITHUB_OUTPUT"
+
+      - uses: k1LoW/octocov-action@v1
+        with:
+          config: .base/.octocov.yml
+        env:
+          # A workflow_run job looks like a push to the default branch. Point
+          # octocov back at the pull request and at the run that produced it.
+          GITHUB_PULL_REQUEST_NUMBER: ${{ steps.pr.outputs.number }}
+          OCTOCOV_GITHUB_REF: refs/pull/${{ steps.pr.outputs.number }}/merge
+          OCTOCOV_GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+          OCTOCOV_GITHUB_RUN_ID: ${{ github.event.workflow_run.id }}
