@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useDataProvider, useNotify } from 'react-admin'
+import { useDataProvider, useNotify, useRefresh } from 'react-admin'
 import subsonic from '../subsonic'
 
 export const useRating = (resource, record) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
   const dataProvider = useDataProvider()
+  const refresh = useRefresh()
   const mountedRef = useRef(false)
   const rating = record.rating
 
@@ -17,18 +18,13 @@ export const useRating = (resource, record) => {
   }, [])
 
   const refreshRating = useCallback(() => {
-    // For playlist tracks, refresh both resources to keep data in sync
+    // Playlist track IDs are positional, so refetching the old ID after a
+    // filter change can cache the next track under the wrong row key.
     if (record.mediaFileId) {
-      // This is a playlist track - refresh both the playlist track and the song
-      const promises = [
-        dataProvider.getOne('song', { id: record.mediaFileId }),
-        dataProvider.getOne('playlistTrack', {
-          id: record.id,
-          filter: { playlist_id: record.playlistId },
-        }),
-      ]
+      const promises = [dataProvider.getOne('song', { id: record.mediaFileId })]
 
       Promise.all(promises)
+        .then(() => refresh())
         .catch((e) => {
           // eslint-disable-next-line no-console
           console.log('Error encountered: ' + e)
@@ -52,7 +48,13 @@ export const useRating = (resource, record) => {
           }
         })
     }
-  }, [dataProvider, record.id, record.mediaFileId, record.playlistId, resource])
+  }, [
+    dataProvider,
+    record.id,
+    record.mediaFileId,
+    refresh,
+    resource,
+  ])
 
   const rate = (val, id) => {
     setLoading(true)

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useDataProvider, useNotify } from 'react-admin'
+import { useDataProvider, useNotify, useRefresh } from 'react-admin'
 import subsonic from '../subsonic'
 
 export const useToggleLove = (resource, record = {}) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
+  const refresh = useRefresh()
 
   const mountedRef = useRef(false)
   useEffect(() => {
@@ -19,12 +20,11 @@ export const useToggleLove = (resource, record = {}) => {
   const refreshRecord = useCallback(() => {
     const promises = []
 
-    // Always refresh the original resource
-    const params = { id: record.id }
-    if (record.playlistId) {
-      params.filter = { playlist_id: record.playlistId }
+    // Playlist track IDs are positional, so refetching the old ID after a
+    // filter change can cache the next track under the wrong row key.
+    if (!record.playlistId) {
+      promises.push(dataProvider.getOne(resource, { id: record.id }))
     }
-    promises.push(dataProvider.getOne(resource, params))
 
     // If we have a mediaFileId, also refresh the song
     if (record.mediaFileId) {
@@ -32,6 +32,11 @@ export const useToggleLove = (resource, record = {}) => {
     }
 
     Promise.all(promises)
+      .then(() => {
+        if (record.playlistId) {
+          refresh()
+        }
+      })
       .catch((e) => {
         // eslint-disable-next-line no-console
         console.log('Error encountered: ' + e)
@@ -41,7 +46,14 @@ export const useToggleLove = (resource, record = {}) => {
           setLoading(false)
         }
       })
-  }, [dataProvider, record.mediaFileId, record.id, record.playlistId, resource])
+  }, [
+    dataProvider,
+    record.mediaFileId,
+    record.id,
+    record.playlistId,
+    refresh,
+    resource,
+  ])
 
   const toggleLove = () => {
     const toggle = record.starred ? subsonic.unstar : subsonic.star

@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react-hooks'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { useToggleLove } from './useToggleLove'
 import subsonic from '../subsonic'
-import { useDataProvider } from 'react-admin'
+import { useDataProvider, useRefresh } from 'react-admin'
 
 vi.mock('../subsonic', () => ({
   default: {
@@ -16,15 +16,19 @@ vi.mock('react-admin', async () => {
   return {
     ...actual,
     useDataProvider: vi.fn(),
+    useRefresh: vi.fn(),
     useNotify: vi.fn(() => vi.fn()),
   }
 })
 
 describe('useToggleLove', () => {
   let getOne
+  let refresh
   beforeEach(() => {
     getOne = vi.fn(() => Promise.resolve())
+    refresh = vi.fn()
     useDataProvider.mockReturnValue({ getOne })
+    useRefresh.mockReturnValue(refresh)
     vi.clearAllMocks()
   })
 
@@ -58,7 +62,7 @@ describe('useToggleLove', () => {
   })
 
   describe('playlist track scenarios', () => {
-    it('refreshes both playlist track and song for playlist tracks', async () => {
+    it('refreshes the list and song without refetching the positional playlist track', async () => {
       const record = {
         id: 'pt-1',
         mediaFileId: 'sg-1',
@@ -75,16 +79,12 @@ describe('useToggleLove', () => {
       // Should star using the media file ID
       expect(subsonic.star).toHaveBeenCalledWith('sg-1')
 
-      // Should refresh both the playlist track and the song
-      expect(getOne).toHaveBeenCalledTimes(2)
-      expect(getOne).toHaveBeenCalledWith('playlistTrack', {
-        id: 'pt-1',
-        filter: { playlist_id: 'pl-1' },
-      })
+      expect(getOne).toHaveBeenCalledTimes(1)
       expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
+      expect(refresh).toHaveBeenCalledTimes(1)
     })
 
-    it('includes playlist_id filter when refreshing playlist tracks', async () => {
+    it('refreshes the list after loving a playlist track', async () => {
       const record = {
         id: 'pt-5',
         mediaFileId: 'sg-10',
@@ -101,13 +101,8 @@ describe('useToggleLove', () => {
       // Should unstar using the media file ID
       expect(subsonic.unstar).toHaveBeenCalledWith('sg-10')
 
-      // Should refresh playlist track with correct playlist_id filter
-      expect(getOne).toHaveBeenCalledWith('playlistTrack', {
-        id: 'pt-5',
-        filter: { playlist_id: 'pl-123' },
-      })
-      // Should also refresh the underlying song
       expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-10' })
+      expect(refresh).toHaveBeenCalledTimes(1)
     })
 
     it('only refreshes original resource when no mediaFileId present', async () => {
