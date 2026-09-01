@@ -38,3 +38,34 @@ var _ = Describe("Token epoch holder", func() {
 		Expect(ok).To(BeFalse())
 	})
 })
+
+var _ = Describe("Server address", func() {
+	It("reports nothing when unset", func() {
+		_, _, ok := ServerAddressFrom(context.TODO())
+		Expect(ok).To(BeFalse())
+	})
+
+	It("round-trips the scheme and host", func() {
+		ctx := WithServerAddress(context.TODO(), "https", "music.example.com")
+
+		scheme, host, ok := ServerAddressFrom(ctx)
+		Expect(ok).To(BeTrue())
+		Expect(scheme).To(Equal("https"))
+		Expect(host).To(Equal("music.example.com"))
+	})
+
+	It("reports nothing when the host is empty", func() {
+		ctx := WithServerAddress(context.TODO(), "https", "")
+
+		_, _, ok := ServerAddressFrom(ctx)
+		Expect(ok).To(BeFalse())
+	})
+
+	It("is carried over to a background context by AddValues", func() {
+		reqCtx := WithServerAddress(context.TODO(), "https", "music.example.com")
+
+		_, host, ok := ServerAddressFrom(AddValues(context.Background(), reqCtx))
+		Expect(ok).To(BeTrue())
+		Expect(host).To(Equal("music.example.com"))
+	})
+})
