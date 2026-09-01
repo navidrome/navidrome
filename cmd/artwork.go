@@ -149,6 +149,8 @@ type sourceCount struct {
 type absentCount struct {
 	kind  model.Kind
 	count int64
+	// afterFailure is the subset that gave up rather than being told "no image".
+	afterFailure int64
 }
 
 type statusReport struct {
@@ -192,7 +194,11 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 			rep.sources = append(rep.sources, sourceCount{kind: k, source: s, count: n})
 			// An absent state is exactly a row with no source, so it needs no second query.
 			if s == "" {
-				rep.absent = append(rep.absent, absentCount{kind: k, count: n})
+				failed, err := q.CountAbsentAfterFailure(k)
+				if err != nil {
+					return rep, fmt.Errorf("counting absent %s artwork that gave up: %w", k, err)
+				}
+				rep.absent = append(rep.absent, absentCount{kind: k, count: n, afterFailure: failed})
 			}
 		}
 	}
@@ -222,11 +228,12 @@ func formatStatus(rep statusReport) string {
 	}
 
 	fmt.Fprintln(w, "\nAbsent (resolved, no image found)")
-	fmt.Fprintln(w, "  KIND\tABSENT")
+	fmt.Fprintln(w, "  KIND\tABSENT\tGAVE UP")
 	for _, a := range rep.absent {
-		fmt.Fprintf(w, "  %s\t%d\n", a.kind, a.count)
+		fmt.Fprintf(w, "  %s\t%d\t%d\n", a.kind, a.count, a.afterFailure)
 	}
 	fmt.Fprintln(w, "  (never retried on their own; run 'artwork reprocess --source absent')")
+	fmt.Fprintln(w, "  (gave up: the retry budget ran out rather than a source answering; most likely to resolve)")
 
 	fmt.Fprintln(w, "\nConfig")
 	fmt.Fprintf(w, "  State:\t%s\n", configState(rep))

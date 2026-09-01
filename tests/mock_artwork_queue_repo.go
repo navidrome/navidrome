@@ -275,6 +275,21 @@ func (m *MockArtworkQueueRepo) CountBySource(kind model.Kind, sources []string) 
 	return int64(len(m.matchingSource(kind, sources))), nil
 }
 
+func (m *MockArtworkQueueRepo) CountAbsentAfterFailure(kind model.Kind) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil || m.ItemArtworkSource == nil {
+		return 0, m.Err
+	}
+	var n int64
+	for _, ia := range m.ItemArtworkSource.ItemData {
+		if ia.ItemKind == kind.Prefix() && ia.Hash == "" && ia.LastFailure != "" {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (m *MockArtworkQueueRepo) SourcesInUse(kind model.Kind) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

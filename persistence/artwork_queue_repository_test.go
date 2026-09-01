@@ -400,6 +400,29 @@ var _ = Describe("ArtworkQueueRepository", func() {
 			))
 		})
 
+		It("counts only the absent states that gave up, not those a source answered", func() {
+			awRepo := NewArtworkRepository(context.Background(), GetDBXBuilder())
+			for _, ia := range []model.ItemArtwork{
+				{ItemKind: "ar", ItemID: "gaveup", ImageType: model.ImageTypePrimary, LastFailure: "[]"},
+				{ItemKind: "ar", ItemID: "toldno", ImageType: model.ImageTypePrimary},
+				{ItemKind: "ar", ItemID: "hasart", ImageType: model.ImageTypePrimary, Hash: "hX", LastFailure: "[]"},
+			} {
+				Expect(awRepo.PutItemArtwork(&ia)).To(Succeed())
+			}
+
+			Expect(repo.CountAbsentAfterFailure(model.KindArtistArtwork)).To(Equal(int64(1)),
+				"an item still serving art is not absent, however its last attempt went")
+
+			// A later success rewrites the row, clearing the record.
+			Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "gaveup",
+				ImageType: model.ImageTypePrimary, Hash: "hZ"})).To(Succeed())
+			Expect(repo.CountAbsentAfterFailure(model.KindArtistArtwork)).To(Equal(int64(0)))
+		})
+
+		It("reports a kind that never gave up as zero", func() {
+			Expect(repo.CountAbsentAfterFailure(model.KindRadioArtwork)).To(Equal(int64(0)))
+		})
+
 		It("reports an empty queue as no rows", func() {
 			Expect(repo.CountQueued(nil, nil)).To(BeEmpty())
 		})

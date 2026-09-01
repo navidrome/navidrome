@@ -862,7 +862,7 @@ var _ = Describe("formatStatus", func() {
 				{kind: model.KindArtistArtwork, source: "", count: 2},
 			},
 			absent: []absentCount{
-				{kind: model.KindArtistArtwork, count: 2},
+				{kind: model.KindArtistArtwork, count: 2, afterFailure: 1},
 			},
 			inputs:  []artwork.FingerprintInput{{Name: "Agents", Value: "deezer,lastfm"}},
 			stored:  "abc123",
@@ -893,6 +893,12 @@ var _ = Describe("formatStatus", func() {
 		sources := block(formatStatus(rep), "Sources")
 		Expect(sources).To(MatchRegexp(`artist\s+external:deezer\s+5`))
 		Expect(sources).To(MatchRegexp(`artist\s+absent\s+2`))
+	})
+
+	It("splits the absent total by how it was reached", func() {
+		out := block(formatStatus(rep), "Absent (resolved, no image found)")
+		Expect(out).To(MatchRegexp(`artist\s+2\s+1`), "2 absent, of which 1 gave up")
+		Expect(formatStatus(rep)).To(ContainSubstring("the retry budget ran out"))
 	})
 
 	It("says absent states are never retried on their own, and names the command that does", func() {

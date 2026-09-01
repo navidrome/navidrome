@@ -223,4 +223,11 @@ func (r *artworkQueueRepository) Count() (int64, error) {
 	return res.Count, err
 }
 
+func (r *artworkQueueRepository) CountAbsentAfterFailure(kind model.Kind) (int64, error) {
+	var res struct{ Count int64 }
+	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
+		Where(And{Eq{"item_kind": kind.Prefix(), "hash": ""}, NotEq{"last_failure": ""}}), &res)
+	return res.Count, err
+}
+
 var _ model.ArtworkQueueRepository = (*artworkQueueRepository)(nil)
