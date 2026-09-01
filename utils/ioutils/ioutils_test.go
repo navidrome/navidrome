@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/text/transform"
 )
 
 func TestIOUtils(t *testing.T) {
@@ -123,6 +124,60 @@ var _ = Describe("UTF8Reader", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal(input))
 		})
+	})
+})
+
+var _ = Describe("utf8OrWindows1252 transformer", func() {
+	var t utf8OrWindows1252
+
+	It("has a no-op Reset", func() {
+		Expect(t.Reset).ToNot(Panic())
+	})
+
+	It("returns ErrShortDst when an ASCII byte does not fit the destination", func() {
+		nDst, nSrc, err := t.Transform(make([]byte, 0), []byte("a"), true)
+
+		Expect(err).To(MatchError(transform.ErrShortDst))
+		Expect(nDst).To(Equal(0))
+		Expect(nSrc).To(Equal(0))
+	})
+
+	It("returns ErrShortDst when a valid multi-byte UTF-8 rune does not fit", func() {
+		// "é" is 0xC3 0xA9 in UTF-8 and needs a 2-byte destination.
+		nDst, nSrc, err := t.Transform(make([]byte, 1), []byte("é"), true)
+
+		Expect(err).To(MatchError(transform.ErrShortDst))
+		Expect(nDst).To(Equal(0))
+		Expect(nSrc).To(Equal(0))
+	})
+
+	It("returns ErrShortDst when a Windows-1252 decoded rune does not fit", func() {
+		// 0xE9 decodes to "é", whose UTF-8 form needs 2 bytes.
+		nDst, nSrc, err := t.Transform(make([]byte, 1), []byte{0xE9}, true)
+
+		Expect(err).To(MatchError(transform.ErrShortDst))
+		Expect(nDst).To(Equal(0))
+		Expect(nSrc).To(Equal(0))
+	})
+
+	It("returns ErrShortSrc for an incomplete trailing sequence when more may follow", func() {
+		// 0xC3 starts a 2-byte sequence; with no second byte and not at EOF, the
+		// decoder must wait for more input rather than decode it as Latin-1.
+		nDst, nSrc, err := t.Transform(make([]byte, 8), []byte{0xC3}, false)
+
+		Expect(err).To(MatchError(transform.ErrShortSrc))
+		Expect(nDst).To(Equal(0))
+		Expect(nSrc).To(Equal(0))
+	})
+
+	It("maps an undefined Windows-1252 byte to U+FFFD at EOF", func() {
+		// 0x81 is undefined in Windows-1252, so it decodes to the replacement char.
+		dst := make([]byte, 8)
+		nDst, nSrc, err := t.Transform(dst, []byte{0x81}, true)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(nSrc).To(Equal(1))
+		Expect(string(dst[:nDst])).To(Equal("�"))
 	})
 })
 
