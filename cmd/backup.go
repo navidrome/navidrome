@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -75,7 +76,7 @@ func runBackup(ctx context.Context) {
 		conf.Server.Backup.Path = conf.NewDir(backupDir)
 	}
 
-	existingDBPath()
+	requireExistingDB()
 
 	start := time.Now()
 	path, err := db.Backup(ctx)
@@ -96,12 +97,12 @@ func runPrune(ctx context.Context) {
 		conf.Server.Backup.Count = backupCount
 	}
 
-	if conf.Server.Backup.Count == 0 && !force && !confirmYES("Warning: pruning ALL backups") {
+	if conf.Server.Backup.Count == 0 && !force && !confirmYES(os.Stdin, "Warning: pruning ALL backups") {
 		log.Warn("Prune cancelled")
 		return
 	}
 
-	existingDBPath()
+	requireExistingDB()
 
 	start := time.Now()
 	count, err := db.Prune(ctx)
@@ -115,9 +116,9 @@ func runPrune(ctx context.Context) {
 }
 
 func runRestore(ctx context.Context) {
-	existingDBPath()
+	requireExistingDB()
 
-	if !force && !confirmYES("Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.") {
+	if !force && !confirmYES(os.Stdin, "Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.") {
 		log.Warn("Restore cancelled")
 		return
 	}

@@ -13,10 +13,28 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// Version immediately before the add_fts5_search migration, for the pre-FTS schema spec.
-const preFTSMigration = 20260220173399
+// newDB returns an in-memory database migrated up to the given goose version
+// (0 = fully migrated).
+func newDB(ctx context.Context, upTo int64) *sql.DB {
+	GinkgoHelper()
+	d, err := sql.Open(db.Dialect, "file::memory:")
+	Expect(err).ToNot(HaveOccurred())
+	d.SetMaxOpenConns(1) // non-shared :memory: — a second conn would be an empty DB
+	DeferCleanup(func() { _ = d.Close() })
 
-var ftsSearchTables = []string{"media_file_fts", "album_fts", "artist_fts"}
+	_, err = d.ExecContext(ctx, "PRAGMA foreign_keys=off")
+	Expect(err).ToNot(HaveOccurred())
+	goose.SetBaseFS(db.EmbedMigrations)
+	goose.SetLogger(goose.NopLogger())
+	DeferCleanup(func() { goose.SetBaseFS(nil) })
+	Expect(goose.SetDialect(db.Dialect)).To(Succeed())
+	if upTo == 0 {
+		Expect(goose.UpContext(ctx, d, "migrations")).To(Succeed())
+	} else {
+		Expect(goose.UpToContext(ctx, d, "migrations", upTo)).To(Succeed())
+	}
+	return d
+}
 
 var _ = Describe("IsFTSCorruptionOnly", func() {
 	It("is true when every issue mentions an FTS search table", func() {
@@ -39,35 +57,38 @@ var _ = Describe("IsFTSCorruptionOnly", func() {
 	})
 })
 
+var _ = Describe("RebuildFTS schema guard", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	It("refuses to run on a schema older than the FTS migration", func() {
+		old := newDB(ctx, db.FTSSearchMigration-1)
+
+		err := db.RebuildFTS(ctx, old)
+		Expect(err).To(MatchError(ContainSubstring("migration")))
+	})
+
+	// A corrupted DB often cannot run pending migrations (the server crashes on it),
+	// so repair must not demand a fully migrated schema — only the FTS migration.
+	It("runs on a post-FTS schema even when newer migrations are pending", func() {
+		behind := newDB(ctx, 20260702152457)
+
+		Expect(db.RebuildFTS(ctx, behind)).To(Succeed())
+	})
+})
+
 var _ = Describe("Repair", func() {
 	var (
 		ctx      context.Context
 		database *sql.DB
 	)
 
-	newDB := func(upTo int64) *sql.DB {
-		d, err := sql.Open(db.Dialect, "file::memory:")
-		Expect(err).ToNot(HaveOccurred())
-		d.SetMaxOpenConns(1) // non-shared :memory: — a second conn would be an empty DB
-		DeferCleanup(func() { _ = d.Close() })
-
-		_, err = d.ExecContext(ctx, "PRAGMA foreign_keys=off")
-		Expect(err).ToNot(HaveOccurred())
-		goose.SetBaseFS(db.EmbedMigrations)
-		goose.SetLogger(goose.NopLogger())
-		DeferCleanup(func() { goose.SetBaseFS(nil) })
-		Expect(goose.SetDialect(db.Dialect)).To(Succeed())
-		if upTo == 0 {
-			Expect(goose.UpContext(ctx, d, "migrations")).To(Succeed())
-		} else {
-			Expect(goose.UpToContext(ctx, d, "migrations", upTo)).To(Succeed())
-		}
-		return d
-	}
-
 	BeforeEach(func() {
 		ctx = context.Background()
-		database = newDB(0)
+		database = newDB(ctx, 0)
 
 		for _, stmt := range []string{
 			`insert into artist(id, name, search_normalized) values ('ar-1', 'Ramones', 'ramones')`,
@@ -174,7 +195,7 @@ var _ = Describe("Repair", func() {
 		})
 
 		It("recreates tables and triggers dropped by hand", func() {
-			for _, table := range ftsSearchTables {
+			for _, table := range db.FTSTables {
 				for _, suffix := range []string{"_ai", "_ad", "_au"} {
 					_, err := database.ExecContext(ctx, "drop trigger "+table+suffix)
 					Expect(err).ToNot(HaveOccurred())
@@ -195,21 +216,6 @@ var _ = Describe("Repair", func() {
 			Expect(db.RebuildFTS(ctx, database)).To(Succeed())
 
 			Expect(ftsSchema()).To(Equal(migrated))
-		})
-
-		It("refuses to run on a schema older than the FTS migration", func() {
-			old := newDB(preFTSMigration)
-
-			err := db.RebuildFTS(ctx, old)
-			Expect(err).To(MatchError(ContainSubstring("migration")))
-		})
-
-		// A corrupted DB often cannot run pending migrations (the server crashes on it),
-		// so repair must not demand a fully migrated schema — only the FTS migration.
-		It("runs on a post-FTS schema even when newer migrations are pending", func() {
-			behind := newDB(20260702152457)
-
-			Expect(db.RebuildFTS(ctx, behind)).To(Succeed())
 		})
 
 		It("leaves working triggers behind", func() {

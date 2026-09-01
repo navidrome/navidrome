@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/navidrome/navidrome/db"
@@ -25,7 +27,8 @@ var (
 		Use:   "doctor",
 		Short: "Check the database for corruption and inconsistencies",
 		Long: "Run read-only database health checks (integrity and foreign key checks) and " +
-			"report what was found. This command never modifies the database",
+			"report what was found, including whether 'navidrome search rebuild' can fix it. " +
+			"This command never modifies the database",
 		Run: func(cmd *cobra.Command, _ []string) {
 			runDoctor(cmd.Context())
 		},
@@ -33,54 +36,62 @@ var (
 )
 
 func runDoctor(ctx context.Context) {
-	existingDBPath()
+	requireExistingDB()
 
-	database := db.Db()
-	defer db.Close(ctx)
-
-	healthy := true
-
-	fmt.Println("Checking database integrity...")
-	issues, err := db.IntegrityCheck(ctx, database)
-	switch {
-	case err != nil:
-		fmt.Println("The integrity check could not complete: " + err.Error())
-		fmt.Println("Restore a backup (navidrome backup restore), or try SQLite's '.recover' command.")
+	healthy := doctor(ctx, db.Db(), os.Stdout)
+	db.Close(ctx)
+	if !healthy {
 		os.Exit(1)
-	case len(issues) == 0:
-		fmt.Println("Integrity check passed.")
-	default:
-		healthy = false
-		fmt.Printf("Integrity check reported %d issue(s):\n", len(issues))
-		for _, issue := range issues {
-			fmt.Println("  " + issue)
-		}
-		if db.IsFTSCorruptionOnly(issues) {
-			fmt.Println("Corruption is limited to the search index. Run 'navidrome search rebuild' to fix it.")
-		} else {
-			fmt.Println("Corruption is not limited to the search index, and cannot be repaired automatically.")
-			fmt.Println("Restore a backup (navidrome backup restore), or try SQLite's '.recover' command.")
+	}
+}
+
+const recoveryAdvice = "Restore a backup (navidrome backup restore), or try SQLite's '.recover' command."
+
+func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
+	printFindings := func(check, noun string, items []string) {
+		fmt.Fprintf(out, "%s reported %d %s:\n", check, len(items), noun)
+		for _, item := range items {
+			fmt.Fprintln(out, "  "+item)
 		}
 	}
 
-	fmt.Println("Checking foreign keys...")
+	healthy := true
+
+	fmt.Fprintln(out, "Checking database integrity...")
+	issues, err := db.IntegrityCheck(ctx, database)
+	switch {
+	case err != nil:
+		fmt.Fprintln(out, "The integrity check could not complete: "+err.Error())
+		fmt.Fprintln(out, recoveryAdvice)
+		return false
+	case len(issues) == 0:
+		fmt.Fprintln(out, "Integrity check passed.")
+	default:
+		healthy = false
+		printFindings("Integrity check", "issue(s)", issues)
+		if db.IsFTSCorruptionOnly(issues) {
+			fmt.Fprintln(out, "Corruption is limited to the search index. Run 'navidrome search rebuild' to fix it.")
+		} else {
+			fmt.Fprintln(out, "Corruption is not limited to the search index, and cannot be repaired automatically.")
+			fmt.Fprintln(out, recoveryAdvice)
+		}
+	}
+
+	fmt.Fprintln(out, "Checking foreign keys...")
 	violations, err := db.ForeignKeyCheck(ctx, database)
 	switch {
 	case err != nil:
 		healthy = false
-		fmt.Println("The foreign key check could not complete: " + err.Error())
+		fmt.Fprintln(out, "The foreign key check could not complete: "+err.Error())
 	case len(violations) == 0:
-		fmt.Println("Foreign key check passed.")
+		fmt.Fprintln(out, "Foreign key check passed.")
 	default:
 		healthy = false
-		fmt.Printf("Foreign key check reported %d violation(s):\n", len(violations))
-		for _, violation := range violations {
-			fmt.Println("  " + violation)
-		}
+		printFindings("Foreign key check", "violation(s)", violations)
 	}
 
-	if !healthy {
-		os.Exit(1)
+	if healthy {
+		fmt.Fprintln(out, "Database is healthy.")
 	}
-	fmt.Println("Database is healthy.")
+	return healthy
 }
