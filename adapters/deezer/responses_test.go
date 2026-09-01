@@ -26,7 +26,7 @@ var _ = Describe("Responses", func() {
 
 	Describe("Error", func() {
 		It("parses the error response correctly", func() {
-			var errorResp Error
+			var errorResp errorResponse
 			body := []byte(`{"error":{"type":"MissingParameterException","message":"Missing parameters: q","code":501}}`)
 			err := json.Unmarshal(body, &errorResp)
 			Expect(err).To(BeNil())
