@@ -126,6 +126,10 @@ jobs:
   go:
     name: Test Go code
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: write
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v7
@@ -138,7 +142,7 @@ jobs:
         run: go mod download
 
       - name: Test
-        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v $(go list ./... | grep -v '/plugins$')
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v -covermode=atomic -coverprofile=coverage.out $(go list ./... | grep -v '/plugins$')
 
       - name: Test ndpgen
         run: |
@@ -146,6 +150,9 @@ jobs:
           go test -shuffle=on -v
           go build -o ndpgen .
           ./ndpgen --help
+
+      - name: Report coverage
+        uses: k1LoW/octocov-action@v1
 
   go-plugins:
     name: Test Go plugins
