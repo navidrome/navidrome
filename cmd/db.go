@@ -6,21 +6,12 @@ import (
 	"os"
 
 	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
 	"github.com/spf13/cobra"
-)
-
-var (
-	repairForce   bool
-	repairRebuild bool
 )
 
 func init() {
 	rootCmd.AddCommand(dbRoot)
-
-	repairCmd.Flags().BoolVarP(&repairForce, "force", "f", false, "bypass repair confirmation")
-	repairCmd.Flags().BoolVar(&repairRebuild, "rebuild", false, "rebuild the search index even if no corruption is found")
-	dbRoot.AddCommand(repairCmd)
+	dbRoot.AddCommand(doctorCmd)
 }
 
 var (
@@ -30,61 +21,66 @@ var (
 		Long:  "Database maintenance operations",
 	}
 
-	repairCmd = &cobra.Command{
-		Use:   "repair",
-		Short: "Check database integrity and repair the search index",
-		Long: "Check database integrity and rebuild the full-text search index if it is corrupted. " +
-			"This must be done offline",
+	doctorCmd = &cobra.Command{
+		Use:   "doctor",
+		Short: "Check the database for corruption and inconsistencies",
+		Long: "Run read-only database health checks (integrity and foreign key checks) and " +
+			"report what was found. This command never modifies the database",
 		Run: func(cmd *cobra.Command, _ []string) {
-			runRepair(cmd.Context())
+			runDoctor(cmd.Context())
 		},
 	}
 )
 
-func runRepair(ctx context.Context) {
+func runDoctor(ctx context.Context) {
 	existingDBPath()
-
-	if !repairForce && !confirmYES("This will check the database and may rebuild the search index. Make sure Navidrome is not running.") {
-		log.Warn("Repair cancelled")
-		return
-	}
 
 	database := db.Db()
 	defer db.Close(ctx)
 
+	healthy := true
+
 	fmt.Println("Checking database integrity...")
 	issues, err := db.IntegrityCheck(ctx, database)
-	if err != nil {
+	switch {
+	case err != nil:
 		fmt.Println("The integrity check could not complete: " + err.Error())
 		fmt.Println("Restore a backup (navidrome backup restore), or try SQLite's '.recover' command.")
 		os.Exit(1)
-	}
-
-	if len(issues) == 0 {
-		fmt.Println("Database integrity check passed.")
-		if !repairRebuild {
-			fmt.Println("Nothing to repair. Use --rebuild to rebuild the search index anyway.")
-			return
-		}
-	} else {
+	case len(issues) == 0:
+		fmt.Println("Integrity check passed.")
+	default:
+		healthy = false
 		fmt.Printf("Integrity check reported %d issue(s):\n", len(issues))
 		for _, issue := range issues {
 			fmt.Println("  " + issue)
 		}
-		if !db.IsFTSCorruptionOnly(issues) {
-			fmt.Println("Corruption is not limited to the search index, and cannot be repaired by this command.")
+		if db.IsFTSCorruptionOnly(issues) {
+			fmt.Println("Corruption is limited to the search index. Run 'navidrome search rebuild' to fix it.")
+		} else {
+			fmt.Println("Corruption is not limited to the search index, and cannot be repaired automatically.")
 			fmt.Println("Restore a backup (navidrome backup restore), or try SQLite's '.recover' command.")
-			os.Exit(1)
 		}
-		fmt.Println("Corruption is limited to the search index, which can be safely rebuilt.")
 	}
 
-	fmt.Println("Rebuilding the search index...")
-	if err := db.RebuildFTS(ctx, database); err != nil {
-		log.Fatal("Error rebuilding the search index", err)
+	fmt.Println("Checking foreign keys...")
+	violations, err := db.ForeignKeyCheck(ctx, database)
+	switch {
+	case err != nil:
+		healthy = false
+		fmt.Println("The foreign key check could not complete: " + err.Error())
+	case len(violations) == 0:
+		fmt.Println("Foreign key check passed.")
+	default:
+		healthy = false
+		fmt.Printf("Foreign key check reported %d violation(s):\n", len(violations))
+		for _, violation := range violations {
+			fmt.Println("  " + violation)
+		}
 	}
-	if err := db.VerifyFTS(ctx, database); err != nil {
-		log.Fatal("The search index still reports problems after the rebuild", err)
+
+	if !healthy {
+		os.Exit(1)
 	}
-	fmt.Println("Search index rebuilt successfully.")
+	fmt.Println("Database is healthy.")
 }
