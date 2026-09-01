@@ -464,7 +464,8 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 	if len(unknown) == 0 {
 		return nil
 	}
-	valid := slice.Map(inUse, displaySource)
+	// failed is accepted but never stored, so listing only what is in use would hide it.
+	valid := append(slice.Map(inUse, displaySource), failedSource)
 	slices.Sort(valid)
 	return fmt.Errorf("no artwork resolves from %s; sources in use: %s",
 		strings.Join(unknown, ", "), cmp.Or(strings.Join(valid, ", "), "(none)"))

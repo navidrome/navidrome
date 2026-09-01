@@ -783,6 +783,14 @@ var _ = Describe("reprocessArtwork", func() {
 			imageAgents, true, accept, &out)).ToNot(Succeed(), "a typo must still be rejected")
 	})
 
+	It("names failed among the valid sources when rejecting a typo", func() {
+		err := reprocessArtwork(ctx, ds, kinds, []string{"faild"}, imageAgents, true, accept, &out)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("failed"),
+			"failed is accepted but never stored, so it has to be named explicitly")
+	})
+
 	It("accepts a source another kind uses, letting the empty selection report itself", func() {
 		Expect(reprocessArtwork(ctx, ds, []model.Kind{model.KindArtistArtwork}, []string{"folder"},
 			imageAgents, false, decline, &out)).To(Succeed())
