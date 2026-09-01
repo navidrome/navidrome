@@ -1,0 +1,33 @@
+# Code coverage reporting for pull requests. See https://github.com/k1LoW/octocov
+# The 30s default is not enough: scanning this repo's artifacts for the baseline
+# eats most of it, leaving none for the report upload.
+timeout: 5m
+coverage:
+  # A single pre-merged profile: octocov reports statements for one path, but
+  # switches to line counting when it merges several itself.
+  paths:
+    - coverage.out
+codeToTestRatio:
+  code:
+    - '**/*.go'
+    - '!**/*_test.go'
+    - '!**/*_gen.go'
+  test:
+    - '**/*_test.go'
+testExecutionTime:
+  if: true
+  steps:
+    - Test with coverage
+    - Test plugins
+diff:
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
+comment:
+  if: is_pull_request
+  updatePrevious: true
+summary:
+  if: true
+report:
+  if: is_default_branch
+  datastores:
+    - artifact://${GITHUB_REPOSITORY}
