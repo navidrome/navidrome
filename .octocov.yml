@@ -1,7 +1,9 @@
 # Code coverage reporting for pull requests. See https://github.com/k1LoW/octocov
 coverage:
+  # Artifact names uploaded by the test jobs; octocov merges the profiles it finds in each.
   paths:
-    - coverage.out
+    - octocov-go
+    - octocov-plugins
 codeToTestRatio:
   code:
     - '**/*.go'
@@ -11,6 +13,9 @@ codeToTestRatio:
     - '**/*_test.go'
 testExecutionTime:
   if: true
+  steps:
+    - Test
+    - Test plugins
 diff:
   datastores:
     - artifact://${GITHUB_REPOSITORY}
