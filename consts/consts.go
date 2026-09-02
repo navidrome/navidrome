@@ -34,6 +34,8 @@ const (
 	JWTPublicSecretKey     = "JWTPublicSecret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
+	DefaultSmartRefresh    = 5 * time.Second
+	DefaultShareExpiration = 8760 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
 	DBAnalyzeCheckSchedule = "@every 30m"
@@ -71,6 +73,7 @@ const (
 	DefaultUILoginBackgroundURLOffline = "data:image/png;base64," + DefaultUILoginBackgroundOffline
 	DefaultMaxSidebarPlaylists         = 100
 
+	DefaultAuthWindowLength       = 20 * time.Second
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
@@ -106,6 +109,9 @@ const (
 	DefaultScannerExtractor = "taglib"
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
+
+	DefaultActivityPanelUpdateRate  = 300 * time.Millisecond
+	DefaultPluginCompilationTimeout = time.Minute
 )
 
 const (
