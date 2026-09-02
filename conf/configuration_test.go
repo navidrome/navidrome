@@ -477,11 +477,11 @@ var _ = Describe("Configuration", func() {
 		Expect(server.DevPluginCompilationTimeout).To(Equal(consts.DefaultPluginCompilationTimeout))
 	})
 
-	It("should use parsed values (0) for duration fields", func() {
+	It("should use parsed values for duration fields", func() {
 		conf.InitConfig(filepath.Join("testdata", "valid_duration.toml"), false)
 		conf.Load(true)
 
-		configured := 0 * time.Second
+		configured := 1 * time.Second
 
 		server := conf.Server
 		Expect(server.SessionTimeout).To(Equal(configured))
