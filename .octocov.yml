@@ -8,8 +8,10 @@ coverage:
   paths:
     - coverage.out
   # Not code under test: tests/ holds the mocks and helpers, *_gen.go is generated.
+  # Both patterns need the '**/' prefix: the comment workflow has no source tree,
+  # so octocov cannot shorten the profile's import paths to repo-relative ones.
   exclude:
-    - 'tests/**'
+    - '**/tests/**'
     - '**/*_gen.go'
 codeToTestRatio:
   # Needs the pull request's own source, which the comment workflow must not
