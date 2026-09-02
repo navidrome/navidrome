@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -453,6 +455,49 @@ var _ = Describe("Configuration", func() {
 		Entry("INI format", "ini"),
 		Entry("JSON format", "json"),
 	)
+
+	It("should use default values for negative duration fields", func() {
+		filename := filepath.Join("testdata", "invalid_duration.toml")
+		conf.InitConfig(filename, false)
+		conf.Load(true)
+
+		server := conf.Server
+		Expect(server.SessionTimeout).To(Equal(consts.DefaultSessionTimeout))
+		Expect(server.SmartPlaylistRefreshDelay).To(Equal(consts.DefaultSmartRefresh))
+		Expect(server.DefaultShareExpiration).To(Equal(consts.DefaultShareExpiration))
+		Expect(server.UIPlaybackReportInterval).To(Equal(consts.DefaultUIPlaybackReportInterval))
+		Expect(server.AuthWindowLength).To(Equal(consts.DefaultAuthWindowLength))
+		Expect(server.Scanner.WatcherWait).To(Equal(consts.DefaultWatcherWait))
+
+		Expect(server.DevActivityPanelUpdateRate).To(Equal(consts.DefaultActivityPanelUpdateRate))
+		Expect(server.DevArtworkThrottleBacklogTimeout).To(Equal(consts.RequestThrottleBacklogTimeout))
+		Expect(server.DevArtistInfoTimeToLive).To(Equal(consts.ArtistInfoTimeToLive))
+		Expect(server.DevAlbumInfoTimeToLive).To(Equal(consts.AlbumInfoTimeToLive))
+		Expect(server.DevInsightsInitialDelay).To(Equal(consts.InsightsInitialDelay))
+		Expect(server.DevPluginCompilationTimeout).To(Equal(consts.DefaultPluginCompilationTimeout))
+	})
+
+	It("should use parsed values for duration fields", func() {
+		conf.InitConfig(filepath.Join("testdata", "valid_duration.toml"), false)
+		conf.Load(true)
+
+		configured := 1 * time.Second
+
+		server := conf.Server
+		Expect(server.SessionTimeout).To(Equal(configured))
+		Expect(server.SmartPlaylistRefreshDelay).To(Equal(configured))
+		Expect(server.DefaultShareExpiration).To(Equal(configured))
+		Expect(server.UIPlaybackReportInterval).To(Equal(configured))
+		Expect(server.AuthWindowLength).To(Equal(configured))
+		Expect(server.Scanner.WatcherWait).To(Equal(configured))
+
+		Expect(server.DevActivityPanelUpdateRate).To(Equal(configured))
+		Expect(server.DevArtworkThrottleBacklogTimeout).To(Equal(configured))
+		Expect(server.DevArtistInfoTimeToLive).To(Equal(configured))
+		Expect(server.DevAlbumInfoTimeToLive).To(Equal(configured))
+		Expect(server.DevInsightsInitialDelay).To(Equal(configured))
+		Expect(server.DevPluginCompilationTimeout).To(Equal(configured))
+	})
 })
 
 var _ = Describe("TLSEnabled", func() {
