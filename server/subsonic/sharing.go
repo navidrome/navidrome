@@ -31,7 +31,7 @@ func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
 func (api *Router) buildShare(r *http.Request, share model.Share) responses.Share {
 	resp := responses.Share{
 		ID:          share.ID,
-		Url:         public.ShareURL(r, share.ID),
+		Url:         public.ShareURL(r.Context(), share.ID),
 		Description: share.Description,
 		Username:    share.Username,
 		Created:     share.CreatedAt,

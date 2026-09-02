@@ -73,6 +73,7 @@ type configOptions struct {
 	Matcher                         matcherOptions `json:",omitzero"`
 	RecentlyAddedByModTime          bool
 	PreferSortTags                  bool
+	EnableNaturalSorting            bool
 	IgnoredArticles                 string
 	IndexGroups                     string
 	FFmpegPath                      string
@@ -312,6 +313,12 @@ var getEUID = os.Geteuid
 
 var currentGOOS = func() string {
 	return runtime.GOOS
+}
+
+// TLSEnabled reports whether the server serves HTTPS. Both halves are required,
+// so callers cannot infer it from the certificate alone.
+func (c *configOptions) TLSEnabled() bool {
+	return c.TLSCert != "" && c.TLSKey != ""
 }
 
 var (
@@ -994,6 +1001,7 @@ func setViperDefaults() {
 	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
 	viper.SetDefault("prefersorttags", false)
+	viper.SetDefault("enablenaturalsorting", false)
 	viper.SetDefault("ignoredarticles", "The El La Los Las Le Les Os As O A")
 	viper.SetDefault("indexgroups", "A B C D E F G H I J K L M N O P Q R S T U V W X-Z(XYZ) [Unknown]([)")
 	viper.SetDefault("ffmpegpath", "")

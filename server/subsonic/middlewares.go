@@ -178,7 +178,9 @@ func validateCredentials(user *model.User, pass, token, salt, jwt string) error 
 	switch {
 	case jwt != "":
 		claims, err := auth.Validate(jwt)
-		valid = err == nil && claims.Subject == user.UserName
+		valid = err == nil &&
+			claims.Subject == user.UserName &&
+			auth.CheckClaims(claims, *user, auth.AudienceSubsonic) == nil
 	case pass != "":
 		if strings.HasPrefix(pass, "enc:") {
 			if dec, err := hex.DecodeString(pass[4:]); err == nil {

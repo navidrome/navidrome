@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
@@ -496,5 +497,31 @@ var _ = Describe("Configuration", func() {
 		Expect(server.DevAlbumInfoTimeToLive).To(Equal(configured))
 		Expect(server.DevInsightsInitialDelay).To(Equal(configured))
 		Expect(server.DevPluginCompilationTimeout).To(Equal(configured))
+	})
+})
+
+var _ = Describe("TLSEnabled", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("is false when neither the certificate nor the key is set", func() {
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is true when both the certificate and the key are set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeTrue())
+	})
+
+	It("is false when only the certificate is set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is false when only the key is set", func() {
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
 	})
 })

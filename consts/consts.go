@@ -24,8 +24,8 @@ const (
 	LastDBAnalyzeAttemptAtKey     = "LastDBAnalyzeAttemptAt"
 	DBAnalyzePendingKey           = "DBAnalyzePending"
 	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
-	// ArtConfFingerprintPropertyKey is the model.PropertyRepository key Backfill compares against
-	// to detect artwork-affecting config changes across restarts.
+	// ArtConfFingerprintPropertyKey is the model.PropertyRepository key the artwork config check
+	// compares against to detect artwork-affecting config changes across restarts.
 	ArtConfFingerprintPropertyKey = "ArtConfFingerprint"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
@@ -41,9 +41,8 @@ const (
 	DBAnalyzeCheckSchedule = "@every 30m"
 	DBAnalyzeMaxAge        = 24 * time.Hour
 
-	ArtworkStaleAbsentRecheckSchedule = "@every 1h"
-	ArtworkPruneSchedule              = "@daily"
-	ArtworkPostBackfillPruneDelay     = 10 * time.Minute
+	ArtworkEnqueueMissingSchedule = "@every 1h"
+	ArtworkPruneSchedule          = "@daily"
 
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
@@ -207,7 +206,7 @@ var (
 	}
 )
 
-var HTTPUserAgent = "Navidrome" + "/" + Version
+var HTTPUserAgent = "Navidrome/" + Version + " - https://github.com/navidrome"
 
 var (
 	VariousArtists = "Various Artists"

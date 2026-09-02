@@ -5,6 +5,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -24,6 +26,39 @@ var _ = Describe("PlaylistRepository", func() {
 		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
 	})
 
+	Describe("natural sorting", func() {
+		var ids []string
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableNaturalSorting = true
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			repo = NewPlaylistRepository(ctx, GetDBXBuilder())
+
+			ids = nil
+			for _, n := range []string{"mix 1", "mix 10", "mix 2"} {
+				pls := model.Playlist{Name: n, OwnerID: "userid"}
+				Expect(repo.Put(&pls)).To(Succeed())
+				ids = append(ids, pls.ID)
+			}
+			DeferCleanup(func() {
+				for _, id := range ids {
+					_ = repo.Delete(id)
+				}
+			})
+		})
+
+		It("sorts playlist names by number value", func() {
+			all, err := repo.GetAll(model.QueryOptions{
+				Sort: "name", Filters: squirrel.Eq{"playlist.id": ids},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(slice.Map(all, func(p model.Playlist) string { return p.Name })).To(
+				Equal([]string{"mix 1", "mix 2", "mix 10"}))
+		})
+	})
+
 	Describe("Count", func() {
 		It("returns the number of playlists in the DB", func() {
 			Expect(repo.CountAll()).To(Equal(int64(2)))
@@ -39,12 +74,12 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
-	Describe("GetAllIDs", func() {
+	Describe("getAllIDs", func() {
 		It("returns the same id set as GetAll", func() {
 			want, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
-			ids, err := repo.GetAllIDs()
+			ids, err := repo.(*playlistRepository).getAllIDs()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf(slice.Map(want, func(p model.Playlist) string { return p.ID })))
 		})

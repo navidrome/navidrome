@@ -25,9 +25,9 @@ type resolution struct {
 	source     string        // model.ItemArtwork.Source value: "folder", "embedded", "external", "upload", "generated"
 	sourcePath string        // backing library/upload file (folder/upload: the image; embedded: the audio file); "" otherwise
 	refMtime   int64         // sourcePath mtime (unix-nanoseconds) at resolution; 0 when no sourcePath
-	// external source errored/timed out. With no reader it forces failed (never absent);
-	// on a hit a higher-priority external step failed—serve this, but retry later.
-	extError bool
+	// a faulted external source, carrying the provider's requested delay when it named one.
+	// With no reader it forces failed (never absent); on a hit, serve this but retry later.
+	extErr error
 	// a local source that should have been readable wasn't. With no reader it forces failed,
 	// so a transient I/O fault never records absent.
 	localError bool
@@ -36,14 +36,15 @@ type resolution struct {
 // chainState carries what a priority walk has seen so far. A hit takes extErr with it so a
 // transient external failure still retries; localErr is dropped, as the scanner re-lists changes.
 type chainState struct {
-	extErr, localErr bool
-	trace            *ChainTrace // nil unless the CLI asked for a trace
+	extErr   error
+	localErr bool
+	trace    *ChainTrace // nil only where no caller attached one
 }
 
 // try stamps the accumulated external failure onto a hit, and records the miss otherwise.
 func (c *chainState) try(candidate string, res resolution, ok bool) (resolution, bool) {
 	if ok {
-		res.extError = c.extErr
+		res.extErr = c.extErr
 		c.record(candidate, OutcomeHit, res.sourcePath)
 		return res, true
 	}
@@ -62,7 +63,7 @@ func (c *chainState) record(candidate string, out Outcome, detail string) {
 
 // exhausted is the outcome when no source in the chain yielded an image.
 func (c *chainState) exhausted() resolution {
-	return resolution{extError: c.extErr, localError: c.localErr}
+	return resolution{extErr: c.extErr, localError: c.localErr}
 }
 
 // externalSource holds the agents to ask and the rate limiter/circuit breaker to ask them through.
@@ -137,6 +138,15 @@ func MayFetchExternal(kind model.Kind) bool {
 // ImageAgentCount is how many enabled agents provide artist and album images.
 type ImageAgentCount struct{ Artist, Album int }
 
+// NewImageAgentCount counts what an external step would consult, so an estimate and the gate that
+// guards it cannot disagree about which agents exist.
+func NewImageAgentCount(ag *agents.Agents) ImageAgentCount {
+	if ag == nil {
+		return ImageAgentCount{}
+	}
+	return ImageAgentCount{Artist: len(ag.ArtistImageAgents()), Album: len(ag.AlbumImageAgents())}
+}
+
 // ExternalLookupsPerItem reports what resolving one item of this kind can cost: every image agent is
 // tried, and a zero count still bills one, so agents the caller cannot see never read as free.
 func ExternalLookupsPerItem(kind model.Kind, agents ImageAgentCount) int64 {
@@ -172,16 +182,16 @@ func chainFetchesExternal(priority string) bool {
 
 // Album and artist fetches stop here when the resolver is local-only, rather than at each point in
 // the chain walk; resolvePlaylist gates the third network path, the m3u image URL, itself.
-func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, bool) {
+func (r *resolver) fetchExternalAlbum(ctx context.Context, al model.Album) (io.ReadCloser, string, error) {
 	if r.ext == nil {
-		return nil, "", false
+		return nil, "", nil
 	}
 	return fetchAlbumImage(ctx, r.ext.agents, r.ext.gate, al)
 }
 
-func (r *resolver) fetchExternalArtist(ctx context.Context, ar model.Artist) (io.ReadCloser, string, bool) {
+func (r *resolver) fetchExternalArtist(ctx context.Context, ar model.Artist) (io.ReadCloser, string, error) {
 	if r.ext == nil {
-		return nil, "", false
+		return nil, "", nil
 	}
 	return fetchArtistImage(ctx, r.ext.agents, r.ext.gate, ar)
 }
@@ -214,10 +224,10 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 				return res, nil
 			}
 		case pattern == externalCandidate:
-			if rd, name, isErr := r.fetchExternalAlbum(ctx, *al); rd != nil {
+			if rd, name, err := r.fetchExternalAlbum(ctx, *al); rd != nil {
 				return resolution{reader: rd, source: ExternalPrefix + name}, nil
-			} else if isErr {
-				chain.extErr = true
+			} else if err != nil {
+				chain.extErr = longerRetry(chain.extErr, err)
 			}
 		case len(imgFiles) > 0:
 			res, ok := resolveFolderFile(ctx, lib, imgFiles, pattern)
@@ -276,10 +286,10 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 		}
 		switch {
 		case pattern == externalCandidate:
-			if rd, name, isErr := r.fetchExternalArtist(ctx, *ar); rd != nil {
+			if rd, name, err := r.fetchExternalArtist(ctx, *ar); rd != nil {
 				return resolution{reader: rd, source: ExternalPrefix + name}, nil
-			} else if isErr {
-				chain.extErr = true
+			} else if err != nil {
+				chain.extErr = longerRetry(chain.extErr, err)
 			}
 		case pattern == "image-folder":
 			res, ok := resolveArtistImageFolder(ar)
@@ -323,7 +333,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		return resolution{}, err
 	}
 
-	var extErr bool
+	var extErr error
 	for _, src := range []struct{ path, source string }{
 		{pl.UploadedImagePath(), "upload"},
 		{findPlaylistSidecarPath(ctx, pl.Path), "folder"},
@@ -354,10 +364,13 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 	}
 	if remoteImg != nil && conf.Server.EnableM3UExternalAlbumArt {
 		sf := func() (io.ReadCloser, string, error) { return fromURL(ctx, remoteImg) }
-		if res, ok, isErr := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
+		if res, ok, err := resolveExternalStep(r.ext.gate, "m3u", sf); ok {
 			return res, nil
-		} else if isErr {
-			extErr = true
+		} else if err != nil {
+			extErr = longerRetry(extErr, err)
+			// Record it here with its detail: once album sampling adds its own steps, the processor's
+			// empty-trace fallback no longer fires, and the error that forced the retry would be lost.
+			traceFrom(ctx).add(TraceStep{Candidate: ExternalPrefix + "m3u", Outcome: OutcomeError, Detail: err.Error()})
 		}
 	}
 
@@ -377,8 +390,8 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 			}
 			continue
 		}
-		if res.extError {
-			extErr = true
+		if res.extErr != nil {
+			extErr = longerRetry(extErr, res.extErr)
 		}
 		if res.reader == nil {
 			continue
@@ -397,7 +410,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		if tileErr != nil {
 			return resolution{}, fmt.Errorf("resolvePlaylist: sampled album art failed: %w", tileErr)
 		}
-		return resolution{extError: extErr}, nil
+		return resolution{extErr: extErr}, nil
 	}
 	// Grow to 4 tiles by repeating what we have.
 	switch len(tiles) {
@@ -408,9 +421,9 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 	}
 	grid, err := assembleTiles(tiles)
 	if err != nil {
-		return resolution{extError: extErr}, nil //nolint:nilerr // encode failure is a soft "no image", not a resolution error
+		return resolution{extErr: extErr}, nil //nolint:nilerr // encode failure is a soft "no image", not a resolution error
 	}
-	return resolution{reader: grid, source: "generated", extError: extErr}, nil
+	return resolution{reader: grid, source: "generated", extErr: extErr}, nil
 }
 
 // resolveRadio serves only an uploaded image; there is no fallback.
@@ -461,14 +474,17 @@ func (r *resolver) resolveDisc(ctx context.Context, id string) (resolution, erro
 	return dr.selectImage(ctx, r.ffmpeg, conf.Server.DiscArtPriority, &chain)
 }
 
-// resolveExternalStep runs a single external sourceFunc through the named gate. extErr excludes
-// a not-found, which is a definitive "no" rather than a failure.
-func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (res resolution, ok bool, extErr bool) {
+// resolveExternalStep runs a single external sourceFunc through the named gate. A not-found is a
+// definitive "no", returned as (_, false, nil); any other error is a failure the caller records.
+func resolveExternalStep(gate gateFunc, name string, sf sourceFunc) (resolution, bool, error) {
 	r, path, err := gate(name, sf)
 	if r != nil {
-		return resolution{reader: r, source: externalCandidate, sourcePath: path}, true, false
+		return resolution{reader: r, source: externalCandidate, sourcePath: path}, true, nil
 	}
-	return resolution{}, false, err != nil && !errors.Is(err, model.ErrNotFound)
+	if errors.Is(err, model.ErrNotFound) {
+		return resolution{}, false, nil
+	}
+	return resolution{}, false, err
 }
 
 // classifyPlaylistImage splits a playlist ExternalImageURL into a local filesystem path or a
@@ -561,7 +577,9 @@ func resolveLocalFile(path, source string) (resolution, bool) {
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return resolution{localError: !errors.Is(err, fs.ErrNotExist)}, false
+		// Carry the source label even on a fault, so a resolver with no chain (playlist/radio) can
+		// still name what faulted in the trace.
+		return resolution{source: source, localError: !errors.Is(err, fs.ErrNotExist)}, false
 	}
 	return resolution{reader: f, source: source, sourcePath: path, refMtime: mtimeOf(path)}, true
 }

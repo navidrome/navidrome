@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -85,22 +87,51 @@ var _ = Describe("Helpers", func() {
 	})
 
 	Describe("mapSortOrder", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+
 		It("does not change the sort string if there are no order columns", func() {
-			sort := "album_name asc"
-			mapped := mapSortOrder("album", sort)
-			Expect(mapped).To(Equal(sort))
+			Expect(mapSortOrder("album", "album_name asc")).To(Equal("album_name asc"))
 		})
-		It("changes order columns to sort expression", func() {
-			sort := "ORDER_ALBUM_NAME asc"
-			mapped := mapSortOrder("album", sort)
-			Expect(mapped).To(Equal(`(coalesce(nullif(album.sort_album_name,''),album.order_album_name)` +
-				` collate nocase) asc`))
-		})
+
+		DescribeTable("maps order columns to a collated expression",
+			func(preferSortTags, naturalSorting bool, expected string) {
+				conf.Server.PreferSortTags = preferSortTags
+				conf.Server.EnableNaturalSorting = naturalSorting
+				Expect(mapSortOrder("album", "ORDER_ALBUM_NAME asc")).To(Equal(expected))
+			},
+			Entry("qualified column", false, false,
+				"(album.order_album_name collate nocase) asc"),
+			Entry("natural collation", false, true,
+				"(album.order_album_name collate NATSORT) asc"),
+			Entry("sort tags preferred", true, false,
+				`(coalesce(nullif(album.sort_album_name,''),album.order_album_name) collate nocase) asc`),
+			Entry("sort tags preferred, natural collation", true, true,
+				`(coalesce(nullif(album.sort_album_name,''),album.order_album_name) collate NATSORT) asc`),
+		)
+
 		It("changes multiple order columns to sort expressions", func() {
+			conf.Server.PreferSortTags = true
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
-			mapped := mapSortOrder("album", sort)
-			Expect(mapped).To(Equal(`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
-				` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
+			Expect(mapSortOrder("album", sort)).To(Equal(
+				`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
+					` (coalesce(nullif(album.sort_album_artist_name,''),album.order_album_artist_name) collate nocase) desc, year desc`))
+		})
+	})
+
+	Describe("naturalSort", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		It("leaves the column alone by default, keeping its declared collation", func() {
+			Expect(naturalSort("media_file.title")).To(Equal("media_file.title"))
+		})
+
+		It("applies the natural collation when enabled", func() {
+			conf.Server.EnableNaturalSorting = true
+			Expect(naturalSort("media_file.title")).To(Equal("(media_file.title collate NATSORT)"))
 		})
 	})
 })
