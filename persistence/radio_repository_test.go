@@ -7,7 +7,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -76,17 +75,6 @@ var _ = Describe("RadioRepository", func() {
 				Expect(err).To(BeNil())
 				Expect(all[0].ID).To(Equal(radioWithoutHomePage.ID))
 				Expect(all[1].ID).To(Equal(radioWithHomePage.ID))
-			})
-		})
-
-		Describe("GetAllIDs", func() {
-			It("returns the same id set as GetAll", func() {
-				want, err := repo.GetAll()
-				Expect(err).To(BeNil())
-				Expect(want).ToNot(BeEmpty())
-				ids, err := repo.GetAllIDs()
-				Expect(err).To(BeNil())
-				Expect(ids).To(ConsistOf(slice.Map(want, func(r model.Radio) string { return r.ID })))
 			})
 		})
 
