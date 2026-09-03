@@ -2,7 +2,6 @@ package model
 
 import (
 	"cmp"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -20,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/number"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/zeebo/xxh3"
 )
 
 type MediaFile struct {
@@ -232,7 +232,7 @@ func (mf MediaFile) Hash() string {
 		ZeroNil:         true,
 	}
 	hash, _ := hashstructure.Hash(mf, opts)
-	sum := md5.New()
+	sum := xxh3.New()
 	sum.Write(fmt.Appendf(nil, "%d", hash))
 	sum.Write(mf.Tags.Hash())
 	sum.Write(mf.Participants.Hash())
@@ -553,8 +553,6 @@ type MediaFileRepository interface {
 	// expression, using the logged user's annotations. Limit and offset are ignored.
 	MatchesCriteria(id string, c criteria.Criteria) (bool, error)
 	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
-	// GetAllIDs returns just the media_file IDs for the same row set as GetAll.
-	GetAllIDs(options ...QueryOptions) ([]string, error)
 	// GetAlbumIDsByFolder returns the distinct IDs of albums with non-missing tracks in the given
 	// folders or their direct children.
 	GetAlbumIDsByFolder(lib Library, folderIDs ...string) ([]string, error)

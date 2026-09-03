@@ -13,7 +13,7 @@ import (
 
 var once sync.Once
 
-func Init(t *testing.T, skipOnShort bool) {
+func Init(t testing.TB, skipOnShort bool) {
 	if skipOnShort && testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}

@@ -136,6 +136,7 @@ func (s *playlists) applyContentUpdate(ctx context.Context, current, entity *mod
 	if rulesChanged {
 		current.Rules = entity.Rules
 		current.EvaluatedAt = nil // force re-evaluation on next read
+		current.ImportedHash = "" // rules no longer match the source file; next scan must re-import it
 	}
 	if sent("sync") && current.Path != "" && current.Sync != entity.Sync {
 		current.Sync = entity.Sync

@@ -123,8 +123,7 @@ func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 
 	s.Contents = str.TruncateRunes(s.Contents, 30, "...")
 
-	id, err = r.Persistable.Save(s)
-	return id, err
+	return r.Persistable.Save(s)
 }
 
 func (r *shareRepositoryWrapper) Update(id string, entity any, _ ...string) error {

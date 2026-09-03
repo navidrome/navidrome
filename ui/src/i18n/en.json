@@ -93,7 +93,8 @@
         "shuffle": "Shuffle",
         "addToPlaylist": "Add to Playlist",
         "download": "Download",
-        "info": "Get Info"
+        "info": "Get Info",
+        "refresh": "Refresh Metadata"
       },
       "lists": {
         "all": "All",
@@ -396,6 +397,7 @@
         "invalidJson": "Configuration must be valid JSON"
       },
       "messages": {
+        "idHelp": "The plugin ID, derived from its file name. Use it when referencing this plugin in configuration options, such as Agents.",
         "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
         "configValidationError": "Configuration validation failed:",
         "schemaRenderError": "Unable to render configuration form. The plugin's schema may be invalid.",
@@ -569,6 +571,7 @@
     "coverRemoved": "Cover art removed",
     "coverUploadError": "Error uploading cover art",
     "coverRemoveError": "Error removing cover art",
+    "metadataRefreshStarted": "Refreshing metadata in the background",
     "note": "NOTE",
     "transcodingDisabled": "Changing the transcoding configuration through the web interface is disabled for security reasons. If you would like to change (edit or add) transcoding options, restart the server with the %{config} configuration option.",
     "transcodingEnabled": "Navidrome is currently running with %{config}, making it possible to run system commands from the transcoding settings using the web interface. We recommend to disable it for security reasons and only enable it when configuring Transcoding options.",

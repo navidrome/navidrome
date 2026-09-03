@@ -7,7 +7,12 @@ import MenuItem from '@material-ui/core/MenuItem'
 import MoreVertIcon from '@material-ui/icons/MoreVert'
 import { MdQuestionMark } from 'react-icons/md'
 import { makeStyles } from '@material-ui/core/styles'
-import { useDataProvider, useNotify, useTranslate } from 'react-admin'
+import {
+  useDataProvider,
+  useNotify,
+  usePermissions,
+  useTranslate,
+} from 'react-admin'
 import clsx from 'clsx'
 import {
   playNext,
@@ -25,6 +30,7 @@ import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 import { artistDownloadSize } from './artist'
+import { useRefreshMetadata } from './useRefreshMetadata'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -69,6 +75,8 @@ const ContextMenu = ({
   const dispatch = useDispatch()
   const translate = useTranslate()
   const notify = useNotify()
+  const { permissions } = usePermissions()
+  const refreshMetadata = useRefreshMetadata()
   const [anchorEl, setAnchorEl] = useState(null)
 
   const isArtist = resource === 'artist'
@@ -128,6 +136,12 @@ const ContextMenu = ({
           ),
         )
       },
+    },
+    refresh: {
+      enabled: permissions === 'admin',
+      needData: false,
+      label: translate('resources.album.actions.refresh'),
+      action: (record) => refreshMetadata(resource, record.id),
     },
     ...(!hideInfo && {
       info: {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -86,7 +87,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"title":          "order_title",
 		"artist":         "order_artist_name, order_album_name, release_date, disc_number, track_number",
 		"album_artist":   "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
+		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, " + naturalSort("media_file.title"),
 		"random":         "random",
 		"created_at":     "media_file.created_at",
 		"recently_added": mediaFileRecentlyAddedSort(),
@@ -307,8 +308,8 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	return wrapMediaFileCursor(cursor), nil
 }
 
-// GetAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
-func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+// getAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
+func (r *mediaFileRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("media_file.id"))
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "media_file.id")
@@ -340,7 +341,7 @@ func (r *mediaFileRepository) GetAlbumIDsByFolder(lib model.Library, folderIDs .
 
 // GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
 func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +356,10 @@ func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions
 // Library-qualified paths search within the specified library, while unqualified paths
 // search across all libraries for backward compatibility.
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
-	query := Or{}
+	// One IN list per library instead of one OR term per path: SQLite abandons the
+	// path index at just two OR-ed equality terms and scans the whole table.
+	byLibrary := map[int][]string{}
+	var unqualified []string
 
 	for _, path := range paths {
 		parts := strings.SplitN(path, ":", 2)
@@ -366,15 +370,22 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 				// Invalid format, skip
 				continue
 			}
-			relativePath := parts[1]
-			query = append(query, And{
-				Eq{"path collate nocase": relativePath},
-				Eq{"library_id": libraryID},
-			})
+			byLibrary[libraryID] = append(byLibrary[libraryID], parts[1])
 		} else {
 			// Unqualified path: search across all libraries
-			query = append(query, Eq{"path collate nocase": path})
+			unqualified = append(unqualified, path)
 		}
+	}
+
+	query := Or{}
+	for _, libraryID := range slices.Sorted(maps.Keys(byLibrary)) {
+		query = append(query, And{
+			Eq{"path collate nocase": byLibrary[libraryID]},
+			Eq{"library_id": libraryID},
+		})
+	}
+	if len(unqualified) > 0 {
+		query = append(query, Eq{"path collate nocase": unqualified})
 	}
 
 	if len(query) == 0 {

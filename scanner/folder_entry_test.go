@@ -48,6 +48,7 @@ var _ = Describe("folder_entry", func() {
 			Expect(entry.path).To(Equal(path))
 			Expect(entry.audioFiles).To(BeEmpty())
 			Expect(entry.imageFiles).To(BeEmpty())
+			Expect(entry.playlistFiles).To(BeEmpty())
 			Expect(entry.albumIDMap).To(BeEmpty())
 			Expect(entry.updTime).To(Equal(updateInfo.UpdatedAt))
 			Expect(entry.prevHash).To(Equal(updateInfo.Hash))
@@ -95,7 +96,7 @@ var _ = Describe("folder_entry", func() {
 			})
 
 			It("returns false when folder has playlists", func() {
-				entry.numPlaylists = 1
+				entry.playlistFiles["list.m3u"] = &fakeDirEntry{name: "list.m3u"}
 				Expect(entry.hasNoFiles()).To(BeFalse())
 			})
 
@@ -107,7 +108,7 @@ var _ = Describe("folder_entry", func() {
 			It("returns false when folder has multiple types of content", func() {
 				entry.audioFiles["test.mp3"] = &fakeDirEntry{name: "test.mp3"}
 				entry.imageFiles["cover.jpg"] = &fakeDirEntry{name: "cover.jpg"}
-				entry.numPlaylists = 2
+				entry.playlistFiles["list.m3u"] = &fakeDirEntry{name: "list.m3u"}
 				entry.numSubFolders = 3
 				Expect(entry.hasNoFiles()).To(BeFalse())
 			})
@@ -149,7 +150,11 @@ var _ = Describe("folder_entry", func() {
 					"cover.jpg":  &fakeDirEntry{name: "cover.jpg"},
 					"folder.png": &fakeDirEntry{name: "folder.png"},
 				}
-				entry.numPlaylists = 3
+				entry.playlistFiles = map[string]fs.DirEntry{
+					"list1.m3u": &fakeDirEntry{name: "list1.m3u"},
+					"list2.m3u": &fakeDirEntry{name: "list2.m3u"},
+					"list3.m3u": &fakeDirEntry{name: "list3.m3u"},
+				}
 				entry.imagesUpdatedAt = time.Now()
 			})
 
@@ -200,7 +205,10 @@ var _ = Describe("folder_entry", func() {
 					"z.jpg": &fakeDirEntry{name: "z.jpg"},
 					"x.png": &fakeDirEntry{name: "x.png"},
 				}
-				entry.numPlaylists = 2
+				entry.playlistFiles = map[string]fs.DirEntry{
+					"q.m3u": &fakeDirEntry{name: "q.m3u"},
+					"p.m3u": &fakeDirEntry{name: "p.m3u"},
+				}
 				entry.numSubFolders = 3
 
 				hash1 := entry.hash()
@@ -213,6 +221,10 @@ var _ = Describe("folder_entry", func() {
 				entry.imageFiles = map[string]fs.DirEntry{
 					"x.png": &fakeDirEntry{name: "x.png"},
 					"z.jpg": &fakeDirEntry{name: "z.jpg"},
+				}
+				entry.playlistFiles = map[string]fs.DirEntry{
+					"p.m3u": &fakeDirEntry{name: "p.m3u"},
+					"q.m3u": &fakeDirEntry{name: "q.m3u"},
 				}
 
 				hash2 := entry.hash()
@@ -252,10 +264,10 @@ var _ = Describe("folder_entry", func() {
 				Expect(hash1).ToNot(Equal(hash2))
 			})
 
-			It("produces different hash when playlist count changes", func() {
+			It("produces different hash when playlist files change", func() {
 				hash1 := entry.hash()
 
-				entry.numPlaylists = 5
+				entry.playlistFiles["new.m3u"] = &fakeDirEntry{name: "new.m3u"}
 				hash2 := entry.hash()
 
 				Expect(hash1).ToNot(Equal(hash2))
@@ -377,6 +389,58 @@ var _ = Describe("folder_entry", func() {
 				Expect(hash1).ToNot(Equal(hash2))
 			})
 
+			It("produces different hash when playlist file size changes", func() {
+				baseTime := time.Now()
+				entry.playlistFiles["list.m3u"] = &fakeDirEntry{
+					name:     "list.m3u",
+					fileInfo: &fakeFileInfo{name: "list.m3u", size: 1000, modTime: baseTime},
+				}
+				hash1 := entry.hash()
+
+				entry.playlistFiles["list.m3u"] = &fakeDirEntry{
+					name:     "list.m3u",
+					fileInfo: &fakeFileInfo{name: "list.m3u", size: 2000, modTime: baseTime},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when playlist file modification time changes", func() {
+				baseTime := time.Now()
+				entry.playlistFiles["list.m3u"] = &fakeDirEntry{
+					name:     "list.m3u",
+					fileInfo: &fakeFileInfo{name: "list.m3u", size: 1000, modTime: baseTime},
+				}
+				hash1 := entry.hash()
+
+				entry.playlistFiles["list.m3u"] = &fakeDirEntry{
+					name:     "list.m3u",
+					fileInfo: &fakeFileInfo{name: "list.m3u", size: 1000, modTime: baseTime.Add(1 * time.Hour)},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
+			It("produces different hash when a playlist is renamed", func() {
+				baseTime := time.Now()
+				entry.playlistFiles["old.m3u"] = &fakeDirEntry{
+					name:     "old.m3u",
+					fileInfo: &fakeFileInfo{name: "old.m3u", size: 1000, modTime: baseTime},
+				}
+				hash1 := entry.hash()
+
+				delete(entry.playlistFiles, "old.m3u")
+				entry.playlistFiles["new.m3u"] = &fakeDirEntry{
+					name:     "new.m3u",
+					fileInfo: &fakeFileInfo{name: "new.m3u", size: 1000, modTime: baseTime},
+				}
+				hash2 := entry.hash()
+
+				Expect(hash1).ToNot(Equal(hash2))
+			})
+
 			It("produces valid hex-encoded hash", func() {
 				hash := entry.hash()
 				Expect(hash).To(HaveLen(32)) // MD5 hash should be 32 hex characters
@@ -421,7 +485,7 @@ var _ = Describe("folder_entry", func() {
 				})
 
 				It("returns true when hash has changed", func() {
-					entry.numPlaylists = 10 // Change something to change the hash
+					entry.playlistFiles["list.m3u"] = &fakeDirEntry{name: "list.m3u"} // Change something to change the hash
 					Expect(entry.isOutdated()).To(BeTrue())
 				})
 
@@ -445,7 +509,7 @@ var _ = Describe("folder_entry", func() {
 
 				It("returns true when full scan condition is not met but hash changed", func() {
 					entry.updTime = entry.job.lib.LastScanStartedAt.Add(1 * time.Hour)
-					entry.numPlaylists = 10 // Change hash
+					entry.playlistFiles["list.m3u"] = &fakeDirEntry{name: "list.m3u"} // Change hash
 					Expect(entry.isOutdated()).To(BeTrue())
 				})
 			})

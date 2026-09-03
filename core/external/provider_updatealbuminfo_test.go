@@ -34,7 +34,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag, matcher.New(ds))
+		p = external.NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
 		mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 		conf.Server.DevAlbumInfoTimeToLive = 1 * time.Hour
 	})
@@ -156,6 +156,28 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		ag.On("GetAlbumInfo", ctx, "Agent NotFound Album", "Agent NotFound Artist", "mbid-agent-notfound").Return(nil, agents.ErrNotFound)
 
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-agent-notfound")
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updatedAlbum).NotTo(BeNil())
+		Expect(*updatedAlbum).To(Equal(*originalAlbum))
+		Expect(updatedAlbum.ExternalInfoUpdatedAt).To(BeNil())
+
+		ag.AssertExpectations(GinkgoT())
+	})
+
+	It("returns the original album, unstamped, when the agents are throttled", func() {
+		originalAlbum := &model.Album{
+			ID:          "al-throttled",
+			Name:        "Throttled Album",
+			AlbumArtist: "Throttled Artist",
+			MbzAlbumID:  "mbid-throttled",
+		}
+		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
+
+		ag.On("GetAlbumInfo", ctx, "Throttled Album", "Throttled Artist", "mbid-throttled").
+			Return(nil, agents.ErrRetryLater)
+
+		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-throttled")
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(updatedAlbum).NotTo(BeNil())
