@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -248,6 +249,156 @@ var _ = Describe("Maintenance", func() {
 				Expect(hook.LastEntry().Level).To(Equal(logrus.WarnLevel))
 				Expect(hook.LastEntry().Message).To(Equal("Error tracking affected albums for refresh"))
 			})
+		})
+	})
+
+	Describe("RemapMissingFile", func() {
+		It("relocates the missing file's identity onto the target and runs GC", func() {
+			created := time.Now().Add(-30 * 24 * time.Hour)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Path: "old/song.mp3", AlbumID: "album1", CreatedAt: created, Missing: true},
+				{ID: "t1", Path: "new/song.mp3", AlbumID: "album1", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			got, err := mfRepo.Get("m1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Path).To(Equal("new/song.mp3")) // moved to target's location
+			Expect(got.Missing).To(BeFalse())
+			Expect(got.CreatedAt).To(BeTemporally("==", created)) // created_at preserved
+			exists, _ := mfRepo.Exists("t1")
+			Expect(exists).To(BeFalse()) // discarded row removed
+			Expect(ds.GCCalled).To(BeTrue())
+		})
+
+		It("reassigns album annotations when the old album is emptied", func() {
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album2", Missing: false},
+			})
+
+			mfRepo.SetCountAll(0)
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotationCalls).To(HaveKeyWithValue("album1", "album2"))
+		})
+
+		It("does not reassign album annotations when the old album is not emptied", func() {
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "m2", AlbumID: "album1", Missing: false},
+				{ID: "t1", AlbumID: "album2", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotationCalls).To(BeEmpty())
+		})
+
+		It("does not reassign annotations when the album is unchanged", func() {
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album1", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotationCalls).To(BeEmpty())
+		})
+
+		It("returns ErrNotFound when the missing file does not exist", func() {
+			mfRepo.SetData(model.MediaFiles{{ID: "t1", Missing: false}})
+
+			Expect(service.RemapMissingFile(ctx, "nope", "t1")).To(MatchError(model.ErrNotFound))
+		})
+
+		It("refuses to remap from a file that is not missing", func() {
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Missing: false},
+				{ID: "t1", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ErrNotMissing))
+		})
+
+		It("refuses to remap a file onto itself", func() {
+			mfRepo.SetData(model.MediaFiles{{ID: "m1", Missing: true}})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "m1")).To(MatchError(ErrSameFile))
+		})
+
+		It("refuses to remap onto a target that is itself missing", func() {
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Missing: true},
+				{ID: "t1", Missing: true},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ErrTargetMissing))
+		})
+
+		It("refreshes artist and album stats right after the remap", func() {
+			artistRepo := ds.MockedArtist.(*extendedArtistRepo)
+			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
+			albumRepo.SetData(model.Albums{
+				{ID: "album1", Name: "Old Album", SongCount: 2, Size: 1100, Duration: 110},
+				{ID: "album2", Name: "New Album", SongCount: 1, Size: 2000, Duration: 200},
+			})
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", Path: "old/1.mp3", Album: "Old Album", AlbumID: "album1", Missing: true, Size: 100, Duration: 10},
+				{ID: "k1", Path: "old/2.mp3", Album: "Old Album", AlbumID: "album1", Missing: false, Size: 1000, Duration: 100},
+				{ID: "t1", Path: "new/1.mp3", Album: "New Album", AlbumID: "album2", Missing: false, Size: 2000, Duration: 200},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(artistRepo.IsRefreshStatsCalled()).To(BeTrue(), "Artist stats should be refreshed")
+
+			// The old album lost the remapped track, so its stats are recalculated from the remaining one
+			oldAlbum, err := albumRepo.Get("album1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(oldAlbum.SongCount).To(Equal(1))
+			Expect(oldAlbum.Size).To(Equal(int64(1000)))
+			Expect(oldAlbum.Duration).To(BeNumerically("==", 100))
+
+			// The target album keeps the track, now under the missing file's ID
+			newAlbum, err := albumRepo.Get("album2")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(newAlbum.SongCount).To(Equal(1))
+			Expect(newAlbum.Size).To(Equal(int64(2000)))
+			Expect(newAlbum.Duration).To(BeNumerically("==", 200))
+		})
+
+		It("returns an error if GC fails", func() {
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album1", Missing: false},
+			})
+			ds.GCError = errors.New("gc failed")
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(MatchError(ContainSubstring("gc failed")))
+		})
+
+		It("preserves the target's participants on the remapped track", func() {
+			participant := model.Participant{
+				Artist: model.Artist{ID: "a1", Name: "Artist", OrderArtistName: "artist", MbzArtistID: "mbz-artist"},
+			}
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album2", Missing: false, Participants: model.Participants{
+					model.RoleArtist: model.ParticipantList{participant},
+				}},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			// The surviving row is the missing file's ID, holding the target's data
+			got, err := mfRepo.GetWithParticipants("m1")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Participants).To(HaveKeyWithValue(model.RoleArtist, model.ParticipantList{participant}))
 		})
 	})
 })

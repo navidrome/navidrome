@@ -24,8 +24,9 @@ type MockMediaFileRepo struct {
 	model.MediaFileRepository
 	Data map[string]*model.MediaFile
 	Err  bool
-	// Add fields and methods for controlling CountAll and DeleteAllMissing in tests
-	CountAllValue         int64
+	// Add fields and methods for controlling CountAll and DeleteAllMissing in tests.
+	// A nil CountAllValue is unset, and CountAll falls back to counting rows in Data.
+	CountAllValue         *int64
 	CountAllOptions       model.QueryOptions
 	DeleteAllMissingValue int64
 	Options               model.QueryOptions
@@ -38,6 +39,10 @@ type MockMediaFileRepo struct {
 
 func (m *MockMediaFileRepo) SetError(err bool) {
 	m.Err = err
+}
+
+func (m *MockMediaFileRepo) SetCountAll(count int64) {
+	m.CountAllValue = &count
 }
 
 func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
@@ -251,11 +256,11 @@ func (m *MockMediaFileRepo) CountAll(opts ...model.QueryOptions) (int64, error) 
 	if m.Err {
 		return 0, errors.New("error")
 	}
-	if m.CountAllValue != 0 {
-		if len(opts) > 0 {
-			m.CountAllOptions = opts[0]
-		}
-		return m.CountAllValue, nil
+	if len(opts) > 0 {
+		m.CountAllOptions = opts[0]
+	}
+	if m.CountAllValue != nil {
+		return *m.CountAllValue, nil
 	}
 	return int64(len(m.Data)), nil
 }

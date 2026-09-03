@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -14,11 +15,24 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
+var (
+	// ErrNotMissing is returned when a remap is attempted from a file not marked as missing.
+	ErrNotMissing = errors.New("file is not marked as missing")
+	// ErrTargetMissing is returned when the remap target is itself a missing file.
+	ErrTargetMissing = errors.New("target file is missing")
+	// ErrSameFile is returned when the remap source and target are the same file.
+	ErrSameFile = errors.New("missing and target are the same file")
+)
+
 type Maintenance interface {
 	// DeleteMissingFiles deletes specific missing files by their IDs
 	DeleteMissingFiles(ctx context.Context, ids []string) error
 	// DeleteAllMissingFiles deletes all files marked as missing
 	DeleteAllMissingFiles(ctx context.Context) error
+	// RemapMissingFile relocates a missing file's identity onto an existing, non-missing
+	// media file. It is the manual counterpart to the scanner's automatic move detection
+	// (see scanner.phaseMissingTracks.moveMatched).
+	RemapMissingFile(ctx context.Context, missingID, targetID string) error
 }
 
 type maintenanceService struct {
@@ -38,6 +52,94 @@ func (s *maintenanceService) DeleteMissingFiles(ctx context.Context, ids []strin
 
 func (s *maintenanceService) DeleteAllMissingFiles(ctx context.Context) error {
 	return s.deleteMissing(ctx, nil)
+}
+
+func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, targetID string) error {
+	if missingID == targetID {
+		return fmt.Errorf("%w: %q", ErrSameFile, missingID)
+	}
+
+	missing, err := s.ds.MediaFile(ctx).Get(missingID)
+	if err != nil {
+		return fmt.Errorf("loading missing file %q: %w", missingID, err)
+	}
+	if !missing.Missing {
+		return fmt.Errorf("%w: %q", ErrNotMissing, missingID)
+	}
+
+	target, err := s.ds.MediaFile(ctx).GetWithParticipants(targetID)
+	if err != nil {
+		return fmt.Errorf("loading target file %q: %w", targetID, err)
+	}
+	if target.Missing {
+		return fmt.Errorf("%w: %q", ErrTargetMissing, targetID)
+	}
+
+	oldAlbumID, newAlbumID := missing.AlbumID, target.AlbumID
+
+	// Mirrors scanner.phaseMissingTracks.moveMatched: move the missing track's identity
+	// (ID, annotations and references) onto the file found at the new location.
+	err = s.ds.WithTx(func(tx model.DataStore) error {
+		discardedID := target.ID
+
+		// Preserve the original created_at so the remapped track doesn't resurface in "Recently Added"
+		target.CreatedAt = missing.CreatedAt
+		target.ID = missing.ID
+		if err := tx.MediaFile(ctx).Put(target); err != nil {
+			return fmt.Errorf("update matched track: %w", err)
+		}
+		// Discard the target's original row
+		if err := tx.MediaFile(ctx).Delete(discardedID); err != nil {
+			return fmt.Errorf("delete discarded track: %w", err)
+		}
+
+		if oldAlbumID != newAlbumID {
+			// Reassign album annotations (starred, rating) if the old album is now empty
+			oldAlbumTracks, err := tx.MediaFile(ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": oldAlbumID}})
+			if err != nil {
+				return fmt.Errorf("get old album tracks: %w", err)
+			}
+			if oldAlbumTracks == 0 {
+				if err := tx.Album(ctx).ReassignAnnotation(oldAlbumID, newAlbumID); err != nil {
+					return fmt.Errorf("reassign album annotations: %w", err)
+				}
+				// Copy across the create_at timestamp from the old album
+				if err := tx.Album(ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil && !errors.Is(err, model.ErrNotFound) {
+					return fmt.Errorf("copy album attributes: %w", err)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error(ctx, "Error remapping missing file", "missing", missing.Path, "target", target.Path, err)
+		return err
+	}
+
+	// Clean up now-orphaned records and refresh affected statistics, mirroring deleteMissing
+	if err := s.ds.GC(ctx); err != nil {
+		log.Error(ctx, "Error running GC after remapping missing file", err)
+		return err
+	}
+
+	// Refresh artist stats
+	if _, err := s.ds.Artist(ctx).RefreshStats(true); err != nil {
+		log.Error(ctx, "Error refreshing artist stats after deleting missing files", err)
+	} else {
+		log.Debug(ctx, "Successfully refreshed artist stats after deleting missing files")
+	}
+
+	// Refresh album stats if we have affected albums
+	affectedAlbumIDs := slice.Unique(slice.Filter([]string{oldAlbumID, newAlbumID}, func(id string) bool { return id != "" }))
+	if len(affectedAlbumIDs) > 0 {
+		if err := s.refreshAlbums(ctx, affectedAlbumIDs); err != nil {
+			log.Error(ctx, "Error refreshing album stats after deleting missing files", err)
+		} else {
+			log.Debug(ctx, "Successfully refreshed album stats after deleting missing files", "count", len(affectedAlbumIDs))
+		}
+	}
+
+	return nil
 }
 
 // deleteMissing handles the deletion of missing files and triggers necessary cleanup operations
@@ -68,7 +170,8 @@ func (s *maintenanceService) deleteMissing(ctx context.Context, ids []string) er
 		return err
 	}
 
-	// Refresh statistics in background
+	// Refresh statistics in background. album/artist play count aggregates are not recalculated
+	// here; they are refreshed by the next scan.
 	s.refreshStatsAsync(ctx, affectedAlbumIDs)
 
 	return nil
