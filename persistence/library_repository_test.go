@@ -52,6 +52,26 @@ var _ = Describe("LibraryRepository", func() {
 			})
 		})
 
+		Context("when colsToUpdate is specified", func() {
+			It("only writes the requested columns", func() {
+				lib := &model.Library{
+					Name:            "Original Library",
+					Path:            "/music/original",
+					RemotePath:      "/remote/original",
+					DefaultNewUsers: true,
+				}
+				Expect(repo.Put(lib)).To(Succeed())
+
+				Expect(repo.Put(&model.Library{ID: lib.ID, Name: "Renamed", Path: lib.Path}, "name", "path")).To(Succeed())
+
+				saved, err := repo.Get(lib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(saved.Name).To(Equal("Renamed"))
+				Expect(saved.RemotePath).To(Equal("/remote/original"))
+				Expect(saved.DefaultNewUsers).To(BeTrue())
+			})
+		})
+
 		Context("when ID is non-zero and record exists", func() {
 			It("updates the existing record", func() {
 				// First create a library

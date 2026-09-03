@@ -74,12 +74,12 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
-	Describe("GetAllIDs", func() {
+	Describe("getAllIDs", func() {
 		It("returns the same id set as GetAll", func() {
 			want, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
-			ids, err := repo.GetAllIDs()
+			ids, err := repo.(*playlistRepository).getAllIDs()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf(slice.Map(want, func(p model.Playlist) string { return p.ID })))
 		})

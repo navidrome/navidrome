@@ -18,6 +18,10 @@ type Artwork struct {
 
 const ImageTypePrimary = "primary"
 
+// ArtworkSourceFailed is a pseudo-source selecting absent states that exhausted the retry budget
+// rather than being answered. The "!" keeps it from colliding with a stored source value.
+const ArtworkSourceFailed = "!failed"
+
 // ItemImage is per-entity artwork state hydrated at query time; never persisted.
 type ItemImage struct {
 	ImageHash   string `structs:"-" json:"imageHash,omitempty"`
@@ -88,11 +92,12 @@ func (i ItemArtworkInfo) Image() ItemImage {
 }
 
 type ArtworkQueueItem struct {
-	ItemKind   string    `structs:"item_kind"`
-	ItemID     string    `structs:"item_id"`
-	ImageType  string    `structs:"image_type"`
-	Priority   int       `structs:"priority"`
-	Attempts   int       `structs:"attempts"`
+	ItemKind  string `structs:"item_kind"`
+	ItemID    string `structs:"item_id"`
+	ImageType string `structs:"image_type"`
+	Priority  int    `structs:"priority"`
+	Attempts  int    `structs:"attempts"`
+	// RetryAt is the earliest time the drain may take this row, not when it will run.
 	RetryAt    time.Time `structs:"retry_at"`
 	EnqueuedAt time.Time `structs:"enqueued_at"`
 	// Trace is why the last attempt failed. Only Get reads it; the drain projects it away.
@@ -101,7 +106,9 @@ type ArtworkQueueItem struct {
 
 // Queue priorities: higher drains first.
 const (
-	ArtworkPriorityRecheck  = 0
+	ArtworkPriorityRecheck = 0
+	// ArtworkPriorityBackfill sits between the hourly sweep and scan-driven work. Nothing enqueues
+	// it today; it stays named so a row still carrying it can be reported and cancelled.
 	ArtworkPriorityBackfill = 10
 	ArtworkPriorityScan     = 50
 	ArtworkPriorityBump     = 100
@@ -134,15 +141,13 @@ type ArtworkQueueRepository interface {
 	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a
 	// request-triggered read-through never resets a failed resolution's backoff.
 	EnqueuePreservingBackoff(items ...ArtworkQueueItem) error
-	// EnqueueStaleAbsent inserts queue rows (priority Recheck) for absent states older than cutoff, oldest
-	// first; limit caps the selection, so already-queued rows use up budget (backpressure when the drain stalls).
-	EnqueueStaleAbsent(kind Kind, attemptedBefore time.Time, limit int) (int64, error)
 	// EnqueueAllMissing inserts queue rows for all entities with no item_artwork row, at the given priority.
 	EnqueueAllMissing(kind Kind, priority int) (int64, error)
 	// EnqueueIfMissing inserts only for items with no item_artwork row yet.
 	EnqueueIfMissing(items ...ArtworkQueueItem) error
 	// CountBySource reports how many items of a kind currently resolve from the given sources.
-	// An empty sources slice means every source; "" matches absent state.
+	// An empty sources slice means every source; "" matches absent state, and the pseudo-source
+	// ArtworkSourceFailed matches the absent states that gave up.
 	CountBySource(kind Kind, sources []string) (int64, error)
 	// SourcesInUse lists the distinct sources items of a kind currently resolve from, "" included.
 	SourcesInUse(kind Kind) ([]string, error)
@@ -161,9 +166,6 @@ type ArtworkQueueRepository interface {
 	// CountQueued reports the pending rows matching the kinds and priorities, grouped by both;
 	// an empty filter means every one.
 	CountQueued(kinds []Kind, priorities []int) ([]ArtworkQueueStat, error)
-	// CountAbsent reports the absent states of a kind, and how many are past the given cutoff,
-	// eligible for EnqueueStaleAbsent (which drains them limit rows per call).
-	CountAbsent(kind Kind, attemptedBefore time.Time) (ArtworkAbsentStat, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
 	PurgeDangling() (int64, error)
 	// PurgeQueued removes pending rows matching the kinds and priorities; an empty filter means every one.
@@ -174,9 +176,4 @@ type ArtworkQueueStat struct {
 	ItemKind string
 	Priority int
 	Count    int64
-}
-
-type ArtworkAbsentStat struct {
-	Total int64
-	Stale int64
 }

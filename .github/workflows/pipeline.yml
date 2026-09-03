@@ -137,8 +137,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Test
-        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v $(go list ./... | grep -v '/plugins$')
+      # Name must stay unique across the workflow: octocov matches step names
+      # by name across every job, and waits for each match to finish.
+      - name: Test with coverage
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v -covermode=atomic -coverprofile=coverage.out $(go list ./... | grep -v '/plugins$')
 
       - name: Test ndpgen
         run: |
@@ -146,6 +148,13 @@ jobs:
           go test -shuffle=on -v
           go build -o ndpgen .
           ./ndpgen --help
+
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-go
+          path: coverage.out
+          if-no-files-found: error
 
   go-plugins:
     name: Test Go plugins
@@ -169,7 +178,54 @@ jobs:
           restore-keys: wazero-${{ runner.os }}-
 
       - name: Test plugins
-        run: go tool ginkgo -p -race -tags netgo,sqlite_fts5 ./plugins/
+        run: go tool ginkgo -p -race -tags netgo,sqlite_fts5 --cover --covermode=atomic --coverprofile=coverage.out --output-dir=. ./plugins/
+
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-plugins
+          path: coverage.out
+          if-no-files-found: error
+
+  coverage:
+    name: Report coverage
+    runs-on: ubuntu-latest
+    needs: [go, go-plugins]
+    permissions:
+      contents: read
+      actions: write
+    env:
+      COVERAGE_COMMENT: 'false'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: octocov-*
+
+      # Merge here rather than letting octocov do it: octocov reports statement
+      # coverage for a single profile, but switches to line counting for several.
+      - name: Merge coverage profiles
+        run: |
+          echo "mode: atomic" > coverage.out
+          awk 'FNR==1 && /^mode:/ {next} {k=$1" "$2; c[k]+=$3} END {for (k in c) print k, c[k]}' \
+            octocov-*/coverage.out | sort >> coverage.out
+
+      - uses: k1LoW/octocov-action@v1
+
+      - name: Save the PR number for the comment workflow
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > pr_number
+
+      - name: Upload the merged profile for the comment workflow
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-pr
+          path: |
+            coverage.out
+            pr_number
+          if-no-files-found: error
 
   go-windows:
     name: Test Go code (Windows)
@@ -237,12 +293,12 @@ jobs:
         run: go test -shuffle=on -tags netgo,sqlite_fts5 ./... -v
 
       - name: Test ndpgen
-        shell: pwsh
+        shell: bash
         run: |
-          cd plugins\cmd\ndpgen
+          cd plugins/cmd/ndpgen
           go test -shuffle=on -v
           go build -o ndpgen.exe .
-          .\ndpgen.exe --help
+          ./ndpgen.exe --help
 
   js:
     name: Test JS code

@@ -118,10 +118,6 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 	}
 }
 
-// requestRecheckAge throttles view-triggered rechecks so reopening a genuinely-absent page can't
-// hammer external services; below StaleAbsentAge to catch younger absences.
-const requestRecheckAge = time.Hour
-
 func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
 	ia, err := s.ds.Artwork(ctx).GetItemArtwork(artID.Kind, artID.ID, model.ImageTypePrimary)
 	switch {
@@ -130,10 +126,7 @@ func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size i
 	case err != nil:
 		return nil, err
 	case ia.Hash == "":
-		// Inserts an immediately-eligible recheck for a settled absent row.
-		if time.Since(ia.AttemptedAt) > requestRecheckAge {
-			s.enqueue(ctx, artID, model.ArtworkPriorityBump)
-		}
+		// Settled absent: only an explicit reprocess or refresh retries it.
 		return nil, ErrUnavailable
 	default:
 		return s.serveHash(ctx, artID, ia, size, square)
