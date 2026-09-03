@@ -26,6 +26,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -95,9 +96,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		log.Trace(ctx, "No users found, skipping Insights data collection")
 		return
 	}
-	hc := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	data := c.collect(ctx)
 	if data == nil {
 		return
@@ -199,7 +198,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	// Config info
 	data.Config.LogLevel = conf.Server.LogLevel
 	data.Config.LogFileConfigured = conf.Server.LogFile != ""
-	data.Config.TLSConfigured = conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
+	data.Config.TLSConfigured = conf.Server.TLSEnabled()
 	data.Config.DefaultBackgroundURLSet = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
 	data.Config.EnableArtworkUpload = conf.Server.EnableArtworkUpload

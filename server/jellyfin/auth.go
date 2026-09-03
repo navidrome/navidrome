@@ -36,7 +36,7 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		log.Error(ctx, "Jellyfin API: could not update last login date", "username", body.Username, err)
 	}
 
-	token, err := auth.CreateToken(usr)
+	token, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

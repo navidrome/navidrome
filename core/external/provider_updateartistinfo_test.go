@@ -37,7 +37,7 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)
 		ag = new(mockAgents)
-		p = external.NewProvider(ds, ag, matcher.New(ds))
+		p = external.NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
 		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
 	})
 
@@ -101,6 +101,25 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 		Expect(updatedArtist.SimilarArtists[0].ID).To(Equal("ar-similar-2"))
 		Expect(updatedArtist.SimilarArtists[0].Name).To(Equal("Similar Artist 2"))
 
+		ag.AssertExpectations(GinkgoT())
+	})
+
+	// Stamping a throttled round would cache the empty result for the whole TTL.
+	It("does not stamp ExternalInfoUpdatedAt when the agents are throttled", func() {
+		originalArtist := &model.Artist{ID: "ar-throttled", Name: "Throttled Artist"}
+		mockArtistRepo.SetData(model.Artists{*originalArtist})
+
+		ag.On("GetArtistMBID", ctx, "ar-throttled", "Throttled Artist").Return("", agents.ErrRetryLater).Once()
+		ag.On("GetArtistImages", ctx, "ar-throttled", "Throttled Artist", "").Return(nil, agents.ErrRetryLater).Once()
+		ag.On("GetArtistBiography", ctx, "ar-throttled", "Throttled Artist", "").Return("", agents.ErrRetryLater).Once()
+		ag.On("GetArtistURL", ctx, "ar-throttled", "Throttled Artist", "").Return("", agents.ErrRetryLater).Once()
+		ag.On("GetSimilarArtists", ctx, "ar-throttled", "Throttled Artist", "", 100).Return(nil, agents.ErrRetryLater).Once()
+
+		updatedArtist, err := p.UpdateArtistInfo(ctx, "ar-throttled", 10, false)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updatedArtist).NotTo(BeNil())
+		Expect(updatedArtist.ExternalInfoUpdatedAt).To(BeNil())
 		ag.AssertExpectations(GinkgoT())
 	})
 

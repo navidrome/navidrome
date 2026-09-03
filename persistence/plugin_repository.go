@@ -141,31 +141,5 @@ func (r *pluginRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
-func (r *pluginRepository) Save(entity any) (string, error) {
-	p := entity.(*model.Plugin)
-	if !r.isPermitted() {
-		return "", rest.ErrPermissionDenied
-	}
-	err := r.Put(p)
-	if errors.Is(err, model.ErrNotFound) {
-		return "", rest.ErrNotFound
-	}
-	return p.ID, err
-}
-
-func (r *pluginRepository) Update(id string, entity any, cols ...string) error {
-	p := entity.(*model.Plugin)
-	p.ID = id
-	if !r.isPermitted() {
-		return rest.ErrPermissionDenied
-	}
-	err := r.Put(p)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
-}
-
 var _ model.PluginRepository = (*pluginRepository)(nil)
 var _ rest.Repository = (*pluginRepository)(nil)
-var _ rest.Persistable = (*pluginRepository)(nil)

@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
@@ -113,6 +114,29 @@ func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQu
 		}
 	}
 	return nil
+}
+
+// visibilityPlaylistDS models playlist_repository's userFilter: a private playlist is only
+// visible when the ctx carries an admin, so headless work must wrap ctx with one first.
+type visibilityPlaylistDS struct {
+	*tests.MockDataStore
+	private model.Playlist
+	tracks  model.PlaylistTrackRepository
+}
+
+func (v *visibilityPlaylistDS) Playlist(ctx context.Context) model.PlaylistRepository {
+	repo := tests.CreateMockPlaylistRepo()
+	repo.TracksRepo = v.tracks
+	if u, ok := request.UserFrom(ctx); ok && u.IsAdmin {
+		repo.SetData(model.Playlists{v.private})
+	}
+	return repo
+}
+
+func adminUserRepo() *tests.MockedUserRepo {
+	repo := tests.CreateMockUserRepo()
+	Expect(repo.Put(&model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
+	return repo
 }
 
 var _ = Describe("Worker", func() {
@@ -243,6 +267,23 @@ var _ = Describe("Worker", func() {
 
 			_, err = artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
+		})
+
+		It("reschedules past the provider's requested delay when it exceeds the backoff", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
+			// Well above backoff(0)'s jittered ceiling, so only the hint can produce this retry_at.
+			const askedFor = 90 * time.Minute
+			imageAgents(&fakeImageAgent{name: "throttledAgent", err: &agents.RetryLaterError{RetryIn: askedFor}})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			it := findQueued(queueRepo, "al", "al9")
+			Expect(it).ToNot(BeNil())
+			Expect(it.RetryAt).To(BeTemporally("~", time.Now().Add(askedFor), time.Minute))
 		})
 
 		It("reschedules a found-stale item via MarkFailed while keeping its served state", func() {
@@ -424,9 +465,9 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "recording the failure must not disturb the served art")
 		})
 
-		// Media files are excluded from RecheckKinds, so an absent row here would never be
-		// revisited: a transient read error would look permanent.
-		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
+		// Only a view enqueues a media file, and an absent row is exactly what stops a view from
+		// doing so: a transient read error would look permanent.
+		It("does not settle absent on exhaustion for a media file", func() {
 			conf.Server.EnableMediaFileCoverArt = true
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
@@ -909,5 +950,21 @@ var _ = Describe("backoff", func() {
 			Expect(d).To(BeNumerically(">=", lo))
 			Expect(d).To(BeNumerically("<=", hi))
 		}
+	})
+})
+
+var _ = Describe("retryDelay", func() {
+	It("uses the backoff schedule when the provider asked for nothing", func() {
+		d := retryDelay(0, 0)
+		Expect(d).To(BeNumerically(">=", 3*time.Second))
+		Expect(d).To(BeNumerically("<=", 7*time.Second))
+	})
+
+	It("waits the provider's delay when it is longer than the backoff", func() {
+		Expect(retryDelay(0, time.Hour)).To(Equal(time.Hour))
+	})
+
+	It("keeps the backoff when it is longer than the provider's delay", func() {
+		Expect(retryDelay(4, time.Second)).To(BeNumerically(">=", 3*time.Second))
 	})
 })
