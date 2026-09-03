@@ -316,6 +316,12 @@ var currentGOOS = func() string {
 	return runtime.GOOS
 }
 
+// TLSEnabled reports whether the server serves HTTPS. Both halves are required,
+// so callers cannot infer it from the certificate alone.
+func (c *configOptions) TLSEnabled() bool {
+	return c.TLSCert != "" && c.TLSKey != ""
+}
+
 var (
 	Server = &configOptions{}
 	hooks  []func()
@@ -344,6 +350,13 @@ func LoadFromFile(confFile string) {
 		logFatal("Error reading config file:", err)
 	}
 	Load(true)
+}
+
+func durationNonNegativeOrDefault(val *time.Duration, original time.Duration) {
+	if val.Nanoseconds() < 0 {
+		log.Warn("Duration is a negative value. Using default value", "value", *val, "default", original)
+		*val = original
+	}
 }
 
 func Load(noConfigDump bool) {
@@ -412,6 +425,20 @@ func Load(noConfigDump bool) {
 	log.SetLogLevels(Server.DevLogLevels)
 	log.SetLogSourceLine(Server.DevLogSourceLine)
 	log.SetRedacting(Server.EnableLogRedacting)
+
+	durationNonNegativeOrDefault(&Server.SessionTimeout, consts.DefaultSessionTimeout)
+	durationNonNegativeOrDefault(&Server.SmartPlaylistRefreshDelay, consts.DefaultSmartRefresh)
+	durationNonNegativeOrDefault(&Server.DefaultShareExpiration, consts.DefaultShareExpiration)
+	durationNonNegativeOrDefault(&Server.UIPlaybackReportInterval, consts.DefaultUIPlaybackReportInterval)
+	durationNonNegativeOrDefault(&Server.AuthWindowLength, consts.DefaultAuthWindowLength)
+	durationNonNegativeOrDefault(&Server.Scanner.WatcherWait, consts.DefaultWatcherWait)
+
+	durationNonNegativeOrDefault(&Server.DevActivityPanelUpdateRate, consts.DefaultActivityPanelUpdateRate)
+	durationNonNegativeOrDefault(&Server.DevArtworkThrottleBacklogTimeout, consts.RequestThrottleBacklogTimeout)
+	durationNonNegativeOrDefault(&Server.DevArtistInfoTimeToLive, consts.ArtistInfoTimeToLive)
+	durationNonNegativeOrDefault(&Server.DevAlbumInfoTimeToLive, consts.AlbumInfoTimeToLive)
+	durationNonNegativeOrDefault(&Server.DevInsightsInitialDelay, consts.InsightsInitialDelay)
+	durationNonNegativeOrDefault(&Server.DevPluginCompilationTimeout, consts.DefaultPluginCompilationTimeout)
 
 	// Log deprecated, removed and unknown options
 	for _, o := range deprecatedOptions {
@@ -968,7 +995,7 @@ func setViperDefaults() {
 	viper.SetDefault("autoimportplaylists", true)
 	viper.SetDefault("defaultplaylistpublicvisibility", false)
 	viper.SetDefault("playlistspath", "")
-	viper.SetDefault("smartPlaylistRefreshDelay", 5*time.Second)
+	viper.SetDefault("smartPlaylistRefreshDelay", consts.DefaultSmartRefresh)
 	viper.SetDefault("enabledownloads", true)
 	viper.SetDefault("enableexternalservices", true)
 	viper.SetDefault("enablem3uexternalalbumart", false)
@@ -1012,14 +1039,14 @@ func setViperDefaults() {
 	viper.SetDefault("maximagesize", consts.DefaultMaxImageSize)
 	viper.SetDefault("enablesharing", true)
 	viper.SetDefault("shareurl", "")
-	viper.SetDefault("defaultshareexpiration", 8760*time.Hour)
+	viper.SetDefault("defaultshareexpiration", consts.DefaultShareExpiration)
 	viper.SetDefault("defaultdownloadableshare", false)
 	viper.SetDefault("gatrackingid", "")
 	viper.SetDefault("enableinsightscollector", true)
 	viper.SetDefault("enablescheduleddbanalyze", true)
 	viper.SetDefault("enablelogredacting", true)
 	viper.SetDefault("authrequestlimit", 5)
-	viper.SetDefault("authwindowlength", 20*time.Second)
+	viper.SetDefault("authwindowlength", consts.DefaultAuthWindowLength)
 	viper.SetDefault("passwordencryptionkey", "")
 	viper.SetDefault("extauth.userheader", "Remote-User")
 	viper.SetDefault("extauth.trustedsources", "")

@@ -560,13 +560,11 @@ func (r sqlRepository) putByMatch(filter Sqlizer, id string, m any, colsToUpdate
 	return r.put(res.ID, m, colsToUpdate...)
 }
 
-// filterUpdateValues selects, from a marshaled column map, the values to write in an UPDATE on the
-// row identified by id: only the requested colsToUpdate (or all columns when none are specified),
-// dropping columns that must never be overwritten on update (created_at, birth_time).
-func filterUpdateValues(values map[string]any, id string, colsToUpdate ...string) map[string]any {
+// selectUpdateColumns keeps only the requested colsToUpdate (or all columns when none are
+// specified), dropping columns that must never be overwritten on update (created_at, birth_time).
+func selectUpdateColumns(values map[string]any, colsToUpdate ...string) map[string]any {
 	updateValues := map[string]any{}
 
-	// This is a map of the columns that need to be updated, if specified
 	c2upd := slice.ToMap(colsToUpdate, func(s string) (string, struct{}) {
 		return toSnakeCase(s), struct{}{}
 	})
@@ -576,11 +574,16 @@ func filterUpdateValues(values map[string]any, id string, colsToUpdate ...string
 		}
 	}
 
-	updateValues["id"] = id
 	delete(updateValues, "created_at")
 	// To avoid updating the media_file birth_time on each scan. Not the best solution, but it works for now
 	// TODO move to mediafile_repository when each repo has its own upsert method
 	delete(updateValues, "birth_time")
+	return updateValues
+}
+
+func filterUpdateValues(values map[string]any, id string, colsToUpdate ...string) map[string]any {
+	updateValues := selectUpdateColumns(values, colsToUpdate...)
+	updateValues["id"] = id
 	return updateValues
 }
 

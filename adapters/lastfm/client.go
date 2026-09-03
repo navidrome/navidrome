@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,11 +15,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 )
 
 const (
 	apiBaseUrl = "https://ws.audioscrobbler.com/2.0/"
+	// errCodeRateLimit is Last.fm's "rate limit exceeded"; it arrives in the body, with HTTP 200
+	// and no rate-limit headers, so the body code is the only signal.
+	errCodeRateLimit = 29
 )
 
 type lastFMError struct {
@@ -229,7 +234,11 @@ func (c *client) makeRequest(ctx context.Context, method string, params url.Valu
 		return nil, jsonErr
 	}
 	if response.Error != 0 {
-		return &response, &lastFMError{Code: response.Error, Message: response.Message}
+		var err error = &lastFMError{Code: response.Error, Message: response.Message}
+		if response.Error == errCodeRateLimit {
+			err = errors.Join(err, &agents.RetryLaterError{})
+		}
+		return &response, err
 	}
 
 	return &response, nil

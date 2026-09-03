@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"io"
@@ -95,6 +96,9 @@ type breaker struct {
 	// generation identifies the current open episode, so an answer from a call admitted before
 	// the breaker opened cannot be mistaken for evidence that it has recovered.
 	generation int
+	// probeAfter overrides the probe delay for the current episode when a provider named its own
+	// back-off; zero falls back to breakerProbeAfter.
+	probeAfter time.Duration
 }
 
 func newBreaker() *breaker { return &breaker{} }
@@ -107,7 +111,7 @@ func (b *breaker) allow() (bool, int) {
 	if b.failures < breakerThreshold {
 		return true, 0
 	}
-	if time.Since(b.openedAt) >= breakerProbeAfter {
+	if time.Since(b.openedAt) >= cmp.Or(b.probeAfter, breakerProbeAfter) {
 		b.openedAt = time.Now() // start a fresh probe window so only one caller passes
 		return true, b.generation
 	}
@@ -121,11 +125,24 @@ func (b *breaker) record(name string, gen int, err error) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	// An explicit back-off is a definitive "stop for this long", so it opens the breaker at once
+	// with the provider's own delay instead of waiting for the failure threshold.
+	if retry, ok := errors.AsType[*agents.RetryLaterError](err); ok && retry.RetryIn > 0 {
+		b.recoveries = 0
+		b.failures = breakerThreshold
+		b.openedAt = time.Now()
+		b.probeAfter = retry.RetryIn
+		b.generation++
+		log.Warn("Artwork: Circuit breaker opened for agent, provider asked to back off", "agent", name,
+			"probeAfter", retry.RetryIn)
+		return
+	}
 	if isTransientExternal(err) {
 		b.recoveries = 0
 		b.failures++
 		if b.failures == breakerThreshold {
 			b.openedAt = time.Now()
+			b.probeAfter = 0
 			b.generation++
 			log.Warn("Artwork: Circuit breaker opened for agent", "agent", name,
 				"consecutiveFailures", b.failures, "probeAfter", breakerProbeAfter, err)

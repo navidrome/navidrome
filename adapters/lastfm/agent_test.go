@@ -100,6 +100,15 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("U2"))
 		})
+
+		It("returns ErrRetryLater on error 29 (rate limit exceeded)", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"error":29,"message":"Rate limit exceeded"}`)),
+				StatusCode: 200,
+			}
+			_, err := agent.GetArtistBiography(ctx, "123", "U2", "")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+		})
 	})
 
 	Describe("Language Fallback", func() {
@@ -517,6 +526,16 @@ var _ = Describe("lastfmAgent", func() {
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+
+			It("returns ErrRetryLater on error 29 (rate limit exceeded)", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":29,"message":"Rate limit exceeded"}`)),
+					StatusCode: 200,
+				}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+				Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
 			})
 
 			It("returns ErrRetryLater on http errors", func() {
