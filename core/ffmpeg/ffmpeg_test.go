@@ -83,7 +83,7 @@ var _ = Describe("ffmpeg", func() {
 
 	Describe("isDefaultCommand", func() {
 		It("returns true for known default mp3 command", func() {
-			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -f mp3 -")).To(BeTrue())
+			Expect(isDefaultCommand("mp3", "ffmpeg -ss %t -i %s -map 0:a:0 -map 0:v:0? -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:v copy -disposition:v attached_pic -f mp3 -")).To(BeTrue())
 		})
 		It("returns true for known default opus command", func() {
 			Expect(isDefaultCommand("opus", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a libopus -f opus -")).To(BeTrue())
@@ -92,7 +92,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(isDefaultCommand("aac", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -b:a %bk -v 0 -c:a aac -f adts -")).To(BeTrue())
 		})
 		It("returns true for known default flac command", func() {
-			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -f flac -")).To(BeTrue())
+			Expect(isDefaultCommand("flac", "ffmpeg -ss %t -i %s -map 0:a:0 -map 0:v:0? -map_metadata 0 -map_metadata 0:s:a:0 -v 0 -c:a flac -c:v copy -disposition:v attached_pic -f flac -")).To(BeTrue())
 		})
 		It("returns false for a custom command", func() {
 			Expect(isDefaultCommand("mp3", "ffmpeg -i %s -b:a %bk -custom-flag -f mp3 -")).To(BeFalse())
@@ -114,6 +114,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.flac",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "256k",
@@ -134,6 +135,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.dsf",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "flac",
 				"-ar", "48000",
@@ -161,6 +163,20 @@ var _ = Describe("ffmpeg", func() {
 			}))
 		})
 
+		It("does not map cover art for muxers that reject it", func() {
+			// The opus and adts muxers refuse a video stream outright, so mapping
+			// the attached picture there would break transcoding rather than
+			// preserve artwork.
+			for _, format := range []string{"opus", "aac"} {
+				args := buildDynamicArgs(TranscodeOptions{
+					Format:   format,
+					FilePath: "/music/file.flac",
+					BitRate:  128,
+				})
+				Expect(strings.Join(args, " ")).ToNot(ContainSubstring("0:v:0?"), format)
+			}
+		})
+
 		It("includes offset when specified", func() {
 			args := buildDynamicArgs(TranscodeOptions{
 				Format:   "mp3",
@@ -173,6 +189,7 @@ var _ = Describe("ffmpeg", func() {
 				"-ss", "30",
 				"-i", "/music/file.mp3",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "libmp3lame",
 				"-b:a", "192k",
@@ -209,6 +226,7 @@ var _ = Describe("ffmpeg", func() {
 			Expect(args).To(Equal([]string{
 				"ffmpeg", "-i", "/music/file.dsf",
 				"-map", "0:a:0",
+				"-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic",
 				"-map_metadata", "0", "-map_metadata", "0:s:a:0",
 				"-c:a", "flac",
 				"-sample_fmt", "s32",

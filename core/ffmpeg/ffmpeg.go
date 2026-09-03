@@ -441,6 +441,14 @@ var formatOutputMap = map[string]string{
 	"flac": "flac",
 }
 
+// formatKeepsCoverArt lists the target formats whose muxer accepts an attached
+// picture. opus ("Unsupported codec id in stream 1") and adts ("adts muxer does
+// not support any stream of type video") reject one, so artwork is dropped there.
+var formatKeepsCoverArt = map[string]bool{
+	"mp3":  true,
+	"flac": true,
+}
+
 // defaultCommands is used to detect whether a user has customized their transcoding command.
 var defaultCommands = func() map[string]string {
 	m := make(map[string]string, len(consts.DefaultTranscodings))
@@ -467,6 +475,14 @@ func buildDynamicArgs(opts TranscodeOptions) []string {
 
 	args = append(args, "-i", opts.FilePath)
 	args = append(args, "-map", "0:a:0")
+
+	// Carry over embedded cover art, when the source has any. The trailing "?"
+	// keeps the mapping optional so sources without artwork still transcode.
+	// Only mp3 and flac: the opus muxer rejects the mjpeg stream and adts
+	// refuses any video stream, so mapping it there breaks transcoding outright.
+	if formatKeepsCoverArt[opts.Format] {
+		args = append(args, "-map", "0:v:0?", "-c:v", "copy", "-disposition:v", "attached_pic")
+	}
 
 	// Preserve source tags. -map_metadata 0 copies format-level tags (MP3/FLAC);
 	// -map_metadata 0:s:a:0 copies tags from the first audio stream (OPUS/OGG).
