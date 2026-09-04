@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import { Chip, Link, TableCell, TableRow } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, usePermissions, useTranslate } from 'react-admin'
+import { DateField } from './DateField'
 
 const OUTCOME_COLORS = {
   hit: '#4caf50',
@@ -96,7 +97,7 @@ export const ArtworkInfo = ({ resource, id }) => {
 
   if (!isAdmin || !report) return null
 
-  const recorded = report.chainOrigin !== 'not recorded'
+  const recorded = !!report.stored
   return (
     <>
       <TableRow>
@@ -109,7 +110,7 @@ export const ArtworkInfo = ({ resource, id }) => {
         <>
           <Row label={translate('artwork.source')}>{report.stored?.source}</Row>
           <Row label={translate('artwork.attemptedAt')}>
-            {report.stored?.attemptedAt}
+            <DateField record={report.stored} source="attemptedAt" showTime />
           </Row>
         </>
       ) : (
@@ -141,16 +142,21 @@ export const ArtworkInfo = ({ resource, id }) => {
             title={translate('artwork.gaveUpAfter')}
             steps={report.gaveUpAfter}
           />
+          {report.stored?.sourcePath && (
+            <Row label={translate('artwork.sourcePath')}>
+              {report.stored.sourcePath}
+            </Row>
+          )}
           {report.queued && (
             <>
               <Row label={translate('artwork.priority')}>
-                {report.queued.priority}
+                {report.queued.priorityName}
               </Row>
               <Row label={translate('artwork.attempts')}>
                 {report.queued.attempts}
               </Row>
               <Row label={translate('artwork.retryAt')}>
-                {report.queued.retryAt}
+                <DateField record={report.queued} source="retryAt" showTime />
               </Row>
             </>
           )}

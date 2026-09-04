@@ -92,6 +92,16 @@ var _ = Describe("FormatAgents", func() {
 	})
 })
 
+var _ = Describe("PriorityName", func() {
+	It("names a known priority", func() {
+		Expect(artwork.PriorityName(model.ArtworkPriorityScan)).To(Equal("scan"))
+	})
+
+	It("falls back to the number for an unknown priority", func() {
+		Expect(artwork.PriorityName(999)).To(Equal("999"))
+	})
+})
+
 var _ = Describe("Explain", func() {
 	var ds *tests.MockDataStore
 	var artRepo *tests.MockArtworkRepo

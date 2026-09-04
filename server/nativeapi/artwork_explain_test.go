@@ -95,7 +95,6 @@ var _ = Describe("GET /artwork/explain", func() {
 
 		Expect(got["stored"]).To(Equal(map[string]any{
 			"source":      "external:deezer",
-			"hash":        "abc",
 			"sourcePath":  "/music/Radiohead/folder.jpg",
 			"attemptedAt": attemptedAt.Format(time.RFC3339),
 		}))
@@ -128,9 +127,10 @@ var _ = Describe("GET /artwork/explain", func() {
 		var got map[string]any
 		Expect(json.Unmarshal(w.Body.Bytes(), &got)).To(Succeed())
 		Expect(got["queued"]).To(Equal(map[string]any{
-			"priority": float64(model.ArtworkPriorityScan),
-			"attempts": float64(1),
-			"retryAt":  retryAt.Format(time.RFC3339),
+			"priority":     float64(model.ArtworkPriorityScan),
+			"priorityName": "scan",
+			"attempts":     float64(1),
+			"retryAt":      retryAt.Format(time.RFC3339),
 		}))
 		Expect(got["lastAttemptFailed"]).To(Equal([]any{
 			map[string]any{"candidate": "external:deezer", "outcome": "error", "detail": "timeout"},

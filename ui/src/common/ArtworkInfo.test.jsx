@@ -22,7 +22,11 @@ vi.mock('react-admin', async (importOriginal) => {
 const report = {
   result: 'resolved from external:deezer',
   chainOrigin: 'recorded 2026-09-01T10:00:00Z',
-  stored: { source: 'external:deezer', attemptedAt: '2026-09-01T10:00:00Z' },
+  stored: {
+    source: 'external:deezer',
+    sourcePath: '/music/Radiohead/folder.jpg',
+    attemptedAt: '2026-09-01T10:00:00Z',
+  },
   steps: [
     { candidate: 'cover.*', outcome: 'miss' },
     {
@@ -31,6 +35,7 @@ const report = {
       detail: 'https://cdn/x.jpg',
     },
   ],
+  queued: { priority: 20, priorityName: 'scan', attempts: 1, retryAt: '' },
   config: { setting: 'ArtistArtPriority', value: 'external' },
 }
 
@@ -74,6 +79,8 @@ describe('<ArtworkInfo />', () => {
     await userEvent.click(screen.getByText('artwork.showDetails'))
     expect(screen.getByText('cover.*')).toBeInTheDocument()
     expect(screen.getByText('ArtistArtPriority:')).toBeInTheDocument()
+    expect(screen.getByText('/music/Radiohead/folder.jpg')).toBeInTheDocument()
+    expect(screen.getByText('scan')).toBeInTheDocument()
   })
 
   it('shows the not-recorded state', async () => {

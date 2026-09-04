@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -264,7 +263,7 @@ func configState(rep statusReport) string {
 func printQueueStats(w io.Writer, stats []model.ArtworkQueueStat, total int64, countHeader, indent string) {
 	fmt.Fprintf(w, "%sKIND\tPRIORITY\t%s\n", indent, countHeader)
 	for _, s := range stats {
-		fmt.Fprintf(w, "%s%s\t%s\t%d\n", indent, kindName(s.ItemKind), priorityName(s.Priority), s.Count)
+		fmt.Fprintf(w, "%s%s\t%s\t%d\n", indent, kindName(s.ItemKind), artwork.PriorityName(s.Priority), s.Count)
 	}
 	fmt.Fprintf(w, "%sTOTAL\t\t%d\n", indent, total)
 }
@@ -276,37 +275,14 @@ func kindName(prefix string) string {
 	return prefix
 }
 
-type artworkPriority struct {
-	name  string
-	value int
-}
-
-// knownPriorities is the one listing behind both the name and the parse, so they cannot drift.
-var knownPriorities = []artworkPriority{
-	{"bump", model.ArtworkPriorityBump},
-	{"scan", model.ArtworkPriorityScan},
-	{"recheck", model.ArtworkPriorityRecheck},
-	{"backfill", model.ArtworkPriorityBackfill},
-}
-
-// priorityName falls back to the number: a row written by a newer version still has to print.
-func priorityName(p int) string {
-	for _, ap := range knownPriorities {
-		if ap.value == p {
-			return ap.name
-		}
-	}
-	return strconv.Itoa(p)
-}
-
 func priorityNames() string {
-	return strings.Join(slice.Map(knownPriorities, func(ap artworkPriority) string { return ap.name }), ", ")
+	return strings.Join(slice.Map(artwork.KnownPriorities, func(ap artwork.Priority) string { return ap.Name }), ", ")
 }
 
 func parseArtworkPriority(s string) (int, error) {
-	for _, ap := range knownPriorities {
-		if ap.name == s {
-			return ap.value, nil
+	for _, ap := range artwork.KnownPriorities {
+		if ap.Name == s {
+			return ap.Value, nil
 		}
 	}
 	return 0, fmt.Errorf("invalid priority %q, expected one of: %s", s, priorityNames())
@@ -801,7 +777,7 @@ func formatExplain(rep artwork.ExplainReport) string {
 	case rep.Queued == nil:
 		fmt.Fprintln(w, "  (not queued)")
 	default:
-		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", priorityName(rep.Queued.Priority), rep.Queued.Priority)
+		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", artwork.PriorityName(rep.Queued.Priority), rep.Queued.Priority)
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.Queued.Attempts)
 		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.Queued.RetryAt))
 	}

@@ -940,7 +940,7 @@ var _ = Describe("parseArtworkPriority", func() {
 	It("accepts every name status prints", func() {
 		for _, p := range []int{model.ArtworkPriorityRecheck, model.ArtworkPriorityBackfill,
 			model.ArtworkPriorityScan, model.ArtworkPriorityBump} {
-			Expect(parseArtworkPriority(priorityName(p))).To(Equal(p))
+			Expect(parseArtworkPriority(artwork.PriorityName(p))).To(Equal(p))
 		}
 	})
 

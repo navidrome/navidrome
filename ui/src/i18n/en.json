@@ -656,6 +656,7 @@
     "result": "Result",
     "source": "Source",
     "attemptedAt": "Attempted at",
+    "sourcePath": "Source path",
     "showDetails": "Show details",
     "hideDetails": "Hide details",
     "priority": "Priority",

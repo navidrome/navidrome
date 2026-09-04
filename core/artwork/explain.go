@@ -132,7 +132,7 @@ func Explain(ctx context.Context, ds model.DataStore, ag *agents.Agents, kind mo
 		}
 	}
 	// Set even for a kind the chain never walks, so a caller that asked to walk (e.g. --live on a
-	// playlist) is reported as having tried, matching the pre-refactor CLI's unconditional flag.
+	// playlist) is reported as having tried.
 	rep.Walked = opts.Walk != nil
 	if !Explainable(kind) {
 		return rep, nil
@@ -191,4 +191,28 @@ func (r ExplainReport) GaveUpAfter() []TraceStep {
 		return nil
 	}
 	return DecodeTrace(r.Stored.LastFailure, "")
+}
+
+// Priority names one of the queue's fixed priority levels.
+type Priority struct {
+	Name  string
+	Value int
+}
+
+// KnownPriorities is the one listing behind both the name and the parse, so they cannot drift.
+var KnownPriorities = []Priority{
+	{"bump", model.ArtworkPriorityBump},
+	{"scan", model.ArtworkPriorityScan},
+	{"recheck", model.ArtworkPriorityRecheck},
+	{"backfill", model.ArtworkPriorityBackfill},
+}
+
+// PriorityName falls back to the number: a row written by a newer version still has to print.
+func PriorityName(p int) string {
+	for _, ap := range KnownPriorities {
+		if ap.Value == p {
+			return ap.Name
+		}
+	}
+	return strconv.Itoa(p)
 }

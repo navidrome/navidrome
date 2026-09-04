@@ -28,15 +28,15 @@ type traceStepDTO struct {
 
 type storedDTO struct {
 	Source      string `json:"source"`
-	Hash        string `json:"hash,omitempty"`
 	SourcePath  string `json:"sourcePath,omitempty"`
 	AttemptedAt string `json:"attemptedAt,omitempty"`
 }
 
 type queuedDTO struct {
-	Priority int    `json:"priority"`
-	Attempts int    `json:"attempts"`
-	RetryAt  string `json:"retryAt,omitempty"`
+	Priority     int    `json:"priority"`
+	PriorityName string `json:"priorityName"`
+	Attempts     int    `json:"attempts"`
+	RetryAt      string `json:"retryAt,omitempty"`
 }
 
 type configDTO struct {
@@ -121,16 +121,16 @@ func toExplainDTO(rep artwork.ExplainReport) explainDTO {
 	if rep.Stored != nil {
 		dto.Stored = &storedDTO{
 			Source:      rep.Stored.Source,
-			Hash:        rep.Stored.Hash,
 			SourcePath:  rep.Stored.SourcePath,
 			AttemptedAt: rfc3339(rep.Stored.AttemptedAt),
 		}
 	}
 	if rep.Queued != nil {
 		dto.Queued = &queuedDTO{
-			Priority: rep.Queued.Priority,
-			Attempts: rep.Queued.Attempts,
-			RetryAt:  rfc3339(rep.Queued.RetryAt),
+			Priority:     rep.Queued.Priority,
+			PriorityName: artwork.PriorityName(rep.Queued.Priority),
+			Attempts:     rep.Queued.Attempts,
+			RetryAt:      rfc3339(rep.Queued.RetryAt),
 		}
 	}
 	if steps := rep.LastAttemptFailed(); len(steps) > 0 {
