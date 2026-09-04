@@ -122,106 +122,6 @@ var _ = Describe("resolveArtworkTargets", func() {
 	})
 })
 
-var _ = Describe("explainResult", func() {
-	It("reports the winning source", func() {
-		steps := []artwork.TraceStep{{Candidate: "folder", Outcome: "hit", Detail: "/music/a.jpg"}}
-		Expect(explainResult("folder", steps)).To(ContainSubstring("resolved from folder"))
-	})
-
-	It("reports not resolved when every candidate was tried and missed", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "artist.*", Outcome: "miss"},
-			{Candidate: "external:deezer", Outcome: "miss"},
-		}
-		Expect(explainResult("", steps)).To(Equal("not resolved"))
-	})
-
-	It("reports indeterminate when a local candidate exists but could not be read", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "cover.*", Outcome: "miss"},
-			{Candidate: "embedded", Outcome: "unreadable"},
-		}
-		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
-			"the worker retries an unreadable candidate instead of settling absent, so this is not a clean miss")
-	})
-
-	It("reports indeterminate when a processing stage errored after a candidate was found", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "cover.*", Outcome: "hit", Detail: "/music/cover.jpg"},
-			{Candidate: "store", Outcome: "error", Detail: "disk full"},
-		}
-		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
-			"a stage error is a processing failure the worker retries, not a definitive miss")
-	})
-
-	It("does not qualify a hit that an earlier unreadable candidate preceded", func() {
-		// chainState.try stamps only the external error onto a hit and drops the local one, so the
-		// worker settles this as found; warning about it would be a false alarm.
-		steps := []artwork.TraceStep{
-			{Candidate: "embedded", Outcome: "unreadable"},
-			{Candidate: "cover.*", Outcome: "hit", Detail: "/music/cover.jpg"},
-		}
-		Expect(explainResult("folder", steps)).To(Equal("resolved from folder"))
-	})
-
-	It("reports indeterminate when an external lookup failed transiently", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "artist.*", Outcome: "miss"},
-			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
-		}
-		Expect(explainResult("", steps)).To(ContainSubstring("indeterminate"),
-			"a failed network call is not evidence that the item has no artwork")
-	})
-
-	It("qualifies a win a failed higher-priority external lookup could have taken", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
-			{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"},
-		}
-		res := explainResult("artist.*", steps)
-		Expect(res).To(ContainSubstring("resolved from artist.*"))
-		Expect(res).To(ContainSubstring("indeterminate"),
-			"the resolver serves this hit but retries later, so the winner is provisional")
-	})
-
-	It("does not qualify an external win that followed a failed external lookup", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
-			{Candidate: "external:lastfm", Outcome: "hit", Detail: "http://img"},
-		}
-		Expect(explainResult("external:lastfm", steps)).To(Equal("resolved from external:lastfm"),
-			"a later agent supplying the image discards the earlier error, so there is no retry to warn about")
-	})
-
-	It("does not qualify a win that outranked the failed external lookup", func() {
-		steps := []artwork.TraceStep{
-			{Candidate: "artist.*", Outcome: "hit"},
-			{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
-		}
-		Expect(explainResult("artist.*", steps)).To(Equal("resolved from artist.*"))
-	})
-})
-
-var _ = Describe("explainAgents", func() {
-	It("accounts for every configured agent, marking the ones the CLI could not use", func() {
-		out := explainAgents("artist-nfo-metadata,apple-music,deezer,lastfm", []string{"deezer"})
-		for _, name := range []string{"artist-nfo-metadata", "apple-music", "deezer", "lastfm"} {
-			Expect(out).To(ContainSubstring(name),
-				"a configured agent missing from this line reads as if it had never been configured")
-		}
-		Expect(out).To(ContainSubstring("not available to the CLI"))
-	})
-
-	It("does not mark anything when every configured agent is available", func() {
-		out := explainAgents("deezer, lastfm", []string{"lastfm", "deezer"})
-		Expect(out).To(Equal("deezer, lastfm"))
-	})
-
-	It("reports an empty configuration as none, not as an unavailable agent", func() {
-		Expect(explainAgents("", nil)).To(Equal("(none)"))
-	})
-})
-
 var _ = Describe("formatExplain", func() {
 	var rep explainReport
 
@@ -402,25 +302,6 @@ var _ = Describe("formatExplain", func() {
 		Expect(out).To(ContainSubstring("not resolved"))
 		Expect(out).To(ContainSubstring("no artwork state recorded"), "media files do keep state")
 	})
-})
-
-var _ = Describe("explainConfig", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DiscArtPriority = "cover.jpg"
-		conf.Server.EnableMediaFileCoverArt = true
-	})
-
-	DescribeTable("names the setting that decides where a kind's artwork comes from",
-		func(kind model.Kind, setting, value string) {
-			gotSetting, gotValue := explainConfig(kind)
-			Expect(gotSetting).To(Equal(setting))
-			Expect(gotValue).To(Equal(value))
-		},
-		Entry("disc", model.KindDiscArtwork, "DiscArtPriority", "cover.jpg"),
-		Entry("media file", model.KindMediaFileArtwork, "EnableMediaFileCoverArt", "true"),
-		Entry("playlist has none", model.KindPlaylistArtwork, "", ""),
-	)
 })
 
 var _ = Describe("artwork refresh command", func() {

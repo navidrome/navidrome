@@ -746,81 +746,8 @@ func artworkKindAndID(ctx context.Context, ds model.DataStore, arg string) (mode
 	return model.ArtworkID{Kind: kind, ID: arg}, nil
 }
 
-// explainAgents accounts for every configured agent: one the CLI cannot construct (a plugin, or a
-// built-in missing its credentials) never reaches the Chain, so the raw list alone overstates it.
-func explainAgents(configured string, available []string) string {
-	if strings.TrimSpace(configured) == "" {
-		return "(none)"
-	}
-	var unavailable bool
-	names := slice.Map(strings.Split(configured, ","), func(name string) string {
-		name = strings.TrimSpace(name)
-		if slices.Contains(available, name) {
-			return name
-		}
-		unavailable = true
-		return name + "*"
-	})
-	line := strings.Join(names, ", ")
-	if unavailable {
-		line += "  (* not available to the CLI)"
-	}
-	return line
-}
-
-// availableImageAgents names the agents that can actually supply an image for kind.
-func availableImageAgents(ds model.DataStore, mgr *plugins.Manager, kind model.Kind) []string {
-	ag := agents.GetAgents(ds, mgr)
-	if kind == model.KindArtistArtwork {
-		return slice.Map(ag.ArtistImageAgents(), func(a agents.ArtistImageAgent) string { return a.Name })
-	}
-	return slice.Map(ag.AlbumImageAgents(), func(a agents.AlbumImageAgent) string { return a.Name })
-}
-
-// explainResult states the verdict of the walk. A skipped or failed external tier, or a local
-// candidate that would not open, leaves the outcome unknown: nothing observed that there is no artwork.
-func explainResult(source string, steps []artwork.TraceStep) string {
-	if source != "" {
-		for _, s := range steps {
-			if s.Outcome == artwork.OutcomeHit {
-				break
-			}
-			// An external winner discards the earlier error, so the resolver settles it with no retry.
-			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) &&
-				!strings.HasPrefix(source, artwork.ExternalPrefix) {
-				return "resolved from " + source +
-					" (indeterminate: a higher-priority external lookup failed; this may resolve differently on a retry)"
-			}
-		}
-		return "resolved from " + source
-	}
-	for _, s := range steps {
-		switch {
-		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
-			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
-		// A stage error or an unreadable candidate means a source was found but not processed; the
-		// worker retries rather than settling absent, so neither reads as a clean miss.
-		case s.Outcome == artwork.OutcomeError, s.Outcome == artwork.OutcomeUnreadable:
-			return "indeterminate (a candidate was found but could not be processed; the worker retries rather than settling absent)"
-		}
-	}
-	return "not resolved"
-}
-
-// explainConfig names the setting that decides where a kind's artwork comes from, and its value.
-func explainConfig(kind model.Kind) (name, value string) {
-	switch kind {
-	case model.KindArtistArtwork:
-		return "ArtistArtPriority", conf.Server.ArtistArtPriority
-	case model.KindAlbumArtwork:
-		return "CoverArtPriority", conf.Server.CoverArtPriority
-	case model.KindDiscArtwork:
-		return "DiscArtPriority", conf.Server.DiscArtPriority
-	case model.KindMediaFileArtwork:
-		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server.EnableMediaFileCoverArt)
-	}
-	return "", ""
-}
+// cliUnavailableNote marks agents the CLI cannot construct; a running server loads them all.
+const cliUnavailableNote = "  (* not available to the CLI)"
 
 type explainReport struct {
 	kind   model.Kind
@@ -912,7 +839,7 @@ func formatExplain(rep explainReport) string {
 	}
 
 	fmt.Fprintln(w, "\nConfig")
-	if setting, value := explainConfig(rep.kind); setting == "" {
+	if setting, value := artwork.ConfigFor(rep.kind); setting == "" {
 		fmt.Fprintln(w, "  (no artwork source configuration applies)")
 	} else {
 		fmt.Fprintf(w, "  %s:\t%s\n", setting, value)
@@ -948,7 +875,7 @@ func formatExplain(rep explainReport) string {
 	case unrecorded:
 		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
-		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
+		fmt.Fprintf(w, "  %s\n", artwork.Result(rep.source, rep.steps))
 	}
 
 	w.Flush()
@@ -1002,7 +929,8 @@ func runExplain(ctx context.Context, args []string) {
 		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
 			mgr := loadPluginAgents(ctx, explainLive)
 			defer func() { _ = mgr.Stop() }()
-			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
+			rep.agents = artwork.FormatAgents(conf.Server.Agents,
+				artwork.ImageAgentNames(agents.GetAgents(ds, mgr), kind), cliUnavailableNote)
 		}
 		switch {
 		case rep.walked:
