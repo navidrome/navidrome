@@ -1,17 +1,24 @@
 package db
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	_ "github.com/navidrome/navidrome/db/migrations"
+	"github.com/navidrome/navidrome/db/pglite"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
 	"github.com/navidrome/navidrome/utils/natural"
@@ -38,6 +45,9 @@ const migrationsFolder = "migrations"
 // (tests/benchmarks) and rebuilt, but the driver is process-global and registers only once.
 var registerDriverOnce sync.Once
 
+// embedded is the in-process PGlite instance when DbPath uses the pglite:// scheme (spike).
+var embedded *pglite.PGlite
+
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
 		registerDriverOnce.Do(func() {
@@ -51,6 +61,41 @@ func Db() *sql.DB {
 			})
 		})
 		Path = conf.Server.DbPath
+		if dataDir, ok := strings.CutPrefix(Path, "pglite://"); ok {
+			Dialect = "postgres"
+			Driver = "pgx"
+			tarball := cmp.Or(os.Getenv("ND_PGLITE_TARBALL"), "tmp/pglite-wasi-O2-fix.tar.gz")
+			logFile, _ := os.Create(filepath.Join(dataDir, "..", "pglite.log"))
+			socketDir := filepath.Dir(dataDir)
+			pg, err := pglite.New(context.Background(), pglite.Config{
+				DataDir: dataDir, Tarball: tarball, Stderr: logFile, SocketDir: socketDir,
+			})
+			if err != nil {
+				log.Fatal("Error starting embedded PGlite", err)
+			}
+			embedded = pg
+			log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver, "dsn", pg.DSN())
+			abs, _ := filepath.Abs(socketDir)
+			log.Info("PGlite spike: connect with psql", "cmd", "PGSSLMODE=disable psql -h "+abs+" -U postgres postgres")
+			db, err := sql.Open(Driver, pg.DSN())
+			if err != nil {
+				log.Fatal("Error opening database", err)
+			}
+			db.SetMaxOpenConns(1)
+			return db
+		}
+		if isPostgres(Path) {
+			Dialect = "postgres"
+			Driver = "pgx"
+			log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
+			db, err := sql.Open(Driver, Path)
+			if err != nil {
+				log.Fatal("Error opening database", err)
+			}
+			// One PGlite backend means one PG session; the bridge serializes clients onto it.
+			db.SetMaxOpenConns(4)
+			return db
+		}
 		if Path == ":memory:" {
 			Path = "file::memory:?cache=shared&_foreign_keys=on"
 			conf.Server.DbPath = Path
@@ -59,7 +104,11 @@ func Db() *sql.DB {
 		}
 		log.Debug("Opening DataBase", "dbPath", Path, "driver", Driver)
 		db, err := sql.Open(Driver, Path)
-		db.SetMaxOpenConns(conf.MaxOpenConns())
+		maxConns := conf.MaxOpenConns()
+		if v, err := strconv.Atoi(os.Getenv("ND_TEST_MAXCONNS")); err == nil && v > 0 {
+			maxConns = v // spike only: simulate the PGlite bridge's serialized session
+		}
+		db.SetMaxOpenConns(maxConns)
 		if err != nil {
 			log.Fatal("Error opening database", err)
 		}
@@ -76,10 +125,54 @@ func Close(ctx context.Context) {
 	if err != nil {
 		log.Error(ctx, "Error closing Database", err)
 	}
+	if embedded != nil {
+		_ = embedded.Close()
+	}
+}
+
+// applySpikeSchema loads a crudely translated SQLite schema, one statement at a time, tolerating failures.
+func applySpikeSchema(ctx context.Context, db *sql.DB, path string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatal(ctx, "PGlite spike: cannot read schema", err)
+	}
+	var ok, failed int
+	for _, stmt := range strings.Split(string(data), ";\n") {
+		if strings.TrimSpace(stmt) == "" {
+			continue
+		}
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			failed++
+			log.Warn(ctx, "PGlite spike: schema statement failed", "stmt", strings.SplitN(strings.TrimSpace(stmt), "\n", 2)[0], err)
+			continue
+		}
+		ok++
+	}
+	log.Warn(ctx, "PGlite spike: schema applied", "ok", ok, "failed", failed)
+}
+
+// isPostgres reports whether the DbPath is a Postgres connection URL (PGlite spike).
+func isPostgres(path string) bool {
+	return strings.HasPrefix(path, "postgres://") || strings.HasPrefix(path, "postgresql://")
 }
 
 func Init(ctx context.Context) func() {
 	db := Db()
+
+	if Dialect == "postgres" {
+		var version string
+		if err := db.QueryRowContext(ctx, "SELECT version()").Scan(&version); err != nil {
+			log.Fatal(ctx, "PGlite spike: cannot reach database", err)
+		}
+		log.Warn(ctx, "PGlite spike: connected; migrations are SQLite-only and were SKIPPED", "version", version)
+		if _, err := db.ExecContext(ctx, "CREATE TABLE IF NOT EXISTS property (id text PRIMARY KEY, value text)"); err != nil {
+			log.Fatal(ctx, "PGlite spike: cannot create property table", err)
+		}
+		if schema := os.Getenv("ND_PGLITE_SCHEMA"); schema != "" {
+			applySpikeSchema(ctx, db, schema)
+		}
+		return func() { Close(ctx) }
+	}
 
 	// Disable foreign_keys to allow re-creating tables in migrations
 	_, err := db.ExecContext(ctx, "PRAGMA foreign_keys=off")

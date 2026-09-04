@@ -537,9 +537,13 @@ func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
-		RemoveOffset().RemoveLimit().
-		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
-		From(r.tableName)
+		RemoveOffset().RemoveLimit()
+	if db.Dialect == "sqlite3" {
+		// To remove any ORDER BY clause that could slow down the query. Postgres rejects an
+		// ORDER BY on a column that is not grouped, so leave the clause off there.
+		countQuery = countQuery.OrderBy(r.tableName + ".id")
+	}
+	countQuery = countQuery.From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
