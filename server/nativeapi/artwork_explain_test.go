@@ -73,11 +73,12 @@ var _ = Describe("GET /artwork/explain", func() {
 	It("returns the report for an admin", func() {
 		// Storage shape from core/artwork/trace.go's storedStep: single-letter keys, "d" optional.
 		trace := `[{"c":"external:deezer","o":"hit","d":"https://cdn/x.jpg"}]`
+		gaveUpTrace := `[{"c":"external:deezer","o":"error","d":"connection reset"}]`
 		attemptedAt := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
 		Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
 			ItemKind: model.KindArtistArtwork.Prefix(), ItemID: "ar-1", ImageType: model.ImageTypePrimary,
 			Hash: "abc", Source: "external:deezer", SourcePath: "/music/Radiohead/folder.jpg", Trace: trace,
-			AttemptedAt: attemptedAt,
+			LastFailure: gaveUpTrace, AttemptedAt: attemptedAt,
 		})).To(Succeed())
 
 		req := createAuthenticatedRequest("GET", "/artwork/explain?kind=ar&id=ar-1", nil, adminToken)
@@ -100,6 +101,9 @@ var _ = Describe("GET /artwork/explain", func() {
 		}))
 		Expect(got["steps"]).To(Equal([]any{
 			map[string]any{"candidate": "external:deezer", "outcome": "hit", "detail": "https://cdn/x.jpg"},
+		}))
+		Expect(got["gaveUpAfter"]).To(Equal([]any{
+			map[string]any{"candidate": "external:deezer", "outcome": "error", "detail": "connection reset"},
 		}))
 	})
 
@@ -143,6 +147,8 @@ var _ = Describe("GET /artwork/explain", func() {
 		Expect(json.Unmarshal(w.Body.Bytes(), &got)).To(Succeed())
 		Expect(got).ToNot(HaveKey("stored"))
 		Expect(got).ToNot(HaveKey("queued"))
+		Expect(got).ToNot(HaveKey("lastAttemptFailed"))
+		Expect(got).ToNot(HaveKey("gaveUpAfter"))
 		Expect(got["chainOrigin"]).To(Equal("not recorded"))
 	})
 })
