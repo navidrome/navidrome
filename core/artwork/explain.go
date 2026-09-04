@@ -131,6 +131,9 @@ func Explain(ctx context.Context, ds model.DataStore, ag *agents.Agents, kind mo
 			return ExplainReport{}, fmt.Errorf("reading the artwork queue: %w", err)
 		}
 	}
+	// Set even for a kind the chain never walks, so a caller that asked to walk (e.g. --live on a
+	// playlist) is reported as having tried, matching the pre-refactor CLI's unconditional flag.
+	rep.Walked = opts.Walk != nil
 	if !Explainable(kind) {
 		return rep, nil
 	}
@@ -138,7 +141,6 @@ func Explain(ctx context.Context, ds model.DataStore, ag *agents.Agents, kind mo
 		rep.Agents = FormatAgents(conf.Server.Agents, ImageAgentNames(ag, kind), opts.UnavailableNote)
 	}
 
-	rep.Walked = opts.Walk != nil
 	switch {
 	case rep.Walked:
 		trace := &ChainTrace{}
@@ -161,9 +163,17 @@ func (r ExplainReport) ChainOrigin() string {
 		return "walked now"
 	}
 	if r.Stored != nil {
-		return "recorded " + r.Stored.AttemptedAt.Format(time.RFC3339)
+		return "recorded " + formatAttemptedAt(r.Stored.AttemptedAt)
 	}
 	return "not recorded"
+}
+
+// formatAttemptedAt matches the CLI's formatTime: a zero time reads as unset, not as year 1.
+func formatAttemptedAt(t time.Time) string {
+	if t.IsZero() {
+		return "-"
+	}
+	return t.Format(time.RFC3339)
 }
 
 // LastAttemptFailed decodes why the queued row's last attempt failed, if there is one queued.

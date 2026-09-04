@@ -133,6 +133,11 @@ var _ = Describe("Explain", func() {
 		Expect(rep.ChainOrigin()).To(ContainSubstring("recorded"))
 	})
 
+	It("renders a zero attempted-at the same way the CLI's formatTime does", func() {
+		rep := artwork.ExplainReport{Stored: &model.ItemArtwork{Source: "folder"}}
+		Expect(rep.ChainOrigin()).To(Equal("recorded -"))
+	})
+
 	It("reports nothing recorded when there is no stored state", func() {
 		rep, err := artwork.Explain(ctx, ds, nil, model.KindArtistArtwork, "ar-1", artwork.ExplainOptions{})
 		Expect(err).ToNot(HaveOccurred())
@@ -165,5 +170,29 @@ var _ = Describe("Explain", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(rep.Stored).To(BeNil())
 		Expect(rep.Steps).To(BeEmpty())
+	})
+
+	It("performs a fresh walk and reports its outcome, including a failed one, when a walker is supplied", func() {
+		// GetAll erroring mid-walk is a deterministic way to force ResolveErr without a real library.
+		ds.Album(ctx).(*tests.MockAlbumRepo).SetError(true)
+		opts := artwork.ExplainOptions{Walk: func(t *artwork.ChainTrace) *artwork.TracingResolver {
+			return artwork.NewTracingResolver(ds, nil, nil, t, false)
+		}}
+
+		rep, err := artwork.Explain(ctx, ds, nil, model.KindArtistArtwork, "ar-1", opts)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.Walked).To(BeTrue())
+		Expect(rep.ResolveErr).To(HaveOccurred())
+	})
+
+	It("still reports Walked for a kind with no chain to walk, when a walker is supplied", func() {
+		Expect(ds.Playlist(ctx).Put(&model.Playlist{ID: "pl-1", Name: "Favorites"})).To(Succeed())
+		opts := artwork.ExplainOptions{Walk: func(*artwork.ChainTrace) *artwork.TracingResolver {
+			panic("a kind that cannot walk must never be handed to the walker")
+		}}
+
+		rep, err := artwork.Explain(ctx, ds, nil, model.KindPlaylistArtwork, "pl-1", opts)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.Walked).To(BeTrue())
 	})
 })
