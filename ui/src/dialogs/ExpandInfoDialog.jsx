@@ -12,9 +12,13 @@ import {
 import { closeExtendedInfoDialog } from '../actions'
 
 const ExpandInfoDialog = ({ title, content }) => {
-  const { open, record } = useSelector((state) => state.expandInfoDialog)
+  const { open, record, resource } = useSelector(
+    (state) => state.expandInfoDialog,
+  )
   const dispatch = useDispatch()
   const translate = useTranslate()
+  // A node renders for any record; a map lets one page serve more than one resource.
+  const body = React.isValidElement(content) ? content : content?.[resource]
 
   const handleClose = (e) => {
     dispatch(closeExtendedInfoDialog())
@@ -33,10 +37,8 @@ const ExpandInfoDialog = ({ title, content }) => {
         {translate(title || 'resources.song.actions.info')}
       </DialogTitle>
       <DialogContent>
-        {record && (
-          <RecordContextProvider value={record}>
-            {content}
-          </RecordContextProvider>
+        {record && body && (
+          <RecordContextProvider value={record}>{body}</RecordContextProvider>
         )}
       </DialogContent>
       <DialogActions>
@@ -50,7 +52,8 @@ const ExpandInfoDialog = ({ title, content }) => {
 
 ExpandInfoDialog.propTypes = {
   title: PropTypes.string,
-  content: PropTypes.object.isRequired,
+  content: PropTypes.oneOfType([PropTypes.element, PropTypes.object])
+    .isRequired,
 }
 
 export default ExpandInfoDialog

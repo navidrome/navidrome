@@ -146,9 +146,9 @@ const ContextMenu = ({
     ...(!hideInfo && {
       info: {
         enabled: true,
-        needData: true,
+        needData: false,
         label: translate('resources.album.actions.info'),
-        action: () => dispatch(openExtendedInfoDialog(record)),
+        action: (record) => dispatch(openExtendedInfoDialog(record, resource)),
       },
     }),
   }
