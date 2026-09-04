@@ -66,7 +66,7 @@ var _ = Describe("Metadata API", func() {
 		}
 		auth.Init(ds)
 		provider = &fakeProvider{}
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, provider)
+		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, provider, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		adminUser := model.User{ID: "admin-1", UserName: "admin", IsAdmin: true, NewPassword: "adminpass"}
