@@ -93,7 +93,8 @@
         "addToPlaylist": "加入至播放清單",
         "download": "下載",
         "info": "取得資訊",
-        "share": "分享"
+        "share": "分享",
+        "refresh": ""
       },
       "lists": {
         "all": "所有",
@@ -155,11 +156,13 @@
         "newPassword": "新密碼",
         "token": "權杖",
         "lastAccessAt": "上次存取",
-        "libraries": "媒體庫"
+        "libraries": "媒體庫",
+        "scrobbleFilter": ""
       },
       "helperTexts": {
         "name": "您的名稱會在下次登入時生效",
-        "libraries": "為該使用者選擇指定媒體庫，留空則使用預設媒體庫"
+        "libraries": "為該使用者選擇指定媒體庫，留空則使用預設媒體庫",
+        "scrobbleFilter": ""
       },
       "notifications": {
         "created": "使用者已建立",
@@ -173,7 +176,8 @@
         "adminAutoLibraries": "管理員預設可存取所有媒體庫"
       },
       "validation": {
-        "librariesRequired": "非管理員使用者必須至少選擇一個媒體庫"
+        "librariesRequired": "非管理員使用者必須至少選擇一個媒體庫",
+        "invalidScrobbleFilter": ""
       }
     },
     "player": {
@@ -210,7 +214,8 @@
         "songCount": "歌曲數",
         "comment": "註解",
         "sync": "自動匯入",
-        "path": "匯入來源"
+        "path": "匯入來源",
+        "starred": "收藏"
       },
       "actions": {
         "selectPlaylist": "選取播放清單：",
@@ -403,7 +408,8 @@
         "requiredHosts": "必要的 Hosts",
         "configValidationError": "設定驗證失敗：",
         "schemaRenderError": "無法顯示設定表單。外掛的 schema 可能無效。",
-        "allowWriteAccessHelp": "啟用後，外掛可以修改媒體庫目錄中的檔案。 預設情況下，外掛具有唯讀權限。"
+        "allowWriteAccessHelp": "啟用後，外掛可以修改媒體庫目錄中的檔案。 預設情況下，外掛具有唯讀權限。",
+        "idHelp": ""
       },
       "placeholders": {
         "configKey": "鍵",
@@ -599,7 +605,8 @@
     "coverUploaded": "已更新封面圖",
     "coverRemoved": "已移除封面圖",
     "coverUploadError": "上傳封面圖時發生錯誤",
-    "coverRemoveError": "移除封面圖時發生錯誤"
+    "coverRemoveError": "移除封面圖時發生錯誤",
+    "metadataRefreshStarted": ""
   },
   "menu": {
     "library": "媒體庫",
@@ -634,7 +641,8 @@
       "multipleLibraries": "已選 %{selected} 共 %{total} 媒體庫",
       "selectLibraries": "選取媒體庫",
       "none": "無"
-    }
+    },
+    "onlyFavourites": "僅顯示收藏"
   },
   "player": {
     "playListsText": "播放佇列",
