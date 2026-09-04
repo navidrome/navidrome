@@ -68,6 +68,16 @@ type NowPlayingCount struct {
 	Count int `json:"count"`
 }
 
+type PodcastEpisodeProgress struct {
+	baseEvent
+	EpisodeID       string `json:"episodeId"`
+	ChannelID       string `json:"channelId"`
+	DownloadedBytes int64  `json:"downloadedBytes"`
+	Size            int64  `json:"size"`
+	Duration        int    `json:"duration,omitempty"`
+	Status          string `json:"status,omitempty"`
+}
+
 func (rr *RefreshResource) With(resource string, ids ...string) *RefreshResource {
 	if rr.resources == nil {
 		rr.resources = make(map[string][]string)
