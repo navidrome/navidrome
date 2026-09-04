@@ -120,4 +120,23 @@ describe('wrapperDataProvider', () => {
       ).resolves.toEqual({ data: { id: 'al-1' } })
     })
   })
+
+  describe('explainArtwork', () => {
+    it('requests the artist kind prefix', async () => {
+      mockHttpClient.mockResolvedValue({ json: { name: 'Radiohead' } })
+      const result = await wrapperDataProvider.explainArtwork('artist', 'ar-1')
+      expect(mockHttpClient).toHaveBeenCalledWith(
+        expect.stringContaining('/artwork/explain?kind=ar&id=ar-1'),
+      )
+      expect(result).toEqual({ data: { name: 'Radiohead' } })
+    })
+
+    it('requests the album kind prefix', async () => {
+      mockHttpClient.mockResolvedValue({ json: {} })
+      await wrapperDataProvider.explainArtwork('album', 'al-1')
+      expect(mockHttpClient).toHaveBeenCalledWith(
+        expect.stringContaining('kind=al&id=al-1'),
+      )
+    })
+  })
 })

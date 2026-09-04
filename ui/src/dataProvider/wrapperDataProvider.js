@@ -229,6 +229,10 @@ const wrapperDataProvider = {
     httpClient(`${REST_URL}/metadata/${REFRESH_KIND[resource]}/${id}/refresh`, {
       method: 'POST',
     }).then(() => ({ data: { id } })),
+  explainArtwork: (resource, id) =>
+    httpClient(
+      `${REST_URL}/artwork/explain?kind=${REFRESH_KIND[resource]}&id=${encodeURIComponent(id)}`,
+    ).then(({ json }) => ({ data: json })),
 }
 
 export default wrapperDataProvider
