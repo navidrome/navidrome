@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
@@ -113,6 +114,29 @@ func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQu
 		}
 	}
 	return nil
+}
+
+// visibilityPlaylistDS models playlist_repository's userFilter: a private playlist is only
+// visible when the ctx carries an admin, so headless work must wrap ctx with one first.
+type visibilityPlaylistDS struct {
+	*tests.MockDataStore
+	private model.Playlist
+	tracks  model.PlaylistTrackRepository
+}
+
+func (v *visibilityPlaylistDS) Playlist(ctx context.Context) model.PlaylistRepository {
+	repo := tests.CreateMockPlaylistRepo()
+	repo.TracksRepo = v.tracks
+	if u, ok := request.UserFrom(ctx); ok && u.IsAdmin {
+		repo.SetData(model.Playlists{v.private})
+	}
+	return repo
+}
+
+func adminUserRepo() *tests.MockedUserRepo {
+	repo := tests.CreateMockUserRepo()
+	Expect(repo.Put(&model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
+	return repo
 }
 
 var _ = Describe("Worker", func() {
@@ -441,9 +465,9 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "recording the failure must not disturb the served art")
 		})
 
-		// Media files are excluded from RecheckKinds, so an absent row here would never be
-		// revisited: a transient read error would look permanent.
-		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
+		// Only a view enqueues a media file, and an absent row is exactly what stops a view from
+		// doing so: a transient read error would look permanent.
+		It("does not settle absent on exhaustion for a media file", func() {
 			conf.Server.EnableMediaFileCoverArt = true
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{

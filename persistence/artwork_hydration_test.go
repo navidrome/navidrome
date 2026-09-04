@@ -578,7 +578,7 @@ var _ = Describe("Artwork hydration", func() {
 			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
 
 			// Both phases must filter on their own: the id pre-pass and the chunk fetch.
-			Expect(repo.GetAllIDs(opts)).To(ConsistOf(plsBest.ID))
+			Expect(repo.(*playlistRepository).getAllIDs(opts)).To(ConsistOf(plsBest.ID))
 			all, err := repo.GetAll(model.QueryOptions{Filters: onlyPlaylists})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(slice.Map(all, func(p model.Playlist) string { return p.ID })).To(ConsistOf(plsBest.ID))
