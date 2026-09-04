@@ -25,7 +25,11 @@ const report = {
   stored: { source: 'external:deezer', attemptedAt: '2026-09-01T10:00:00Z' },
   steps: [
     { candidate: 'cover.*', outcome: 'miss' },
-    { candidate: 'external:deezer', outcome: 'hit', detail: 'https://cdn/x.jpg' },
+    {
+      candidate: 'external:deezer',
+      outcome: 'hit',
+      detail: 'https://cdn/x.jpg',
+    },
   ],
   config: { setting: 'ArtistArtPriority', value: 'external' },
 }
@@ -69,9 +73,7 @@ describe('<ArtworkInfo />', () => {
     await screen.findByText('resolved from external:deezer')
     await userEvent.click(screen.getByText('artwork.showDetails'))
     expect(screen.getByText('cover.*')).toBeInTheDocument()
-    expect(
-      screen.getByText('ArtistArtPriority', { exact: false }),
-    ).toBeInTheDocument()
+    expect(screen.getByText('ArtistArtPriority:')).toBeInTheDocument()
   })
 
   it('shows the not-recorded state', async () => {
@@ -80,6 +82,12 @@ describe('<ArtworkInfo />', () => {
     })
     renderInTable(<ArtworkInfo resource="artist" id="ar-1" />)
     expect(await screen.findByText('artwork.notRecorded')).toBeInTheDocument()
+
+    // stored/queued/config/agents are all omitted by the endpoint here, so the optional
+    // blocks' guards must not throw when expanded.
+    await userEvent.click(screen.getByText('artwork.showDetails'))
+    expect(screen.queryByText('artwork.priority')).toBeNull()
+    expect(screen.queryByText('artwork.agents')).toBeNull()
   })
 
   it('renders nothing when the fetch fails', async () => {

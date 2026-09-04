@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import {
-  Chip,
-  Link,
-  TableCell,
-  TableRow,
-} from '@material-ui/core'
+import { Chip, Link, TableCell, TableRow } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDataProvider, usePermissions, useTranslate } from 'react-admin'
 
@@ -112,9 +107,7 @@ export const ArtworkInfo = ({ resource, id }) => {
       <Row label={translate('artwork.result')}>{report.result}</Row>
       {recorded ? (
         <>
-          <Row label={translate('artwork.source')}>
-            {report.stored?.source}
-          </Row>
+          <Row label={translate('artwork.source')}>{report.stored?.source}</Row>
           <Row label={translate('artwork.attemptedAt')}>
             {report.stored?.attemptedAt}
           </Row>
@@ -131,7 +124,9 @@ export const ArtworkInfo = ({ resource, id }) => {
             className={classes.toggle}
             onClick={() => setExpanded(!expanded)}
           >
-            {translate(expanded ? 'artwork.hideDetails' : 'artwork.showDetails')}
+            {translate(
+              expanded ? 'artwork.hideDetails' : 'artwork.showDetails',
+            )}
           </Link>
         </TableCell>
       </TableRow>
