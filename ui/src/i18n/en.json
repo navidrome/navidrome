@@ -646,6 +646,27 @@
     "sharedPlaylists": "Shared Playlists",
     "about": "About"
   },
+  "artwork": {
+    "title": "Artwork",
+    "chain": "Chain",
+    "result": "Result",
+    "source": "Source",
+    "attemptedAt": "Attempted at",
+    "showDetails": "Show details",
+    "hideDetails": "Hide details",
+    "candidate": "Candidate",
+    "outcome": "Outcome",
+    "detail": "Detail",
+    "queue": "Queue",
+    "priority": "Priority",
+    "attempts": "Attempts",
+    "retryAt": "Retry at",
+    "lastAttemptFailed": "Last attempt failed",
+    "gaveUpAfter": "Gave up after",
+    "config": "Config",
+    "agents": "Agents",
+    "notRecorded": "No resolution recorded yet"
+  },
   "player": {
     "playListsText": "Play Queue",
     "openText": "Open",
