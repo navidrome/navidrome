@@ -10,18 +10,31 @@ import {
 import { useHistory } from 'react-router-dom'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import { Typography } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import QueueMusicOutlinedIcon from '@material-ui/icons/QueueMusicOutlined'
 import FavoriteIcon from '@material-ui/icons/Favorite'
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { BiListUl } from 'react-icons/bi'
 import { useDrop } from 'react-dnd'
 import SubMenu from './SubMenu'
-import { canChangeTracks, OverflowTooltip, useRefreshOnEvents } from '../common'
+import {
+  canChangeTracks,
+  OverflowTooltip,
+  PlaylistTypeIcon,
+  useRefreshOnEvents,
+} from '../common'
 import { DraggableTypes } from '../consts'
 import { setSidebarPlaylistsOnlyFavourites } from '../actions'
 import config from '../config'
 
+const useStyles = makeStyles((theme) => ({
+  // Narrower than MenuItemLink's default slot: these items are already indented
+  // by SubMenu, and the names need the horizontal room more than the icons do
+  icon: { minWidth: theme.spacing(4) },
+}))
+
 const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
+  const classes = useStyles()
   const dataProvider = useDataProvider()
   const notify = useNotify()
 
@@ -50,6 +63,8 @@ const PlaylistMenuItemLink = ({ pls, sidebarIsOpen }) => {
           </Typography>
         </OverflowTooltip>
       }
+      leftIcon={<PlaylistTypeIcon record={pls} fontSize={'small'} />}
+      classes={{ icon: classes.icon }}
       sidebarIsOpen={sidebarIsOpen}
       dense={false}
     />
