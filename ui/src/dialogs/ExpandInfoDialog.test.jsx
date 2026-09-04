@@ -4,51 +4,51 @@ import { render, screen, cleanup } from '@testing-library/react'
 import { describe, afterEach, it, expect } from 'vitest'
 import ExpandInfoDialog from './ExpandInfoDialog'
 
-const renderDialog = (content, resource) =>
+const renderDialogs = (openFor, dialogs) =>
   render(
     <TestContext
       initialState={{
         expandInfoDialog: {
           open: true,
           record: { id: 'r1', name: 'Record' },
-          resource,
+          resource: openFor,
         },
       }}
     >
-      <ExpandInfoDialog content={content} />
+      {dialogs}
     </TestContext>,
   )
 
 describe('ExpandInfoDialog', () => {
   afterEach(cleanup)
 
-  it('renders a node content as-is, regardless of resource', () => {
-    renderDialog(<div>Song Info</div>, 'song')
+  it('renders an unclaimed dialog for any resource', () => {
+    renderDialogs('song', <ExpandInfoDialog content={<div>Song Info</div>} />)
     expect(screen.getByText('Song Info')).toBeInTheDocument()
   })
 
-  it('resolves the content by resource when given a map', () => {
-    renderDialog(
-      { album: <div>Album Info</div>, artist: <div>Artist Info</div> },
+  // Guards the artist detail page, which mounts both dialogs: an album card's Get Info
+  // must open AlbumInfo, and the page's own ArtistInfo must stay shut.
+  it.each([
+    ['artist', 'Artist Info', 'Album Info'],
+    ['album', 'Album Info', 'Artist Info'],
+  ])('opens only the %s dialog', (openFor, shown, hidden) => {
+    renderDialogs(
+      openFor,
+      <>
+        <ExpandInfoDialog resource="album" content={<div>Album Info</div>} />
+        <ExpandInfoDialog resource="artist" content={<div>Artist Info</div>} />
+      </>,
+    )
+    expect(screen.getByText(shown)).toBeInTheDocument()
+    expect(screen.queryByText(hidden)).not.toBeInTheDocument()
+  })
+
+  it('stays shut when no mounted dialog claims the resource', () => {
+    renderDialogs(
       'artist',
+      <ExpandInfoDialog resource="album" content={<div>Album Info</div>} />,
     )
-    expect(screen.getByText('Artist Info')).toBeInTheDocument()
-    expect(screen.queryByText('Album Info')).not.toBeInTheDocument()
-  })
-
-  // Guards the artist detail page, which maps both resources to one dialog: an album
-  // card's Get Info must resolve to AlbumInfo, not the page's own ArtistInfo.
-  it('resolves the album entry, not artist, when the resource is album', () => {
-    renderDialog(
-      { album: <div>Album Info</div>, artist: <div>Artist Info</div> },
-      'album',
-    )
-    expect(screen.getByText('Album Info')).toBeInTheDocument()
-    expect(screen.queryByText('Artist Info')).not.toBeInTheDocument()
-  })
-
-  it('renders nothing when the map has no entry for the resource', () => {
-    renderDialog({ album: <div>Album Info</div> }, 'artist')
     expect(screen.queryByText('Album Info')).not.toBeInTheDocument()
   })
 })

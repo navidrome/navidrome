@@ -4,7 +4,7 @@ import { REST_URL } from '../consts'
 
 const dataProvider = jsonServerProvider(REST_URL, httpClient)
 
-const REFRESH_KIND = { album: 'al', artist: 'ar' }
+const ARTWORK_KIND = { album: 'al', artist: 'ar' }
 
 const isAdmin = () => {
   const role = localStorage.getItem('role')
@@ -226,12 +226,12 @@ const wrapperDataProvider = {
   // The endpoint answers 204 with no body, but react-admin rejects any response without a
   // `data` key, so the id stands in for one.
   refreshMetadata: (resource, id) =>
-    httpClient(`${REST_URL}/metadata/${REFRESH_KIND[resource]}/${id}/refresh`, {
+    httpClient(`${REST_URL}/metadata/${ARTWORK_KIND[resource]}/${id}/refresh`, {
       method: 'POST',
     }).then(() => ({ data: { id } })),
   explainArtwork: (resource, id) =>
     httpClient(
-      `${REST_URL}/artwork/explain?kind=${REFRESH_KIND[resource]}&id=${encodeURIComponent(id)}`,
+      `${REST_URL}/artwork/explain?kind=${ARTWORK_KIND[resource]}&id=${encodeURIComponent(id)}`,
     ).then(({ json }) => ({ data: json })),
 }
 

@@ -41,8 +41,8 @@ var _ = Describe("parseArtworkKind", func() {
 			_, err := parseArtworkKind(prefix, valid)
 			Expect(err).ToNot(HaveOccurred())
 		},
-		Entry("explain reads disc artwork", "dc", explainKinds),
-		Entry("explain reads media file artwork", "mf", explainKinds),
+		Entry("explain reads disc artwork", "dc", artwork.ExplainKinds),
+		Entry("explain reads media file artwork", "mf", artwork.ExplainKinds),
 		// Disc artwork has no state to clear and the worker cannot resolve it, so refresh must not
 		// accept it: the queue row would be rejected on every drain.
 		Entry("refresh re-queues media files", "mf", artwork.RefreshableKinds),
@@ -65,7 +65,7 @@ var _ = Describe("resolveArtworkTargets", func() {
 	})
 
 	It("accepts the explicit <kind> <id> leader shared by every id", func() {
-		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"al", "x", "y"}, explainKinds)
+		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"al", "x", "y"}, artwork.ExplainKinds)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(failures).To(BeEmpty())
 		Expect(targets).To(Equal([]model.ArtworkID{
@@ -78,20 +78,20 @@ var _ = Describe("resolveArtworkTargets", func() {
 	})
 
 	It("resolves a bare id by looking it up across tables", func() {
-		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"artist1"}, explainKinds)
+		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"artist1"}, artwork.ExplainKinds)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(failures).To(BeEmpty())
 		Expect(targets).To(Equal([]model.ArtworkID{{Kind: model.KindArtistArtwork, ID: "artist1"}}))
 	})
 
 	It("reads the kind from a full artwork id prefix without a database lookup", func() {
-		targets, _, err := resolveArtworkTargets(ctx, ds, []string{"al-realalbum"}, explainKinds)
+		targets, _, err := resolveArtworkTargets(ctx, ds, []string{"al-realalbum"}, artwork.ExplainKinds)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(targets).To(Equal([]model.ArtworkID{{Kind: model.KindAlbumArtwork, ID: "realalbum"}}))
 	})
 
 	It("strips the hash suffix from a full artwork id", func() {
-		targets, _, err := resolveArtworkTargets(ctx, ds, []string{"al-realalbum_0123456789abcdef"}, explainKinds)
+		targets, _, err := resolveArtworkTargets(ctx, ds, []string{"al-realalbum_0123456789abcdef"}, artwork.ExplainKinds)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(targets).To(Equal([]model.ArtworkID{{Kind: model.KindAlbumArtwork, ID: "realalbum"}}))
 	})
@@ -105,7 +105,7 @@ var _ = Describe("resolveArtworkTargets", func() {
 	})
 
 	It("collects an id that matches nothing and has no kind prefix", func() {
-		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"nope"}, explainKinds)
+		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"nope"}, artwork.ExplainKinds)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(targets).To(BeEmpty())
 		Expect(failures).To(HaveLen(1))
@@ -113,7 +113,7 @@ var _ = Describe("resolveArtworkTargets", func() {
 	})
 
 	It("resolves the valid ids and collects the unresolvable ones", func() {
-		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"artist1", "nope", "al-realalbum"}, explainKinds)
+		targets, failures, err := resolveArtworkTargets(ctx, ds, []string{"artist1", "nope", "al-realalbum"}, artwork.ExplainKinds)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(targets).To(Equal([]model.ArtworkID{
 			{Kind: model.KindArtistArtwork, ID: "artist1"}, {Kind: model.KindAlbumArtwork, ID: "realalbum"}}))
@@ -140,6 +140,16 @@ var _ = Describe("formatExplain", func() {
 			},
 			Source: "",
 		}
+	})
+
+	It("explains the star on an agent the CLI could not construct", func() {
+		rep.AgentsIncomplete = true
+
+		Expect(formatExplain(rep)).To(ContainSubstring("(* not available to the CLI)"))
+	})
+
+	It("leaves the agent line unadorned when every agent is available", func() {
+		Expect(formatExplain(rep)).ToNot(ContainSubstring("not available to the CLI"))
 	})
 
 	It("reports the item, its config and the chain it walked", func() {

@@ -161,9 +161,8 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
           />
         )}
       </Card>
-      <ExpandInfoDialog
-        content={{ album: <AlbumInfo />, artist: <ArtistInfo /> }}
-      />
+      <ExpandInfoDialog resource="album" content={<AlbumInfo />} />
+      <ExpandInfoDialog resource="artist" content={<ArtistInfo />} />
     </div>
   )
 }

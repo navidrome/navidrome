@@ -67,10 +67,11 @@ func ImageAgentNames(ag *agents.Agents, kind model.Kind) []string {
 }
 
 // FormatAgents accounts for every configured agent: one that cannot be constructed never reaches
-// the chain, so the raw list alone overstates it. unavailableNote is appended only if some are.
-func FormatAgents(configured string, available []string, unavailableNote string) string {
+// the chain, so the raw list alone overstates it. Those are starred, and the bool lets each
+// caller word its own legend.
+func FormatAgents(configured string, available []string) (string, bool) {
 	if strings.TrimSpace(configured) == "" {
-		return "(none)"
+		return "(none)", false
 	}
 	var unavailable bool
 	names := slice.Map(strings.Split(configured, ","), func(name string) string {
@@ -81,11 +82,7 @@ func FormatAgents(configured string, available []string, unavailableNote string)
 		unavailable = true
 		return name + "*"
 	})
-	line := strings.Join(names, ", ")
-	if unavailable {
-		line += unavailableNote
-	}
-	return line
+	return strings.Join(names, ", "), unavailable
 }
 
 // ExplainOptions configures a single explain. The zero value reads history and never
@@ -93,22 +90,22 @@ func FormatAgents(configured string, available []string, unavailableNote string)
 type ExplainOptions struct {
 	// Walk builds a resolver that records into the trace; nil reads the recorded trace instead.
 	Walk func(*ChainTrace) *TracingResolver
-	// UnavailableNote is appended to the agent line when a configured agent is missing.
-	UnavailableNote string
 }
 
 // ExplainReport is everything known about how one item's artwork resolved.
 type ExplainReport struct {
-	Kind       model.Kind
-	ID         string
-	Name       string
-	Stored     *model.ItemArtwork
-	Queued     *model.ArtworkQueueItem
-	Steps      []TraceStep
-	Source     string
-	Agents     string
-	Walked     bool
-	ResolveErr error
+	Kind   model.Kind
+	ID     string
+	Name   string
+	Stored *model.ItemArtwork
+	Queued *model.ArtworkQueueItem
+	Steps  []TraceStep
+	Source string
+	Agents string
+	// AgentsIncomplete reports that some configured agent is starred in Agents.
+	AgentsIncomplete bool
+	Walked           bool
+	ResolveErr       error
 }
 
 // Explain gathers everything known about how kind/id's artwork resolved: stored state, the
@@ -138,7 +135,7 @@ func Explain(ctx context.Context, ds model.DataStore, ag *agents.Agents, kind mo
 		return rep, nil
 	}
 	if ag != nil && (kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork) {
-		rep.Agents = FormatAgents(conf.Server.Agents, ImageAgentNames(ag, kind), opts.UnavailableNote)
+		rep.Agents, rep.AgentsIncomplete = FormatAgents(conf.Server.Agents, ImageAgentNames(ag, kind))
 	}
 
 	switch {
@@ -163,13 +160,13 @@ func (r ExplainReport) ChainOrigin() string {
 		return "walked now"
 	}
 	if r.Stored != nil {
-		return "recorded " + formatAttemptedAt(r.Stored.AttemptedAt)
+		return "recorded " + FormatTime(r.Stored.AttemptedAt)
 	}
 	return "not recorded"
 }
 
-// formatAttemptedAt matches the CLI's formatTime: a zero time reads as unset, not as year 1.
-func formatAttemptedAt(t time.Time) string {
+// FormatTime renders a timestamp for the report: a zero time reads as unset, not as year 1.
+func FormatTime(t time.Time) string {
 	if t.IsZero() {
 		return "-"
 	}

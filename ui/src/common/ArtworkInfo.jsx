@@ -2,21 +2,19 @@ import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import { Chip, Link, TableCell, TableRow } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
+import clsx from 'clsx'
 import { useDataProvider, usePermissions, useTranslate } from 'react-admin'
 import { DateField } from './DateField'
 
-const OUTCOME_COLORS = {
-  hit: '#4caf50',
-  miss: '#9e9e9e',
-  skipped: '#9e9e9e',
-  error: '#f44336',
-  unreadable: '#f44336',
-}
-
-const useStyles = makeStyles({
-  chip: { color: '#fff', height: 20 },
+const useStyles = makeStyles((theme) => ({
+  chip: { color: theme.palette.common.white, height: 20 },
+  hit: { backgroundColor: theme.palette.success.main },
+  error: { backgroundColor: theme.palette.error.main },
+  neutral: { backgroundColor: theme.palette.grey[500] },
   toggle: { cursor: 'pointer' },
-})
+}))
+
+const OUTCOME_CLASS = { hit: 'hit', error: 'error', unreadable: 'error' }
 
 const OutcomeChip = ({ outcome }) => {
   const classes = useStyles()
@@ -24,8 +22,10 @@ const OutcomeChip = ({ outcome }) => {
     <Chip
       size="small"
       label={outcome}
-      className={classes.chip}
-      style={{ backgroundColor: OUTCOME_COLORS[outcome] || '#9e9e9e' }}
+      className={clsx(
+        classes.chip,
+        classes[OUTCOME_CLASS[outcome] || 'neutral'],
+      )}
     />
   )
 }
@@ -164,7 +164,12 @@ export const ArtworkInfo = ({ resource, id }) => {
             <Row label={report.config.setting}>{report.config.value}</Row>
           )}
           {report.agents && (
-            <Row label={translate('artwork.agents')}>{report.agents}</Row>
+            <Row label={translate('artwork.agents')}>
+              {report.agents}
+              {report.agentsIncomplete && (
+                <div>{translate('artwork.agentsIncomplete')}</div>
+              )}
+            </Row>
           )}
         </>
       )}

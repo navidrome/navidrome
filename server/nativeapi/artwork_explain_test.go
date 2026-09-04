@@ -90,7 +90,6 @@ var _ = Describe("GET /artwork/explain", func() {
 		Expect(json.Unmarshal(w.Body.Bytes(), &got)).To(Succeed())
 		Expect(got["name"]).To(Equal("Radiohead"))
 		Expect(got["result"]).To(Equal("resolved from external:deezer"))
-		Expect(got["chainOrigin"]).To(ContainSubstring("recorded"))
 		Expect(got["config"]).To(HaveKeyWithValue("setting", "ArtistArtPriority"))
 
 		Expect(got["stored"]).To(Equal(map[string]any{
@@ -127,7 +126,6 @@ var _ = Describe("GET /artwork/explain", func() {
 		var got map[string]any
 		Expect(json.Unmarshal(w.Body.Bytes(), &got)).To(Succeed())
 		Expect(got["queued"]).To(Equal(map[string]any{
-			"priority":     float64(model.ArtworkPriorityScan),
 			"priorityName": "scan",
 			"attempts":     float64(1),
 			"retryAt":      retryAt.Format(time.RFC3339),
@@ -149,6 +147,6 @@ var _ = Describe("GET /artwork/explain", func() {
 		Expect(got).ToNot(HaveKey("queued"))
 		Expect(got).ToNot(HaveKey("lastAttemptFailed"))
 		Expect(got).ToNot(HaveKey("gaveUpAfter"))
-		Expect(got["chainOrigin"]).To(Equal("not recorded"))
+		Expect(got).ToNot(HaveKey("chainOrigin"))
 	})
 })

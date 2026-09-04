@@ -13,13 +13,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-// explainableKinds is every kind the endpoint accepts, matching the CLI's explainKinds: a kind
-// with no chain to walk still has stored state and config to report.
-var explainableKinds = []model.Kind{
-	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindDiscArtwork,
-	model.KindMediaFileArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
-}
-
 type traceStepDTO struct {
 	Candidate string `json:"candidate"`
 	Outcome   string `json:"outcome"`
@@ -33,7 +26,6 @@ type storedDTO struct {
 }
 
 type queuedDTO struct {
-	Priority     int    `json:"priority"`
 	PriorityName string `json:"priorityName"`
 	Attempts     int    `json:"attempts"`
 	RetryAt      string `json:"retryAt,omitempty"`
@@ -45,11 +37,8 @@ type configDTO struct {
 }
 
 type explainDTO struct {
-	Kind              string         `json:"kind"`
-	ID                string         `json:"id"`
 	Name              string         `json:"name"`
 	Result            string         `json:"result"`
-	ChainOrigin       string         `json:"chainOrigin"`
 	Steps             []traceStepDTO `json:"steps"`
 	Stored            *storedDTO     `json:"stored,omitempty"`
 	Queued            *queuedDTO     `json:"queued,omitempty"`
@@ -57,6 +46,7 @@ type explainDTO struct {
 	GaveUpAfter       []traceStepDTO `json:"gaveUpAfter,omitempty"`
 	Config            *configDTO     `json:"config,omitempty"`
 	Agents            string         `json:"agents,omitempty"`
+	AgentsIncomplete  bool           `json:"agentsIncomplete,omitempty"`
 }
 
 func (api *Router) addArtworkExplainRoute(r chi.Router) {
@@ -67,7 +57,7 @@ func (api *Router) explainArtwork() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		kind, ok := model.ParseKind(r.URL.Query().Get("kind"))
-		if !ok || !slices.Contains(explainableKinds, kind) {
+		if !ok || !slices.Contains(artwork.ExplainKinds, kind) {
 			http.Error(w, "invalid artwork kind", http.StatusBadRequest)
 			return
 		}
@@ -110,13 +100,11 @@ func toStepDTOs(steps []artwork.TraceStep) []traceStepDTO {
 
 func toExplainDTO(rep artwork.ExplainReport) explainDTO {
 	dto := explainDTO{
-		Kind:        rep.Kind.Prefix(),
-		ID:          rep.ID,
-		Name:        rep.Name,
-		Result:      rep.Result(),
-		ChainOrigin: rep.ChainOrigin(),
-		Steps:       toStepDTOs(rep.Steps),
-		Agents:      rep.Agents,
+		Name:             rep.Name,
+		Result:           rep.Result(),
+		Steps:            toStepDTOs(rep.Steps),
+		Agents:           rep.Agents,
+		AgentsIncomplete: rep.AgentsIncomplete,
 	}
 	if rep.Stored != nil {
 		dto.Stored = &storedDTO{
@@ -127,7 +115,6 @@ func toExplainDTO(rep artwork.ExplainReport) explainDTO {
 	}
 	if rep.Queued != nil {
 		dto.Queued = &queuedDTO{
-			Priority:     rep.Queued.Priority,
 			PriorityName: artwork.PriorityName(rep.Queued.Priority),
 			Attempts:     rep.Queued.Attempts,
 			RetryAt:      rfc3339(rep.Queued.RetryAt),

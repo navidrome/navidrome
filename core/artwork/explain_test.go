@@ -79,16 +79,21 @@ var _ = Describe("ConfigFor", func() {
 
 var _ = Describe("FormatAgents", func() {
 	It("reports none when nothing is configured", func() {
-		Expect(artwork.FormatAgents("  ", nil, "")).To(Equal("(none)"))
+		line, incomplete := artwork.FormatAgents("  ", nil)
+		Expect(line).To(Equal("(none)"))
+		Expect(incomplete).To(BeFalse())
 	})
 
 	It("keeps the configured order and marks what is unavailable", func() {
-		got := artwork.FormatAgents("spotify, lastfm", []string{"lastfm"}, "  (* missing)")
-		Expect(got).To(Equal("spotify*, lastfm  (* missing)"))
+		got, incomplete := artwork.FormatAgents("spotify, lastfm", []string{"lastfm"})
+		Expect(incomplete).To(BeTrue())
+		Expect(got).To(Equal("spotify*, lastfm"))
 	})
 
-	It("omits the note when every configured agent is available", func() {
-		Expect(artwork.FormatAgents("lastfm", []string{"lastfm"}, "  (* missing)")).To(Equal("lastfm"))
+	It("reports complete when every configured agent is available", func() {
+		line, incomplete := artwork.FormatAgents("lastfm", []string{"lastfm"})
+		Expect(line).To(Equal("lastfm"))
+		Expect(incomplete).To(BeFalse())
 	})
 })
 
@@ -143,7 +148,7 @@ var _ = Describe("Explain", func() {
 		Expect(rep.ChainOrigin()).To(ContainSubstring("recorded"))
 	})
 
-	It("renders a zero attempted-at the same way the CLI's formatTime does", func() {
+	It("renders a zero attempted-at as unset, not as year 1", func() {
 		rep := artwork.ExplainReport{Stored: &model.ItemArtwork{Source: "folder"}}
 		Expect(rep.ChainOrigin()).To(Equal("recorded -"))
 	})

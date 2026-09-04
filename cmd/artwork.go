@@ -9,7 +9,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -75,7 +74,7 @@ var artworkExplainCmd = &cobra.Command{
 	Short: "Explain why an item's artwork resolved the way it did",
 	Long: "Explain why an item's artwork resolved the way it did.\n\n" +
 		"The item can be given as a bare id, a full artwork id (e.g. al-<id>), or a <kind> <id> pair.\n" +
-		"<kind> is one of: " + kindPrefixes(explainKinds) + ".\n" +
+		"<kind> is one of: " + kindPrefixes(artwork.ExplainKinds) + ".\n" +
 		"A disc artwork id is the album id and the disc number, joined by a colon: <albumID>:2",
 	Args: cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -654,13 +653,6 @@ func refreshItems(ctx context.Context, ds model.DataStore, targets []model.Artwo
 	return failed
 }
 
-// explainKinds is every kind explain accepts: it reports stored state and config too, so a kind
-// with no chain to walk still has something to answer with.
-var explainKinds = []model.Kind{
-	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindDiscArtwork,
-	model.KindMediaFileArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
-}
-
 func kindPrefixes(kinds []model.Kind) string {
 	return strings.Join(model.KindPrefixes(kinds), ", ")
 }
@@ -725,6 +717,14 @@ func artworkKindAndID(ctx context.Context, ds model.DataStore, arg string) (mode
 // cliUnavailableNote marks agents the CLI cannot construct; a running server loads them all.
 const cliUnavailableNote = "  (* not available to the CLI)"
 
+// cliAgents words the CLI's own legend for the starred agents FormatAgents reports.
+func cliAgents(rep artwork.ExplainReport) string {
+	if rep.AgentsIncomplete {
+		return rep.Agents + cliUnavailableNote
+	}
+	return rep.Agents
+}
+
 // writeSteps prints the trace rows. An empty last cell would end tabwriter's column block and
 // break the alignment, so a missing detail is rendered as a dash.
 func writeSteps(w io.Writer, indent string, steps []artwork.TraceStep) {
@@ -767,7 +767,7 @@ func formatExplain(rep artwork.ExplainReport) string {
 		if rep.Stored.SourcePath != "" {
 			fmt.Fprintf(w, "  Source path:\t%s\n", rep.Stored.SourcePath)
 		}
-		fmt.Fprintf(w, "  Attempted at:\t%s\n", formatTime(rep.Stored.AttemptedAt))
+		fmt.Fprintf(w, "  Attempted at:\t%s\n", artwork.FormatTime(rep.Stored.AttemptedAt))
 	}
 
 	fmt.Fprintln(w, "\nQueue")
@@ -779,7 +779,7 @@ func formatExplain(rep artwork.ExplainReport) string {
 	default:
 		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", artwork.PriorityName(rep.Queued.Priority), rep.Queued.Priority)
 		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.Queued.Attempts)
-		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.Queued.RetryAt))
+		fmt.Fprintf(w, "  Retry at:\t%s\n", artwork.FormatTime(rep.Queued.RetryAt))
 	}
 	if rep.Queued != nil {
 		writeStepTable(w, "Last attempt failed", rep.LastAttemptFailed())
@@ -794,7 +794,7 @@ func formatExplain(rep artwork.ExplainReport) string {
 	} else {
 		fmt.Fprintf(w, "  %s:\t%s\n", setting, value)
 		if rep.Agents != "" {
-			fmt.Fprintf(w, "  Agents:\t%s\n", rep.Agents)
+			fmt.Fprintf(w, "  Agents:\t%s\n", cliAgents(rep))
 		}
 	}
 
@@ -832,18 +832,11 @@ func formatExplain(rep artwork.ExplainReport) string {
 	return sb.String()
 }
 
-func formatTime(t time.Time) string {
-	if t.IsZero() {
-		return "-"
-	}
-	return t.Format(time.RFC3339)
-}
-
 func runExplain(ctx context.Context, args []string) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	targets, failures, err := resolveArtworkTargets(ctx, ds, args, explainKinds)
+	targets, failures, err := resolveArtworkTargets(ctx, ds, args, artwork.ExplainKinds)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -855,7 +848,7 @@ func runExplain(ctx context.Context, args []string) {
 	}
 	kind, id := targets[0].Kind, targets[0].ID
 
-	opts := artwork.ExplainOptions{UnavailableNote: cliUnavailableNote}
+	var opts artwork.ExplainOptions
 	// Only artist and album reach an agent, and the load must precede the resolver, which reads the
 	// same manager. Leaving ag nil elsewhere avoids handing agents.GetAgents a not-yet-loaded manager.
 	var ag *agents.Agents

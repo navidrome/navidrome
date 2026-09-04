@@ -665,6 +665,7 @@
     "lastAttemptFailed": "Last attempt failed",
     "gaveUpAfter": "Gave up after",
     "agents": "Agents",
+    "agentsIncomplete": "* This agent is configured but cannot supply images",
     "notRecorded": "No resolution recorded yet"
   },
   "player": {

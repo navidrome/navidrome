@@ -25,6 +25,13 @@ var ReprocessKinds = []model.Kind{
 // artwork is read through on every request and cached by content key, so it has neither.
 func KeepsState(kind model.Kind) bool { return kind != model.KindDiscArtwork }
 
+// ExplainKinds is every kind Explain accepts: it reports stored state and config too, so a kind
+// with no chain to walk still has something to answer with.
+var ExplainKinds = []model.Kind{
+	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindDiscArtwork,
+	model.KindMediaFileArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
+}
+
 // RefreshableKinds is every kind Refresh can clear and re-queue, so it holds exactly the kinds
 // KeepsState admits. Media files are absent from ReprocessKinds but belong here: the worker
 // resolves them, it just never enumerates them in bulk.

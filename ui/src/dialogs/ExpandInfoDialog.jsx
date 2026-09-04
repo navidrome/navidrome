@@ -11,14 +11,16 @@ import {
 } from '@material-ui/core'
 import { closeExtendedInfoDialog } from '../actions'
 
-const ExpandInfoDialog = ({ title, content }) => {
-  const { open, record, resource } = useSelector(
-    (state) => state.expandInfoDialog,
-  )
+const ExpandInfoDialog = ({ title, content, resource }) => {
+  const {
+    open,
+    record,
+    resource: openFor,
+  } = useSelector((state) => state.expandInfoDialog)
   const dispatch = useDispatch()
   const translate = useTranslate()
-  // A node renders for any record; a map lets one page serve more than one resource.
-  const body = React.isValidElement(content) ? content : content?.[resource]
+  // One page may mount several of these; each claims the resource it was given.
+  const mine = !resource || resource === openFor
 
   const handleClose = (e) => {
     dispatch(closeExtendedInfoDialog())
@@ -27,7 +29,7 @@ const ExpandInfoDialog = ({ title, content }) => {
 
   return (
     <Dialog
-      open={open}
+      open={open && mine}
       onClose={handleClose}
       aria-labelledby="info-dialog-album"
       fullWidth={true}
@@ -37,8 +39,10 @@ const ExpandInfoDialog = ({ title, content }) => {
         {translate(title || 'resources.song.actions.info')}
       </DialogTitle>
       <DialogContent>
-        {record && body && (
-          <RecordContextProvider value={record}>{body}</RecordContextProvider>
+        {record && mine && (
+          <RecordContextProvider value={record}>
+            {content}
+          </RecordContextProvider>
         )}
       </DialogContent>
       <DialogActions>
@@ -52,8 +56,8 @@ const ExpandInfoDialog = ({ title, content }) => {
 
 ExpandInfoDialog.propTypes = {
   title: PropTypes.string,
-  content: PropTypes.oneOfType([PropTypes.element, PropTypes.object])
-    .isRequired,
+  content: PropTypes.element.isRequired,
+  resource: PropTypes.string,
 }
 
 export default ExpandInfoDialog
