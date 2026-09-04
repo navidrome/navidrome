@@ -749,32 +749,6 @@ func artworkKindAndID(ctx context.Context, ds model.DataStore, arg string) (mode
 // cliUnavailableNote marks agents the CLI cannot construct; a running server loads them all.
 const cliUnavailableNote = "  (* not available to the CLI)"
 
-type explainReport struct {
-	kind   model.Kind
-	id     string
-	name   string
-	stored *model.ItemArtwork
-	queued *model.ArtworkQueueItem
-	agents string
-	// steps is the chain walk: recorded when the item was resolved, or performed just now when walked.
-	steps      []artwork.TraceStep
-	source     string
-	walked     bool
-	resolveErr error
-}
-
-// explainChainOrigin says whether the operator is reading history or a walk performed just now,
-// since the two can disagree after a config change.
-func explainChainOrigin(rep explainReport) string {
-	if rep.walked {
-		return "walked now"
-	}
-	if rep.stored != nil {
-		return "recorded " + formatTime(rep.stored.AttemptedAt)
-	}
-	return "not recorded"
-}
-
 // writeSteps prints the trace rows. An empty last cell would end tabwriter's column block and
 // break the alignment, so a missing detail is rendered as a dash.
 func writeSteps(w io.Writer, indent string, steps []artwork.TraceStep) {
@@ -793,89 +767,89 @@ func writeStepTable(w io.Writer, title string, steps []artwork.TraceStep) {
 	writeSteps(w, "    ", steps)
 }
 
-func formatExplain(rep explainReport) string {
+func formatExplain(rep artwork.ExplainReport) string {
 	var sb strings.Builder
 	w := newTabWriter(&sb)
-	explainable := artwork.Explainable(rep.kind)
-	stateful := artwork.KeepsState(rep.kind)
-	unrecorded := !rep.walked && rep.stored == nil
+	explainable := artwork.Explainable(rep.Kind)
+	stateful := artwork.KeepsState(rep.Kind)
+	unrecorded := !rep.Walked && rep.Stored == nil
 
 	fmt.Fprintln(w, "Item")
-	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
-	fmt.Fprintf(w, "  ID:\t%s\n", rep.id)
-	fmt.Fprintf(w, "  Name:\t%s\n", rep.name)
+	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.Kind, rep.Kind.Prefix())
+	fmt.Fprintf(w, "  ID:\t%s\n", rep.ID)
+	fmt.Fprintf(w, "  Name:\t%s\n", rep.Name)
 
 	fmt.Fprintln(w, "\nStored")
 	switch {
 	case !stateful:
-		fmt.Fprintf(w, "  (%s artwork is resolved on every request and never recorded)\n", rep.kind)
-	case rep.stored == nil:
+		fmt.Fprintf(w, "  (%s artwork is resolved on every request and never recorded)\n", rep.Kind)
+	case rep.Stored == nil:
 		fmt.Fprintln(w, "  (no artwork state recorded)")
 	default:
-		fmt.Fprintf(w, "  Source:\t%s\n", displaySource(rep.stored.Source))
-		fmt.Fprintf(w, "  Hash:\t%s\n", cmp.Or(rep.stored.Hash, "(absent)"))
-		if rep.stored.SourcePath != "" {
-			fmt.Fprintf(w, "  Source path:\t%s\n", rep.stored.SourcePath)
+		fmt.Fprintf(w, "  Source:\t%s\n", displaySource(rep.Stored.Source))
+		fmt.Fprintf(w, "  Hash:\t%s\n", cmp.Or(rep.Stored.Hash, "(absent)"))
+		if rep.Stored.SourcePath != "" {
+			fmt.Fprintf(w, "  Source path:\t%s\n", rep.Stored.SourcePath)
 		}
-		fmt.Fprintf(w, "  Attempted at:\t%s\n", formatTime(rep.stored.AttemptedAt))
+		fmt.Fprintf(w, "  Attempted at:\t%s\n", formatTime(rep.Stored.AttemptedAt))
 	}
 
 	fmt.Fprintln(w, "\nQueue")
 	switch {
 	case !stateful:
 		fmt.Fprintln(w, "  (never queued)")
-	case rep.queued == nil:
+	case rep.Queued == nil:
 		fmt.Fprintln(w, "  (not queued)")
 	default:
-		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", priorityName(rep.queued.Priority), rep.queued.Priority)
-		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
-		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
+		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", priorityName(rep.Queued.Priority), rep.Queued.Priority)
+		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.Queued.Attempts)
+		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.Queued.RetryAt))
 	}
-	if rep.queued != nil {
-		writeStepTable(w, "Last attempt failed", artwork.DecodeTrace(rep.queued.Trace, ""))
+	if rep.Queued != nil {
+		writeStepTable(w, "Last attempt failed", rep.LastAttemptFailed())
 	}
-	if rep.stored != nil {
-		writeStepTable(w, "Gave up after", artwork.DecodeTrace(rep.stored.LastFailure, ""))
+	if rep.Stored != nil {
+		writeStepTable(w, "Gave up after", rep.GaveUpAfter())
 	}
 
 	fmt.Fprintln(w, "\nConfig")
-	if setting, value := artwork.ConfigFor(rep.kind); setting == "" {
+	if setting, value := artwork.ConfigFor(rep.Kind); setting == "" {
 		fmt.Fprintln(w, "  (no artwork source configuration applies)")
 	} else {
 		fmt.Fprintf(w, "  %s:\t%s\n", setting, value)
-		if rep.agents != "" {
-			fmt.Fprintf(w, "  Agents:\t%s\n", rep.agents)
+		if rep.Agents != "" {
+			fmt.Fprintf(w, "  Agents:\t%s\n", rep.Agents)
 		}
 	}
 
-	fmt.Fprintf(w, "\nChain (%s)\n", explainChainOrigin(rep))
+	fmt.Fprintf(w, "\nChain (%s)\n", rep.ChainOrigin())
 	switch {
 	case !explainable:
-		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
+		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.Kind)
 	case unrecorded:
 		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
-	case !rep.walked && len(rep.steps) == 0 && rep.stored.Hash != "":
+	case !rep.Walked && len(rep.Steps) == 0 && rep.Stored.Hash != "":
 		// A stored image with no chain can only predate trace recording: a recorded resolution that
 		// found an image always records its winning candidate.
 		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
-	case !rep.walked && len(rep.steps) == 0:
+	case !rep.Walked && len(rep.Steps) == 0:
 		// Absent with no chain: an empty priority list walked nothing, or a pre-tracing absent row.
 		fmt.Fprintln(w, "  (no candidates were recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
-		writeSteps(w, "  ", rep.steps)
+		writeSteps(w, "  ", rep.Steps)
 	}
 
 	fmt.Fprintln(w, "\nResult")
 	switch {
-	case rep.resolveErr != nil:
-		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
+	case rep.ResolveErr != nil:
+		fmt.Fprintf(w, "  resolution failed: %s\n", rep.ResolveErr)
 	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
 	case unrecorded:
 		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
-		fmt.Fprintf(w, "  %s\n", artwork.Result(rep.source, rep.steps))
+		fmt.Fprintf(w, "  %s\n", rep.Result())
 	}
 
 	w.Flush()
@@ -905,46 +879,29 @@ func runExplain(ctx context.Context, args []string) {
 	}
 	kind, id := targets[0].Kind, targets[0].ID
 
-	name, err := artwork.ItemName(ctx, ds, kind, id)
-	if err != nil {
-		log.Fatal(ctx, "Item not found", "kind", kind, "id", id, err)
+	opts := artwork.ExplainOptions{UnavailableNote: cliUnavailableNote}
+	// Only artist and album reach an agent, and the load must precede the resolver, which reads the
+	// same manager. Leaving ag nil elsewhere avoids handing agents.GetAgents a not-yet-loaded manager.
+	var ag *agents.Agents
+	if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
+		mgr := loadPluginAgents(ctx, explainLive)
+		defer func() { _ = mgr.Stop() }()
+		ag = agents.GetAgents(ds, mgr)
 	}
-	rep := explainReport{kind: kind, id: id, name: name}
-	if artwork.KeepsState(kind) {
-		rep.stored, err = ds.Artwork(ctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			log.Fatal(ctx, "Failed to read artwork state", "kind", kind, "id", id, err)
+	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
+	if explainLive || !artwork.KeepsState(kind) {
+		opts.Walk = func(t *artwork.ChainTrace) *artwork.TracingResolver {
+			return CreateArtworkResolver(t, explainLive)
 		}
-		rep.queued, err = ds.ArtworkQueue(ctx).Get(kind, id, model.ImageTypePrimary)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			log.Fatal(ctx, "Failed to read the artwork queue", "kind", kind, "id", id, err)
-		}
+	}
+	rep, err := artwork.Explain(ctx, ds, ag, kind, id, opts)
+	if err != nil {
+		log.Fatal(ctx, "Failed to explain artwork", "kind", kind, "id", id, err)
 	}
 
-	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
-	rep.walked = explainLive || !artwork.KeepsState(kind)
-	if artwork.Explainable(kind) {
-		// Only artist and album reach an agent, and the load must precede the resolver, which reads
-		// the same manager.
-		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
-			mgr := loadPluginAgents(ctx, explainLive)
-			defer func() { _ = mgr.Stop() }()
-			rep.agents = artwork.FormatAgents(conf.Server.Agents,
-				artwork.ImageAgentNames(agents.GetAgents(ds, mgr), kind), cliUnavailableNote)
-		}
-		switch {
-		case rep.walked:
-			trace := &artwork.ChainTrace{}
-			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
-			rep.steps = trace.Steps()
-		case rep.stored != nil:
-			rep.steps = artwork.DecodeTrace(rep.stored.Trace, rep.stored.SourcePath)
-			rep.source = rep.stored.Source
-		}
-	}
 	fmt.Print(formatExplain(rep))
 	// The steps taken before a failed walk are the diagnosis, so report them before exiting.
-	if rep.resolveErr != nil {
-		log.Fatal(ctx, "Failed to resolve artwork", "kind", kind, "id", id, rep.resolveErr)
+	if rep.ResolveErr != nil {
+		log.Fatal(ctx, "Failed to resolve artwork", "kind", kind, "id", id, rep.ResolveErr)
 	}
 }

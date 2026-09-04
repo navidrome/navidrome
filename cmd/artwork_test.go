@@ -123,22 +123,22 @@ var _ = Describe("resolveArtworkTargets", func() {
 })
 
 var _ = Describe("formatExplain", func() {
-	var rep explainReport
+	var rep artwork.ExplainReport
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.ArtistArtPriority = "external, artist.*"
-		rep = explainReport{
-			kind:   model.KindArtistArtwork,
-			id:     "ar-1",
-			name:   "Radiohead",
-			agents: "lastfm,spotify",
-			walked: true,
-			steps: []artwork.TraceStep{
+		rep = artwork.ExplainReport{
+			Kind:   model.KindArtistArtwork,
+			ID:     "ar-1",
+			Name:   "Radiohead",
+			Agents: "lastfm,spotify",
+			Walked: true,
+			Steps: []artwork.TraceStep{
 				{Candidate: "upload", Outcome: "skipped", Detail: "no uploaded image"},
 				{Candidate: "external:deezer", Outcome: "error", Detail: "context deadline exceeded"},
 			},
-			source: "",
+			Source: "",
 		}
 	})
 
@@ -160,11 +160,11 @@ var _ = Describe("formatExplain", func() {
 
 	It("prints the stored state and the queue row when they exist", func() {
 		attempted := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-		rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc123",
+		rep.Stored = &model.ItemArtwork{Source: "folder", Hash: "abc123",
 			SourcePath: "/music/cover.jpg", AttemptedAt: attempted}
-		rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 2,
+		rep.Queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 2,
 			RetryAt: attempted.Add(time.Hour)}
-		rep.source = "folder"
+		rep.Source = "folder"
 
 		out := formatExplain(rep)
 		Expect(out).To(ContainSubstring("abc123"))
@@ -175,12 +175,12 @@ var _ = Describe("formatExplain", func() {
 	})
 
 	It("marks a known-absent stored state instead of printing an empty hash", func() {
-		rep.stored = &model.ItemArtwork{AttemptedAt: time.Now()}
+		rep.Stored = &model.ItemArtwork{AttemptedAt: time.Now()}
 		Expect(formatExplain(rep)).To(ContainSubstring("absent"))
 	})
 
 	It("reports a failed walk as failed, not as unresolved", func() {
-		rep.resolveErr = errors.New("no such directory")
+		rep.ResolveErr = errors.New("no such directory")
 
 		out := formatExplain(rep)
 		Expect(out).To(ContainSubstring("resolution failed: no such directory"))
@@ -190,9 +190,9 @@ var _ = Describe("formatExplain", func() {
 
 	It("says a kind that does not walk a chain has no chain, without an empty table", func() {
 		conf.Server.CoverArtPriority = "cover.*, embedded"
-		rep.kind = model.KindPlaylistArtwork
-		rep.steps = nil
-		rep.agents = ""
+		rep.Kind = model.KindPlaylistArtwork
+		rep.Steps = nil
+		rep.Agents = ""
 
 		out := formatExplain(rep)
 		Expect(out).To(ContainSubstring("does not walk a priority chain"))
@@ -206,11 +206,11 @@ var _ = Describe("formatExplain", func() {
 
 	It("says disc artwork keeps no state instead of reporting it as unresolved state", func() {
 		conf.Server.DiscArtPriority = "cover.jpg, embedded"
-		rep = explainReport{
-			kind: model.KindDiscArtwork, id: "al-1:2", name: "OK Computer (disc 2)",
-			steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
-			source: "folder",
-			walked: true,
+		rep = artwork.ExplainReport{
+			Kind: model.KindDiscArtwork, ID: "al-1:2", Name: "OK Computer (disc 2)",
+			Steps:  []artwork.TraceStep{{Candidate: "cover.jpg", Outcome: "hit", Detail: "/music/cover.jpg"}},
+			Source: "folder",
+			Walked: true,
 		}
 
 		out := formatExplain(rep)
@@ -225,15 +225,15 @@ var _ = Describe("formatExplain", func() {
 
 	Context("stored traces", func() {
 		BeforeEach(func() {
-			rep.walked = false
-			rep.steps = nil
+			rep.Walked = false
+			rep.Steps = nil
 		})
 
 		It("labels a recorded chain with when it was recorded, not as a walk done now", func() {
 			attempted := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: attempted}
-			rep.steps = []artwork.TraceStep{{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"}}
-			rep.source = "folder"
+			rep.Stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: attempted}
+			rep.Steps = []artwork.TraceStep{{Candidate: "artist.*", Outcome: "hit", Detail: "/music/artist.jpg"}}
+			rep.Source = "folder"
 
 			out := formatExplain(rep)
 			Expect(out).To(ContainSubstring("Chain (recorded 2026-08-13T10:00:00Z)"))
@@ -250,7 +250,7 @@ var _ = Describe("formatExplain", func() {
 		})
 
 		It("distinguishes a row written before traces existed from one with an empty chain", func() {
-			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now()}
+			rep.Stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now()}
 
 			Expect(formatExplain(rep)).To(ContainSubstring("resolved before traces were recorded"))
 		})
@@ -258,7 +258,7 @@ var _ = Describe("formatExplain", func() {
 		It("does not call an absent row with an empty recorded chain a pre-tracing row", func() {
 			// An empty priority list records a real but empty chain and resolves absent; that is not a
 			// legacy row, so it must not be reported as resolved before tracing existed.
-			rep.stored = &model.ItemArtwork{Source: "", Hash: "", AttemptedAt: time.Now()}
+			rep.Stored = &model.ItemArtwork{Source: "", Hash: "", AttemptedAt: time.Now()}
 
 			out := formatExplain(rep)
 			Expect(out).ToNot(ContainSubstring("resolved before traces were recorded"))
@@ -267,9 +267,9 @@ var _ = Describe("formatExplain", func() {
 		})
 
 		It("prints why the last attempt failed and why it gave up", func() {
-			rep.queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 3,
+			rep.Queued = &model.ArtworkQueueItem{Priority: model.ArtworkPriorityScan, Attempts: 3,
 				Trace: `[{"c":"decode","o":"error","d":"bad header"}]`}
-			rep.stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now(),
+			rep.Stored = &model.ItemArtwork{Source: "folder", Hash: "abc", AttemptedAt: time.Now(),
 				LastFailure: `[{"c":"read","o":"error","d":"i/o timeout"}]`}
 
 			out := formatExplain(rep)
@@ -288,10 +288,10 @@ var _ = Describe("formatExplain", func() {
 
 	It("reports the setting that governs media file artwork", func() {
 		conf.Server.EnableMediaFileCoverArt = false
-		rep = explainReport{
-			kind: model.KindMediaFileArtwork, id: "mf-1", name: "Airbag",
-			walked: true,
-			steps: []artwork.TraceStep{
+		rep = artwork.ExplainReport{
+			Kind: model.KindMediaFileArtwork, ID: "mf-1", Name: "Airbag",
+			Walked: true,
+			Steps: []artwork.TraceStep{
 				{Candidate: "embedded", Outcome: "skipped", Detail: "EnableMediaFileCoverArt is off"},
 			},
 		}
@@ -376,8 +376,8 @@ var _ = Describe("explain/reprocess source round trip", func() {
 		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: model.KindArtistArtwork.Prefix(),
 			ItemID: "ar-1", ImageType: model.ImageTypePrimary})).To(Succeed())
 
-		shown := storedSource(formatExplain(explainReport{kind: model.KindArtistArtwork, id: "ar-1",
-			stored: &model.ItemArtwork{AttemptedAt: time.Now()}}))
+		shown := storedSource(formatExplain(artwork.ExplainReport{Kind: model.KindArtistArtwork, ID: "ar-1",
+			Stored: &model.ItemArtwork{AttemptedAt: time.Now()}}))
 
 		q := ds.ArtworkQueue(ctx)
 		Expect(validateSources(q, repositorySources([]string{shown}))).To(Succeed(),

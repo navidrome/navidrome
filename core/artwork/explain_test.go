@@ -1,10 +1,14 @@
 package artwork_test
 
 import (
+	"context"
+	"time"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -60,6 +64,13 @@ var _ = Describe("ConfigFor", func() {
 		Expect(value).To(Equal("external"))
 	})
 
+	It("names the setting for the album kind", func() {
+		conf.Server.CoverArtPriority = "cover.*, embedded"
+		setting, value := artwork.ConfigFor(model.KindAlbumArtwork)
+		Expect(setting).To(Equal("CoverArtPriority"))
+		Expect(value).To(Equal("cover.*, embedded"))
+	})
+
 	It("returns nothing for a kind with no source configuration", func() {
 		setting, _ := artwork.ConfigFor(model.KindPlaylistArtwork)
 		Expect(setting).To(BeEmpty())
@@ -78,5 +89,81 @@ var _ = Describe("FormatAgents", func() {
 
 	It("omits the note when every configured agent is available", func() {
 		Expect(artwork.FormatAgents("lastfm", []string{"lastfm"}, "  (* missing)")).To(Equal("lastfm"))
+	})
+})
+
+var _ = Describe("Explain", func() {
+	var ds *tests.MockDataStore
+	var artRepo *tests.MockArtworkRepo
+	var queueRepo *tests.MockArtworkQueueRepo
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		artRepo = tests.CreateMockArtworkRepo()
+		queueRepo = tests.CreateMockArtworkQueueRepo()
+		ds = &tests.MockDataStore{MockedArtwork: artRepo, MockedArtworkQueue: queueRepo}
+		Expect(ds.Artist(ctx).Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+	})
+
+	It("returns an error when the item does not exist", func() {
+		_, err := artwork.Explain(ctx, ds, nil, model.KindArtistArtwork, "nope", artwork.ExplainOptions{})
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+
+	It("reads the recorded trace when no walker is supplied", func() {
+		// Storage shape mirrors storedStep in trace.go: c=candidate, o=outcome, d=detail.
+		trace := `[{"c":"external:deezer","o":"hit","d":"https://cdn/x.jpg"}]`
+		Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			ItemKind: model.KindArtistArtwork.Prefix(), ItemID: "ar-1", ImageType: model.ImageTypePrimary,
+			Hash: "abc", Source: "external:deezer",
+			Trace:       trace,
+			AttemptedAt: time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC),
+		})).To(Succeed())
+
+		rep, err := artwork.Explain(ctx, ds, nil, model.KindArtistArtwork, "ar-1", artwork.ExplainOptions{})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.Name).To(Equal("Radiohead"))
+		Expect(rep.Walked).To(BeFalse())
+		Expect(rep.Steps).To(Equal([]artwork.TraceStep{
+			{Candidate: "external:deezer", Outcome: artwork.OutcomeHit, Detail: "https://cdn/x.jpg"},
+		}))
+		Expect(rep.Source).To(Equal("external:deezer"))
+		Expect(rep.Result()).To(Equal("resolved from external:deezer"))
+		Expect(rep.ChainOrigin()).To(ContainSubstring("recorded"))
+	})
+
+	It("reports nothing recorded when there is no stored state", func() {
+		rep, err := artwork.Explain(ctx, ds, nil, model.KindArtistArtwork, "ar-1", artwork.ExplainOptions{})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.Stored).To(BeNil())
+		Expect(rep.Steps).To(BeEmpty())
+		Expect(rep.ChainOrigin()).To(Equal("not recorded"))
+	})
+
+	It("includes the queue row and its failure trace", func() {
+		failure := `[{"c":"external:lastfm","o":"error","d":"429"}]`
+		Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+			ItemKind: model.KindArtistArtwork.Prefix(), ItemID: "ar-1", ImageType: model.ImageTypePrimary,
+			Priority: model.ArtworkPriorityScan,
+		})).To(Succeed())
+		queueRepo.SetTrace(model.KindArtistArtwork, "ar-1", model.ImageTypePrimary, failure)
+
+		rep, err := artwork.Explain(ctx, ds, nil, model.KindArtistArtwork, "ar-1", artwork.ExplainOptions{})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.Queued).ToNot(BeNil())
+		Expect(rep.Queued.Priority).To(Equal(model.ArtworkPriorityScan))
+		Expect(rep.LastAttemptFailed()).To(Equal([]artwork.TraceStep{
+			{Candidate: "external:lastfm", Outcome: artwork.OutcomeError, Detail: "429"},
+		}))
+	})
+
+	It("records nothing for a kind that keeps no state and has no walker", func() {
+		Expect(ds.Album(ctx).Put(&model.Album{ID: "al-1", Name: "OK Computer"})).To(Succeed())
+
+		rep, err := artwork.Explain(ctx, ds, nil, model.KindDiscArtwork, "al-1:2", artwork.ExplainOptions{})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(rep.Stored).To(BeNil())
+		Expect(rep.Steps).To(BeEmpty())
 	})
 })
