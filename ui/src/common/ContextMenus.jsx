@@ -272,7 +272,6 @@ export const ArtistContextMenu = (props) =>
   props.record ? (
     <ContextMenu
       {...props}
-      hideInfo={true}
       resource={'artist'}
       songQueryParams={{
         pagination: { page: 1, perPage: 200 },

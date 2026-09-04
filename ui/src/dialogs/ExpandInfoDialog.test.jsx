@@ -36,6 +36,17 @@ describe('ExpandInfoDialog', () => {
     expect(screen.queryByText('Album Info')).not.toBeInTheDocument()
   })
 
+  // Guards the artist detail page, which maps both resources to one dialog: an album
+  // card's Get Info must resolve to AlbumInfo, not the page's own ArtistInfo.
+  it('resolves the album entry, not artist, when the resource is album', () => {
+    renderDialog(
+      { album: <div>Album Info</div>, artist: <div>Artist Info</div> },
+      'album',
+    )
+    expect(screen.getByText('Album Info')).toBeInTheDocument()
+    expect(screen.queryByText('Artist Info')).not.toBeInTheDocument()
+  })
+
   it('renders nothing when the map has no entry for the resource', () => {
     renderDialog({ album: <div>Album Info</div> }, 'artist')
     expect(screen.queryByText('Album Info')).not.toBeInTheDocument()

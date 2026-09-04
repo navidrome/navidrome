@@ -133,8 +133,6 @@ describe('ContextMenus', () => {
   })
 
   describe('info dialog', () => {
-    // ArtistContextMenu hardcodes hideInfo, so it never renders a Get Info item; Album
-    // uses the same action and proves resource is threaded through the dispatch.
     it('dispatches the record and resource when opening the info dialog', () => {
       const record = { id: 'al1', name: 'Album', songCount: 1 }
       renderMenu(AlbumContextMenu, record)
@@ -143,6 +141,17 @@ describe('ContextMenus', () => {
         type: EXTENDED_INFO_OPEN,
         record,
         resource: 'album',
+      })
+    })
+
+    it('dispatches the record and resource when opening the artist info dialog', () => {
+      const record = { id: 'ar1', name: 'Artist', stats: {} }
+      renderMenu(ArtistContextMenu, record)
+      fireEvent.click(screen.getByText('resources.album.actions.info'))
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: EXTENDED_INFO_OPEN,
+        record,
+        resource: 'artist',
       })
     })
   })
