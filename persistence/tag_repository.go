@@ -82,20 +82,20 @@ func (r *tagRepository) GetAll(name model.TagName, options ...model.QueryOptions
 }
 
 func (r *tagRepository) purgeUnused() error {
-	// NOT EXISTS over a materialized set: NOT IN re-scans the ~1M-row subquery per tag (40x slower).
+	// EXCEPT builds the unused set once; NOT IN / a correlated NOT EXISTS re-evaluate the ~1M-row
+	// used-tags subquery per tag row (minutes instead of ~1 s).
 	del := Delete(r.tableName).Where(`
-	not exists (
-	  with used(id) as materialized (
-	    select elem->>'id'
-	    from album
-	    cross join lateral jsonb_each(coalesce(album.tags, '{}'::jsonb)) as e(k, arr)
-	    cross join lateral jsonb_array_elements(e.arr) as elem
-	    union
-	    select elem->>'id'
-	    from media_file
-	    cross join lateral jsonb_each(coalesce(media_file.tags, '{}'::jsonb)) as e(k, arr)
-	    cross join lateral jsonb_array_elements(e.arr) as elem)
-	  select 1 from used where used.id = ` + r.tableName + `.id)
+	id in (select id from ` + r.tableName + `
+	except
+	select elem->>'id'
+	from album
+	cross join lateral jsonb_each(coalesce(album.tags, '{}'::jsonb)) as e(k, arr)
+	cross join lateral jsonb_array_elements(e.arr) as elem
+	except
+	select elem->>'id'
+	from media_file
+	cross join lateral jsonb_each(coalesce(media_file.tags, '{}'::jsonb)) as e(k, arr)
+	cross join lateral jsonb_array_elements(e.arr) as elem)
 `)
 	c, err := r.executeSQL(del)
 	if err != nil {
