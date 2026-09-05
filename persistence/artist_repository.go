@@ -163,7 +163,8 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 func roleFilter(_ string, role any) Sqlizer {
 	if role, ok := role.(string); ok {
 		if _, ok := model.AllRoles[role]; ok {
-			return Expr("library_artist.stats->'" + role + "'->>'m' IS NOT NULL")
+			// Containment is served by the GIN index on stats; the ->> form forces a row-by-row probe.
+			return Expr("library_artist.stats @> ?::jsonb", `{"`+role+`": {}}`)
 		}
 	}
 	return Eq{"1": 2}
