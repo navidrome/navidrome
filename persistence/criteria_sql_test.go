@@ -107,6 +107,26 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("tag alias", criteria.Is{"albumtype": "album"}, "exists (select 1 from json_tree(media_file.tags, '$.releasetype') where key='value' and value = ?)", "album"),
 		Entry("field alias via tag registration", criteria.Is{"recordingdate": "2024-01-01"}, "media_file.date = ?", "2024-01-01"),
 		Entry("role is", criteria.Is{"artist": "u2"}, "exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.name = ?)", "artist", "u2"),
+		// mbz_artist_id/mbz_album_artist_id match the MBID of the role's participants, not the
+		// deprecated (and never populated) media_file columns.
+		Entry("role mbid is", criteria.Is{"mbz_artist_id": "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"},
+			"exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.mbz_artist_id = ?)",
+			"artist", "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"),
+		Entry("album artist mbid is", criteria.Is{"mbz_album_artist_id": "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"},
+			"exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.mbz_artist_id = ?)",
+			"albumartist", "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"),
+		Entry("role mbid is not", criteria.IsNot{"mbz_artist_id": "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"},
+			"not exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.mbz_artist_id = ?)",
+			"artist", "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"),
+		Entry("role mbid contains", criteria.Contains{"mbz_artist_id": "b10bbbfc"},
+			"exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.mbz_artist_id LIKE ?)",
+			"artist", "%b10bbbfc%"),
+		Entry("isPresent mbz_artist_id [true]", criteria.IsPresent{"mbz_artist_id": true},
+			"exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.mbz_artist_id <> ?)",
+			"artist", ""),
+		Entry("isMissing mbz_artist_id [true]", criteria.IsMissing{"mbz_artist_id": true},
+			"not exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.mbz_artist_id <> ?)",
+			"artist", ""),
 		Entry("role contains", criteria.Contains{"composer": "Lennon"}, "exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.name LIKE ?)", "composer", "%Lennon%"),
 		Entry("role not contains", criteria.NotContains{"artist": "u2"}, "not exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and artist.name LIKE ?)", "artist", "%u2%"),
 		// ReplayGain fields
@@ -273,6 +293,11 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
 	})
 
+	It("returns an error for a range over a role MBID field", func() {
+		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"mbz_artist_id": []int{1, 5}}}).where()
+		Expect(err).To(MatchError(ContainSubstring("range operator not supported for tag/role field")))
+	})
+
 	It("returns a clear error for a malformed range value", func() {
 		_, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: criteria.InTheRange{"playCount": []int{1, 2, 3}}}).where()
 		Expect(err).To(MatchError(ContainSubstring("must be a [min, max] pair")))
@@ -289,6 +314,13 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 
 		It("sorts by role fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "artist"}).orderBy()).To(Equal("COALESCE(json_extract(media_file.participants, '$.artist[0].name'), '') asc"))
+		})
+
+		It("sorts by role MBID fields", func() {
+			// The participants JSON in the DB does not carry MBIDs, so sorting resolves them
+			// through the media_file_artists join table.
+			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "mbz_artist_id"}).orderBy()).
+				To(Equal("COALESCE((select min(artist.mbz_artist_id) from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = 'artist'), '') asc"))
 		})
 
 		It("casts numeric tags when sorting", func() {
@@ -319,6 +351,20 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		It("ignores invalid sort fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "bogus,title"}).orderBy()).To(Equal("media_file.title asc"))
 		})
+	})
+
+	It("has a column mapping for every participant attribute used by a criteria field", func() {
+		// An unmapped attribute would resolve to an empty column, silently falling back to
+		// matching artist.name.
+		for _, name := range criteria.AllFieldNames() {
+			info, ok := criteria.LookupField(name)
+			Expect(ok).To(BeTrue(), "field %q registered but LookupField fails", name)
+			if info.ParticipantRole == "" {
+				continue
+			}
+			Expect(participantAttrCols).To(HaveKey(info.ParticipantAttr),
+				"criteria field %q uses participant attribute %q, which has no column in participantAttrCols", name, info.ParticipantAttr)
+		}
 	})
 
 	It("has SQL mappings for all non-tag/non-role criteria fields", func() {
@@ -369,6 +415,37 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sql).To(Equal("(exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and (artist.name LIKE ? OR artist.name LIKE ? OR artist.name LIKE ?)))"))
 			Expect(args).To(HaveExactElements("artist", "%Beatles%", "%Kraftwerk%", "%Pink Floyd%"))
+		})
+
+		It("merges multiple role MBID conditions in an OR group into a single EXISTS", func() {
+			expr := criteria.Any{
+				criteria.Is{"mbz_artist_id": "mbid-1"},
+				criteria.Is{"mbz_artist_id": "mbid-2"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, args, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sql).To(Equal("(exists (select 1 from media_file_artists mfa join artist on artist.id = mfa.artist_id where mfa.media_file_id = media_file.id and mfa.role = ? and (artist.mbz_artist_id = ? OR artist.mbz_artist_id = ?)))"))
+			Expect(args).To(HaveExactElements("artist", "mbid-1", "mbid-2"))
+		})
+
+		It("does not merge role name and role MBID conditions for the same role", func() {
+			// Both resolve to role "artist" but compare different columns; merging them would OR
+			// a name pattern against the MBID column (or vice versa).
+			expr := criteria.Any{
+				criteria.Contains{"artist": "Beatles"},
+				criteria.Is{"mbz_artist_id": "mbid-1"},
+			}
+			sqlizer, err := newSmartPlaylistCriteria(criteria.Criteria{Expression: expr}).where()
+			Expect(err).ToNot(HaveOccurred())
+
+			sql, _, err := sqlizer.ToSql()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(strings.Count(sql, "exists")).To(Equal(2))
+			Expect(sql).To(ContainSubstring("artist.name LIKE ?"))
+			Expect(sql).To(ContainSubstring("artist.mbz_artist_id = ?"))
 		})
 
 		It("does not merge role conditions from different roles", func() {

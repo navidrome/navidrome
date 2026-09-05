@@ -76,7 +76,7 @@ var _ = Describe("fields", func() {
 		})
 
 		It("marks mbz_* and lyrics string fields as nullable (empty means missing)", func() {
-			for _, name := range []string{"mbz_album_id", "mbz_album_artist_id", "mbz_artist_id",
+			for _, name := range []string{"mbz_album_id",
 				"mbz_recording_id", "mbz_release_track_id", "mbz_release_group_id", "lyrics",
 				"album", "comment", "catalognumber", "discsubtitle", "albumcomment",
 				"sorttitle", "sortalbum", "sortartist", "sortalbumartist", "explicitstatus"} {
@@ -85,6 +85,22 @@ var _ = Describe("fields", func() {
 				gomega.Expect(field.Nullable).To(gomega.BeTrue(), name)
 				gomega.Expect(field.Numeric).To(gomega.BeFalse(), name)
 			}
+		})
+
+		It("maps artist MBID fields to participant attribute matching", func() {
+			// media_file.mbz_artist_id/mbz_album_artist_id are deprecated and never populated by the
+			// scanner; these fields must match the MBID of the corresponding participants.
+			field, ok := LookupField("mbz_artist_id")
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.ParticipantRole).To(gomega.Equal("artist"))
+			gomega.Expect(field.ParticipantAttr).To(gomega.Equal(ParticipantAttrMbid))
+			gomega.Expect(field.Nullable).To(gomega.BeFalse())
+
+			field, ok = LookupField("mbz_album_artist_id")
+			gomega.Expect(ok).To(gomega.BeTrue())
+			gomega.Expect(field.ParticipantRole).To(gomega.Equal("albumartist"))
+			gomega.Expect(field.ParticipantAttr).To(gomega.Equal(ParticipantAttrMbid))
+			gomega.Expect(field.Nullable).To(gomega.BeFalse())
 		})
 
 	})
