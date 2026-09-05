@@ -9,6 +9,9 @@
 #   build - anything that ends up in a binary, image or package (i.e. every
 #           change except the doc-only paths in $DOC_ONLY_RE)
 #
+# pipeline.yml and this script are inputs to every suite they gate: a wrong
+# gating expression skips a suite green, in every run, with no other signal.
+#
 # Only pull requests are narrowed. Master pushes, tags and manual runs always get
 # every flag, so a release can never be built from a partially validated tree.
 #
@@ -20,9 +23,9 @@
 set -uo pipefail
 export LC_ALL=C
 
-GO_RE='(\.go$|(^|/)go\.(mod|sum)$|^Makefile$|^\.golangci\.yml$|^resources/|^db/migrations/|^tests/)'
-JS_RE='^ui/'
-I18N_RE='(^resources/i18n/|^ui/src/i18n/en\.json$|^\.github/workflows/validate-translations\.sh$)'
+GO_RE='(\.go$|(^|/)go\.(mod|sum)$|^Makefile$|^\.golangci\.yml$|^resources/|^db/migrations/|^tests/|^\.github/workflows/(pipeline\.yml|detect-changes\.sh)$)'
+JS_RE='(^ui/|^\.github/workflows/(pipeline\.yml|detect-changes\.sh)$)'
+I18N_RE='(^resources/i18n/|^ui/src/i18n/en\.json$|^\.github/workflows/validate-translations\.sh$|^\.github/workflows/(pipeline\.yml|detect-changes\.sh)$)'
 DOC_ONLY_RE='(\.md$|^LICENSE$|^\.git-blame-ignore-revs$|^\.gitignore$|^\.devcontainer/)'
 
 emit() { printf '%s=%s\n' "$1" "$2" | tee -a "${GITHUB_OUTPUT:-/dev/null}"; }
@@ -50,14 +53,14 @@ printf '%s\n' "$files" | sed 's/^/  /'
 echo
 
 flag() { # $1=name  $2=regex
-  if printf '%s\n' "$files" | grep -qE "$2"; then emit "$1" true; else emit "$1" false; fi
+  if grep -qE "$2" <<< "$files"; then emit "$1" true; else emit "$1" false; fi
 }
 
 flag go "$GO_RE"
 flag js "$JS_RE"
 flag i18n "$I18N_RE"
 
-if printf '%s\n' "$files" | grep -vE "$DOC_ONLY_RE" | grep -q '[^[:space:]]'; then
+if [ -n "$(grep -vE "$DOC_ONLY_RE" <<< "$files")" ]; then
   emit build true
 else
   emit build false

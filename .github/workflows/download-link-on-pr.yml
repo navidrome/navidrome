@@ -35,20 +35,27 @@ jobs:
 
             const {data: {artifacts}} = await github.rest.actions.listWorkflowRunArtifacts({owner, repo, run_id});
             const downloadable = artifacts.filter((art) => !art.name.startsWith('octocov-'));
-            // A PR that changes nothing reaching a binary builds nothing, so an
-            // empty list is expected rather than a problem.
+            const header = `Download the artifacts for this pull request:`;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {repo, owner, issue_number});
+            // Match on the body too: octocov also comments as github-actions[bot].
+            const existing_comment = comments.find((c) => c.user.login === 'github-actions[bot]' && c.body.startsWith(header));
+
+            // A PR that changes nothing reaching a binary builds nothing. Delete
+            // rather than reword: the matcher above keys off the header.
             if (!downloadable.length) {
+              if (existing_comment) {
+                core.info(`Deleting stale comment ${existing_comment.id}`);
+                await github.rest.issues.deleteComment({repo, owner, comment_id: existing_comment.id});
+              }
               return core.info(`No artifacts found`);
             }
-            const header = `Download the artifacts for this pull request:`;
+
             let body = `${header}\n`;
             for (const art of downloadable) {
               body += `\n* [${art.name}.zip](https://nightly.link/${owner}/${repo}/actions/artifacts/${art.id}.zip)`;
             }
 
-            const {data: comments} = await github.rest.issues.listComments({repo, owner, issue_number});
-            // Match on the body too: octocov also comments as github-actions[bot].
-            const existing_comment = comments.find((c) => c.user.login === 'github-actions[bot]' && c.body.startsWith(header));
             if (existing_comment) {
               core.info(`Updating comment ${existing_comment.id}`);
               await github.rest.issues.updateComment({repo, owner, comment_id: existing_comment.id, body});
