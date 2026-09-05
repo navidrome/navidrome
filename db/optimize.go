@@ -133,8 +133,10 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	if err := markOptimizePending(ctx, db); err != nil {
 		return recordAnalyzeError(ctx, db, now, fmt.Errorf("marking ANALYZE pending: %w", err))
 	}
-	log.Debug(ctx, "Refreshing query planner statistics")
-	_, err := db.ExecContext(ctx, "ANALYZE")
+	// VACUUM too: the single-user backend has no autovacuum, and every scan leaves a dead
+	// version of each updated row behind.
+	log.Debug(ctx, "Vacuuming and refreshing query planner statistics")
+	_, err := db.ExecContext(ctx, "VACUUM (ANALYZE)")
 	if err != nil {
 		return recordAnalyzeError(ctx, db, now, fmt.Errorf("running ANALYZE: %w", err))
 	}
