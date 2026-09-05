@@ -33,12 +33,12 @@ func (p *dbPlaylist) PostScan() error {
 }
 
 func (p dbPlaylist) PostMapArgs(args map[string]any) error {
-	var err error
 	if p.Playlist.IsSmartPlaylist() {
-		args["rules"], err = json.Marshal(p.Playlist.Rules)
+		rules, err := json.Marshal(p.Playlist.Rules)
 		if err != nil {
 			return fmt.Errorf("invalid criteria expression: %w", err)
 		}
+		args["rules"] = string(rules) // []byte would be bound as bytea and stored as its hex form
 		// Smart playlist counters are owned by refreshCounters (evaluation), never by callers
 		delete(args, "song_count")
 		delete(args, "duration")

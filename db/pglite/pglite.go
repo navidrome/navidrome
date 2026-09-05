@@ -428,6 +428,7 @@ func (pg *PGlite) handleConn(conn net.Conn, ioBase string) {
 		defer fmt.Fprintln(pg.cfg.Stderr, "# bridge: client disconnected")
 	}
 	defer conn.Close()
+	defer context.AfterFunc(pg.ctx, func() { _ = conn.Close() })()
 	outFile := ioBase + ".out"
 	buf := make([]byte, 65536)
 
@@ -597,7 +598,8 @@ func (pg *PGlite) sendReplies(conn net.Conn, replies [][]byte) bool {
 				fmt.Fprintf(pg.cfg.Stderr, "# bridge S> raw %q\n", data)
 			}
 		}
-		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		// No write deadline: a client may drain a large result slowly (e.g. a cursor that runs
+		// queries per row); the connection is closed on shutdown instead.
 		if _, err := conn.Write(data); err != nil {
 			return false
 		}
