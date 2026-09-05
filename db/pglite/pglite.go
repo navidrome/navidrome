@@ -472,7 +472,8 @@ func (pg *PGlite) handleConn(conn net.Conn, ioBase string) {
 			} else if packet[0] != 'X' { // Terminate gets no reply by design
 				fixed := ensureReadyForQuery(replies, trapErr)
 				if len(fixed) != len(replies) {
-					fmt.Fprintf(pg.cfg.Stderr, "# bridge: incomplete reply to %s (trap=%v); synthesized error+ReadyForQuery\n", wireTags(packet), trapErr != nil)
+					fmt.Fprintf(pg.cfg.Stderr, "# bridge: incomplete reply to %s: got %s (%d bytes, trap=%v); synthesized error+ReadyForQuery\n",
+						wireTags(packet), wireTags(bytes.Join(replies, nil)), len(bytes.Join(replies, nil)), trapErr != nil)
 				}
 				replies = fixed
 			}
@@ -560,7 +561,16 @@ func (pg *PGlite) forwardWire(packet []byte, outFile string) ([][]byte, error) {
 			break
 		}
 		if endsWithReadyForQuery(replies) {
-			break // a complete response; skip the empty probe tick
+			// One empty tick: output the backend still holds after ReadyForQuery would otherwise
+			// make it discard the next request ("flush after frame" in interactive_one.c).
+			if _, err := pg.fnInteractiveOne.Call(ctx); err == nil {
+				var extra [][]byte
+				if pg.collectReply(outFile, &extra) {
+					fmt.Fprintf(pg.cfg.Stderr, "# bridge: %d bytes after ReadyForQuery (%s)\n", len(bytes.Join(extra, nil)), wireTags(bytes.Join(extra, nil)))
+					replies = append(replies, extra...)
+				}
+			}
+			break
 		}
 	}
 	return replies, nil
