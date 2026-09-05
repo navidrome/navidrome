@@ -20,7 +20,7 @@
 set -uo pipefail
 export LC_ALL=C
 
-GO_RE='(\.go$|(^|/)go\.(mod|sum)$|^Makefile$|^\.golangci\.yml$|^resources/|^db/migrations/)'
+GO_RE='(\.go$|(^|/)go\.(mod|sum)$|^Makefile$|^\.golangci\.yml$|^resources/|^db/migrations/|^tests/)'
 JS_RE='^ui/'
 I18N_RE='(^resources/i18n/|^ui/src/i18n/en\.json$|^\.github/workflows/validate-translations\.sh$)'
 DOC_ONLY_RE='(\.md$|^LICENSE$|^\.git-blame-ignore-revs$|^\.gitignore$|^\.devcontainer/)'
