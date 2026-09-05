@@ -316,11 +316,12 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	}
 
 	// Update playlist's total duration, size and count
+	now := time.Now()
 	upd := Update("playlist").
 		Set("duration", res.Duration).
 		Set("size", res.Size).
 		Set("song_count", res.Count).
-		Set("updated_at", time.Now()).
+		Set("updated_at", now).
 		Where(Eq{"id": pls.ID})
 	_, err = r.executeSQL(upd)
 	if err != nil {
@@ -329,6 +330,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	pls.SongCount = int(res.Count)
 	pls.Duration = res.Duration
 	pls.Size = int64(res.Size)
+	pls.UpdatedAt = now
 	return nil
 }
 
