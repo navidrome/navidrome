@@ -117,7 +117,7 @@ func (r *libraryRepository) Put(l *model.Library, colsToUpdate ...string) error 
 	sql := Expr(`
 INSERT INTO user_library (user_id, library_id)
 SELECT u.id, l.id
-FROM user u
+FROM user_account u
 CROSS JOIN library l
 WHERE u.is_admin = true
 ON CONFLICT (user_id, library_id) DO NOTHING;`,
@@ -285,7 +285,7 @@ func (r *libraryRepository) CountAll(ops ...model.QueryOptions) (int64, error) {
 
 func (r *libraryRepository) GetUsersWithLibraryAccess(libraryID int) (model.Users, error) {
 	sel := Select("u.*").
-		From("user u").
+		From("user_account u").
 		Join("user_library ul ON u.id = ul.user_id").
 		Where(Eq{"ul.library_id": libraryID}).
 		OrderBy("u.name")
