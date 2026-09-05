@@ -116,10 +116,12 @@ func New(ctx context.Context, cfg Config) (*PGlite, error) {
 	}
 	pgdataDir := filepath.Join(pg.dataDir, "pgdata")
 	devDir := filepath.Join(pg.dataDir, "dev")
+	// The guest's /tmp is a scratch dir of its own (password file, shm stand-ins), not the data dir.
+	tmpDir := filepath.Join(pg.dataDir, "tmp")
 
 	start := time.Now()
 	pg.stdin = &switchableStdin{}
-	tracker := newFDTracker(pg.dataDir, pgdataDir, devDir)
+	tracker := newFDTracker(tmpDir, pgdataDir, devDir)
 	ctx = experimental.WithFunctionListenerFactory(ctx, tracker)
 	runtimeCfg := wazero.NewRuntimeConfig()
 	if cfg.CacheDir != "" {
@@ -157,7 +159,7 @@ func New(ctx context.Context, cfg Config) (*PGlite, error) {
 			WithEnv("PGTZ", "UTC").
 			WithEnv("PATH", "/tmp/pglite/bin").
 			WithFSConfig(wazero.NewFSConfig().
-				WithDirMount(pg.dataDir, "/tmp").
+				WithDirMount(tmpDir, "/tmp").
 				WithDirMount(pgdataDir, guestPGData).
 				WithDirMount(devDir, "/dev")).
 			WithStdin(pg.stdin).
