@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,7 +32,7 @@ func init() {
 	pruneCmd.Flags().BoolVarP(&force, "force", "f", false, "bypass warning when backup count is zero")
 	backupRoot.AddCommand(pruneCmd)
 
-	restoreCommand.Flags().StringVarP(&restorePath, "backup-file", "b", "", "path of backup database to restore")
+	restoreCommand.Flags().StringVarP(&restorePath, "backup-file", "b", "", "file name of the backup database to restore (resolved against the backup directory unless it is an absolute path)")
 	restoreCommand.Flags().BoolVarP(&force, "force", "f", false, "bypass restore warning")
 	_ = restoreCommand.MarkFlagRequired("backup-file")
 	backupRoot.AddCommand(restoreCommand)
@@ -161,6 +162,18 @@ func runRestore(ctx context.Context) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Fatal("No existing database", "path", path)
 		return
+	}
+
+	// A relative --backup-file is resolved against Backup.Path, the same folder
+	// `backup create` writes to. Without this, the value was treated as relative
+	// to the working directory, where the file does not exist.
+	if !filepath.IsAbs(restorePath) {
+		backupPath, err := conf.Server.Backup.Path.Path()
+		if err != nil {
+			log.Fatal("Backup directory not available", "backup path", conf.Server.BasePath, err)
+			return
+		}
+		restorePath = filepath.Join(backupPath, restorePath)
 	}
 
 	if !force {
