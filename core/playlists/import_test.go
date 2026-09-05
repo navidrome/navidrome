@@ -1109,8 +1109,9 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			// Build the multi-pattern list with the OS path-list separator
+			// (":" on Unix, ";" on Windows) so InPath splits it correctly.
+			conf.Server.PlaylistsPath = strings.Join([]string{"other/**", "playlists/**"}, string(filepath.ListSeparator))
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
