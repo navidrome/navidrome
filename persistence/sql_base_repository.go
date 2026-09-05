@@ -534,13 +534,26 @@ func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
 	return rest.ErrNotFound
 }
 
+var joinRegex = regexp.MustCompile(`\bJOIN\b`)
+
+// countExpression returns count(*) for join-free queries; joins can fan out rows per id and
+// need the much more expensive count(distinct id) (temp b-tree over the whole result set).
+func (r sqlRepository) countExpression(query SelectBuilder) string {
+	sql, _, err := query.Columns("1").ToSql()
+	if err != nil || joinRegex.MatchString(sql) {
+		return "count(distinct " + r.tableName + ".id) as count"
+	}
+	return "count(*) as count"
+}
+
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.
-		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
+		RemoveColumns().
 		RemoveOffset().RemoveLimit().
 		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
 		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
+	countQuery = countQuery.Columns(r.countExpression(countQuery))
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
 	return res.Count, err
