@@ -42,7 +42,9 @@ if ! git rev-parse --verify --quiet "origin/${BASE_REF}" >/dev/null; then
   exit 1
 fi
 
-files="$(git diff --name-only "origin/${BASE_REF}...HEAD")"
+# --no-renames: rename detection reports only the destination, so moving a file
+# out of a gated area would drop the source path from every filter.
+files="$(git diff --no-renames --name-only "origin/${BASE_REF}...HEAD")"
 echo "Changed files:"
 printf '%s\n' "$files" | sed 's/^/  /'
 echo
