@@ -58,13 +58,36 @@ jobs:
           echo "GIT_TAG=$GIT_TAG"
           echo "GIT_SHA=$GIT_SHA"
 
+  # Outputs gate steps, never jobs: a job-level skip propagates through the needs
+  # chain (actions/runner#491) and would skip all release jobs on tag pushes.
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.detect.outputs.go }}
+      js: ${{ steps.detect.outputs.js }}
+      i18n: ${{ steps.detect.outputs.i18n }}
+      build: ${{ steps.detect.outputs.build }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Detect changed areas
+        id: detect
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: ./.github/workflows/detect-changes.sh
+
   go-lint:
     name: Lint Go code
     runs-on: ubuntu-latest
+    needs: [changes]
     steps:
       - uses: actions/checkout@v7
+        if: needs.changes.outputs.go == 'true'
 
       - uses: actions/setup-go@v6
+        if: needs.changes.outputs.go == 'true'
         with:
           go-version-file: go.mod
 
@@ -72,9 +95,11 @@ jobs:
       # cannot turn red in CI just because a new golangci-lint was released.
       - name: Resolve golangci-lint version
         id: golangci-version
+        if: needs.changes.outputs.go == 'true'
         run: echo "version=$(grep '^GOLANGCI_LINT_VERSION' Makefile | cut -d ' ' -f 3)" >> "$GITHUB_OUTPUT"
 
       - name: golangci-lint
+        if: needs.changes.outputs.go == 'true'
         uses: golangci/golangci-lint-action@v9
         with:
           version: ${{ steps.golangci-version.outputs.version }}
@@ -82,9 +107,12 @@ jobs:
           args: --timeout 2m
 
       - name: Run go goimports
+        if: needs.changes.outputs.go == 'true'
         run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$' | grep -v '.pb.go$'`
-      - run: go mod tidy
+      - if: needs.changes.outputs.go == 'true'
+        run: go mod tidy
       - name: Verify no changes from goimports and go mod tidy
+        if: needs.changes.outputs.go == 'true'
         run: |
           git status --porcelain
           if [ -n "$(git status --porcelain)" ]; then
@@ -93,8 +121,10 @@ jobs:
           fi
 
       - name: Run go generate
+        if: needs.changes.outputs.go == 'true'
         run: go generate ./...
       - name: Verify no changes from go generate
+        if: needs.changes.outputs.go == 'true'
         run: |
           git status --porcelain
           if [ -n "$(git status --porcelain)" ]; then
@@ -126,23 +156,29 @@ jobs:
   go:
     name: Test Go code
     runs-on: ubuntu-latest
+    needs: [changes]
     steps:
       - name: Check out code into the Go module directory
+        if: needs.changes.outputs.go == 'true'
         uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
+        if: needs.changes.outputs.go == 'true'
         with:
           go-version-file: go.mod
 
       - name: Download dependencies
+        if: needs.changes.outputs.go == 'true'
         run: go mod download
 
       # Name must stay unique across the workflow: octocov matches step names
       # by name across every job, and waits for each match to finish.
       - name: Test with coverage
+        if: needs.changes.outputs.go == 'true'
         run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v -covermode=atomic -coverprofile=coverage.out $(go list ./... | grep -v '/plugins$')
 
       - name: Test ndpgen
+        if: needs.changes.outputs.go == 'true'
         run: |
           cd plugins/cmd/ndpgen
           go test -shuffle=on -v
@@ -150,6 +186,7 @@ jobs:
           ./ndpgen --help
 
       - name: Upload coverage profile
+        if: needs.changes.outputs.go == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: octocov-go
@@ -159,18 +196,22 @@ jobs:
   go-plugins:
     name: Test Go plugins
     runs-on: ubuntu-latest
+    needs: [changes]
     steps:
       - name: Check out code into the Go module directory
+        if: needs.changes.outputs.go == 'true'
         uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         id: setup-go
+        if: needs.changes.outputs.go == 'true'
         with:
           go-version-file: go.mod
 
       # Without this, the suite recompiles every test plugin WASM module,
       # which dominates its runtime under -race.
       - name: Cache the WASM compilation cache
+        if: needs.changes.outputs.go == 'true'
         uses: actions/cache@v6
         with:
           path: plugins/testdata/.wazero-cache
@@ -178,9 +219,11 @@ jobs:
           restore-keys: wazero-${{ runner.os }}-
 
       - name: Test plugins
+        if: needs.changes.outputs.go == 'true'
         run: go tool ginkgo -p -race -tags netgo,sqlite_fts5 --cover --covermode=atomic --coverprofile=coverage.out --output-dir=. ./plugins/
 
       - name: Upload coverage profile
+        if: needs.changes.outputs.go == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: octocov-plugins
@@ -190,7 +233,7 @@ jobs:
   coverage:
     name: Report coverage
     runs-on: ubuntu-latest
-    needs: [go, go-plugins]
+    needs: [changes, go, go-plugins]
     permissions:
       contents: read
       actions: write
@@ -198,27 +241,31 @@ jobs:
       COVERAGE_COMMENT: 'false'
     steps:
       - uses: actions/checkout@v7
+        if: needs.changes.outputs.go == 'true'
 
       - uses: actions/download-artifact@v8
+        if: needs.changes.outputs.go == 'true'
         with:
           pattern: octocov-*
 
       # Merge here rather than letting octocov do it: octocov reports statement
       # coverage for a single profile, but switches to line counting for several.
       - name: Merge coverage profiles
+        if: needs.changes.outputs.go == 'true'
         run: |
           echo "mode: atomic" > coverage.out
           awk 'FNR==1 && /^mode:/ {next} {k=$1" "$2; c[k]+=$3} END {for (k in c) print k, c[k]}' \
             octocov-*/coverage.out | sort >> coverage.out
 
       - uses: k1LoW/octocov-action@v1
+        if: needs.changes.outputs.go == 'true'
 
       - name: Save the PR number for the comment workflow
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && needs.changes.outputs.go == 'true'
         run: echo "${{ github.event.pull_request.number }}" > pr_number
 
       - name: Upload the merged profile for the comment workflow
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && needs.changes.outputs.go == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: octocov-pr
@@ -230,27 +277,33 @@ jobs:
   go-windows:
     name: Test Go code (Windows)
     runs-on: windows-2022
+    needs: [changes]
     env:
       FFMPEG_VERSION: "7.1"
       FFMPEG_REPOSITORY: navidrome/ffmpeg-windows-builds
     steps:
       - uses: actions/checkout@v7
+        if: needs.changes.outputs.go == 'true'
 
       - uses: actions/setup-go@v6
+        if: needs.changes.outputs.go == 'true'
         with:
           go-version-file: go.mod
 
       - uses: msys2/setup-msys2@v2
+        if: needs.changes.outputs.go == 'true'
         with:
           msystem: MINGW64
           install: mingw-w64-x86_64-gcc
           update: false
 
       - name: Add mingw64 to PATH
+        if: needs.changes.outputs.go == 'true'
         shell: bash
         run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
 
       - name: Cache ffmpeg
+        if: needs.changes.outputs.go == 'true'
         id: ffmpeg-cache
         uses: actions/cache@v6
         with:
@@ -258,7 +311,7 @@ jobs:
           key: ffmpeg-${{ env.FFMPEG_VERSION }}-win64
 
       - name: Download ffmpeg
-        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        if: needs.changes.outputs.go == 'true' && steps.ffmpeg-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $asset = "ffmpeg-n${env:FFMPEG_VERSION}-latest-win64-gpl-${env:FFMPEG_VERSION}"
@@ -270,10 +323,12 @@ jobs:
           Copy-Item "C:\ffmpeg-extracted\$asset\bin\ffprobe.exe" C:\ffmpeg\bin
 
       - name: Add ffmpeg to PATH
+        if: needs.changes.outputs.go == 'true'
         shell: bash
         run: echo "C:/ffmpeg/bin" >> $GITHUB_PATH
 
       - name: Verify toolchain
+        if: needs.changes.outputs.go == 'true'
         shell: pwsh
         run: |
           go version
@@ -283,16 +338,19 @@ jobs:
           ffprobe -version
 
       - name: Download dependencies
+        if: needs.changes.outputs.go == 'true'
         shell: bash
         run: go mod download
 
       - name: Test
+        if: needs.changes.outputs.go == 'true'
         shell: bash
         env:
           CGO_ENABLED: "1"
         run: go test -shuffle=on -tags netgo,sqlite_fts5 ./... -v
 
       - name: Test ndpgen
+        if: needs.changes.outputs.go == 'true'
         shell: bash
         run: |
           cd plugins/cmd/ndpgen
@@ -303,32 +361,39 @@ jobs:
   js:
     name: Test JS code
     runs-on: ubuntu-latest
+    needs: [changes]
     env:
       NODE_OPTIONS: "--max_old_space_size=4096"
     steps:
       - uses: actions/checkout@v7
+        if: needs.changes.outputs.js == 'true'
       - uses: actions/setup-node@v6
+        if: needs.changes.outputs.js == 'true'
         with:
           node-version: 24
           cache: "npm"
           cache-dependency-path: "**/package-lock.json"
 
       - name: npm install dependencies
+        if: needs.changes.outputs.js == 'true'
         run: |
           cd ui
           npm ci
 
       - name: npm lint
+        if: needs.changes.outputs.js == 'true'
         run: |
           cd ui
           npm run check-formatting && npm run lint
 
       - name: npm test
+        if: needs.changes.outputs.js == 'true'
         run: |
           cd ui
           npm test
 
       - name: npm build
+        if: needs.changes.outputs.js == 'true'
         run: |
           cd ui
           npm run build
@@ -336,9 +401,12 @@ jobs:
   i18n-lint:
     name: Lint i18n files
     runs-on: ubuntu-latest
+    needs: [changes]
     steps:
       - uses: actions/checkout@v7
-      - run: |
+        if: needs.changes.outputs.i18n == 'true'
+      - if: needs.changes.outputs.i18n == 'true'
+        run: |
           set -e
           for file in resources/i18n/*.json; do
             echo "Validating $file"
@@ -350,6 +418,7 @@ jobs:
             fi
           done
       - run: ./.github/workflows/validate-translations.sh -v
+        if: needs.changes.outputs.i18n == 'true'
 
 
   check-push-enabled:
@@ -364,7 +433,7 @@ jobs:
 
   build:
     name: Build
-    needs: [js, go, go-plugins, go-windows, go-lint, i18n-lint, git-version, check-push-enabled, validate-migrations]
+    needs: [changes, js, go, go-plugins, go-windows, go-lint, i18n-lint, git-version, check-push-enabled, validate-migrations]
     strategy:
       matrix:
         platform: [ linux/amd64, linux/arm64, linux/arm/v5, linux/arm/v6, linux/arm/v7, linux/386, linux/riscv64, darwin/amd64, darwin/arm64, windows/amd64, windows/386 ]
@@ -373,19 +442,23 @@ jobs:
       IS_LINUX: ${{ startsWith(matrix.platform, 'linux/') && 'true' || 'false' }}
       IS_ARMV5: ${{ matrix.platform == 'linux/arm/v5' && 'true' || 'false' }}
       IS_DOCKER_PUSH_CONFIGURED: ${{ needs.check-push-enabled.outputs.is_enabled == 'true' }}
+      SHOULD_BUILD: ${{ needs.changes.outputs.build }}
       DOCKER_BUILD_SUMMARY: false
       GIT_SHA: ${{ needs.git-version.outputs.git_sha }}
       GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
     steps:
       - name: Sanitize platform name
+        if: env.SHOULD_BUILD == 'true'
         id: set-platform
         run: |
           PLATFORM=$(echo ${{ matrix.platform }} | tr '/' '_')
           echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
 
       - uses: actions/checkout@v7
+        if: env.SHOULD_BUILD == 'true'
 
       - name: Prepare Docker Buildx
+        if: env.SHOULD_BUILD == 'true'
         uses: ./.github/actions/prepare-docker
         id: docker
         with:
@@ -395,6 +468,7 @@ jobs:
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
       - name: Build Binaries
+        if: env.SHOULD_BUILD == 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -408,14 +482,14 @@ jobs:
             GIT_TAG=${{ env.GIT_TAG }}
 
       - name: Set up QEMU for smoke test
-        if: env.IS_LINUX == 'true'
+        if: env.SHOULD_BUILD == 'true' && env.IS_LINUX == 'true'
         uses: docker/setup-qemu-action@v4
 
       # The binary is static, so binfmt+qemu runs it directly on the runner.
       # Catches startup crashes in cross-compiled binaries before they ship,
       # e.g. the broken ifunc relocations on 32-bit arm from issue #5738.
       - name: Smoke-test binary
-        if: env.IS_LINUX == 'true'
+        if: env.SHOULD_BUILD == 'true' && env.IS_LINUX == 'true'
         run: |
           BIN=./output/${{ env.PLATFORM }}/navidrome
           chmod +x "$BIN"
@@ -423,6 +497,7 @@ jobs:
           echo "OK: ${{ matrix.platform }} binary starts"
 
       - name: Upload Binaries
+        if: env.SHOULD_BUILD == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: navidrome-${{ env.PLATFORM }}
@@ -431,7 +506,7 @@ jobs:
 
       - name: Build and push image by digest
         id: push-image
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
+        if: env.SHOULD_BUILD == 'true' && env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -446,7 +521,7 @@ jobs:
             type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
+        if: env.SHOULD_BUILD == 'true' && env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         run: |
           mkdir -p /tmp/digests
           digest="${{ steps.push-image.outputs.digest }}"
@@ -454,7 +529,7 @@ jobs:
 
       - name: Upload digest
         uses: actions/upload-artifact@v7
-        if: env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
+        if: env.SHOULD_BUILD == 'true' && env.IS_LINUX == 'true' && env.IS_DOCKER_PUSH_CONFIGURED == 'true' && env.IS_ARMV5 == 'false'
         with:
           name: digests-${{ env.PLATFORM }}
           path: /tmp/digests/*
@@ -467,8 +542,8 @@ jobs:
       contents: read
       packages: write
     runs-on: ubuntu-latest
-    needs: [build, check-push-enabled]
-    if: needs.check-push-enabled.outputs.is_enabled == 'true'
+    needs: [changes, build, check-push-enabled]
+    if: needs.check-push-enabled.outputs.is_enabled == 'true' && needs.changes.outputs.build == 'true'
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
     steps:
@@ -502,8 +577,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    needs: [build, check-push-enabled]
-    if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
+    needs: [changes, build, check-push-enabled]
+    if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != '' && needs.changes.outputs.build == 'true'
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7
@@ -555,22 +630,26 @@ jobs:
 
   msi:
     name: Build Windows installers
-    needs: [build, git-version]
+    needs: [changes, build, git-version]
     runs-on: ubuntu-24.04
 
     steps:
       - uses: actions/checkout@v7
+        if: needs.changes.outputs.build == 'true'
 
       - uses: actions/download-artifact@v8
+        if: needs.changes.outputs.build == 'true'
         with:
           path: ./binaries
           pattern: navidrome-windows*
           merge-multiple: true
 
       - name: Install Wix
+        if: needs.changes.outputs.build == 'true'
         run: sudo apt-get install -y wixl jq
 
       - name: Build MSI
+        if: needs.changes.outputs.build == 'true'
         env:
           GIT_TAG: ${{ needs.git-version.outputs.git_tag }}
         run: |
@@ -580,6 +659,7 @@ jobs:
           du -h binaries/msi/*.msi
 
       - name: Upload MSI files
+        if: needs.changes.outputs.build == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: navidrome-windows-installers
@@ -588,29 +668,33 @@ jobs:
 
   release:
     name: Package/Release
-    needs: [build, msi]
+    needs: [changes, build, msi]
     runs-on: ubuntu-latest
     outputs:
       package_list: ${{ steps.set-package-list.outputs.package_list }}
     steps:
       - uses: actions/checkout@v7
+        if: needs.changes.outputs.build == 'true'
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - uses: actions/download-artifact@v8
+        if: needs.changes.outputs.build == 'true'
         with:
           path: ./binaries
           pattern: navidrome-*
           merge-multiple: true
 
       - run: ls -lR ./binaries
+        if: needs.changes.outputs.build == 'true'
 
       - name: Set RELEASE_FLAGS for snapshot releases
-        if: env.IS_RELEASE == 'false'
+        if: needs.changes.outputs.build == 'true' && env.IS_RELEASE == 'false'
         run: echo 'RELEASE_FLAGS=--skip=publish --snapshot' >> $GITHUB_ENV
 
       - name: Run GoReleaser
+        if: needs.changes.outputs.build == 'true'
         uses: goreleaser/goreleaser-action@v7
         with:
           version: '2.16.0'
@@ -619,17 +703,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Remove build artifacts
+        if: needs.changes.outputs.build == 'true'
         run: |
           ls -l ./dist
           rm ./dist/*.tar.gz ./dist/*.zip
 
       - name: Upload all-packages artifact
+        if: needs.changes.outputs.build == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: packages
           path: dist/navidrome_0*
 
       - id: set-package-list
+        if: needs.changes.outputs.build == 'true'
         name: Export list of generated packages
         run: |
           cd dist
@@ -641,7 +728,10 @@ jobs:
   upload-packages:
     name: Upload Linux PKG
     runs-on: ubuntu-latest
-    needs: [release]
+    needs: [changes, release]
+    # Job-level skip is safe here: nothing needs this job, and fromJson would
+    # error on the empty package_list a skipped release leaves behind.
+    if: needs.changes.outputs.build == 'true'
     strategy:
       matrix:
         item: ${{ fromJson(needs.release.outputs.package_list) }}

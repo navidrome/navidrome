@@ -15,9 +15,20 @@ jobs:
     env:
       COVERAGE_COMMENT: 'true'
     steps:
+      # The pipeline skips its coverage steps when a PR touches no Go code.
+      - name: Check the run produced a coverage artifact
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${{ github.event.workflow_run.id }}/artifacts" \
+            --jq '[.artifacts[] | select(.name == "octocov-pr")] | length')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
       # Only the config, from the base branch: this job holds a write token, so
       # it must never check out the fork.
       - name: Check out the octocov config
+        if: steps.artifact.outputs.count != '0'
         uses: actions/checkout@v7
         with:
           sparse-checkout: .octocov.yml
@@ -27,6 +38,7 @@ jobs:
       # Into a subdirectory. A pull_request run executes the fork's own copy of
       # pipeline.yml, so every file in here is attacker-controlled.
       - uses: actions/download-artifact@v8
+        if: steps.artifact.outputs.count != '0'
         with:
           name: octocov-pr
           path: untrusted
@@ -35,6 +47,7 @@ jobs:
 
       - name: Verify the artifact and take the coverage profile
         id: pr
+        if: steps.artifact.outputs.count != '0'
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -51,6 +64,7 @@ jobs:
           echo "number=$number" >> "$GITHUB_OUTPUT"
 
       - uses: k1LoW/octocov-action@v1
+        if: steps.artifact.outputs.count != '0'
         env:
           # A workflow_run job looks like a push to the default branch. Point
           # octocov back at the pull request and at the run that produced it.
