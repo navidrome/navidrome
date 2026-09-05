@@ -467,7 +467,7 @@ func (pg *PGlite) handleConn(conn net.Conn, ioBase string) {
 			pg.wasmMu.Unlock()
 			if !handshakeDone {
 				replies, handshakeDone = pg.fixHandshake(replies)
-			} else {
+			} else if packet[0] != 'X' { // Terminate gets no reply by design
 				fixed := ensureReadyForQuery(replies, trapErr)
 				if len(fixed) != len(replies) {
 					fmt.Fprintf(pg.cfg.Stderr, "# bridge: incomplete reply to %s (trap=%v); synthesized error+ReadyForQuery\n", wireTags(packet), trapErr != nil)

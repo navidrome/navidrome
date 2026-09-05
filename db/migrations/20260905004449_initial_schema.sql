@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS library (
 			last_scan_at timestamp not null default '0001-01-01 00:00:00',
 			updated_at timestamp not null default current_timestamp,
 			created_at timestamp not null default current_timestamp
-		, last_scan_started_at timestamp default '0001-01-01 00:00:00' not null, full_scan_in_progress boolean default false not null, total_songs integer default 0 not null, total_albums integer default 0 not null, total_artists integer default 0 not null, total_folders integer default 0 not null, total_files integer default 0 not null, total_missing_files integer default 0 not null, total_size integer default 0 not null, total_duration double precision DEFAULT 0, default_new_users boolean DEFAULT false);
+		, last_scan_started_at timestamp default '0001-01-01 00:00:00' not null, full_scan_in_progress boolean default false not null, total_songs integer default 0 not null, total_albums integer default 0 not null, total_artists integer default 0 not null, total_folders integer default 0 not null, total_files integer default 0 not null, total_missing_files integer default 0 not null, total_size bigint default 0 not null, total_duration double precision DEFAULT 0, default_new_users boolean DEFAULT false);
 CREATE TABLE IF NOT EXISTS "library_artist"
 (
     library_id integer NOT NULL DEFAULT 1
