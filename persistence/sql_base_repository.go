@@ -457,14 +457,8 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response any) error {
 
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
-func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
-	if options.Offset > conf.Server.DevOffsetOptimize {
-		sq = sq.RemoveOffset()
-		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
-		rowidSq = rowidSq.Limit(uint64(options.Offset))
-		rowidSql, args, _ := rowidSq.ToSql()
-		sq = sq.Where(r.tableName+".rowid not in ("+rowidSql+")", args...)
-	}
+func (r sqlRepository) optimizePagination(sq SelectBuilder, _ model.QueryOptions) SelectBuilder {
+	// The SQLite rowid trick for deep offsets does not apply to PostgreSQL; plain OFFSET is used.
 	return sq
 }
 
@@ -535,11 +529,14 @@ func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
-	countQuery = countQuery.
-		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
+	// Counted through a subquery so a sort carried by the builder (PostgreSQL rejects ORDER BY on
+	// a column that is neither grouped nor aggregated) stays harmless.
+	inner := countQuery.
+		RemoveColumns().Columns(r.tableName + ".id").
 		RemoveOffset().RemoveLimit().
 		From(r.tableName)
-	countQuery = r.applyFilters(countQuery, options...)
+	inner = r.applyFilters(inner, options...)
+	countQuery = Select("count(distinct t.id) as count").FromSelect(inner, "t")
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
 	return res.Count, err
