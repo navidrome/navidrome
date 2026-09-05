@@ -4,7 +4,8 @@ On this branch Navidrome's only database is the [PGlite](https://pglite.dev) WAS
 inside the process with [wazero](https://wazero.io) (pure Go, no CGO) and reached through `database/sql` and pgx over
 the real PostgreSQL wire protocol. SQLite support has been removed from `db/` and the persistence layer.
 
-**This is exploratory. It is not a supported way to run Navidrome.** It starts, runs a full scan, logs in, and
+**This is exploratory. It is not a supported way to run Navidrome.** What was learned, fixed and left open is in
+[FINDINGS.md](FINDINGS.md). It starts, runs a full scan, logs in, and
 browses artists and albums through both the native and Subsonic APIs. Everything else is untested, and several
 paths still carry SQLite-only SQL (see "Not ported").
 
