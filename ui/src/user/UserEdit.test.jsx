@@ -147,6 +147,7 @@ describe('<UserEdit />', () => {
     beforeEach(() => {
       vi.clearAllMocks()
       hooks.save = null
+      localStorage.clear()
     })
 
     it('notifies success and redirects when the update succeeds', async () => {
@@ -196,6 +197,27 @@ describe('<UserEdit />', () => {
 
       expect(hooks.notify).toHaveBeenCalledWith('ra.page.error', 'warning')
       expect(hooks.redirect).not.toHaveBeenCalled()
+    })
+
+    it('syncs the stored identity name when editing your own profile', async () => {
+      localStorage.setItem('userId', 'user1')
+      hooks.mutate.mockResolvedValue({ data: defaultUser })
+      render(<UserEdit id="user1" permissions="user" />)
+
+      await hooks.save({ id: 'user1', name: 'Renamed' })
+
+      expect(localStorage.getItem('name')).toBe('Renamed')
+    })
+
+    it('does not touch the stored identity name when editing another user', async () => {
+      localStorage.setItem('userId', 'admin1')
+      localStorage.setItem('name', 'Admin User')
+      hooks.mutate.mockResolvedValue({ data: defaultUser })
+      render(<UserEdit id="user1" permissions="admin" />)
+
+      await hooks.save({ id: 'user1', name: 'Renamed' })
+
+      expect(localStorage.getItem('name')).toBe('Admin User')
     })
   })
 })
