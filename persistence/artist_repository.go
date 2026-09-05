@@ -484,8 +484,10 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 
 	// Template for the batch update with placeholder markers that we'll replace
 	// This now calculates per-library statistics and stores them in library_artist.stats
+	// MATERIALIZED: the correlated subquery in the UPDATE would otherwise re-run the whole
+	// aggregation for every library_artist row (minutes per batch on a large library).
 	batchUpdateStatsSQL := `
-    WITH artist_role_counters AS (
+    WITH artist_role_counters AS MATERIALIZED (
         SELECT mfa.artist_id,
                mf.library_id,
                mfa.role,
@@ -497,7 +499,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
         WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
         GROUP BY mfa.artist_id, mf.library_id, mfa.role
     ),
-    artist_total_counters AS (
+    artist_total_counters AS MATERIALIZED (
         SELECT mfa.artist_id,
                mf.library_id,
                'total' AS role,
@@ -509,7 +511,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
         WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
         GROUP BY mfa.artist_id, mf.library_id
     ),
-    artist_participant_counter AS (
+    artist_participant_counter AS MATERIALIZED (
         SELECT mfa.artist_id,
                mf.library_id,
                'maincredit' AS role,
@@ -522,14 +524,14 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
         AND mfa.role IN ('albumartist', 'artist')
         GROUP BY mfa.artist_id, mf.library_id
     ),
-    combined_counters AS (
+    combined_counters AS MATERIALIZED (
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_role_counters
         UNION ALL
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_total_counters
         UNION ALL
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_participant_counter
     ),
-    library_artist_counters AS (
+    library_artist_counters AS MATERIALIZED (
         SELECT artist_id,
                library_id,
                jsonb_object_agg(
