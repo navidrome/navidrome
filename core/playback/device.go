@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/navidrome/navidrome/core/playback/mpv"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -33,6 +32,7 @@ type playbackDevice struct {
 	Gain                 float32
 	PlaybackDone         chan bool
 	ActiveTrack          Track
+	trackFactory         TrackFactory
 	startTrackSwitcher   sync.Once
 }
 
@@ -61,7 +61,7 @@ func (pd *playbackDevice) getStatus() DeviceStatus {
 // NewPlaybackDevice creates a new playback device which implements all the basic Jukebox mode commands defined here:
 // http://www.subsonic.org/pages/api.jsp#jukeboxControl
 // Starts the trackSwitcher goroutine for the device.
-func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name string, deviceName string) *playbackDevice {
+func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name string, deviceName string, trackFactory TrackFactory) *playbackDevice {
 	return &playbackDevice{
 		serviceCtx:           ctx,
 		ParentPlaybackServer: playbackServer,
@@ -71,6 +71,7 @@ func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name 
 		Gain:                 DefaultGain,
 		PlaybackQueue:        NewQueue(),
 		PlaybackDone:         make(chan bool),
+		trackFactory:         trackFactory,
 	}
 }
 
@@ -289,7 +290,7 @@ func (pd *playbackDevice) switchActiveTrackByIndex(index int) error {
 		return errors.New("could not get current track")
 	}
 
-	track, err := mpv.NewTrack(pd.serviceCtx, pd.PlaybackDone, pd.DeviceName, *currentTrack)
+	track, err := pd.trackFactory(pd.serviceCtx, pd.PlaybackDone, pd.DeviceName, *currentTrack)
 	if err != nil {
 		return err
 	}
