@@ -562,6 +562,26 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(mf.Title).To(Equal("Eleanor Rigby (remix)"))
 		})
 
+		It("re-imports a file whose size changed even when its modtime is preserved", func() {
+			path := "The Beatles/Revolver/02 - Eleanor Rigby.mp3"
+			mf, err := findByPath(path)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Tags).ToNot(HaveKey(model.TagGrouping))
+			origModTime := fsys.MapFS[path].ModTime
+			origSize := mf.Size
+
+			// Some taggers rewrite tags in place while preserving the file's
+			// modtime, but writing a tag still changes the file size. A quick
+			// scan must still pick up the change.
+			fsys.UpdateTags(path, _t{"grouping": "Beatles Crate", "_size": origSize + 4096}, origModTime)
+
+			Expect(runScanner(ctx, false)).To(Succeed())
+			Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+			mf, err = findByPath(path)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mf.Tags).To(HaveKeyWithValue(model.TagGrouping, []string{"Beatles Crate"}))
+		})
+
 		It("upgrades file with same format in the library", func() {
 			fsys.Add("The Beatles/Revolver/01 - Taxman.mp3", revolver(track(1, "Taxman", _t{"bitrate": 640})))
 
