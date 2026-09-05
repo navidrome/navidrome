@@ -40,7 +40,14 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	}
 	defer existingConn.Close()
 
-	backupDb, err := sql.Open(Driver, path)
+	// When restoring, open the backup file read-only: the SQLite driver defaults to
+	// SQLITE_OPEN_CREATE, so a typo in the path would silently create an empty
+	// database and "restore" it over the live one.
+	backupPath := path
+	if !isBackup {
+		backupPath = "file:" + path + "?mode=ro"
+	}
+	backupDb, err := sql.Open(Driver, backupPath)
 	if err != nil {
 		return fmt.Errorf("opening backup database in '%s': %w", path, err)
 	}
