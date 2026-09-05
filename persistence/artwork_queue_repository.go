@@ -47,13 +47,13 @@ func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*mo
 // row's spent retry budget) and clears trace (so explain does not show a prior failure at attempts 0).
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
+		priority = GREATEST(artwork_queue.priority, excluded.priority), retry_at = excluded.retry_at,
 		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, items)
 }
 
 func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		priority = MAX(priority, excluded.priority)`, items)
+		priority = GREATEST(artwork_queue.priority, excluded.priority)`, items)
 }
 
 func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
