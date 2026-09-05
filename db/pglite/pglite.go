@@ -547,7 +547,7 @@ func (pg *PGlite) forwardWire(packet []byte, outFile string) ([][]byte, error) {
 		if !producedBefore && !producedAfter {
 			// No output at all means the backend did not run the packet (a run always emits at
 			// least a completion); seen right after handshakes. Hand it over again, twice at most.
-			if len(packet) > 0 && len(replies) == 0 && resends < 2 {
+			if len(packet) > 0 && packet[0] != 'X' && len(replies) == 0 && resends < 2 {
 				resends++
 				fmt.Fprintf(pg.cfg.Stderr, "# bridge: empty reply to %s; resending (%d)\n", wireTags(packet), resends)
 				if err := pg.send(packet, strings.TrimSuffix(outFile, ".out")); err != nil {
