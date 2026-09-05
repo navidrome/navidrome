@@ -95,10 +95,7 @@ func annotationBoolFilter(field string) func(string, any) Sqlizer {
 		if !ok {
 			return nil
 		}
-		if strings.ToLower(v) == "true" {
-			return Expr(fmt.Sprintf("COALESCE(%s, 0) > 0", field))
-		}
-		return Expr(fmt.Sprintf("COALESCE(%s, 0) = 0", field))
+		return Expr(fmt.Sprintf("COALESCE(%s, false) = %t", field, strings.ToLower(v) == "true"))
 	}
 }
 
