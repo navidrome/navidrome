@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"iter"
 	"maps"
@@ -289,6 +290,109 @@ func (r folderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
 		return nil, err
 	}
 	return wrapFolderCursor(cursor), nil
+}
+
+const (
+	folderRelPathExpr = `CASE WHEN folder.path = '' OR folder.path = '.' THEN folder.name ELSE folder.path || '/' || folder.name END`
+
+	folderEscapedRelPathExpr = `REPLACE(REPLACE(REPLACE(` + folderRelPathExpr + `, '\', '\\'), '%', '\%'), '_', '\_')`
+
+	// folderHasAudioCond checks whether a folder has audio directly, or contains descendant subfolders with audio.
+	// Note: The EXISTS subquery performs a prefix check on descendant folders when a direct subfolder has
+	// num_audio_files == 0. Because the outer query restricts rows by parent_id (or root parent_id), the number
+	// of subquery evaluations is strictly bounded by the direct child count.
+	folderHasAudioCond = `(folder.num_audio_files > 0 OR EXISTS (` +
+		`SELECT 1 FROM folder sub ` +
+		`WHERE sub.library_id = folder.library_id ` +
+		`AND sub.missing = 0 ` +
+		`AND sub.num_audio_files > 0 ` +
+		`AND (sub.path = ` + folderRelPathExpr + ` OR sub.path LIKE ` + folderEscapedRelPathExpr + ` || '/%' ESCAPE '\')` +
+	`))`
+)
+
+func (r folderRepository) getSubfoldersWithAudio(parentCond Sqlizer, libraryIDs ...int) ([]model.Folder, error) {
+	cond := And{
+		parentCond,
+		Eq{"folder.missing": false},
+		ConcatExpr(folderHasAudioCond),
+	}
+	if len(libraryIDs) > 0 {
+		cond = append(cond, Eq{"folder.library_id": libraryIDs})
+	}
+	sq := r.selectFolder().Where(cond).OrderBy("folder.name COLLATE NOCASE ASC")
+	var res dbFolders
+	err := r.queryAll(sq, &res)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		return nil, err
+	}
+	return res.toModels(), nil
+}
+
+func (r folderRepository) GetRootSubfoldersWithAudio(libraryIDs ...int) ([]model.Folder, error) {
+	return r.getSubfoldersWithAudio(
+		ConcatExpr("folder.parent_id IN (SELECT id FROM folder WHERE path = '' AND name = '.')"),
+		libraryIDs...,
+	)
+}
+
+func (r folderRepository) GetSubfoldersWithAudio(parentID string, libraryIDs ...int) ([]model.Folder, error) {
+	return r.getSubfoldersWithAudio(
+		Eq{"folder.parent_id": parentID},
+		libraryIDs...,
+	)
+}
+
+type folderCoverArtRow struct {
+	FolderID    string `db:"folder_id"`
+	AlbumID     string `db:"album_id"`
+	ImageHash   string `db:"image_hash"`
+	ImageAbsent bool   `db:"image_absent"`
+}
+
+func (r folderRepository) GetCoverArtForFolders(folderIDs ...string) (map[string]string, error) {
+	result := make(map[string]string, len(folderIDs))
+	if len(folderIDs) == 0 {
+		return result, nil
+	}
+
+	for chunk := range slices.Chunk(folderIDs, 200) {
+		sq := Select(
+			"f.id AS folder_id",
+			"al.id AS album_id",
+			"COALESCE(ia.hash, '') AS image_hash",
+			"CASE WHEN ia.item_id IS NOT NULL AND ia.hash = '' THEN 1 ELSE 0 END AS image_absent",
+		).
+			From("folder f").
+			Join("media_file mf ON (mf.folder_id = f.id OR mf.folder_id IN (SELECT d.id FROM folder d WHERE d.parent_id = f.id AND d.missing = 0))").
+			Join("album al ON mf.album_id = al.id").
+			LeftJoin("item_artwork ia ON ia.item_kind = 'al' AND ia.item_id = al.id AND ia.image_type = 'primary'").
+			Where(And{
+				Eq{"f.id": chunk},
+				Eq{"f.missing": false},
+				Eq{"mf.missing": false},
+			}).
+			GroupBy("f.id").
+			Having("f.num_audio_files > 0 OR COUNT(DISTINCT mf.album_id) = 1")
+
+		var rows []folderCoverArtRow
+		err := r.queryAll(sq, &rows)
+		if err != nil && !errors.Is(err, model.ErrNotFound) {
+			return nil, err
+		}
+
+		for _, row := range rows {
+			if row.ImageAbsent {
+				continue
+			}
+			artID := model.ArtworkID{
+				Kind: model.KindAlbumArtwork,
+				ID:   row.AlbumID,
+				Hash: row.ImageHash,
+			}
+			result[row.FolderID] = artID.String()
+		}
+	}
+	return result, nil
 }
 
 func wrapFolderCursor(cursor iter.Seq2[dbFolder, error]) model.FolderCursor {

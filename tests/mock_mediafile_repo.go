@@ -34,6 +34,7 @@ type MockMediaFileRepo struct {
 	FindRecentFilesByPropertiesFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
 	MatchesCriteriaValue            bool
 	MatchesCriteriaErr              error
+	GetAllFn                        func(qo ...model.QueryOptions) (model.MediaFiles, error)
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -86,6 +87,9 @@ func (m *MockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ..
 func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
+	}
+	if m.GetAllFn != nil {
+		return m.GetAllFn(qo...)
 	}
 	if m.Err {
 		return nil, errors.New("error")
