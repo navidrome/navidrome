@@ -424,6 +424,7 @@ func (pg *PGlite) handleConn(conn net.Conn, ioBase string) {
 	}()
 	handshakeDone := false
 	startupDone := false
+	startupSeen := false
 	var pending []byte
 	if pg.trace {
 		fmt.Fprintln(pg.cfg.Stderr, "# bridge: client connected")
@@ -452,6 +453,29 @@ func (pg *PGlite) handleConn(conn net.Conn, ioBase string) {
 			pending = append([]byte(nil), pending[n:]...)
 			if pg.trace {
 				fmt.Fprintf(pg.cfg.Stderr, "# bridge C> %s (%d bytes)\n", wireTags(packet), n)
+			}
+			if !handshakeDone && !startupSeen {
+				startupSeen = true
+				switch startupCode(packet) {
+				case sslRequestCode:
+					startupSeen, startupDone = false, false // the real startup packet follows
+					if _, err := conn.Write([]byte{'N'}); err != nil {
+						return
+					}
+					continue
+				case cancelRequestCode:
+					return // one backend: nothing to cancel
+				}
+				// After the first handshake, answer new clients from the cache without involving the
+				// backend: a handshake it starts and never finishes leaves it unable to send
+				// ReadyForQuery to anyone until the next one completes.
+				if pg.paramStatus != nil {
+					handshakeDone = true
+					if !pg.sendReplies(conn, [][]byte{syntheticHandshake(pg.paramStatus)}) {
+						return
+					}
+					continue
+				}
 			}
 			// Take the session before touching .in: it is shared by every client.
 			if !holding {
@@ -819,6 +843,28 @@ func ensureReadyForQuery(replies [][]byte, trapErr error) [][]byte {
 		replies = append(replies, errorResponse("XX000", msg))
 	}
 	return append(replies, []byte{'Z', 0, 0, 0, 5, 'I'})
+}
+
+const (
+	sslRequestCode    = 80877103
+	cancelRequestCode = 80877102
+)
+
+// startupCode returns the protocol/request code of an untagged startup packet, or 0.
+func startupCode(packet []byte) uint32 {
+	if len(packet) < 8 || packet[0] != 0 {
+		return 0
+	}
+	return uint32(packet[4])<<24 | uint32(packet[5])<<16 | uint32(packet[6])<<8 | uint32(packet[7])
+}
+
+// syntheticHandshake is AuthenticationOk, the cached ParameterStatus messages, BackendKeyData and
+// ReadyForQuery, i.e. what the backend answered the first client.
+func syntheticHandshake(params []byte) []byte {
+	out := []byte{'R', 0, 0, 0, 8, 0, 0, 0, 0}
+	out = append(out, params...)
+	out = append(out, 'K', 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0)
+	return append(out, 'Z', 0, 0, 0, 5, 'I')
 }
 
 func errorResponse(code, msg string) []byte {
