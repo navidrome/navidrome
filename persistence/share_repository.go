@@ -35,7 +35,7 @@ func (r *shareRepository) Delete(id string) error {
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Join("user u on u.id = share.user_id").
+	return r.newSelect(options...).Join("user_account u on u.id = share.user_id").
 		Columns("share.*", "user_name as username").
 		Where(r.addRestriction())
 }
