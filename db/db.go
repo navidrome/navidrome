@@ -55,7 +55,10 @@ func Db() *sql.DB {
 			log.Fatal("Error opening database", err)
 		}
 		// One PGlite backend means one PG session; the bridge serializes clients onto it.
+		// Keep every connection idle rather than churning handshakes through the backend.
 		db.SetMaxOpenConns(4)
+		db.SetMaxIdleConns(4)
+		db.SetConnMaxLifetime(0)
 		abs, _ := filepath.Abs(socketDir)
 		log.Info("Embedded PGlite ready", "psql", "PGPASSWORD=x PGSSLMODE=disable psql -h "+abs+" -U postgres navidrome")
 		return db
