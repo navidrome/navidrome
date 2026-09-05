@@ -492,6 +492,7 @@ CREATE INDEX IF NOT EXISTS media_file_artist_id
     on media_file (artist_id);
 CREATE INDEX IF NOT EXISTS media_file_artist_sort
 	on media_file(order_artist_name, order_album_name, release_date, disc_number, track_number);
+CREATE INDEX IF NOT EXISTS library_artist_stats_gin ON library_artist USING gin (stats);
 CREATE INDEX IF NOT EXISTS media_file_artists_media_file_id_role
     ON media_file_artists (media_file_id, role);
 CREATE INDEX IF NOT EXISTS media_file_artists_role
