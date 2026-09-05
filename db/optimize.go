@@ -141,6 +141,14 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	if err = recordAnalyzeSuccess(ctx, db, now); err != nil {
 		return recordAnalyzeError(ctx, db, now, err)
 	}
+	// The single-user backend has no checkpointer, so a scan's worth of WAL would only be
+	// checkpointed at shutdown; do it here so a crash never has to replay the whole scan.
+	start := time.Now()
+	if _, err := db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		log.Warn(ctx, "Error running CHECKPOINT", err)
+	} else {
+		log.Debug(ctx, "Checkpoint completed", "elapsed", time.Since(start))
+	}
 	return nil
 }
 
