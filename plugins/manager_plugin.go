@@ -25,6 +25,7 @@ type plugin struct {
 	allUsers       bool     // If true, plugin can access all users
 	libraries      libraryAccess
 	lyricsSem      chan struct{}   // Caps concurrent lyrics calls (see LyricsPlugin.GetLyrics)
+	lyricsCalls    lyricsCallGroup // Shared by the transient LyricsPlugin adapters
 	fsConfig       wazero.FSConfig // Sandboxed library mounts, nil if no filesystem permission
 }
 
