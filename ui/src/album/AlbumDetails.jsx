@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  Chip,
   Card,
   CardContent,
   Collapse,
@@ -8,6 +9,7 @@ import {
   useMediaQuery,
   withWidth,
 } from '@material-ui/core'
+import { fade, getLuminance } from '@material-ui/core/styles'
 import {
   ArrayField,
   ChipField,
@@ -104,6 +106,30 @@ const useStyles = makeStyles(
     genreList: {
       marginTop: theme.spacing(0.5),
     },
+    tagRow: {
+      marginTop: theme.spacing(0.5),
+      display: 'flex',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+    },
+    // Same size, same shape and the same 4px margin react-admin's ChipField
+    // puts on every genre chip (RaChipField), so the row keeps one rhythm.
+    // What is different is deliberate: a darker fill and a dashed outline, so
+    // a record label is not read as one more genre.
+    labelChip: {
+      margin: 4,
+      // Follows the theme instead of naming a colour. The fill is a
+      // translucent black laid over whatever the card actually is, so it reads
+      // as that theme's own background, darker, on all of them. A theme that is
+      // already black has nothing left to darken, so it gets a light wash
+      // instead and the chip stays visible. The dashed border is the theme's
+      // own text colour.
+      backgroundColor:
+        getLuminance(theme.palette.background.paper) > 0.08
+          ? fade(theme.palette.common.black, 0.26)
+          : fade(theme.palette.common.white, 0.13),
+      border: `1px dashed ${fade(theme.palette.text.primary, 0.45)}`,
+    },
     externalLinks: {
       marginTop: theme.spacing(1.5),
     },
@@ -136,14 +162,34 @@ const GenreChipField = withWidth()(({ width, ...rest }) => {
   )
 })
 
+// Record label. The value is already on the record: the album API returns the
+// mapped tags as `tags: { recordlabel: ["Domino"], ... }`, so this draws what
+// the server already sends and asks it for nothing new.
+//
+// Not a link: there is no album filter for record label to point one at.
+const RecordLabelChips = () => {
+  const classes = useStyles()
+  const record = useRecordContext()
+  const labels = record?.tags?.recordlabel
+  if (!labels?.length) {
+    return null
+  }
+  return labels.map((label) => (
+    <Chip key={label} className={classes.labelChip} label={label} />
+  ))
+}
+
 const GenreList = () => {
   const classes = useStyles()
   return (
-    <ArrayField className={classes.genreList} source={'genres'}>
-      <SingleFieldList linkType={false}>
-        <GenreChipField />
-      </SingleFieldList>
-    </ArrayField>
+    <div className={classes.tagRow}>
+      <ArrayField source={'genres'}>
+        <SingleFieldList linkType={false}>
+          <GenreChipField />
+        </SingleFieldList>
+      </ArrayField>
+      <RecordLabelChips />
+    </div>
   )
 }
 
@@ -293,7 +339,12 @@ const AlbumDetails = (props) => {
             {isDesktop ? (
               <GenreList />
             ) : (
-              <Typography component={'p'}>{record.genre}</Typography>
+              <>
+                <Typography component={'p'}>{record.genre}</Typography>
+                <div className={classes.tagRow}>
+                  <RecordLabelChips />
+                </div>
+              </>
             )}
             {!isXsmall && (
               <Typography component={'div'} className={classes.recordMeta}>
