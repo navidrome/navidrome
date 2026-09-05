@@ -25,6 +25,23 @@ jobs:
             --jq '.total_count')
           echo "count=$count" >> "$GITHUB_OUTPUT"
 
+      # A PR that reverts its Go changes produces no artifact, but octocov's
+      # comment for the earlier head stays. Match the marker it keys off itself.
+      - name: Delete the stale coverage comment
+        if: steps.artifact.outputs.count == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          number=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls?state=open&per_page=100" \
+            --jq ".[] | select(.head.sha == \"$HEAD_SHA\") | .number" | head -n1)
+          [ -n "$number" ] || exit 0
+          id=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$number/comments" \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | contains("<!-- octocov -->"))) | .id' | head -n1)
+          if [ -n "$id" ]; then
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id"
+          fi
+
       # Only the config, from the base branch: this job holds a write token, so
       # it must never check out the fork.
       - name: Check out the octocov config
