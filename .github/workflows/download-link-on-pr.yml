@@ -35,8 +35,10 @@ jobs:
 
             const {data: {artifacts}} = await github.rest.actions.listWorkflowRunArtifacts({owner, repo, run_id});
             const downloadable = artifacts.filter((art) => !art.name.startsWith('octocov-'));
+            // A PR that changes nothing reaching a binary builds nothing, so an
+            // empty list is expected rather than a problem.
             if (!downloadable.length) {
-              return core.error(`No artifacts found`);
+              return core.info(`No artifacts found`);
             }
             const header = `Download the artifacts for this pull request:`;
             let body = `${header}\n`;
