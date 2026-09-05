@@ -123,39 +123,33 @@ jobs:
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
         run: ./.github/workflows/validate-migrations.sh
 
-  # go: disabled on the pglite spike branch (the SQLite test suites do not run)
-#  go:
-#    name: Test Go code
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Check out code into the Go module directory
-#        uses: actions/checkout@v7
+  go:
+    name: Test Go code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v7
 
-#      - uses: actions/setup-go@v6
-#        with:
-#          go-version-file: go.mod
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
 
-#      - name: Download dependencies
-#        run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-#      # Name must stay unique across the workflow: octocov matches step names
-#      # by name across every job, and waits for each match to finish.
-#      - name: Test with coverage
-#        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v -covermode=atomic -coverprofile=coverage.out $(go list ./... | grep -v '/plugins$')
+      # Name must stay unique across the workflow: octocov matches step names
+      # by name across every job, and waits for each match to finish.
+      # Spike branch: the SQLite-backed suites cannot run, so only conf/ is tested here to keep
+      # the coverage artifact (and the coverage workflow) alive.
+      - name: Test with coverage
+        run: go test -shuffle=on -tags netgo,sqlite_fts5 -race -v -covermode=atomic -coverprofile=coverage.out ./conf/
 
-#      - name: Test ndpgen
-#        run: |
-#          cd plugins/cmd/ndpgen
-#          go test -shuffle=on -v
-#          go build -o ndpgen .
-#          ./ndpgen --help
-
-#      - name: Upload coverage profile
-#        uses: actions/upload-artifact@v7
-#        with:
-#          name: octocov-go
-#          path: coverage.out
-#          if-no-files-found: error
+      - name: Upload coverage profile
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-go
+          path: coverage.out
+          if-no-files-found: error
 
   # go-plugins: disabled on the pglite spike branch (the SQLite test suites do not run)
 #  go-plugins:
@@ -189,46 +183,45 @@ jobs:
 #          path: coverage.out
 #          if-no-files-found: error
 
-  # coverage: disabled on the pglite spike branch (the SQLite test suites do not run)
-#  coverage:
-#    name: Report coverage
-#    runs-on: ubuntu-latest
-#    needs: [go, go-plugins]
-#    permissions:
-#      contents: read
-#      actions: write
-#    env:
-#      COVERAGE_COMMENT: 'false'
-#    steps:
-#      - uses: actions/checkout@v7
+  coverage:
+    name: Report coverage
+    runs-on: ubuntu-latest
+    needs: [go] # go-plugins disabled on this branch
+    permissions:
+      contents: read
+      actions: write
+    env:
+      COVERAGE_COMMENT: 'false'
+    steps:
+      - uses: actions/checkout@v7
 
-#      - uses: actions/download-artifact@v8
-#        with:
-#          pattern: octocov-*
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: octocov-*
 
-#      # Merge here rather than letting octocov do it: octocov reports statement
-#      # coverage for a single profile, but switches to line counting for several.
-#      - name: Merge coverage profiles
-#        run: |
-#          echo "mode: atomic" > coverage.out
-#          awk 'FNR==1 && /^mode:/ {next} {k=$1" "$2; c[k]+=$3} END {for (k in c) print k, c[k]}' \
-#            octocov-*/coverage.out | sort >> coverage.out
+      # Merge here rather than letting octocov do it: octocov reports statement
+      # coverage for a single profile, but switches to line counting for several.
+      - name: Merge coverage profiles
+        run: |
+          echo "mode: atomic" > coverage.out
+          awk 'FNR==1 && /^mode:/ {next} {k=$1" "$2; c[k]+=$3} END {for (k in c) print k, c[k]}' \
+            octocov-*/coverage.out | sort >> coverage.out
 
-#      - uses: k1LoW/octocov-action@v1
+      - uses: k1LoW/octocov-action@v1
 
-#      - name: Save the PR number for the comment workflow
-#        if: github.event_name == 'pull_request'
-#        run: echo "${{ github.event.pull_request.number }}" > pr_number
+      - name: Save the PR number for the comment workflow
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > pr_number
 
-#      - name: Upload the merged profile for the comment workflow
-#        if: github.event_name == 'pull_request'
-#        uses: actions/upload-artifact@v7
-#        with:
-#          name: octocov-pr
-#          path: |
-#            coverage.out
-#            pr_number
-#          if-no-files-found: error
+      - name: Upload the merged profile for the comment workflow
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: octocov-pr
+          path: |
+            coverage.out
+            pr_number
+          if-no-files-found: error
 
   # go-windows: disabled on the pglite spike branch (the SQLite test suites do not run)
 #  go-windows:
