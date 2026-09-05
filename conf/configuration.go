@@ -998,7 +998,7 @@ func setViperDefaults() {
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
-	viper.SetDefault("search.backend", "fts")
+	viper.SetDefault("search.backend", "legacy") // FTS5 is SQLite-only; the LIKE backend works on PostgreSQL
 	viper.SetDefault("matcher.preferstarred", true)
 	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
