@@ -21,8 +21,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${{ github.event.workflow_run.id }}/artifacts" \
-            --jq '[.artifacts[] | select(.name == "octocov-pr")] | length')
+          count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${{ github.event.workflow_run.id }}/artifacts?name=octocov-pr" \
+            --jq '.total_count')
           echo "count=$count" >> "$GITHUB_OUTPUT"
 
       # Only the config, from the base branch: this job holds a write token, so

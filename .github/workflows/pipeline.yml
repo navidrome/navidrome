@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - master
+  workflow_dispatch:
 
 concurrency:
   group: ${{ startsWith(github.ref, 'refs/tags/v') && 'tag' || 'branch' }}-${{ github.ref }}
