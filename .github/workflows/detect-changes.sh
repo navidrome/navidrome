@@ -3,7 +3,8 @@
 # Emits per-area change flags to $GITHUB_OUTPUT so the pipeline can skip work a
 # pull request cannot affect:
 #
-#   go    - Go sources, module files, linter config, embedded resources
+#   go    - Go sources, module files, linter config, embedded resources and
+#           the go:generate inputs whose generated output CI verifies
 #   js    - anything under ui/
 #   i18n  - translation files and their validation script
 #   build - anything that ends up in a binary, image or package (i.e. every
@@ -23,7 +24,7 @@
 set -uo pipefail
 export LC_ALL=C
 
-GO_RE='(\.go$|(^|/)go\.(mod|sum)$|^Makefile$|^\.golangci\.yml$|^resources/|^db/migrations/|^tests/|^\.github/workflows/(pipeline\.yml|detect-changes\.sh)$)'
+GO_RE='(\.go$|(^|/)go\.(mod|sum)$|^Makefile$|^\.golangci\.yml$|^resources/|^db/migrations/|^tests/|^plugins/manifest-schema\.json$|^\.github/workflows/(pipeline\.yml|detect-changes\.sh)$)'
 JS_RE='(^ui/|^\.github/workflows/(pipeline\.yml|detect-changes\.sh)$)'
 I18N_RE='(^resources/i18n/|^ui/src/i18n/en\.json$|^\.github/workflows/validate-translations\.sh$|^\.github/workflows/(pipeline\.yml|detect-changes\.sh)$)'
 DOC_ONLY_RE='(\.md$|^LICENSE$|^\.git-blame-ignore-revs$|^\.gitignore$|^\.devcontainer/)'
