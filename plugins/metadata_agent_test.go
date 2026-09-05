@@ -1,10 +1,9 @@
-//go:build !windows
-
 package plugins
 
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/plugins/capabilities"
@@ -31,6 +30,31 @@ var _ = Describe("agentErr", func() {
 		Entry("a non-zero exit is a fault",
 			errors.New("plugin call exited with code 1"), false),
 	)
+
+	DescribeTable("agentErr retry-later",
+		func(msg string, wantDelay time.Duration) {
+			err := agentErr(errors.New(msg))
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+			retry, _ := errors.AsType[*agents.RetryLaterError](err)
+			d := retry.RetryIn
+			Expect(d).To(Equal(wantDelay))
+		},
+		Entry("bare token", "agent(retry_later)", time.Duration(0)),
+		Entry("with seconds", "agent(retry_later:120)", 120*time.Second),
+		Entry("capped at 1h", "agent(retry_later:999999)", time.Hour),
+		// Scaling to nanoseconds before capping wraps past 2^64, landing on ~0.29s.
+		Entry("capped before it can overflow", "agent(retry_later:18446744074)", time.Hour),
+	)
+
+	It("leaves other plugin errors untouched", func() {
+		orig := errors.New("some plugin failure")
+		Expect(agentErr(orig)).To(Equal(orig))
+	})
+
+	It("does not treat a superstring token as a throttle", func() {
+		orig := errors.New("useragent(retry_later)")
+		Expect(agentErr(orig)).To(Equal(orig))
+	})
 })
 
 var _ = Describe("MetadataAgent", Ordered, func() {

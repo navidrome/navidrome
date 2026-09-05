@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -33,15 +34,21 @@ var embedMigrations embed.FS
 
 const migrationsFolder = "migrations"
 
+// sql.Register panics if called twice, so guard it: the singleton instance can be reset
+// (tests/benchmarks) and rebuilt, but the driver is process-global and registers only once.
+var registerDriverOnce sync.Once
+
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
-		sql.Register(Driver, &sqlite3.SQLiteDriver{
-			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
-					return err
-				}
-				return conn.RegisterCollation(NaturalCollation, natural.CompareFold)
-			},
+		registerDriverOnce.Do(func() {
+			sql.Register(Driver, &sqlite3.SQLiteDriver{
+				ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+					if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
+						return err
+					}
+					return conn.RegisterCollation(NaturalCollation, natural.CompareFold)
+				},
+			})
 		})
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {

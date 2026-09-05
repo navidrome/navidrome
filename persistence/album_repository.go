@@ -259,8 +259,8 @@ func (r *albumRepository) hydrateArtwork(albums model.Albums) {
 		func(a *model.Album) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
 }
 
-// GetAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.
-func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+// getAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.
+func (r *albumRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("album.id"))
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "album.id")
@@ -304,7 +304,7 @@ func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, pat
 }
 
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}

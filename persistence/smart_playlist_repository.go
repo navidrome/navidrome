@@ -58,7 +58,8 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	now := time.Now()
+	// Reuse the stamp refreshCounters just wrote, so evaluated_at and updated_at agree
+	now := pls.UpdatedAt
 	updSql := Update(r.tableName).Set("evaluated_at", now).Where(Eq{"id": pls.ID})
 	if _, err = r.executeSQL(updSql); err != nil {
 		log.Error(r.ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
