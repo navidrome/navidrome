@@ -47,13 +47,13 @@ func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*mo
 // row's spent retry budget) and clears trace (so explain does not show a prior failure at attempts 0).
 func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
+		priority = GREATEST(artwork_queue.priority, excluded.priority), retry_at = excluded.retry_at,
 		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, items)
 }
 
 func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
 	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
-		priority = MAX(priority, excluded.priority)`, items)
+		priority = GREATEST(artwork_queue.priority, excluded.priority)`, items)
 }
 
 func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
@@ -74,13 +74,14 @@ func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueIte
 		rows := make([]string, 0, len(chunk))
 		args := make([]any, 0, len(chunk)*4+2)
 		for _, it := range chunk {
-			rows = append(rows, "(?,?,?,?)")
+			// Simple-protocol args are untyped literals; the CTE columns need explicit types.
+			rows = append(rows, "(?::text,?::text,?::text,?::int)")
 			args = append(args, it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority)
 		}
 		args = append(args, now, now)
 		_, err := r.insertIfNotQueued(
 			`WITH new_items(item_kind, item_id, image_type, priority) AS (VALUES `+strings.Join(rows, ",")+`) `,
-			`SELECT n.item_kind, n.item_id, n.image_type, n.priority, 0, ?, ?
+			`SELECT n.item_kind, n.item_id, n.image_type, n.priority, 0, ?::timestamp, ?::timestamp
 			FROM new_items n
 			WHERE NOT EXISTS (
 				SELECT 1 FROM `+itemArtworkTable+` ia

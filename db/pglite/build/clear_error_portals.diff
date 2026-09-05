@@ -1,0 +1,18 @@
+--- a/interactive_one.c
++++ b/interactive_one.c
+@@ -241,7 +241,14 @@
+     EmitErrorReport();
+     debug_query_string = NULL;
+ puts("# 243:" __FILE__ );
+-    AbortCurrentTransaction();
++    /* The trap bypassed PG_CATCH, so active portals were never marked failed;
++     * AtAbort_Portals only does that when shmem_exit_inprogress is set. */
++    {
++        extern bool shmem_exit_inprogress;
++        shmem_exit_inprogress = true;
++        AbortCurrentTransaction();
++        shmem_exit_inprogress = false;
++    }
+ 
+     if (am_walsender)
+         WalSndErrorCleanup();

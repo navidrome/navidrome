@@ -1,0 +1,13 @@
+diff --git a/wasm-build/sdk/bin/wasi-c b/wasm-build/sdk/bin/wasi-c
+index bac9c7b..c35db77 100755
+--- a/wasm-build/sdk/bin/wasi-c
++++ b/wasm-build/sdk/bin/wasi-c
+@@ -126,7 +126,7 @@ if [[ "$COMPILE_ONLY" == "false" ]]; then
+ fi
+ 
+ # Misc compilation flags
+-ARGS+=(-fPIC)
++ARGS+=(${PGLITE_PIC:--fPIC})
+ 
+ # C++ only flags
+ if [[ "$IS_CXX" == "true" ]]; then

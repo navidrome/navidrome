@@ -133,13 +133,23 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	if err := markOptimizePending(ctx, db); err != nil {
 		return recordAnalyzeError(ctx, db, now, fmt.Errorf("marking ANALYZE pending: %w", err))
 	}
-	log.Debug(ctx, "Refreshing query planner statistics")
-	_, err := db.ExecContext(ctx, "ANALYZE")
+	// VACUUM too: the single-user backend has no autovacuum, and every scan leaves a dead
+	// version of each updated row behind.
+	log.Debug(ctx, "Vacuuming and refreshing query planner statistics")
+	_, err := db.ExecContext(ctx, "VACUUM (ANALYZE)")
 	if err != nil {
 		return recordAnalyzeError(ctx, db, now, fmt.Errorf("running ANALYZE: %w", err))
 	}
 	if err = recordAnalyzeSuccess(ctx, db, now); err != nil {
 		return recordAnalyzeError(ctx, db, now, err)
+	}
+	// The single-user backend has no checkpointer, so a scan's worth of WAL would only be
+	// checkpointed at shutdown; do it here so a crash never has to replay the whole scan.
+	start := time.Now()
+	if _, err := db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		log.Warn(ctx, "Error running CHECKPOINT", err)
+	} else {
+		log.Debug(ctx, "Checkpoint completed", "elapsed", time.Since(start))
 	}
 	return nil
 }
@@ -209,14 +219,14 @@ type sqlQueryer interface {
 }
 
 func putProperty(ctx context.Context, db sqlExecer, key, value string) error {
-	_, err := db.ExecContext(ctx, `insert into property(id, value) values(?, ?)
+	_, err := db.ExecContext(ctx, `insert into property(id, value) values($1, $2)
 		on conflict(id) do update set value=excluded.value`, key, value)
 	return err
 }
 
 func getProperty(ctx context.Context, db sqlQueryer, key string) (string, bool, error) {
 	var value string
-	err := db.QueryRowContext(ctx, "select value from property where id=?", key).Scan(&value)
+	err := db.QueryRowContext(ctx, "select value from property where id=$1", key).Scan(&value)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}

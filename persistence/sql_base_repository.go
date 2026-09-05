@@ -306,8 +306,8 @@ func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 		return
 	}
 	// CAST: playlist_tracks.id is an INTEGER (unlike other tables' TEXT ids); passing it to
-	// SEEDEDRAND's string param uncast silently drops every row (go-sqlite3 binding gotcha).
-	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', CAST(%s.id AS TEXT))", r.seedKey(), r.tableName)
+	// A seeded, stable pseudo-random order: hashing the seed with the id keeps paging consistent.
+	options[0].Sort = fmt.Sprintf("md5('%s' || %s.id)", r.seedKey(), r.tableName)
 	if options[0].Seed != "" {
 		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return
@@ -457,14 +457,8 @@ func (r sqlRepository) queryAllSlice(sq SelectBuilder, response any) error {
 
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
-func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
-	if options.Offset > conf.Server.DevOffsetOptimize {
-		sq = sq.RemoveOffset()
-		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
-		rowidSq = rowidSq.Limit(uint64(options.Offset))
-		rowidSql, args, _ := rowidSq.ToSql()
-		sq = sq.Where(r.tableName+".rowid not in ("+rowidSql+")", args...)
-	}
+func (r sqlRepository) optimizePagination(sq SelectBuilder, _ model.QueryOptions) SelectBuilder {
+	// The SQLite rowid trick for deep offsets does not apply to PostgreSQL; plain OFFSET is used.
 	return sq
 }
 
@@ -535,12 +529,14 @@ func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
 }
 
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
-	countQuery = countQuery.
-		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
+	// Counted through a subquery so a sort carried by the builder (PostgreSQL rejects ORDER BY on
+	// a column that is neither grouped nor aggregated) stays harmless.
+	inner := countQuery.
+		RemoveColumns().Columns(r.tableName + ".id").
 		RemoveOffset().RemoveLimit().
-		OrderBy(r.tableName + ".id"). // To remove any ORDER BY clause that could slow down the query
 		From(r.tableName)
-	countQuery = r.applyFilters(countQuery, options...)
+	inner = r.applyFilters(inner, options...)
+	countQuery = Select("count(distinct t.id) as count").FromSelect(inner, "t")
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
 	return res.Count, err
@@ -629,10 +625,8 @@ func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffect
 		log.Trace(append(fields, err)...)
 		return
 	}
-	// The result codes separate errors that share a message, notably SQLITE_BUSY from
-	// SQLITE_BUSY_SNAPSHOT, which no busy_timeout can retry.
-	if code, extended, ok := db.ErrorCodes(err); ok {
-		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
+	if code, ok := db.SQLState(err); ok {
+		fields = append(fields, "sqlstate", code)
 	}
 	log.Error(append(fields, err)...)
 }

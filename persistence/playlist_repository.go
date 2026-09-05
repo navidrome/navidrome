@@ -33,12 +33,12 @@ func (p *dbPlaylist) PostScan() error {
 }
 
 func (p dbPlaylist) PostMapArgs(args map[string]any) error {
-	var err error
 	if p.Playlist.IsSmartPlaylist() {
-		args["rules"], err = json.Marshal(p.Playlist.Rules)
+		rules, err := json.Marshal(p.Playlist.Rules)
 		if err != nil {
 			return fmt.Errorf("invalid criteria expression: %w", err)
 		}
+		args["rules"] = string(rules) // []byte would be bound as bytea and stored as its hex form
 		// Smart playlist counters are owned by refreshCounters (evaluation), never by callers
 		delete(args, "song_count")
 		delete(args, "duration")
@@ -212,8 +212,8 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 func (r *playlistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	// Joins a projection of user, not the table: its name/created_at columns would make an ORDER BY
 	// on the playlist's own ambiguous.
-	sq := r.newSelect(options...).Columns("playlist.id", "user.user_name as owner_name").
-		Join("(select id, user_name from user) user on user.id = owner_id").Where(r.userFilter())
+	sq := r.newSelect(options...).Columns("playlist.id", "user_account.user_name as owner_name").
+		Join("user_account on user_account.id = owner_id").Where(r.userFilter())
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "playlist.id")
 	}
@@ -255,8 +255,8 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	sel := r.newSelect(options...).Join("user on user.id = owner_id").
-		Columns(r.tableName+".*", "user.user_name as owner_name")
+	sel := r.newSelect(options...).Join("user_account on user_account.id = owner_id").
+		Columns(r.tableName+".*", "user_account.user_name as owner_name")
 	return r.withAnnotation(sel, r.tableName+".id")
 }
 
@@ -350,7 +350,7 @@ func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectB
 	userID := loggedUser(r.ctx).ID
 	return query.
 		Columns(
-			"coalesce(starred, 0) as starred",
+			"coalesce(starred, false) as starred",
 			"starred_at",
 			"coalesce(play_count, 0) as play_count",
 			"play_date",
@@ -427,7 +427,7 @@ func (r *playlistRepository) removeOrphans() error {
 		Join("playlist p on playlist_tracks.playlist_id = p.id").
 		LeftJoin("media_file mf on playlist_tracks.media_file_id = mf.id").
 		Where(Eq{"mf.id": nil}).
-		GroupBy("playlist_tracks.playlist_id")
+		GroupBy("playlist_tracks.playlist_id", "p.name")
 
 	var pls []struct{ Id, Name string }
 	err := r.queryAll(sel, &pls)

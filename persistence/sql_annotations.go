@@ -70,7 +70,7 @@ func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) Selec
 			" AND annotation.item_type = ?"+
 			" AND annotation.user_id = ?)", r.tableName, userID).
 		Columns(
-			"coalesce(starred, 0) as starred",
+			"coalesce(starred, false) as starred",
 			"coalesce(rating, 0) as rating",
 			"starred_at",
 			"play_date",
@@ -95,10 +95,14 @@ func annotationBoolFilter(field string) func(string, any) Sqlizer {
 		if !ok {
 			return nil
 		}
-		if strings.ToLower(v) == "true" {
-			return Expr(fmt.Sprintf("COALESCE(%s, 0) > 0", field))
+		set := strings.ToLower(v) == "true"
+		if field == "rating" { // integer column; starred is a boolean
+			if set {
+				return Expr("COALESCE(rating, 0) > 0")
+			}
+			return Expr("COALESCE(rating, 0) = 0")
 		}
-		return Expr(fmt.Sprintf("COALESCE(%s, 0) = 0", field))
+		return Expr(fmt.Sprintf("COALESCE(%s, false) = %t", field, set))
 	}
 }
 
@@ -161,7 +165,7 @@ func (r sqlRepository) updateAvgRating(itemID string) error {
 func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	upd := Update(annotationTable).Where(r.annId(itemID)).
 		Set("play_count", Expr("play_count+1")).
-		Set("play_date", Expr("max(ifnull(play_date,''),?)", ts))
+		Set("play_date", Expr("greatest(coalesce(play_date, '0001-01-01'::timestamp), ?)", ts))
 	c, err := r.executeSQL(upd)
 
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {

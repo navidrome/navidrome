@@ -53,11 +53,11 @@ func (r *tagRepository) Add(libraryID int, tags ...model.Tag) error {
 func (r *tagRepository) UpdateCounts() error {
 	template := `
 INSERT INTO library_tag (tag_id, library_id, %[1]s_count)
-SELECT jt.value as tag_id, %[1]s.library_id, count(distinct %[1]s.id) as %[1]s_count
+SELECT jt.v->>'id' as tag_id, %[1]s.library_id, count(distinct %[1]s.id) as %[1]s_count
 FROM %[1]s
-JOIN json_tree(%[1]s.tags, '$.genre') as jt ON jt.atom IS NOT NULL AND jt.key = 'id'
-JOIN tag ON tag.id = jt.value
-GROUP BY jt.value, %[1]s.library_id
+CROSS JOIN LATERAL jsonb_array_elements(coalesce(%[1]s.tags->'genre', '[]'::jsonb)) as jt(v)
+JOIN tag ON tag.id = jt.v->>'id'
+GROUP BY jt.v->>'id', %[1]s.library_id
 ON CONFLICT (tag_id, library_id) 
 DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
 `
@@ -82,16 +82,20 @@ func (r *tagRepository) GetAll(name model.TagName, options ...model.QueryOptions
 }
 
 func (r *tagRepository) purgeUnused() error {
+	// EXCEPT builds the unused set once; NOT IN / a correlated NOT EXISTS re-evaluate the ~1M-row
+	// used-tags subquery per tag row (minutes instead of ~1 s).
 	del := Delete(r.tableName).Where(`
-	id not in (select jt.value
-	from album left join json_tree(album.tags, '$') as jt
-	where atom is not null
-	  and key = 'id'
-	UNION
-	select jt.value
-	from media_file left join json_tree(media_file.tags, '$') as jt
-	where atom is not null
-	  and key = 'id')
+	id in (select id from ` + r.tableName + `
+	except
+	select elem->>'id'
+	from album
+	cross join lateral jsonb_each(coalesce(album.tags, '{}'::jsonb)) as e(k, arr)
+	cross join lateral jsonb_array_elements(e.arr) as elem
+	except
+	select elem->>'id'
+	from media_file
+	cross join lateral jsonb_each(coalesce(media_file.tags, '{}'::jsonb)) as e(k, arr)
+	cross join lateral jsonb_array_elements(e.arr) as elem)
 `)
 	c, err := r.executeSQL(del)
 	if err != nil {
