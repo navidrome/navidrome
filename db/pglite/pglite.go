@@ -468,7 +468,11 @@ func (pg *PGlite) handleConn(conn net.Conn, ioBase string) {
 			if !handshakeDone {
 				replies, handshakeDone = pg.fixHandshake(replies)
 			} else {
-				replies = ensureReadyForQuery(replies, trapErr)
+				fixed := ensureReadyForQuery(replies, trapErr)
+				if len(fixed) != len(replies) {
+					fmt.Fprintf(pg.cfg.Stderr, "# bridge: incomplete reply to %s (trap=%v); synthesized error+ReadyForQuery\n", wireTags(packet), trapErr != nil)
+				}
+				replies = fixed
 			}
 			if trapErr != nil && pg.trace {
 				fmt.Fprintf(pg.cfg.Stderr, "# bridge: trap recovered: %v\n", strings.SplitN(trapErr.Error(), "\n", 2)[0])
@@ -766,9 +770,6 @@ func (pg *PGlite) fixHandshake(replies [][]byte) ([][]byte, bool) {
 // which would otherwise leave the client waiting forever.
 func ensureReadyForQuery(replies [][]byte, trapErr error) [][]byte {
 	data := bytes.Join(replies, nil)
-	if len(data) == 0 && trapErr == nil {
-		return replies
-	}
 	sawError, sawReady := false, false
 	for rest := data; len(rest) >= 5; {
 		n := int(rest[1])<<24 | int(rest[2])<<16 | int(rest[3])<<8 | int(rest[4])
@@ -783,14 +784,18 @@ func ensureReadyForQuery(replies [][]byte, trapErr error) [][]byte {
 		}
 		rest = rest[n+1:]
 	}
-	if trapErr != nil && !sawError && !sawReady {
-		replies = append(replies, errorResponse("XX000", "pglite trap: "+strings.SplitN(trapErr.Error(), "\n", 2)[0]))
-		sawError = true
+	if sawReady {
+		return replies
 	}
-	if sawError && !sawReady {
-		return append(replies, []byte{'Z', 0, 0, 0, 5, 'I'})
+	// A reply without ReadyForQuery would leave the client waiting forever; fail it instead.
+	if !sawError {
+		msg := "pglite: incomplete reply from the backend"
+		if trapErr != nil {
+			msg = "pglite trap: " + strings.SplitN(trapErr.Error(), "\n", 2)[0]
+		}
+		replies = append(replies, errorResponse("XX000", msg))
 	}
-	return replies
+	return append(replies, []byte{'Z', 0, 0, 0, 5, 'I'})
 }
 
 func errorResponse(code, msg string) []byte {
