@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 	"text/tabwriter"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -14,6 +17,23 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 )
+
+// requireExistingDB aborts the command when the database file (DbPath minus DSN
+// params) does not exist.
+func requireExistingDB() {
+	path, _, _ := strings.Cut(conf.Server.DbPath, "?")
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Fatal("No existing database", "path", path)
+	}
+}
+
+func confirmYES(in io.Reader, warning string) bool {
+	fmt.Println(warning)
+	fmt.Printf("Please enter YES (all caps) to continue: ")
+	var input string
+	_, err := fmt.Fscanln(in, &input)
+	return input == "YES" && err == nil
+}
 
 // newTabWriter keeps every CLI table on the same column settings.
 func newTabWriter(out io.Writer) *tabwriter.Writer {

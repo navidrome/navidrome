@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -78,19 +76,7 @@ func runBackup(ctx context.Context) {
 		conf.Server.Backup.Path = conf.NewDir(backupDir)
 	}
 
-	idx := strings.LastIndex(conf.Server.DbPath, "?")
-	var path string
-
-	if idx == -1 {
-		path = conf.Server.DbPath
-	} else {
-		path = conf.Server.DbPath[:idx]
-	}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Fatal("No existing database", "path", path)
-		return
-	}
+	requireExistingDB()
 
 	start := time.Now()
 	path, err := db.Backup(ctx)
@@ -111,31 +97,12 @@ func runPrune(ctx context.Context) {
 		conf.Server.Backup.Count = backupCount
 	}
 
-	if conf.Server.Backup.Count == 0 && !force {
-		fmt.Println("Warning: pruning ALL backups")
-		fmt.Printf("Please enter YES (all caps) to continue: ")
-		var input string
-		_, err := fmt.Scanln(&input)
-
-		if input != "YES" || err != nil {
-			log.Warn("Prune cancelled")
-			return
-		}
-	}
-
-	idx := strings.LastIndex(conf.Server.DbPath, "?")
-	var path string
-
-	if idx == -1 {
-		path = conf.Server.DbPath
-	} else {
-		path = conf.Server.DbPath[:idx]
-	}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Fatal("No existing database", "path", path)
+	if conf.Server.Backup.Count == 0 && !force && !confirmYES(os.Stdin, "Warning: pruning ALL backups") {
+		log.Warn("Prune cancelled")
 		return
 	}
+
+	requireExistingDB()
 
 	start := time.Now()
 	count, err := db.Prune(ctx)
@@ -149,30 +116,11 @@ func runPrune(ctx context.Context) {
 }
 
 func runRestore(ctx context.Context) {
-	idx := strings.LastIndex(conf.Server.DbPath, "?")
-	var path string
+	requireExistingDB()
 
-	if idx == -1 {
-		path = conf.Server.DbPath
-	} else {
-		path = conf.Server.DbPath[:idx]
-	}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Fatal("No existing database", "path", path)
+	if !force && !confirmYES(os.Stdin, "Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.") {
+		log.Warn("Restore cancelled")
 		return
-	}
-
-	if !force {
-		fmt.Println("Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.")
-		fmt.Printf("Please enter YES (all caps) to continue: ")
-		var input string
-		_, err := fmt.Scanln(&input)
-
-		if input != "YES" || err != nil {
-			log.Warn("Restore cancelled")
-			return
-		}
 	}
 
 	start := time.Now()
