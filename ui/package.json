@@ -9,7 +9,7 @@
     "test:watch": "vitest",
     "test": "vitest --watch=false",
     "test:coverage": "vitest run --coverage --watch=false",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc -b --noEmit",
     "lint": "eslint . --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0",
     "prettier": "prettier --write ./src",
     "check-formatting": "prettier -c ./src",
