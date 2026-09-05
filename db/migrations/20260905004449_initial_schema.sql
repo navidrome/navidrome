@@ -347,7 +347,7 @@ CREATE TABLE IF NOT EXISTS "scrobble_buffer"
     CONSTRAINT scrobble_buffer_pk_uq UNIQUE (user_id, service, media_file_id, play_time)
 );
 CREATE TABLE IF NOT EXISTS "scrobbles"(
-    id INTEGER PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     media_file_id text NOT NULL
         ,
     user_id text NOT NULL 
