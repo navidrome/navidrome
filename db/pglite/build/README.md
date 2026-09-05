@@ -11,6 +11,9 @@ electric-sql/postgres-pglite, branch REL_17_5_WASM-pglite). Clone it to /tmp/pgl
 - `wasi-c.diff` — makes the forced `-fPIC` in the compiler wrapper overridable (`PGLITE_PIC`). NOTE: the matching
   `-fpic` in `postgresql-src/wasm-build/build-pgcore.sh` (cloned at build time) is not covered by a diff here; the
   `-fno-pic` experiment did not take effect and is unmeasured.
+- `message_context_reset.diff` — goes in `patches/pglite-wasm/`. The fork stubs `MemoryContextResetAndDeleteChildren`
+  (removed in PostgreSQL 17) as an empty macro, so `MessageContext` is never reset and every wire message leaks its
+  parse/plan state (~10 KB per statement; a library scan reached 15 GB). The patch maps it to `MemoryContextReset`.
 - `clear_error_portals.diff` — goes in `patches/pglite-wasm/`. A PostgreSQL ERROR traps the wasm instance, which skips
   every PG_CATCH, so the active portal is never marked failed and the next statement fails with
   "cannot drop active portal". Wrapping `AbortCurrentTransaction()` in `clear_error()` with

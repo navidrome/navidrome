@@ -403,6 +403,9 @@ func (pg *PGlite) startBridge() error {
 // DataDir is the host directory holding the cluster.
 func (pg *PGlite) DataDir() string { return pg.dataDir }
 
+// MemorySize reports the wasm linear memory size in bytes; it only ever grows.
+func (pg *PGlite) MemorySize() uint64 { return uint64(pg.mod.Memory().Size()) }
+
 // Connections reports how many client connections the bridge has accepted.
 func (pg *PGlite) Connections() int64 { return pg.connections.Load() }
 
