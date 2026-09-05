@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 )
@@ -33,71 +31,7 @@ func backupPath(t time.Time) string {
 }
 
 func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
-	// heavily inspired by https://codingrabbits.dev/posts/go_and_sqlite_backup_and_maybe_restore/
-	existingConn, err := Db().Conn(ctx)
-	if err != nil {
-		return fmt.Errorf("getting existing connection: %w", err)
-	}
-	defer existingConn.Close()
-
-	backupDb, err := sql.Open(Driver, path)
-	if err != nil {
-		return fmt.Errorf("opening backup database in '%s': %w", path, err)
-	}
-	defer backupDb.Close()
-
-	backupConn, err := backupDb.Conn(ctx)
-	if err != nil {
-		return fmt.Errorf("getting backup connection: %w", err)
-	}
-	defer backupConn.Close()
-
-	err = existingConn.Raw(func(existing any) error {
-		return backupConn.Raw(func(backup any) error {
-			var sourceOk, destOk bool
-			var sourceConn, destConn *sqlite3.SQLiteConn
-
-			if isBackup {
-				sourceConn, sourceOk = existing.(*sqlite3.SQLiteConn)
-				destConn, destOk = backup.(*sqlite3.SQLiteConn)
-			} else {
-				sourceConn, sourceOk = backup.(*sqlite3.SQLiteConn)
-				destConn, destOk = existing.(*sqlite3.SQLiteConn)
-			}
-
-			if !sourceOk {
-				return fmt.Errorf("error trying to convert source to sqlite connection")
-			}
-			if !destOk {
-				return fmt.Errorf("error trying to convert destination to sqlite connection")
-			}
-
-			backupOp, err := destConn.Backup("main", sourceConn, "main")
-			if err != nil {
-				return fmt.Errorf("error starting sqlite backup: %w", err)
-			}
-			defer backupOp.Close()
-
-			// Caution: -1 means that sqlite will hold a read lock until the operation finishes
-			// This will lock out other writes that could happen at the same time
-			done, err := backupOp.Step(-1)
-			if err != nil {
-				return fmt.Errorf("error during backup step: %w", err)
-			}
-			if !done {
-				return fmt.Errorf("backup not done with step -1")
-			}
-
-			err = backupOp.Finish()
-			if err != nil {
-				return fmt.Errorf("error finishing backup: %w", err)
-			}
-
-			return nil
-		})
-	})
-
-	return err
+	return errors.New("database backup and restore are not supported with the embedded PGlite database")
 }
 
 func Backup(ctx context.Context) (string, error) {

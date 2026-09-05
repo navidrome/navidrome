@@ -209,14 +209,14 @@ type sqlQueryer interface {
 }
 
 func putProperty(ctx context.Context, db sqlExecer, key, value string) error {
-	_, err := db.ExecContext(ctx, `insert into property(id, value) values(?, ?)
+	_, err := db.ExecContext(ctx, `insert into property(id, value) values($1, $2)
 		on conflict(id) do update set value=excluded.value`, key, value)
 	return err
 }
 
 func getProperty(ctx context.Context, db sqlQueryer, key string) (string, bool, error) {
 	var value string
-	err := db.QueryRowContext(ctx, "select value from property where id=?", key).Scan(&value)
+	err := db.QueryRowContext(ctx, "select value from property where id=$1", key).Scan(&value)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", false, nil
 	}

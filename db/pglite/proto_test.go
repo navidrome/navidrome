@@ -3,7 +3,6 @@ package pglite_test
 import (
 	"context"
 	"net"
-	"os"
 	"path/filepath"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -17,15 +16,8 @@ var _ = Describe("PGlite wire protocol", func() {
 	var pg *pglite.PGlite
 
 	BeforeEach(func() {
-		tarball := os.Getenv("ND_PGLITE_TARBALL")
-		if tarball == "" {
-			tarball = "tmp/pglite-wasi-O2-fix.tar.gz"
-		}
-		if _, err := os.Stat(tarball); err != nil {
-			Skip("pglite tarball not found: " + tarball)
-		}
 		var err error
-		pg, err = pglite.New(context.Background(), pglite.Config{DataDir: GinkgoT().TempDir(), Tarball: tarball, Stderr: GinkgoWriter})
+		pg, err = pglite.New(context.Background(), pglite.Config{DataDir: GinkgoT().TempDir(), Stderr: GinkgoWriter})
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(pg.Close)
 	})

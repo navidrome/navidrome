@@ -1,0 +1,70 @@
+--- docker/Dockerfile.orig	2026-09-04 12:23:21
++++ docker/Dockerfile	2026-09-04 12:23:21
+@@ -36,10 +36,10 @@
+ 
+ # ── Download upstream wasi-sdk from WebAssembly/wasi-sdk ─────────────────────
+ RUN cd /tmp && \
+-    wget -q "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-${WASI_SDK_VERSION}-x86_64-linux.tar.gz" && \
+-    tar xf wasi-sdk-${WASI_SDK_VERSION}-x86_64-linux.tar.gz && \
+-    mv wasi-sdk-${WASI_SDK_VERSION}-x86_64-linux ${SDKROOT}/wasisdk/upstream && \
+-    rm wasi-sdk-${WASI_SDK_VERSION}-x86_64-linux.tar.gz
++    wget -q "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-${WASI_SDK_VERSION}-arm64-linux.tar.gz" && \
++    tar xf wasi-sdk-${WASI_SDK_VERSION}-arm64-linux.tar.gz && \
++    mv wasi-sdk-${WASI_SDK_VERSION}-arm64-linux ${SDKROOT}/wasisdk/upstream && \
++    rm wasi-sdk-${WASI_SDK_VERSION}-arm64-linux.tar.gz
+ 
+ # ── Copy our SDK files (hotfix headers, sysfix overlays, wrapper scripts) ────
+ COPY sdk/ /tmp/sdk-files/
+@@ -100,27 +100,27 @@
+ 
+ # ── Download binaryen (wasm-opt) ──────────────────────────────────────────────
+ RUN cd /tmp && \
+-    wget -q "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz" && \
+-    tar xzf binaryen-version_${BINARYEN_VERSION}-x86_64-linux.tar.gz && \
++    wget -q "https://github.com/WebAssembly/binaryen/releases/download/version_${BINARYEN_VERSION}/binaryen-version_${BINARYEN_VERSION}-aarch64-linux.tar.gz" && \
++    tar xzf binaryen-version_${BINARYEN_VERSION}-aarch64-linux.tar.gz && \
+     mv binaryen-version_${BINARYEN_VERSION}/bin/wasm-opt /usr/local/bin/wasm-opt && \
+     chmod +x /usr/local/bin/wasm-opt && \
+     rm -rf binaryen-version_${BINARYEN_VERSION}*
+ 
+ # ── Download wasmtime (WASI runtime for pre-initializing pgdata) ──────────────
+ RUN cd /tmp && \
+-    wget -q "https://github.com/bytecodealliance/wasmtime/releases/download/v${WASMTIME_VERSION}/wasmtime-v${WASMTIME_VERSION}-x86_64-linux.tar.xz" && \
+-    tar xJf wasmtime-v${WASMTIME_VERSION}-x86_64-linux.tar.xz && \
+-    mv wasmtime-v${WASMTIME_VERSION}-x86_64-linux/wasmtime /usr/local/bin/wasmtime && \
++    wget -q "https://github.com/bytecodealliance/wasmtime/releases/download/v${WASMTIME_VERSION}/wasmtime-v${WASMTIME_VERSION}-aarch64-linux.tar.xz" && \
++    tar xJf wasmtime-v${WASMTIME_VERSION}-aarch64-linux.tar.xz && \
++    mv wasmtime-v${WASMTIME_VERSION}-aarch64-linux/wasmtime /usr/local/bin/wasmtime && \
+     chmod +x /usr/local/bin/wasmtime && \
+-    rm -rf wasmtime-v${WASMTIME_VERSION}-x86_64-linux*
++    rm -rf wasmtime-v${WASMTIME_VERSION}-aarch64-linux*
+ 
+ # ── Download wizer (pre-initializer for WASM) ────────────────────────────────
+ RUN cd /tmp && \
+-    wget -q "https://github.com/bytecodealliance/wizer/releases/download/v${WIZER_VERSION}/wizer-v${WIZER_VERSION}-x86_64-linux.tar.xz" && \
+-    tar xJf wizer-v${WIZER_VERSION}-x86_64-linux.tar.xz && \
+-    mv wizer-v${WIZER_VERSION}-x86_64-linux/wizer /usr/local/bin/wizer && \
++    wget -q "https://github.com/bytecodealliance/wizer/releases/download/v${WIZER_VERSION}/wizer-v${WIZER_VERSION}-aarch64-linux.tar.xz" && \
++    tar xJf wizer-v${WIZER_VERSION}-aarch64-linux.tar.xz && \
++    mv wizer-v${WIZER_VERSION}-aarch64-linux/wizer /usr/local/bin/wizer && \
+     chmod +x /usr/local/bin/wizer && \
+-    rm -rf wizer-v${WIZER_VERSION}-x86_64-linux*
++    rm -rf wizer-v${WIZER_VERSION}-aarch64-linux*
+ 
+ # ── Download wasi-vfs (embed files into WASM binary) ─────────────────────────
+ RUN cd /tmp && \
+@@ -128,11 +128,11 @@
+     unzip -o libwasi_vfs-wasm32-unknown-unknown.zip -d /tmp/wasi-vfs-lib && \
+     cp /tmp/wasi-vfs-lib/libwasi_vfs.a ${SDKROOT}/wasisdk/upstream/share/wasi-sysroot/lib/wasm32-wasip1/ && \
+     rm -rf libwasi_vfs-wasm32-unknown-unknown.zip /tmp/wasi-vfs-lib && \
+-    wget -q "https://github.com/kateinoigakukun/wasi-vfs/releases/download/v${WASI_VFS_VERSION}/wasi-vfs-cli-x86_64-unknown-linux-gnu.zip" && \
+-    unzip -o wasi-vfs-cli-x86_64-unknown-linux-gnu.zip -d /tmp/wasi-vfs-cli && \
++    wget -q "https://github.com/kateinoigakukun/wasi-vfs/releases/download/v${WASI_VFS_VERSION}/wasi-vfs-cli-aarch64-unknown-linux-gnu.zip" && \
++    unzip -o wasi-vfs-cli-aarch64-unknown-linux-gnu.zip -d /tmp/wasi-vfs-cli && \
+     mv /tmp/wasi-vfs-cli/wasi-vfs /usr/local/bin/wasi-vfs && \
+     chmod +x /usr/local/bin/wasi-vfs && \
+-    rm -rf wasi-vfs-cli-x86_64-unknown-linux-gnu.zip /tmp/wasi-vfs-cli
++    rm -rf wasi-vfs-cli-aarch64-unknown-linux-gnu.zip /tmp/wasi-vfs-cli
+ 
+ COPY entrypoint.sh /entrypoint.sh
+ RUN chmod +x /entrypoint.sh

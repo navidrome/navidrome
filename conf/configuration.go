@@ -399,8 +399,10 @@ func Load(noConfigDump bool) {
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
+		Server.DbPath = "pglite://" + filepath.Join(Server.DataFolder.String(), "pglite")
 	}
+	// The embedded database lives in this process; a scanner subprocess cannot open it too.
+	Server.DevExternalScanner = false
 
 	out := os.Stderr
 	if Server.LogFile != "" {
@@ -1131,7 +1133,7 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkexternalmaxrps", 2)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
-	viper.SetDefault("devexternalscanner", true)
+	viper.SetDefault("devexternalscanner", false)
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devselectivewatcher", true)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)

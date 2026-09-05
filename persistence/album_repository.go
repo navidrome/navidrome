@@ -272,7 +272,7 @@ func (r *albumRepository) getAllIDs(options ...model.QueryOptions) ([]string, er
 
 // soleAlbumArtistFilter matches albums with exactly one album artist. The artist artwork
 // resolver and the scanner's image-change enqueue must select the same albums.
-var soleAlbumArtistFilter = Eq{"json_array_length(participants, '$.albumartist')": 1}
+var soleAlbumArtistFilter = Eq{"jsonb_array_length(coalesce(participants->'albumartist', '[]'::jsonb))": 1}
 
 // SoleAlbumArtistFilter matches the albums where the given artist is the only album artist.
 // Matches by album-artist participation, not the deprecated album_artist_id column.
@@ -289,10 +289,10 @@ func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, pat
 	ids := []string{}
 	// Repeated IDs across chunks are fine: the queue upserts by PK.
 	for chunk := range slices.Chunk(paths, subtreePathChunkSize) {
-		inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
+		inSubtree := Exists("jsonb_array_elements_text(coalesce(album.folder_ids, '[]'::jsonb)) je(value) join folder on folder.id = je.value",
 			folderSubtreeFilter(lib, chunk))
 		// Sole album artist, so participants[0] is the only one.
-		sq := Select("distinct json_extract(participants, '$.albumartist[0].id')").From("album").
+		sq := Select("distinct participants->'albumartist'->0->>'id'").From("album").
 			Where(And{soleAlbumArtistFilter, inSubtree})
 		var chunkIDs []string
 		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
@@ -377,7 +377,7 @@ func (r *albumRepository) TouchByMissingFolder() (int64, error) {
 	upd := Update(r.tableName).Set("imported_at", time.Now()).
 		Where(And{
 			NotEq{"folder_ids": nil},
-			ConcatExpr("EXISTS (SELECT 1 FROM json_each(folder_ids) AS je JOIN main.folder AS f ON je.value = f.id WHERE f.missing = true)"),
+			ConcatExpr("EXISTS (SELECT 1 FROM jsonb_array_elements_text(folder_ids) AS je(value) JOIN folder AS f ON je.value = f.id WHERE f.missing = true)"),
 		})
 	c, err := r.executeSQL(upd)
 	if err != nil {

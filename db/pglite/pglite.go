@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -27,16 +28,15 @@ import (
 )
 
 type Config struct {
-	DataDir  string
-	Tarball  string // path to pglite-wasi-17.tar.gz
+	DataDir string
+	// CacheDir, if set, keeps wazero's compiled code between runs (saves ~1.7 s at startup).
+	CacheDir string
 	Database string
 	User     string
 	Stderr   io.Writer
-	// ServerSettings are appended to postgresql.conf after initdb (e.g. fsync=off).
-	ServerSettings map[string]string
-	// ExtraArgs are appended to the postgres argv (e.g. "-c", "fsync=off").
+	// ExtraArgs are appended to the postgres argv (spike knob; PGlite ignores most -c options).
 	ExtraArgs []string
-	// WasmOverride, if set, is used instead of the pglite.wasi extracted from the tarball.
+	// WasmOverride, if set, is a wasm file used instead of the embedded module (experiments).
 	WasmOverride string
 	// SocketDir is where the unix socket is created. Defaults to a temp dir removed on Close.
 	SocketDir string
@@ -52,7 +52,6 @@ type PGlite struct {
 	mod     api.Module
 	stdin   *switchableStdin
 	trace   bool
-	v2      bool
 
 	connections   atomic.Int64
 	sessionMu     sync.Mutex    // one backend means one session: serialize exchanges, and whole transactions
@@ -84,7 +83,7 @@ type PGlite struct {
 
 func New(ctx context.Context, cfg Config) (*PGlite, error) {
 	if cfg.Database == "" {
-		cfg.Database = "postgres"
+		cfg.Database = "navidrome"
 	}
 	if cfg.User == "" {
 		cfg.User = "postgres"
@@ -99,18 +98,15 @@ func New(ctx context.Context, cfg Config) (*PGlite, error) {
 		cancel()
 		return nil, err
 	}
-	if WASIBinary == nil {
-		b, err := os.ReadFile(cfg.Tarball)
-		if err != nil {
-			cancel()
-			return nil, fmt.Errorf("reading tarball: %w", err)
-		}
-		WASIBinary = b
-	}
-	wasmBinary, err := setupEnvironment(pg.dataDir)
+	fresh, err := setupDataDir(pg.dataDir)
 	if err != nil {
 		cancel()
-		return nil, fmt.Errorf("setup environment: %w", err)
+		return nil, err
+	}
+	wasmBinary, err := embeddedModule()
+	if err != nil {
+		cancel()
+		return nil, err
 	}
 	if cfg.WasmOverride != "" {
 		if wasmBinary, err = os.ReadFile(cfg.WasmOverride); err != nil {
@@ -118,26 +114,23 @@ func New(ctx context.Context, cfg Config) (*PGlite, error) {
 			return nil, fmt.Errorf("reading wasm override: %w", err)
 		}
 	}
-
-	// v2 layout (pglite4j build): share files embedded via wasi-vfs, pre-initialized
-	// cluster shipped as pgdata/, initdb+backend already run by wizer.
-	pg.v2 = fileExists(filepath.Join(pg.dataDir, "pgdata", "PG_VERSION"))
-	pgdataDir := filepath.Join(pg.dataDir, "pglite", "base")
-	if pg.v2 {
-		pgdataDir = filepath.Join(pg.dataDir, "pgdata")
-	}
+	pgdataDir := filepath.Join(pg.dataDir, "pgdata")
 	devDir := filepath.Join(pg.dataDir, "dev")
-	if err := os.MkdirAll(pgdataDir, 0o755); err != nil {
-		cancel()
-		return nil, err
-	}
 
 	start := time.Now()
 	pg.stdin = &switchableStdin{}
 	tracker := newFDTracker(pg.dataDir, pgdataDir, devDir)
-	_ = tracker
 	ctx = experimental.WithFunctionListenerFactory(ctx, tracker)
-	pg.runtime = wazero.NewRuntime(ctx)
+	runtimeCfg := wazero.NewRuntimeConfig()
+	if cfg.CacheDir != "" {
+		cache, err := wazero.NewCompilationCacheWithDir(cfg.CacheDir)
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("opening wasm compilation cache: %w", err)
+		}
+		runtimeCfg = runtimeCfg.WithCompilationCache(cache)
+	}
+	pg.runtime = wazero.NewRuntimeWithConfig(ctx, runtimeCfg)
 	if err := instantiateWASI(ctx, pg.runtime, tracker, pg.stdin); err != nil {
 		pg.Close()
 		return nil, fmt.Errorf("instantiating WASI: %w", err)
@@ -149,84 +142,58 @@ func New(ctx context.Context, cfg Config) (*PGlite, error) {
 	}
 	compileTime := time.Since(start)
 
-	modCfg := wazero.NewModuleConfig().
-		WithArgs(append([]string{"/tmp/pglite/bin/postgres", "--single"}, append(cfg.ExtraArgs, cfg.Database)...)...).
-		WithEnv("ENVIRONMENT", "wasm32_wasi_preview1").
-		WithEnv("PREFIX", "/tmp/pglite").
-		WithEnv("PGDATA", pg.guestPGData()).
-		WithEnv("PGSYSCONFDIR", "/tmp/pglite").
-		WithEnv("PGUSER", cfg.User).
-		WithEnv("PGDATABASE", cfg.Database).
-		WithEnv("MODE", "REACT").
-		WithEnv("REPL", "N").
-		WithEnv("TZ", "UTC").
-		WithEnv("PGTZ", "UTC").
-		WithEnv("PATH", "/tmp/pglite/bin").
-		WithFSConfig(wazero.NewFSConfig().
-			WithDirMount(pg.dataDir, "/tmp").
-			WithDirMount(pgdataDir, pg.guestPGData()). // preopen order must match the wizer snapshot
-			WithDirMount(devDir, "/dev")).
-		WithStdin(pg.stdin).
-		WithStdout(io.Discard).
-		WithStderr(cfg.Stderr).
-		WithSysWalltime().
-		WithSysNanotime().
-		WithSysNanosleep().
-		WithRandSource(rand.Reader).
-		WithStartFunctions() // call _start ourselves so an exit does not abort instantiation
-
-	pg.mod, err = pg.runtime.InstantiateModule(ctx, compiled, modCfg)
-	if err != nil {
-		pg.Close()
-		return nil, fmt.Errorf("instantiating pglite.wasi: %w", err)
+	moduleConfig := func(dbname string) wazero.ModuleConfig {
+		return wazero.NewModuleConfig().
+			WithArgs(append([]string{"/tmp/pglite/bin/postgres", "--single"}, append(cfg.ExtraArgs, dbname)...)...).
+			WithEnv("ENVIRONMENT", "wasm32_wasi_preview1").
+			WithEnv("PREFIX", "/tmp/pglite").
+			WithEnv("PGDATA", guestPGData).
+			WithEnv("PGSYSCONFDIR", "/tmp/pglite").
+			WithEnv("PGUSER", cfg.User).
+			WithEnv("PGDATABASE", dbname).
+			WithEnv("MODE", "REACT").
+			WithEnv("REPL", "N").
+			WithEnv("TZ", "UTC").
+			WithEnv("PGTZ", "UTC").
+			WithEnv("PATH", "/tmp/pglite/bin").
+			WithFSConfig(wazero.NewFSConfig().
+				WithDirMount(pg.dataDir, "/tmp").
+				WithDirMount(pgdataDir, guestPGData).
+				WithDirMount(devDir, "/dev")).
+			WithStdin(pg.stdin).
+			WithStdout(io.Discard).
+			WithStderr(cfg.Stderr).
+			WithSysWalltime().
+			WithSysNanotime().
+			WithSysNanosleep().
+			WithRandSource(rand.Reader).
+			WithStartFunctions() // call _start ourselves so an exit does not abort instantiation
 	}
+	pg.ioBase = filepath.Join(pg.dataDir, "pgdata", ".s.PGSQL.5432")
 
-	startFns := []string{"_start", "pgl_initdb", "pgl_backend"}
-	if pg.v2 {
-		startFns = nil // wizer already ran them at build time
-	}
-	for _, name := range startFns {
-		fn := pg.mod.ExportedFunction(name)
-		if fn == nil {
-			continue
-		}
-		if _, err := fn.Call(ctx); err != nil {
-			var exitErr *sys.ExitError
-			if errors.As(err, &exitErr) && exitErr.ExitCode() == 0 {
-				continue
-			}
+	// initdb runs in a throwaway instance and the backend in a fresh one, like the separate
+	// processes of a normal initdb+postgres; sharing one instance leaves an unrecoverable cluster.
+	if fresh {
+		initStart := time.Now()
+		if err := pg.instantiate(ctx, compiled, moduleConfig("template1"), "_start", "pgl_initdb"); err != nil {
 			pg.Close()
-			return nil, fmt.Errorf("%s: %w", name, err)
+			return nil, fmt.Errorf("initdb: %w", err)
 		}
-		if name == "pgl_initdb" && len(cfg.ServerSettings) > 0 {
-			if err := appendSettings(filepath.Join(pgdataDir, "postgresql.conf"), cfg.ServerSettings); err != nil {
+		_ = pg.mod.Close(ctx)
+		fmt.Fprintf(cfg.Stderr, "# pglite: initdb=%s\n", time.Since(initStart))
+		if cfg.Database != "template1" {
+			if err := pg.createDatabase(ctx, compiled, moduleConfig("template1"), cfg.Database); err != nil {
 				pg.Close()
 				return nil, err
 			}
 		}
 	}
-	if pg.v2 {
-		if fn := pg.mod.ExportedFunction("interactive_write"); fn != nil {
-			if _, err := fn.Call(ctx, api.EncodeI32(0)); err != nil {
-				pg.Close()
-				return nil, fmt.Errorf("interactive_write(0): %w", err)
-			}
-		}
-	}
-	fmt.Fprintf(cfg.Stderr, "# pglite: wazero compile=%s init=%s v2=%v\n", compileTime, time.Since(start), pg.v2)
-
-	pg.fnInteractiveOne = pg.mod.ExportedFunction("interactive_one")
-	pg.fnInteractiveWrite = pg.mod.ExportedFunction("interactive_write")
-	pg.fnInteractiveRead = pg.mod.ExportedFunction("interactive_read")
-	pg.fnGetChannel = pg.mod.ExportedFunction("get_channel")
-	pg.fnUseWire = pg.mod.ExportedFunction("use_wire")
-	pg.fnClearError = pg.mod.ExportedFunction("clear_error")
-	pg.probeCMA(ctx)
-	fmt.Fprintf(cfg.Stderr, "# pglite: transport=%s\n", map[bool]string{true: "shared-memory", false: "files"}[pg.cmaOK])
-	if pg.fnInteractiveOne == nil {
+	if err := pg.startBackend(ctx, compiled, moduleConfig(cfg.Database)); err != nil {
 		pg.Close()
-		return nil, errors.New("module missing 'interactive_one' export")
+		return nil, err
 	}
+	fmt.Fprintf(cfg.Stderr, "# pglite: wazero compile=%s init=%s\n", compileTime, time.Since(start))
+	fmt.Fprintf(cfg.Stderr, "# pglite: transport=%s\n", map[bool]string{true: "shared-memory", false: "files"}[pg.cmaOK])
 
 	if err := pg.startBridge(); err != nil {
 		pg.Close()
@@ -235,11 +202,48 @@ func New(ctx context.Context, cfg Config) (*PGlite, error) {
 	return pg, nil
 }
 
-func (pg *PGlite) guestPGData() string {
-	if pg.v2 {
-		return "/pgdata"
+// startBackend boots the single-user backend in a new instance and wires up its exports.
+func (pg *PGlite) startBackend(ctx context.Context, compiled wazero.CompiledModule, modCfg wazero.ModuleConfig) error {
+	if err := pg.instantiate(ctx, compiled, modCfg, "_start", "pgl_initdb", "pgl_backend"); err != nil {
+		return err
 	}
-	return "/tmp/pglite/base"
+	if fn := pg.mod.ExportedFunction("interactive_write"); fn != nil {
+		if _, err := fn.Call(ctx, api.EncodeI32(0)); err != nil {
+			return fmt.Errorf("interactive_write(0): %w", err)
+		}
+	}
+	pg.fnInteractiveOne = pg.mod.ExportedFunction("interactive_one")
+	pg.fnInteractiveWrite = pg.mod.ExportedFunction("interactive_write")
+	pg.fnInteractiveRead = pg.mod.ExportedFunction("interactive_read")
+	pg.fnGetChannel = pg.mod.ExportedFunction("get_channel")
+	pg.fnUseWire = pg.mod.ExportedFunction("use_wire")
+	pg.fnClearError = pg.mod.ExportedFunction("clear_error")
+	if pg.fnInteractiveOne == nil {
+		return errors.New("module missing 'interactive_one' export")
+	}
+	pg.probeCMA(ctx)
+	return nil
+}
+
+// createDatabase runs a backend on template1 just long enough to create the named database,
+// since initdb inside PGlite creates nothing else and the backend opens only one database.
+func (pg *PGlite) createDatabase(ctx context.Context, compiled wazero.CompiledModule, modCfg wazero.ModuleConfig, name string) error {
+	if err := pg.startBackend(ctx, compiled, modCfg); err != nil {
+		return fmt.Errorf("starting template1: %w", err)
+	}
+	db, err := pg.OpenDB()
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, "CREATE DATABASE "+pgx.Identifier{name}.Sanitize())
+	_ = db.Close()
+	pg.shutdownBackend()
+	_ = pg.mod.Close(ctx)
+	pg.connections.Store(0) // the bootstrap connection is not a client
+	if err != nil {
+		return fmt.Errorf("creating database %q: %w", name, err)
+	}
+	return nil
 }
 
 func fileExists(path string) bool {
@@ -247,15 +251,27 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-func appendSettings(confPath string, settings map[string]string) error {
-	f, err := os.OpenFile(confPath, os.O_APPEND|os.O_WRONLY, 0o644)
+const guestPGData = "/pgdata"
+
+// instantiate creates a module instance and runs the start functions in order; pgl_initdb is a
+// no-op when the cluster exists but must still run, as it sets the flag pgl_backend checks.
+func (pg *PGlite) instantiate(ctx context.Context, compiled wazero.CompiledModule, modCfg wazero.ModuleConfig, startFns ...string) error {
+	mod, err := pg.runtime.InstantiateModule(ctx, compiled, modCfg)
 	if err != nil {
-		return fmt.Errorf("opening postgresql.conf: %w", err)
+		return fmt.Errorf("instantiating pglite.wasi: %w", err)
 	}
-	defer f.Close()
-	for k, v := range settings {
-		if _, err := fmt.Fprintf(f, "\n%s = %s\n", k, v); err != nil {
-			return err
+	pg.mod = mod
+	for _, name := range startFns {
+		fn := mod.ExportedFunction(name)
+		if fn == nil {
+			continue
+		}
+		if _, err := fn.Call(ctx); err != nil {
+			var exitErr *sys.ExitError
+			if errors.As(err, &exitErr) && exitErr.ExitCode() == 0 {
+				continue
+			}
+			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
 	return nil
@@ -264,8 +280,12 @@ func appendSettings(confPath string, settings map[string]string) error {
 // DSN returns a pgx connection string for the embedded instance. Simple protocol only:
 // the WASI build does not cope with extended-protocol portals.
 func (pg *PGlite) DSN() string {
+	host := pg.socketDir
+	if host == "" { // before the socket bridge is up; OpenDB dials a pipe and ignores the host
+		host = "localhost"
+	}
 	return fmt.Sprintf("host=%s port=5432 dbname=%s user=%s sslmode=disable default_query_exec_mode=simple_protocol",
-		pg.socketDir, pg.cfg.Database, pg.cfg.User)
+		host, pg.cfg.Database, pg.cfg.User)
 }
 
 // OpenDB returns a pool that reaches the backend over an in-process pipe, skipping the unix
@@ -274,6 +294,11 @@ func (pg *PGlite) OpenDB() (*sql.DB, error) {
 	cfg, err := pgx.ParseConfig(pg.DSN())
 	if err != nil {
 		return nil, err
+	}
+	// PGlite starts sessions with search_path=pg_catalog; pin public so tables land there.
+	cfg.AfterConnect = func(ctx context.Context, conn *pgconn.PgConn) error {
+		_, err := conn.Exec(ctx, "SET search_path = public").ReadAll()
+		return err
 	}
 	cfg.DialFunc = func(context.Context, string, string) (net.Conn, error) {
 		client, server := net.Pipe()
@@ -288,6 +313,7 @@ func (pg *PGlite) OpenDB() (*sql.DB, error) {
 }
 
 func (pg *PGlite) Close() error {
+	pg.shutdownBackend()
 	pg.cancel()
 	if pg.listener != nil {
 		_ = pg.listener.Close()
@@ -307,6 +333,20 @@ func (pg *PGlite) Close() error {
 		return pg.runtime.Close(context.Background())
 	}
 	return nil
+}
+
+// shutdownBackend checkpoints the cluster so the next start finds a clean shutdown.
+func (pg *PGlite) shutdownBackend() {
+	if pg.mod == nil {
+		return
+	}
+	fn := pg.mod.ExportedFunction("pgl_shutdown")
+	if fn == nil {
+		return
+	}
+	pg.wasmMu.Lock()
+	defer pg.wasmMu.Unlock()
+	_, _ = fn.Call(context.Background()) // may trap after the checkpoint; the checkpoint still ran
 }
 
 func (pg *PGlite) startBridge() error {
@@ -337,11 +377,7 @@ func (pg *PGlite) startBridge() error {
 	}
 	pg.listener = ln
 
-	ioBase := filepath.Join(pg.dataDir, "pglite", "base", ".s.PGSQL.5432")
-	if pg.v2 {
-		ioBase = filepath.Join(pg.dataDir, "pgdata", ".s.PGSQL.5432")
-	}
-	pg.ioBase = ioBase
+	ioBase := pg.ioBase
 	for _, suffix := range []string{".in", ".out", ".lock.in", ".lock.out"} {
 		_ = os.Remove(ioBase + suffix)
 	}
@@ -363,6 +399,9 @@ func (pg *PGlite) startBridge() error {
 	}()
 	return nil
 }
+
+// DataDir is the host directory holding the cluster.
+func (pg *PGlite) DataDir() string { return pg.dataDir }
 
 // Connections reports how many client connections the bridge has accepted.
 func (pg *PGlite) Connections() int64 { return pg.connections.Load() }
@@ -474,8 +513,8 @@ func (pg *PGlite) forwardWire(packet []byte, outFile string) ([][]byte, error) {
 		if pg.trace {
 			fmt.Fprintf(pg.cfg.Stderr, "# bridge tick %d: %s\n", pg.ticks, time.Since(t0).Round(time.Microsecond))
 		}
-		if err != nil && pg.v2 {
-			// v2 build: pgl_on_error sets a flag and traps; clear_error does the full cleanup.
+		if err != nil {
+			// pgl_on_error sets a flag and traps; clear_error does the full cleanup.
 			pg.collectReply(outFile, &replies)
 			if fn := pg.mod.ExportedFunction("pgl_check_error"); fn != nil {
 				res, cerr := fn.Call(ctx)
@@ -493,26 +532,6 @@ func (pg *PGlite) forwardWire(packet []byte, outFile string) ([][]byte, error) {
 					pg.collectReply(outFile, &replies)
 				}
 			}
-			return replies, err
-		}
-		if err != nil {
-			pg.collectReply(outFile, &replies)
-			// Traps bypass PG_CATCH; flag shmem_exit_inprogress so clear_error drops active portals.
-			const shmemExitAddr = 4895117
-			pg.mod.Memory().WriteByte(shmemExitAddr, 1)
-			if pg.fnClearError != nil {
-				_, _ = pg.fnClearError.Call(ctx)
-			}
-			pg.mod.Memory().WriteByte(shmemExitAddr, 0)
-			_ = os.Remove(strings.TrimSuffix(outFile, ".out") + ".in")
-			if pg.fnInteractiveWrite != nil {
-				_, _ = pg.fnInteractiveWrite.Call(ctx, api.EncodeI32(-1))
-			}
-			if pg.fnUseWire != nil {
-				_, _ = pg.fnUseWire.Call(ctx, api.EncodeI32(1))
-			}
-			_, _ = pg.fnInteractiveOne.Call(ctx)
-			pg.collectReply(outFile, &replies)
 			return replies, err
 		}
 		producedAfter := pg.collectReply(outFile, &replies)
@@ -680,7 +699,7 @@ func (pg *PGlite) send(packet []byte, ioBase string) error {
 		pg.pendingWireLen = uint32(len(packet))
 		return nil
 	}
-	if err := os.WriteFile(ioBase+".lock.in", packet, 0o644); err != nil {
+	if err := os.WriteFile(ioBase+".lock.in", packet, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(ioBase+".lock.in", ioBase+".in")

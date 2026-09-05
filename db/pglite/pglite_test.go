@@ -19,13 +19,6 @@ var _ = Describe("PGlite under wazero", func() {
 	var db *sql.DB
 
 	BeforeEach(func() {
-		tarball := os.Getenv("ND_PGLITE_TARBALL")
-		if tarball == "" {
-			tarball = "tmp/pglite-wasi-O2-fix.tar.gz"
-		}
-		if _, err := os.Stat(tarball); err != nil {
-			Skip("pglite tarball not found: " + tarball)
-		}
 		ctx := context.Background()
 		if os.Getenv("ND_PGLITE_TRACE") != "" {
 			ctx = experimental.WithFunctionListenerFactory(ctx,
@@ -34,7 +27,6 @@ var _ = Describe("PGlite under wazero", func() {
 		var err error
 		pg, err = pglite.New(ctx, pglite.Config{
 			DataDir: GinkgoT().TempDir(),
-			Tarball: tarball,
 			Stderr:  GinkgoWriter,
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -84,6 +76,28 @@ var _ = Describe("PGlite under wazero", func() {
 		Expect(db.QueryRow("SELECT $1::int", 2).Scan(&one)).To(Succeed())
 		Expect(one).To(Equal(2))
 		Expect(pg.Connections()).To(BeEquivalentTo(2))
+	})
+
+	It("keeps committed rows across a close and reopen of the same data dir", func() {
+		_, err := db.Exec("CREATE TABLE durable (id int PRIMARY KEY, v text)")
+		Expect(err).ToNot(HaveOccurred())
+		_, err = db.Exec("INSERT INTO durable VALUES (1, 'survives')")
+		Expect(err).ToNot(HaveOccurred())
+		dataDir := pg.DataDir()
+		Expect(db.Close()).To(Succeed())
+		Expect(pg.Close()).To(Succeed())
+
+		reopened, err := pglite.New(context.Background(), pglite.Config{DataDir: dataDir, Stderr: GinkgoWriter})
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(reopened.Close)
+		db2, err := sql.Open("pgx", reopened.DSN())
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(db2.Close)
+		var v string
+		Expect(db2.QueryRow("SELECT v FROM durable WHERE id = 1").Scan(&v)).To(Succeed())
+		Expect(v).To(Equal("survives"))
+		// the reopened instance must not be a second copy of these tests' fixture
+		pg, db = reopened, db2
 	})
 
 	It("creates a table and reads rows back", func() {

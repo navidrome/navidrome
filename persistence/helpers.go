@@ -10,7 +10,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/fatih/structs"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/db"
 )
 
 type PostMapper interface {
@@ -84,13 +83,9 @@ func (e existsCond) ToSql() (string, []any, error) {
 
 var sortOrderRegex = regexp.MustCompile(`order_([a-z_]+)`)
 
-// naturalSort makes a plain text column sort numbers by value, leaving it alone
-// otherwise so it keeps its declared collation. Parens guard buildSortOrder's space split.
+// naturalSort is a no-op on Postgres: SQLite's NATSORT collation has no counterpart here.
 func naturalSort(col string) string {
-	if !conf.Server.EnableNaturalSorting {
-		return col
-	}
-	return fmt.Sprintf("(%s collate %s)", col, db.NaturalCollation)
+	return col
 }
 
 // Convert the order_* columns to a collated sort expression, falling back to the
@@ -102,10 +97,7 @@ func mapSortOrder(tableName, order string) string {
 	if conf.Server.PreferSortTags {
 		col = fmt.Sprintf("coalesce(nullif(%[1]s.sort_$1,''),%[1]s.order_$1)", tableName)
 	}
-	collation := "nocase"
-	if conf.Server.EnableNaturalSorting {
-		collation = db.NaturalCollation
-	}
-	repl := fmt.Sprintf("(%s collate %s)", col, collation)
+	// Postgres has no nocase collation; lower() gives the case-insensitive order SQLite had.
+	repl := fmt.Sprintf("lower(%s)", col)
 	return sortOrderRegex.ReplaceAllString(strings.ToLower(order), repl)
 }

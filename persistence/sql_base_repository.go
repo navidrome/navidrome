@@ -306,8 +306,8 @@ func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
 		return
 	}
 	// CAST: playlist_tracks.id is an INTEGER (unlike other tables' TEXT ids); passing it to
-	// SEEDEDRAND's string param uncast silently drops every row (go-sqlite3 binding gotcha).
-	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', CAST(%s.id AS TEXT))", r.seedKey(), r.tableName)
+	// A seeded, stable pseudo-random order: hashing the seed with the id keeps paging consistent.
+	options[0].Sort = fmt.Sprintf("md5('%s' || %s.id)", r.seedKey(), r.tableName)
 	if options[0].Seed != "" {
 		hasher.SetSeed(r.seedKey(), options[0].Seed)
 		return
@@ -537,13 +537,8 @@ func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
 func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
-		RemoveOffset().RemoveLimit()
-	if db.Dialect == "sqlite3" {
-		// To remove any ORDER BY clause that could slow down the query. Postgres rejects an
-		// ORDER BY on a column that is not grouped, so leave the clause off there.
-		countQuery = countQuery.OrderBy(r.tableName + ".id")
-	}
-	countQuery = countQuery.From(r.tableName)
+		RemoveOffset().RemoveLimit().
+		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
 	err := r.queryOne(countQuery, &res)
@@ -633,10 +628,8 @@ func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffect
 		log.Trace(append(fields, err)...)
 		return
 	}
-	// The result codes separate errors that share a message, notably SQLITE_BUSY from
-	// SQLITE_BUSY_SNAPSHOT, which no busy_timeout can retry.
-	if code, extended, ok := db.ErrorCodes(err); ok {
-		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
+	if code, ok := db.SQLState(err); ok {
+		fields = append(fields, "sqlstate", code)
 	}
 	log.Error(append(fields, err)...)
 }

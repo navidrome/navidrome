@@ -282,7 +282,7 @@ func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, o
 		args[i] = v
 	}
 	tagFilter := Expr(
-		fmt.Sprintf("exists (select 1 from json_tree(media_file.tags, '$.%s') where key='value' and value in (%s))",
+		fmt.Sprintf("exists (select 1 from jsonb_array_elements(coalesce(media_file.tags->'%s', '[]'::jsonb)) as jt(v) where jt.v->>'value' in (%s))",
 			tag, strings.Join(placeholders, ",")),
 		args...,
 	)

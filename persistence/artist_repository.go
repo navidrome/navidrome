@@ -148,14 +148,14 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"name":        "order_artist_name",
 		"starred_at":  "starred, starred_at",
 		"rated_at":    "rating, rated_at",
-		"song_count":  "stats->>'total'->>'m'",
-		"album_count": "stats->>'total'->>'a'",
-		"size":        "stats->>'total'->>'s'",
+		"song_count":  "(stats->'total'->>'m')::bigint",
+		"album_count": "(stats->'total'->>'a')::bigint",
+		"size":        "(stats->'total'->>'s')::bigint",
 
 		// Stats by credits that are currently available
-		"maincredit_song_count":  "sum(stats->>'maincredit'->>'m')",
-		"maincredit_album_count": "sum(stats->>'maincredit'->>'a')",
-		"maincredit_size":        "sum(stats->>'maincredit'->>'s')",
+		"maincredit_song_count":  "sum((stats->'maincredit'->>'m')::bigint)",
+		"maincredit_album_count": "sum((stats->'maincredit'->>'a')::bigint)",
+		"maincredit_size":        "sum((stats->'maincredit'->>'s')::bigint)",
 	})
 	return r
 }
@@ -163,7 +163,7 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 func roleFilter(_ string, role any) Sqlizer {
 	if role, ok := role.(string); ok {
 		if _, ok := model.AllRoles[role]; ok {
-			return Expr("JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL")
+			return Expr("library_artist.stats->'" + role + "'->>'m' IS NOT NULL")
 		}
 	}
 	return Eq{"1": 2}
@@ -194,10 +194,16 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	// Stats Format: {"1": {"albumartist": {"m": 10, "a": 5, "s": 1024}, "artist": {...}}, "2": {...}}
 	query := r.newSelect(options...).Columns("artist.*",
-		"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
+		"jsonb_object_agg(library_artist.library_id::text, library_artist.stats) as library_stats_json")
 
 	query = r.applyLibraryFilterToArtistQuery(query)
-	query = query.GroupBy("artist.id")
+	groupBy := []string{"artist.id"}
+	if loggedUser(r.ctx).ID != invalidUserId {
+		// Postgres needs the annotation columns grouped; the join yields at most one row per artist.
+		groupBy = append(groupBy, "annotation.starred", "annotation.rating", "annotation.starred_at",
+			"annotation.play_date", "annotation.rated_at", "annotation.play_count")
+	}
+	query = query.GroupBy(groupBy...)
 	return r.withAnnotation(query, "artist.id")
 }
 
@@ -428,12 +434,12 @@ set missing = (artist.id not in (select artist_id from artists_with_non_missing_
 func (r *artistRepository) RefreshPlayCounts() (int64, error) {
 	query := Expr(`
 with play_counts as (
-    select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
+    select user_id, jt.v->>'id' as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
     join annotation on item_id = media_file.id
-    left join json_tree(participants, '$.artist') as jt
-    where atom is not null and key = 'id'
-    group by user_id, atom
+    cross join lateral jsonb_array_elements(coalesce(participants->'artist', '[]'::jsonb)) as jt(v)
+    where jt.v->>'id' is not null
+    group by user_id, jt.v->>'id'
 )
 insert into annotation (user_id, item_id, item_type, play_count, play_date)
 select user_id, artist_id, 'artist', total_play_count, last_play_date
@@ -526,9 +532,9 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     library_artist_counters AS (
         SELECT artist_id,
                library_id,
-               json_group_object(
+               jsonb_object_agg(
                        role,
-                       json_object('a', album_count, 'm', count, 's', size)
+                       jsonb_build_object('a', album_count, 'm', count, 's', size)
                ) AS counters
         FROM combined_counters
         GROUP BY artist_id, library_id
@@ -536,7 +542,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
     UPDATE library_artist
     SET stats = coalesce((SELECT counters FROM library_artist_counters lac
                          WHERE lac.artist_id = library_artist.artist_id
-                         AND lac.library_id = library_artist.library_id), '{}')
+                         AND lac.library_id = library_artist.library_id), '{}'::jsonb)
     WHERE library_artist.artist_id IN (ROLE_IDS_PLACEHOLDER);` // Will replace with actual placeholders
 
 	var totalRowsAffected int64 = 0
@@ -606,7 +612,7 @@ func (r *artistRepository) searchCfg(scope []int) searchConfig {
 	return searchConfig{
 		// Natural order for artists is more performant by ID, due to GROUP BY clause in selectArtist
 		NaturalOrder: "artist.id",
-		OrderBy:      []string{"sum(json_extract(stats, '$.total.m')) desc", "name"},
+		OrderBy:      []string{"sum((stats->'total'->>'m')::bigint) desc", "name"},
 		MBIDFields:   []string{"mbz_artist_id"},
 		// scope==nil is the fast-path: no filter (and orphans must not exist — see markOrphansMissing).
 		// Otherwise the join-free [artistLibraryFilter].
@@ -719,9 +725,9 @@ func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 			role = v
 		}
 	}
-	r.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"
-	r.sortMappings["album_count"] = "sum(stats->>'" + role + "'->>'a')"
-	r.sortMappings["size"] = "sum(stats->>'" + role + "'->>'s')"
+	r.sortMappings["song_count"] = "sum((stats->'" + role + "'->>'m')::bigint)"
+	r.sortMappings["album_count"] = "sum((stats->'" + role + "'->>'a')::bigint)"
+	r.sortMappings["size"] = "sum((stats->'" + role + "'->>'s')::bigint)"
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 
