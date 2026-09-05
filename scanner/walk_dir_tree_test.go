@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing/fstest"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -148,6 +151,131 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("with symlinks enabled", true),
 				Entry("with symlinks disabled", false),
 			)
+		})
+
+		// Regression tests for #5334: a symlink pointing back into a folder that is already
+		// being walked made the scanner walk the same folders over and over, re-adding the
+		// same files until the OS hit its recursion/path limits.
+		Context("with symlink cycles", func() {
+			// A cycle that is not detected makes the walk run forever, so it gets a deadline
+			// and a hard cap on the number of folders. All layouts below are small enough to
+			// be walked instantly, and none of them has more folders than the cap.
+			const walkTimeout = 3 * time.Second
+			const maxFolders = 25
+
+			walkFS := func(musicFS storage.MusicFS, libPath string) map[string]*folderEntry {
+				job := &scanJob{fs: musicFS, lib: model.Library{Path: libPath}}
+				ctx, cancel := context.WithTimeout(GinkgoT().Context(), walkTimeout)
+				defer cancel()
+
+				results, err := walkDirTree(ctx, job)
+				Expect(err).ToNot(HaveOccurred())
+
+				folders := map[string]*folderEntry{}
+				for folder := range results {
+					folders[folder.path] = folder
+					if len(folders) >= maxFolders {
+						cancel()
+					}
+				}
+				Expect(ctx.Err()).ToNot(Equal(context.DeadlineExceeded), "the walk never finished: symlink cycle not detected")
+				return folders
+			}
+
+			walk := func(mapFS fstest.MapFS) map[string]*folderEntry {
+				return walkFS(&mockMusicFS{FS: mapFS}, "/music")
+			}
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Scanner.FollowSymlinks = true
+			})
+
+			It("skips a symlink pointing to the parent folder", func() {
+				folders := walk(fstest.MapFS{
+					"music/track1.mp3":        {},
+					"music/tracks/track2.mp3": {},
+					"music/tracks/music":      {Mode: fs.ModeSymlink, Data: []byte("..")},
+				})
+
+				Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf(".", "music", "music/tracks"))
+				Expect(folders["music/tracks"].audioFiles).To(HaveLen(1))
+			})
+
+			It("skips a symlink pointing to its own folder", func() {
+				folders := walk(fstest.MapFS{
+					"music/track1.mp3": {},
+					"music/music":      {Mode: fs.ModeSymlink, Data: []byte(".")},
+				})
+
+				Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf(".", "music"))
+				Expect(folders["music"].audioFiles).To(HaveLen(1))
+			})
+
+			It("skips a symlink closing a cycle between two folders", func() {
+				folders := walk(fstest.MapFS{
+					"lib/a/track1.mp3": {},
+					"lib/a/toB":        {Mode: fs.ModeSymlink, Data: []byte("../b")},
+					"lib/b/track2.mp3": {},
+					"lib/b/toA":        {Mode: fs.ModeSymlink, Data: []byte("../a")},
+				})
+
+				Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf(".", "lib", "lib/a", "lib/a/toB", "lib/b", "lib/b/toA"))
+			})
+
+			It("still follows a symlink to a folder outside the current branch", func() {
+				folders := walk(fstest.MapFS{
+					"lib/real/track1.mp3": {},
+					"lib/alias":           {Mode: fs.ModeSymlink, Data: []byte("real")},
+				})
+
+				Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf(".", "lib", "lib/real", "lib/alias"))
+				Expect(folders["lib/alias"].audioFiles).To(HaveKey("track1.mp3"))
+			})
+
+			It("does not follow the cycle when symlinks are disabled", func() {
+				conf.Server.Scanner.FollowSymlinks = false
+				folders := walk(fstest.MapFS{
+					"music/track1.mp3":        {},
+					"music/tracks/track2.mp3": {},
+					"music/tracks/music":      {Mode: fs.ModeSymlink, Data: []byte("..")},
+				})
+
+				Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf(".", "music", "music/tracks"))
+			})
+
+			// The production localFS resolves symlinks at the OS level, a different code path
+			// than the in-memory filesystem used by the specs above.
+			Context("production local storage FS", func() {
+				var musicFS storage.MusicFS
+				var libRoot string
+
+				BeforeEach(func() {
+					tests.SkipOnWindows("symlink semantics")
+
+					// The layout reported in #5334: a subfolder linking back to the library root
+					libRoot = filepath.Join(GinkgoT().TempDir(), "music")
+					Expect(os.MkdirAll(filepath.Join(libRoot, "tracks"), 0755)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(libRoot, "track1.mp3"), []byte("AUDIO"), 0600)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(libRoot, "tracks", "track2.mp3"), []byte("AUDIO"), 0600)).To(Succeed())
+					Expect(os.Symlink("..", filepath.Join(libRoot, "tracks", "music"))).To(Succeed())
+
+					u, err := storage.LocalPathToURL(libRoot)
+					Expect(err).ToNot(HaveOccurred())
+					s, err := storage.For(u.String())
+					Expect(err).ToNot(HaveOccurred())
+					musicFS, err = s.FS()
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				It("skips a symlink pointing back into the library", func() {
+					folders := walkFS(musicFS, libRoot)
+
+					Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf(".", "tracks"))
+					Expect(folders["."].audioFiles).To(HaveKey("track1.mp3"))
+					Expect(folders["tracks"].audioFiles).To(HaveKey("track2.mp3"))
+				})
+			})
 		})
 
 		Context("with target folders", func() {
