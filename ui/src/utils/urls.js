@@ -25,6 +25,14 @@ export const sharePlayerUrl = (id) => {
   return url.href
 }
 
+export const shareAPlayerUrl = (id) => {
+  const url = new URL(
+    shareUrl(config.publicBaseUrl + '/' + id + '/aplayer'),
+    window.location.href,
+  )
+  return url.href
+}
+
 export const shareStreamUrl = (id) => {
   return shareUrl(config.publicBaseUrl + '/s/' + id)
 }
