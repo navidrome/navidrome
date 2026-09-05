@@ -17,7 +17,7 @@ ReadyForQuery status byte. A unix socket is also listened on for external tools;
 
 ## Schema
 
-The 131 SQLite migrations are gone. `db/migrations/00000000000001_initial_schema.sql` is one goose migration with
+The 131 SQLite migrations are gone. `db/migrations/20260905004449_initial_schema.sql` is one goose migration with
 the whole schema, a crude mechanical translation of the SQLite one (`text`/`bigint`/`boolean`/`timestamp`/`jsonb`,
 no FTS5, no triggers), plus the seed rows the old migrations used to insert: the default library and the default
 transcodings. `DbPath` defaults to `pglite://<DataFolder>/pglite`.
