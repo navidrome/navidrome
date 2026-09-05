@@ -11,6 +11,11 @@ electric-sql/postgres-pglite, branch REL_17_5_WASM-pglite). Clone it to /tmp/pgl
 - `wasi-c.diff` — makes the forced `-fPIC` in the compiler wrapper overridable (`PGLITE_PIC`). NOTE: the matching
   `-fpic` in `postgresql-src/wasm-build/build-pgcore.sh` (cloned at build time) is not covered by a diff here; the
   `-fno-pic` experiment did not take effect and is unmeasured.
+- `max_wal_size.diff` — goes in `patches/postgresql-pglite/` as `src-include-port-wasm_common.h.zz-max-wal-size.diff`
+  (it must sort after pglite4j's own `wasm_common.h` patch). PGlite splices a fixed list of `-c` settings into
+  every start (`WASM_PGOPTS`), never reads `postgresql.conf`/`postgresql.auto.conf` on restart, and `pg_reload_conf()`
+  is a no-op without a postmaster, so `ALTER SYSTEM` cannot change anything. Adding `max_wal_size=128MB` to that
+  list caps `pg_wal` at ~130 MB instead of 1 GB once a `CHECKPOINT` runs.
 - `message_context_reset.diff` — goes in `patches/pglite-wasm/`. The fork stubs `MemoryContextResetAndDeleteChildren`
   (removed in PostgreSQL 17) as an empty macro, so `MessageContext` is never reset and every wire message leaks its
   parse/plan state (~10 KB per statement; a library scan reached 15 GB). The patch maps it to `MemoryContextReset`.
