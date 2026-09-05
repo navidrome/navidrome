@@ -487,42 +487,30 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 	// MATERIALIZED: the correlated subquery in the UPDATE would otherwise re-run the whole
 	// aggregation for every library_artist row (minutes per batch on a large library).
 	batchUpdateStatsSQL := `
-    WITH artist_role_counters AS MATERIALIZED (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               mfa.role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
+    WITH artist_rows AS MATERIALIZED (
+        SELECT mfa.artist_id, mf.library_id, mfa.role, mf.album_id, mf.id, mf.size
         FROM media_file_artists mfa
         JOIN media_file mf ON mfa.media_file_id = mf.id
         WHERE mfa.artist_id ARTIST_FILTER
-        GROUP BY mfa.artist_id, mf.library_id, mfa.role
+    ),
+    artist_role_counters AS MATERIALIZED (
+        SELECT artist_id, library_id, role,
+               count(DISTINCT album_id) AS album_count, count(DISTINCT id) AS count, sum(size) AS size
+        FROM artist_rows
+        GROUP BY artist_id, library_id, role
     ),
     artist_total_counters AS MATERIALIZED (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               'total' AS role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id ARTIST_FILTER
-        GROUP BY mfa.artist_id, mf.library_id
+        SELECT artist_id, library_id, 'total' AS role,
+               count(DISTINCT album_id) AS album_count, count(DISTINCT id) AS count, sum(size) AS size
+        FROM artist_rows
+        GROUP BY artist_id, library_id
     ),
     artist_participant_counter AS MATERIALIZED (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               'maincredit' AS role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id ARTIST_FILTER
-        AND mfa.role IN ('albumartist', 'artist')
-        GROUP BY mfa.artist_id, mf.library_id
+        SELECT artist_id, library_id, 'maincredit' AS role,
+               count(DISTINCT album_id) AS album_count, count(DISTINCT id) AS count, sum(size) AS size
+        FROM artist_rows
+        WHERE role IN ('albumartist', 'artist')
+        GROUP BY artist_id, library_id
     ),
     combined_counters AS MATERIALIZED (
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_role_counters
@@ -532,12 +520,8 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_participant_counter
     ),
     library_artist_counters AS MATERIALIZED (
-        SELECT artist_id,
-               library_id,
-               jsonb_object_agg(
-                       role,
-                       jsonb_build_object('a', album_count, 'm', count, 's', size)
-               ) AS counters
+        SELECT artist_id, library_id,
+               jsonb_object_agg(role, jsonb_build_object('a', album_count, 'm', count, 's', size)) AS counters
         FROM combined_counters
         GROUP BY artist_id, library_id
     )
@@ -565,8 +549,8 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 				placeholders[i] = "?"
 			}
 			filter = "IN (" + strings.Join(placeholders, ",") + ")"
-			// the filter appears 4 times, so the ids are bound 4 times
-			for range 4 {
+			// the filter appears twice, so the ids are bound twice
+			for range 2 {
 				for _, id := range batch {
 					args = append(args, id)
 				}
