@@ -93,7 +93,8 @@
         "addToPlaylist": "เพิ่มลงในเพลย์ลิสต์",
         "download": "ดาวน์โหลด",
         "info": "ดูรายละเอียด",
-        "share": "แบ่งปัน"
+        "share": "แบ่งปัน",
+        "refresh": ""
       },
       "lists": {
         "all": "ทั้งหมด",
@@ -155,11 +156,13 @@
         "newPassword": "รหัสผ่านใหม่",
         "token": "โทเคน",
         "lastAccessAt": "เข้าใช้ล่าสุด",
-        "libraries": "ห้องสมุด"
+        "libraries": "ห้องสมุด",
+        "scrobbleFilter": ""
       },
       "helperTexts": {
         "name": "การเปลี่ยนชื่อจะมีผลในการล็อกอินครั้งถัดไป",
-        "libraries": "เลือกห้องสมุดสำหรับผู้ใช้นี้หรือปล่อยว่างเพื่อใช้ห้องสมุดเริ่มต้น"
+        "libraries": "เลือกห้องสมุดสำหรับผู้ใช้นี้หรือปล่อยว่างเพื่อใช้ห้องสมุดเริ่มต้น",
+        "scrobbleFilter": ""
       },
       "notifications": {
         "created": "สร้างชื่อผู้ใช้",
@@ -173,7 +176,8 @@
         "adminAutoLibraries": "ผู้ดูแลเข้าถึงห้องสมุดทั้งหมดโดยอัตโนมัติ"
       },
       "validation": {
-        "librariesRequired": "ต้องเลือกห้องสมุด 1 ห้อง สำหรับผู้ใช้ที่ไม่ใช่ผู้ดูแล"
+        "librariesRequired": "ต้องเลือกห้องสมุด 1 ห้อง สำหรับผู้ใช้ที่ไม่ใช่ผู้ดูแล",
+        "invalidScrobbleFilter": ""
       }
     },
     "player": {
@@ -210,7 +214,8 @@
         "songCount": "เพลง",
         "comment": "ความคิดเห็น",
         "sync": "นำเข้าอัตโนมัติ",
-        "path": "นำเข้าจาก"
+        "path": "นำเข้าจาก",
+        "starred": "ชื่นชอบ"
       },
       "actions": {
         "selectPlaylist": "เลือกเพลย์ลิสต์",
@@ -403,7 +408,8 @@
         "requiredHosts": "ต้องการ Host",
         "configValidationError": "การตั้งค่าเกิดความผิดพลาด",
         "schemaRenderError": "ไม่สามารถแสดงหน้าจอการตั้งค่า อาจเกิดจากความผิดพลาดจากปลั๊กอิน",
-        "allowWriteAccessHelp": "เมื่อเปิดใช้งาน ปลั๊กอินสามารถแก้ไขไฟล์ในห้องสมุด ปลั๊กอินอยู่ในโหมดอ่านอย่างเดียวเป็นค่าเริ่มต้น"
+        "allowWriteAccessHelp": "เมื่อเปิดใช้งาน ปลั๊กอินสามารถแก้ไขไฟล์ในห้องสมุด ปลั๊กอินอยู่ในโหมดอ่านอย่างเดียวเป็นค่าเริ่มต้น",
+        "idHelp": ""
       },
       "placeholders": {
         "configKey": "คีย์",
@@ -599,7 +605,8 @@
     "coverUploaded": "ภาพหน้าปกถูกอัพเดทแล้ว",
     "coverRemoved": "ภาพหน้าปกถูกลบแล้ว",
     "coverUploadError": "อัพโหลดภาพหน้าปกผิดพลาด",
-    "coverRemoveError": "ลบภาพหน้าปกผิดพลาด"
+    "coverRemoveError": "ลบภาพหน้าปกผิดพลาด",
+    "metadataRefreshStarted": ""
   },
   "menu": {
     "library": "ห้องสมุดเพลง",
@@ -634,7 +641,8 @@
       "multipleLibraries": "%{selected} ของ %{total} ห้องสมุด",
       "selectLibraries": "เลือกห้องสมุด",
       "none": "ไม่มี"
-    }
+    },
+    "onlyFavourites": "แสดงเฉพาะที่ชื่นชอบ"
   },
   "player": {
     "playListsText": "คิวเล่น",

@@ -35,12 +35,12 @@
         "rawTags": "Tags originais",
         "bitDepth": "Profundidade de bits",
         "sampleRate": "Taxa de amostragem",
-        "albumGain": "Ganho do álbum",
-        "trackGain": "Ganho da faixa",
         "missing": "Ausente",
         "libraryName": "Biblioteca",
         "composer": "Compositor",
-        "disc": "Disco %{discNumber}"
+        "disc": "Disco %{discNumber}",
+        "albumGain": "Ganho do álbum",
+        "trackGain": "Ganho da faixa"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -93,8 +93,8 @@
         "addToPlaylist": "Adicionar à playlist",
         "download": "Baixar",
         "info": "Detalhes",
-        "refresh": "Atualizar Metadados",
-        "share": "Compartilhar"
+        "share": "Compartilhar",
+        "refresh": "Atualizar Metadados"
       },
       "lists": {
         "all": "Todos",
@@ -214,7 +214,8 @@
         "songCount": "Músicas",
         "comment": "Comentário",
         "sync": "Auto-importar",
-        "path": "Importar de"
+        "path": "Importar de",
+        "starred": "Favorita"
       },
       "actions": {
         "selectPlaylist": "Selecione a playlist:",
@@ -394,7 +395,6 @@
         "invalidJson": "A configuração deve ser um JSON válido"
       },
       "messages": {
-        "idHelp": "O ID do plugin, derivado do nome do arquivo. Use-o ao referenciar este plugin em opções de configuração, como Agents.",
         "configHelp": "Configure o plugin usando pares chave-valor. Deixe vazio se o plugin não precisa de configuração.",
         "clickPermissions": "Clique em uma permissão para ver detalhes",
         "noConfig": "Nenhuma configuração definida",
@@ -408,7 +408,8 @@
         "requiredHosts": "Hosts necessários",
         "configValidationError": "Falha na validação da configuração:",
         "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido.",
-        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura."
+        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura.",
+        "idHelp": "O ID do plugin, derivado do nome do arquivo. Use-o ao referenciar este plugin em opções de configuração, como Agents."
       },
       "placeholders": {
         "configKey": "chave",
@@ -640,7 +641,8 @@
       "multipleLibraries": "%{selected} de %{total} Bibliotecas",
       "selectLibraries": "Selecionar Bibliotecas",
       "none": "Nenhuma"
-    }
+    },
+    "onlyFavourites": "Somente favoritas"
   },
   "player": {
     "playListsText": "Fila de Execução",

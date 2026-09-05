@@ -93,7 +93,8 @@
         "addToPlaylist": "Engadir a Lista",
         "download": "Descargar",
         "info": "Obter info",
-        "share": "Compartir"
+        "share": "Compartir",
+        "refresh": "Actualizar metadatos"
       },
       "lists": {
         "all": "Todo",
@@ -155,11 +156,13 @@
         "newPassword": "Novo contrasinal",
         "token": "Token",
         "lastAccessAt": "Último acceso",
-        "libraries": "Bibliotecas"
+        "libraries": "Bibliotecas",
+        "scrobbleFilter": "Filtro para scrobble"
       },
       "helperTexts": {
         "name": "Os cambios no nome aplicaranse a próxima vez que accedas",
-        "libraries": "Selecciona bibliotecas específicas para esta usuaria, ou deixa baleiro para usar as bibliotecas por defecto"
+        "libraries": "Selecciona bibliotecas específicas para esta usuaria, ou deixa baleiro para usar as bibliotecas por defecto",
+        "scrobbleFilter": "As cancións que concorden coas regras desta lista intelixente non se envían a Last.fm, ListenBrainz ou complementos similares. O filtro usa a mesma sintaxe JSON e comportamento que as listas de reprodución intelixentes. Exemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Deixar baleiro para enviar todo. Non lle afecta ao número de reproducións locais."
       },
       "notifications": {
         "created": "Creouse a usuaria",
@@ -173,7 +176,8 @@
         "adminAutoLibraries": "As usuarias Admin teñen acceso por defecto a todas as bibliotecas"
       },
       "validation": {
-        "librariesRequired": "Debes seleccionar polo menos unha biblioteca para usuarias non admins"
+        "librariesRequired": "Debes seleccionar polo menos unha biblioteca para usuarias non admins",
+        "invalidScrobbleFilter": ""
       }
     },
     "player": {
@@ -210,7 +214,8 @@
         "songCount": "Cancións",
         "comment": "Comentario",
         "sync": "Autoimportación",
-        "path": "Importar desde"
+        "path": "Importar desde",
+        "starred": "Favorita"
       },
       "actions": {
         "selectPlaylist": "Elixe unha lista:",
@@ -403,7 +408,8 @@
         "requiredHosts": "Servidores requeridos",
         "configValidationError": "Fallou a comprobación da configuración:",
         "schemaRenderError": "Non se puido aplicar a configuración. O esquema do complemento podería non ser válido.",
-        "allowWriteAccessHelp": "A activalo, este complemento pode modificar ficheiros nos directorios da biblioteca. Por defecto os complementos teñen acceso de só-lectura."
+        "allowWriteAccessHelp": "A activalo, este complemento pode modificar ficheiros nos directorios da biblioteca. Por defecto os complementos teñen acceso de só-lectura.",
+        "idHelp": "O ID do complemento, derivado do seu nome de ficheiro. Utilízao cando te refiras ao complemento nas opcións de configuración, como en Agents."
       },
       "placeholders": {
         "configKey": "clave",
@@ -435,7 +441,7 @@
       "minValue": "Ten que ter polo menos %{min}",
       "maxValue": "Ten que ter %{max} ou menos",
       "number": "Ten que ser un número",
-      "email": "Ten que ser un email válido",
+      "email": "Ten que ser un correo válido",
       "oneOf": "Ten que ser un de: %{options}",
       "regex": "Ten que ter un formato específico (regexp): %{pattern}",
       "unique": "Ten que ser único",
@@ -509,7 +515,7 @@
       }
     },
     "message": {
-      "about": "Acerca de",
+      "about": "Sobre",
       "are_you_sure": "Tes certeza?",
       "bulk_delete_content": "Tes a certeza de querer borrar a %{name} |||| Tes a certeza de querer eleminar estes %{smart_count} elementos?",
       "bulk_delete_title": "Eliminar %{name} |||| Eliminar %{smart_count} %{name}",
@@ -599,7 +605,8 @@
     "coverUploaded": "Subiuse a capa",
     "coverRemoved": "Retirouse a capa",
     "coverUploadError": "Erro ao subir a capa",
-    "coverRemoveError": "Erro ao retirar a capa"
+    "coverRemoveError": "Erro ao retirar a capa",
+    "metadataRefreshStarted": "Actualizar en segundo plano os metadatos"
   },
   "menu": {
     "library": "Biblioteca",
@@ -626,7 +633,7 @@
       }
     },
     "albumList": "Álbums",
-    "about": "Acerca de",
+    "about": "Sobre",
     "playlists": "Listas de reprodución",
     "sharedPlaylists": "Listas compartidas",
     "librarySelector": {
@@ -634,7 +641,8 @@
       "multipleLibraries": "%{selected} de %{total} Bibliotecas",
       "selectLibraries": "Seleccionar Bibliotecas",
       "none": "Ningunha"
-    }
+    },
+    "onlyFavourites": "Mostrar só as favoritas"
   },
   "player": {
     "playListsText": "Reproducir cola",

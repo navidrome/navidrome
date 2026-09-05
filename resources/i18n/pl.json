@@ -37,7 +37,10 @@
         "sampleRate": "Częstotliwość próbkowania",
         "missing": "Brak",
         "libraryName": "Biblioteka",
-        "composer": "Kompozytor"
+        "composer": "Kompozytor",
+        "disc": "Dysk %{discNumber}",
+        "albumGain": "Wzmocnienie albumu",
+        "trackGain": "Wzmocnienie utworu"
       },
       "actions": {
         "addToQueue": "Odtwarzaj Później",
@@ -90,7 +93,8 @@
         "addToPlaylist": "Dodaj do Playlisty",
         "download": "Pobierz",
         "info": "Zdobądź Informacje",
-        "share": "Udostępnij"
+        "share": "Udostępnij",
+        "refresh": "Odśwież Metadane"
       },
       "lists": {
         "all": "Wszystkie",
@@ -152,11 +156,13 @@
         "newPassword": "Nowe hasło",
         "token": "Token",
         "lastAccessAt": "Ostatnia Aktywność",
-        "libraries": "Biblioteki"
+        "libraries": "Biblioteki",
+        "scrobbleFilter": "Filtr scrobblowania"
       },
       "helperTexts": {
         "name": "Zmiana nazwy będzie widoczna przy następnym logowaniu",
-        "libraries": "Wybierz biblioteki dla użytkownika lub pozostaw pustę, aby użyć domyślnej biblioteki"
+        "libraries": "Wybierz biblioteki dla użytkownika lub pozostaw pustę, aby użyć domyślnej biblioteki",
+        "scrobbleFilter": "Utwory spełniające kryteria tych inteligentnych list odtwarzania nie są wysyłane do serwisów Last.fm, ListenBrainz ani do wtyczek typu scrobbler. Wykorzystywana jest tu ta sama składnia JSON i zasada działania, co w przypadku inteligentnych list odtwarzania. Przykład: {\"all\":[{\"lt\":{\"rating\":4}}]}. Pozostawienie pola pustego spowoduje scrobblowanie wszystkich utworów. Nie wpływa to na lokalne liczniki odtworzeń."
       },
       "notifications": {
         "created": "Dodano użytkownika",
@@ -170,7 +176,8 @@
         "adminAutoLibraries": "Administratorzy automatycznie mają dostęp do wszystkich bibliotek"
       },
       "validation": {
-        "librariesRequired": "Przynajmniej jedna biblioteka musi być wybrana dla zwykłego użytkownika"
+        "librariesRequired": "Przynajmniej jedna biblioteka musi być wybrana dla zwykłego użytkownika",
+        "invalidScrobbleFilter": "Reguły inteligentnej listy odtwarzania muszą być poprawne. Parametry limitu, przesunięcia oraz opóźnienia odświeżania nie są obsługiwane."
       }
     },
     "player": {
@@ -207,7 +214,8 @@
         "songCount": "Liczba utworów",
         "comment": "Komentarz",
         "sync": "Import automatyczny",
-        "path": "Zaimportuj z"
+        "path": "Zaimportuj z",
+        "starred": "Ulubione"
       },
       "actions": {
         "selectPlaylist": "Wybierz playlistę:",
@@ -353,7 +361,8 @@
         "allUsers": "Zezwalaj wszystkim użytkownikom",
         "selectedUsers": "Wybrani użytkownicy",
         "allLibraries": "Zezwalaj dla wszystkich bibliotek",
-        "selectedLibraries": "Wybrane biblioteki"
+        "selectedLibraries": "Wybrane biblioteki",
+        "allowWriteAccess": "Zezwól na zapis"
       },
       "sections": {
         "status": "Status",
@@ -398,7 +407,9 @@
         "librariesRequired": "Wtyczka wymaga dostępu do informacji o bibliotece. Wybierz, dla której biblioteki zezwolić dostęp, lub włącz 'Zezwalaj dla wszystkich bibliotek'.",
         "requiredHosts": "Wymagane hosty",
         "configValidationError": "Weryfikacja konfiguracji nie powiodła się:",
-        "schemaRenderError": "Nie można wyrenderować formularza konfiguracji. Schemat wtyczki może być nieprawidłowy."
+        "schemaRenderError": "Nie można wyrenderować formularza konfiguracji. Schemat wtyczki może być nieprawidłowy.",
+        "allowWriteAccessHelp": "Po włączeniu wtyczka może modyfikować pliki w katalogach bibliotek. Domyślnie wtyczki mają dostęp tylko do odczytu.",
+        "idHelp": ""
       },
       "placeholders": {
         "configKey": "klucz",
@@ -588,7 +599,14 @@
     "remove_all_missing_content": "Czy chcesz usunąć wszystkie brakujące pliki z bazy danych? Spowoduje to trwałe usunięcie wszelkich odniesień do tych plików, takich jak liczba odtworzeń, czy oceny.",
     "noSimilarSongsFound": "Brak podobnych utworów",
     "noTopSongsFound": "Brak najlepszych utworów",
-    "startingInstantMix": "Ładowanie Natychmiastowego Miksu..."
+    "startingInstantMix": "Ładowanie Natychmiastowego Miksu...",
+    "uploadCover": "Prześlij Okładkę",
+    "removeCover": "Usuń Okładkę",
+    "coverUploaded": "Okładka zaktualizowana",
+    "coverRemoved": "Okładka usunięta",
+    "coverUploadError": "Błąd przesyłania okładki",
+    "coverRemoveError": "Błąd usuwania okładki",
+    "metadataRefreshStarted": "Odświeżanie metadanych w tle"
   },
   "menu": {
     "library": "Biblioteka",
@@ -623,7 +641,8 @@
       "multipleLibraries": "%{selected} z %{total} Bibliotek",
       "selectLibraries": "Wybierz Biblioteki",
       "none": "Żadna"
-    }
+    },
+    "onlyFavourites": "Pokaż tylko ulubione"
   },
   "player": {
     "playListsText": "Kolejka Odtwarzania",
@@ -674,7 +693,8 @@
       "exportSuccess": "Konfiguracja wyeksportowana do schowka w formacie TOML",
       "exportFailed": "Błąd kopiowania konfiguracji",
       "devFlagsHeader": "Flagi Rozwojowe (mogą ulec zmianie/usunięciu)",
-      "devFlagsComment": "To są ustawienia eksperymentalne i mogą zostać usunięte w przyszłych wydaniach"
+      "devFlagsComment": "To są ustawienia eksperymentalne i mogą zostać usunięte w przyszłych wydaniach",
+      "downloadToml": "Konfiguracja Pobierania (TOML)"
     }
   },
   "activity": {
