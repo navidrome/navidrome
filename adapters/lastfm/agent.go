@@ -382,7 +382,7 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		return errors.Join(err, scrobbler.ErrNotAuthorized)
 	}
 
-	if s.Duration <= 30 {
+	if s.Duration <= float32(conf.Server.LastFM.MinScrobbleDuration.Seconds()) {
 		log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
 		return nil
 	}

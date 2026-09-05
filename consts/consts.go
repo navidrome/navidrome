@@ -81,6 +81,8 @@ const (
 
 	DefaultInfoLanguage = "en"
 
+	DefaultMinScrobbleDuration = 30 * time.Second
+
 	ArtistInfoTimeToLive      = 24 * time.Hour
 	AlbumInfoTimeToLive       = 7 * 24 * time.Hour
 	UpdateLastAccessFrequency = time.Minute
