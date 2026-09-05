@@ -344,7 +344,7 @@ var _ = Describe("Library Service", func() {
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
 					Expect(errors.As(err, &validationErr)).To(BeTrue())
-					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathInvalid"))
+					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathNotFound"))
 				})
 
 				It("fails when path is a file instead of directory", func() {
@@ -424,7 +424,7 @@ var _ = Describe("Library Service", func() {
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
 					Expect(errors.As(err, &validationErr)).To(BeTrue())
-					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathInvalid"))
+					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathNotFound"))
 				})
 
 				It("fails when updated path is a file instead of directory", func() {
