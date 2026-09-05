@@ -154,9 +154,11 @@ func (r *playlistTrackRepository) GetMediaFileIDs(options ...model.QueryOptions)
 }
 
 func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {
-	query := r.newSelect(options...).Columns("distinct mf.album_id").
+	// GROUP BY rather than DISTINCT: PostgreSQL rejects DISTINCT with ORDER BY random().
+	query := r.newSelect(options...).Columns("mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").
-		Where(Eq{"playlist_id": r.playlistId})
+		Where(Eq{"playlist_id": r.playlistId}).
+		GroupBy("mf.album_id")
 	var ids []string
 	err := r.queryAllSlice(query, &ids)
 	if err != nil {
