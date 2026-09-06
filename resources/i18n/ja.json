@@ -99,9 +99,9 @@
       "lists": {
         "all": "すべて",
         "random": "ランダム",
-        "recentlyAdded": "最近追加された",
-        "recentlyPlayed": "最近再生された",
-        "mostPlayed": "最も再生された",
+        "recentlyAdded": "最近の追加",
+        "recentlyPlayed": "最近の再生",
+        "mostPlayed": "最多再生",
         "starred": "お気に入り",
         "topRated": "高評価"
       }
