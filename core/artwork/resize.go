@@ -76,7 +76,7 @@ func toFastScaleType(img image.Image) image.Image {
 }
 
 func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, error) {
-	original, format, err := image.Decode(bytes.NewReader(data))
+	original, format, err := decodeCapped(data)
 	if err != nil {
 		return nil, 0, err
 	}
