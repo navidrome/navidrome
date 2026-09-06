@@ -96,6 +96,16 @@ func buildAuthPayload(user *model.User) map[string]any {
 	return payload
 }
 
+const maxLoginBodySize = 8 << 10
+
+// limitBody caps the payload of the unauthenticated auth routes.
+func limitBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxLoginBodySize)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func getCredentialsFromBody(r *http.Request) (username string, password string, err error) {
 	data := make(map[string]string)
 	decoder := json.NewDecoder(r.Body)
@@ -150,6 +160,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
 		log.Error(ctx, "Could not create initial user", "user", initialUser, err)
+		return fmt.Errorf("creating initial user: %w", err)
 	}
 	return nil
 }

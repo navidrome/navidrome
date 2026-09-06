@@ -205,6 +205,7 @@ func (s *Server) initRoutes() {
 func (s *Server) mountAuthenticationRoutes() chi.Router {
 	r := s.router
 	return r.Route(path.Join(conf.Server.BasePath, "/auth"), func(r chi.Router) {
+		r.Use(limitBody)
 		if conf.Server.AuthRequestLimit > 0 {
 			log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
 				"windowLength", conf.Server.AuthWindowLength)
