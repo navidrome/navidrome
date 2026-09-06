@@ -266,7 +266,6 @@ func (api *Router) hydrateRustSearchResults(ctx context.Context, results rustsea
 	default:
 		g, hydrateCtx := errgroup.WithContext(ctx)
 		for _, job := range jobs {
-			job := job
 			g.Go(func() error { return job.run(hydrateCtx) })
 		}
 		err := g.Wait()
