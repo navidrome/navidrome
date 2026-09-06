@@ -9,5 +9,5 @@ description = "Shared unix/TCP bind + READY banner + local IPC tonic settings fo
 [dependencies]
 anyhow = "1.0.104"
 tokio = { version = "1.53.1", features = ["macros", "net", "rt-multi-thread", "signal"] }
-tokio-stream = { version = "0.1.17", features = ["net"] }
+tokio-stream = { version = "0.1.19", features = ["net"] }
 tonic = { version = "0.14.6", features = ["transport"] }

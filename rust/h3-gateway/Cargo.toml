@@ -14,7 +14,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.104"
-async-compression = { version = "0.4.43", features = ["brotli", "gzip", "tokio", "zstd"] }
+async-compression = { version = "0.4.44", features = ["brotli", "gzip", "tokio", "zstd"] }
 bytes = "1.12.1"
 env_logger = "0.11.11"
 futures = "0.3.34"
@@ -22,7 +22,7 @@ http = "1.5.0"
 http-body-util = "0.1.5"
 hyper = { version = "1.11.1", features = ["client", "http2"] }
 hyper-util = { version = "0.1.20", features = ["tokio"] }
-log = { version = "0.4.33", features = ["release_max_level_info"] }
+log = { version = "0.4.34", features = ["release_max_level_info"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 socket2 = "0.6.5"
