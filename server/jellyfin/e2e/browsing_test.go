@@ -563,6 +563,43 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	Describe("GET /Items/Latest", func() {
+		// Jellyfin marks the /Users/{userId} form obsolete and hides it from the OpenAPI spec, so
+		// SDK-generated clients (Jellify) only ever call this one.
+		It("serves the same response as the legacy /Users/{userId} route", func() {
+			Expect(get("/Items/Latest?Limit=3").Body.String()).
+				To(Equal(get("/Users/admin-1/Items/Latest?Limit=3").Body.String()))
+		})
+
+		It("scopes to ParentId when it names a library", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+dto.EncodeLibraryID(1)), &items)
+			Expect(names(items)).To(ConsistOf("Abbey Road", "Help!", "IV", "Kind of Blue", "Singles"))
+		})
+
+		It("scopes to ParentId when it names an artist", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+enc(artistID("The Beatles"))), &items)
+			Expect(names(items)).To(ConsistOf("Abbey Road", "Help!"))
+		})
+
+		It("returns nothing for a library the user cannot access", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+dto.EncodeLibraryID(99)), &items)
+			Expect(items).To(BeEmpty())
+		})
+
+		It("returns nothing for an id that is neither a library nor an artist", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+enc(testID("does-not-exist"))), &items)
+			Expect(items).To(BeEmpty())
+		})
+
+		It("404s a malformed ParentId, like every other filtered endpoint", func() {
+			Expect(get("/Items/Latest?ParentId=not-a-valid-id").Code).To(Equal(http.StatusNotFound))
+		})
+	})
+
 	Describe("GET /Artists and /Genres", func() {
 		It("lists album artists only on /Artists/AlbumArtists (excludes performer-only artists)", func() {
 			names := names(queryResult(get("/Artists/AlbumArtists")).Items)

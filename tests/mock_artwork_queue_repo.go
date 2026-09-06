@@ -16,7 +16,7 @@ type MockArtworkQueueRepo struct {
 	mu   sync.Mutex
 	Data map[string]model.ArtworkQueueItem // keyed by iaKey(kind, id, imageType)
 	Err  error
-	// ItemArtworkSource, when set, backs EnqueueStaleAbsent with real item_artwork state.
+	// ItemArtworkSource, when set, backs the set-difference insert with real item_artwork state.
 	ItemArtworkSource *MockArtworkRepo
 	// ExistingIDs is keyed by item_kind; a nil per-kind map means PurgeDangling keeps that kind.
 	ExistingIDs map[string]map[string]bool
@@ -226,26 +226,6 @@ func (m *MockArtworkQueueRepo) CountQueued(kinds []model.Kind, priorities []int)
 	return res, nil
 }
 
-// CountAbsent mirrors the SQL predicate: an absent state is one with no hash.
-func (m *MockArtworkQueueRepo) CountAbsent(kind model.Kind, attemptedBefore time.Time) (model.ArtworkAbsentStat, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	var res model.ArtworkAbsentStat
-	if m.Err != nil || m.ItemArtworkSource == nil {
-		return res, m.Err
-	}
-	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind != kind.Prefix() || ia.Hash != "" {
-			continue
-		}
-		res.Total++
-		if ia.AttemptedAt.Before(attemptedBefore) {
-			res.Stale++
-		}
-	}
-	return res, nil
-}
-
 func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -272,49 +252,24 @@ func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQu
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueueStaleAbsent(kind model.Kind, attemptedBefore time.Time, limit int) (int64, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Err != nil || m.ItemArtworkSource == nil {
-		return 0, m.Err
-	}
-	var stale []model.ItemArtwork
-	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind == kind.Prefix() && ia.Hash == "" && ia.AttemptedAt.Before(attemptedBefore) {
-			stale = append(stale, ia)
-		}
-	}
-	slices.SortFunc(stale, func(a, b model.ItemArtwork) int { return a.AttemptedAt.Compare(b.AttemptedAt) })
-	// The limit caps the selection, like the SQL's LIMIT before ON CONFLICT: queued rows use up budget.
-	stale = stale[:min(limit, len(stale))]
-	now := time.Now()
-	var inserted int64
-	for _, ia := range stale {
-		k := iaKey(ia.ItemKind, ia.ItemID, ia.ImageType)
-		if _, ok := m.Data[k]; ok { // DO NOTHING: never touch existing queue rows
-			continue
-		}
-		m.Data[k] = model.ArtworkQueueItem{
-			ItemKind:   ia.ItemKind,
-			ItemID:     ia.ItemID,
-			ImageType:  ia.ImageType,
-			Priority:   model.ArtworkPriorityRecheck,
-			RetryAt:    now,
-			EnqueuedAt: now,
-		}
-		inserted++
-	}
-	return inserted, nil
-}
-
-// matchingSource mirrors the SQL filter: no sources means every source, "" the absent state.
+// matchingSource mirrors the SQL filter: no sources means every source, "" the absent state, and
+// ArtworkSourceFailed the absent states that gave up.
 func (m *MockArtworkQueueRepo) matchingSource(kind model.Kind, sources []string) []model.ItemArtwork {
 	if m.ItemArtworkSource == nil {
 		return nil
 	}
+	matches := func(ia model.ItemArtwork) bool {
+		if len(sources) == 0 {
+			return true
+		}
+		if slices.Contains(sources, ia.Source) {
+			return true
+		}
+		return slices.Contains(sources, model.ArtworkSourceFailed) && ia.Hash == "" && ia.LastFailure != ""
+	}
 	var res []model.ItemArtwork
 	for _, ia := range m.ItemArtworkSource.ItemData {
-		if ia.ItemKind == kind.Prefix() && (len(sources) == 0 || slices.Contains(sources, ia.Source)) {
+		if ia.ItemKind == kind.Prefix() && matches(ia) {
 			res = append(res, ia)
 		}
 	}
@@ -366,7 +321,7 @@ func (m *MockArtworkQueueRepo) EnqueueBySource(kind model.Kind, sources []string
 	return inserted, nil
 }
 
-// EnqueueMissing mirrors the SQL set-difference insert: ExistingIDs[kind] minus ItemArtworkSource.
+// EnqueueAllMissing mirrors the SQL set-difference insert: ExistingIDs[kind] minus ItemArtworkSource.
 func (m *MockArtworkQueueRepo) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

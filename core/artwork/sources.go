@@ -10,9 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
@@ -28,16 +26,6 @@ import (
 var errSourceUnreadable = errors.New("artwork source unreadable")
 
 type sourceFunc func() (r io.ReadCloser, path string, err error)
-
-func (f sourceFunc) String() string {
-	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core/artwork.")
-	if _, after, found := strings.Cut(name, ")."); found {
-		name = after
-	}
-	name = strings.TrimSuffix(name, ".func1")
-	return name
-}
 
 func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {

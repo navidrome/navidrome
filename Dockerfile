@@ -2,7 +2,7 @@ FROM --platform=$BUILDPLATFORM ghcr.io/crazy-max/osxcross:14.5-debian AS osxcros
 
 ########################################################################################################################
 ### Build xx (original image: tonistiigi/xx)
-FROM --platform=$BUILDPLATFORM alpine:3.20 AS xx-build
+FROM --platform=$BUILDPLATFORM alpine:3.22 AS xx-build
 
 # v1.9.0
 ENV XX_VERSION=a5592eab7a57895e8d385394ff12241bc65ecd50
@@ -43,7 +43,7 @@ COPY --from=ui /build /build
 
 ########################################################################################################################
 ### Build Navidrome binary for Docker image (dynamic musl, enables native libwebp via dlopen)
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build-alpine
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build-alpine
 COPY --from=xx / /
 
 ARG TARGETPLATFORM
@@ -85,7 +85,7 @@ EOT
 
 ########################################################################################################################
 ### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
-FROM --platform=$BUILDPLATFORM golang:1.26-trixie AS base
+FROM --platform=$BUILDPLATFORM golang:1.27-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace
@@ -153,18 +153,51 @@ FROM scratch AS binary
 COPY --from=build /out /
 
 ########################################################################################################################
+### Build no-op stubs for mpv's video-output libraries
+# mpv links libEGL/libgbm for video output only; Navidrome drives it headless, for audio.
+# Real mesa pulls in LLVM + gallium (+218MB uncompressed), so ship stubs it never calls.
+FROM --platform=$BUILDPLATFORM alpine:3.22 AS mpv-stubs
+COPY --from=xx / /
+RUN apk add --no-cache clang lld binutils mesa-egl mesa-gbm
+ARG TARGETPLATFORM
+RUN xx-apk add --no-cache musl-dev
+RUN <<EOT
+    set -e
+    mkdir -p /out
+    for so in libEGL.so.1 libgbm.so.1; do
+        readelf -sW /usr/lib/$so \
+            | awk '$5 == "GLOBAL" && $7 != "UND" { print $8 }' \
+            | sed 's/@.*//' \
+            | grep -vE '^(_init|_fini|_edata|_end|__bss_start|_GLOBAL_OFFSET_TABLE_)$' \
+            | sort -u \
+            | awk '{ print "void " $1 "(void) {}" }' > /tmp/stub.c
+        test -s /tmp/stub.c
+        xx-clang -shared -nostdlib -fPIC -Wl,-soname,$so -o /out/$so /tmp/stub.c
+        xx-verify /out/$so
+    done
+EOT
+
+########################################################################################################################
 ### Build Final Image
-FROM alpine:3.20 AS final
+FROM alpine:3.22 AS final
 LABEL maintainer="deluan@navidrome.org"
 LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 
 # Install runtime dependencies
 # - libwebp + symlinks: enables native WebP encoding via purego/dlopen
+# The mesa/LLVM stack mpv pulls in for video output is dropped in this same layer,
+# otherwise the deleted bytes still ship in the image.
 RUN apk add -U --no-cache ffmpeg mpv sqlite libwebp libwebpdemux libwebpmux && \
     for lib in libwebp libwebpdemux libwebpmux; do \
         target=$(ls /usr/lib/$lib.so.* 2>/dev/null | head -1) && \
         [ -n "$target" ] && ln -sf "$target" /usr/lib/$lib.so; \
-    done
+    done && \
+    rm -rf /usr/lib/gallium-pipe /usr/lib/dri \
+        /usr/lib/libEGL.so* /usr/lib/libgbm.so* /usr/lib/libgallium*.so /usr/lib/libLLVM.so* \
+        /usr/lib/libGL.so* /usr/lib/libGLESv2.so* /usr/lib/libglapi.so*
+
+COPY --from=mpv-stubs /out/ /usr/lib/
+RUN mpv --no-video --ao=null --version > /dev/null
 
 # Copy navidrome binary (musl build for Docker, enables native libwebp)
 COPY --from=build-alpine /out/navidrome /app/
