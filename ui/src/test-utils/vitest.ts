@@ -1,9 +1,12 @@
-import { vi } from 'vitest'
+import { vi, type Mock } from 'vitest'
 import type { UseInputValue } from 'react-admin'
 import type { FieldError } from 'react-hook-form'
 
-export const mockFn = <T extends (...args: never[]) => unknown>(fn: T) =>
-  vi.mocked(fn)
+type AnyMock = Mock<(...args: never[]) => unknown>
+
+export const mockFn = <T extends (...args: never[]) => unknown>(
+  fn: T,
+): AnyMock => vi.mocked(fn) as unknown as AnyMock
 
 export const mockUseInputValue = (
   overrides: Partial<{

@@ -1,0 +1,59 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "react"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    "build/**",
+    "coverage/**",
+    "prettier.config.ts",
+    "vite.config.ts",
+    "public/3rdparty/workbox/**",
+    "src/sw.ts"
+  ],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "settings": {
+    "react": {
+      "version": "19.2.8"
+    }
+  },
+  "options": {
+    "maxWarnings": 0
+  },
+  "rules": {
+    "no-console": "error",
+    "typescript/no-unused-vars": "off",
+    "typescript/ban-ts-comment": "error",
+    "no-unused-expressions": "off",
+    "typescript/no-unused-expressions": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/only-export-components": "off",
+    "react/set-state-in-effect": "off",
+    "react/set-state-in-render": "off",
+    "react/purity": "off",
+    "react/immutability": "off",
+    "react/refs": "off",
+    "react/error-boundaries": "off",
+    "react/preserve-manual-memoization": "off",
+    "react/static-components": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/*.{test,spec}.{ts,tsx}"
+      ],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    }
+  ]
+}

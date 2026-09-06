@@ -52,25 +52,26 @@ const ajv = new Ajv({
   useDefaults: true,
   allErrors: true,
   verbose: true,
-  jsonPointers: true,
 })
 const origCompile = ajv.compile.bind(ajv)
-ajv.compile = (schema) => {
+ajv.compile = ((schema) => {
   const validate = origCompile(schema)
-  const wrapped = (data: unknown) => {
+  const wrapped = ((data: unknown) => {
     const valid = validate(data)
     validate.errors?.forEach((e) => {
       const params = e.params as { missingProperty?: string }
       if (e.keyword === 'required' && params?.missingProperty) {
-        e.dataPath = `${e.dataPath || ''}/${params.missingProperty}`
+        // ajv@8 renamed dataPath -> instancePath (JSON pointer)
+        e.instancePath = `${e.instancePath || ''}/${params.missingProperty}`
       }
     })
-    ;(wrapped as { errors?: typeof validate.errors }).errors = validate.errors
+    wrapped.errors = validate.errors
     return valid
-  }
-  ;(wrapped as { schema?: typeof validate.schema }).schema = validate.schema
+  }) as typeof validate
+  wrapped.schema = validate.schema
+  wrapped.schemaEnv = validate.schemaEnv
   return wrapped
-}
+}) as typeof ajv.compile
 
 const rootSx = (theme) => ({
   '& .MuiFormControl-root': {
