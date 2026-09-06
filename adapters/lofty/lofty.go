@@ -1,24 +1,19 @@
 // Package lofty provides the local metadata extractor backed by the Rust Lofty worker.
 //
-// Production extract uses the metadata gRPC worker. NDJSON stdin/stdout remains
-// as a Go-test fallback because gRPC workers are skipped inside `go test`.
+// Extract uses the metadata gRPC worker only.
 package lofty
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/metadataworker"
-	"github.com/navidrome/navidrome/core/rustworker"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -26,10 +21,8 @@ import (
 )
 
 const (
-	protocolVersion       = 1
-	loftyVersion          = "0.25.1"
-	maxWorkerPool         = 16
-	minFilesPerWorkerTask = 32
+	protocolVersion = 1
+	loftyVersion    = "0.25.1"
 )
 
 type request struct {
@@ -92,20 +85,8 @@ func (f workerFileInfo) IsDir() bool          { return false }
 func (f workerFileInfo) Sys() any             { return nil }
 func (f workerFileInfo) BirthTime() time.Time { return f.birthTime }
 
-type worker struct {
-	pipes   *rustworker.Pipes
-	writer  *bufio.Writer
-	decoder *json.Decoder
-}
-
-type workerSlot struct {
-	worker *worker
-}
-
 type extractor struct {
-	baseDir  string
-	poolOnce sync.Once
-	pool     chan *workerSlot
+	baseDir string
 }
 
 func (e *extractor) Parse(files ...string) (map[string]metadata.Info, error) {
@@ -122,113 +103,11 @@ func (e *extractor) ParseContext(ctx context.Context, files ...string) (map[stri
 		return nil, err
 	}
 
-	if resp, grpcErr := extractViaGRPC(ctx, req); grpcErr == nil {
-		return convertResponse(resp)
-	} else if !grpcUnavailable(grpcErr) || !rustworker.AllowLegacyNDJSON() {
-		return nil, grpcErr
+	resp, err := extractViaGRPC(ctx, req)
+	if err != nil {
+		return nil, err
 	}
-
-	pool := e.workerPool()
-	taskCount := metadataTaskCount(len(req.Files), cap(pool))
-	if taskCount == 1 {
-		resp, err := e.roundTrip(ctx, pool, req)
-		if err != nil {
-			return nil, err
-		}
-		return convertResponse(resp)
-	}
-
-	// Folder-level scanner concurrency normally keeps the Rust workers busy, but
-	// a library with many files in one folder previously occupied only one slot.
-	// Split large batches across the same bounded persistent pool. This improves
-	// that worst case without nesting Rust thread pools or creating more worker
-	// processes than DevScannerThreads allows.
-	type taskResult struct {
-		response response
-		err      error
-	}
-	results := make(chan taskResult, taskCount)
-	chunkSize := (len(req.Files) + taskCount - 1) / taskCount
-	for start := 0; start < len(req.Files); start += chunkSize {
-		end := min(start+chunkSize, len(req.Files))
-		task := request{Files: req.Files[start:end]}
-		go func() {
-			resp, err := e.roundTrip(ctx, pool, task)
-			results <- taskResult{response: resp, err: err}
-		}()
-	}
-
-	merged := response{
-		Protocol: protocolVersion,
-		Lofty:    loftyVersion,
-		Results:  make(map[string]rawResult, len(req.Files)),
-		Errors:   make(map[string]string),
-	}
-	var taskErrors []error
-	for range taskCount {
-		result := <-results
-		if result.err != nil {
-			taskErrors = append(taskErrors, result.err)
-			continue
-		}
-		for key, value := range result.response.Results {
-			merged.Results[key] = value
-		}
-		for key, value := range result.response.Errors {
-			merged.Errors[key] = value
-		}
-	}
-	if len(taskErrors) > 0 {
-		return nil, fmt.Errorf("Lofty metadata tasks failed: %w", errors.Join(taskErrors...))
-	}
-	return convertResponse(merged)
-}
-
-func metadataTaskCount(fileCount, poolSize int) int {
-	if fileCount <= 0 || poolSize <= 1 {
-		return 1
-	}
-	return min(poolSize, max(1, (fileCount+minFilesPerWorkerTask-1)/minFilesPerWorkerTask))
-}
-
-// roundTrip reserves one persistent worker for one ordered request/response.
-// A failed worker is replaced once before the request is returned to the scanner.
-func (e *extractor) roundTrip(ctx context.Context, pool chan *workerSlot, req request) (response, error) {
-	var slot *workerSlot
-	select {
-	case slot = <-pool:
-	case <-ctx.Done():
-		return response{}, ctx.Err()
-	}
-	defer func() { pool <- slot }()
-
-	var lastErr error
-	for attempt := 0; attempt < 2; attempt++ {
-		w, err := slot.ensureWorker()
-		if err != nil {
-			return response{}, err
-		}
-		cancelDone := make(chan struct{})
-		stopCancel := context.AfterFunc(ctx, func() {
-			w.kill()
-			close(cancelDone)
-		})
-		resp, err := w.roundTrip(req)
-		if !stopCancel() {
-			<-cancelDone
-		}
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			slot.stopWorker()
-			return response{}, ctxErr
-		}
-		if err == nil {
-			return resp, nil
-		}
-		lastErr = err
-		log.Warn("Lofty metadata worker request failed; restarting", "attempt", attempt+1, "error", err)
-		slot.stopWorker()
-	}
-	return response{}, fmt.Errorf("Lofty metadata worker failed after restart: %w", lastErr)
+	return convertResponse(resp)
 }
 
 func (e *extractor) Version() string {
@@ -267,88 +146,6 @@ func (e *extractor) buildRequest(ctx context.Context, files []string) (request, 
 		PIDConfig:             scanConfig.PIDConfig,
 		LibraryID:             scanConfig.LibraryID,
 	}, nil
-}
-
-func (e *extractor) workerPool() chan *workerSlot {
-	e.poolOnce.Do(func() {
-		e.pool = make(chan *workerSlot, workerPoolSize(conf.Server.DevScannerThreads))
-		for range cap(e.pool) {
-			e.pool <- &workerSlot{}
-		}
-	})
-	return e.pool
-}
-
-func workerPoolSize(scannerThreads uint) int {
-	if scannerThreads < 1 {
-		return 1
-	}
-	return int(min(scannerThreads, maxWorkerPool))
-}
-
-func (s *workerSlot) ensureWorker() (*worker, error) {
-	if s.worker != nil {
-		return s.worker, nil
-	}
-	w, err := startWorker(resolveWorkerPath())
-	if err != nil {
-		return nil, err
-	}
-	s.worker = w
-	return w, nil
-}
-
-func (s *workerSlot) stopWorker() {
-	if s.worker == nil {
-		return
-	}
-	s.worker.close()
-	s.worker = nil
-}
-
-func startWorker(binary string) (*worker, error) {
-	pipes, err := rustworker.Start(binary)
-	if err != nil {
-		return nil, err
-	}
-	return &worker{
-		pipes:   pipes,
-		writer:  bufio.NewWriterSize(pipes.Stdin, rustworker.DefaultWriteBuf),
-		decoder: json.NewDecoder(bufio.NewReaderSize(pipes.Stdout, rustworker.DefaultReadBuf)),
-	}, nil
-}
-
-func (w *worker) roundTrip(req request) (response, error) {
-	payload, err := json.Marshal(req)
-	if err != nil {
-		return response{}, fmt.Errorf("encoding Lofty request: %w", err)
-	}
-	if _, err := w.writer.Write(payload); err != nil {
-		return response{}, fmt.Errorf("writing Lofty request: %w", err)
-	}
-	if err := w.writer.WriteByte('\n'); err != nil {
-		return response{}, fmt.Errorf("framing Lofty request: %w", err)
-	}
-	if err := w.writer.Flush(); err != nil {
-		return response{}, fmt.Errorf("flushing Lofty request: %w", err)
-	}
-
-	var resp response
-	if err := w.decoder.Decode(&resp); err != nil {
-		return response{}, fmt.Errorf("reading Lofty response: %w", err)
-	}
-	if resp.Protocol != protocolVersion {
-		return response{}, fmt.Errorf("unsupported Lofty protocol %d", resp.Protocol)
-	}
-	return resp, nil
-}
-
-func (w *worker) close() {
-	rustworker.Close(w.pipes)
-}
-
-func (w *worker) kill() {
-	rustworker.Kill(w.pipes.Cmd)
 }
 
 func convertResponse(resp response) (map[string]metadata.Info, error) {

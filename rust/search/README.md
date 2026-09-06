@@ -2,7 +2,8 @@
 
 This crate is the incremental search engine used to move relevance ranking and
 substring search off SQLite's broad `LIKE` fallback. It keeps a Tantivy index
-behind gRPC/Protobuf (`--grpc-worker`), with NDJSON stdin/stdout as fallback.
+behind gRPC/Protobuf (`--grpc-worker`). NDJSON stdin/stdout remains available in the
+binary for manual debugging only; Go never uses it.
 
 The index combines exact-name ranking with Unicode 2–3 character n-grams. This
 makes short Korean, Japanese, and Chinese names searchable without scanning all

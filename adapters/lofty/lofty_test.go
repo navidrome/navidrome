@@ -2,23 +2,10 @@ package lofty
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 	"testing"
 	"time"
 )
-
-func TestRoundTripHonorsCancellationWhileWaitingForWorker(t *testing.T) {
-	t.Parallel()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	pool := make(chan *workerSlot)
-	_, err := (&extractor{}).roundTrip(ctx, pool, request{})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("roundTrip() error = %v, want context.Canceled", err)
-	}
-}
 
 func TestBuildRequestKeepsFilesInsideLibrary(t *testing.T) {
 	t.Parallel()
@@ -44,46 +31,6 @@ func TestBuildRequestRejectsTraversal(t *testing.T) {
 	e := &extractor{baseDir: t.TempDir()}
 	if _, err := e.buildRequest(context.Background(), []string{"../outside.flac"}); err == nil {
 		t.Fatal("buildRequest() accepted path traversal")
-	}
-}
-
-func TestWorkerPoolSize(t *testing.T) {
-	t.Parallel()
-
-	if got := workerPoolSize(0); got != 1 {
-		t.Fatalf("workerPoolSize(0) = %d, want 1", got)
-	}
-	if got := workerPoolSize(5); got != 5 {
-		t.Fatalf("workerPoolSize(5) = %d, want 5", got)
-	}
-	if got := workerPoolSize(100); got != maxWorkerPool {
-		t.Fatalf("workerPoolSize(100) = %d, want %d", got, maxWorkerPool)
-	}
-}
-
-func TestMetadataTaskCount(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		files     int
-		poolSize  int
-		wantTasks int
-	}{
-		{name: "empty", files: 0, poolSize: 8, wantTasks: 1},
-		{name: "single worker", files: 200, poolSize: 1, wantTasks: 1},
-		{name: "small batch", files: minFilesPerWorkerTask, poolSize: 8, wantTasks: 1},
-		{name: "large folder", files: 200, poolSize: 8, wantTasks: 7},
-		{name: "bounded by pool", files: 4096, poolSize: 8, wantTasks: 8},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			if got := metadataTaskCount(tt.files, tt.poolSize); got != tt.wantTasks {
-				t.Fatalf("metadataTaskCount(%d, %d) = %d, want %d", tt.files, tt.poolSize, got, tt.wantTasks)
-			}
-		})
 	}
 }
 

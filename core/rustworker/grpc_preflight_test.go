@@ -3,6 +3,7 @@ package rustworker
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 )
 
@@ -16,6 +17,9 @@ func TestSkipPreflightInTests(t *testing.T) {
 }
 
 func TestGRPCWorkerCheckSkipsInTests(t *testing.T) {
+	if os.Getenv("ND_GRPCWORKERINTESTS") != "" {
+		t.Skip("ND_GRPCWORKERINTESTS enables real StartGRPC")
+	}
 	check := GRPCWorkerCheck{
 		Name: "test",
 		Path: "/bin/true",
@@ -40,6 +44,9 @@ func TestPreflightGRPCStrictKeepEmpty(t *testing.T) {
 }
 
 func TestPreflightGRPCStrictKeepSkipsInTests(t *testing.T) {
+	if os.Getenv("ND_GRPCWORKERINTESTS") != "" {
+		t.Skip("ND_GRPCWORKERINTESTS enables real StartGRPC")
+	}
 	kept, err := PreflightGRPCStrictKeep(context.Background(), []GRPCWorkerCheck{{
 		Name: "test",
 		Path: "/bin/true",

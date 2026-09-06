@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/core/metadataworker"
-	"github.com/navidrome/navidrome/core/rustworker"
 	"github.com/navidrome/navidrome/log"
 	"golang.org/x/sync/singleflight"
 )
@@ -81,11 +80,7 @@ func NormalizeMany(ctx context.Context, groups [][]string) []string {
 		return out
 	}
 	if err != nil {
-		if rustworker.PreferGRPC(err, metadataworker.ErrNoGRPC) {
-			log.Warn(ctx, "Rust FTS normalize batch failed; falling back per item", err)
-		} else {
-			log.Debug(ctx, "Rust FTS normalize batch unavailable; falling back per item", err)
-		}
+		log.Warn(ctx, "Rust FTS normalize batch failed; falling back per item", err)
 	}
 
 	for j, idx := range missingIdx {

@@ -16,7 +16,6 @@ import (
 	"github.com/navidrome/navidrome/core/lifecycle"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
-	"github.com/navidrome/navidrome/core/rustworker"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -138,7 +137,7 @@ func initIntegrationGateway(ctx context.Context) error {
 		return nil
 	}
 	g := integration.Get()
-	if !rustworker.AllowLegacyNDJSON() && !g.WorkerReady() {
+	if !g.WorkerReady() {
 		return fmt.Errorf("integration gRPC worker is not ready after startup")
 	}
 	return nil

@@ -3,14 +3,9 @@
 package rustsearch
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -97,19 +92,9 @@ type SearchResults struct {
 	ArtistIDs []string
 }
 
-type worker struct {
-	cmd     *exec.Cmd
-	stdin   io.WriteCloser
-	writer  *bufio.Writer
-	encoder *json.Encoder
-	decoder *json.Decoder
-}
-
 type Engine struct {
 	gate         sync.RWMutex
-	worker       *worker
 	grpc         gen.SearchClient
-	grpcFailed   bool
 	ready        atomic.Bool
 	building     atomic.Bool
 	generation   atomic.Int64
@@ -612,44 +597,82 @@ func (e *Engine) mediaFileDocument(_ context.Context, mediaFile model.MediaFile)
 }
 
 func (e *Engine) indexAlbums(ctx context.Context, ds model.DataStore, appendDocument func(document) error) error {
-	albums, err := ds.Album(ctx).GetAll()
+	cursor, err := ds.Album(ctx).GetCursor()
 	if err != nil {
-		return fmt.Errorf("loading albums for Rust search: %w", err)
+		return fmt.Errorf("opening album cursor for Rust search: %w", err)
 	}
-	ensureAlbumSearchNormalized(ctx, albums)
-	for _, album := range albums {
+	batch := make([]model.Album, 0, indexBatchSize)
+	flush := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+		ensureAlbumSearchNormalized(ctx, batch)
+		for i := range batch {
+			if err := appendDocument(e.albumDocument(ctx, batch[i])); err != nil {
+				return err
+			}
+		}
+		batch = batch[:0]
+		return nil
+	}
+	for album, cursorErr := range cursor {
+		if cursorErr != nil {
+			return fmt.Errorf("reading albums for Rust search: %w", cursorErr)
+		}
 		if album.Missing {
 			continue
 		}
-		if err := appendDocument(e.albumDocument(ctx, album)); err != nil {
-			return err
+		batch = append(batch, album)
+		if len(batch) >= indexBatchSize {
+			if err := flush(); err != nil {
+				return err
+			}
 		}
 	}
-	return nil
+	return flush()
 }
 
 func (e *Engine) deltaAlbums(ctx context.Context, ds model.DataStore, since time.Time, upsert func(document) error, deleteKey func(string) error) error {
-	albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: query.Or(
+	cursor, err := ds.Album(ctx).GetCursor(model.QueryOptions{Filters: query.Or(
 		query.ColumnAfter("album.created_at", since),
 		query.ColumnAfter("album.updated_at", since),
 		query.ColumnAfter("album.imported_at", since),
 	)})
 	if err != nil {
-		return fmt.Errorf("loading album deltas for Rust search: %w", err)
+		return fmt.Errorf("opening album delta cursor for Rust search: %w", err)
 	}
-	ensureAlbumSearchNormalized(ctx, albums)
-	for _, album := range albums {
+	batch := make([]model.Album, 0, indexBatchSize)
+	flush := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+		ensureAlbumSearchNormalized(ctx, batch)
+		for i := range batch {
+			if err := upsert(e.albumDocument(ctx, batch[i])); err != nil {
+				return err
+			}
+		}
+		batch = batch[:0]
+		return nil
+	}
+	for album, cursorErr := range cursor {
+		if cursorErr != nil {
+			return fmt.Errorf("reading album deltas for Rust search: %w", cursorErr)
+		}
 		if album.Missing {
 			if err := deleteKey("album:" + album.ID); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := upsert(e.albumDocument(ctx, album)); err != nil {
-			return err
+		batch = append(batch, album)
+		if len(batch) >= indexBatchSize {
+			if err := flush(); err != nil {
+				return err
+			}
 		}
 	}
-	return nil
+	return flush()
 }
 
 func (e *Engine) albumDocument(_ context.Context, album model.Album) document {
@@ -825,130 +848,36 @@ func (e *Engine) roundTrip(ctx context.Context, req request) (response, error) {
 		e.gate.Unlock()
 		return response{}, err
 	}
-	if e.grpc != nil {
-		// gRPC is multiplexed; do not hold the NDJSON stdin gate across the RPC.
+	if e.grpc == nil {
 		e.gate.Unlock()
-		resp, err := e.grpcRoundTrip(ctx, req)
-		if err != nil {
-			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
-				return response{}, err
-			}
-			if rustworker.IsTransportFailure(err) {
-				e.gate.Lock()
-				// Drop the client so the next call redials. Keep ready=true: the
-				// on-disk Tantivy index survives a worker restart.
-				e.closeGRPC()
-				e.gate.Unlock()
-			}
+		return response{}, fmt.Errorf("search gRPC worker not started")
+	}
+	// gRPC is multiplexed; do not hold the stdin gate across the RPC.
+	e.gate.Unlock()
+	resp, err := e.grpcRoundTrip(ctx, req)
+	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return response{}, err
 		}
-		return resp, nil
-	}
-
-	defer e.gate.Unlock()
-	w := e.worker
-	cancelDone := make(chan struct{})
-	stopCancel := context.AfterFunc(ctx, func() {
-		w.kill()
-		close(cancelDone)
-	})
-	finishCancellation := func() {
-		if !stopCancel() {
-			<-cancelDone
+		if rustworker.IsTransportFailure(err) {
+			e.gate.Lock()
+			// Drop the client so the next call redials. Keep ready=true: the
+			// on-disk Tantivy index survives a worker restart.
+			e.closeGRPC()
+			e.gate.Unlock()
 		}
-	}
-	if err := w.encoder.Encode(req); err != nil {
-		finishCancellation()
-		e.failWorker(false, ctx)
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return response{}, ctxErr
-		}
-		return response{}, fmt.Errorf("writing Rust search request: %w", err)
-	}
-	if err := w.writer.Flush(); err != nil {
-		finishCancellation()
-		e.failWorker(false, ctx)
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return response{}, ctxErr
-		}
-		return response{}, fmt.Errorf("flushing Rust search request: %w", err)
-	}
-	var resp response
-	if err := w.decoder.Decode(&resp); err != nil {
-		finishCancellation()
-		e.failWorker(false, ctx)
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return response{}, ctxErr
-		}
-		return response{}, fmt.Errorf("reading Rust search response: %w", err)
-	}
-	finishCancellation()
-	if ctxErr := ctx.Err(); ctxErr != nil {
-		e.failWorker(false, ctx)
-		return response{}, ctxErr
-	}
-	if resp.Protocol != protocolVersion {
-		e.stopWorker()
-		return response{}, fmt.Errorf("unsupported Rust search protocol %d", resp.Protocol)
-	}
-	if !resp.OK {
-		return response{}, fmt.Errorf("Rust search request failed: %s", resp.Error)
+		return response{}, err
 	}
 	return resp, nil
 }
 
 func (e *Engine) ensureWorker() error {
-	if e.grpc != nil || e.worker != nil {
+	if e.grpc != nil {
 		return nil
 	}
-	// In tests, remember a failed gRPC dial so we stay on NDJSON. In production
-	// always retry gRPC — the companion binary may appear after a transient miss.
-	if e.grpcFailed && rustworker.AllowLegacyNDJSON() {
-		return e.startNDJSON()
-	}
-	if err := e.startGRPC(); err == nil {
-		return nil
-	} else if !rustworker.AllowLegacyNDJSON() {
+	if err := e.startGRPC(); err != nil {
 		return fmt.Errorf("search gRPC worker unavailable: %w", err)
-	} else {
-		e.grpcFailed = true
-		rustworker.LogGRPCUnavailable("search", err)
 	}
-	return e.startNDJSON()
-}
-
-func (e *Engine) startNDJSON() error {
-	if e.worker != nil {
-		return nil
-	}
-	binary, err := searchworker.Resolve()
-	if err != nil {
-		return fmt.Errorf("resolving Rust search worker: %w", err)
-	}
-	cmd := exec.Command(binary) //nolint:gosec // administrator-configured or colocated binary
-	if indexPath := searchIndexPath(); indexPath != "" {
-		cmd.Env = append(os.Environ(), "NAVIDROME_SEARCH_INDEX_PATH="+indexPath)
-	}
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return err
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		_ = stdin.Close()
-		return err
-	}
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		_ = stdin.Close()
-		return fmt.Errorf("starting Rust search worker %q: %w", binary, err)
-	}
-	bufferedInput := bufio.NewWriterSize(stdin, 256*1024)
-	e.worker = &worker{
-		cmd: cmd, stdin: stdin, writer: bufferedInput, encoder: json.NewEncoder(bufferedInput),
-		decoder: json.NewDecoder(bufio.NewReaderSize(stdout, 256*1024)),
-	}
-	e.worker.encoder.SetEscapeHTML(false)
 	return nil
 }
 
@@ -962,42 +891,17 @@ func (e *Engine) failWorker(readOnly bool, ctx context.Context) {
 
 func (e *Engine) releaseWorker() {
 	e.closeGRPC()
-	if e.worker == nil {
-		return
-	}
-	_ = e.worker.stdin.Close()
-	if e.worker.cmd.Process != nil {
-		_ = e.worker.cmd.Process.Kill()
-	}
-	_ = e.worker.cmd.Wait()
-	e.worker = nil
 }
 
 func (e *Engine) stopWorker() {
 	e.ready.Store(false)
 	e.indexed.Store(0)
 	e.closeGRPC()
-	if e.worker == nil {
-		return
-	}
-	_ = e.worker.stdin.Close()
-	if e.worker.cmd.Process != nil {
-		_ = e.worker.cmd.Process.Kill()
-	}
-	_ = e.worker.cmd.Wait()
-	e.worker = nil
 }
 
 func (e *Engine) closeGRPC() {
 	searchworker.InvalidateGRPC()
 	e.grpc = nil
-	e.grpcFailed = false
-}
-
-func (w *worker) kill() {
-	if w != nil && w.cmd.Process != nil {
-		_ = w.cmd.Process.Kill()
-	}
 }
 
 func searchIndexPath() string {

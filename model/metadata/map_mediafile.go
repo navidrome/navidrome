@@ -119,6 +119,9 @@ func (md Metadata) mediaFileFromRust(libID int, folderID string) (model.MediaFil
 
 func albumTagsFromRust(rustTags map[string][]string, cleaned model.Tags) model.Tags {
 	tags := mediaFileTagsFromCleaned(cleaned)
+	if tags == nil {
+		tags = model.Tags{}
+	}
 	if len(rustTags) == 0 {
 		return tags
 	}

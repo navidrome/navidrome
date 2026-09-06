@@ -15,8 +15,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/apikeyworker"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/core/rustworker"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
@@ -131,12 +129,6 @@ func (s *Service) generateToken(ctx context.Context, pepper string) (token, look
 	if workerErr == nil {
 		return result.Token, result.LookupPrefix, result.Hash, nil
 	}
-	if rustworker.AllowLegacyNDJSON() {
-		if log.IsGreaterOrEqualTo(log.LevelDebug) {
-			log.Debug(ctx, "Rust apikeys worker unavailable, using Go fallback", workerErr)
-		}
-		return generateTokenGo(pepper)
-	}
 	return "", "", "", fmt.Errorf("api key hashing worker unavailable: %w", workerErr)
 }
 
@@ -144,12 +136,6 @@ func (s *Service) verifyToken(ctx context.Context, token, hash, pepper string) (
 	valid, workerErr := apikeyworker.Verify(ctx, token, hash, pepper)
 	if workerErr == nil {
 		return valid, nil
-	}
-	if rustworker.AllowLegacyNDJSON() {
-		if log.IsGreaterOrEqualTo(log.LevelDebug) {
-			log.Debug(ctx, "Rust apikeys worker unavailable, using Go fallback", workerErr)
-		}
-		return verifyTokenGo(token, hash, pepper), nil
 	}
 	return false, fmt.Errorf("api key hashing worker unavailable: %w", workerErr)
 }

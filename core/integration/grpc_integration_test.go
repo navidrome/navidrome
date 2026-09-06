@@ -68,6 +68,9 @@ func TestIntegrationWorkerGRPC(t *testing.T) {
 	if binary == "" {
 		t.Skip("ND_INTEGRATIONWORKERPATH not set")
 	}
+	if _, err := os.Stat(binary); err != nil {
+		t.Skipf("integration worker binary missing: %v", err)
+	}
 	t.Setenv("ND_GRPCWORKERINTESTS", "1")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

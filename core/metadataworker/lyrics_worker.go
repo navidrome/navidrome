@@ -1,63 +1,22 @@
 package metadataworker
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
-	"runtime"
 	"sync"
 
 	"github.com/navidrome/navidrome/core/rustworker"
 )
 
-const (
-	maxLyricsWorkers       = 2
-	maxLyricsInputBytes    = 16 * 1024 * 1024
-	maxLyricsResponseBytes = 16 * 1024 * 1024
-)
+const maxLyricsInputBytes = 16 * 1024 * 1024
 
-type lyricsWorkerRequest struct {
-	Suffix    string `json:"suffix"`
-	Lang      string `json:"lang"`
-	InputSize int    `json:"input_size"`
-}
+type lyricsWorkerPool struct{}
 
-type lyricsWorkerResponse struct {
-	OK         bool   `json:"ok"`
-	LyricsJSON string `json:"lyrics_json,omitempty"`
-	Error      string `json:"error,omitempty"`
-}
+var persistentLyricsWorkers = &lyricsWorkerPool{}
 
-type lyricsWorker struct {
-	binary string
-	pipes  *rustworker.Pipes
-	writer *bufio.Writer
-	reader *bufio.Reader
-}
-
-type lyricsWorkerSlot struct {
-	worker *lyricsWorker
-}
-
-type lyricsWorkerPool struct {
-	limit chan struct{}
-	idle  chan *lyricsWorkerSlot
-}
-
-var persistentLyricsWorkers = newLyricsWorkerPool()
-
-// PersistentLyricsWorkers returns the shared Rust lyrics parser pool.
+// PersistentLyricsWorkers returns the shared Rust lyrics parser entrypoint.
 func PersistentLyricsWorkers() *lyricsWorkerPool {
 	return persistentLyricsWorkers
-}
-
-func newLyricsWorkerPool() *lyricsWorkerPool {
-	size := min(max(runtime.GOMAXPROCS(0)/2, 1), maxLyricsWorkers)
-	return &lyricsWorkerPool{
-		limit: make(chan struct{}, size),
-		idle:  make(chan *lyricsWorkerSlot, size),
-	}
 }
 
 func (p *lyricsWorkerPool) Parse(ctx context.Context, suffix, lang string, contents []byte) (string, error) {
@@ -71,112 +30,7 @@ func (p *lyricsWorkerPool) parse(ctx context.Context, suffix, lang string, conte
 	if len(contents) > maxLyricsInputBytes {
 		return "", fmt.Errorf("lyrics payload exceeds maximum size of %d bytes", maxLyricsInputBytes)
 	}
-
-	if lyricsJSON, err := parseLyricsGRPC(ctx, suffix, lang, contents); rustworker.PreferGRPC(err, errNoGRPC) {
-		return lyricsJSON, err
-	}
-
-	binary, err := Resolve()
-	if err != nil {
-		return "", err
-	}
-
-	select {
-	case p.limit <- struct{}{}:
-	case <-ctx.Done():
-		return "", ctx.Err()
-	}
-	defer func() { <-p.limit }()
-
-	var slot *lyricsWorkerSlot
-	select {
-	case slot = <-p.idle:
-	default:
-		slot = &lyricsWorkerSlot{}
-	}
-	defer func() { p.idle <- slot }()
-
-	var lyricsJSON string
-	err = rustworker.Run(ctx, rustworker.DefaultRestartAttempts, func() { slot.stop() }, func() error {
-		worker, ensureErr := slot.ensure(binary)
-		if ensureErr != nil {
-			return ensureErr
-		}
-		var roundErr error
-		lyricsJSON, roundErr = worker.roundTrip(suffix, lang, contents)
-		return roundErr
-	})
-	if err != nil {
-		return "", rustworker.FailAfterRestarts("lyrics", err)
-	}
-	return lyricsJSON, nil
-}
-
-func (s *lyricsWorkerSlot) ensure(binary string) (*lyricsWorker, error) {
-	if s.worker != nil && s.worker.binary == binary {
-		return s.worker, nil
-	}
-	s.stop()
-	worker, err := startLyricsWorker(binary)
-	if err != nil {
-		return nil, err
-	}
-	s.worker = worker
-	return worker, nil
-}
-
-func (s *lyricsWorkerSlot) stop() {
-	if s.worker == nil {
-		return
-	}
-	s.worker.close()
-	s.worker = nil
-}
-
-func startLyricsWorker(binary string) (*lyricsWorker, error) {
-	pipes, err := rustworker.Start(binary, "--parse-lyrics-worker")
-	if err != nil {
-		return nil, err
-	}
-	return &lyricsWorker{
-		binary: binary,
-		pipes:  pipes,
-		writer: bufio.NewWriterSize(pipes.Stdin, rustworker.DefaultWriteBuf),
-		reader: bufio.NewReaderSize(pipes.Stdout, rustworker.DefaultReadBuf),
-	}, nil
-}
-
-func (w *lyricsWorker) roundTrip(suffix, lang string, contents []byte) (string, error) {
-	request := lyricsWorkerRequest{
-		Suffix:    suffix,
-		Lang:      lang,
-		InputSize: len(contents),
-	}
-	if err := rustworker.WriteHeaderAndBodies(w.writer, request, contents); err != nil {
-		return "", err
-	}
-
-	var response lyricsWorkerResponse
-	if err := rustworker.ReadJSONLine(w.reader, &response); err != nil {
-		return "", err
-	}
-	if len(response.LyricsJSON) > maxLyricsResponseBytes {
-		return "", fmt.Errorf("lyrics response exceeds maximum size of %d bytes", maxLyricsResponseBytes)
-	}
-	if !response.OK {
-		if response.Error == "" {
-			response.Error = "Rust lyrics worker could not parse lyrics"
-		}
-		return "", errors.New(response.Error)
-	}
-	if response.LyricsJSON == "" {
-		return "[]", nil
-	}
-	return response.LyricsJSON, nil
-}
-
-func (w *lyricsWorker) close() {
-	rustworker.Close(w.pipes)
+	return parseLyricsGRPC(ctx, suffix, lang, contents)
 }
 
 var testBinaryOnce sync.Once

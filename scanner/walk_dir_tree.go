@@ -11,16 +11,14 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/rustworker"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 )
 
-// allowGoWalkerFallback is true only in `go test`. Production local libraries
-// fail closed when the Rust walker cannot run.
-var allowGoWalkerFallback = rustworker.AllowLegacyNDJSON
+// allowGoWalkerFallback is always false: local library walks are gRPC-only.
+var allowGoWalkerFallback = func() bool { return false }
 
 // walkDirTree recursively walks the directory tree starting from the given targetFolders.
 // If no targetFolders are provided, it starts from the root folder (".").
