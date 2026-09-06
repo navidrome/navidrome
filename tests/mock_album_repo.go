@@ -106,6 +106,20 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return out, nil
 }
 
+func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, error) {
+	all, err := m.GetAll(qo...)
+	if err != nil {
+		return nil, err
+	}
+	return func(yield func(model.Album, error) bool) {
+		for _, al := range all {
+			if !yield(al, nil) {
+				return
+			}
+		}
+	}, nil
+}
+
 func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
