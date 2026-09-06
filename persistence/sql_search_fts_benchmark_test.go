@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"testing"
 )
 
@@ -16,7 +17,7 @@ func BenchmarkSearchFTS5QueryCached(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		for _, query := range queries {
-			_, _ = buildFTS5QueryCached(query)
+			_, _ = buildFTS5QueryCached(context.Background(), query)
 		}
 	}
 }

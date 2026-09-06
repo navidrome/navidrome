@@ -111,9 +111,11 @@ func booleanFilter(field string, value any) Sqlizer {
 func fullTextFilter(tableName string, mbidFields ...string) func(string, any) Sqlizer {
 	return func(field string, value any) Sqlizer {
 		v := strings.ToLower(value.(string))
+		// REST filterFunc has no request context; cache hits need none, and cache
+		// misses still build via the Rust worker. Subsonic doSearch passes r.ctx.
 		return cmp.Or[Sqlizer](
 			mbidExpr(tableName, v, mbidFields...),
-			getSearchStrategy(tableName, v),
+			getSearchStrategy(context.Background(), tableName, v),
 		)
 	}
 }

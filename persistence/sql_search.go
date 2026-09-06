@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -37,8 +38,8 @@ type searchStrategy interface {
 
 // getSearchStrategy returns the FTS search strategy for the query.
 // Returns nil when the query produces no searchable tokens.
-func getSearchStrategy(tableName, query string) searchStrategy {
-	return newFTSSearch(tableName, query)
+func getSearchStrategy(ctx context.Context, tableName, query string) searchStrategy {
+	return newFTSSearch(ctx, tableName, query)
 }
 
 // doSearch dispatches a search query: empty → natural order, UUID → MBID match,
@@ -78,7 +79,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 		return nil
 	}
 
-	strategy := getSearchStrategy(r.tableName, q)
+	strategy := getSearchStrategy(r.ctx, r.tableName, q)
 	if strategy == nil {
 		return nil
 	}

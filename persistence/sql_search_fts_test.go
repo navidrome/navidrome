@@ -192,11 +192,11 @@ var _ = Describe("ftsColumnDefs helpers", func() {
 
 var _ = Describe("newFTSSearch", func() {
 	It("returns nil for empty query", func() {
-		Expect(newFTSSearch("media_file", "")).To(BeNil())
+		Expect(newFTSSearch(context.Background(), "media_file", "")).To(BeNil())
 	})
 
 	It("returns non-nil for single-character query", func() {
-		strategy := newFTSSearch("media_file", "a")
+		strategy := newFTSSearch(context.Background(), "media_file", "a")
 		Expect(strategy).ToNot(BeNil(), "single-char queries must not be rejected; min-length is enforced in doSearch, not here")
 		sql, _, err := strategy.ToSql()
 		Expect(err).ToNot(HaveOccurred())
@@ -204,7 +204,7 @@ var _ = Describe("newFTSSearch", func() {
 	})
 
 	It("returns ftsSearch with correct table names and MATCH expression", func() {
-		strategy := newFTSSearch("media_file", "beatles")
+		strategy := newFTSSearch(context.Background(), "media_file", "beatles")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.tableName).To(Equal("media_file"))
@@ -214,7 +214,7 @@ var _ = Describe("newFTSSearch", func() {
 	})
 
 	It("ToSql generates rowid IN subquery with MATCH (fallback path)", func() {
-		strategy := newFTSSearch("media_file", "beatles")
+		strategy := newFTSSearch(context.Background(), "media_file", "beatles")
 		sql, args, err := strategy.ToSql()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(sql).To(ContainSubstring("media_file.rowid IN"))
@@ -225,7 +225,7 @@ var _ = Describe("newFTSSearch", func() {
 
 	It("generates correct FTS table name per entity", func() {
 		for _, table := range []string{"media_file", "album", "artist"} {
-			strategy := newFTSSearch(table, "test")
+			strategy := newFTSSearch(context.Background(), table, "test")
 			fts, ok := strategy.(*ftsSearch)
 			Expect(ok).To(BeTrue())
 			Expect(fts.tableName).To(Equal(table))
@@ -234,55 +234,55 @@ var _ = Describe("newFTSSearch", func() {
 	})
 
 	It("builds bm25() rank expression with column weights", func() {
-		strategy := newFTSSearch("media_file", "beatles")
+		strategy := newFTSSearch(context.Background(), "media_file", "beatles")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.rankExpr).To(HavePrefix("bm25(media_file_fts,"))
 		Expect(fts.rankExpr).To(ContainSubstring("10.0"))
 
-		strategy = newFTSSearch("artist", "beatles")
+		strategy = newFTSSearch(context.Background(), "artist", "beatles")
 		fts, ok = strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.rankExpr).To(HavePrefix("bm25(artist_fts,"))
 	})
 
 	It("falls back to ftsTable.rank for unknown tables", func() {
-		strategy := newFTSSearch("unknown_table", "test")
+		strategy := newFTSSearch(context.Background(), "unknown_table", "test")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.rankExpr).To(Equal("unknown_table_fts.rank"))
 	})
 
 	It("wraps query with column filter", func() {
-		strategy := newFTSSearch("artist", "Beatles")
+		strategy := newFTSSearch(context.Background(), "artist", "Beatles")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.matchExpr).To(Equal("{name sort_artist_name search_normalized} : ((Beatles OR Beatles*))"))
 	})
 
 	It("passes query without column filter for unknown tables", func() {
-		strategy := newFTSSearch("unknown_table", "test")
+		strategy := newFTSSearch(context.Background(), "unknown_table", "test")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.matchExpr).To(Equal("(test OR test*)"))
 	})
 
 	It("preserves phrase queries inside column filter", func() {
-		strategy := newFTSSearch("media_file", `"the beatles"`)
+		strategy := newFTSSearch(context.Background(), "media_file", `"the beatles"`)
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.matchExpr).To(ContainSubstring(`"the beatles"`))
 	})
 
 	It("preserves prefix queries inside column filter", func() {
-		strategy := newFTSSearch("media_file", "beat*")
+		strategy := newFTSSearch(context.Background(), "media_file", "beat*")
 		fts, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeTrue())
 		Expect(fts.matchExpr).To(ContainSubstring("beat*"))
 	})
 
 	It("falls back to LIKE search for punctuation-only query", func() {
-		strategy := newFTSSearch("media_file", "!!!!!!!")
+		strategy := newFTSSearch(context.Background(), "media_file", "!!!!!!!")
 		Expect(strategy).ToNot(BeNil())
 		_, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeFalse(), "punctuation-only should fall back to LIKE, not FTS")
@@ -293,7 +293,7 @@ var _ = Describe("newFTSSearch", func() {
 	})
 
 	It("falls back to LIKE search for degraded query (special chars stripped leaving short tokens)", func() {
-		strategy := newFTSSearch("album", "1+")
+		strategy := newFTSSearch(context.Background(), "album", "1+")
 		Expect(strategy).ToNot(BeNil())
 		_, ok := strategy.(*ftsSearch)
 		Expect(ok).To(BeFalse(), "degraded query should fall back to LIKE, not FTS")
@@ -304,12 +304,12 @@ var _ = Describe("newFTSSearch", func() {
 	})
 
 	It("returns nil for empty string even with LIKE fallback", func() {
-		Expect(newFTSSearch("media_file", "")).To(BeNil())
-		Expect(newFTSSearch("media_file", "   ")).To(BeNil())
+		Expect(newFTSSearch(context.Background(), "media_file", "")).To(BeNil())
+		Expect(newFTSSearch(context.Background(), "media_file", "   ")).To(BeNil())
 	})
 
 	It("returns nil for empty quoted phrase", func() {
-		Expect(newFTSSearch("media_file", `""`)).To(BeNil())
+		Expect(newFTSSearch(context.Background(), "media_file", `""`)).To(BeNil())
 	})
 })
 

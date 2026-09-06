@@ -213,11 +213,11 @@ var ftsQueryCache = ftsQueryCacheStore{entries: make(map[string]cachedFTS5Query)
 // FTS5 query builder; if that worker is down, newFTSSearch falls through to LIKE.
 var allowGoFTS5Builder = rustworker.AllowLegacyNDJSON
 
-func buildFTS5QueryCached(userInput string) (string, bool) {
+func buildFTS5QueryCached(ctx context.Context, userInput string) (string, bool) {
 	if cached, ok := ftsQueryCache.load(userInput); ok {
 		return cached.query, cached.degraded
 	}
-	query, degraded, cacheable := buildFTS5QueryRust(context.Background(), userInput)
+	query, degraded, cacheable := buildFTS5QueryRust(ctx, userInput)
 	if cacheable {
 		ftsQueryCache.store(userInput, cachedFTS5Query{query: query, degraded: degraded})
 	}
@@ -429,8 +429,8 @@ func ftsQueryDegraded(original, ftsQuery string) bool {
 // query produces no FTS tokens (e.g., punctuation-only like "!!!!!!!") or if FTS
 // tokenization stripped significant content from the query (e.g., "1+" → "1*").
 // Returns nil when the query produces no searchable tokens at all.
-func newFTSSearch(tableName, query string) searchStrategy {
-	q, degraded := buildFTS5QueryCached(query)
+func newFTSSearch(ctx context.Context, tableName, query string) searchStrategy {
+	q, degraded := buildFTS5QueryCached(ctx, query)
 	if q == "" || degraded {
 		// Fallback: try LIKE search with the raw query
 		cleaned := strings.TrimSpace(strings.ReplaceAll(query, `"`, ""))
