@@ -16,9 +16,9 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1.0.104"
 navidrome-grpc-listen = { path = "../grpc-listen" }
-md-5 = "0.10.6"
+md-5 = "0.11.0"
 prost = "0.14.4"
-reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls", "http2"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["rustls", "http2"] }
 tokio = { version = "1.53.1", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 tokio-stream = { version = "0.1.19", features = ["net"] }
 tonic = { version = "0.14.6", features = ["transport"] }

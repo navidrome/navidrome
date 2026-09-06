@@ -8,10 +8,10 @@
 #   - Go 1.27.1
 #   - Bun 1.4 canary (digest refresh)
 #   - Rust 1.98.1 (via rustup on slim-trixie base; Docker Hub 1.98.1 tag pending)
-#   - FFmpeg 8.1.2 (9.0.1 deferred — major API/configure risk)
+#   - FFmpeg 9.0.1
 #   - jemalloc 5.3.1
 #   - Opus 1.6.1
-#   - LAME 3.100 (FFmpeg 8.1.x stable compatibility)
+#   - LAME 3.100 (verified with FFmpeg 9.0.1 configure)
 #   - rusqlite 0.40.2
 #
 # Main fixes:
@@ -53,7 +53,7 @@ ARG NAVIDROME_REF=master
 ARG NAVIDROME_CACHEBUST=da1ed9503b9ce8f121f648ec05f0ce78ac02ec09
 
 ARG JEMALLOC_VERSION=5.3.1
-ARG FFMPEG_VERSION=8.1.2
+ARG FFMPEG_VERSION=9.0.1
 ARG OPUS_VERSION=1.6.1
 ARG LAME_VERSION=3.100
 ARG RUSQLITE_VERSION=0.40.2
@@ -107,7 +107,7 @@ ARG SQLITE_EXTRA_CFLAGS="\
 -DSQLITE_USE_URI=1"
 
 ARG JEMALLOC_SHA256=3826bc80232f22ed5c4662f3034f799ca316e819103bdc7bb99018a421706f92
-ARG FFMPEG_SHA256=464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
+ARG FFMPEG_SHA256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
 ARG OPUS_SHA256=6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1
 ARG LAME_SHA256=ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
 
@@ -263,7 +263,7 @@ RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
 
 # =========================================================
 # LAME MP3 encoder static
-# Stable compatibility choice for FFmpeg 8.1.x
+# Stable with FFmpeg 9.0.1 (configure verified)
 # =========================================================
 
 FROM native-builder-base AS lame-builder
@@ -1499,7 +1499,7 @@ LABEL org.opencontainers.image.authors="JBS Networks" \
       org.opencontainers.image.description="AMD EPYC Zen3 optimized Navidrome with static Opus/MP3, native AAC/FLAC, jemalloc light profile and Rust helpers" \
       org.opencontainers.image.source="https://github.com/TAE-OK-11/navidrome" \
       org.opencontainers.image.vendor="JBS Networks" \
-      jbs.optimization="JBS-Navidrome-Ultra-6.1-Slim-v10.5/AMD-EPYC-Zen3/Go1.27.1/Bun1.4/Rust1.98.1/FFmpeg8.1.2/LLVM-FatLTO/Go-PGO/BR11-Zstd19-Gzip9/NoSourceMaps/SQLite-Light/Resource-Aware"
+      jbs.optimization="JBS-Navidrome-Ultra-6.1-Slim-v10.5/AMD-EPYC-Zen3/Go1.27.1/Bun1.4/Rust1.98.1/FFmpeg9.0.1/LLVM-FatLTO/Go-PGO/BR11-Zstd19-Gzip9/NoSourceMaps/SQLite-Light/Resource-Aware"
 
 COPY --link --from=source /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
