@@ -48,16 +48,21 @@ func (md Metadata) shellMediaFile(libID int, folderID string) model.MediaFile {
 func (md Metadata) mediaFileFromRust(libID int, folderID string) (model.MediaFile, bool) {
 	var payload struct {
 		model.MediaFile
-		Participants map[string][]model.Participant `json:"participants"`
-		Tags         map[string][]string              `json:"tags"`
-		PID          string                           `json:"pid"`
-		AlbumID      string                           `json:"albumId"`
+		Participants     map[string][]model.Participant `json:"participants"`
+		Tags             map[string][]string            `json:"tags"`
+		PID              string                         `json:"pid"`
+		AlbumID          string                         `json:"albumId"`
+		SearchNormalized string                         `json:"searchNormalized"`
 	}
 	if err := json.Unmarshal([]byte(md.mediaFileJSON), &payload); err != nil {
 		log.Warn("Rust media_file_json decode failed", "file", md.filePath, err)
 		return model.MediaFile{}, false
 	}
 	mf := payload.MediaFile
+	// MediaFile.SearchNormalized is json:"-" for API payloads; accept the Rust scan field explicitly.
+	if payload.SearchNormalized != "" {
+		mf.SearchNormalized = payload.SearchNormalized
+	}
 	if len(payload.Participants) > 0 {
 		mf.Participants = make(model.Participants, len(payload.Participants))
 		for roleKey, list := range payload.Participants {

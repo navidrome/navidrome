@@ -121,6 +121,9 @@ struct ScanMediaFile {
     pid: String,
     #[serde(rename = "albumId", skip_serializing_if = "String::is_empty")]
     album_id: String,
+    /// Precomputed FTS secondary tokens so Go persistence skips a second normalize RPC.
+    #[serde(rename = "searchNormalized", skip_serializing_if = "String::is_empty")]
+    search_normalized: String,
 }
 
 pub fn map_to_json(tags: &HashMap<String, Vec<String>>, path: &Path, lyrics_json: Option<&str>) -> Option<String> {
@@ -183,7 +186,7 @@ fn map_tags(
         first_ref(tags, "explicit"),
     ));
 
-    Some(ScanMediaFile {
+    let mut mapped = ScanMediaFile {
         title: if title.is_empty() {
             path.file_stem()?.to_str()?.to_owned()
         } else {
@@ -232,7 +235,17 @@ fn map_tags(
         tags: map_album_tags(tags),
         pid: String::new(),
         album_id: String::new(),
-    })
+        search_normalized: String::new(),
+    };
+    // Match Go PostMapArgs: title/album/artist/album_artist (FullTitle ≈ title unless Subsonic.AppendSubtitle).
+    let normalized = fts_normalize::normalize_for_fts(&[
+        mapped.title.clone(),
+        mapped.album.clone(),
+        mapped.artist.clone(),
+        mapped.album_artist.clone(),
+    ]);
+    mapped.search_normalized = normalized;
+    Some(mapped)
 }
 
 /// Extracts album-level tags that Go would keep after `clean()` + `TagMainMappings` filtering.
@@ -876,5 +889,19 @@ mod tests {
         assert!(json.contains(r#""date":"1977-03-04""#));
         assert!(json.contains(r#""originalDate":"1978-09-10""#));
         assert!(json.contains(r#""releaseDate":"2002-01-02""#));
+    }
+
+    #[test]
+    fn embeds_search_normalized_for_punctuated_artists() {
+        let mut tags = HashMap::new();
+        tags.insert("title".to_owned(), vec!["Losing My Religion".to_owned()]);
+        tags.insert("album".to_owned(), vec!["Out of Time".to_owned()]);
+        tags.insert("artist".to_owned(), vec!["R.E.M.".to_owned()]);
+        tags.insert("albumartist".to_owned(), vec!["R.E.M.".to_owned()]);
+        let json = map_to_json(&tags, Path::new("music/losing.mp3"), Some("[]")).expect("json");
+        assert!(
+            json.contains(r#""searchNormalized":"REM""#),
+            "expected embedded searchNormalized, json={json}"
+        );
     }
 }
