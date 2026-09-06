@@ -210,9 +210,9 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("rejects a request body larger than the limit", func() {
-				body := `{"username":"janedoe", "password":"abc123", "padding":"` + strings.Repeat("x", maxLoginBodySize) + `"}`
+				body := `{"username":"janedoe", "password":"abc123", "padding":"` + strings.Repeat("x", MaxLoginBodySize) + `"}`
 				req = httptest.NewRequest("POST", "/login", strings.NewReader(body))
-				limitBody(http.HandlerFunc(login(ds))).ServeHTTP(resp, req)
+				LimitLoginBody(http.HandlerFunc(login(ds))).ServeHTTP(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity))
 			})
 

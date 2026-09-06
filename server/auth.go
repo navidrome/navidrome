@@ -96,12 +96,12 @@ func buildAuthPayload(user *model.User) map[string]any {
 	return payload
 }
 
-const maxLoginBodySize = 8 << 10
+// MaxLoginBodySize bounds the payload of unauthenticated login routes across all APIs.
+const MaxLoginBodySize = 8 << 10
 
-// limitBody caps the payload of the unauthenticated auth routes.
-func limitBody(next http.Handler) http.Handler {
+func LimitLoginBody(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, maxLoginBodySize)
+		r.Body = http.MaxBytesReader(w, r.Body, MaxLoginBodySize)
 		next.ServeHTTP(w, r)
 	})
 }
