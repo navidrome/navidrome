@@ -5,6 +5,7 @@
 - `typescript` is real **TypeScript 7.0.2** (no `@typescript/typescript6` alias).
 - `type-check` runs `tsc` from that package.
 - Lint runs **oxlint** (+ `oxlint-tsgolint` for optional type-aware rules later). ESLint + `typescript-eslint` were removed because they cannot consume TS 7.0.
+- `check:mui9` still needs a programmatic TS AST (`createSourceFile`). TS 7.0 has no JS parser API, so that script imports **`@typescript/typescript6`** (tooling-only; type-check stays on real TS 7).
 
 ## Why not typescript-eslint?
 
