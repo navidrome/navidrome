@@ -49,12 +49,9 @@ case "${BENCH_TIME}" in
 esac
 
 cargo_cmd() {
-  # -j must come before any "--" (cargo bench forwards trailing args to Criterion).
-  if [ -n "${JOBS}" ]; then
-    cargo -j "${JOBS}" "$@"
-  else
-    cargo "$@"
-  fi
+  # Prefer CARGO_BUILD_JOBS (exported below). Do not pass `cargo -j` (not a
+  # global option on all cargo versions) and never put -j after "--" (Criterion).
+  cargo "$@"
 }
 
 bin_args() {
