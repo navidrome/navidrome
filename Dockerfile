@@ -77,6 +77,7 @@ RUN --mount=type=bind,source=. \
     if [ "${GO_PGO_ENABLED}" = "true" ]; then
       eval "$(./release/cgo-lto-env.sh thin)"
       PGO_BUILD_TAGS="${BUILD_TAGS}" \
+        ND_GRPCWORKERINTESTS=1 \
         GO_PGO_BENCHTIME="${GO_PGO_BENCHTIME}" \
         PGO_OUTPUT=/tmp/default.pgo \
         ./release/pgo-train.sh
@@ -159,6 +160,7 @@ RUN --mount=type=bind,source=. \
     if [ "${GO_PGO_ENABLED}" = "true" ]; then
       eval "$(./release/cgo-lto-env.sh thin)"
       PGO_BUILD_TAGS="${BUILD_TAGS}" \
+        ND_GRPCWORKERINTESTS=1 \
         GO_PGO_BENCHTIME="${GO_PGO_BENCHTIME}" \
         PGO_OUTPUT=/tmp/default.pgo \
         ./release/pgo-train.sh
