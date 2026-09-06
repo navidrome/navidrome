@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/pl"
+	"github.com/navidrome/navidrome/utils/singleton"
 	"golang.org/x/time/rate"
 )
 
@@ -386,4 +387,13 @@ func (s *controller) trackProgress(ctx context.Context, progress <-chan *Progres
 
 func (s *controller) sendMessage(ctx context.Context, status *events.ScanStatus) {
 	s.broker.SendBroadcastMessage(ctx, status)
+}
+
+// GetInstance returns the scanner singleton: Status reads the progress counters of the controller
+// running the scan, and scheduler, watcher and signal scans do not start from the API's injector.
+func GetInstance(rootCtx context.Context, ds model.DataStore, broker events.Broker,
+	pls playlists.Playlists, m metrics.Metrics) model.Scanner {
+	return singleton.GetInstance(func() *controller {
+		return New(rootCtx, ds, broker, pls, m).(*controller)
+	})
 }

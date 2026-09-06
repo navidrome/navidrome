@@ -70,7 +70,7 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	insights := metrics.GetInstance(dataStore)
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	modelScanner := scanner.New(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
+	modelScanner := scanner.GetInstance(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
 	watcher := scanner.GetWatcher(dataStore, modelScanner)
 	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
 	library := core.NewLibrary(dataStore, modelScanner, watcher, broker, manager)
@@ -103,7 +103,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher, broker)
 	uploader := artwork.NewUploader(dataStore)
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, uploader)
-	modelScanner := scanner.New(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
+	modelScanner := scanner.GetInstance(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
@@ -189,7 +189,7 @@ func CreateScanner(ctx context.Context) model.Scanner {
 	uploader := artwork.NewUploader(dataStore)
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, uploader)
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	modelScanner := scanner.New(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
+	modelScanner := scanner.GetInstance(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
 	return modelScanner
 }
 
@@ -200,7 +200,7 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 	uploader := artwork.NewUploader(dataStore)
 	playlistsPlaylists := playlists.NewPlaylists(dataStore, uploader)
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
-	modelScanner := scanner.New(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
+	modelScanner := scanner.GetInstance(ctx, dataStore, broker, playlistsPlaylists, metricsMetrics)
 	watcher := scanner.GetWatcher(dataStore, modelScanner)
 	return watcher
 }
@@ -249,7 +249,7 @@ func getPluginManager() *plugins.Manager {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, jellyfin.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, sonic.New, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.Engine), new(*sonic.Sonic)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)), wire.Bind(new(playlists.ImageUploadService), new(artwork.Uploader)))
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, jellyfin.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, sonic.New, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.Engine), new(*sonic.Sonic)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)), wire.Bind(new(playlists.ImageUploadService), new(artwork.Uploader)))
 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()
