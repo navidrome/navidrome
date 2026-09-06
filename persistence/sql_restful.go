@@ -15,7 +15,14 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
-type filterFunc = func(field string, value any) Sqlizer
+type filterFunc = func(ctx context.Context, field string, value any) Sqlizer
+
+// wrapFilter adapts a plain (field, value) Sqlizer builder for REST filter maps.
+func wrapFilter(f func(string, any) Sqlizer) filterFunc {
+	return func(_ context.Context, field string, value any) Sqlizer {
+		return f(field, value)
+	}
+}
 
 func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.QueryOptions) Sqlizer {
 	if len(options.Filters) == 0 {
@@ -30,7 +37,7 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 		// Look for a custom filter function
 		f = strings.ToLower(f)
 		if ff, ok := r.filterMappings[f]; ok {
-			if filter := ff(f, v); filter != nil {
+			if filter := ff(ctx, f, v); filter != nil {
 				filters = append(filters, filter)
 			}
 			continue
@@ -91,31 +98,30 @@ func eqFilter(field string, value any) Sqlizer {
 	return Eq{field: value}
 }
 
-func startsWithFilter(field string) func(string, any) Sqlizer {
-	return func(_ string, value any) Sqlizer {
+func startsWithFilter(field string) filterFunc {
+	return func(_ context.Context, _ string, value any) Sqlizer {
 		return Like{field: fmt.Sprintf("%s%%", value)}
 	}
 }
 
-func containsFilter(field string) func(string, any) Sqlizer {
-	return func(_ string, value any) Sqlizer {
+func containsFilter(field string) filterFunc {
+	return func(_ context.Context, _ string, value any) Sqlizer {
 		return Like{field: fmt.Sprintf("%%%s%%", value)}
 	}
 }
 
-func booleanFilter(field string, value any) Sqlizer {
+func booleanFilter(_ context.Context, field string, value any) Sqlizer {
 	v := strings.ToLower(value.(string))
 	return Eq{field: v == "true"}
 }
 
-func fullTextFilter(tableName string, mbidFields ...string) func(string, any) Sqlizer {
-	return func(field string, value any) Sqlizer {
+func fullTextFilter(tableName string, mbidFields ...string) filterFunc {
+	return func(ctx context.Context, _ string, value any) Sqlizer {
 		v := strings.ToLower(value.(string))
-		// REST filterFunc has no request context; cache hits need none, and cache
-		// misses still build via the Rust worker. Subsonic doSearch passes r.ctx.
+		// Request ctx enables FTS query-cache cancel and worker deadlines.
 		return cmp.Or[Sqlizer](
 			mbidExpr(tableName, v, mbidFields...),
-			getSearchStrategy(context.Background(), tableName, v),
+			getSearchStrategy(ctx, tableName, v),
 		)
 	}
 }
@@ -129,12 +135,12 @@ func substringFilter(field string, value any) Sqlizer {
 	return filters
 }
 
-func idFilter(tableName string) func(string, any) Sqlizer {
-	return func(field string, value any) Sqlizer { return Eq{tableName + ".id": value} }
+func idFilter(tableName string) filterFunc {
+	return func(_ context.Context, _ string, value any) Sqlizer { return Eq{tableName + ".id": value} }
 }
 
-func invalidFilter(ctx context.Context) func(string, any) Sqlizer {
-	return func(field string, value any) Sqlizer {
+func invalidFilter() filterFunc {
+	return func(ctx context.Context, field string, value any) Sqlizer {
 		log.Warn(ctx, "Invalid filter", "fieldName", field, "value", value)
 		return Eq{"1": "0"}
 	}

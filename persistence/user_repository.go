@@ -58,7 +58,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r.tableName = "user"
 	r.registerModel(&model.User{}, map[string]filterFunc{
 		"id":       idFilter(r.tableName),
-		"password": invalidFilter(ctx),
+		"password": invalidFilter(),
 		"name":     startsWithFilter(r.tableName + ".name"),
 	})
 	once.Do(func() {

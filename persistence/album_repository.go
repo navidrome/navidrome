@@ -139,23 +139,23 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"id":              idFilter("album"),
 		"name":            fullTextFilter("album", "mbz_album_id", "mbz_release_group_id"),
 		"compilation":     booleanFilter,
-		"artist_id":       artistFilter,
-		"year":            yearFilter,
-		"recently_played": recentlyPlayedFilter,
-		"starred":         annotationBoolFilter("starred"),
-		"has_rating":      annotationBoolFilter("rating"),
+		"artist_id":       wrapFilter(artistFilter),
+		"year":            wrapFilter(yearFilter),
+		"recently_played": wrapFilter(recentlyPlayedFilter),
+		"starred":         wrapFilter(annotationBoolFilter("starred")),
+		"has_rating":      wrapFilter(annotationBoolFilter("rating")),
 		"missing":         booleanFilter,
-		"genre_id":        genreFilter(AlbumGenres),
-		"role_total_id":   allRolesFilter,
-		"library_id":      libraryIdFilter,
+		"genre_id":        wrapFilter(genreFilter(AlbumGenres)),
+		"role_total_id":   wrapFilter(allRolesFilter),
+		"library_id":      wrapFilter(libraryIdFilter),
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
-		filters[string(tag)] = tagIDFilter
+		filters[string(tag)] = wrapFilter(tagIDFilter)
 	}
 
 	for role := range model.AllRoles {
-		filters["role_"+role+"_id"] = artistRoleFilter
+		filters["role_"+role+"_id"] = wrapFilter(artistRoleFilter)
 	}
 
 	return filters

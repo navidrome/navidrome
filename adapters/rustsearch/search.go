@@ -684,39 +684,36 @@ func (e *Engine) deltaArtists(ctx context.Context, ds model.DataStore, libraries
 }
 
 func (e *Engine) collectArtists(ctx context.Context, ds model.DataStore, libraries model.Libraries, extraFilter query.Sqlizer, emit func(document, bool) error) error {
-	type artistDocument struct {
-		artist     model.Artist
-		libraryIDs []uint64
+	if len(libraries) == 0 {
+		return nil
 	}
-	documents := make(map[string]*artistDocument)
-	for _, library := range libraries {
-		artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: query.And(
-			query.Eq("library_id", []int{library.ID}),
-			extraFilter,
-		)})
-		if err != nil {
-			return fmt.Errorf("loading artists for Rust search: %w", err)
-		}
-		for _, artist := range artists {
-			indexed := documents[artist.ID]
-			if indexed == nil {
-				indexed = &artistDocument{artist: artist}
-				documents[artist.ID] = indexed
-			}
-			indexed.libraryIDs = append(indexed.libraryIDs, uint64(library.ID))
-		}
+	libraryIDs := libraries.IDs()
+	requested := make(map[int]struct{}, len(libraryIDs))
+	for _, id := range libraryIDs {
+		requested[id] = struct{}{}
 	}
-	artists := make([]model.Artist, 0, len(documents))
-	meta := make([]*artistDocument, 0, len(documents))
-	for _, indexed := range documents {
-		artists = append(artists, indexed.artist)
-		meta = append(meta, indexed)
+	// One GetAll for all libraries; LibraryIDs recovered from library_stats_json.
+	artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: query.And(
+		query.Eq("library_id", libraryIDs),
+		extraFilter,
+	)})
+	if err != nil {
+		return fmt.Errorf("loading artists for Rust search: %w", err)
 	}
 	ensureArtistSearchNormalized(ctx, artists)
-	for i, indexed := range meta {
-		indexed.artist.SearchNormalized = artists[i].SearchNormalized
-		doc := e.artistDocument(ctx, indexed.artist, indexed.libraryIDs)
-		if err := emit(doc, indexed.artist.Missing); err != nil {
+	for _, artist := range artists {
+		ids := make([]uint64, 0, len(artist.LibraryIDs))
+		for _, id := range artist.LibraryIDs {
+			if _, ok := requested[id]; ok {
+				ids = append(ids, uint64(id))
+			}
+		}
+		if len(ids) == 0 {
+			// Defensive: filtered join should always populate LibraryIDs.
+			continue
+		}
+		doc := e.artistDocument(ctx, artist, ids)
+		if err := emit(doc, artist.Missing); err != nil {
 			return err
 		}
 	}

@@ -35,6 +35,10 @@ type Artist struct {
 
 	Missing bool `structs:"missing" json:"missing"`
 
+	// LibraryIDs are recovered from library_artist during GetAll (not persisted).
+	// Used by search index rebuilds to avoid N per-library GetAll hops.
+	LibraryIDs []int `structs:"-" json:"-"`
+
 	UploadedImage string `structs:"uploaded_image" json:"uploadedImage,omitempty"`
 
 	CreatedAt *time.Time `structs:"created_at" json:"createdAt,omitempty"`

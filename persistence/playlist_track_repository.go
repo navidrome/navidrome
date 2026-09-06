@@ -49,7 +49,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 	p.tableName = "playlist_tracks"
 	p.registerModel(&model.PlaylistTrack{}, map[string]filterFunc{
 		"missing":    booleanFilter,
-		"library_id": libraryIdFilter,
+		"library_id": wrapFilter(libraryIdFilter),
 	})
 	p.setSortMappings(
 		map[string]string{

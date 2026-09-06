@@ -36,8 +36,8 @@ func NewScrobbleRepository(ctx context.Context, db dbx.Builder) model.ScrobbleRe
 	r.db = db
 	r.tableName = "scrobbles"
 	r.registerModel(&model.Scrobble{}, map[string]filterFunc{
-		"from": fromTs,
-		"to":   toTs,
+		"from": wrapFilter(fromTs),
+		"to":   wrapFilter(toTs),
 	})
 	r.setSortMappings(map[string]string{
 		"submission_time": "submission_time",

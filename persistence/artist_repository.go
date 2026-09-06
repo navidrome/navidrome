@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,7 +55,11 @@ func (a *dbArtist) PostScan() error {
 			return fmt.Errorf("parsing artist stats from db: %w", err)
 		}
 
-		for _, stats := range rawLibStats {
+		a.Artist.LibraryIDs = make([]int, 0, len(rawLibStats))
+		for libIDStr, stats := range rawLibStats {
+			if libID, err := strconv.Atoi(libIDStr); err == nil {
+				a.Artist.LibraryIDs = append(a.Artist.LibraryIDs, libID)
+			}
 			// Sum all libraries roles stats
 			for key, stat := range stats {
 				// Aggregate stats into the main Artist.Stats map
@@ -83,6 +88,7 @@ func (a *dbArtist) PostScan() error {
 				a.Artist.Stats[role] = current
 			}
 		}
+		slices.Sort(a.Artist.LibraryIDs)
 	}
 
 	a.Artist.SimilarArtists = nil
@@ -168,11 +174,11 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
 		"id":         idFilter(r.tableName),
 		"name":       fullTextFilter(r.tableName, "mbz_artist_id"),
-		"starred":    annotationBoolFilter("starred"),
-		"has_rating": annotationBoolFilter("rating"),
-		"role":       roleFilter,
+		"starred":    wrapFilter(annotationBoolFilter("starred")),
+		"has_rating": wrapFilter(annotationBoolFilter("rating")),
+		"role":       wrapFilter(roleFilter),
 		"missing":    booleanFilter,
-		"library_id": artistLibraryIdFilter,
+		"library_id": wrapFilter(artistLibraryIdFilter),
 	})
 	r.setSortMappings(map[string]string{ //nolint:gosec
 		"name":        "order_artist_name",
