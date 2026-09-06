@@ -65,11 +65,26 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, participantNames...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = ftsnormalize.NormalizeForFTS(context.Background(), m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
+	args["search_normalized"] = mediaFileSearchNormalized(m.MediaFile)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
 	args["participants"] = marshalParticipants(m.MediaFile.Participants)
 	normalizeMediaFileNumericArgs(args)
 	return nil
+}
+
+// mediaFileSearchNormalized prefers the value already computed by the Rust map_media
+// worker (embedded in media_file_json) so Put/PutAll avoid a second normalize RPC.
+// Recompute when Subsonic.AppendSubtitle changes FullTitle relative to the Rust title.
+func mediaFileSearchNormalized(m *model.MediaFile) string {
+	if m == nil {
+		return ""
+	}
+	if m.SearchNormalized != "" && m.FullTitle() == m.Title {
+		return m.SearchNormalized
+	}
+	normalized := ftsnormalize.NormalizeForFTS(context.Background(), m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
+	m.SearchNormalized = normalized
+	return normalized
 }
 
 func normalizeMediaFileNumericArgs(args map[string]any) {
@@ -218,6 +233,7 @@ func (r *mediaFileRepository) Put(m *model.MediaFile) error {
 // into one delete and one insert per table. SQLite remains the single writer and
 // the caller's folder transaction remains the atomic consistency boundary.
 func (r *mediaFileRepository) PutAll(mediaFiles ...*model.MediaFile) error {
+	prefillMediaFileSearchNormalized(r.ctx, mediaFiles)
 	participantUpdates := make([]participantUpdate, 0, len(mediaFiles))
 	tagUpdates := make([]tagUpdate, 0, len(mediaFiles))
 	for _, mediaFile := range mediaFiles {
@@ -231,6 +247,30 @@ func (r *mediaFileRepository) PutAll(mediaFiles ...*model.MediaFile) error {
 		return err
 	}
 	return r.updateTagsBatch(tagUpdates)
+}
+
+// prefillMediaFileSearchNormalized fills SearchNormalized for rows that did not
+// come from Rust map_media, collapsing N Put normalize hops into one batch RPC.
+func prefillMediaFileSearchNormalized(ctx context.Context, mediaFiles []*model.MediaFile) {
+	groups := make([][]string, 0, len(mediaFiles))
+	indexes := make([]int, 0, len(mediaFiles))
+	for i, mediaFile := range mediaFiles {
+		if mediaFile == nil {
+			continue
+		}
+		if mediaFile.SearchNormalized != "" && mediaFile.FullTitle() == mediaFile.Title {
+			continue
+		}
+		groups = append(groups, []string{mediaFile.FullTitle(), mediaFile.Album, mediaFile.Artist, mediaFile.AlbumArtist})
+		indexes = append(indexes, i)
+	}
+	if len(groups) == 0 {
+		return
+	}
+	normalized := ftsnormalize.NormalizeMany(ctx, groups)
+	for j, idx := range indexes {
+		mediaFiles[idx].SearchNormalized = normalized[j]
+	}
 }
 
 func (r *mediaFileRepository) putMediaFile(m *model.MediaFile) error {

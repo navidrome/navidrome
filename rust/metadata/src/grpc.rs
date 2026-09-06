@@ -8,8 +8,9 @@ use navidrome_metadata::proto::{
     BuildFts5QueryRequest, BuildFts5QueryResponse, CleanTagsRequest, CleanTagsResponse,
     ExtractFile, ExtractPictureRequest, ExtractPictureResponse, ExtractRequest, ExtractResponse,
     ExtractedMetadata, FileInfo as ProtoFileInfo, HealthRequest, HealthResponse, ImageRequest,
-    ImageResponse, MapMediaRequest, MapMediaResponse, NormalizeFtsRequest, NormalizeFtsResponse,
-    ParseLyricsRequest, ParseLyricsResponse, StringList, TagMapping,
+    ImageResponse, MapMediaRequest, MapMediaResponse, NormalizeFtsBatchRequest,
+    NormalizeFtsBatchResponse, NormalizeFtsRequest, NormalizeFtsResponse, ParseLyricsRequest,
+    ParseLyricsResponse, StringList, TagMapping,
 };
 use navidrome_metadata::tag_clean::TagMappingConfig;
 use tonic::{Request, Response, Status};
@@ -95,6 +96,17 @@ impl Metadata for MetadataService {
         let result = tokio::task::spawn_blocking(move || normalize_fts_sync(req))
             .await
             .map_err(|err| Status::internal(format!("normalize_fts join: {err}")))?;
+        Ok(Response::new(result))
+    }
+
+    async fn normalize_fts_batch(
+        &self,
+        request: Request<NormalizeFtsBatchRequest>,
+    ) -> Result<Response<NormalizeFtsBatchResponse>, Status> {
+        let req = request.into_inner();
+        let result = tokio::task::spawn_blocking(move || normalize_fts_batch_sync(req))
+            .await
+            .map_err(|err| Status::internal(format!("normalize_fts_batch join: {err}")))?;
         Ok(Response::new(result))
     }
 
@@ -359,6 +371,20 @@ fn normalize_fts_sync(req: NormalizeFtsRequest) -> NormalizeFtsResponse {
     NormalizeFtsResponse {
         ok: true,
         normalized: crate::normalize_fts::normalize_for_fts(&req.values),
+        error: String::new(),
+    }
+}
+
+fn normalize_fts_batch_sync(req: NormalizeFtsBatchRequest) -> NormalizeFtsBatchResponse {
+    use rayon::prelude::*;
+    let normalized: Vec<String> = req
+        .items
+        .into_par_iter()
+        .map(|item| crate::normalize_fts::normalize_for_fts(&item.values))
+        .collect();
+    NormalizeFtsBatchResponse {
+        ok: true,
+        normalized,
         error: String::new(),
     }
 }

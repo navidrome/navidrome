@@ -16,6 +16,8 @@ service Metadata {
   rpc ProcessImage(ImageRequest) returns (ImageResponse);
   rpc ExtractPicture(ExtractPictureRequest) returns (ExtractPictureResponse);
   rpc NormalizeFts(NormalizeFtsRequest) returns (NormalizeFtsResponse);
+  // NormalizeFtsBatch collapses N persistence Put hops into one local RPC.
+  rpc NormalizeFtsBatch(NormalizeFtsBatchRequest) returns (NormalizeFtsBatchResponse);
   rpc BuildFts5Query(BuildFts5QueryRequest) returns (BuildFts5QueryResponse);
   rpc Health(HealthRequest) returns (HealthResponse);
 }
@@ -164,6 +166,16 @@ message NormalizeFtsRequest {
 message NormalizeFtsResponse {
   bool ok = 1;
   string normalized = 2;
+  string error = 3;
+}
+
+message NormalizeFtsBatchRequest {
+  repeated StringList items = 1;
+}
+
+message NormalizeFtsBatchResponse {
+  bool ok = 1;
+  repeated string normalized = 2;
   string error = 3;
 }
 

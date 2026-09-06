@@ -77,7 +77,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = ftsnormalize.NormalizeForFTS(context.Background(), a.Name, a.AlbumArtist)
+	args["search_normalized"] = albumSearchNormalized(a.Album)
 
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participants"] = marshalParticipants(a.Album.Participants)
@@ -100,6 +100,18 @@ type dbAlbums []dbAlbum
 
 func (as dbAlbums) toModels() model.Albums {
 	return slice.Map(as, func(a dbAlbum) model.Album { return *a.Album })
+}
+
+func albumSearchNormalized(a *model.Album) string {
+	if a == nil {
+		return ""
+	}
+	if a.SearchNormalized != "" {
+		return a.SearchNormalized
+	}
+	normalized := ftsnormalize.NormalizeForFTS(context.Background(), a.Name, a.AlbumArtist)
+	a.SearchNormalized = normalized
+	return normalized
 }
 
 func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {

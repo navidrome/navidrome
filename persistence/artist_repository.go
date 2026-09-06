@@ -14,8 +14,8 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/ftsnormalize"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/ftsnormalize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -112,7 +112,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	// When adding a derived column here, also add it to the scanner's artist Put column list
 	// in phase_1_folders.go, or rescans will never update it (how search_normalized went stale).
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
-	m["search_normalized"] = ftsnormalize.NormalizeForFTS(context.Background(), a.Name)
+	m["search_normalized"] = artistSearchNormalized(a.Artist)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
 	// TODO: Better way to handle this?
@@ -123,6 +123,18 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 		delete(m, "mbz_artist_id")
 	}
 	return nil
+}
+
+func artistSearchNormalized(a *model.Artist) string {
+	if a == nil {
+		return ""
+	}
+	if a.SearchNormalized != "" {
+		return a.SearchNormalized
+	}
+	normalized := ftsnormalize.NormalizeForFTS(context.Background(), a.Name)
+	a.SearchNormalized = normalized
+	return normalized
 }
 
 func (a *dbArtistIndex) PostScan() error {

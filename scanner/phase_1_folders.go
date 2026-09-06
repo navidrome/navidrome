@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/ffmpeg"
+	"github.com/navidrome/navidrome/core/ftsnormalize"
 	"github.com/navidrome/navidrome/core/metadataworker"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
@@ -516,6 +517,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			return err
 		}
 
+		// Prefill search_normalized in one Rust metadata batch RPC before artist Puts.
+		prefillArtistSearchNormalized(p.ctx, entry.artists)
+
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		artistIDs := make([]string, 0, len(entry.artists))
 		for i := range entry.artists {
@@ -534,6 +538,9 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			log.Error(p.ctx, "Scanner: Error adding artists to library", "lib", entry.job.lib.ID, "count", len(artistIDs), err)
 			return err
 		}
+
+		// Prefill album search_normalized in one batch RPC before album Puts.
+		prefillAlbumSearchNormalized(p.ctx, entry.albums)
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
@@ -678,3 +685,41 @@ func (p *phaseFolders) finalize(err error) error {
 }
 
 var _ phase[*folderEntry] = (*phaseFolders)(nil)
+
+func prefillArtistSearchNormalized(ctx context.Context, artists []model.Artist) {
+	groups := make([][]string, 0, len(artists))
+	indexes := make([]int, 0, len(artists))
+	for i := range artists {
+		if artists[i].SearchNormalized != "" {
+			continue
+		}
+		groups = append(groups, []string{artists[i].Name})
+		indexes = append(indexes, i)
+	}
+	if len(groups) == 0 {
+		return
+	}
+	normalized := ftsnormalize.NormalizeMany(ctx, groups)
+	for j, idx := range indexes {
+		artists[idx].SearchNormalized = normalized[j]
+	}
+}
+
+func prefillAlbumSearchNormalized(ctx context.Context, albums []model.Album) {
+	groups := make([][]string, 0, len(albums))
+	indexes := make([]int, 0, len(albums))
+	for i := range albums {
+		if albums[i].SearchNormalized != "" {
+			continue
+		}
+		groups = append(groups, []string{albums[i].Name, albums[i].AlbumArtist})
+		indexes = append(indexes, i)
+	}
+	if len(groups) == 0 {
+		return
+	}
+	normalized := ftsnormalize.NormalizeMany(ctx, groups)
+	for j, idx := range indexes {
+		albums[idx].SearchNormalized = normalized[j]
+	}
+}
