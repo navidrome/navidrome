@@ -49,8 +49,9 @@ case "${BENCH_TIME}" in
 esac
 
 cargo_cmd() {
+  # -j must come before any "--" (cargo bench forwards trailing args to Criterion).
   if [ -n "${JOBS}" ]; then
-    cargo "$@" -j "${JOBS}"
+    cargo -j "${JOBS}" "$@"
   else
     cargo "$@"
   fi
