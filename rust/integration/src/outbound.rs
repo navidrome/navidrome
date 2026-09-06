@@ -111,6 +111,12 @@ fn artwork_redirect(attempt: Attempt<'_>) -> Action {
             "unsupported artwork redirect scheme {scheme}"
         )));
     }
+    // reqwest skips custom DNS for IP literals, so reject unsafe hosts here too.
+    if let Some(host) = attempt.url().host_str() {
+        if let Some(err) = disallowed_literal_host_error(host) {
+            return attempt.error(err);
+        }
+    }
     attempt.follow()
 }
 
@@ -150,15 +156,39 @@ async fn lookup_public(
     Ok(Box::new(filtered.into_iter()))
 }
 
+/// reqwest's custom DNS resolver is not consulted for URL IP literals
+/// (`http://127.0.0.1/...`). Reject those hosts up front, matching Go's
+/// dial-time SSRF check in core/integration/ssrf.go.
+fn disallowed_literal_host_error(host: &str) -> Option<std::io::Error> {
+    let host = host.trim_matches(|c| c == '[' || c == ']');
+    let Ok(ip) = host.parse::<std::net::IpAddr>() else {
+        return None;
+    };
+    if is_safe_artwork_ip(ip) {
+        return None;
+    }
+    Some(std::io::Error::other(format!(
+        "artwork destination {host:?} resolved to disallowed address"
+    )))
+}
+
 fn validate_artwork_url(url: &str) -> Result<(), Status> {
     let parsed = reqwest::Url::parse(url)
         .map_err(|err| Status::invalid_argument(format!("invalid artwork url: {err}")))?;
     match parsed.scheme() {
-        "http" | "https" => Ok(()),
-        other => Err(Status::invalid_argument(format!(
-            "unsupported artwork scheme {other}"
-        ))),
+        "http" | "https" => {}
+        other => {
+            return Err(Status::invalid_argument(format!(
+                "unsupported artwork scheme {other}"
+            )));
+        }
     }
+    if let Some(host) = parsed.host_str() {
+        if let Some(err) = disallowed_literal_host_error(host) {
+            return Err(Status::invalid_argument(err.to_string()));
+        }
+    }
+    Ok(())
 }
 
 #[tonic::async_trait]
@@ -305,4 +335,29 @@ fn parse_retry_after(headers: &reqwest::header::HeaderMap) -> i32 {
         return 0;
     };
     value.parse::<i32>().ok().unwrap_or(0).saturating_mul(1000)
+}
+
+#[cfg(test)]
+mod literal_host_tests {
+    use super::*;
+
+    #[test]
+    fn rejects_literal_loopback_host() {
+        let err = validate_artwork_url("http://127.0.0.1:9/secret").unwrap_err();
+        assert!(
+            err.message().contains("disallowed address"),
+            "unexpected: {err}"
+        );
+        let err = validate_artwork_url("http://[::1]:9/secret").unwrap_err();
+        assert!(
+            err.message().contains("disallowed address"),
+            "unexpected: {err}"
+        );
+    }
+
+    #[test]
+    fn allows_public_literal_and_hostname() {
+        validate_artwork_url("http://8.8.8.8/img").expect("public literal");
+        validate_artwork_url("https://cdn.example/cover.jpg").expect("hostname");
+    }
 }
