@@ -28,7 +28,7 @@ COPY --from=xx-build /out/ /usr/bin/
 
 ########################################################################################################################
 ### Build Navidrome UI
-FROM --platform=$BUILDPLATFORM oven/bun:canary-alpine@sha256:30cfdc4e436d66370920ae2b078e2e92efd9c3c5fddae69af5d928dc6ece04e8 AS ui
+FROM --platform=$BUILDPLATFORM oven/bun:canary-alpine@sha256:6cfe3d5c65feda498b5a2018697338d7a7656b959d8f3d03b27e85bc66b4574e AS ui
 WORKDIR /app
 
 # Install Bun dependencies
@@ -45,7 +45,7 @@ COPY --from=ui /app/build /build
 
 ########################################################################################################################
 ### Build Navidrome binary for Docker image (dynamic musl, enables native libwebp via dlopen)
-FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.27.0-alpine AS build-alpine
+FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.27.1-alpine AS build-alpine
 COPY --from=xx / /
 
 ARG TARGETPLATFORM
@@ -101,7 +101,7 @@ EOT
 
 ########################################################################################################################
 ### Build Navidrome binary for standalone distribution (static glibc, cross-compiled)
-FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.27.0-trixie AS base
+FROM --platform=$BUILDPLATFORM mirror.gcr.io/library/golang:1.27.1-trixie AS base
 RUN apt-get update && apt-get install -y clang lld
 COPY --from=xx / /
 WORKDIR /workspace

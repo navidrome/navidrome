@@ -1,18 +1,18 @@
 # syntax=docker/dockerfile:1.25
 
 # =========================================================
-# JBS Networks Navidrome Ultra 6.1 Slim v10.4 Stable Final
+# JBS Networks Navidrome Ultra 6.1 Slim v10.5 Stable Final
 # AMD EPYC Zen3 Dedicated Edition 2
 #
-# Updated 2026-08-22:
-#   - Go 1.27.0
-#   - Bun 1.4.0 (1.4 canary)
-#   - Rust 1.98.0
-#   - FFmpeg 8.1.2
+# Updated 2026-09-06:
+#   - Go 1.27.1
+#   - Bun 1.4 canary (digest refresh)
+#   - Rust 1.98.1 (via rustup on slim-trixie base; Docker Hub 1.98.1 tag pending)
+#   - FFmpeg 9.0.1
 #   - jemalloc 5.3.1
 #   - Opus 1.6.1
-#   - LAME 3.100 (FFmpeg 8.1.x stable compatibility)
-#   - rusqlite 0.40.1 Anti-hero
+#   - LAME 3.100 (verified with FFmpeg 9.0.1 configure)
+#   - rusqlite 0.40.2
 #
 # Main fixes:
 #   - Correct FFmpeg fallback preflight checks
@@ -39,23 +39,24 @@
 #
 # NOTE:
 #   Base images are pinned to the current multi-platform index digests
-#   verified on 2026-08-22. Refresh these digests when versions change.
+#   verified on 2026-09-06. Refresh these digests when versions change.
 # =========================================================
 
-ARG DEBIAN_IMAGE=debian:trixie-slim@sha256:3a39a0592364683e6bab97937b72cad5a8fa6dcbbee90edb3bb48c7f8e94f258
-ARG BUN_IMAGE=oven/bun:canary-debian@sha256:3fdb86090dadfc204a660d28494c79e465a477f532ae5dbe247343efad32f597
-ARG GOLANG_IMAGE=golang:1.27.0-trixie@sha256:6212da3924947f4b6a939df02ea627c13f338f1a41d6c3fcb0dd9d076eef46c4
-ARG RUST_IMAGE=rust:1.98.0-slim-trixie@sha256:cc0448b41c3b7b7fea44f5dc50eacba729a56db365b65b7bd5e8a82d5b3db078
+ARG DEBIAN_IMAGE=debian:trixie-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132
+ARG BUN_IMAGE=oven/bun:canary-debian@sha256:917116b9e4b1ef7cdbb154a22b68ddd24b2a34b2e621075549fde7b97359b096
+ARG GOLANG_IMAGE=golang:1.27.1-trixie@sha256:9baa6b4187bbb98d240372a8a235ac0bb6b5ddd52bba1431dc2f7c0705862728
+ARG RUST_IMAGE=rust:1.98.0-slim-trixie@sha256:17d1ba895198f9934c6314ec5346a0d5115372f3243390c3d731e242f35c2f27
+ARG RUST_TOOLCHAIN=1.98.1
 
 ARG NAVIDROME_REPOSITORY=https://github.com/TAE-OK-11/navidrome.git
 ARG NAVIDROME_REF=master
 ARG NAVIDROME_CACHEBUST=da1ed9503b9ce8f121f648ec05f0ce78ac02ec09
 
 ARG JEMALLOC_VERSION=5.3.1
-ARG FFMPEG_VERSION=8.1.2
+ARG FFMPEG_VERSION=9.0.1
 ARG OPUS_VERSION=1.6.1
 ARG LAME_VERSION=3.100
-ARG RUSQLITE_VERSION=0.40.1
+ARG RUSQLITE_VERSION=0.40.2
 ARG WALKDIR_VERSION=2.5.0
 
 ARG NAVIDROME_BUILD_CORES=4
@@ -106,7 +107,7 @@ ARG SQLITE_EXTRA_CFLAGS="\
 -DSQLITE_USE_URI=1"
 
 ARG JEMALLOC_SHA256=3826bc80232f22ed5c4662f3034f799ca316e819103bdc7bb99018a421706f92
-ARG FFMPEG_SHA256=464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c
+ARG FFMPEG_SHA256=cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635
 ARG OPUS_SHA256=6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1
 ARG LAME_SHA256=ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
 
@@ -262,7 +263,7 @@ RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
 
 # =========================================================
 # LAME MP3 encoder static
-# Stable compatibility choice for FFmpeg 8.1.x
+# Stable with FFmpeg 9.0.1 (configure verified)
 # =========================================================
 
 FROM native-builder-base AS lame-builder
@@ -517,10 +518,22 @@ RUN set -eu; \
     file /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
 
 # =========================================================
+# Shared Rust toolchain (1.98.1 point release; base image is still 1.98.0)
+# =========================================================
+
+FROM ${RUST_IMAGE} AS rust-toolchain
+
+ARG RUST_TOOLCHAIN
+
+RUN rustup toolchain install "${RUST_TOOLCHAIN}" && \
+    rustup default "${RUST_TOOLCHAIN}" && \
+    rustc --version | grep -F "${RUST_TOOLCHAIN}"
+
+# =========================================================
 # Rust unified helper
 # =========================================================
 
-FROM ${RUST_IMAGE} AS rust-builder
+FROM rust-toolchain AS rust-builder
 
 ARG NAVIDROME_BUILD_CORES
 ARG RUST_TARGET_CPU
@@ -1113,18 +1126,50 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 # metadata, scanner, search, apikeys, integration
 # =========================================================
 
-FROM ${RUST_IMAGE} AS rust-workers-builder
+FROM rust-toolchain AS rust-workers-builder
 
 ARG NAVIDROME_BUILD_CORES
 ARG RUST_TARGET_CPU
 ARG RUST_PGO_ENABLED=true
 ARG RUST_PGO_BENCH_TIME=2
 
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked apt-get update && apt-get install -y --no-install-recommends ca-certificates clang llvm lld
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates clang llvm lld
 
 WORKDIR /build/rust
 
-COPY --link --from=source /src/rust/Cargo.toml /src/rust/Cargo.lock ./
+# Manifest-only layer so registry fetches stay cached when only sources change.
+COPY --link --from=source /src/rust/Cargo.toml /src/rust/Cargo.lock /src/rust/rust-toolchain.toml ./
+COPY --link --from=source /src/rust/fts-normalize/Cargo.toml ./fts-normalize/Cargo.toml
+COPY --link --from=source /src/rust/grpc-listen/Cargo.toml ./grpc-listen/Cargo.toml
+COPY --link --from=source /src/rust/apikeys/Cargo.toml ./apikeys/Cargo.toml
+COPY --link --from=source /src/rust/integration/Cargo.toml ./integration/Cargo.toml
+COPY --link --from=source /src/rust/metadata/Cargo.toml ./metadata/Cargo.toml
+COPY --link --from=source /src/rust/scanner/Cargo.toml ./scanner/Cargo.toml
+COPY --link --from=source /src/rust/search/Cargo.toml ./search/Cargo.toml
+
+RUN for crate in fts-normalize grpc-listen apikeys integration metadata scanner search; do \
+      mkdir -p "${crate}/src" && \
+      printf 'pub fn _deps_stub() {}\n' > "${crate}/src/lib.rs"; \
+      if grep -q '^\[\[bin\]\]' "${crate}/Cargo.toml"; then \
+        printf 'fn main() {}\n' > "${crate}/src/main.rs"; \
+      fi; \
+      if grep -q '\[build-dependencies\]' "${crate}/Cargo.toml"; then \
+        printf 'fn main() {}\n' > "${crate}/build.rs"; \
+      fi; \
+    done
+
+COPY --link --from=source /src/proto /build/proto
+
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
+    CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+    CARGO_INCREMENTAL=0 \
+    cargo fetch --locked
+
+# Real sources + PGO scripts (invalidate only this layer on code changes)
 COPY --link --from=source /src/rust/fts-normalize ./fts-normalize
 COPY --link --from=source /src/rust/grpc-listen ./grpc-listen
 COPY --link --from=source /src/rust/apikeys ./apikeys
@@ -1137,7 +1182,6 @@ COPY --link --from=source /src/rust/benchmarks/metadata /build/rust/benchmarks/m
 COPY --link --from=source /src/rust/benchmarks/scanner /build/rust/benchmarks/scanner
 COPY --link --from=source /src/rust/benchmarks/search /build/rust/benchmarks/search
 COPY --link --from=source /src/release/rust-pgo-train.sh /src/release/rust-build.sh /build/release/
-COPY --link --from=source /src/proto /build/proto
 COPY --link --from=source /src/resources/mime_types.yaml /build/resources/mime_types.yaml
 COPY --link --from=source /src/core/artwork/e2e/testdata/embedded_art.mp3 /tmp/embedded_art.mp3
 
@@ -1182,6 +1226,13 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     install -D -m 755 ${RUST_OUT}/navidrome-scanner /out/navidrome-scanner && \
     install -D -m 755 ${RUST_OUT}/navidrome-search /out/navidrome-search && \
     install -D -m 755 ${RUST_OUT}/navidrome-integration /out/navidrome-integration && \
+    llvm-strip --strip-unneeded \
+      /out/navidrome-metadata \
+      /out/navidrome-apikeys \
+      /out/navidrome-scanner \
+      /out/navidrome-search \
+      /out/navidrome-integration \
+      /out/navidrome-scanner-portable && \
     test -x /out/navidrome-metadata && \
     test -x /out/navidrome-apikeys && \
     test -x /out/navidrome-scanner && \
@@ -1192,7 +1243,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 # Tokio-quiche HTTP/3 companion (release profile: fat LTO)
 # =========================================================
 
-FROM ${RUST_IMAGE} AS h3-builder
+FROM rust-toolchain AS h3-builder
 
 ARG NAVIDROME_BUILD_CORES
 ARG RUST_TARGET_CPU
@@ -1420,6 +1471,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
       -tags="netgo osusergo sqlite_fts5 sqlite_foreign_keys sqlite_stat4 embed" \
       -ldflags="-linkmode=external -extld=clang -extldflags '${EXTLDFLAGS}' -s -w -buildid= -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} -X github.com/navidrome/navidrome/consts.gitTag=${NAVIDROME_REF}-${GIT_SHA}" \
       -o /out/navidrome . && \
+    llvm-strip --strip-unneeded /out/navidrome && \
     file /out/navidrome && \
     go version -m /out/navidrome && \
     deps="$(ldd /out/navidrome 2>/dev/null || true)" && \
@@ -1443,11 +1495,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 FROM ${DEBIAN_IMAGE} AS release
 
 LABEL org.opencontainers.image.authors="JBS Networks" \
-      org.opencontainers.image.title="JBS Navidrome Ultra 6.1 Slim v10.4 Stable Final" \
+      org.opencontainers.image.title="JBS Navidrome Ultra 6.1 Slim v10.5 Stable Final" \
       org.opencontainers.image.description="AMD EPYC Zen3 optimized Navidrome with static Opus/MP3, native AAC/FLAC, jemalloc light profile and Rust helpers" \
       org.opencontainers.image.source="https://github.com/TAE-OK-11/navidrome" \
       org.opencontainers.image.vendor="JBS Networks" \
-      jbs.optimization="JBS-Navidrome-Ultra-6.1-Slim-v10.4/AMD-EPYC-Zen3/Go1.27/Bun1.4/Rust1.98/FFmpeg8.1.2/LLVM-FatLTO/Go-PGO/BR11-Zstd19-Gzip9/NoSourceMaps/SQLite-Light/Resource-Aware"
+      jbs.optimization="JBS-Navidrome-Ultra-6.1-Slim-v10.5/AMD-EPYC-Zen3/Go1.27.1/Bun1.4/Rust1.98.1/FFmpeg9.0.1/LLVM-FatLTO/Go-PGO/BR11-Zstd19-Gzip9/NoSourceMaps/SQLite-Light/Resource-Aware"
 
 COPY --link --from=source /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
@@ -1465,7 +1517,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       /usr/share/lintian \
       /usr/share/linda \
       /usr/share/common-licenses \
-      /usr/share/locale
+      /usr/share/locale \
+      /usr/share/gcc* \
+      /var/cache/debconf/* \
+      /var/log/* && \
+    find /usr -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
 
 RUN mkdir -p /usr/share/zoneinfo/Asia
 
@@ -1532,6 +1588,27 @@ RUN ln -s /usr/local/bin/jbs-helper /usr/local/bin/healthcheck && \
     ln -s /usr/local/bin/jbs-helper /usr/local/bin/jbs-sqlite-maint && \
     ln -s /usr/local/bin/jbs-helper /usr/local/bin/jbs-cache-warm && \
     ln -s /usr/local/bin/jbs-helper /usr/local/bin/jbs-ffmpeg-preflight
+
+# Final size pass: strip shipped ELF objects without leaving binutils in the image.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends binutils && \
+    strip --strip-unneeded \
+      /app/navidrome \
+      /app/navidrome-h3 \
+      /app/navidrome-metadata \
+      /app/navidrome-apikeys \
+      /app/navidrome-scanner \
+      /app/navidrome-search \
+      /app/navidrome-integration \
+      /usr/local/bin/jbs-helper \
+      /usr/local/bin/ffmpeg.real \
+      /usr/local/bin/ffprobe \
+      /usr/local/lib/libjemalloc.so.2 && \
+    apt-get purge -y binutils && \
+    apt-get autoremove -y --purge && \
+    rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man /var/cache/debconf/*
 
 RUN test -x /app/navidrome && \
     test -x /app/navidrome-h3 && \

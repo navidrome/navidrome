@@ -2,6 +2,8 @@ module github.com/navidrome/navidrome
 
 go 1.27
 
+toolchain go1.27.1
+
 // Fork to implement CloseWithError, proposed upstream in https://github.com/djherbis/fscache/pull/22
 replace github.com/djherbis/fscache => github.com/deluan/fscache v0.9.1-0.20260829205053-654a9d517048
 

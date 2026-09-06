@@ -18,10 +18,10 @@ base64 = "0.22.1"
 hex = "0.4.3"
 navidrome-grpc-listen = { path = "../grpc-listen" }
 prost = "0.14.4"
-rand = "0.9.2"
+rand = "0.10.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
-sha2 = "0.10.9"
+sha2 = "0.11.0"
 subtle = "2.6.1"
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "signal"] }
 tonic = { version = "0.14.6", features = ["transport"] }

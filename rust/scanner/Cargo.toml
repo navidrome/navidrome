@@ -16,13 +16,13 @@ path = "src/main.rs"
 anyhow = "1.0.104"
 hex = "0.4.3"
 ignore = "=0.4.33"
-md-5 = "0.10.6"
+md-5 = "0.11.0"
 navidrome-grpc-listen = { path = "../grpc-listen" }
 prost = "0.14.4"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread", "signal", "sync"] }
-tokio-stream = "0.1.17"
+tokio-stream = "0.1.19"
 tonic = { version = "0.14.6", features = ["transport"] }
 tonic-prost = "0.14.6"
 
