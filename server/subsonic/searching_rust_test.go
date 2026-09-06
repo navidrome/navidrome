@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -75,5 +76,17 @@ func TestGetSearchParamsBoundsWork(t *testing.T) {
 	tooLong := newGetRequest("query=" + strings.Repeat("한", maxSearchQueryRunes+1))
 	if _, err := router.getSearchParams(tooLong); err == nil {
 		t.Fatal("getSearchParams() accepted an oversized query")
+	}
+}
+
+func TestHydrateRustSearchResultsSkipsEmptyBuckets(t *testing.T) {
+	t.Parallel()
+	api := &Router{}
+	mfs, als, as, err := api.hydrateRustSearchResults(context.Background(), rustsearch.SearchResults{})
+	if err != nil {
+		t.Fatalf("hydrateRustSearchResults() error = %v", err)
+	}
+	if len(mfs) != 0 || len(als) != 0 || len(as) != 0 {
+		t.Fatalf("expected empty results, got songs=%d albums=%d artists=%d", len(mfs), len(als), len(as))
 	}
 }

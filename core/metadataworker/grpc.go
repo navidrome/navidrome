@@ -212,6 +212,32 @@ func normalizeFTSGRPC(ctx context.Context, values []string) (string, error) {
 	})
 }
 
+// NormalizeFtsBatch normalizes many value-groups in one local metadata RPC.
+func NormalizeFtsBatch(ctx context.Context, groups [][]string) ([]string, error) {
+	if len(groups) == 0 {
+		return nil, nil
+	}
+	return callMetadata(ctx, func(ctx context.Context, conn *grpc.ClientConn) ([]string, error) {
+		cli := gen.NewMetadataClient(conn)
+		items := make([]*gen.StringList, len(groups))
+		for i, values := range groups {
+			items[i] = &gen.StringList{Values: append([]string(nil), values...)}
+		}
+		resp, err := cli.NormalizeFtsBatch(ctx, &gen.NormalizeFtsBatchRequest{Items: items})
+		if err != nil {
+			return nil, err
+		}
+		if !resp.GetOk() {
+			return nil, errors.New(nonEmpty(resp.GetError(), "Rust normalize batch failed"))
+		}
+		out := resp.GetNormalized()
+		if len(out) != len(groups) {
+			return nil, errors.New("Rust normalize batch length mismatch")
+		}
+		return append([]string(nil), out...), nil
+	})
+}
+
 func buildFTS5QueryGRPC(ctx context.Context, query string) (buildFTS5QueryResult, error) {
 	return callMetadata(ctx, func(ctx context.Context, conn *grpc.ClientConn) (buildFTS5QueryResult, error) {
 		cli := gen.NewMetadataClient(conn)

@@ -77,7 +77,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = ftsnormalize.NormalizeForFTS(context.Background(), a.Name, a.AlbumArtist)
+	args["search_normalized"] = albumSearchNormalized(a.Album)
 
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participants"] = marshalParticipants(a.Album.Participants)
@@ -100,6 +100,18 @@ type dbAlbums []dbAlbum
 
 func (as dbAlbums) toModels() model.Albums {
 	return slice.Map(as, func(a dbAlbum) model.Album { return *a.Album })
+}
+
+func albumSearchNormalized(a *model.Album) string {
+	if a == nil {
+		return ""
+	}
+	if a.SearchNormalized != "" {
+		return a.SearchNormalized
+	}
+	normalized := ftsnormalize.NormalizeForFTS(context.Background(), a.Name, a.AlbumArtist)
+	a.SearchNormalized = normalized
+	return normalized
 }
 
 func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumRepository {
@@ -127,23 +139,23 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"id":              idFilter("album"),
 		"name":            fullTextFilter("album", "mbz_album_id", "mbz_release_group_id"),
 		"compilation":     booleanFilter,
-		"artist_id":       artistFilter,
-		"year":            yearFilter,
-		"recently_played": recentlyPlayedFilter,
-		"starred":         annotationBoolFilter("starred"),
-		"has_rating":      annotationBoolFilter("rating"),
+		"artist_id":       wrapFilter(artistFilter),
+		"year":            wrapFilter(yearFilter),
+		"recently_played": wrapFilter(recentlyPlayedFilter),
+		"starred":         wrapFilter(annotationBoolFilter("starred")),
+		"has_rating":      wrapFilter(annotationBoolFilter("rating")),
 		"missing":         booleanFilter,
-		"genre_id":        genreFilter(AlbumGenres),
-		"role_total_id":   allRolesFilter,
-		"library_id":      libraryIdFilter,
+		"genre_id":        wrapFilter(genreFilter(AlbumGenres)),
+		"role_total_id":   wrapFilter(allRolesFilter),
+		"library_id":      wrapFilter(libraryIdFilter),
 	}
 	// Add all album tags as filters
 	for tag := range model.AlbumLevelTags() {
-		filters[string(tag)] = tagIDFilter
+		filters[string(tag)] = wrapFilter(tagIDFilter)
 	}
 
 	for role := range model.AllRoles {
-		filters["role_"+role+"_id"] = artistRoleFilter
+		filters["role_"+role+"_id"] = wrapFilter(artistRoleFilter)
 	}
 
 	return filters

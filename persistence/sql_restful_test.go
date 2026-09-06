@@ -38,7 +38,7 @@ var _ = Describe("sqlRestful", func() {
 
 		It("does not add nill filters", func() {
 			r.filterMappings = map[string]filterFunc{
-				"name": func(string, any) squirrel.Sqlizer {
+				"name": func(context.Context, string, any) squirrel.Sqlizer {
 					return nil
 				},
 			}
@@ -63,7 +63,7 @@ var _ = Describe("sqlRestful", func() {
 
 		It("uses the custom filter", func() {
 			r.filterMappings = map[string]filterFunc{
-				"test": func(field string, value any) squirrel.Sqlizer {
+				"test": func(_ context.Context, field string, value any) squirrel.Sqlizer {
 					return squirrel.Gt{field: value}
 				},
 			}
@@ -89,7 +89,7 @@ var _ = Describe("sqlRestful", func() {
 		Context("when value is a valid UUID", func() {
 			It("returns only the mbid filter (precedence over full text)", func() {
 				uuid := "550e8400-e29b-41d4-a716-446655440000"
-				result := filter("search", uuid)
+				result := filter(context.Background(), "search", uuid)
 
 				expected := squirrel.Or{
 					squirrel.Eq{"test_table.mbid": uuid},
@@ -101,7 +101,7 @@ var _ = Describe("sqlRestful", func() {
 			It("falls back to full text when no mbid fields are provided", func() {
 				noMbidFilter := fullTextFilter(tableName)
 				uuid := "550e8400-e29b-41d4-a716-446655440000"
-				result := noMbidFilter("search", uuid)
+				result := noMbidFilter(context.Background(), "search", uuid)
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -112,7 +112,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("when value is not a valid UUID", func() {
 			It("returns FTS search condition only", func() {
-				result := filter("search", "beatles")
+				result := filter(context.Background(), "search", "beatles")
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -121,7 +121,7 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("handles multi-word search terms", func() {
-				result := filter("search", "the beatles abbey road")
+				result := filter(context.Background(), "search", "the beatles abbey road")
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -132,7 +132,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("FTS query handling", func() {
 			It("uses FTS for multi-word queries", func() {
-				result := filter("search", "test query")
+				result := filter(context.Background(), "search", "test query")
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -143,7 +143,7 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("single-character queries (regression: must not be rejected)", func() {
 			It("returns valid filter for single-char query with FTS backend", func() {
-				result := filter("search", "a")
+				result := filter(context.Background(), "search", "a")
 				Expect(result).ToNot(BeNil(), "single-char REST filter must not be dropped")
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -154,17 +154,17 @@ var _ = Describe("sqlRestful", func() {
 
 		Context("edge cases", func() {
 			It("returns nil for empty string", func() {
-				result := filter("search", "")
+				result := filter(context.Background(), "search", "")
 				Expect(result).To(BeNil())
 			})
 
 			It("returns nil for string with only whitespace", func() {
-				result := filter("search", "   ")
+				result := filter(context.Background(), "search", "   ")
 				Expect(result).To(BeNil())
 			})
 
 			It("handles special characters that are sanitized", func() {
-				result := filter("search", "don't")
+				result := filter(context.Background(), "search", "don't")
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -173,13 +173,13 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("returns nil for single quote (SQL injection protection)", func() {
-				result := filter("search", "'")
+				result := filter(context.Background(), "search", "'")
 				Expect(result).To(BeNil())
 			})
 
 			It("handles mixed case UUIDs", func() {
 				uuid := "550E8400-E29B-41D4-A716-446655440000"
-				result := filter("search", uuid)
+				result := filter(context.Background(), "search", uuid)
 
 				// Should return only mbid filter (uppercase UUID should work)
 				expected := squirrel.Or{
@@ -190,7 +190,7 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("handles invalid UUID format gracefully", func() {
-				result := filter("search", "550e8400-invalid-uuid")
+				result := filter(context.Background(), "search", "550e8400-invalid-uuid")
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -200,7 +200,7 @@ var _ = Describe("sqlRestful", func() {
 
 			It("handles empty mbid fields array", func() {
 				emptyMbidFilter := fullTextFilter(tableName, []string{}...)
-				result := emptyMbidFilter("search", "test")
+				result := emptyMbidFilter(context.Background(), "search", "test")
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
@@ -209,7 +209,7 @@ var _ = Describe("sqlRestful", func() {
 			})
 
 			It("converts value to lowercase before processing", func() {
-				result := filter("search", "TEST")
+				result := filter(context.Background(), "search", "TEST")
 
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())

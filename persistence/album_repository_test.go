@@ -562,7 +562,7 @@ var _ = Describe("AlbumRepository", func() {
 				filterFunc, exists := filters[filterName]
 				Expect(exists).To(BeTrue(), fmt.Sprintf("Filter %s should exist", filterName))
 
-				sqlizer := filterFunc(filterName, "test-id")
+				sqlizer := filterFunc(context.Background(), filterName, "test-id")
 				sql, args, err := sqlizer.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("album.id IN (SELECT album_id FROM album_artists WHERE artist_id = ? AND role IN (?))"))

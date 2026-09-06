@@ -194,26 +194,8 @@ func (api *Router) searchAllRust(ctx context.Context, query string, libraryIDs [
 		return nil, nil, nil, false
 	}
 
-	var mediaFiles model.MediaFiles
-	var albums model.Albums
-	var artists model.Artists
-	g, hydrateCtx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		var hydrateErr error
-		mediaFiles, hydrateErr = api.hydrateRustSongs(hydrateCtx, results.SongIDs)
-		return hydrateErr
-	})
-	g.Go(func() error {
-		var hydrateErr error
-		albums, hydrateErr = api.hydrateRustAlbums(hydrateCtx, results.AlbumIDs)
-		return hydrateErr
-	})
-	g.Go(func() error {
-		var hydrateErr error
-		artists, hydrateErr = api.hydrateRustArtists(hydrateCtx, results.ArtistIDs)
-		return hydrateErr
-	})
-	if err := g.Wait(); err != nil {
+	mediaFiles, albums, artists, err := api.hydrateRustSearchResults(ctx, results)
+	if err != nil {
 		log.Warn(ctx, "Hydrating grouped Rust search results failed; using SQLite fallback", err)
 		return nil, nil, nil, false
 	}
@@ -239,6 +221,56 @@ func rustSearchResultsEmpty(sp *searchParams, mediaFiles model.MediaFiles, album
 		return false
 	}
 	return true
+}
+
+// hydrateRustSearchResults loads song/album/artist rows for Tantivy hit IDs.
+// Empty buckets are skipped. When more than one bucket has hits, hydrates run
+// in parallel; otherwise a single GetAll avoids errgroup overhead. Previously
+// all three GetAlls always ran even when a Subsonic count was 0.
+func (api *Router) hydrateRustSearchResults(ctx context.Context, results rustsearch.SearchResults) (model.MediaFiles, model.Albums, model.Artists, error) {
+	var mediaFiles model.MediaFiles
+	var albums model.Albums
+	var artists model.Artists
+
+	type hydrateJob struct {
+		run func(context.Context) error
+	}
+	jobs := make([]hydrateJob, 0, 3)
+	if len(results.SongIDs) > 0 {
+		jobs = append(jobs, hydrateJob{run: func(c context.Context) error {
+			var err error
+			mediaFiles, err = api.hydrateRustSongs(c, results.SongIDs)
+			return err
+		}})
+	}
+	if len(results.AlbumIDs) > 0 {
+		jobs = append(jobs, hydrateJob{run: func(c context.Context) error {
+			var err error
+			albums, err = api.hydrateRustAlbums(c, results.AlbumIDs)
+			return err
+		}})
+	}
+	if len(results.ArtistIDs) > 0 {
+		jobs = append(jobs, hydrateJob{run: func(c context.Context) error {
+			var err error
+			artists, err = api.hydrateRustArtists(c, results.ArtistIDs)
+			return err
+		}})
+	}
+	switch len(jobs) {
+	case 0:
+		return mediaFiles, albums, artists, nil
+	case 1:
+		err := jobs[0].run(ctx)
+		return mediaFiles, albums, artists, err
+	default:
+		g, hydrateCtx := errgroup.WithContext(ctx)
+		for _, job := range jobs {
+			g.Go(func() error { return job.run(hydrateCtx) })
+		}
+		err := g.Wait()
+		return mediaFiles, albums, artists, err
+	}
 }
 
 func (api *Router) hydrateRustSongs(ctx context.Context, ids []string) (model.MediaFiles, error) {

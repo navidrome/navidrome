@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
@@ -20,7 +22,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "test")
+			strategy := getSearchStrategy(context.Background(), "media_file", "test")
 			Expect(strategy).ToNot(BeNil())
 			sql, _, err := strategy.ToSql()
 			Expect(err).ToNot(HaveOccurred())
@@ -32,7 +34,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = true
 
-			strategy := getSearchStrategy("media_file", "test")
+			strategy := getSearchStrategy(context.Background(), "media_file", "test")
 			Expect(strategy).ToNot(BeNil())
 			sql, _, err := strategy.ToSql()
 			Expect(err).ToNot(HaveOccurred())
@@ -44,7 +46,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "周杰伦")
+			strategy := getSearchStrategy(context.Background(), "media_file", "周杰伦")
 			Expect(strategy).ToNot(BeNil())
 			sql, _, err := strategy.ToSql()
 			Expect(err).ToNot(HaveOccurred())
@@ -56,7 +58,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "beatles")
+			strategy := getSearchStrategy(context.Background(), "media_file", "beatles")
 			Expect(strategy).ToNot(BeNil())
 			sql, _, err := strategy.ToSql()
 			Expect(err).ToNot(HaveOccurred())
@@ -68,7 +70,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "fts"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "a")
+			strategy := getSearchStrategy(context.Background(), "media_file", "a")
 			Expect(strategy).ToNot(BeNil(), "single-char queries must be accepted by strategies (min-length is enforced in doSearch)")
 		})
 
@@ -77,7 +79,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "legacy"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "a")
+			strategy := getSearchStrategy(context.Background(), "media_file", "a")
 			Expect(strategy).ToNot(BeNil(), "single-char queries must be accepted by FTS strategy (min-length is enforced in doSearch)")
 		})
 
@@ -86,7 +88,7 @@ var _ = Describe("sqlRepository", func() {
 			conf.Server.Search.Backend = "legacy"
 			conf.Server.Search.FullString = false
 
-			strategy := getSearchStrategy("media_file", "周杰伦")
+			strategy := getSearchStrategy(context.Background(), "media_file", "周杰伦")
 			Expect(strategy).ToNot(BeNil())
 			sql, _, err := strategy.ToSql()
 			Expect(err).ToNot(HaveOccurred())

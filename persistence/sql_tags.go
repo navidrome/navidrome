@@ -209,7 +209,7 @@ func newBaseTagRepository(ctx context.Context, db dbx.Builder, tagFilter *model.
 	r.tableName = "tag"
 	r.registerModel(&model.Tag{}, map[string]filterFunc{
 		"name":       containsFilter("tag_value"),
-		"library_id": tagLibraryIdFilter,
+		"library_id": wrapFilter(tagLibraryIdFilter),
 	})
 	r.setSortMappings(map[string]string{
 		"name": "tag_value",

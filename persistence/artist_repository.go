@@ -8,14 +8,15 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/ftsnormalize"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/ftsnormalize"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -54,7 +55,11 @@ func (a *dbArtist) PostScan() error {
 			return fmt.Errorf("parsing artist stats from db: %w", err)
 		}
 
-		for _, stats := range rawLibStats {
+		a.Artist.LibraryIDs = make([]int, 0, len(rawLibStats))
+		for libIDStr, stats := range rawLibStats {
+			if libID, err := strconv.Atoi(libIDStr); err == nil {
+				a.Artist.LibraryIDs = append(a.Artist.LibraryIDs, libID)
+			}
 			// Sum all libraries roles stats
 			for key, stat := range stats {
 				// Aggregate stats into the main Artist.Stats map
@@ -83,6 +88,7 @@ func (a *dbArtist) PostScan() error {
 				a.Artist.Stats[role] = current
 			}
 		}
+		slices.Sort(a.Artist.LibraryIDs)
 	}
 
 	a.Artist.SimilarArtists = nil
@@ -112,7 +118,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	// When adding a derived column here, also add it to the scanner's artist Put column list
 	// in phase_1_folders.go, or rescans will never update it (how search_normalized went stale).
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
-	m["search_normalized"] = ftsnormalize.NormalizeForFTS(context.Background(), a.Name)
+	m["search_normalized"] = artistSearchNormalized(a.Artist)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
 	// TODO: Better way to handle this?
@@ -123,6 +129,18 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 		delete(m, "mbz_artist_id")
 	}
 	return nil
+}
+
+func artistSearchNormalized(a *model.Artist) string {
+	if a == nil {
+		return ""
+	}
+	if a.SearchNormalized != "" {
+		return a.SearchNormalized
+	}
+	normalized := ftsnormalize.NormalizeForFTS(context.Background(), a.Name)
+	a.SearchNormalized = normalized
+	return normalized
 }
 
 func (a *dbArtistIndex) PostScan() error {
@@ -156,11 +174,11 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
 		"id":         idFilter(r.tableName),
 		"name":       fullTextFilter(r.tableName, "mbz_artist_id"),
-		"starred":    annotationBoolFilter("starred"),
-		"has_rating": annotationBoolFilter("rating"),
-		"role":       roleFilter,
+		"starred":    wrapFilter(annotationBoolFilter("starred")),
+		"has_rating": wrapFilter(annotationBoolFilter("rating")),
+		"role":       wrapFilter(roleFilter),
 		"missing":    booleanFilter,
-		"library_id": artistLibraryIdFilter,
+		"library_id": wrapFilter(artistLibraryIdFilter),
 	})
 	r.setSortMappings(map[string]string{ //nolint:gosec
 		"name":        "order_artist_name",
