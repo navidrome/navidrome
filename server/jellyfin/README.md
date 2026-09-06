@@ -58,6 +58,8 @@ query param — all forms are accepted, matching what different clients do).
 `/auth/login` (`AuthRequestLimit`/`AuthWindowLength`), since it's an unauthenticated brute-force
 surface.
 
+Access tokens do not expire, matching real Jellyfin. They are revoked by a password change, which bumps the user's token epoch.
+
 ### Public user list (login picker)
 
 `GET /Users/Public` lets a client render a login user-picker (tap a user, then just type the

@@ -123,6 +123,13 @@ export const InfoCard = ({ record, manifest, classes, translate, isSmall }) => (
           isSmall={isSmall}
         >
           {record.id}
+          <Typography
+            variant="caption"
+            color="textSecondary"
+            className={classes.fieldHelp}
+          >
+            {translate('resources.plugin.messages.idHelp')}
+          </Typography>
         </InfoRow>
 
         {manifest?.name && (
@@ -201,7 +208,7 @@ export const InfoCard = ({ record, manifest, classes, translate, isSmall }) => (
               <Typography
                 variant="caption"
                 color="textSecondary"
-                style={{ marginTop: 4, display: 'block' }}
+                className={classes.fieldHelp}
               >
                 {translate('resources.plugin.messages.clickPermissions')}
               </Typography>

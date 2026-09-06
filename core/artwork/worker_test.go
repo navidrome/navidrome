@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
@@ -95,6 +96,17 @@ func (f *fakeEventBroker) getEvents() []events.Event {
 
 var _ events.Broker = (*fakeEventBroker)(nil)
 
+// expireQueued ages a row past the retry budget, so the next drain settles it instead of retrying.
+func expireQueued(q *tests.MockArtworkQueueRepo, id string) {
+	GinkgoHelper()
+	for k, v := range q.Data {
+		if v.ItemID == id {
+			v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
+			q.Data[k] = v
+		}
+	}
+}
+
 func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQueueItem {
 	for _, it := range q.Data {
 		if it.ItemKind == kind && it.ItemID == id {
@@ -102,6 +114,29 @@ func findQueued(q *tests.MockArtworkQueueRepo, kind, id string) *model.ArtworkQu
 		}
 	}
 	return nil
+}
+
+// visibilityPlaylistDS models playlist_repository's userFilter: a private playlist is only
+// visible when the ctx carries an admin, so headless work must wrap ctx with one first.
+type visibilityPlaylistDS struct {
+	*tests.MockDataStore
+	private model.Playlist
+	tracks  model.PlaylistTrackRepository
+}
+
+func (v *visibilityPlaylistDS) Playlist(ctx context.Context) model.PlaylistRepository {
+	repo := tests.CreateMockPlaylistRepo()
+	repo.TracksRepo = v.tracks
+	if u, ok := request.UserFrom(ctx); ok && u.IsAdmin {
+		repo.SetData(model.Playlists{v.private})
+	}
+	return repo
+}
+
+func adminUserRepo() *tests.MockedUserRepo {
+	repo := tests.CreateMockUserRepo()
+	Expect(repo.Put(&model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
+	return repo
 }
 
 var _ = Describe("Worker", func() {
@@ -234,6 +269,23 @@ var _ = Describe("Worker", func() {
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
 		})
 
+		It("reschedules past the provider's requested delay when it exceeds the backoff", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
+			// Well above backoff(0)'s jittered ceiling, so only the hint can produce this retry_at.
+			const askedFor = 90 * time.Minute
+			imageAgents(&fakeImageAgent{name: "throttledAgent", err: &agents.RetryLaterError{RetryIn: askedFor}})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
+
+			n, err := w.drain(ctx, 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(1))
+
+			it := findQueued(queueRepo, "al", "al9")
+			Expect(it).ToNot(BeNil())
+			Expect(it.RetryAt).To(BeTemporally("~", time.Now().Add(askedFor), time.Minute))
+		})
+
 		It("reschedules a found-stale item via MarkFailed while keeping its served state", func() {
 			conf.Server.CoverArtPriority = "external, cover.jpg"
 			folderRepo.result = []model.Folder{{
@@ -318,12 +370,7 @@ var _ = Describe("Worker", func() {
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al9"})).To(Succeed())
 			// Age the row past the retry budget.
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al9" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al9")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -345,12 +392,7 @@ var _ = Describe("Worker", func() {
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al10"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "al10" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "al10")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -362,21 +404,77 @@ var _ = Describe("Worker", func() {
 			Expect(ia.Hash).To(Equal("cafebabe"), "a persistent outage must not discard served art")
 		})
 
-		// Media files are excluded from RecheckKinds, so an absent row here would never be
-		// revisited: a transient read error would look permanent.
-		It("does not settle absent on exhaustion for a kind with no recheck path", func() {
+		It("records on the queue row why the last attempt failed", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al11", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al11"})).To(Succeed())
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			it := findQueued(queueRepo, "al", "al11")
+			Expect(it).ToNot(BeNil())
+			Expect(DecodeTrace(it.Trace, "")).To(ContainElement(SatisfyAll(
+				HaveField("Candidate", "external:failAgent"),
+				HaveField("Outcome", OutcomeError),
+				HaveField("Detail", ContainSubstring("agent timed out")),
+			)), "a retrying row must say why it is retrying")
+		})
+
+		// The give-up path settles absent before recording, so the row exists by the time the
+		// failure is written. Recording first would silently lose it for every unresolved item.
+		It("keeps the failure for an item that never resolved at all", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al13", Name: "Album"}})
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al13"})).To(Succeed())
+			expireQueued(queueRepo, "al13")
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al13", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred(), "settling absent must create the row the failure is written to")
+			Expect(ia.Hash).To(BeEmpty())
+			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty())
+		})
+
+		It("keeps the failure on the state row after the queue row is deleted", func() {
+			conf.Server.CoverArtPriority = "external"
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al12", Name: "Album"}})
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "al12", ImageType: model.ImageTypePrimary,
+				Hash: "cafebabe", Source: "external:lastfm",
+			})).To(Succeed())
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
+			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "al", ItemID: "al12"})).To(Succeed())
+			expireQueued(queueRepo, "al12")
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(findQueued(queueRepo, "al", "al12")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al12", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(DecodeTrace(ia.LastFailure, "")).ToNot(BeEmpty(),
+				"the queue row is gone, so this is the only remaining record of the failure")
+			Expect(ia.Hash).To(Equal("cafebabe"), "recording the failure must not disturb the served art")
+		})
+
+		// Only a view enqueues a media file, and an absent row is exactly what stops a view from
+		// doing so: a transient read error would look permanent.
+		It("does not settle absent on exhaustion for a media file", func() {
 			conf.Server.EnableMediaFileCoverArt = true
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: "mfX", LibraryID: 0, Path: "tests/fixtures/artist/an-album/gone.mp3", HasCoverArt: true},
 			})
 			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mfX"})).To(Succeed())
-			for k, v := range queueRepo.Data {
-				if v.ItemID == "mfX" {
-					v.EnqueuedAt = time.Now().Add(-(giveUpAfter + time.Hour))
-					queueRepo.Data[k] = v
-				}
-			}
+			expireQueued(queueRepo, "mfX")
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -386,6 +484,8 @@ var _ = Describe("Worker", func() {
 			_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mfX", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound),
 				"no row leaves the track unresolved, so a later view can still recover it")
+			// Known gap: with no row and no absent settle, there is nowhere to keep the failure.
+			// Creating one here would write an empty hash, which every reader treats as absent.
 		})
 
 		It("resolves a private playlist under an admin context instead of failing forever", func() {
@@ -850,5 +950,21 @@ var _ = Describe("backoff", func() {
 			Expect(d).To(BeNumerically(">=", lo))
 			Expect(d).To(BeNumerically("<=", hi))
 		}
+	})
+})
+
+var _ = Describe("retryDelay", func() {
+	It("uses the backoff schedule when the provider asked for nothing", func() {
+		d := retryDelay(0, 0)
+		Expect(d).To(BeNumerically(">=", 3*time.Second))
+		Expect(d).To(BeNumerically("<=", 7*time.Second))
+	})
+
+	It("waits the provider's delay when it is longer than the backoff", func() {
+		Expect(retryDelay(0, time.Hour)).To(Equal(time.Hour))
+	})
+
+	It("keeps the backoff when it is longer than the provider's delay", func() {
+		Expect(retryDelay(4, time.Second)).To(BeNumerically(">=", 3*time.Second))
 	})
 })

@@ -152,8 +152,9 @@ func (s *Stream) EstimatedContentLength() int {
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
 // (supporting range requests). For non-seekable streams it writes directly and logs any errors.
-// Returns the number of bytes written and an error only when io.Copy fails with 0 bytes written
+// Returns the number of bytes written and an error only when it fails with 0 bytes written
 // (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
+// Once bytes are on the wire it panics with http.ErrAbortHandler instead, aborting the response.
 // Empty output (0 bytes, no error) is logged but not treated as an error.
 func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
 	if s.Seekable() {
@@ -183,7 +184,8 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 			w.Header().Del("Content-Length")
 			return 0, fmt.Errorf("sending transcoded file: %w", err)
 		}
-		return c, nil
+		// The 200 is already sent, so dropping the connection is the only way to say "truncated".
+		panic(http.ErrAbortHandler)
 	}
 	if c == 0 {
 		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+

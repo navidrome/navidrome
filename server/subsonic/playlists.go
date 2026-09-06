@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
@@ -133,15 +132,7 @@ func (api *Router) buildPlaylist(ctx context.Context, p model.Playlist) response
 	pls.SongCount = int32(p.SongCount)
 	pls.Duration = int32(p.Duration)
 	pls.Created = p.CreatedAt
-	if p.IsSmartPlaylist() {
-		if p.EvaluatedAt != nil {
-			pls.Changed = *p.EvaluatedAt
-		} else {
-			pls.Changed = time.Now()
-		}
-	} else {
-		pls.Changed = p.UpdatedAt
-	}
+	pls.Changed = p.UpdatedAt
 
 	player, ok := request.PlayerFrom(ctx)
 	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {

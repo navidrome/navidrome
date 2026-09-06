@@ -23,8 +23,8 @@ import (
 const (
 	workerPollInterval = 5 * time.Second
 	backoffBase        = 5 * time.Second
-	// giveUpAfter bounds the retry budget from enqueue; past it the item falls to the
-	// periodic stale-absent recheck.
+	// giveUpAfter bounds the retry budget from enqueue; past it the item settles and only an
+	// explicit reprocess retries it.
 	giveUpAfter = 12 * time.Hour
 )
 
@@ -131,15 +131,9 @@ func (w *Worker) RunPrune(ctx context.Context) error {
 	return prune(ctx, w.proc.ds, w.proc.store)
 }
 
-// Backfill enqueues every entity for re-resolution when the artwork config fingerprint changed,
-// artists first. It reports whether anything was enqueued.
-func (w *Worker) Backfill(ctx context.Context) (bool, error) {
-	return backfill(ctx, w.proc.ds)
-}
-
-// EnqueueStaleAbsentAll requeues known-absent entries older than StaleAbsentAge.
-func (w *Worker) EnqueueStaleAbsentAll(ctx context.Context) error {
-	return enqueueStaleAbsentAll(ctx, w.proc.ds)
+// ReconcileConfig records the artwork config fingerprint, or warns when it changed.
+func (w *Worker) ReconcileConfig(ctx context.Context) error {
+	return ReconcileConfigFingerprint(ctx, w.proc.ds)
 }
 
 // EnqueueMissingAll requeues entities with no artwork state row: the safety net for anything
@@ -235,7 +229,9 @@ func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueu
 
 func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired) {
 	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
-	out, got := w.proc.acquire(ctx, item)
+	trace := &ChainTrace{}
+	ctx = withTrace(ctx, trace)
+	out, got, retryIn := w.proc.acquire(ctx, item)
 
 	queue := w.proc.ds.ArtworkQueue(ctx)
 	switch out {
@@ -246,11 +242,12 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			log.Warn(ctx, "Artwork: Could not delete processed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	case outcomeFoundStale, outcomeFailed:
-		retryAt := time.Now().Add(backoff(item.Attempts))
+		retryAt := time.Now().Add(retryDelay(item.Attempts, retryIn))
+		encoded := trace.encode("")
 		if retryAt.Before(item.EnqueuedAt.Add(giveUpAfter)) {
 			// A mid-flight re-enqueue reset retry_at; stale backoff must not stomp its
 			// fresh, immediate eligibility.
-			if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt); err != nil {
+			if err := queue.MarkFailedIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt, retryAt, encoded); err != nil {
 				log.Warn(ctx, "Artwork: Could not reschedule failed queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 			}
 			log.Debug(ctx, "Artwork: Rescheduled item", "kind", item.ItemKind, "id", item.ItemID,
@@ -258,13 +255,15 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 				"budgetLeft", time.Until(item.EnqueuedAt.Add(giveUpAfter)))
 			break
 		}
-		// Absent is only recoverable where a periodic recheck revisits it, so other kinds keep
-		// no row; art already being served is kept, as exhaustion means unreachable, not removed.
+		// Art already being served is kept: exhaustion means unreachable, not removed.
 		settled := "kept previous state"
-		if out == outcomeFailed && hasRecheckPath(item.ItemKind) && !w.hasResolvedArtwork(ctx, item) {
+		if out == outcomeFailed && settlesAbsentOnGiveUp(item.ItemKind) && !w.hasResolvedArtwork(ctx, item) {
 			writeAbsent(ctx, w.proc.ds.Artwork(ctx), item)
 			settled = "recorded absent"
 		}
+		// The queue row is about to go, taking the only record of the failure with it. This write is
+		// unconditional (not CAS-guarded) — safe only because the drain resolves each item serially.
+		w.recordGiveUp(ctx, item, encoded)
 		log.Info(ctx, "Artwork: Retry budget exhausted, giving up", "kind", item.ItemKind, "id", item.ItemID,
 			"outcome", out, "attempts", item.Attempts+1, "budget", giveUpAfter, "settled", settled)
 		if err := queue.DeleteIfUnchanged(item.ItemKind, item.ItemID, item.ImageType, item.RetryAt); err != nil {
@@ -272,6 +271,18 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		}
 	}
 	return out, got
+}
+
+// recordGiveUp keeps the last failure on the state row after the queue row is deleted. An item
+// that never resolved has no row to update, and creating one would settle it absent.
+func (w *Worker) recordGiveUp(ctx context.Context, item model.ArtworkQueueItem, trace string) {
+	kind, ok := model.ParseKind(item.ItemKind)
+	if !ok {
+		return
+	}
+	if err := w.proc.ds.Artwork(ctx).PutLastFailure(kind, item.ItemID, item.ImageType, trace); err != nil {
+		log.Warn(ctx, "Artwork: Could not record the last failure", "kind", item.ItemKind, "id", item.ItemID, err)
+	}
 }
 
 func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueueItem) bool {
@@ -318,4 +329,9 @@ func backoffFor(attempts int, jitter float64) time.Duration {
 
 func backoff(attempts int) time.Duration {
 	return backoffFor(attempts, rand.Float64()*0.8-0.4) //nolint:gosec // retry jitter, not security-sensitive
+}
+
+// retryDelay is how long a failed item waits: our backoff, unless the provider asked for longer.
+func retryDelay(attempts int, hint time.Duration) time.Duration {
+	return max(backoff(attempts), hint)
 }

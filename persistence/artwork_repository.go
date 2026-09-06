@@ -134,8 +134,18 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 	}
 	ins := Insert(itemArtworkTable).SetMap(values).Suffix(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		hash=excluded.hash, source=excluded.source, source_path=excluded.source_path, ref_mtime=excluded.ref_mtime,
+		trace=excluded.trace, last_failure=excluded.last_failure,
 		attempted_at=excluded.attempted_at, updated_at=excluded.updated_at`)
 	_, err = r.items.executeSQL(ins)
+	return err
+}
+
+// PutLastFailure records why an item exhausted its retry budget. It only updates an existing row:
+// inserting one would write an empty hash, which the rest of the system reads as a settled absent.
+func (r *artworkRepository) PutLastFailure(kind model.Kind, id, imageType, trace string) error {
+	upd := Update(itemArtworkTable).Set("last_failure", trace).
+		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType})
+	_, err := r.items.executeSQL(upd)
 	return err
 }
 
