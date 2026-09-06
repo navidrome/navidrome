@@ -881,18 +881,6 @@ func (e *Engine) ensureWorker() error {
 	return nil
 }
 
-func (e *Engine) failWorker(readOnly bool, ctx context.Context) {
-	if readOnly && (errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded)) {
-		e.releaseWorker()
-		return
-	}
-	e.stopWorker()
-}
-
-func (e *Engine) releaseWorker() {
-	e.closeGRPC()
-}
-
 func (e *Engine) stopWorker() {
 	e.ready.Store(false)
 	e.indexed.Store(0)
@@ -902,8 +890,4 @@ func (e *Engine) stopWorker() {
 func (e *Engine) closeGRPC() {
 	searchworker.InvalidateGRPC()
 	e.grpc = nil
-}
-
-func searchIndexPath() string {
-	return searchworker.IndexPath()
 }

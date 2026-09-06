@@ -175,11 +175,3 @@ func sniffViaGRPC(ctx context.Context, payloads [][]byte, request imageWorkerReq
 		AnimatedPNG:  resp.GetAnimatedPng(),
 	}, nil
 }
-
-type imageResizeError struct {
-	message string
-}
-
-func (e *imageResizeError) Error() string {
-	return e.message
-}

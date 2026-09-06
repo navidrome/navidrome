@@ -29,12 +29,6 @@ type rustScanRequest struct {
 	WalkThreads      int               `json:"walk_threads,omitempty"`
 }
 
-type rustScanEvent struct {
-	Kind    string          `json:"kind"`
-	Folder  *rustScanFolder `json:"folder"`
-	Message string          `json:"message"`
-}
-
 type rustScanFolder struct {
 	Path              string                  `json:"path"`
 	ModTimeNS         int64                   `json:"mod_time_ns"`
