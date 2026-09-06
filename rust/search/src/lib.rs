@@ -251,11 +251,12 @@ impl Engine {
 
     fn add_documents(&mut self, documents: Vec<SearchDocument>) -> Result<()> {
         for document in documents {
+            let secondary = enrich_secondary_with_fts(&document.primary, &document.secondary);
             let normalized_primary = normalize(&document.primary);
-            let normalized_secondary = if document.secondary.is_empty() {
+            let normalized_secondary = if secondary.is_empty() {
                 String::new()
             } else {
-                normalize(&document.secondary)
+                normalize(&secondary)
             };
             let mut indexed = tantivy::doc!(
                 self.fields.key => document.key.as_str(),
@@ -455,6 +456,31 @@ fn validate_document_batch(documents: &[SearchDocument]) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Fold fts-normalize variants into secondary before Tantivy n-gram indexing.
+/// Go may still send DB search_normalized tokens; this covers legacy rows and
+/// avoids a metadata NormalizeFtsBatch hop during Apply append/upsert.
+fn enrich_secondary_with_fts(primary: &str, secondary: &str) -> String {
+    let mut values = Vec::with_capacity(2);
+    if !primary.is_empty() {
+        values.push(primary.to_owned());
+    }
+    if !secondary.is_empty() {
+        values.push(secondary.to_owned());
+    }
+    let fts_extra = fts_normalize::normalize_for_fts(&values);
+    if fts_extra.is_empty() {
+        return secondary.to_owned();
+    }
+    if secondary.is_empty() {
+        return fts_extra;
+    }
+    let mut enriched = String::with_capacity(secondary.len() + 1 + fts_extra.len());
+    enriched.push_str(secondary);
+    enriched.push(' ');
+    enriched.push_str(&fts_extra);
+    enriched
 }
 
 fn normalize(value: &str) -> String {
@@ -709,7 +735,7 @@ pub mod bench_support {
                 kind: "song".to_owned(),
                 library_ids: vec![1],
                 primary: format!("Track {index} Blue Monday"),
-                secondary: String::new(),
+                secondary: format!("Artist {index} R.E.M. Bjørk"),
             })
             .collect()
     }
@@ -885,6 +911,34 @@ mod tests {
             searches: Vec::new(),
         };
         assert!(handle_request(&mut engine, request).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn enrich_secondary_appends_fts_normalize_variants() {
+        let enriched = enrich_secondary_with_fts("R.E.M.", "Bjørk album");
+        assert!(enriched.contains("REM"), "enriched={enriched}");
+        assert!(enriched.contains("Bjork"), "enriched={enriched}");
+        assert!(enriched.contains("Bjørk album"), "enriched={enriched}");
+    }
+
+    #[test]
+    fn apply_indexes_fts_variants_without_pre_normalized_secondary() -> Result<()> {
+        let mut engine = Engine::new()?;
+        engine.replace(vec![SearchDocument {
+            key: "song:1".to_owned(),
+            id: "1".to_owned(),
+            kind: "song".to_owned(),
+            library_ids: vec![1],
+            primary: "R.E.M.".to_owned(),
+            // Raw secondary only — no Go/metadata search_normalized tokens.
+            secondary: "Bjørk Automatic".to_owned(),
+        }])?;
+        // Tantivy path lowercases after fts-normalize; query normalize strips punct.
+        let rem = engine.search("REM", "song", &[1], 0, 10)?;
+        assert_eq!(rem.len(), 1, "expected REM via in-Apply fts-normalize");
+        let bjork = engine.search("Bjork", "song", &[1], 0, 10)?;
+        assert_eq!(bjork.len(), 1, "expected Bjork via in-Apply fts-normalize");
         Ok(())
     }
 }

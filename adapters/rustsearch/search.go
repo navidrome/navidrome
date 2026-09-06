@@ -14,7 +14,6 @@ import (
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/eventbus"
-	"github.com/navidrome/navidrome/core/ftsnormalize"
 	"github.com/navidrome/navidrome/core/rustworker"
 	"github.com/navidrome/navidrome/core/searchworker"
 	"github.com/navidrome/navidrome/core/searchworker/gen"
@@ -508,20 +507,6 @@ func (e *Engine) indexMediaFiles(ctx context.Context, ds model.DataStore, append
 	if err != nil {
 		return fmt.Errorf("opening media file cursor for Rust search: %w", err)
 	}
-	batch := make([]model.MediaFile, 0, indexBatchSize)
-	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		ensureMediaFileSearchNormalized(ctx, batch)
-		for i := range batch {
-			if err := appendDocument(e.mediaFileDocument(ctx, batch[i])); err != nil {
-				return err
-			}
-		}
-		batch = batch[:0]
-		return nil
-	}
 	for mediaFile, cursorErr := range cursor {
 		if cursorErr != nil {
 			return fmt.Errorf("reading media files for Rust search: %w", cursorErr)
@@ -529,14 +514,12 @@ func (e *Engine) indexMediaFiles(ctx context.Context, ds model.DataStore, append
 		if mediaFile.Missing {
 			continue
 		}
-		batch = append(batch, mediaFile)
-		if len(batch) >= indexBatchSize {
-			if err := flush(); err != nil {
-				return err
-			}
+		// FTS secondary variants are applied in navidrome-search Apply (fts-normalize).
+		if err := appendDocument(e.mediaFileDocument(ctx, mediaFile)); err != nil {
+			return err
 		}
 	}
-	return flush()
+	return nil
 }
 
 func (e *Engine) deltaMediaFiles(ctx context.Context, ds model.DataStore, since time.Time, upsert func(document) error, deleteKey func(string) error) error {
@@ -546,20 +529,6 @@ func (e *Engine) deltaMediaFiles(ctx context.Context, ds model.DataStore, since 
 	)})
 	if err != nil {
 		return fmt.Errorf("opening media file delta cursor for Rust search: %w", err)
-	}
-	batch := make([]model.MediaFile, 0, indexBatchSize)
-	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		ensureMediaFileSearchNormalized(ctx, batch)
-		for i := range batch {
-			if err := upsert(e.mediaFileDocument(ctx, batch[i])); err != nil {
-				return err
-			}
-		}
-		batch = batch[:0]
-		return nil
 	}
 	for mediaFile, cursorErr := range cursor {
 		if cursorErr != nil {
@@ -571,21 +540,19 @@ func (e *Engine) deltaMediaFiles(ctx context.Context, ds model.DataStore, since 
 			}
 			continue
 		}
-		batch = append(batch, mediaFile)
-		if len(batch) >= indexBatchSize {
-			if err := flush(); err != nil {
-				return err
-			}
+		if err := upsert(e.mediaFileDocument(ctx, mediaFile)); err != nil {
+			return err
 		}
 	}
-	return flush()
+	return nil
 }
 
 func (e *Engine) mediaFileDocument(_ context.Context, mediaFile model.MediaFile) document {
 	secondary := []string{mediaFile.Album, mediaFile.Artist, mediaFile.AlbumArtist,
 		mediaFile.SortTitle, mediaFile.SortAlbumName, mediaFile.SortArtistName, mediaFile.SortAlbumArtistName}
 	secondary = append(secondary, mediaFile.Participants.AllNames()...)
-	// Prefer DB search_normalized (filled at ingest). Avoid per-doc rustsearch normalize_fts.
+	// Prefer DB search_normalized when present (ingest path). Missing values are
+	// filled in-process by navidrome-search Apply via fts-normalize — no metadata hop.
 	if norm := mediaFile.SearchNormalized; norm != "" {
 		secondary = append(secondary, norm)
 	}
@@ -601,20 +568,6 @@ func (e *Engine) indexAlbums(ctx context.Context, ds model.DataStore, appendDocu
 	if err != nil {
 		return fmt.Errorf("opening album cursor for Rust search: %w", err)
 	}
-	batch := make([]model.Album, 0, indexBatchSize)
-	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		ensureAlbumSearchNormalized(ctx, batch)
-		for i := range batch {
-			if err := appendDocument(e.albumDocument(ctx, batch[i])); err != nil {
-				return err
-			}
-		}
-		batch = batch[:0]
-		return nil
-	}
 	for album, cursorErr := range cursor {
 		if cursorErr != nil {
 			return fmt.Errorf("reading albums for Rust search: %w", cursorErr)
@@ -622,14 +575,11 @@ func (e *Engine) indexAlbums(ctx context.Context, ds model.DataStore, appendDocu
 		if album.Missing {
 			continue
 		}
-		batch = append(batch, album)
-		if len(batch) >= indexBatchSize {
-			if err := flush(); err != nil {
-				return err
-			}
+		if err := appendDocument(e.albumDocument(ctx, album)); err != nil {
+			return err
 		}
 	}
-	return flush()
+	return nil
 }
 
 func (e *Engine) deltaAlbums(ctx context.Context, ds model.DataStore, since time.Time, upsert func(document) error, deleteKey func(string) error) error {
@@ -641,20 +591,6 @@ func (e *Engine) deltaAlbums(ctx context.Context, ds model.DataStore, since time
 	if err != nil {
 		return fmt.Errorf("opening album delta cursor for Rust search: %w", err)
 	}
-	batch := make([]model.Album, 0, indexBatchSize)
-	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		ensureAlbumSearchNormalized(ctx, batch)
-		for i := range batch {
-			if err := upsert(e.albumDocument(ctx, batch[i])); err != nil {
-				return err
-			}
-		}
-		batch = batch[:0]
-		return nil
-	}
 	for album, cursorErr := range cursor {
 		if cursorErr != nil {
 			return fmt.Errorf("reading album deltas for Rust search: %w", cursorErr)
@@ -665,14 +601,11 @@ func (e *Engine) deltaAlbums(ctx context.Context, ds model.DataStore, since time
 			}
 			continue
 		}
-		batch = append(batch, album)
-		if len(batch) >= indexBatchSize {
-			if err := flush(); err != nil {
-				return err
-			}
+		if err := upsert(e.albumDocument(ctx, album)); err != nil {
+			return err
 		}
 	}
-	return flush()
+	return nil
 }
 
 func (e *Engine) albumDocument(_ context.Context, album model.Album) document {
@@ -723,7 +656,6 @@ func (e *Engine) collectArtists(ctx context.Context, ds model.DataStore, librari
 	if err != nil {
 		return fmt.Errorf("loading artists for Rust search: %w", err)
 	}
-	ensureArtistSearchNormalized(ctx, artists)
 	for _, artist := range artists {
 		ids := make([]uint64, 0, len(artist.LibraryIDs))
 		for _, id := range artist.LibraryIDs {
@@ -752,70 +684,6 @@ func (e *Engine) artistDocument(_ context.Context, artist model.Artist, libraryI
 		Key: "artist:" + artist.ID, ID: artist.ID, Kind: "artist",
 		LibraryIDs: libraryIDs, Primary: artist.Name,
 		Secondary: strings.Join(secondary, " "),
-	}
-}
-
-// ensureMediaFileSearchNormalized fills SearchNormalized for legacy rows missing
-// the DB column, using one metadata NormalizeFtsBatch instead of per-doc
-// rustsearch normalize_fts RPCs.
-func ensureMediaFileSearchNormalized(ctx context.Context, mediaFiles []model.MediaFile) {
-	groups := make([][]string, 0)
-	idxs := make([]int, 0)
-	for i := range mediaFiles {
-		if mediaFiles[i].SearchNormalized != "" {
-			continue
-		}
-		secondary := []string{mediaFiles[i].Album, mediaFiles[i].Artist, mediaFiles[i].AlbumArtist,
-			mediaFiles[i].SortTitle, mediaFiles[i].SortAlbumName, mediaFiles[i].SortArtistName, mediaFiles[i].SortAlbumArtistName}
-		secondary = append(secondary, mediaFiles[i].Participants.AllNames()...)
-		values := append([]string{mediaFiles[i].FullTitle(), mediaFiles[i].Album, mediaFiles[i].Artist, mediaFiles[i].AlbumArtist}, secondary...)
-		idxs = append(idxs, i)
-		groups = append(groups, values)
-	}
-	if len(groups) == 0 {
-		return
-	}
-	normalized := ftsnormalize.NormalizeMany(ctx, groups)
-	for j, idx := range idxs {
-		mediaFiles[idx].SearchNormalized = normalized[j]
-	}
-}
-
-func ensureAlbumSearchNormalized(ctx context.Context, albums []model.Album) {
-	groups := make([][]string, 0)
-	idxs := make([]int, 0)
-	for i := range albums {
-		if albums[i].SearchNormalized != "" {
-			continue
-		}
-		idxs = append(idxs, i)
-		groups = append(groups, []string{albums[i].Name, albums[i].AlbumArtist})
-	}
-	if len(groups) == 0 {
-		return
-	}
-	normalized := ftsnormalize.NormalizeMany(ctx, groups)
-	for j, idx := range idxs {
-		albums[idx].SearchNormalized = normalized[j]
-	}
-}
-
-func ensureArtistSearchNormalized(ctx context.Context, artists []model.Artist) {
-	groups := make([][]string, 0)
-	idxs := make([]int, 0)
-	for i := range artists {
-		if artists[i].SearchNormalized != "" {
-			continue
-		}
-		idxs = append(idxs, i)
-		groups = append(groups, []string{artists[i].Name})
-	}
-	if len(groups) == 0 {
-		return
-	}
-	normalized := ftsnormalize.NormalizeMany(ctx, groups)
-	for j, idx := range idxs {
-		artists[idx].SearchNormalized = normalized[j]
 	}
 }
 
