@@ -161,7 +161,8 @@ endif
 
 build-release: check_go_env buildjs ##@Build Build an optimized release binary (thin LTO profile + fat LTO + PGO)
 	@chmod +x ./release/cgo-lto-env.sh ./release/sqlite-cflags.sh ./release/pgo-train.sh
-	@if [ "$(GO_PGO_ENABLED)" = "true" ]; then \
+	@if command -v clang >/dev/null 2>&1; then export CC="$${CC:-clang}" CXX="$${CXX:-clang++}"; fi; \
+	if [ "$(GO_PGO_ENABLED)" = "true" ]; then \
 		echo "Collecting Go PGO profile with thin LTO (sqlite amalgamation CFLAGS enabled)..."; \
 		PGO_BUILD_TAGS="$(GO_BUILD_TAGS)" GO_PGO_BENCHTIME="$(GO_PGO_BENCHTIME)" PGO_OUTPUT="$(PGO_OUTPUT)" \
 			eval "$$(./release/cgo-lto-env.sh thin)" && \

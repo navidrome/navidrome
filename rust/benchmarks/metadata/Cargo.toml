@@ -15,3 +15,14 @@ criterion = { version = "0.5.1", default-features = false }
 [[bench]]
 name = "metadata_hotpaths"
 harness = false
+
+# Match workspace release-pgo-gen: fast instrumented criterion runs (no LTO).
+[profile.release]
+lto = "off"
+codegen-units = 16
+
+[profile.release-pgo-gen]
+inherits = "release"
+lto = "off"
+codegen-units = 16
+strip = "none"

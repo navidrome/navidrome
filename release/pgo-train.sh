@@ -6,7 +6,7 @@
 #
 # Environment:
 #   GO_PGO_BENCHTIME        heavy workloads (default: 3s local, 1s in JBS)
-#   GO_PGO_LIGHT_BENCHTIME  light workloads (default: 250ms)
+#   GO_PGO_LIGHT_BENCHTIME  light workloads (default: 250ms local; JBS sets 100ms)
 #   PGO_OUTPUT              merged profile path (default: default.pgo)
 #   PGO_PROFILE_DIR         per-workload .pprof directory (default: /tmp/pgo)
 #   PGO_BUILD_TAGS          go test -tags value

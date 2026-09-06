@@ -21,6 +21,11 @@ else
 fi
 
 export CGO_ENABLED=1
+# Prefer clang+lld for CGO fat LTO (same as Dockerfile.jbs gobuilder).
+if command -v clang >/dev/null 2>&1; then
+  export CC="${CC:-clang}"
+  export CXX="${CXX:-clang++}"
+fi
 if [ "$(uname -m)" = "x86_64" ] && [ -z "${GOAMD64:-}" ]; then
   export GOAMD64=v4
 fi

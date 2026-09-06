@@ -144,7 +144,13 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		mockAlbumRepo.SetData(model.Albums{*originalAlbum})
 
 		expectedErr := errors.New("agent communication failed")
-		ag.On("GetAlbumInfo", mock.Anything, "Agent Error Album", "Agent Error Artist", "mbid-agent-error").Return(nil, expectedErr)
+		// Wait for the mock call itself (not just albumInfoHit): albumInfoHit is set
+		// before testify records the call, so AssertExpectations can race the worker.
+		done := make(chan struct{})
+		ag.On("GetAlbumInfo", mock.Anything, "Agent Error Album", "Agent Error Artist", "mbid-agent-error").
+			Return(nil, expectedErr).
+			Run(func(mock.Arguments) { close(done) }).
+			Once()
 
 		updatedAlbum, err := p.UpdateAlbumInfo(ctx, "al-agent-error")
 
@@ -152,7 +158,7 @@ var _ = Describe("Provider - UpdateAlbumInfo", func() {
 		Expect(updatedAlbum).NotTo(BeNil())
 		Expect(updatedAlbum.ID).To(Equal("al-agent-error"))
 		Expect(updatedAlbum.Description).To(BeEmpty())
-		Eventually(func() bool { return ag.albumInfoHit.Load() }).WithTimeout(2 * time.Second).Should(BeTrue())
+		Eventually(done).WithTimeout(2 * time.Second).Should(BeClosed())
 		ag.AssertExpectations(GinkgoT())
 	})
 

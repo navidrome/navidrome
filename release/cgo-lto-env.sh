@@ -1,6 +1,9 @@
 #!/bin/sh
 # Emit shell exports for CGO LTO flags.
 #
+# Prefer clang + lld on Linux (matches Dockerfile.jbs gobuilder).
+# Fat mode uses LLVM full LTO (-flto=full); thin mode keeps PGO training fast.
+#
 # Usage:
 #   eval "$(./release/cgo-lto-env.sh thin)"   # PGO profile collection
 #   eval "$(./release/cgo-lto-env.sh fat)"    # final optimized build
@@ -37,8 +40,9 @@ case "$mode" in
   fat|full)
     case "$cc" in
       *clang*)
+        # Aligned with Dockerfile.jbs LLD_FLAGS (relro/now/build-id=none).
         lto_flags="-flto=full"
-        lld_flags="-fuse-ld=lld -Wl,-O2 -Wl,--lto-O3 -Wl,--gc-sections -Wl,--icf=safe -Wl,--as-needed"
+        lld_flags="-fuse-ld=lld -Wl,-O2 -Wl,--lto-O3 -Wl,--gc-sections -Wl,--icf=safe -Wl,--as-needed -Wl,-z,relro,-z,now -Wl,--build-id=none"
         ;;
       *)
         lto_flags="-flto -flto-partition=one"

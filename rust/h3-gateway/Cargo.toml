@@ -30,9 +30,10 @@ tokio = { version = "1.53.1", features = ["io-util", "net", "rt-multi-thread", "
 tokio-quiche = { version = "=0.19.1", default-features = false }
 tokio-util = { version = "0.7.19", features = ["io"] }
 
+# Final JBS artifact: fat LTO (matches rust workspace release-fat policy).
 [profile.release]
 codegen-units = 1
-lto = "thin"
+lto = "fat"
 opt-level = 3
 panic = "abort"
 strip = "symbols"

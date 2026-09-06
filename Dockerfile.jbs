@@ -33,7 +33,9 @@
 #   - Train Go PGO with thin LTO, then apply the merged profile on the fat LTO build
 #     (20 workloads — see release/pgo-train.sh for the final scenario table)
 #   - Rust gRPC workers use release-fat (LLVM fat LTO); optional RUST_PGO_ENABLED
-#     runs release/rust-pgo-train.sh before the final worker link
+#     runs release/rust-pgo-train.sh (instrument hot workers only; one fat+PGO final link)
+#   - Rust PGO instrument phase uses release-pgo-gen (LTO off, many CGUs) for speed
+#   - ccache for jemalloc/opus/lame/ffmpeg native fat-LTO compiles
 #
 # NOTE:
 #   Base images are pinned to the current multi-platform index digests
@@ -78,6 +80,8 @@ ARG LLVM_FAT_LTO_FLAGS="-flto=full"
 ARG LLD_FLAGS="-fuse-ld=lld -Wl,-O2 -Wl,--lto-O3 -Wl,--gc-sections -Wl,--icf=safe -Wl,--as-needed -Wl,-z,relro,-z,now -Wl,--build-id=none"
 ARG GO_PGO_ENABLED=true
 ARG GO_PGO_BENCHTIME=1s
+# Light Go PGO benches (auth/URL/SSE/…); keep short — heavy benches carry the signal.
+ARG GO_PGO_LIGHT_BENCHTIME=100ms
 
 # SQLite amalgamation flags for CGO (keep in sync with release/sqlite-cflags.sh).
 # Light/EPYC profile: smaller default page cache + mmap than prior 32/128MiB to
@@ -152,6 +156,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get install -y --no-install-recommends \
       bzip2 \
       ca-certificates \
+      ccache \
       clang \
       file \
       libc6-dev \
@@ -162,6 +167,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       pkg-config \
       wget \
       xz-utils
+
+ENV PATH="/usr/lib/ccache:${PATH}" \
+    CCACHE_DIR=/root/.cache/ccache \
+    CCACHE_MAXSIZE=2G \
+    CCACHE_COMPILERCHECK=content \
+    CCACHE_SLOPPINESS=time_macros,include_file_mtime,include_file_ctime
 
 # =========================================================
 # jemalloc
@@ -187,8 +198,9 @@ RUN wget --https-only --tries=3 --max-redirect=3 -qO jemalloc.tar.bz2 \
 
 WORKDIR /build/jemalloc
 
-RUN CC="clang -fuse-ld=lld" \
-    CXX="clang++ -fuse-ld=lld" \
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
+    CC="ccache clang" \
+    CXX="ccache clang++" \
     AR=llvm-ar \
     RANLIB=llvm-ranlib \
     NM=llvm-nm \
@@ -202,7 +214,8 @@ RUN CC="clang -fuse-ld=lld" \
       --disable-stats \
       --with-malloc-conf="background_thread:true,metadata_thp:disabled,narenas:2,dirty_decay_ms:5000,muzzy_decay_ms:10000,oversize_threshold:8388608,retain:false" && \
     make -j"${NAVIDROME_BUILD_CORES}" install && \
-    find /usr/local/lib -name "libjemalloc.so.*" ! -type l -exec llvm-strip --strip-unneeded {} +
+    find /usr/local/lib -name "libjemalloc.so.*" ! -type l -exec llvm-strip --strip-unneeded {} + && \
+    ccache -s || true
 
 # =========================================================
 # libopus static
@@ -228,8 +241,9 @@ RUN wget --https-only --tries=3 --max-redirect=3 -qO opus.tar.gz \
 
 WORKDIR /build/opus
 
-RUN CC="clang -fuse-ld=lld" \
-    CXX="clang++ -fuse-ld=lld" \
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
+    CC="ccache clang" \
+    CXX="ccache clang++" \
     AR=llvm-ar \
     RANLIB=llvm-ranlib \
     NM=llvm-nm \
@@ -271,8 +285,9 @@ RUN wget --https-only --tries=3 --max-redirect=3 -qO lame.tar.gz \
 
 WORKDIR /build/lame
 
-RUN CC=clang \
-    CXX=clang++ \
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
+    CC="ccache clang" \
+    CXX="ccache clang++" \
     AR=llvm-ar \
     RANLIB=llvm-ranlib \
     NM=llvm-nm \
@@ -291,11 +306,13 @@ RUN CC=clang \
       --disable-decoder \
       --disable-analyzer-hooks
 
-RUN make -j"${NAVIDROME_BUILD_CORES}" V=1 && \
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
+    make -j"${NAVIDROME_BUILD_CORES}" V=1 && \
     make install && \
     test -s /usr/local/lib/libmp3lame.a && \
     test -s /usr/local/include/lame/lame.h && \
-    llvm-ranlib /usr/local/lib/libmp3lame.a
+    llvm-ranlib /usr/local/lib/libmp3lame.a && \
+    ccache -s || true
 
 RUN mkdir -p /usr/local/lib/pkgconfig && \
     printf '%s\n' \
@@ -357,11 +374,12 @@ RUN wget --https-only --tries=3 --max-redirect=3 -qO ffmpeg.tar.xz \
 WORKDIR /build/ffmpeg
 
 # Keep configure separate so its real failure is visible in BuildKit logs.
-RUN set -eu; \
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
+    set -eu; \
     if ! ./configure \
       --prefix=/usr/local \
-      --cc=clang \
-      --cxx=clang++ \
+      --cc="ccache clang" \
+      --cxx="ccache clang++" \
       --ar=llvm-ar \
       --ranlib=llvm-ranlib \
       --nm=llvm-nm \
@@ -407,12 +425,14 @@ RUN set -eu; \
     fi
 
 # Keep compilation separate from capability tests.
-RUN make -j"${NAVIDROME_BUILD_CORES}" V=1 && \
+RUN --mount=type=cache,target=/root/.cache/ccache,sharing=locked \
+    make -j"${NAVIDROME_BUILD_CORES}" V=1 && \
     install -Dm755 ffmpeg /usr/local/bin/ffmpeg && \
     install -Dm755 ffprobe /usr/local/bin/ffprobe && \
     test -x /usr/local/bin/ffmpeg && \
     test -x /usr/local/bin/ffprobe && \
-    llvm-strip --strip-unneeded /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
+    llvm-strip --strip-unneeded /usr/local/bin/ffmpeg /usr/local/bin/ffprobe && \
+    ccache -s || true
 
 # Validate enabled components using the component-name field rather than output spacing.
 RUN set -eu; \
@@ -1073,12 +1093,12 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc \
     CC_x86_64_unknown_linux_musl=musl-gcc \
     CFLAGS_x86_64_unknown_linux_musl="-O3 -march=znver3 -mtune=znver3 -DNDEBUG -ffunction-sections -fdata-sections -pipe" \
-    RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU} -C target-feature=+crt-static -C opt-level=3 -C lto=fat -C codegen-units=1" \
+    RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU} -C target-feature=+crt-static" \
     cargo generate-lockfile && \
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc \
     CC_x86_64_unknown_linux_musl=musl-gcc \
     CFLAGS_x86_64_unknown_linux_musl="-O3 -march=znver3 -mtune=znver3 -DNDEBUG -ffunction-sections -fdata-sections -pipe" \
-    RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU} -C target-feature=+crt-static -C opt-level=3 -C lto=fat -C codegen-units=1" \
+    RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU} -C target-feature=+crt-static" \
     cargo build \
       --release \
       --locked \
@@ -1124,10 +1144,12 @@ COPY --link --from=source /src/core/artwork/e2e/testdata/embedded_art.mp3 /tmp/e
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+    CARGO_INCREMENTAL=0 \
     CARGO_TARGET_DIR=/tmp/rust-workers-portable \
     RUSTFLAGS="-C target-cpu=x86-64" \
     cargo test --locked --release && \
     CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+    CARGO_INCREMENTAL=0 \
     CARGO_TARGET_DIR=/tmp/rust-workers-portable \
     RUSTFLAGS="-C target-cpu=x86-64" \
     cargo build --locked --release --bins && \
@@ -1141,12 +1163,15 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     if [ "${RUST_PGO_ENABLED}" = "true" ]; then \
       chmod +x /build/release/rust-pgo-train.sh && \
       RUST_PGO_BENCH_TIME="${RUST_PGO_BENCH_TIME}" \
+      CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+      CARGO_INCREMENTAL=0 \
       CARGO_TARGET_DIR=/tmp/rust-workers-release \
       RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
       /build/release/rust-pgo-train.sh && \
       RUST_OUT=/tmp/rust-workers-release/pgo-final/release-fat; \
     else \
       CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+      CARGO_INCREMENTAL=0 \
       CARGO_TARGET_DIR=/tmp/rust-workers-release \
       RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
       cargo build --locked --profile release-fat --bins && \
@@ -1164,7 +1189,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     test -x /out/navidrome-integration
 
 # =========================================================
-# Tokio-quiche HTTP/3 companion
+# Tokio-quiche HTTP/3 companion (release profile: fat LTO)
 # =========================================================
 
 FROM ${RUST_IMAGE} AS h3-builder
@@ -1194,6 +1219,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     mkdir src && \
     printf 'fn main() {}\n' > src/main.rs && \
     CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+    CARGO_INCREMENTAL=0 \
     RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
     cargo build --locked --release && \
     rm -rf src target/release/deps/navidrome_h3-* target/release/navidrome-h3
@@ -1203,10 +1229,12 @@ COPY --link --from=source /src/rust/h3-gateway/src ./src
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/usr/local/cargo/git,sharing=locked \
     CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+    CARGO_INCREMENTAL=0 \
     CARGO_TARGET_DIR=/tmp/h3-test \
     RUSTFLAGS="-C target-cpu=x86-64" \
     cargo test --locked --release && \
     CARGO_BUILD_JOBS="${NAVIDROME_BUILD_CORES}" \
+    CARGO_INCREMENTAL=0 \
     RUSTFLAGS="-C target-cpu=${RUST_TARGET_CPU}" \
     cargo build --locked --release && \
     install -D -m 755 target/release/navidrome-h3 /out/navidrome-h3 && \
@@ -1274,6 +1302,7 @@ ARG LLD_FLAGS
 ARG GOAMD64_VERSION
 ARG GO_PGO_ENABLED
 ARG GO_PGO_BENCHTIME
+ARG GO_PGO_LIGHT_BENCHTIME
 ARG SQLITE_EXTRA_CFLAGS
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -1362,6 +1391,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
     ND_INTEGRATIONWORKERPATH=/tmp/navidrome-integration \
     PGO_BUILD_TAGS='netgo osusergo sqlite_fts5 sqlite_foreign_keys sqlite_stat4 embed' \
       GO_PGO_BENCHTIME="${GO_PGO_BENCHTIME}" \
+      GO_PGO_LIGHT_BENCHTIME="${GO_PGO_LIGHT_BENCHTIME}" \
       PGO_OUTPUT=/tmp/default.pgo \
       ./release/pgo-train.sh
 

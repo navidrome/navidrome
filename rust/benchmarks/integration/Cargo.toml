@@ -17,3 +17,14 @@ serde_json = "1.0.149"
 [[bench]]
 name = "integration_hotpaths"
 harness = false
+
+# Match workspace release-pgo-gen: fast instrumented criterion runs (no LTO).
+[profile.release]
+lto = "off"
+codegen-units = 16
+
+[profile.release-pgo-gen]
+inherits = "release"
+lto = "off"
+codegen-units = 16
+strip = "none"

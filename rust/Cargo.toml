@@ -21,6 +21,8 @@ edition = "2024"
 rust-version = "1.98"
 publish = false
 
+# Fast CI / portable smoke builds. Thin LTO keeps link time down while still
+# optimizing across crates; final JBS artifacts use release-fat instead.
 [profile.release]
 opt-level = 3
 lto = "thin"
@@ -28,8 +30,16 @@ codegen-units = 1
 strip = "symbols"
 panic = "abort"
 
-# Production gRPC worker builds (JBS / make build-rust-release). Fat LTO inlines
+# Production gRPC worker builds (JBS / make build-rust-workers). Fat LTO inlines
 # across tonic/prost/hyper/reqwest for lower per-RPC overhead on unix sockets.
 [profile.release-fat]
 inherits = "release"
 lto = "fat"
+
+# PGO instrumentation / criterion collection only. No LTO + many CGUs so the
+# generate phase stays cheap; profiles remain representative at opt-level 3.
+[profile.release-pgo-gen]
+inherits = "release"
+lto = "off"
+codegen-units = 16
+strip = "none"
