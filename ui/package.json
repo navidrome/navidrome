@@ -9,10 +9,10 @@
     "test:watch": "bun node_modules/vitest/vitest.mjs",
     "test": "bun node_modules/vitest/vitest.mjs --watch=false",
     "test:coverage": "bun node_modules/vitest/vitest.mjs run --coverage --watch=false",
-    "type-check": "bun node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.app.json && bun node_modules/@typescript/native/bin/tsc --noEmit -p tsconfig.node.json",
+    "type-check": "bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.app.json && bun node_modules/typescript/bin/tsc --noEmit -p tsconfig.node.json",
     "check:typescript-migration": "bun bin/check-typescript-migration.ts",
     "check:mui9": "bun bin/check-mui9-compat.ts",
-    "lint": "bun node_modules/eslint/bin/eslint.js . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "bun node_modules/oxlint/bin/oxlint .",
     "prettier": "bun node_modules/prettier/bin/prettier.cjs --write ./src",
     "check-formatting": "bun node_modules/prettier/bin/prettier.cjs -c ./src",
     "postinstall": "bun bin/update-workbox.ts"
@@ -55,7 +55,6 @@
     "yet-another-react-lightbox": "^3.32.2"
   },
   "devDependencies": {
-    "@eslint/js": "10.0.1",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -63,24 +62,16 @@
     "@types/node": "26.4.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
-    "@typescript-eslint/eslint-plugin": "8.69.0",
-    "@typescript-eslint/parser": "8.69.0",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "6.1.1",
     "@vitest/coverage-v8": "5.0.0",
-    "eslint": "10.10.0",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "7.1.1",
-    "eslint-plugin-react-refresh": "0.5.6",
-    "globals": "17.12.0",
     "happy-dom": "20.14.0",
     "jsdom": "30.0.1",
     "prettier": "^3.9.6",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript": "^7.0.2",
     "vite": "8.2.2",
     "vite-plugin-pwa": "^1.3.0",
-    "vitest": "5.0.0"
+    "vitest": "5.0.0",
+    "oxlint": "1.81.0",
+    "oxlint-tsgolint": "7.0.2001"
   }
 }
