@@ -1440,6 +1440,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
     ND_METADATAWORKERPATH=/tmp/navidrome-metadata \
     ND_SEARCHWORKERPATH=/tmp/navidrome-search \
     ND_INTEGRATIONWORKERPATH=/tmp/navidrome-integration \
+    ND_GRPCWORKERINTESTS=1 \
     PGO_BUILD_TAGS='netgo osusergo sqlite_fts5 sqlite_foreign_keys sqlite_stat4 embed' \
       GO_PGO_BENCHTIME="${GO_PGO_BENCHTIME}" \
       GO_PGO_LIGHT_BENCHTIME="${GO_PGO_LIGHT_BENCHTIME}" \

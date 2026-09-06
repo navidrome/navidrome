@@ -12,6 +12,10 @@
 #   PGO_BUILD_TAGS          go test -tags value
 #   ND_SCANNERWORKERPATH    navidrome-scanner for scan benchmark (JBS sets this)
 #   ND_METADATAWORKERPATH   navidrome-metadata for artwork + FTS query benchmarks
+#   ND_SEARCHWORKERPATH     navidrome-search (optional; JBS sets this)
+#   ND_INTEGRATIONWORKERPATH navidrome-integration (optional; JBS sets this)
+#   ND_GRPCWORKERINTESTS    set to 1 by this script so go test can spawn ManagedGRPC
+#                           workers (required after NDJSON image-worker teardown)
 #
 # Final scenario (20 workloads, overlaps removed):
 #
@@ -81,6 +85,10 @@ train() {
   PROFILE_FILES="${PROFILE_FILES} ${PROFILE_DIR}/${name}.pprof"
 }
 
+# Artwork resize and other worker hot paths are gRPC-only after the NDJSON
+# teardown. go test skips StartGRPC unless this is set (see rustworker.skipGRPCWorkerInTests).
+export ND_GRPCWORKERINTESTS="${ND_GRPCWORKERINTESTS:-1}"
+
 echo "[pgo] starting training: heavy=${HEAVY_BENCHTIME} light=${LIGHT_BENCHTIME}"
 
 # Scanner (CGO + SQLite + optional Rust worker)
@@ -103,7 +111,7 @@ train api_sse ./server/events '^BenchmarkSSEWriteEvent$' "${LIGHT_BENCHTIME}"
 train stream_decide ./core/stream '^BenchmarkLegacyStreamDecision$' "${LIGHT_BENCHTIME}"
 train stream_cache ./server/subsonic '^BenchmarkStreamMediaCacheHit$' "${LIGHT_BENCHTIME}"
 
-# Cover art (optional Rust metadata worker)
+# Cover art (Rust metadata gRPC worker; requires ND_GRPCWORKERINTESTS=1 under go test)
 train artwork ./core/artwork '^BenchmarkResizeFullPipeline/jpeg/1000x1000_to_300$' "${HEAVY_BENCHTIME}"
 
 # Adaptive compression on streaming response bodies (ReadFrom path)
