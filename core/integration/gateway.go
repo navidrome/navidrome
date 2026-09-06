@@ -59,8 +59,6 @@ func newGateway() *Gateway {
 		if client, err := startGRPCClient(context.Background()); err != nil {
 			if errors.Is(err, rustworker.ErrSkippedInTests) {
 				g.workerExpected = false
-			} else if rustworker.AllowLegacyNDJSON() {
-				log.Warn("Rust integration gRPC worker unavailable; using Go HTTP fallback", err)
 			} else {
 				log.Error("Rust integration gRPC worker unavailable", err)
 			}
@@ -120,7 +118,7 @@ func (g *Gateway) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func allowHTTPFallback() bool {
-	return rustworker.AllowLegacyNDJSON()
+	return false
 }
 
 func (g *Gateway) roundTripDest(req *http.Request, dest Destination) (*http.Response, error) {

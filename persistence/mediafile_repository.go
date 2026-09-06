@@ -65,7 +65,7 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, participantNames...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = mediaFileSearchNormalized(m.MediaFile)
+	args["search_normalized"] = mediaFileSearchNormalized(context.Background(), m.MediaFile)
 	args["tags"] = marshalTags(m.MediaFile.Tags)
 	args["participants"] = marshalParticipants(m.MediaFile.Participants)
 	normalizeMediaFileNumericArgs(args)
@@ -75,14 +75,14 @@ func (m *dbMediaFile) PostMapArgs(args map[string]any) error {
 // mediaFileSearchNormalized prefers the value already computed by the Rust map_media
 // worker (embedded in media_file_json) so Put/PutAll avoid a second normalize RPC.
 // Recompute when Subsonic.AppendSubtitle changes FullTitle relative to the Rust title.
-func mediaFileSearchNormalized(m *model.MediaFile) string {
+func mediaFileSearchNormalized(ctx context.Context, m *model.MediaFile) string {
 	if m == nil {
 		return ""
 	}
 	if m.SearchNormalized != "" && m.FullTitle() == m.Title {
 		return m.SearchNormalized
 	}
-	normalized := ftsnormalize.NormalizeForFTS(context.Background(), m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
+	normalized := ftsnormalize.NormalizeForFTS(ctx, m.FullTitle(), m.Album, m.Artist, m.AlbumArtist)
 	m.SearchNormalized = normalized
 	return normalized
 }
@@ -220,6 +220,7 @@ func (r *mediaFileRepository) Exists(id string) (bool, error) {
 }
 
 func (r *mediaFileRepository) Put(m *model.MediaFile) error {
+	prefillMediaFileSearchNormalized(r.ctx, []*model.MediaFile{m})
 	if err := r.putMediaFile(m); err != nil {
 		return err
 	}

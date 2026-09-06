@@ -32,6 +32,9 @@ func Init(t *testing.T, skipOnShort bool) {
 			log.SetLevel(log.LevelError)
 		}
 
+		// Prove production IPC path in tests that share Init (CI also sets this).
+		_ = os.Setenv("ND_GRPCWORKERINTESTS", "1")
+
 		if err := metadataworker.EnsureTestBinary(); err != nil {
 			panic(err)
 		}

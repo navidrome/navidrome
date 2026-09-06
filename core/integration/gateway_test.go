@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/navidrome/navidrome/core/rustworker"
 )
 
 func TestDestinationFromHost(t *testing.T) {
@@ -81,10 +79,6 @@ func TestGrpcListenAddrPrefersEnv(t *testing.T) {
 }
 
 func TestGatewayRejectsUnknownHostWhenWorkerRequired(t *testing.T) {
-	prod := false
-	rustworker.SetLegacyNDJSONForTest(&prod)
-	t.Cleanup(func() { rustworker.SetLegacyNDJSONForTest(nil) })
-
 	g := &Gateway{fallback: http.DefaultTransport, workerExpected: true}
 	req, err := http.NewRequest(http.MethodGet, "https://example.com/x", nil)
 	if err != nil {
@@ -100,10 +94,6 @@ func TestGatewayRejectsUnknownHostWhenWorkerRequired(t *testing.T) {
 }
 
 func TestGatewayFallbackRoundTrip(t *testing.T) {
-	legacy := true
-	rustworker.SetLegacyNDJSONForTest(&legacy)
-	t.Cleanup(func() { rustworker.SetLegacyNDJSONForTest(nil) })
-
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("hello"))

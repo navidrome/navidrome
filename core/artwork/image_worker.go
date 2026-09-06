@@ -1,20 +1,11 @@
 package artwork
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
-	"runtime"
 
 	"github.com/navidrome/navidrome/core/metadataworker"
 	"github.com/navidrome/navidrome/core/metadataworker/gen"
-	"github.com/navidrome/navidrome/core/rustworker"
-)
-
-const (
-	maxImageWorkers      = 2
-	maxWorkerOutputBytes = 64 * 1024 * 1024
 )
 
 type imageWorkerRequest struct {
@@ -39,40 +30,9 @@ type imageAnimationFlags struct {
 	AnimatedPNG  bool
 }
 
-type imageWorkerResponse struct {
-	OK           bool   `json:"ok"`
-	Size         int64  `json:"size"`
-	Error        string `json:"error"`
-	AnimatedGIF  *bool  `json:"animated_gif,omitempty"`
-	AnimatedWebP *bool  `json:"animated_webp,omitempty"`
-	AnimatedPNG  *bool  `json:"animated_png,omitempty"`
-}
+type imageWorkerPool struct{}
 
-type imageWorker struct {
-	binary string
-	pipes  *rustworker.Pipes
-	writer *bufio.Writer
-	reader *bufio.Reader
-}
-
-type imageWorkerSlot struct {
-	worker *imageWorker
-}
-
-type imageWorkerPool struct {
-	limit chan struct{}
-	idle  chan *imageWorkerSlot
-}
-
-var persistentImageWorkers = newImageWorkerPool()
-
-func newImageWorkerPool() *imageWorkerPool {
-	size := min(max(runtime.GOMAXPROCS(0)/2, 1), maxImageWorkers)
-	return &imageWorkerPool{
-		limit: make(chan struct{}, size),
-		idle:  make(chan *imageWorkerSlot, size),
-	}
-}
+var persistentImageWorkers = &imageWorkerPool{}
 
 func (p *imageWorkerPool) resize(ctx context.Context, data []byte, size, quality int, square bool, format string) ([]byte, error) {
 	return p.resizeRequest(ctx, [][]byte{data}, imageWorkerRequest{
@@ -167,245 +127,15 @@ func (p *imageWorkerPool) mosaic(ctx context.Context, tiles [][]byte, size, qual
 }
 
 func (p *imageWorkerPool) sniffAnimation(ctx context.Context, data []byte) (imageAnimationFlags, error) {
-	if flags, err := sniffViaGRPC(ctx, [][]byte{data}, imageWorkerRequest{Sniff: true, InputSize: len(data)}); rustworker.PreferGRPC(err, metadataworker.ErrNoGRPC) {
-		return flags, err
-	}
-	var flags imageAnimationFlags
-	binary, err := metadataworker.Resolve()
-	if err != nil {
-		return flags, err
-	}
-
-	select {
-	case p.limit <- struct{}{}:
-	case <-ctx.Done():
-		return flags, ctx.Err()
-	}
-	defer func() { <-p.limit }()
-
-	var slot *imageWorkerSlot
-	select {
-	case slot = <-p.idle:
-	default:
-		slot = &imageWorkerSlot{}
-	}
-	defer func() { p.idle <- slot }()
-
-	var response imageWorkerResponse
-	err = rustworker.Run(ctx, rustworker.DefaultRestartAttempts, func() { slot.stop() }, func() error {
-		worker, ensureErr := slot.ensure(binary)
-		if ensureErr != nil {
-			return ensureErr
-		}
-		var roundErr error
-		response, roundErr = worker.roundTripHeader(imageWorkerRequest{
-			Sniff:     true,
-			InputSize: len(data),
-		}, [][]byte{data})
-		if roundErr != nil {
-			var resizeErr *imageResizeError
-			if errors.As(roundErr, &resizeErr) {
-				return roundErr
-			}
-		}
-		return roundErr
-	})
-	if err != nil {
-		var resizeErr *imageResizeError
-		if errors.As(err, &resizeErr) {
-			return flags, err
-		}
-		return flags, rustworker.FailAfterRestarts("image", err)
-	}
-	if response.AnimatedGIF != nil {
-		flags.AnimatedGIF = *response.AnimatedGIF
-	}
-	if response.AnimatedWebP != nil {
-		flags.AnimatedWebP = *response.AnimatedWebP
-	}
-	if response.AnimatedPNG != nil {
-		flags.AnimatedPNG = *response.AnimatedPNG
-	}
-	return flags, nil
+	return sniffViaGRPC(ctx, [][]byte{data}, imageWorkerRequest{Sniff: true, InputSize: len(data)})
 }
 
 func (p *imageWorkerPool) sniffAnimationPath(ctx context.Context, path string) (imageAnimationFlags, error) {
-	if flags, err := sniffViaGRPC(ctx, nil, imageWorkerRequest{Sniff: true, Path: path}); rustworker.PreferGRPC(err, metadataworker.ErrNoGRPC) {
-		return flags, err
-	}
-	var flags imageAnimationFlags
-	binary, err := metadataworker.Resolve()
-	if err != nil {
-		return flags, err
-	}
-
-	select {
-	case p.limit <- struct{}{}:
-	case <-ctx.Done():
-		return flags, ctx.Err()
-	}
-	defer func() { <-p.limit }()
-
-	var slot *imageWorkerSlot
-	select {
-	case slot = <-p.idle:
-	default:
-		slot = &imageWorkerSlot{}
-	}
-	defer func() { p.idle <- slot }()
-
-	var response imageWorkerResponse
-	err = rustworker.Run(ctx, rustworker.DefaultRestartAttempts, func() { slot.stop() }, func() error {
-		worker, ensureErr := slot.ensure(binary)
-		if ensureErr != nil {
-			return ensureErr
-		}
-		var roundErr error
-		response, roundErr = worker.roundTripHeader(imageWorkerRequest{
-			Sniff: true,
-			Path:  path,
-		}, nil)
-		if roundErr != nil {
-			var resizeErr *imageResizeError
-			if errors.As(roundErr, &resizeErr) {
-				return roundErr
-			}
-		}
-		return roundErr
-	})
-	if err != nil {
-		var resizeErr *imageResizeError
-		if errors.As(err, &resizeErr) {
-			return flags, err
-		}
-		return flags, rustworker.FailAfterRestarts("image", err)
-	}
-	if response.AnimatedGIF != nil {
-		flags.AnimatedGIF = *response.AnimatedGIF
-	}
-	if response.AnimatedWebP != nil {
-		flags.AnimatedWebP = *response.AnimatedWebP
-	}
-	if response.AnimatedPNG != nil {
-		flags.AnimatedPNG = *response.AnimatedPNG
-	}
-	return flags, nil
+	return sniffViaGRPC(ctx, nil, imageWorkerRequest{Sniff: true, Path: path})
 }
 
 func (p *imageWorkerPool) resizeRequest(ctx context.Context, payloads [][]byte, request imageWorkerRequest) ([]byte, error) {
-	if body, err := resizeViaGRPC(ctx, payloads, request); rustworker.PreferGRPC(err, metadataworker.ErrNoGRPC) {
-		return body, err
-	}
-	binary, err := metadataworker.Resolve()
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case p.limit <- struct{}{}:
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
-	defer func() { <-p.limit }()
-
-	var slot *imageWorkerSlot
-	select {
-	case slot = <-p.idle:
-	default:
-		slot = &imageWorkerSlot{}
-	}
-	defer func() { p.idle <- slot }()
-
-	var resized []byte
-	err = rustworker.Run(ctx, rustworker.DefaultRestartAttempts, func() { slot.stop() }, func() error {
-		worker, ensureErr := slot.ensure(binary)
-		if ensureErr != nil {
-			return ensureErr
-		}
-		var roundErr error
-		resized, roundErr = worker.roundTrip(request, payloads)
-		if roundErr != nil {
-			var resizeErr *imageResizeError
-			if errors.As(roundErr, &resizeErr) {
-				return roundErr
-			}
-		}
-		return roundErr
-	})
-	if err != nil {
-		var resizeErr *imageResizeError
-		if errors.As(err, &resizeErr) {
-			return nil, err
-		}
-		return nil, rustworker.FailAfterRestarts("image", err)
-	}
-	return resized, nil
-}
-
-func (s *imageWorkerSlot) ensure(binary string) (*imageWorker, error) {
-	if s.worker != nil && s.worker.binary == binary {
-		return s.worker, nil
-	}
-	s.stop()
-	worker, err := startImageWorker(binary)
-	if err != nil {
-		return nil, err
-	}
-	s.worker = worker
-	return worker, nil
-}
-
-func (s *imageWorkerSlot) stop() {
-	if s.worker == nil {
-		return
-	}
-	s.worker.close()
-	s.worker = nil
-}
-
-func startImageWorker(binary string) (*imageWorker, error) {
-	pipes, err := rustworker.Start(binary, "--image-worker")
-	if err != nil {
-		return nil, err
-	}
-	return &imageWorker{
-		binary: binary,
-		pipes:  pipes,
-		writer: bufio.NewWriterSize(pipes.Stdin, rustworker.DefaultWriteBuf),
-		reader: bufio.NewReaderSize(pipes.Stdout, rustworker.DefaultReadBuf),
-	}, nil
-}
-
-func (w *imageWorker) roundTrip(request imageWorkerRequest, payloads [][]byte) ([]byte, error) {
-	response, err := w.roundTripHeader(request, payloads)
-	if err != nil {
-		return nil, err
-	}
-	if request.Sniff {
-		return nil, fmt.Errorf("sniff request must use roundTripHeader")
-	}
-	return rustworker.ReadSizedBody(w.reader, response.Size, maxWorkerOutputBytes)
-}
-
-func (w *imageWorker) roundTripHeader(request imageWorkerRequest, payloads [][]byte) (imageWorkerResponse, error) {
-	if err := rustworker.WriteHeaderAndBodies(w.writer, request, payloads...); err != nil {
-		return imageWorkerResponse{}, err
-	}
-	var response imageWorkerResponse
-	if err := rustworker.ReadJSONLine(w.reader, &response); err != nil {
-		return imageWorkerResponse{}, err
-	}
-	if !response.OK {
-		if response.Error == "" {
-			response.Error = "Rust image worker request failed"
-		}
-		return imageWorkerResponse{}, &imageResizeError{message: response.Error}
-	}
-	return response, nil
-}
-
-func (w *imageWorker) close() {
-	rustworker.Close(w.pipes)
+	return resizeViaGRPC(ctx, payloads, request)
 }
 
 func toProtoImageRequest(request imageWorkerRequest, payloads [][]byte) *gen.ImageRequest {
@@ -444,12 +174,4 @@ func sniffViaGRPC(ctx context.Context, payloads [][]byte, request imageWorkerReq
 		AnimatedWebP: resp.GetAnimatedWebp(),
 		AnimatedPNG:  resp.GetAnimatedPng(),
 	}, nil
-}
-
-type imageResizeError struct {
-	message string
-}
-
-func (e *imageResizeError) Error() string {
-	return e.message
 }

@@ -484,10 +484,10 @@ var _ = Describe("applyFTS5WorkerResult", func() {
 		Expect(degraded).To(BeFalse())
 	})
 
-	It("uses the Go FTS5 builder in tests when the worker fails", func() {
+	It("signals LIKE fallback when the worker fails (gRPC-only, no Go builder)", func() {
 		q, degraded := applyFTS5WorkerResult(context.Background(), "beatles", "", false, errors.New("worker down"))
-		Expect(q).To(ContainSubstring("beatles"))
-		Expect(degraded).To(BeFalse())
+		Expect(q).To(BeEmpty())
+		Expect(degraded).To(BeTrue())
 	})
 
 	It("signals LIKE fallback when production forbids the Go FTS5 builder", func() {

@@ -118,7 +118,7 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	// When adding a derived column here, also add it to the scanner's artist Put column list
 	// in phase_1_folders.go, or rescans will never update it (how search_normalized went stale).
 	m["full_text"] = formatFullText(a.Name, a.SortArtistName)
-	m["search_normalized"] = artistSearchNormalized(a.Artist)
+	m["search_normalized"] = artistSearchNormalized(context.Background(), a.Artist)
 
 	// Do not override the sort_artist_name and mbz_artist_id fields if they are empty
 	// TODO: Better way to handle this?
@@ -131,14 +131,14 @@ func (a *dbArtist) PostMapArgs(m map[string]any) error {
 	return nil
 }
 
-func artistSearchNormalized(a *model.Artist) string {
+func artistSearchNormalized(ctx context.Context, a *model.Artist) string {
 	if a == nil {
 		return ""
 	}
 	if a.SearchNormalized != "" {
 		return a.SearchNormalized
 	}
-	normalized := ftsnormalize.NormalizeForFTS(context.Background(), a.Name)
+	normalized := ftsnormalize.NormalizeForFTS(ctx, a.Name)
 	a.SearchNormalized = normalized
 	return normalized
 }
@@ -313,6 +313,7 @@ func (r *artistRepository) Exists(id string) (bool, error) {
 }
 
 func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
+	_ = artistSearchNormalized(r.ctx, a)
 	dba := &dbArtist{Artist: a}
 	dba.CreatedAt = new(time.Now())
 	dba.UpdatedAt = dba.CreatedAt

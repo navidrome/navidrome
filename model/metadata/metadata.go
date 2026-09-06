@@ -8,20 +8,20 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/rustworker"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
-// allowGoTagClean is true only in `go test`. Production extractors must
-// supply Rust-cleaned tags (Lofty already does).
-var allowGoTagClean = rustworker.AllowLegacyNDJSON
+// allowGoTagClean is true only inside go test, where unit tests often omit
+// Rust-cleaned tags. Production extractors (Lofty via gRPC) must supply them.
+var allowGoTagClean = testing.Testing
 
 type Info struct {
 	FileInfo        FileInfo

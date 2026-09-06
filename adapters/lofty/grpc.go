@@ -2,7 +2,6 @@ package lofty
 
 import (
 	"context"
-	"errors"
 
 	"github.com/navidrome/navidrome/core/metadataworker"
 	"github.com/navidrome/navidrome/core/metadataworker/gen"
@@ -91,8 +90,4 @@ func tagsFromProto(tags map[string]*gen.StringList) map[string][]string {
 		out[key] = append([]string(nil), list.Values...)
 	}
 	return out
-}
-
-func grpcUnavailable(err error) bool {
-	return errors.Is(err, metadataworker.ErrNoGRPC)
 }

@@ -12,7 +12,6 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/core/metadataworker"
-	"github.com/navidrome/navidrome/core/rustworker"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -209,9 +208,8 @@ type ftsQueryCacheStore struct {
 
 var ftsQueryCache = ftsQueryCacheStore{entries: make(map[string]cachedFTS5Query), limit: ftsQueryCacheLimit}
 
-// allowGoFTS5Builder is true only in `go test`. Production search uses the Rust
-// FTS5 query builder; if that worker is down, newFTSSearch falls through to LIKE.
-var allowGoFTS5Builder = rustworker.AllowLegacyNDJSON
+// allowGoFTS5Builder is always false: FTS5 query building is gRPC-only.
+var allowGoFTS5Builder = func() bool { return false }
 
 func buildFTS5QueryCached(ctx context.Context, userInput string) (string, bool) {
 	if cached, ok := ftsQueryCache.load(userInput); ok {

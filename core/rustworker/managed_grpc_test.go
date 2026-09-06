@@ -3,6 +3,7 @@ package rustworker
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -92,6 +93,9 @@ func TestWarmDoesNotPanic(t *testing.T) {
 }
 
 func TestEnsureStartedSingleflightCoalesces(t *testing.T) {
+	if os.Getenv("ND_GRPCWORKERINTESTS") != "" {
+		t.Skip("ND_GRPCWORKERINTESTS enables real StartGRPC")
+	}
 	// Without a real binary StartGRPC is skipped in tests and returns
 	// ErrWorkerUnavailable. Concurrent Conn calls must still coalesce and
 	// each observe the same failure without panicking.

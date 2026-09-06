@@ -42,6 +42,7 @@ jobs:
         run: cargo build --release --locked --bins
       - name: Test
         env:
+          ND_GRPCWORKERINTESTS: "1"
           ND_METADATAWORKERPATH: ${{ github.workspace }}/rust/target/release/navidrome-metadata
           ND_SCANNERWORKERPATH: ${{ github.workspace }}/rust/target/release/navidrome-scanner
           ND_APIKEYSWORKERPATH: ${{ github.workspace }}/rust/target/release/navidrome-apikeys

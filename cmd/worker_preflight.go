@@ -73,9 +73,6 @@ func preflightRustWorkers(ctx context.Context) error {
 	}
 	path, err := integration.Resolve()
 	if err != nil {
-		if rustworker.AllowLegacyNDJSON() {
-			return nil
-		}
 		return fmt.Errorf("integration worker binary: %w", err)
 	}
 	// Integration uses its own gateway lifecycle, not ManagedGRPC — keep

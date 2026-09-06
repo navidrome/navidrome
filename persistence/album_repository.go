@@ -77,7 +77,7 @@ func (a *dbAlbum) PostMapArgs(args map[string]any) error {
 	fullText = append(fullText, a.Album.Tags[model.TagCatalogNumber]...)
 	args["full_text"] = formatFullText(fullText...)
 	args["search_participants"] = strings.Join(participantNames, " ")
-	args["search_normalized"] = albumSearchNormalized(a.Album)
+	args["search_normalized"] = albumSearchNormalized(context.Background(), a.Album)
 
 	args["tags"] = marshalTags(a.Album.Tags)
 	args["participants"] = marshalParticipants(a.Album.Participants)
@@ -102,14 +102,14 @@ func (as dbAlbums) toModels() model.Albums {
 	return slice.Map(as, func(a dbAlbum) model.Album { return *a.Album })
 }
 
-func albumSearchNormalized(a *model.Album) string {
+func albumSearchNormalized(ctx context.Context, a *model.Album) string {
 	if a == nil {
 		return ""
 	}
 	if a.SearchNormalized != "" {
 		return a.SearchNormalized
 	}
-	normalized := ftsnormalize.NormalizeForFTS(context.Background(), a.Name, a.AlbumArtist)
+	normalized := ftsnormalize.NormalizeForFTS(ctx, a.Name, a.AlbumArtist)
 	a.SearchNormalized = normalized
 	return normalized
 }
@@ -217,6 +217,7 @@ func (r *albumRepository) Exists(id string) (bool, error) {
 
 func (r *albumRepository) Put(al *model.Album) error {
 	al.ImportedAt = time.Now()
+	_ = albumSearchNormalized(r.ctx, al)
 	id, err := r.put(al.ID, &dbAlbum{Album: al})
 	if err != nil {
 		return err
@@ -283,6 +284,15 @@ func (r *albumRepository) GetAll(options ...model.QueryOptions) (model.Albums, e
 		return nil, err
 	}
 	return res.toModels(), nil
+}
+
+func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
+	sq := r.selectAlbum(options...)
+	cursor, err := queryWithStableResults[dbAlbum](r.sqlRepository, sq)
+	if err != nil {
+		return nil, err
+	}
+	return wrapAlbumCursor(cursor), nil
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
