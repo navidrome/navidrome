@@ -137,9 +137,10 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 func (r *libraryRepository) StoreMusicFolder() error {
 	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).
 		Set("updated_at", time.Now()).
-		Where(Eq{"id": model.DefaultLibraryID})
-	_, err := r.executeSQL(sq)
-	if err != nil {
+		Where(Eq{"id": model.DefaultLibraryID}).
+		Where(NotEq{"path": conf.Server.MusicFolder})
+	rowsAffected, err := r.executeSQL(sq)
+	if err == nil && rowsAffected > 0 {
 		libLock.Lock()
 		defer libLock.Unlock()
 		libCache[model.DefaultLibraryID] = conf.Server.MusicFolder
