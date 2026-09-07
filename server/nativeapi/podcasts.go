@@ -18,7 +18,7 @@ func (api *Router) addPodcastRoute(r chi.Router) {
 	}
 	r.Route("/podcast", func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
-		r.Get("/preview", api.podcastPreview)
+		r.With(adminOnlyMiddleware).Get("/preview", api.podcastPreview)
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
 			r.Get("/", rest.Get(constructor))
