@@ -21,6 +21,7 @@ type Album struct {
 	LibraryName   string `structs:"-" json:"libraryName" hash:"ignore"`
 	Name          string `structs:"name" json:"name"`
 	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
+	EmbedArtHash  string `structs:"embed_art_hash" json:"-"`              // Picture hash of the EmbedArtPath track
 	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants
 	// AlbumArtist is the display name used for the album artist.
 	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`

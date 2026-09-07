@@ -30,6 +30,8 @@ type MediaFile struct {
 	// AlbumImage is the parent album's artwork state, hydrated alongside the track's own so a
 	// song's Jellyfin album-art tag can be pixel-versioned without a second query.
 	AlbumImage ItemImage `structs:"-" json:"-" hash:"ignore"`
+	// AlbumEmbedArtHash is the album's embedded-cover hash, hydrated so HasOwnCoverArt can compare.
+	AlbumEmbedArtHash string `structs:"-" json:"-" hash:"ignore"`
 
 	ID          string `structs:"id"  json:"id" hash:"ignore"`
 	PID         string `structs:"pid" json:"-" hash:"ignore"`
@@ -48,6 +50,7 @@ type MediaFile struct {
 	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string   `structs:"album_id" json:"albumId" hash:"ignore"`
 	HasCoverArt          bool     `structs:"has_cover_art" json:"hasCoverArt"`
+	EmbedArtHash         string   `structs:"embed_art_hash" json:"-"` // XXH3 of the embedded picture bytes
 	TrackNumber          int      `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int      `structs:"disc_number" json:"discNumber"`
 	DiscSubtitle         string   `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
@@ -132,12 +135,19 @@ func (mf MediaFile) ContentType() string {
 	return mime.TypeByExtension("." + mf.Suffix)
 }
 
+// HasOwnCoverArt reports whether the track serves its own embedded art. A picture identical to the
+// album's embedded cover defers to the album id instead, so clients cache one image per album.
+func (mf MediaFile) HasOwnCoverArt() bool {
+	if !mf.HasCoverArt || !conf.Server.EnableMediaFileCoverArt {
+		return false
+	}
+	return mf.EmbedArtHash == "" || mf.EmbedArtHash != mf.AlbumEmbedArtHash
+}
+
 func (mf MediaFile) CoverArtID() ArtworkID {
-	// If it has a cover art, return it (if feature is disabled, skip)
-	if mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+	if mf.HasOwnCoverArt() {
 		return artworkIDFromMediaFile(mf)
 	}
-	// Otherwise fallback to disc (if available) or album cover
 	return mf.DiscCoverArtID()
 }
 
@@ -337,9 +347,9 @@ func (mfs MediaFiles) ToAlbum() Album {
 	tags := make(TagList, 0, len(mfs[0].Tags)*len(mfs))
 
 	a.Missing = true
-	embedArtPath := ""
-	embedArtDisc := 0
-	for _, m := range mfs {
+	var embedArt *MediaFile
+	for i := range mfs {
+		m := &mfs[i]
 		// We assume these attributes are all the same for all songs in an album
 		a.ID = m.AlbumID
 		a.LibraryID = m.LibraryID
@@ -375,8 +385,7 @@ func (mfs MediaFiles) ToAlbum() Album {
 		tags = append(tags, m.Tags.FlattenAll()...)
 		a.Participants.Merge(m.Participants)
 
-		// Find the MediaFile with cover art and the lowest disc number to use for album cover
-		embedArtPath, embedArtDisc = firstArtPath(embedArtPath, embedArtDisc, m)
+		embedArt = firstArtTrack(embedArt, m)
 
 		if m.ExplicitStatus == "c" && a.ExplicitStatus != "e" {
 			a.ExplicitStatus = "c"
@@ -389,7 +398,10 @@ func (mfs MediaFiles) ToAlbum() Album {
 		a.Missing = a.Missing && m.Missing
 	}
 
-	a.EmbedArtPath = embedArtPath
+	if embedArt != nil {
+		a.EmbedArtPath = embedArt.Path
+		a.EmbedArtHash = embedArt.EmbedArtHash
+	}
 	a.SetTags(tags)
 	a.FolderIDs = slice.Unique(slice.Map(mfs, func(m MediaFile) string { return m.FolderID }))
 	a.Date, _ = allOrNothing(dates)
@@ -495,26 +507,19 @@ func fixAlbumArtist(a *Album) {
 	}
 }
 
-// firstArtPath determines which media file path should be used for album artwork
-// based on disc number (preferring lower disc numbers) and path (for consistency)
-func firstArtPath(currentPath string, currentDisc int, m MediaFile) (string, int) {
+// firstArtTrack picks the media file whose embedded picture serves as the album cover, preferring
+// lower disc numbers and then path order for consistency.
+func firstArtTrack(current, m *MediaFile) *MediaFile {
 	if !m.HasCoverArt {
-		return currentPath, currentDisc
+		return current
 	}
-
-	// If current has no disc number (currentDisc == 0) or new file has lower disc number
-	if currentDisc == 0 || (m.DiscNumber < currentDisc && m.DiscNumber > 0) {
-		return m.Path, m.DiscNumber
+	if current == nil || current.DiscNumber == 0 || (m.DiscNumber < current.DiscNumber && m.DiscNumber > 0) {
+		return m
 	}
-
-	// If disc numbers are equal, use path for ordering
-	if m.DiscNumber == currentDisc {
-		if m.Path < currentPath || currentPath == "" {
-			return m.Path, m.DiscNumber
-		}
+	if m.DiscNumber == current.DiscNumber && m.Path < current.Path {
+		return m
 	}
-
-	return currentPath, currentDisc
+	return current
 }
 
 // ToM3U8 exports the playlist to the Extended M3U8 format, as specified in

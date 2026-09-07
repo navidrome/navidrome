@@ -231,6 +231,19 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(err).ToNot(HaveOccurred())
 		}
 
+		setEmbedHash := func(table, id, hash string) {
+			_, err := GetDBXBuilder().NewQuery("UPDATE " + table + " SET embed_art_hash={:h} WHERE id={:id}").
+				Bind(dbx.Params{"h": hash, "id": id}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		}
+
+		clearEmbedHashes := func() {
+			for _, table := range []string{"media_file", "album"} {
+				_, err := GetDBXBuilder().NewQuery("UPDATE " + table + " SET embed_art_hash=''").Execute()
+				Expect(err).ToNot(HaveOccurred())
+			}
+		}
+
 		getByID := func() map[string]model.MediaFile {
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
@@ -265,6 +278,33 @@ var _ = Describe("Artwork hydration", func() {
 			// 2002: not eligible, and its album has no row at all -> unresolved
 			Expect(byID["2002"].ImageHash).To(BeEmpty())
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
+		})
+
+		It("defers a track to its album when its embedded picture is the album's cover", func() {
+			setCover("1001", true)
+			setCover("1002", true)
+			setEmbedHash("media_file", "1001", "samepicxxxxxxxxx")
+			setEmbedHash("album", "101", "samepicxxxxxxxxx")
+			setEmbedHash("media_file", "1002", "ownpicxxxxxxxxxx")
+			setEmbedHash("album", "102", "otherpicxxxxxxxx")
+			DeferCleanup(func() { setCover("1001", false); setCover("1002", false); clearEmbedHashes() })
+
+			putInfo("al", "101", "alh101xxxxxxxxxx")
+			putInfo("al", "102", "alh102xxxxxxxxxx")
+			putInfo("mf", "1001", "mfh1001xxxxxxxx") // resolved, but it is the album's picture
+			putInfo("mf", "1002", "mfh1002xxxxxxxx")
+
+			byID := getByID()
+
+			Expect(byID["1001"].AlbumEmbedArtHash).To(Equal("samepicxxxxxxxxx"))
+			Expect(byID["1001"].HasOwnCoverArt()).To(BeFalse())
+			Expect(byID["1001"].ImageHash).To(Equal("alh101xxxxxxxxxx"))
+			Expect(byID["1001"].CoverArtID().Kind).To(Equal(model.KindAlbumArtwork))
+
+			Expect(byID["1002"].AlbumEmbedArtHash).To(Equal("otherpicxxxxxxxx"))
+			Expect(byID["1002"].HasOwnCoverArt()).To(BeTrue())
+			Expect(byID["1002"].ImageHash).To(Equal("mfh1002xxxxxxxx"))
+			Expect(byID["1002"].CoverArtID().Kind).To(Equal(model.KindMediaFileArtwork))
 		})
 
 		It("populates AlbumImage from hydrateArtwork regardless of which continue branch a track takes", func() {

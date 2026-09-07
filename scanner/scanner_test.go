@@ -445,6 +445,38 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 	})
 
+	Context("Tracks embedding the album cover", func() {
+		BeforeEach(func() {
+			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966, "disc": 1})
+			createFS(fstest.MapFS{
+				"The Beatles/Revolver/01 - Taxman.mp3":        revolver(track(1, "Taxman", _t{"picture_hash": "aaaaaaaaaaaaaaaa"})),
+				"The Beatles/Revolver/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby", _t{"picture_hash": "aaaaaaaaaaaaaaaa"})),
+				"The Beatles/Revolver/03 - Love You To.mp3":   revolver(track(3, "Love You To", _t{"picture_hash": "bbbbbbbbbbbbbbbb"})),
+			})
+		})
+
+		It("stores the cover picture hash on the album and points matching tracks at the album art", func() {
+			conf.Server.EnableMediaFileCoverArt = true
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			albums, err := ds.Album(ctx).GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).To(HaveLen(1))
+			Expect(albums[0].EmbedArtPath).To(Equal("The Beatles/Revolver/01 - Taxman.mp3"))
+			Expect(albums[0].EmbedArtHash).To(Equal("aaaaaaaaaaaaaaaa"))
+
+			mfs, err := ds.MediaFile(ctx).GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			byTitle := slice.ToMap(mfs, func(mf model.MediaFile) (string, model.MediaFile) { return mf.Title, mf })
+			Expect(byTitle).To(HaveLen(3))
+			Expect(byTitle["Taxman"].EmbedArtHash).To(Equal("aaaaaaaaaaaaaaaa"))
+			// Matching tracks defer to the disc, which falls back to the album; the odd one keeps its own id.
+			Expect(byTitle["Taxman"].CoverArtID().Kind).To(Equal(model.KindDiscArtwork))
+			Expect(byTitle["Eleanor Rigby"].CoverArtID().Kind).To(Equal(model.KindDiscArtwork))
+			Expect(byTitle["Love You To"].CoverArtID().Kind).To(Equal(model.KindMediaFileArtwork))
+		})
+	})
+
 	Context("Ignored entries", func() {
 		BeforeEach(func() {
 			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})

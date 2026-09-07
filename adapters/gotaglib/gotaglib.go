@@ -21,9 +21,12 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
+	"github.com/zeebo/xxh3"
 	"go.senan.xyz/taglib"
 )
 
@@ -112,13 +115,18 @@ func (e extractor) extractMetadata(filePath string) (info *metadata.Info, err er
 	parseTIPL(normalizedTags)
 	delete(normalizedTags, "tmcl") // TMCL is already parsed by TagLib
 
-	// Determine if file has embedded picture
-	hasPicture := len(props.Images) > 0
+	var pictureHash string
+	if len(props.Images) > 0 {
+		if data, err := f.Image(artwork.BestImageIndex(props.Images)); err == nil && len(data) > 0 {
+			pictureHash = model.FormatImageHash(xxh3.Hash(data))
+		}
+	}
 
 	return &metadata.Info{
 		Tags:            normalizedTags,
 		AudioProperties: ap,
-		HasPicture:      hasPicture,
+		HasPicture:      len(props.Images) > 0,
+		PictureHash:     pictureHash,
 	}, nil
 }
 

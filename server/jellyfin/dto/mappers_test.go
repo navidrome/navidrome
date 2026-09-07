@@ -542,6 +542,16 @@ var _ = Describe("mappers", func() {
 			Expect(item.ImageTags).To(BeEmpty())
 			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
 		})
+
+		It("falls back to the album when the track's picture is the album's embedded cover", func() {
+			mf := model.MediaFile{ID: testID("mf-5"), AlbumID: testID("alb-1"), HasCoverArt: true,
+				EmbedArtHash: "samepicxxxxxxxxx", AlbumEmbedArtHash: "samepicxxxxxxxxx"}
+			mf.AlbumImage.ImageHash = "0123456789abcdef"
+
+			item := SongToBaseItem(mf, nil)
+			Expect(item.ImageTags).To(BeEmpty())
+			Expect(item.AlbumPrimaryImageTag).To(Equal("0123456789abcdef"))
+		})
 	})
 
 	Describe("primary image tags", func() {
