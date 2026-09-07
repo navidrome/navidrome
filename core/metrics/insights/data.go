@@ -67,6 +67,7 @@ type Data struct {
 		EnableJukebox            bool   `json:"enableJukebox,omitempty"`
 		EnablePrometheus         bool   `json:"enablePrometheus,omitempty"`
 		EnableArtworkUpload      bool   `json:"enableArtworkUpload,omitempty"`
+		EnableUserAvatarUpload   bool   `json:"enableUserAvatarUpload,omitempty"`
 		CoverArtQuality          int    `json:"coverArtQuality,omitempty"`
 		EnableWebPEncoding       bool   `json:"enableWebPEncoding,omitempty"`
 		UICoverArtSize           int    `json:"uiCoverArtSize,omitempty"`

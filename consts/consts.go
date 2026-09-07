@@ -89,6 +89,7 @@ const (
 	I18nFolder     = "i18n"
 	ScanIgnoreFile = ".ndignore"
 	ArtworkFolder  = "artwork"
+	AvatarFolder   = "avatar"
 	// HashedArtworkFolder is a subtree of ArtworkFolder, kept apart from the name-addressed
 	// upload folders beside it so Prune's sweep never reaches them.
 	HashedArtworkFolder = "hashed"
@@ -118,6 +119,7 @@ const (
 	DefaultUICoverArtSize     = 300
 	DefaultMaxImageUploadSize = "10MB"
 	DefaultMaxImageSize       = "20MB"
+	MaxAvatarSize             = 512
 )
 
 // Prometheus options
@@ -143,6 +145,7 @@ const (
 	EntityArtist   = "artist"
 	EntityPlaylist = "playlist"
 	EntityRadio    = "radio"
+	EntityUser     = "user"
 )
 
 const (

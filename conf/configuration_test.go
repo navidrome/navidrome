@@ -76,6 +76,13 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("user avatar upload", func() {
+		It("is enabled by default", func() {
+			conf.Load(true)
+			Expect(conf.Server.EnableUserAvatarUpload).To(BeTrue())
+		})
+	})
+
 	Describe("ValidateURL", func() {
 		It("accepts a valid http URL", func() {
 			fn := conf.ValidateURL("TestOption", "http://example.com/path")

@@ -91,6 +91,7 @@ type configOptions struct {
 	EnableStarRating                bool
 	EnableUserEditing               bool
 	EnableArtworkUpload             bool
+	EnableUserAvatarUpload          bool
 	MaxImageUploadSize              string
 	MaxImageSize                    string
 	EnableSharing                   bool
@@ -1028,6 +1029,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablenowplaying", true)
 	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)
+	viper.SetDefault("enableuseravatarupload", true)
 	viper.SetDefault("maximageuploadsize", consts.DefaultMaxImageUploadSize)
 	viper.SetDefault("maximagesize", consts.DefaultMaxImageSize)
 	viper.SetDefault("enablesharing", true)
