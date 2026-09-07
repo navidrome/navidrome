@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"slices"
 	"time"
@@ -29,16 +31,19 @@ var _ = Describe("MediaRetrievalController", func() {
 	mockRepo := &mockedMediaFile{MockMediaFileRepo: tests.MockMediaFileRepo{}}
 	var artwork *fakeArtwork
 	var w *httptest.ResponseRecorder
+	var userRepo *tests.MockedUserRepo
 
 	BeforeEach(func() {
 		albumRepo := &tests.MockAlbumRepo{}
 		albumRepo.SetData(model.Albums{{ID: "34"}}) // the id the specs request, made accessible
 		radioRepo := tests.CreateMockedRadioRepo()
 		Expect(radioRepo.Put(&model.Radio{ID: "rd1", Name: "Radio"})).To(Succeed())
+		userRepo = tests.CreateMockUserRepo()
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mockRepo,
 			MockedAlbum:     albumRepo,
 			MockedRadio:     radioRepo,
+			MockedUser:      userRepo,
 		}
 		artwork = &fakeArtwork{data: "image data"}
 		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
@@ -180,6 +185,74 @@ var _ = Describe("MediaRetrievalController", func() {
 		})
 	})
 
+	Describe("GetAvatar", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+		})
+
+		It("serves an uploaded avatar even when Gravatar is disabled", func() {
+			conf.Server.EnableGravatar = false
+			usr := &model.User{ID: "u1", UserName: "deluan"}
+			usr.UploadedImage = writeUserAvatar(usr)
+			Expect(userRepo.Put(usr)).To(Succeed())
+
+			_, err := router.GetAvatar(w, newGetRequest("username=deluan"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("ETag")).ToNot(BeEmpty())
+		})
+
+		It("prefers the uploaded avatar over Gravatar", func() {
+			conf.Server.EnableGravatar = true
+			usr := &model.User{ID: "u1", UserName: "deluan", Email: "deluan@navidrome.org"}
+			usr.UploadedImage = writeUserAvatar(usr)
+			Expect(userRepo.Put(usr)).To(Succeed())
+
+			_, err := router.GetAvatar(w, newGetRequest("username=deluan"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK)) // not 302
+		})
+
+		It("still redirects to Gravatar when there is no upload", func() {
+			conf.Server.EnableGravatar = true
+			Expect(userRepo.Put(&model.User{ID: "u2", UserName: "noavatar", Email: "noavatar@navidrome.org"})).To(Succeed())
+
+			_, err := router.GetAvatar(w, newGetRequest("username=noavatar"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusFound))
+		})
+
+		It("still serves the placeholder when there is nothing at all", func() {
+			conf.Server.EnableGravatar = false
+			Expect(userRepo.Put(&model.User{ID: "u2", UserName: "noavatar"})).To(Succeed())
+
+			_, err := router.GetAvatar(w, newGetRequest("username=noavatar"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
+		})
+
+		It("serves the placeholder when Gravatar is on but the user has no email", func() {
+			conf.Server.EnableGravatar = true
+			Expect(userRepo.Put(&model.User{ID: "u2", UserName: "noavatar"})).To(Succeed())
+
+			_, err := router.GetAvatar(w, newGetRequest("username=noavatar"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
+		})
+
+		It("returns the same error as before for an unknown username", func() {
+			_, err := router.GetAvatar(w, newGetRequest("username=ghost"))
+
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Describe("GetLyrics", func() {
 		It("should return data for given artist & title", func() {
 			r := newGetRequest("artist=Rick+Astley", "title=Never+Gonna+Give+You+Up")
@@ -254,6 +327,15 @@ var _ = Describe("MediaRetrievalController", func() {
 		})
 	})
 })
+
+// writeUserAvatar seeds a fake avatar file and returns the UploadedImage filename for usr.
+func writeUserAvatar(usr *model.User) string {
+	name := usr.ID + "_" + usr.UserName + ".png"
+	path := filepath.Join(conf.Server.DataFolder.String(), "avatar", name)
+	Expect(os.MkdirAll(filepath.Dir(path), 0755)).To(Succeed())
+	Expect(os.WriteFile(path, []byte{0x89, 'P', 'N', 'G'}, 0600)).To(Succeed())
+	return name
+}
 
 type fakeArtwork struct {
 	artwork.Artwork

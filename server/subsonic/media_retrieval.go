@@ -20,9 +20,6 @@ import (
 )
 
 func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
-	if !conf.Server.EnableGravatar {
-		return api.getPlaceHolderAvatar(w, r)
-	}
 	p := req.Params(r)
 	username, err := p.String("username")
 	if err != nil {
@@ -32,6 +29,13 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 	u, err := api.ds.User(ctx).FindByUsername(username)
 	if err != nil {
 		return nil, err
+	}
+	// An uploaded avatar wins regardless of Gravatar settings, so it must be checked first.
+	if imghttp.ServeUserAvatar(w, r, u) {
+		return nil, nil
+	}
+	if !conf.Server.EnableGravatar {
+		return api.getPlaceHolderAvatar(w, r)
 	}
 	if u.Email == "" {
 		log.Warn(ctx, "User needs an email for gravatar to work", "username", username)
