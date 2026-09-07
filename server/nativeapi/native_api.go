@@ -67,7 +67,7 @@ func (api *Router) routes() http.Handler {
 		r.Use(server.Authenticator(api.ds))
 		r.Use(server.JWTRefresher)
 		r.Use(server.UpdateLastAccessMiddleware(api.ds))
-		api.RX(r, "/user", api.users.NewRepository, true)
+		api.addUserRoute(r)
 		api.R(r, "/song", model.MediaFile{}, false)
 		api.R(r, "/album", model.Album{}, false)
 		api.addArtistRoute(r)

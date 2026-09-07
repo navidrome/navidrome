@@ -31,10 +31,16 @@ func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext string) error) http.HandlerFunc {
+	return handleImageUploadGated(true, saveFn)
+}
+
+// handleImageUploadGated is handleImageUpload with an opt-out from the EnableArtworkUpload gate,
+// so avatar uploads (gated separately by EnableUserAvatarUpload) can reuse this handler.
+func handleImageUploadGated(checkArtworkFlag bool, saveFn func(ctx context.Context, reader io.Reader, ext string) error) http.HandlerFunc {
 	maxImageSize := artwork.MaxImageUploadSize()
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		if !checkImageUploadPermission(w, r) {
+		if checkArtworkFlag && !checkImageUploadPermission(w, r) {
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxImageSize)
@@ -97,9 +103,15 @@ func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext st
 }
 
 func handleImageDelete(deleteFn func(ctx context.Context) error) http.HandlerFunc {
+	return handleImageDeleteGated(true, deleteFn)
+}
+
+// handleImageDeleteGated is handleImageDelete with the same EnableArtworkUpload opt-out as
+// handleImageUploadGated.
+func handleImageDeleteGated(checkArtworkFlag bool, deleteFn func(ctx context.Context) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		if !checkImageUploadPermission(w, r) {
+		if checkArtworkFlag && !checkImageUploadPermission(w, r) {
 			return
 		}
 		if err := deleteFn(ctx); err != nil {
