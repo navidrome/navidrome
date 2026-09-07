@@ -246,10 +246,21 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 		})
 
-		It("returns the same error as before for an unknown username", func() {
+		It("returns the same error as before for an unknown username when Gravatar is on", func() {
+			conf.Server.EnableGravatar = true
+
 			_, err := router.GetAvatar(w, newGetRequest("username=ghost"))
 
 			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+
+		It("serves the placeholder for an unknown username when Gravatar is off, as before", func() {
+			conf.Server.EnableGravatar = false
+
+			_, err := router.GetAvatar(w, newGetRequest("username=ghost"))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
 		})
 	})
 

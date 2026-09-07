@@ -28,6 +28,11 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 	ctx := r.Context()
 	u, err := api.ds.User(ctx).FindByUsername(username)
 	if err != nil {
+		// Preserve the pre-upload-avatar behaviour: an unresolvable user must not surface
+		// as an error when Gravatar is off, since the old handler never looked it up.
+		if !conf.Server.EnableGravatar {
+			return api.getPlaceHolderAvatar(w, r)
+		}
 		return nil, err
 	}
 	// An uploaded avatar wins regardless of Gravatar settings, so it must be checked first.
