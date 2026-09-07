@@ -24,9 +24,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
-	"github.com/zeebo/xxh3"
 	"go.senan.xyz/taglib"
 )
 
@@ -117,9 +115,7 @@ func (e extractor) extractMetadata(filePath string) (info *metadata.Info, err er
 
 	var pictureHash string
 	if len(props.Images) > 0 {
-		if data, err := f.Image(artwork.BestImageIndex(props.Images)); err == nil && len(data) > 0 {
-			pictureHash = model.FormatImageHash(xxh3.Hash(data))
-		}
+		pictureHash = props.Images[artwork.BestImageIndex(props.Images)].Hash
 	}
 
 	return &metadata.Info{

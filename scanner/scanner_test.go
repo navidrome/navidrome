@@ -445,6 +445,37 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 	})
 
+	Context("Album art only in an external file", func() {
+		BeforeEach(func() {
+			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+			createFS(fstest.MapFS{
+				"The Beatles/Revolver/01 - Taxman.mp3":        revolver(track(1, "Taxman")),
+				"The Beatles/Revolver/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby")),
+				"The Beatles/Revolver/cover.jpg":              &fstest.MapFile{Data: []byte("jpeg bytes")},
+			})
+		})
+
+		It("stores no picture hash and keeps every track on the album art", func() {
+			conf.Server.EnableMediaFileCoverArt = true
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			albums, err := ds.Album(ctx).GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(albums).To(HaveLen(1))
+			Expect(albums[0].EmbedArtPath).To(BeEmpty())
+			Expect(albums[0].EmbedArtHash).To(BeEmpty())
+
+			mfs, err := ds.MediaFile(ctx).GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).To(HaveLen(2))
+			for _, mf := range mfs {
+				Expect(mf.HasCoverArt).To(BeFalse())
+				Expect(mf.EmbedArtHash).To(BeEmpty())
+				Expect(mf.CoverArtID().Kind).To(Equal(model.KindAlbumArtwork))
+			}
+		})
+	})
+
 	Context("Tracks embedding the album cover", func() {
 		BeforeEach(func() {
 			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966, "disc": 1})

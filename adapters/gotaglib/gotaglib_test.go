@@ -1,7 +1,6 @@
 package gotaglib
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"strings"
@@ -10,7 +9,6 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/zeebo/xxh3"
 	"go.senan.xyz/taglib"
 )
 
@@ -38,9 +36,10 @@ var _ = Describe("Extractor", func() {
 			Expect(m.Tags).To(HaveKeyWithValue("albumartist", []string{"Album Artist"}))
 
 			Expect(m.HasPicture).To(BeTrue())
-			img, err := taglib.ReadImage("tests/fixtures/test.mp3")
+			props, err := taglib.ReadProperties("tests/fixtures/test.mp3")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(m.PictureHash).To(Equal(fmt.Sprintf("%016x", xxh3.Hash(img))))
+			Expect(m.PictureHash).To(MatchRegexp(`^[0-9a-f]{16}$`))
+			Expect(m.PictureHash).To(Equal(props.Images[0].Hash))
 			Expect(m.AudioProperties.Duration.String()).To(Equal("1.02s"))
 			Expect(m.AudioProperties.BitRate).To(Equal(192))
 			Expect(m.AudioProperties.Channels).To(Equal(2))

@@ -110,11 +110,6 @@ func ParseArtworkID(id string) (ArtworkID, error) {
 	return parsedID, nil
 }
 
-// FormatImageHash renders an XXH3-64 digest as the 16-hex image hash used in artwork ids and rows.
-func FormatImageHash(sum uint64) string {
-	return fmt.Sprintf("%016x", sum)
-}
-
 // isImageHash reports whether s is a 16-char lowercase-hex XXH3-64 content hash.
 func isImageHash(s string) bool {
 	if len(s) != 16 {

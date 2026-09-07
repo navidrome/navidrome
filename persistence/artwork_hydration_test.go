@@ -280,6 +280,14 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID["2002"].ImageAbsent).To(BeFalse())
 		})
 
+		It("skips the album lookup when no track on the page embeds a picture", func() {
+			mfs := model.MediaFiles{{ID: "x1", AlbumID: "101"}, {ID: "x2", AlbumID: "102", HasCoverArt: true}}
+			// A nil builder panics on any query, so reaching the assertions proves no lookup ran.
+			Expect(func() { hydrateAlbumEmbedArtHashes(ctx, nil, mfs) }).ToNot(Panic())
+			Expect(mfs[0].AlbumEmbedArtHash).To(BeEmpty())
+			Expect(mfs[1].AlbumEmbedArtHash).To(BeEmpty())
+		})
+
 		It("defers a track to its album when its embedded picture is the album's cover", func() {
 			setCover("1001", true)
 			setCover("1002", true)

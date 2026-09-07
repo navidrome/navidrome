@@ -14,7 +14,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/zeebo/xxh3"
 )
 
@@ -51,7 +50,7 @@ func hashImage(r io.Reader) (string, error) {
 	if _, err := io.Copy(d, r); err != nil {
 		return "", err
 	}
-	return model.FormatImageHash(d.Sum64()), nil
+	return fmt.Sprintf("%016x", d.Sum64()), nil
 }
 
 // validHash guards path sharding: a malformed hash would slice-panic or inject path separators.
