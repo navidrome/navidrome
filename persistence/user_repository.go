@@ -189,6 +189,21 @@ func (r *userRepository) Put(u *model.User) error {
 	return nil
 }
 
+func (r *userRepository) UpdateImage(id string, filename string) error {
+	upd := Update(r.tableName).
+		Set("uploaded_image", filename).
+		Set("updated_at", time.Now()).
+		Where(Eq{"id": id})
+	count, err := r.executeSQL(upd)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return model.ErrNotFound
+	}
+	return nil
+}
+
 func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{"user.is_admin": true})
 	var usr dbUser

@@ -73,6 +73,8 @@ type UserRepository interface {
 	Get(id string) (*User, error)
 	GetAll(options ...QueryOptions) (Users, error)
 	Put(*User) error
+	// UpdateImage is the only writer of uploaded_image. See the field comment on User.
+	UpdateImage(id string, filename string) error
 	UpdateLastLoginAt(id string) error
 	UpdateLastAccessAt(id string) error
 	FindFirstAdmin() (*User, error)

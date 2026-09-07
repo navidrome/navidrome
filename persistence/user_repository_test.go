@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -91,6 +92,45 @@ var _ = Describe("UserRepository", func() {
 			saved, err := repo.Get("u-rawsql")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(saved.ScrobbleFilter).To(Equal(""))
+		})
+	})
+
+	Describe("UpdateImage", func() {
+		It("stores the filename and bumps updated_at", func() {
+			before := time.Now().Add(-time.Hour)
+			Expect(repo.UpdateImage(adminUser.ID, "u1_admin.png")).To(Succeed())
+
+			usr, err := repo.Get(adminUser.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(usr.UploadedImage).To(Equal("u1_admin.png"))
+			Expect(usr.UpdatedAt).To(BeTemporally(">", before))
+		})
+
+		It("is not erased by a later full-row Put", func() {
+			Expect(repo.UpdateImage(adminUser.ID, "u1_admin.png")).To(Succeed())
+
+			usr, err := repo.Get(adminUser.ID)
+			Expect(err).ToNot(HaveOccurred())
+			usr.Name = "Renamed"
+			Expect(repo.Put(usr)).To(Succeed())
+
+			usr, err = repo.Get(adminUser.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(usr.UploadedImage).To(Equal("u1_admin.png"))
+		})
+
+		It("clears the filename when given an empty string", func() {
+			Expect(repo.UpdateImage(adminUser.ID, "u1_admin.png")).To(Succeed())
+			Expect(repo.UpdateImage(adminUser.ID, "")).To(Succeed())
+
+			usr, err := repo.Get(adminUser.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(usr.UploadedImage).To(BeEmpty())
+		})
+
+		It("returns ErrNotFound for an unknown id", func() {
+			err := repo.UpdateImage("no-such-user", "x.png")
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 

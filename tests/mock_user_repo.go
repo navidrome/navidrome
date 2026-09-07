@@ -92,6 +92,20 @@ func (u *MockedUserRepo) GetAll(options ...model.QueryOptions) (model.Users, err
 	return users, nil
 }
 
+func (u *MockedUserRepo) UpdateImage(id string, filename string) error {
+	if u.Error != nil {
+		return u.Error
+	}
+	for _, usr := range u.Data {
+		if usr.ID == id {
+			usr.UploadedImage = filename
+			usr.UpdatedAt = time.Now()
+			return nil
+		}
+	}
+	return model.ErrNotFound
+}
+
 func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {
