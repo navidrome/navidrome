@@ -312,6 +312,10 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	}
 	defer f.Close()
 
+	if err := validateURL(ep.EnclosureURL); err != nil {
+		s.setEpisodeError(ctx, ep, fmt.Errorf("invalid enclosure URL: %w", err))
+		return
+	}
 	httpClient := &http.Client{Timeout: 30 * time.Second}
 	resp, err := httpClient.Get(ep.EnclosureURL) //nolint:gosec
 	if err != nil {
