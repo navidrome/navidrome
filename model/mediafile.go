@@ -50,7 +50,7 @@ type MediaFile struct {
 	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
 	AlbumID              string   `structs:"album_id" json:"albumId" hash:"ignore"`
 	HasCoverArt          bool     `structs:"has_cover_art" json:"hasCoverArt"`
-	EmbedArtHash         string   `structs:"embed_art_hash" json:"-"` // XXH3 of the embedded picture bytes
+	EmbedArtHash         string   `structs:"embed_art_hash" json:"-"` // Tag reader's fingerprint of the embedded picture
 	TrackNumber          int      `structs:"track_number" json:"trackNumber"`
 	DiscNumber           int      `structs:"disc_number" json:"discNumber"`
 	DiscSubtitle         string   `structs:"disc_subtitle" json:"discSubtitle,omitempty"`
