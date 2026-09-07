@@ -107,16 +107,18 @@ var _ = Describe("UserRepository", func() {
 		})
 
 		It("is not erased by a later full-row Put", func() {
-			Expect(repo.UpdateImage(adminUser.ID, "u1_admin.png")).To(Succeed())
+			// Fetched before UpdateImage, so its in-memory UploadedImage is stale: Put must not write it back.
+			stale, err := repo.Get(adminUser.ID)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(repo.UpdateImage(adminUser.ID, "u2_admin.png")).To(Succeed())
+
+			stale.Name = "Renamed"
+			Expect(repo.Put(stale)).To(Succeed())
 
 			usr, err := repo.Get(adminUser.ID)
 			Expect(err).ToNot(HaveOccurred())
-			usr.Name = "Renamed"
-			Expect(repo.Put(usr)).To(Succeed())
-
-			usr, err = repo.Get(adminUser.ID)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(usr.UploadedImage).To(Equal("u1_admin.png"))
+			Expect(usr.UploadedImage).To(Equal("u2_admin.png"))
 		})
 
 		It("clears the filename when given an empty string", func() {
