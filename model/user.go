@@ -1,7 +1,12 @@
 package model
 
 import (
+	"crypto/md5"
+	"encoding/hex"
+	"fmt"
 	"time"
+
+	"github.com/navidrome/navidrome/consts"
 )
 
 type User struct {
@@ -16,6 +21,10 @@ type User struct {
 	UpdatedAt    time.Time  `structs:"updated_at" json:"updatedAt"`
 	// Smart-playlist criteria JSON; matching songs are not sent to external scrobblers
 	ScrobbleFilter string `structs:"scrobble_filter" json:"scrobbleFilter"`
+
+	// structs:"-" because userRepository.Put writes every mapped column with no column list, so a
+	// profile save from the UI would blank this. UpdateImage is the only writer.
+	UploadedImage string `structs:"-" json:"uploadedImage,omitempty"`
 
 	// Library associations (many-to-many relationship)
 	Libraries Libraries `structs:"-" json:"libraries,omitempty"`
@@ -41,6 +50,18 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 		}
 	}
 	return false
+}
+
+func (u User) UploadedImagePath() string {
+	return UploadedImagePath(consts.EntityUser, u.UploadedImage)
+}
+
+func (u User) AvatarTag() string {
+	if u.UploadedImage == "" {
+		return ""
+	}
+	sum := md5.Sum(fmt.Appendf(nil, "%s|%d", u.UploadedImage, u.UpdatedAt.UnixNano()))
+	return hex.EncodeToString(sum[:])[:16]
 }
 
 type Users []User

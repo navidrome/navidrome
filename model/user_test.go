@@ -1,6 +1,8 @@
 package model_test
 
 import (
+	"time"
+
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -78,6 +80,27 @@ var _ = Describe("User", func() {
 				Expect(user.HasLibraryAccess(2)).To(BeTrue())
 				Expect(user.HasLibraryAccess(3)).To(BeFalse())
 			})
+		})
+	})
+
+	Describe("AvatarTag", func() {
+		It("returns an empty tag when there is no avatar", func() {
+			u := model.User{ID: "1", UpdatedAt: time.Now()}
+			Expect(u.AvatarTag()).To(BeEmpty())
+		})
+
+		It("changes the tag when the image changes", func() {
+			at := time.Unix(1000, 0)
+			a := model.User{ID: "1", UploadedImage: "1_deluan.png", UpdatedAt: at}
+			b := model.User{ID: "1", UploadedImage: "1_deluan.jpg", UpdatedAt: at}
+			Expect(a.AvatarTag()).NotTo(BeEmpty())
+			Expect(a.AvatarTag()).NotTo(Equal(b.AvatarTag()))
+		})
+
+		It("changes the tag when the same file is replaced", func() {
+			a := model.User{ID: "1", UploadedImage: "1_deluan.png", UpdatedAt: time.Unix(1000, 0)}
+			b := model.User{ID: "1", UploadedImage: "1_deluan.png", UpdatedAt: time.Unix(2000, 0)}
+			Expect(a.AvatarTag()).NotTo(Equal(b.AvatarTag()))
 		})
 	})
 })

@@ -13,5 +13,8 @@ func UploadedImagePath(entityType, filename string) string {
 	if filename == "" {
 		return ""
 	}
+	if entityType == consts.EntityUser {
+		return filepath.Join(conf.Server.DataFolder.String(), consts.AvatarFolder, filename)
+	}
 	return filepath.Join(conf.Server.DataFolder.String(), consts.ArtworkFolder, entityType, filename)
 }
