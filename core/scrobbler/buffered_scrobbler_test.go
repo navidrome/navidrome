@@ -251,12 +251,13 @@ func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
 			"user1": 10 * time.Second,
 			"user2": 45 * time.Second,
 		}}
+		// Both are buffered before the drain goroutine exists: it drains once on startup, and
+		// seeing only one user there would park it on that user's delay, ignoring the other.
+		_ = buffer.Enqueue("test", "user1", "1", time.Now())
+		_ = buffer.Enqueue("test", "user2", "2", time.Now())
 		bs := newBufferedScrobbler(ds, scr, "test")
 		defer bs.Stop()
 
-		// user2 is enqueued directly so both are buffered before the first drain wakes.
-		_ = buffer.Enqueue("test", "user2", "2", time.Now())
-		_ = bs.Scrobble(context.Background(), "user1", Scrobble{MediaFile: model.MediaFile{ID: "1"}, TimeStamp: time.Now()})
 		synctest.Wait()
 		if got := scr.count.Load(); got != 2 {
 			t.Fatalf("expected both users drained, got %d attempts", got)

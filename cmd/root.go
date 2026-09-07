@@ -366,21 +366,18 @@ func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() erro
 	}
 }
 
-// scheduleArtworkHousekeeping runs the startup fingerprint backfill and registers the
-// recurring stale-absent recheck and prune jobs.
+// scheduleArtworkHousekeeping registers the recurring missing-state and prune jobs, and
+// reports an artwork config change without acting on it.
 func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) func() error {
 	return func() error {
 		schedulerInstance := scheduler.GetInstance()
 
-		if _, err := schedulerInstance.Add(consts.ArtworkStaleAbsentRecheckSchedule, func() {
-			if err := worker.EnqueueStaleAbsentAll(ctx); err != nil {
-				log.Error(ctx, "Error enqueueing stale artwork rechecks", err)
-			}
+		if _, err := schedulerInstance.Add(consts.ArtworkEnqueueMissingSchedule, func() {
 			if err := worker.EnqueueMissingAll(ctx); err != nil {
 				log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
 			}
 		}); err != nil {
-			log.Error(ctx, "Error scheduling artwork stale-absent recheck", err)
+			log.Error(ctx, "Error scheduling artwork missing-state recheck", err)
 		}
 
 		if _, err := schedulerInstance.Add(consts.ArtworkPruneSchedule, func() {
@@ -397,23 +394,8 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 			log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
 		}
 
-		backfilled, err := worker.Backfill(ctx)
-		if err != nil {
-			log.Error(ctx, "Error running artwork backfill", err)
-			return nil
-		}
-		if !backfilled {
-			return nil
-		}
-		log.Info(ctx, "Artwork backfill enqueued, scheduling a follow-up prune")
-		timer := time.NewTimer(consts.ArtworkPostBackfillPruneDelay)
-		defer timer.Stop()
-		select {
-		case <-timer.C:
-			if err := worker.RunPrune(ctx); err != nil {
-				log.Error(ctx, "Error running post-backfill artwork prune", err)
-			}
-		case <-ctx.Done():
+		if err := worker.ReconcileConfig(ctx); err != nil {
+			log.Error(ctx, "Error checking the artwork config fingerprint", err)
 		}
 		return nil
 	}

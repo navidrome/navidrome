@@ -118,6 +118,7 @@ func (api *Router) routes() http.Handler {
 			r.Use(throttleStreams(conf.Server.Jellyfin.MaxConcurrentStreams))
 			r.Get("/items", api.getItems)
 			r.Get("/users/{userId}/items", api.getItems)
+			r.Get("/items/latest", api.getLatest)
 			r.Get("/users/{userId}/items/latest", api.getLatest)
 			r.Get("/artists", api.getArtists)
 			r.Get("/artists/albumartists", api.getAlbumArtists)

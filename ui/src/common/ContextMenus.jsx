@@ -30,6 +30,7 @@ import { LoveButton } from './LoveButton'
 import config from '../config'
 import { formatBytes } from '../utils'
 import { artistDownloadSize } from './artist'
+import { useRefreshMetadata } from './useRefreshMetadata'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -75,6 +76,7 @@ const ContextMenu = ({
   const translate = useTranslate()
   const notify = useNotify()
   const { permissions } = usePermissions()
+  const refreshMetadata = useRefreshMetadata()
   const [anchorEl, setAnchorEl] = useState(null)
 
   const isArtist = resource === 'artist'
@@ -139,11 +141,7 @@ const ContextMenu = ({
       enabled: permissions === 'admin',
       needData: false,
       label: translate('resources.album.actions.refresh'),
-      action: (record) =>
-        dataProvider
-          .refreshMetadata(resource, record.id)
-          .then(() => notify('message.metadataRefreshStarted'))
-          .catch(() => notify('ra.page.error', 'warning')),
+      action: (record) => refreshMetadata(resource, record.id),
     },
     ...(!hideInfo && {
       info: {

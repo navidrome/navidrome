@@ -308,8 +308,8 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	return wrapMediaFileCursor(cursor), nil
 }
 
-// GetAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
-func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+// getAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
+func (r *mediaFileRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("media_file.id"))
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "media_file.id")
@@ -341,7 +341,7 @@ func (r *mediaFileRepository) GetAlbumIDsByFolder(lib model.Library, folderIDs .
 
 // GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
 func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}

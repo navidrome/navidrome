@@ -6,7 +6,6 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func CreateMockArtistRepo() *MockArtistRepo {
@@ -115,14 +114,6 @@ func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 		return allArtists[:1], nil
 	}
 	return allArtists, nil
-}
-
-func (m *MockArtistRepo) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
-	all, err := m.GetAll(options...)
-	if err != nil {
-		return nil, err
-	}
-	return slice.Map(all, func(a model.Artist) string { return a.ID }), nil
 }
 
 func (m *MockArtistRepo) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {

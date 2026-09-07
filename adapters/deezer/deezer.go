@@ -91,9 +91,6 @@ func isPlaceholderPicture(url string) bool {
 
 func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
 	artists, err := s.client.searchArtists(ctx, name, deezerArtistSearchLimit)
-	if errors.Is(err, ErrNotFound) || len(artists) == 0 {
-		return nil, agents.ErrNotFound
-	}
 	if err != nil {
 		return nil, err
 	}

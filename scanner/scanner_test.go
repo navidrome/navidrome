@@ -387,6 +387,11 @@ var _ = Describe("Scanner", Ordered, func() {
 			files := fsys.MapFS
 			files["Kraftwerk/Autobahn/01 - Autobahn.mp3"] = kraftwerk(track(1, "Autobahn"))
 			fsys.SetFiles(files)
+			// Backdate the previous scan so this one's new artists are unambiguously newer:
+			// RefreshStats picks touched artists with a strict artist.updated_at >
+			// library.last_scan_at, and Windows' coarse clock can put both in one tick.
+			_, err := db.Db().ExecContext(ctx, "UPDATE library SET last_scan_at = ?", time.Now().Add(-time.Hour))
+			Expect(err).ToNot(HaveOccurred())
 			Expect(runScanner(ctx, false)).To(Succeed())
 			resolveQueuedArtwork()
 

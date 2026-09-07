@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -7,15 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -49,13 +44,6 @@ func TestPlugins(t *testing.T) {
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
-}
-
-func buildTestPlugins(path string) {
-	start := time.Now()
-	out, err := exec.Command("make", "-C", path).CombinedOutput()
-	fmt.Fprintf(GinkgoWriter, "[BeforeSuite] built test plugins in %s:\n%s", time.Since(start), out)
-	Expect(err).ToNot(HaveOccurred(), "failed to build test plugins")
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
