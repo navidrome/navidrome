@@ -171,7 +171,7 @@
       },
       "validation": {
         "librariesRequired": "At least one library must be selected for non-admin users",
-        "externalFieldReadOnly": "This field is managed by an external authentication source."
+        "externalFieldReadOnly": "This field is managed by an external authentication source.",
         "invalidScrobbleFilter": "Must be valid smart playlist rules. Limit, offset and refresh delay are not supported."
       },
       "message": {
