@@ -532,6 +532,9 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 }
 
 func fetchAndParse(rssURL string) (*rssFeed, error) {
+	if err := validateURL(rssURL); err != nil {
+		return nil, fmt.Errorf("invalid RSS feed URL: %w", err)
+	}
 	httpClient := &http.Client{Timeout: 15 * time.Second}
 	resp, err := httpClient.Get(rssURL) //nolint:gosec
 	if err != nil {
