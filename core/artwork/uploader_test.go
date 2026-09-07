@@ -1,7 +1,10 @@
 package artwork
 
 import (
+	"bytes"
 	"context"
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,6 +96,65 @@ var _ = Describe("Uploader", func() {
 		})
 	})
 
+	Describe("SetAvatar", func() {
+		It("writes into the avatar folder, named after id and username", func() {
+			ctx := context.Background()
+			big := makePNG(1024, 1024)
+			filename, err := svc.SetAvatar(ctx, "u1", "deluan", "", bytes.NewReader(big), ".png")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(filename).To(Equal("u1_deluan.png"))
+			Expect(filepath.Join(tmpDir, "avatar", filename)).To(BeAnExistingFile())
+		})
+
+		It("shrinks a large image to MaxAvatarSize, preserving aspect ratio", func() {
+			ctx := context.Background()
+			big := makePNG(1024, 768)
+			filename, err := svc.SetAvatar(ctx, "u1", "deluan", "", bytes.NewReader(big), ".png")
+			Expect(err).ToNot(HaveOccurred())
+
+			f, err := os.Open(filepath.Join(tmpDir, "avatar", filename))
+			Expect(err).ToNot(HaveOccurred())
+			defer f.Close()
+			cfg, _, err := image.DecodeConfig(f)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.Width).To(Equal(consts.MaxAvatarSize))
+			Expect(cfg.Height).To(Equal(384)) // aspect ratio kept, not padded to a square
+		})
+
+		It("keeps a small image intact instead of writing an empty file", func() {
+			ctx := context.Background()
+			small := makePNG(64, 64)
+			filename, err := svc.SetAvatar(ctx, "u1", "deluan", "", bytes.NewReader(small), ".png")
+			Expect(err).ToNot(HaveOccurred())
+
+			data, err := os.ReadFile(filepath.Join(tmpDir, "avatar", filename))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(data).ToNot(BeEmpty())
+
+			cfg, _, err := image.DecodeConfig(bytes.NewReader(data))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(cfg.Width).To(Equal(64))
+			Expect(cfg.Height).To(Equal(64))
+		})
+
+		It("removes the previous file", func() {
+			ctx := context.Background()
+			old := filepath.Join(tmpDir, "avatar", "u1_old.png")
+			Expect(os.MkdirAll(filepath.Dir(old), 0755)).To(Succeed())
+			Expect(os.WriteFile(old, []byte("x"), 0600)).To(Succeed())
+
+			_, err := svc.SetAvatar(ctx, "u1", "deluan", old, bytes.NewReader(makePNG(64, 64)), ".png")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(old).ToNot(BeAnExistingFile())
+		})
+
+		It("rejects a body that is not a decodable image", func() {
+			ctx := context.Background()
+			_, err := svc.SetAvatar(ctx, "u1", "deluan", "", strings.NewReader("not an image"), ".png")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Describe("EnqueueArtwork", func() {
 		It("clears artwork state and enqueues a Bump", func() {
 			ctx := context.Background()
@@ -172,3 +234,10 @@ var _ = Describe("MaxImageUploadSize", func() {
 		Expect(MaxImageUploadSize()).To(Equal(int64(52_428_800)))
 	})
 })
+
+func makePNG(w, h int) []byte {
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	var buf bytes.Buffer
+	Expect(png.Encode(&buf, img)).To(Succeed())
+	return buf.Bytes()
+}

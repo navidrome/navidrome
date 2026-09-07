@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -31,6 +32,9 @@ func parseSize(value, fallback string) int64 {
 // Uploader stores a user-uploaded entity image and invalidates that entity's artwork state.
 type Uploader interface {
 	SetImage(ctx context.Context, entityType string, entityID string, name string, oldPath string, reader io.Reader, ext string) (filename string, err error)
+	// SetAvatar resizes a user avatar to consts.MaxAvatarSize (aspect ratio preserved,
+	// no square padding) and stores it under the avatar folder.
+	SetAvatar(ctx context.Context, userID, username, oldPath string, reader io.Reader, ext string) (filename string, err error)
 	RemoveImage(ctx context.Context, path string) error
 	// EnqueueArtwork re-resolves the item's artwork. Call it AFTER persisting the new
 	// filename, or the worker resolves the old one.
@@ -75,6 +79,22 @@ func (s *uploader) SetImage(ctx context.Context, entityType string, entityID str
 		return "", fmt.Errorf("writing image file: %w", err)
 	}
 	return filename, nil
+}
+
+func (s *uploader) SetAvatar(ctx context.Context, userID, username, oldPath string, reader io.Reader, ext string) (string, error) {
+	data, err := io.ReadAll(io.LimitReader(reader, MaxImageUploadSize()))
+	if err != nil {
+		return "", fmt.Errorf("reading avatar: %w", err)
+	}
+	// square=false: square padding would put transparent bars around a non-square photo.
+	resized, _, err := resizeStaticImage(data, consts.MaxAvatarSize, false)
+	if err != nil {
+		return "", fmt.Errorf("resizing avatar: %w", err)
+	}
+	if resized == nil {
+		resized = bytes.NewReader(data) // already within bounds: resizeStaticImage returns nil, not the original
+	}
+	return s.SetImage(ctx, consts.EntityUser, userID, username, oldPath, resized, ext)
 }
 
 func (s *uploader) EnqueueArtwork(ctx context.Context, entityType, id string) {
