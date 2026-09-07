@@ -86,6 +86,8 @@ func (api *Router) routes() http.Handler {
 		inner.Post("/users/authenticatebyname", api.authenticateByName)
 	}
 	inner.Get("/users/public", api.getPublicUsers)
+	// Unauthenticated on purpose, matching Jellyfin, but narrowed to ExposedPublicUsers.
+	inner.Get("/userimage", api.getUserImage)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.
 	// Bound concurrency like Subsonic's getCoverArt: image decode/resize is CPU- and memory-heavy,

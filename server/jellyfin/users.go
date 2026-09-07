@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -35,11 +34,7 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 	serverID := api.serverID(ctx)
 	seen := make(map[string]bool)
 	users := []dto.UserDto{}
-	for name := range strings.SplitSeq(conf.Server.Jellyfin.ExposedPublicUsers, ",") {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
+	for _, name := range publicUsernames() {
 		key := strings.ToLower(name)
 		if seen[key] {
 			continue
@@ -51,10 +46,11 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		users = append(users, dto.UserDto{
-			Name:        usr.UserName,
-			Id:          dto.EncodeID(usr.ID),
-			ServerId:    serverID,
-			HasPassword: true,
+			Name:            usr.UserName,
+			Id:              dto.EncodeID(usr.ID),
+			ServerId:        serverID,
+			HasPassword:     true,
+			PrimaryImageTag: usr.AvatarTag(),
 		})
 	}
 	api.ok(w, r, users)

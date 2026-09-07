@@ -61,6 +61,7 @@ func userToDto(u *model.User, serverName, serverID string) *dto.UserDto {
 		ServerName:            serverName,
 		HasPassword:           true,
 		HasConfiguredPassword: true,
+		PrimaryImageTag:       u.AvatarTag(),
 		Policy:                userPolicy(u),
 		Configuration:         userConfiguration(),
 	}
