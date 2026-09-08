@@ -44,13 +44,19 @@ func canEditAvatar(ctx context.Context, targetID string) error {
 	return nil
 }
 
+// checkAvatarPermission gates avatar uploads by EnableUserAvatarUpload, never by EnableArtworkUpload.
+func checkAvatarPermission(w http.ResponseWriter, r *http.Request) bool {
+	ctx := r.Context()
+	if err := canEditAvatar(ctx, chi.URLParamFromCtx(ctx, "id")); err != nil {
+		http.Error(w, "not authorized", http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
 func (api *Router) uploadUserAvatar() http.HandlerFunc {
-	// false: avatars are gated by EnableUserAvatarUpload, never by EnableArtworkUpload.
-	return handleImageUploadGated(false, func(ctx context.Context, reader io.Reader, ext string) error {
+	return handleImageUploadGated(checkAvatarPermission, func(ctx context.Context, reader io.Reader, ext string) error {
 		userID := chi.URLParamFromCtx(ctx, "id")
-		if err := canEditAvatar(ctx, userID); err != nil {
-			return err
-		}
 		usr, err := api.ds.User(ctx).Get(userID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
@@ -67,11 +73,8 @@ func (api *Router) uploadUserAvatar() http.HandlerFunc {
 }
 
 func (api *Router) deleteUserAvatar() http.HandlerFunc {
-	return handleImageDeleteGated(false, func(ctx context.Context) error {
+	return handleImageDeleteGated(checkAvatarPermission, func(ctx context.Context) error {
 		userID := chi.URLParamFromCtx(ctx, "id")
-		if err := canEditAvatar(ctx, userID); err != nil {
-			return err
-		}
 		usr, err := api.ds.User(ctx).Get(userID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {

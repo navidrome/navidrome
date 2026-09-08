@@ -28,6 +28,16 @@ func testRouter(ds model.DataStore) http.Handler {
 	return r
 }
 
+type trackingReader struct {
+	r    io.Reader
+	read bool
+}
+
+func (t *trackingReader) Read(p []byte) (int, error) {
+	t.read = true
+	return t.r.Read(p)
+}
+
 var _ = Describe("User avatar routes", func() {
 	var router http.Handler
 	var ds *tests.MockDataStore
@@ -87,6 +97,15 @@ var _ = Describe("User avatar routes", func() {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, newRequest("POST", "/user/u1/image", body, ct, otherUser))
 		Expect(w.Code).To(Equal(http.StatusForbidden))
+	})
+
+	It("refuses a third party before reading the request body", func() {
+		body, ct := pngUpload()
+		tracked := &trackingReader{r: body}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, newRequest("POST", "/user/u1/image", tracked, ct, otherUser))
+		Expect(w.Code).To(Equal(http.StatusForbidden))
+		Expect(tracked.read).To(BeFalse())
 	})
 
 	It("refuses everyone, admins included, when the flag is off", func() {

@@ -31,16 +31,16 @@ func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func handleImageUpload(saveFn func(ctx context.Context, reader io.Reader, ext string) error) http.HandlerFunc {
-	return handleImageUploadGated(true, saveFn)
+	return handleImageUploadGated(checkImageUploadPermission, saveFn)
 }
 
-// handleImageUploadGated is handleImageUpload with an opt-out from the EnableArtworkUpload gate,
-// so avatar uploads (gated separately by EnableUserAvatarUpload) can reuse this handler.
-func handleImageUploadGated(checkArtworkFlag bool, saveFn func(ctx context.Context, reader io.Reader, ext string) error) http.HandlerFunc {
+// handleImageUploadGated is handleImageUpload with a custom permission gate, checked before the
+// request body is read, so avatar uploads (gated by EnableUserAvatarUpload) can reuse this handler.
+func handleImageUploadGated(gate func(http.ResponseWriter, *http.Request) bool, saveFn func(ctx context.Context, reader io.Reader, ext string) error) http.HandlerFunc {
 	maxImageSize := artwork.MaxImageUploadSize()
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		if checkArtworkFlag && !checkImageUploadPermission(w, r) {
+		if !gate(w, r) {
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxImageSize)
@@ -103,15 +103,14 @@ func handleImageUploadGated(checkArtworkFlag bool, saveFn func(ctx context.Conte
 }
 
 func handleImageDelete(deleteFn func(ctx context.Context) error) http.HandlerFunc {
-	return handleImageDeleteGated(true, deleteFn)
+	return handleImageDeleteGated(checkImageUploadPermission, deleteFn)
 }
 
-// handleImageDeleteGated is handleImageDelete with the same EnableArtworkUpload opt-out as
-// handleImageUploadGated.
-func handleImageDeleteGated(checkArtworkFlag bool, deleteFn func(ctx context.Context) error) http.HandlerFunc {
+// handleImageDeleteGated is handleImageDelete with the same custom gate as handleImageUploadGated.
+func handleImageDeleteGated(gate func(http.ResponseWriter, *http.Request) bool, deleteFn func(ctx context.Context) error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		if checkArtworkFlag && !checkImageUploadPermission(w, r) {
+		if !gate(w, r) {
 			return
 		}
 		if err := deleteFn(ctx); err != nil {
