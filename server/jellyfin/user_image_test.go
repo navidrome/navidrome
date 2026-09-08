@@ -1,16 +1,23 @@
 package jellyfin
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"image"
+	"image/png"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -33,7 +40,7 @@ var _ = Describe("GET /userimage", func() {
 	var api *Router
 	var ds *tests.MockDataStore
 	var ur *tests.MockedUserRepo
-	var pub, priv *model.User
+	var pub, priv, noAvatar *model.User
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -48,10 +55,16 @@ var _ = Describe("GET /userimage", func() {
 		pub.UploadedImage = writeUserAvatar(pub)
 		Expect(ur.Put(pub)).To(Succeed())
 
+		// Has a real avatar so the anonymous-401 test below fails on a served image (200), not a
+		// 404, if the isPublicUser gate is ever removed.
 		priv = &model.User{ID: testID("u1"), UserName: "alice"}
+		priv.UploadedImage = writeUserAvatar(priv)
 		Expect(ur.Put(priv)).To(Succeed())
 
-		api = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		noAvatar = &model.User{ID: testID("u4"), UserName: "carol"}
+		Expect(ur.Put(noAvatar)).To(Succeed())
+
+		api = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	get := func(query string) *httptest.ResponseRecorder {
@@ -84,10 +97,10 @@ var _ = Describe("GET /userimage", func() {
 	})
 
 	It("returns 404 for an authenticated user with no avatar", func() {
-		tok, err := auth.CreateToken(priv)
+		tok, err := auth.CreateToken(noAvatar)
 		Expect(err).ToNot(HaveOccurred())
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/userimage?userId="+dto.EncodeID(priv.ID), nil)
+		r := httptest.NewRequest("GET", "/userimage?userId="+dto.EncodeID(noAvatar.ID), nil)
 		r.Header.Set("X-Emby-Token", tok)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusNotFound))
@@ -107,6 +120,125 @@ var _ = Describe("GET /userimage", func() {
 		r.Header.Set("X-Emby-Token", tok)
 		api.ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusNotFound))
+	})
+})
+
+var _ = Describe("POST /userimage and DELETE /userimage", func() {
+	var router *Router
+	var ds *tests.MockDataStore
+	var ur *tests.MockedUserRepo
+	var caller *model.User
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+		conf.Server.EnableUserAvatarUpload = true
+
+		ds = &tests.MockDataStore{}
+		auth.Init(ds)
+		ur = ds.User(context.Background()).(*tests.MockedUserRepo)
+
+		caller = &model.User{ID: "u1", UserName: "regular"}
+		Expect(ur.Put(caller)).To(Succeed())
+		// A real canonical id, unlike caller's literal "u1", so it round-trips through dto.EncodeID.
+		Expect(ur.Put(&model.User{ID: testID("u2"), UserName: "other"})).To(Succeed())
+
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, artwork.NewUploader(ds))
+	})
+
+	tokenFor := func(u *model.User) string {
+		tok, err := auth.CreateToken(u)
+		Expect(err).ToNot(HaveOccurred())
+		return tok
+	}
+	authenticatedRequestWithBody := func(method, target string, body io.Reader) *http.Request {
+		r := httptest.NewRequest(method, target, body)
+		r.Header.Set("X-Emby-Token", tokenFor(caller))
+		return r
+	}
+	authenticatedRequest := func(method, target string) *http.Request {
+		return authenticatedRequestWithBody(method, target, nil)
+	}
+	pngBytes := func() []byte {
+		var buf bytes.Buffer
+		Expect(png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 8, 8)))).To(Succeed())
+		return buf.Bytes()
+	}
+
+	Describe("POST /userimage", func() {
+		It("accepts a base64 body with a charset suffix", func() {
+			body := base64.StdEncoding.EncodeToString(pngBytes())
+			r := authenticatedRequestWithBody("POST", "/userimage", strings.NewReader(body))
+			r.Header.Set("Content-Type", "image/png; charset=utf-8")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+
+			usr, _ := ds.User(context.Background()).Get("u1")
+			Expect(usr.UploadedImage).To(Equal("u1_regular.png"))
+		})
+
+		It("accepts raw image bytes too", func() {
+			r := authenticatedRequestWithBody("POST", "/userimage", bytes.NewReader(pngBytes()))
+			r.Header.Set("Content-Type", "image/png")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+		})
+
+		It("rejects an unknown content type", func() {
+			r := authenticatedRequestWithBody("POST", "/userimage", strings.NewReader("x"))
+			r.Header.Set("Content-Type", "text/plain")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("refuses a third party", func() {
+			body := base64.StdEncoding.EncodeToString(pngBytes())
+			r := authenticatedRequestWithBody("POST", "/userimage?userId="+dto.EncodeID(testID("u2")), strings.NewReader(body))
+			r.Header.Set("Content-Type", "image/png")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
+			Expect(w.Code).To(Equal(http.StatusForbidden))
+		})
+
+		It("refuses even an admin when the flag is off", func() {
+			conf.Server.EnableUserAvatarUpload = false
+			admin := &model.User{ID: "admin1", UserName: "boss", IsAdmin: true}
+			Expect(ur.Put(admin)).To(Succeed())
+
+			body := base64.StdEncoding.EncodeToString(pngBytes())
+			r := httptest.NewRequest("POST", "/userimage", strings.NewReader(body))
+			r.Header.Set("X-Emby-Token", tokenFor(admin))
+			r.Header.Set("Content-Type", "image/png")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
+			Expect(w.Code).To(Equal(http.StatusForbidden))
+		})
+
+		It("is not reachable anonymously", func() {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest("POST", "/userimage", strings.NewReader("x")))
+			Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		})
+	})
+
+	Describe("DELETE /userimage", func() {
+		It("clears the avatar and removes the file from disk", func() {
+			name := writeUserAvatar(caller)
+			Expect(ur.UpdateImage(caller.ID, name)).To(Succeed())
+			path := caller.UploadedImagePath()
+
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, authenticatedRequest("DELETE", "/userimage"))
+			Expect(w.Code).To(Equal(http.StatusNoContent))
+
+			usr, _ := ds.User(context.Background()).Get("u1")
+			Expect(usr.UploadedImage).To(BeEmpty())
+			_, err := os.Stat(path)
+			Expect(os.IsNotExist(err)).To(BeTrue())
+		})
 	})
 })
 

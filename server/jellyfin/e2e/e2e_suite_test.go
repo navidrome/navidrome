@@ -326,6 +326,7 @@ func setupTestDB() {
 	sonicProviderFake = &fakeSonicProvider{}
 	sonicSvc := sonic.New(ds, &fakeSonicLoader{provider: sonicProviderFake}, matcher.New(ds))
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
+	imgUpload := artwork.NewUploader(ds)
 	router = jellyfin.New(
 		ds,
 		artworkSpy,
@@ -333,11 +334,12 @@ func setupTestDB() {
 		decider,
 		core.NewPlayers(ds),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
-		playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
+		playlists.NewPlaylists(ds, imgUpload),
 		providerFake,
 		sonicSvc,
 		lyrics.NewLyrics(ds, nil),
 		events.NoopBroker(),
+		imgUpload,
 	)
 }
 

@@ -40,6 +40,7 @@ type Router struct {
 	sonic            sonic.Engine
 	lyrics           lyrics.Lyrics
 	broker           events.Broker
+	imgUpload        artwork.Uploader
 	lyricsCache      cache.SimpleCache[string, model.LyricList]
 	similarFlight    singleflight.Group
 	serverIDMu       sync.Mutex
@@ -49,11 +50,11 @@ type Router struct {
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
 	transcodeDecider stream.TranscodeDecider, players core.Players,
 	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider,
-	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics, broker events.Broker) *Router {
+	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics, broker events.Broker, imgUpload artwork.Uploader) *Router {
 	r := &Router{
 		ds: ds, artwork: artwork, streamer: streamer, transcodeDecider: transcodeDecider,
 		players: players, scrobbler: scrobbler, playlists: playlists, provider: provider,
-		sonic: sonicSvc, lyrics: lyricsSvc, broker: broker,
+		sonic: sonicSvc, lyrics: lyricsSvc, broker: broker, imgUpload: imgUpload,
 		lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{
 			SizeLimit:  1000,
 			DefaultTTL: 5 * time.Minute,
@@ -111,6 +112,8 @@ func (api *Router) routes() http.Handler {
 		r.Get("/users/{userId}/views", api.getUserViews)
 		r.Get("/users/me", api.getCurrentUser)
 		r.Get("/users/{userId}", api.getCurrentUser)
+		r.Post("/userimage", api.postUserImage)
+		r.Delete("/userimage", api.deleteUserImage)
 
 		// Cursor-backed collections: each streams straight from the DB, holding a connection for the
 		// whole client-paced response, so enough slow clients would take the entire pool and stall the
