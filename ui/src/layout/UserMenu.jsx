@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react'
 import PropTypes from 'prop-types'
-import { useTranslate, useGetIdentity } from 'react-admin'
+import { useTranslate, useGetIdentity, useVersion } from 'react-admin'
 import {
   Tooltip,
   IconButton,
@@ -52,15 +52,24 @@ const UserMenu = (props) => {
   const [anchorEl, setAnchorEl] = useState(null)
   const translate = useTranslate()
   const { loaded, identity } = useGetIdentity()
+  const version = useVersion()
+  const [avatarTag, setAvatarTag] = useState(null)
   const classes = useStyles(props)
   const dispatch = useDispatch()
 
   const { children, label, icon, logout } = props
 
-  // identity.id is the username (see authProvider.getIdentity); avatarTag is only set when an avatar was uploaded
-  const avatarUrl = identity?.avatarTag
-    ? `${subsonic.getAvatarUrl(identity.id)}&_=${identity.avatarTag}`
-    : identity?.avatar
+  // The tag is only set when an avatar was uploaded, and it changes mid-session on upload or
+  // removal, so the identity is re-read on every refresh instead of trusting the login snapshot.
+  useEffect(() => {
+    authProvider.getIdentity().then((user) => setAvatarTag(user?.avatarTag))
+  }, [version])
+
+  // identity.id is the username (see authProvider.getIdentity)
+  const avatarUrl =
+    avatarTag && identity?.id
+      ? `${subsonic.getAvatarUrl(identity.id)}&_=${avatarTag}`
+      : identity?.avatar
 
   useEffect(() => {
     if (config.devActivityPanel) {

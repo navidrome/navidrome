@@ -88,7 +88,7 @@ export const ImageUploadOverlay = ({
           body: formData,
         })
         notify(msg.uploaded, 'success')
-        if (onImageChange) onImageChange()
+        if (onImageChange) onImageChange(true)
         refresh()
       } catch (err) {
         notify(msg.uploadError, 'warning')
@@ -117,7 +117,7 @@ export const ImageUploadOverlay = ({
           method: 'DELETE',
         })
         notify(msg.removed, 'success')
-        if (onImageChange) onImageChange()
+        if (onImageChange) onImageChange(false)
         refresh()
       } catch (err) {
         notify(msg.removeError, 'warning')

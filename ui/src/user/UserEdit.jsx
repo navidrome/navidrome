@@ -87,6 +87,19 @@ const AvatarField = () => {
   const canEdit = config.enableUserAvatarUpload && (isAdmin || isMyself)
   const classes = useAvatarStyles()
 
+  const handleImageChange = useCallback(
+    (hasImage) => {
+      if (!isMyself) return
+      // Only a cache-buster: the server sends the authoritative ETag, so any changing value works
+      if (hasImage) {
+        localStorage.setItem('avatarTag', Date.now().toString())
+      } else {
+        localStorage.removeItem('avatarTag')
+      }
+    },
+    [isMyself],
+  )
+
   if (!record?.id) return null
 
   return (
@@ -104,6 +117,7 @@ const AvatarField = () => {
         entityType="user"
         entityId={record.id}
         hasUploadedImage={!!record.uploadedImage}
+        onImageChange={handleImageChange}
         canEdit={canEdit}
         messages={{
           uploaded: 'message.avatarUploaded',

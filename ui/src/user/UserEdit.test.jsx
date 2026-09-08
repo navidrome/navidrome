@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import UserEdit from './UserEdit'
 import config from '../config'
 import { describe, it, expect, vi, afterEach } from 'vitest'
@@ -86,8 +86,23 @@ vi.mock('./DeleteUserButton', () => ({
 
 vi.mock('../common', () => ({
   Title: ({ subTitle }) => <div data-testid="title">{subTitle}</div>,
-  ImageUploadOverlay: ({ canEdit, messages }) =>
-    canEdit ? <button aria-label={messages.uploadLabel}>upload</button> : null,
+  ImageUploadOverlay: ({ canEdit, messages, onImageChange }) =>
+    canEdit ? (
+      <>
+        <button
+          aria-label={messages.uploadLabel}
+          onClick={() => onImageChange(true)}
+        >
+          upload
+        </button>
+        <button
+          aria-label={messages.removeLabel}
+          onClick={() => onImageChange(false)}
+        >
+          remove
+        </button>
+      </>
+    ) : null,
 }))
 
 vi.mock('../subsonic', () => ({
@@ -233,6 +248,42 @@ describe('<UserEdit />', () => {
       config.enableUserAvatarUpload = true
       renderUserEdit({ id: 'u1', userName: 'deluan' }, { isMyself: true })
       expect(screen.getByLabelText('message.uploadAvatar')).toBeInTheDocument()
+    })
+
+    it('stores a new avatar tag when the user uploads their own avatar', () => {
+      config.enableUserAvatarUpload = true
+      renderUserEdit({ id: 'u1', userName: 'deluan' }, { isMyself: true })
+
+      fireEvent.click(screen.getByLabelText('message.uploadAvatar'))
+
+      expect(localStorage.getItem('avatarTag')).toBeTruthy()
+    })
+
+    it('removes the avatar tag when the user removes their own avatar', () => {
+      config.enableUserAvatarUpload = true
+      localStorage.setItem('avatarTag', 'oldtag')
+      renderUserEdit(
+        { id: 'u1', userName: 'deluan', uploadedImage: 'u1_deluan.png' },
+        { isMyself: true },
+      )
+
+      fireEvent.click(screen.getByLabelText('message.removeAvatar'))
+
+      expect(localStorage.getItem('avatarTag')).toBeNull()
+    })
+
+    it('does not touch the admin own tag when editing another user', () => {
+      config.enableUserAvatarUpload = true
+      renderUserEdit(
+        { id: 'u1', userName: 'deluan', uploadedImage: 'u1_deluan.png' },
+        { isMyself: false, role: 'admin' },
+      )
+      localStorage.setItem('avatarTag', 'mytag')
+
+      fireEvent.click(screen.getByLabelText('message.uploadAvatar'))
+      fireEvent.click(screen.getByLabelText('message.removeAvatar'))
+
+      expect(localStorage.getItem('avatarTag')).toEqual('mytag')
     })
 
     it('hides the control when the feature is off and the viewer is not an admin', () => {
