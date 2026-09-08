@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -184,6 +185,21 @@ var _ = Describe("POST /userimage and DELETE /userimage", func() {
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, r)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
+		})
+
+		It("rejects raw bytes over MaxImageUploadSize instead of letting SetAvatar truncate them", func() {
+			img := pngBytes()
+			// One byte under the image size: still well inside the base64-inflation read cap
+			// (limit*4/3+4), so only the post-decode size check can catch this.
+			conf.Server.MaxImageUploadSize = strconv.Itoa(len(img)-1) + "B"
+			r := authenticatedRequestWithBody("POST", "/userimage", bytes.NewReader(img))
+			r.Header.Set("Content-Type", "image/png")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+
+			usr, _ := ds.User(context.Background()).Get("u1")
+			Expect(usr.UploadedImage).To(BeEmpty())
 		})
 
 		It("rejects an unknown content type", func() {

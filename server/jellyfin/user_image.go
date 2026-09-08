@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
@@ -129,6 +130,13 @@ func (api *Router) postUserImage(w http.ResponseWriter, r *http.Request) {
 	imgBytes, err := decodeImageBody(body)
 	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	// Raw (non-base64) bodies skip the inflation math above, so the decoded size still needs its own check.
+	if int64(len(imgBytes)) > limit {
+		log.Warn(ctx, "Jellyfin API: avatar upload rejected: image exceeds MaxImageUploadSize",
+			"user", usr.UserName, "size", humanize.Bytes(uint64(len(imgBytes))), "limit", humanize.Bytes(uint64(limit)))
+		http.Error(w, "file too large", http.StatusBadRequest)
 		return
 	}
 
