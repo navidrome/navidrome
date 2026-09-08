@@ -3,6 +3,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import PhotoCameraIcon from '@material-ui/icons/PhotoCamera'
 import DeleteIcon from '@material-ui/icons/Delete'
 import { useTranslate, useNotify, useRefresh } from 'react-admin'
+import PropTypes from 'prop-types'
 import { useCallback, useRef } from 'react'
 import config from '../config'
 import { REST_URL } from '../consts'
@@ -36,11 +37,22 @@ const useStyles = makeStyles(() => ({
   },
 }))
 
+const defaultMessages = {
+  uploaded: 'message.coverUploaded',
+  uploadError: 'message.coverUploadError',
+  removed: 'message.coverRemoved',
+  removeError: 'message.coverRemoveError',
+  uploadLabel: 'message.uploadCover',
+  removeLabel: 'message.removeCover',
+}
+
 export const ImageUploadOverlay = ({
   entityType,
   entityId,
   hasUploadedImage,
   onImageChange,
+  canEdit,
+  messages,
 }) => {
   const translate = useTranslate()
   const notify = useNotify()
@@ -48,8 +60,11 @@ export const ImageUploadOverlay = ({
   const classes = useStyles()
   const fileInputRef = useRef(null)
 
-  const canEdit =
-    config.enableArtworkUpload || localStorage.getItem('role') === 'admin'
+  const msg = { ...defaultMessages, ...messages }
+  // Callers pass no canEdit today; `??` (not `||`) keeps canEdit={false} from being ignored.
+  const allowed =
+    canEdit ??
+    (config.enableArtworkUpload || localStorage.getItem('role') === 'admin')
 
   const handleUploadClick = useCallback((e) => {
     e.stopPropagation()
@@ -72,16 +87,24 @@ export const ImageUploadOverlay = ({
           headers: new Headers({}),
           body: formData,
         })
-        notify(`message.coverUploaded`, 'success')
+        notify(msg.uploaded, 'success')
         if (onImageChange) onImageChange()
         refresh()
       } catch (err) {
-        notify(`message.coverUploadError`, 'warning')
+        notify(msg.uploadError, 'warning')
       }
 
       e.target.value = ''
     },
-    [entityType, entityId, notify, refresh, onImageChange],
+    [
+      entityType,
+      entityId,
+      notify,
+      refresh,
+      onImageChange,
+      msg.uploaded,
+      msg.uploadError,
+    ],
   )
 
   const handleRemoveCover = useCallback(
@@ -93,21 +116,29 @@ export const ImageUploadOverlay = ({
         await httpClient(`${REST_URL}/${entityType}/${entityId}/image`, {
           method: 'DELETE',
         })
-        notify(`message.coverRemoved`, 'success')
+        notify(msg.removed, 'success')
         if (onImageChange) onImageChange()
         refresh()
       } catch (err) {
-        notify(`message.coverRemoveError`, 'warning')
+        notify(msg.removeError, 'warning')
       }
     },
-    [entityType, entityId, notify, refresh, onImageChange],
+    [
+      entityType,
+      entityId,
+      notify,
+      refresh,
+      onImageChange,
+      msg.removed,
+      msg.removeError,
+    ],
   )
 
-  if (!canEdit) return null
+  if (!allowed) return null
 
   return (
     <div className={classes.coverOverlay}>
-      <Tooltip title={translate(`message.uploadCover`)}>
+      <Tooltip title={translate(msg.uploadLabel)}>
         <IconButton
           className={classes.overlayButton}
           onClick={handleUploadClick}
@@ -117,7 +148,7 @@ export const ImageUploadOverlay = ({
         </IconButton>
       </Tooltip>
       {hasUploadedImage && (
-        <Tooltip title={translate(`message.removeCover`)}>
+        <Tooltip title={translate(msg.removeLabel)}>
           <IconButton
             className={classes.overlayButton}
             onClick={handleRemoveCover}
@@ -136,4 +167,20 @@ export const ImageUploadOverlay = ({
       />
     </div>
   )
+}
+
+ImageUploadOverlay.propTypes = {
+  entityType: PropTypes.string.isRequired,
+  entityId: PropTypes.string,
+  hasUploadedImage: PropTypes.bool,
+  onImageChange: PropTypes.func,
+  canEdit: PropTypes.bool,
+  messages: PropTypes.shape({
+    uploaded: PropTypes.string,
+    uploadError: PropTypes.string,
+    removed: PropTypes.string,
+    removeError: PropTypes.string,
+    uploadLabel: PropTypes.string,
+    removeLabel: PropTypes.string,
+  }),
 }
