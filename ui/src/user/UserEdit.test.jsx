@@ -1,7 +1,8 @@
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import UserEdit from './UserEdit'
-import { describe, it, expect, vi } from 'vitest'
+import config from '../config'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 
 const defaultUser = {
   id: 'user1',
@@ -33,6 +34,8 @@ const hooks = vi.hoisted(() => ({
   notify: vi.fn(),
   redirect: vi.fn(),
   refresh: vi.fn(),
+  permissions: 'admin',
+  record: null,
 }))
 
 // Mock React-Admin completely with simpler implementations
@@ -67,7 +70,8 @@ vi.mock('react-admin', () => ({
   useNotify: () => hooks.notify,
   useRedirect: () => hooks.redirect,
   useRefresh: () => hooks.refresh,
-  usePermissions: () => ({ permissions: 'admin' }),
+  usePermissions: () => ({ permissions: hooks.permissions }),
+  useRecordContext: () => hooks.record,
   useTranslate: () => (key) => key,
 }))
 
@@ -82,6 +86,14 @@ vi.mock('./DeleteUserButton', () => ({
 
 vi.mock('../common', () => ({
   Title: ({ subTitle }) => <div data-testid="title">{subTitle}</div>,
+  ImageUploadOverlay: ({ canEdit, messages }) =>
+    canEdit ? <button aria-label={messages.uploadLabel}>upload</button> : null,
+}))
+
+vi.mock('../subsonic', () => ({
+  default: {
+    getAvatarUrl: (username) => `/rest/getAvatar?username=${username}`,
+  },
 }))
 
 // Mock Material-UI
@@ -91,6 +103,7 @@ vi.mock('@material-ui/core/styles', () => ({
 
 vi.mock('@material-ui/core', () => ({
   Typography: ({ children }) => <p>{children}</p>,
+  Avatar: ({ src, alt }) => <img data-testid="avatar" src={src} alt={alt} />,
 }))
 
 describe('<UserEdit />', () => {
@@ -196,6 +209,41 @@ describe('<UserEdit />', () => {
 
       expect(hooks.notify).toHaveBeenCalledWith('ra.page.error', 'warning')
       expect(hooks.redirect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('avatar upload', () => {
+    afterEach(() => {
+      localStorage.clear()
+      hooks.record = null
+      hooks.permissions = 'admin'
+    })
+
+    const renderUserEdit = (
+      record,
+      { isMyself = false, role = 'user' } = {},
+    ) => {
+      localStorage.setItem('userId', isMyself ? record.id : 'someone-else')
+      hooks.record = record
+      hooks.permissions = role
+      return render(<UserEdit id={record.id} permissions={role} />)
+    }
+
+    it('shows the avatar upload control for the user themselves', () => {
+      config.enableUserAvatarUpload = true
+      renderUserEdit({ id: 'u1', userName: 'deluan' }, { isMyself: true })
+      expect(screen.getByLabelText('message.uploadAvatar')).toBeInTheDocument()
+    })
+
+    it('hides the control when the feature is off and the viewer is not an admin', () => {
+      config.enableUserAvatarUpload = false
+      renderUserEdit(
+        { id: 'u1', userName: 'deluan' },
+        { isMyself: true, role: 'regular' },
+      )
+      expect(
+        screen.queryByLabelText('message.uploadAvatar'),
+      ).not.toBeInTheDocument()
     })
   })
 })

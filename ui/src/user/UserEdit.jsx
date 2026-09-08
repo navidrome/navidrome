@@ -20,8 +20,10 @@ import {
   usePermissions,
   useRecordContext,
 } from 'react-admin'
-import { Typography } from '@material-ui/core'
-import { Title } from '../common'
+import { Avatar, Typography } from '@material-ui/core'
+import { Title, ImageUploadOverlay } from '../common'
+import subsonic from '../subsonic'
+import config from '../config'
 import DeleteUserButton from './DeleteUserButton'
 import { LibrarySelectionField } from './LibrarySelectionField.jsx'
 import { validateUserForm } from './userValidation'
@@ -31,6 +33,17 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'space-between',
   },
+})
+
+const useAvatarStyles = makeStyles({
+  avatarParent: {
+    display: 'inline-flex',
+    position: 'relative',
+    width: '8rem',
+    height: '8rem',
+    marginBottom: '1em',
+  },
+  avatar: { width: '100%', height: '100%' },
 })
 
 const UserTitle = ({ record }) => {
@@ -63,6 +76,46 @@ const NewPasswordInput = ({ formData, ...rest }) => {
       {...rest}
     />
   ) : null
+}
+
+const AvatarField = () => {
+  const record = useRecordContext()
+  const { permissions } = usePermissions()
+  const isAdmin = permissions === 'admin'
+  const isMyself = localStorage.getItem('userId') === record?.id
+  // Mirrors server canEditAvatar: the flag gates everyone, admins included.
+  const canEdit = config.enableUserAvatarUpload && (isAdmin || isMyself)
+  const classes = useAvatarStyles()
+
+  if (!record?.id) return null
+
+  return (
+    <div className={classes.avatarParent}>
+      <Avatar
+        className={classes.avatar}
+        src={
+          record.uploadedImage
+            ? `${subsonic.getAvatarUrl(record.userName)}&_=${record.updatedAt}`
+            : undefined
+        }
+        alt={record.name}
+      />
+      <ImageUploadOverlay
+        entityType="user"
+        entityId={record.id}
+        hasUploadedImage={!!record.uploadedImage}
+        canEdit={canEdit}
+        messages={{
+          uploaded: 'message.avatarUploaded',
+          uploadError: 'message.avatarUploadError',
+          removed: 'message.avatarRemoved',
+          removeError: 'message.avatarRemoveError',
+          uploadLabel: 'message.uploadAvatar',
+          removeLabel: 'message.removeAvatar',
+        }}
+      />
+    </div>
+  )
 }
 
 const UserEdit = (props) => {
@@ -118,6 +171,7 @@ const UserEdit = (props) => {
         save={save}
         validate={validateForm}
       >
+        <AvatarField />
         {permissions === 'admin' && (
           <TextInput
             spellCheck={false}
