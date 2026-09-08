@@ -25,6 +25,7 @@ import config from '../config'
 import authProvider from '../authProvider'
 import { startEventStream } from '../eventStream'
 import { useDispatch } from 'react-redux'
+import subsonic from '../subsonic'
 
 const useStyles = makeStyles((theme) => ({
   user: {},
@@ -56,6 +57,11 @@ const UserMenu = (props) => {
 
   const { children, label, icon, logout } = props
 
+  // identity.id is the username (see authProvider.getIdentity); avatarTag is only set when an avatar was uploaded
+  const avatarUrl = identity?.avatarTag
+    ? `${subsonic.getAvatarUrl(identity.id)}&_=${identity.avatarTag}`
+    : identity?.avatar
+
   useEffect(() => {
     if (config.devActivityPanel) {
       authProvider
@@ -81,10 +87,10 @@ const UserMenu = (props) => {
           aria-haspopup={true}
           onClick={handleMenu}
         >
-          {loaded && identity.avatar ? (
+          {loaded && avatarUrl ? (
             <Avatar
               className={classes.avatar}
-              src={identity.avatar}
+              src={avatarUrl}
               alt={identity.fullName}
             />
           ) : (

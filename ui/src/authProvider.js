@@ -19,6 +19,10 @@ function storeAuthenticationInfo(authInfo) {
   localStorage.setItem('name', authInfo.name)
   localStorage.setItem('username', authInfo.username)
   authInfo.avatar && localStorage.setItem('avatar', authInfo.avatar)
+  // Not omitted like the fields above: a stale tag from a previous login must not survive avatar removal
+  authInfo.avatarTag
+    ? localStorage.setItem('avatarTag', authInfo.avatarTag)
+    : localStorage.removeItem('avatarTag')
   localStorage.setItem('role', authInfo.isAdmin ? 'admin' : 'regular')
   localStorage.setItem('subsonic-salt', authInfo.subsonicSalt)
   localStorage.setItem('subsonic-token', authInfo.subsonicToken)
@@ -94,6 +98,7 @@ const authProvider = {
       id: localStorage.getItem('username'),
       fullName: localStorage.getItem('name'),
       avatar: localStorage.getItem('avatar'),
+      avatarTag: localStorage.getItem('avatarTag'),
     })
   },
 }
@@ -104,6 +109,7 @@ const removeItems = () => {
   localStorage.removeItem('name')
   localStorage.removeItem('username')
   localStorage.removeItem('avatar')
+  localStorage.removeItem('avatarTag')
   localStorage.removeItem('role')
   localStorage.removeItem('subsonic-salt')
   localStorage.removeItem('subsonic-token')
