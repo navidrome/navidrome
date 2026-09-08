@@ -202,6 +202,18 @@ var _ = Describe("POST /userimage and DELETE /userimage", func() {
 			Expect(usr.UploadedImage).To(BeEmpty())
 		})
 
+		It("rejects a body that is not a decodable image with 400", func() {
+			body := base64.StdEncoding.EncodeToString([]byte("this is not an image"))
+			r := authenticatedRequestWithBody("POST", "/userimage", strings.NewReader(body))
+			r.Header.Set("Content-Type", "image/png")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, r)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+
+			usr, _ := ds.User(context.Background()).Get("u1")
+			Expect(usr.UploadedImage).To(BeEmpty())
+		})
+
 		It("rejects an unknown content type", func() {
 			r := authenticatedRequestWithBody("POST", "/userimage", strings.NewReader("x"))
 			r.Header.Set("Content-Type", "text/plain")

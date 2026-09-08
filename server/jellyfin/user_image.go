@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"bytes"
+	"image"
 	"io"
 	"net/http"
 	"strings"
@@ -137,6 +138,12 @@ func (api *Router) postUserImage(w http.ResponseWriter, r *http.Request) {
 		log.Warn(ctx, "Jellyfin API: avatar upload rejected: image exceeds MaxImageUploadSize",
 			"user", usr.UserName, "size", humanize.Bytes(uint64(len(imgBytes))), "limit", humanize.Bytes(uint64(limit)))
 		http.Error(w, "file too large", http.StatusBadRequest)
+		return
+	}
+
+	if _, _, err := image.DecodeConfig(bytes.NewReader(imgBytes)); err != nil {
+		log.Warn(ctx, "Jellyfin API: avatar upload rejected: not a valid image", "user", usr.UserName, err)
+		http.Error(w, "invalid image file", http.StatusBadRequest)
 		return
 	}
 
