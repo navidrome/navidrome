@@ -80,6 +80,9 @@ func buildAuthPayload(user *model.User) map[string]any {
 	if conf.Server.EnableGravatar && user.Email != "" {
 		payload["avatar"] = gravatar.Url(user.Email, 50)
 	}
+	if tag := user.AvatarTag(); tag != "" {
+		payload["avatarTag"] = tag
+	}
 
 	bytes := make([]byte, 3)
 	_, err := rand.Read(bytes)

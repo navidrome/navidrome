@@ -216,6 +216,18 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["token"]).ToNot(BeEmpty())
 			})
 		})
+
+		Describe("buildAuthPayload", func() {
+			It("includes avatarTag when the user has an uploaded avatar", func() {
+				u := &model.User{ID: "u1", UserName: "deluan", UploadedImage: "u1_deluan.png", UpdatedAt: time.Unix(1000, 0)}
+				Expect(buildAuthPayload(u)["avatarTag"]).To(Equal(u.AvatarTag()))
+			})
+
+			It("omits avatarTag when there is none", func() {
+				u := &model.User{ID: "u1", UserName: "deluan"}
+				Expect(buildAuthPayload(u)).ToNot(HaveKey("avatarTag"))
+			})
+		})
 	})
 
 	Describe("tokenFromHeader", func() {
