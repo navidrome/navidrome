@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/req"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -261,6 +262,23 @@ var _ = Describe("MediaRetrievalController", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(w.Code).To(Equal(http.StatusOK))
+		})
+
+		It("serves the placeholder when the username is missing and Gravatar is off, as before", func() {
+			conf.Server.EnableGravatar = false
+
+			_, err := router.GetAvatar(w, newGetRequest())
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Code).To(Equal(http.StatusOK))
+		})
+
+		It("returns the same error as before for a missing username when Gravatar is on", func() {
+			conf.Server.EnableGravatar = true
+
+			_, err := router.GetAvatar(w, newGetRequest())
+
+			Expect(err).To(MatchError(req.ErrMissingParam))
 		})
 	})
 

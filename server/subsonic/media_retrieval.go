@@ -23,6 +23,11 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 	p := req.Params(r)
 	username, err := p.String("username")
 	if err != nil {
+		// Same reason as the unresolvable-user case below: the old handler short-circuited on
+		// EnableGravatar before it ever looked at the parameter.
+		if !conf.Server.EnableGravatar {
+			return api.getPlaceHolderAvatar(w, r)
+		}
 		return nil, err
 	}
 	ctx := r.Context()
