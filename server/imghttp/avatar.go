@@ -1,6 +1,8 @@
 package imghttp
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"os"
 
@@ -27,6 +29,19 @@ func ServeUserAvatar(w http.ResponseWriter, r *http.Request, u *model.User) bool
 		return false
 	}
 
+	// The stored extension can disagree with the bytes: the uploader re-encodes while keeping the
+	// caller's extension, so the type is sniffed from the content instead.
+	head := make([]byte, 512)
+	n, err := io.ReadFull(f, head)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		log.Warn(r.Context(), "Could not read user avatar", "user", u.UserName, err)
+		return false
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		log.Warn(r.Context(), "Could not rewind user avatar", "user", u.UserName, err)
+		return false
+	}
+	w.Header().Set("Content-Type", http.DetectContentType(head[:n]))
 	w.Header().Set("ETag", `"`+u.AvatarTag()+`"`)
 	w.Header().Set("Cache-Control", "private, no-cache")
 	http.ServeContent(w, r, info.Name(), info.ModTime(), f)

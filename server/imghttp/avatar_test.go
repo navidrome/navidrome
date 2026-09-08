@@ -1,6 +1,11 @@
 package imghttp_test
 
 import (
+	"bytes"
+	"crypto/rand"
+	"image"
+	"image/jpeg"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -45,6 +50,21 @@ var _ = Describe("ServeUserAvatar", func() {
 		Expect(w.Header().Get("ETag")).To(Equal(`"` + usr.AvatarTag() + `"`))
 	})
 
+	It("reports the content type of the bytes, not of the extension", func() {
+		usr.UploadedImage = writeAvatarBytes(usr, "gif", jpegBytes())
+		Expect(imghttp.ServeUserAvatar(w, r, &usr)).To(BeTrue())
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Content-Type")).To(Equal("image/jpeg"))
+	})
+
+	It("serves the whole file, not just what is left after sniffing", func() {
+		data := pngBytes()
+		Expect(len(data)).To(BeNumerically(">", 512))
+		usr.UploadedImage = writeAvatarBytes(usr, "png", data)
+		Expect(imghttp.ServeUserAvatar(w, r, &usr)).To(BeTrue())
+		Expect(w.Body.Bytes()).To(Equal(data))
+	})
+
 	It("answers 304 when the ETag matches", func() {
 		usr.UploadedImage = writeAvatar(usr, "png")
 		r.Header.Set("If-None-Match", `"`+usr.AvatarTag()+`"`)
@@ -79,9 +99,33 @@ var _ = Describe("ServeUserAvatar", func() {
 })
 
 func writeAvatar(u model.User, ext string) string {
+	return writeAvatarBytes(u, ext, pngBytes())
+}
+
+func writeAvatarBytes(u model.User, ext string, data []byte) string {
 	name := u.ID + "_" + u.UserName + "." + ext
 	path := filepath.Join(conf.Server.DataFolder.String(), "avatar", name)
 	Expect(os.MkdirAll(filepath.Dir(path), 0755)).To(Succeed())
-	Expect(os.WriteFile(path, []byte{0x89, 'P', 'N', 'G'}, 0600)).To(Succeed())
+	Expect(os.WriteFile(path, data, 0600)).To(Succeed())
 	return name
+}
+
+func pngBytes() []byte {
+	var buf bytes.Buffer
+	Expect(png.Encode(&buf, noiseImage())).To(Succeed())
+	return buf.Bytes()
+}
+
+func jpegBytes() []byte {
+	var buf bytes.Buffer
+	Expect(jpeg.Encode(&buf, noiseImage(), nil)).To(Succeed())
+	return buf.Bytes()
+}
+
+// noiseImage compresses poorly on purpose, so the encoded file is larger than the 512-byte sniff window.
+func noiseImage() image.Image {
+	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
+	_, err := rand.Read(img.Pix)
+	Expect(err).ToNot(HaveOccurred())
+	return img
 }
