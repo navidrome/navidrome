@@ -15,7 +15,6 @@ const hooks = vi.hoisted(() => ({
 
 // `Edit` mirrors ra-ui-materialui's EditView: the fetched record is injected
 // into the direct child only, never into the props of whoever renders <Edit>.
-// This is the exact mechanism the record-wiring bug depended on getting wrong.
 vi.mock('react-admin', () => ({
   Edit: ({ children }) =>
     React.cloneElement(React.Children.only(children), {

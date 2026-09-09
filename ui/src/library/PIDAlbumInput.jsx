@@ -46,7 +46,9 @@ const PIDAlbumInput = () => {
           source="pidAlbum"
           label={translate('resources.library.fields.pidAlbum')}
           helperText={translate('resources.library.pid.customHelp')}
-          validate={[required('resources.library.validation.pidAlbumCustomRequired')]}
+          validate={[
+            required('resources.library.validation.pidAlbumCustomRequired'),
+          ]}
           data-testid="pidAlbum-custom-input"
           fullWidth
           variant="outlined"

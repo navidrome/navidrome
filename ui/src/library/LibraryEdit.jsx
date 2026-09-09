@@ -170,9 +170,7 @@ const LibraryEditForm = ({ canDelete, canEditPath, record, ...formProps }) => {
                       InputProps={{ readOnly: true }}
                       resource={'library'}
                       source={'totalAlbums'}
-                      label={translate(
-                        'resources.library.fields.totalAlbums',
-                      )}
+                      label={translate('resources.library.fields.totalAlbums')}
                       fullWidth
                       variant="outlined"
                     />
@@ -185,9 +183,7 @@ const LibraryEditForm = ({ canDelete, canEditPath, record, ...formProps }) => {
                       InputProps={{ readOnly: true }}
                       resource={'library'}
                       source={'totalArtists'}
-                      label={translate(
-                        'resources.library.fields.totalArtists',
-                      )}
+                      label={translate('resources.library.fields.totalArtists')}
                       fullWidth
                       variant="outlined"
                     />
@@ -235,7 +231,11 @@ const LibraryEditForm = ({ canDelete, canEditPath, record, ...formProps }) => {
 
                 {/* Timestamps Section */}
                 <Box mb="1em">
-                  <Typography variant="body2" color="textSecondary" gutterBottom>
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    gutterBottom
+                  >
                     {translate('resources.library.fields.lastScanAt')}
                   </Typography>
                   <DateField
@@ -247,7 +247,11 @@ const LibraryEditForm = ({ canDelete, canEditPath, record, ...formProps }) => {
                 </Box>
 
                 <Box mb="1em">
-                  <Typography variant="body2" color="textSecondary" gutterBottom>
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    gutterBottom
+                  >
                     {translate('resources.library.fields.updatedAt')}
                   </Typography>
                   <DateField
@@ -259,7 +263,11 @@ const LibraryEditForm = ({ canDelete, canEditPath, record, ...formProps }) => {
                 </Box>
 
                 <Box mb="2em">
-                  <Typography variant="body2" color="textSecondary" gutterBottom>
+                  <Typography
+                    variant="body2"
+                    color="textSecondary"
+                    gutterBottom
+                  >
                     {translate('resources.library.fields.createdAt')}
                   </Typography>
                   <DateField
