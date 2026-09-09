@@ -332,7 +332,7 @@ func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error
 		}
 	}
 
-	if strings.Contains(strings.ToLower(library.PIDAlbum), "albumid") {
+	if hasRecursiveAlbumIDToken(library.PIDAlbum) {
 		validationErrors["pidAlbum"] = "resources.library.validation.pidAlbumRecursive"
 	}
 
@@ -341,6 +341,19 @@ func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error
 	}
 
 	return nil
+}
+
+// hasRecursiveAlbumIDToken mirrors the spec tokenizing in model/metadata/persistent_ids.go
+// (split on "|" then ",") so "musicbrainz_albumid" isn't flagged as the "albumid" token.
+func hasRecursiveAlbumIDToken(spec string) bool {
+	for _, field := range strings.Split(spec, "|") {
+		for _, attr := range strings.Split(field, ",") {
+			if strings.TrimSpace(strings.ToLower(attr)) == "albumid" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) error {

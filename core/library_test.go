@@ -11,6 +11,7 @@ import (
 	"github.com/deluan/rest"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage
 	"github.com/navidrome/navidrome/model"
@@ -858,6 +859,33 @@ var _ = Describe("Library Service", func() {
 
 		It("accepts folder as an album spec", func() {
 			library := &model.Library{Name: "Test", Path: tempDir, PIDAlbum: "folder"}
+
+			_, err := repo.Save(library)
+
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("accepts the default album PID spec", func() {
+			library := &model.Library{Name: "Test", Path: tempDir, PIDAlbum: consts.DefaultAlbumPID}
+
+			_, err := repo.Save(library)
+
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("rejects a bare albumid spec", func() {
+			library := &model.Library{Name: "Test", Path: tempDir, PIDAlbum: "albumid"}
+
+			_, err := repo.Save(library)
+
+			Expect(err).To(HaveOccurred())
+			var validationErr *rest.ValidationError
+			Expect(errors.As(err, &validationErr)).To(BeTrue())
+			Expect(validationErr.Errors).To(HaveKey("pidAlbum"))
+		})
+
+		It("accepts a spec where albumid is only a substring of another token", func() {
+			library := &model.Library{Name: "Test", Path: tempDir, PIDAlbum: "musicbrainz_albumid|album"}
 
 			_, err := repo.Save(library)
 
