@@ -58,8 +58,9 @@ func (pub *Router) handleM3U(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s = pub.mapShareToM3U(r, *s)
-	w.WriteHeader(http.StatusOK)
+	// Content-Type must be set before WriteHeader, otherwise it is dropped
 	w.Header().Set("Content-Type", "audio/x-mpegurl")
+	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(s.ToM3U8())) //nolint:gosec
 }
 

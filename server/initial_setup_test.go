@@ -2,12 +2,26 @@ package server
 
 import (
 	"context"
+	"errors"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// failingPutUserRepo counts users normally but fails to store them, to exercise the
+// error path of the initial user creation.
+type failingPutUserRepo struct {
+	model.UserRepository
+	err error
+}
+
+func (r *failingPutUserRepo) Put(*model.User) error { return r.err }
+
+func dsWithFailingPut(err error) model.DataStore {
+	return &tests.MockDataStore{MockedUser: &failingPutUserRepo{UserRepository: tests.CreateMockUserRepo(), err: err}}
+}
 
 var _ = Describe("initial_setup", func() {
 	var ds model.DataStore
@@ -31,6 +45,13 @@ var _ = Describe("initial_setup", func() {
 			Expect(ur.CountAll()).To(Equal(int64(1)))
 			Expect(createInitialAdminUser(ds, "second")).To(BeNil())
 			Expect(ur.CountAll()).To(Equal(int64(1)))
+		})
+
+		// The error was assigned to a shadowed err and dropped, so the caller saw
+		// success and went on to commit the "setup complete" flag.
+		It("returns the error when the user cannot be stored", func() {
+			boom := errors.New("db is down")
+			Expect(createInitialAdminUser(dsWithFailingPut(boom), "pass123")).To(MatchError(boom))
 		})
 	})
 })

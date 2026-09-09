@@ -57,12 +57,17 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 			NewPassword: initialPassword,
 			IsAdmin:     true,
 		}
-		err := users.Put(&initialUser)
-		if err != nil {
-			log.Error("Could not create initial admin user", "user", initialUser, err)
+		// The Put error used to be assigned to a shadowed err and dropped, so a
+		// failure was reported as success and initialSetup went on to commit the
+		// "setup complete" flag — leaving no admin user, and skipping setup on
+		// every later boot.
+		if err := users.Put(&initialUser); err != nil {
+			// Log the username rather than the whole struct, as everywhere else
+			log.Error("Could not create initial admin user", "user", consts.DevInitialUserName, err)
+			return err
 		}
 	}
-	return err
+	return nil
 }
 
 func checkFFmpegInstallation() {
