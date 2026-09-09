@@ -69,6 +69,7 @@ vi.mock('@material-ui/core/styles', () => ({
 vi.mock('@material-ui/core', () => ({
   Typography: ({ children }) => <p>{children}</p>,
   Box: ({ children }) => <div>{children}</div>,
+  Link: ({ children, ...props }) => <a {...props}>{children}</a>,
 }))
 
 describe('LibraryEdit save guard', () => {

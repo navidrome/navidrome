@@ -1,23 +1,20 @@
 import React, { useState } from 'react'
 import { TextInput, required, useTranslate } from 'react-admin'
-import { useForm, useFormState } from 'react-final-form'
+import { useField } from 'react-final-form'
 import { MenuItem, TextField } from '@material-ui/core'
 import { PID_CUSTOM, PID_DEFAULT, PID_FOLDER, pidAlbumMode } from './pidUtils'
 
 const PIDAlbumInput = () => {
   const translate = useTranslate()
-  const form = useForm()
-  const { values } = useFormState({ subscription: { values: true } })
-  const [mode, setMode] = useState(() => pidAlbumMode(values.pidAlbum))
+  // Keeps pidAlbum registered in every mode, otherwise final-form's pristine
+  // flag never clears when Default/Folder is chosen (no field is registered).
+  const { input } = useField('pidAlbum')
+  const [mode, setMode] = useState(() => pidAlbumMode(input.value))
 
   const handleChange = (event) => {
     const next = event.target.value
     setMode(next)
-    if (next === PID_FOLDER) {
-      form.change('pidAlbum', PID_FOLDER)
-    } else {
-      form.change('pidAlbum', '')
-    }
+    input.onChange(next === PID_FOLDER ? PID_FOLDER : '')
   }
 
   return (
@@ -30,6 +27,9 @@ const PIDAlbumInput = () => {
         value={mode}
         onChange={handleChange}
         label={translate('resources.library.fields.pidAlbum')}
+        SelectProps={{
+          SelectDisplayProps: { 'data-testid': 'pidAlbum-mode-select' },
+        }}
       >
         <MenuItem value={PID_DEFAULT}>
           {translate('resources.library.pid.default')}

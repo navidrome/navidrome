@@ -311,7 +311,7 @@
       "sections": {
         "basic": "Basic Information",
         "statistics": "Statistics",
-        "metadata": "Metadata"
+        "persistentIds": "Persistent IDs"
       },
       "actions": {
         "scan": "Scan Library",
@@ -352,7 +352,8 @@
         "customHelp": "A PID spec. See the Navidrome documentation for the syntax.",
         "trackHelp": "Leave empty to use the value from the configuration file.",
         "confirmTitle": "Trigger a full scan?",
-        "confirmContent": "Changing how tracks and albums are identified requires re-scanning every library from scratch. This can take a long time on a large collection. Continue?"
+        "confirmContent": "Changing how tracks and albums are identified requires re-scanning every library from scratch. This can take a long time on a large collection. Continue?",
+        "docsLink": "Learn about Persistent IDs"
       }
     },
     "plugin": {

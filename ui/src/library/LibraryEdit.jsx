@@ -15,13 +15,16 @@ import {
   Confirm,
 } from 'react-admin'
 import PropTypes from 'prop-types'
-import { Typography, Box } from '@material-ui/core'
+import { Typography, Box, Link } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import DeleteLibraryButton from './DeleteLibraryButton'
 import PIDAlbumInput from './PIDAlbumInput'
 import { pidChanged } from './pidUtils'
 import { Title } from '../common'
 import { formatBytes, formatDuration2, formatNumber } from '../utils/index.js'
+
+const PID_DOCS_URL =
+  'https://www.navidrome.org/docs/usage/configuration/persistent-ids/'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -134,7 +137,16 @@ const LibraryEditForm = ({ canDelete, canEditPath, record, ...formProps }) => {
                 <Box mt="2em" />
 
                 <Typography variant="h6" gutterBottom>
-                  {translate('resources.library.sections.metadata')}
+                  {translate('resources.library.sections.persistentIds')}
+                </Typography>
+                <Typography variant="body2" gutterBottom>
+                  <Link
+                    href={PID_DOCS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {translate('resources.library.pid.docsLink')}
+                  </Link>
                 </Typography>
 
                 <PIDAlbumInput />
