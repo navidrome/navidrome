@@ -51,6 +51,15 @@ var _ = Describe("PIDConfChanged", func() {
 		Expect(scanner.PIDConfChanged(ctx, ds)).To(BeTrue())
 	})
 
+	It("reports a change when the track spec differs but the album spec matches", func() {
+		repo := &tests.MockLibraryRepo{}
+		repo.SetData(model.Libraries{
+			{ID: 1, ScannedPIDAlbum: "album_spec", ScannedPIDTrack: "old_track"},
+		})
+		ds.MockedLibrary = repo
+		Expect(scanner.PIDConfChanged(ctx, ds)).To(BeTrue())
+	})
+
 	It("ignores case differences", func() {
 		repo := &tests.MockLibraryRepo{}
 		repo.SetData(model.Libraries{
