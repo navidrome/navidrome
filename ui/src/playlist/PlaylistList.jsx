@@ -15,16 +15,19 @@ import {
   useRecordContext,
   BulkDeleteButton,
   usePermissions,
+  useTranslate,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
-import { useMediaQuery } from '@material-ui/core'
+import { Tooltip, useMediaQuery } from '@material-ui/core'
 import {
   ArtworkAvatar,
   DurationField,
   List,
   LoveButton,
+  SmartPlaylistIcon,
   Writable,
+  isSmartPlaylist,
   isWritable,
   useSelectedFields,
   useResourceRefresh,
@@ -37,6 +40,13 @@ import ChangePublicStatusButton from './ChangePublicStatusButton'
 const useStyles = makeStyles((theme) => ({
   button: {
     color: theme.palette.type === 'dark' ? 'white' : undefined,
+  },
+  smartIcon: {
+    display: 'inline-flex',
+    color: theme.palette.text.secondary,
+    marginRight: theme.spacing(0.75),
+    // Inline (not flex) so a name that wraps keeps the icon on its first line
+    verticalAlign: 'text-bottom',
   },
 }))
 
@@ -149,6 +159,33 @@ const PlaylistListBulkActions = (props) => {
   )
 }
 
+// Marks smart playlists (.nsp) in the name column, the only place in the list
+// that tells them apart from playlists whose tracks the user picked by hand.
+export const PlaylistNameField = ({ record }) => {
+  const classes = useStyles()
+  const translate = useTranslate()
+  if (!record) {
+    return null
+  }
+  return (
+    <span>
+      {isSmartPlaylist(record) && (
+        <Tooltip
+          title={translate('resources.playlist.message.smartPlaylist')}
+          placement={'top'}
+        >
+          {/* Tooltip needs a child that holds a ref; the icon does not */}
+          <span className={classes.smartIcon}>
+            <SmartPlaylistIcon fontSize={'small'} />
+          </span>
+        </Tooltip>
+      )}
+      {record.name}
+    </span>
+  )
+}
+PlaylistNameField.defaultProps = { source: 'name' }
+
 // Datagrid reads `source`/`sortable`/`label` off this element for the column
 // header; only record/resource are forwarded so they never leak onto the button.
 export const PlaylistLove = ({ record, className }) => (
@@ -198,7 +235,7 @@ const PlaylistList = (props) => {
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <ArtworkAvatar source="id" variant="square" />
-        <TextField source="name" />
+        <PlaylistNameField />
         {columns}
         <Writable>
           <EditButton />

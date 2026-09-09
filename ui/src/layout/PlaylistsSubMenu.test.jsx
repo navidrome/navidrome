@@ -36,13 +36,19 @@ vi.mock('react-admin', async (importOriginal) => {
     useDataProvider: () => ({ addToPlaylist: vi.fn() }),
     useNotify: () => vi.fn(),
     useQueryWithStore: (query) => mockUseQueryWithStore(query),
-    MenuItemLink: ({ primaryText }) => <div>{primaryText}</div>,
+    MenuItemLink: ({ primaryText, leftIcon }) => (
+      <div>
+        {leftIcon}
+        {primaryText}
+      </div>
+    ),
   }
 })
 
 const playlists = {
   'pl-1': { id: 'pl-1', name: 'Mine', ownerId: 'user-1' },
   'pl-2': { id: 'pl-2', name: 'Theirs', ownerId: 'user-2' },
+  'pl-3': { id: 'pl-3', name: 'Smart', ownerId: 'user-1', rules: { all: [] } },
 }
 
 const SET_PLAYLIST_DATA = 'TEST/SET_PLAYLIST_DATA'
@@ -153,6 +159,16 @@ describe('<PlaylistsSubMenu />', () => {
     // Signature unchanged → useQueryWithStore dedupes, no wasted refetch
     expect(lastQuery().payload.refresh).toBeUndefined()
     expect(JSON.stringify(lastQuery().payload)).toBe(before)
+  })
+
+  it('marks smart playlists with their own icon', () => {
+    renderMenu()
+    // useTranslate is mocked to echo the key
+    const smart = screen.getAllByTitle(
+      'resources.playlist.message.smartPlaylist',
+    )
+    expect(smart.length).toBe(1)
+    expect(screen.getAllByTitle('resources.playlist.name').length).toBe(2)
   })
 
   it('refetches when a playlist is starred locally (no SSE echo)', () => {
