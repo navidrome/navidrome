@@ -28,7 +28,7 @@ var _ = Describe("getPID", func() {
 		sum hashFunc
 	)
 	getPID := func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string {
-		pids := PIDSpec{Album: conf.Server.PID.Album, Track: conf.Server.PID.Track}
+		pids := pidSpec{Album: conf.Server.PID.Album, Track: conf.Server.PID.Track}
 		return computePID(mf, md, spec, pids, prependLibId, sum)
 	}
 

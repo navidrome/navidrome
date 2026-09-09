@@ -14,7 +14,7 @@ import (
 )
 
 func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFile {
-	pids := PIDSpec{Album: lib.EffectivePIDAlbum(), Track: lib.EffectivePIDTrack()}
+	pids := pidSpec{Album: lib.EffectivePIDAlbum(), Track: lib.EffectivePIDTrack()}
 	mf := model.MediaFile{
 		LibraryID: lib.ID,
 		FolderID:  folderID,
@@ -112,7 +112,7 @@ func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFi
 }
 
 func (md Metadata) AlbumID(mf model.MediaFile, pidConf string) string {
-	return md.albumID(mf, PIDSpec{Album: pidConf})
+	return md.albumID(mf, pidSpec{Album: pidConf})
 }
 
 func (md Metadata) mapGain(rg, r128 model.TagName) *float64 {

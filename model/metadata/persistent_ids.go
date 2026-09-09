@@ -16,8 +16,8 @@ import (
 
 type hashFunc = func(...string) string
 
-// PIDSpec carries the album and track PID specs in effect for one library.
-type PIDSpec struct {
+// pidSpec carries the album and track PID specs in effect for one library.
+type pidSpec struct {
 	Album string
 	Track string
 }
@@ -32,7 +32,7 @@ type PIDSpec struct {
 // Taking hash as a parameter (instead of closing over it in a factory) keeps
 // mf on the stack: closing over mf would force the whole ~1KB MediaFile to the
 // heap on every call.
-func computePID(mf model.MediaFile, md Metadata, spec string, pids PIDSpec, prependLibId bool, hash hashFunc) string {
+func computePID(mf model.MediaFile, md Metadata, spec string, pids pidSpec, prependLibId bool, hash hashFunc) string {
 	switch spec {
 	case "track_legacy":
 		return legacyTrackID(mf, prependLibId)
@@ -63,7 +63,7 @@ func computePID(mf model.MediaFile, md Metadata, spec string, pids PIDSpec, prep
 	return hash(pid)
 }
 
-func getPIDAttr(mf model.MediaFile, md Metadata, attr string, pids PIDSpec, prependLibId bool, spec string, hash hashFunc) string {
+func getPIDAttr(mf model.MediaFile, md Metadata, attr string, pids pidSpec, prependLibId bool, spec string, hash hashFunc) string {
 	attr = strings.TrimSpace(strings.ToLower(attr))
 	switch attr {
 	case "albumid":
@@ -84,18 +84,18 @@ func getPIDAttr(mf model.MediaFile, md Metadata, attr string, pids PIDSpec, prep
 	return md.String(model.TagName(attr))
 }
 
-func (md Metadata) trackPID(mf model.MediaFile, pids PIDSpec) string {
+func (md Metadata) trackPID(mf model.MediaFile, pids pidSpec) string {
 	return computePID(mf, md, pids.Track, pids, true, id.NewHash)
 }
 
-func (md Metadata) albumID(mf model.MediaFile, pids PIDSpec) string {
+func (md Metadata) albumID(mf model.MediaFile, pids pidSpec) string {
 	return computePID(mf, md, pids.Album, pids, true, id.NewHash)
 }
 
 // BFR Must be configurable?
 func (md Metadata) artistID(name string) string {
 	mf := model.MediaFile{AlbumArtist: name}
-	return computePID(mf, md, "albumartistid", PIDSpec{}, false, id.NewHash)
+	return computePID(mf, md, "albumartistid", pidSpec{}, false, id.NewHash)
 }
 
 func (md Metadata) mapTrackTitle() string {
