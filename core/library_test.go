@@ -837,6 +837,72 @@ var _ = Describe("Library Service", func() {
 		})
 	})
 
+	Describe("PID changes", func() {
+		var repo rest.Persistable
+
+		BeforeEach(func() {
+			r := service.NewRepository(ctx)
+			repo = r.(rest.Persistable)
+		})
+
+		It("rejects an album spec that references albumid", func() {
+			library := &model.Library{Name: "Test", Path: tempDir, PIDAlbum: "albumid,title"}
+
+			_, err := repo.Save(library)
+
+			Expect(err).To(HaveOccurred())
+			var validationErr *rest.ValidationError
+			Expect(errors.As(err, &validationErr)).To(BeTrue())
+			Expect(validationErr.Errors).To(HaveKey("pidAlbum"))
+		})
+
+		It("accepts folder as an album spec", func() {
+			library := &model.Library{Name: "Test", Path: tempDir, PIDAlbum: "folder"}
+
+			_, err := repo.Save(library)
+
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("triggers a full scan when the album PID changes", func() {
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir},
+			})
+
+			library := &model.Library{ID: 1, Name: "Original Library", Path: tempDir, PIDAlbum: "folder"}
+			err := repo.Update("1", library)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "1s", "10ms").Should(Equal(1))
+
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeTrue())
+		})
+
+		It("triggers a quick scan when only the path changes", func() {
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir},
+			})
+
+			newTempDir, err := os.MkdirTemp("", "navidrome-library-pid-")
+			Expect(err).NotTo(HaveOccurred())
+			DeferCleanup(func() { os.RemoveAll(newTempDir) })
+
+			library := &model.Library{ID: 1, Name: "Original Library", Path: newTempDir}
+			err = repo.Update("1", library)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "1s", "10ms").Should(Equal(1))
+
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeFalse())
+		})
+	})
+
 	Describe("Event Broadcasting", func() {
 		var repo rest.Persistable
 

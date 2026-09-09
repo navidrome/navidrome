@@ -178,7 +178,7 @@ func (r *libraryRepositoryWrapper) Save(entity any) (string, error) {
 	}
 
 	if r.scanner != nil {
-		go r.triggerScan(lib, "new")
+		go r.triggerScan(lib, "new", false)
 	}
 
 	// Send library refresh event to all clients
@@ -210,23 +210,22 @@ func (r *libraryRepositoryWrapper) Update(id string, entity any, cols ...string)
 	}
 
 	pathChanged := originalLib.Path != lib.Path
+	pidChanged := originalLib.PIDAlbum != lib.PIDAlbum || originalLib.PIDTrack != lib.PIDTrack
 
 	err = r.LibraryRepository.Put(lib, cols...)
 	if err != nil {
 		return r.mapError(err)
 	}
 
-	// Restart watcher and trigger scan if path was updated
-	if pathChanged {
-		if r.watcher != nil {
-			if err := r.watcher.Watch(r.ctx, lib); err != nil {
-				log.Warn(r.ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
-			}
+	// Watcher only cares about the path; a PID change alone doesn't need a restart
+	if pathChanged && r.watcher != nil {
+		if err := r.watcher.Watch(r.ctx, lib); err != nil {
+			log.Warn(r.ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
 		}
+	}
 
-		if r.scanner != nil {
-			go r.triggerScan(lib, "updated")
-		}
+	if (pathChanged || pidChanged) && r.scanner != nil {
+		go r.triggerScan(lib, "updated", pidChanged)
 	}
 
 	// Send library refresh event to all clients
@@ -270,7 +269,7 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 	}
 
 	if r.scanner != nil {
-		go r.triggerScan(lib, "deleted")
+		go r.triggerScan(lib, "deleted", false)
 	}
 
 	// Send library refresh event to all clients
@@ -331,6 +330,10 @@ func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error
 		if err := r.validateLibraryPath(library); err != nil {
 			validationErrors["path"] = err.Error()
 		}
+	}
+
+	if strings.Contains(strings.ToLower(library.PIDAlbum), "albumid") {
+		validationErrors["pidAlbum"] = "resources.library.validation.pidAlbumRecursive"
 	}
 
 	if len(validationErrors) > 0 {
@@ -407,10 +410,10 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 	return nil
 }
 
-func (r *libraryRepositoryWrapper) triggerScan(lib *model.Library, action string) {
-	log.Info(r.ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+func (r *libraryRepositoryWrapper) triggerScan(lib *model.Library, action string, fullScan bool) {
+	log.Info(r.ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, "fullScan", fullScan)
 	start := time.Now()
-	warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for new library
+	warnings, err := r.scanner.ScanAll(r.ctx, fullScan)
 	if err != nil {
 		log.Error(r.ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)
 	} else {
