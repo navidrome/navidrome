@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -60,9 +61,10 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	description, _ := p.String("description")
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
-		Description: description,
-		ExpiresAt:   new(p.TimeOr("expires", time.Time{})),
-		ResourceIDs: strings.Join(ids, ","),
+		Description:  description,
+		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare),
+		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
+		ResourceIDs:  strings.Join(ids, ","),
 	}
 
 	id, err := repo.(rest.Persistable).Save(share)
@@ -89,10 +91,19 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 
 	description, _ := p.String("description")
 	repo := api.share.NewRepository(r.Context())
+
+	// The update always writes the downloadable column, so fall back to the
+	// current value when the client omits the parameter.
+	current, err := repo.(model.ShareRepository).Get(id)
+	if err != nil {
+		return nil, err
+	}
+
 	share := &model.Share{
-		ID:          id,
-		Description: description,
-		ExpiresAt:   new(p.TimeOr("expires", time.Time{})),
+		ID:           id,
+		Description:  description,
+		Downloadable: p.BoolOr("downloadable", current.Downloadable),
+		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 	}
 
 	err = repo.(rest.Persistable).Update(id, share)

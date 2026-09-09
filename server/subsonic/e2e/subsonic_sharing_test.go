@@ -205,3 +205,79 @@ var _ = Describe("Sharing Cross-User Isolation", Ordered, func() {
 		Expect(check.Shares.Share[0].ID).To(Equal(shareID))
 	})
 })
+
+var _ = Describe("Sharing Downloadable Default", func() {
+	var albumID string
+
+	BeforeEach(func() {
+		conf.Server.EnableSharing = true
+		conf.Server.EnableDownloads = true
+		setupTestDB()
+
+		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.Eq{"album.name": "Abbey Road"},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(albums).ToNot(BeEmpty())
+		albumID = albums[0].ID
+	})
+
+	createShare := func(params ...string) *model.Share {
+		resp := doReq("createShare", append([]string{"id", albumID}, params...)...)
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+		Expect(resp.Shares.Share).To(HaveLen(1))
+		share, err := ds.Share(ctx).Get(resp.Shares.Share[0].ID)
+		Expect(err).ToNot(HaveOccurred())
+		return share
+	}
+
+	It("applies DefaultDownloadableShare when the param is absent", func() {
+		conf.Server.DefaultDownloadableShare = true
+
+		Expect(createShare().Downloadable).To(BeTrue())
+	})
+
+	It("keeps shares non-downloadable when the default is off", func() {
+		conf.Server.DefaultDownloadableShare = false
+
+		Expect(createShare().Downloadable).To(BeFalse())
+	})
+
+	It("lets an explicit downloadable=false override the default", func() {
+		conf.Server.DefaultDownloadableShare = true
+
+		Expect(createShare("downloadable", "false").Downloadable).To(BeFalse())
+	})
+
+	It("lets an explicit downloadable=true override the default", func() {
+		conf.Server.DefaultDownloadableShare = false
+
+		Expect(createShare("downloadable", "true").Downloadable).To(BeTrue())
+	})
+
+	It("updateShare keeps the current downloadable when the param is absent", func() {
+		conf.Server.DefaultDownloadableShare = true
+		share := createShare()
+		Expect(share.Downloadable).To(BeTrue())
+
+		resp := doReq("updateShare", "id", share.ID, "description", "Updated")
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+
+		updated, err := ds.Share(ctx).Get(share.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updated.Description).To(Equal("Updated"))
+		Expect(updated.Downloadable).To(BeTrue())
+	})
+
+	It("updateShare applies an explicit downloadable", func() {
+		conf.Server.DefaultDownloadableShare = true
+		share := createShare()
+
+		resp := doReq("updateShare", "id", share.ID, "downloadable", "false")
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+
+		updated, err := ds.Share(ctx).Get(share.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updated.Downloadable).To(BeFalse())
+	})
+})
