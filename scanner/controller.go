@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -312,6 +313,22 @@ func EffectiveFullScan(ctx context.Context, ds model.DataStore, fullScan bool, t
 	return anyIncludedLibrary(ctx, ds, targets, func(library model.Library) bool {
 		return library.FullScanInProgress
 	})
+}
+
+// PIDConfChanged reports whether any library's effective PID specs differ from
+// the specs recorded by its last completed scan.
+func PIDConfChanged(ctx context.Context, ds model.DataStore) (bool, error) {
+	libs, err := ds.Library(ctx).GetAll()
+	if err != nil {
+		return false, err
+	}
+	for _, lib := range libs {
+		if !strings.EqualFold(lib.ScannedPIDAlbum, lib.EffectivePIDAlbum()) ||
+			!strings.EqualFold(lib.ScannedPIDTrack, lib.EffectivePIDTrack()) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []model.ScanTarget) bool {
