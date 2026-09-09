@@ -386,6 +386,31 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("MinScrobbleDuration", func() {
+		It("defaults to 30 seconds", func() {
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(consts.DefaultMinScrobbleDuration))
+		})
+
+		It("sets negative values to default", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "-10s")
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(consts.DefaultMinScrobbleDuration))
+		})
+
+		It("disables with zero value", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "0s")
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(time.Duration(0)))
+		})
+
+		It("preserves positive values", func() {
+			viper.SetDefault("lastfm.minscrobbleduration", "45s")
+			conf.Load(true)
+			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(45 * time.Second))
+		})
+	})
+
 	Describe("EnforceNonRootUser", func() {
 		It("defaults to false", func() {
 			conf.Load(true)
