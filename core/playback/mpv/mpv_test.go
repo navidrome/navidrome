@@ -349,7 +349,7 @@ var _ = Describe("MPV", func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 				defer cancel()
 
-				playbackDone := make(chan bool, 1)
+				playbackDone := make(chan *MpvTrack, 1)
 				_, err := NewTrack(ctx, playbackDone, "auto", testMediaFile)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(Equal("no mpv command arguments provided"))

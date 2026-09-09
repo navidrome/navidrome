@@ -18,14 +18,14 @@ import (
 
 type MpvTrack struct {
 	MediaFile     model.MediaFile
-	PlaybackDone  chan bool
+	PlaybackDone  chan<- *MpvTrack
 	Conn          *mpvipc.Connection
 	IPCSocketName string
 	Exe           *Executor
 	CloseCalled   bool
 }
 
-func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
+func NewTrack(ctx context.Context, playbackDoneChannel chan<- *MpvTrack, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
 	log.Debug("Loading track", "trackPath", mf.Path, "mediaType", mf.ContentType())
 
 	if _, err := mpvCommand(); err != nil {
@@ -65,7 +65,7 @@ func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName str
 		conn.WaitUntilClosed()
 		log.Info("Hitting end-of-stream, signalling on channel")
 		if !theTrack.CloseCalled {
-			playbackDoneChannel <- true
+			playbackDoneChannel <- theTrack
 		}
 	}()
 
