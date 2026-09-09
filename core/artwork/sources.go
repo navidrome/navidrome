@@ -55,13 +55,6 @@ func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern 
 	}
 }
 
-// These regexes are used to match the picture type in the file, in the order they are listed.
-var picTypeRegexes = []*regexp.Regexp{
-	regexp.MustCompile(`(?i).*cover.*front.*|.*front.*cover.*`),
-	regexp.MustCompile(`(?i).*front.*`),
-	regexp.MustCompile(`(?i).*cover.*`),
-}
-
 func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
 		if relPath == "" {
@@ -93,7 +86,8 @@ func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 			return nil, "", fmt.Errorf("no embedded image found in %s", relPath)
 		}
 
-		imageIndex := findBestImageIndex(ctx, images, relPath)
+		imageIndex := BestImageIndex(images)
+		log.Trace(ctx, "Artwork: Using embedded image", "type", images[imageIndex].Type, "path", relPath)
 		data, err := tf.Image(imageIndex)
 		if err != nil || len(data) == 0 {
 			return nil, "", fmt.Errorf("could not load embedded image from %s", relPath)
@@ -102,16 +96,23 @@ func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 	}
 }
 
-func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path string) int {
+// Ranks embedded picture types, front covers first.
+var picTypeRegexes = []*regexp.Regexp{
+	regexp.MustCompile(`(?i).*cover.*front.*|.*front.*cover.*`),
+	regexp.MustCompile(`(?i).*front.*`),
+	regexp.MustCompile(`(?i).*cover.*`),
+}
+
+// BestImageIndex returns the index of the embedded picture to serve as cover art, defaulting to the
+// first. The scanner hashes the same pick, so a track's embed_art_hash matches what is served.
+func BestImageIndex(images []taglib.ImageDesc) int {
 	for _, regex := range picTypeRegexes {
 		for i, img := range images {
 			if regex.MatchString(img.Type) {
-				log.Trace(ctx, "Artwork: Found embedded image", "type", img.Type, "path", path)
 				return i
 			}
 		}
 	}
-	log.Trace(ctx, "Artwork: Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
 	return 0
 }
 

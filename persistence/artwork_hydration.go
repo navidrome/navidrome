@@ -9,6 +9,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -95,11 +96,12 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 	if len(mfs) == 0 {
 		return
 	}
+	hydrateAlbumEmbedArtHashes(ctx, db, mfs)
 	albumIDs := make([]string, len(mfs))
 	var eligibleIDs []string
 	for i := range mfs {
 		albumIDs[i] = mfs[i].AlbumID
-		if mfs[i].HasCoverArt && conf.Server.EnableMediaFileCoverArt {
+		if mfs[i].HasOwnCoverArt() {
 			eligibleIDs = append(eligibleIDs, mfs[i].ID)
 		}
 	}
@@ -108,7 +110,7 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 	for i := range mfs {
 		mf := &mfs[i]
 		applyItemImage(albumInfos, mf.AlbumID, &mf.AlbumImage)
-		eligible := mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt
+		eligible := mf.HasOwnCoverArt()
 		ownInfo, ownResolved := mfInfos[mf.ID]
 		if eligible && ownResolved && !ownInfo.Absent() {
 			mf.ItemImage = ownInfo.Image()
@@ -131,6 +133,39 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 		if album, ok := albumInfos[mf.AlbumID]; ok && album.Absent() && ownWontResolve {
 			mf.ImageAbsent = true
 		}
+	}
+}
+
+// hydrateAlbumEmbedArtHashes fills AlbumEmbedArtHash for tracks with a hashed embedded picture, the
+// only input HasOwnCoverArt needs beyond the row itself.
+func hydrateAlbumEmbedArtHashes(ctx context.Context, db dbx.Builder, mfs model.MediaFiles) {
+	if !conf.Server.EnableMediaFileCoverArt {
+		return
+	}
+	var albumIDs []string
+	for i := range mfs {
+		if mfs[i].EmbedArtHash != "" {
+			albumIDs = append(albumIDs, mfs[i].AlbumID)
+		}
+	}
+	if len(albumIDs) == 0 {
+		return
+	}
+	repo := sqlRepository{ctx: ctx, db: db, tableName: "album"}
+	hashes := map[string]string{}
+	for chunk := range slices.Chunk(slice.Unique(albumIDs), artworkChunkSize) {
+		var rows []struct{ ID, EmbedArtHash string }
+		sel := Select("id", "embed_art_hash").From("album").Where(Eq{"id": chunk})
+		if err := repo.queryAll(sel, &rows); err != nil {
+			log.Error(ctx, "Failed to hydrate album embedded art hashes onto page", err)
+			return
+		}
+		for _, row := range rows {
+			hashes[row.ID] = row.EmbedArtHash
+		}
+	}
+	for i := range mfs {
+		mfs[i].AlbumEmbedArtHash = hashes[mfs[i].AlbumID]
 	}
 }
 

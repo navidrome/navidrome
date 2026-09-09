@@ -31,7 +31,7 @@ var _ = Describe("MediaFiles", func() {
 						OrderAlbumName: "OrderAlbumName", OrderArtistName: "OrderArtistName", OrderAlbumArtistName: "OrderAlbumArtistName",
 						MbzAlbumArtistID: "MbzAlbumArtistID", MbzAlbumType: "MbzAlbumType", MbzAlbumComment: "MbzAlbumComment",
 						MbzReleaseGroupID: "MbzReleaseGroupID",
-						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, Path: "music2/file2.mp3", FolderID: "Folder2",
+						Compilation:       true, CatalogNum: "CatalogNum", HasCoverArt: true, EmbedArtHash: "picturehash2", Path: "music2/file2.mp3", FolderID: "Folder2",
 					},
 				}
 			})
@@ -53,6 +53,7 @@ var _ = Describe("MediaFiles", func() {
 				Expect(album.CatalogNum).To(Equal("CatalogNum"))
 				Expect(album.Compilation).To(BeTrue())
 				Expect(album.EmbedArtPath).To(Equal("music2/file2.mp3"))
+				Expect(album.EmbedArtHash).To(Equal("picturehash2"))
 				Expect(album.FolderIDs).To(ConsistOf("Folder1", "Folder2"))
 			})
 		})
@@ -586,6 +587,28 @@ var _ = Describe("MediaFile", func() {
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))
 			Expect(id.ID).To(Equal(mf.AlbumID))
+		})
+		It("returns its album id if its embedded picture is the album's cover", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true, EmbedArtHash: "samepic", AlbumEmbedArtHash: "samepic"}
+			Expect(mf.HasOwnCoverArt()).To(BeFalse())
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindAlbumArtwork))
+			Expect(id.ID).To(Equal(mf.AlbumID))
+		})
+		It("returns disc art id if its embedded picture is the album's cover and DiscNumber > 0", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true, DiscNumber: 2, EmbedArtHash: "samepic", AlbumEmbedArtHash: "samepic"}
+			id := mf.CoverArtID()
+			Expect(id.Kind).To(Equal(KindDiscArtwork))
+			Expect(id.ID).To(Equal("1:2"))
+		})
+		It("returns its own id if its embedded picture differs from the album's cover", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true, EmbedArtHash: "ownpic", AlbumEmbedArtHash: "samepic"}
+			Expect(mf.HasOwnCoverArt()).To(BeTrue())
+			Expect(mf.CoverArtID().Kind).To(Equal(KindMediaFileArtwork))
+		})
+		It("returns its own id if its picture hash is unknown", func() {
+			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true, AlbumEmbedArtHash: "samepic"}
+			Expect(mf.CoverArtID().Kind).To(Equal(KindMediaFileArtwork))
 		})
 	})
 

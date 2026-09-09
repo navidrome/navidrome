@@ -244,10 +244,22 @@ var _ = Describe("Artwork", func() {
 	Describe("media file", func() {
 		It("serves a track's own found art", func() {
 			seedFoundStore("mf", "mf1", coverBytes)
+			mfRepo.SetData(model.MediaFiles{{ID: "mf1", AlbumID: "alba", HasCoverArt: true}})
 
 			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf1"), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
+		})
+
+		It("ignores a resolved mf row and delegates to the album when the track's picture is the album's cover", func() {
+			seedFoundStore("mf", "mf8", []byte("duplicate embedded track art"))
+			seedFoundStore("al", "alby", coverBytes)
+			mfRepo.SetData(model.MediaFiles{{ID: "mf8", AlbumID: "alby", HasCoverArt: true,
+				EmbedArtHash: "samepicxxxxxxxxx", AlbumEmbedArtHash: "samepicxxxxxxxxx"}})
+
+			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf8"), 0, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(readAll(img)).To(Equal(coverBytes), "album art, not the persisted embedded art")
 		})
 
 		It("ignores a resolved mf row and delegates to the album when per-track art is disabled", func() {

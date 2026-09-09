@@ -224,8 +224,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 }
 
 func embeddedArtPending(mf model.MediaFile) bool {
-	return mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt &&
-		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
+	return mf.HasOwnCoverArt() && mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 
 // primaryImage never fakes a blurhash: clients key their cover cache on the value, which would

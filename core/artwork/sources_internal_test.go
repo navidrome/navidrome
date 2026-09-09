@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.senan.xyz/taglib"
 )
 
 var _ = Describe("fromExternalFile", func() {
@@ -90,3 +91,14 @@ type nonSeekableFile struct{ r *bytes.Reader }
 func (n *nonSeekableFile) Read(p []byte) (int, error) { return n.r.Read(p) }
 func (n *nonSeekableFile) Close() error               { return nil }
 func (n *nonSeekableFile) Stat() (fs.FileInfo, error) { return nil, errors.New("not implemented") }
+
+var _ = Describe("BestImageIndex", func() {
+	It("prefers the front cover over an earlier image", func() {
+		images := []taglib.ImageDesc{{Type: "Back Cover"}, {Type: "Cover (front)"}}
+		Expect(BestImageIndex(images)).To(Equal(1))
+	})
+	It("falls back to the first image", func() {
+		images := []taglib.ImageDesc{{Type: "Artist"}, {Type: "Band"}}
+		Expect(BestImageIndex(images)).To(Equal(0))
+	})
+})

@@ -23,6 +23,7 @@ type Info struct {
 	Tags            model.RawTags
 	AudioProperties AudioProperties
 	HasPicture      bool
+	PictureHash     string
 }
 
 type FileInfo interface {
@@ -69,20 +70,22 @@ func NewPair(key, value string) string {
 
 func New(filePath string, info Info) Metadata {
 	return Metadata{
-		filePath:   filePath,
-		fileInfo:   info.FileInfo,
-		tags:       clean(filePath, info.Tags),
-		audioProps: info.AudioProperties,
-		hasPicture: info.HasPicture,
+		filePath:    filePath,
+		fileInfo:    info.FileInfo,
+		tags:        clean(filePath, info.Tags),
+		audioProps:  info.AudioProperties,
+		hasPicture:  info.HasPicture,
+		pictureHash: info.PictureHash,
 	}
 }
 
 type Metadata struct {
-	filePath   string
-	fileInfo   FileInfo
-	tags       model.Tags
-	audioProps AudioProperties
-	hasPicture bool
+	filePath    string
+	fileInfo    FileInfo
+	tags        model.Tags
+	audioProps  AudioProperties
+	hasPicture  bool
+	pictureHash string
 }
 
 func (md Metadata) FilePath() string     { return md.filePath }
@@ -95,6 +98,7 @@ func (md Metadata) Suffix() string {
 func (md Metadata) AudioProperties() AudioProperties         { return md.audioProps }
 func (md Metadata) Length() float32                          { return float32(md.audioProps.Duration.Milliseconds()) / 1000 }
 func (md Metadata) HasPicture() bool                         { return md.hasPicture }
+func (md Metadata) PictureHash() string                      { return md.pictureHash }
 func (md Metadata) All() model.Tags                          { return md.tags }
 func (md Metadata) Strings(key model.TagName) []string       { return md.tags[key] }
 func (md Metadata) String(key model.TagName) string          { return md.first(key) }

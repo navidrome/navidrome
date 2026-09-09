@@ -256,37 +256,27 @@ func (s *service) serveResolution(ctx context.Context, res resolution, size int,
 }
 
 func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
-	// The setting is not in the config fingerprint, so honor it at serve time: a direct mf- URL
-	// must fall back to disc/album instead of serving stale persisted embedded art.
-	if !conf.Server.EnableMediaFileCoverArt {
-		mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
-		if err != nil {
-			return nil, err
-		}
-		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
-	}
-	ia, err := s.ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, artID.ID, model.ImageTypePrimary)
-	switch {
-	case err == nil && ia.Hash != "":
-		return s.serveHash(ctx, artID, ia, size, square)
-	case err == nil:
-		// absent row: fall through
-	case errors.Is(err, model.ErrNotFound):
-		// no row: fall through
-	default:
-		return nil, err
-	}
-	noRow := errors.Is(err, model.ErrNotFound)
-
 	mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
 	if err != nil {
 		return nil, err
 	}
-	if noRow && conf.Server.EnableMediaFileCoverArt && mf.HasCoverArt {
-		return s.provisionalEmbedded(ctx, artID, *mf, size, square)
+	// Decided at serve time so a stale mf- URL answers with what the track advertises now, not with
+	// persisted embedded art (EnableMediaFileCoverArt is not in the config fingerprint).
+	if !mf.HasOwnCoverArt() {
+		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
 	}
-	// Mirror MediaFile.CoverArtID: a track defers to its disc art, which falls back to the album.
-	return s.Get(ctx, mf.DiscCoverArtID(), size, square)
+	ia, err := s.ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, artID.ID, model.ImageTypePrimary)
+	switch {
+	case errors.Is(err, model.ErrNotFound):
+		return s.provisionalEmbedded(ctx, artID, *mf, size, square)
+	case err != nil:
+		return nil, err
+	case ia.Hash == "":
+		// Settled absent: mirror CoverArtID's fallback rather than serving a placeholder.
+		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
+	default:
+		return s.serveHash(ctx, artID, ia, size, square)
+	}
 }
 
 // provisionalEmbedded serves a track's embedded art immediately, leaving the state row to the worker.
