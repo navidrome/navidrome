@@ -15,7 +15,6 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
@@ -182,18 +181,6 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	}
 }
 
-func pidHashChanged(ds model.DataStore) (bool, error) {
-	pidAlbum, err := ds.Property(context.Background()).DefaultGet(consts.PIDAlbumKey, "")
-	if err != nil {
-		return false, err
-	}
-	pidTrack, err := ds.Property(context.Background()).DefaultGet(consts.PIDTrackKey, "")
-	if err != nil {
-		return false, err
-	}
-	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
-}
-
 // runInitialScan runs an initial scan of the music library if needed.
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
@@ -206,7 +193,7 @@ func runInitialScan(ctx context.Context) func() error {
 		if err != nil {
 			return err
 		}
-		pidHasChanged, err := pidHashChanged(ds)
+		pidHasChanged, err := scanner.PIDConfChanged(ctx, ds)
 		if err != nil {
 			return err
 		}
