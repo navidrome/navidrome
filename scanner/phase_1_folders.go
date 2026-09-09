@@ -49,12 +49,13 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 }
 
 type scanJob struct {
-	lib           model.Library
-	fs            storage.MusicFS
-	lastUpdates   map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
-	targetFolders []string                          // Specific folders to scan (including all descendants)
-	lock          sync.Mutex
-	numFolders    atomic.Int64
+	lib              model.Library
+	fs               storage.MusicFS
+	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
+	targetFolders    []string                          // Specific folders to scan (including all descendants)
+	prevAlbumPIDConf string
+	lock             sync.Mutex
+	numFolders       atomic.Int64
 }
 
 func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
@@ -81,10 +82,11 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 
 	return &scanJob{
-		lib:           lib,
-		fs:            fsys,
-		lastUpdates:   lastUpdates,
-		targetFolders: targetFolders,
+		lib:              lib,
+		fs:               fsys,
+		lastUpdates:      lastUpdates,
+		targetFolders:    targetFolders,
+		prevAlbumPIDConf: lib.ScannedPIDAlbum,
 	}, nil
 }
 
@@ -120,12 +122,11 @@ func (j *scanJob) createFolderEntry(path string) *folderEntry {
 // The phaseFolders struct implements the phase interface, providing methods to produce
 // folder entries, process folders, persist changes to the database, and log the results.
 type phaseFolders struct {
-	jobs             []*scanJob
-	ds               model.DataStore
-	ctx              context.Context
-	state            *scanState
-	prevAlbumPIDConf string
-	imageChanges     *imageChangeCollector
+	jobs         []*scanJob
+	ds           model.DataStore
+	ctx          context.Context
+	state        *scanState
+	imageChanges *imageChangeCollector
 }
 
 func (p *phaseFolders) description() string {
@@ -134,12 +135,6 @@ func (p *phaseFolders) description() string {
 
 func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 	return ppl.NewProducer(func(put func(entry *folderEntry)) error {
-		var err error
-		p.prevAlbumPIDConf, err = p.ds.Property(p.ctx).DefaultGet(consts.PIDAlbumKey, "")
-		if err != nil {
-			return fmt.Errorf("getting album PID conf: %w", err)
-		}
-
 		// TODO Parallelize multiple job when we have multiple libraries
 		var total int64
 		var totalChanged int64
@@ -293,7 +288,7 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 			if prev := toImport[filePath]; prev != nil {
 				prevAlbumID = prev.AlbumID
 			} else {
-				prevAlbumID = md.AlbumID(track, p.prevAlbumPIDConf)
+				prevAlbumID = md.AlbumID(track, entry.job.prevAlbumPIDConf)
 			}
 			_, ok := entry.albumIDMap[track.AlbumID]
 			if prevAlbumID != track.AlbumID && !ok {

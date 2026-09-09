@@ -10,7 +10,6 @@ import (
 	"time"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
@@ -336,15 +335,10 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
 					return fmt.Errorf("updating last scan completed: %w", err)
 				}
-				err = tx.Property(ctx).Put(consts.PIDTrackKey, conf.Server.PID.Track)
+				err = tx.Library(ctx).UpdateScannedPIDs(lib.ID, lib.EffectivePIDAlbum(), lib.EffectivePIDTrack())
 				if err != nil {
-					log.Error(ctx, "Scanner: Error updating track PID conf", err)
-					return fmt.Errorf("updating track PID conf: %w", err)
-				}
-				err = tx.Property(ctx).Put(consts.PIDAlbumKey, conf.Server.PID.Album)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error updating album PID conf", err)
-					return fmt.Errorf("updating album PID conf: %w", err)
+					log.Error(ctx, "Scanner: Error updating scanned PID specs", "lib", lib.Name, err)
+					return fmt.Errorf("updating scanned PID specs: %w", err)
 				}
 				if state.changesDetected.Load() {
 					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
