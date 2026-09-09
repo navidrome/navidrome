@@ -31,3 +31,9 @@ export const DEFAULT_SHARE_BITRATE = 128
 export const BITRATE_CHOICES = [
   32, 48, 64, 80, 96, 112, 128, 160, 192, 256, 320,
 ].map((b) => ({ id: b, name: b.toString() }))
+
+// 0 is a valid stored value ("no default bit rate") that BITRATE_CHOICES cannot express.
+export const TRANSCODING_BITRATE_CHOICES = [
+  { id: 0, name: 'resources.transcoding.choices.noDefaultBitRate' },
+  ...BITRATE_CHOICES,
+]
