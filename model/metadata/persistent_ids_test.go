@@ -1,15 +1,25 @@
 package metadata
 
 import (
+	"io/fs"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+// fakeFileInfo satisfies FileInfo for tests that just need ToMediaFile to not panic.
+type fakeFileInfo struct{ fs.FileInfo }
+
+func (fakeFileInfo) ModTime() time.Time   { return time.Time{} }
+func (fakeFileInfo) Size() int64          { return 0 }
+func (fakeFileInfo) BirthTime() time.Time { return time.Time{} }
 
 var _ = Describe("getPID", func() {
 	var (
@@ -18,7 +28,8 @@ var _ = Describe("getPID", func() {
 		sum hashFunc
 	)
 	getPID := func(mf model.MediaFile, md Metadata, spec string, prependLibId bool) string {
-		return computePID(mf, md, spec, prependLibId, sum)
+		pids := PIDSpec{Album: conf.Server.PID.Album, Track: conf.Server.PID.Track}
+		return computePID(mf, md, spec, pids, prependLibId, sum)
 	}
 
 	BeforeEach(func() {
@@ -303,6 +314,54 @@ var _ = Describe("getPID", func() {
 					Expect(pidNonDefault).To(Equal(pidDefault))
 				})
 			})
+		})
+	})
+
+	Describe("per-library PID specs", func() {
+		var md Metadata
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.PID.Album = consts.DefaultAlbumPID
+			conf.Server.PID.Track = consts.DefaultTrackPID
+			md = New("/music/rock/artist/album/01 - track.mp3", Info{
+				FileInfo: fakeFileInfo{},
+				Tags: map[string][]string{
+					"album":       {"An Album"},
+					"albumartist": {"An Artist"},
+					"title":       {"A Track"},
+					"tracknumber": {"1"},
+				},
+			})
+		})
+
+		It("uses the library's album spec instead of the global config", func() {
+			tagLib := model.Library{ID: 1}
+			folderLib := model.Library{ID: 1, PIDAlbum: "folder"}
+
+			Expect(md.ToMediaFile(folderLib, "f1").AlbumID).
+				ToNot(Equal(md.ToMediaFile(tagLib, "f1").AlbumID))
+		})
+
+		It("uses the library's track spec instead of the global config", func() {
+			defaultLib := model.Library{ID: 1}
+			titleLib := model.Library{ID: 1, PIDTrack: "title"}
+
+			Expect(md.ToMediaFile(titleLib, "f1").PID).
+				ToNot(Equal(md.ToMediaFile(defaultLib, "f1").PID))
+		})
+
+		It("resolves albumid inside a track spec using the library's album spec", func() {
+			folderLib := model.Library{ID: 1, PIDAlbum: "folder", PIDTrack: "albumid,title"}
+			tagLib := model.Library{ID: 1, PIDTrack: "albumid,title"}
+
+			Expect(md.ToMediaFile(folderLib, "f1").PID).
+				ToNot(Equal(md.ToMediaFile(tagLib, "f1").PID))
+		})
+
+		It("gives two libraries with the same spec different PIDs", func() {
+			Expect(md.ToMediaFile(model.Library{ID: 1}, "f1").AlbumID).
+				ToNot(Equal(md.ToMediaFile(model.Library{ID: 2}, "f1").AlbumID))
 		})
 	})
 })

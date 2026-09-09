@@ -15,7 +15,7 @@ type InspectOutput struct {
 	MappedTags *model.MediaFile `json:"mappedTags,omitempty"`
 }
 
-func Inspect(filePath string, libraryId int, folderId string) (*InspectOutput, error) {
+func Inspect(filePath string, lib model.Library, folderId string) (*InspectOutput, error) {
 	path, file := filepath.Split(filePath)
 
 	s, err := storage.For(path)
@@ -43,7 +43,7 @@ func Inspect(filePath string, libraryId int, folderId string) (*InspectOutput, e
 	result := &InspectOutput{
 		File:       filePath,
 		RawTags:    tags[file].Tags,
-		MappedTags: new(md.ToMediaFile(libraryId, folderId)),
+		MappedTags: new(md.ToMediaFile(lib, folderId)),
 	}
 
 	return result, nil

@@ -30,7 +30,7 @@ var _ = Describe("ToMediaFile", func() {
 	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile(1, "folderID")
+		return md.ToMediaFile(model.Library{ID: 1}, "folderID")
 	}
 
 	Describe("Dates", func() {

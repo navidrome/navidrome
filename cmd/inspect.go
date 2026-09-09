@@ -66,7 +66,7 @@ func runInspector(args []string) {
 			log.Warn("Not an audio file", "file", filePath)
 			continue
 		}
-		output, err := core.Inspect(filePath, 1, "")
+		output, err := core.Inspect(filePath, model.Library{ID: 1}, "")
 		if err != nil {
 			log.Warn("Unable to process file", "file", filePath, "error", err)
 			continue
