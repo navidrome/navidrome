@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -209,8 +210,18 @@ func (r *libraryRepositoryWrapper) Update(id string, entity any, cols ...string)
 		return r.mapError(err)
 	}
 
+	// A partial update that omits pidAlbum/pidTrack leaves them zero-valued on lib,
+	// even though Put() below won't touch those columns; use what will actually persist.
+	if len(cols) > 0 && !slices.Contains(cols, "pidAlbum") {
+		lib.PIDAlbum = originalLib.PIDAlbum
+	}
+	if len(cols) > 0 && !slices.Contains(cols, "pidTrack") {
+		lib.PIDTrack = originalLib.PIDTrack
+	}
+
 	pathChanged := originalLib.Path != lib.Path
-	pidChanged := originalLib.PIDAlbum != lib.PIDAlbum || originalLib.PIDTrack != lib.PIDTrack
+	pidChanged := !strings.EqualFold(originalLib.EffectivePIDAlbum(), lib.EffectivePIDAlbum()) ||
+		!strings.EqualFold(originalLib.EffectivePIDTrack(), lib.EffectivePIDTrack())
 
 	err = r.LibraryRepository.Put(lib, cols...)
 	if err != nil {

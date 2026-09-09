@@ -10,6 +10,7 @@ import (
 
 	"github.com/deluan/rest"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
@@ -928,6 +929,61 @@ var _ = Describe("Library Service", func() {
 
 			calls := scanner.GetScanAllCalls()
 			Expect(calls[0].FullScan).To(BeFalse())
+		})
+
+		It("does not trigger a scan when the album PID override matches the effective default", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.PID.Album = consts.DefaultAlbumPID
+
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir},
+			})
+
+			library := &model.Library{ID: 1, Name: "Original Library", Path: tempDir, PIDAlbum: conf.Server.PID.Album}
+			err := repo.Update("1", library)
+			Expect(err).NotTo(HaveOccurred())
+
+			// No scan is spawned at all in this case, so there's no goroutine race to await:
+			// Consistently just confirms the count stays put over a short window.
+			Consistently(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "100ms", "10ms").Should(Equal(0))
+		})
+
+		It("triggers a full scan when clearing an override actually changes the effective spec", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.PID.Album = "album_legacy"
+
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir, PIDAlbum: "folder"},
+			})
+
+			library := &model.Library{ID: 1, Name: "Original Library", Path: tempDir, PIDAlbum: ""}
+			err := repo.Update("1", library)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "1s", "10ms").Should(Equal(1))
+
+			calls := scanner.GetScanAllCalls()
+			Expect(calls[0].FullScan).To(BeTrue())
+		})
+
+		It("does not treat pidAlbum as changed when a partial update omits it", func() {
+			libraryRepo.SetData(model.Libraries{
+				{ID: 1, Name: "Original Library", Path: tempDir, PIDAlbum: "folder"},
+			})
+
+			// Simulates a PUT body containing only "name": the decoded entity has a
+			// zero-valued PIDAlbum, but Put() below won't touch that column either.
+			library := &model.Library{ID: 1, Name: "Renamed Library", Path: tempDir}
+			err := repo.Update("1", library, "name")
+			Expect(err).NotTo(HaveOccurred())
+
+			Consistently(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "100ms", "10ms").Should(Equal(0))
 		})
 	})
 
