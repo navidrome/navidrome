@@ -304,11 +304,14 @@
         "totalDuration": "Duration",
         "defaultNewUsers": "Default for New Users",
         "createdAt": "Created",
-        "updatedAt": "Updated"
+        "updatedAt": "Updated",
+        "pidAlbum": "Album Grouping",
+        "pidTrack": "Track Identity"
       },
       "sections": {
         "basic": "Basic Information",
-        "statistics": "Statistics"
+        "statistics": "Statistics",
+        "metadata": "Metadata"
       },
       "actions": {
         "scan": "Scan Library",
@@ -333,12 +336,22 @@
         "pathNotDirectory": "Library path must be a directory",
         "pathNotFound": "Library path not found",
         "pathNotAccessible": "Library path is not accessible",
-        "pathInvalid": "Invalid library path"
+        "pathInvalid": "Invalid library path",
+        "pidAlbumRecursive": "Album grouping cannot reference albumid"
       },
       "messages": {
         "deleteConfirm": "Are you sure you want to delete this library? This will remove all associated data and user access.",
         "scanInProgress": "Scan in progress...",
         "noLibrariesAssigned": "No libraries assigned to this user"
+      },
+      "pid": {
+        "default": "Default (from configuration file)",
+        "folder": "Folder-based",
+        "custom": "Custom…",
+        "customHelp": "A PID spec. See the Navidrome documentation for the syntax.",
+        "trackHelp": "Leave empty to use the value from the configuration file.",
+        "confirmTitle": "Trigger a full scan?",
+        "confirmContent": "Changing how tracks and albums are identified requires re-scanning every library from scratch. This can take a long time on a large collection. Continue?"
       }
     },
     "plugin": {

@@ -10,7 +10,9 @@ import {
   useNotify,
   useRedirect,
 } from 'react-admin'
+import { Typography, Box } from '@material-ui/core'
 import { Title } from '../common'
+import PIDAlbumInput from './PIDAlbumInput'
 
 const LibraryCreate = (props) => {
   const translate = useTranslate()
@@ -76,6 +78,21 @@ const LibraryCreate = (props) => {
         <TextInput source="name" validate={[required()]} />
         <TextInput source="path" validate={[required()]} fullWidth />
         <BooleanInput source="defaultNewUsers" />
+
+        <Box mt="1em" />
+
+        <Typography variant="h6" gutterBottom>
+          {translate('resources.library.sections.metadata')}
+        </Typography>
+
+        <PIDAlbumInput />
+
+        <TextInput
+          source="pidTrack"
+          label={translate('resources.library.fields.pidTrack')}
+          helperText={translate('resources.library.pid.trackHelp')}
+          fullWidth
+        />
       </SimpleForm>
     </Create>
   )

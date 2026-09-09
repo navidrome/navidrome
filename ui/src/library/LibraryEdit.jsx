@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   Edit,
   FormWithRedirect,
@@ -12,10 +12,13 @@ import {
   useNotify,
   useRedirect,
   Toolbar,
+  Confirm,
 } from 'react-admin'
 import { Typography, Box } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import DeleteLibraryButton from './DeleteLibraryButton'
+import PIDAlbumInput from './PIDAlbumInput'
+import { pidChanged } from './pidUtils'
 import { Title } from '../common'
 import { formatBytes, formatDuration2, formatNumber } from '../utils/index.js'
 
@@ -52,12 +55,13 @@ const LibraryEdit = (props) => {
   const [mutate] = useMutation()
   const notify = useNotify()
   const redirect = useRedirect()
+  const [pendingValues, setPendingValues] = useState(null)
 
   // Library ID 1 is protected (main library)
   const canDelete = props.id !== '1'
   const canEditPath = props.id !== '1'
 
-  const save = useCallback(
+  const doSave = useCallback(
     async (values) => {
       try {
         await mutate(
@@ -81,11 +85,23 @@ const LibraryEdit = (props) => {
     [mutate, notify, redirect],
   )
 
+  // Changing the PID spec triggers a full scan server-side; confirm first.
+  const handleSave = useCallback(
+    (values, record) => {
+      if (pidChanged(record, values)) {
+        setPendingValues(values)
+        return undefined
+      }
+      return doSave(values)
+    },
+    [doSave],
+  )
+
   return (
     <Edit title={<LibraryTitle />} undoable={false} {...props}>
       <FormWithRedirect
         {...props}
-        save={save}
+        save={(values) => handleSave(values, props.record)}
         render={(formProps) => (
           <form onSubmit={formProps.handleSubmit}>
             <Box p="1em" maxWidth="800px">
@@ -115,6 +131,22 @@ const LibraryEdit = (props) => {
                     label={translate(
                       'resources.library.fields.defaultNewUsers',
                     )}
+                    variant="outlined"
+                  />
+
+                  <Box mt="2em" />
+
+                  <Typography variant="h6" gutterBottom>
+                    {translate('resources.library.sections.metadata')}
+                  </Typography>
+
+                  <PIDAlbumInput />
+
+                  <TextInput
+                    source="pidTrack"
+                    label={translate('resources.library.fields.pidTrack')}
+                    helperText={translate('resources.library.pid.trackHelp')}
+                    fullWidth
                     variant="outlined"
                   />
 
@@ -262,6 +294,18 @@ const LibraryEdit = (props) => {
               saving={formProps.saving}
               record={formProps.record}
               showDelete={canDelete}
+            />
+
+            <Confirm
+              isOpen={pendingValues !== null}
+              title={translate('resources.library.pid.confirmTitle')}
+              content={translate('resources.library.pid.confirmContent')}
+              onConfirm={() => {
+                const values = pendingValues
+                setPendingValues(null)
+                doSave(values)
+              }}
+              onClose={() => setPendingValues(null)}
             />
           </form>
         )}
