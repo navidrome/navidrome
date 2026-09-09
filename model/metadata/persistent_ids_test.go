@@ -14,13 +14,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// fakeFileInfo satisfies FileInfo for tests that just need ToMediaFile to not panic.
-type fakeFileInfo struct{ fs.FileInfo }
-
-func (fakeFileInfo) ModTime() time.Time   { return time.Time{} }
-func (fakeFileInfo) Size() int64          { return 0 }
-func (fakeFileInfo) BirthTime() time.Time { return time.Time{} }
-
 var _ = Describe("getPID", func() {
 	var (
 		md  Metadata
@@ -365,3 +358,10 @@ var _ = Describe("getPID", func() {
 		})
 	})
 })
+
+// fakeFileInfo satisfies FileInfo for tests that just need ToMediaFile to not panic.
+type fakeFileInfo struct{ fs.FileInfo }
+
+func (fakeFileInfo) ModTime() time.Time   { return time.Time{} }
+func (fakeFileInfo) Size() int64          { return 0 }
+func (fakeFileInfo) BirthTime() time.Time { return time.Time{} }
