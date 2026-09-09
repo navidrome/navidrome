@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { TextInput, useTranslate } from 'react-admin'
+import { TextInput, required, useTranslate } from 'react-admin'
 import { useForm, useFormState } from 'react-final-form'
 import { MenuItem, TextField } from '@material-ui/core'
 import { PID_CUSTOM, PID_DEFAULT, PID_FOLDER, pidAlbumMode } from './pidUtils'
@@ -46,6 +46,8 @@ const PIDAlbumInput = () => {
           source="pidAlbum"
           label={translate('resources.library.fields.pidAlbum')}
           helperText={translate('resources.library.pid.customHelp')}
+          validate={[required('resources.library.validation.pidAlbumCustomRequired')]}
+          data-testid="pidAlbum-custom-input"
           fullWidth
           variant="outlined"
         />

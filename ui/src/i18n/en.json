@@ -337,7 +337,8 @@
         "pathNotFound": "Library path not found",
         "pathNotAccessible": "Library path is not accessible",
         "pathInvalid": "Invalid library path",
-        "pidAlbumRecursive": "Album grouping cannot reference albumid"
+        "pidAlbumRecursive": "Album grouping cannot reference albumid",
+        "pidAlbumCustomRequired": "A custom album grouping spec is required"
       },
       "messages": {
         "deleteConfirm": "Are you sure you want to delete this library? This will remove all associated data and user access.",
