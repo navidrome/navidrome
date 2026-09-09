@@ -2,13 +2,19 @@ import React, { useState } from 'react'
 import { TextInput, required, useTranslate } from 'react-admin'
 import { useField } from 'react-final-form'
 import { MenuItem, TextField } from '@material-ui/core'
-import { PID_CUSTOM, PID_DEFAULT, PID_FOLDER, pidAlbumMode } from './pidUtils'
+import {
+  PID_CUSTOM,
+  PID_DEFAULT,
+  PID_FOLDER,
+  pidAlbumMode,
+  parsePidField,
+} from './pidUtils'
 
 const PIDAlbumInput = () => {
   const translate = useTranslate()
   // Keeps pidAlbum registered in every mode, otherwise final-form's pristine
   // flag never clears when Default/Folder is chosen (no field is registered).
-  const { input } = useField('pidAlbum')
+  const { input } = useField('pidAlbum', { parse: parsePidField })
   const [mode, setMode] = useState(() => pidAlbumMode(input.value))
 
   const handleChange = (event) => {
@@ -49,6 +55,7 @@ const PIDAlbumInput = () => {
           validate={[
             required('resources.library.validation.pidAlbumCustomRequired'),
           ]}
+          parse={parsePidField}
           data-testid="pidAlbum-custom-input"
           fullWidth
           variant="outlined"

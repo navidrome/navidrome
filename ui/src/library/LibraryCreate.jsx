@@ -13,6 +13,7 @@ import {
 import { Typography, Box, Link } from '@material-ui/core'
 import { Title } from '../common'
 import PIDAlbumInput from './PIDAlbumInput'
+import { parsePidField } from './pidUtils'
 
 const PID_DOCS_URL =
   'https://www.navidrome.org/docs/usage/configuration/persistent-ids/'
@@ -99,6 +100,7 @@ const LibraryCreate = (props) => {
           source="pidTrack"
           label={translate('resources.library.fields.pidTrack')}
           helperText={translate('resources.library.pid.trackHelp')}
+          parse={parsePidField}
           fullWidth
         />
       </SimpleForm>

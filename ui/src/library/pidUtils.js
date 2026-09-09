@@ -11,3 +11,7 @@ export const pidAlbumMode = (value) => {
 export const pidChanged = (record = {}, values = {}) =>
   (record.pidAlbum || '') !== (values.pidAlbum || '') ||
   (record.pidTrack || '') !== (values.pidTrack || '')
+
+// react-final-form's default parse turns '' into undefined, which deletes the
+// key from values and leaves the field permanently dirty against a '' initialValue.
+export const parsePidField = (value) => value ?? ''

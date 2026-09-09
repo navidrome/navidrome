@@ -19,7 +19,7 @@ import { Typography, Box, Link } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import DeleteLibraryButton from './DeleteLibraryButton'
 import PIDAlbumInput from './PIDAlbumInput'
-import { pidChanged } from './pidUtils'
+import { pidChanged, parsePidField } from './pidUtils'
 import { Title } from '../common'
 import { formatBytes, formatDuration2, formatNumber } from '../utils/index.js'
 
@@ -155,6 +155,7 @@ const LibraryEditForm = ({ canDelete, canEditPath, record, ...formProps }) => {
                   source="pidTrack"
                   label={translate('resources.library.fields.pidTrack')}
                   helperText={translate('resources.library.pid.trackHelp')}
+                  parse={parsePidField}
                   fullWidth
                   variant="outlined"
                 />

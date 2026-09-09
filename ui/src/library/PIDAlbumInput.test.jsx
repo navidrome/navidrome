@@ -98,4 +98,48 @@ describe('PIDAlbumInput', () => {
       expect(pristineHistory[pristineHistory.length - 1]).toBe(false),
     )
   })
+
+  it('returns to pristine when the mode is changed back to the original value', async () => {
+    const pristineHistory = renderWithPristineTracking({ pidAlbum: '' })
+
+    fireEvent.mouseDown(screen.getByTestId('pidAlbum-mode-select'))
+    fireEvent.click(
+      within(screen.getByRole('listbox')).getByText(
+        'resources.library.pid.folder',
+      ),
+    )
+    await waitFor(() =>
+      expect(pristineHistory[pristineHistory.length - 1]).toBe(false),
+    )
+
+    fireEvent.mouseDown(screen.getByTestId('pidAlbum-mode-select'))
+    fireEvent.click(
+      within(screen.getByRole('listbox')).getByText(
+        'resources.library.pid.default',
+      ),
+    )
+
+    await waitFor(() =>
+      expect(pristineHistory[pristineHistory.length - 1]).toBe(true),
+    )
+  })
+
+  it('returns to pristine when a custom value is reverted back to the original value', async () => {
+    const pristineHistory = renderWithPristineTracking({
+      pidAlbum: 'musicbrainz_albumid',
+    })
+
+    const input = screen
+      .getByTestId('pidAlbum-custom-input')
+      .querySelector('input')
+    fireEvent.change(input, { target: { value: 'other_tag' } })
+    await waitFor(() =>
+      expect(pristineHistory[pristineHistory.length - 1]).toBe(false),
+    )
+
+    fireEvent.change(input, { target: { value: 'musicbrainz_albumid' } })
+    await waitFor(() =>
+      expect(pristineHistory[pristineHistory.length - 1]).toBe(true),
+    )
+  })
 })
