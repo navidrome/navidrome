@@ -15,3 +15,5 @@ export const pidChanged = (record = {}, values = {}) =>
 // react-final-form's default parse turns '' into undefined, which deletes the
 // key from values and leaves the field permanently dirty against a '' initialValue.
 export const parsePidField = (value) => value ?? ''
+
+export const PID_DOCS_PATH = '/docs/usage/configuration/persistent-ids/'

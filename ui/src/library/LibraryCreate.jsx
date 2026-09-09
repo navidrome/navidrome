@@ -10,13 +10,10 @@ import {
   useNotify,
   useRedirect,
 } from 'react-admin'
-import { Typography, Box, Link } from '@material-ui/core'
-import { Title } from '../common'
+import { Typography, Box } from '@material-ui/core'
+import { Title, DocLink } from '../common'
 import PIDAlbumInput from './PIDAlbumInput'
-import { parsePidField } from './pidUtils'
-
-const PID_DOCS_URL =
-  'https://www.navidrome.org/docs/usage/configuration/persistent-ids/'
+import { parsePidField, PID_DOCS_PATH } from './pidUtils'
 
 const LibraryCreate = (props) => {
   const translate = useTranslate()
@@ -89,9 +86,9 @@ const LibraryCreate = (props) => {
           {translate('resources.library.sections.persistentIds')}
         </Typography>
         <Typography variant="body2" gutterBottom>
-          <Link href={PID_DOCS_URL} target="_blank" rel="noopener noreferrer">
+          <DocLink path={PID_DOCS_PATH}>
             {translate('resources.library.pid.docsLink')}
-          </Link>
+          </DocLink>
         </Typography>
 
         <PIDAlbumInput />
