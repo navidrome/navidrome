@@ -1,8 +1,10 @@
 package model
 
 import (
+	"cmp"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -25,6 +27,10 @@ type Library struct {
 	TotalSize          int64     `json:"totalSize" db:"total_size"`
 	TotalDuration      float64   `json:"totalDuration" db:"total_duration"`
 	DefaultNewUsers    bool      `json:"defaultNewUsers" db:"default_new_users"`
+	PIDAlbum           string    `json:"pidAlbum" db:"pid_album"`
+	PIDTrack           string    `json:"pidTrack" db:"pid_track"`
+	ScannedPIDAlbum    string    `json:"-" db:"scanned_pid_album"`
+	ScannedPIDTrack    string    `json:"-" db:"scanned_pid_track"`
 }
 
 const (
@@ -38,6 +44,16 @@ func (l Libraries) IDs() []int {
 	return slice.Map(l, func(lib Library) int { return lib.ID })
 }
 
+// EffectivePIDAlbum returns the library's album PID override, falling back to the global config.
+func (l Library) EffectivePIDAlbum() string {
+	return cmp.Or(l.PIDAlbum, conf.Server.PID.Album)
+}
+
+// EffectivePIDTrack returns the library's track PID override, falling back to the global config.
+func (l Library) EffectivePIDTrack() string {
+	return cmp.Or(l.PIDTrack, conf.Server.PID.Track)
+}
+
 type LibraryRepository interface {
 	Get(id int) (*Library, error)
 	// GetPath returns the path of the library with the given ID.
@@ -46,6 +62,8 @@ type LibraryRepository interface {
 	GetAll(...QueryOptions) (Libraries, error)
 	CountAll(...QueryOptions) (int64, error)
 	Put(l *Library, colsToUpdate ...string) error
+	// UpdateScannedPIDs records the PID specs used by the last completed scan.
+	UpdateScannedPIDs(id int, album, track string) error
 	Delete(id int) error
 	StoreMusicFolder() error
 	AddArtist(id int, artistID string) error

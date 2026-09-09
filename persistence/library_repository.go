@@ -94,6 +94,8 @@ func (r *libraryRepository) Put(l *model.Library, colsToUpdate ...string) error 
 			"path":              l.Path,
 			"remote_path":       l.RemotePath,
 			"default_new_users": l.DefaultNewUsers,
+			"pid_album":         l.PIDAlbum,
+			"pid_track":         l.PIDTrack,
 		}, colsToUpdate...)
 		cols["updated_at"] = l.UpdatedAt
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
@@ -130,6 +132,15 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 	defer libLock.Unlock()
 	libCache[l.ID] = l.Path
 	return nil
+}
+
+func (r *libraryRepository) UpdateScannedPIDs(id int, album, track string) error {
+	sq := Update(r.tableName).
+		Set("scanned_pid_album", album).
+		Set("scanned_pid_track", track).
+		Where(Eq{"id": id})
+	_, err := r.executeSQL(sq)
+	return err
 }
 
 // TODO Remove this method when we have a proper UI to add libraries

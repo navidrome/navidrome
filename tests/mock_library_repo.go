@@ -106,6 +106,18 @@ func (m *MockLibraryRepo) Put(library *model.Library, colsToUpdate ...string) er
 	return nil
 }
 
+func (m *MockLibraryRepo) UpdateScannedPIDs(id int, album, track string) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	if lib, ok := m.Data[id]; ok {
+		lib.ScannedPIDAlbum = album
+		lib.ScannedPIDTrack = track
+		m.Data[id] = lib
+	}
+	return nil
+}
+
 func (m *MockLibraryRepo) Delete(id int) error {
 	if m.Err != nil {
 		return m.Err

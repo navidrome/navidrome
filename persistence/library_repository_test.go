@@ -270,6 +270,53 @@ var _ = Describe("LibraryRepository", func() {
 		})
 	})
 
+	Describe("per-library PID columns", func() {
+		var newLibID int
+
+		BeforeEach(func() {
+			lib := model.Library{Name: "PID Test", Path: "/music/pidtest"}
+			Expect(repo.Put(&lib)).To(Succeed())
+			newLibID = lib.ID
+		})
+
+		It("round-trips pid_album and pid_track through Put", func() {
+			lib, err := repo.Get(newLibID)
+			Expect(err).ToNot(HaveOccurred())
+			lib.PIDAlbum = "folder"
+			lib.PIDTrack = "title"
+			Expect(repo.Put(lib)).To(Succeed())
+
+			got, err := repo.Get(newLibID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.PIDAlbum).To(Equal("folder"))
+			Expect(got.PIDTrack).To(Equal("title"))
+		})
+
+		It("does not let Put overwrite the scanned PID columns", func() {
+			Expect(repo.UpdateScannedPIDs(newLibID, "scanned_album", "scanned_track")).To(Succeed())
+
+			lib, err := repo.Get(newLibID)
+			Expect(err).ToNot(HaveOccurred())
+			lib.ScannedPIDAlbum = "clobbered"
+			lib.ScannedPIDTrack = "clobbered"
+			Expect(repo.Put(lib)).To(Succeed())
+
+			got, err := repo.Get(newLibID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.ScannedPIDAlbum).To(Equal("scanned_album"))
+			Expect(got.ScannedPIDTrack).To(Equal("scanned_track"))
+		})
+
+		It("writes the scanned PID columns via UpdateScannedPIDs", func() {
+			Expect(repo.UpdateScannedPIDs(newLibID, "a", "t")).To(Succeed())
+
+			got, err := repo.Get(newLibID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.ScannedPIDAlbum).To(Equal("a"))
+			Expect(got.ScannedPIDTrack).To(Equal("t"))
+		})
+	})
+
 	Describe("Delete", func() {
 		var adminRepo model.LibraryRepository
 		var artistRepo model.ArtistRepository
