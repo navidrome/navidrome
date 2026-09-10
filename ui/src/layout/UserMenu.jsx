@@ -105,6 +105,7 @@ const UserMenu = (props) => {
         }}
         open={open}
         onClose={handleClose}
+        disableScrollLock
       >
         <MenuList>
           {loaded && (

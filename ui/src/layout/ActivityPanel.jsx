@@ -152,6 +152,7 @@ const ActivityPanel = () => {
         }}
         open={open}
         onClose={handleMenuClose}
+        disableScrollLock
       >
         <Card className={classes.card}>
           <CardContent className={classes.cardContent}>
