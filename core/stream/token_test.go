@@ -232,6 +232,16 @@ var _ = Describe("Token", func() {
 			_, err := svc.ResolveRequestFromToken(ctx, token, mf, 0)
 			Expect(err).To(MatchError(ErrTokenStale))
 		})
+
+		It("rejects a Jellyfin access token", func() {
+			mf := &model.MediaFile{ID: "song-1", UpdatedAt: sourceTime}
+			usr := &model.User{ID: "u1", UserName: "johndoe"}
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = svc.ResolveRequestFromToken(ctx, tokenStr, mf, 0)
+			Expect(err).To(MatchError(ErrTokenInvalid))
+		})
 	})
 
 	Describe("paramsFromToken", func() {

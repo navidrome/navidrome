@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useDataProvider, useNotify } from 'react-admin'
+import { useDataProvider, useNotify, useRefresh } from 'react-admin'
 import subsonic from '../subsonic'
 
 export const useRating = (resource, record) => {
   const [loading, setLoading] = useState(false)
   const notify = useNotify()
   const dataProvider = useDataProvider()
+  const refresh = useRefresh()
   const mountedRef = useRef(false)
   const rating = record.rating
 
@@ -17,23 +18,18 @@ export const useRating = (resource, record) => {
   }, [])
 
   const refreshRating = useCallback(() => {
-    // For playlist tracks, refresh both resources to keep data in sync
     if (record.mediaFileId) {
-      // This is a playlist track - refresh both the playlist track and the song
-      const promises = [
-        dataProvider.getOne('song', { id: record.mediaFileId }),
-        dataProvider.getOne('playlistTrack', {
-          id: record.id,
-          filter: { playlist_id: record.playlistId },
-        }),
-      ]
-
-      Promise.all(promises)
+      // A playlistTrack id is a position, not a stable key: rating a song can drop it out
+      // of a smart playlist, and that position then holds a different track. Refetching
+      // the row by id would write the neighbour's data under this row, so reload the list.
+      dataProvider
+        .getOne('song', { id: record.mediaFileId })
         .catch((e) => {
           // eslint-disable-next-line no-console
           console.log('Error encountered: ' + e)
         })
         .finally(() => {
+          refresh()
           if (mountedRef.current) {
             setLoading(false)
           }
@@ -52,7 +48,7 @@ export const useRating = (resource, record) => {
           }
         })
     }
-  }, [dataProvider, record.id, record.mediaFileId, record.playlistId, resource])
+  }, [dataProvider, record.id, record.mediaFileId, refresh, resource])
 
   const rate = (val, id) => {
     setLoading(true)

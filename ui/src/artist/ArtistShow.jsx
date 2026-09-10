@@ -53,7 +53,7 @@ const useStyles = makeStyles(
   },
 )
 
-const ArtistDetails = (props) => {
+export const ArtistDetails = (props) => {
   const record = useRecordContext(props)
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'), {
     noSsr: true,
@@ -75,7 +75,9 @@ const ArtistDetails = (props) => {
         // eslint-disable-next-line no-console
         console.error('error on artist page', e)
       })
-  }, [record.id])
+    // Keyed on the record, not its id: a refreshed record must re-fetch, or the stale
+    // artistInfo state keeps winning the `||` above.
+  }, [record])
 
   const Component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
   return (

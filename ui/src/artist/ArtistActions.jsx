@@ -26,6 +26,7 @@ import {
 import config from '../config'
 import { formatBytes } from '../utils'
 import { artistDownloadSize } from '../common/artist'
+import { RefreshMetadataButton } from '../common/RefreshMetadataButton'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -33,6 +34,7 @@ const useStyles = makeStyles((theme) => ({
     padding: '0 !important',
     background: 'transparent',
     boxShadow: 'none',
+    alignItems: 'center',
     '& .MuiToolbar-root': {
       minHeight: 'auto',
       padding: '0 !important',
@@ -174,6 +176,11 @@ const ArtistActions = ({ className, record, ...rest }) => {
           icon={<CloudDownloadOutlinedIcon />}
         />
       )}
+      <RefreshMetadataButton
+        resource="artist"
+        record={record}
+        size={isMobile ? 'small' : 'medium'}
+      />
     </TopToolbar>
   )
 }

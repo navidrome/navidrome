@@ -6,6 +6,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -60,6 +61,42 @@ var _ = Describe("Authentication", func() {
 
 		It("rejects a malformed body", func() {
 			Expect(rawReq("POST", "/Users/AuthenticateByName", "not json").Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("mints a non-expiring token scoped to the Jellyfin audience", func() {
+			w := authenticate("admin", "password")
+			var res dto.AuthenticationResult
+			parseInto(w, &res)
+
+			claims, err := auth.Validate(res.AccessToken)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.ExpiresAt.IsZero()).To(BeTrue())
+			Expect(claims.Audience).To(Equal([]string{"jellyfin"}))
+			Expect(claims.Subject).To(Equal("admin"))
+		})
+
+		It("revokes an already-issued token when the user's epoch is bumped", func() {
+			w := authenticate("admin", "password")
+			var res dto.AuthenticationResult
+			parseInto(w, &res)
+
+			r := httptest.NewRequest("GET", "/Users/Me", nil)
+			r.Header.Set("X-Emby-Token", res.AccessToken)
+			pw := httptest.NewRecorder()
+			router.ServeHTTP(pw, r)
+			Expect(pw.Code).To(Equal(http.StatusOK))
+
+			// A real password change through the repository, which is what revokes in production.
+			admin, err := ds.User(ctx).Get(testID("admin-1"))
+			Expect(err).ToNot(HaveOccurred())
+			admin.NewPassword = "rotated"
+			Expect(ds.User(ctx).Put(admin)).To(Succeed())
+
+			r = httptest.NewRequest("GET", "/Users/Me", nil)
+			r.Header.Set("X-Emby-Token", res.AccessToken)
+			pw = httptest.NewRecorder()
+			router.ServeHTTP(pw, r)
+			Expect(pw.Code).To(Equal(http.StatusUnauthorized))
 		})
 	})
 

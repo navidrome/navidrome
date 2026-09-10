@@ -3,7 +3,7 @@
 This package implements a subset of the [Jellyfin](https://jellyfin.org/) REST API on top of
 Navidrome's existing library, users, playlists and scrobbling infrastructure. It lets
 Jellyfin-compatible clients (e.g. [Finamp](https://github.com/jmshrv/finamp),
-[jftui](https://github.com/dylanmtaylor/jftui)) browse and stream a Navidrome library without
+[jftui](https://github.com/Aanok/jftui)) browse and stream a Navidrome library without
 requiring a real Jellyfin server.
 
 It is **not** a full Jellyfin server implementation: only the endpoints needed to browse a music
@@ -57,6 +57,8 @@ query param — all forms are accepted, matching what different clients do).
 `POST /Users/AuthenticateByName` is rate-limited per IP with the same limiter as the native
 `/auth/login` (`AuthRequestLimit`/`AuthWindowLength`), since it's an unauthenticated brute-force
 surface.
+
+Access tokens do not expire, matching real Jellyfin. They are revoked by a password change, which bumps the user's token epoch.
 
 ### Public user list (login picker)
 

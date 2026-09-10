@@ -434,8 +434,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
-	m.mu.Lock()
-	m.plugins[p.ID] = &plugin{
+	loadedPlugin := &plugin{
 		name:           p.ID,
 		path:           p.Path,
 		manifest:       pkg.Manifest,
@@ -449,13 +448,16 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		fsConfig:       fsConfig,
 		lyricsSem:      make(chan struct{}, maxConcurrentLyricsCalls),
 	}
+	m.mu.Lock()
+	m.plugins[p.ID] = loadedPlugin
 	m.mu.Unlock()
 	loaded = true
 
 	// Init is the plugin's first chance to run arbitrary code: open sockets, create task queues,
 	// schedule work. Only a caller that already intends to reach the network asks for it.
+	// Use the local: loads run concurrently, so reading the map back here would race the writes.
 	if m.transient == nil || m.transient.runInit {
-		callPluginInit(ctx, m.plugins[p.ID])
+		callPluginInit(ctx, loadedPlugin)
 	}
 
 	return nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -13,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -681,6 +683,161 @@ var _ = Describe("UserRepository", func() {
 			query, _, err := r.toSQL(sel)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(query).To(ContainSubstring("user.id = {:p0}"))
+		})
+	})
+
+	Describe("token epoch", func() {
+		var repo model.UserRepository
+		var usr model.User
+
+		newUser := func() model.User {
+			uid := id.NewRandom()
+			// user_name is unique; suffix it so each It gets its own row in the shared suite DB.
+			return model.User{ID: uid, UserName: "epoch-user-" + uid, Name: "Epoch", NewPassword: "hunter2"}
+		}
+
+		BeforeEach(func() {
+			ctx := log.NewContext(context.TODO())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
+			repo = NewUserRepository(ctx, GetDBXBuilder())
+			usr = newUser()
+			Expect(repo.Put(&usr)).To(Succeed())
+		})
+
+		It("starts at zero for a new user", func() {
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+		})
+
+		It("increments once per password change", func() {
+			usr.NewPassword = "second"
+			Expect(repo.Put(&usr)).To(Succeed())
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(1))
+
+			usr.NewPassword = "third"
+			Expect(repo.Put(&usr)).To(Succeed())
+			got, err = repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(2))
+		})
+
+		It("leaves the epoch alone when the password is untouched", func() {
+			usr.NewPassword = ""
+			usr.Name = "Renamed"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+			Expect(got.Name).To(Equal("Renamed"))
+		})
+
+		It("never signals the same epoch to two concurrent password changes", func() {
+			// Each writer's epoch must be the one its own UPDATE produced.
+			const callers = 4
+			var mu sync.Mutex
+			var signalled []int
+			var wg sync.WaitGroup
+			for range callers {
+				wg.Go(func() {
+					ctx := log.NewContext(context.TODO())
+					ctx = request.WithUser(ctx, model.User{ID: usr.ID})
+					ctx = request.WithTokenEpochHolder(ctx)
+					own := NewUserRepository(ctx, GetDBXBuilder())
+
+					u := usr
+					u.NewPassword = "concurrent"
+					if err := own.Put(&u); err != nil {
+						return // the shared in-memory test DB can raise SQLITE_LOCKED
+					}
+					epoch, ok := request.TokenEpochFrom(ctx)
+					if !ok {
+						return
+					}
+					mu.Lock()
+					defer mu.Unlock()
+					signalled = append(signalled, epoch)
+				})
+			}
+			wg.Wait()
+
+			Expect(signalled).To(HaveLen(len(slice.Unique(signalled))),
+				"an epoch was signalled to more than one writer: %v", signalled)
+		})
+	})
+
+	Describe("Put and the token epoch", func() {
+		newRepo := func(actingUserID string) model.UserRepository {
+			ctx := log.NewContext(context.TODO())
+			ctx = request.WithUser(ctx, model.User{ID: actingUserID, IsAdmin: true})
+			ctx = request.WithTokenEpochHolder(ctx)
+			return NewUserRepository(ctx, GetDBXBuilder())
+		}
+
+		It("does not bump when creating a user", func() {
+			repo := newRepo("admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "fresh", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+		})
+
+		It("bumps when the password changes", func() {
+			repo := newRepo("admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "changer", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = "pw2"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(1))
+		})
+
+		It("does not bump on an edit that leaves the password alone", func() {
+			repo := newRepo("admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "renamer", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = ""
+			usr.Name = "New Display Name"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			got, err := repo.Get(usr.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.TokenEpoch).To(Equal(0))
+		})
+
+		It("signals the new epoch when a user changes their own password", func() {
+			userID := id.NewRandom()
+			repo := newRepo(userID)
+			usr := model.User{ID: userID, UserName: "self", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = "pw2"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			epoch, ok := request.TokenEpochFrom(repo.(*userRepository).ctx)
+			Expect(ok).To(BeTrue())
+			Expect(epoch).To(Equal(1))
+		})
+
+		It("does not signal when an admin changes someone else's password", func() {
+			repo := newRepo("some-admin")
+			usr := model.User{ID: id.NewRandom(), UserName: "other", NewPassword: "pw1"}
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			usr.NewPassword = "pw2"
+			Expect(repo.Put(&usr)).To(Succeed())
+
+			_, ok := request.TokenEpochFrom(repo.(*userRepository).ctx)
+			Expect(ok).To(BeFalse())
 		})
 	})
 })

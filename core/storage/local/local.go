@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -61,6 +62,8 @@ type localFS struct {
 	fs.FS
 	extractor Extractor
 	root      string
+	// devices whose statx never reports a birth time (NFS, rclone/FUSE), so we ask each only once
+	noBirthTime sync.Map
 }
 
 // ResolveSymlink implements storage.SymlinkResolverFS. It resolves the whole chain at the
@@ -84,7 +87,11 @@ func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 			if err != nil {
 				return nil, err
 			}
-			v.FileInfo = localFileInfo{info}
+			v.FileInfo = localFileInfo{
+				FileInfo:    info,
+				path:        filepath.Join(lfs.root, filepath.FromSlash(path)),
+				noBirthTime: &lfs.noBirthTime,
+			}
 			res[path] = v
 		}
 	}
@@ -95,13 +102,44 @@ func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 // with metadata.FileInfo
 type localFileInfo struct {
 	fs.FileInfo
+	path        string
+	noBirthTime *sync.Map
 }
 
 func (lfi localFileInfo) BirthTime() time.Time {
 	if ts := times.Get(lfi.FileInfo); ts.HasBirthTime() {
 		return ts.BirthTime()
 	}
+	if bt, ok := lfi.statxBirthTime(); ok {
+		return bt
+	}
 	return time.Now()
+}
+
+// statxBirthTime reads the birth time from the path, which on Linux is the only way to get it.
+// Filesystems that never report one are remembered per device, so a scan asks each only once.
+func (lfi localFileInfo) statxBirthTime() (time.Time, bool) {
+	if lfi.path == "" {
+		return time.Time{}, false
+	}
+	dev, hasDev := deviceID(lfi.FileInfo)
+	memo := lfi.noBirthTime
+	if hasDev && memo != nil {
+		if _, skip := memo.Load(dev); skip {
+			return time.Time{}, false
+		}
+	}
+	ts, err := times.Stat(lfi.path)
+	if err != nil {
+		return time.Time{}, false
+	}
+	if ts.HasBirthTime() {
+		return ts.BirthTime(), true
+	}
+	if hasDev && memo != nil {
+		memo.Store(dev, struct{}{})
+	}
+	return time.Time{}, false
 }
 
 func init() {

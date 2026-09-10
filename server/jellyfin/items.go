@@ -938,7 +938,18 @@ func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 	fields := dto.ParseFields(p.Strings("fields")...)
 	opts := filter.AlbumsByNewest()
 	opts.Max = p.IntOr("limit", 20)
-	opts = filter.ApplyLibraryFilter(opts, accessibleLibraryIDs(ctx))
+	parentID, ok := decodeFilterParam(p.StringOr("parentid", ""))
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	// A ParentId naming neither a library nor an artist (a stale id, an album) narrows to nothing
+	// rather than widening back to every library.
+	scopeIDs, isLibrary := resolveLibraryScope(ctx, parentID)
+	if parentID != "" && !isLibrary {
+		opts.Filters = squirrel.And{opts.Filters, filter.AlbumsByArtistID(parentID).Filters}
+	}
+	opts = filter.ApplyLibraryFilter(opts, scopeIDs)
 	repo := api.ds.Album(ctx)
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
 		return repo.GetCursor(opts)

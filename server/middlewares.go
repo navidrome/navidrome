@@ -208,6 +208,8 @@ func serverAddressMiddleware(h http.Handler) http.Handler {
 		if rScheme, rHost := ServerAddress(r); rHost != "" {
 			r.Host = rHost
 			r.URL.Scheme = rScheme
+			// Recorded so code running without the request (e.g. plugins) can build public URLs.
+			r = r.WithContext(request.WithServerAddress(r.Context(), rScheme, rHost))
 		}
 
 		// Call the next handler in the chain with the modified request and response.

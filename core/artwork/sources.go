@@ -10,16 +10,14 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"go.senan.xyz/taglib"
 )
 
@@ -28,16 +26,6 @@ import (
 var errSourceUnreadable = errors.New("artwork source unreadable")
 
 type sourceFunc func() (r io.ReadCloser, path string, err error)
-
-func (f sourceFunc) String() string {
-	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core/artwork.")
-	if _, after, found := strings.Cut(name, ")."); found {
-		name = after
-	}
-	name = strings.TrimSuffix(name, ".func1")
-	return name
-}
 
 func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
@@ -163,9 +151,8 @@ type readCloser struct {
 }
 
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
-	hc := http.Client{Timeout: 5 * time.Second}
+	hc := httpclient.New(5 * time.Second)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
-	req.Header.Set("User-Agent", consts.HTTPUserAgent)
 	resp, err := hc.Do(req) //nolint:gosec
 	if err != nil {
 		return nil, "", err

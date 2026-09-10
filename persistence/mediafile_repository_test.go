@@ -1055,6 +1055,28 @@ var _ = Describe("MediaRepository", func() {
 				Expect(results).To(HaveLen(1))
 				Expect(results[0].ID).To(Equal("otherlib-track"))
 			})
+
+			It("resolves paths from multiple libraries in a single call", func() {
+				adminMr := NewMediaFileRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
+				results, err := adminMr.FindByPaths([]string{
+					"1:artist/Album/track.mp3",
+					fmt.Sprintf("%d:hidden/test.mp3", otherLib.ID),
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(HaveLen(2))
+				Expect([]string{results[0].ID, results[1].ID}).To(ConsistOf("findpath-1", "otherlib-track"))
+			})
+
+			It("keeps each path scoped to its own library when several are queried", func() {
+				adminMr := NewMediaFileRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
+				// Each path exists, but under the other library's ID, so neither must match.
+				results, err := adminMr.FindByPaths([]string{
+					fmt.Sprintf("%d:artist/Album/track.mp3", otherLib.ID),
+					"1:hidden/test.mp3",
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(results).To(BeEmpty())
+			})
 		})
 	})
 
