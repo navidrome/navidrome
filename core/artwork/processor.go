@@ -16,6 +16,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
 	"github.com/navidrome/navidrome/core/artwork/dominant"
 	"github.com/navidrome/navidrome/core/artwork/thumbhash"
@@ -80,7 +81,7 @@ type processor struct {
 
 // acquire resolves one queue item end to end: find an image, hash/decode/
 // blurhash it, place its bytes, and persist the resulting state.
-func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired) {
+func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired, retryIn time.Duration) {
 	repo := p.ds.Artwork(ctx)
 	start := time.Now()
 	defer func() {
@@ -92,10 +93,13 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	if err != nil {
 		traceStage(ctx, "resolve", err)
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, 0
+	}
+	if retry, ok := errors.AsType[*agents.RetryLaterError](res.extErr); ok {
+		retryIn = retry.RetryIn
 	}
 	if res.reader == nil {
-		if res.extError || res.localError {
+		if res.extErr != nil || res.localError {
 			// A fault is not a definitive "no image": never settle absent, keep serving old state.
 			// A chainless resolver (playlist/radio) records no step, so leave a fallback or explain is blank.
 			if t := traceFrom(ctx); len(t.Steps()) == 0 {
@@ -106,10 +110,10 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 				t.add(TraceStep{Candidate: cmp.Or(res.source, "source"), Outcome: outcome})
 			}
 			log.Debug(ctx, "Artwork: No image, but a source faulted; keeping previous state",
-				"kind", item.ItemKind, "id", item.ItemID, "extError", res.extError, "localError", res.localError)
-			return outcomeFailed, nil
+				"kind", item.ItemKind, "id", item.ItemID, "extErr", res.extErr, "localError", res.localError)
+			return outcomeFailed, nil, retryIn
 		}
-		return writeAbsent(ctx, repo, item), nil
+		return writeAbsent(ctx, repo, item), nil, 0
 	}
 	defer res.reader.Close()
 
@@ -118,7 +122,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	if err != nil {
 		traceStage(ctx, "read", err)
 		log.Warn(ctx, "Artwork: Failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	log.Debug(ctx, "Artwork: Read resolved image", "kind", item.ItemKind, "id", item.ItemID,
 		"source", res.source, "bytes", len(data), "elapsed", time.Since(readStart))
@@ -128,7 +132,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	if err != nil {
 		traceStage(ctx, "hash", err)
 		log.Warn(ctx, "Artwork: Failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	log.Trace(ctx, "Artwork: Hashed image", "kind", item.ItemKind, "id", item.ItemID,
 		"hash", hash, "bytes", len(data), "elapsed", time.Since(hashStart))
@@ -152,14 +156,14 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 		if err != nil {
 			traceStage(ctx, "decode", err)
 			log.Warn(ctx, "Artwork: Failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
-			return outcomeFailed, nil
+			return outcomeFailed, nil, retryIn
 		}
 		log.Debug(ctx, "Artwork: Decoded new image", "kind", item.ItemKind, "id", item.ItemID, "hash", hash,
 			"width", art.Width, "height", art.Height, "mime", art.Mime, "elapsed", time.Since(decodeStart))
 	default:
 		traceStage(ctx, "lookup", err)
 		log.Warn(ctx, "Artwork: Failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	art.SizeBytes = int64(len(data))
 
@@ -167,15 +171,15 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	if err != nil {
 		traceStage(ctx, "store", err)
 		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	got = &acquired{ia: ia, mime: art.Mime, data: data}
-	if res.extError {
+	if res.extErr != nil {
 		log.Debug(ctx, "Artwork: Serving a lower-priority source after an external failure",
 			"kind", item.ItemKind, "id", item.ItemID, "source", res.source)
-		return outcomeFoundStale, got
+		return outcomeFoundStale, got, retryIn
 	}
-	return outcomeFound, got
+	return outcomeFound, got, retryIn
 }
 
 // persist places the bytes and commits the rows referencing them, excluding Prune for that

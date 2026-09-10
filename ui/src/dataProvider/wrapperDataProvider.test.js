@@ -87,4 +87,37 @@ describe('wrapperDataProvider', () => {
       )
     })
   })
+
+  describe('refreshMetadata', () => {
+    it('posts to the album metadata refresh endpoint', () => {
+      mockHttpClient.mockResolvedValue({ json: {} })
+      wrapperDataProvider.refreshMetadata('album', 'al-1')
+      expect(mockHttpClient).toHaveBeenCalledWith(
+        expect.stringContaining('/metadata/al/al-1/refresh'),
+        { method: 'POST' },
+      )
+    })
+
+    it('posts to the artist metadata refresh endpoint', () => {
+      mockHttpClient.mockResolvedValue({ json: {} })
+      wrapperDataProvider.refreshMetadata('artist', 'ar-1')
+      expect(mockHttpClient).toHaveBeenCalledWith(
+        expect.stringContaining('/metadata/ar/ar-1/refresh'),
+        { method: 'POST' },
+      )
+    })
+
+    // react-admin rejects a custom method whose response has no `data` key, and the
+    // endpoint answers 204 with no body.
+    it('resolves to a react-admin shaped response', async () => {
+      mockHttpClient.mockResolvedValue({
+        status: 204,
+        body: '',
+        json: undefined,
+      })
+      await expect(
+        wrapperDataProvider.refreshMetadata('album', 'al-1'),
+      ).resolves.toEqual({ data: { id: 'al-1' } })
+    })
+  })
 })

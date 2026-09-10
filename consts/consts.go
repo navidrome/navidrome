@@ -24,8 +24,8 @@ const (
 	LastDBAnalyzeAttemptAtKey     = "LastDBAnalyzeAttemptAt"
 	DBAnalyzePendingKey           = "DBAnalyzePending"
 	DBAnalyzeFailureCountKey      = "DBAnalyzeFailureCount"
-	// ArtConfFingerprintPropertyKey is the model.PropertyRepository key Backfill compares against
-	// to detect artwork-affecting config changes across restarts.
+	// ArtConfFingerprintPropertyKey is the model.PropertyRepository key the artwork config check
+	// compares against to detect artwork-affecting config changes across restarts.
 	ArtConfFingerprintPropertyKey = "ArtConfFingerprint"
 
 	UIAuthorizationHeader  = "X-ND-Authorization"
@@ -34,14 +34,15 @@ const (
 	JWTPublicSecretKey     = "JWTPublicSecret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
+	DefaultSmartRefresh    = 5 * time.Second
+	DefaultShareExpiration = 8760 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year
 
 	DBAnalyzeCheckSchedule = "@every 30m"
 	DBAnalyzeMaxAge        = 24 * time.Hour
 
-	ArtworkStaleAbsentRecheckSchedule = "@every 1h"
-	ArtworkPruneSchedule              = "@daily"
-	ArtworkPostBackfillPruneDelay     = 10 * time.Minute
+	ArtworkEnqueueMissingSchedule = "@every 1h"
+	ArtworkPruneSchedule          = "@daily"
 
 	// DefaultEncryptionKey This is the encryption key used if none is specified in the `PasswordEncryptionKey` option
 	// Never ever change this! Or it will break all Navidrome installations that don't set the config option
@@ -72,6 +73,7 @@ const (
 	DefaultUILoginBackgroundURLOffline = "data:image/png;base64," + DefaultUILoginBackgroundOffline
 	DefaultMaxSidebarPlaylists         = 100
 
+	DefaultAuthWindowLength       = 20 * time.Second
 	RequestThrottleBacklogLimit   = 100
 	RequestThrottleBacklogTimeout = time.Minute
 
@@ -107,6 +109,9 @@ const (
 	DefaultScannerExtractor = "taglib"
 	DefaultWatcherWait      = 5 * time.Second
 	Zwsp                    = string('\u200b')
+
+	DefaultActivityPanelUpdateRate  = 300 * time.Millisecond
+	DefaultPluginCompilationTimeout = time.Minute
 )
 
 const (

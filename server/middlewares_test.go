@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
@@ -69,10 +70,15 @@ var _ = Describe("middlewares", func() {
 			middleware  http.Handler
 			recorder    *httptest.ResponseRecorder
 			req         *http.Request
+			gotScheme   string
+			gotHost     string
+			gotOK       bool
 		)
 
 		BeforeEach(func() {
+			gotScheme, gotHost, gotOK = "", "", false
 			nextHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotScheme, gotHost, gotOK = request.ServerAddressFrom(r.Context())
 				w.WriteHeader(http.StatusOK)
 			})
 			middleware = serverAddressMiddleware(nextHandler)
@@ -88,6 +94,13 @@ var _ = Describe("middlewares", func() {
 				middleware.ServeHTTP(recorder, req)
 				Expect(req.Host).To(Equal("example.com"))
 				Expect(req.URL.Scheme).To(Equal("http"))
+			})
+
+			It("should record the address in the context", func() {
+				middleware.ServeHTTP(recorder, req)
+				Expect(gotOK).To(BeTrue())
+				Expect(gotScheme).To(Equal("http"))
+				Expect(gotHost).To(Equal("example.com"))
 			})
 		})
 
@@ -142,6 +155,22 @@ var _ = Describe("middlewares", func() {
 				middleware.ServeHTTP(recorder, req)
 				Expect(req.Host).To(Equal("forwarded.example.com"))
 				Expect(req.URL.Scheme).To(Equal("https"))
+			})
+
+			It("should record the forwarded address in the context", func() {
+				middleware.ServeHTTP(recorder, req)
+				Expect(gotOK).To(BeTrue())
+				Expect(gotScheme).To(Equal("https"))
+				Expect(gotHost).To(Equal("forwarded.example.com"))
+			})
+
+			It("lets a handler build a public URL on the forwarded address", func() {
+				var got string
+				serverAddressMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					got = publicurl.AbsoluteURL(r.Context(), "/share/img/token", nil)
+				})).ServeHTTP(recorder, req)
+
+				Expect(got).To(Equal("https://forwarded.example.com/share/img/token"))
 			})
 		})
 

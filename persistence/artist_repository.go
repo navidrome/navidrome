@@ -265,9 +265,9 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 	return res, err
 }
 
-// GetAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
+// getAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
 // heavy stats columns and JSON post-processing.
-func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+func (r *artistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(options...).Columns("artist.id")).GroupBy("artist.id")
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "artist.id")
@@ -284,7 +284,7 @@ func (r *artistRepository) hydrateArtwork(artists model.Artists) {
 }
 
 func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}

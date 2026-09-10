@@ -79,14 +79,6 @@ func (r *radioRepository) hydrateArtwork(radios model.Radios) {
 		func(rd *model.Radio) (string, *model.ItemImage) { return rd.ID, &rd.ItemImage })
 }
 
-// GetAllIDs returns just the radio IDs. Used by bulk enumeration (artwork backfill).
-func (r *radioRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
-	sel := r.newSelect(options...).Columns("id")
-	ids := []string{}
-	err := r.queryAllSlice(sel, &ids)
-	return ids, err
-}
-
 func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
@@ -152,7 +144,7 @@ func (r *radioRepository) Update(id string, entity any, cols ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
-	err := r.Put(t)
+	err := r.Put(t, cols...)
 	if errors.Is(err, model.ErrNotFound) {
 		return rest.ErrNotFound
 	}

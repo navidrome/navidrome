@@ -45,7 +45,7 @@ type LibraryRepository interface {
 	GetPath(id int) (string, error)
 	GetAll(...QueryOptions) (Libraries, error)
 	CountAll(...QueryOptions) (int64, error)
-	Put(*Library) error
+	Put(l *Library, colsToUpdate ...string) error
 	Delete(id int) error
 	StoreMusicFolder() error
 	AddArtist(id int, artistID string) error

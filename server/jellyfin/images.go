@@ -34,8 +34,8 @@ func imageSize(maxWidth, maxHeight int) int {
 }
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
-	// Public endpoint, like real Jellyfin's image routes: clients fetch cover URLs without credentials
-	// and item ids are unguessable, so resolution runs elevated to bypass the visibility filter.
+	// Public, like Jellyfin's own image routes: clients build cover URLs without credentials, and
+	// upstream resolves them with no visibility check either (LibraryManager.ItemIsVisible, null user).
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
 	itemId, ok := itemIDParam(w, r, "itemId")
 	if !ok {
