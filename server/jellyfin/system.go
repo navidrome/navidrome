@@ -136,7 +136,7 @@ func isSameMachine(r *http.Request, remote netip.Addr) bool {
 	return parseIP(local.String()) == remote
 }
 
-// remoteIP parses RemoteAddr, which the RealIP middleware may have rewritten to a bare IP.
+// remoteIP parses RemoteAddr, which realIPMiddleware may have rewritten to a bare client IP.
 func remoteIP(r *http.Request) netip.Addr {
 	return parseIP(r.RemoteAddr)
 }
