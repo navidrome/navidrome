@@ -148,7 +148,8 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 	start := time.Now()
 	albumName := album.Name()
 	info, err := e.ag.GetAlbumInfo(ctx, albumName, album.AlbumArtist, album.MbzAlbumID)
-	if errors.Is(err, agents.ErrNotFound) {
+	// Throttled joins not-found: no answer to store, and an unstamped timestamp retries next call.
+	if errors.Is(err, agents.ErrNotFound) || errors.Is(err, agents.ErrRetryLater) {
 		return album, nil
 	}
 	if err != nil {
@@ -253,28 +254,37 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	start := time.Now()
 	// Get MBID first, if it is not yet available
 	artistName := artist.Name()
+	var mbidErr error
 	if artist.MbzArtistID == "" {
 		mbid, err := e.ag.GetArtistMBID(ctx, artist.ID, artistName)
+		mbidErr = err
 		if mbid != "" && err == nil {
 			artist.MbzArtistID = mbid
 		}
 	}
 
-	// Call all registered agents and collect information
+	// Call all registered agents and collect information. The group carries no context, so a
+	// returned error does not cancel the siblings; only throttling is reported back.
 	g := errgroup.Group{}
 	g.SetLimit(2)
-	g.Go(func() error { _ = e.callGetImage(ctx, e.ag, &artist); return nil })
-	g.Go(func() error { e.callGetBiography(ctx, e.ag, &artist); return nil })
-	g.Go(func() error { e.callGetURL(ctx, e.ag, &artist); return nil })
-	g.Go(func() error { e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true); return nil })
-	_ = g.Wait()
+	g.Go(func() error { return retryLaterOnly(e.callGetImage(ctx, e.ag, &artist)) })
+	g.Go(func() error { return retryLaterOnly(e.callGetBiography(ctx, e.ag, &artist)) })
+	g.Go(func() error { return retryLaterOnly(e.callGetURL(ctx, e.ag, &artist)) })
+	g.Go(func() error {
+		return retryLaterOnly(e.callGetSimilarArtists(ctx, e.ag, &artist, maxSimilarArtists, true))
+	})
+	throttled := errors.Is(g.Wait(), agents.ErrRetryLater) || errors.Is(mbidErr, agents.ErrRetryLater)
 
 	if utils.IsCtxDone(ctx) {
 		log.Warn(ctx, "ArtistInfo update canceled", "id", artist.ID, "name", artistName, "elapsed", time.Since(start), ctx.Err())
 		return artist, ctx.Err()
 	}
 
-	artist.ExternalInfoUpdatedAt = new(time.Now())
+	// A throttled round keeps the previous timestamp, so the next call retries instead of
+	// serving an empty cache entry for the whole TTL.
+	if !throttled {
+		artist.ExternalInfoUpdatedAt = new(time.Now())
+	}
 	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artistName,
@@ -334,8 +344,9 @@ func (e *provider) TopSongs(ctx context.Context, artistName, id string, count in
 	songs, err := e.getMatchingTopSongs(ctx, e.ag, artist, count)
 	if err != nil {
 		switch {
-		case errors.Is(err, agents.ErrNotFound):
-			log.Trace(ctx, "TopSongs not found", "name", artistName)
+		// Throttled is not an answer, but the caller keeps the empty 200 it got before.
+		case errors.Is(err, agents.ErrNotFound), errors.Is(err, agents.ErrRetryLater):
+			log.Trace(ctx, "TopSongs not found", "name", artistName, err)
 			return nil, model.ErrNotFound
 		case errors.Is(err, context.Canceled):
 			log.Debug(ctx, "TopSongs call canceled", err)
@@ -385,22 +396,33 @@ func (e *provider) getMatchingTopSongs(ctx context.Context, agent agents.ArtistT
 	return mfs, nil
 }
 
-func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) {
-	artisURL, err := agent.GetArtistURL(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
-	if err != nil {
-		return
+// retryLaterOnly discards every failure the caller does not act on, so errgroup's
+// first-error slot is reserved for the throttling signal.
+func retryLaterOnly(err error) error {
+	if errors.Is(err, agents.ErrRetryLater) {
+		return err
 	}
-	artist.ExternalUrl = artisURL
+	return nil
 }
 
-func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) {
+func (e *provider) callGetURL(ctx context.Context, agent agents.ArtistURLRetriever, artist *auxArtist) error {
+	artisURL, err := agent.GetArtistURL(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
+	if err != nil {
+		return err
+	}
+	artist.ExternalUrl = artisURL
+	return nil
+}
+
+func (e *provider) callGetBiography(ctx context.Context, agent agents.ArtistBiographyRetriever, artist *auxArtist) error {
 	bio, err := agent.GetArtistBiography(ctx, artist.ID, artist.Name(), artist.MbzArtistID)
 	if err != nil {
-		return
+		return err
 	}
 	bio = str.SanitizeText(bio)
 	bio = strings.ReplaceAll(bio, "\n", " ")
 	artist.Biography = strings.ReplaceAll(bio, "<a ", "<a target='_blank' ")
+	return nil
 }
 
 // callGetImage populates artist's image URLs. A transient agent failure is
@@ -428,19 +450,20 @@ func (e *provider) callGetImage(ctx context.Context, agent agents.ArtistImageRet
 }
 
 func (e *provider) callGetSimilarArtists(ctx context.Context, agent agents.ArtistSimilarRetriever, artist *auxArtist,
-	limit int, includeNotPresent bool) {
+	limit int, includeNotPresent bool) error {
 	artistName := artist.Name()
 	similar, err := agent.GetSimilarArtists(ctx, artist.ID, artistName, artist.MbzArtistID, limit)
 	if len(similar) == 0 || err != nil {
-		return
+		return err
 	}
 	start := time.Now()
 	sa, err := e.mapSimilarArtists(ctx, similar, limit, includeNotPresent)
 	log.Debug(ctx, "Mapped Similar Artists", "artist", artistName, "numSimilar", len(sa), "elapsed", time.Since(start))
 	if err != nil {
-		return
+		return err
 	}
 	artist.SimilarArtists = sa
+	return nil
 }
 
 func (e *provider) mapSimilarArtists(ctx context.Context, similar []agents.Artist, limit int, includeNotPresent bool) (model.Artists, error) {

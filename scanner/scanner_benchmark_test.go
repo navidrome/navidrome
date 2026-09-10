@@ -2,8 +2,8 @@ package scanner_test
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -21,6 +21,8 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/singleton"
 	"go.uber.org/goleak"
 )
 
@@ -31,11 +33,25 @@ func BenchmarkScan(b *testing.B) {
 		goleak.IgnoreAnyFunction("testing.(*B).doBench"),
 		// Ignore database/sql.(*DB).connectionOpener, as we are not closing the database connection
 		goleak.IgnoreAnyFunction("database/sql.(*DB).connectionOpener"),
+		// A preceding TestScanner leaves Ginkgo's interrupt handler running.
+		goleak.IgnoreTopFunction("github.com/onsi/ginkgo/v2/internal/interrupt_handler.(*InterruptHandler).registerForInterrupts.func2"),
+		// The notify library keeps watcher goroutines alive after Stop(); recursive on macOS, nonrecursive on Linux.
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*recursiveTree).dispatch"),
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*nonrecursiveTree).dispatch"),
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*nonrecursiveTree).internal"),
 	)
 
-	tmpDir := os.TempDir()
+	tests.Init(b, false)
+
+	tmpDir := b.TempDir()
 	conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
-	db.Init(context.Background())
+	// The default library is seeded from MusicFolder, and its path cannot be changed afterwards
+	conf.Server.MusicFolder = "fake:///music"
+	// TestScanner may run first and close the shared DB singleton; drop it so db.Init
+	// opens a fresh one whether or not the test suite ran before this benchmark.
+	singleton.DeleteInstance[*sql.DB]()
+	// Close before b.TempDir cleanup runs, or Windows cannot delete the open DB/WAL files.
+	defer db.Init(context.Background())()
 
 	ds := persistence.New(db.Db())
 	conf.Server.DevExternalScanner = false

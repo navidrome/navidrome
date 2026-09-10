@@ -45,6 +45,23 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			})
 		})
 
+		Context("after an evaluation", func() {
+			It("stamps updated_at and evaluated_at with the same instant", func() {
+				newPls := model.Playlist{Name: "Evaluated", OwnerID: "userid", Rules: rules}
+				Expect(repo.Put(&newPls)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+
+				refreshed, err := repo.GetWithTracks(newPls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				stored, err := repo.Get(newPls.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stored.EvaluatedAt).ToNot(BeNil())
+				Expect(stored.UpdatedAt).To(BeTemporally("==", *stored.EvaluatedAt))
+				Expect(refreshed.UpdatedAt).To(BeTemporally("==", stored.UpdatedAt))
+			})
+		})
+
 		Context("invalid rules", func() {
 			It("fails to Put it in the DB", func() {
 				rules = &criteria.Criteria{

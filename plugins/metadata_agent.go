@@ -56,6 +56,9 @@ func agentErr(err error) error {
 	if errors.Is(err, errNotImplemented) || errors.Is(err, errFunctionNotFound) {
 		return errors.Join(agents.ErrNotFound, err)
 	}
+	if retryLater, ok := parseRetryLater(agentRetryLaterRe, err.Error()); ok {
+		return errors.Join(retryLater, err)
+	}
 	return err
 }
 

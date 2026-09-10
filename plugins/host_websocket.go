@@ -243,11 +243,7 @@ func (s *webSocketServiceImpl) getConnection(connectionID string) (*wsConnection
 }
 
 func (s *webSocketServiceImpl) isHostAllowed(host string) bool {
-	// Strip port from host if present
-	hostWithoutPort := host
-	if idx := strings.LastIndex(host, ":"); idx != -1 {
-		hostWithoutPort = host[:idx]
-	}
+	hostWithoutPort := extractHostname(host)
 
 	for _, pattern := range s.requiredHosts {
 		if matchHostPattern(pattern, hostWithoutPort) {

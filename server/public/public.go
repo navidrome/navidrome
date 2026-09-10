@@ -1,6 +1,7 @@
 package public
 
 import (
+	"context"
 	"net/http"
 	"path"
 
@@ -59,7 +60,7 @@ func (pub *Router) routes() http.Handler {
 	return r
 }
 
-func ShareURL(r *http.Request, id string) string {
+func ShareURL(ctx context.Context, id string) string {
 	uri := path.Join(consts.URLPathPublic, id)
-	return publicurl.PublicURL(r, uri, nil)
+	return publicurl.PublicURL(ctx, uri, nil)
 }

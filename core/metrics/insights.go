@@ -198,7 +198,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	// Config info
 	data.Config.LogLevel = conf.Server.LogLevel
 	data.Config.LogFileConfigured = conf.Server.LogFile != ""
-	data.Config.TLSConfigured = conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
+	data.Config.TLSConfigured = conf.Server.TLSEnabled()
 	data.Config.DefaultBackgroundURLSet = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
 	data.Config.EnableArtworkUpload = conf.Server.EnableArtworkUpload

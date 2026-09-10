@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -7,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -361,5 +360,26 @@ var _ = Describe("mapScrobblerError", func() {
 	It("returns ErrUnrecoverable for unknown error", func() {
 		err := mapScrobblerError(errors.New("some unknown error"))
 		Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+	})
+
+	DescribeTable("mapScrobblerError retry-later",
+		func(msg string, wantDelay time.Duration) {
+			err := mapScrobblerError(errors.New(msg))
+			Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
+			retry, _ := errors.AsType[*agents.RetryLaterError](err)
+			d := retry.RetryIn
+			Expect(d).To(Equal(wantDelay))
+		},
+		Entry("bare token", "scrobbler(retry_later)", time.Duration(0)),
+		Entry("with seconds", "scrobbler(retry_later:30)", 30*time.Second),
+		Entry("capped at 1h", "scrobbler(retry_later:999999)", time.Hour),
+		// Scaling to nanoseconds before capping wraps past 2^64, landing on ~0.29s.
+		Entry("capped before it can overflow", "scrobbler(retry_later:18446744074)", time.Hour),
+		Entry("wrapped in context", "plugin xyz: scrobbler(retry_later:5)", 5*time.Second),
+	)
+
+	It("still maps unknown errors to unrecoverable", func() {
+		err := mapScrobblerError(errors.New("scrobbler(retry_later_garbage"))
+		Expect(errors.Is(err, scrobbler.ErrUnrecoverable)).To(BeTrue())
 	})
 })
