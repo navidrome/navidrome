@@ -211,18 +211,13 @@ var _ = Describe("Sharing Downloadable Default", func() {
 
 	BeforeEach(func() {
 		conf.Server.EnableSharing = true
-		conf.Server.EnableDownloads = true
 		setupTestDB()
-
-		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
-			Filters: squirrel.Eq{"album.name": "Abbey Road"},
-		})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(albums).ToNot(BeEmpty())
-		albumID = albums[0].ID
+		conf.Server.EnableDownloads = true
+		albumID = albumIDByName("Abbey Road")
 	})
 
 	createShare := func(params ...string) *model.Share {
+		GinkgoHelper()
 		resp := doReq("createShare", append([]string{"id", albumID}, params...)...)
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares.Share).To(HaveLen(1))
@@ -231,29 +226,19 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		return share
 	}
 
-	It("applies DefaultDownloadableShare when the param is absent", func() {
-		conf.Server.DefaultDownloadableShare = true
+	DescribeTable("createShare resolves downloadable",
+		func(defaultDownloadable, enableDownloads bool, params []string, expected bool) {
+			conf.Server.DefaultDownloadableShare = defaultDownloadable
+			conf.Server.EnableDownloads = enableDownloads
 
-		Expect(createShare().Downloadable).To(BeTrue())
-	})
-
-	It("keeps shares non-downloadable when the default is off", func() {
-		conf.Server.DefaultDownloadableShare = false
-
-		Expect(createShare().Downloadable).To(BeFalse())
-	})
-
-	It("lets an explicit downloadable=false override the default", func() {
-		conf.Server.DefaultDownloadableShare = true
-
-		Expect(createShare("downloadable", "false").Downloadable).To(BeFalse())
-	})
-
-	It("lets an explicit downloadable=true override the default", func() {
-		conf.Server.DefaultDownloadableShare = false
-
-		Expect(createShare("downloadable", "true").Downloadable).To(BeTrue())
-	})
+			Expect(createShare(params...).Downloadable).To(Equal(expected))
+		},
+		Entry("applies the default when the param is absent", true, true, nil, true),
+		Entry("stays off when the default is off", false, true, nil, false),
+		Entry("ignores the default when downloads are disabled", true, false, nil, false),
+		Entry("honors an explicit false over the default", true, true, []string{"downloadable", "false"}, false),
+		Entry("honors an explicit true over the default", false, true, []string{"downloadable", "true"}, true),
+	)
 
 	It("updateShare keeps the current downloadable when the param is absent", func() {
 		conf.Server.DefaultDownloadableShare = true

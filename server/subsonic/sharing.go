@@ -62,7 +62,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
 		Description:  description,
-		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare),
+		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare && conf.Server.EnableDownloads),
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 		ResourceIDs:  strings.Join(ids, ","),
 	}
@@ -92,17 +92,21 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 	description, _ := p.String("description")
 	repo := api.share.NewRepository(r.Context())
 
-	// The update always writes the downloadable column, so fall back to the
-	// current value when the client omits the parameter.
-	current, err := repo.(model.ShareRepository).Get(id)
-	if err != nil {
-		return nil, err
+	// The update always writes the downloadable column, so read back the stored
+	// value when the client omits the parameter.
+	downloadable := p.BoolPtr("downloadable")
+	if downloadable == nil {
+		current, err := repo.Read(id)
+		if err != nil {
+			return nil, err
+		}
+		downloadable = &current.(*model.Share).Downloadable
 	}
 
 	share := &model.Share{
 		ID:           id,
 		Description:  description,
-		Downloadable: p.BoolOr("downloadable", current.Downloadable),
+		Downloadable: *downloadable,
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 	}
 
