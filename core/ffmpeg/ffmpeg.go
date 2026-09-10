@@ -27,11 +27,12 @@ type TranscodeOptions struct {
 	Command    string // DB command template (used to detect custom vs default)
 	Format     string // Target format (mp3, opus, aac, flac)
 	FilePath   string
-	BitRate    int // kbps, 0 = codec default
-	SampleRate int // 0 = no constraint
-	Channels   int // 0 = no constraint
-	BitDepth   int // 0 = no constraint; valid values: 16, 24, 32
-	Offset     int // seconds
+	BitRate    int     // kbps, 0 = codec default
+	SampleRate int     // 0 = no constraint
+	Channels   int     // 0 = no constraint
+	BitDepth   int     // 0 = no constraint; valid values: 16, 24, 32
+	Offset     int     // seconds
+	Duration   float32 // seconds; 0 = unknown. Only used to repair a piped FLAC header.
 }
 
 // AudioProbeResult contains authoritative audio stream properties from ffprobe.
@@ -86,7 +87,11 @@ func (e *ffmpeg) Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadC
 	} else {
 		args = buildTemplateArgs(opts)
 	}
-	return e.start(ctx, args)
+	out, err := e.start(ctx, args)
+	if err != nil {
+		return nil, err
+	}
+	return patchFLACDuration(out, opts.Duration-float32(opts.Offset)), nil
 }
 
 func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error) {
