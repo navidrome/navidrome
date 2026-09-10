@@ -254,9 +254,9 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		Expect(updated.Downloadable).To(BeTrue())
 	})
 
-	It("updateShare applies an explicit downloadable", func() {
+	It("updateShare applies an explicit downloadable and keeps the description", func() {
 		conf.Server.DefaultDownloadableShare = true
-		share := createShare()
+		share := createShare("description", "Keep me")
 
 		resp := doReq("updateShare", "id", share.ID, "downloadable", "false")
 		Expect(resp.Status).To(Equal(responses.StatusOK))
@@ -264,5 +264,17 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		updated, err := ds.Share(ctx).Get(share.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updated.Downloadable).To(BeFalse())
+		Expect(updated.Description).To(Equal("Keep me"))
+	})
+
+	It("updateShare clears the description when it is sent empty", func() {
+		share := createShare("description", "Clear me")
+
+		resp := doReq("updateShare", "id", share.ID, "description", "")
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+
+		updated, err := ds.Share(ctx).Get(share.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updated.Description).To(BeEmpty())
 	})
 })

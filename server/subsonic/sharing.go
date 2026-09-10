@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"cmp"
 	"net/http"
 	"strings"
 	"time"
@@ -89,23 +90,25 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	description, _ := p.String("description")
 	repo := api.share.NewRepository(r.Context())
 
-	// The update always writes the downloadable column, so read back the stored
-	// value when the client omits the parameter.
+	// The update always writes description and downloadable, so read back the
+	// stored value for whichever one the client omitted.
+	description := p.StringPtr("description")
 	downloadable := p.BoolPtr("downloadable")
-	if downloadable == nil {
+	if description == nil || downloadable == nil {
 		current, err := repo.Read(id)
 		if err != nil {
 			return nil, err
 		}
-		downloadable = &current.(*model.Share).Downloadable
+		cur := current.(*model.Share)
+		description = cmp.Or(description, &cur.Description)
+		downloadable = cmp.Or(downloadable, &cur.Downloadable)
 	}
 
 	share := &model.Share{
 		ID:           id,
-		Description:  description,
+		Description:  *description,
 		Downloadable: *downloadable,
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 	}
