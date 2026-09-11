@@ -159,7 +159,7 @@ func (s *httpServiceImpl) validateHost(ctx context.Context, hostStr string) erro
 	hostname := extractHostname(hostStr)
 
 	if len(s.requiredHosts) > 0 {
-		if !s.isHostAllowed(hostname) {
+		if !isHostInAllowlist(s.requiredHosts, hostname) {
 			return fmt.Errorf("host %q is not allowed", hostStr)
 		}
 		return nil
@@ -175,10 +175,6 @@ func (s *httpServiceImpl) validateHost(ctx context.Context, hostStr string) erro
 
 func (s *httpServiceImpl) dialControl(_, address string, _ syscall.RawConn) error {
 	return checkPrivateDial(s.requiredHosts, address)
-}
-
-func (s *httpServiceImpl) isHostAllowed(hostname string) bool {
-	return isHostInAllowlist(s.requiredHosts, hostname)
 }
 
 // extractHostname returns the hostname portion of a host string, stripping

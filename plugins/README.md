@@ -702,6 +702,8 @@ Establish persistent WebSocket connections to external services. Your plugin mus
 }
 ```
 
+`requiredHosts` follows the same [private address rules](#http) as HTTP.
+
 **Host functions:**
 
 | Function                   | Parameters                      | Description       |

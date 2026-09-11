@@ -41,8 +41,7 @@ func isHostInAllowlist(requiredHosts []string, hostname string) bool {
 	return false
 }
 
-// ipMatchesEntry reports whether a requiredHosts entry is a literal IP or CIDR
-// that covers ip. Hostname and wildcard entries never match.
+// ipMatchesEntry reports whether a requiredHosts entry is a literal IP or CIDR that covers ip.
 func ipMatchesEntry(entry string, ip net.IP) bool {
 	if _, cidr, err := net.ParseCIDR(entry); err == nil {
 		return cidr.Contains(ip)
