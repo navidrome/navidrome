@@ -162,7 +162,7 @@ func ArtistsByRole(opts Options, role model.Role) Options {
 	if _, ok := model.AllRoles[role.String()]; !ok {
 		return opts
 	}
-	roleFilter := Expr("JSON_EXTRACT(library_artist.stats, '$." + role.String() + ".m') IS NOT NULL")
+	roleFilter := Expr("library_artist.stats->'" + role.String() + "'->>'m' IS NOT NULL")
 	if opts.Filters == nil {
 		opts.Filters = roleFilter
 	} else {

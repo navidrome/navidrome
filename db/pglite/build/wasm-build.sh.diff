@@ -1,0 +1,11 @@
+--- wasm-build.sh.orig	2026-09-04 12:27:48
++++ wasm-build.sh	2026-09-04 12:27:48
+@@ -119,7 +119,7 @@
+ # used for not makefile (manual linking and pgl_main)
+ # pass the "kernel" contiguous memory zone size to the C compiler with CMA_MB which will be multiplied by 1024x1024 in
+ # preprocessed source.
+-export CC_PGLITE="-DPYDK=1 -DPG_PREFIX=${PGROOT} -I${PGROOT}/include -DCMA_MB=${CMA_MB}"
++export CC_PGLITE="${PGLITE_OPT:--O2} -DPYDK=1 -DPG_PREFIX=${PGROOT} -I${PGROOT}/include -DCMA_MB=${CMA_MB}"
+ 
+ export WASI_CFLAGS="-D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL --target=wasm32-wasip1 -D__wasilibc_use_wasip1"
+ export CC_PGLITE="$WASI_CFLAGS $CC_PGLITE"

@@ -107,14 +107,14 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 	// to automatically filter out non-existent artist IDs
 	query := fmt.Sprintf(`
 		INSERT INTO %[1]s_artists (%[1]s_id, artist_id, role, sub_role)
-		SELECT ?, 
-		       json_extract(value, '$.artist_id') as artist_id,
-		       json_extract(value, '$.role') as role,
-		       COALESCE(json_extract(value, '$.sub_role'), '') as sub_role
+		SELECT ?,
+		       je.value->>'artist_id' as artist_id,
+		       je.value->>'role' as role,
+		       COALESCE(je.value->>'sub_role', '') as sub_role
 		-- Parse the flat JSON array: [{"artist_id": "id", "role": "role", "sub_role": "subRole"}]
-		FROM json_each(?)                                        -- Iterate through each array element
+		FROM jsonb_array_elements(?::jsonb) AS je(value)
 		-- CRITICAL: Only insert records for artists that actually exist in the database
-		JOIN artist ON artist.id = json_extract(value, '$.artist_id')  -- Filter out non-existent artist IDs via INNER JOIN
+		JOIN artist ON artist.id = je.value->>'artist_id'  -- Filter out non-existent artist IDs via INNER JOIN
 		-- Handle duplicate insertions gracefully (e.g., if called multiple times)
 		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING   -- Ignore duplicates
 	`, r.tableName)

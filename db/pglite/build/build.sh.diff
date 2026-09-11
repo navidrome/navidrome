@@ -1,0 +1,14 @@
+diff --git a/wasm-build/build.sh b/wasm-build/build.sh
+index 4edfb54..4848b11 100755
+--- a/wasm-build/build.sh
++++ b/wasm-build/build.sh
+@@ -43,6 +43,9 @@ docker run --rm \
+     -e PG_VERSION="${PG_VERSION:-17.5}" \
+     -e PG_BRANCH="${PG_BRANCH:-REL_17_5_WASM-pglite}" \
+     -e CI="${CI:-true}" \
++    -e PGLITE_OPT="${PGLITE_OPT:--O2}" \
++    -e PGLITE_PIC="${PGLITE_PIC:--fPIC}" \
++    -e PGLITE_WIZER="${PGLITE_WIZER:-1}" \
+     -e WASM_OPT_FLAGS="${WASM_OPT_FLAGS:--O3 --strip-debug}" \
+     "${IMAGE_NAME}"
+ 

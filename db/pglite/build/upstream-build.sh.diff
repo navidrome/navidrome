@@ -1,0 +1,128 @@
+--- a/build.sh
++++ b/build.sh
+@@ -98,7 +98,7 @@
+          -c wasm-build/sdk_port-wasi/sdk_port-wasi-dlfcn.c \
+          -Wno-incompatible-pointer-types
+         then
+-            COPTS="$LOPTS" ${CC} ${CC_PGLITE} -ferror-limit=1 -Wl,--no-stack-first -Wl,--global-base=${GLOBAL_BASE_B} -o ${PG_DIST}/pglite.wasi \
++            COPTS="$LOPTS" ${CC} ${CC_PGLITE} -ferror-limit=1 -Wl,--global-base=${GLOBAL_BASE_B} -o ${PG_DIST}/pglite.wasi \
+              -nostartfiles ${PGINC} ${BUILD_PATH}/pglite.o \
+              ${BUILD_PATH}/sdk_port-wasi.o \
+              $LINKER $LIBPGCORE \
+@@ -106,7 +106,7 @@
+              $LINK_ICU \
+              ${PG_BUILD}/${BUILD}/src/backend/snowball/libdict_snowball.a \
+              ${PG_BUILD}/${BUILD}/src/pl/plpgsql/src/libplpgsql.a \
+-             -lxml2 -lz
++             -lxml2 -lz -lwasi_vfs
+         else
+             echo "compilation of libpglite ${BUILD} support failed"
+         fi
+@@ -114,8 +114,105 @@
+ 
+         if [ -f ${PG_DIST}/pglite.wasi ]
+         then
+-            echo "building minimal wasi FS"
++            echo "=== running wizer to pre-initialize PostgreSQL ==="
++            ls -lh ${PG_DIST}/pglite.wasi
++            mkdir -p /pgdata
++
++            # Pre-populate /pgdata using wasmtime if not already initialized.
++            # wizer_initialize() calls pgl_initdb() which ends with
++            # pg_proc_exit(66) -- that traps the WASM instance, preventing
++            # wizer from creating a snapshot.  Running initdb as a normal
++            # process via wasmtime lets pg_proc_exit terminate gracefully.
++            # On the subsequent wizer run, pgl_initdb() detects PG_VERSION
++            # and skips initdb, so wizer_initialize() returns cleanly.
++            if [ ! -f /pgdata/PG_VERSION ]; then
++                echo "=== pre-init: populating /pgdata via wasmtime ==="
++                wasmtime run \
++                    --env INITDB_ONLY=1 \
++                    --env PREFIX=/tmp/pglite \
++                    --env PGDATA=/pgdata \
++                    --env PGSYSCONFDIR=/tmp/pglite \
++                    --env PGUSER=postgres \
++                    --env PGDATABASE=template1 \
++                    --env TZ=UTC \
++                    --env PGTZ=UTC \
++                    --dir /tmp \
++                    --dir /pgdata \
++                    --dir /dev \
++                    ${PG_DIST}/pglite.wasi || true
++                if [ ! -f /pgdata/PG_VERSION ]; then
++                    echo "FATAL: wasmtime pre-init failed to populate /pgdata"
++                    ls -la /pgdata/
++                    exit 1
++                fi
++                echo "pre-init: /pgdata populated successfully"
++            else
++                echo "pgdata already initialized, skipping pre-init"
++            fi
++
++            if [ "${PGLITE_WIZER:-1}" = "1" ]; then
++            env -i \
++                ENVIRONMENT=wasm32_wasi_preview1 \
++                PREFIX=/tmp/pglite \
++                PGDATA=/pgdata \
++                PGSYSCONFDIR=/tmp/pglite \
++                PGUSER=postgres \
++                PGDATABASE=template1 \
++                MODE=REACT \
++                REPL=N \
++                TZ=UTC \
++                PGTZ=UTC \
++                PATH=/tmp/pglite/bin \
++                /usr/local/bin/wizer ${PG_DIST}/pglite.wasi \
++                    --allow-wasi \
++                    --wasm-bulk-memory true \
++                    --inherit-stdio true \
++                    --inherit-env true \
++                    --mapdir /tmp::/tmp \
++                    --mapdir /pgdata::/pgdata \
++                    --mapdir /dev::/dev \
++                    -o ${PG_DIST}/pglite-wizer.wasi
++            WIZER_RC=$?
++            if [ $WIZER_RC -ne 0 ] || [ ! -s ${PG_DIST}/pglite-wizer.wasi ]; then
++                echo "FATAL: wizer failed (exit code $WIZER_RC)"
++                ls -lh ${PG_DIST}/pglite-wizer.wasi 2>/dev/null || echo "  output file does not exist"
++                exit 1
++            fi
++            echo "wizer output:"
++            ls -lh ${PG_DIST}/pglite-wizer.wasi
++            mv ${PG_DIST}/pglite-wizer.wasi ${PG_DIST}/pglite.wasi
++            fi
++
++            echo "=== embedding read-only files with wasi-vfs ==="
++            wasi-vfs pack ${PG_DIST}/pglite.wasi \
++                --dir /tmp/pglite/share::/tmp/pglite/share \
++                --dir /tmp/pglite/lib::/tmp/pglite/lib \
++                -o ${PG_DIST}/pglite-packed.wasi
++            PACK_RC=$?
++            if [ $PACK_RC -ne 0 ] || [ ! -s ${PG_DIST}/pglite-packed.wasi ]; then
++                echo "FATAL: wasi-vfs pack failed (exit code $PACK_RC)"
++                exit 1
++            fi
++            echo "wasi-vfs pack output:"
++            ls -lh ${PG_DIST}/pglite-packed.wasi
++            mv ${PG_DIST}/pglite-packed.wasi ${PG_DIST}/pglite.wasi
++
++            echo "=== running wasm-opt ${WASM_OPT_FLAGS} ==="
++            ls -lh ${PG_DIST}/pglite.wasi
++            wasm-opt ${WASM_OPT_FLAGS} ${PG_DIST}/pglite.wasi -o ${PG_DIST}/pglite-opt.wasi
++            OPT_RC=$?
++            if [ $OPT_RC -ne 0 ] || [ ! -s ${PG_DIST}/pglite-opt.wasi ]; then
++                echo "FATAL: wasm-opt failed (exit code $OPT_RC)"
++                exit 1
++            fi
++            mv ${PG_DIST}/pglite-opt.wasi ${PG_DIST}/pglite.wasi
++            echo "wasm-opt output:"
++            ls -lh ${PG_DIST}/pglite.wasi
++
+             cp ${PG_DIST}/pglite.wasi ${PGROOT}/bin/
+             touch ${PGROOT}/bin/initdb ${PGROOT}/bin/postgres
+-            tar -cvJ --files-from=${WORKSPACE}/wasmfs.txt > ${PG_DIST}/pglite-wasi.tar.xz
++            echo "=== creating distribution archive ==="
++            echo "pgdata contents:"
++            ls /pgdata/ || echo "WARNING: /pgdata is empty!"
++            tar -cvJ -C / tmp/pglite/bin/pglite.wasi pgdata > ${PG_DIST}/pglite-wasi.tar.xz
+             mkdir -p ${PGL_BUILD_NATIVE}

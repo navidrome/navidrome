@@ -148,14 +148,14 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 		"name":        "order_artist_name",
 		"starred_at":  "starred, starred_at",
 		"rated_at":    "rating, rated_at",
-		"song_count":  "stats->>'total'->>'m'",
-		"album_count": "stats->>'total'->>'a'",
-		"size":        "stats->>'total'->>'s'",
+		"song_count":  "(stats->'total'->>'m')::bigint",
+		"album_count": "(stats->'total'->>'a')::bigint",
+		"size":        "(stats->'total'->>'s')::bigint",
 
 		// Stats by credits that are currently available
-		"maincredit_song_count":  "sum(stats->>'maincredit'->>'m')",
-		"maincredit_album_count": "sum(stats->>'maincredit'->>'a')",
-		"maincredit_size":        "sum(stats->>'maincredit'->>'s')",
+		"maincredit_song_count":  "sum((stats->'maincredit'->>'m')::bigint)",
+		"maincredit_album_count": "sum((stats->'maincredit'->>'a')::bigint)",
+		"maincredit_size":        "sum((stats->'maincredit'->>'s')::bigint)",
 	})
 	return r
 }
@@ -163,7 +163,8 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 func roleFilter(_ string, role any) Sqlizer {
 	if role, ok := role.(string); ok {
 		if _, ok := model.AllRoles[role]; ok {
-			return Expr("JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL")
+			// Containment is served by the GIN index on stats; the ->> form forces a row-by-row probe.
+			return Expr("library_artist.stats @> ?::jsonb", `{"`+role+`": {}}`)
 		}
 	}
 	return Eq{"1": 2}
@@ -194,10 +195,16 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	// Stats Format: {"1": {"albumartist": {"m": 10, "a": 5, "s": 1024}, "artist": {...}}, "2": {...}}
 	query := r.newSelect(options...).Columns("artist.*",
-		"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
+		"jsonb_object_agg(library_artist.library_id::text, library_artist.stats) as library_stats_json")
 
 	query = r.applyLibraryFilterToArtistQuery(query)
-	query = query.GroupBy("artist.id")
+	groupBy := []string{"artist.id"}
+	if loggedUser(r.ctx).ID != invalidUserId {
+		// Postgres needs the annotation columns grouped; the join yields at most one row per artist.
+		groupBy = append(groupBy, "annotation.starred", "annotation.rating", "annotation.starred_at",
+			"annotation.play_date", "annotation.rated_at", "annotation.play_count")
+	}
+	query = query.GroupBy(groupBy...)
 	return r.withAnnotation(query, "artist.id")
 }
 
@@ -428,12 +435,12 @@ set missing = (artist.id not in (select artist_id from artists_with_non_missing_
 func (r *artistRepository) RefreshPlayCounts() (int64, error) {
 	query := Expr(`
 with play_counts as (
-    select user_id, atom as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
+    select user_id, jt.v->>'id' as artist_id, sum(play_count) as total_play_count, max(play_date) as last_play_date
     from media_file
     join annotation on item_id = media_file.id
-    left join json_tree(participants, '$.artist') as jt
-    where atom is not null and key = 'id'
-    group by user_id, atom
+    cross join lateral jsonb_array_elements(coalesce(participants->'artist', '[]'::jsonb)) as jt(v)
+    where jt.v->>'id' is not null
+    group by user_id, jt.v->>'id'
 )
 insert into annotation (user_id, item_id, item_type, play_count, play_date)
 select user_id, artist_id, 'artist', total_play_count, last_play_date
@@ -478,102 +485,83 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 
 	// Template for the batch update with placeholder markers that we'll replace
 	// This now calculates per-library statistics and stores them in library_artist.stats
+	// MATERIALIZED: the correlated subquery in the UPDATE would otherwise re-run the whole
+	// aggregation for every library_artist row (minutes per batch on a large library).
 	batchUpdateStatsSQL := `
-    WITH artist_role_counters AS (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               mfa.role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
+    WITH artist_rows AS MATERIALIZED (
+        SELECT mfa.artist_id, mf.library_id, mfa.role, mf.album_id, mf.id, mf.size
         FROM media_file_artists mfa
         JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        GROUP BY mfa.artist_id, mf.library_id, mfa.role
+        WHERE mfa.artist_id ARTIST_FILTER
     ),
-    artist_total_counters AS (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               'total' AS role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        GROUP BY mfa.artist_id, mf.library_id
+    artist_role_counters AS MATERIALIZED (
+        SELECT artist_id, library_id, role,
+               count(DISTINCT album_id) AS album_count, count(DISTINCT id) AS count, sum(size) AS size
+        FROM artist_rows
+        GROUP BY artist_id, library_id, role
     ),
-    artist_participant_counter AS (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               'maincredit' AS role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        AND mfa.role IN ('albumartist', 'artist')
-        GROUP BY mfa.artist_id, mf.library_id
+    artist_total_counters AS MATERIALIZED (
+        SELECT artist_id, library_id, 'total' AS role,
+               count(DISTINCT album_id) AS album_count, count(DISTINCT id) AS count, sum(size) AS size
+        FROM artist_rows
+        GROUP BY artist_id, library_id
     ),
-    combined_counters AS (
+    artist_participant_counter AS MATERIALIZED (
+        SELECT artist_id, library_id, 'maincredit' AS role,
+               count(DISTINCT album_id) AS album_count, count(DISTINCT id) AS count, sum(size) AS size
+        FROM artist_rows
+        WHERE role IN ('albumartist', 'artist')
+        GROUP BY artist_id, library_id
+    ),
+    combined_counters AS MATERIALIZED (
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_role_counters
         UNION ALL
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_total_counters
         UNION ALL
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_participant_counter
     ),
-    library_artist_counters AS (
-        SELECT artist_id,
-               library_id,
-               json_group_object(
-                       role,
-                       json_object('a', album_count, 'm', count, 's', size)
-               ) AS counters
+    library_artist_counters AS MATERIALIZED (
+        SELECT artist_id, library_id,
+               jsonb_object_agg(role, jsonb_build_object('a', album_count, 'm', count, 's', size)) AS counters
         FROM combined_counters
         GROUP BY artist_id, library_id
     )
     UPDATE library_artist
-    SET stats = coalesce((SELECT counters FROM library_artist_counters lac
-                         WHERE lac.artist_id = library_artist.artist_id
-                         AND lac.library_id = library_artist.library_id), '{}')
-    WHERE library_artist.artist_id IN (ROLE_IDS_PLACEHOLDER);` // Will replace with actual placeholders
+    SET stats = coalesce(x.counters, '{}'::jsonb)
+    FROM (SELECT la.artist_id, la.library_id, lac.counters
+          FROM library_artist la
+          LEFT JOIN library_artist_counters lac
+                 ON lac.artist_id = la.artist_id AND lac.library_id = la.library_id
+          WHERE la.artist_id ARTIST_FILTER) x
+    WHERE x.artist_id = library_artist.artist_id AND x.library_id = library_artist.library_id;` // Will replace with actual placeholders
 
 	var totalRowsAffected int64 = 0
-	const batchSize = 1000
-
-	batchCounter := 0
-	for artistIDBatch := range slice.CollectChunks(slices.Values(allTouchedArtistIDs), batchSize) {
-		batchCounter++
-		log.Trace(r.ctx, "RefreshStats: Processing batch", "batchNum", batchCounter, "batchSize", len(artistIDBatch))
-
-		// Create placeholders for each ID in the IN clauses
-		placeholders := make([]string, len(artistIDBatch))
-		for i := range artistIDBatch {
-			placeholders[i] = "?"
-		}
-		// Don't add extra parentheses, the IN clause already expects them in SQL syntax
-		inClause := strings.Join(placeholders, ",")
-
-		// Replace the placeholder markers with actual SQL placeholders
-		batchSQL := strings.Replace(batchUpdateStatsSQL, "ROLE_IDS_PLACEHOLDER", inClause, 4)
-
-		// Create a single parameter array with all IDs (repeated 4 times for each IN clause)
-		// We need to repeat each ID 4 times (once for each IN clause)
-		args := make([]any, 4*len(artistIDBatch))
-		for idx, id := range artistIDBatch {
-			for i := range 4 {
-				startIdx := i * len(artistIDBatch)
-				args[startIdx+idx] = id
+	// A full refresh runs as one statement: the materialized CTEs make it a few hash joins
+	// (3 s for 30k artists locally), while 1000-artist batches repeat the media_file scans.
+	batches := [][]string{allTouchedArtistIDs}
+	if !allArtists {
+		batches = slices.Collect(slice.CollectChunks(slices.Values(allTouchedArtistIDs), 1000))
+	}
+	for batchNum, batch := range batches {
+		filter, args := "<> ''", []any(nil)
+		if !allArtists {
+			placeholders := make([]string, len(batch))
+			for i := range batch {
+				placeholders[i] = "?"
+			}
+			filter = "IN (" + strings.Join(placeholders, ",") + ")"
+			// the filter appears twice, so the ids are bound twice
+			for range 2 {
+				for _, id := range batch {
+					args = append(args, id)
+				}
 			}
 		}
-
-		// Now use Expr with the expanded SQL and all parameters
-		sqlizer := Expr(batchSQL, args...)
-
-		rowsAffected, err := r.executeSQL(sqlizer)
+		log.Trace(r.ctx, "RefreshStats: Processing batch", "batchNum", batchNum+1, "batchSize", len(batch))
+		batchSQL := strings.ReplaceAll(batchUpdateStatsSQL, "ARTIST_FILTER", filter)
+		rowsAffected, err := r.executeSQL(Expr(batchSQL, args...))
 		if err != nil {
-			return totalRowsAffected, fmt.Errorf("executing batch update for artist stats (batch %d): %w", batchCounter, err)
+			return totalRowsAffected, fmt.Errorf("executing batch update for artist stats (batch %d): %w", batchNum+1, err)
 		}
 		totalRowsAffected += rowsAffected
 	}
@@ -606,7 +594,7 @@ func (r *artistRepository) searchCfg(scope []int) searchConfig {
 	return searchConfig{
 		// Natural order for artists is more performant by ID, due to GROUP BY clause in selectArtist
 		NaturalOrder: "artist.id",
-		OrderBy:      []string{"sum(json_extract(stats, '$.total.m')) desc", "name"},
+		OrderBy:      []string{"sum((stats->'total'->>'m')::bigint) desc", "name"},
 		MBIDFields:   []string{"mbz_artist_id"},
 		// scope==nil is the fast-path: no filter (and orphans must not exist — see markOrphansMissing).
 		// Otherwise the join-free [artistLibraryFilter].
@@ -719,9 +707,9 @@ func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 			role = v
 		}
 	}
-	r.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"
-	r.sortMappings["album_count"] = "sum(stats->>'" + role + "'->>'a')"
-	r.sortMappings["size"] = "sum(stats->>'" + role + "'->>'s')"
+	r.sortMappings["song_count"] = "sum((stats->'" + role + "'->>'m')::bigint)"
+	r.sortMappings["album_count"] = "sum((stats->'" + role + "'->>'a')::bigint)"
+	r.sortMappings["size"] = "sum((stats->'" + role + "'->>'s')::bigint)"
 	return r.GetAll(r.parseRestOptions(r.ctx, options...))
 }
 

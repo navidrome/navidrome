@@ -102,7 +102,7 @@ func (r *playlistTrackRepository) Read(id string) (any, error) {
 			" AND annotation.item_type = 'media_file'"+
 			" AND annotation.user_id = '"+userID+"')").
 		Columns(
-			"coalesce(starred, 0) as starred",
+			"coalesce(starred, false) as starred",
 			"coalesce(play_count, 0) as play_count",
 			"coalesce(rating, 0) as rating",
 			"starred_at",
@@ -154,9 +154,11 @@ func (r *playlistTrackRepository) GetMediaFileIDs(options ...model.QueryOptions)
 }
 
 func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {
-	query := r.newSelect(options...).Columns("distinct mf.album_id").
+	// GROUP BY rather than DISTINCT: PostgreSQL rejects DISTINCT with ORDER BY random().
+	query := r.newSelect(options...).Columns("mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").
-		Where(Eq{"playlist_id": r.playlistId})
+		Where(Eq{"playlist_id": r.playlistId}).
+		GroupBy("mf.album_id")
 	var ids []string
 	err := r.queryAllSlice(query, &ids)
 	if err != nil {

@@ -1,0 +1,9 @@
+--- a/src/include/port/wasm_common.h
++++ b/src/include/port/wasm_common.h
+@@ -63,5 +63,6 @@
+         "-c", "synchronous_commit=on",\
+         "-c", "wal_buffers=4MB",\
+         "-c", "min_wal_size=80MB",\
++        "-c", "max_wal_size=128MB",\
+         "-c", "shared_buffers=128MB"
+ 

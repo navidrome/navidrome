@@ -1,0 +1,12 @@
+--- a/pg_main.c
++++ b/pg_main.c
+@@ -28,7 +28,8 @@
+ 
+ // globals
+ 
+-#define MemoryContextResetAndDeleteChildren(...)
++// PG17 dropped this macro; the no-op stub leaked every message's parse/plan state.
++#define MemoryContextResetAndDeleteChildren(ctx) MemoryContextReset(ctx)
+ // #define SpinLockInit(...)
+ 
+ 

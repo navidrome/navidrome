@@ -399,8 +399,10 @@ func Load(noConfigDump bool) {
 
 	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
 	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
+		Server.DbPath = "pglite://" + filepath.Join(Server.DataFolder.String(), "pglite")
 	}
+	// The embedded database lives in this process; a scanner subprocess cannot open it too.
+	Server.DevExternalScanner = false
 
 	out := os.Stderr
 	if Server.LogFile != "" {
@@ -996,7 +998,7 @@ func setViperDefaults() {
 	viper.SetDefault("autotranscodedownload", false)
 	viper.SetDefault("defaultdownsamplingformat", consts.DefaultDownsamplingFormat)
 	viper.SetDefault("search.fullstring", false)
-	viper.SetDefault("search.backend", "fts")
+	viper.SetDefault("search.backend", "legacy") // FTS5 is SQLite-only; the LIKE backend works on PostgreSQL
 	viper.SetDefault("matcher.preferstarred", true)
 	viper.SetDefault("matcher.fuzzythreshold", 85)
 	viper.SetDefault("recentlyaddedbymodtime", false)
@@ -1131,7 +1133,7 @@ func setViperDefaults() {
 	viper.SetDefault("devartworkexternalmaxrps", 2)
 	viper.SetDefault("devartistinfotimetolive", consts.ArtistInfoTimeToLive)
 	viper.SetDefault("devalbuminfotimetolive", consts.AlbumInfoTimeToLive)
-	viper.SetDefault("devexternalscanner", true)
+	viper.SetDefault("devexternalscanner", false)
 	viper.SetDefault("devscannerthreads", 5)
 	viper.SetDefault("devselectivewatcher", true)
 	viper.SetDefault("devinsightsinitialdelay", consts.InsightsInitialDelay)

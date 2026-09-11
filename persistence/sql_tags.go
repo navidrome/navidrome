@@ -74,8 +74,8 @@ func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
 	}
 	query := fmt.Sprintf(`
 		INSERT INTO %[1]s_tags (%[1]s_id, tag_id)
-		SELECT ?, value FROM json_each(?)
-		JOIN tag ON tag.id = value
+		SELECT ?, je.value FROM jsonb_array_elements_text(?::jsonb) AS je(value)
+		JOIN tag ON tag.id = je.value
 		ON CONFLICT (%[1]s_id, tag_id) DO NOTHING`, r.tableName)
 	_, err = r.executeSQL(Expr(query, itemID, string(idsJSON)))
 	return err
@@ -123,11 +123,8 @@ func genreFilter(filter genreFilterDef) func(_ string, v any) Sqlizer {
 func tagIDFilter(name string, idValue any) Sqlizer {
 	name = strings.TrimSuffix(name, "_id")
 	return Exists(
-		fmt.Sprintf(`json_tree(tags, "$.%s")`, name),
-		And{
-			NotEq{"json_tree.atom": nil},
-			Eq{"value": idValue},
-		},
+		fmt.Sprintf(`jsonb_array_elements(coalesce(tags->'%s', '[]'::jsonb)) AS jt(v)`, name),
+		Eq{"jt.v->>'id'": idValue},
 	)
 }
 

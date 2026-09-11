@@ -57,7 +57,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 	r := &userRepository{}
 	r.ctx = ctx
 	r.db = db
-	r.tableName = "user"
+	r.tableName = "user_account"
 	r.registerModel(&model.User{}, map[string]filterFunc{
 		"id":       idFilter(r.tableName),
 		"password": invalidFilter(ctx),
@@ -72,8 +72,8 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 // selectUserWithLibraries returns a SelectBuilder that includes library information
 func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
-		Columns(`user.*`,
-			`COALESCE(json_group_array(json_object(
+		Columns(`user_account.*`,
+			`COALESCE(json_agg(json_build_object(
 				'id', library.id,
 				'name', library.name,
 				'path', library.path,
@@ -84,9 +84,9 @@ func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) 
 				'updated_at', library.updated_at,
 				'created_at', library.created_at
 			)) FILTER (WHERE library.id IS NOT NULL), '[]') AS libraries_json`).
-		LeftJoin("user_library ul ON user.id = ul.user_id").
+		LeftJoin("user_library ul ON user_account.id = ul.user_id").
 		LeftJoin("library ON ul.library_id = library.id").
-		GroupBy("user.id")
+		GroupBy("user_account.id")
 }
 
 func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
@@ -94,7 +94,7 @@ func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
 }
 
 func (r *userRepository) Get(id string) (*model.User, error) {
-	sel := r.selectUserWithLibraries().Where(Eq{"user.id": id})
+	sel := r.selectUserWithLibraries().Where(Eq{"user_account.id": id})
 	var res dbUser
 	err := r.queryOne(sel, &res)
 	if err != nil {
@@ -163,7 +163,7 @@ func (r *userRepository) Put(u *model.User) error {
 	// Auto-assign all libraries to admin users in a single SQL operation
 	if u.IsAdmin {
 		sql := Expr(
-			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library",
+			"INSERT INTO user_library (user_id, library_id) SELECT ?, id FROM library ON CONFLICT DO NOTHING",
 			u.ID,
 		)
 		if _, err := r.executeSQL(sql); err != nil {
@@ -172,7 +172,7 @@ func (r *userRepository) Put(u *model.User) error {
 	} else if isNewUser { // Only for new regular users
 		// Auto-assign default libraries to new regular users
 		sql := Expr(
-			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true",
+			"INSERT INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true ON CONFLICT DO NOTHING",
 			u.ID,
 		)
 		if _, err := r.executeSQL(sql); err != nil {
@@ -190,7 +190,7 @@ func (r *userRepository) Put(u *model.User) error {
 }
 
 func (r *userRepository) FindFirstAdmin() (*model.User, error) {
-	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{"user.is_admin": true})
+	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{"user_account.is_admin": true})
 	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {
@@ -200,7 +200,7 @@ func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 }
 
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
-	sel := r.selectUserWithLibraries().Where(Expr("user.user_name = ? COLLATE NOCASE", username))
+	sel := r.selectUserWithLibraries().Where(Expr("lower(user_account.user_name) = lower(?)", username))
 	var usr dbUser
 	err := r.queryOne(sel, &usr)
 	if err != nil {
@@ -260,7 +260,7 @@ func (r *userRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 }
 
 func (r *userRepository) EntityName() string {
-	return "user"
+	return "user_account"
 }
 
 func (r *userRepository) NewInstance() any {
@@ -384,7 +384,7 @@ func validateScrobbleFilter(u *model.User) error {
 
 func invalidScrobbleFilter() error {
 	return &rest.ValidationError{Errors: map[string]string{
-		"scrobbleFilter": "resources.user.validation.invalidScrobbleFilter",
+		"scrobbleFilter": "resources.user_account.validation.invalidScrobbleFilter",
 	}}
 }
 
@@ -456,9 +456,9 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 			upd := Update(r.tableName).Set("password", u.NewPassword).Where(Eq{"id": u.ID})
 			_, err = r.executeSQL(upd)
 			if err != nil {
-				log.Error("Password NOT encrypted! This may cause problems!", "user", u.UserName, "id", u.ID, err)
+				log.Error("Password NOT encrypted! This may cause problems!", "user_account", u.UserName, "id", u.ID, err)
 			} else {
-				log.Warn("Password encrypted successfully", "user", u.UserName, "id", u.ID)
+				log.Warn("Password encrypted successfully", "user_account", u.UserName, "id", u.ID)
 			}
 		}
 	}
@@ -475,7 +475,7 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 func (r *userRepository) encryptPassword(u *model.User) error {
 	encPassword, err := utils.Encrypt(r.ctx, encKey, u.NewPassword)
 	if err != nil {
-		log.Error(r.ctx, "Error encrypting user's password", "user", u.UserName, err)
+		log.Error(r.ctx, "Error encrypting user's password", "user_account", u.UserName, err)
 		return err
 	}
 	u.NewPassword = encPassword
@@ -486,7 +486,7 @@ func (r *userRepository) encryptPassword(u *model.User) error {
 func (r *userRepository) decryptPassword(u *model.User) error {
 	plaintext, err := utils.Decrypt(r.ctx, encKey, u.Password)
 	if err != nil {
-		log.Error(r.ctx, "Error decrypting user's password", "user", u.UserName, err)
+		log.Error(r.ctx, "Error decrypting user's password", "user_account", u.UserName, err)
 		return err
 	}
 	u.Password = plaintext
