@@ -12,16 +12,18 @@ import json
 
 
 @extism.import_fn("extism:host/user", "http_send")
-def http_send(req: dict) -> dict: ...
+def _http_send(offset: int) -> int: ...
 
 
 def http_get(url):
     """GET url via Navidrome's HTTP host service. Returns (status_code, body_bytes)."""
-    resp = http_send({"request": {"method": "GET", "url": url}})
+    request = json.dumps({"request": {"method": "GET", "url": url}}).encode("utf-8")
+    response_offset = _http_send(extism.memory.alloc(request).offset)
+    resp = json.loads(extism.memory.string(extism.memory.find(response_offset)))
     if resp.get("error"):
         raise Exception(f"HTTP request failed: {resp['error']}")
-    result = resp.get("result") or {}
-    return result.get("statusCode", 0), base64.b64decode(result.get("body") or "")
+    result = resp["result"]
+    return result["statusCode"], base64.b64decode(result.get("body", ""))
 
 
 @extism.plugin_fn

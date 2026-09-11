@@ -401,7 +401,7 @@ import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 
 ### HTTP
 
-Make HTTP requests to external services, with timeouts, redirect control, and protection against reaching private network addresses. This is the only supported way to make HTTP requests: Extism's built-in HTTP (`pdk.NewHTTPRequest`) is disabled.
+Make HTTP requests to external services, with timeouts, redirect control, and protection against reaching private network addresses. This is the only supported way to make HTTP requests: Extism's built-in HTTP is disabled (`pdk.NewHTTPRequest` in Go, `http::request` in Rust, `extism.Http.request` in Python, `Http.request` in JS).
 
 **Manifest permission:**
 
@@ -1241,6 +1241,8 @@ extism-py plugin.wasm -o plugin.wasm *.py
 # Package as .ndp
 zip -j my-plugin.ndp manifest.json plugin.wasm
 ```
+
+There is no Python PDK, so call host services directly: import them from the `extism:host/user` namespace (e.g. `http_send`) with `@extism.import_fn`, and exchange JSON through Extism memory. Each function takes a JSON request and returns a JSON response with an `error` field on failure. For HTTP, send `{"request": {"method": "GET", "url": "..."}}` and read `result.statusCode` and `result.body` (base64). See [coverartarchive-py](examples/coverartarchive-py/) and [nowplaying-py](examples/nowplaying-py/).
 
 ### Using XTP CLI (Scaffolding)
 
