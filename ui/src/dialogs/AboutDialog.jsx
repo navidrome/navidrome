@@ -18,9 +18,10 @@ import { useGetOne, usePermissions, useTranslate, useNotify } from 'react-admin'
 import { Tabs, Tab } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
+import { DocLink } from '../common'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
-import { INSIGHTS_DOC_URL } from '../consts.js'
+import { INSIGHTS_DOC_PATH } from '../consts.js'
 import subsonic from '../subsonic/index.js'
 import { Typography } from '@material-ui/core'
 import TableHead from '@material-ui/core/TableHead'
@@ -189,7 +190,7 @@ const AboutTabContent = ({
               {translate(`about.links.lastInsightsCollection`)}:
             </TableCell>
             <TableCell align="left">
-              <Link href={INSIGHTS_DOC_URL}>{insightsStatus}</Link>
+              <DocLink path={INSIGHTS_DOC_PATH}>{insightsStatus}</DocLink>
             </TableCell>
           </TableRow>
         ) : null}

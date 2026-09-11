@@ -6,7 +6,6 @@ import Button from '@material-ui/core/Button'
 import Card from '@material-ui/core/Card'
 import CardActions from '@material-ui/core/CardActions'
 import CircularProgress from '@material-ui/core/CircularProgress'
-import Link from '@material-ui/core/Link'
 import TextField from '@material-ui/core/TextField'
 import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
 import {
@@ -22,7 +21,8 @@ import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import config from '../config'
 import { clearQueue } from '../actions'
-import { INSIGHTS_DOC_URL } from '../consts.js'
+import { INSIGHTS_DOC_PATH } from '../consts.js'
+import { DocLink } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -186,7 +186,7 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
   )
 }
 
-const InsightsNotice = ({ url }) => {
+const InsightsNotice = ({ path }) => {
   const translate = useTranslate()
   const classes = useStyles()
 
@@ -210,17 +210,15 @@ const InsightsNotice = ({ url }) => {
       // Push the text before the bracket
       segments.push(line.slice(lastIndex, match.index))
 
-      // Push the <Link> component
+      // Push the <DocLink> component
       segments.push(
-        <Link
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
+        <DocLink
+          path={path}
           key={`${lineIndex}-${match.index}`}
           style={{ cursor: 'pointer' }}
         >
           {bracketText}
-        </Link>,
+        </DocLink>,
       )
 
       // Update lastIndex to the character right after the bracketed text
@@ -306,7 +304,7 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
                   {translate('ra.auth.buttonCreateAdmin')}
                 </Button>
               </CardActions>
-              <InsightsNotice url={INSIGHTS_DOC_URL} />
+              <InsightsNotice path={INSIGHTS_DOC_PATH} />
             </Card>
             <Notification />
           </div>
