@@ -416,6 +416,8 @@ Make HTTP requests to external services, with timeouts, redirect control, and pr
 }
 ```
 
+**Private addresses:** the check runs on the resolved IP when connecting. A named host (`api.example.com`, `*.example.com`) can never reach a loopback, private or link-local address, even if its DNS points there. To reach a service on the local network, list its IP or a CIDR (`192.168.1.10`, `10.0.0.0/8`), or use `"*"` when the user configures the address. Without `requiredHosts`, only public addresses are allowed.
+
 **Host functions:**
 
 | Function    | Parameters                                               | Returns                          |

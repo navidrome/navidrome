@@ -51,7 +51,8 @@ type HTTPPermission struct {
 	Reason *string `json:"reason,omitempty" yaml:"reason,omitempty" mapstructure:"reason,omitempty"`
 
 	// List of required host patterns for HTTP requests (e.g., 'api.example.com',
-	// '*.musicbrainz.org')
+	// '*.musicbrainz.org'). Named hosts can't reach private addresses; use an IP, a
+	// CIDR (e.g., '10.0.0.0/8') or '*' for that
 	RequiredHosts []string `json:"requiredHosts,omitempty" yaml:"requiredHosts,omitempty" mapstructure:"requiredHosts,omitempty"`
 }
 
