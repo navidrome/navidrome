@@ -40,6 +40,10 @@ const (
 {{- if .Doc}}
 // {{.Name}} {{firstSentence .Doc}}
 {{- end}}
+{{- if .Deprecated}}
+//
+// Deprecated: {{.Deprecated}}
+{{- end}}
 func {{.Name}}({{paramList .Params}}){{returnList .Returns}} {
 {{- if .Returns}}
 	return extism.{{.Name}}({{argList .Params}})

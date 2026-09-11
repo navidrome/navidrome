@@ -1790,6 +1790,33 @@ var _ = Describe("Rust Generation", func() {
 				Expect(codeStr).NotTo(ContainSubstring("return args.Get(0).(*HTTPRequest)"))
 			})
 		})
+
+		Describe("Deprecated PDK functions", func() {
+			symbols := &PDKSymbols{
+				Functions: []PDKFunc{
+					{
+						Name:       "NewHTTPRequest",
+						Doc:        "NewHTTPRequest returns a new `HTTPRequest`.",
+						Params:     []PDKParam{{Name: "method", Type: "HTTPMethod"}, {Name: "url", Type: "string"}},
+						Returns:    []PDKReturn{{Type: "*HTTPRequest"}},
+						Deprecated: "Use host.HTTPSend instead.",
+					},
+				},
+			}
+
+			DescribeTable("emits a Deprecated paragraph after the doc line",
+				func(generate func(*PDKSymbols) ([]byte, error)) {
+					code, err := generate(symbols)
+					Expect(err).NotTo(HaveOccurred())
+					_, err = format.Source(code)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(string(code)).To(ContainSubstring(
+						"// NewHTTPRequest NewHTTPRequest returns a new `HTTPRequest`.\n//\n// Deprecated: Use host.HTTPSend instead.\nfunc NewHTTPRequest("))
+				},
+				Entry("WASM wrapper", GeneratePDKGo),
+				Entry("native stub", GeneratePDKGoStub),
+			)
+		})
 	})
 })
 
