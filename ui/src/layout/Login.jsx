@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { Field, Form } from 'react-final-form'
 import { useDispatch } from 'react-redux'
@@ -9,6 +9,9 @@ import CircularProgress from '@material-ui/core/CircularProgress'
 import Link from '@material-ui/core/Link'
 import TextField from '@material-ui/core/TextField'
 import { ThemeProvider, makeStyles } from '@material-ui/core/styles'
+import Tabs from '@material-ui/core/Tabs'
+import Tab from '@material-ui/core/Tab'
+import { baseUrl } from '../utils'
 import {
   createMuiTheme,
   useLogin,
@@ -110,7 +113,14 @@ const renderInput = ({
   />
 )
 
-const FormLogin = ({ loading, handleSubmit, validate }) => {
+const FormLogin = ({
+  loading,
+  handleSubmit,
+  validate,
+  authSources = [],
+  authSource = 'internal',
+  setAuthSource = () => {},
+}) => {
   const translate = useTranslate()
   const classes = useStyles()
 
@@ -142,6 +152,24 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                   // whatever content they want
                   dangerouslySetInnerHTML={{ __html: config.welcomeMessage }}
                 />
+              )}
+              {authSources.length > 1 && (
+                <Tabs
+                  value={authSource}
+                  onChange={(event, value) => setAuthSource(value)}
+                  indicatorColor="primary"
+                  textColor="primary"
+                  variant="scrollable"
+                  scrollButtons="auto"
+                >
+                  {authSources.map((source) => (
+                    <Tab
+                      key={source.id}
+                      value={source.id}
+                      label={source.name}
+                    />
+                  ))}
+                </Tabs>
               )}
               <div className={classes.form}>
                 <div className={classes.input}>
@@ -318,30 +346,47 @@ const FormSignUp = ({ loading, handleSubmit, validate }) => {
 
 const Login = ({ location }) => {
   const [loading, setLoading] = useState(false)
+  const [authSources, setAuthSources] = useState([
+    { id: 'internal', name: 'Internal' },
+  ])
+  const [authSource, setAuthSource] = useState('internal')
   const translate = useTranslate()
   const notify = useNotify()
   const login = useLogin()
   const dispatch = useDispatch()
 
+  useEffect(() => {
+    fetch(baseUrl('/auth/sources'))
+      .then((response) => (response.ok ? response.json() : []))
+      .then((sources) => {
+        if (sources.length) {
+          setAuthSources(sources)
+          setAuthSource(sources[0].id)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const handleSubmit = useCallback(
     (auth) => {
       setLoading(true)
       dispatch(clearQueue())
-      login(auth, location.state ? location.state.nextPathname : '/').catch(
-        (error) => {
-          setLoading(false)
-          notify(
-            typeof error === 'string'
-              ? error
-              : typeof error === 'undefined' || !error.message
-                ? 'ra.auth.sign_in_error'
-                : error.message,
-            'warning',
-          )
-        },
-      )
+      login(
+        { ...auth, authSource },
+        location.state ? location.state.nextPathname : '/',
+      ).catch((error) => {
+        setLoading(false)
+        notify(
+          typeof error === 'string'
+            ? error
+            : typeof error === 'undefined' || !error.message
+              ? 'ra.auth.sign_in_error'
+              : error.message,
+          'warning',
+        )
+      })
     },
-    [dispatch, login, notify, setLoading, location],
+    [authSource, dispatch, login, notify, setLoading, location],
   )
 
   const validateLogin = useCallback(
@@ -390,6 +435,9 @@ const Login = ({ location }) => {
       handleSubmit={handleSubmit}
       validate={validateLogin}
       loading={loading}
+      authSources={authSources}
+      authSource={authSource}
+      setAuthSource={setAuthSource}
     />
   )
 }
