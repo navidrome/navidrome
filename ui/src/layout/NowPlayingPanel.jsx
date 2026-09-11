@@ -315,7 +315,6 @@ const NowPlayingList = React.memo(
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         open={open}
         onClose={onClose}
-        disableScrollLock
         aria-labelledby="now-playing-title"
       >
         <Card className={classes.card}>
