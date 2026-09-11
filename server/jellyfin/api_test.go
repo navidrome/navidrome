@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
@@ -83,5 +84,27 @@ var _ = Describe("Router", func() {
 		Expect(login()).To(Equal(http.StatusUnauthorized))
 		Expect(login()).To(Equal(http.StatusUnauthorized))
 		Expect(login()).To(Equal(http.StatusTooManyRequests))
+	})
+
+	It("rate-limits AuthenticateByName by resolved client IP, not by the proxy connection", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.AuthRequestLimit = 1
+		conf.Server.AuthWindowLength = time.Minute
+		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		// Every request arrives on the same proxy connection, so only the resolved client IP
+		// can separate the buckets.
+		handler := middleware.ClientIPFromHeader("X-Real-IP")(api)
+
+		login := func(clientIP string) int {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Users/AuthenticateByName", strings.NewReader(`{"Username":"x","Pw":"y"}`))
+			r.RemoteAddr = "10.0.0.1:1234"
+			r.Header.Set("X-Real-IP", clientIP)
+			handler.ServeHTTP(w, r)
+			return w.Code
+		}
+		Expect(login("203.0.113.1")).To(Equal(http.StatusUnauthorized))
+		Expect(login("203.0.113.1")).To(Equal(http.StatusTooManyRequests))
+		Expect(login("203.0.113.2")).To(Equal(http.StatusUnauthorized))
 	})
 })
