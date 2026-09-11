@@ -3,7 +3,7 @@
 This package implements a subset of the [Jellyfin](https://jellyfin.org/) REST API on top of
 Navidrome's existing library, users, playlists and scrobbling infrastructure. It lets
 Jellyfin-compatible clients (e.g. [Finamp](https://github.com/jmshrv/finamp),
-[jftui](https://github.com/dylanmtaylor/jftui)) browse and stream a Navidrome library without
+[jftui](https://github.com/Aanok/jftui)) browse and stream a Navidrome library without
 requiring a real Jellyfin server.
 
 It is **not** a full Jellyfin server implementation: only the endpoints needed to browse a music
@@ -58,6 +58,8 @@ query param — all forms are accepted, matching what different clients do).
 `/auth/login` (`AuthRequestLimit`/`AuthWindowLength`), since it's an unauthenticated brute-force
 surface.
 
+Access tokens do not expire, matching real Jellyfin. They are revoked by a password change, which bumps the user's token epoch.
+
 ### Public user list (login picker)
 
 `GET /Users/Public` lets a client render a login user-picker (tap a user, then just type the
@@ -104,7 +106,11 @@ album's tracks — Feishin fetches them this way instead of `ParentId`); `GenreI
 genre's albums or tracks — Finamp's genre screen sends it the same way; `/Artists/AlbumArtists`
 and `MusicArtist` queries accept it too, matching artists credited on an album of that genre);
 `SearchTerm`;
-favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `SortBy`/`SortOrder`;
+`Filters` (`IsFavorite`, `IsFavoriteOrLikes`, `IsPlayed`, `IsUnplayed`) and the standalone
+`isFavorite`/`isPlayed` booleans it can also be expressed as — `Filters` wins when both are sent, as
+in Jellyfin; `Likes`, `Dislikes`, `IsFolder`, `IsNotFolder` and `IsResumable` have no Navidrome
+equivalent and are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
+unrecognized keys are skipped, and `Random` always sorts alone);
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
 returns direct children only (no tracks — no track is a library's direct child).
 

@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -134,7 +132,9 @@ var _ = Describe("Plugin filesystem sandbox", Ordered, ContinueOnFailure, func()
 
 	// Accepted residual, pinned so a future tightening can't happen silently
 	It("still follows a symlink planted in the mount by something else", func() {
-		Expect(os.Symlink(outsideDir, filepath.Join(libraryDir, "planted"))).To(Succeed())
+		if err := os.Symlink(outsideDir, filepath.Join(libraryDir, "planted")); err != nil {
+			Skip("cannot create symlinks here: " + err.Error()) // Windows without privileges
+		}
 
 		out := call(sandboxInput{Operation: "write_file", FilePath: "planted/via-symlink.txt", Content: "escaped"})
 

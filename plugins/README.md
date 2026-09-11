@@ -174,6 +174,14 @@ Capabilities define what your plugin can do. They're automatically detected base
 
 Provides artist and album metadata. All methods are **optional** — implement only the ones your data source supports.
 
+> **Returning "not found".** When you have no data for an item, return an empty response and no
+> error. In the Go PDK that is `return nil, nil`. Navidrome reads it as a definitive "not found"
+> and stops asking.
+>
+> Return an error only when the plugin itself failed, such as an unreachable API or a broken host
+> call. Navidrome retries failed calls with backoff. A plugin that errors on "no data" makes
+> Navidrome retry every item it has no data for.
+
 | Function                          | Input                      | Output                           | Description              |
 |-----------------------------------|----------------------------|----------------------------------|--------------------------|
 | `nd_get_artist_mbid`              | `{id, name}`               | `{mbid}`                         | Get MusicBrainz ID       |

@@ -8,7 +8,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -137,7 +136,6 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("includes all child folders when querying parent", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create a parent folder with multiple children
 				parent := model.NewFolder(testLib, "TestParent/Music")
 				child1 := model.NewFolder(testLib, "TestParent/Music/Rock/Queen")
@@ -159,7 +157,6 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("excludes children from other libraries", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create parent in testLib
 				parent := model.NewFolder(testLib, "TestIsolation/Parent")
 				child := model.NewFolder(testLib, "TestIsolation/Parent/Child")
@@ -185,7 +182,6 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("excludes missing children when querying parent", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create parent and children, mark one as missing
 				parent := model.NewFolder(testLib, "TestMissingChild/Parent")
 				child1 := model.NewFolder(testLib, "TestMissingChild/Parent/Child1")
@@ -206,7 +202,6 @@ var _ = Describe("FolderRepository", func() {
 			})
 
 			It("handles mix of existing and non-existing target paths", func() {
-				tests.SkipOnWindows("path storage (#TBD-path-sep-persistence)")
 				// Create folders for one path but not the other
 				existingParent := model.NewFolder(testLib, "TestMixed/Exists")
 				existingChild := model.NewFolder(testLib, "TestMixed/Exists/Child")

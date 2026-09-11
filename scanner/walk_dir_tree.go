@@ -82,7 +82,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 
 	dir := path.Clean(currentFolder)
 	log.Trace(ctx, "Scanner: Found directory", " path", dir, "audioFiles", maps.Keys(folder.audioFiles),
-		"images", maps.Keys(folder.imageFiles), "playlists", folder.numPlaylists, "imagesUpdatedAt", folder.imagesUpdatedAt,
+		"images", maps.Keys(folder.imageFiles), "playlists", len(folder.playlistFiles), "imagesUpdatedAt", folder.imagesUpdatedAt,
 		"updTime", folder.updTime, "modTime", folder.modTime, "numChildren", len(children))
 	folder.path = dir
 	folder.elapsed.Start()
@@ -157,7 +157,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			case model.IsAudioFile(name):
 				folder.audioFiles[entry.Name()] = entry
 			case model.IsValidPlaylist(name):
-				folder.numPlaylists++
+				folder.playlistFiles[entry.Name()] = entry
 			case model.IsImageFile(name):
 				folder.imageFiles[entry.Name()] = entry
 				folder.imagesUpdatedAt = utils.TimeNewest(folder.imagesUpdatedAt, fileInfo.ModTime(), folder.modTime)

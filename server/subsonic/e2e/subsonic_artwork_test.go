@@ -313,7 +313,7 @@ func newDummyImageCache(ctx context.Context) cache.FileCache {
 		func(context.Context, cache.Item) (io.Reader, error) {
 			return nil, errors.New("resize not exercised in subsonic artwork e2e")
 		})
-	Eventually(func() bool { return c.Available(ctx) }).Should(BeTrue())
+	Eventually(func() bool { return c.Available(ctx) }, 10*time.Second).Should(BeTrue())
 	return c
 }
 

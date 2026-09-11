@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -56,13 +55,16 @@ var _ = Describe("Storage", func() {
 			Expect(s.(*fakeLocalStorage).u.Path).To(Equal("/tmp"))
 		})
 		It("should return a file implementation for a relative folder", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-storage)")
 			s, err := For("tmp")
 			Expect(err).ToNot(HaveOccurred())
 			cwd, _ := os.Getwd()
 			Expect(s).To(BeAssignableToTypeOf(&fakeLocalStorage{}))
-			Expect(s.(*fakeLocalStorage).u.Scheme).To(Equal("file"))
-			Expect(s.(*fakeLocalStorage).u.Path).To(Equal(filepath.Join(cwd, "tmp")))
+			u := s.(*fakeLocalStorage).u
+			Expect(u.Scheme).To(Equal("file"))
+			// On Windows the drive letter lands in u.Host, so re-join it with
+			// u.Path (as newLocalStorage does) to keep the assertion OS-independent.
+			got := filepath.Join(u.Host, filepath.FromSlash(u.Path))
+			Expect(got).To(Equal(filepath.Join(cwd, "tmp")))
 		})
 		It("should return error if schema is unregistered", func() {
 			_, err := For("webdav:///tmp")

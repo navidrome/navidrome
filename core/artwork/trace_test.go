@@ -24,10 +24,60 @@ var _ = Describe("trace vocabulary", func() {
 	// what `artwork explain` tells an operator, so it must be made deliberately.
 	It("pins the wire values the CLI reads", func() {
 		Expect([]Outcome{
-			OutcomeHit, OutcomeMiss, OutcomeUnreadable, OutcomeSkipped, OutcomeWouldTry, OutcomeError,
-		}).To(Equal([]Outcome{"hit", "miss", "unreadable", "skipped", "would-try", "error"}))
+			OutcomeHit, OutcomeMiss, OutcomeUnreadable, OutcomeSkipped, OutcomeError,
+		}).To(Equal([]Outcome{"hit", "miss", "unreadable", "skipped", "error"}))
 		Expect(externalCandidate).To(Equal("external"))
 		Expect(ExternalPrefix).To(Equal("external:"))
+	})
+})
+
+var _ = Describe("encodeSteps/DecodeTrace", func() {
+	It("round-trips a trace", func() {
+		steps := []TraceStep{
+			{Candidate: "cover.png", Outcome: OutcomeMiss},
+			{Candidate: "cover.*", Outcome: OutcomeHit, Detail: "/music/a/cover.jpg"},
+		}
+		Expect(DecodeTrace(encodeSteps(steps, ""), "")).To(Equal(steps))
+	})
+
+	It("encodes an empty trace as an empty JSON array", func() {
+		Expect(encodeSteps(nil, "")).To(Equal("[]"))
+		Expect(DecodeTrace("[]", "")).To(BeEmpty())
+	})
+
+	It("tolerates a row written before the column existed", func() {
+		Expect(DecodeTrace("", "")).To(BeEmpty())
+	})
+
+	// The hit detail repeats source_path byte for byte, and that column is on the same row.
+	It("drops a hit detail that repeats sourcePath, and restores it on read", func() {
+		path := "/music/artist/album/cover.jpg"
+		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeHit, Detail: path}}
+		encoded := encodeSteps(steps, path)
+		Expect(encoded).NotTo(ContainSubstring(path))
+		Expect(DecodeTrace(encoded, path)).To(Equal(steps))
+	})
+
+	It("keeps a detail that differs from sourcePath", func() {
+		steps := []TraceStep{{Candidate: "external:deezer", Outcome: OutcomeHit, Detail: "https://cdn/x.jpg"}}
+		Expect(DecodeTrace(encodeSteps(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
+	})
+
+	// A row past ~1kB spills to an overflow page on these WITHOUT ROWID tables, which would
+	// slow every scan; Detail is an error string on the failure paths, so it needs a bound.
+	It("bounds a detail so one long error cannot inflate the row", func() {
+		steps := []TraceStep{{Candidate: "decode", Outcome: OutcomeError, Detail: strings.Repeat("x", 5000)}}
+
+		got := DecodeTrace(encodeSteps(steps, ""), "")
+
+		Expect(len(got[0].Detail)).To(BeNumerically("<=", 210))
+		Expect(got[0].Detail).To(HaveSuffix("..."))
+		Expect(got[0].Candidate).To(Equal("decode"), "truncating the detail must not disturb the step")
+	})
+
+	It("only restores sourcePath onto a detail-less hit", func() {
+		steps := []TraceStep{{Candidate: "cover.*", Outcome: OutcomeMiss}}
+		Expect(DecodeTrace(encodeSteps(steps, "/music/a/cover.jpg"), "/music/a/cover.jpg")).To(Equal(steps))
 	})
 })
 
@@ -113,62 +163,40 @@ var _ = Describe("chainState tracing", func() {
 	})
 })
 
-var _ = Describe("external gate tracing", func() {
-	hit := func() (io.ReadCloser, string, error) {
-		return io.NopCloser(strings.NewReader("x")), "http://img", nil
-	}
-	miss := func() (io.ReadCloser, string, error) { return nil, "", agents.ErrNotFound }
-	boom := func() (io.ReadCloser, string, error) { return nil, "", errors.New("returned status 429") }
+var _ = Describe("external agent tracing", func() {
+	var (
+		t    *ChainTrace
+		ctx  context.Context
+		body io.ReadCloser
+	)
+	BeforeEach(func() {
+		t = &ChainTrace{}
+		ctx = withTrace(context.Background(), t)
+		body = io.NopCloser(strings.NewReader("x"))
+	})
 
 	It("records a hit with the image path", func() {
-		t := &ChainTrace{}
-		g := tracingGate(t, passthroughGate)
-
-		r, _, err := g("deezer", hit)
-
-		Expect(err).ToNot(HaveOccurred())
-		Expect(r).ToNot(BeNil())
+		recordAgent(ctx, "deezer", body, "http://img", nil)
 		Expect(t.Steps()).To(Equal([]TraceStep{
 			{Candidate: "external:deezer", Outcome: OutcomeHit, Detail: "http://img"},
 		}))
 	})
 
 	It("records a miss for a not-found", func() {
-		t := &ChainTrace{}
-		_, _, _ = tracingGate(t, passthroughGate)("deezer", miss)
+		recordAgent(ctx, "deezer", nil, "", agents.ErrNotFound)
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeMiss))
 	})
 
 	It("records a miss for a model not-found", func() {
-		t := &ChainTrace{}
-		notFound := func() (io.ReadCloser, string, error) { return nil, "", model.ErrNotFound }
-		_, _, _ = tracingGate(t, passthroughGate)("deezer", notFound)
+		recordAgent(ctx, "deezer", nil, "", model.ErrNotFound)
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeMiss),
 			"both not-found flavours are definitive answers, not faults")
 	})
 
 	It("records an error with its reason", func() {
-		t := &ChainTrace{}
-		_, _, _ = tracingGate(t, passthroughGate)("apple-music", boom)
+		recordAgent(ctx, "apple-music", nil, "", errors.New("returned status 429"))
 		Expect(t.Steps()[0].Outcome).To(Equal(OutcomeError))
 		Expect(t.Steps()[0].Detail).To(ContainSubstring("429"))
-	})
-
-	It("never calls the agent in offline mode", func() {
-		t := &ChainTrace{}
-		called := false
-		counting := func() (io.ReadCloser, string, error) {
-			called = true
-			return hit()
-		}
-
-		_, _, err := offlineGate(t)("deezer", counting)
-
-		Expect(called).To(BeFalse(), "offline mode must not perform external requests")
-		Expect(err).To(MatchError(errOfflineSkipped))
-		Expect(t.Steps()).To(Equal([]TraceStep{
-			{Candidate: "external:deezer", Outcome: OutcomeWouldTry},
-		}))
 	})
 })
 
@@ -409,51 +437,51 @@ var _ = Describe("NewTracingResolver", func() {
 		t = &ChainTrace{}
 	})
 
-	Context("offline", func() {
+	Context("resolving", func() {
 		var fake *fakeImageAgent
 
 		BeforeEach(func() {
-			fake = &fakeImageAgent{name: "offline-probe"}
+			// Misses, so the chain falls through to the local tier and both are traced.
+			fake = &fakeImageAgent{name: "probe", err: agents.ErrNotFound}
 			albumRepo.SetData(model.Albums{{
 				ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
 			}})
 			artistRepo.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
 		})
 
-		It("reports the external tier without asking any agent", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+		It("asks the agents and records what each answered", func() {
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
-			Expect(fake.albumCalls).To(BeZero(), "offline mode must not add load to an external provider")
-			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:offline-probe", Outcome: OutcomeWouldTry}))
+			Expect(fake.albumCalls).To(Equal(1))
+			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:probe", Outcome: OutcomeMiss}))
 		})
 
 		It("records the local chain steps too", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			last := t.Steps()[len(t.Steps())-1]
-			Expect(last.Candidate).To(Equal("embedded"), "the local chain must be traced, not just the external gate")
+			Expect(last.Candidate).To(Equal("embedded"), "the local chain must be traced, not just the external tier")
 			Expect(last.Outcome).To(Equal(OutcomeHit))
 		})
 
 		It("never persists artwork state", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artworkRepo.ItemData).To(BeEmpty(),
-				"an offline resolution carries extError, which must never be recorded as a real provider failure")
+				"explain is read-only; a diagnostic walk must never become the stored answer")
 			Expect(queueRepo.Data).To(BeEmpty())
 		})
 
 		It("resolves an artist without persisting anything", func() {
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindArtistArtwork, "ar1")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(BeEmpty())
-			Expect(fake.artistCalls).To(BeZero())
-			Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:offline-probe", Outcome: OutcomeWouldTry}))
+			Expect(fake.artistCalls).To(Equal(1))
 			Expect(artworkRepo.ItemData).To(BeEmpty())
 			Expect(queueRepo.Data).To(BeEmpty())
 		})
@@ -465,30 +493,38 @@ var _ = Describe("NewTracingResolver", func() {
 				ID: "al2", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/no-such-file.mp3", FolderIDs: []string{"f1"},
 			}})
 
-			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
+			source, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al2")
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(source).To(Equal("embedded"))
 			Expect(ffm.IsClosed()).To(BeTrue(), "nothing downstream closes it, so a leak is one file handle per invocation")
 		})
 
+		// Serving falls back disc -> album and track -> disc -> album. The resolver does not, but
+		// if it ever did, an explain without --live would start calling providers uninvited.
+		It("cannot reach a provider without live, whatever the chain does", func() {
+			conf.Server.DiscArtPriority = "external, cover.*"
+			conf.Server.CoverArtPriority = "external, cover.*"
+			conf.Server.EnableMediaFileCoverArt = true
+			mfRepo := tests.CreateMockMediaFileRepo()
+			mfRepo.SetData(model.MediaFiles{{ID: "mf1", LibraryID: 0, HasCoverArt: true,
+				Path: "tests/fixtures/artist/an-album/test.mp3"}})
+			ds.MockedMediaFile = mfRepo
+			offline := NewTracingResolver(ds, imageAgents(fake), ffm, t, false)
+
+			_, err := offline.Resolve(context.Background(), model.KindDiscArtwork, "al1:1")
+			Expect(err).ToNot(HaveOccurred())
+			_, err = offline.Resolve(context.Background(), model.KindMediaFileArtwork, "mf1")
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(fake.albumCalls).To(BeZero())
+			Expect(fake.artistCalls).To(BeZero())
+		})
+
 		It("propagates a lookup error", func() {
-			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, false).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
+			_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "nope")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
-	})
-
-	It("asks the agents when live is true", func() {
-		fake := &fakeImageAgent{name: "live-probe", err: agents.ErrNotFound}
-		albumRepo.SetData(model.Albums{{
-			ID: "al1", Name: "Album", EmbedArtPath: "tests/fixtures/artist/an-album/test.mp3", FolderIDs: []string{"f1"},
-		}})
-
-		_, err := NewTracingResolver(ds, imageAgents(fake), ffm, t, true).Resolve(context.Background(), model.KindAlbumArtwork, "al1")
-
-		Expect(err).ToNot(HaveOccurred())
-		Expect(fake.albumCalls).To(Equal(1))
-		Expect(t.Steps()).To(ContainElement(TraceStep{Candidate: "external:live-probe", Outcome: OutcomeMiss}))
 	})
 })
 

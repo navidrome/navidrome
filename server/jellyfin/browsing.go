@@ -24,10 +24,6 @@ func (api *Router) getAlbumArtists(w http.ResponseWriter, r *http.Request) {
 // when accessible (like queryItems) or all accessible libraries otherwise.
 func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, role model.Role) {
 	ctx := r.Context()
-	p := req.Params(r)
-	opts := model.QueryOptions{Offset: p.IntOr("startindex", 0), Max: p.IntOr("limit", 0)}
-	applySort(&opts, "MusicArtist", p.StringOr("sortby", ""), p.StringOr("sortorder", ""))
-
 	scopeIDs, _, ok := parentIDScope(ctx, r)
 	if !ok {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -38,14 +34,13 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	// Only the fields listArtists reads; /Artists has no favorites filter, so favOnly stays false.
-	// Finamp's artist tab sends GenreIds when a genre filter is active.
-	q := itemsQuery{
-		scopeIDs: scopeIDs,
-		genreIds: genreIds,
-		search:   searchTerm(p),
-		fields:   dto.ParseFields(p.Strings("fields")...),
-	}
+	// This route resolves its own scope, so it shares only the plain query params with /Items.
+	q := listParams(req.Params(r))
+	q.scopeIDs = scopeIDs
+	q.genreIds = genreIds
+
+	opts := model.QueryOptions{Offset: q.offset, Max: q.limit}
+	applySort(&opts, "MusicArtist", q.sortBy, q.sortOrder)
 	if q.search != "" {
 		opts.Max = clampLimit(opts.Max, defaultSearchLimit, maxSearchLimit)
 	}

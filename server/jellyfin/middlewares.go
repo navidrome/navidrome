@@ -167,6 +167,10 @@ func (api *Router) userFromToken(r *http.Request) (model.User, bool) {
 		log.Warn(r.Context(), "Jellyfin API: token subject not found", "user", claims.Subject, err)
 		return model.User{}, false
 	}
+	if err := auth.CheckClaims(claims, *usr, auth.AudienceJellyfin); err != nil {
+		log.Warn(r.Context(), "Jellyfin API: rejected token", "user", claims.Subject, err)
+		return model.User{}, false
+	}
 	return *usr, true
 }
 

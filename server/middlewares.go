@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"time"
@@ -15,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
@@ -165,20 +168,77 @@ func clientUniqueIDMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// realIPMiddleware applies middleware.RealIP, and additionally saves the request's original RemoteAddr to the request's
-// context if navidrome is behind a trusted reverse proxy.
+// realIPMiddleware resolves the request's client IP into the context, where it can be read with
+// middleware.GetClientIP, and mirrors it into RemoteAddr for logging and player registration.
+// Forwarding headers are only honoured when the peer is listed in ExtAuth.TrustedSources, so that
+// a client cannot pick its own identity and evade controls keyed on it. The peer address is kept
+// in the context as request.ReverseProxyIp.
 func realIPMiddleware(next http.Handler) http.Handler {
-	if conf.Server.ExtAuth.TrustedSources != "" {
-		return chi.Chain(
-			reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr }),
-			middleware.RealIP,
-		).Handler(next)
+	trusted := conf.Server.ExtAuth.TrustedSources
+	fromPeer := middleware.ClientIPFromRemoteAddr(next)
+	if trusted == "" {
+		return fromPeer
 	}
 
-	// The middleware is applied without a trusted reverse proxy to support other use-cases such as multiple clients
-	// behind a caching proxy. In this case, navidrome only uses the request's RemoteAddr for logging, so the security
-	// impact of reading the headers from untrusted sources is limited.
-	return middleware.RealIP(next)
+	// Last match wins, so this order reproduces RealIP's precedence: True-Client-IP, X-Real-IP,
+	// X-Forwarded-For, peer. Only X-Forwarded-For is checked against the trusted list.
+	fromProxy := chi.Chain(
+		middleware.ClientIPFromRemoteAddr,
+		middleware.ClientIPFromXFF(trustedProxyPrefixes(trusted)...),
+		middleware.ClientIPFromHeader("X-Real-IP"),
+		middleware.ClientIPFromHeader("True-Client-IP"),
+	).Handler(mirrorClientIP(next))
+
+	dispatch := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if validateIPAgainstList(r.RemoteAddr, trusted) {
+			fromProxy.ServeHTTP(w, r)
+			return
+		}
+		log.Trace(r.Context(), "Ignoring forwarding headers from untrusted peer", "peer", r.RemoteAddr)
+		fromPeer.ServeHTTP(w, r)
+	})
+	return reqToCtx(request.ReverseProxyIp, func(r *http.Request) any { return r.RemoteAddr })(dispatch)
+}
+
+// mirrorClientIP copies the resolved client IP into RemoteAddr when it differs from the peer.
+func mirrorClientIP(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if ip := middleware.GetClientIP(r.Context()); ip != "" && ip != peerHost(r) {
+			r.RemoteAddr = ip
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// peerHost returns the host part of RemoteAddr, which may already be a bare IP.
+func peerHost(r *http.Request) string {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		return host
+	}
+	return r.RemoteAddr
+}
+
+// trustedProxyPrefixes returns the CIDR entries of a trusted sources list, skipping non-CIDR
+// entries such as the "@" unix socket marker. An empty result makes ClientIPFromXFF trust
+// exactly one hop.
+func trustedProxyPrefixes(list string) []string {
+	var prefixes []string
+	for _, entry := range strings.Split(list, ",") {
+		entry = strings.TrimSpace(entry)
+		if _, err := netip.ParsePrefix(entry); err == nil {
+			prefixes = append(prefixes, entry)
+		}
+	}
+	return prefixes
+}
+
+// ClientIPRateLimiter returns a rate limiter keyed by the client IP resolved by realIPMiddleware,
+// so spoofed forwarding headers cannot be rotated for a fresh bucket. It falls back to the peer
+// address, so that a missing middleware degrades to per-peer limiting rather than one shared bucket.
+func ClientIPRateLimiter(requestLimit int, windowLength time.Duration) func(http.Handler) http.Handler {
+	return httprate.LimitBy(requestLimit, windowLength, func(r *http.Request) (string, error) {
+		return httprate.CanonicalizeIP(cmp.Or(middleware.GetClientIP(r.Context()), peerHost(r))), nil
+	})
 }
 
 // reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key
@@ -208,6 +268,8 @@ func serverAddressMiddleware(h http.Handler) http.Handler {
 		if rScheme, rHost := ServerAddress(r); rHost != "" {
 			r.Host = rHost
 			r.URL.Scheme = rScheme
+			// Recorded so code running without the request (e.g. plugins) can build public URLs.
+			r = r.WithContext(request.WithServerAddress(r.Context(), rScheme, rHost))
 		}
 
 		// Call the next handler in the chain with the modified request and response.

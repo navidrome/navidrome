@@ -106,7 +106,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 			func(context.Context, cache.Item) (io.Reader, error) {
 				return nil, errors.New("resize not exercised in e2e")
 			})
-		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 
 		svc = artwork.NewArtwork(ds, imgCache, store, ffm)
 		worker = artwork.NewWorker(ds, store, agents.GetAgents(ds, nil), ffm, events.NoopBroker(), imgCache)

@@ -73,4 +73,19 @@ var _ = Describe("Playlist", func() {
 			Expect(pls.RefreshDelay()).To(Equal(5 * time.Second))
 		})
 	})
+
+	Describe("TracksEditable", func() {
+		It("is true for a plain playlist", func() {
+			Expect(model.Playlist{}.TracksEditable()).To(BeTrue())
+		})
+
+		It("is false for a smart playlist", func() {
+			pls := model.Playlist{Rules: &criteria.Criteria{Expression: criteria.Is{"loved": true}}}
+			Expect(pls.TracksEditable()).To(BeFalse())
+		})
+
+		It("is false for a synced playlist", func() {
+			Expect(model.Playlist{Sync: true}.TracksEditable()).To(BeFalse())
+		})
+	})
 })
