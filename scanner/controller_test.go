@@ -92,3 +92,13 @@ var _ = Describe("EffectiveFullScan", func() {
 		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeFalse())
 	})
 })
+
+var _ = Describe("GetInstance", func() {
+	It("returns the same controller to every caller", func() {
+		ds := &tests.MockDataStore{}
+		pls := playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+		a := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		b := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		Expect(a).To(BeIdenticalTo(b))
+	})
+})

@@ -78,12 +78,11 @@ func (api *Router) routes() http.Handler {
 	inner.Get("/quickconnect/enabled", api.quickConnectEnabled)
 	// Rate-limit the password login, mirroring the native /auth/login: it's an unauthenticated
 	// brute-force surface, so it must share the same per-client throttle when one is configured.
+	login := inner.With(server.LimitLoginBody)
 	if conf.Server.AuthRequestLimit > 0 {
-		limiter := server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
-		inner.With(limiter).Post("/users/authenticatebyname", api.authenticateByName)
-	} else {
-		inner.Post("/users/authenticatebyname", api.authenticateByName)
+		login = login.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
 	}
+	login.Post("/users/authenticatebyname", api.authenticateByName)
 	inner.Get("/users/public", api.getPublicUsers)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.

@@ -32,9 +32,6 @@ type Share struct {
 
 func (s Share) CoverArtID() ArtworkID {
 	ids := strings.SplitN(s.ResourceIDs, ",", 2)
-	if len(ids) == 0 {
-		return ArtworkID{}
-	}
 	switch s.ResourceType {
 	case "album":
 		return Album{ID: ids[0]}.CoverArtID()
@@ -42,6 +39,10 @@ func (s Share) CoverArtID() ArtworkID {
 		return Playlist{ID: ids[0]}.CoverArtID()
 	case "artist":
 		return Artist{ID: ids[0]}.CoverArtID()
+	}
+	// Tracks can be empty when they went missing or the owner lost access to their library.
+	if len(s.Tracks) == 0 {
+		return ArtworkID{}
 	}
 	rnd := random.Int64N(len(s.Tracks))
 	return s.Tracks[rnd].CoverArtID()

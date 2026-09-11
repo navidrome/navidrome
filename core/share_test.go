@@ -70,6 +70,19 @@ var _ = Describe("Share", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(entity.Contents).To(Equal("私の中の幻想的世界観及びその顕現を想起させたある現実で..."))
 			})
+
+			It("fails when any of the resource IDs does not exist", func() {
+				entity := &model.Share{Description: "test", ResourceIDs: "123,missing"}
+				_, err := repo.Save(entity)
+				Expect(err).To(MatchError(model.ErrNotFound))
+			})
+
+			It("fails when the resource IDs are of mixed types", func() {
+				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "Example Media File"})
+				entity := &model.Share{Description: "test", ResourceIDs: "123,456"}
+				_, err := repo.Save(entity)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 
 		Describe("Update", func() {
