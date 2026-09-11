@@ -51,6 +51,7 @@ type configOptions struct {
 	TLSKey                          string
 	UILoginBackgroundURL            string
 	UIWelcomeMessage                string
+	InstanceName                    string
 	MaxSidebarPlaylists             int
 	EnableTranscodingConfig         bool
 	EnableDownloads                 bool
@@ -378,6 +379,10 @@ func Load(noConfigDump bool) {
 	))
 	if err != nil {
 		logFatal("Error parsing config:", err)
+	}
+	Server.InstanceName = strings.TrimSpace(Server.InstanceName)
+	if Server.InstanceName == "" {
+		Server.InstanceName = "Navidrome"
 	}
 
 	// Validate non-root user early, before any filesystem operations
@@ -1019,6 +1024,7 @@ func setViperDefaults() {
 	viper.SetDefault("enablestarrating", true)
 	viper.SetDefault("enableuserediting", true)
 	viper.SetDefault("defaulttheme", "Dark")
+	viper.SetDefault("instancename", "Navidrome")
 	viper.SetDefault("defaultlanguage", "")
 	viper.SetDefault("defaultuivolume", consts.DefaultUIVolume)
 	viper.SetDefault("uisearchdebouncems", consts.DefaultUISearchDebounceMs)

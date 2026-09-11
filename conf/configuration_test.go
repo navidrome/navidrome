@@ -37,6 +37,33 @@ var _ = Describe("Configuration", func() {
 		}))
 	})
 
+	Describe("InstanceName", func() {
+		It("defaults to Navidrome", func() {
+			conf.Load(true)
+			Expect(conf.Server.InstanceName).To(Equal("Navidrome"))
+		})
+
+		DescribeTable("normalizes configured names", func(value, expected string) {
+			viper.Set("instancename", value)
+			conf.Load(true)
+			Expect(conf.Server.InstanceName).To(Equal(expected))
+		},
+			Entry("custom name", "mp3-player", "mp3-player"),
+			Entry("surrounding whitespace", "  家の音楽  ", "家の音楽"),
+			Entry("empty", "", "Navidrome"),
+			Entry("whitespace", " \t ", "Navidrome"),
+		)
+
+		It("loads ND_INSTANCENAME over the config file", func() {
+			filename := filepath.Join(GinkgoT().TempDir(), "navidrome.toml")
+			Expect(os.WriteFile(filename, []byte(`InstanceName = "File name"`), 0600)).To(Succeed())
+			GinkgoT().Setenv("ND_INSTANCENAME", "mp3-player")
+			conf.InitConfig(filename, true)
+			conf.Load(true)
+			Expect(conf.Server.InstanceName).To(Equal("mp3-player"))
+		})
+	})
+
 	Describe("ParseLanguages", func() {
 		It("parses single language", func() {
 			Expect(conf.ParseLanguages("en")).To(Equal([]string{"en"}))
