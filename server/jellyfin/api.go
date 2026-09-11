@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/httprate"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/navidrome/navidrome/conf"
@@ -78,10 +77,10 @@ func (api *Router) routes() http.Handler {
 	inner.Post("/system/ping", api.ping)
 	inner.Get("/quickconnect/enabled", api.quickConnectEnabled)
 	// Rate-limit the password login, mirroring the native /auth/login: it's an unauthenticated
-	// brute-force surface, so it must share the same per-IP throttle when one is configured.
+	// brute-force surface, so it must share the same per-client throttle when one is configured.
 	login := inner.With(server.LimitLoginBody)
 	if conf.Server.AuthRequestLimit > 0 {
-		login = login.With(httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		login = login.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
 	}
 	login.Post("/users/authenticatebyname", api.authenticateByName)
 	inner.Get("/users/public", api.getPublicUsers)
