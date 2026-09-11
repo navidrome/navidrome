@@ -7,7 +7,7 @@ use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
 /// MatchOptions carries optional parameters for a match request.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MatchOptions {
     #[serde(default)]

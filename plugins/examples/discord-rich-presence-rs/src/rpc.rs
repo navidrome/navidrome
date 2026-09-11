@@ -369,9 +369,8 @@ fn send_http(
         method: method.into(),
         url: url.into(),
         headers,
-        no_follow_redirects: false,
         body,
-        timeout_ms: 0,
+        ..Default::default()
     })?
     .ok_or_else(|| Error::msg("empty HTTP response"))
 }
