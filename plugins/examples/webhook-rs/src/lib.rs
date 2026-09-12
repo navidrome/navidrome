@@ -94,10 +94,7 @@ impl Scrobbler for WebhookPlugin {
             let http_req = HTTPRequest {
                 method: "GET".into(),
                 url: full_url,
-                headers: Default::default(),
-                no_follow_redirects: false,
-                body: Vec::new(),
-                timeout_ms: 0,
+                ..Default::default()
             };
             match http::send(http_req) {
                 Ok(res) => {

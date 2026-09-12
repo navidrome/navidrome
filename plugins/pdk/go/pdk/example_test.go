@@ -8,6 +8,7 @@ package pdk_test
 import (
 	"testing"
 
+	"github.com/navidrome/navidrome/plugins/pdk/go/host"
 	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
 	"github.com/stretchr/testify/mock"
 )
@@ -136,48 +137,39 @@ func TestProcessJSONRequest(t *testing.T) {
 }
 
 // =============================================================================
-// Examples using stub types (Memory, HTTPRequest, HTTPResponse)
+// HTTP requests go through the host HTTP service (host.HTTPSend), not
+// pdk.NewHTTPRequest, which Navidrome does not enable.
 // =============================================================================
 
 // FetchData demonstrates a plugin function that makes an HTTP request.
 func FetchData(url string) ([]byte, error) {
-	// Create and configure the HTTP request
-	// Note: SetHeader and SetBody work directly on the stub - no mocking needed!
-	req := pdk.NewHTTPRequest(pdk.MethodGet, url)
-	req.SetHeader("Accept", "application/json")
-	req.SetHeader("User-Agent", "MyPlugin/1.0")
-
-	// Send the request - this is mocked because it requires host interaction
-	resp := req.Send()
-
-	// Check status - works directly on the stub
-	if resp.Status() != 200 {
-		return nil, nil
+	resp, err := host.HTTPSend(host.HTTPRequest{
+		Method: "GET",
+		URL:    url,
+		Headers: map[string]string{
+			"Accept":     "application/json",
+			"User-Agent": "MyPlugin/1.0",
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	// Return body - works directly on the stub
-	return resp.Body(), nil
+	if resp.StatusCode != 200 {
+		return nil, nil
+	}
+	return resp.Body, nil
 }
 
 func TestFetchData(t *testing.T) {
-	pdk.ResetMock()
+	host.HTTPMock.ExpectedCalls = nil
 
-	// Create a stub response with test data
 	expectedBody := []byte(`{"result": "success"}`)
-	stubResponse := pdk.NewStubHTTPResponse(200, map[string]string{
-		"Content-Type": "application/json",
-	}, expectedBody)
+	host.HTTPMock.On("Send", mock.MatchedBy(func(req host.HTTPRequest) bool {
+		return req.Method == "GET" && req.URL == "https://api.example.com/data" &&
+			req.Headers["Accept"] == "application/json"
+	})).Return(&host.HTTPResponse{StatusCode: 200, Body: expectedBody}, nil)
 
-	// Mock NewHTTPRequest to return a real HTTPRequest struct
-	// The struct methods (SetHeader, SetBody) work without mocking
-	pdk.PDKMock.On("NewHTTPRequest", pdk.MethodGet, "https://api.example.com/data").
-		Return(&pdk.HTTPRequest{})
-
-	// Mock Send to return our stub response
-	pdk.PDKMock.On("Send", mock.AnythingOfType("*pdk.HTTPRequest")).
-		Return(stubResponse)
-
-	// Call the function
 	body, err := FetchData("https://api.example.com/data")
 
 	if err != nil {
@@ -188,21 +180,15 @@ func TestFetchData(t *testing.T) {
 		t.Errorf("expected body %q, got %q", expectedBody, body)
 	}
 
-	pdk.PDKMock.AssertExpectations(t)
+	host.HTTPMock.AssertExpectations(t)
 }
 
 func TestFetchData_NonOKStatus(t *testing.T) {
-	pdk.ResetMock()
+	host.HTTPMock.ExpectedCalls = nil
 
-	// Create a stub response with 404 status
-	stubResponse := pdk.NewStubHTTPResponse(404, nil, []byte("Not Found"))
+	host.HTTPMock.On("Send", mock.Anything).
+		Return(&host.HTTPResponse{StatusCode: 404, Body: []byte("Not Found")}, nil)
 
-	pdk.PDKMock.On("NewHTTPRequest", pdk.MethodGet, "https://api.example.com/missing").
-		Return(&pdk.HTTPRequest{})
-	pdk.PDKMock.On("Send", mock.AnythingOfType("*pdk.HTTPRequest")).
-		Return(stubResponse)
-
-	// Call the function
 	body, err := FetchData("https://api.example.com/missing")
 
 	if err != nil {
@@ -214,7 +200,7 @@ func TestFetchData_NonOKStatus(t *testing.T) {
 		t.Errorf("expected nil body for 404, got %q", body)
 	}
 
-	pdk.PDKMock.AssertExpectations(t)
+	host.HTTPMock.AssertExpectations(t)
 }
 
 // ProcessMemoryData demonstrates working with Memory type.
@@ -292,23 +278,27 @@ func TestHTTPMethodString(t *testing.T) {
 
 // PostJSON demonstrates a more complex HTTP request with body.
 func PostJSON(url string, data []byte) (int, error) {
-	req := pdk.NewHTTPRequest(pdk.MethodPost, url)
-	req.SetHeader("Content-Type", "application/json")
-	req.SetBody(data) // Works directly on stub
-
-	resp := req.Send() // This is mocked
-	return int(resp.Status()), nil
+	resp, err := host.HTTPSend(host.HTTPRequest{
+		Method:  "POST",
+		URL:     url,
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Body:    data,
+	})
+	if err != nil {
+		return 0, err
+	}
+	return int(resp.StatusCode), nil
 }
 
 func TestPostJSON(t *testing.T) {
-	pdk.ResetMock()
+	host.HTTPMock.ExpectedCalls = nil
 
-	stubResponse := pdk.NewStubHTTPResponse(201, nil, nil)
-
-	pdk.PDKMock.On("NewHTTPRequest", pdk.MethodPost, "https://api.example.com/items").
-		Return(&pdk.HTTPRequest{})
-	pdk.PDKMock.On("Send", mock.AnythingOfType("*pdk.HTTPRequest")).
-		Return(stubResponse)
+	host.HTTPMock.On("Send", host.HTTPRequest{
+		Method:  "POST",
+		URL:     "https://api.example.com/items",
+		Headers: map[string]string{"Content-Type": "application/json"},
+		Body:    []byte(`{"name":"test"}`),
+	}).Return(&host.HTTPResponse{StatusCode: 201}, nil)
 
 	status, err := PostJSON("https://api.example.com/items", []byte(`{"name":"test"}`))
 
@@ -320,5 +310,5 @@ func TestPostJSON(t *testing.T) {
 		t.Errorf("expected status 201, got %d", status)
 	}
 
-	pdk.PDKMock.AssertExpectations(t)
+	host.HTTPMock.AssertExpectations(t)
 }
