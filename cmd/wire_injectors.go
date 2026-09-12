@@ -42,7 +42,7 @@ var allProviders = wire.NewSet(
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner.New,
+	scanner.GetInstance,
 	scanner.GetWatcher,
 	metrics.GetPrometheusInstance,
 	db.Db,
