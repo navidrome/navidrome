@@ -50,3 +50,32 @@ var _ = Describe("writeMissingList", func() {
 		Expect(writeMissingList(&out, "csv", cursor(errors.New("boom"), song))).To(MatchError("boom"))
 	})
 })
+
+var _ = Describe("preferQualified", func() {
+	target := model.MediaFile{ID: "want", LibraryID: 1, Path: "foo.mp3"}
+	decoy := model.MediaFile{ID: "decoy", LibraryID: 1, Path: "1:foo.mp3"}
+
+	It("picks the library-qualified match over a literal path that looks like one", func() {
+		Expect(preferQualified("1:foo.mp3", model.MediaFiles{target, decoy})).To(Equal(model.MediaFiles{target}))
+	})
+
+	It("picks the named library when the same path exists in two", func() {
+		other := model.MediaFile{ID: "other", LibraryID: 2, Path: "foo.mp3"}
+		Expect(preferQualified("1:foo.mp3", model.MediaFiles{target, other})).To(Equal(model.MediaFiles{target}))
+	})
+
+	It("leaves an unqualified reference ambiguous", func() {
+		both := model.MediaFiles{target, {ID: "other", LibraryID: 2, Path: "foo.mp3"}}
+		Expect(preferQualified("foo.mp3", both)).To(Equal(both))
+	})
+
+	It("leaves it alone when the prefix is not a library id", func() {
+		both := model.MediaFiles{decoy, {ID: "other", LibraryID: 2, Path: "1:foo.mp3"}}
+		Expect(preferQualified("x:foo.mp3", both)).To(Equal(both))
+	})
+
+	It("leaves it alone when no candidate matches the qualified form", func() {
+		both := model.MediaFiles{decoy, {ID: "other", LibraryID: 2, Path: "1:foo.mp3"}}
+		Expect(preferQualified("9:nope.mp3", both)).To(Equal(both))
+	})
+})

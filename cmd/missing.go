@@ -10,11 +10,13 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/spf13/cobra"
 )
 
@@ -141,8 +143,29 @@ func resolveMediaFile(ctx context.Context, ds model.DataStore, ref string) *mode
 	if len(mfs) == 0 {
 		log.Fatal(ctx, "No media file found", "ref", ref)
 	}
+	mfs = preferQualified(ref, mfs)
 	if len(mfs) > 1 {
 		log.Fatal(ctx, "Path matches multiple files; disambiguate with an ID or libraryID:path", "ref", ref, "matches", len(mfs))
 	}
 	return &mfs[0]
+}
+
+// preferQualified resolves the ambiguity FindByPaths creates by searching a "libraryID:path"
+// reference both ways: an explicit library wins over a file literally named like one.
+func preferQualified(ref string, mfs model.MediaFiles) model.MediaFiles {
+	id, path, ok := strings.Cut(ref, ":")
+	if !ok {
+		return mfs
+	}
+	libraryID, err := strconv.Atoi(id)
+	if err != nil {
+		return mfs
+	}
+	qualified := slice.Filter(mfs, func(mf model.MediaFile) bool {
+		return mf.LibraryID == libraryID && strings.EqualFold(mf.Path, path)
+	})
+	if len(qualified) == 0 {
+		return mfs
+	}
+	return qualified
 }
