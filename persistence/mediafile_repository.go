@@ -411,6 +411,15 @@ func (r *mediaFileRepository) ReassignReferences(prevID, newID string) error {
 	if _, err := r.executeSQL(upd); err != nil {
 		return fmt.Errorf("reassigning playlist tracks: %w", err)
 	}
+	upd = Update("scrobbles").Set("media_file_id", newID).Where(Eq{"media_file_id": prevID})
+	if _, err := r.executeSQL(upd); err != nil {
+		return fmt.Errorf("reassigning scrobbles: %w", err)
+	}
+	// OR IGNORE: scrobble_buffer is unique on (user_id, service, media_file_id, play_time)
+	buf := Expr("update or ignore scrobble_buffer set media_file_id = ? where media_file_id = ?", newID, prevID)
+	if _, err := r.executeSQL(buf); err != nil {
+		return fmt.Errorf("reassigning buffered scrobbles: %w", err)
+	}
 	return nil
 }
 

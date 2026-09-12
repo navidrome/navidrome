@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -941,6 +942,8 @@ var _ = Describe("MediaRepository", func() {
 			_ = mr.Delete(next.ID)
 			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
 			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("bookmark").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("scrobbles").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("scrobble_buffer").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
 		})
 
 		It("moves annotations, bookmarks and playlist entries onto the new id", func() {
@@ -961,6 +964,29 @@ var _ = Describe("MediaRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(withTracks.Tracks).To(HaveLen(1))
 			Expect(withTracks.Tracks[0].MediaFileID).To(Equal(next.ID))
+		})
+
+		It("moves scrobbles and buffered scrobbles onto the new id", func() {
+			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+			scrobbles := NewScrobbleRepository(ctx, GetDBXBuilder())
+			buffer := NewScrobbleBufferRepository(ctx, GetDBXBuilder())
+			Expect(scrobbles.RecordScrobble(prev.ID, time.Now())).To(Succeed())
+			Expect(buffer.Enqueue("lastfm", "userid", prev.ID, time.Now())).To(Succeed())
+
+			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
+			Expect(mr.Delete(prev.ID)).To(Succeed())
+
+			all, err := scrobbles.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			mine := slice.Map(slice.Filter(all, func(sc model.Scrobble) bool {
+				return sc.MediaFileID == prev.ID || sc.MediaFileID == next.ID
+			}), func(sc model.Scrobble) string { return sc.MediaFileID })
+			Expect(mine).To(ConsistOf(next.ID))
+
+			entry, err := buffer.Next("lastfm", "userid")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(entry).ToNot(BeNil())
+			Expect(entry.MediaFile.ID).To(Equal(next.ID))
 		})
 
 		It("keeps the new id's own annotation and bookmark when both exist", func() {
