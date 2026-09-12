@@ -185,10 +185,9 @@ func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
 	if prevID == newID || prevID == "" || newID == "" {
 		return nil
 	}
-	upd := Update(annotationTable).Where(And{
-		Eq{annotationTable + ".item_type": r.tableName},
-		Eq{annotationTable + ".item_id": prevID},
-	}).Set("item_id", newID)
+	// OR IGNORE keeps newID's own row where a user annotated both, instead of aborting the whole statement
+	upd := Expr("update or ignore "+annotationTable+" set item_id = ? where item_type = ? and item_id = ?",
+		newID, r.tableName, prevID)
 	_, err := r.executeSQL(upd)
 	return err
 }
