@@ -95,8 +95,7 @@ var _ = Describe("doctor", func() {
 		Expect(out.String()).To(ContainSubstring("Foreign key check reported"))
 		Expect(out.String()).To(ContainSubstring("media_file"))
 		Expect(out.String()).To(ContainSubstring("navidrome scan -f"))
-		// A scan only clears orphans in library data; the GC never touches player,
-		// share or playqueue, so the advice must not promise a complete cleanup.
+		// GC never touches player, share or playqueue, so don't promise a full cleanup.
 		Expect(out.String()).To(ContainSubstring("removed by hand"))
 	})
 

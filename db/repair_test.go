@@ -39,8 +39,7 @@ func newDB(ctx context.Context, upTo int64) *sql.DB {
 }
 
 // openMismatchedIndexDB builds a database whose index is declared over a different
-// column than the one it was populated from, so integrity_check reports exactly one
-// issue per row.
+// column than the one it was populated from, so integrity_check reports one issue per row.
 func openMismatchedIndexDB(ctx context.Context, rows int) *sql.DB {
 	GinkgoHelper()
 	path := filepath.Join(GinkgoT().TempDir(), "mismatched.db")
@@ -113,8 +112,6 @@ var _ = Describe("RebuildFTS schema guard", func() {
 		Expect(db.RebuildFTS(ctx, empty)).To(MatchError(ContainSubstring("start Navidrome once")))
 	})
 
-	// A corrupted DB often cannot run pending migrations (the server crashes on it),
-	// so repair must not demand a fully migrated schema — only the FTS migration.
 	It("runs on a post-FTS schema even when newer migrations are pending", func() {
 		behind := newDB(ctx, 20260702152457)
 

@@ -17,9 +17,8 @@ var ftsTriggerSuffixes = []string{"_ai", "_ad", "_au"}
 // pragma for one extra row, because it truncates without emitting any marker.
 const integrityCheckMaxIssues = 100
 
-// IntegrityCheck runs PRAGMA integrity_check and returns the reported problems, or
-// an empty slice when the database is healthy. The second return value reports a
-// truncated list, which cannot be read as the full extent of the damage.
+// IntegrityCheck runs PRAGMA integrity_check and returns the problems it reports, or
+// an empty slice when healthy. The second value marks a list that was cut short.
 func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, bool, error) {
 	rows, err := database.QueryContext(ctx,
 		fmt.Sprintf("PRAGMA integrity_check(%d)", integrityCheckMaxIssues+1))
@@ -55,9 +54,8 @@ type FKViolation struct {
 	Count  int64
 }
 
-// ForeignKeyCheck runs PRAGMA foreign_key_check, aggregated per (table, parent)
-// pair because the raw pragma emits one row per orphan, which is unbounded on a
-// large corrupted library.
+// ForeignKeyCheck runs PRAGMA foreign_key_check, aggregated per (table, parent) pair
+// because the raw pragma emits one row per orphan, unbounded on a large library.
 func ForeignKeyCheck(ctx context.Context, database *sql.DB) ([]FKViolation, error) {
 	rows, err := database.QueryContext(ctx,
 		`SELECT "table", "parent", count(*) FROM pragma_foreign_key_check GROUP BY "table", "parent"`)
@@ -140,12 +138,10 @@ func requireFTSMigration(ctx context.Context, database *sql.DB) error {
 	return nil
 }
 
-// RebuildFTS drops the FTS5 search tables and their triggers, recreates them,
-// repopulates the indexes from the base tables, and verifies the result before
-// committing. The FTS tables are contentless, so no user data is lost.
-// It only requires the FTS migration, not a fully migrated schema: a corrupted DB
-// often cannot run pending migrations, and the rebuild is transactional, so a column
-// mismatch with a newer schema fails loudly and rolls back.
+// RebuildFTS drops the FTS5 search tables and their triggers, recreates them from the
+// base tables, and verifies the result before committing. The tables are contentless,
+// so no user data is lost. It needs only the FTS migration, not a fully migrated
+// schema, because a corrupted DB often cannot run pending migrations.
 func RebuildFTS(ctx context.Context, database *sql.DB) error {
 	if err := requireFTSMigration(ctx, database); err != nil {
 		return err
