@@ -563,6 +563,9 @@ type MediaFileRepository interface {
 	DeleteMissing(ids []string) error
 	DeleteAllMissing() (int64, error)
 	FindByPaths(paths []string) (MediaFiles, error)
+	// ReassignReferences moves annotations, bookmarks and playlist entries from prevID to newID,
+	// keeping newID's own row wherever a user has both.
+	ReassignReferences(prevID, newID string) error
 
 	// The following methods are used exclusively by the scanner:
 	MarkMissing(bool, ...*MediaFile) error

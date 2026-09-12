@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -918,6 +919,105 @@ var _ = Describe("MediaRepository", func() {
 		})
 	})
 
+	Describe("ReassignReferences", func() {
+		var prev, next model.MediaFile
+		var pr model.PlaylistRepository
+		var pls model.Playlist
+
+		BeforeEach(func() {
+			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+			pr = NewPlaylistRepository(ctx, GetDBXBuilder())
+			prev = model.MediaFile{ID: "reassign-prev", LibraryID: 1, Path: "reassign/prev.mp3", Title: "Prev"}
+			next = model.MediaFile{ID: "reassign-next", LibraryID: 1, Path: "reassign/next.mp3", Title: "Next"}
+			Expect(mr.Put(&prev)).To(Succeed())
+			Expect(mr.Put(&next)).To(Succeed())
+			pls = model.Playlist{Name: "Reassign", OwnerID: "userid"}
+			pls.AddMediaFilesByID([]string{prev.ID})
+			Expect(pr.Put(&pls)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = pr.Delete(pls.ID)
+			_ = mr.Delete(prev.ID)
+			_ = mr.Delete(next.ID)
+			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("bookmark").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("scrobbles").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("scrobble_buffer").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
+		})
+
+		It("moves annotations, bookmarks and playlist entries onto the new id", func() {
+			Expect(mr.SetRating(5, prev.ID)).To(Succeed())
+			Expect(mr.AddBookmark(prev.ID, "here", 42)).To(Succeed())
+
+			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
+
+			got, err := mr.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Rating).To(Equal(5))
+
+			bookmarks, err := mr.GetBookmarks()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bookmarks).To(ContainElement(HaveField("Item.ID", next.ID)))
+
+			withTracks, err := pr.GetWithTracks(pls.ID, false, false)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(withTracks.Tracks).To(HaveLen(1))
+			Expect(withTracks.Tracks[0].MediaFileID).To(Equal(next.ID))
+		})
+
+		It("moves scrobbles and buffered scrobbles onto the new id", func() {
+			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+			scrobbles := NewScrobbleRepository(ctx, GetDBXBuilder())
+			buffer := NewScrobbleBufferRepository(ctx, GetDBXBuilder())
+			Expect(scrobbles.RecordScrobble(prev.ID, time.Now())).To(Succeed())
+			Expect(buffer.Enqueue("lastfm", "userid", prev.ID, time.Now())).To(Succeed())
+
+			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
+			Expect(mr.Delete(prev.ID)).To(Succeed())
+
+			all, err := scrobbles.GetAll()
+			Expect(err).ToNot(HaveOccurred())
+			mine := slice.Map(slice.Filter(all, func(sc model.Scrobble) bool {
+				return sc.MediaFileID == prev.ID || sc.MediaFileID == next.ID
+			}), func(sc model.Scrobble) string { return sc.MediaFileID })
+			Expect(mine).To(ConsistOf(next.ID))
+
+			entry, err := buffer.Next("lastfm", "userid")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(entry).ToNot(BeNil())
+			Expect(entry.MediaFile.ID).To(Equal(next.ID))
+		})
+
+		It("recomputes the average rating after merging another user's annotation", func() {
+			other := NewMediaFileRepository(request.WithUser(log.NewContext(context.TODO()), model.User{ID: "2222"}), GetDBXBuilder())
+			Expect(mr.SetRating(5, next.ID)).To(Succeed())
+			Expect(other.SetRating(3, prev.ID)).To(Succeed())
+
+			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
+
+			got, err := mr.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.AverageRating).To(Equal(4.0))
+		})
+
+		It("keeps the new id's own annotation and bookmark when both exist", func() {
+			Expect(mr.SetRating(5, prev.ID)).To(Succeed())
+			Expect(mr.SetRating(1, next.ID)).To(Succeed())
+			Expect(mr.AddBookmark(prev.ID, "prev", 42)).To(Succeed())
+			Expect(mr.AddBookmark(next.ID, "next", 7)).To(Succeed())
+
+			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
+
+			got, err := mr.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Rating).To(Equal(1))
+			bookmarks, err := mr.GetBookmarks()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bookmarks).To(ContainElement(SatisfyAll(HaveField("Item.ID", next.ID), HaveField("Comment", "next"))))
+		})
+	})
+
 	Describe("FindByPaths", func() {
 		// Test fixtures for Unicode and case-sensitivity tests
 		var testFiles []model.MediaFile
@@ -930,6 +1030,8 @@ var _ = Describe("MediaRepository", func() {
 				{ID: "findpath-3", LibraryID: 1, Path: "plex/02 - ＡＣＲＯＳＳ.flac", Title: "Fullwidth"},
 				// French diacritic: è (U+00E8, can decompose to e + combining grave)
 				{ID: "findpath-4", LibraryID: 1, Path: "artist/Michèle/song.mp3", Title: "French"},
+				{ID: "findpath-5", LibraryID: 1, Path: "Bach: Goldberg Variations/01.mp3", Title: "Colon"},
+				{ID: "findpath-6", LibraryID: 1, Path: "1999: A Different Life/01.mp3", Title: "Numeric colon"},
 			}
 			for _, mf := range testFiles {
 				Expect(mr.Put(&mf)).To(Succeed())
@@ -940,6 +1042,27 @@ var _ = Describe("MediaRepository", func() {
 			for _, mf := range testFiles {
 				_ = mr.Delete(mf.ID)
 			}
+		})
+
+		It("treats a path whose prefix is not a library id as unqualified", func() {
+			results, err := mr.FindByPaths([]string{"Bach: Goldberg Variations/01.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-5"))
+		})
+
+		It("finds a plain path whose colon prefix looks like a library id", func() {
+			results, err := mr.FindByPaths([]string{"1999: A Different Life/01.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-6"))
+		})
+
+		It("splits only the first colon of a library-qualified path", func() {
+			results, err := mr.FindByPaths([]string{"1:Bach: Goldberg Variations/01.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-5"))
 		})
 
 		It("finds files by exact path", func() {
