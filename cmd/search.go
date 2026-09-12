@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 
@@ -30,8 +31,9 @@ var (
 		Use:   "rebuild",
 		Short: "Rebuild the full-text search index",
 		Long: "Drop and rebuild the full-text search index from the library data. Fixes a corrupted " +
-			"or desynced search index without any data loss ('navidrome db doctor' tells you when " +
-			"this is needed). This must be done offline",
+			"or desynced search index without any data loss. Note that 'navidrome db doctor' detects a " +
+			"corrupted index, but cannot tell when the index has merely drifted out of sync with the " +
+			"library. This must be done offline",
 		Run: func(cmd *cobra.Command, _ []string) {
 			runSearchRebuild(cmd.Context())
 		},
@@ -46,15 +48,21 @@ func runSearchRebuild(ctx context.Context) {
 		return
 	}
 
-	database := db.Db()
-	defer db.Close(ctx)
-
 	fmt.Println("Rebuilding the search index...")
-	if err := db.RebuildFTS(ctx, database); err != nil {
+	err := rebuildSearchIndex(ctx, db.Db())
+	db.Close(ctx)
+	if err != nil {
 		log.Fatal("Error rebuilding the search index", err)
 	}
-	if err := db.VerifyFTS(ctx, database); err != nil {
-		log.Fatal("The search index still reports problems after the rebuild", err)
-	}
 	fmt.Println("Search index rebuilt successfully.")
+}
+
+func rebuildSearchIndex(ctx context.Context, database *sql.DB) error {
+	if err := db.RebuildFTS(ctx, database); err != nil {
+		return err
+	}
+	if err := db.VerifyFTS(ctx, database); err != nil {
+		return fmt.Errorf("the index still reports problems after the rebuild: %w", err)
+	}
+	return nil
 }

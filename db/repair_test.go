@@ -3,6 +3,7 @@ package db_test
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -33,6 +34,36 @@ func newDB(ctx context.Context, upTo int64) *sql.DB {
 	} else {
 		Expect(goose.UpToContext(ctx, d, "migrations", upTo)).To(Succeed())
 	}
+	return d
+}
+
+// openMismatchedIndexDB builds a database at path whose index is declared over a
+// different column than the one it was populated from, so integrity_check reports
+// one issue per row — more than its limit.
+func openMismatchedIndexDB(ctx context.Context, path, index string) *sql.DB {
+	GinkgoHelper()
+	open := func() *sql.DB {
+		d, err := sql.Open(db.Dialect, path)
+		Expect(err).ToNot(HaveOccurred())
+		d.SetMaxOpenConns(1)
+		return d
+	}
+	d := open()
+	for _, stmt := range []string{
+		`create table t(a, b)`,
+		`with recursive s(x) as (select 1 union all select x+1 from s where x < 300)
+		 insert into t select x, x + 10000 from s`,
+		`create index ` + index + ` on t(a)`,
+		`pragma writable_schema=on`,
+		`update sqlite_master set sql = 'CREATE INDEX ` + index + ` ON t(b)' where name = '` + index + `'`,
+	} {
+		_, err := d.ExecContext(ctx, stmt)
+		Expect(err).ToNot(HaveOccurred())
+	}
+	Expect(d.Close()).To(Succeed()) // reopen so SQLite reparses the doctored schema
+
+	d = open()
+	DeferCleanup(func() { _ = d.Close() })
 	return d
 }
 
@@ -69,6 +100,15 @@ var _ = Describe("RebuildFTS schema guard", func() {
 
 		err := db.RebuildFTS(ctx, old)
 		Expect(err).To(MatchError(ContainSubstring("migration")))
+	})
+
+	It("refuses to run on a database that was never migrated", func() {
+		empty, err := sql.Open(db.Dialect, "file::memory:")
+		Expect(err).ToNot(HaveOccurred())
+		empty.SetMaxOpenConns(1)
+		DeferCleanup(func() { _ = empty.Close() })
+
+		Expect(db.RebuildFTS(ctx, empty)).To(MatchError(ContainSubstring("start Navidrome once")))
 	})
 
 	// A corrupted DB often cannot run pending migrations (the server crashes on it),
@@ -134,17 +174,28 @@ var _ = Describe("Repair", func() {
 
 	Describe("IntegrityCheck", func() {
 		It("returns no issues for a healthy database", func() {
-			issues, err := db.IntegrityCheck(ctx, database)
+			issues, truncated, err := db.IntegrityCheck(ctx, database)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(issues).To(BeEmpty())
+			Expect(truncated).To(BeFalse())
 		})
 
 		It("reports corruption in an FTS index", func() {
 			corruptFTS("media_file_fts")
-			issues, err := db.IntegrityCheck(ctx, database)
+			issues, truncated, err := db.IntegrityCheck(ctx, database)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(issues).ToNot(BeEmpty())
 			Expect(strings.Join(issues, "\n")).To(ContainSubstring("media_file_fts"))
+			Expect(truncated).To(BeFalse())
+		})
+
+		It("flags the issue list as truncated when the pragma hits its limit", func() {
+			broken := openMismatchedIndexDB(ctx, filepath.Join(GinkgoT().TempDir(), "truncated.db"), "i")
+
+			issues, truncated, err := db.IntegrityCheck(ctx, broken)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(issues).To(HaveLen(100))
+			Expect(truncated).To(BeTrue())
 		})
 	})
 
@@ -185,7 +236,7 @@ var _ = Describe("Repair", func() {
 
 			Expect(db.RebuildFTS(ctx, database)).To(Succeed())
 
-			issues, err := db.IntegrityCheck(ctx, database)
+			issues, _, err := db.IntegrityCheck(ctx, database)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(issues).To(BeEmpty())
 			Expect(db.VerifyFTS(ctx, database)).To(Succeed())

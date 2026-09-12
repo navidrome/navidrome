@@ -11,12 +11,16 @@ import (
 
 var ftsTables = []string{"media_file_fts", "album_fts", "artist_fts"}
 
-// IntegrityCheck runs PRAGMA integrity_check and returns the reported problems,
-// or an empty slice when the database is healthy.
-func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, error) {
-	rows, err := database.QueryContext(ctx, "PRAGMA integrity_check")
+const integrityCheckMaxIssues = 100
+
+// IntegrityCheck runs PRAGMA integrity_check and returns the reported problems, or
+// an empty slice when the database is healthy. The second return value reports a
+// truncated list: the pragma stops at its limit without emitting any marker, so a
+// saturated list cannot be read as the full extent of the damage.
+func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, bool, error) {
+	rows, err := database.QueryContext(ctx, fmt.Sprintf("PRAGMA integrity_check(%d)", integrityCheckMaxIssues))
 	if err != nil {
-		return nil, fmt.Errorf("running integrity_check: %w", err)
+		return nil, false, fmt.Errorf("running integrity_check: %w", err)
 	}
 	defer rows.Close()
 
@@ -24,17 +28,17 @@ func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, error) {
 	for rows.Next() {
 		var line string
 		if err := rows.Scan(&line); err != nil {
-			return nil, fmt.Errorf("reading integrity_check results: %w", err)
+			return nil, false, fmt.Errorf("reading integrity_check results: %w", err)
 		}
 		issues = append(issues, line)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("reading integrity_check results: %w", err)
+		return nil, false, fmt.Errorf("reading integrity_check results: %w", err)
 	}
 	if len(issues) == 1 && issues[0] == "ok" {
-		return nil, nil
+		return nil, false, nil
 	}
-	return issues, nil
+	return issues, len(issues) >= integrityCheckMaxIssues, nil
 }
 
 // ForeignKeyCheck runs PRAGMA foreign_key_check and returns one line per
@@ -93,6 +97,28 @@ func VerifyFTS(ctx context.Context, database *sql.DB) error {
 
 const ftsSearchMigration int64 = 20260220173400
 
+var errNotMigrated = errors.New("the FTS search migration has not been applied yet; start Navidrome once to migrate the database first")
+
+// ftsMigrationApplied reports whether the FTS search migration has run. A database
+// file auto-created by a mistyped path has no goose_db_version table at all.
+func ftsMigrationApplied(ctx context.Context, database *sql.DB) (bool, error) {
+	var count int
+	err := database.QueryRowContext(ctx,
+		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'goose_db_version'`).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("checking FTS migration status: %w", err)
+	}
+	if count == 0 {
+		return false, nil
+	}
+	err = database.QueryRowContext(ctx,
+		"SELECT count(*) FROM goose_db_version WHERE version_id = ?", ftsSearchMigration).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("checking FTS migration status: %w", err)
+	}
+	return count > 0, nil
+}
+
 // RebuildFTS drops the FTS5 search tables and their triggers, recreates them, and
 // repopulates the indexes from the base tables. The FTS tables are contentless, so
 // no user data is lost.
@@ -100,14 +126,12 @@ const ftsSearchMigration int64 = 20260220173400
 // often cannot run pending migrations, and the rebuild is transactional, so a column
 // mismatch with a newer schema fails loudly and rolls back.
 func RebuildFTS(ctx context.Context, database *sql.DB) error {
-	var applied int
-	err := database.QueryRowContext(ctx,
-		"SELECT count(*) FROM goose_db_version WHERE version_id = ?", ftsSearchMigration).Scan(&applied)
+	applied, err := ftsMigrationApplied(ctx, database)
 	if err != nil {
-		return fmt.Errorf("checking FTS migration status: %w", err)
+		return err
 	}
-	if applied == 0 {
-		return errors.New("the FTS search migration has not been applied yet; start Navidrome once to migrate the database first")
+	if !applied {
+		return errNotMigrated
 	}
 
 	tx, err := database.BeginTx(ctx, nil)

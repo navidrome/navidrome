@@ -58,7 +58,7 @@ func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
 	healthy := true
 
 	fmt.Fprintln(out, "Checking database integrity...")
-	issues, err := db.IntegrityCheck(ctx, database)
+	issues, truncated, err := db.IntegrityCheck(ctx, database)
 	switch {
 	case err != nil:
 		fmt.Fprintln(out, "The integrity check could not complete: "+err.Error())
@@ -69,9 +69,13 @@ func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
 	default:
 		healthy = false
 		printFindings("Integrity check", "issue(s)", issues)
-		if db.IsFTSCorruptionOnly(issues) {
+		switch {
+		case truncated:
+			fmt.Fprintln(out, "The integrity check stopped at its limit, so the damage may reach further than listed.")
+			fmt.Fprintln(out, recoveryAdvice)
+		case db.IsFTSCorruptionOnly(issues):
 			fmt.Fprintln(out, "Corruption is limited to the search index. Run 'navidrome search rebuild' to fix it.")
-		} else {
+		default:
 			fmt.Fprintln(out, "Corruption is not limited to the search index, and cannot be repaired automatically.")
 			fmt.Fprintln(out, recoveryAdvice)
 		}
@@ -88,6 +92,7 @@ func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
 	default:
 		healthy = false
 		printFindings("Foreign key check", "violation(s)", violations)
+		fmt.Fprintln(out, "These are orphaned rows, not corruption. Run 'navidrome scan -f' to clean them up.")
 	}
 
 	if healthy {

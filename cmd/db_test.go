@@ -92,5 +92,32 @@ var _ = Describe("doctor", func() {
 		Expect(doctor(ctx, database, out)).To(BeFalse())
 		Expect(out.String()).To(ContainSubstring("Foreign key check reported"))
 		Expect(out.String()).To(ContainSubstring("media_file"))
+		Expect(out.String()).To(ContainSubstring("navidrome scan -f"))
+	})
+
+	// Every issue names an FTS-like index, so IsFTSCorruptionOnly alone would send the
+	// user to 'search rebuild' — but the pragma stopped at its limit without saying so.
+	It("does not blame the search index when the issue list is truncated", func() {
+		for _, stmt := range []string{
+			`create table t(a, b)`,
+			`with recursive s(x) as (select 1 union all select x+1 from s where x < 300)
+			 insert into t select x, x + 10000 from s`,
+			`create index media_file_fts_probe on t(a)`,
+			`pragma writable_schema=on`,
+			`update sqlite_master set sql = 'CREATE INDEX media_file_fts_probe ON t(b)'
+			 where name = 'media_file_fts_probe'`,
+		} {
+			_, err := database.ExecContext(ctx, stmt)
+			Expect(err).ToNot(HaveOccurred())
+		}
+		Expect(database.Close()).To(Succeed())
+		var err error
+		database, err = sql.Open(db.Dialect, dbPath)
+		Expect(err).ToNot(HaveOccurred())
+		database.SetMaxOpenConns(1)
+
+		Expect(doctor(ctx, database, out)).To(BeFalse())
+		Expect(out.String()).ToNot(ContainSubstring("search rebuild"))
+		Expect(out.String()).To(ContainSubstring("backup restore"))
 	})
 })
