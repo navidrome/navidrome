@@ -2,6 +2,8 @@ package persistence
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -130,5 +132,39 @@ var _ = Describe("Legacy Integration Search", func() {
 		results, err := mr.Search("Beatles", model.QueryOptions{Max: 0})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(results).ToNot(BeEmpty(), "Max=0 should mean no limit, not LIMIT 0")
+	})
+})
+
+// Guards the invariant that every column searched by the LIKE fallback has a COLLATE NOCASE
+// covering index (migration add_like_search_covering_indexes). Without it a CJK/punctuation
+// search does a full table scan. If you add a column to likeSearchColumns without an index,
+// this test fails — keep the two in sync.
+var _ = Describe("likeSearchColumns covering indexes", func() {
+	It("has a COLLATE NOCASE index for every searched column", func() {
+		var indexSQLs []string
+		err := GetDBXBuilder().
+			NewQuery("SELECT sql FROM sqlite_master WHERE type='index' AND sql IS NOT NULL").
+			Column(&indexSQLs)
+		Expect(err).ToNot(HaveOccurred())
+
+		for table, columns := range likeSearchColumns {
+			// Match the index's target table precisely: "ON <table> (" (case-insensitive).
+			tableRe := regexp.MustCompile(`(?i)\bon\s+` + regexp.QuoteMeta(table) + `\s*\(`)
+			for _, col := range columns {
+				// Match e.g. "(title COLLATE NOCASE)" — column immediately followed by the
+				// NOCASE collation, case-insensitive (SQLite emits both "COLLATE" and "collate").
+				colRe := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(col) + `\s+collate\s+nocase\b`)
+				found := false
+				for _, sql := range indexSQLs {
+					if tableRe.MatchString(sql) && colRe.MatchString(sql) {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(),
+					fmt.Sprintf("missing COLLATE NOCASE index for %s.%s — add it to the "+
+						"add_like_search_covering_indexes migration to keep LIKE search fast", table, col))
+			}
+		}
 	})
 })
