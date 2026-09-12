@@ -122,8 +122,7 @@ func runMissingFix(ctx context.Context, missingRef, targetRef string) {
 	fmt.Printf("Remapped %q onto %q\n", missing.Path, target.Path)
 }
 
-// resolveMediaFile looks up a media file by ID first, then by path (optionally libraryID:path),
-// following the same "try one, then the other" pattern used by findPlaylist.
+// resolveMediaFile looks up a media file by ID first, then by path (optionally libraryID:path).
 func resolveMediaFile(ctx context.Context, ds model.DataStore, ref string) *model.MediaFile {
 	mf, err := ds.MediaFile(ctx).Get(ref)
 	if err == nil {
