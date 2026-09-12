@@ -98,4 +98,7 @@ type FolderRepository interface {
 	// GetAllWithPlaylists returns all non-missing folders with playlists, ignoring
 	// the scan-timestamp gate used by GetTouchedWithPlaylists.
 	GetAllWithPlaylists() (FolderCursor, error)
+	GetSubfoldersWithAudio(parentID string, libraryIDs ...int) ([]Folder, error)
+	GetRootSubfoldersWithAudio(libraryIDs ...int) ([]Folder, error)
+	GetCoverArtForFolders(folderIDs ...string) (map[string]string, error)
 }
