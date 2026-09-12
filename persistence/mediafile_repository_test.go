@@ -992,6 +992,7 @@ var _ = Describe("MediaRepository", func() {
 				{ID: "findpath-3", LibraryID: 1, Path: "plex/02 - ＡＣＲＯＳＳ.flac", Title: "Fullwidth"},
 				// French diacritic: è (U+00E8, can decompose to e + combining grave)
 				{ID: "findpath-4", LibraryID: 1, Path: "artist/Michèle/song.mp3", Title: "French"},
+				{ID: "findpath-5", LibraryID: 1, Path: "Bach: Goldberg Variations/01.mp3", Title: "Colon"},
 			}
 			for _, mf := range testFiles {
 				Expect(mr.Put(&mf)).To(Succeed())
@@ -1002,6 +1003,20 @@ var _ = Describe("MediaRepository", func() {
 			for _, mf := range testFiles {
 				_ = mr.Delete(mf.ID)
 			}
+		})
+
+		It("treats a path whose prefix is not a library id as unqualified", func() {
+			results, err := mr.FindByPaths([]string{"Bach: Goldberg Variations/01.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-5"))
+		})
+
+		It("splits only the first colon of a library-qualified path", func() {
+			results, err := mr.FindByPaths([]string{"1:Bach: Goldberg Variations/01.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-5"))
 		})
 
 		It("finds files by exact path", func() {

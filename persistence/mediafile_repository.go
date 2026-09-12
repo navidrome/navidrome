@@ -362,19 +362,14 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 	var unqualified []string
 
 	for _, path := range paths {
-		parts := strings.SplitN(path, ":", 2)
-		if len(parts) == 2 {
-			// Library-qualified path: "libraryID:path"
-			libraryID, err := strconv.Atoi(parts[0])
-			if err != nil {
-				// Invalid format, skip
+		// A colon only qualifies the path when what precedes it is a library id ("Bach: Goldberg/01.mp3" is a plain path)
+		if id, rest, ok := strings.Cut(path, ":"); ok {
+			if libraryID, err := strconv.Atoi(id); err == nil {
+				byLibrary[libraryID] = append(byLibrary[libraryID], rest)
 				continue
 			}
-			byLibrary[libraryID] = append(byLibrary[libraryID], parts[1])
-		} else {
-			// Unqualified path: search across all libraries
-			unqualified = append(unqualified, path)
 		}
+		unqualified = append(unqualified, path)
 	}
 
 	query := Or{}
