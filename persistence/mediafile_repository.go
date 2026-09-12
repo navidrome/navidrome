@@ -404,10 +404,6 @@ func (r *mediaFileRepository) ReassignReferences(prevID, newID string) error {
 	if err := r.ReassignAnnotation(prevID, newID); err != nil {
 		return fmt.Errorf("reassigning annotations: %w", err)
 	}
-	// The merged rows change the rating population, so the cached average no longer matches
-	if err := r.updateAvgRating(newID); err != nil {
-		return fmt.Errorf("recomputing average rating: %w", err)
-	}
 	if err := r.reassignBookmark(prevID, newID); err != nil {
 		return fmt.Errorf("reassigning bookmarks: %w", err)
 	}

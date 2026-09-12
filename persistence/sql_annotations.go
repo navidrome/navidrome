@@ -188,8 +188,11 @@ func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
 	// OR IGNORE keeps newID's own row where a user annotated both, instead of aborting the whole statement
 	upd := Expr("update or ignore "+annotationTable+" set item_id = ? where item_type = ? and item_id = ?",
 		newID, r.tableName, prevID)
-	_, err := r.executeSQL(upd)
-	return err
+	if _, err := r.executeSQL(upd); err != nil {
+		return err
+	}
+	// The moved rows change newID's rating population, so its cached average no longer matches
+	return r.updateAvgRating(newID)
 }
 
 func (r sqlRepository) cleanAnnotations() error {

@@ -55,6 +55,16 @@ var _ = Describe("Annotation Filters", func() {
 			Expect(got.Rating).To(Equal(4))
 		})
 
+		It("recomputes the new item's cached average rating", func() {
+			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+
+			got, err := albumRepo.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.AverageRating).To(Equal(4.0))
+		})
+
 		It("keeps the new item's annotation when both exist", func() {
 			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
 			Expect(albumRepo.SetRating(2, next.ID)).To(Succeed())

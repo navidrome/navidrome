@@ -119,7 +119,8 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 		return err
 	}
 
-	// Stats are refreshed synchronously, unlike deleteMissing, so the CLI sees them before it exits
+	// Stats are refreshed synchronously, unlike deleteMissing, so the CLI sees them before it exits.
+	// album/artist play count aggregates are not recalculated here; they are refreshed by the next scan.
 	if _, err := s.ds.Artist(ctx).RefreshStats(true); err != nil {
 		log.Error(ctx, "Error refreshing artist stats after remapping missing file", err)
 	}
