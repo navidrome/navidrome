@@ -105,6 +105,19 @@ var _ = Describe("database backups", func() {
 			Entry("delete all files", 0, 0),
 			Entry("preserve all files when at length", len(timesDecreasingChronologically), len(timesDecreasingChronologically)),
 			Entry("preserve all files when less than count", 10000, len(timesDecreasingChronologically)))
+
+		It("ignores SQLite sidecar files when counting backups", func() {
+			for _, suffix := range []string{"-shm", "-wal"} {
+				file, err := os.Create(BackupPath(timesDecreasingChronologically[0]) + suffix)
+				Expect(err).ToNot(HaveOccurred())
+				_ = file.Close()
+			}
+
+			conf.Server.Backup.Count = len(timesDecreasingChronologically)
+			pruneCount, err := Prune(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pruneCount).To(BeZero())
+		})
 	})
 
 	Describe("backup and restore", Ordered, func() {

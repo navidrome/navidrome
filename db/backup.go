@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -18,7 +19,7 @@ import (
 
 const (
 	backupPrefix      = "navidrome_backup"
-	backupRegexString = backupPrefix + "_(.+)\\.db"
+	backupRegexString = "^" + backupPrefix + "_(.+)\\.db$"
 )
 
 var backupRegex = regexp.MustCompile(backupRegexString)
@@ -40,14 +41,19 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	}
 	defer existingConn.Close()
 
-	// When restoring, open the backup file read-only: the SQLite driver defaults to
-	// SQLITE_OPEN_CREATE, so a typo in the path would silently create an empty
-	// database and "restore" it over the live one.
-	backupPath := path
+	// The driver opens with SQLITE_OPEN_CREATE, so without this check a typo in the
+	// path would create an empty database and "restore" it over the live one.
 	if !isBackup {
-		backupPath = "file:" + path + "?mode=ro"
+		// The driver splits the DSN at '?', so such a path would open a different file.
+		if strings.ContainsRune(path, '?') {
+			return fmt.Errorf("backup path cannot contain '?': %s", path)
+		}
+		if _, err := os.Stat(path); err != nil {
+			return fmt.Errorf("backup file not available: %w", err)
+		}
 	}
-	backupDb, err := sql.Open(Driver, backupPath)
+
+	backupDb, err := sql.Open(Driver, path)
 	if err != nil {
 		return fmt.Errorf("opening backup database in '%s': %w", path, err)
 	}

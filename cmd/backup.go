@@ -96,7 +96,7 @@ func runBackup(ctx context.Context) {
 	start := time.Now()
 	path, err := db.Backup(ctx)
 	if err != nil {
-		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
+		log.Fatal("Error backing up database", "backupPath", conf.Server.Backup.Path, err)
 	}
 
 	elapsed := time.Since(start)
@@ -141,7 +141,7 @@ func runPrune(ctx context.Context) {
 	start := time.Now()
 	count, err := db.Prune(ctx)
 	if err != nil {
-		log.Fatal("Error pruning up database", "backup path", conf.Server.BasePath, err)
+		log.Fatal("Error pruning database", "backupPath", conf.Server.Backup.Path, err)
 	}
 
 	elapsed := time.Since(start)
@@ -170,7 +170,7 @@ func runRestore(ctx context.Context) {
 	if !filepath.IsAbs(restorePath) {
 		backupPath, err := conf.Server.Backup.Path.Path()
 		if err != nil {
-			log.Fatal("Backup directory not available", "backup path", conf.Server.BasePath, err)
+			log.Fatal("Backup directory not available", "backupPath", conf.Server.Backup.Path, err)
 			return
 		}
 		restorePath = filepath.Join(backupPath, restorePath)
@@ -191,7 +191,7 @@ func runRestore(ctx context.Context) {
 	start := time.Now()
 	err := db.Restore(ctx, restorePath)
 	if err != nil {
-		log.Fatal("Error restoring database", "backup path", conf.Server.BasePath, err)
+		log.Fatal("Error restoring database", "backupFile", restorePath, err)
 	}
 
 	elapsed := time.Since(start)
