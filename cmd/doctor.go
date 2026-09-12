@@ -88,7 +88,8 @@ func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
 				fmt.Sprintf("%s: %d row(s) reference missing rows in %s", v.Table, v.Count, v.Parent))
 		}
 		printFindings(out, "Foreign key check", "violation(s)", lines)
-		fmt.Fprintln(out, "These are orphaned rows, not corruption. Run 'navidrome scan -f' to clean them up.")
+		fmt.Fprintln(out, "These are orphaned rows, not corruption. 'navidrome scan -f' clears some of them "+
+			"in library data; the rest have to be removed by hand.")
 	}
 
 	if healthy {
