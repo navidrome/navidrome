@@ -23,12 +23,24 @@ components:
                     type: array
                     items:
                         $ref: '#/components/schemas/LyricsText'
+                source:
+                    $ref: '#/components/schemas/LyricsSource'
+                    nullable: true
             required:
                 - lyrics
+        LyricsSource:
+            description: |-
+                LyricsSource identifies the optional upstream provider and format selected
+                by a plugin. Navidrome supplies the plugin name and source type itself.
+            properties:
+                provider:
+                    type: string
+                format:
+                    type: string
         LyricsText:
             description: |-
                 LyricsText represents a single set of lyrics in raw text format.
-                Text can be plain text or LRC format — Navidrome will parse it.
+                Navidrome content-sniffs and parses the returned text.
             properties:
                 lang:
                     type: string

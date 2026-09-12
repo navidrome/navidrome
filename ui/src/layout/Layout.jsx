@@ -8,6 +8,7 @@ import AppBar from './AppBar'
 import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import { useSearchRefocus } from '../common'
+import LyricsLayoutFrame from './LyricsLayoutFrame'
 
 const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
@@ -33,7 +34,9 @@ const Layout = (props) => {
         appBar={AppBar}
         theme={theme}
         notification={Notification}
-      />
+      >
+        <LyricsLayoutFrame>{props.children}</LyricsLayoutFrame>
+      </RALayout>
     </HotKeys>
   )
 }
