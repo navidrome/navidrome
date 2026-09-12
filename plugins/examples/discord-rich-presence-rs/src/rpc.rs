@@ -4,7 +4,7 @@
 //! presence updates, and heartbeat management.
 
 use extism_pdk::*;
-use nd_pdk::host::{cache, scheduler, websocket};
+use nd_pdk::host::{cache, http, scheduler, websocket};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -359,19 +359,33 @@ fn find_username_for_connection(connection_id: &str) -> Result<Option<String>, E
     Ok(cache::get_string(&reverse_key)?.filter(|s| !s.is_empty()))
 }
 
-fn get_discord_gateway() -> Result<String, Error> {
-    let req = HttpRequest::new("https://discord.com/api/gateway")
-        .with_method("GET");
+fn send_http(
+    method: &str,
+    url: &str,
+    headers: std::collections::HashMap<String, String>,
+    body: Vec<u8>,
+) -> Result<http::HTTPResponse, Error> {
+    http::send(http::HTTPRequest {
+        method: method.into(),
+        url: url.into(),
+        headers,
+        no_follow_redirects: false,
+        body,
+        timeout_ms: 0,
+    })?
+    .ok_or_else(|| Error::msg("empty HTTP response"))
+}
 
-    let resp = http::request::<String>(&req, None::<String>)?;
-    if resp.status_code() >= 400 {
+fn get_discord_gateway() -> Result<String, Error> {
+    let resp = send_http("GET", "https://discord.com/api/gateway", Default::default(), Vec::new())?;
+    if resp.status_code >= 400 {
         return Err(Error::msg(format!(
             "Failed to get Discord gateway: HTTP {}",
-            resp.status_code()
+            resp.status_code
         )));
     }
 
-    let body = resp.body();
+    let body = resp.body;
     let data: std::collections::HashMap<String, String> = serde_json::from_slice(&body)
         .map_err(|e| Error::msg(format!("Failed to parse gateway response: {}", e)))?;
 
@@ -487,23 +501,22 @@ fn process_image_inner(
         client_id
     );
 
-    let req = HttpRequest::new(&api_url)
-        .with_method("POST")
-        .with_header("Authorization", token)
-        .with_header("Content-Type", "application/json");
-
-    let resp = http::request::<String>(&req, Some(body))?;
-    if resp.status_code() >= 400 {
+    let headers = std::collections::HashMap::from([
+        ("Authorization".to_string(), token.to_string()),
+        ("Content-Type".to_string(), "application/json".to_string()),
+    ]);
+    let resp = send_http("POST", &api_url, headers, body.into_bytes())?;
+    if resp.status_code >= 400 {
         if is_default {
             return Err(Error::msg(format!(
                 "failed to process default image: HTTP {}",
-                resp.status_code()
+                resp.status_code
             )));
         }
         return process_image_inner(DEFAULT_IMAGE, client_id, token, true);
     }
 
-    let body = resp.body();
+    let body = resp.body;
     let data: Vec<std::collections::HashMap<String, String>> = serde_json::from_slice(&body)
         .map_err(|e| Error::msg(format!("Failed to parse image response: {}", e)))?;
 

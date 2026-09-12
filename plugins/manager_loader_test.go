@@ -23,8 +23,8 @@ var _ = Describe("buildExtismManifest", func() {
 		Expect(buildExtismManifest(pkg, nil).AllowedPaths).To(BeEmpty())
 	})
 
-	It("carries the hosts the plugin is allowed to reach", func() {
-		Expect(buildExtismManifest(pkg, nil).AllowedHosts).To(Equal([]string{"example.com"}))
+	It("never sets AllowedHosts, so plugin HTTP can't bypass the host service's SSRF guard", func() {
+		Expect(buildExtismManifest(pkg, nil).AllowedHosts).To(BeEmpty())
 	})
 })
 

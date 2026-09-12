@@ -170,8 +170,10 @@ func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 func (r *shareRepository) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
 	// TODO Validate record
+	// Owner is server-managed: for an authenticated request, never trust a
+	// client-supplied UserID, as it drives the share's library-access context.
 	u := loggedUser(r.ctx)
-	if s.UserID == "" {
+	if u.ID != invalidUserId || s.UserID == "" {
 		s.UserID = u.ID
 	}
 	s.CreatedAt = time.Now()

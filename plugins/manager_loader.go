@@ -148,7 +148,7 @@ var hostServices = []hostServiceEntry{
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Http
 			service := newHTTPService(ctx.pluginName, perm)
-			return host.RegisterHTTPHostFunctions(service), nil, nil
+			return host.RegisterHTTPHostFunctions(service), service, nil
 		},
 	},
 	{
@@ -498,18 +498,12 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 	return pluginConfig, nil
 }
 
-// buildExtismManifest describes the plugin to extism. It must never set
-// AllowedPaths: extism would replace our jailed FSConfig with plain dir mounts.
+// buildExtismManifest describes the plugin to extism. It must never set AllowedPaths (extism would replace our
+// jailed FSConfig) nor AllowedHosts (extism's http_request has no SSRF guard; plugins must use host.HTTPSend).
 func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
-	manifest := extism.Manifest{
+	return extism.Manifest{
 		Wasm:    []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
 		Config:  pluginConfig,
 		Timeout: uint64(defaultTimeout.Milliseconds()),
 	}
-	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
-		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
-			manifest.AllowedHosts = hosts
-		}
-	}
-	return manifest
 }

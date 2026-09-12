@@ -393,6 +393,28 @@ var _ = Describe("ShareRepository", func() {
 			})
 		})
 
+		Describe("Save", func() {
+			It("assigns the logged-in user as owner, ignoring a client-supplied UserID", func() {
+				ur := NewUserRepository(ctx, GetDBXBuilder())
+				Expect(ur.Put(&ownerUser)).To(Succeed())
+				Expect(ur.Put(&otherUser)).To(Succeed())
+
+				attackerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
+				attackerRepo := NewShareRepository(attackerCtx, GetDBXBuilder()).(rest.Persistable)
+
+				id, err := attackerRepo.Save(&model.Share{
+					ID: "spoof-save-share", UserID: otherUser.ID,
+					ResourceType: "media_file", ResourceIDs: "1001",
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				adminRepo := NewShareRepository(request.WithUser(log.NewContext(GinkgoT().Context()), adminUser), GetDBXBuilder())
+				got, err := adminRepo.Get(id)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(got.UserID).To(Equal(ownerUser.ID))
+			})
+		})
+
 		Describe("Update", func() {
 			It("allows a non-admin user to update their own share", func() {
 				insertShare("own-share-upd", ownerUser.ID)

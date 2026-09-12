@@ -12,7 +12,8 @@
 //! urls = "https://example.com/webhook1,https://example.com/webhook2"
 //! ```
 
-use extism_pdk::{config, error, http, info, warn, HttpRequest};
+use extism_pdk::{config, error, info, warn};
+use nd_pdk::host::http::{self, HTTPRequest};
 use nd_pdk::scrobbler::{
     Error, IsAuthorizedRequest, NowPlayingRequest, PlaybackReportRequest, ScrobbleRequest,
     Scrobbler,
@@ -90,11 +91,18 @@ impl Scrobbler for WebhookPlugin {
             let full_url = format!("{}{}", url, query);
             info!("Sending webhook to: {}", full_url);
 
-            let http_req = HttpRequest::new(&full_url);
-            match http::request::<()>(&http_req, None) {
+            let http_req = HTTPRequest {
+                method: "GET".into(),
+                url: full_url,
+                headers: Default::default(),
+                no_follow_redirects: false,
+                body: Vec::new(),
+                timeout_ms: 0,
+            };
+            match http::send(http_req) {
                 Ok(res) => {
-                    let status = res.status_code();
-                    if status >= 200 && status < 300 {
+                    let status = res.map_or(0, |r| r.status_code);
+                    if (200..300).contains(&status) {
                         info!("Webhook succeeded: {} (status {})", url, status);
                     } else {
                         warn!("Webhook returned non-2xx status: {} (status {})", url, status);

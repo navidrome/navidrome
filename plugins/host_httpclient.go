@@ -9,7 +9,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
@@ -34,6 +36,7 @@ type httpServiceImpl struct {
 	pluginName    string
 	requiredHosts []string
 	client        *http.Client
+	transport     *http.Transport
 }
 
 // newHTTPService creates a new HTTPService for a plugin.
@@ -46,8 +49,14 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		pluginName:    pluginName,
 		requiredHosts: requiredHosts,
 	}
+	svc.transport = http.DefaultTransport.(*http.Transport).Clone()
+	svc.transport.DialContext = (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		Control:   svc.dialControl,
+	}).DialContext
 	// No client timeout: it is set per-request via context deadline.
-	svc.client = httpclient.New(0)
+	svc.client = &http.Client{Transport: httpclient.NewTransport(svc.transport)}
 	svc.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if req.Context().Value(noFollowRedirectsKey) != nil {
 			return http.ErrUseLastResponse
@@ -63,6 +72,12 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		return nil
 	}
 	return svc
+}
+
+// Close releases the plugin's pooled connections when the plugin is unloaded.
+func (s *httpServiceImpl) Close() error {
+	s.transport.CloseIdleConnections()
+	return nil
 }
 
 func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*host.HTTPResponse, error) {
@@ -159,9 +174,47 @@ func (s *httpServiceImpl) validateHost(ctx context.Context, hostStr string) erro
 	return nil
 }
 
+// dialControl checks the resolved IP, so hostnames can't reach private addresses unless a literal
+// IP/CIDR entry or a bare "*" (plugins targeting user-configured LAN services) allows it.
+func (s *httpServiceImpl) dialControl(_, address string, _ syscall.RawConn) error {
+	if slices.Contains(s.requiredHosts, "*") {
+		return nil
+	}
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || !isPrivateIP(ip) {
+		return nil
+	}
+	for _, entry := range s.requiredHosts {
+		if ipMatchesEntry(entry, ip) {
+			return nil
+		}
+	}
+	return fmt.Errorf("dial to private/loopback address %q blocked: requires an explicit IP or CIDR in requiredHosts", address)
+}
+
+// ipMatchesEntry reports whether a requiredHosts entry is a literal IP or CIDR
+// that covers ip. Hostname and wildcard entries never match.
+func ipMatchesEntry(entry string, ip net.IP) bool {
+	if _, cidr, err := net.ParseCIDR(entry); err == nil {
+		return cidr.Contains(ip)
+	}
+	if entryIP := net.ParseIP(entry); entryIP != nil {
+		return entryIP.Equal(ip)
+	}
+	return false
+}
+
 func (s *httpServiceImpl) isHostAllowed(hostname string) bool {
+	ip := net.ParseIP(hostname)
 	for _, pattern := range s.requiredHosts {
 		if matchHostPattern(pattern, hostname) {
+			return true
+		}
+		if ip != nil && ipMatchesEntry(pattern, ip) {
 			return true
 		}
 	}
@@ -182,11 +235,8 @@ func extractHostname(hostStr string) string {
 	return hostStr
 }
 
-// isPrivateOrLoopback returns true if the given hostname resolves to or is
-// a private, loopback, or link-local IP address. This includes:
-// IPv4: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
-// IPv6: ::1, fc00::/7, fe80::/10
-// It also blocks "localhost" by name.
+// isPrivateOrLoopback is a pre-flight check on the literal host (IP or "localhost"); it does not
+// resolve names, so dialControl remains the real guard.
 func isPrivateOrLoopback(hostname string) bool {
 	if strings.EqualFold(hostname, "localhost") {
 		return true
@@ -195,7 +245,11 @@ func isPrivateOrLoopback(hostname string) bool {
 	if ip == nil {
 		return false
 	}
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
+	return isPrivateIP(ip)
+}
+
+func isPrivateIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
 }
 
 // Verify interface implementation

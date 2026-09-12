@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/nanoid"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -91,6 +92,11 @@ func (r *shareRepositoryWrapper) newId() (string, error) {
 
 func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
+	// Owner is always the caller; never trust a client-supplied UserID, as it
+	// determines the library-access context used to resolve the share contents.
+	if user, ok := request.UserFrom(r.ctx); ok {
+		s.UserID = user.ID
+	}
 	id, err := r.newId()
 	if err != nil {
 		return "", err

@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -37,6 +38,21 @@ var _ = Describe("httpServiceImpl", func() {
 			_, err := svc.Send(context.Background(), host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
+				TimeoutMs: 1000,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("should block a symbolic hostname that resolves to loopback (SSRF)", func() {
+			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(200)
+			}))
+			// The trailing dot passes the pre-flight string check; only the dial-time guard catches it.
+			_, port, _ := net.SplitHostPort(strings.TrimPrefix(ts.URL, "http://"))
+			_, err := svc.Send(context.Background(), host.HTTPRequest{
+				Method:    "GET",
+				URL:       "http://localhost.:" + port + "/test",
 				TimeoutMs: 1000,
 			})
 			Expect(err).To(HaveOccurred())
@@ -419,13 +435,53 @@ var _ = Describe("httpServiceImpl", func() {
 			Expect(resp).To(BeNil())
 		})
 
+		It("blocks a private IP reached via a hostname allowlist entry (rebinding protection)", func() {
+			// Allowlisting a name authorizes the external service, not whatever private
+			// IP it may resolve or rebind to. Only literal IP/CIDR entries do that.
+			svc.requiredHosts = []string{"api.example.com"}
+			err := svc.dialControl("tcp", "10.0.0.1:80", nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("private/loopback"))
+		})
+
+		It("allows a private IP that an explicit CIDR allowlist entry authorizes", func() {
+			svc.requiredHosts = []string{"10.0.0.0/8"}
+			Expect(svc.dialControl("tcp", "10.0.0.1:80", nil)).To(Succeed())
+		})
+
+		It("allows private IPs when the allowlist is the bare '*' wildcard", func() {
+			svc.requiredHosts = []string{"*"}
+			Expect(svc.dialControl("tcp", "192.168.1.10:8000", nil)).To(Succeed())
+			Expect(svc.dialControl("tcp", "127.0.0.1:8000", nil)).To(Succeed())
+		})
+
+		It("still blocks private IPs for a subdomain wildcard entry", func() {
+			svc.requiredHosts = []string{"*.example.com"}
+			Expect(svc.dialControl("tcp", "10.0.0.1:80", nil)).To(MatchError(ContainSubstring("private/loopback")))
+		})
+
+		It("closes idle pooled connections on Close", func() {
+			closed := make(chan struct{})
+			ts = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			ts.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+				if state == http.StateClosed {
+					close(closed)
+				}
+			}
+			ts.Start()
+			svc.requiredHosts = []string{"127.0.0.1"}
+			_, err := svc.Send(context.Background(), host.HTTPRequest{Method: "GET", URL: ts.URL, TimeoutMs: 1000})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(svc.Close()).To(Succeed())
+			Eventually(closed).Should(BeClosed())
+		})
+
 		It("should allow wildcard host patterns", func() {
 			ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte("wildcard"))
 			}))
-			// *.allowed.org is in the requiredHosts from BeforeEach, but test server is 127.0.0.1
-			// Override with a wildcard that matches the test server
-			svc.requiredHosts = []string{"*.0.0.1"}
+			// The literal IP is what authorizes the loopback dial under the private-IP guard.
+			svc.requiredHosts = []string{"*.0.0.1", "127.0.0.1"}
 			resp, err := svc.Send(context.Background(), host.HTTPRequest{
 				Method:    "GET",
 				URL:       ts.URL,
@@ -564,6 +620,11 @@ var _ = Describe("isPrivateOrLoopback", func() {
 
 	It("should detect IPv6 link-local (fe80::/10)", func() {
 		Expect(isPrivateOrLoopback("fe80::1")).To(BeTrue())
+	})
+
+	It("should detect unspecified addresses, which dial the local host", func() {
+		Expect(isPrivateOrLoopback("0.0.0.0")).To(BeTrue())
+		Expect(isPrivateOrLoopback("::")).To(BeTrue())
 	})
 
 	It("should allow public IPs", func() {

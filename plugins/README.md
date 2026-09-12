@@ -401,7 +401,7 @@ import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 
 ### HTTP
 
-Make HTTP requests to external services. This is a dedicated host service (separate from Extism's built-in HTTP support) with additional features like timeouts and redirect control.
+Make HTTP requests to external services, with timeouts, redirect control, and protection against reaching private network addresses. This is the only supported way to make HTTP requests: Extism's built-in HTTP (`pdk.NewHTTPRequest`) is disabled.
 
 **Manifest permission:**
 

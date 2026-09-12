@@ -5,6 +5,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,6 +38,15 @@ var _ = Describe("Share", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(id).ToNot(BeEmpty())
 				Expect(entity.ID).To(Equal(id))
+			})
+
+			It("assigns the logged-in user as owner, ignoring a client-supplied UserID", func() {
+				loggedInCtx := request.WithUser(context.Background(), model.User{ID: "logged-in-user"})
+				repo := share.NewRepository(loggedInCtx).(rest.Persistable)
+				entity := &model.Share{Description: "test", ResourceIDs: "123", UserID: "victim-user"}
+				_, err := repo.Save(entity)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entity.UserID).To(Equal("logged-in-user"))
 			})
 
 			It("does not truncate ASCII labels shorter than 30 characters", func() {
