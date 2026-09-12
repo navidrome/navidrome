@@ -12,28 +12,19 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(dbRoot)
-	dbRoot.AddCommand(doctorCmd)
+	rootCmd.AddCommand(doctorCmd)
 }
 
-var (
-	dbRoot = &cobra.Command{
-		Use:   "db",
-		Short: "Database maintenance",
-		Long:  "Database maintenance operations",
-	}
-
-	doctorCmd = &cobra.Command{
-		Use:   "doctor",
-		Short: "Check the database for corruption and inconsistencies",
-		Long: "Run read-only database health checks (integrity and foreign key checks) and " +
-			"report what was found, including whether 'navidrome search rebuild' can fix it. " +
-			"This command never alters your data",
-		Run: func(cmd *cobra.Command, _ []string) {
-			runDoctor(cmd.Context())
-		},
-	}
-)
+var doctorCmd = &cobra.Command{
+	Use:   "doctor",
+	Short: "Check your Navidrome installation for problems",
+	Long: "Run read-only health checks and report what was found. Checks the database for " +
+		"corruption and foreign key violations, and reports whether 'navidrome search rebuild' " +
+		"can fix what it finds. This command never alters your data",
+	Run: func(cmd *cobra.Command, _ []string) {
+		runDoctor(cmd.Context())
+	},
+}
 
 func runDoctor(ctx context.Context) {
 	requireExistingDB()

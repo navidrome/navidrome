@@ -31,7 +31,7 @@ var (
 		Use:   "rebuild",
 		Short: "Rebuild the full-text search index",
 		Long: "Drop and rebuild the full-text search index from the library data. Fixes a corrupted " +
-			"or desynced search index without any data loss. Note that 'navidrome db doctor' detects a " +
+			"or desynced search index without any data loss. Note that 'navidrome doctor' detects a " +
 			"corrupted index, but cannot tell when the index has merely drifted out of sync with the " +
 			"library. This must be done offline",
 		Run: func(cmd *cobra.Command, _ []string) {
