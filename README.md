@@ -33,6 +33,10 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 
 See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
 
+Set `InstanceName = "My Music"` (or `ND_INSTANCENAME="My Music"`) to name your
+server on the login screen, page header and browser tab. The default is
+`Navidrome`, including for blank values. Restart and reload after changing it.
+
 ## Cloud Hosting
 
 [PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
