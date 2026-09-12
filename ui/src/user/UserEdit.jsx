@@ -94,6 +94,12 @@ const UserEdit = (props) => {
         notify('resources.user.notifications.updated', 'info', {
           smart_count: 1,
         })
+        // Keep the locally stored identity name in sync when users edit their
+        // own profile, so the app bar menu (and the ExtAuth logout/login reload,
+        // which reads localStorage.name via getIdentity) reflect the new name.
+        if (isMyself) {
+          localStorage.setItem('name', values.name)
+        }
         permissions === 'admin' ? redirect('/user') : refresh()
       } catch (error) {
         if (error?.body?.errors) {
@@ -102,7 +108,7 @@ const UserEdit = (props) => {
         notify('ra.page.error', 'warning')
       }
     },
-    [mutate, notify, permissions, redirect, refresh],
+    [isMyself, mutate, notify, permissions, redirect, refresh],
   )
 
   // Custom validation function
