@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -174,51 +173,12 @@ func (s *httpServiceImpl) validateHost(ctx context.Context, hostStr string) erro
 	return nil
 }
 
-// dialControl checks the resolved IP, so hostnames can't reach private addresses unless a literal
-// IP/CIDR entry or a bare "*" (plugins targeting user-configured LAN services) allows it.
 func (s *httpServiceImpl) dialControl(_, address string, _ syscall.RawConn) error {
-	if slices.Contains(s.requiredHosts, "*") {
-		return nil
-	}
-	host, _, err := net.SplitHostPort(address)
-	if err != nil {
-		return err
-	}
-	ip := net.ParseIP(host)
-	if ip == nil || !isPrivateIP(ip) {
-		return nil
-	}
-	for _, entry := range s.requiredHosts {
-		if ipMatchesEntry(entry, ip) {
-			return nil
-		}
-	}
-	return fmt.Errorf("dial to private/loopback address %q blocked: requires an explicit IP or CIDR in requiredHosts", address)
-}
-
-// ipMatchesEntry reports whether a requiredHosts entry is a literal IP or CIDR
-// that covers ip. Hostname and wildcard entries never match.
-func ipMatchesEntry(entry string, ip net.IP) bool {
-	if _, cidr, err := net.ParseCIDR(entry); err == nil {
-		return cidr.Contains(ip)
-	}
-	if entryIP := net.ParseIP(entry); entryIP != nil {
-		return entryIP.Equal(ip)
-	}
-	return false
+	return checkPrivateDial(s.requiredHosts, address)
 }
 
 func (s *httpServiceImpl) isHostAllowed(hostname string) bool {
-	ip := net.ParseIP(hostname)
-	for _, pattern := range s.requiredHosts {
-		if matchHostPattern(pattern, hostname) {
-			return true
-		}
-		if ip != nil && ipMatchesEntry(pattern, ip) {
-			return true
-		}
-	}
-	return false
+	return isHostInAllowlist(s.requiredHosts, hostname)
 }
 
 // extractHostname returns the hostname portion of a host string, stripping
@@ -246,10 +206,6 @@ func isPrivateOrLoopback(hostname string) bool {
 		return false
 	}
 	return isPrivateIP(ip)
-}
-
-func isPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
 }
 
 // Verify interface implementation
