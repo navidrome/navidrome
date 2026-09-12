@@ -88,7 +88,10 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 		if err := tx.MediaFile(ctx).Put(target); err != nil {
 			return fmt.Errorf("update matched track: %w", err)
 		}
-		// Discard the target's original row
+		// Unlike the scanner's freshly-imported target, this one may carry history of its own
+		if err := tx.MediaFile(ctx).ReassignReferences(discardedID, missing.ID); err != nil {
+			return fmt.Errorf("reassign target references: %w", err)
+		}
 		if err := tx.MediaFile(ctx).Delete(discardedID); err != nil {
 			return fmt.Errorf("delete discarded track: %w", err)
 		}

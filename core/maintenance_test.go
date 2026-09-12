@@ -272,6 +272,17 @@ var _ = Describe("Maintenance", func() {
 			Expect(ds.GCCalled).To(BeTrue())
 		})
 
+		It("moves the target's annotations, bookmarks and playlist entries onto the surviving id", func() {
+			mfRepo.SetData(model.MediaFiles{
+				{ID: "m1", AlbumID: "album1", Missing: true},
+				{ID: "t1", AlbumID: "album1", Missing: false},
+			})
+
+			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
+
+			Expect(mfRepo.ReassignReferencesCalls).To(HaveKeyWithValue("t1", "m1"))
+		})
+
 		It("reassigns album annotations when the old album is emptied", func() {
 			albumRepo := ds.MockedAlbum.(*extendedAlbumRepo)
 			mfRepo.SetData(model.MediaFiles{

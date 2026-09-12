@@ -405,6 +405,20 @@ func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
 }
 
+func (r *mediaFileRepository) ReassignReferences(prevID, newID string) error {
+	if err := r.ReassignAnnotation(prevID, newID); err != nil {
+		return fmt.Errorf("reassigning annotations: %w", err)
+	}
+	if err := r.reassignBookmark(prevID, newID); err != nil {
+		return fmt.Errorf("reassigning bookmarks: %w", err)
+	}
+	upd := Update("playlist_tracks").Set("media_file_id", newID).Where(Eq{"media_file_id": prevID})
+	if _, err := r.executeSQL(upd); err != nil {
+		return fmt.Errorf("reassigning playlist tracks: %w", err)
+	}
+	return nil
+}
+
 func (r *mediaFileRepository) DeleteAllMissing() (int64, error) {
 	user := loggedUser(r.ctx)
 	if !user.IsAdmin {

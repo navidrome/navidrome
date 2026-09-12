@@ -29,7 +29,9 @@ type MockMediaFileRepo struct {
 	CountAllValue         *int64
 	CountAllOptions       model.QueryOptions
 	DeleteAllMissingValue int64
-	Options               model.QueryOptions
+	// ReassignReferencesCalls records prevID -> newID
+	ReassignReferencesCalls map[string]string
+	Options                 model.QueryOptions
 	// Add fields for cross-library move detection tests
 	FindRecentFilesByMBZTrackIDFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
 	FindRecentFilesByPropertiesFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
@@ -165,6 +167,17 @@ func (m *MockMediaFileRepo) Delete(id string) error {
 		return model.ErrNotFound
 	}
 	delete(m.Data, id)
+	return nil
+}
+
+func (m *MockMediaFileRepo) ReassignReferences(prevID, newID string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if m.ReassignReferencesCalls == nil {
+		m.ReassignReferencesCalls = make(map[string]string)
+	}
+	m.ReassignReferencesCalls[prevID] = newID
 	return nil
 }
 
