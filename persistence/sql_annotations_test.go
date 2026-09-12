@@ -30,6 +30,53 @@ var _ = Describe("Annotation Filters", func() {
 		_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
 	})
 
+	Describe("ReassignAnnotation", func() {
+		var prev, next model.Album
+
+		BeforeEach(func() {
+			prev = model.Album{ID: "reassign-prev", Name: "Prev", LibraryID: 1}
+			next = model.Album{ID: "reassign-next", Name: "Next", LibraryID: 1}
+			Expect(albumRepo.Put(&prev)).To(Succeed())
+			Expect(albumRepo.Put(&next)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{prev.ID, next.ID}}))
+		})
+
+		It("moves the annotation when the new item has none", func() {
+			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+
+			got, err := albumRepo.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Rating).To(Equal(4))
+		})
+
+		It("recomputes the new item's cached average rating", func() {
+			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+
+			got, err := albumRepo.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.AverageRating).To(Equal(4.0))
+		})
+
+		It("keeps the new item's annotation when both exist", func() {
+			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(2, next.ID)).To(Succeed())
+
+			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+
+			got, err := albumRepo.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Rating).To(Equal(2))
+		})
+	})
+
 	Describe("annotationBoolFilter", func() {
 		DescribeTable("creates correct SQL expressions",
 			func(field, value string, expectedSQL string, expectedArgs []any) {

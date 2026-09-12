@@ -311,7 +311,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		When("PurgeMissing is 'always'", func() {
 			BeforeEach(func() {
 				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
-				mr.CountAllValue = 3
+				mr.SetCountAll(3)
 				mr.DeleteAllMissingValue = 3
 			})
 			It("should purge missing files", func() {
@@ -325,7 +325,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		When("PurgeMissing is 'full'", func() {
 			BeforeEach(func() {
 				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingFull
-				mr.CountAllValue = 2
+				mr.SetCountAll(2)
 				mr.DeleteAllMissingValue = 2
 			})
 			It("should not purge missing files if not a full scan", func() {
@@ -346,7 +346,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		When("PurgeMissing is 'never'", func() {
 			BeforeEach(func() {
 				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingNever
-				mr.CountAllValue = 1
+				mr.SetCountAll(1)
 				mr.DeleteAllMissingValue = 1
 			})
 			It("should not purge missing files", func() {

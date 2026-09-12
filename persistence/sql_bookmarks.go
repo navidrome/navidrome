@@ -144,6 +144,13 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 	return resp, nil
 }
 
+func (r sqlRepository) reassignBookmark(prevID, newID string) error {
+	upd := Expr("update or ignore "+bookmarkTable+" set item_id = ? where item_type = ? and item_id = ?",
+		newID, r.tableName, prevID)
+	_, err := r.executeSQL(upd)
+	return err
+}
+
 func (r sqlRepository) cleanBookmarks() error {
 	del := Delete(bookmarkTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
 	c, err := r.executeSQL(del)
