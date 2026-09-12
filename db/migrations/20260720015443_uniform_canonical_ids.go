@@ -77,6 +77,14 @@ var idColumns = []struct{ table, col string }{
 	{"media_file_artists", "media_file_id"}, {"media_file_artists", "artist_id"},
 	{"album_artists", "album_id"}, {"album_artists", "artist_id"},
 	{"library_tag", "tag_id"},
+	{"podcast_channel", "id"},
+	{"podcast_episode", "id"}, {"podcast_episode", "channel_id"}, {"podcast_episode", "stream_id"},
+	{"podcast_transcript", "id"}, {"podcast_transcript", "episode_id"},
+	{"podcast_person", "id"}, {"podcast_person", "channel_id"}, {"podcast_person", "episode_id"},
+	{"podcast_podroll", "id"}, {"podcast_podroll", "channel_id"},
+	{"podcast_live_item", "id"}, {"podcast_live_item", "channel_id"},
+	{"podcast_funding", "id"}, {"podcast_funding", "channel_id"},
+	{"podcast_image", "id"}, {"podcast_image", "channel_id"}, {"podcast_image", "episode_id"},
 }
 
 // embeddedIDColumns holds ids nested inside a larger value; the id-columns guard checks this
