@@ -268,6 +268,7 @@ func NewTranscodingCache() TranscodingCache {
 				BitDepth:   job.bitDepth,
 				Channels:   job.channels,
 				Offset:     job.offset,
+				Duration:   job.mf.Duration,
 			})
 			if err != nil {
 				release()

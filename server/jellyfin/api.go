@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/httprate"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/navidrome/navidrome/conf"
@@ -78,13 +77,12 @@ func (api *Router) routes() http.Handler {
 	inner.Post("/system/ping", api.ping)
 	inner.Get("/quickconnect/enabled", api.quickConnectEnabled)
 	// Rate-limit the password login, mirroring the native /auth/login: it's an unauthenticated
-	// brute-force surface, so it must share the same per-IP throttle when one is configured.
+	// brute-force surface, so it must share the same per-client throttle when one is configured.
+	login := inner.With(server.LimitLoginBody)
 	if conf.Server.AuthRequestLimit > 0 {
-		limiter := httprate.LimitByIP(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
-		inner.With(limiter).Post("/users/authenticatebyname", api.authenticateByName)
-	} else {
-		inner.Post("/users/authenticatebyname", api.authenticateByName)
+		login = login.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
 	}
+	login.Post("/users/authenticatebyname", api.authenticateByName)
 	inner.Get("/users/public", api.getPublicUsers)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.
@@ -118,6 +116,7 @@ func (api *Router) routes() http.Handler {
 			r.Use(throttleStreams(conf.Server.Jellyfin.MaxConcurrentStreams))
 			r.Get("/items", api.getItems)
 			r.Get("/users/{userId}/items", api.getItems)
+			r.Get("/items/latest", api.getLatest)
 			r.Get("/users/{userId}/items/latest", api.getLatest)
 			r.Get("/artists", api.getArtists)
 			r.Get("/artists/albumartists", api.getAlbumArtists)

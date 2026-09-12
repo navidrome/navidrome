@@ -200,6 +200,9 @@
         "targetFormat": "Target Format",
         "defaultBitRate": "Default Bit Rate",
         "command": "Command"
+      },
+      "choices": {
+        "noDefaultBitRate": "None"
       }
     },
     "playlist": {

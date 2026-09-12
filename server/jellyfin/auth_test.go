@@ -9,6 +9,7 @@ import (
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -99,5 +100,17 @@ var _ = Describe("AuthenticateByName", func() {
 			strings.NewReader(`{"Username":"empty","Pw":""}`))
 		api.authenticateByName(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
+	})
+})
+
+var _ = Describe("AuthenticateByName body limit", func() {
+	It("rejects a request body larger than the limit", func() {
+		ds := &tests.MockDataStore{}
+		api := &Router{ds: ds}
+		w := httptest.NewRecorder()
+		body := `{"Username":"alice","Pw":"secret","Padding":"` + strings.Repeat("x", server.MaxLoginBodySize) + `"}`
+		r := httptest.NewRequest("POST", "/Users/AuthenticateByName", strings.NewReader(body))
+		server.LimitLoginBody(http.HandlerFunc(api.authenticateByName)).ServeHTTP(w, r)
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
 	})
 })

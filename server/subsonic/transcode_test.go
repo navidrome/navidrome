@@ -369,7 +369,7 @@ var _ = Describe("Transcode endpoints", func() {
 				mockTD.token = "token"
 			})
 
-			It("forces a supported format and clears direct play", func() {
+			It("forces a supported format and narrows direct play to it", func() {
 				body := `{"directPlayProfiles":[{"containers":["flac"],"audioCodecs":["flac"],"protocols":["http"]}],
 					"transcodingProfiles":[{"container":"ogg","audioCodec":"opus","protocol":"http"},
 						{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
@@ -380,7 +380,11 @@ var _ = Describe("Transcode endpoints", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockTD.capturedClient.TranscodingProfiles).To(HaveLen(1))
 				Expect(mockTD.capturedClient.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
-				Expect(mockTD.capturedClient.DirectPlayProfiles).To(BeEmpty())
+				Expect(mockTD.capturedClient.DirectPlayProfiles).To(ConsistOf(stream.DirectPlayProfile{
+					Containers:  []string{"ogg"},
+					AudioCodecs: []string{"opus"},
+					Protocols:   []string{"http"},
+				}))
 			})
 
 			It("falls back to negotiation when the forced format is unsupported", func() {
@@ -415,6 +419,43 @@ var _ = Describe("Transcode endpoints", func() {
 				Expect(mockTD.capturedClient.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
 				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(128))
 				Expect(mockTD.capturedClient.MaxTranscodingAudioBitrate).To(Equal(128))
+			})
+
+			withForcedBitRate := func(r *http.Request, format string, defaultBitRate, playerMaxBitRate int) *http.Request {
+				ctx := request.WithTranscoding(r.Context(), model.Transcoding{TargetFormat: format, DefaultBitRate: defaultBitRate})
+				ctx = request.WithPlayer(ctx, model.Player{Client: "NavidromeUI", MaxBitRate: playerMaxBitRate})
+				return r.WithContext(ctx)
+			}
+
+			It("applies the transcoding default bitrate when the player sets no maxBitRate", func() {
+				body := `{"transcodingProfiles":[{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedBitRate(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "mp3", 192, 0)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(192))
+				Expect(mockTD.capturedClient.MaxTranscodingAudioBitrate).To(Equal(192))
+			})
+
+			It("prefers the player maxBitRate over the transcoding default bitrate", func() {
+				body := `{"transcodingProfiles":[{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedBitRate(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "mp3", 192, 320)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(Equal(320))
+			})
+
+			It("ignores the transcoding default bitrate when the forced format is unsupported", func() {
+				body := `{"transcodingProfiles":[{"container":"mp3","audioCodec":"mp3","protocol":"http"}]}`
+				r := withForcedBitRate(newJSONPostRequest("mediaId=song-1&mediaType=song", body), "opus", 192, 0)
+
+				_, err := router.GetTranscodeDecision(w, r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(mockTD.capturedClient.MaxAudioBitrate).To(BeZero())
 			})
 		})
 	})

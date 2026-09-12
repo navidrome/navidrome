@@ -72,7 +72,6 @@ func (r *shareRepository) GetAll(options ...model.QueryOptions) (model.Shares, e
 }
 
 func (r *shareRepository) loadMedia(share *model.Share) error {
-	var err error
 	ids := strings.Split(share.ResourceIDs, ",")
 	if len(ids) == 0 {
 		return nil
@@ -80,15 +79,15 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 	noMissing := func(cond Sqlizer) Sqlizer {
 		return And{cond, Eq{"missing": false}}
 	}
+	// Load as the share owner so their library access is applied, whoever renders the share.
+	ctx, err := r.ownerContext(share)
+	if err != nil {
+		return err
+	}
 	switch share.ResourceType {
 	case "artist":
 		// Match by album-artist participation, not the deprecated album_artist_id
 		// column (first album artist only), so co-album-artists are included too.
-		// Load as the share owner so their library access is applied.
-		ctx, err := r.ownerContext(share)
-		if err != nil {
-			return err
-		}
 		albumRepo := NewAlbumRepository(ctx, r.db)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("album", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		if err != nil {
@@ -98,20 +97,15 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("media_file", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		return err
 	case "album":
-		albumRepo := NewAlbumRepository(r.ctx, r.db)
+		albumRepo := NewAlbumRepository(ctx, r.db)
 		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album.id": ids})})
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(r.ctx, r.db)
+		mfRepo := NewMediaFileRepository(ctx, r.db)
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_id": ids}), Sort: "album"})
 		return err
 	case "playlist":
-		// Load tracks as the share owner so their library access is applied.
-		ctx, err := r.ownerContext(share)
-		if err != nil {
-			return err
-		}
 		plsRepo := NewPlaylistRepository(ctx, r.db)
 		// Tracks returns nil when the playlist is no longer visible to the owner
 		// (e.g. it was made private after the share was created); leave the share
@@ -127,7 +121,7 @@ func (r *shareRepository) loadMedia(share *model.Share) error {
 		share.Tracks = tracks.MediaFiles()
 		return nil
 	case "media_file":
-		mfRepo := NewMediaFileRepository(r.ctx, r.db)
+		mfRepo := NewMediaFileRepository(ctx, r.db)
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"media_file.id": ids})})
 		share.Tracks = sortByIdPosition(tracks, ids)
 		return err
