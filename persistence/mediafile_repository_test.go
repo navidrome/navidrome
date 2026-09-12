@@ -993,6 +993,7 @@ var _ = Describe("MediaRepository", func() {
 				// French diacritic: è (U+00E8, can decompose to e + combining grave)
 				{ID: "findpath-4", LibraryID: 1, Path: "artist/Michèle/song.mp3", Title: "French"},
 				{ID: "findpath-5", LibraryID: 1, Path: "Bach: Goldberg Variations/01.mp3", Title: "Colon"},
+				{ID: "findpath-6", LibraryID: 1, Path: "1999: A Different Life/01.mp3", Title: "Numeric colon"},
 			}
 			for _, mf := range testFiles {
 				Expect(mr.Put(&mf)).To(Succeed())
@@ -1010,6 +1011,13 @@ var _ = Describe("MediaRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(results).To(HaveLen(1))
 			Expect(results[0].ID).To(Equal("findpath-5"))
+		})
+
+		It("finds a plain path whose colon prefix looks like a library id", func() {
+			results, err := mr.FindByPaths([]string{"1999: A Different Life/01.mp3"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(results).To(HaveLen(1))
+			Expect(results[0].ID).To(Equal("findpath-6"))
 		})
 
 		It("splits only the first colon of a library-qualified path", func() {

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -84,18 +85,19 @@ func runMissingList(ctx context.Context) {
 // writeMissingList streams the cursor so a library with many missing files doesn't get loaded into memory
 func writeMissingList(w io.Writer, format string, mfs model.MediaFileCursor) error {
 	if format == "json" {
-		_, _ = io.WriteString(w, "[")
+		bw := bufio.NewWriter(w)
+		_, _ = io.WriteString(bw, "[")
 		sep := ""
 		for mf, err := range mfs {
 			if err != nil {
 				return err
 			}
 			j, _ := json.Marshal(displayMissingFile{ID: mf.ID, LibraryID: mf.LibraryID, Title: mf.Title, Album: mf.Album, Artist: mf.Artist, Path: mf.Path})
-			_, _ = fmt.Fprintf(w, "%s%s", sep, j)
+			_, _ = fmt.Fprintf(bw, "%s%s", sep, j)
 			sep = ","
 		}
-		_, err := io.WriteString(w, "]\n")
-		return err
+		_, _ = io.WriteString(bw, "]\n")
+		return bw.Flush()
 	}
 
 	cw := csv.NewWriter(w)
