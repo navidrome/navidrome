@@ -416,7 +416,7 @@ Make HTTP requests to external services, with timeouts, redirect control, and pr
 }
 ```
 
-**Private addresses:** the check runs on the resolved IP when connecting. A named host (`api.example.com`, `*.example.com`) can never reach a loopback, private or link-local address, even if its DNS points there. To reach a service on the local network, list its IP or a CIDR (`192.168.1.10`, `10.0.0.0/8`), or use `"*"` when the user configures the address. Without `requiredHosts`, only public addresses are allowed.
+**Private addresses:** the check runs on the resolved IP when connecting. A named host entry (`api.example.com`, `*.example.com`) never authorizes a loopback, private or link-local address on its own, even if its DNS points there. To reach a service on the local network, also list its IP or a CIDR (`192.168.1.10`, `10.0.0.0/8`), or use `"*"` when the user configures the address. Without `requiredHosts`, only public addresses are allowed.
 
 **Host functions:**
 
@@ -702,7 +702,7 @@ Establish persistent WebSocket connections to external services. Your plugin mus
 }
 ```
 
-`requiredHosts` follows the same [private address rules](#http) as HTTP.
+`requiredHosts` is mandatory here: leave it out and every connection is blocked. Unlike HTTP, there is no fallback to public addresses. Entries follow the same [private address rules](#http).
 
 **Host functions:**
 
