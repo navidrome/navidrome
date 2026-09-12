@@ -3,6 +3,7 @@ package db_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -37,11 +38,12 @@ func newDB(ctx context.Context, upTo int64) *sql.DB {
 	return d
 }
 
-// openMismatchedIndexDB builds a database at path whose index is declared over a
-// different column than the one it was populated from, so integrity_check reports
-// one issue per row — more than its limit.
-func openMismatchedIndexDB(ctx context.Context, path, index string) *sql.DB {
+// openMismatchedIndexDB builds a database whose index is declared over a different
+// column than the one it was populated from, so integrity_check reports exactly one
+// issue per row.
+func openMismatchedIndexDB(ctx context.Context, rows int) *sql.DB {
 	GinkgoHelper()
+	path := filepath.Join(GinkgoT().TempDir(), "mismatched.db")
 	open := func() *sql.DB {
 		d, err := sql.Open(db.Dialect, path)
 		Expect(err).ToNot(HaveOccurred())
@@ -51,11 +53,11 @@ func openMismatchedIndexDB(ctx context.Context, path, index string) *sql.DB {
 	d := open()
 	for _, stmt := range []string{
 		`create table t(a, b)`,
-		`with recursive s(x) as (select 1 union all select x+1 from s where x < 300)
-		 insert into t select x, x + 10000 from s`,
-		`create index ` + index + ` on t(a)`,
+		fmt.Sprintf(`with recursive s(x) as (select 1 union all select x+1 from s where x < %d)
+		 insert into t select x, x + 10000 from s`, rows),
+		`create index i on t(a)`,
 		`pragma writable_schema=on`,
-		`update sqlite_master set sql = 'CREATE INDEX ` + index + ` ON t(b)' where name = '` + index + `'`,
+		`update sqlite_master set sql = 'CREATE INDEX i ON t(b)' where name = 'i'`,
 	} {
 		_, err := d.ExecContext(ctx, stmt)
 		Expect(err).ToNot(HaveOccurred())
@@ -189,13 +191,22 @@ var _ = Describe("Repair", func() {
 			Expect(truncated).To(BeFalse())
 		})
 
-		It("flags the issue list as truncated when the pragma hits its limit", func() {
-			broken := openMismatchedIndexDB(ctx, filepath.Join(GinkgoT().TempDir(), "truncated.db"), "i")
+		It("flags the issue list as truncated when there are more issues than the limit", func() {
+			broken := openMismatchedIndexDB(ctx, 300)
 
 			issues, truncated, err := db.IntegrityCheck(ctx, broken)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(issues).To(HaveLen(100))
 			Expect(truncated).To(BeTrue())
+		})
+
+		It("does not flag truncation when the issues exactly fill the limit", func() {
+			broken := openMismatchedIndexDB(ctx, 100)
+
+			issues, truncated, err := db.IntegrityCheck(ctx, broken)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(issues).To(HaveLen(100))
+			Expect(truncated).To(BeFalse())
 		})
 	})
 
@@ -214,8 +225,9 @@ var _ = Describe("Repair", func() {
 			violations, err := db.ForeignKeyCheck(ctx, database)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(violations).To(HaveLen(1))
-			Expect(violations[0]).To(ContainSubstring("media_file"))
-			Expect(violations[0]).To(ContainSubstring("library"))
+			Expect(violations[0].Table).To(Equal("media_file"))
+			Expect(violations[0].Parent).To(Equal("library"))
+			Expect(violations[0].Count).To(BeNumerically("==", 1))
 		})
 	})
 
@@ -247,7 +259,7 @@ var _ = Describe("Repair", func() {
 
 		It("recreates tables and triggers dropped by hand", func() {
 			for _, table := range db.FTSTables {
-				for _, suffix := range []string{"_ai", "_ad", "_au"} {
+				for _, suffix := range db.FTSTriggerSuffixes {
 					_, err := database.ExecContext(ctx, "drop trigger "+table+suffix)
 					Expect(err).ToNot(HaveOccurred())
 				}

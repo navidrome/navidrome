@@ -4,6 +4,7 @@ package db
 var (
 	EmbedMigrations      = embedMigrations
 	FTSTables            = ftsTables
+	FTSTriggerSuffixes   = ftsTriggerSuffixes
 	FTSSearchMigration   = ftsSearchMigration
 	IsSchemaEmpty        = isSchemaEmpty
 	BackupPath           = backupPath

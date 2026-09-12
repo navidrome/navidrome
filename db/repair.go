@@ -11,14 +11,18 @@ import (
 
 var ftsTables = []string{"media_file_fts", "album_fts", "artist_fts"}
 
+var ftsTriggerSuffixes = []string{"_ai", "_ad", "_au"}
+
+// integrityCheckMaxIssues bounds the problems reported; IntegrityCheck asks the
+// pragma for one extra row, because it truncates without emitting any marker.
 const integrityCheckMaxIssues = 100
 
 // IntegrityCheck runs PRAGMA integrity_check and returns the reported problems, or
 // an empty slice when the database is healthy. The second return value reports a
-// truncated list: the pragma stops at its limit without emitting any marker, so a
-// saturated list cannot be read as the full extent of the damage.
+// truncated list, which cannot be read as the full extent of the damage.
 func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, bool, error) {
-	rows, err := database.QueryContext(ctx, fmt.Sprintf("PRAGMA integrity_check(%d)", integrityCheckMaxIssues))
+	rows, err := database.QueryContext(ctx,
+		fmt.Sprintf("PRAGMA integrity_check(%d)", integrityCheckMaxIssues+1))
 	if err != nil {
 		return nil, false, fmt.Errorf("running integrity_check: %w", err)
 	}
@@ -38,14 +42,23 @@ func IntegrityCheck(ctx context.Context, database *sql.DB) ([]string, bool, erro
 	if len(issues) == 1 && issues[0] == "ok" {
 		return nil, false, nil
 	}
-	return issues, len(issues) >= integrityCheckMaxIssues, nil
+	if len(issues) > integrityCheckMaxIssues {
+		return issues[:integrityCheckMaxIssues], true, nil
+	}
+	return issues, false, nil
 }
 
-// ForeignKeyCheck runs PRAGMA foreign_key_check and returns one line per
-// (table, parent) pair with a violation count, or an empty slice when there are
-// none. Aggregated because the raw pragma emits one row per orphan, which is
-// unbounded on a large corrupted library.
-func ForeignKeyCheck(ctx context.Context, database *sql.DB) ([]string, error) {
+// FKViolation counts the rows in Table that reference missing rows in Parent.
+type FKViolation struct {
+	Table  string
+	Parent string
+	Count  int64
+}
+
+// ForeignKeyCheck runs PRAGMA foreign_key_check, aggregated per (table, parent)
+// pair because the raw pragma emits one row per orphan, which is unbounded on a
+// large corrupted library.
+func ForeignKeyCheck(ctx context.Context, database *sql.DB) ([]FKViolation, error) {
 	rows, err := database.QueryContext(ctx,
 		`SELECT "table", "parent", count(*) FROM pragma_foreign_key_check GROUP BY "table", "parent"`)
 	if err != nil {
@@ -53,15 +66,13 @@ func ForeignKeyCheck(ctx context.Context, database *sql.DB) ([]string, error) {
 	}
 	defer rows.Close()
 
-	var violations []string
+	var violations []FKViolation
 	for rows.Next() {
-		var table, parent string
-		var count int64
-		if err := rows.Scan(&table, &parent, &count); err != nil {
+		var v FKViolation
+		if err := rows.Scan(&v.Table, &v.Parent, &v.Count); err != nil {
 			return nil, fmt.Errorf("reading foreign_key_check results: %w", err)
 		}
-		violations = append(violations,
-			fmt.Sprintf("%s: %d row(s) reference missing rows in %s", table, count, parent))
+		violations = append(violations, v)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("reading foreign_key_check results: %w", err)
@@ -99,24 +110,25 @@ const ftsSearchMigration int64 = 20260220173400
 
 var errNotMigrated = errors.New("the FTS search migration has not been applied yet; start Navidrome once to migrate the database first")
 
-// ftsMigrationApplied reports whether the FTS search migration has run. A database
-// file auto-created by a mistyped path has no goose_db_version table at all.
-func ftsMigrationApplied(ctx context.Context, database *sql.DB) (bool, error) {
-	var count int
-	err := database.QueryRowContext(ctx,
-		`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'goose_db_version'`).Scan(&count)
+// requireFTSMigration fails unless the FTS search migration has run. The goose table
+// is probed separately because a query against a missing table fails at prepare time.
+func requireFTSMigration(ctx context.Context, database *sql.DB) error {
+	migrated, err := hasGooseTable(ctx, database)
 	if err != nil {
-		return false, fmt.Errorf("checking FTS migration status: %w", err)
+		return fmt.Errorf("checking FTS migration status: %w", err)
 	}
-	if count == 0 {
-		return false, nil
+	if !migrated {
+		return errNotMigrated
 	}
-	err = database.QueryRowContext(ctx,
-		"SELECT count(*) FROM goose_db_version WHERE version_id = ?", ftsSearchMigration).Scan(&count)
-	if err != nil {
-		return false, fmt.Errorf("checking FTS migration status: %w", err)
+	var applied int
+	if err := database.QueryRowContext(ctx,
+		"SELECT count(*) FROM goose_db_version WHERE version_id = ?", ftsSearchMigration).Scan(&applied); err != nil {
+		return fmt.Errorf("checking FTS migration status: %w", err)
 	}
-	return count > 0, nil
+	if applied == 0 {
+		return errNotMigrated
+	}
+	return nil
 }
 
 // RebuildFTS drops the FTS5 search tables and their triggers, recreates them, and
@@ -126,12 +138,8 @@ func ftsMigrationApplied(ctx context.Context, database *sql.DB) (bool, error) {
 // often cannot run pending migrations, and the rebuild is transactional, so a column
 // mismatch with a newer schema fails loudly and rolls back.
 func RebuildFTS(ctx context.Context, database *sql.DB) error {
-	applied, err := ftsMigrationApplied(ctx, database)
-	if err != nil {
+	if err := requireFTSMigration(ctx, database); err != nil {
 		return err
-	}
-	if !applied {
-		return errNotMigrated
 	}
 
 	tx, err := database.BeginTx(ctx, nil)
@@ -142,7 +150,7 @@ func RebuildFTS(ctx context.Context, database *sql.DB) error {
 
 	var stmts []string
 	for _, table := range ftsTables {
-		for _, suffix := range []string{"_ai", "_ad", "_au"} {
+		for _, suffix := range ftsTriggerSuffixes {
 			stmts = append(stmts, "DROP TRIGGER IF EXISTS "+table+suffix)
 		}
 		stmts = append(stmts, "DROP TABLE IF EXISTS "+table)
@@ -159,8 +167,8 @@ func RebuildFTS(ctx context.Context, database *sql.DB) error {
 	return nil
 }
 
-// ftsSchemaDDL must stay identical to the add_fts5_search migration; the schema
-// comparison in repair_test.go guards against drift.
+// ftsSchemaDDL must reproduce what the full migration chain produces, not what any
+// single migration does; the schema comparison in repair_test.go guards the drift.
 var ftsSchemaDDL = []string{
 	`
 		CREATE VIRTUAL TABLE IF NOT EXISTS media_file_fts USING fts5(

@@ -19,6 +19,7 @@ var _ = Describe("doctor", func() {
 		dbPath   string
 		database *sql.DB
 		out      *strings.Builder
+		reopen   func()
 	)
 
 	// A file-backed DB so specs can corrupt raw pages; a table named like a real FTS
@@ -26,10 +27,13 @@ var _ = Describe("doctor", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		dbPath = filepath.Join(GinkgoT().TempDir(), "doctor.db")
-		var err error
-		database, err = sql.Open(db.Dialect, dbPath)
-		Expect(err).ToNot(HaveOccurred())
-		database.SetMaxOpenConns(1)
+		reopen = func() {
+			var err error
+			database, err = sql.Open(db.Dialect, dbPath)
+			Expect(err).ToNot(HaveOccurred())
+			database.SetMaxOpenConns(1)
+		}
+		reopen()
 		DeferCleanup(func() { _ = database.Close() })
 
 		for _, stmt := range []string{
@@ -38,7 +42,7 @@ var _ = Describe("doctor", func() {
 			`create table library(id integer primary key)`,
 			`create table media_file(id integer primary key, library_id integer references library(id))`,
 		} {
-			_, err = database.ExecContext(ctx, stmt)
+			_, err := database.ExecContext(ctx, stmt)
 			Expect(err).ToNot(HaveOccurred())
 		}
 		out = &strings.Builder{}
@@ -74,9 +78,7 @@ var _ = Describe("doctor", func() {
 		_, err = f.WriteAt([]byte{0xde, 0xad, 0xbe, 0xef, 0xde, 0xad, 0xbe, 0xef}, (rootPage-1)*pageSize+40)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(f.Close()).To(Succeed())
-		database, err = sql.Open(db.Dialect, dbPath)
-		Expect(err).ToNot(HaveOccurred())
-		database.SetMaxOpenConns(1)
+		reopen()
 
 		Expect(doctor(ctx, database, out)).To(BeFalse())
 		Expect(out.String()).To(ContainSubstring("backup restore"))
@@ -111,10 +113,7 @@ var _ = Describe("doctor", func() {
 			Expect(err).ToNot(HaveOccurred())
 		}
 		Expect(database.Close()).To(Succeed())
-		var err error
-		database, err = sql.Open(db.Dialect, dbPath)
-		Expect(err).ToNot(HaveOccurred())
-		database.SetMaxOpenConns(1)
+		reopen()
 
 		Expect(doctor(ctx, database, out)).To(BeFalse())
 		Expect(out.String()).ToNot(ContainSubstring("search rebuild"))

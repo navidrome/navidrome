@@ -38,14 +38,14 @@ func runDoctor(ctx context.Context) {
 
 const recoveryAdvice = "Restore a backup (navidrome backup restore), or try SQLite's '.recover' command."
 
-func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
-	printFindings := func(check, noun string, items []string) {
-		fmt.Fprintf(out, "%s reported %d %s:\n", check, len(items), noun)
-		for _, item := range items {
-			fmt.Fprintln(out, "  "+item)
-		}
+func printFindings(out io.Writer, check, noun string, items []string) {
+	fmt.Fprintf(out, "%s reported %d %s:\n", check, len(items), noun)
+	for _, item := range items {
+		fmt.Fprintln(out, "  "+item)
 	}
+}
 
+func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
 	healthy := true
 
 	fmt.Fprintln(out, "Checking database integrity...")
@@ -59,7 +59,7 @@ func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
 		fmt.Fprintln(out, "Integrity check passed.")
 	default:
 		healthy = false
-		printFindings("Integrity check", "issue(s)", issues)
+		printFindings(out, "Integrity check", "issue(s)", issues)
 		switch {
 		case truncated:
 			fmt.Fprintln(out, "The integrity check stopped at its limit, so the damage may reach further than listed.")
@@ -82,7 +82,12 @@ func doctor(ctx context.Context, database *sql.DB, out io.Writer) bool {
 		fmt.Fprintln(out, "Foreign key check passed.")
 	default:
 		healthy = false
-		printFindings("Foreign key check", "violation(s)", violations)
+		lines := make([]string, 0, len(violations))
+		for _, v := range violations {
+			lines = append(lines,
+				fmt.Sprintf("%s: %d row(s) reference missing rows in %s", v.Table, v.Count, v.Parent))
+		}
+		printFindings(out, "Foreign key check", "violation(s)", lines)
 		fmt.Fprintln(out, "These are orphaned rows, not corruption. Run 'navidrome scan -f' to clean them up.")
 	}
 

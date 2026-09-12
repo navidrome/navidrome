@@ -24,7 +24,6 @@ var (
 	searchRoot = &cobra.Command{
 		Use:   "search",
 		Short: "Search index maintenance",
-		Long:  "Search index maintenance operations",
 	}
 
 	searchRebuildCmd = &cobra.Command{
