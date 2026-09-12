@@ -989,6 +989,18 @@ var _ = Describe("MediaRepository", func() {
 			Expect(entry.MediaFile.ID).To(Equal(next.ID))
 		})
 
+		It("recomputes the average rating after merging another user's annotation", func() {
+			other := NewMediaFileRepository(request.WithUser(log.NewContext(context.TODO()), model.User{ID: "2222"}), GetDBXBuilder())
+			Expect(mr.SetRating(5, next.ID)).To(Succeed())
+			Expect(other.SetRating(3, prev.ID)).To(Succeed())
+
+			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
+
+			got, err := mr.Get(next.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.AverageRating).To(Equal(4.0))
+		})
+
 		It("keeps the new id's own annotation and bookmark when both exist", func() {
 			Expect(mr.SetRating(5, prev.ID)).To(Succeed())
 			Expect(mr.SetRating(1, next.ID)).To(Succeed())
