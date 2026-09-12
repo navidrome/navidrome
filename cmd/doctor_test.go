@@ -100,7 +100,7 @@ var _ = Describe("doctor", func() {
 	})
 
 	// Every issue names an FTS-like index, so IsFTSCorruptionOnly alone would send the
-	// user to 'search rebuild' — but the pragma stopped at its limit without saying so.
+	// user to 'search rebuild', but the pragma stopped at its limit without saying so.
 	It("does not blame the search index when the issue list is truncated", func() {
 		for _, stmt := range []string{
 			`create table t(a, b)`,

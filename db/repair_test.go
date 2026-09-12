@@ -21,7 +21,7 @@ func newDB(ctx context.Context, upTo int64) *sql.DB {
 	GinkgoHelper()
 	d, err := sql.Open(db.Dialect, "file::memory:")
 	Expect(err).ToNot(HaveOccurred())
-	d.SetMaxOpenConns(1) // non-shared :memory: — a second conn would be an empty DB
+	d.SetMaxOpenConns(1) // non-shared :memory:, a second conn would be an empty DB
 	DeferCleanup(func() { _ = d.Close() })
 
 	_, err = d.ExecContext(ctx, "PRAGMA foreign_keys=off")
