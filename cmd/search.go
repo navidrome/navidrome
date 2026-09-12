@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"os"
 
@@ -48,20 +47,10 @@ func runSearchRebuild(ctx context.Context) {
 	}
 
 	fmt.Println("Rebuilding the search index...")
-	err := rebuildSearchIndex(ctx, db.Db())
+	err := db.RebuildFTS(ctx, db.Db())
 	db.Close(ctx)
 	if err != nil {
 		log.Fatal("Error rebuilding the search index", err)
 	}
 	fmt.Println("Search index rebuilt successfully.")
-}
-
-func rebuildSearchIndex(ctx context.Context, database *sql.DB) error {
-	if err := db.RebuildFTS(ctx, database); err != nil {
-		return err
-	}
-	if err := db.VerifyFTS(ctx, database); err != nil {
-		return fmt.Errorf("the index still reports problems after the rebuild: %w", err)
-	}
-	return nil
 }

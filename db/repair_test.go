@@ -272,6 +272,21 @@ var _ = Describe("Repair", func() {
 			Expect(searchFTS("media_file_fts", "rockaway")).To(Equal(1))
 		})
 
+		It("rolls back and keeps the old index when the rebuild fails", func() {
+			// Triggers go first: SQLite refuses to drop a column they reference.
+			for _, suffix := range db.FTSTriggerSuffixes {
+				_, err := database.ExecContext(ctx, "drop trigger media_file_fts"+suffix)
+				Expect(err).ToNot(HaveOccurred())
+			}
+			_, err := database.ExecContext(ctx, `alter table media_file drop column disc_subtitle`)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(db.RebuildFTS(ctx, database)).ToNot(Succeed())
+
+			Expect(searchFTS("media_file_fts", "lobotomy")).To(Equal(1))
+			Expect(searchFTS("album_fts", "russia")).To(Equal(1))
+		})
+
 		It("produces the same schema as the migration", func() {
 			migrated := ftsSchema()
 			Expect(migrated).ToNot(BeEmpty())

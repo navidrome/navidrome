@@ -94,9 +94,18 @@ func IsFTSCorruptionOnly(issues []string) bool {
 	return true
 }
 
+// execer is the subset of *sql.DB and *sql.Tx that verifyFTS needs.
+type execer interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
+
 // VerifyFTS runs the FTS5 'integrity-check' command on each search table. Unlike a
 // full PRAGMA integrity_check, it reads only the FTS indexes, not the whole database.
 func VerifyFTS(ctx context.Context, database *sql.DB) error {
+	return verifyFTS(ctx, database)
+}
+
+func verifyFTS(ctx context.Context, database execer) error {
 	for _, table := range ftsTables {
 		stmt := fmt.Sprintf("INSERT INTO %[1]s(%[1]s) VALUES('integrity-check')", table) //nolint:gosec // fixed table list
 		if _, err := database.ExecContext(ctx, stmt); err != nil {
@@ -131,9 +140,9 @@ func requireFTSMigration(ctx context.Context, database *sql.DB) error {
 	return nil
 }
 
-// RebuildFTS drops the FTS5 search tables and their triggers, recreates them, and
-// repopulates the indexes from the base tables. The FTS tables are contentless, so
-// no user data is lost.
+// RebuildFTS drops the FTS5 search tables and their triggers, recreates them,
+// repopulates the indexes from the base tables, and verifies the result before
+// committing. The FTS tables are contentless, so no user data is lost.
 // It only requires the FTS migration, not a fully migrated schema: a corrupted DB
 // often cannot run pending migrations, and the rebuild is transactional, so a column
 // mismatch with a newer schema fails loudly and rolls back.
@@ -160,6 +169,9 @@ func RebuildFTS(ctx context.Context, database *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("rebuilding FTS schema: %w", err)
 		}
+	}
+	if err := verifyFTS(ctx, tx); err != nil {
+		return fmt.Errorf("the rebuilt search index did not verify: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("committing FTS rebuild: %w", err)
