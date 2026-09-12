@@ -247,6 +247,84 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(GetAll()).To(Equal(testAlbums))
 		})
 
+		// The REST layer sends library_id as a string. SQLite only coerces it to the column's
+		// integer affinity while the term stays a plain column reference, so a filter built on an
+		// expression instead would silently match nothing (#5929).
+		DescribeTable("library_id filter from the REST layer",
+			func(sort string) {
+				res, err := albumRepo.ReadAll(rest.QueryOptions{
+					Sort: sort, Max: 10, Filters: map[string]any{"library_id": "1"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res.(model.Albums)).ToNot(BeEmpty())
+			},
+			Entry("name sort", "name"),
+			Entry("random sort", "random"),
+			Entry("no sort", ""),
+		)
+
+		Context("random sort", func() {
+			It("returns the page in the same order the id query produced", func() {
+				opts := model.QueryOptions{Sort: "random", Max: 4, Seed: "a-seed"}
+				ids, err := albumRepo.GetAllIDs(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids).To(HaveLen(4))
+
+				albums, err := GetAll(opts)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(albums, func(a model.Album) string { return a.ID })).To(Equal(ids))
+			})
+
+			It("keeps paging on one shuffle for a given seed", func() {
+				ids := func(albums model.Albums) []string {
+					return slice.Map(albums, func(a model.Album) string { return a.ID })
+				}
+				firstTwoPages, err := GetAll(model.QueryOptions{Sort: "random", Max: 3, Seed: "s"})
+				Expect(err).ToNot(HaveOccurred())
+				secondPage, err := GetAll(model.QueryOptions{Sort: "random", Max: 3, Offset: 3, Seed: "s"})
+				Expect(err).ToNot(HaveOccurred())
+				whole, err := GetAll(model.QueryOptions{Sort: "random", Max: 6, Seed: "s"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(append(ids(firstTwoPages), ids(secondPage)...)).To(Equal(ids(whole)))
+			})
+
+			// Without an explicit seed, only Offset == 0 reseeds, so scrolling never repeats an album.
+			It("does not repeat albums across pages of one scroll", func() {
+				page1, err := GetAll(model.QueryOptions{Sort: "random", Max: 3})
+				Expect(err).ToNot(HaveOccurred())
+				page2, err := GetAll(model.QueryOptions{Sort: "random", Max: 3, Offset: 3})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(page1).To(HaveLen(3))
+				Expect(page2).To(HaveLen(3))
+				for _, a := range page2 {
+					Expect(page1).ToNot(ContainElement(a))
+				}
+			})
+
+			It("returns every record when no limit is given", func() {
+				albums, err := GetAll(model.QueryOptions{Sort: "random"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albums).To(ConsistOf(testAlbums))
+			})
+
+			It("applies filters", func() {
+				albums, err := GetAll(model.QueryOptions{
+					Sort: "random", Max: 10, Filters: squirrel.Eq{"album.name": albumSgtPeppers.Name},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albums).To(HaveLen(1))
+				Expect(albums[0].ID).To(Equal(albumSgtPeppers.ID))
+			})
+
+			It("hydrates the same fields as a non-random page", func() {
+				albums, err := GetAll(model.QueryOptions{
+					Sort: "random", Max: 1, Filters: squirrel.Eq{"album.id": albumSgtPeppers.ID},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albums).To(Equal(model.Albums{albumSgtPeppers}))
+			})
+		})
+
 		It("returns all records sorted", func() {
 			Expect(GetAll(model.QueryOptions{Sort: "name"})).To(Equal(model.Albums{
 				albumAbbeyRoad,
