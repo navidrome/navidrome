@@ -228,7 +228,7 @@ var _ = Describe("ShareRepository", func() {
 		})
 	})
 
-	Describe("Artist share library scoping", func() {
+	Describe("Artist, album and media file share library scoping", func() {
 		var otherLib model.Library
 		var owner model.User
 		const primaryID = "share-aa-primary"
@@ -267,20 +267,26 @@ var _ = Describe("ShareRepository", func() {
 			Expect(ur.Put(&owner)).To(Succeed())
 			Expect(ur.SetUserLibraries(owner.ID, []int{1})).To(Succeed())
 
-			_, err := b.NewQuery(`
-				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
-				VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
-			`).Bind(map[string]any{
-				"id": "art-share", "user": owner.ID, "desc": "Artist scope share",
-				"type": "artist", "ids": secondaryID, "created": time.Now(), "updated": time.Now(),
-			}).Execute()
-			Expect(err).ToNot(HaveOccurred())
+			for _, s := range []struct{ id, typ, ids string }{
+				{"art-share", "artist", secondaryID},
+				{"art-album-share", "album", "art-album-ok,art-album-other"},
+				{"art-mf-share", "media_file", "art-ok,art-other"},
+			} {
+				_, err := b.NewQuery(`
+					INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
+					VALUES ({:id}, {:user}, {:desc}, {:type}, {:ids}, {:created}, {:updated})
+				`).Bind(map[string]any{
+					"id": s.id, "user": owner.ID, "desc": "Scope share",
+					"type": s.typ, "ids": s.ids, "created": time.Now(), "updated": time.Now(),
+				}).Execute()
+				Expect(err).ToNot(HaveOccurred())
+			}
 		})
 
 		AfterEach(func() {
 			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 			b := GetDBXBuilder()
-			_, _ = b.NewQuery(`DELETE FROM share WHERE id = 'art-share'`).Execute()
+			_, _ = b.NewQuery(`DELETE FROM share WHERE id IN ('art-share', 'art-album-share', 'art-mf-share')`).Execute()
 			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
 			_, _ = mr.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"art-ok", "art-other"}}))
 			alr := NewAlbumRepository(adminCtx, b).(*albumRepository)
@@ -308,6 +314,23 @@ var _ = Describe("ShareRepository", func() {
 				"a co-album-artist album must be included")
 			Expect(share.Albums).ToNot(ContainElement(HaveField("ID", "art-album-other")),
 				"an album outside the owner's libraries must not appear in the share")
+		})
+
+		It("excludes albums and their tracks outside the owner's libraries from an album share", func() {
+			// Public share rendering has no user in the context.
+			share, err := NewShareRepository(log.NewContext(GinkgoT().Context()), GetDBXBuilder()).Get("art-album-share")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(share.Albums).To(ContainElement(HaveField("ID", "art-album-ok")))
+			Expect(share.Albums).ToNot(ContainElement(HaveField("ID", "art-album-other")))
+			Expect(share.Tracks).To(ContainElement(HaveField("ID", "art-ok")))
+			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "art-other")))
+		})
+
+		It("excludes tracks outside the owner's libraries from a media file share", func() {
+			share, err := NewShareRepository(log.NewContext(GinkgoT().Context()), GetDBXBuilder()).Get("art-mf-share")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(share.Tracks).To(ContainElement(HaveField("ID", "art-ok")))
+			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "art-other")))
 		})
 	})
 

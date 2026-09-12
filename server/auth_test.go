@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -61,6 +62,14 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
+			})
+		})
+
+		Describe("createAdminUser", func() {
+			It("returns the error when the user cannot be saved", func() {
+				ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: errors.New("db is down")}}
+				err := createAdminUser(context.Background(), ds, "johndoe", "secret")
+				Expect(err).To(MatchError(ContainSubstring("db is down")))
 			})
 		})
 
@@ -198,6 +207,13 @@ var _ = Describe("Auth", func() {
 			It("fails if user does not exist", func() {
 				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusUnauthorized))
+			})
+
+			It("rejects a request body larger than the limit", func() {
+				body := `{"username":"janedoe", "password":"abc123", "padding":"` + strings.Repeat("x", MaxLoginBodySize) + `"}`
+				req = httptest.NewRequest("POST", "/login", strings.NewReader(body))
+				LimitLoginBody(http.HandlerFunc(login(ds))).ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity))
 			})
 
 			It("logs in successfully if user exists", func() {
