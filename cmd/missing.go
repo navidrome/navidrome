@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
@@ -68,29 +69,45 @@ func runMissingList(ctx context.Context) {
 	}
 
 	ds, ctx := getAdminContext(ctx)
-	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := ds.MediaFile(ctx).GetCursor(model.QueryOptions{
 		Filters: squirrel.Eq{"missing": true},
 		Sort:    "path",
 	})
+	if err == nil {
+		err = writeMissingList(os.Stdout, missingListFormat, mfs)
+	}
 	if err != nil {
 		log.Fatal(ctx, "Failed to retrieve missing files", err)
 	}
+}
 
-	if missingListFormat == "json" {
-		display := make([]displayMissingFile, len(mfs))
-		for i, mf := range mfs {
-			display[i] = displayMissingFile{ID: mf.ID, LibraryID: mf.LibraryID, Path: mf.Path, Title: mf.Title, Album: mf.Album, Artist: mf.Artist}
+// writeMissingList streams the cursor so a library with many missing files doesn't get loaded into memory
+func writeMissingList(w io.Writer, format string, mfs model.MediaFileCursor) error {
+	if format == "json" {
+		_, _ = io.WriteString(w, "[")
+		sep := ""
+		for mf, err := range mfs {
+			if err != nil {
+				return err
+			}
+			j, _ := json.Marshal(displayMissingFile{ID: mf.ID, LibraryID: mf.LibraryID, Path: mf.Path, Title: mf.Title, Album: mf.Album, Artist: mf.Artist})
+			_, _ = fmt.Fprintf(w, "%s%s", sep, j)
+			sep = ","
 		}
-		j, _ := json.Marshal(display)
-		fmt.Printf("%s\n", j)
-	} else {
-		w := csv.NewWriter(os.Stdout)
-		_ = w.Write([]string{"id", "library id", "path", "title", "album", "artist"})
-		for _, mf := range mfs {
-			_ = w.Write([]string{mf.ID, strconv.Itoa(mf.LibraryID), mf.Path, mf.Title, mf.Album, mf.Artist})
-		}
-		w.Flush()
+		_, err := io.WriteString(w, "]\n")
+		return err
 	}
+
+	cw := csv.NewWriter(w)
+	_ = cw.Write([]string{"id", "library id", "path", "title", "album", "artist"})
+	for mf, err := range mfs {
+		if err != nil {
+			return err
+		}
+		_ = cw.Write([]string{mf.ID, strconv.Itoa(mf.LibraryID), mf.Path, mf.Title, mf.Album, mf.Artist})
+	}
+	cw.Flush()
+	return cw.Error()
 }
 
 func runMissingFix(ctx context.Context, missingRef, targetRef string) {
