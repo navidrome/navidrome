@@ -94,7 +94,7 @@
         "download": "下載",
         "info": "取得資訊",
         "share": "分享",
-        "refresh": ""
+        "refresh": "重新整理中繼資料"
       },
       "lists": {
         "all": "所有",
@@ -157,12 +157,12 @@
         "token": "權杖",
         "lastAccessAt": "上次存取",
         "libraries": "媒體庫",
-        "scrobbleFilter": ""
+        "scrobbleFilter": "紀錄過濾條件"
       },
       "helperTexts": {
         "name": "您的名稱會在下次登入時生效",
         "libraries": "為該使用者選擇指定媒體庫，留空則使用預設媒體庫",
-        "scrobbleFilter": ""
+        "scrobbleFilter": "符合這些智慧播放清單規則的歌曲將不會傳送至 Last.fm、ListenBrainz 或 Scrobbler 插件。語法與行為皆與智慧播放清單的 JSON 格式相同。範例：{\"all\":[{\"lt\":{\"rating\":4}}]}。若留空則會記錄所有播放紀錄。本機播放次數不受影響。"
       },
       "notifications": {
         "created": "使用者已建立",
@@ -177,7 +177,7 @@
       },
       "validation": {
         "librariesRequired": "非管理員使用者必須至少選擇一個媒體庫",
-        "invalidScrobbleFilter": ""
+        "invalidScrobbleFilter": "必須是有效的智慧播放清單規則。不支援數量限制、位移及重新整理延遲。"
       }
     },
     "player": {
@@ -202,7 +202,7 @@
         "command": "指令"
       },
       "choices": {
-        "noDefaultBitRate": ""
+        "noDefaultBitRate": "無"
       }
     },
     "playlist": {
@@ -412,7 +412,7 @@
         "configValidationError": "設定驗證失敗：",
         "schemaRenderError": "無法顯示設定表單。外掛的 schema 可能無效。",
         "allowWriteAccessHelp": "啟用後，外掛可以修改媒體庫目錄中的檔案。 預設情況下，外掛具有唯讀權限。",
-        "idHelp": ""
+        "idHelp": "插件 ID，衍生自其檔案名稱。在 Agents 等設定選項中參照此插件時請使用此 ID。"
       },
       "placeholders": {
         "configKey": "鍵",
@@ -609,7 +609,7 @@
     "coverRemoved": "已移除封面圖",
     "coverUploadError": "上傳封面圖時發生錯誤",
     "coverRemoveError": "移除封面圖時發生錯誤",
-    "metadataRefreshStarted": ""
+    "metadataRefreshStarted": "正在背景重新整理中繼資料"
   },
   "menu": {
     "library": "媒體庫",
