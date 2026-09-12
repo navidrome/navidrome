@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -250,6 +251,10 @@ func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, 
 				log.Error(ctx, "Error getting relative path", "libraryID", lib.ID, "absolutePath", absLibPath, "path", path, err)
 				continue
 			}
+			// fs.FS paths always use "/", but filepath.Rel returns OS separators,
+			// so normalize before feeding the value to fs lookups and downstream
+			// notifications (otherwise back-slashes break matching on Windows).
+			path = filepath.ToSlash(path)
 
 			if isIgnoredPath(ctx, fsys, path) {
 				log.Trace(ctx, "Ignoring change", "libraryID", lib.ID, "path", path)
@@ -282,13 +287,13 @@ func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, 
 // resolveFolderPath takes a path (which may be a file or directory) and returns
 // the folder path to scan. If the path is a file, it walks up to find the parent
 // directory. Returns empty string if the path should scan the library root.
-func resolveFolderPath(fsys fs.FS, path string) string {
+func resolveFolderPath(fsys fs.FS, p string) string {
 	// Handle root paths immediately
-	if path == "." || path == "" {
+	if p == "." || p == "" {
 		return ""
 	}
 
-	folderPath := path
+	folderPath := p
 	for {
 		info, err := fs.Stat(fsys, folderPath)
 		if err == nil && info.IsDir() {
@@ -299,13 +304,13 @@ func resolveFolderPath(fsys fs.FS, path string) string {
 			// Reached root, scan entire library
 			return ""
 		}
-		// Walk up the tree
-		dir, _ := filepath.Split(folderPath)
-		if dir == "" || dir == "." {
+		// Walk up the tree. fs.FS paths always use "/", so use path.Dir
+		// (filepath would emit "\" on Windows and never match the slash keys).
+		parent := path.Dir(folderPath)
+		if parent == "." || parent == folderPath {
 			return ""
 		}
-		// Remove trailing slash
-		folderPath = filepath.Clean(dir)
+		folderPath = parent
 	}
 }
 
