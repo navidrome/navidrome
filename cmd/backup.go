@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -98,7 +97,7 @@ func runPrune(ctx context.Context) {
 		conf.Server.Backup.Count = backupCount
 	}
 
-	if conf.Server.Backup.Count == 0 && !force && !confirmYES(os.Stdin, "Warning: pruning ALL backups") {
+	if conf.Server.Backup.Count == 0 && !force && !confirmYES("Warning: pruning ALL backups") {
 		log.Warn("Prune cancelled")
 		return
 	}
@@ -131,7 +130,7 @@ func runRestore(ctx context.Context) {
 		restorePath = filepath.Join(backupPath, restorePath)
 	}
 
-	if !force && !confirmYES(os.Stdin, "Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.") {
+	if !force && !confirmYES("Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.") {
 		log.Warn("Restore cancelled")
 		return
 	}

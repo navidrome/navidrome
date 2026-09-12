@@ -27,11 +27,11 @@ func requireExistingDB() {
 	}
 }
 
-func confirmYES(in io.Reader, warning string) bool {
+func confirmYES(warning string) bool {
 	fmt.Println(warning)
 	fmt.Printf("Please enter YES (all caps) to continue: ")
 	var input string
-	_, err := fmt.Fscanln(in, &input)
+	_, err := fmt.Scanln(&input)
 	return input == "YES" && err == nil
 }
 

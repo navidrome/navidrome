@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -41,7 +40,7 @@ var (
 func runSearchRebuild(ctx context.Context) {
 	requireExistingDB()
 
-	if !searchRebuildForce && !confirmYES(os.Stdin, "This will rebuild the search index. Make sure Navidrome is not running.") {
+	if !searchRebuildForce && !confirmYES("This will rebuild the search index. Make sure Navidrome is not running.") {
 		log.Warn("Rebuild cancelled")
 		return
 	}
