@@ -27,7 +27,7 @@ var _ = Describe("writeMissingList", func() {
 	It("writes csv with a header, quoting as needed", func() {
 		var out strings.Builder
 		Expect(writeMissingList(&out, "csv", cursor(nil, song))).To(Succeed())
-		Expect(out.String()).To(Equal("id,library id,path,title,album,artist\n1,1,Bach: Goldberg/01.mp3,Aria,Goldberg,Bach\n"))
+		Expect(out.String()).To(Equal("id,library id,title,album,artist,path\n1,1,Aria,Goldberg,Bach,Bach: Goldberg/01.mp3\n"))
 	})
 
 	It("writes a json array", func() {

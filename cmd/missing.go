@@ -57,10 +57,10 @@ var (
 type displayMissingFile struct {
 	ID        string `json:"id"`
 	LibraryID int    `json:"libraryId"`
-	Path      string `json:"path"`
 	Title     string `json:"title"`
 	Album     string `json:"album"`
 	Artist    string `json:"artist"`
+	Path      string `json:"path"`
 }
 
 func runMissingList(ctx context.Context) {
@@ -90,7 +90,7 @@ func writeMissingList(w io.Writer, format string, mfs model.MediaFileCursor) err
 			if err != nil {
 				return err
 			}
-			j, _ := json.Marshal(displayMissingFile{ID: mf.ID, LibraryID: mf.LibraryID, Path: mf.Path, Title: mf.Title, Album: mf.Album, Artist: mf.Artist})
+			j, _ := json.Marshal(displayMissingFile{ID: mf.ID, LibraryID: mf.LibraryID, Title: mf.Title, Album: mf.Album, Artist: mf.Artist, Path: mf.Path})
 			_, _ = fmt.Fprintf(w, "%s%s", sep, j)
 			sep = ","
 		}
@@ -99,12 +99,12 @@ func writeMissingList(w io.Writer, format string, mfs model.MediaFileCursor) err
 	}
 
 	cw := csv.NewWriter(w)
-	_ = cw.Write([]string{"id", "library id", "path", "title", "album", "artist"})
+	_ = cw.Write([]string{"id", "library id", "title", "album", "artist", "path"})
 	for mf, err := range mfs {
 		if err != nil {
 			return err
 		}
-		_ = cw.Write([]string{mf.ID, strconv.Itoa(mf.LibraryID), mf.Path, mf.Title, mf.Album, mf.Artist})
+		_ = cw.Write([]string{mf.ID, strconv.Itoa(mf.LibraryID), mf.Title, mf.Album, mf.Artist, mf.Path})
 	}
 	cw.Flush()
 	return cw.Error()
