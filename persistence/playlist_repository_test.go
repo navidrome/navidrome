@@ -266,6 +266,34 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("smart playlist matching by artist MBID", func() {
+		const beatlesMbid = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
+
+		BeforeEach(func() {
+			_, err := GetDBXBuilder().NewQuery("update artist set mbz_artist_id = {:mbid} where id = '3'").
+				Bind(dbx.Params{"mbid": beatlesMbid}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() {
+				_, err := GetDBXBuilder().NewQuery("update artist set mbz_artist_id = '' where id = '3'").Execute()
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+
+		It("matches all tracks whose artist has the given MBID", func() {
+			pls := model.Playlist{Name: "Beatles by MBID", OwnerID: "userid", Rules: &criteria.Criteria{
+				Expression: criteria.All{criteria.Is{"mbz_artist_id": beatlesMbid}},
+				Sort:       "title",
+			}}
+			Expect(repo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { Expect(repo.Delete(pls.ID)).To(Succeed()) })
+
+			saved, err := repo.GetWithTracks(pls.ID, true, false)
+			Expect(err).ToNot(HaveOccurred())
+			trackIDs := slice.Map(saved.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })
+			Expect(trackIDs).To(ConsistOf("1001", "1002", "3002")) // all songs by The Beatles
+		})
+	})
+
 	Describe("Put", func() {
 		It("does not overwrite counters when saving a smart playlist", func() {
 			pls := model.Playlist{Name: "Smart Counters", OwnerID: "userid", Rules: &criteria.Criteria{

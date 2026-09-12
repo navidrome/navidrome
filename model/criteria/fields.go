@@ -12,6 +12,13 @@ type FieldInfo struct {
 	// Nullable: isMissing/isPresent are supported on this column field. For numeric/boolean
 	// fields, missing means NULL; for string fields it means NULL or empty string.
 	Nullable bool
+	// ParticipantRole: this field matches an attribute of the participants with this role
+	// (named by ParticipantAttr), not a media_file column. Role fields (IsRole) match the
+	// participant names; these fields match another attribute of the same participants.
+	ParticipantRole string
+	// ParticipantAttr: which participant attribute is compared; see the ParticipantAttr*
+	// constants. The storage layer maps it to a column.
+	ParticipantAttr string
 
 	tagAlias string // If set, a tag name from mappings.yaml that resolves to this field
 	name     string // Canonical name, populated by LookupField from the map key
@@ -21,6 +28,14 @@ type FieldInfo struct {
 func (f FieldInfo) Name() string {
 	return f.name
 }
+
+// Participant attributes matchable by criteria fields (see FieldInfo.ParticipantAttr).
+const (
+	// ParticipantAttrMbid is the participant's MusicBrainz artist ID. The media_file
+	// mbz_artist_id/mbz_album_artist_id columns are deprecated and no longer populated by
+	// the scanner, so these fields resolve through the participants instead.
+	ParticipantAttrMbid = "mbid"
+)
 
 var fieldMap = map[string]FieldInfo{
 	"title":                {},
@@ -83,8 +98,8 @@ var fieldMap = map[string]FieldInfo{
 	"artistdateloved":      {},
 	"artistdaterated":      {},
 	"mbz_album_id":         {Nullable: true},
-	"mbz_album_artist_id":  {Nullable: true},
-	"mbz_artist_id":        {Nullable: true},
+	"mbz_album_artist_id":  {ParticipantRole: "albumartist", ParticipantAttr: ParticipantAttrMbid},
+	"mbz_artist_id":        {ParticipantRole: "artist", ParticipantAttr: ParticipantAttrMbid},
 	"mbz_recording_id":     {Nullable: true},
 	"mbz_release_track_id": {Nullable: true},
 	"mbz_release_group_id": {Nullable: true},
