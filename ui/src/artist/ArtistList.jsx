@@ -35,6 +35,8 @@ import ArtistSimpleList from './ArtistSimpleList'
 import { DraggableTypes } from '../consts'
 import en from '../i18n/en.json'
 import { formatBytes } from '../utils/index.js'
+import ArtistInfo from './ArtistInfo'
+import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
 const useStyles = makeStyles({
   contextHeader: {
@@ -219,6 +221,7 @@ const ArtistList = (props) => {
       >
         <ArtistListView {...props} />
       </List>
+      <ExpandInfoDialog content={<ArtistInfo />} />
     </>
   )
 }

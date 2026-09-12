@@ -4,6 +4,7 @@ import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import { AlbumContextMenu, ArtistContextMenu } from './ContextMenus'
+import { EXTENDED_INFO_OPEN } from '../actions'
 
 const mockDispatch = vi.fn()
 vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))
@@ -128,6 +129,30 @@ describe('ContextMenus', () => {
       renderMenu(AlbumContextMenu, { id: 'al1', name: 'Album', songCount: 1 })
       fireEvent.click(screen.getByText('resources.album.actions.refresh'))
       expect(mockRefreshMetadata).toHaveBeenCalledWith('album', 'al1')
+    })
+  })
+
+  describe('info dialog', () => {
+    it('dispatches the record and resource when opening the info dialog', () => {
+      const record = { id: 'al1', name: 'Album', songCount: 1 }
+      renderMenu(AlbumContextMenu, record)
+      fireEvent.click(screen.getByText('resources.album.actions.info'))
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: EXTENDED_INFO_OPEN,
+        record,
+        resource: 'album',
+      })
+    })
+
+    it('dispatches the record and resource when opening the artist info dialog', () => {
+      const record = { id: 'ar1', name: 'Artist', stats: {} }
+      renderMenu(ArtistContextMenu, record)
+      fireEvent.click(screen.getByText('resources.album.actions.info'))
+      expect(mockDispatch).toHaveBeenCalledWith({
+        type: EXTENDED_INFO_OPEN,
+        record,
+        resource: 'artist',
+      })
     })
   })
 })

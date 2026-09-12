@@ -8,9 +8,7 @@ import (
 	"io"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
@@ -76,7 +74,7 @@ var artworkExplainCmd = &cobra.Command{
 	Short: "Explain why an item's artwork resolved the way it did",
 	Long: "Explain why an item's artwork resolved the way it did.\n\n" +
 		"The item can be given as a bare id, a full artwork id (e.g. al-<id>), or a <kind> <id> pair.\n" +
-		"<kind> is one of: " + kindPrefixes(explainKinds) + ".\n" +
+		"<kind> is one of: " + kindPrefixes(artwork.ExplainKinds) + ".\n" +
 		"A disc artwork id is the album id and the disc number, joined by a colon: <albumID>:2",
 	Args: cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -264,7 +262,7 @@ func configState(rep statusReport) string {
 func printQueueStats(w io.Writer, stats []model.ArtworkQueueStat, total int64, countHeader, indent string) {
 	fmt.Fprintf(w, "%sKIND\tPRIORITY\t%s\n", indent, countHeader)
 	for _, s := range stats {
-		fmt.Fprintf(w, "%s%s\t%s\t%d\n", indent, kindName(s.ItemKind), priorityName(s.Priority), s.Count)
+		fmt.Fprintf(w, "%s%s\t%s\t%d\n", indent, kindName(s.ItemKind), artwork.PriorityName(s.Priority), s.Count)
 	}
 	fmt.Fprintf(w, "%sTOTAL\t\t%d\n", indent, total)
 }
@@ -276,37 +274,14 @@ func kindName(prefix string) string {
 	return prefix
 }
 
-type artworkPriority struct {
-	name  string
-	value int
-}
-
-// knownPriorities is the one listing behind both the name and the parse, so they cannot drift.
-var knownPriorities = []artworkPriority{
-	{"bump", model.ArtworkPriorityBump},
-	{"scan", model.ArtworkPriorityScan},
-	{"recheck", model.ArtworkPriorityRecheck},
-	{"backfill", model.ArtworkPriorityBackfill},
-}
-
-// priorityName falls back to the number: a row written by a newer version still has to print.
-func priorityName(p int) string {
-	for _, ap := range knownPriorities {
-		if ap.value == p {
-			return ap.name
-		}
-	}
-	return strconv.Itoa(p)
-}
-
 func priorityNames() string {
-	return strings.Join(slice.Map(knownPriorities, func(ap artworkPriority) string { return ap.name }), ", ")
+	return strings.Join(slice.Map(artwork.KnownPriorities, func(ap artwork.Priority) string { return ap.Name }), ", ")
 }
 
 func parseArtworkPriority(s string) (int, error) {
-	for _, ap := range knownPriorities {
-		if ap.name == s {
-			return ap.value, nil
+	for _, ap := range artwork.KnownPriorities {
+		if ap.Name == s {
+			return ap.Value, nil
 		}
 	}
 	return 0, fmt.Errorf("invalid priority %q, expected one of: %s", s, priorityNames())
@@ -678,13 +653,6 @@ func refreshItems(ctx context.Context, ds model.DataStore, targets []model.Artwo
 	return failed
 }
 
-// explainKinds is every kind explain accepts: it reports stored state and config too, so a kind
-// with no chain to walk still has something to answer with.
-var explainKinds = []model.Kind{
-	model.KindArtistArtwork, model.KindAlbumArtwork, model.KindDiscArtwork,
-	model.KindMediaFileArtwork, model.KindPlaylistArtwork, model.KindRadioArtwork,
-}
-
 func kindPrefixes(kinds []model.Kind) string {
 	return strings.Join(model.KindPrefixes(kinds), ", ")
 }
@@ -746,106 +714,15 @@ func artworkKindAndID(ctx context.Context, ds model.DataStore, arg string) (mode
 	return model.ArtworkID{Kind: kind, ID: arg}, nil
 }
 
-// explainAgents accounts for every configured agent: one the CLI cannot construct (a plugin, or a
-// built-in missing its credentials) never reaches the Chain, so the raw list alone overstates it.
-func explainAgents(configured string, available []string) string {
-	if strings.TrimSpace(configured) == "" {
-		return "(none)"
-	}
-	var unavailable bool
-	names := slice.Map(strings.Split(configured, ","), func(name string) string {
-		name = strings.TrimSpace(name)
-		if slices.Contains(available, name) {
-			return name
-		}
-		unavailable = true
-		return name + "*"
-	})
-	line := strings.Join(names, ", ")
-	if unavailable {
-		line += "  (* not available to the CLI)"
-	}
-	return line
-}
+// cliUnavailableNote marks agents the CLI cannot construct; a running server loads them all.
+const cliUnavailableNote = "  (* not available to the CLI)"
 
-// availableImageAgents names the agents that can actually supply an image for kind.
-func availableImageAgents(ds model.DataStore, mgr *plugins.Manager, kind model.Kind) []string {
-	ag := agents.GetAgents(ds, mgr)
-	if kind == model.KindArtistArtwork {
-		return slice.Map(ag.ArtistImageAgents(), func(a agents.ArtistImageAgent) string { return a.Name })
+// cliAgents words the CLI's own legend for the starred agents FormatAgents reports.
+func cliAgents(rep artwork.ExplainReport) string {
+	if rep.AgentsIncomplete {
+		return rep.Agents + cliUnavailableNote
 	}
-	return slice.Map(ag.AlbumImageAgents(), func(a agents.AlbumImageAgent) string { return a.Name })
-}
-
-// explainResult states the verdict of the walk. A skipped or failed external tier, or a local
-// candidate that would not open, leaves the outcome unknown: nothing observed that there is no artwork.
-func explainResult(source string, steps []artwork.TraceStep) string {
-	if source != "" {
-		for _, s := range steps {
-			if s.Outcome == artwork.OutcomeHit {
-				break
-			}
-			// An external winner discards the earlier error, so the resolver settles it with no retry.
-			if s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix) &&
-				!strings.HasPrefix(source, artwork.ExternalPrefix) {
-				return "resolved from " + source +
-					" (indeterminate: a higher-priority external lookup failed; this may resolve differently on a retry)"
-			}
-		}
-		return "resolved from " + source
-	}
-	for _, s := range steps {
-		switch {
-		case s.Outcome == artwork.OutcomeError && strings.HasPrefix(s.Candidate, artwork.ExternalPrefix):
-			return "indeterminate (an external lookup failed; the item may resolve on a later attempt)"
-		// A stage error or an unreadable candidate means a source was found but not processed; the
-		// worker retries rather than settling absent, so neither reads as a clean miss.
-		case s.Outcome == artwork.OutcomeError, s.Outcome == artwork.OutcomeUnreadable:
-			return "indeterminate (a candidate was found but could not be processed; the worker retries rather than settling absent)"
-		}
-	}
-	return "not resolved"
-}
-
-// explainConfig names the setting that decides where a kind's artwork comes from, and its value.
-func explainConfig(kind model.Kind) (name, value string) {
-	switch kind {
-	case model.KindArtistArtwork:
-		return "ArtistArtPriority", conf.Server.ArtistArtPriority
-	case model.KindAlbumArtwork:
-		return "CoverArtPriority", conf.Server.CoverArtPriority
-	case model.KindDiscArtwork:
-		return "DiscArtPriority", conf.Server.DiscArtPriority
-	case model.KindMediaFileArtwork:
-		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server.EnableMediaFileCoverArt)
-	}
-	return "", ""
-}
-
-type explainReport struct {
-	kind   model.Kind
-	id     string
-	name   string
-	stored *model.ItemArtwork
-	queued *model.ArtworkQueueItem
-	agents string
-	// steps is the chain walk: recorded when the item was resolved, or performed just now when walked.
-	steps      []artwork.TraceStep
-	source     string
-	walked     bool
-	resolveErr error
-}
-
-// explainChainOrigin says whether the operator is reading history or a walk performed just now,
-// since the two can disagree after a config change.
-func explainChainOrigin(rep explainReport) string {
-	if rep.walked {
-		return "walked now"
-	}
-	if rep.stored != nil {
-		return "recorded " + formatTime(rep.stored.AttemptedAt)
-	}
-	return "not recorded"
+	return rep.Agents
 }
 
 // writeSteps prints the trace rows. An empty last cell would end tabwriter's column block and
@@ -866,107 +743,100 @@ func writeStepTable(w io.Writer, title string, steps []artwork.TraceStep) {
 	writeSteps(w, "    ", steps)
 }
 
-func formatExplain(rep explainReport) string {
+func formatExplain(rep artwork.ExplainReport) string {
 	var sb strings.Builder
 	w := newTabWriter(&sb)
-	explainable := artwork.Explainable(rep.kind)
-	stateful := artwork.KeepsState(rep.kind)
-	unrecorded := !rep.walked && rep.stored == nil
+	explainable := artwork.Explainable(rep.Kind)
+	stateful := artwork.KeepsState(rep.Kind)
+	unrecorded := !rep.Walked && rep.Stored == nil
 
 	fmt.Fprintln(w, "Item")
-	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.kind, rep.kind.Prefix())
-	fmt.Fprintf(w, "  ID:\t%s\n", rep.id)
-	fmt.Fprintf(w, "  Name:\t%s\n", rep.name)
+	fmt.Fprintf(w, "  Kind:\t%s (%s)\n", rep.Kind, rep.Kind.Prefix())
+	fmt.Fprintf(w, "  ID:\t%s\n", rep.ID)
+	fmt.Fprintf(w, "  Name:\t%s\n", rep.Name)
 
 	fmt.Fprintln(w, "\nStored")
 	switch {
 	case !stateful:
-		fmt.Fprintf(w, "  (%s artwork is resolved on every request and never recorded)\n", rep.kind)
-	case rep.stored == nil:
+		fmt.Fprintf(w, "  (%s artwork is resolved on every request and never recorded)\n", rep.Kind)
+	case rep.Stored == nil:
 		fmt.Fprintln(w, "  (no artwork state recorded)")
 	default:
-		fmt.Fprintf(w, "  Source:\t%s\n", displaySource(rep.stored.Source))
-		fmt.Fprintf(w, "  Hash:\t%s\n", cmp.Or(rep.stored.Hash, "(absent)"))
-		if rep.stored.SourcePath != "" {
-			fmt.Fprintf(w, "  Source path:\t%s\n", rep.stored.SourcePath)
+		fmt.Fprintf(w, "  Source:\t%s\n", displaySource(rep.Stored.Source))
+		fmt.Fprintf(w, "  Hash:\t%s\n", cmp.Or(rep.Stored.Hash, "(absent)"))
+		if rep.Stored.SourcePath != "" {
+			fmt.Fprintf(w, "  Source path:\t%s\n", rep.Stored.SourcePath)
 		}
-		fmt.Fprintf(w, "  Attempted at:\t%s\n", formatTime(rep.stored.AttemptedAt))
+		fmt.Fprintf(w, "  Attempted at:\t%s\n", artwork.FormatTime(rep.Stored.AttemptedAt))
 	}
 
 	fmt.Fprintln(w, "\nQueue")
 	switch {
 	case !stateful:
 		fmt.Fprintln(w, "  (never queued)")
-	case rep.queued == nil:
+	case rep.Queued == nil:
 		fmt.Fprintln(w, "  (not queued)")
 	default:
-		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", priorityName(rep.queued.Priority), rep.queued.Priority)
-		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.queued.Attempts)
-		fmt.Fprintf(w, "  Retry at:\t%s\n", formatTime(rep.queued.RetryAt))
+		fmt.Fprintf(w, "  Priority:\t%s (%d)\n", artwork.PriorityName(rep.Queued.Priority), rep.Queued.Priority)
+		fmt.Fprintf(w, "  Attempts:\t%d\n", rep.Queued.Attempts)
+		fmt.Fprintf(w, "  Retry at:\t%s\n", artwork.FormatTime(rep.Queued.RetryAt))
 	}
-	if rep.queued != nil {
-		writeStepTable(w, "Last attempt failed", artwork.DecodeTrace(rep.queued.Trace, ""))
+	if rep.Queued != nil {
+		writeStepTable(w, "Last attempt failed", rep.LastAttemptFailed())
 	}
-	if rep.stored != nil {
-		writeStepTable(w, "Gave up after", artwork.DecodeTrace(rep.stored.LastFailure, ""))
+	if rep.Stored != nil {
+		writeStepTable(w, "Gave up after", rep.GaveUpAfter())
 	}
 
 	fmt.Fprintln(w, "\nConfig")
-	if setting, value := explainConfig(rep.kind); setting == "" {
+	if setting, value := artwork.ConfigFor(rep.Kind); setting == "" {
 		fmt.Fprintln(w, "  (no artwork source configuration applies)")
 	} else {
 		fmt.Fprintf(w, "  %s:\t%s\n", setting, value)
-		if rep.agents != "" {
-			fmt.Fprintf(w, "  Agents:\t%s\n", rep.agents)
+		if rep.Agents != "" {
+			fmt.Fprintf(w, "  Agents:\t%s\n", cliAgents(rep))
 		}
 	}
 
-	fmt.Fprintf(w, "\nChain (%s)\n", explainChainOrigin(rep))
+	fmt.Fprintf(w, "\nChain (%s)\n", rep.ChainOrigin())
 	switch {
 	case !explainable:
-		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.kind)
+		fmt.Fprintf(w, "  (%s artwork does not walk a priority chain)\n", rep.Kind)
 	case unrecorded:
 		fmt.Fprintln(w, "  (no resolution recorded yet; re-run with --live to walk the chain now)")
-	case !rep.walked && len(rep.steps) == 0 && rep.stored.Hash != "":
+	case !rep.Walked && len(rep.Steps) == 0 && rep.Stored.Hash != "":
 		// A stored image with no chain can only predate trace recording: a recorded resolution that
 		// found an image always records its winning candidate.
 		fmt.Fprintln(w, "  (this item was resolved before traces were recorded; re-run with --live)")
-	case !rep.walked && len(rep.steps) == 0:
+	case !rep.Walked && len(rep.Steps) == 0:
 		// Absent with no chain: an empty priority list walked nothing, or a pre-tracing absent row.
 		fmt.Fprintln(w, "  (no candidates were recorded; re-run with --live to walk the chain now)")
 	default:
 		fmt.Fprintln(w, "  CANDIDATE\tOUTCOME\tDETAIL")
-		writeSteps(w, "  ", rep.steps)
+		writeSteps(w, "  ", rep.Steps)
 	}
 
 	fmt.Fprintln(w, "\nResult")
 	switch {
-	case rep.resolveErr != nil:
-		fmt.Fprintf(w, "  resolution failed: %s\n", rep.resolveErr)
+	case rep.ResolveErr != nil:
+		fmt.Fprintf(w, "  resolution failed: %s\n", rep.ResolveErr)
 	case !explainable:
 		fmt.Fprintln(w, "  not evaluated (no chain was walked; see Stored above)")
 	case unrecorded:
 		fmt.Fprintln(w, "  not evaluated (nothing recorded; re-run with --live to walk the chain now)")
 	default:
-		fmt.Fprintf(w, "  %s\n", explainResult(rep.source, rep.steps))
+		fmt.Fprintf(w, "  %s\n", rep.Result())
 	}
 
 	w.Flush()
 	return sb.String()
 }
 
-func formatTime(t time.Time) string {
-	if t.IsZero() {
-		return "-"
-	}
-	return t.Format(time.RFC3339)
-}
-
 func runExplain(ctx context.Context, args []string) {
 	defer db.Init(ctx)()
 	ds, ctx := getAdminContext(ctx)
 
-	targets, failures, err := resolveArtworkTargets(ctx, ds, args, explainKinds)
+	targets, failures, err := resolveArtworkTargets(ctx, ds, args, artwork.ExplainKinds)
 	if err != nil {
 		log.Fatal(ctx, err)
 	}
@@ -978,45 +848,29 @@ func runExplain(ctx context.Context, args []string) {
 	}
 	kind, id := targets[0].Kind, targets[0].ID
 
-	name, err := artwork.ItemName(ctx, ds, kind, id)
-	if err != nil {
-		log.Fatal(ctx, "Item not found", "kind", kind, "id", id, err)
+	var opts artwork.ExplainOptions
+	// Only artist and album reach an agent, and the load must precede the resolver, which reads the
+	// same manager. Leaving ag nil elsewhere avoids handing agents.GetAgents a not-yet-loaded manager.
+	var ag *agents.Agents
+	if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
+		mgr := loadPluginAgents(ctx, explainLive)
+		defer func() { _ = mgr.Stop() }()
+		ag = agents.GetAgents(ds, mgr)
 	}
-	rep := explainReport{kind: kind, id: id, name: name}
-	if artwork.KeepsState(kind) {
-		rep.stored, err = ds.Artwork(ctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			log.Fatal(ctx, "Failed to read artwork state", "kind", kind, "id", id, err)
+	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
+	if explainLive || !artwork.KeepsState(kind) {
+		opts.Walk = func(t *artwork.ChainTrace) *artwork.TracingResolver {
+			return CreateArtworkResolver(t, explainLive)
 		}
-		rep.queued, err = ds.ArtworkQueue(ctx).Get(kind, id, model.ImageTypePrimary)
-		if err != nil && !errors.Is(err, model.ErrNotFound) {
-			log.Fatal(ctx, "Failed to read the artwork queue", "kind", kind, "id", id, err)
-		}
+	}
+	rep, err := artwork.Explain(ctx, ds, ag, kind, id, opts)
+	if err != nil {
+		log.Fatal(ctx, "Failed to explain artwork", "kind", kind, "id", id, err)
 	}
 
-	// Disc artwork keeps no row, so it has no stored trace and can only be explained by walking now.
-	rep.walked = explainLive || !artwork.KeepsState(kind)
-	if artwork.Explainable(kind) {
-		// Only artist and album reach an agent, and the load must precede the resolver, which reads
-		// the same manager.
-		if kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork {
-			mgr := loadPluginAgents(ctx, explainLive)
-			defer func() { _ = mgr.Stop() }()
-			rep.agents = explainAgents(conf.Server.Agents, availableImageAgents(ds, mgr, kind))
-		}
-		switch {
-		case rep.walked:
-			trace := &artwork.ChainTrace{}
-			rep.source, rep.resolveErr = CreateArtworkResolver(trace, explainLive).Resolve(ctx, kind, id)
-			rep.steps = trace.Steps()
-		case rep.stored != nil:
-			rep.steps = artwork.DecodeTrace(rep.stored.Trace, rep.stored.SourcePath)
-			rep.source = rep.stored.Source
-		}
-	}
 	fmt.Print(formatExplain(rep))
 	// The steps taken before a failed walk are the diagnosis, so report them before exiting.
-	if rep.resolveErr != nil {
-		log.Fatal(ctx, "Failed to resolve artwork", "kind", kind, "id", id, rep.resolveErr)
+	if rep.ResolveErr != nil {
+		log.Fatal(ctx, "Failed to resolve artwork", "kind", kind, "id", id, rep.ResolveErr)
 	}
 }

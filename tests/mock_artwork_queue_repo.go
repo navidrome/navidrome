@@ -39,6 +39,18 @@ func (m *MockArtworkQueueRepo) Get(kind model.Kind, id, imageType string) (*mode
 	return &it, nil
 }
 
+// SetTrace stores a queue row's trace directly, bypassing the retry-token check
+// MarkFailedIfUnchanged enforces; tests use it to seed a failure trace outright.
+func (m *MockArtworkQueueRepo) SetTrace(kind model.Kind, id, imageType, trace string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := iaKey(kind.Prefix(), id, imageType)
+	if it, ok := m.Data[k]; ok {
+		it.Trace = trace
+		m.Data[k] = it
+	}
+}
+
 func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
