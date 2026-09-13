@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -359,25 +358,14 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) e
 	fsys, err := fileStore.FS()
 	if err != nil {
 		log.Warn(r.ctx, "Error validating library.path", "path", library.Path, err)
-		return fmt.Errorf("resources.library.validation.pathInvalid")
+		return errors.New(classifyLibraryPathError(err))
 	}
 
-	// Check if root directory exists
+	// Check if root directory exists and is accessible
 	info, err := fs.Stat(fsys, ".")
 	if err != nil {
-		// Parse the error message to check for "not a directory"
 		log.Warn(r.ctx, "Error stating library.path", "path", library.Path, err)
-		errStr := err.Error()
-		if strings.Contains(errStr, "not a directory") ||
-			strings.Contains(errStr, "The directory name is invalid.") {
-			return fmt.Errorf("resources.library.validation.pathNotDirectory")
-		} else if os.IsNotExist(err) {
-			return fmt.Errorf("resources.library.validation.pathNotFound")
-		} else if os.IsPermission(err) {
-			return fmt.Errorf("resources.library.validation.pathNotAccessible")
-		} else {
-			return fmt.Errorf("resources.library.validation.pathInvalid")
-		}
+		return errors.New(classifyLibraryPathError(err))
 	}
 
 	if !info.IsDir() {
@@ -385,6 +373,25 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) e
 	}
 
 	return nil
+}
+
+// classifyLibraryPathError maps a filesystem error from opening or stating a
+// library path to the specific i18n validation code, so the UI can show an
+// actionable message instead of the generic "invalid path" catch-all. It uses
+// errors.Is (not os.IsNotExist/os.IsPermission) because the storage layer wraps
+// the underlying error with %w, which those helpers do not unwrap.
+func classifyLibraryPathError(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "resources.library.validation.pathNotFound"
+	case errors.Is(err, fs.ErrPermission):
+		return "resources.library.validation.pathNotAccessible"
+	case strings.Contains(err.Error(), "not a directory") ||
+		strings.Contains(err.Error(), "The directory name is invalid."):
+		return "resources.library.validation.pathNotDirectory"
+	default:
+		return "resources.library.validation.pathInvalid"
+	}
 }
 
 func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []int) error {
