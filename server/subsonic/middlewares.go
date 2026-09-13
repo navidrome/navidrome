@@ -136,24 +136,21 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				}
 
 				usr, err = ds.User(ctx).FindByUsernameWithPassword(username)
-				if errors.Is(err, context.Canceled) {
+				if err == nil {
+					err = validateCredentials(usr, pass, token, salt, jwt)
+				}
+				invalidLogin := errors.Is(err, model.ErrNotFound) || errors.Is(err, model.ErrInvalidAuth)
+				if !invalidLogin {
 					limiter.release(limitKey)
-					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
-					return
 				}
 				switch {
-				case errors.Is(err, model.ErrNotFound):
+				case errors.Is(err, context.Canceled):
+					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
+					return
+				case invalidLogin:
 					log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 				case err != nil:
 					log.Error(ctx, "API: Error authenticating username", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
-				default:
-					err = validateCredentials(usr, pass, token, salt, jwt)
-					if err != nil {
-						log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
-					}
-				}
-				if !errors.Is(err, model.ErrNotFound) && !errors.Is(err, model.ErrInvalidAuth) {
-					limiter.release(limitKey)
 				}
 			}
 

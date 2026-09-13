@@ -16,7 +16,7 @@ type authLimiter struct {
 	window    time.Duration
 	seed      maphash.Seed
 	mu        sync.Mutex
-	keys      map[uint64]*authAttempts
+	keys      map[uint64]authAttempts // hashed, so attacker-chosen usernames cannot bloat memory
 	lastSweep time.Time
 }
 
@@ -31,11 +31,10 @@ func newAuthLimiter(limit int, window time.Duration) *authLimiter {
 		return nil
 	}
 	return &authLimiter{
-		limit:     limit,
-		window:    cmp.Or(window, consts.DefaultAuthWindowLength),
-		seed:      maphash.MakeSeed(),
-		keys:      map[uint64]*authAttempts{},
-		lastSweep: time.Now(),
+		limit:  limit,
+		window: cmp.Or(window, consts.DefaultAuthWindowLength),
+		seed:   maphash.MakeSeed(),
+		keys:   map[uint64]authAttempts{},
 	}
 }
 
@@ -50,14 +49,14 @@ func (l *authLimiter) acquire(key string) bool {
 
 	h := maphash.String(l.seed, key)
 	a := l.keys[h]
-	if a == nil || now.Sub(a.start) >= l.window {
-		a = &authAttempts{start: now}
-		l.keys[h] = a
+	if now.Sub(a.start) >= l.window {
+		a = authAttempts{start: now}
 	}
 	if a.count >= l.limit {
 		return false
 	}
 	a.count++
+	l.keys[h] = a
 	return true
 }
 
@@ -67,8 +66,10 @@ func (l *authLimiter) release(key string) {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if a := l.keys[maphash.String(l.seed, key)]; a != nil && a.count > 0 {
+	h := maphash.String(l.seed, key)
+	if a, ok := l.keys[h]; ok && a.count > 0 {
 		a.count--
+		l.keys[h] = a
 	}
 }
 

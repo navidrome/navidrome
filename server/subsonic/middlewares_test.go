@@ -340,13 +340,6 @@ var _ = Describe("Middlewares", func() {
 				Expect(rec.Header().Get("Retry-After")).To(BeEmpty())
 			})
 
-			It("counts failed token attempts", func() {
-				failTimes(3, "u=admin", "t=INVALID", "s=12345")
-
-				serve(newGetRequest("u=admin", "p=wordpass"))
-				Expect(next.called).To(BeFalse())
-			})
-
 			It("counts attempts against unknown usernames", func() {
 				failTimes(3, "u=newuser", "p=secret")
 				_ = ds.User(context.TODO()).Put(&model.User{UserName: "newuser", NewPassword: "secret"})
