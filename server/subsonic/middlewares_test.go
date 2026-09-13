@@ -306,6 +306,117 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeFalse())
 			})
 		})
+
+		When("failed attempts reach AuthRequestLimit", func() {
+			var cp http.Handler
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.AuthRequestLimit = 3
+				conf.Server.AuthWindowLength = time.Minute
+				cp = authenticate(ds)(next)
+			})
+
+			serve := func(r *http.Request) *httptest.ResponseRecorder {
+				next.called = false
+				rec := httptest.NewRecorder()
+				cp.ServeHTTP(rec, r)
+				return rec
+			}
+			failTimes := func(n int, params ...string) {
+				for range n {
+					Expect(serve(newGetRequest(params...)).Body.String()).To(ContainSubstring(`code="40"`))
+				}
+			}
+
+			It("rejects the correct password exactly like a wrong one", func() {
+				failTimes(3, "u=admin", "p=WRONG")
+
+				rec := serve(newGetRequest("u=admin", "p=wordpass"))
+
+				Expect(next.called).To(BeFalse())
+				Expect(rec.Code).To(Equal(http.StatusOK))
+				Expect(rec.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(rec.Header().Get("Retry-After")).To(BeEmpty())
+			})
+
+			It("counts failed token attempts", func() {
+				failTimes(3, "u=admin", "t=INVALID", "s=12345")
+
+				serve(newGetRequest("u=admin", "p=wordpass"))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("counts attempts against unknown usernames", func() {
+				failTimes(3, "u=newuser", "p=secret")
+				_ = ds.User(context.TODO()).Put(&model.User{UserName: "newuser", NewPassword: "secret"})
+
+				serve(newGetRequest("u=newuser", "p=secret"))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("treats usernames case-insensitively", func() {
+				failTimes(3, "u=ADMIN", "p=WRONG")
+
+				serve(newGetRequest("u=admin", "p=wordpass"))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("does not count successful logins", func() {
+				for range 10 {
+					serve(newGetRequest("u=admin", "p=wordpass"))
+					Expect(next.called).To(BeTrue())
+				}
+			})
+
+			It("does not count server errors", func() {
+				userRepo := ds.User(context.TODO()).(*tests.MockedUserRepo)
+				userRepo.Error = errors.New("db down")
+				failTimes(5, "u=admin", "p=wordpass")
+				userRepo.Error = nil
+
+				serve(newGetRequest("u=admin", "p=wordpass"))
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("does not block other usernames from the same IP", func() {
+				_ = ds.User(context.TODO()).Put(&model.User{UserName: "other", NewPassword: "otherpass"})
+				failTimes(3, "u=admin", "p=WRONG")
+
+				serve(newGetRequest("u=other", "p=otherpass"))
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("does not block the same username from another IP", func() {
+				failTimes(3, "u=admin", "p=WRONG")
+
+				r := newGetRequest("u=admin", "p=wordpass")
+				r.RemoteAddr = "198.51.100.7:1234"
+				serve(r)
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("does not limit reverse proxy authentication", func() {
+				conf.Server.ExtAuth.TrustedSources = "192.168.1.1/24"
+				conf.Server.ExtAuth.UserHeader = "Remote-User"
+				failTimes(3, "u=admin", "p=WRONG")
+
+				r := newGetRequest()
+				r.Header.Add("Remote-User", "admin")
+				r = r.WithContext(request.WithReverseProxyIp(r.Context(), "192.168.1.1"))
+				serve(r)
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("is disabled when AuthRequestLimit is 0", func() {
+				conf.Server.AuthRequestLimit = 0
+				cp = authenticate(ds)(next)
+				failTimes(10, "u=admin", "p=WRONG")
+
+				serve(newGetRequest("u=admin", "p=wordpass"))
+				Expect(next.called).To(BeTrue())
+			})
+		})
 	})
 
 	Describe("AdminOnly", func() {

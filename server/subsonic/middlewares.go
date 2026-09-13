@@ -98,6 +98,7 @@ func checkRequiredParameters(next http.Handler) http.Handler {
 }
 
 func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
+	limiter := newAuthLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -126,8 +127,17 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				salt, _ := p.String("s")
 				jwt, _ := p.String("jwt")
 
+				// Blocked attempts get the same response as a wrong password, so they reveal nothing
+				limitKey := server.ClientIP(r) + "\x00" + strings.ToLower(username)
+				if !limiter.acquire(limitKey) {
+					log.Warn(ctx, "API: Too many failed login attempts", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr)
+					sendError(w, r, newError(responses.ErrorAuthenticationFail))
+					return
+				}
+
 				usr, err = ds.User(ctx).FindByUsernameWithPassword(username)
 				if errors.Is(err, context.Canceled) {
+					limiter.release(limitKey)
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 					return
 				}
@@ -141,6 +151,9 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 					if err != nil {
 						log.Warn(ctx, "API: Invalid login", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 					}
+				}
+				if !errors.Is(err, model.ErrNotFound) && !errors.Is(err, model.ErrInvalidAuth) {
+					limiter.release(limitKey)
 				}
 			}
 
