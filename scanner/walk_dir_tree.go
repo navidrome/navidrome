@@ -134,7 +134,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			log.Warn(ctx, "Scanner: Invalid symlink", "dir", entryPath, err)
 			continue
 		}
-		if isIgnoredEntry(entry.Name(), isDir) {
+		if isIgnoredEntry(entryPath, isDir) {
 			continue
 		}
 		if isDir && isDirReadable(ctx, job.fs, entryPath) {
@@ -286,7 +286,7 @@ func isDirReadable(ctx context.Context, fsys fs.FS, dirPath string) bool {
 	return true
 }
 
-// List of special directories to ignore
+// List of special directories to ignore anywhere in the library tree
 var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
@@ -294,26 +294,51 @@ var ignoredDirs = []string{
 	"@Recently-Snapshot",
 	".git",
 	".streams",
+}
+
+// List of special directories to ignore only when they sit directly at the library
+// root. These are created by the filesystem itself at the root of a mount point
+// (mke2fs creates lost+found), which for a music library is the library root. Deeper
+// in the tree the same name is just a regular folder, and a valid album title at that
+// (e.g. Jonathan Coulton's "lost+found"), so it must be scanned normally.
+var rootOnlyIgnoredDirs = []string{
 	"lost+found",
 }
 
-// isIgnoredEntry returns true if a directory entry with the given name should be
-// skipped during scanning. It centralizes all name- and type-based ignore policy:
-//   - special system directories in ignoredDirs are always ignored;
+// isIgnoredEntry returns true if the directory entry at the given library-relative
+// path should be skipped during scanning. It centralizes all name- and type-based
+// ignore policy:
+//   - special system directories are ignored, either anywhere in the tree or only
+//     at the library root, see isDirIgnored;
 //   - dot-prefixed files are always ignored;
 //   - dot-prefixed folders are ignored unless Scanner.IgnoreDotFolders is disabled,
 //     allowing albums like ".Hack Sign" to be scanned when the option is off.
-func isIgnoredEntry(name string, isDir bool) bool {
-	if isDir && isDirIgnored(name) {
+func isIgnoredEntry(entryPath string, isDir bool) bool {
+	if isDir && isDirIgnored(entryPath) {
 		return true
 	}
-	return isDotEntry(name) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
+	return isDotEntry(entryName(entryPath)) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
 }
 
-// isDirIgnored returns true if the directory name is in the explicit ignoredDirs
-// blocklist. Used both while walking the tree and by the file watcher.
-func isDirIgnored(name string) bool {
-	return slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
+// isDirIgnored returns true if the directory at the given library-relative path is in
+// one of the explicit blocklists: ignoredDirs matches at any depth, rootOnlyIgnoredDirs
+// only when the directory is a direct child of the library root. Used both while
+// walking the tree and by the file watcher.
+func isDirIgnored(dirPath string) bool {
+	name := entryName(dirPath)
+	if slices.ContainsFunc(ignoredDirs, func(s string) bool { return strings.EqualFold(s, name) }) {
+		return true
+	}
+	if path.Dir(path.Clean(filepath.ToSlash(dirPath))) != "." {
+		return false
+	}
+	return slices.ContainsFunc(rootOnlyIgnoredDirs, func(s string) bool { return strings.EqualFold(s, name) })
+}
+
+// entryName returns the last element of a library-relative path, accepting both slash-
+// and OS-separated paths, as the watcher works with the latter.
+func entryName(entryPath string) string {
+	return path.Base(filepath.ToSlash(entryPath))
 }
 
 // isDotEntry returns true only for names with exactly one leading dot (the
