@@ -460,6 +460,10 @@ var _ = Describe("isIgnoredPath", func() {
 			Entry("dot-folder itself", "rock/.Hidden Album", true),
 			Entry("normal folder itself", "rock/Album", false),
 			Entry(".DS_Store file", "rock/Album/.DS_Store", true),
+			Entry("lost+found at the library root", "lost+found", true),
+			Entry("media file inside lost+found at the library root", "lost+found/orphan.mp3", true),
+			Entry("nested lost+found album folder", "Jonathan Coulton/lost+found", false),
+			Entry("media file inside a nested lost+found album", "Jonathan Coulton/lost+found/track.mp3", false),
 		)
 	})
 

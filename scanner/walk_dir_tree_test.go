@@ -26,6 +26,23 @@ var _ = Describe("walk_dir_tree", func() {
 			ctx  context.Context
 		)
 
+		// Helper function to call walkDirTree and collect folders from the results channel
+		getFolders := func() map[string]*folderEntry {
+			results, err := walkDirTree(ctx, job)
+			Expect(err).ToNot(HaveOccurred())
+
+			folders := map[string]*folderEntry{}
+			g := errgroup.Group{}
+			g.Go(func() error {
+				for folder := range results {
+					folders[folder.path] = folder
+				}
+				return nil
+			})
+			_ = g.Wait()
+			return folders
+		}
+
 		Context("full library", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
@@ -60,23 +77,6 @@ var _ = Describe("walk_dir_tree", func() {
 					lib: model.Library{Path: "/music"},
 				}
 			})
-
-			// Helper function to call walkDirTree and collect folders from the results channel
-			getFolders := func() map[string]*folderEntry {
-				results, err := walkDirTree(ctx, job)
-				Expect(err).ToNot(HaveOccurred())
-
-				folders := map[string]*folderEntry{}
-				g := errgroup.Group{}
-				g.Go(func() error {
-					for folder := range results {
-						folders[folder.path] = folder
-					}
-					return nil
-				})
-				_ = g.Wait()
-				return folders
-			}
 
 			DescribeTable("symlink handling",
 				func(followSymlinks bool, expectedFolderCount int) {
@@ -148,6 +148,37 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("with symlinks enabled", true),
 				Entry("with symlinks disabled", false),
 			)
+		})
+
+		Context("with a lost+found folder", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				ctx = GinkgoT().Context()
+				fsys = &mockMusicFS{
+					FS: fstest.MapFS{
+						"lost+found/orphan.mp3":                          {},
+						"Jonathan Coulton/lost+found/re-your-brains.mp3": {},
+					},
+				}
+				job = &scanJob{
+					fs:  fsys,
+					lib: model.Library{Path: "/music"},
+				}
+			})
+
+			It("skips lost+found at the library root, where the filesystem creates it", func() {
+				Expect(getFolders()).ToNot(HaveKey("lost+found"))
+			})
+
+			It("scans a lost+found album folder nested in the library", func() {
+				folders := getFolders()
+
+				Expect(folders).To(HaveKey("Jonathan Coulton/lost+found"))
+				Expect(folders["Jonathan Coulton/lost+found"].audioFiles).To(SatisfyAll(
+					HaveLen(1),
+					HaveKey("re-your-brains.mp3"),
+				))
+			})
 		})
 
 		Context("with target folders", func() {
@@ -554,8 +585,8 @@ var _ = Describe("walk_dir_tree", func() {
 
 		Describe("isDirIgnored", func() {
 			DescribeTable("returns expected result",
-				func(dirName string, expected bool) {
-					Expect(isDirIgnored(dirName)).To(Equal(expected))
+				func(dirPath string, expected bool) {
+					Expect(isDirIgnored(dirPath)).To(Equal(expected))
 				},
 				Entry("normal dir", "empty_folder", false),
 				Entry("dot-prefixed album dir", ".Hack Sign Original Soundtrack", false),
@@ -564,6 +595,12 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("dir starting with ellipsis", "...unhidden_folder", false),
 				Entry("recycle bin", "$Recycle.Bin", true),
 				Entry("snapshot dir", "#snapshot", true),
+				Entry("blocklisted dir nested in the library", "rock/Artist/.git", true),
+				Entry("lost+found at the library root", "lost+found", true),
+				Entry("lost+found at the library root, other case", "Lost+Found", true),
+				Entry("lost+found album nested in the library", "Jonathan Coulton/lost+found", false),
+				Entry("lost+found album nested deeper", "rock/Jonathan Coulton/lost+found", false),
+				Entry("normal dir nested in the library", "Jonathan Coulton/Thing a Week", false),
 			)
 		})
 
@@ -573,9 +610,9 @@ var _ = Describe("walk_dir_tree", func() {
 			})
 
 			DescribeTable("with IgnoreDotFolders enabled (default)",
-				func(name string, isDir, expected bool) {
+				func(entryPath string, isDir, expected bool) {
 					conf.Server.Scanner.IgnoreDotFolders = true
-					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
+					Expect(isIgnoredEntry(entryPath, isDir)).To(Equal(expected))
 				},
 				Entry("normal dir", "Album", true, false),
 				Entry("normal file", "track.mp3", false, false),
@@ -583,18 +620,25 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("dot file", ".hidden.mp3", false, true),
 				Entry("blocklisted dir", ".git", true, true),
 				Entry("ellipsis dir", "...unhidden", true, false),
+				Entry("nested dot folder", "rock/.Hack Sign Original Soundtrack", true, true),
+				Entry("nested dot file", "rock/Album/.hidden.mp3", false, true),
+				Entry("lost+found at the library root", "lost+found", true, true),
+				Entry("nested lost+found album", "Jonathan Coulton/lost+found", true, false),
+				Entry("file named lost+found at the library root", "lost+found", false, false),
 			)
 
 			DescribeTable("with IgnoreDotFolders disabled",
-				func(name string, isDir, expected bool) {
+				func(entryPath string, isDir, expected bool) {
 					conf.Server.Scanner.IgnoreDotFolders = false
-					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
+					Expect(isIgnoredEntry(entryPath, isDir)).To(Equal(expected))
 				},
 				Entry("normal dir", "Album", true, false),
 				Entry("normal file", "track.mp3", false, false),
 				Entry("dot folder is allowed", ".Hack Sign Original Soundtrack", true, false),
 				Entry("dot file is still ignored", ".hidden.mp3", false, true),
 				Entry("blocklisted dir still ignored", ".git", true, true),
+				Entry("lost+found at the library root still ignored", "lost+found", true, true),
+				Entry("nested lost+found album is allowed", "Jonathan Coulton/lost+found", true, false),
 			)
 		})
 

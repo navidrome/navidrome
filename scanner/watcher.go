@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -244,31 +245,31 @@ func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, 
 		case <-ctx.Done():
 			log.Debug(ctx, "Watcher stopped due to context cancellation", "libraryID", lib.ID, "name", lib.Name)
 			return nil
-		case path := <-events:
-			path, err := filepath.Rel(absLibPath, path)
+		case changed := <-events:
+			p, err := filepath.Rel(absLibPath, changed)
 			if err != nil {
-				log.Error(ctx, "Error getting relative path", "libraryID", lib.ID, "absolutePath", absLibPath, "path", path, err)
+				log.Error(ctx, "Error getting relative path", "libraryID", lib.ID, "absolutePath", absLibPath, "path", changed, err)
 				continue
 			}
 
-			if isIgnoredPath(ctx, fsys, path) {
-				log.Trace(ctx, "Ignoring change", "libraryID", lib.ID, "path", path)
+			if isIgnoredPath(ctx, fsys, p) {
+				log.Trace(ctx, "Ignoring change", "libraryID", lib.ID, "path", p)
 				continue
 			}
-			log.Trace(ctx, "Detected change", "libraryID", lib.ID, "path", path, "absoluteLibPath", absLibPath)
+			log.Trace(ctx, "Detected change", "libraryID", lib.ID, "path", p, "absoluteLibPath", absLibPath)
 
 			// Check if the original path (before resolution) matches .ndignore patterns
 			// This is crucial for deleted folders - if a deleted folder matches .ndignore,
 			// we should ignore it BEFORE resolveFolderPath walks up to the parent
-			if w.shouldIgnoreFolderPath(ctx, fsys, path) {
-				log.Debug(ctx, "Ignoring change matching .ndignore pattern", "libraryID", lib.ID, "path", path)
+			if w.shouldIgnoreFolderPath(ctx, fsys, p) {
+				log.Debug(ctx, "Ignoring change matching .ndignore pattern", "libraryID", lib.ID, "path", p)
 				continue
 			}
 
 			// Find the folder to scan - validate path exists as directory, walk up if needed
-			folderPath := resolveFolderPath(fsys, path)
+			folderPath := resolveFolderPath(fsys, p)
 			// Double-check after resolution in case the resolved path is different and also matches patterns
-			if folderPath != path && w.shouldIgnoreFolderPath(ctx, fsys, folderPath) {
+			if folderPath != p && w.shouldIgnoreFolderPath(ctx, fsys, folderPath) {
 				log.Trace(ctx, "Ignoring change in folder matching .ndignore pattern", "libraryID", lib.ID, "folderPath", folderPath)
 				continue
 			}
@@ -282,13 +283,13 @@ func (w *watcher) processLibraryEvents(ctx context.Context, lib *model.Library, 
 // resolveFolderPath takes a path (which may be a file or directory) and returns
 // the folder path to scan. If the path is a file, it walks up to find the parent
 // directory. Returns empty string if the path should scan the library root.
-func resolveFolderPath(fsys fs.FS, path string) string {
+func resolveFolderPath(fsys fs.FS, p string) string {
 	// Handle root paths immediately
-	if path == "." || path == "" {
+	if p == "." || p == "" {
 		return ""
 	}
 
-	folderPath := path
+	folderPath := p
 	for {
 		info, err := fs.Stat(fsys, folderPath)
 		if err == nil && info.IsDir() {
@@ -320,16 +321,18 @@ func (w *watcher) shouldIgnoreFolderPath(ctx context.Context, fsys storage.Music
 	return checker.ShouldIgnore(ctx, folderPath)
 }
 
-func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
-	_, name := filepath.Split(path)
+// isIgnoredPath reports whether a change at the given library-relative path should not
+// trigger a scan.
+func isIgnoredPath(_ context.Context, _ fs.FS, p string) bool {
+	_, name := filepath.Split(p)
 	// A change anywhere inside an ignored directory (a dot-folder when
 	// Scanner.IgnoreDotFolders is enabled, or a special system folder) must not
 	// trigger a scan, even for media files: the scan would skip it anyway.
-	if isUnderIgnoredDir(path) {
+	if isUnderIgnoredDir(p) {
 		return true
 	}
 	switch {
-	case model.IsAudioFile(path), model.IsValidPlaylist(path), model.IsImageFile(path):
+	case model.IsAudioFile(p), model.IsValidPlaylist(p), model.IsImageFile(p):
 		// A media file is normally not ignored, but a dot-prefixed one (e.g.
 		// ".hidden.mp3") is always skipped by the scanner, so don't scan for it.
 		return isDotEntry(name)
@@ -339,15 +342,22 @@ func isIgnoredPath(_ context.Context, _ fs.FS, path string) bool {
 	// As it can be a deletion and not a change, we cannot reliably know if the
 	// path is a file or directory. But at this point, we can assume it's a
 	// directory. If it's a file, it would be ignored anyway.
-	return isIgnoredEntry(name, true)
+	return isIgnoredEntry(p, true)
 }
 
 // isUnderIgnoredDir returns true if any parent directory component of the given
-// path is an ignored directory, reusing the same policy as the scanner walk.
-func isUnderIgnoredDir(path string) bool {
-	dir, _ := filepath.Split(path)
+// library-relative path is an ignored directory, reusing the same policy as the
+// scanner walk. Components are rebuilt into their full library-relative path, as the
+// policy depends on how deep the folder sits, not just on its name.
+func isUnderIgnoredDir(p string) bool {
+	dir, _ := filepath.Split(p)
+	var parent string
 	for part := range strings.SplitSeq(filepath.ToSlash(dir), "/") {
-		if part != "" && isIgnoredEntry(part, true) {
+		if part == "" {
+			continue
+		}
+		parent = path.Join(parent, part)
+		if isIgnoredEntry(parent, true) {
 			return true
 		}
 	}
