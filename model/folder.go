@@ -42,15 +42,21 @@ func (f Folder) String() string {
 // FolderID generates a unique ID for a folder in a library.
 // The ID is generated based on the library ID and the folder path relative to the library root.
 // Any leading or trailing slashes are removed from the folder path.
-func FolderID(lib Library, path string) string {
-	path = strings.TrimPrefix(path, lib.Path)
-	path = strings.TrimPrefix(path, string(os.PathSeparator))
-	path = filepath.Clean(path)
-	key := fmt.Sprintf("%d:%s", lib.ID, path)
+func FolderID(lib Library, folderPath string) string {
+	folderPath = strings.TrimPrefix(folderPath, lib.Path)
+	folderPath = strings.TrimPrefix(folderPath, string(os.PathSeparator))
+	// Folder IDs must be stable across operating systems, so normalize to
+	// forward slashes (path.Clean, not filepath.Clean) before hashing;
+	// otherwise a nested path on Windows would hash with back-slashes.
+	folderPath = path.Clean(filepath.ToSlash(folderPath))
+	key := fmt.Sprintf("%d:%s", lib.ID, folderPath)
 	return id.NewHash(key)
 }
 
 func NewFolder(lib Library, folderPath string) *Folder {
+	// path.Split/path.Clean below only treat "/" as a separator, so normalize
+	// OS separators first to derive dir/name correctly on Windows.
+	folderPath = filepath.ToSlash(folderPath)
 	newID := FolderID(lib, folderPath)
 	dir, name := path.Split(folderPath)
 	dir = path.Clean(dir)
