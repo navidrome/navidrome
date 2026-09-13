@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -307,9 +306,6 @@ func (r *libraryRepositoryWrapper) mapError(err error) error {
 		}
 	}
 
-	if errors.Is(err, model.ErrNotAuthorized) {
-		return rest.ErrPermissionDenied
-	}
 	return err
 }
 

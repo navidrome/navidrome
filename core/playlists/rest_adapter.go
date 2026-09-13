@@ -2,7 +2,6 @@ package playlists
 
 import (
 	"context"
-	"errors"
 	"reflect"
 	"strings"
 
@@ -41,11 +40,7 @@ func (r *playlistRepositoryWrapper) Update(id string, entity any, cols ...string
 }
 
 func (r *playlistRepositoryWrapper) Delete(id string) error {
-	err := r.service.Delete(r.ctx, id)
-	if errors.Is(err, model.ErrNotAuthorized) {
-		return rest.ErrPermissionDenied
-	}
-	return err
+	return r.service.Delete(r.ctx, id)
 }
 
 func (s *playlists) TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository {
@@ -87,9 +82,6 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 // wrapper.
 func (s *playlists) updatePlaylistEntity(ctx context.Context, id string, entity *model.Playlist, cols ...string) error {
 	current, err := s.checkWritable(ctx, id)
-	if errors.Is(err, model.ErrNotAuthorized) {
-		return rest.ErrPermissionDenied
-	}
 	if err != nil {
 		return err
 	}

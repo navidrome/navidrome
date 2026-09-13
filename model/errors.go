@@ -9,7 +9,7 @@ import (
 var (
 	ErrNotFound            = rest.ErrNotFound
 	ErrInvalidAuth         = errors.New("invalid authentication")
-	ErrNotAuthorized       = errors.New("not authorized")
+	ErrNotAuthorized       = rest.ErrPermissionDenied
 	ErrExpired             = errors.New("access expired")
 	ErrNotAvailable        = errors.New("functionality not available")
 	ErrValidation          = errors.New("validation error")
