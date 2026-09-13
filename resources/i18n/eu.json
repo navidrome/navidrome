@@ -200,7 +200,7 @@
         "targetFormat": "Helburuko formatua",
         "defaultBitRate": "Bit tasa, defektuz",
         "command": "Komandoa"
-      }
+      },
       "choices": {
         "noDefaultBitRate": "Bat ere ez"
       }
