@@ -302,7 +302,7 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorMissingParameter, err.Error())
 	case errors.Is(err, req.ErrInvalidParam):
 		err = newError(responses.ErrorGeneric, err.Error())
-	case errors.Is(err, model.ErrNotFound), errors.Is(err, rest.ErrNotFound):
+	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
 	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, rest.ErrPermissionDenied),
 		errors.Is(err, model.ErrPlaylistNotEditable): // Subsonic has no code for "read-only resource"

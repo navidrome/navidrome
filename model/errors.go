@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	// The rest controller only maps this exact value to 404.
+	// Same value as rest.ErrNotFound, so errors.Is matches either one and REST endpoints respond 404.
 	ErrNotFound            = rest.ErrNotFound
 	ErrInvalidAuth         = errors.New("invalid authentication")
 	ErrNotAuthorized       = errors.New("not authorized")

@@ -416,9 +416,6 @@ func (r *playlistRepository) Update(id string, entity any, cols ...string) error
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
 	_, err := r.put(id, pls, append(cols, "updatedAt")...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
 	return err
 }
 
