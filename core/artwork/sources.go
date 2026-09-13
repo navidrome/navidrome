@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/httpclient"
+	"github.com/navidrome/navidrome/utils/netguard"
 	"go.senan.xyz/taglib"
 )
 
@@ -150,10 +151,18 @@ type readCloser struct {
 	io.Closer
 }
 
+// remoteImageClient fetches URLs from playlists and agents (plugins included), so it must not reach
+// internal hosts. Shared so fetches reuse connections.
+var remoteImageClient = httpclient.NewExternal(5 * time.Second)
+
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
-	hc := httpclient.New(5 * time.Second)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
-	resp, err := hc.Do(req) //nolint:gosec
+	resp, err := remoteImageClient.Do(req)
+	if errors.Is(err, netguard.ErrPrivateAddress) {
+		// Retrying cannot change where the URL points: settle absent instead of tripping the breaker.
+		log.Warn(ctx, "Artwork: Refused to fetch image from a private or loopback address", "url", imageUrl, err)
+		return nil, "", model.ErrNotFound
+	}
 	if err != nil {
 		return nil, "", err
 	}

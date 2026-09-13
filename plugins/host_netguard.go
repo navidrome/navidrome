@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 	"slices"
+
+	"github.com/navidrome/navidrome/utils/netguard"
 )
 
 // checkPrivateDial runs at dial time on the resolved IP, so hostnames can't reach private addresses unless a
@@ -17,7 +19,7 @@ func checkPrivateDial(requiredHosts []string, address string) error {
 		return err
 	}
 	ip := net.ParseIP(host)
-	if ip == nil || !isPrivateIP(ip) {
+	if ip == nil || !netguard.IsPrivateIP(ip) {
 		return nil
 	}
 	for _, entry := range requiredHosts {
@@ -50,8 +52,4 @@ func ipMatchesEntry(entry string, ip net.IP) bool {
 		return entryIP.Equal(ip)
 	}
 	return false
-}
-
-func isPrivateIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsUnspecified() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
 }

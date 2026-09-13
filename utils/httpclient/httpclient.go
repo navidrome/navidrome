@@ -3,10 +3,13 @@
 package httpclient
 
 import (
+	"net"
 	"net/http"
+	"net/netip"
 	"time"
 
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/utils/netguard"
 )
 
 type uaTransport struct {
@@ -32,4 +35,16 @@ func NewTransport(base http.RoundTripper) http.RoundTripper {
 
 func New(timeout time.Duration) *http.Client {
 	return &http.Client{Timeout: timeout, Transport: NewTransport(nil)}
+}
+
+// NewExternal is New for URLs from untrusted sources: it refuses to dial private, loopback, link-local
+// and unspecified addresses, except those covered by allowed.
+func NewExternal(timeout time.Duration, allowed ...netip.Prefix) *http.Client {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.DialContext = (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		Control:   netguard.DialControl(allowed...),
+	}).DialContext
+	return &http.Client{Timeout: timeout, Transport: NewTransport(t)}
 }
