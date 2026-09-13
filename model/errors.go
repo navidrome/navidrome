@@ -1,9 +1,14 @@
 package model
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/deluan/rest"
+)
 
 var (
-	ErrNotFound            = errors.New("data not found")
+	// The rest controller only maps this exact value to 404.
+	ErrNotFound            = rest.ErrNotFound
 	ErrInvalidAuth         = errors.New("invalid authentication")
 	ErrNotAuthorized       = errors.New("not authorized")
 	ErrExpired             = errors.New("access expired")
