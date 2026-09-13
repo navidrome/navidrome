@@ -47,7 +47,14 @@ func (r *radioRepository) Delete(id string) error {
 		return rest.ErrPermissionDenied
 	}
 
-	return r.delete(Eq{"id": id})
+	c, err := r.executeSQL(Delete(r.tableName).Where(Eq{"id": id}))
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return model.ErrNotFound
+	}
+	return nil
 }
 
 func (r *radioRepository) Get(id string) (*model.Radio, error) {
