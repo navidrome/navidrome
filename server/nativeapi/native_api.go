@@ -71,11 +71,11 @@ func (api *Router) routes() http.Handler {
 		rx(r, "/song", lazy(func(ctx context.Context) rest.Repository[model.MediaFile] { return api.ds.MediaFile(ctx) }), false)
 		rx(r, "/album", lazy(func(ctx context.Context) rest.Repository[model.Album] { return api.ds.Album(ctx) }), false)
 		api.addArtistRoute(r)
-		rx(r, "/genre", lazy(func(ctx context.Context) rest.Repository[model.Genre] { return api.ds.Genre(ctx) }), false)
+		rx(r, "/genre", api.ds.Genre(), false)
 		rx(r, "/player", api.ds.Player(), true)
 		rx(r, "/transcoding", api.ds.Transcoding(), conf.Server.EnableTranscodingConfig)
 		api.addRadioRoute(r)
-		rx(r, "/tag", lazy(func(ctx context.Context) rest.Repository[model.Tag] { return api.ds.Tag(ctx) }), false)
+		rx(r, "/tag", api.ds.Tag(), false)
 		rx(r, "/scrobble", lazy(func(ctx context.Context) rest.Repository[model.Scrobble] { return api.ds.Scrobble(ctx) }), false)
 		if conf.Server.EnableSharing {
 			rx(r, "/share", lazyRW(func(ctx context.Context) rest.Repository[model.Share] { return api.share.NewRepository(ctx) }), true)

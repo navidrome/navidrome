@@ -77,7 +77,7 @@ func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	opts := model.QueryOptions{Sort: "tag_value", Filters: libraryScopeFilter(scope)}
-	labels, err := api.ds.Tag(ctx).GetAll(model.TagRecordLabel, opts)
+	labels, err := api.ds.Tag().GetAll(ctx, model.TagRecordLabel, opts)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
@@ -97,7 +97,7 @@ func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	genreOpts := model.QueryOptions{Sort: "name", Filters: libraryScopeFilter(scope)}
-	genres, err := api.ds.Genre(ctx).GetAll(genreOpts)
+	genres, err := api.ds.Genre().GetAll(ctx, genreOpts)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

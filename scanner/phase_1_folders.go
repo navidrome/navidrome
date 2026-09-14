@@ -337,7 +337,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
 		folderRepo := tx.Folder(p.ctx)
-		tagRepo := tx.Tag(p.ctx)
+		tagRepo := tx.Tag()
 		artistRepo := tx.Artist(p.ctx)
 		libraryRepo := tx.Library()
 		albumRepo := tx.Album(p.ctx)
@@ -361,7 +361,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		}
 
 		// Save all tags to DB
-		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
+		err = tagRepo.Add(p.ctx, entry.job.lib.ID, entry.tags...)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 			return err

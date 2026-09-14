@@ -37,7 +37,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		if !errors.Is(err, model.ErrNotFound) {
 			return nil, err
 		}
-		genre, err := e.ds.Genre(ctx).Get(id)
+		genre, err := e.ds.Genre().Get(ctx, id)
 		if err != nil {
 			return nil, err
 		}

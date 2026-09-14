@@ -273,7 +273,7 @@ func artistID(name string) string {
 }
 
 func genreID(name string) string {
-	genres, err := ds.Genre(ctx).GetAll()
+	genres, err := ds.Genre().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, g := range genres {
 		if g.Name == name {
