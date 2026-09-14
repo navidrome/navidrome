@@ -206,14 +206,14 @@ func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
 	return db.MockedUser
 }
 
-func (db *MockDataStore) Transcoding(ctx context.Context) model.TranscodingRepository {
+func (db *MockDataStore) Transcoding() model.TranscodingRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedTranscoding != nil {
 		return db.MockedTranscoding
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Transcoding(ctx)
+		return db.RealDS.Transcoding()
 	}
 	db.MockedTranscoding = struct{ model.TranscodingRepository }{}
 	return db.MockedTranscoding

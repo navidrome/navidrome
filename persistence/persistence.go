@@ -13,10 +13,11 @@ import (
 )
 
 type SQLStore struct {
-	db        dbx.Builder
-	library   model.LibraryRepository
-	property  model.PropertyRepository
-	userProps model.UserPropsRepository
+	db          dbx.Builder
+	library     model.LibraryRepository
+	property    model.PropertyRepository
+	userProps   model.UserPropsRepository
+	transcoding model.TranscodingRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -24,6 +25,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.library = NewLibraryRepository(db)
 	s.property = NewPropertyRepository(db)
 	s.userProps = NewUserPropsRepository(db)
+	s.transcoding = NewTranscodingRepository(db)
 	return s
 }
 
@@ -87,8 +89,8 @@ func (s *SQLStore) User(ctx context.Context) model.UserRepository {
 	return NewUserRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository {
-	return NewTranscodingRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Transcoding() model.TranscodingRepository {
+	return s.transcoding
 }
 
 func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {

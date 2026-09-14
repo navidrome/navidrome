@@ -13,37 +13,36 @@ type transcodingRepository struct {
 	sqlRepository
 }
 
-func NewTranscodingRepository(ctx context.Context, db dbx.Builder) model.TranscodingRepository {
+func NewTranscodingRepository(db dbx.Builder) model.TranscodingRepository {
 	r := &transcodingRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Transcoding{}, nil)
 	return r
 }
 
-func (r *transcodingRepository) Get(id string) (*model.Transcoding, error) {
-	sel := r.newSelect(r.ctx).Columns("*").Where(Eq{"id": id})
+func (r *transcodingRepository) Get(ctx context.Context, id string) (*model.Transcoding, error) {
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"id": id})
 	var res model.Transcoding
-	err := r.queryOne(r.ctx, sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-func (r *transcodingRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
-	return r.count(r.ctx, Select(), qo...)
+func (r *transcodingRepository) CountAll(ctx context.Context, qo ...model.QueryOptions) (int64, error) {
+	return r.count(ctx, Select(), qo...)
 }
 
-func (r *transcodingRepository) FindByFormat(format string) (*model.Transcoding, error) {
-	sel := r.newSelect(r.ctx).Columns("*").Where(Eq{"target_format": format})
+func (r *transcodingRepository) FindByFormat(ctx context.Context, format string) (*model.Transcoding, error) {
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"target_format": format})
 	var res model.Transcoding
-	err := r.queryOne(r.ctx, sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-func (r *transcodingRepository) Put(t *model.Transcoding) error {
-	if !loggedUser(r.ctx).IsAdmin {
+func (r *transcodingRepository) Put(ctx context.Context, t *model.Transcoding) error {
+	if !loggedUser(ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
-	_, err := r.put(r.ctx, t.ID, t)
+	_, err := r.put(ctx, t.ID, t)
 	return err
 }
 
@@ -52,7 +51,7 @@ func (r *transcodingRepository) Count(ctx context.Context, options ...rest.Query
 }
 
 func (r *transcodingRepository) Read(ctx context.Context, id string) (*model.Transcoding, error) {
-	res, err := r.Get(id)
+	res, err := r.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}

@@ -163,7 +163,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 			doReq("ping")
 			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
 			Expect(err).ToNot(HaveOccurred())
-			trc, err := ds.Transcoding(ctx).FindByFormat(format)
+			trc, err := ds.Transcoding().FindByFormat(ctx, format)
 			Expect(err).ToNot(HaveOccurred())
 			player.TranscodingId = trc.ID
 			Expect(ds.Player(ctx).Put(player)).To(Succeed())
