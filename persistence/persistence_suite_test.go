@@ -244,9 +244,9 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	rar := NewRadioRepository(ctx, conn)
+	rar := NewRadioRepository(conn)
 	for i := range testRadios {
-		err := rar.Put(new(testRadios[i]))
+		err := rar.Put(ctx, new(testRadios[i]))
 		if err != nil {
 			panic(err)
 		}

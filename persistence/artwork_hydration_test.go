@@ -198,13 +198,13 @@ var _ = Describe("Artwork hydration", func() {
 
 	Describe("radios", func() {
 		var repo model.RadioRepository
-		BeforeEach(func() { repo = NewRadioRepository(ctx, GetDBXBuilder()) })
+		BeforeEach(func() { repo = NewRadioRepository(GetDBXBuilder()) })
 
 		It("hydrates the found / known-absent states", func() {
 			putInfo("ra", radioWithHomePage.ID, "rahash999999999")
 			putInfo("ra", radioWithoutHomePage.ID, "")
 
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			byID := slice.ToMap(all, func(rd model.Radio) (string, model.Radio) { return rd.ID, rd })
 
@@ -216,7 +216,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates Get", func() {
 			putInfo("ra", radioWithHomePage.ID, "ragetaaaaaaaaaa")
-			got, err := repo.Get(radioWithHomePage.ID)
+			got, err := repo.Get(ctx, radioWithHomePage.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.ImageHash).To(Equal("ragetaaaaaaaaaa"))
 		})

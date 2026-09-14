@@ -20,6 +20,7 @@ type SQLStore struct {
 	transcoding model.TranscodingRepository
 	share       model.ShareRepository
 	player      model.PlayerRepository
+	radio       model.RadioRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -30,6 +31,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.transcoding = NewTranscodingRepository(db)
 	s.share = NewShareRepository(db)
 	s.player = NewPlayerRepository(db)
+	s.radio = NewRadioRepository(db)
 	return s
 }
 
@@ -77,8 +79,8 @@ func (s *SQLStore) Property() model.PropertyRepository {
 	return s.property
 }
 
-func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
-	return NewRadioRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Radio() model.RadioRepository {
+	return s.radio
 }
 
 func (s *SQLStore) UserProps() model.UserPropsRepository {
