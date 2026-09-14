@@ -14,7 +14,7 @@ import (
 )
 
 func (api *Router) addRadioRoute(r chi.Router) {
-	repo := lazyRW(func(ctx context.Context) rest.Repository[model.Radio] { return api.ds.Radio(ctx) })
+	repo := api.ds.Radio()
 	r.Route("/radio", func(r chi.Router) {
 		r.Get("/", rest.GetAll(repo))
 		r.Post("/", rest.Post(repo))
@@ -32,7 +32,7 @@ func (api *Router) addRadioRoute(r chi.Router) {
 func (api *Router) uploadRadioImage() http.HandlerFunc {
 	return handleImageUpload(func(ctx context.Context, reader io.Reader, ext string) error {
 		radioID := chi.URLParamFromCtx(ctx, "id")
-		radio, err := api.ds.Radio(ctx).Get(radioID)
+		radio, err := api.ds.Radio().Get(ctx, radioID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
 				return model.ErrNotFound
@@ -45,7 +45,7 @@ func (api *Router) uploadRadioImage() http.HandlerFunc {
 			return err
 		}
 		radio.UploadedImage = filename
-		if err := api.ds.Radio(ctx).Put(radio, "UploadedImage"); err != nil {
+		if err := api.ds.Radio().Put(ctx, radio, "UploadedImage"); err != nil {
 			return err
 		}
 		api.imgUpload.EnqueueArtwork(ctx, consts.EntityRadio, radio.ID)
@@ -56,7 +56,7 @@ func (api *Router) uploadRadioImage() http.HandlerFunc {
 func (api *Router) deleteRadioImage() http.HandlerFunc {
 	return handleImageDelete(func(ctx context.Context) error {
 		radioID := chi.URLParamFromCtx(ctx, "id")
-		radio, err := api.ds.Radio(ctx).Get(radioID)
+		radio, err := api.ds.Radio().Get(ctx, radioID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
 				return model.ErrNotFound
@@ -67,7 +67,7 @@ func (api *Router) deleteRadioImage() http.HandlerFunc {
 			return err
 		}
 		radio.UploadedImage = ""
-		if err := api.ds.Radio(ctx).Put(radio, "UploadedImage"); err != nil {
+		if err := api.ds.Radio().Put(ctx, radio, "UploadedImage"); err != nil {
 			return err
 		}
 		api.imgUpload.EnqueueArtwork(ctx, consts.EntityRadio, radio.ID)

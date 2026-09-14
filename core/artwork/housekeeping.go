@@ -126,7 +126,7 @@ func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id strin
 		}
 		return pls.Name, nil
 	case model.KindRadioArtwork:
-		rd, err := ds.Radio(ctx).Get(id)
+		rd, err := ds.Radio().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}

@@ -27,7 +27,7 @@ func getEntity(ctx context.Context, ds DataStore, id string) (any, Kind, error) 
 		{KindAlbumArtwork, func() (any, error) { return ds.Album(ctx).Get(id) }},
 		{KindPlaylistArtwork, func() (any, error) { return ds.Playlist(ctx).Get(id) }},
 		{KindMediaFileArtwork, func() (any, error) { return ds.MediaFile(ctx).Get(id) }},
-		{KindRadioArtwork, func() (any, error) { return ds.Radio(ctx).Get(id) }},
+		{KindRadioArtwork, func() (any, error) { return ds.Radio().Get(ctx, id) }},
 	}
 	for _, g := range getters {
 		entity, err := g.get()

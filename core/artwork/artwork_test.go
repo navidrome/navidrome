@@ -488,7 +488,7 @@ var _ = Describe("EntityExists", func() {
 		artistRepo := tests.CreateMockArtistRepo()
 		artistRepo.SetData(model.Artists{{ID: "ar1"}})
 		radioRepo := tests.CreateMockedRadioRepo()
-		Expect(radioRepo.Put(&model.Radio{ID: "ra1", Name: "R"})).To(Succeed())
+		Expect(radioRepo.Put(ctx, &model.Radio{ID: "ra1", Name: "R"})).To(Succeed())
 		ds = &tests.MockDataStore{MockedAlbum: albumRepo, MockedArtist: artistRepo, MockedRadio: radioRepo}
 	})
 

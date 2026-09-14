@@ -259,14 +259,14 @@ func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository 
 	return db.MockedScrobble
 }
 
-func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
+func (db *MockDataStore) Radio() model.RadioRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedRadio != nil {
 		return db.MockedRadio
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Radio(ctx)
+		return db.RealDS.Radio()
 	}
 	db.MockedRadio = CreateMockedRadioRepo()
 	return db.MockedRadio

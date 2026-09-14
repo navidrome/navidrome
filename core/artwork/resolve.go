@@ -428,7 +428,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 
 // resolveRadio serves only an uploaded image; there is no fallback.
 func (r *resolver) resolveRadio(ctx context.Context, radioID string) (resolution, error) {
-	radio, err := r.ds.Radio(ctx).Get(radioID)
+	radio, err := r.ds.Radio().Get(ctx, radioID)
 	if err != nil {
 		return resolution{}, err
 	}
