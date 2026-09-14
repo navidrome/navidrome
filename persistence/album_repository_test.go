@@ -22,11 +22,11 @@ import (
 
 // rawColumn returns a column exactly as stored, bypassing go-sqlite3's decoding of
 // `datetime` columns into time.Time.
-func rawColumn(r sqlRepository, id, column string) string {
+func rawColumn(ctx context.Context, r sqlRepository, id, column string) string {
 	var res struct{ Value string }
 	sel := squirrel.Select("cast(" + column + " as text) as value").
 		From(r.tableName).Where(squirrel.Eq{"id": id})
-	ExpectWithOffset(1, r.queryOne(r.ctx, sel, &res)).To(Succeed())
+	ExpectWithOffset(1, r.queryOne(ctx, sel, &res)).To(Succeed())
 	return res.Value
 }
 
@@ -130,9 +130,9 @@ var _ = Describe("AlbumRepository", func() {
 			// which string-sorts above every space-format timestamp and pins the album to the
 			// top of "Recently Added".
 			Expect(albumRepo.CopyAttributes(ctx, "copy-src", "copy-dst", "created_at")).To(Succeed())
-			Expect(rawColumn(albumRepo.sqlRepository, "copy-dst", "created_at")).
-				To(Equal(rawColumn(albumRepo.sqlRepository, "copy-src", "created_at")))
-			Expect(rawColumn(albumRepo.sqlRepository, "copy-dst", "created_at")).ToNot(ContainSubstring("T"))
+			Expect(rawColumn(ctx, albumRepo.sqlRepository, "copy-dst", "created_at")).
+				To(Equal(rawColumn(ctx, albumRepo.sqlRepository, "copy-src", "created_at")))
+			Expect(rawColumn(ctx, albumRepo.sqlRepository, "copy-dst", "created_at")).ToNot(ContainSubstring("T"))
 		})
 	})
 
