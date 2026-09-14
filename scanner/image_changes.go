@@ -77,7 +77,7 @@ func (c *imageChangeCollector) queueItems(ctx context.Context, lib model.Library
 
 	var items []model.ArtworkQueueItem
 
-	albumIDs, err := c.ds.MediaFile(ctx).GetAlbumIDsByFolder(lib, folderIDs...)
+	albumIDs, err := c.ds.MediaFile().GetAlbumIDsByFolder(ctx, lib, folderIDs...)
 	if err != nil {
 		return nil, err
 	}

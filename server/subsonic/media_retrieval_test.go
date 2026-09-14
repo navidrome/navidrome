@@ -293,8 +293,8 @@ type mockedMediaFile struct {
 	tests.MockMediaFileRepo
 }
 
-func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, error) {
-	data, err := m.MockMediaFileRepo.GetAll(opts...)
+func (m *mockedMediaFile) GetAll(ctx context.Context, opts ...model.QueryOptions) (model.MediaFiles, error) {
+	data, err := m.MockMediaFileRepo.GetAll(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

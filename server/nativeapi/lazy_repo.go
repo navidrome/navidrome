@@ -39,10 +39,6 @@ func (l lazyPersistable[T]) Delete(ctx context.Context, ids ...string) error {
 	return l.new(ctx).(rest.Persistable[T]).Delete(ctx, ids...)
 }
 
-func lazy[T any](new func(context.Context) rest.Repository[T]) rest.Repository[T] {
-	return lazyRepo[T]{new: new}
-}
-
 func lazyRW[T any](new func(context.Context) rest.Repository[T]) rest.Repository[T] {
 	return lazyPersistable[T]{lazyRepo[T]{new: new}}
 }

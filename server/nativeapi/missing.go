@@ -19,10 +19,8 @@ type missingRepository struct {
 }
 
 func newMissingRepository(ds model.DataStore) rest.Repository[model.MediaFile] {
-	return lazy(func(ctx context.Context) rest.Repository[model.MediaFile] {
-		mf := ds.MediaFile(ctx)
-		return &missingRepository{Repository: mf, mfRepo: mf}
-	})
+	mf := ds.MediaFile()
+	return &missingRepository{Repository: mf, mfRepo: mf}
 }
 
 func (r *missingRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
@@ -44,7 +42,7 @@ func (r *missingRepository) parseOptions(options []rest.QueryOptions) rest.Query
 }
 
 func (r *missingRepository) Read(ctx context.Context, id string) (*model.MediaFile, error) {
-	mf, err := r.mfRepo.Get(id)
+	mf, err := r.mfRepo.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}

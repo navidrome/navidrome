@@ -21,7 +21,7 @@ var _ = Describe("item genre tag indexes", func() {
 	BeforeEach(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
-		mr = NewMediaFileRepository(ctx, conn)
+		mr = NewMediaFileRepository(conn)
 		ar = NewAlbumRepository(conn)
 		// Test-only genre values, so they can't collide with the golden fixtures.
 		rock = model.NewTag(model.TagGenre, "GenreIdxRock")
@@ -56,25 +56,25 @@ var _ = Describe("item genre tag indexes", func() {
 		It("writes a media_file_tags row for each genre when the track is saved", func() {
 			mf := model.MediaFile{ID: "mf-g1", LibraryID: 1, Path: "/m/g1.mp3", Title: "G1",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue, jazz.TagValue}}}
-			Expect(mr.Put(&mf)).To(Succeed())
+			Expect(mr.Put(ctx, &mf)).To(Succeed())
 			Expect(tagIDsFor("media_file_tags", "media_file_id", "mf-g1")).To(ConsistOf(rock.ID, jazz.ID))
 		})
 
 		It("replaces the rows when the genres change", func() {
 			mf := model.MediaFile{ID: "mf-g2", LibraryID: 1, Path: "/m/g2.mp3", Title: "G2",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue}}}
-			Expect(mr.Put(&mf)).To(Succeed())
+			Expect(mr.Put(ctx, &mf)).To(Succeed())
 			mf.Tags = model.Tags{model.TagGenre: []string{jazz.TagValue}}
-			Expect(mr.Put(&mf)).To(Succeed())
+			Expect(mr.Put(ctx, &mf)).To(Succeed())
 			Expect(tagIDsFor("media_file_tags", "media_file_id", "mf-g2")).To(ConsistOf(jazz.ID))
 		})
 
 		It("clears the rows when all genres are removed", func() {
 			mf := model.MediaFile{ID: "mf-g3", LibraryID: 1, Path: "/m/g3.mp3", Title: "G3",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue}}}
-			Expect(mr.Put(&mf)).To(Succeed())
+			Expect(mr.Put(ctx, &mf)).To(Succeed())
 			mf.Tags = model.Tags{}
-			Expect(mr.Put(&mf)).To(Succeed())
+			Expect(mr.Put(ctx, &mf)).To(Succeed())
 			Expect(tagIDsFor("media_file_tags", "media_file_id", "mf-g3")).To(BeEmpty())
 		})
 	})
@@ -93,7 +93,7 @@ var _ = Describe("item genre tag indexes", func() {
 		It("filters media files by genre_id", func() {
 			mf := model.MediaFile{ID: "mf-nat1", LibraryID: 1, Path: "/m/nat1.mp3", Title: "Nat1",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue}}}
-			Expect(mr.Put(&mf)).To(Succeed())
+			Expect(mr.Put(ctx, &mf)).To(Succeed())
 			res, err := mr.ReadAll(ctx, rest.QueryOptions{Filters: map[string]any{"genre_id": rock.ID}})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(ContainElement(HaveField("ID", "mf-nat1")))

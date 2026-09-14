@@ -210,7 +210,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
 
 	// Load children mediafiles from DB
-	cursor, err := p.ds.MediaFile(p.ctx).GetCursor(model.QueryOptions{
+	cursor, err := p.ds.MediaFile().GetCursor(p.ctx, model.QueryOptions{
 		Filters: squirrel.And{squirrel.Eq{"folder_id": entry.id}},
 	})
 	if err != nil {
@@ -341,7 +341,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		artistRepo := tx.Artist()
 		libraryRepo := tx.Library()
 		albumRepo := tx.Album()
-		mfRepo := tx.MediaFile(p.ctx)
+		mfRepo := tx.MediaFile()
 
 		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
 		if !entry.isNew() {
@@ -399,7 +399,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all tracks to DB
 		for i := range entry.tracks {
-			err = mfRepo.Put(&entry.tracks[i])
+			err = mfRepo.Put(p.ctx, &entry.tracks[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
 				return err
@@ -416,7 +416,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Mark all missing tracks as not available
 		if len(entry.missingTracks) > 0 {
-			err = mfRepo.MarkMissing(true, entry.missingTracks...)
+			err = mfRepo.MarkMissing(p.ctx, true, entry.missingTracks...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
 				return err
@@ -511,7 +511,7 @@ func (p *phaseFolders) finalize(err error) error {
 				log.Error(p.ctx, "Scanner: Error marking missing folders", "lib", job.lib.Name, err)
 				return err
 			}
-			err = tx.MediaFile(p.ctx).MarkMissingByFolder(true, folderIDs...)
+			err = tx.MediaFile().MarkMissingByFolder(p.ctx, true, folderIDs...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking tracks in missing folders", "lib", job.lib.Name, err)
 				return err

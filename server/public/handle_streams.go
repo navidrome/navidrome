@@ -42,7 +42,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
+	mf, err := pub.ds.MediaFile().Get(ctx, info.id)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)

@@ -25,7 +25,7 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 		Expect(albums).ToNot(BeEmpty())
 		albumID = albums[0].ID
 
-		songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"title": "Come Together"},
 		})
 		Expect(err).ToNot(HaveOccurred())

@@ -236,7 +236,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getSong", func() {
 		It("returns a song by its ID", func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Come Together"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -260,7 +260,7 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns correct metadata for a jazz track", func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "So What"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -434,7 +434,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getSimilarSongs", func() {
 		It("returns a response for a valid song ID", func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Come Together"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -451,7 +451,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getSimilarSongs2", func() {
 		It("returns a response for a valid song ID", func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Come Together"},
 			})
 			Expect(err).ToNot(HaveOccurred())

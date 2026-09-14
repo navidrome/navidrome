@@ -135,7 +135,7 @@ func (r *playQueueRepository) loadTracks(ctx context.Context, tracks model.Media
 		return nil
 	}
 
-	mfRepo := NewMediaFileRepository(ctx, r.db)
+	mfRepo := NewMediaFileRepository(r.db)
 	trackMap := map[string]model.MediaFile{}
 
 	// Create an iterator to collect all track IDs
@@ -144,7 +144,7 @@ func (r *playQueueRepository) loadTracks(ctx context.Context, tracks model.Media
 	// Break the list in chunks, up to 500 items, to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
 	for chunk := range slice.CollectChunks(ids, 500) {
 		idsFilter := Eq{"media_file.id": chunk}
-		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
+		tracks, err := mfRepo.GetAll(ctx, model.QueryOptions{Filters: idsFilter})
 		if err != nil {
 			u := loggedUser(ctx)
 			log.Error(ctx, "Could not load playqueue/bookmark's tracks", "user", u.UserName, err)

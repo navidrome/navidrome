@@ -122,7 +122,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Check Rock library media files
-				rockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				rockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 					Sort:    "title",
 				})
@@ -138,7 +138,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				}
 
 				// Check Jazz library media files
-				jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 					Sort:    "title",
 				})
@@ -297,13 +297,13 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzLib.TotalAlbums).To(Equal(2))
 
 				// Verify that libraries don't interfere with each other
-				rockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				rockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rockFiles).To(HaveLen(4))
 
-				jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -426,13 +426,13 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			// Verify initial state
-			rockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			rockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"library_id": lib1.ID},
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(rockFiles).To(HaveLen(1))
 
-			jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"library_id": lib2.ID},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -442,13 +442,13 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			// Verify counts remain the same
-			rockFiles, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			rockFiles, err = ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"library_id": lib1.ID},
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(rockFiles).To(HaveLen(1))
 
-			jazzFiles, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			jazzFiles, err = ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"library_id": lib2.ID},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -485,7 +485,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			// Check that only the rock library file is marked as missing
-			missingRockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			missingRockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.And{
 					squirrel.Eq{"library_id": lib1.ID},
 					squirrel.Eq{"missing": true},
@@ -496,7 +496,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(missingRockFiles[0].Title).To(Equal("Shoot to Thrill"))
 
 			// Check that jazz library files are not affected
-			missingJazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			missingJazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.And{
 					squirrel.Eq{"library_id": lib2.ID},
 					squirrel.Eq{"missing": true},
@@ -506,7 +506,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(missingJazzFiles).To(HaveLen(0))
 
 			// Verify non-missing files
-			presentRockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			presentRockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.And{
 					squirrel.Eq{"library_id": lib1.ID},
 					squirrel.Eq{"missing": false},
@@ -548,7 +548,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(warnings).ToNot(BeEmpty(), "Should have warnings for filesystem errors")
 
 				// Jazz library should have been scanned successfully
-				jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -557,7 +557,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzFiles[1].Title).To(BeElementOf("So What", "Freddie Freeloader"))
 
 				// Rock library may have partial content (depending on scanner implementation)
-				rockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				rockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -586,7 +586,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(warnings).ToNot(BeEmpty(), "Should have warnings for multiple filesystem errors")
 
 				// Jazz library should be completely unaffected
-				jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -623,7 +623,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			It("should propagate database errors and stop scanning", func() {
 				// Install mock repo that injects DB error
 				mfRepo := &mockMediaFileRepo{
-					MediaFileRepository:        ds.RealDS.MediaFile(ctx),
+					MediaFileRepository:        ds.RealDS.MediaFile(),
 					GetMissingAndMatchingError: errors.New("database connection failed"),
 				}
 				ds.MockedMediaFile = mfRepo
@@ -640,7 +640,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			It("should preserve error information in scanner properties", func() {
 				// Install mock repo that injects DB error
 				mfRepo := &mockMediaFileRepo{
-					MediaFileRepository:        ds.RealDS.MediaFile(ctx),
+					MediaFileRepository:        ds.RealDS.MediaFile(),
 					GetMissingAndMatchingError: errors.New("critical database error"),
 				}
 				ds.MockedMediaFile = mfRepo
@@ -687,7 +687,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(warnings).ToNot(BeEmpty(), "Should have warnings for filesystem error")
 
 				// Jazz library should scan completely successfully
-				jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -701,7 +701,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzLib.TotalAlbums).To(Equal(1))
 
 				// Rock library may have partial content (depending on scanner implementation)
-				rockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				rockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -724,7 +724,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(warnings).ToNot(BeEmpty(), "Should have warnings for file corruption")
 
 				// Verify that the working parts completed successfully
-				jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -780,14 +780,14 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(warnings).To(BeEmpty(), "Should have no warnings after error recovery")
 
 				// Verify both libraries now have content (at least jazz should work)
-				rockFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				rockFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				// The scanner should recover and import both rock files
 				Expect(len(rockFiles)).To(Equal(2))
 
-				jazzFiles, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				jazzFiles, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())

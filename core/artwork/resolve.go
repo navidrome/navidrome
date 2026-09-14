@@ -439,7 +439,7 @@ func (r *resolver) resolveRadio(ctx context.Context, radioID string) (resolution
 // resolveMediaFile resolves a track's own embedded art only, so disabled or missing cover art
 // is a definitive absent.
 func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution, error) {
-	mf, err := r.ds.MediaFile(ctx).Get(id)
+	mf, err := r.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return resolution{}, err
 	}

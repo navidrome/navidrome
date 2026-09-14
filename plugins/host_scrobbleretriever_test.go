@@ -88,11 +88,11 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 			IsAdmin:  true,
 		})
 
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "1", LibraryID: 1})
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "1", LibraryID: 1})
 		Expect(err).To(BeNil())
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "2", LibraryID: 1})
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "2", LibraryID: 1})
 		Expect(err).To(BeNil())
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "3", LibraryID: 1})
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "3", LibraryID: 1})
 		Expect(err).To(BeNil())
 
 		scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})

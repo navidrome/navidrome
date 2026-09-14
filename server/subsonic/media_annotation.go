@@ -57,7 +57,7 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 		repo = api.ds.Playlist(ctx)
 		resource = "playlist"
 	default:
-		repo = api.ds.MediaFile(ctx)
+		repo = api.ds.MediaFile()
 		resource = "song"
 	}
 	err = repo.SetRating(ctx, rating, id)
@@ -138,7 +138,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 				repo = tx.Playlist(ctx)
 				resource = "playlist"
 			default:
-				repo = tx.MediaFile(ctx)
+				repo = tx.MediaFile()
 				resource = "song"
 			}
 			if err := repo.SetStar(ctx, star, id); err != nil {
@@ -207,7 +207,7 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 }
 
 func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int) error {
-	mf, err := api.ds.MediaFile(ctx).Get(trackId)
+	mf, err := api.ds.MediaFile().Get(ctx, trackId)
 	if err != nil {
 		return err
 	}

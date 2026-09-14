@@ -96,8 +96,8 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(ownerCtx, r.db)
-		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("media_file", ids, model.RoleAlbumArtist)), Sort: "artist"})
+		mfRepo := NewMediaFileRepository(r.db)
+		share.Tracks, err = mfRepo.GetAll(ownerCtx, model.QueryOptions{Filters: noMissing(ParticipantIDFilter("media_file", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		return err
 	case "album":
 		albumRepo := NewAlbumRepository(r.db)
@@ -105,8 +105,8 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 		if err != nil {
 			return err
 		}
-		mfRepo := NewMediaFileRepository(ownerCtx, r.db)
-		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album_id": ids}), Sort: "album"})
+		mfRepo := NewMediaFileRepository(r.db)
+		share.Tracks, err = mfRepo.GetAll(ownerCtx, model.QueryOptions{Filters: noMissing(Eq{"album_id": ids}), Sort: "album"})
 		return err
 	case "playlist":
 		plsRepo := NewPlaylistRepository(ownerCtx, r.db)
@@ -124,8 +124,8 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 		share.Tracks = tracks.MediaFiles()
 		return nil
 	case "media_file":
-		mfRepo := NewMediaFileRepository(ownerCtx, r.db)
-		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"media_file.id": ids})})
+		mfRepo := NewMediaFileRepository(r.db)
+		tracks, err := mfRepo.GetAll(ownerCtx, model.QueryOptions{Filters: noMissing(Eq{"media_file.id": ids})})
 		share.Tracks = sortByIdPosition(tracks, ids)
 		return err
 	}

@@ -145,9 +145,9 @@ var _ = Describe("ShareRepository", func() {
 			lr := NewLibraryRepository(GetDBXBuilder())
 			otherLib = model.Library{ID: 0, Name: "Share Other Library", Path: "/share/other/lib"}
 			Expect(lr.Put(adminCtx, &otherLib)).To(Succeed())
-			mr := NewMediaFileRepository(adminCtx, GetDBXBuilder())
-			Expect(mr.Put(&model.MediaFile{ID: "share-other", LibraryID: otherLib.ID, Path: "s/other.mp3", Title: "ShareOther"})).To(Succeed())
-			Expect(mr.Put(&model.MediaFile{ID: "share-ok", LibraryID: 1, Path: "s/ok.mp3", Title: "ShareOK"})).To(Succeed())
+			mr := NewMediaFileRepository(GetDBXBuilder())
+			Expect(mr.Put(adminCtx, &model.MediaFile{ID: "share-other", LibraryID: otherLib.ID, Path: "s/other.mp3", Title: "ShareOther"})).To(Succeed())
+			Expect(mr.Put(adminCtx, &model.MediaFile{ID: "share-ok", LibraryID: 1, Path: "s/ok.mp3", Title: "ShareOK"})).To(Succeed())
 
 			// Non-admin owner with access to library 1 only
 			owner = createUserWithLibraries("share-owner", []int{1})
@@ -180,8 +180,8 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = b.NewQuery(`DELETE FROM share WHERE id = 'share-scope'`).Execute()
 			pr := NewPlaylistRepository(adminCtx, b)
 			_ = pr.Delete(adminCtx, plsID)
-			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
-			_, _ = mr.executeSQL(mr.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
+			mr := NewMediaFileRepository(b).(*mediaFileRepository)
+			_, _ = mr.executeSQL(adminCtx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
 			lr := NewLibraryRepository(b).(*libraryRepository)
 			_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
 			_ = NewUserRepository(b).Delete(adminCtx, owner.ID)
@@ -258,9 +258,9 @@ var _ = Describe("ShareRepository", func() {
 			Expect(alr.Put(ctx, &model.Album{ID: "art-album-ok", LibraryID: 1, Name: "Art Album OK", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
 			Expect(alr.Put(ctx, &model.Album{ID: "art-album-other", LibraryID: otherLib.ID, Name: "Art Album Other", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
 
-			mr := NewMediaFileRepository(adminCtx, b)
-			Expect(mr.Put(&model.MediaFile{ID: "art-ok", LibraryID: 1, AlbumID: "art-album-ok", Path: "a/ok.mp3", Title: "ArtOK", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
-			Expect(mr.Put(&model.MediaFile{ID: "art-other", LibraryID: otherLib.ID, AlbumID: "art-album-other", Path: "a/other.mp3", Title: "ArtOther", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
+			mr := NewMediaFileRepository(b)
+			Expect(mr.Put(adminCtx, &model.MediaFile{ID: "art-ok", LibraryID: 1, AlbumID: "art-album-ok", Path: "a/ok.mp3", Title: "ArtOK", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
+			Expect(mr.Put(adminCtx, &model.MediaFile{ID: "art-other", LibraryID: otherLib.ID, AlbumID: "art-album-other", Path: "a/other.mp3", Title: "ArtOther", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
 
 			// Non-admin owner with access to library 1 only
 			owner = createUserWithLibraries("artist-share-owner", []int{1})
@@ -288,8 +288,8 @@ var _ = Describe("ShareRepository", func() {
 			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 			b := GetDBXBuilder()
 			_, _ = b.NewQuery(`DELETE FROM share WHERE id IN ('art-share', 'art-album-share', 'art-mf-share')`).Execute()
-			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
-			_, _ = mr.executeSQL(mr.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"art-ok", "art-other"}}))
+			mr := NewMediaFileRepository(b).(*mediaFileRepository)
+			_, _ = mr.executeSQL(adminCtx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"art-ok", "art-other"}}))
 			alr := NewAlbumRepository(b).(*albumRepository)
 			_, _ = alr.executeSQL(adminCtx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"art-album-ok", "art-album-other"}}))
 			ar := NewArtistRepository(b).(*artistRepository)

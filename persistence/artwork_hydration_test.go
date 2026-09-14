@@ -232,13 +232,13 @@ var _ = Describe("Artwork hydration", func() {
 		}
 
 		getByID := func() map[string]model.MediaFile {
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			return slice.ToMap(all, func(mf model.MediaFile) (string, model.MediaFile) { return mf.ID, mf })
 		}
 
 		BeforeEach(func() {
-			repo = NewMediaFileRepository(ctx, GetDBXBuilder())
+			repo = NewMediaFileRepository(GetDBXBuilder())
 			DeferCleanup(configtest.SetupConfig())
 			conf.Server.EnableMediaFileCoverArt = true
 		})
@@ -595,7 +595,7 @@ var _ = Describe("Artwork hydration", func() {
 		var onlySongs squirrel.Eq
 
 		BeforeEach(func() {
-			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+			mfRepo = NewMediaFileRepository(GetDBXBuilder())
 			putInfo("al", albumSgtPeppers.ID, "curhash11111111")
 			// Distinct titles only: other fixture songs share titles (e.g. "Antenna" x3), which
 			// would make the positional comparisons against GetAll pass by tie-order coincidence.
@@ -605,11 +605,11 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates artwork onto every streamed track, unlike GetCursor", func() {
 			opts := model.QueryOptions{Sort: "title", Filters: onlySongs}
-			want, err := mfRepo.GetAll(opts)
+			want, err := mfRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
 
-			cursor, err := mfRepo.GetCursorWithArtwork(opts)
+			cursor, err := mfRepo.GetCursorWithArtwork(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			var got model.MediaFiles
 			cursor(func(mf model.MediaFile, err error) bool {
@@ -631,7 +631,7 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("leaves the scanner's GetCursor unhydrated", func() {
-			cursor, err := mfRepo.GetCursor(model.QueryOptions{Sort: "title"})
+			cursor, err := mfRepo.GetCursor(ctx, model.QueryOptions{Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			var seen int
 			cursor(func(mf model.MediaFile, err error) bool {
@@ -645,11 +645,11 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("streams the same ids in the same order as GetAll", func() {
 			opts := model.QueryOptions{Sort: "title", Filters: onlySongs}
-			want, err := mfRepo.GetAll(opts)
+			want, err := mfRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
 
-			got := collectCursor(mfRepo.GetCursorWithArtwork(opts))
+			got := collectCursor(mfRepo.GetCursorWithArtwork(ctx, opts))
 
 			Expect(slice.Map(got, func(mf model.MediaFile) string { return mf.ID })).
 				To(Equal(slice.Map(want, func(mf model.MediaFile) string { return mf.ID })))
@@ -657,11 +657,11 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("honors Max and Offset exactly once", func() {
 			opts := model.QueryOptions{Sort: "title", Filters: onlySongs, Max: 2, Offset: 1}
-			want, err := mfRepo.GetAll(opts)
+			want, err := mfRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).To(HaveLen(2))
 
-			got := collectCursor(mfRepo.GetCursorWithArtwork(opts))
+			got := collectCursor(mfRepo.GetCursorWithArtwork(ctx, opts))
 
 			Expect(slice.Map(got, func(mf model.MediaFile) string { return mf.ID })).
 				To(Equal(slice.Map(want, func(mf model.MediaFile) string { return mf.ID })))

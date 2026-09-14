@@ -79,7 +79,7 @@ func (api *Router) searchAll(ctx context.Context, sp *searchParams, musicFolderI
 
 	// Run searches in parallel
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(callSearch(ctx, api.ds.MediaFile(ctx).Search, q, songOpts, &mediaFiles))
+	g.Go(callSearch(ctx, api.ds.MediaFile().Search, q, songOpts, &mediaFiles))
 	g.Go(callSearch(ctx, api.ds.Album().Search, q, albumOpts, &albums))
 	g.Go(callSearch(ctx, api.ds.Artist().Search, q, artistOpts, &artists))
 	err := g.Wait()

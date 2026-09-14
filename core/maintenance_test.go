@@ -262,12 +262,12 @@ var _ = Describe("Maintenance", func() {
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			got, err := mfRepo.Get("m1")
+			got, err := mfRepo.Get(ctx, "m1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Path).To(Equal("new/song.mp3")) // moved to target's location
 			Expect(got.Missing).To(BeFalse())
 			Expect(got.CreatedAt).To(BeTemporally("==", created)) // created_at preserved
-			exists, _ := mfRepo.Exists("t1")
+			exists, _ := mfRepo.Exists(ctx, "t1")
 			Expect(exists).To(BeFalse()) // discarded row removed
 			Expect(ds.GCCalled).To(BeTrue())
 		})
@@ -407,7 +407,7 @@ var _ = Describe("Maintenance", func() {
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
 			// The surviving row is the missing file's ID, holding the target's data
-			got, err := mfRepo.GetWithParticipants("m1")
+			got, err := mfRepo.GetWithParticipants(ctx, "m1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Participants).To(HaveKeyWithValue(model.RoleArtist, model.ParticipantList{participant}))
 		})
@@ -447,7 +447,7 @@ type extendedMediaFileRepo struct {
 	deleteMissingError  error
 }
 
-func (m *extendedMediaFileRepo) DeleteMissing(ids []string) error {
+func (m *extendedMediaFileRepo) DeleteMissing(ctx context.Context, ids []string) error {
 	m.deleteMissingCalled = true
 	m.deletedIDs = ids
 	if m.deleteMissingError != nil {

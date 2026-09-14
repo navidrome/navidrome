@@ -34,7 +34,7 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 		return api.ds.Artist(), "artist"
 	case *model.MediaFile:
 		if u.HasLibraryAccess(e.LibraryID) {
-			return api.ds.MediaFile(ctx), "song"
+			return api.ds.MediaFile(), "song"
 		}
 	case *model.Playlist:
 		return api.ds.Playlist(ctx), "playlist"

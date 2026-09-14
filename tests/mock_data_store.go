@@ -103,11 +103,11 @@ func (db *MockDataStore) Artist() model.ArtistRepository {
 	return db.MockedArtist
 }
 
-func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+func (db *MockDataStore) MediaFile() model.MediaFileRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.RealDS != nil && db.MockedMediaFile == nil {
-		return db.RealDS.MediaFile(ctx)
+		return db.RealDS.MediaFile()
 	}
 	if db.MockedMediaFile == nil {
 		db.MockedMediaFile = CreateMockMediaFileRepo()

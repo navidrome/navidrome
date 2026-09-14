@@ -249,7 +249,7 @@ func albumID(name string) string {
 }
 
 func songID(title string) string {
-	mfs, err := ds.MediaFile(ctx).GetAll()
+	mfs, err := ds.MediaFile().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, mf := range mfs {
 		if mf.Title == title {
@@ -391,7 +391,7 @@ func (f *fakeSonicProvider) FindSonicPath(context.Context, *model.MediaFile, *mo
 // songAgent looks a seeded track up by title (titles are unique in the seed) and builds an
 // agents.Song carrying its title+artist, so the matcher resolves it back to that MediaFile.
 func songAgent(title string) agents.Song {
-	mfs, err := ds.MediaFile(ctx).GetAll()
+	mfs, err := ds.MediaFile().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, mf := range mfs {
 		if mf.Title == title {

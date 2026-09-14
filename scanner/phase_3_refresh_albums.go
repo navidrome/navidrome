@@ -76,7 +76,7 @@ func (p *phaseRefreshAlbums) stages() []ppl.Stage[*model.Album] {
 }
 
 func (p *phaseRefreshAlbums) filterUnmodified(album *model.Album) (*model.Album, error) {
-	mfs, err := p.ds.MediaFile(p.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album_id": album.ID}})
+	mfs, err := p.ds.MediaFile().GetAll(p.ctx, model.QueryOptions{Filters: squirrel.Eq{"album_id": album.ID}})
 	if err != nil {
 		log.Error(p.ctx, "Error loading media files for album", "album_id", album.ID, err)
 		return nil, err

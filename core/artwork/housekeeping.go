@@ -132,7 +132,7 @@ func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id strin
 		}
 		return rd.Name, nil
 	case model.KindMediaFileArtwork:
-		mf, err := ds.MediaFile(ctx).Get(id)
+		mf, err := ds.MediaFile().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}

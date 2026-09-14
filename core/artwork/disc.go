@@ -61,7 +61,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	}
 
 	// Query mediafiles for this album + disc to find folder associations and first track
-	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Sort:    "track_number",
 		Order:   "ASC",
 		Filters: squirrel.Eq{"album_id": albumID, "disc_number": discNumber},

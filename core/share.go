@@ -181,7 +181,7 @@ func (r *shareRepositoryWrapper) contentsLabelFromPlaylist(ctx context.Context, 
 
 func (r *shareRepositoryWrapper) contentsLabelFromMediaFiles(ctx context.Context, shareID string, ids string) string {
 	idList := strings.Split(ids, ",")
-	mfs, err := r.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
+	mfs, err := r.ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.And{
 		squirrel.Eq{"media_file.id": idList},
 		squirrel.Eq{"missing": false},
 	}})

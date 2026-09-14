@@ -122,7 +122,7 @@ var _ = Describe("getInstantMix", func() {
 		DeferCleanup(func() { similarWait = old })
 
 		ds := &tests.MockDataStore{}
-		ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: testID("s1"), Title: "Seed Song", LibraryID: 1},
 		})
 		release := make(chan struct{})
@@ -150,7 +150,7 @@ var _ = Describe("getInstantMix", func() {
 			songs = append(songs, model.MediaFile{ID: testID(fmt.Sprintf("t%d", i)), Title: fmt.Sprintf("Track %d", i), LibraryID: 1})
 		}
 		ds := &tests.MockDataStore{}
-		ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(songs)
+		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(songs)
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{songs: songs[1:]}}
 
 		w := httptest.NewRecorder()

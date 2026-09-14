@@ -45,7 +45,7 @@ var _ = Describe("Archiver", func() {
 				Sort:    "album",
 			}}).Return(mfs, nil)
 
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+			ds.On("MediaFile").Return(mfRepo)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(3)
 
 			out := new(bytes.Buffer)
@@ -77,7 +77,7 @@ var _ = Describe("Archiver", func() {
 				Sort: "album",
 			}}).Return(mfs, nil)
 
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+			ds.On("MediaFile").Return(mfRepo)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
@@ -105,7 +105,7 @@ var _ = Describe("Archiver", func() {
 				Filters: squirrel.Eq{"album_id": "1"},
 				Sort:    "album",
 			}}).Return(mfs, nil)
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+			ds.On("MediaFile").Return(mfRepo)
 
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).
 				Return(nil, stream.ErrTooManyTranscodes).Once()
@@ -203,8 +203,8 @@ type mockDataStore struct {
 	model.DataStore
 }
 
-func (m *mockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	args := m.Called(ctx)
+func (m *mockDataStore) MediaFile() model.MediaFileRepository {
+	args := m.Called()
 	return args.Get(0).(model.MediaFileRepository)
 }
 
@@ -231,7 +231,7 @@ type mockMediaFileRepository struct {
 	model.MediaFileRepository
 }
 
-func (m *mockMediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *mockMediaFileRepository) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
 	args := m.Called(options)
 	return args.Get(0).(model.MediaFiles), args.Error(1)
 }

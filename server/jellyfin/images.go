@@ -86,7 +86,7 @@ func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
 	if ar, err := api.ds.Artist().Get(ctx, itemId); err == nil {
 		return ar.CoverArtID().String()
 	}
-	if mf, err := api.ds.MediaFile(ctx).Get(itemId); err == nil {
+	if mf, err := api.ds.MediaFile().Get(ctx, itemId); err == nil {
 		return mf.CoverArtID().String()
 	}
 	if pl, err := api.ds.Playlist(ctx).Get(itemId); err == nil {

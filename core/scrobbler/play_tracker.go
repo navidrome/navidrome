@@ -292,7 +292,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
 			return nil
 		}
-		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+		mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 		if err != nil {
 			return err
 		}
@@ -327,7 +327,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
 		if getErr != nil || info.MediaFile.ID != params.MediaId {
-			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+			mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 			if err != nil {
 				return err
 			}
@@ -363,7 +363,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		var loadedMF *model.MediaFile
 		haveVerdict := false
 		if !params.IgnoreScrobble && player.ScrobbleEnabled {
-			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+			mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 			if err != nil {
 				return err
 			}
@@ -408,7 +408,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			mf := loadedMF
 			if mf == nil {
 				var mfErr error
-				mf, mfErr = p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+				mf, mfErr = p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 				if mfErr != nil {
 					return mfErr
 				}
@@ -470,7 +470,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	success := 0
 
 	for _, s := range submissions {
-		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(s.TrackID)
+		mf, err := p.ds.MediaFile().GetWithParticipants(ctx, s.TrackID)
 		if err != nil {
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue
@@ -497,7 +497,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 
 func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, timestamp time.Time) error {
 	return p.ds.WithTx(func(tx model.DataStore) error {
-		err := tx.MediaFile(ctx).IncPlayCount(ctx, track.ID, timestamp)
+		err := tx.MediaFile().IncPlayCount(ctx, track.ID, timestamp)
 		if err != nil {
 			return err
 		}
@@ -531,7 +531,7 @@ func (p *playTracker) isFilteredOut(ctx context.Context, t *model.MediaFile) boo
 		log.Warn(ctx, "Invalid scrobble filter, ignoring", "user", u.UserName, err)
 		return false
 	}
-	match, err := p.ds.MediaFile(ctx).MatchesCriteria(t.ID, c)
+	match, err := p.ds.MediaFile().MatchesCriteria(ctx, t.ID, c)
 	if err != nil {
 		log.Warn(ctx, "Error evaluating scrobble filter, ignoring", "user", u.UserName, "track", t.Title, err)
 		return false

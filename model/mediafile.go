@@ -2,6 +2,7 @@ package model
 
 import (
 	"cmp"
+	"context"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -540,42 +541,42 @@ type MediaFileCursor iter.Seq2[MediaFile, error]
 
 type MediaFileRepository interface {
 	rest.Repository[MediaFile]
-	CountAll(options ...QueryOptions) (int64, error)
-	CountBySuffix(options ...QueryOptions) (map[string]int64, error)
-	Exists(id string) (bool, error)
-	Put(m *MediaFile) error
-	UpdateProbeData(id string, data string) error
-	Get(id string) (*MediaFile, error)
-	GetWithParticipants(id string) (*MediaFile, error)
-	GetAll(options ...QueryOptions) (MediaFiles, error)
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	CountBySuffix(ctx context.Context, options ...QueryOptions) (map[string]int64, error)
+	Exists(ctx context.Context, id string) (bool, error)
+	Put(ctx context.Context, m *MediaFile) error
+	UpdateProbeData(ctx context.Context, id string, data string) error
+	Get(ctx context.Context, id string) (*MediaFile, error)
+	GetWithParticipants(ctx context.Context, id string) (*MediaFile, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (MediaFiles, error)
 	// GetRandom returns up to options.Max media files in random order, applying the same
 	// filters as GetAll. Sort/Order are ignored.
-	GetRandom(options ...QueryOptions) (MediaFiles, error)
-	GetAllByTags(tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
+	GetRandom(ctx context.Context, options ...QueryOptions) (MediaFiles, error)
+	GetAllByTags(ctx context.Context, tag TagName, values []string, options ...QueryOptions) (MediaFiles, error)
 	// MatchesCriteria reports whether the media file matches the criteria's rule
 	// expression, using the logged user's annotations. Limit and offset are ignored.
-	MatchesCriteria(id string, c criteria.Criteria) (bool, error)
-	GetCursor(options ...QueryOptions) (MediaFileCursor, error)
+	MatchesCriteria(ctx context.Context, id string, c criteria.Criteria) (bool, error)
+	GetCursor(ctx context.Context, options ...QueryOptions) (MediaFileCursor, error)
 	// GetAlbumIDsByFolder returns the distinct IDs of albums with non-missing tracks in the given
 	// folders or their direct children.
-	GetAlbumIDsByFolder(lib Library, folderIDs ...string) ([]string, error)
+	GetAlbumIDsByFolder(ctx context.Context, lib Library, folderIDs ...string) ([]string, error)
 	// GetCursorWithArtwork streams like GetCursor, hydrated, so callers that render images don't
 	// pay the scanner's per-row cost; it uses the same id pre-pass as the other cursors.
-	GetCursorWithArtwork(options ...QueryOptions) (MediaFileCursor, error)
-	Delete(id string) error
-	DeleteMissing(ids []string) error
-	DeleteAllMissing() (int64, error)
-	FindByPaths(paths []string) (MediaFiles, error)
+	GetCursorWithArtwork(ctx context.Context, options ...QueryOptions) (MediaFileCursor, error)
+	Delete(ctx context.Context, id string) error
+	DeleteMissing(ctx context.Context, ids []string) error
+	DeleteAllMissing(ctx context.Context) (int64, error)
+	FindByPaths(ctx context.Context, paths []string) (MediaFiles, error)
 	// ReassignReferences moves annotations, bookmarks and playlist entries from prevID to newID,
 	// keeping newID's own row wherever a user has both.
-	ReassignReferences(prevID, newID string) error
+	ReassignReferences(ctx context.Context, prevID, newID string) error
 
 	// The following methods are used exclusively by the scanner:
-	MarkMissing(bool, ...*MediaFile) error
-	MarkMissingByFolder(missing bool, folderIDs ...string) error
-	GetMissingAndMatching(libId int) (MediaFileCursor, error)
-	FindRecentFilesByMBZTrackID(missing MediaFile, since time.Time) (MediaFiles, error)
-	FindRecentFilesByProperties(missing MediaFile, since time.Time) (MediaFiles, error)
+	MarkMissing(ctx context.Context, missing bool, mfs ...*MediaFile) error
+	MarkMissingByFolder(ctx context.Context, missing bool, folderIDs ...string) error
+	GetMissingAndMatching(ctx context.Context, libId int) (MediaFileCursor, error)
+	FindRecentFilesByMBZTrackID(ctx context.Context, missing MediaFile, since time.Time) (MediaFiles, error)
+	FindRecentFilesByProperties(ctx context.Context, missing MediaFile, since time.Time) (MediaFiles, error)
 
 	AnnotatedRepository
 	BookmarkableRepository

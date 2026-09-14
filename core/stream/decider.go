@@ -446,7 +446,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	}
 	mf.ProbeData = string(data)
 
-	if err := s.ds.MediaFile(ctx).UpdateProbeData(mf.ID, mf.ProbeData); err != nil {
+	if err := s.ds.MediaFile().UpdateProbeData(ctx, mf.ID, mf.ProbeData); err != nil {
 		log.Error(ctx, "Failed to persist probe data", "mediaID", mf.ID, err)
 		// Don't fail the decision — we have the data in memory
 	}

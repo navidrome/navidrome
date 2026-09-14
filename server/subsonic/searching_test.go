@@ -28,7 +28,7 @@ var _ = Describe("Search", func() {
 		// Get references to the mock repositories so we can inspect their Options
 		mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
 		mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
-		mockMediaFileRepo = ds.MediaFile(nil).(*tests.MockMediaFileRepo)
+		mockMediaFileRepo = ds.MediaFile().(*tests.MockMediaFileRepo)
 	})
 
 	Context("musicFolderId parameter", func() {
