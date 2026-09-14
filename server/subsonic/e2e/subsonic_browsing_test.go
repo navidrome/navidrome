@@ -43,7 +43,7 @@ var _ = Describe("Browsing Endpoints", func() {
 			Expect(resp.Indexes.Index).ToNot(BeEmpty())
 		})
 
-		It("includes all artists across indexes", func() {
+		It("includes all top-level folders across indexes", func() {
 			resp := doReq("getIndexes")
 
 			var allArtistNames []string
@@ -52,7 +52,7 @@ var _ = Describe("Browsing Endpoints", func() {
 					allArtistNames = append(allArtistNames, a.Name)
 				}
 			}
-			Expect(allArtistNames).To(ContainElements("The Beatles", "Led Zeppelin", "Miles Davis", "Various"))
+			Expect(allArtistNames).To(ContainElements("CJK", "Jazz", "Lyrics", "Pop", "Rock", "Test"))
 		})
 	})
 
