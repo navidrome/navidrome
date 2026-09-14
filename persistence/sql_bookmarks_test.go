@@ -16,7 +16,7 @@ var _ = Describe("sqlBookmarks", func() {
 
 	BeforeEach(func() {
 		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
-		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
+		mr = NewMediaFileRepository(GetDBXBuilder())
 	})
 
 	Describe("Bookmarks", func() {

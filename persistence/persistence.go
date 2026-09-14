@@ -33,6 +33,7 @@ type SQLStore struct {
 	user        model.UserRepository
 	artist      model.ArtistRepository
 	album       model.AlbumRepository
+	mediaFile   model.MediaFileRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -56,6 +57,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.user = NewUserRepository(db)
 	s.artist = NewArtistRepository(db)
 	s.album = NewAlbumRepository(db)
+	s.mediaFile = NewMediaFileRepository(db)
 	return s
 }
 
@@ -71,8 +73,8 @@ func (s *SQLStore) Artist() model.ArtistRepository {
 	return s.artist
 }
 
-func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	return NewMediaFileRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) MediaFile() model.MediaFileRepository {
+	return s.mediaFile
 }
 
 func (s *SQLStore) Library() model.LibraryRepository {
@@ -209,9 +211,9 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "purge empty folders", func() error { return s.folder.(*folderRepository).purgeEmpty(ctx, libraryIDs...) }),
 		trace(ctx, "clean album annotations", func() error { return s.album.(*albumRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean artist annotations", func() error { return s.artist.(*artistRepository).cleanAnnotations(ctx) }),
-		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean media file annotations", func() error { return s.mediaFile.(*mediaFileRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean playlist annotations", func() error { return s.Playlist(ctx).(*playlistRepository).cleanAnnotations(ctx) }),
-		trace(ctx, "clean media file bookmarks", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks(ctx) }),
+		trace(ctx, "clean media file bookmarks", func() error { return s.mediaFile.(*mediaFileRepository).cleanBookmarks(ctx) }),
 		trace(ctx, "purge non used tags", func() error { return s.tag.(*tagRepository).purgeUnused(ctx) }),
 		trace(ctx, "remove orphan playlist tracks", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
 	)

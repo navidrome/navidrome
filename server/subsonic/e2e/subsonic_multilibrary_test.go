@@ -181,7 +181,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 		BeforeAll(func() {
 			// Look up one song from each library
-			lib1Songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			lib1Songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"media_file.library_id": lib.ID},
 				Max:     1, Sort: "title",
 			})
@@ -189,7 +189,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			Expect(lib1Songs).ToNot(BeEmpty())
 			lib1SongID = lib1Songs[0].ID
 
-			lib2Songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			lib2Songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"media_file.library_id": lib2.ID},
 				Max:     1, Sort: "title",
 			})

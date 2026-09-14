@@ -58,7 +58,7 @@ var _ = Describe("Artwork", func() {
 		case "al":
 			Expect(albumRepo.Put(ctx, &model.Album{ID: id, Name: "Album"})).To(Succeed())
 		case "mf":
-			Expect(mfRepo.Put(&model.MediaFile{ID: id})).To(Succeed())
+			Expect(mfRepo.Put(ctx, &model.MediaFile{ID: id})).To(Succeed())
 		}
 	}
 

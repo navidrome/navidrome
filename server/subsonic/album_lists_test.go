@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -21,7 +20,6 @@ var _ = Describe("Album Lists", func() {
 	var ds model.DataStore
 	var mockRepo *tests.MockAlbumRepo
 	var w *httptest.ResponseRecorder
-	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
@@ -236,7 +234,7 @@ var _ = Describe("Album Lists", func() {
 		var mockMediaFileRepo *tests.MockMediaFileRepo
 
 		BeforeEach(func() {
-			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+			mockMediaFileRepo = ds.MediaFile().(*tests.MockMediaFileRepo)
 		})
 
 		It("should return random songs", func() {
@@ -328,7 +326,7 @@ var _ = Describe("Album Lists", func() {
 		var mockMediaFileRepo *tests.MockMediaFileRepo
 
 		BeforeEach(func() {
-			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+			mockMediaFileRepo = ds.MediaFile().(*tests.MockMediaFileRepo)
 		})
 
 		It("should return songs by genre", func() {
@@ -424,7 +422,7 @@ var _ = Describe("Album Lists", func() {
 		BeforeEach(func() {
 			mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
 			mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
-			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+			mockMediaFileRepo = ds.MediaFile().(*tests.MockMediaFileRepo)
 		})
 
 		It("should return starred items", func() {
@@ -486,7 +484,7 @@ var _ = Describe("Album Lists", func() {
 		BeforeEach(func() {
 			mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
 			mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
-			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+			mockMediaFileRepo = ds.MediaFile().(*tests.MockMediaFileRepo)
 		})
 
 		It("should return starred items in ID3 format", func() {

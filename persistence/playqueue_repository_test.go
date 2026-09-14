@@ -263,16 +263,16 @@ var _ = Describe("PlayQueueRepository", func() {
 			newSong := songRadioactivity
 			newSong.ID = "temp-track"
 			newSong.Path = "/new-path"
-			mfRepo := NewMediaFileRepository(ctx, GetDBXBuilder())
+			mfRepo := NewMediaFileRepository(GetDBXBuilder())
 
-			Expect(mfRepo.Put(&newSong)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &newSong)).To(Succeed())
 
 			// Create a playqueue with the new song
 			pq := aPlayQueue("userid", 0, 0, newSong, songAntenna)
 			Expect(repo.Store(ctx, pq)).To(Succeed())
 
 			// Delete the new song from the database
-			Expect(mfRepo.Delete("temp-track")).To(Succeed())
+			Expect(mfRepo.Delete(ctx, "temp-track")).To(Succeed())
 
 			// Retrieve the playqueue with Retrieve method
 			actual, err := repo.Retrieve(ctx, "userid")
@@ -316,9 +316,9 @@ var _ = Describe("PlayQueueRepository", func() {
 			newSong := songRadioactivity
 			newSong.ID = "temp-track"
 			newSong.Path = "/new-path"
-			mfRepo := NewMediaFileRepository(ctx, GetDBXBuilder())
+			mfRepo := NewMediaFileRepository(GetDBXBuilder())
 
-			Expect(mfRepo.Put(&newSong)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &newSong)).To(Succeed())
 
 			// Create a playqueue with the new song
 			pq := aPlayQueue("userid", 0, 0, newSong, songAntenna)
@@ -332,7 +332,7 @@ var _ = Describe("PlayQueueRepository", func() {
 			AssertPlayQueue(pq, actual)
 
 			// Delete the new song
-			Expect(mfRepo.Delete("temp-track")).To(Succeed())
+			Expect(mfRepo.Delete(ctx, "temp-track")).To(Succeed())
 
 			// Retrieve the playqueue
 			actual, err = repo.RetrieveWithMediaFiles(ctx, "userid")

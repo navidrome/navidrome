@@ -15,7 +15,7 @@ import (
 func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
-	repo := api.ds.MediaFile(r.Context())
+	repo := api.ds.MediaFile()
 	bookmarks, err := repo.GetBookmarks(r.Context())
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (api *Router) CreateBookmark(r *http.Request) (*responses.Subsonic, error) 
 	comment, _ := p.String("comment")
 	position := p.Int64Or("position", 0)
 
-	repo := api.ds.MediaFile(r.Context())
+	repo := api.ds.MediaFile()
 	err = repo.AddBookmark(r.Context(), id, comment, position)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (api *Router) DeleteBookmark(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	repo := api.ds.MediaFile(r.Context())
+	repo := api.ds.MediaFile()
 	err = repo.DeleteBookmark(r.Context(), id)
 	if err != nil {
 		return nil, err

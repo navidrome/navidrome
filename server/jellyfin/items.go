@@ -695,7 +695,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 
 func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
 	toItem := func(mf model.MediaFile) dto.BaseItemDto { return dto.SongToBaseItem(mf, q.fields) }
-	repo := api.ds.MediaFile(ctx)
+	repo := api.ds.MediaFile()
 	filters := squirrel.And{}
 	// For songs, ArtistIds/AlbumArtistIds selects an artist's tracks; ParentId selects an album's.
 	switch {
@@ -741,9 +741,9 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 		opts.Sort = filter.SongsByAlbum(q.entityParent).Sort
 	}
 	// A full-library request (Finamp's sync, with MediaSources) is tens of thousands of fat rows.
-	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	total, _ := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.MediaFile, error) bool), error) {
-		return repo.GetCursorWithArtwork(opts)
+		return repo.GetCursorWithArtwork(ctx, opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
@@ -849,7 +849,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 		// LibraryID to gate here; artist access relies on list-time scoping and persistence.
 		return dto.ArtistToBaseItem(*ar, fields), true
 	}
-	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
+	if mf, err := api.ds.MediaFile().Get(ctx, id); err == nil {
 		if !u.HasLibraryAccess(mf.LibraryID) {
 			return dto.BaseItemDto{}, false
 		}
@@ -870,7 +870,7 @@ func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]mode
 	songs := make(map[string]model.MediaFile, len(ids))
 	// Chunked to stay under SQLITE_MAX_VARIABLE_NUMBER, like playqueue's loadTracks.
 	for chunk := range slice.CollectChunks(slices.Values(ids), 500) {
-		mfs, err := api.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": chunk}})
+		mfs, err := api.ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"media_file.id": chunk}})
 		if err != nil {
 			log.Error(ctx, "Jellyfin API: error fetching songs by id", err)
 			continue

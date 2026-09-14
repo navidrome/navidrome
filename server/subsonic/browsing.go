@@ -201,7 +201,7 @@ func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(id))
+	mfs, err := api.ds.MediaFile().GetAll(ctx, filter.SongsByAlbum(id))
 	if err != nil {
 		log.Error(ctx, "Error retrieving tracks from album", "id", id, "name", album.Name, err)
 		return nil, err
@@ -247,7 +247,7 @@ func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 	id, _ := p.String("id")
 	ctx := r.Context()
 
-	mf, err := api.ds.MediaFile(ctx).Get(id)
+	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested MediaFileID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Song not found")
@@ -463,7 +463,7 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 		dir.Starred = album.StarredAt
 	}
 
-	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(album.ID))
+	mfs, err := api.ds.MediaFile().GetAll(ctx, filter.SongsByAlbum(album.ID))
 	if err != nil {
 		return nil, err
 	}

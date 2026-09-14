@@ -71,7 +71,7 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 	}
 	for _, lib := range p.state.libraries {
 		log.Debug(p.ctx, "Scanner: Checking missing tracks", "libraryId", lib.ID, "libraryName", lib.Name)
-		cursor, err := p.ds.MediaFile(p.ctx).GetMissingAndMatching(lib.ID)
+		cursor, err := p.ds.MediaFile().GetMissingAndMatching(p.ctx, lib.ID)
 		if err != nil {
 			return fmt.Errorf("loading missing tracks for library %s: %w", lib.Name, err)
 		}
@@ -232,7 +232,7 @@ func (p *phaseMissingTracks) processCrossLibraryMoves(in *missingTracks) (*missi
 func (p *phaseMissingTracks) findCrossLibraryMatch(missing model.MediaFile) (model.MediaFile, error) {
 	// First tier: Search by MusicBrainz Track ID if available
 	if missing.MbzReleaseTrackID != "" {
-		matches, err := p.ds.MediaFile(p.ctx).FindRecentFilesByMBZTrackID(missing, missing.CreatedAt)
+		matches, err := p.ds.MediaFile().FindRecentFilesByMBZTrackID(p.ctx, missing, missing.CreatedAt)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error searching for recent files by MBZ Track ID", "mbzTrackID", missing.MbzReleaseTrackID, err)
 		} else {
@@ -251,7 +251,7 @@ func (p *phaseMissingTracks) findCrossLibraryMatch(missing model.MediaFile) (mod
 	}
 
 	// Second tier: Search by intrinsic properties (title, size, suffix, etc.)
-	matches, err := p.ds.MediaFile(p.ctx).FindRecentFilesByProperties(missing, missing.CreatedAt)
+	matches, err := p.ds.MediaFile().FindRecentFilesByProperties(p.ctx, missing, missing.CreatedAt)
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error searching for recent files by properties", "missing", missing.Path, err)
 		return model.MediaFile{}, err
@@ -285,13 +285,13 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 		// Update the target media file with the missing file's ID. This effectively "moves" the track
 		// to the new location while keeping its annotations and references intact.
 		target.ID = missing.ID
-		err := tx.MediaFile(p.ctx).Put(&target)
+		err := tx.MediaFile().Put(p.ctx, &target)
 		if err != nil {
 			return fmt.Errorf("update matched track: %w", err)
 		}
 
 		// Discard the new mediafile row (the one that was moved to)
-		err = tx.MediaFile(p.ctx).Delete(discardedID)
+		err = tx.MediaFile().Delete(p.ctx, discardedID)
 		if err != nil {
 			return fmt.Errorf("delete discarded track: %w", err)
 		}
@@ -355,7 +355,7 @@ func (p *phaseMissingTracks) finalize(err error) error {
 }
 
 func (p *phaseMissingTracks) purgeMissing() error {
-	deletedCount, err := p.ds.MediaFile(p.ctx).DeleteAllMissing()
+	deletedCount, err := p.ds.MediaFile().DeleteAllMissing(p.ctx)
 	if err != nil {
 		return fmt.Errorf("error deleting missing files: %w", err)
 	}

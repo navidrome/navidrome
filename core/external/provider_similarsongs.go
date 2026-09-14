@@ -225,7 +225,7 @@ func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n 
 // sampleTracks returns up to n random present tracks. Seeds can end up in the mix verbatim, so
 // missing files would surface as unplayable entries.
 func (e *provider) sampleTracks(ctx context.Context, filter squirrel.Sqlizer, n int) (model.MediaFiles, error) {
-	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+	return e.ds.MediaFile().GetRandom(ctx, model.QueryOptions{
 		Filters: squirrel.And{filter, squirrel.Eq{"missing": false}},
 		Max:     n,
 	})

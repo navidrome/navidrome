@@ -253,7 +253,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []strin
 }
 
 func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []string {
-	mfs, err := api.ds.MediaFile(ctx).GetAll(opts)
+	mfs, err := api.ds.MediaFile().GetAll(ctx, opts)
 	if err != nil {
 		log.Error(ctx, "Jellyfin: error expanding container to tracks", err)
 		return nil

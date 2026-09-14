@@ -142,7 +142,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 			})
 			scan()
 
-			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
+			mfs, err := rds.MediaFile().GetAll(rctx, model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(2))
 
@@ -180,7 +180,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 			setLayout(layout)
 			scan()
 
-			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
+			mfs, err := rds.MediaFile().GetAll(rctx, model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(4))
 			ids := slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })

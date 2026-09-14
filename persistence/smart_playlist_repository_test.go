@@ -488,7 +488,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		BeforeEach(func() {
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+			mfRepo = NewMediaFileRepository(GetDBXBuilder())
 
 			// Register 'grouping' as a valid tag for smart playlists
 			criteria.AddTagNames([]string{"grouping"})
@@ -509,7 +509,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				LibraryID:    1,
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songWithGrouping)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songWithGrouping)).To(Succeed())
 
 			// Create a song without the grouping tag
 			songWithoutGrouping = model.MediaFile{
@@ -525,7 +525,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				LibraryID:    1,
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songWithoutGrouping)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songWithoutGrouping)).To(Succeed())
 		})
 
 		AfterEach(func() {
@@ -624,7 +624,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			// Create test media files in each library
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			mfRepo = NewMediaFileRepository(ctx, db)
+			mfRepo = NewMediaFileRepository(db)
 
 			// Song in library 1 (accessible by restricted user)
 			songLib1 := model.MediaFile{
@@ -640,7 +640,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				Tags:         model.Tags{},
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songLib1)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songLib1)).To(Succeed())
 
 			// Song in library 2 (NOT accessible by restricted user)
 			songLib2 := model.MediaFile{
@@ -656,7 +656,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				Tags:         model.Tags{},
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songLib2)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songLib2)).To(Succeed())
 		})
 
 		AfterEach(func() {

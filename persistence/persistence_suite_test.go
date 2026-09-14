@@ -236,9 +236,9 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	mr := NewMediaFileRepository(ctx, conn)
+	mr := NewMediaFileRepository(conn)
 	for i := range testSongs {
-		err := mr.Put(&testSongs[i])
+		err := mr.Put(ctx, &testSongs[i])
 		if err != nil {
 			panic(err)
 		}
@@ -305,7 +305,7 @@ var _ = BeforeSuite(func() {
 	if err := mr.SetStar(ctx, true, songComeTogether.ID); err != nil {
 		panic(err)
 	}
-	mf, err := mr.Get(songComeTogether.ID)
+	mf, err := mr.Get(ctx, songComeTogether.ID)
 	if err != nil {
 		panic(err)
 	}

@@ -110,7 +110,7 @@ var _ = Describe("Legacy Integration Search", func() {
 
 		ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
 		conn := GetDBXBuilder()
-		mr = NewMediaFileRepository(ctx, conn)
+		mr = NewMediaFileRepository(conn)
 	})
 
 	It("returns results using legacy LIKE-based search", func() {

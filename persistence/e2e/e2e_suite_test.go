@@ -143,7 +143,7 @@ func buildTestFS() {
 }
 
 func findMediaFileByTitle(title string) string {
-	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"media_file.title": title},
 	})
 	Expect(err).ToNot(HaveOccurred())
@@ -282,14 +282,14 @@ var _ = BeforeSuite(func() {
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
 	comeTogetherID := findMediaFileByTitle("Come Together")
-	Expect(ds.MediaFile(ctx).SetStar(ctx, true, comeTogetherID)).To(Succeed())
-	Expect(ds.MediaFile(ctx).SetStar(ctx, true, findMediaFileByTitle("So What"))).To(Succeed())
-	Expect(ds.MediaFile(ctx).SetRating(ctx, 3, findMediaFileByTitle("Stairway To Heaven"))).To(Succeed())
-	Expect(ds.MediaFile(ctx).SetRating(ctx, 5, findMediaFileByTitle("Bohemian Rhapsody"))).To(Succeed())
+	Expect(ds.MediaFile().SetStar(ctx, true, comeTogetherID)).To(Succeed())
+	Expect(ds.MediaFile().SetStar(ctx, true, findMediaFileByTitle("So What"))).To(Succeed())
+	Expect(ds.MediaFile().SetRating(ctx, 3, findMediaFileByTitle("Stairway To Heaven"))).To(Succeed())
+	Expect(ds.MediaFile().SetRating(ctx, 5, findMediaFileByTitle("Bohemian Rhapsody"))).To(Succeed())
 	for range 10 {
-		Expect(ds.MediaFile(ctx).IncPlayCount(ctx, comeTogetherID, time.Now())).To(Succeed())
+		Expect(ds.MediaFile().IncPlayCount(ctx, comeTogetherID, time.Now())).To(Succeed())
 	}
-	Expect(ds.MediaFile(ctx).IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
+	Expect(ds.MediaFile().IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
 	rows, err := db.Db().Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())

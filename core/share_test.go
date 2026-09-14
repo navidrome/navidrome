@@ -50,7 +50,7 @@ var _ = Describe("Share", func() {
 			})
 
 			It("does not truncate ASCII labels shorter than 30 characters", func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "Example Media File"})
+				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "456", Title: "Example Media File"})
 				entity := &model.Share{Description: "test", ResourceIDs: "456"}
 				_, err := repo.Save(ctx, entity)
 				Expect(err).ToNot(HaveOccurred())
@@ -58,7 +58,7 @@ var _ = Describe("Share", func() {
 			})
 
 			It("truncates ASCII labels longer than 30 characters", func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "789", Title: "Example Media File But The Title Is Really Long For Testing Purposes"})
+				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "789", Title: "Example Media File But The Title Is Really Long For Testing Purposes"})
 				entity := &model.Share{Description: "test", ResourceIDs: "789"}
 				_, err := repo.Save(ctx, entity)
 				Expect(err).ToNot(HaveOccurred())
@@ -66,7 +66,7 @@ var _ = Describe("Share", func() {
 			})
 
 			It("does not truncate CJK labels shorter than 30 runes", func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "青春コンプレックス"})
+				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "456", Title: "青春コンプレックス"})
 				entity := &model.Share{Description: "test", ResourceIDs: "456"}
 				_, err := repo.Save(ctx, entity)
 				Expect(err).ToNot(HaveOccurred())
@@ -74,7 +74,7 @@ var _ = Describe("Share", func() {
 			})
 
 			It("truncates CJK labels longer than 30 runes", func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "789", Title: "私の中の幻想的世界観及びその顕現を想起させたある現実での出来事に関する一考察"})
+				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "789", Title: "私の中の幻想的世界観及びその顕現を想起させたある現実での出来事に関する一考察"})
 				entity := &model.Share{Description: "test", ResourceIDs: "789"}
 				_, err := repo.Save(ctx, entity)
 				Expect(err).ToNot(HaveOccurred())
@@ -88,7 +88,7 @@ var _ = Describe("Share", func() {
 			})
 
 			It("fails when the resource IDs are of mixed types", func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "Example Media File"})
+				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "456", Title: "Example Media File"})
 				entity := &model.Share{Description: "test", ResourceIDs: "123,456"}
 				_, err := repo.Save(ctx, entity)
 				Expect(err).To(HaveOccurred())

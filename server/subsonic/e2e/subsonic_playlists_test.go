@@ -19,7 +19,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 		setupTestDB()
 
 		// Look up song IDs from scanned data for playlist operations
-		songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Sort: "title", Max: 6})
+		songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Sort: "title", Max: 6})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(songs)).To(BeNumerically(">=", 5))
 		for _, s := range songs {
@@ -244,7 +244,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 		BeforeAll(func() {
 			setupTestDB()
 
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Sort: "title", Max: 6})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Sort: "title", Max: 6})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(songs)).To(BeNumerically(">=", 3))
 			for _, s := range songs {
@@ -438,7 +438,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 			setupTestDB()
 
 			// Look up a song ID for mutation tests
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Sort: "title", Max: 1})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Sort: "title", Max: 1})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			songID = songs[0].ID
@@ -525,7 +525,7 @@ var _ = Describe("Playlist Endpoints", Ordered, func() {
 		BeforeAll(func() {
 			setupTestDB()
 
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Sort: "title", Max: 1})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Sort: "title", Max: 1})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			songID = songs[0].ID

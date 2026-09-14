@@ -1267,7 +1267,7 @@ func newMockMediaFileRepo() *mockMediaFileRepo {
 	return &mockMediaFileRepo{}
 }
 
-func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *mockMediaFileRepo) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
@@ -1279,8 +1279,8 @@ func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFi
 	return args.Get(0).(model.MediaFiles), args.Error(1)
 }
 
-func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
-	return m.GetAll(options...)
+func (m *mockMediaFileRepo) GetAllByTags(ctx context.Context, _ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	return m.GetAll(ctx, options...)
 }
 
 func (m *mockMediaFileRepo) SetError(hasError bool) {

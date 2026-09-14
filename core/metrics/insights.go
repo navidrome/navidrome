@@ -245,7 +245,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 	// Library info
 	var err error
-	data.Library.Tracks, err = c.ds.MediaFile(ctx).CountAll()
+	data.Library.Tracks, err = c.ds.MediaFile().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading tracks count", err)
 	}
@@ -279,7 +279,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading active users count", err)
 	}
-	data.Library.FileSuffixes, err = c.ds.MediaFile(ctx).CountBySuffix()
+	data.Library.FileSuffixes, err = c.ds.MediaFile().CountBySuffix(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading file suffixes count", err)
 	}

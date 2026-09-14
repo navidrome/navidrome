@@ -63,7 +63,7 @@ func entityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID
 	case model.KindAlbumArtwork:
 		found, err = ds.Album().Exists(ctx, artID.ID)
 	case model.KindMediaFileArtwork:
-		found, err = ds.MediaFile(ctx).Exists(artID.ID)
+		found, err = ds.MediaFile().Exists(ctx, artID.ID)
 	case model.KindPlaylistArtwork:
 		found, err = ds.Playlist(ctx).Exists(artID.ID)
 	case model.KindRadioArtwork:
@@ -259,7 +259,7 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 	// The setting is not in the config fingerprint, so honor it at serve time: a direct mf- URL
 	// must fall back to disc/album instead of serving stale persisted embedded art.
 	if !conf.Server.EnableMediaFileCoverArt {
-		mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
+		mf, err := s.ds.MediaFile().Get(ctx, artID.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +278,7 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 	}
 	noRow := errors.Is(err, model.ErrNotFound)
 
-	mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
+	mf, err := s.ds.MediaFile().Get(ctx, artID.ID)
 	if err != nil {
 		return nil, err
 	}

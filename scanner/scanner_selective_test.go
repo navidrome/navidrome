@@ -101,7 +101,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			Expect(warnings).To(BeEmpty())
 
 			// Verify all tracks in rock and jazz folders (including subdirectories) were imported
-			allFiles, err := ds.MediaFile(ctx).GetAll()
+			allFiles, err := ds.MediaFile().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Should have 5 tracks (all rock and jazz tracks including subdirectories)
@@ -204,7 +204,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				}
 
 				// Verify all tracks exist
-				allTracks, err := ds.MediaFile(ctx).GetAll()
+				allTracks, err := ds.MediaFile().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(allTracks).To(HaveLen(4))
 
@@ -245,7 +245,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 				// Verify the deleted folder's tracks are marked as missing
 				for _, trackID := range album2TrackIDs {
-					track, err := ds.MediaFile(ctx).Get(trackID)
+					track, err := ds.MediaFile().Get(ctx, trackID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(track.Missing).To(BeTrue(), "Track in deleted folder should be marked as missing")
 				}
@@ -261,7 +261,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(siblingFolder.Missing).To(BeFalse(), "Sibling folder should not be marked as missing")
 
 				for _, trackID := range album1TrackIDs {
-					track, err := ds.MediaFile(ctx).Get(trackID)
+					track, err := ds.MediaFile().Get(ctx, trackID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(track.Missing).To(BeFalse(), "Track in sibling folder should not be marked as missing")
 				}
@@ -311,7 +311,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(len(missingFolders)).To(BeNumerically(">", 0), "At least one folder should be marked as missing")
 
 				// Verify all tracks in deleted folders are marked as missing
-				allTracks, err := ds.MediaFile(ctx).GetAll()
+				allTracks, err := ds.MediaFile().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(allTracks).To(HaveLen(6))
 

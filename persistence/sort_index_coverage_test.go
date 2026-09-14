@@ -52,7 +52,7 @@ var _ = Describe("Sort index coverage", func() {
 		{
 			table: "media_file",
 			newRepo: func(ctx context.Context) *sqlRepository {
-				return &NewMediaFileRepository(ctx, GetDBXBuilder()).(*mediaFileRepository).sqlRepository
+				return &NewMediaFileRepository(GetDBXBuilder()).(*mediaFileRepository).sqlRepository
 			},
 			exceptions: map[string]string{
 				"random":     "not a column sort",
