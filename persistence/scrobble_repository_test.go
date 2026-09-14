@@ -28,7 +28,7 @@ var _ = Describe("ScrobbleRepository", func() {
 			userID = id.NewRandom()
 			ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: userID, UserName: "johndoe", IsAdmin: true})
 			db := GetDBXBuilder()
-			repo = NewScrobbleRepository(ctx, db)
+			repo = NewScrobbleRepository(db)
 
 			rawRepo = sqlRepository{
 				ctx:       ctx,
@@ -65,7 +65,7 @@ var _ = Describe("ScrobbleRepository", func() {
 			}).Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = repo.RecordScrobble(fileID, submissionTime)
+			err = repo.RecordScrobble(ctx, fileID, submissionTime)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify insertion
@@ -87,22 +87,22 @@ var _ = Describe("ScrobbleRepository", func() {
 	Context("admin user (id userid)", func() {
 		BeforeEach(func() {
 			ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
-			repo = NewScrobbleRepository(ctx, GetDBXBuilder())
+			repo = NewScrobbleRepository(GetDBXBuilder())
 		})
 
 		Describe("Count", func() {
 			It("Returns the number of scrobbles in the DB for admin user", func() {
-				Expect(repo.CountAll()).To(Equal(int64(2)))
+				Expect(repo.CountAll(ctx)).To(Equal(int64(2)))
 			})
 
 			It("returns scrobbles in a range", func() {
-				Expect(repo.CountAll(model.QueryOptions{Filters: squirrel.LtOrEq{"submission_time": 1}})).To(Equal(int64(1)))
+				Expect(repo.CountAll(ctx, model.QueryOptions{Filters: squirrel.LtOrEq{"submission_time": 1}})).To(Equal(int64(1)))
 			})
 		})
 
 		Describe("Get", func() {
 			It("returns an existing scrobble for the user", func() {
-				scrobble, err := repo.Get("1")
+				scrobble, err := repo.Get(ctx, "1")
 				Expect(err).To(BeNil())
 				Expect(scrobble.ID).To(Equal(int64(1)))
 				Expect(scrobble.MediaFileID).To(Equal("1001"))
@@ -111,19 +111,19 @@ var _ = Describe("ScrobbleRepository", func() {
 			})
 
 			It("does not return a scrobble that exists for another user", func() {
-				_, err := repo.Get("2")
+				_, err := repo.Get(ctx, "2")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 
 			It("does not return a scrobble that does not exist", func() {
-				_, err := repo.Get("444")
+				_, err := repo.Get(ctx, "444")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
 
 		Describe("GetAll", func() {
 			It("returns all scrobbles in reverse order", func() {
-				scrobbles, err := repo.GetAll(model.QueryOptions{
+				scrobbles, err := repo.GetAll(ctx, model.QueryOptions{
 					Sort:  "submission_time",
 					Order: "DESC",
 				})
@@ -140,7 +140,7 @@ var _ = Describe("ScrobbleRepository", func() {
 			})
 
 			It("returns scrobbles in a range", func() {
-				scrobbles, err := repo.GetAll(model.QueryOptions{
+				scrobbles, err := repo.GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.GtOrEq{"submission_time": 1}})
 
 				Expect(err).To(BeNil())
@@ -156,22 +156,22 @@ var _ = Describe("ScrobbleRepository", func() {
 	Context("non-admin user", func() {
 		BeforeEach(func() {
 			ctx = request.WithUser(log.NewContext(context.TODO()), regularUser)
-			repo = NewScrobbleRepository(ctx, GetDBXBuilder())
+			repo = NewScrobbleRepository(GetDBXBuilder())
 		})
 
 		Describe("Count", func() {
 			It("Returns the number of scrobbles in the DB for admin user", func() {
-				Expect(repo.CountAll()).To(Equal(int64(1)))
+				Expect(repo.CountAll(ctx)).To(Equal(int64(1)))
 			})
 
 			It("returns scrobbles in a range", func() {
-				Expect(repo.CountAll(model.QueryOptions{Filters: squirrel.LtOrEq{"submission_time": 1}})).To(Equal(int64(0)))
+				Expect(repo.CountAll(ctx, model.QueryOptions{Filters: squirrel.LtOrEq{"submission_time": 1}})).To(Equal(int64(0)))
 			})
 		})
 
 		Describe("Get", func() {
 			It("returns an existing scrobble for the user", func() {
-				scrobble, err := repo.Get("2")
+				scrobble, err := repo.Get(ctx, "2")
 				Expect(err).To(BeNil())
 				Expect(scrobble.ID).To(Equal(int64(2)))
 				Expect(scrobble.MediaFileID).To(Equal("1003"))
@@ -179,19 +179,19 @@ var _ = Describe("ScrobbleRepository", func() {
 			})
 
 			It("does not return a scrobble that exists for another user", func() {
-				_, err := repo.Get("1")
+				_, err := repo.Get(ctx, "1")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 
 			It("does not return a scrobble that does not exist", func() {
-				_, err := repo.Get("444")
+				_, err := repo.Get(ctx, "444")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
 
 		Describe("GetAll", func() {
 			It("returns all scrobbles in reverse order", func() {
-				scrobbles, err := repo.GetAll(model.QueryOptions{
+				scrobbles, err := repo.GetAll(ctx, model.QueryOptions{
 					Sort:  "submission_time",
 					Order: "DESC",
 				})
@@ -204,7 +204,7 @@ var _ = Describe("ScrobbleRepository", func() {
 			})
 
 			It("returns scrobbles in a range", func() {
-				scrobbles, err := repo.GetAll(model.QueryOptions{
+				scrobbles, err := repo.GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.GtOrEq{"submission_time": 1}})
 
 				Expect(err).To(BeNil())

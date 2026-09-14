@@ -232,11 +232,11 @@ func (db *MockDataStore) Player() model.PlayerRepository {
 	return db.MockedPlayer
 }
 
-func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+func (db *MockDataStore) ScrobbleBuffer() model.ScrobbleBufferRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.RealDS != nil && db.MockedScrobbleBuffer == nil {
-		return db.RealDS.ScrobbleBuffer(ctx)
+		return db.RealDS.ScrobbleBuffer()
 	}
 	db.scrobbleBufferMu.Lock()
 	defer db.scrobbleBufferMu.Unlock()
@@ -246,16 +246,16 @@ func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBuffe
 	return db.MockedScrobbleBuffer
 }
 
-func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
+func (db *MockDataStore) Scrobble() model.ScrobbleRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedScrobble != nil {
 		return db.MockedScrobble
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Scrobble(ctx)
+		return db.RealDS.Scrobble()
 	}
-	db.MockedScrobble = &MockScrobbleRepo{ctx: ctx}
+	db.MockedScrobble = &MockScrobbleRepo{}
 	return db.MockedScrobble
 }
 

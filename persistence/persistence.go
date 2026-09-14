@@ -25,6 +25,8 @@ type SQLStore struct {
 	tag         model.TagRepository
 	genre       model.GenreRepository
 	plugin      model.PluginRepository
+	scrobble    model.ScrobbleRepository
+	scrobbleBuf model.ScrobbleBufferRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -40,6 +42,8 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.tag = NewTagRepository(db)
 	s.genre = NewGenreRepository(db)
 	s.plugin = NewPluginRepository(db)
+	s.scrobble = NewScrobbleRepository(db)
+	s.scrobbleBuf = NewScrobbleBufferRepository(db)
 	return s
 }
 
@@ -111,12 +115,12 @@ func (s *SQLStore) Player() model.PlayerRepository {
 	return s.player
 }
 
-func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
-	return NewScrobbleBufferRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) ScrobbleBuffer() model.ScrobbleBufferRepository {
+	return s.scrobbleBuf
 }
 
-func (s *SQLStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
-	return NewScrobbleRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Scrobble() model.ScrobbleRepository {
+	return s.scrobble
 }
 
 func (s *SQLStore) Plugin() model.PluginRepository {

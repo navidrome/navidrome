@@ -968,22 +968,22 @@ var _ = Describe("MediaRepository", func() {
 
 		It("moves scrobbles and buffered scrobbles onto the new id", func() {
 			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
-			scrobbles := NewScrobbleRepository(ctx, GetDBXBuilder())
-			buffer := NewScrobbleBufferRepository(ctx, GetDBXBuilder())
-			Expect(scrobbles.RecordScrobble(prev.ID, time.Now())).To(Succeed())
-			Expect(buffer.Enqueue("lastfm", "userid", prev.ID, time.Now())).To(Succeed())
+			scrobbles := NewScrobbleRepository(GetDBXBuilder())
+			buffer := NewScrobbleBufferRepository(GetDBXBuilder())
+			Expect(scrobbles.RecordScrobble(ctx, prev.ID, time.Now())).To(Succeed())
+			Expect(buffer.Enqueue(ctx, "lastfm", "userid", prev.ID, time.Now())).To(Succeed())
 
 			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
 			Expect(mr.Delete(prev.ID)).To(Succeed())
 
-			all, err := scrobbles.GetAll()
+			all, err := scrobbles.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			mine := slice.Map(slice.Filter(all, func(sc model.Scrobble) bool {
 				return sc.MediaFileID == prev.ID || sc.MediaFileID == next.ID
 			}), func(sc model.Scrobble) string { return sc.MediaFileID })
 			Expect(mine).To(ConsistOf(next.ID))
 
-			entry, err := buffer.Next("lastfm", "userid")
+			entry, err := buffer.Next(ctx, "lastfm", "userid")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(entry).ToNot(BeNil())
 			Expect(entry.MediaFile.ID).To(Equal(next.ID))

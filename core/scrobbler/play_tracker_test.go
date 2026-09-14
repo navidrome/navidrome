@@ -319,7 +319,7 @@ var _ = Describe("PlayTracker", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				mockDS := ds.(*tests.MockDataStore)
-				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				mockScrobble := mockDS.Scrobble().(*tests.MockScrobbleRepo)
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
 				Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
 				Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
@@ -335,7 +335,7 @@ var _ = Describe("PlayTracker", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				mockDS := ds.(*tests.MockDataStore)
-				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				mockScrobble := mockDS.Scrobble().(*tests.MockScrobbleRepo)
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(0))
 			})
 		})

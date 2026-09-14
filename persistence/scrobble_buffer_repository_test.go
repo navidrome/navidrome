@@ -16,6 +16,7 @@ import (
 var _ = Describe("ScrobbleBufferRepository", func() {
 	var scrobble model.ScrobbleBufferRepository
 	var rawRepo sqlRepository
+	var ctx context.Context
 
 	enqueueTime := time.Date(2025, 01, 01, 00, 00, 00, 00, time.Local)
 	var ids []string
@@ -37,9 +38,9 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 	}
 
 	BeforeEach(func() {
-		ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
+		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		db := GetDBXBuilder()
-		scrobble = NewScrobbleBufferRepository(ctx, db)
+		scrobble = NewScrobbleBufferRepository(db)
 
 		rawRepo = sqlRepository{
 			ctx:       ctx,
@@ -58,7 +59,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 	Describe("Without data", func() {
 		Describe("Count", func() {
 			It("returns zero when empty", func() {
-				count, err := scrobble.Length()
+				count, err := scrobble.Length(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(BeZero())
 			})
@@ -66,10 +67,10 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		Describe("Dequeue", func() {
 			It("is a no-op when deleting a nonexistent item", func() {
-				err := scrobble.Dequeue(&model.ScrobbleEntry{ID: "fake"})
+				err := scrobble.Dequeue(ctx, &model.ScrobbleEntry{ID: "fake"})
 				Expect(err).ToNot(HaveOccurred())
 
-				count, err := scrobble.Length()
+				count, err := scrobble.Length(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(0)))
 			})
@@ -77,7 +78,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		Describe("Next", func() {
 			It("should not fail with no item for the service", func() {
-				entry, err := scrobble.Next("fake", "userid")
+				entry, err := scrobble.Next(ctx, "fake", "userid")
 				Expect(entry).To(BeNil())
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -85,7 +86,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		Describe("UserIds", func() {
 			It("should return empty list with no data", func() {
-				ids, err := scrobble.UserIDs("service")
+				ids, err := scrobble.UserIDs(ctx, "service")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ids).To(BeEmpty())
 			})
@@ -107,7 +108,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		Describe("Count", func() {
 			It("Returns count when populated", func() {
-				count, err := scrobble.Length()
+				count, err := scrobble.Length(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(4)))
 			})
@@ -115,23 +116,23 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		Describe("Dequeue", func() {
 			It("is a no-op when deleting a nonexistent item", func() {
-				err := scrobble.Dequeue(&model.ScrobbleEntry{ID: "fake"})
+				err := scrobble.Dequeue(ctx, &model.ScrobbleEntry{ID: "fake"})
 				Expect(err).ToNot(HaveOccurred())
 
-				count, err := scrobble.Length()
+				count, err := scrobble.Length(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(4)))
 			})
 
 			It("deletes an item when specified properly", func() {
-				err := scrobble.Dequeue(&model.ScrobbleEntry{ID: ids[3]})
+				err := scrobble.Dequeue(ctx, &model.ScrobbleEntry{ID: ids[3]})
 				Expect(err).ToNot(HaveOccurred())
 
-				count, err := scrobble.Length()
+				count, err := scrobble.Length(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(3)))
 
-				entry, err := scrobble.Next("b", "2222")
+				entry, err := scrobble.Next(ctx, "b", "2222")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(entry).To(BeNil())
 			})
@@ -141,14 +142,14 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 			DescribeTable("enqueues an item properly",
 				func(service, userId, fileId string, playTime time.Time) {
 					now := time.Now()
-					err := scrobble.Enqueue(service, userId, fileId, playTime)
+					err := scrobble.Enqueue(ctx, service, userId, fileId, playTime)
 					Expect(err).ToNot(HaveOccurred())
 
-					count, err := scrobble.Length()
+					count, err := scrobble.Length(ctx)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(count).To(Equal(int64(5)))
 
-					entry, err := scrobble.Next(service, userId)
+					entry, err := scrobble.Next(ctx, service, userId)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(entry).ToNot(BeNil())
 
@@ -165,7 +166,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 		Describe("Next", func() {
 			DescribeTable("Returns the next item when populated",
 				func(service, id string, playTime time.Time, fileId, artistId string) {
-					entry, err := scrobble.Next(service, id)
+					entry, err := scrobble.Next(ctx, service, id)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(entry).ToNot(BeNil())
 
@@ -193,21 +194,21 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		Describe("Discard", func() {
 			It("deletes all entries for a service, keeping other services intact", func() {
-				Expect(scrobble.Discard("a")).To(Succeed())
+				Expect(scrobble.Discard(ctx, "a")).To(Succeed())
 
-				count, err := scrobble.Length()
+				count, err := scrobble.Length(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(1)))
 
-				entry, err := scrobble.Next("b", "2222")
+				entry, err := scrobble.Next(ctx, "b", "2222")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(entry).ToNot(BeNil())
 			})
 
 			It("is a no-op for a service without entries", func() {
-				Expect(scrobble.Discard("nonexistent")).To(Succeed())
+				Expect(scrobble.Discard(ctx, "nonexistent")).To(Succeed())
 
-				count, err := scrobble.Length()
+				count, err := scrobble.Length(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(4)))
 			})
@@ -215,13 +216,13 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 		Describe("UserIds", func() {
 			It("should return ordered list for services", func() {
-				ids, err := scrobble.UserIDs("a")
+				ids, err := scrobble.UserIDs(ctx, "a")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ids).To(Equal([]string{"2222", "userid"}))
 			})
 
 			It("should return for a different service", func() {
-				ids, err := scrobble.UserIDs("b")
+				ids, err := scrobble.UserIDs(ctx, "b")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ids).To(Equal([]string{"2222"}))
 			})

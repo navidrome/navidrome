@@ -512,7 +512,7 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 			}
 		}
 		if conf.Server.EnableScrobbleHistory {
-			return tx.Scrobble(ctx).RecordScrobble(track.ID, timestamp)
+			return tx.Scrobble().RecordScrobble(ctx, track.ID, timestamp)
 		}
 		return nil
 	})

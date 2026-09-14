@@ -76,7 +76,7 @@ func (api *Router) routes() http.Handler {
 		rx(r, "/transcoding", api.ds.Transcoding(), conf.Server.EnableTranscodingConfig)
 		api.addRadioRoute(r)
 		rx(r, "/tag", api.ds.Tag(), false)
-		rx(r, "/scrobble", lazy(func(ctx context.Context) rest.Repository[model.Scrobble] { return api.ds.Scrobble(ctx) }), false)
+		rx(r, "/scrobble", api.ds.Scrobble(), false)
 		if conf.Server.EnableSharing {
 			rx(r, "/share", lazyRW(func(ctx context.Context) rest.Repository[model.Share] { return api.share.NewRepository(ctx) }), true)
 		}

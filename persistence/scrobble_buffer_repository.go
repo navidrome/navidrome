@@ -29,15 +29,14 @@ func (t *dbScrobbleBuffer) PostScan() error {
 	return nil
 }
 
-func NewScrobbleBufferRepository(ctx context.Context, db dbx.Builder) model.ScrobbleBufferRepository {
+func NewScrobbleBufferRepository(db dbx.Builder) model.ScrobbleBufferRepository {
 	r := &scrobbleBufferRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "scrobble_buffer"
 	return r
 }
 
-func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
+func (r *scrobbleBufferRepository) UserIDs(ctx context.Context, service string) ([]string, error) {
 	sql := Select().Columns("user_id").
 		From(r.tableName).
 		Where(And{
@@ -46,11 +45,11 @@ func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
 		GroupBy("user_id").
 		OrderBy("count(*)")
 	var userIds []string
-	err := r.queryAllSlice(r.ctx, sql, &userIds)
+	err := r.queryAllSlice(ctx, sql, &userIds)
 	return userIds, err
 }
 
-func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
+func (r *scrobbleBufferRepository) Enqueue(ctx context.Context, service, userId, mediaFileId string, playTime time.Time) error {
 	ins := Insert(r.tableName).SetMap(map[string]any{
 		"id":            id.NewRandom(),
 		"user_id":       userId,
@@ -59,11 +58,11 @@ func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, 
 		"play_time":     playTime,
 		"enqueue_time":  time.Now(),
 	})
-	_, err := r.executeSQL(r.ctx, ins)
+	_, err := r.executeSQL(ctx, ins)
 	return err
 }
 
-func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.ScrobbleEntry, error) {
+func (r *scrobbleBufferRepository) Next(ctx context.Context, service string, userId string) (*model.ScrobbleEntry, error) {
 	// Put `s.*` last or else m.id overrides s.id
 	sql := Select().Columns("m.*, s.*").
 		From(r.tableName+" s").
@@ -75,30 +74,30 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 		OrderBy("play_time", "s.rowid").Limit(1)
 
 	var res dbScrobbleBuffer
-	err := r.queryOne(r.ctx, sql, &res)
+	err := r.queryOne(ctx, sql, &res)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	res.ScrobbleEntry.Participants, err = r.getParticipants(r.ctx, &res.ScrobbleEntry.MediaFile)
+	res.ScrobbleEntry.Participants, err = r.getParticipants(ctx, &res.ScrobbleEntry.MediaFile)
 	if err != nil {
 		return nil, err
 	}
 	return res.ScrobbleEntry, nil
 }
 
-func (r *scrobbleBufferRepository) Dequeue(entry *model.ScrobbleEntry) error {
-	return r.delete(r.ctx, Eq{"id": entry.ID})
+func (r *scrobbleBufferRepository) Dequeue(ctx context.Context, entry *model.ScrobbleEntry) error {
+	return r.delete(ctx, Eq{"id": entry.ID})
 }
 
-func (r *scrobbleBufferRepository) Discard(service string) error {
-	return r.delete(r.ctx, Eq{"service": service})
+func (r *scrobbleBufferRepository) Discard(ctx context.Context, service string) error {
+	return r.delete(ctx, Eq{"service": service})
 }
 
-func (r *scrobbleBufferRepository) Length() (int64, error) {
-	return r.count(r.ctx, Select())
+func (r *scrobbleBufferRepository) Length(ctx context.Context) (int64, error) {
+	return r.count(ctx, Select())
 }
 
 var _ model.ScrobbleBufferRepository = (*scrobbleBufferRepository)(nil)
