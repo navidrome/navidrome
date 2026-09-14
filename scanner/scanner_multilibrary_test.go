@@ -190,7 +190,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Check Rock library folders
-				rockFolders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+				rockFolders, err := ds.Folder().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -201,7 +201,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				}
 
 				// Check Jazz library folders
-				jazzFolders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+				jazzFolders, err := ds.Folder().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())

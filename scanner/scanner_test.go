@@ -133,7 +133,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should import all folders", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				folders, _ := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
+				folders, _ := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
 				paths := slice.Map(folders, func(f model.Folder) string { return f.Name })
 				Expect(paths).To(SatisfyAll(
 					HaveLen(4),

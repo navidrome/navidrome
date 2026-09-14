@@ -88,7 +88,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	// Resolve folder IDs to library-relative paths
 	discFoldersRel := make(map[string]bool)
 	if len(folderIDs) > 0 {
-		folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+		folders, err := ds.Folder().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"folder.id": folderIDs},
 		})
 		if err != nil {

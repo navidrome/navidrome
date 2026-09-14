@@ -264,11 +264,11 @@ func cursorFromData(data map[*model.Folder]error) model.FolderCursor {
 	}
 }
 
-func (f *mockFolderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) {
+func (f *mockFolderRepository) GetTouchedWithPlaylists(context.Context) (model.FolderCursor, error) {
 	return cursorFromData(f.data), nil
 }
 
-func (f *mockFolderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
+func (f *mockFolderRepository) GetAllWithPlaylists(context.Context) (model.FolderCursor, error) {
 	return cursorFromData(f.allData), nil
 }
 

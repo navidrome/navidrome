@@ -84,7 +84,7 @@ func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folde
 		return nil, fmt.Errorf("%w: %s", errNotInLibrary, dir)
 	}
 
-	folder, err := s.ds.Folder(ctx).GetByPath(lib, dir)
+	folder, err := s.ds.Folder().GetByPath(ctx, lib, dir)
 	if err != nil {
 		return nil, fmt.Errorf("resolving folder for path %s: %w", dir, err)
 	}
