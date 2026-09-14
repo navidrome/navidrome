@@ -241,7 +241,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []strin
 			out = append(out, id) // already a song
 		} else if _, err := api.ds.Album(ctx).Get(id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id))...)
-		} else if _, err := api.ds.Artist(ctx).Get(id); err == nil {
+		} else if _, err := api.ds.Artist().Get(ctx, id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByArtistID(id))...)
 		} else if pl, err := api.playlists.GetWithTracks(ctx, id); err == nil {
 			out = append(out, slice.Map(pl.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })...)

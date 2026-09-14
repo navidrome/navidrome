@@ -171,7 +171,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				albums, _ := ds.Album(ctx).GetAll()
-				artists, _ := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
+				artists, _ := ds.Artist().GetAll(ctx, model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
 				queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -291,7 +291,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		}
 		artistID := func(name string) string {
 			GinkgoHelper()
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"artist.name": name}})
+			artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"artist.name": name}})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artists).To(HaveLen(1))
 			return artists[0].ID
@@ -808,7 +808,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			nonMissingArtists := func() []string {
-				aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"missing": false}})
+				aa, err := ds.Artist().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"missing": false}})
 				Expect(err).ToNot(HaveOccurred())
 				return slice.Map(aa, func(a model.Artist) string { return a.Name })
 			}
@@ -853,7 +853,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 		It("does not override artist fields when importing an undertagged file", func() {
 			By("Making sure artist in the DB contains MBID and sort name")
-			aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+			aa, err := ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -880,7 +880,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(mf.SortArtistName).To(BeEmpty())
 
 			By("Makingsure the artist in the DB has not changed")
-			aa, err = ds.Artist(ctx).GetAll(model.QueryOptions{
+			aa, err = ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -1156,7 +1156,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			refreshStatsCalls = nil
 
 			// Create a mock artist repository that tracks RefreshStats calls
-			originalArtistRepo := ds.RealDS.Artist(ctx)
+			originalArtistRepo := ds.RealDS.Artist()
 			ds.MockedArtist = &testArtistRepo{
 				ArtistRepository: originalArtistRepo,
 				callTracker:      &refreshStatsCalls,
@@ -1202,7 +1202,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			// Verify initial artist stats - should have 1 album, 1 song
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+			artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -1221,7 +1221,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			By("Verifying artist stats were updated correctly")
 			// Fetch the artist again to check updated stats
-			artists, err = ds.Artist(ctx).GetAll(model.QueryOptions{
+			artists, err = ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -1272,7 +1272,7 @@ type testArtistRepo struct {
 	callTracker *[]bool
 }
 
-func (m *testArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+func (m *testArtistRepo) RefreshStats(ctx context.Context, allArtists bool) (int64, error) {
 	*m.callTracker = append(*m.callTracker, allArtists)
-	return m.ArtistRepository.RefreshStats(allArtists)
+	return m.ArtistRepository.RefreshStats(ctx, allArtists)
 }

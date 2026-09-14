@@ -243,7 +243,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 
 // resolveArtist tries the uploaded image first, then walks conf.Server.ArtistArtPriority.
 func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resolution, error) {
-	ar, err := r.ds.Artist(ctx).Get(artistID)
+	ar, err := r.ds.Artist().Get(ctx, artistID)
 	if err != nil {
 		return resolution{}, err
 	}

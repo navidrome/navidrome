@@ -45,7 +45,7 @@ func (api *Router) getArtist(r *http.Request, libIds []int, ifModifiedSince time
 
 	var indexes model.ArtistIndexes
 	if lastScan.After(ifModifiedSince) {
-		indexes, err = api.ds.Artist(ctx).GetIndex(false, libIds, model.RoleAlbumArtist)
+		indexes, err = api.ds.Artist().GetIndex(ctx, false, libIds, model.RoleAlbumArtist)
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, 0, err
@@ -167,7 +167,7 @@ func (api *Router) GetArtist(r *http.Request) (*responses.Subsonic, error) {
 	id, _ := p.String("id")
 	ctx := r.Context()
 
-	artist, err := api.ds.Artist(ctx).Get(id)
+	artist, err := api.ds.Artist().Get(ctx, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Requested ArtistID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Artist not found")

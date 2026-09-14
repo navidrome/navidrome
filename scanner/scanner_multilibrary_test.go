@@ -218,7 +218,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				// Check library-artist associations
 
 				// Get all artists and check library associations
-				allArtists, err := ds.Artist(ctx).GetAll()
+				allArtists, err := ds.Artist().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 
 				rockArtistNames := []string{}
@@ -365,7 +365,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				var rockCount, jazzCount int64
 
 				// Get Jeff Beck artist ID
-				jeffArtists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+				jeffArtists, err := ds.Artist().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"name": "Jeff Beck"},
 				})
 				Expect(err).ToNot(HaveOccurred())

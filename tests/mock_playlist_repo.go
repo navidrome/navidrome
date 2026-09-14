@@ -118,7 +118,7 @@ func (m *MockPlaylistRepo) Delete(_ context.Context, ids ...string) error {
 	return nil
 }
 
-func (m *MockPlaylistRepo) SetStar(starred bool, ids ...string) error {
+func (m *MockPlaylistRepo) SetStar(_ context.Context, starred bool, ids ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -131,7 +131,7 @@ func (m *MockPlaylistRepo) SetStar(starred bool, ids ...string) error {
 	return nil
 }
 
-func (m *MockPlaylistRepo) SetRating(rating int, id string) error {
+func (m *MockPlaylistRepo) SetRating(_ context.Context, rating int, id string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -142,14 +142,14 @@ func (m *MockPlaylistRepo) SetRating(rating int, id string) error {
 	return nil
 }
 
-func (m *MockPlaylistRepo) IncPlayCount(string, time.Time) error {
+func (m *MockPlaylistRepo) IncPlayCount(context.Context, string, time.Time) error {
 	if m.Err {
 		return errors.New("error")
 	}
 	return nil
 }
 
-func (m *MockPlaylistRepo) ReassignAnnotation(string, string) error {
+func (m *MockPlaylistRepo) ReassignAnnotation(context.Context, string, string) error {
 	if m.Err {
 		return errors.New("error")
 	}

@@ -442,7 +442,7 @@ func (m *Matcher) resolveArtists(ctx context.Context, queries []indexedQuery) (r
 		filter = append(filter, squirrel.Eq{"id": slices.Collect(maps.Keys(allIDs))})
 	}
 	if len(filter) > 0 {
-		artists, err := m.ds.Artist(ctx).GetAll(model.QueryOptions{Filters: filter})
+		artists, err := m.ds.Artist().GetAll(ctx, model.QueryOptions{Filters: filter})
 		if err != nil {
 			return resolvedArtists{}, err
 		}

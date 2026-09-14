@@ -244,9 +244,9 @@ var _ = Describe("ShareRepository", func() {
 			otherLib = model.Library{ID: 0, Name: "Artist Share Other Library", Path: "/share/artist/other"}
 			Expect(lr.Put(adminCtx, &otherLib)).To(Succeed())
 
-			ar := NewArtistRepository(adminCtx, b)
-			Expect(createArtistWithLibrary(ar, &model.Artist{ID: primaryID, Name: "AA Primary", OrderArtistName: "aa primary"}, 1)).To(Succeed())
-			Expect(createArtistWithLibrary(ar, &model.Artist{ID: secondaryID, Name: "AA Secondary", OrderArtistName: "aa secondary"}, 1)).To(Succeed())
+			ar := NewArtistRepository(b)
+			Expect(createArtistWithLibrary(adminCtx, ar, &model.Artist{ID: primaryID, Name: "AA Primary", OrderArtistName: "aa primary"}, 1)).To(Succeed())
+			Expect(createArtistWithLibrary(adminCtx, ar, &model.Artist{ID: secondaryID, Name: "AA Secondary", OrderArtistName: "aa secondary"}, 1)).To(Succeed())
 
 			// Secondary is a co-album-artist (not the first): album_artist_id points at
 			// primary, so the legacy-column filter would miss both tracks.
@@ -292,8 +292,8 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = mr.executeSQL(mr.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"art-ok", "art-other"}}))
 			alr := NewAlbumRepository(adminCtx, b).(*albumRepository)
 			_, _ = alr.executeSQL(alr.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"art-album-ok", "art-album-other"}}))
-			ar := NewArtistRepository(adminCtx, b).(*artistRepository)
-			_, _ = ar.executeSQL(ar.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))
+			ar := NewArtistRepository(b).(*artistRepository)
+			_, _ = ar.executeSQL(adminCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))
 			lr := NewLibraryRepository(b).(*libraryRepository)
 			_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
 			_ = NewUserRepository(b).Delete(adminCtx, owner.ID)

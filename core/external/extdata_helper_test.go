@@ -31,7 +31,7 @@ func (m *mockArtistRepo) SetData(artists model.Artists) {
 }
 
 // Get implements model.ArtistRepository.
-func (m *mockArtistRepo) Get(id string) (*model.Artist, error) {
+func (m *mockArtistRepo) Get(_ context.Context, id string) (*model.Artist, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -40,7 +40,7 @@ func (m *mockArtistRepo) Get(id string) (*model.Artist, error) {
 }
 
 // GetAll implements model.ArtistRepository.
-func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+func (m *mockArtistRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Artists, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v

@@ -90,7 +90,7 @@ var _ = Describe("Browsing", func() {
 			})
 
 			// Setup mock artist data
-			mockArtistRepo := ds.Artist(ctx).(*tests.MockArtistRepo)
+			mockArtistRepo := ds.Artist().(*tests.MockArtistRepo)
 			mockArtistRepo.SetData(model.Artists{
 				{ID: "1", Name: "Test Artist 1"},
 				{ID: "2", Name: "Test Artist 2"},
@@ -139,7 +139,7 @@ var _ = Describe("Browsing", func() {
 			})
 
 			// Setup mock artist data
-			mockArtistRepo := ds.Artist(ctx).(*tests.MockArtistRepo)
+			mockArtistRepo := ds.Artist().(*tests.MockArtistRepo)
 			mockArtistRepo.SetData(model.Artists{
 				{ID: "1", Name: "Test Artist 1"},
 				{ID: "2", Name: "Test Artist 2"},

@@ -309,7 +309,7 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 				if !p.processedAlbumAnnotations[newAlbumID] {
 					// Reassign direct album annotations (starred, rating)
 					log.Debug(p.ctx, "Scanner: Reassigning album annotations", "from", oldAlbumID, "to", newAlbumID)
-					if err := tx.Album(p.ctx).ReassignAnnotation(oldAlbumID, newAlbumID); err != nil {
+					if err := tx.Album(p.ctx).ReassignAnnotation(p.ctx, oldAlbumID, newAlbumID); err != nil {
 						log.Warn(p.ctx, "Scanner: Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
 					}
 

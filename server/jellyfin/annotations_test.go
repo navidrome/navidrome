@@ -60,7 +60,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("stars an artist without checking library access (artists span multiple libraries)", func() {
-			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
+			artistRepo := ds.Artist().(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			// alice only has access to library 1, but artists aren't gated per-library.

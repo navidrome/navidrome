@@ -137,7 +137,7 @@ func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums
 		func() error {
 			artistOpts := filter.ApplyArtistLibraryFilter(filter.ArtistsByStarred(), musicFolderIds)
 			var err error
-			artists, err = api.ds.Artist(ctx).GetAll(artistOpts)
+			artists, err = api.ds.Artist().GetAll(ctx, artistOpts)
 			if err != nil {
 				log.Error(r, "Error retrieving starred artists", err)
 			}

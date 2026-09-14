@@ -29,7 +29,7 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 			albumID = albums[0].ID
 
 			// Look up an artist
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "name"})
+			artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "name"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artists).ToNot(BeEmpty())
 			artistID = artists[0].ID

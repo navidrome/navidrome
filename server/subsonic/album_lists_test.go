@@ -422,7 +422,7 @@ var _ = Describe("Album Lists", func() {
 		var mockMediaFileRepo *tests.MockMediaFileRepo
 
 		BeforeEach(func() {
-			mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
+			mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
 			mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
 		})
@@ -484,7 +484,7 @@ var _ = Describe("Album Lists", func() {
 		var mockMediaFileRepo *tests.MockMediaFileRepo
 
 		BeforeEach(func() {
-			mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
+			mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
 			mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
 		})

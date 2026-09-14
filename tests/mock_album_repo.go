@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -98,7 +99,7 @@ func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, 
 	}, nil
 }
 
-func (m *MockAlbumRepo) IncPlayCount(id string, timestamp time.Time) error {
+func (m *MockAlbumRepo) IncPlayCount(_ context.Context, id string, timestamp time.Time) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
@@ -139,7 +140,7 @@ func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
 	return m.Put(album)
 }
 
-func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
+func (m *MockAlbumRepo) Search(_ context.Context, q string, options ...model.QueryOptions) (model.Albums, error) {
 	m.SearchQuery = q
 	if len(options) > 0 {
 		m.Options = options[0]
@@ -152,7 +153,7 @@ func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.A
 }
 
 // ReassignAnnotation reassigns annotations from one album to another
-func (m *MockAlbumRepo) ReassignAnnotation(prevID string, newID string) error {
+func (m *MockAlbumRepo) ReassignAnnotation(_ context.Context, prevID string, newID string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
@@ -191,7 +192,7 @@ func (m *MockAlbumRepo) CopyAttributes(fromID, toID string, columns ...string) e
 }
 
 // SetRating sets the rating for an album
-func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
+func (m *MockAlbumRepo) SetRating(_ context.Context, rating int, itemID string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
@@ -202,7 +203,7 @@ func (m *MockAlbumRepo) SetRating(rating int, itemID string) error {
 }
 
 // SetStar sets the starred status for albums
-func (m *MockAlbumRepo) SetStar(starred bool, itemIDs ...string) error {
+func (m *MockAlbumRepo) SetStar(_ context.Context, starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}

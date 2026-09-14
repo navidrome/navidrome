@@ -14,7 +14,7 @@ var _ = Describe("Browsing Endpoints", func() {
 	})
 
 	getBeatlesId := func() string {
-		artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+		artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"name": "The Beatles"},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -159,7 +159,7 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns artist with a single album", func() {
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+			artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "Led Zeppelin"},
 			})
 			Expect(err).ToNot(HaveOccurred())

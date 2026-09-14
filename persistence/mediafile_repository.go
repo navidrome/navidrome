@@ -401,7 +401,7 @@ func (r *mediaFileRepository) Delete(id string) error {
 }
 
 func (r *mediaFileRepository) ReassignReferences(prevID, newID string) error {
-	if err := r.ReassignAnnotation(prevID, newID); err != nil {
+	if err := r.ReassignAnnotation(r.ctx, prevID, newID); err != nil {
 		return fmt.Errorf("reassigning annotations: %w", err)
 	}
 	if err := r.reassignBookmark(r.ctx, prevID, newID); err != nil {
@@ -584,7 +584,7 @@ func (r *mediaFileRepository) MatchesCriteria(id string, c criteria.Criteria) (b
 	return res.Count > 0, nil
 }
 
-func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
+func (r *mediaFileRepository) Search(ctx context.Context, q string, options ...model.QueryOptions) (model.MediaFiles, error) {
 	var opts model.QueryOptions
 	if len(options) > 0 {
 		opts = options[0]

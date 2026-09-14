@@ -204,7 +204,7 @@ func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetG
 	}
 	targetGauge.With(prometheus.Labels{"model": "album"}).Set(float64(albumsCount))
 
-	artistCount, err := ds.Artist(ctx).CountAll()
+	artistCount, err := ds.Artist().CountAll(ctx)
 	if err != nil {
 		log.Warn("artist CountAll error", err)
 		return

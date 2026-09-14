@@ -407,7 +407,7 @@ var _ = Describe("MediaRepository", func() {
 			id := "incplay.firsttime"
 			Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
 
 			mf, err := mr.Get(id)
 			Expect(err).To(BeNil())
@@ -437,7 +437,7 @@ var _ = Describe("MediaRepository", func() {
 			It("returns the user's rating as average when only one user rated", func() {
 				newID := id.NewRandom()
 				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "test/single-rating.mp3"})).To(Succeed())
-				Expect(mr.SetRating(5, newID)).To(Succeed())
+				Expect(mr.SetRating(ctx, 5, newID)).To(Succeed())
 
 				mf, err := mr.Get(newID)
 				Expect(err).ToNot(HaveOccurred())
@@ -451,11 +451,11 @@ var _ = Describe("MediaRepository", func() {
 				newID := id.NewRandom()
 				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "test/multi-rating.mp3"})).To(Succeed())
 
-				Expect(mr.SetRating(3, newID)).To(Succeed())
+				Expect(mr.SetRating(ctx, 3, newID)).To(Succeed())
 
 				user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
 				user2Repo := NewMediaFileRepository(user2Ctx, GetDBXBuilder())
-				Expect(user2Repo.SetRating(5, newID)).To(Succeed())
+				Expect(user2Repo.SetRating(user2Ctx, 5, newID)).To(Succeed())
 
 				mf, err := mr.Get(newID)
 				Expect(err).ToNot(HaveOccurred())
@@ -469,11 +469,11 @@ var _ = Describe("MediaRepository", func() {
 				newID := id.NewRandom()
 				Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: newID, Path: "test/zero-excluded.mp3"})).To(Succeed())
 
-				Expect(mr.SetRating(4, newID)).To(Succeed())
+				Expect(mr.SetRating(ctx, 4, newID)).To(Succeed())
 
 				user2Ctx := request.WithUser(GinkgoT().Context(), regularUser)
 				user2Repo := NewMediaFileRepository(user2Ctx, GetDBXBuilder())
-				Expect(user2Repo.SetRating(0, newID)).To(Succeed())
+				Expect(user2Repo.SetRating(user2Ctx, 0, newID)).To(Succeed())
 
 				mf, err := mr.Get(newID)
 				Expect(err).ToNot(HaveOccurred())
@@ -488,21 +488,21 @@ var _ = Describe("MediaRepository", func() {
 			id := "incplay.playdate"
 			Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
 			mf, err := mr.Get(id)
 			Expect(err).To(BeNil())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(1)))
 
 			playDateLate := playDate.AddDate(0, 0, 1)
-			Expect(mr.IncPlayCount(id, playDateLate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateLate)).To(BeNil())
 			mf, err = mr.Get(id)
 			Expect(err).To(BeNil())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
 			Expect(mf.PlayCount).To(Equal(int64(2)))
 
 			playDateEarly := playDate.AddDate(0, 0, -1)
-			Expect(mr.IncPlayCount(id, playDateEarly)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDateEarly)).To(BeNil())
 			mf, err = mr.Get(id)
 			Expect(err).To(BeNil())
 			Expect(mf.PlayDate.Unix()).To(Equal(playDateLate.Unix()))
@@ -512,9 +512,9 @@ var _ = Describe("MediaRepository", func() {
 		It("increments play count on newly starred items", func() {
 			id := "star.incplay"
 			Expect(mr.Put(&model.MediaFile{LibraryID: 1, ID: id})).To(BeNil())
-			Expect(mr.SetStar(true, id)).To(BeNil())
+			Expect(mr.SetStar(ctx, true, id)).To(BeNil())
 			playDate := time.Now()
-			Expect(mr.IncPlayCount(id, playDate)).To(BeNil())
+			Expect(mr.IncPlayCount(ctx, id, playDate)).To(BeNil())
 
 			mf, err := mr.Get(id)
 			Expect(err).To(BeNil())
@@ -779,7 +779,7 @@ var _ = Describe("MediaRepository", func() {
 	Describe("Search", func() {
 		Context("text search", func() {
 			It("finds media files by title", func() {
-				results, err := mr.Search("Antenna", model.QueryOptions{Max: 10})
+				results, err := mr.Search(ctx, "Antenna", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(3)) // songAntenna, songAntennaWithLyrics, songAntenna2
 				for _, result := range results {
@@ -788,7 +788,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media files case insensitively", func() {
-				results, err := mr.Search("antenna", model.QueryOptions{Max: 10})
+				results, err := mr.Search(ctx, "antenna", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(3))
 				for _, result := range results {
@@ -797,7 +797,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("returns empty result when no matches found", func() {
-				results, err := mr.Search("nonexistent", model.QueryOptions{Max: 10})
+				results, err := mr.Search(ctx, "nonexistent", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -830,7 +830,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media file by mbz_recording_id", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440020", model.QueryOptions{Max: 10})
+				results, err := mr.Search(ctx, "550e8400-e29b-41d4-a716-446655440020", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
@@ -838,7 +838,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("finds media file by mbz_release_track_id", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440021", model.QueryOptions{Max: 10})
+				results, err := mr.Search(ctx, "550e8400-e29b-41d4-a716-446655440021", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 				Expect(results[0].ID).To(Equal("test-mbid-mediafile"))
@@ -846,7 +846,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("returns empty result when MBID is not found", func() {
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440099", model.QueryOptions{Max: 10})
+				results, err := mr.Search(ctx, "550e8400-e29b-41d4-a716-446655440099", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -866,7 +866,7 @@ var _ = Describe("MediaRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Search never returns missing media files (hardcoded behavior)
-				results, err := mr.Search("550e8400-e29b-41d4-a716-446655440022", model.QueryOptions{Max: 10})
+				results, err := mr.Search(ctx, "550e8400-e29b-41d4-a716-446655440022", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
@@ -877,7 +877,7 @@ var _ = Describe("MediaRepository", func() {
 
 		Context("empty query (natural order pagination)", func() {
 			It("returns all non-missing files in natural order", func() {
-				results, err := mr.Search("", model.QueryOptions{Max: 1000})
+				results, err := mr.Search(ctx, "", model.QueryOptions{Max: 1000})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).ToNot(BeEmpty())
 				for _, result := range results {
@@ -886,22 +886,22 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It(`treats quoted empty query ("") the same as empty`, func() {
-				all, err := mr.Search("", model.QueryOptions{Max: 1000})
+				all, err := mr.Search(ctx, "", model.QueryOptions{Max: 1000})
 				Expect(err).ToNot(HaveOccurred())
-				quoted, err := mr.Search(`""`, model.QueryOptions{Max: 1000})
+				quoted, err := mr.Search(ctx, `""`, model.QueryOptions{Max: 1000})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(quoted).To(HaveLen(len(all)))
 			})
 
 			It("paginates without overlaps or gaps", func() {
-				all, err := mr.Search("", model.QueryOptions{Max: 1000})
+				all, err := mr.Search(ctx, "", model.QueryOptions{Max: 1000})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(all)).To(BeNumerically(">", 3))
 
 				var paged model.MediaFiles
 				pageSize := 3
 				for offset := 0; offset < len(all); offset += pageSize {
-					page, err := mr.Search("", model.QueryOptions{Max: pageSize, Offset: offset})
+					page, err := mr.Search(ctx, "", model.QueryOptions{Max: pageSize, Offset: offset})
 					Expect(err).ToNot(HaveOccurred())
 					paged = append(paged, page...)
 				}
@@ -912,7 +912,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("returns empty page when offset is beyond the total", func() {
-				results, err := mr.Search("", model.QueryOptions{Max: 10, Offset: 100000})
+				results, err := mr.Search(ctx, "", model.QueryOptions{Max: 10, Offset: 100000})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -947,8 +947,8 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("moves annotations, bookmarks and playlist entries onto the new id", func() {
-			Expect(mr.SetRating(5, prev.ID)).To(Succeed())
-			Expect(mr.AddBookmark(prev.ID, "here", 42)).To(Succeed())
+			Expect(mr.SetRating(ctx, 5, prev.ID)).To(Succeed())
+			Expect(mr.AddBookmark(ctx, prev.ID, "here", 42)).To(Succeed())
 
 			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
 
@@ -956,7 +956,7 @@ var _ = Describe("MediaRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Rating).To(Equal(5))
 
-			bookmarks, err := mr.GetBookmarks()
+			bookmarks, err := mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bookmarks).To(ContainElement(HaveField("Item.ID", next.ID)))
 
@@ -990,9 +990,10 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("recomputes the average rating after merging another user's annotation", func() {
-			other := NewMediaFileRepository(request.WithUser(log.NewContext(context.TODO()), model.User{ID: "2222"}), GetDBXBuilder())
-			Expect(mr.SetRating(5, next.ID)).To(Succeed())
-			Expect(other.SetRating(3, prev.ID)).To(Succeed())
+			otherCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "2222"})
+			other := NewMediaFileRepository(otherCtx, GetDBXBuilder())
+			Expect(mr.SetRating(ctx, 5, next.ID)).To(Succeed())
+			Expect(other.SetRating(otherCtx, 3, prev.ID)).To(Succeed())
 
 			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
 
@@ -1002,17 +1003,17 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("keeps the new id's own annotation and bookmark when both exist", func() {
-			Expect(mr.SetRating(5, prev.ID)).To(Succeed())
-			Expect(mr.SetRating(1, next.ID)).To(Succeed())
-			Expect(mr.AddBookmark(prev.ID, "prev", 42)).To(Succeed())
-			Expect(mr.AddBookmark(next.ID, "next", 7)).To(Succeed())
+			Expect(mr.SetRating(ctx, 5, prev.ID)).To(Succeed())
+			Expect(mr.SetRating(ctx, 1, next.ID)).To(Succeed())
+			Expect(mr.AddBookmark(ctx, prev.ID, "prev", 42)).To(Succeed())
+			Expect(mr.AddBookmark(ctx, next.ID, "next", 7)).To(Succeed())
 
 			Expect(mr.ReassignReferences(prev.ID, next.ID)).To(Succeed())
 
 			got, err := mr.Get(next.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Rating).To(Equal(1))
-			bookmarks, err := mr.GetBookmarks()
+			bookmarks, err := mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bookmarks).To(ContainElement(SatisfyAll(HaveField("Item.ID", next.ID), HaveField("Comment", "next"))))
 		})

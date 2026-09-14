@@ -268,7 +268,7 @@ var _ = Describe("Playlists", func() {
 		})
 
 		It("expands an artist id into its songs", func() {
-			ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
 			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}, {ID: testID("s2")}})
 			createWith(testID("ar1"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s1"), testID("s2")}))

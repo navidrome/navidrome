@@ -710,7 +710,7 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 
 	if q.search != "" {
 		albums, total, err := searchPage(opts, func(o model.QueryOptions) (model.Albums, error) {
-			return repo.Search(q.search, o)
+			return repo.Search(ctx, q.search, o)
 		})
 		if err != nil {
 			return itemsResult{}, err
@@ -759,7 +759,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 
 	if q.search != "" {
 		mfs, total, err := searchPage(opts, func(o model.QueryOptions) (model.MediaFiles, error) {
-			return repo.Search(q.search, o)
+			return repo.Search(ctx, q.search, o)
 		})
 		if err != nil {
 			return itemsResult{}, err
@@ -783,7 +783,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 // RoleArtist for performing artists (/Artists). Without the role filter both lists would be identical.
 // genreIds isn't applied to search — a name lookup, like role (see below).
 func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q itemsQuery, role model.Role) (itemsResult, error) {
-	repo := api.ds.Artist(ctx)
+	repo := api.ds.Artist()
 	toItem := func(ar model.Artist) dto.BaseItemDto { return dto.ArtistToBaseItem(ar, q.fields) }
 
 	// Artist Search does its own library scoping: it consumes a sole Eq{"library_id": ...} filter as a
@@ -795,7 +795,7 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 			opts.Filters = squirrel.Eq{"library_id": q.scopeIDs}
 		}
 		artists, total, err := searchPage(opts, func(o model.QueryOptions) (model.Artists, error) {
-			return repo.Search(q.search, o)
+			return repo.Search(ctx, q.search, o)
 		})
 		if err != nil {
 			return itemsResult{}, err
@@ -811,9 +811,9 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 	opts.Filters = filters
 	opts = filter.ArtistsByRole(opts, role)
 	opts = filter.ApplyArtistLibraryFilter(opts, q.scopeIDs)
-	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	total, _ := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.Artist, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
@@ -869,7 +869,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 		}
 		return dto.AlbumToBaseItem(*al, fields), true
 	}
-	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
+	if ar, err := api.ds.Artist().Get(ctx, id); err == nil {
 		// TODO: an artist spans multiple libraries (library_artist), so there's no single
 		// LibraryID to gate here; artist access relies on list-time scoping and persistence.
 		return dto.ArtistToBaseItem(*ar, fields), true

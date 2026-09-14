@@ -225,7 +225,7 @@ var _ = Describe("Items", func() {
 		})
 
 		It("lists artists when IncludeItemTypes=MusicArtist", func() {
-			ds.Artist(context.Background()).(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
@@ -569,7 +569,7 @@ var _ = Describe("Items", func() {
 		})
 
 		It("reports a search total beyond the fetched page instead of the page length", func() {
-			ds.Artist(context.Background()).(*tests.MockArtistRepo).SetData(model.Artists{
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{
 				{ID: testID("r1"), Name: "Alpha"}, {ID: testID("r2"), Name: "Beta"}, {ID: testID("r3"), Name: "Gamma"},
 			})
 			w := httptest.NewRecorder()
@@ -744,7 +744,7 @@ var _ = Describe("Items", func() {
 			})
 
 			It("scopes a MusicArtist listing to the user's accessible libraries", func() {
-				artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
+				artistRepo := ds.Artist().(*tests.MockArtistRepo)
 				artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 				w := httptest.NewRecorder()
 				libs := model.Libraries{{ID: 1}, {ID: 2}}

@@ -182,7 +182,7 @@ func (m *MockMediaFileRepo) ReassignReferences(prevID, newID string) error {
 	return nil
 }
 
-func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
+func (m *MockMediaFileRepo) IncPlayCount(_ context.Context, id string, timestamp time.Time) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -194,7 +194,7 @@ func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 	return model.ErrNotFound
 }
 
-func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
+func (m *MockMediaFileRepo) SetStar(_ context.Context, starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -206,7 +206,7 @@ func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
 	return nil
 }
 
-func (m *MockMediaFileRepo) SetRating(rating int, itemID string) error {
+func (m *MockMediaFileRepo) SetRating(_ context.Context, rating int, itemID string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -310,7 +310,7 @@ func (m *MockMediaFileRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]mo
 	return m.GetAll()
 }
 
-func (m *MockMediaFileRepo) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) Search(_ context.Context, q string, options ...model.QueryOptions) (model.MediaFiles, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
