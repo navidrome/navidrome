@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
@@ -16,7 +15,7 @@ import (
 )
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
-	repo := api.share.Repository().(model.ShareRepository)
+	repo := api.share.Repository()
 	shares, err := repo.GetAll(r.Context(), model.QueryOptions{Sort: "created_at desc"})
 	if err != nil {
 		return nil, err
@@ -68,12 +67,12 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 		ResourceIDs:  strings.Join(ids, ","),
 	}
 
-	id, err := repo.(rest.Persistable[model.Share]).Save(r.Context(), share)
+	id, err := repo.Save(r.Context(), share)
 	if err != nil {
 		return nil, err
 	}
 
-	share, err = repo.(model.ShareRepository).Get(r.Context(), id)
+	share, err = repo.Get(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +111,7 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 	}
 
-	err = repo.(rest.Persistable[model.Share]).Update(r.Context(), id, *share)
+	err = repo.Update(r.Context(), id, *share)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +127,7 @@ func (api *Router) DeleteShare(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	repo := api.share.Repository()
-	err = repo.(rest.Persistable[model.Share]).Delete(r.Context(), id)
+	err = repo.Delete(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}

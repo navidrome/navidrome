@@ -126,12 +126,7 @@ func (r *playerRepository) Update(ctx context.Context, id string, entity model.P
 }
 
 func (r *playerRepository) Delete(ctx context.Context, ids ...string) error {
-	for _, id := range ids {
-		if err := r.deleteOwned(ctx, id); err != nil {
-			return err
-		}
-	}
-	return nil
+	return r.deleteOwnedAll(ctx, ids...)
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)

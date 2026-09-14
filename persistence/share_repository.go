@@ -29,12 +29,7 @@ func NewShareRepository(db dbx.Builder) model.ShareRepository {
 }
 
 func (r *shareRepository) Delete(ctx context.Context, ids ...string) error {
-	for _, id := range ids {
-		if err := r.deleteOwned(ctx, id); err != nil {
-			return err
-		}
-	}
-	return nil
+	return r.deleteOwnedAll(ctx, ids...)
 }
 
 func (r *shareRepository) selectShare(ctx context.Context, options ...model.QueryOptions) SelectBuilder {

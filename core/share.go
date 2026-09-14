@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -21,7 +20,7 @@ import (
 
 type Share interface {
 	Load(ctx context.Context, id string) (*model.Share, error)
-	Repository() rest.Repository[model.Share]
+	Repository() model.ShareRepository
 }
 
 func NewShare(ds model.DataStore) Share {
@@ -56,7 +55,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	return share, nil
 }
 
-func (s *shareService) Repository() rest.Repository[model.Share] {
+func (s *shareService) Repository() model.ShareRepository {
 	return s.repo
 }
 
