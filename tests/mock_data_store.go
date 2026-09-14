@@ -167,14 +167,14 @@ func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepositor
 	return db.MockedUserProps
 }
 
-func (db *MockDataStore) Property(ctx context.Context) model.PropertyRepository {
+func (db *MockDataStore) Property() model.PropertyRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedProperty != nil {
 		return db.MockedProperty
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Property(ctx)
+		return db.RealDS.Property()
 	}
 	db.MockedProperty = &MockedPropertyRepo{}
 	return db.MockedProperty

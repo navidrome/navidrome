@@ -405,8 +405,8 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 	key := keyTo32Bytes(conf.Server.PasswordEncryptionKey)
 	keySum := fmt.Sprintf("%x", sha256.Sum256(key))
 
-	props := NewPropertyRepository(r.ctx, r.db)
-	savedKeySum, err := props.Get(consts.PasswordsEncryptedKey)
+	props := NewPropertyRepository(r.db)
+	savedKeySum, err := props.Get(r.ctx, consts.PasswordsEncryptedKey)
 
 	// If passwords are already encrypted
 	if err == nil {
@@ -446,7 +446,7 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 		}
 	}
 
-	err = props.Put(consts.PasswordsEncryptedKey, keySum)
+	err = props.Put(r.ctx, consts.PasswordsEncryptedKey, keySum)
 	if err != nil {
 		log.Error("Could not flag passwords as encrypted. It will cause login errors", err)
 		return err

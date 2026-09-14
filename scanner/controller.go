@@ -126,9 +126,9 @@ func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
 
 // getScanInfo retrieves scan status from the database
 func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed time.Duration, lastErr string) {
-	lastErr, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
-	scanType, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
-	startTimeStr, _ := s.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+	lastErr, _ = s.ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "")
+	scanType, _ = s.ds.Property().DefaultGet(ctx, consts.LastScanTypeKey, "")
+	startTimeStr, _ := s.ds.Property().DefaultGet(ctx, consts.LastScanStartTimeKey, "")
 
 	if startTimeStr != "" {
 		startTime, err := time.Parse(time.RFC3339, startTimeStr)
@@ -238,7 +238,7 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	}
 	// Store scan error in database so it can be displayed in the UI
 	if scanError != nil {
-		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
+		_ = s.ds.Property().Put(ctx, consts.LastScanErrorKey, scanError.Error())
 	}
 	// Refresh the query-planner statistics after a successful full scan. This must run in the
 	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the

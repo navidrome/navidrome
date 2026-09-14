@@ -29,7 +29,7 @@ type DataStore interface {
 	Player(ctx context.Context) PlayerRepository
 	Radio(ctx context.Context) RadioRepository
 	Share(ctx context.Context) ShareRepository
-	Property(ctx context.Context) PropertyRepository
+	Property() PropertyRepository
 	User(ctx context.Context) UserRepository
 	UserProps(ctx context.Context) UserPropsRepository
 	ScrobbleBuffer(ctx context.Context) ScrobbleBufferRepository

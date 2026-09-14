@@ -47,11 +47,11 @@ type insightsCollector struct {
 
 func GetInstance(ds model.DataStore) Insights {
 	return singleton.GetInstance(func() *insightsCollector {
-		id, err := ds.Property(context.TODO()).Get(consts.InsightsIDKey)
+		id, err := ds.Property().Get(context.TODO(), consts.InsightsIDKey)
 		if err != nil {
 			log.Trace("Could not get Insights ID from DB. Creating one", err)
 			id = uuid.NewString()
-			err = ds.Property(context.TODO()).Put(consts.InsightsIDKey, id)
+			err = ds.Property().Put(context.TODO(), consts.InsightsIDKey, id)
 			if err != nil {
 				log.Trace("Could not save Insights ID to DB", err)
 			}

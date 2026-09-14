@@ -33,7 +33,7 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 func (api *Router) getArtist(r *http.Request, libIds []int, ifModifiedSince time.Time) (model.ArtistIndexes, int64, error) {
 	ctx := r.Context()
 
-	lastScanStr, err := api.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+	lastScanStr, err := api.ds.Property().DefaultGet(ctx, consts.LastScanStartTimeKey, "")
 	if err != nil {
 		log.Error(ctx, "Error retrieving last scan start time", err)
 		return nil, 0, err

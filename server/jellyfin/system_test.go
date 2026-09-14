@@ -181,10 +181,10 @@ var _ = Describe("System", func() {
 		})
 
 		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
-			Expect(ds.Property(ctx).Put(consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
 
 			r := &Router{ds: ds}
-			props := ds.Property(ctx).(*tests.MockedPropertyRepo)
+			props := ds.Property().(*tests.MockedPropertyRepo)
 			props.Error = errors.New("database is locked")
 			degraded := r.serverID(ctx)
 			Expect(degraded).ToNot(BeEmpty())
@@ -193,7 +193,7 @@ var _ = Describe("System", func() {
 
 			// Once the DB recovers, the stored id is intact and served again.
 			Expect(r.serverID(ctx)).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
-			stored, err := ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+			stored, err := ds.Property().Get(ctx, consts.JellyfinServerIDKey)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
 		})
@@ -204,7 +204,7 @@ var _ = Describe("System", func() {
 		})
 
 		It("strips dashes from an already-persisted id", func() {
-			Expect(ds.Property(ctx).Put(
+			Expect(ds.Property().Put(ctx,
 				consts.JellyfinServerIDKey, "1b4e28ba-2fa1-11d2-883f-0016d3cca427")).To(Succeed())
 			r := &Router{ds: ds}
 			Expect(r.serverID(ctx)).To(Equal("1b4e28ba2fa111d2883f0016d3cca427"))

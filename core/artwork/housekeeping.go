@@ -70,7 +70,7 @@ func ConfigFingerprint() string {
 // resolved under it. Nothing re-resolves on its own; applying a change is an explicit reprocess.
 func ReconcileConfigFingerprint(ctx context.Context, ds model.DataStore) error {
 	current := ConfigFingerprint()
-	stored, err := ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
+	stored, err := ds.Property().DefaultGet(ctx, consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func ReconcileConfigFingerprint(ctx context.Context, ds model.DataStore) error {
 
 // MarkConfigApplied records the current fingerprint as the one the library is resolved under.
 func MarkConfigApplied(ctx context.Context, ds model.DataStore) error {
-	return ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())
+	return ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())
 }
 
 // enqueueMissingAll is the safety net for entities a scan never enqueued (added between scans, or scanner off).

@@ -21,8 +21,8 @@ func initialSetup(ds model.DataStore) {
 			return err
 		}
 
-		properties := tx.Property(ctx)
-		_, err := properties.Get(consts.InitialSetupFlagKey)
+		properties := tx.Property()
+		_, err := properties.Get(ctx, consts.InitialSetupFlagKey)
 		if err == nil {
 			return nil
 		}
@@ -33,7 +33,7 @@ func initialSetup(ds model.DataStore) {
 			}
 		}
 
-		err = properties.Put(consts.InitialSetupFlagKey, time.Now().String())
+		err = properties.Put(ctx, consts.InitialSetupFlagKey, time.Now().String())
 		return err
 	}, "initial setup")
 }

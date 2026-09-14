@@ -48,7 +48,7 @@ func Init(ds model.DataStore) {
 }
 
 func loadOrCreateSecret(ctx context.Context, ds model.DataStore, key string) string {
-	secret, err := ds.Property(ctx).Get(key)
+	secret, err := ds.Property().Get(ctx, key)
 	if err != nil || secret == "" {
 		log.Info(ctx, "Creating new JWT secret", "key", key)
 		return createNewSecret(ctx, ds, key)
@@ -176,7 +176,7 @@ func createNewSecret(ctx context.Context, ds model.DataStore, key string) string
 		log.Error(ctx, "Could not encrypt JWT secret", err)
 		return secret
 	}
-	if err := ds.Property(ctx).Put(key, encSecret); err != nil {
+	if err := ds.Property().Put(ctx, key, encSecret); err != nil {
 		log.Error(ctx, "Could not save JWT secret in DB", err)
 	}
 	return secret

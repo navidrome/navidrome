@@ -613,7 +613,7 @@ var _ = Describe("reprocessArtwork", func() {
 
 	DescribeTable("records the applied config only for a run that leaves nothing on the old one",
 		func(selected []model.Kind, sources []string, dryRun, applied bool) {
-			Expect(ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
 			Expect(reprocessArtwork(ctx, ds, selected, sources, imageAgents, dryRun, accept, &out)).To(Succeed())
 
@@ -621,7 +621,7 @@ var _ = Describe("reprocessArtwork", func() {
 			if applied {
 				want = artwork.ConfigFingerprint()
 			}
-			Expect(ds.Property(ctx).Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(want))
+			Expect(ds.Property().Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal(want))
 		},
 		Entry("every kind, unfiltered", artwork.ReprocessKinds, nil, false, true),
 		Entry("every kind, but nothing matched", artwork.ReprocessKinds, []string{}, false, true),
@@ -848,7 +848,7 @@ var _ = Describe("collectStatus", func() {
 	})
 
 	It("compares the stored fingerprint against the current one", func() {
-		Expect(ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, "old-fingerprint")).To(Succeed())
+		Expect(ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, "old-fingerprint")).To(Succeed())
 
 		rep, err := collectStatus(ctx, ds)
 		Expect(err).ToNot(HaveOccurred())

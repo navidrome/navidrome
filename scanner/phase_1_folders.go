@@ -135,7 +135,7 @@ func (p *phaseFolders) description() string {
 func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 	return ppl.NewProducer(func(put func(entry *folderEntry)) error {
 		var err error
-		p.prevAlbumPIDConf, err = p.ds.Property(p.ctx).DefaultGet(consts.PIDAlbumKey, "")
+		p.prevAlbumPIDConf, err = p.ds.Property().DefaultGet(p.ctx, consts.PIDAlbumKey, "")
 		if err != nil {
 			return fmt.Errorf("getting album PID conf: %w", err)
 		}
