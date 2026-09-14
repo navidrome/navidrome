@@ -725,7 +725,9 @@ func (r *artistRepository) Read(ctx context.Context, id string) (*model.Artist, 
 	return r.Get(ctx, id)
 }
 
-func (r *artistRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Artist, error) {
+// sortMappingsForRole copies the shared mappings so a role-specific sort never leaks into them.
+// Anything sanitizeArtistStatsRole rejects falls back to the "total" aggregate.
+func (r *artistRepository) sortMappingsForRole(options ...rest.QueryOptions) map[string]string {
 	role := "total"
 	if len(options) > 0 {
 		if v, ok := options[0].Filters["role"].(string); ok {
@@ -734,12 +736,16 @@ func (r *artistRepository) ReadAll(ctx context.Context, options ...rest.QueryOpt
 			}
 		}
 	}
-	// Copy so the role-specific sort never leaks into the shared mappings.
+	mappings := maps.Clone(r.sortMappings)
+	mappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"
+	mappings["album_count"] = "sum(stats->>'" + role + "'->>'a')"
+	mappings["size"] = "sum(stats->>'" + role + "'->>'s')"
+	return mappings
+}
+
+func (r *artistRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Artist, error) {
 	scoped := *r
-	scoped.sortMappings = maps.Clone(r.sortMappings)
-	scoped.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"
-	scoped.sortMappings["album_count"] = "sum(stats->>'" + role + "'->>'a')"
-	scoped.sortMappings["size"] = "sum(stats->>'" + role + "'->>'s')"
+	scoped.sortMappings = r.sortMappingsForRole(options...)
 	return scoped.GetAll(ctx, scoped.parseRestOptions(ctx, options...))
 }
 
