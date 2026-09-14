@@ -77,7 +77,7 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		hash := sha256.Sum256(wasmData)
 		hashHex := hex.EncodeToString(hash[:])
 
-		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
+		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
 		mockPluginRepo.Permitted = true
 		enabledPlugin := model.Plugin{
 			ID:       "test-subsonicapi-plugin",

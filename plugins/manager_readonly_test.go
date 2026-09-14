@@ -72,7 +72,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 
 			Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
-			stored, err := repo.Get("broken")
+			stored, err := repo.Get(GinkgoT().Context(), "broken")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.Enabled).To(BeTrue(), "inspecting a plugin must never disable it")
 			Expect(stored.LastError).To(BeEmpty())
@@ -85,7 +85,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 
 			Expect(mgr.loadEnabledPlugins(GinkgoT().Context())).To(Succeed())
 
-			stored, err := repo.Get("broken")
+			stored, err := repo.Get(GinkgoT().Context(), "broken")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.Enabled).To(BeFalse())
 			Expect(stored.LastError).ToNot(BeEmpty())

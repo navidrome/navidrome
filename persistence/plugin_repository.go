@@ -15,9 +15,8 @@ type pluginRepository struct {
 	sqlRepository
 }
 
-func NewPluginRepository(ctx context.Context, db dbx.Builder) model.PluginRepository {
+func NewPluginRepository(db dbx.Builder) model.PluginRepository {
 	r := &pluginRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Plugin{}, map[string]filterFunc{
 		"id":      idFilter("plugin"),
@@ -26,56 +25,56 @@ func NewPluginRepository(ctx context.Context, db dbx.Builder) model.PluginReposi
 	return r
 }
 
-func (r *pluginRepository) isPermitted() bool {
-	user := loggedUser(r.ctx)
+func (r *pluginRepository) isPermitted(ctx context.Context) bool {
+	user := loggedUser(ctx)
 	return user.IsAdmin
 }
 
-func (r *pluginRepository) ClearErrors() error {
-	if !r.isPermitted() {
+func (r *pluginRepository) ClearErrors(ctx context.Context) error {
+	if !r.isPermitted(ctx) {
 		return rest.ErrPermissionDenied
 	}
 	_, err := r.db.NewQuery("UPDATE plugin SET last_error = '' WHERE last_error != ''").Execute()
 	return err
 }
 
-func (r *pluginRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	if !r.isPermitted() {
+func (r *pluginRepository) CountAll(ctx context.Context, options ...model.QueryOptions) (int64, error) {
+	if !r.isPermitted(ctx) {
 		return 0, rest.ErrPermissionDenied
 	}
-	sql := r.newSelect(r.ctx)
-	return r.count(r.ctx, sql, options...)
+	sql := r.newSelect(ctx)
+	return r.count(ctx, sql, options...)
 }
 
-func (r *pluginRepository) Delete(id string) error {
-	if !r.isPermitted() {
+func (r *pluginRepository) Delete(ctx context.Context, id string) error {
+	if !r.isPermitted(ctx) {
 		return rest.ErrPermissionDenied
 	}
-	return r.delete(r.ctx, Eq{"id": id})
+	return r.delete(ctx, Eq{"id": id})
 }
 
-func (r *pluginRepository) Get(id string) (*model.Plugin, error) {
-	if !r.isPermitted() {
+func (r *pluginRepository) Get(ctx context.Context, id string) (*model.Plugin, error) {
+	if !r.isPermitted(ctx) {
 		return nil, rest.ErrPermissionDenied
 	}
-	sel := r.newSelect(r.ctx).Where(Eq{"id": id}).Columns("*")
+	sel := r.newSelect(ctx).Where(Eq{"id": id}).Columns("*")
 	res := model.Plugin{}
-	err := r.queryOne(r.ctx, sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-func (r *pluginRepository) GetAll(options ...model.QueryOptions) (model.Plugins, error) {
-	if !r.isPermitted() {
+func (r *pluginRepository) GetAll(ctx context.Context, options ...model.QueryOptions) (model.Plugins, error) {
+	if !r.isPermitted(ctx) {
 		return nil, rest.ErrPermissionDenied
 	}
-	sel := r.newSelect(r.ctx, options...).Columns("*")
+	sel := r.newSelect(ctx, options...).Columns("*")
 	res := model.Plugins{}
-	err := r.queryAll(r.ctx, sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	return res, err
 }
 
-func (r *pluginRepository) Put(plugin *model.Plugin) error {
-	if !r.isPermitted() {
+func (r *pluginRepository) Put(ctx context.Context, plugin *model.Plugin) error {
+	if !r.isPermitted(ctx) {
 		return rest.ErrPermissionDenied
 	}
 
@@ -122,15 +121,15 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 }
 
 func (r *pluginRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(ctx, options...))
+	return r.CountAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
 func (r *pluginRepository) Read(ctx context.Context, id string) (*model.Plugin, error) {
-	return r.Get(id)
+	return r.Get(ctx, id)
 }
 
 func (r *pluginRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Plugin, error) {
-	return r.GetAll(r.parseRestOptions(ctx, options...))
+	return r.GetAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
 var _ model.PluginRepository = (*pluginRepository)(nil)

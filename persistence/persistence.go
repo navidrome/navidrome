@@ -24,6 +24,7 @@ type SQLStore struct {
 	playQueue   model.PlayQueueRepository
 	tag         model.TagRepository
 	genre       model.GenreRepository
+	plugin      model.PluginRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -38,6 +39,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.playQueue = NewPlayQueueRepository(db)
 	s.tag = NewTagRepository(db)
 	s.genre = NewGenreRepository(db)
+	s.plugin = NewPluginRepository(db)
 	return s
 }
 
@@ -117,8 +119,8 @@ func (s *SQLStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
 	return NewScrobbleRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) Plugin(ctx context.Context) model.PluginRepository {
-	return NewPluginRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Plugin() model.PluginRepository {
+	return s.plugin
 }
 
 func (s *SQLStore) Artwork(ctx context.Context) model.ArtworkRepository {

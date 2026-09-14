@@ -125,7 +125,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 		dataStore.MockedPlugin = tests.CreateMockPluginRepo()
 
-		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
+		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
 		mockPluginRepo.Permitted = true
 		enabledPlugin := model.Plugin{
 			ID:      "test-scrobble-retriever",

@@ -272,14 +272,14 @@ func (db *MockDataStore) Radio() model.RadioRepository {
 	return db.MockedRadio
 }
 
-func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
+func (db *MockDataStore) Plugin() model.PluginRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlugin != nil {
 		return db.MockedPlugin
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Plugin(ctx)
+		return db.RealDS.Plugin()
 	}
 	db.MockedPlugin = CreateMockPluginRepo()
 	return db.MockedPlugin
