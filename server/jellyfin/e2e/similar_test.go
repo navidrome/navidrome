@@ -68,7 +68,7 @@ var _ = Describe("Similar", func() {
 			// Seed an album in a second library the regular user has no access to, and point a
 			// provider similar-song at it.
 			otherLib := model.Library{ID: 2, Name: "Other Library", Path: "fake:///other"}
-			Expect(ds.Library(ctx).Put(&otherLib)).To(Succeed())
+			Expect(ds.Library().Put(ctx, &otherLib)).To(Succeed())
 			otherAlbum := model.Album{ID: testID("other-album"), Name: "Other Album", LibraryID: 2}
 			Expect(ds.Album(ctx).Put(&otherAlbum)).To(Succeed())
 

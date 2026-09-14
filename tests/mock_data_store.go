@@ -38,14 +38,14 @@ type MockDataStore struct {
 	GCError  error
 }
 
-func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
+func (db *MockDataStore) Library() model.LibraryRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedLibrary != nil {
 		return db.MockedLibrary
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Library(ctx)
+		return db.RealDS.Library()
 	}
 	db.MockedLibrary = &MockLibraryRepo{}
 	return db.MockedLibrary

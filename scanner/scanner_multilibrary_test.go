@@ -83,8 +83,8 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 		// Create two test libraries (let DB auto-assign IDs)
 		lib1 = model.Library{Name: "Rock Collection", Path: "rock:///music"}
 		lib2 = model.Library{Name: "Jazz Collection", Path: "jazz:///music"}
-		Expect(ds.Library(ctx).Put(&lib1)).To(Succeed())
-		Expect(ds.Library(ctx).Put(&lib2)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib1)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
 	})
 
 	runScanner := func(ctx context.Context, fullScan bool) error {
@@ -262,7 +262,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Check Rock library stats
-				rockLib, err := ds.Library(ctx).Get(lib1.ID)
+				rockLib, err := ds.Library().Get(ctx, lib1.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rockLib.TotalSongs).To(Equal(4))
 				Expect(rockLib.TotalAlbums).To(Equal(2))
@@ -271,7 +271,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(rockLib.TotalFolders).To(Equal(2)) // Abbey Road, IV (only folders with audio files)
 
 				// Check Jazz library stats
-				jazzLib, err := ds.Library(ctx).Get(lib2.ID)
+				jazzLib, err := ds.Library().Get(ctx, lib2.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jazzLib.TotalSongs).To(Equal(4))
 				Expect(jazzLib.TotalAlbums).To(Equal(2))
@@ -285,13 +285,13 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Verify rock library stats
-				rockLib, err := ds.Library(ctx).Get(lib1.ID)
+				rockLib, err := ds.Library().Get(ctx, lib1.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rockLib.TotalSongs).To(Equal(4))
 				Expect(rockLib.TotalAlbums).To(Equal(2))
 
 				// Verify jazz library stats
-				jazzLib, err := ds.Library(ctx).Get(lib2.ID)
+				jazzLib, err := ds.Library().Get(ctx, lib2.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jazzLib.TotalSongs).To(Equal(4))
 				Expect(jazzLib.TotalAlbums).To(Equal(2))
@@ -565,7 +565,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				_ = rockFiles
 
 				// Verify jazz library stats are correct
-				jazzLib, err := ds.Library(ctx).Get(lib2.ID)
+				jazzLib, err := ds.Library().Get(ctx, lib2.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jazzLib.TotalSongs).To(Equal(2))
 
@@ -593,7 +593,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzFiles).To(HaveLen(2))
 
 				// Jazz library statistics should be accurate
-				jazzLib, err := ds.Library(ctx).Get(lib2.ID)
+				jazzLib, err := ds.Library().Get(ctx, lib2.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jazzLib.TotalSongs).To(Equal(2))
 				Expect(jazzLib.TotalAlbums).To(Equal(1))
@@ -695,7 +695,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzFiles[0].Title).To(Equal("Chameleon"))
 
 				// Jazz library statistics should be accurate
-				jazzLib, err := ds.Library(ctx).Get(lib2.ID)
+				jazzLib, err := ds.Library().Get(ctx, lib2.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jazzLib.TotalSongs).To(Equal(1))
 				Expect(jazzLib.TotalAlbums).To(Equal(1))
@@ -794,11 +794,11 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzFiles).To(HaveLen(1))
 
 				// Both libraries should have correct content counts
-				rockLib, err := ds.Library(ctx).Get(lib1.ID)
+				rockLib, err := ds.Library().Get(ctx, lib1.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rockLib.TotalSongs).To(Equal(2))
 
-				jazzLib, err := ds.Library(ctx).Get(lib2.ID)
+				jazzLib, err := ds.Library().Get(ctx, lib2.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(jazzLib.TotalSongs).To(Equal(1))
 

@@ -44,7 +44,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 		// Create the second library in the DB (Put auto-assigns admin users)
 		lib2 = model.Library{ID: 2, Name: "Classical Library", Path: "fake2:///classical"}
-		Expect(ds.Library(ctx).Put(&lib2)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
 
 		// Reload admin user to get both libraries in the Libraries field
 		loadedAdmin, err := ds.User(ctx).FindByUsername(adminUser.UserName)

@@ -213,7 +213,7 @@ func (m *mockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
 	return args.Get(0).(model.PlaylistRepository)
 }
 
-func (m *mockDataStore) Library(context.Context) model.LibraryRepository {
+func (m *mockDataStore) Library() model.LibraryRepository {
 	return &mockLibraryRepository{}
 }
 
@@ -222,7 +222,7 @@ type mockLibraryRepository struct {
 	model.LibraryRepository
 }
 
-func (m *mockLibraryRepository) GetPath(id int) (string, error) {
+func (m *mockLibraryRepository) GetPath(_ context.Context, id int) (string, error) {
 	return "/music", nil
 }
 

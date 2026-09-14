@@ -193,7 +193,7 @@ func runCreateUser(ctx context.Context) {
 		}
 
 		if len(libraryIds) > 0 && !setAdmin {
-			user.Libraries, err = tx.Library(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
+			user.Libraries, err = tx.Library().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
 			if err != nil {
 				return err
 			}
@@ -202,7 +202,7 @@ func runCreateUser(ctx context.Context) {
 				return libraryError(user.Libraries)
 			}
 		} else {
-			user.Libraries, err = tx.Library(ctx).GetAll()
+			user.Libraries, err = tx.Library().GetAll(ctx)
 			if err != nil {
 				return err
 			}
@@ -276,7 +276,7 @@ func runUserEdit(ctx context.Context) {
 		}
 
 		if len(libraryIds) > 0 && !setAdmin {
-			libraries, err := tx.Library(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
+			libraries, err := tx.Library().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
 
 			if err != nil {
 				return err
@@ -291,7 +291,7 @@ func runUserEdit(ctx context.Context) {
 		}
 
 		if setAdmin && !user.IsAdmin {
-			libraries, err := tx.Library(ctx).GetAll()
+			libraries, err := tx.Library().GetAll(ctx)
 			if err != nil {
 				return err
 			}

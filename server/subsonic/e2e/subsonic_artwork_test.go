@@ -108,7 +108,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		// harness's MaxOpenConns=1, so wipe the golden content and import this library fresh.
 		wipeScannedContent()
 		artLib := model.Library{Name: "Artwork Library", Path: musicDir}
-		Expect(ds.Library(ctx).Put(&artLib)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &artLib)).To(Succeed())
 		Expect(ds.User(ctx).SetUserLibraries(adminUser.ID, []int{artLib.ID})).To(Succeed())
 
 		s := scanner.New(ctx, ds, events.NoopBroker(),

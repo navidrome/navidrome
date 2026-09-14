@@ -13,11 +13,18 @@ import (
 )
 
 type SQLStore struct {
-	db dbx.Builder
+	db      dbx.Builder
+	library model.LibraryRepository
+}
+
+func newSQLStore(db dbx.Builder) *SQLStore {
+	s := &SQLStore{db: db}
+	s.library = NewLibraryRepository(db)
+	return s
 }
 
 func New(conn *sql.DB) model.DataStore {
-	return &SQLStore{db: dbx.NewFromDB(conn, db.Driver)}
+	return newSQLStore(dbx.NewFromDB(conn, db.Driver))
 }
 
 func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
@@ -32,8 +39,8 @@ func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
 	return NewMediaFileRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) Library(ctx context.Context) model.LibraryRepository {
-	return NewLibraryRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Library() model.LibraryRepository {
+	return s.library
 }
 
 func (s *SQLStore) Folder(ctx context.Context) model.FolderRepository {
@@ -118,7 +125,7 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string)
 		log.Trace("Transaction started", "scope", msg)
 	}
 	return conn.Transactional(func(tx *dbx.Tx) error {
-		newDb := &SQLStore{db: tx}
+		newDb := newSQLStore(tx)
 		err := block(newDb)
 		if !inTx {
 			log.Trace("Nested Transaction finished", "scope", msg, "elapsed", time.Since(start), err)

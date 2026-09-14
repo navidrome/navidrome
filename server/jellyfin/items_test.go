@@ -1044,7 +1044,7 @@ var _ = Describe("Items", func() {
 		})
 
 		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
-			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
+			ds.Library().(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxAdmin())
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))

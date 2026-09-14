@@ -37,7 +37,7 @@ var _ = Describe("MediaRepository", func() {
 
 		BeforeEach(func() {
 			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
-			libPtr, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			libPtr, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			lib = *libPtr
 
@@ -1134,11 +1134,11 @@ var _ = Describe("MediaRepository", func() {
 
 			BeforeEach(func() {
 				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
-				lr := NewLibraryRepository(adminCtx, GetDBXBuilder())
+				lr := NewLibraryRepository(GetDBXBuilder())
 
 				// A second library the restricted user has no access to
 				otherLib = model.Library{ID: 0, Name: "Other Library", Path: "/other/lib"}
-				Expect(lr.Put(&otherLib)).To(Succeed())
+				Expect(lr.Put(adminCtx, &otherLib)).To(Succeed())
 
 				// A track that lives only in the other library (created as admin)
 				adminMr := NewMediaFileRepository(adminCtx, GetDBXBuilder())
@@ -1157,8 +1157,8 @@ var _ = Describe("MediaRepository", func() {
 			AfterEach(func() {
 				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
 				_ = NewMediaFileRepository(adminCtx, GetDBXBuilder()).Delete("otherlib-track")
-				lr := NewLibraryRepository(adminCtx, GetDBXBuilder()).(*libraryRepository)
-				_ = lr.delete(lr.ctx, squirrel.Eq{"id": otherLib.ID})
+				lr := NewLibraryRepository(GetDBXBuilder()).(*libraryRepository)
+				_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
 				_ = NewUserRepository(adminCtx, GetDBXBuilder()).Delete(adminCtx, restrictedUser.ID)
 			})
 

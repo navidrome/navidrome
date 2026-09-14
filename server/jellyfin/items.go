@@ -834,7 +834,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 			}
 		}
 		// Admin bypass: Libraries is empty but all access is granted, so fetch the real library.
-		if lib, err := api.ds.Library(ctx).Get(libID); err == nil {
+		if lib, err := api.ds.Library().Get(ctx, libID); err == nil {
 			return libraryView(*lib), true
 		}
 	}

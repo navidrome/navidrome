@@ -20,7 +20,7 @@ var _ = Describe("Plugin Cleanup", func() {
 		db := GetDBXBuilder()
 		pluginRepo = NewPluginRepository(ctx, db)
 		userRepo = NewUserRepository(ctx, db)
-		libraryRepo = NewLibraryRepository(ctx, db)
+		libraryRepo = NewLibraryRepository(db)
 
 		// Clean up any existing plugins
 		all, _ := pluginRepo.GetAll()
@@ -240,7 +240,7 @@ var _ = Describe("Plugin Cleanup", func() {
 				Name: "Test Library",
 				Path: "/tmp/test-lib",
 			}
-			Expect(libraryRepo.Put(library)).To(Succeed())
+			Expect(libraryRepo.Put(ctx, library)).To(Succeed())
 
 			// Create a plugin referencing this library
 			plugin := &model.Plugin{
@@ -254,7 +254,7 @@ var _ = Describe("Plugin Cleanup", func() {
 			Expect(pluginRepo.Put(plugin)).To(Succeed())
 
 			// Delete the library
-			Expect(libraryRepo.Delete(99)).To(Succeed())
+			Expect(libraryRepo.Delete(ctx, 99)).To(Succeed())
 
 			// Verify library was removed from plugin
 			updated, err := pluginRepo.Get("lib-ref-plugin")
