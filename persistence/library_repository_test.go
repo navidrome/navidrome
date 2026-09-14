@@ -286,7 +286,7 @@ var _ = Describe("LibraryRepository", func() {
 		BeforeEach(func() {
 			adminCtx = request.WithUser(log.NewContext(context.TODO()), adminUser)
 			adminRepo = NewLibraryRepository(conn)
-			artistRepo = NewArtistRepository(adminCtx, conn)
+			artistRepo = NewArtistRepository(conn)
 		})
 
 		It("marks artists orphaned by the delete as missing", func() {
@@ -295,14 +295,14 @@ var _ = Describe("LibraryRepository", func() {
 
 			orphanArtist := model.Artist{ID: "delete-orphan", Name: "Orphan To Be"}
 			sharedArtist := model.Artist{ID: "delete-shared", Name: "Shared Artist"}
-			Expect(artistRepo.Put(&orphanArtist)).To(Succeed())
-			Expect(artistRepo.Put(&sharedArtist)).To(Succeed())
+			Expect(artistRepo.Put(adminCtx, &orphanArtist)).To(Succeed())
+			Expect(artistRepo.Put(adminCtx, &sharedArtist)).To(Succeed())
 			Expect(adminRepo.AddArtist(adminCtx, lib.ID, orphanArtist.ID)).To(Succeed())
 			Expect(adminRepo.AddArtist(adminCtx, lib.ID, sharedArtist.ID)).To(Succeed())
 			Expect(adminRepo.AddArtist(adminCtx, 1, sharedArtist.ID)).To(Succeed())
 			DeferCleanup(func() {
 				if raw, ok := artistRepo.(*artistRepository); ok {
-					_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("artist").
+					_, _ = raw.executeSQL(adminCtx, squirrel.Delete("artist").
 						Where(squirrel.Eq{"id": []string{orphanArtist.ID, sharedArtist.ID}}))
 				}
 			})

@@ -19,7 +19,7 @@ type DataStore interface {
 	Library() LibraryRepository
 	Folder() FolderRepository
 	Album(ctx context.Context) AlbumRepository
-	Artist(ctx context.Context) ArtistRepository
+	Artist() ArtistRepository
 	MediaFile(ctx context.Context) MediaFileRepository
 	Genre() GenreRepository
 	Tag() TagRepository

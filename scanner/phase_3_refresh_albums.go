@@ -138,7 +138,7 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 
 	// Refresh artist annotations
 	start = time.Now()
-	cnt, err = p.ds.Artist(p.ctx).RefreshPlayCounts()
+	cnt, err = p.ds.Artist().RefreshPlayCounts(p.ctx)
 	if err != nil {
 		return fmt.Errorf("refreshing artist annotations: %w", err)
 	}

@@ -48,7 +48,7 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	}
 	switch entity.(type) {
 	case *model.Artist:
-		repo = api.ds.Artist(ctx)
+		repo = api.ds.Artist()
 		resource = "artist"
 	case *model.Album:
 		repo = api.ds.Album(ctx)
@@ -60,7 +60,7 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 		repo = api.ds.MediaFile(ctx)
 		resource = "song"
 	}
-	err = repo.SetRating(rating, id)
+	err = repo.SetRating(ctx, rating, id)
 	if err != nil {
 		return err
 	}
@@ -129,7 +129,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 			}
 			switch entity.(type) {
 			case *model.Artist:
-				repo = tx.Artist(ctx)
+				repo = tx.Artist()
 				resource = "artist"
 			case *model.Album:
 				repo = tx.Album(ctx)
@@ -141,7 +141,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 				repo = tx.MediaFile(ctx)
 				resource = "song"
 			}
-			if err := repo.SetStar(star, id); err != nil {
+			if err := repo.SetStar(ctx, star, id); err != nil {
 				return err
 			}
 			event = event.With(resource, id)

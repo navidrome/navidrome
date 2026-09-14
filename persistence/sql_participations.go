@@ -125,9 +125,9 @@ func (r sqlRepository) updateParticipants(ctx context.Context, itemID string, pa
 }
 
 func (r *sqlRepository) getParticipants(ctx context.Context, m *model.MediaFile) (model.Participants, error) {
-	ar := NewArtistRepository(ctx, r.db)
+	ar := NewArtistRepository(r.db)
 	ids := m.Participants.AllIDs()
-	artists, err := ar.GetAll(model.QueryOptions{Filters: Eq{"artist.id": ids}})
+	artists, err := ar.GetAll(ctx, model.QueryOptions{Filters: Eq{"artist.id": ids}})
 	if err != nil {
 		return nil, fmt.Errorf("getting participants: %w", err)
 	}

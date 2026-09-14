@@ -55,9 +55,9 @@ type flipOnPlayRepo struct {
 	played        atomic.Bool
 }
 
-func (r *flipOnPlayRepo) IncPlayCount(id string, ts time.Time) error {
+func (r *flipOnPlayRepo) IncPlayCount(ctx context.Context, id string, ts time.Time) error {
 	r.played.Store(true)
-	return r.MediaFileRepository.IncPlayCount(id, ts)
+	return r.MediaFileRepository.IncPlayCount(ctx, id, ts)
 }
 
 func (r *flipOnPlayRepo) MatchesCriteria(string, criteria.Criteria) (bool, error) {
@@ -120,9 +120,9 @@ var _ = Describe("PlayTracker", func() {
 		}
 		_ = ds.MediaFile(ctx).Put(&track)
 		artist1 = model.Artist{ID: "ar-1"}
-		_ = ds.Artist(ctx).Put(&artist1)
+		_ = ds.Artist().Put(ctx, &artist1)
 		artist2 = model.Artist{ID: "ar-2"}
-		_ = ds.Artist(ctx).Put(&artist2)
+		_ = ds.Artist().Put(ctx, &artist2)
 		album = model.Album{ID: "al-1"}
 		_ = ds.Album(ctx).(*tests.MockAlbumRepo).Put(&album)
 	})

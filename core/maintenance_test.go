@@ -507,7 +507,7 @@ type extendedArtistRepo struct {
 	refreshStatsError  error
 }
 
-func (m *extendedArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+func (m *extendedArtistRepo) RefreshStats(ctx context.Context, allArtists bool) (int64, error) {
 	m.mu.Lock()
 	m.refreshStatsCalled = true
 	err := m.refreshStatsError
@@ -516,7 +516,7 @@ func (m *extendedArtistRepo) RefreshStats(allArtists bool) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return m.MockArtistRepo.RefreshStats(allArtists)
+	return m.MockArtistRepo.RefreshStats(ctx, allArtists)
 }
 
 func (m *extendedArtistRepo) IsRefreshStatsCalled() bool {

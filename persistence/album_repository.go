@@ -449,7 +449,7 @@ var albumSearchConfig = searchConfig{
 	MBIDFields:   []string{"mbz_album_id", "mbz_release_group_id"},
 }
 
-func (r *albumRepository) Search(q string, options ...model.QueryOptions) (model.Albums, error) {
+func (r *albumRepository) Search(ctx context.Context, q string, options ...model.QueryOptions) (model.Albums, error) {
 	var opts model.QueryOptions
 	if len(options) > 0 {
 		opts = options[0]

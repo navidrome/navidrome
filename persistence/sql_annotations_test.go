@@ -47,9 +47,9 @@ var _ = Describe("Annotation Filters", func() {
 		})
 
 		It("moves the annotation when the new item has none", func() {
-			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, prev.ID)).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+			Expect(albumRepo.ReassignAnnotation(ctx, prev.ID, next.ID)).To(Succeed())
 
 			got, err := albumRepo.Get(next.ID)
 			Expect(err).ToNot(HaveOccurred())
@@ -57,9 +57,9 @@ var _ = Describe("Annotation Filters", func() {
 		})
 
 		It("recomputes the new item's cached average rating", func() {
-			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, prev.ID)).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+			Expect(albumRepo.ReassignAnnotation(ctx, prev.ID, next.ID)).To(Succeed())
 
 			got, err := albumRepo.Get(next.ID)
 			Expect(err).ToNot(HaveOccurred())
@@ -67,10 +67,10 @@ var _ = Describe("Annotation Filters", func() {
 		})
 
 		It("keeps the new item's annotation when both exist", func() {
-			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
-			Expect(albumRepo.SetRating(2, next.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, prev.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 2, next.ID)).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+			Expect(albumRepo.ReassignAnnotation(ctx, prev.ID, next.ID)).To(Succeed())
 
 			got, err := albumRepo.Get(next.ID)
 			Expect(err).ToNot(HaveOccurred())
@@ -160,7 +160,7 @@ var _ = Describe("Annotation Filters", func() {
 			// Create album with rating 1
 			ratedAlbum := model.Album{ID: "rated-album", Name: "Rated Album", LibraryID: 1}
 			Expect(albumRepo.Put(&ratedAlbum)).To(Succeed())
-			Expect(albumRepo.SetRating(1, ratedAlbum.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 1, ratedAlbum.ID)).To(Succeed())
 			defer func() {
 				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": ratedAlbum.ID}))
 				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": ratedAlbum.ID}))
@@ -269,7 +269,7 @@ var _ = Describe("Annotation Filters", func() {
 		It("counts starred items correctly (named annotation filter keeps the join)", func() {
 			starredAlbum := model.Album{ID: "counted-starred-album", Name: "Counted Starred", LibraryID: 1}
 			Expect(albumRepo.Put(&starredAlbum)).To(Succeed())
-			Expect(albumRepo.SetStar(true, starredAlbum.ID)).To(Succeed())
+			Expect(albumRepo.SetStar(ctx, true, starredAlbum.ID)).To(Succeed())
 			defer func() {
 				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": starredAlbum.ID}))
 				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": starredAlbum.ID}))

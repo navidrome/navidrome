@@ -71,7 +71,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 		ag = new(mockAgents)
 		broker = &fakeBroker{}
 		p = external.NewProvider(ds, ag, matcher.New(ds), broker)
-		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
+		mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
 		mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
 	})
 
@@ -84,7 +84,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 
 		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(Succeed())
 
-		saved, err := mockArtistRepo.Get("ar-1")
+		saved, err := mockArtistRepo.Get(ctx, "ar-1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(saved.Biography).To(Equal("Fresh Bio"))
 	})

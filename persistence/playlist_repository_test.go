@@ -152,7 +152,7 @@ var _ = Describe("PlaylistRepository", func() {
 		}
 
 		It("stores and reads back starred", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			p, err := repo.Get(plsID)
 			Expect(err).ToNot(HaveOccurred())
@@ -161,7 +161,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("stores and reads back rating and average_rating", func() {
-			Expect(repo.SetRating(4, plsID)).To(Succeed())
+			Expect(repo.SetRating(ctx, 4, plsID)).To(Succeed())
 
 			p, err := repo.Get(plsID)
 			Expect(err).ToNot(HaveOccurred())
@@ -171,7 +171,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("keeps annotations isolated per user", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			otherCtx := request.WithUser(log.NewContext(GinkgoT().Context()),
 				model.User{ID: "otheruser", UserName: "otheruser", IsAdmin: true})
@@ -183,7 +183,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("reads starred back through GetAll", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			all, err := repo.GetAll()
 			Expect(err).ToNot(HaveOccurred())
@@ -193,7 +193,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("counts playlists using annotation filters", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			options := model.QueryOptions{Filters: squirrel.Eq{"starred": true}}
 			starred, err := repo.GetAll(options)
@@ -206,7 +206,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("filters starred playlists through the registered REST filter", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			res, err := repo.ReadAll(ctx, rest.QueryOptions{
 				Filters: map[string]any{"starred": "true"},
@@ -256,7 +256,7 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("relies on the annotation sweep, not Delete, to clean up annotations", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			Expect(repo.Delete(ctx, plsID)).To(Succeed())
 			Expect(countAnnotations()).To(Equal(1))

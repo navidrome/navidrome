@@ -198,9 +198,9 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	arr := NewArtistRepository(ctx, conn)
+	arr := NewArtistRepository(conn)
 	for i := range testArtists {
-		err := arr.Put(new(testArtists[i]))
+		err := arr.Put(ctx, new(testArtists[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -274,10 +274,10 @@ var _ = BeforeSuite(func() {
 	}
 
 	// Prepare annotations
-	if err := arr.SetStar(true, artistBeatles.ID); err != nil {
+	if err := arr.SetStar(ctx, true, artistBeatles.ID); err != nil {
 		panic(err)
 	}
-	ar, err := arr.Get(artistBeatles.ID)
+	ar, err := arr.Get(ctx, artistBeatles.ID)
 	if err != nil {
 		panic(err)
 	}
@@ -288,7 +288,7 @@ var _ = BeforeSuite(func() {
 	artistBeatles.StarredAt = ar.StarredAt
 	testArtists[1] = artistBeatles
 
-	if err := alr.SetStar(true, albumRadioactivity.ID); err != nil {
+	if err := alr.SetStar(ctx, true, albumRadioactivity.ID); err != nil {
 		panic(err)
 	}
 	al, err := alr.Get(albumRadioactivity.ID)
@@ -302,7 +302,7 @@ var _ = BeforeSuite(func() {
 	albumRadioactivity.StarredAt = al.StarredAt
 	testAlbums[2] = albumRadioactivity
 
-	if err := mr.SetStar(true, songComeTogether.ID); err != nil {
+	if err := mr.SetStar(ctx, true, songComeTogether.ID); err != nil {
 		panic(err)
 	}
 	mf, err := mr.Get(songComeTogether.ID)

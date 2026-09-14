@@ -1298,7 +1298,7 @@ func newMockArtistRepo() *mockArtistRepo {
 	return &mockArtistRepo{}
 }
 
-func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+func (m *mockArtistRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Artists, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v

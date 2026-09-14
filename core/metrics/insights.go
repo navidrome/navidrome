@@ -253,7 +253,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading albums count", err)
 	}
-	data.Library.Artists, err = c.ds.Artist(ctx).CountAll()
+	data.Library.Artists, err = c.ds.Artist().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading artists count", err)
 	}

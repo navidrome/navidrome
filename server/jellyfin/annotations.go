@@ -31,7 +31,7 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 			return api.ds.Album(ctx), "album"
 		}
 	case *model.Artist:
-		return api.ds.Artist(ctx), "artist"
+		return api.ds.Artist(), "artist"
 	case *model.MediaFile:
 		if u.HasLibraryAccess(e.LibraryID) {
 			return api.ds.MediaFile(ctx), "song"
@@ -74,7 +74,7 @@ func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred b
 	if repo == nil {
 		return
 	}
-	if err := repo.SetStar(starred, id); err != nil {
+	if err := repo.SetStar(r.Context(), starred, id); err != nil {
 		api.internalError(w, r, err)
 		return
 	}
@@ -97,7 +97,7 @@ func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating 
 	if repo == nil {
 		return
 	}
-	if err := repo.SetRating(rating, id); err != nil {
+	if err := repo.SetRating(r.Context(), rating, id); err != nil {
 		api.internalError(w, r, err)
 		return
 	}

@@ -261,7 +261,7 @@ func songID(title string) string {
 }
 
 func artistID(name string) string {
-	artists, err := ds.Artist(ctx).GetAll()
+	artists, err := ds.Artist().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, a := range artists {
 		if a.Name == name {

@@ -308,7 +308,7 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 			return nil
 		}
 		start := time.Now()
-		stats, err := s.ds.Artist(ctx).RefreshStats(state.fullScan)
+		stats, err := s.ds.Artist().RefreshStats(ctx, state.fullScan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error refreshing artists stats", err)
 			return fmt.Errorf("refreshing artists stats: %w", err)

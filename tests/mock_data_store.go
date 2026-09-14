@@ -90,14 +90,14 @@ func (db *MockDataStore) Album(ctx context.Context) model.AlbumRepository {
 	return db.MockedAlbum
 }
 
-func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
+func (db *MockDataStore) Artist() model.ArtistRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedArtist != nil {
 		return db.MockedArtist
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Artist(ctx)
+		return db.RealDS.Artist()
 	}
 	db.MockedArtist = CreateMockArtistRepo()
 	return db.MockedArtist

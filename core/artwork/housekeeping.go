@@ -108,7 +108,7 @@ func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id string) (string, error) {
 	switch kind {
 	case model.KindArtistArtwork:
-		ar, err := ds.Artist(ctx).Get(id)
+		ar, err := ds.Artist().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}

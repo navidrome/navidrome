@@ -67,21 +67,21 @@ func (r sqlRepository) bmkUpsert(ctx context.Context, itemID, comment string, po
 	return err
 }
 
-func (r sqlRepository) AddBookmark(id, comment string, position int64) error {
-	user, _ := request.UserFrom(r.ctx)
-	err := r.bmkUpsert(r.ctx, id, comment, position)
+func (r sqlRepository) AddBookmark(ctx context.Context, id, comment string, position int64) error {
+	user, _ := request.UserFrom(ctx)
+	err := r.bmkUpsert(ctx, id, comment, position)
 	if err != nil {
-		log.Error(r.ctx, "Error adding bookmark", "id", id, "user", user.UserName, "position", position, "comment", comment)
+		log.Error(ctx, "Error adding bookmark", "id", id, "user", user.UserName, "position", position, "comment", comment)
 	}
 	return err
 }
 
-func (r sqlRepository) DeleteBookmark(id string) error {
-	user, _ := request.UserFrom(r.ctx)
-	del := Delete(bookmarkTable).Where(r.bmkID(r.ctx, id))
-	_, err := r.executeSQL(r.ctx, del)
+func (r sqlRepository) DeleteBookmark(ctx context.Context, id string) error {
+	user, _ := request.UserFrom(ctx)
+	del := Delete(bookmarkTable).Where(r.bmkID(ctx, id))
+	_, err := r.executeSQL(ctx, del)
 	if err != nil {
-		log.Error(r.ctx, "Error removing bookmark", "id", id, "user", user.UserName)
+		log.Error(ctx, "Error removing bookmark", "id", id, "user", user.UserName)
 	}
 	return err
 }
@@ -97,17 +97,17 @@ type bookmark struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
-	user, _ := request.UserFrom(r.ctx)
+func (r sqlRepository) GetBookmarks(ctx context.Context) (model.Bookmarks, error) {
+	user, _ := request.UserFrom(ctx)
 
 	idField := r.tableName + ".id"
-	sq := r.newSelect(r.ctx).Columns(r.tableName + ".*")
-	sq = r.withAnnotation(r.ctx, sq, idField)
-	sq = r.withBookmark(r.ctx, sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
+	sq := r.newSelect(ctx).Columns(r.tableName + ".*")
+	sq = r.withAnnotation(ctx, sq, idField)
+	sq = r.withBookmark(ctx, sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
 	var mfs dbMediaFiles // TODO Decouple from media_file
-	err := r.queryAll(r.ctx, sq, &mfs)
+	err := r.queryAll(ctx, sq, &mfs)
 	if err != nil {
-		log.Error(r.ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
+		log.Error(ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
 		return nil, err
 	}
 
@@ -118,18 +118,18 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 		mfMap[mf.ID] = i
 	}
 
-	sq = Select("*").From(bookmarkTable).Where(r.bmkID(r.ctx, ids...))
+	sq = Select("*").From(bookmarkTable).Where(r.bmkID(ctx, ids...))
 	var bmks []bookmark
-	err = r.queryAll(r.ctx, sq, &bmks)
+	err = r.queryAll(ctx, sq, &bmks)
 	if err != nil {
-		log.Error(r.ctx, "Error getting bookmarks", "user", user.UserName, "ids", ids, err)
+		log.Error(ctx, "Error getting bookmarks", "user", user.UserName, "ids", ids, err)
 		return nil, err
 	}
 
 	resp := make(model.Bookmarks, len(bmks))
 	for i, bmk := range bmks {
 		if itemIdx, ok := mfMap[bmk.ItemID]; !ok {
-			log.Debug(r.ctx, "Invalid bookmark", "id", bmk.ItemID, "user", user.UserName)
+			log.Debug(ctx, "Invalid bookmark", "id", bmk.ItemID, "user", user.UserName)
 			continue
 		} else {
 			resp[i] = model.Bookmark{

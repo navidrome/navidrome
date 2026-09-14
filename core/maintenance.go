@@ -99,7 +99,7 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 				return fmt.Errorf("get old album tracks: %w", err)
 			}
 			if oldAlbumTracks == 0 {
-				if err := tx.Album(ctx).ReassignAnnotation(oldAlbumID, newAlbumID); err != nil {
+				if err := tx.Album(ctx).ReassignAnnotation(ctx, oldAlbumID, newAlbumID); err != nil {
 					return fmt.Errorf("reassign album annotations: %w", err)
 				}
 				if err := tx.Album(ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil && !errors.Is(err, model.ErrNotFound) {
@@ -121,7 +121,7 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 
 	// Stats are refreshed synchronously, unlike deleteMissing, so the CLI sees them before it exits.
 	// album/artist play count aggregates are not recalculated here; they are refreshed by the next scan.
-	if _, err := s.ds.Artist(ctx).RefreshStats(true); err != nil {
+	if _, err := s.ds.Artist().RefreshStats(ctx, true); err != nil {
 		log.Error(ctx, "Error refreshing artist stats after remapping missing file", err)
 	}
 	affectedAlbumIDs := []string{newAlbumID}
@@ -293,7 +293,7 @@ func (s *maintenanceService) refreshStatsAsync(ctx context.Context, affectedAlbu
 	// Refresh artist stats in background
 	s.wg.Go(func() {
 		bgCtx := request.AddValues(context.Background(), ctx)
-		if _, err := s.ds.Artist(bgCtx).RefreshStats(true); err != nil {
+		if _, err := s.ds.Artist().RefreshStats(bgCtx, true); err != nil {
 			log.Error(bgCtx, "Error refreshing artist stats after deleting missing files", err)
 		} else {
 			log.Debug(bgCtx, "Successfully refreshed artist stats after deleting missing files")

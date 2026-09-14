@@ -87,7 +87,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates Search", func() {
 			putInfo("al", albumSgtPeppers.ID, "srchash33333333")
-			res, err := repo.Search("Peppers", model.QueryOptions{})
+			res, err := repo.Search(ctx, "Peppers", model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeEmpty())
 			Expect(res[0].ImageHash).To(Equal("srchash33333333"))
@@ -108,14 +108,14 @@ var _ = Describe("Artwork hydration", func() {
 
 	Describe("artists", func() {
 		var repo model.ArtistRepository
-		BeforeEach(func() { repo = NewArtistRepository(ctx, GetDBXBuilder()) })
+		BeforeEach(func() { repo = NewArtistRepository(GetDBXBuilder()) })
 
 		It("hydrates the found / known-absent / unresolved states", func() {
 			putInfo("ar", artistBeatles.ID, "arhash444444444")
 			putInfo("ar", artistKraftwerk.ID, "")
 			// artistCJK: no row -> unresolved
 
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			byID := slice.ToMap(all, func(a model.Artist) (string, model.Artist) { return a.ID, a })
 
@@ -129,14 +129,14 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates Get", func() {
 			putInfo("ar", artistBeatles.ID, "arget5555555555")
-			got, err := repo.Get(artistBeatles.ID)
+			got, err := repo.Get(ctx, artistBeatles.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.ImageHash).To(Equal("arget5555555555"))
 		})
 
 		It("hydrates Search", func() {
 			putInfo("ar", artistBeatles.ID, "arsrch666666666")
-			res, err := repo.Search("Beatles", model.QueryOptions{})
+			res, err := repo.Search(ctx, "Beatles", model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeEmpty())
 			Expect(res[0].ImageHash).To(Equal("arsrch666666666"))
@@ -374,7 +374,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates Search", func() {
 			putInfo("al", "101", "alsrchhhhhhhhhhh")
-			res, err := repo.Search("A Day In A Life", model.QueryOptions{})
+			res, err := repo.Search(ctx, "A Day In A Life", model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).ToNot(BeEmpty())
 			Expect(res[0].ImageHash).To(Equal("alsrchhhhhhhhhhh"))
@@ -398,7 +398,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		BeforeEach(func() {
 			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder())
-			artistRepo = NewArtistRepository(ctx, GetDBXBuilder())
+			artistRepo = NewArtistRepository(GetDBXBuilder())
 			playlistRepo = NewPlaylistRepository(ctx, GetDBXBuilder())
 			// Other specs leave rows behind, so scope every cursor spec to the fixtures.
 			onlyAlbums = squirrel.Eq{"album.id": []string{albumSgtPeppers.ID, albumAbbeyRoad.ID,
@@ -447,10 +447,10 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates every streamed artist, like GetAll", func() {
 			opts := model.QueryOptions{Sort: "name", Filters: onlyArtists}
-			want, err := artistRepo.GetAll(opts)
+			want, err := artistRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 
-			got := collectCursor(artistRepo.GetCursor(opts))
+			got := collectCursor(artistRepo.GetCursor(ctx, opts))
 
 			Expect(got).To(ConsistOf(want))
 			Expect(slice.Map(got, func(a model.Artist) string { return a.ImageHash })).
@@ -517,11 +517,11 @@ var _ = Describe("Artwork hydration", func() {
 		DescribeTable("orders artists like GetAll",
 			func(opts model.QueryOptions, key func(model.Artist) string) {
 				opts = scoped(opts, onlyArtists)
-				want, err := artistRepo.GetAll(opts)
+				want, err := artistRepo.GetAll(ctx, opts)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(want).ToNot(BeEmpty())
 
-				got := collectCursor(artistRepo.GetCursor(opts))
+				got := collectCursor(artistRepo.GetCursor(ctx, opts))
 
 				Expect(slice.Map(got, key)).To(Equal(slice.Map(want, key)))
 				Expect(slice.Map(got, func(a model.Artist) string { return a.ID })).

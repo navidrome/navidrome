@@ -152,7 +152,7 @@ func (r *shareRepositoryWrapper) Update(ctx context.Context, id string, entity m
 
 func (r *shareRepositoryWrapper) contentsLabelFromArtist(ctx context.Context, shareID string, ids string) string {
 	idList := strings.SplitN(ids, ",", 2)
-	a, err := r.ds.Artist(ctx).Get(idList[0])
+	a, err := r.ds.Artist().Get(ctx, idList[0])
 	if err != nil {
 		log.Error(ctx, "Error retrieving artist name for share", "share", shareID, err)
 		return ""

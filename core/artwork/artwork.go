@@ -59,7 +59,7 @@ func entityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID
 	var err error
 	switch artID.Kind {
 	case model.KindArtistArtwork:
-		found, err = ds.Artist(ctx).Exists(artID.ID)
+		found, err = ds.Artist().Exists(ctx, artID.ID)
 	case model.KindAlbumArtwork:
 		found, err = ds.Album(ctx).Exists(artID.ID)
 	case model.KindMediaFileArtwork:

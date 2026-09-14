@@ -153,7 +153,7 @@ var _ = Describe("ItemName", func() {
 			{ID: "al-2", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}},
 		})
 		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
-		Expect(ds.Artist(ctx).(*tests.MockArtistRepo).Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		Expect(ds.Artist().(*tests.MockArtistRepo).Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
 	})
 
 	It("returns the album name", func() {

@@ -338,7 +338,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// Instantiate all repositories just once per folder
 		folderRepo := tx.Folder()
 		tagRepo := tx.Tag()
-		artistRepo := tx.Artist(p.ctx)
+		artistRepo := tx.Artist()
 		libraryRepo := tx.Library()
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
@@ -369,7 +369,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
-			err = artistRepo.Put(&entry.artists[i], "name",
+			err = artistRepo.Put(p.ctx, &entry.artists[i], "name",
 				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text", "search_normalized", "updated_at")
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
@@ -468,7 +468,7 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 
 	// Reassign annotation from previous album to new album
 	log.Trace(p.ctx, "Reassigning album annotations", "from", prevID, "to", a.ID, "album", a.Name)
-	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
+	if err := repo.ReassignAnnotation(p.ctx, prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, "album", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}

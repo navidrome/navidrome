@@ -31,6 +31,7 @@ type SQLStore struct {
 	artwork     model.ArtworkRepository
 	artworkQ    model.ArtworkQueueRepository
 	user        model.UserRepository
+	artist      model.ArtistRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -52,6 +53,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.artwork = NewArtworkRepository(db)
 	s.artworkQ = NewArtworkQueueRepository(db)
 	s.user = NewUserRepository(db)
+	s.artist = NewArtistRepository(db)
 	return s
 }
 
@@ -63,8 +65,8 @@ func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
 	return NewAlbumRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) Artist(ctx context.Context) model.ArtistRepository {
-	return NewArtistRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Artist() model.ArtistRepository {
+	return s.artist
 }
 
 func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
@@ -200,11 +202,11 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 
 	err := run.Sequentially(
 		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty(libraryIDs...) }),
-		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),
-		trace(ctx, "mark missing artists", func() error { return s.Artist(ctx).(*artistRepository).markMissing() }),
+		trace(ctx, "purge empty artists", func() error { return s.artist.(*artistRepository).purgeEmpty(ctx) }),
+		trace(ctx, "mark missing artists", func() error { return s.artist.(*artistRepository).markMissing(ctx) }),
 		trace(ctx, "purge empty folders", func() error { return s.folder.(*folderRepository).purgeEmpty(ctx, libraryIDs...) }),
 		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations(ctx) }),
-		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean artist annotations", func() error { return s.artist.(*artistRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean playlist annotations", func() error { return s.Playlist(ctx).(*playlistRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean media file bookmarks", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks(ctx) }),
