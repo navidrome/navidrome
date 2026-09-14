@@ -202,7 +202,7 @@ func runInitialScan(ctx context.Context) func() error {
 		if err != nil {
 			return err
 		}
-		inProgress, err := ds.Library(ctx).ScanInProgress()
+		inProgress, err := ds.Library().ScanInProgress(ctx)
 		if err != nil {
 			return err
 		}

@@ -185,7 +185,7 @@ var _ = Describe("ArtistRepository", func() {
 				// A restricted user (strictly fewer libs than exist) with no musicFolderId is still
 				// confined to their granted libs. Build the user with total-1 libraries derived from
 				// the real DB total, so the "sees all" fast-path can't kick in regardless of count.
-				total, err := NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).CountAll()
+				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 				Expect(total).To(BeNumerically(">", 0))
 				libs := make(model.Libraries, 0, total-1)
@@ -201,7 +201,7 @@ var _ = Describe("ArtistRepository", func() {
 				// Admins see every library, so the visible set is the whole library table — derive
 				// it from the DB rather than assuming a count.
 				var allLibs []int
-				Expect(NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).(*libraryRepository).
+				Expect(NewLibraryRepository(GetDBXBuilder()).(*libraryRepository).
 					queryAllSlice(GinkgoT().Context(), squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
 				admin := model.User{ID: "a", IsAdmin: true}
 				Expect(scope(admin, squirrel.Eq{"library_id": allLibs})).To(BeNil())
@@ -631,6 +631,7 @@ var _ = Describe("ArtistRepository", func() {
 		Describe("MBID and Text Search", func() {
 			var lib2 model.Library
 			var lr model.LibraryRepository
+			var lrCtx context.Context
 			var restrictedUser model.User
 			var restrictedRepo model.ArtistRepository
 			var headlessRepo model.ArtistRepository
@@ -641,8 +642,9 @@ var _ = Describe("ArtistRepository", func() {
 
 				// Create library for testing access restrictions
 				lib2 = model.Library{ID: 0, Name: "Artist Test Library", Path: "/artist/test/lib"}
-				lr = NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				err := lr.Put(&lib2)
+				lrCtx = request.WithUser(GinkgoT().Context(), adminUser)
+				lr = NewLibraryRepository(GetDBXBuilder())
+				err := lr.Put(lrCtx, &lib2)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create a user with access to only library 1
@@ -653,9 +655,9 @@ var _ = Describe("ArtistRepository", func() {
 				restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
 
 				// Ensure both test artists are associated with library 1
-				err = lr.AddArtist(1, artistBeatles.ID)
+				err = lr.AddArtist(lrCtx, 1, artistBeatles.ID)
 				Expect(err).ToNot(HaveOccurred())
-				err = lr.AddArtist(1, artistKraftwerk.ID)
+				err = lr.AddArtist(lrCtx, 1, artistKraftwerk.ID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create the restricted user in the database
@@ -668,7 +670,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			AfterEach(func() {
 				// Clean up library 2
-				lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
+				lr := NewLibraryRepository(GetDBXBuilder())
 				_ = lr.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": lib2.ID})
 			})
 
@@ -708,7 +710,7 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Add to library 2 (not accessible to restricted user)
-				err = lr.AddArtist(lib2.ID, inaccessibleArtist.ID)
+				err = lr.AddArtist(lrCtx, lib2.ID, inaccessibleArtist.ID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Restricted user should not find this artist
@@ -745,7 +747,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					// Add to library 2 (not accessible to restricted user)
-					err = lr.AddArtist(lib2.ID, inaccessibleArtist.ID)
+					err = lr.AddArtist(lrCtx, lib2.ID, inaccessibleArtist.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Restricted user should not find this artist
@@ -764,7 +766,7 @@ var _ = Describe("ArtistRepository", func() {
 				It("does not duplicate artists that belong to multiple libraries", func() {
 					// An artist in two libraries has two library_artist rows; pagination
 					// must still enumerate it exactly once, at a stable offset.
-					Expect(lr.AddArtist(lib2.ID, artistBeatles.ID)).To(Succeed())
+					Expect(lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)).To(Succeed())
 
 					all, err := repo.Search("", model.QueryOptions{Max: 1000})
 					Expect(err).ToNot(HaveOccurred())
@@ -805,7 +807,7 @@ var _ = Describe("ArtistRepository", func() {
 					// Create an artist only in library 2 (not accessible to restricted user)
 					lib2Artist := model.Artist{ID: "empty-query-lib2-artist", Name: "Empty Query Lib2 Artist"}
 					Expect(repo.Put(&lib2Artist)).To(Succeed())
-					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
+					Expect(lr.AddArtist(lrCtx, lib2.ID, lib2Artist.ID)).To(Succeed())
 
 					results, err := restrictedRepo.Search("", model.QueryOptions{Max: 1000})
 					Expect(err).ToNot(HaveOccurred())
@@ -824,7 +826,7 @@ var _ = Describe("ArtistRepository", func() {
 					// inside the restricted user's visible range — exercising the no-gap guarantee.
 					lib2Artist := model.Artist{ID: "25", Name: "Restricted Lib2 Artist"}
 					Expect(repo.Put(&lib2Artist)).To(Succeed())
-					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
+					Expect(lr.AddArtist(lrCtx, lib2.ID, lib2Artist.ID)).To(Succeed())
 					DeferCleanup(func() {
 						if raw, ok := repo.(*artistRepository); ok {
 							_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
@@ -855,7 +857,7 @@ var _ = Describe("ArtistRepository", func() {
 			Context("Headless Processes (No User Context)", func() {
 				It("should see all artists from all libraries when no user is in context", func() {
 					// Add artists to different libraries
-					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					err := lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Headless processes should see all artists regardless of library
@@ -875,7 +877,7 @@ var _ = Describe("ArtistRepository", func() {
 
 				It("should allow headless processes to apply explicit library_id filters", func() {
 					// Add artists to different libraries
-					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					err := lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Filter by specific library
@@ -895,7 +897,7 @@ var _ = Describe("ArtistRepository", func() {
 
 				It("should get individual artists when no user is in context", func() {
 					// Add artist to a library
-					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					err := lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Headless process should be able to get the artist
@@ -1115,7 +1117,7 @@ var _ = Describe("ArtistRepository", func() {
 				// visible-library count reaches the DB total. Derive the total from the DB so the
 				// assertion doesn't depend on how many libraries other specs left behind.
 				raw := restrictedRepo.(*artistRepository) // context carries a non-admin user
-				total, err := NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).CountAll()
+				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 				Expect(total).To(BeNumerically(">", 0))
 
@@ -1283,6 +1285,6 @@ func createArtistWithLibrary(repo model.ArtistRepository, artist *model.Artist, 
 	}
 
 	// Add the artist to the specified library
-	lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-	return lr.AddArtist(libraryID, artist.ID)
+	lr := NewLibraryRepository(GetDBXBuilder())
+	return lr.AddArtist(request.WithUser(GinkgoT().Context(), adminUser), libraryID, artist.ID)
 }

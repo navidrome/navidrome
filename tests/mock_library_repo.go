@@ -27,7 +27,7 @@ func (m *MockLibraryRepo) SetData(data model.Libraries) {
 	}
 }
 
-func (m *MockLibraryRepo) GetAll(...model.QueryOptions) (model.Libraries, error) {
+func (m *MockLibraryRepo) GetAll(_ context.Context, _ ...model.QueryOptions) (model.Libraries, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -42,7 +42,7 @@ func (m *MockLibraryRepo) GetAll(...model.QueryOptions) (model.Libraries, error)
 	return libraries, nil
 }
 
-func (m *MockLibraryRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+func (m *MockLibraryRepo) CountAll(_ context.Context, qo ...model.QueryOptions) (int64, error) {
 	if m.Err != nil {
 		return 0, m.Err
 	}
@@ -71,7 +71,7 @@ func (m *MockLibraryRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockLibraryRepo) Get(id int) (*model.Library, error) {
+func (m *MockLibraryRepo) Get(_ context.Context, id int) (*model.Library, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -81,7 +81,7 @@ func (m *MockLibraryRepo) Get(id int) (*model.Library, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockLibraryRepo) GetPath(id int) (string, error) {
+func (m *MockLibraryRepo) GetPath(_ context.Context, id int) (string, error) {
 	if m.Err != nil {
 		return "", m.Err
 	}
@@ -91,7 +91,7 @@ func (m *MockLibraryRepo) GetPath(id int) (string, error) {
 	return "", model.ErrNotFound
 }
 
-func (m *MockLibraryRepo) Put(library *model.Library, colsToUpdate ...string) error {
+func (m *MockLibraryRepo) Put(_ context.Context, library *model.Library, colsToUpdate ...string) error {
 	m.PutCols = colsToUpdate
 	if m.PutFn != nil {
 		return m.PutFn(library)
@@ -106,7 +106,7 @@ func (m *MockLibraryRepo) Put(library *model.Library, colsToUpdate ...string) er
 	return nil
 }
 
-func (m *MockLibraryRepo) Delete(id int) error {
+func (m *MockLibraryRepo) Delete(_ context.Context, id int) error {
 	if m.Err != nil {
 		return m.Err
 	}
@@ -117,48 +117,48 @@ func (m *MockLibraryRepo) Delete(id int) error {
 	return nil
 }
 
-func (m *MockLibraryRepo) StoreMusicFolder() error {
+func (m *MockLibraryRepo) StoreMusicFolder(_ context.Context) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	return nil
 }
 
-func (m *MockLibraryRepo) AddArtist(id int, artistID string) error {
+func (m *MockLibraryRepo) AddArtist(_ context.Context, id int, artistID string) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	return nil
 }
 
-func (m *MockLibraryRepo) ScanBegin(id int, fullScan bool) error {
+func (m *MockLibraryRepo) ScanBegin(_ context.Context, id int, fullScan bool) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	return nil
 }
 
-func (m *MockLibraryRepo) ScanEnd(id int) error {
+func (m *MockLibraryRepo) ScanEnd(_ context.Context, id int) error {
 	if m.Err != nil {
 		return m.Err
 	}
 	return nil
 }
 
-func (m *MockLibraryRepo) ScanInProgress() (bool, error) {
+func (m *MockLibraryRepo) ScanInProgress(_ context.Context) (bool, error) {
 	if m.Err != nil {
 		return false, m.Err
 	}
 	return false, nil
 }
 
-func (m *MockLibraryRepo) RefreshStats(id int) error {
+func (m *MockLibraryRepo) RefreshStats(_ context.Context, id int) error {
 	return nil
 }
 
 // User-library association methods - mock implementations
 
-func (m *MockLibraryRepo) GetUsersWithLibraryAccess(libraryID int) (model.Users, error) {
+func (m *MockLibraryRepo) GetUsersWithLibraryAccess(_ context.Context, libraryID int) (model.Users, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -166,17 +166,17 @@ func (m *MockLibraryRepo) GetUsersWithLibraryAccess(libraryID int) (model.Users,
 	return model.Users{}, nil
 }
 
-func (m *MockLibraryRepo) Count(_ context.Context, _ ...rest.QueryOptions) (int64, error) {
-	return m.CountAll()
+func (m *MockLibraryRepo) Count(ctx context.Context, _ ...rest.QueryOptions) (int64, error) {
+	return m.CountAll(ctx)
 }
 
-func (m *MockLibraryRepo) Read(_ context.Context, id string) (*model.Library, error) {
+func (m *MockLibraryRepo) Read(ctx context.Context, id string) (*model.Library, error) {
 	idInt, _ := strconv.Atoi(id)
-	return m.Get(idInt)
+	return m.Get(ctx, idInt)
 }
 
-func (m *MockLibraryRepo) ReadAll(_ context.Context, _ ...rest.QueryOptions) ([]model.Library, error) {
-	return m.GetAll()
+func (m *MockLibraryRepo) ReadAll(ctx context.Context, _ ...rest.QueryOptions) ([]model.Library, error) {
+	return m.GetAll(ctx)
 }
 
 // REST Repository methods (string-based IDs)

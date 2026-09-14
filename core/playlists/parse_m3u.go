@@ -213,7 +213,7 @@ type pathResolver struct {
 
 // newPathResolver creates a pathResolver with libraries loaded from the datastore.
 func newPathResolver(ctx context.Context, ds model.DataStore) (*pathResolver, error) {
-	libs, err := ds.Library(ctx).GetAll()
+	libs, err := ds.Library().GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -88,7 +88,7 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	}
 
 	// Get libraries and optionally filter by targets
-	allLibs, err := s.ds.Library(ctx).GetAll()
+	allLibs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		state.sendWarning(fmt.Sprintf("getting libraries: %s", err))
 		return
@@ -217,7 +217,7 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 	for _, lib := range state.libraries {
 		if lib.LastScanStartedAt.IsZero() {
 			// This is a new scan - mark it as started
-			err := s.ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
+			err := s.ds.Library().ScanBegin(ctx, lib.ID, state.fullScan)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error marking scan start", "lib", lib.Name, err)
 				state.sendWarning(err.Error())
@@ -225,7 +225,7 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 			}
 
 			// Reload library to get updated state (timestamps, etc.)
-			reloadedLib, err := s.ds.Library(ctx).Get(lib.ID)
+			reloadedLib, err := s.ds.Library().Get(ctx, lib.ID)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error reloading library", "lib", lib.Name, err)
 				state.sendWarning(err.Error())
@@ -331,7 +331,7 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 		start := time.Now()
 		return s.ds.WithTx(func(tx model.DataStore) error {
 			for _, lib := range state.libraries {
-				err := tx.Library(ctx).ScanEnd(lib.ID)
+				err := tx.Library().ScanEnd(ctx, lib.ID)
 				if err != nil {
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
 					return fmt.Errorf("updating last scan completed: %w", err)
@@ -348,7 +348,7 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 				}
 				if state.changesDetected.Load() {
 					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
-					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
+					if err := tx.Library().RefreshStats(ctx, lib.ID); err != nil {
 						log.Error(ctx, "Scanner: Error refreshing library stats", "lib", lib.Name, err)
 						return fmt.Errorf("refreshing library stats: %w", err)
 					}

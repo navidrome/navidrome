@@ -207,9 +207,9 @@ var _ = BeforeSuite(func() {
 	}
 
 	// Associate artists with library 1 (default test library)
-	lr := NewLibraryRepository(ctx, conn)
+	lr := NewLibraryRepository(conn)
 	for i := range testArtists {
-		err := lr.AddArtist(1, testArtists[i].ID)
+		err := lr.AddArtist(ctx, 1, testArtists[i].ID)
 		if err != nil {
 			panic(err)
 		}

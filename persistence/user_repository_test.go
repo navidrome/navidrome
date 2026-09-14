@@ -334,9 +334,9 @@ var _ = Describe("UserRepository", func() {
 			library2 = model.Library{ID: 0, Name: "Library 501", Path: "/path/501"}
 
 			// Create test libraries
-			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
-			Expect(libRepo.Put(&library1)).To(BeNil())
-			Expect(libRepo.Put(&library2)).To(BeNil())
+			libRepo := NewLibraryRepository(GetDBXBuilder())
+			Expect(libRepo.Put(GinkgoT().Context(), &library1)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library2)).To(BeNil())
 		})
 
 		AfterEach(func() {
@@ -344,7 +344,7 @@ var _ = Describe("UserRepository", func() {
 			_ = repo.SetUserLibraries(userID, []int{})
 
 			// Clean up test libraries to ensure isolation between test groups
-			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			libRepo := NewLibraryRepository(GetDBXBuilder())
 			_ = libRepo.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 		})
 
@@ -419,10 +419,10 @@ var _ = Describe("UserRepository", func() {
 		)
 
 		BeforeEach(func() {
-			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			libRepo = NewLibraryRepository(GetDBXBuilder())
 
 			// Count initial libraries
-			existingLibs, err := libRepo.GetAll()
+			existingLibs, err := libRepo.GetAll(GinkgoT().Context())
 			Expect(err).ToNot(HaveOccurred())
 			initialLibCount = len(existingLibs)
 
@@ -430,8 +430,8 @@ var _ = Describe("UserRepository", func() {
 			library2 = model.Library{ID: 0, Name: "Admin Test Library 2", Path: "/admin/test/path2"}
 
 			// Create test libraries
-			Expect(libRepo.Put(&library1)).To(BeNil())
-			Expect(libRepo.Put(&library2)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library1)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library2)).To(BeNil())
 		})
 
 		AfterEach(func() {
@@ -534,13 +534,13 @@ var _ = Describe("UserRepository", func() {
 		)
 
 		BeforeEach(func() {
-			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			libRepo = NewLibraryRepository(GetDBXBuilder())
 			library1 = model.Library{ID: 0, Name: "Field Test Library 1", Path: "/field/test/path1"}
 			library2 = model.Library{ID: 0, Name: "Field Test Library 2", Path: "/field/test/path2"}
 
 			// Create test libraries
-			Expect(libRepo.Put(&library1)).To(BeNil())
-			Expect(libRepo.Put(&library2)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library1)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library2)).To(BeNil())
 
 			// Create test user
 			testUser = model.User{

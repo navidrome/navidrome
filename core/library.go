@@ -134,7 +134,7 @@ func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID strin
 
 func (s *libraryService) NewRepository(ctx context.Context) rest.Repository[model.Library] {
 	return &libraryRepositoryWrapper{
-		LibraryRepository: s.ds.Library(ctx),
+		LibraryRepository: s.ds.Library(),
 		ds:                s.ds,
 		scanner:           s.scanner,
 		watcher:           s.watcher,
@@ -157,7 +157,7 @@ func (r *libraryRepositoryWrapper) Save(ctx context.Context, lib *model.Library)
 		return "", err
 	}
 
-	err := r.LibraryRepository.Put(lib)
+	err := r.LibraryRepository.Put(ctx, lib)
 	if err != nil {
 		return "", r.mapError(err)
 	}
@@ -196,14 +196,14 @@ func (r *libraryRepositoryWrapper) Update(ctx context.Context, id string, entity
 	}
 
 	// Get the original library to check if path changed
-	originalLib, err := r.Get(libID)
+	originalLib, err := r.Get(ctx, libID)
 	if err != nil {
 		return r.mapError(err)
 	}
 
 	pathChanged := originalLib.Path != lib.Path
 
-	err = r.LibraryRepository.Put(lib, cols...)
+	err = r.LibraryRepository.Put(ctx, lib, cols...)
 	if err != nil {
 		return r.mapError(err)
 	}
@@ -249,7 +249,7 @@ func (r *libraryRepositoryWrapper) deleteOne(ctx context.Context, id string) err
 	}
 
 	// Get library info before deletion for logging
-	lib, err := r.Get(libID)
+	lib, err := r.Get(ctx, libID)
 	if err != nil {
 		return r.mapError(err)
 	}
@@ -257,7 +257,7 @@ func (r *libraryRepositoryWrapper) deleteOne(ctx context.Context, id string) err
 	// Run the deletion in a transaction so the cascade delete and the orphaned-artist
 	// reconciliation it triggers (see libraryRepository.Delete) commit atomically.
 	err = r.ds.WithTx(func(tx model.DataStore) error {
-		return tx.Library(ctx).Delete(libID)
+		return tx.Library().Delete(ctx, libID)
 	}, "delete library")
 	if err != nil {
 		return r.mapError(err)
@@ -387,7 +387,7 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 	}
 
 	// Use CountAll to efficiently validate library IDs exist
-	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{
+	count, err := s.ds.Library().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"id": libraryIDs},
 	})
 	if err != nil {

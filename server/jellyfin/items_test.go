@@ -981,7 +981,7 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id (from /UserViews) as a CollectionFolder item", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
-			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(libs)
+			ds.Library().(*tests.MockLibraryRepo).SetData(libs)
 			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
@@ -1045,7 +1045,7 @@ var _ = Describe("Items", func() {
 		})
 
 		It("resolves a library-view id for an admin even though their Libraries slice is empty", func() {
-			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
+			ds.Library().(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music Library"}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxAdmin())
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))

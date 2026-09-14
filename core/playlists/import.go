@@ -74,7 +74,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 var errNotInLibrary = fmt.Errorf("path not in any library")
 
 func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folder, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -859,7 +859,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	// Finamp resolves a /UserViews entry (Id=library id) by fetching it as a plain item; without this
 	// the home screen and library tabs 404.
 	if libID, err := strconv.Atoi(id); err == nil && u.HasLibraryAccess(libID) {
-		if lib, err := api.ds.Library(ctx).Get(libID); err == nil {
+		if lib, err := api.ds.Library().Get(ctx, libID); err == nil {
 			return dto.LibraryToBaseItem(*lib), true
 		}
 	}

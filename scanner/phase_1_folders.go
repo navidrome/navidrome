@@ -339,7 +339,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		folderRepo := tx.Folder(p.ctx)
 		tagRepo := tx.Tag(p.ctx)
 		artistRepo := tx.Artist(p.ctx)
-		libraryRepo := tx.Library(p.ctx)
+		libraryRepo := tx.Library()
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
 
@@ -375,7 +375,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
 				return err
 			}
-			err = libraryRepo.AddArtist(entry.job.lib.ID, entry.artists[i].ID)
+			err = libraryRepo.AddArtist(p.ctx, entry.job.lib.ID, entry.artists[i].ID)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error adding artist to library", "lib", entry.job.lib.ID, "artist", entry.artists[i].Name, err)
 				return err

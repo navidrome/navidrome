@@ -166,7 +166,7 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("GetSoleAlbumArtistIDsInSubtrees", func() {
 		It("returns the sole album artists of albums with folders in the subtree", func() {
 			folderRepo := newFolderRepository(ctx, GetDBXBuilder())
-			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			inTree := model.NewFolder(*lib, "SubtreeAlbums/Artist")
 			outTree := model.NewFolder(*lib, "OtherTree/Artist")
@@ -194,7 +194,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("stays under SQLite's expression tree depth limit with many paths", func() {
-			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			paths := make([]string, 200)
 			for i := range paths {
@@ -206,7 +206,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("returns nothing when given no paths", func() {
-			lib, err := NewLibraryRepository(ctx, GetDBXBuilder()).Get(1)
+			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			ids, err := albumRepo.GetSoleAlbumArtistIDsInSubtrees(*lib)
 			Expect(err).ToNot(HaveOccurred())

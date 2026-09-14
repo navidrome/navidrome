@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/deluan/rest"
@@ -42,23 +43,23 @@ func (l Libraries) IDs() []int {
 
 type LibraryRepository interface {
 	rest.Repository[Library]
-	Get(id int) (*Library, error)
+	Get(ctx context.Context, id int) (*Library, error)
 	// GetPath returns the path of the library with the given ID.
 	// Its implementation must be optimized to avoid unnecessary queries.
-	GetPath(id int) (string, error)
-	GetAll(...QueryOptions) (Libraries, error)
-	CountAll(...QueryOptions) (int64, error)
-	Put(l *Library, colsToUpdate ...string) error
-	Delete(id int) error
-	StoreMusicFolder() error
-	AddArtist(id int, artistID string) error
+	GetPath(ctx context.Context, id int) (string, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Libraries, error)
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Put(ctx context.Context, l *Library, colsToUpdate ...string) error
+	Delete(ctx context.Context, id int) error
+	StoreMusicFolder(ctx context.Context) error
+	AddArtist(ctx context.Context, id int, artistID string) error
 
 	// User-library association methods
-	GetUsersWithLibraryAccess(libraryID int) (Users, error)
+	GetUsersWithLibraryAccess(ctx context.Context, libraryID int) (Users, error)
 
 	// TODO These methods should be moved to a core service
-	ScanBegin(id int, fullScan bool) error
-	ScanEnd(id int) error
-	ScanInProgress() (bool, error)
-	RefreshStats(id int) error
+	ScanBegin(ctx context.Context, id int, fullScan bool) error
+	ScanEnd(ctx context.Context, id int) error
+	ScanInProgress(ctx context.Context) (bool, error)
+	RefreshStats(ctx context.Context, id int) error
 }

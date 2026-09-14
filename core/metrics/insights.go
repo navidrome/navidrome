@@ -269,7 +269,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading radios count", err)
 	}
-	data.Library.Libraries, err = c.ds.Library(ctx).CountAll()
+	data.Library.Libraries, err = c.ds.Library().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading libraries count", err)
 	}

@@ -89,7 +89,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
 	})
 
 	runScanner := func(ctx context.Context, fullScan bool) error {
@@ -1013,10 +1013,10 @@ var _ = Describe("Scanner", Ordered, func() {
 		simulateInterruptedScan := func(fullScan bool) {
 			// Call ScanBegin to properly set LastScanStartedAt and FullScanInProgress
 			// This simulates what would happen if a scan was interrupted (ScanBegin called but ScanEnd not)
-			Expect(ds.Library(ctx).ScanBegin(lib.ID, fullScan)).To(Succeed())
+			Expect(ds.Library().ScanBegin(ctx, lib.ID, fullScan)).To(Succeed())
 
 			// Verify the update was persisted
-			reloaded, err := ds.Library(ctx).Get(lib.ID)
+			reloaded, err := ds.Library().Get(ctx, lib.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(reloaded.LastScanStartedAt).ToNot(BeZero())
 			Expect(reloaded.FullScanInProgress).To(Equal(fullScan))
@@ -1103,7 +1103,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(mfs).To(HaveLen(2))
 
 				// Library should have LastScanStartedAt cleared after successful scan
-				updatedLib, err := ds.Library(ctx).Get(lib.ID)
+				updatedLib, err := ds.Library().Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(updatedLib.LastScanStartedAt).To(BeZero())
 				Expect(updatedLib.FullScanInProgress).To(BeFalse())

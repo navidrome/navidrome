@@ -83,7 +83,7 @@ var _ = Describe("Browsing", func() {
 			ctx = contextWithUser(ctx, "user-id", 2, 3)
 
 			// Setup minimal mock library data for working tests
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(model.Libraries{
 				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},
 				{ID: 3, Name: "Test Library 3", Path: "/music/library3"},
@@ -132,7 +132,7 @@ var _ = Describe("Browsing", func() {
 			ctx = contextWithUser(ctx, "user-id", 1, 2)
 
 			// Setup minimal mock library data for working tests
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(model.Libraries{
 				{ID: 1, Name: "Test Library 1", Path: "/music/library1"},
 				{ID: 2, Name: "Test Library 2", Path: "/music/library2"},

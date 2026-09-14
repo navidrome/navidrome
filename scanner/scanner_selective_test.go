@@ -69,7 +69,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
 
 		// Initialize fake filesystem
 		fsys = storagetest.FakeFS{}
@@ -145,8 +145,8 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 		It("does not treat an interrupted scan in an untargeted library as a full scan", func() {
 			otherLib := model.Library{ID: 2, Name: "Other Library", Path: "fake:///other"}
-			Expect(ds.Library(ctx).Put(&otherLib)).To(Succeed())
-			Expect(ds.Library(ctx).ScanBegin(lib.ID, true)).To(Succeed())
+			Expect(ds.Library().Put(ctx, &otherLib)).To(Succeed())
+			Expect(ds.Library().ScanBegin(ctx, lib.ID, true)).To(Succeed())
 
 			lastAnalyze := "2026-07-09T12:00:00Z"
 			Expect(ds.Property(ctx).Put(consts.LastDBAnalyzeAtKey, lastAnalyze)).To(Succeed())

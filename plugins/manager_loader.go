@@ -347,7 +347,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 		if pkg.Manifest.HasLibraryFilesystemPermission() {
 			adminCtx := adminContext(ctx)
-			libraries, err := m.ds.Library(adminCtx).GetAll()
+			libraries, err := m.ds.Library().GetAll(adminCtx)
 			if err != nil {
 				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 			}

@@ -67,7 +67,7 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 
 		// Special case: if single library with empty path and it's the only library in DB, call ScanAll
 		if len(targets) == 1 && targets[0].FolderPath == "" {
-			allLibs, err := api.ds.Library(ctx).GetAll()
+			allLibs, err := api.ds.Library().GetAll(ctx)
 			if err != nil {
 				return nil, newError(responses.ErrorGeneric, "Internal error")
 			}

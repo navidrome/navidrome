@@ -102,7 +102,7 @@ func setupResolutionHarness() {
 	Expect(rds.User(rctx).Put(&adminUser)).To(Succeed())
 
 	lib := model.Library{ID: 1, Name: "Music", Path: fakeLibPath}
-	Expect(rds.Library(rctx).Put(&lib)).To(Succeed())
+	Expect(rds.Library().Put(rctx, &lib)).To(Succeed())
 	Expect(rds.User(rctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
 
 	loadEmbeddedFixture()

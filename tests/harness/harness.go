@@ -61,7 +61,7 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	auth.Init(ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(ds.Library(ctx).Put(&h.Library)).To(Succeed())
+	Expect(ds.Library().Put(ctx, &h.Library)).To(Succeed())
 
 	for _, u := range users {
 		seeded := *u

@@ -259,7 +259,7 @@ var _ = BeforeSuite(func() {
 	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
 
 	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
+	Expect(initDS.Library().Put(ctx, &lib)).To(Succeed())
 	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
 	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
 

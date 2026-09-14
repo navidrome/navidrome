@@ -26,14 +26,14 @@ var _ = Describe("FolderRepository", func() {
 		repo = newFolderRepository(ctx, conn)
 
 		// Use existing library ID 1 from test fixtures
-		libRepo := NewLibraryRepository(ctx, conn)
-		lib, err := libRepo.Get(1)
+		libRepo := NewLibraryRepository(conn)
+		lib, err := libRepo.Get(ctx, 1)
 		Expect(err).ToNot(HaveOccurred())
 		testLib = *lib
 
 		// Create a second library with its own folder to verify isolation
 		otherLib = model.Library{Name: "Other Library", Path: "/other/path"}
-		Expect(libRepo.Put(&otherLib)).To(Succeed())
+		Expect(libRepo.Put(ctx, &otherLib)).To(Succeed())
 	})
 
 	AfterEach(func() {

@@ -17,7 +17,7 @@ func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(ctx)
 	// u.Libraries comes from a projection without counts or stats, and clients hide a library that
 	// looks empty, so the rows are re-read in full here.
-	libs, err := api.ds.Library(ctx).GetAll()
+	libs, err := api.ds.Library().GetAll(ctx)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

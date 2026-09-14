@@ -108,7 +108,7 @@ type controller struct {
 
 // getLastScanTime returns the most recent scan time across all libraries
 func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
-	libs, err := s.ds.Library(ctx).GetAll(model.QueryOptions{
+	libs, err := s.ds.Library().GetAll(ctx, model.QueryOptions{
 		Sort:  "last_scan_at",
 		Order: "desc",
 		Max:   1,
@@ -185,7 +185,7 @@ func (s *controller) Status(ctx context.Context) (*model.ScannerStatus, error) {
 }
 
 func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("library count: %w", err)
 	}
@@ -324,7 +324,7 @@ func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []mod
 // anyIncludedLibrary reports whether any library included in the scan (all of them when targets is
 // empty) matches pred.
 func anyIncludedLibrary(ctx context.Context, ds model.DataStore, targets []model.ScanTarget, pred func(model.Library) bool) bool {
-	libraries, err := ds.Library(ctx).GetAll()
+	libraries, err := ds.Library().GetAll(ctx)
 	if err != nil {
 		return false
 	}

@@ -142,9 +142,9 @@ var _ = Describe("ShareRepository", func() {
 			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 
 			// A second library the owner has no access to, plus a track in it
-			lr := NewLibraryRepository(adminCtx, GetDBXBuilder())
+			lr := NewLibraryRepository(GetDBXBuilder())
 			otherLib = model.Library{ID: 0, Name: "Share Other Library", Path: "/share/other/lib"}
-			Expect(lr.Put(&otherLib)).To(Succeed())
+			Expect(lr.Put(adminCtx, &otherLib)).To(Succeed())
 			mr := NewMediaFileRepository(adminCtx, GetDBXBuilder())
 			Expect(mr.Put(&model.MediaFile{ID: "share-other", LibraryID: otherLib.ID, Path: "s/other.mp3", Title: "ShareOther"})).To(Succeed())
 			Expect(mr.Put(&model.MediaFile{ID: "share-ok", LibraryID: 1, Path: "s/ok.mp3", Title: "ShareOK"})).To(Succeed())
@@ -182,8 +182,8 @@ var _ = Describe("ShareRepository", func() {
 			_ = pr.Delete(adminCtx, plsID)
 			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
 			_, _ = mr.executeSQL(mr.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
-			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
-			_ = lr.delete(lr.ctx, squirrel.Eq{"id": otherLib.ID})
+			lr := NewLibraryRepository(b).(*libraryRepository)
+			_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
 			_ = NewUserRepository(adminCtx, b).Delete(adminCtx, owner.ID)
 		})
 
@@ -239,9 +239,9 @@ var _ = Describe("ShareRepository", func() {
 			b := GetDBXBuilder()
 
 			// A second library the owner has no access to
-			lr := NewLibraryRepository(adminCtx, b)
+			lr := NewLibraryRepository(b)
 			otherLib = model.Library{ID: 0, Name: "Artist Share Other Library", Path: "/share/artist/other"}
-			Expect(lr.Put(&otherLib)).To(Succeed())
+			Expect(lr.Put(adminCtx, &otherLib)).To(Succeed())
 
 			ar := NewArtistRepository(adminCtx, b)
 			Expect(createArtistWithLibrary(ar, &model.Artist{ID: primaryID, Name: "AA Primary", OrderArtistName: "aa primary"}, 1)).To(Succeed())
@@ -293,8 +293,8 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = alr.executeSQL(alr.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"art-album-ok", "art-album-other"}}))
 			ar := NewArtistRepository(adminCtx, b).(*artistRepository)
 			_, _ = ar.executeSQL(ar.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))
-			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
-			_ = lr.delete(lr.ctx, squirrel.Eq{"id": otherLib.ID})
+			lr := NewLibraryRepository(b).(*libraryRepository)
+			_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
 			_ = NewUserRepository(adminCtx, b).Delete(adminCtx, owner.ID)
 		})
 

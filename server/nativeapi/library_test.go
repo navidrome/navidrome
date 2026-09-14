@@ -65,8 +65,8 @@ var _ = Describe("Library API", func() {
 		// Store in mock datastore
 		Expect(ds.User(context.TODO()).Put(&adminUser)).To(Succeed())
 		Expect(ds.User(context.TODO()).Put(&regularUser)).To(Succeed())
-		Expect(ds.Library(context.TODO()).Put(&library1)).To(Succeed())
-		Expect(ds.Library(context.TODO()).Put(&library2)).To(Succeed())
+		Expect(ds.Library().Put(context.TODO(), &library1)).To(Succeed())
+		Expect(ds.Library().Put(context.TODO(), &library2)).To(Succeed())
 	})
 
 	Describe("Library CRUD Operations", func() {
