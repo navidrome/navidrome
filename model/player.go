@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/deluan/rest"
 )
 
 type Player struct {
@@ -23,6 +25,8 @@ type Player struct {
 type Players []Player
 
 type PlayerRepository interface {
+	rest.Repository[Player]
+	rest.Persistable[Player]
 	Get(id string) (*Player, error)
 	FindMatch(userId, client, userAgent string) (*Player, error)
 	Put(p *Player) error

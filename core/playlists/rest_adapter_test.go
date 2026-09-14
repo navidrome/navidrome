@@ -31,7 +31,7 @@ var _ = Describe("REST Adapter", func() {
 	})
 
 	Describe("NewRepository", func() {
-		var repo rest.Persistable
+		var repo rest.Persistable[model.Playlist]
 
 		BeforeEach(func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
@@ -43,9 +43,9 @@ var _ = Describe("REST Adapter", func() {
 		Describe("Save", func() {
 			It("sets the owner from the context user", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "New Playlist"}
-				id, err := repo.Save(pls)
+				id, err := repo.Save(ctx, pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(id).ToNot(BeEmpty())
 				Expect(pls.OwnerID).To(Equal("user-1"))
@@ -53,16 +53,16 @@ var _ = Describe("REST Adapter", func() {
 
 			It("forces a new creation by clearing ID", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{ID: "should-be-cleared", Name: "New"}
-				_, err := repo.Save(pls)
+				_, err := repo.Save(ctx, pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(pls.ID).ToNot(Equal("should-be-cleared"))
 			})
 
 			It("clears server-managed fields to prevent injection via REST API", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{
 					Name:             "Legit Playlist",
 					Comment:          "A comment",
@@ -74,7 +74,7 @@ var _ = Describe("REST Adapter", func() {
 					ExternalImageURL: "http://evil.example.com/ssrf",
 					EvaluatedAt:      new(time.Now()),
 				}
-				_, err := repo.Save(pls)
+				_, err := repo.Save(ctx, pls)
 				Expect(err).ToNot(HaveOccurred())
 
 				saved := mockPlsRepo.Last
@@ -95,33 +95,33 @@ var _ = Describe("REST Adapter", func() {
 		Describe("Update", func() {
 			It("allows owner to update their playlist", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "Updated"}
-				err := repo.Update("pls-1", pls)
+				err := repo.Update(ctx, "pls-1", *pls)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("allows admin to update any playlist", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "admin-1", IsAdmin: true})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "Updated"}
-				err := repo.Update("pls-1", pls)
+				err := repo.Update(ctx, "pls-1", *pls)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("denies non-owner, non-admin", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "Updated"}
-				err := repo.Update("pls-1", pls)
+				err := repo.Update(ctx, "pls-1", *pls)
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
 			It("denies regular user from changing ownership", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "Updated", OwnerID: "other-user"}
-				err := repo.Update("pls-1", pls)
+				err := repo.Update(ctx, "pls-1", *pls)
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
@@ -133,9 +133,9 @@ var _ = Describe("REST Adapter", func() {
 					// entity.OwnerID. sentFields normalizes both sides so the
 					// permission gate fires regardless of casing.
 					ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-					repo = ps.NewRepository(ctx).(rest.Persistable)
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 					pls := &model.Playlist{OwnerID: "other-user"}
-					err := repo.Update("pls-1", pls, colName)
+					err := repo.Update(ctx, "pls-1", *pls, colName)
 					Expect(err).To(Equal(rest.ErrPermissionDenied))
 				},
 				Entry("canonical camelCase", "ownerId"),
@@ -152,10 +152,10 @@ var _ = Describe("REST Adapter", func() {
 					Rules:   &criteria.Criteria{Expression: criteria.Contains{"title": "old"}},
 				}
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				newRules := &criteria.Criteria{Expression: criteria.Contains{"title": "new"}}
 				pls := &model.Playlist{Name: "Smart Playlist", Rules: newRules}
-				err := repo.Update("smart-1", pls)
+				err := repo.Update(ctx, "smart-1", *pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
 			})
@@ -171,10 +171,10 @@ var _ = Describe("REST Adapter", func() {
 					Rules:        &criteria.Criteria{Expression: criteria.Contains{"title": "old"}},
 				}
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				newRules := &criteria.Criteria{Expression: criteria.Contains{"title": "new"}}
 				pls := &model.Playlist{Rules: newRules}
-				err := repo.Update("smart-1", pls, "rules")
+				err := repo.Update(ctx, "smart-1", *pls, "rules")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last.ImportedHash).To(BeEmpty())
 			})
@@ -190,9 +190,9 @@ var _ = Describe("REST Adapter", func() {
 					UpdatedAt: originalTime,
 				}
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "File Playlist", Sync: false}
-				err := repo.Update("file-pls", pls)
+				err := repo.Update(ctx, "file-pls", *pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last.Sync).To(BeFalse())
 				Expect(mockPlsRepo.Last.UpdatedAt).To(Equal(originalTime))
@@ -207,9 +207,9 @@ var _ = Describe("REST Adapter", func() {
 					Sync:    false,
 				}
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "Manual Playlist", Sync: true}
-				err := repo.Update("manual-pls", pls)
+				err := repo.Update(ctx, "manual-pls", *pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last).To(BeNil())
 			})
@@ -224,9 +224,9 @@ var _ = Describe("REST Adapter", func() {
 					UpdatedAt: originalTime,
 				}
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "My Playlist", Public: true}
-				err := repo.Update("pls-pub", pls)
+				err := repo.Update(ctx, "pls-pub", *pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last.Public).To(BeTrue())
 				Expect(mockPlsRepo.Last.UpdatedAt).To(Equal(originalTime))
@@ -241,9 +241,9 @@ var _ = Describe("REST Adapter", func() {
 					Sync:    true,
 				}
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "New Name", Sync: false}
-				err := repo.Update("file-pls2", pls)
+				err := repo.Update(ctx, "file-pls2", *pls)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Last.Name).To(Equal("New Name"))
 				Expect(mockPlsRepo.Last.Sync).To(BeFalse())
@@ -251,9 +251,9 @@ var _ = Describe("REST Adapter", func() {
 
 			It("returns rest.ErrNotFound when playlist doesn't exist", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 				pls := &model.Playlist{Name: "Updated"}
-				err := repo.Update("nonexistent", pls)
+				err := repo.Update(ctx, "nonexistent", *pls)
 				Expect(err).To(Equal(rest.ErrNotFound))
 			})
 
@@ -274,8 +274,8 @@ var _ = Describe("REST Adapter", func() {
 				})
 
 				It("preserves name and comment when only public is sent (bulk Make Public)", func() {
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("partial", &model.Playlist{Public: true}, "public")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "partial", model.Playlist{Public: true}, "public")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Name).To(Equal("Original Name"))
 					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
@@ -290,16 +290,16 @@ var _ = Describe("REST Adapter", func() {
 						Path:    "/music/p.m3u",
 						Sync:    true,
 					}
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("file-partial", &model.Playlist{Sync: false}, "sync")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "file-partial", model.Playlist{Sync: false}, "sync")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Name).To(Equal("Keep Me"))
 					Expect(mockPlsRepo.Last.Sync).To(BeFalse())
 				})
 
 				It("renames the playlist when only name is sent", func() {
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("partial", &model.Playlist{Name: "Renamed"}, "name")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "partial", model.Playlist{Name: "Renamed"}, "name")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Name).To(Equal("Renamed"))
 					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
@@ -307,8 +307,8 @@ var _ = Describe("REST Adapter", func() {
 				})
 
 				It("clears the comment when an empty comment is sent explicitly", func() {
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("partial", &model.Playlist{Comment: ""}, "comment")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "partial", model.Playlist{Comment: ""}, "comment")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Comment).To(BeEmpty())
 					Expect(mockPlsRepo.Last.Name).To(Equal("Original Name"))
@@ -323,9 +323,9 @@ var _ = Describe("REST Adapter", func() {
 						Public:  true,
 						Rules:   &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
 					}
-					repo = ps.NewRepository(ctx).(rest.Persistable)
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 					newRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Jazz"}, Sort: "year DESC"}
-					err := repo.Update("smart-partial", &model.Playlist{Rules: newRules}, "rules")
+					err := repo.Update(ctx, "smart-partial", model.Playlist{Rules: newRules}, "rules")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Rules).To(Equal(newRules))
 					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Original"))
@@ -342,9 +342,9 @@ var _ = Describe("REST Adapter", func() {
 						Rules:       &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
 						EvaluatedAt: &evaluatedAt,
 					}
-					repo = ps.NewRepository(ctx).(rest.Persistable)
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 					newRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Jazz"}}
-					err := repo.Update("smart-reset", &model.Playlist{Rules: newRules}, "rules")
+					err := repo.Update(ctx, "smart-reset", model.Playlist{Rules: newRules}, "rules")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.EvaluatedAt).To(BeNil())
 				})
@@ -358,8 +358,8 @@ var _ = Describe("REST Adapter", func() {
 						Rules:       &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
 						EvaluatedAt: &evaluatedAt,
 					}
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("smart-keep", &model.Playlist{Name: "Renamed Smart"}, "name")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "smart-keep", model.Playlist{Name: "Renamed Smart"}, "name")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.EvaluatedAt).ToNot(BeNil())
 					Expect(*mockPlsRepo.Last.EvaluatedAt).To(BeTemporally("~", evaluatedAt, time.Second))
@@ -373,10 +373,10 @@ var _ = Describe("REST Adapter", func() {
 						OwnerID: "user-1",
 						Rules:   &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}},
 					}
-					repo = ps.NewRepository(ctx).(rest.Persistable)
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 					newRules := &criteria.Criteria{Expression: criteria.Is{"artist": "Miles Davis"}, Sort: "album"}
-					err := repo.Update("smart-edit",
-						&model.Playlist{Name: "Smart Renamed", Rules: newRules},
+					err := repo.Update(ctx, "smart-edit",
+						model.Playlist{Name: "Smart Renamed", Rules: newRules},
 						"name", "rules")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Name).To(Equal("Smart Renamed"))
@@ -392,11 +392,11 @@ var _ = Describe("REST Adapter", func() {
 						OwnerID: "user-1",
 						Rules:   rules,
 					}
-					repo = ps.NewRepository(ctx).(rest.Persistable)
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
 					// Same rules sent back — rulesEqual should report no change and
 					// the request should no-op (no Put call).
 					sameRules := &criteria.Criteria{Expression: criteria.Is{"genre": "Rock"}}
-					err := repo.Update("smart-idempotent", &model.Playlist{Rules: sameRules}, "rules")
+					err := repo.Update(ctx, "smart-idempotent", model.Playlist{Rules: sameRules}, "rules")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last).To(BeNil()) // no Put happened
 				})
@@ -410,8 +410,8 @@ var _ = Describe("REST Adapter", func() {
 						Public:  false,
 						Rules:   rules,
 					}
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("smart-public", &model.Playlist{Public: true}, "public")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "smart-public", model.Playlist{Public: true}, "public")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Public).To(BeTrue())
 					Expect(mockPlsRepo.Last.Rules).To(Equal(rules))
@@ -421,8 +421,8 @@ var _ = Describe("REST Adapter", func() {
 				It("does not treat a missing ownerId as an ownership transfer attempt", func() {
 					// A non-admin user sending only {public:true} should not be blocked
 					// just because OwnerID is the zero value in the deserialized entity.
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("partial", &model.Playlist{Public: true}, "public")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "partial", model.Playlist{Public: true}, "public")
 					Expect(err).ToNot(HaveOccurred())
 				})
 
@@ -431,8 +431,8 @@ var _ = Describe("REST Adapter", func() {
 					// like {"Name":"x"}, but rest.Put's field-name extraction is
 					// case-sensitive. sentFields normalizes both sides so a request
 					// with {"Name":"Renamed"} is honored, not silently ignored.
-					repo = ps.NewRepository(ctx).(rest.Persistable)
-					err := repo.Update("partial", &model.Playlist{Name: "Renamed"}, "Name")
+					repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+					err := repo.Update(ctx, "partial", model.Playlist{Name: "Renamed"}, "Name")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(mockPlsRepo.Last.Name).To(Equal("Renamed"))
 					Expect(mockPlsRepo.Last.Comment).To(Equal("Original comment"))
@@ -443,16 +443,16 @@ var _ = Describe("REST Adapter", func() {
 		Describe("Delete", func() {
 			It("delegates to service Delete with permission checks", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
-				err := repo.Delete("pls-1")
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+				err := repo.Delete(ctx, "pls-1")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mockPlsRepo.Deleted).To(ContainElement("pls-1"))
 			})
 
 			It("denies non-owner", func() {
 				ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
-				repo = ps.NewRepository(ctx).(rest.Persistable)
-				err := repo.Delete("pls-1")
+				repo = ps.NewRepository(ctx).(rest.Persistable[model.Playlist])
+				err := repo.Delete(ctx, "pls-1")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 		})

@@ -41,12 +41,17 @@ func (r *radioRepository) Exists(id string) (bool, error) {
 	return r.exists(Eq{"id": id})
 }
 
-func (r *radioRepository) Delete(id string) error {
+func (r *radioRepository) Delete(ctx context.Context, ids ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
 
-	return r.deleteByID(id)
+	for _, id := range ids {
+		if err := r.deleteByID(id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *radioRepository) Get(id string) (*model.Radio, error) {
@@ -105,28 +110,19 @@ func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error 
 	return nil
 }
 
-func (r *radioRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *radioRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *radioRepository) EntityName() string {
-	return "radio"
-}
-
-func (r *radioRepository) NewInstance() any {
-	return &model.Radio{}
-}
-
-func (r *radioRepository) Read(id string) (any, error) {
+func (r *radioRepository) Read(ctx context.Context, id string) (*model.Radio, error) {
 	return r.Get(id)
 }
 
-func (r *radioRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+func (r *radioRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Radio, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *radioRepository) Save(entity any) (string, error) {
-	t := entity.(*model.Radio)
+func (r *radioRepository) Save(ctx context.Context, t *model.Radio) (string, error) {
 	if !r.isPermitted() {
 		return "", rest.ErrPermissionDenied
 	}
@@ -134,8 +130,8 @@ func (r *radioRepository) Save(entity any) (string, error) {
 	return t.ID, err
 }
 
-func (r *radioRepository) Update(id string, entity any, cols ...string) error {
-	t := entity.(*model.Radio)
+func (r *radioRepository) Update(ctx context.Context, id string, entity model.Radio, cols ...string) error {
+	t := &entity
 	t.ID = id
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
@@ -144,5 +140,5 @@ func (r *radioRepository) Update(id string, entity any, cols ...string) error {
 }
 
 var _ model.RadioRepository = (*radioRepository)(nil)
-var _ rest.Repository = (*radioRepository)(nil)
-var _ rest.Persistable = (*radioRepository)(nil)
+var _ rest.Repository[model.Radio] = (*radioRepository)(nil)
+var _ rest.Persistable[model.Radio] = (*radioRepository)(nil)

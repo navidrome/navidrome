@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/zeebo/xxh3"
@@ -155,6 +157,7 @@ func (t Tags) Add(name TagName, v string) {
 }
 
 type TagRepository interface {
+	rest.Repository[Tag]
 	Add(libraryID int, tags ...Tag) error
 	UpdateCounts() error
 	GetAll(name TagName, options ...QueryOptions) (TagList, error)

@@ -1,5 +1,7 @@
 package model
 
+import "github.com/deluan/rest"
+
 type Genre struct {
 	ID         string `structs:"id" json:"id,omitempty" toml:"id,omitempty" yaml:"id,omitempty"`
 	Name       string `structs:"name" json:"name"`
@@ -10,6 +12,7 @@ type Genre struct {
 type Genres []Genre
 
 type GenreRepository interface {
+	rest.Repository[Genre]
 	GetAll(...QueryOptions) (Genres, error)
 	Get(id string) (*Genre, error)
 }

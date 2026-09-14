@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"database/sql"
 	"slices"
 
@@ -87,15 +88,15 @@ func (r *playlistTrackRepository) CountAll(options ...model.QueryOptions) (int64
 	return r.count(query, options...)
 }
 
-func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, error) {
+func (r *playlistTrackRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
 	query := Select().
 		LeftJoin("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
-	return r.count(query, r.parseRestOptions(r.ctx, options...))
+	return r.count(query, r.parseRestOptions(ctx, options...))
 }
 
-func (r *playlistTrackRepository) Read(id string) (any, error) {
-	userID := loggedUser(r.ctx).ID
+func (r *playlistTrackRepository) Read(ctx context.Context, id string) (*model.PlaylistTrack, error) {
+	userID := loggedUser(ctx).ID
 	sel := r.newSelect().
 		LeftJoin("annotation on ("+
 			"annotation.item_id = media_file_id"+
@@ -165,16 +166,8 @@ func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]
 	return ids, nil
 }
 
-func (r *playlistTrackRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *playlistTrackRepository) EntityName() string {
-	return "playlist_tracks"
-}
-
-func (r *playlistTrackRepository) NewInstance() any {
-	return &model.PlaylistTrack{}
+func (r *playlistTrackRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.PlaylistTrack, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {

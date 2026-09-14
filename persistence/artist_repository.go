@@ -717,15 +717,15 @@ func isLibraryIDFilter(filter Sqlizer) bool {
 	return ok
 }
 
-func (r *artistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *artistRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *artistRepository) Read(id string) (any, error) {
+func (r *artistRepository) Read(ctx context.Context, id string) (*model.Artist, error) {
 	return r.Get(id)
 }
 
-func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
+func (r *artistRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Artist, error) {
 	role := "total"
 	if len(options) > 0 {
 		if v, ok := options[0].Filters["role"].(string); ok {
@@ -737,16 +737,8 @@ func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	r.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"
 	r.sortMappings["album_count"] = "sum(stats->>'" + role + "'->>'a')"
 	r.sortMappings["size"] = "sum(stats->>'" + role + "'->>'s')"
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *artistRepository) EntityName() string {
-	return "artist"
-}
-
-func (r *artistRepository) NewInstance() any {
-	return &model.Artist{}
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 var _ model.ArtistRepository = (*artistRepository)(nil)
-var _ model.ResourceRepository = (*artistRepository)(nil)
+var _ rest.Repository[model.Artist] = (*artistRepository)(nil)

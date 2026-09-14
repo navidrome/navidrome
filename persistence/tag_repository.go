@@ -7,6 +7,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
@@ -103,4 +104,4 @@ func (r *tagRepository) purgeUnused() error {
 	return err
 }
 
-var _ model.ResourceRepository = &tagRepository{}
+var _ rest.Repository[model.Tag] = &tagRepository{}

@@ -135,7 +135,7 @@ var _ = Describe("ArtistRepository", func() {
 				ctx := request.WithUser(GinkgoT().Context(), adminUser)
 				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
 				payload := "total') OR 1=1--"
-				_, err := repo.ReadAll(rest.QueryOptions{
+				_, err := repo.ReadAll(ctx, rest.QueryOptions{
 					Sort:    "songCount",
 					Order:   "ASC",
 					Filters: map[string]any{"role": payload},
@@ -148,7 +148,7 @@ var _ = Describe("ArtistRepository", func() {
 			It("keeps valid role sort paths", func() {
 				ctx := request.WithUser(GinkgoT().Context(), adminUser)
 				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
-				_, err := repo.ReadAll(rest.QueryOptions{
+				_, err := repo.ReadAll(ctx, rest.QueryOptions{
 					Sort:    "songCount",
 					Order:   "DESC",
 					Filters: map[string]any{"role": "composer"},
@@ -308,10 +308,10 @@ var _ = Describe("ArtistRepository", func() {
 
 	Context("Admin User Operations", func() {
 		var repo model.ArtistRepository
+		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx := GinkgoT().Context()
-			ctx = request.WithUser(ctx, adminUser)
+			ctx = request.WithUser(GinkgoT().Context(), adminUser)
 			repo = NewArtistRepository(ctx, GetDBXBuilder())
 		})
 
@@ -598,11 +598,11 @@ var _ = Describe("ArtistRepository", func() {
 
 			Describe("starred", func() {
 				It("false includes items without annotations", func() {
-					res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					res, err := repo.ReadAll(ctx, rest.QueryOptions{
 						Filters: map[string]any{"starred": "false"},
 					})
 					Expect(err).ToNot(HaveOccurred())
-					artists := res.(model.Artists)
+					artists := res
 
 					var found bool
 					for _, a := range artists {
@@ -615,11 +615,11 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("true excludes items without annotations", func() {
-					res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					res, err := repo.ReadAll(ctx, rest.QueryOptions{
 						Filters: map[string]any{"starred": "true"},
 					})
 					Expect(err).ToNot(HaveOccurred())
-					artists := res.(model.Artists)
+					artists := res
 
 					for _, a := range artists {
 						Expect(a.ID).ToNot(Equal(artistWithoutAnnotation.ID))

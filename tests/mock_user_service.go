@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/model"
 )
 
 // MockUserService provides a simple wrapper around MockedUserRepo
@@ -13,7 +14,7 @@ type MockUserService struct {
 	*MockedUserRepo
 }
 
-// MockUserRestAdapter adapts MockedUserRepo to rest.Repository interface
+// MockUserRestAdapter adapts MockedUserRepo to the REST repository interface
 type MockUserRestAdapter struct {
 	*MockedUserRepo
 }
@@ -25,6 +26,6 @@ func NewMockUserService() *MockUserService {
 	return &MockUserService{MockedUserRepo: repo}
 }
 
-func (m *MockUserService) NewRepository(ctx context.Context) rest.Repository {
+func (m *MockUserService) NewRepository(ctx context.Context) rest.Repository[model.User] {
 	return &MockUserRestAdapter{MockedUserRepo: m.MockedUserRepo}
 }

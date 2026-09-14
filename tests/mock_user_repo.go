@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -146,10 +147,19 @@ func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error
 	return nil
 }
 
-func (u *MockedUserRepo) Delete(id string) error {
+func (u *MockedUserRepo) Delete(_ context.Context, ids ...string) error {
 	if u.Error != nil {
 		return u.Error
 	}
+	for _, id := range ids {
+		if err := u.deleteOne(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (u *MockedUserRepo) deleteOne(id string) error {
 	for key, usr := range u.Data {
 		if usr.ID == id {
 			delete(u.Data, key)
@@ -160,19 +170,17 @@ func (u *MockedUserRepo) Delete(id string) error {
 	return model.ErrNotFound
 }
 
-func (u *MockedUserRepo) Save(entity any) (string, error) {
-	usr := entity.(*model.User)
+func (u *MockedUserRepo) Save(_ context.Context, usr *model.User) (string, error) {
 	if err := u.Put(usr); err != nil {
 		return "", err
 	}
 	return usr.ID, nil
 }
 
-func (u *MockedUserRepo) Update(id string, entity any, cols ...string) error {
+func (u *MockedUserRepo) Update(_ context.Context, id string, entity model.User, _ ...string) error {
 	if u.Error != nil {
 		return u.Error
 	}
-	usr := entity.(*model.User)
-	usr.ID = id
-	return u.Put(usr)
+	entity.ID = id
+	return u.Put(&entity)
 }

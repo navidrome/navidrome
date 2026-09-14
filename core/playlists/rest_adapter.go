@@ -14,42 +14,44 @@ import (
 
 // --- REST adapter (follows Share/Library pattern) ---
 
-func (s *playlists) NewRepository(ctx context.Context) rest.Repository {
+func (s *playlists) NewRepository(ctx context.Context) rest.Repository[model.Playlist] {
 	return &playlistRepositoryWrapper{
-		ctx:                ctx,
 		PlaylistRepository: s.ds.Playlist(ctx),
 		service:            s,
 	}
 }
 
-// playlistRepositoryWrapper wraps the playlist repository as a thin REST-to-service adapter.
-// It satisfies rest.Repository through the embedded PlaylistRepository (via ResourceRepository),
-// and rest.Persistable by delegating to service methods for all mutations.
+// playlistRepositoryWrapper wraps the playlist repository as a thin REST-to-service adapter,
+// delegating to service methods for all mutations.
 type playlistRepositoryWrapper struct {
 	model.PlaylistRepository
-	ctx     context.Context
 	service *playlists
 }
 
-func (r *playlistRepositoryWrapper) Save(entity any) (string, error) {
-	return r.service.savePlaylist(r.ctx, entity.(*model.Playlist))
+func (r *playlistRepositoryWrapper) Save(ctx context.Context, entity *model.Playlist) (string, error) {
+	return r.service.savePlaylist(ctx, entity)
 }
 
-func (r *playlistRepositoryWrapper) Update(id string, entity any, cols ...string) error {
-	return r.service.updatePlaylistEntity(r.ctx, id, entity.(*model.Playlist), cols...)
+func (r *playlistRepositoryWrapper) Update(ctx context.Context, id string, entity model.Playlist, cols ...string) error {
+	return r.service.updatePlaylistEntity(ctx, id, &entity, cols...)
 }
 
-func (r *playlistRepositoryWrapper) Delete(id string) error {
-	return r.service.Delete(r.ctx, id)
+func (r *playlistRepositoryWrapper) Delete(ctx context.Context, ids ...string) error {
+	for _, id := range ids {
+		if err := r.service.Delete(ctx, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (s *playlists) TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository {
+func (s *playlists) TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository[model.PlaylistTrack] {
 	repo := s.ds.Playlist(ctx)
 	tracks := repo.Tracks(playlistId, refreshSmartPlaylist)
 	if tracks == nil {
 		return nil
 	}
-	return tracks.(rest.Repository)
+	return tracks
 }
 
 // savePlaylist creates a new playlist, assigning the owner from context.

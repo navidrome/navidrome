@@ -14,17 +14,15 @@ import (
 )
 
 func (api *Router) addRadioRoute(r chi.Router) {
-	constructor := func(ctx context.Context) rest.Repository {
-		return api.ds.Resource(ctx, model.Radio{})
-	}
+	repo := lazyRW(func(ctx context.Context) rest.Repository[model.Radio] { return api.ds.Radio(ctx) })
 	r.Route("/radio", func(r chi.Router) {
-		r.Get("/", rest.GetAll(constructor))
-		r.Post("/", rest.Post(constructor))
+		r.Get("/", rest.GetAll(repo))
+		r.Post("/", rest.Post(repo))
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
-			r.Get("/", rest.Get(constructor))
-			r.Put("/", rest.Put(constructor))
-			r.Delete("/", rest.Delete(constructor))
+			r.Get("/", rest.Get(repo))
+			r.Put("/", rest.Put(repo))
+			r.Delete("/", rest.Delete(repo))
 			r.Post("/image", api.uploadRadioImage())
 			r.Delete("/image", api.deleteRadioImage())
 		})

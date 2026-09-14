@@ -24,10 +24,10 @@ import (
 
 var _ = Describe("MediaRepository", func() {
 	var mr model.MediaFileRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "userid"})
+		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
 		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
 	})
 
@@ -718,11 +718,11 @@ var _ = Describe("MediaRepository", func() {
 
 		Describe("starred", func() {
 			It("false includes items without annotations", func() {
-				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				res, err := mr.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"starred": "false"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				files := res.(model.MediaFiles)
+				files := res
 
 				var found bool
 				for _, f := range files {
@@ -735,11 +735,11 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("true excludes items without annotations", func() {
-				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				res, err := mr.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"starred": "true"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				files := res.(model.MediaFiles)
+				files := res
 
 				for _, f := range files {
 					Expect(f.ID).ToNot(Equal(mfWithoutAnnotation.ID))
@@ -749,11 +749,11 @@ var _ = Describe("MediaRepository", func() {
 
 		Describe("path", func() {
 			It("matches files whose path starts with the given prefix", func() {
-				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				res, err := mr.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"path": "test/"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				files := res.(model.MediaFiles)
+				files := res
 
 				var found bool
 				for _, f := range files {
@@ -766,11 +766,11 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("excludes files whose path does not start with the given prefix", func() {
-				res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				res, err := mr.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"path": "no-such-prefix/"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				files := res.(model.MediaFiles)
+				files := res
 				Expect(files).To(BeEmpty())
 			})
 		})
@@ -937,7 +937,7 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		AfterEach(func() {
-			_ = pr.Delete(pls.ID)
+			_ = pr.Delete(ctx, pls.ID)
 			_ = mr.Delete(prev.ID)
 			_ = mr.Delete(next.ID)
 			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
@@ -1159,7 +1159,7 @@ var _ = Describe("MediaRepository", func() {
 				_ = NewMediaFileRepository(adminCtx, GetDBXBuilder()).Delete("otherlib-track")
 				lr := NewLibraryRepository(adminCtx, GetDBXBuilder()).(*libraryRepository)
 				_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
-				_ = NewUserRepository(adminCtx, GetDBXBuilder()).Delete(restrictedUser.ID)
+				_ = NewUserRepository(adminCtx, GetDBXBuilder()).Delete(adminCtx, restrictedUser.ID)
 			})
 
 			It("does not resolve paths in libraries the user cannot access", func() {

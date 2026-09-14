@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -12,14 +14,13 @@ import (
 var _ = Describe("TranscodingRepository", func() {
 	var repo model.TranscodingRepository
 	var adminRepo model.TranscodingRepository
+	var ctx, adminCtx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(GinkgoT().Context())
-		ctx = request.WithUser(ctx, regularUser)
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), regularUser)
 		repo = NewTranscodingRepository(ctx, GetDBXBuilder())
 
-		adminCtx := log.NewContext(GinkgoT().Context())
-		adminCtx = request.WithUser(adminCtx, adminUser)
+		adminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		adminRepo = NewTranscodingRepository(adminCtx, GetDBXBuilder())
 	})
 
@@ -27,7 +28,7 @@ var _ = Describe("TranscodingRepository", func() {
 		// Clean up any transcoding created during the tests
 		tc, err := adminRepo.FindByFormat("test_format")
 		if err == nil {
-			err = adminRepo.(*transcodingRepository).Delete(tc.ID)
+			err = adminRepo.Delete(adminCtx, tc.ID)
 			Expect(err).ToNot(HaveOccurred())
 		}
 	})
@@ -59,7 +60,7 @@ var _ = Describe("TranscodingRepository", func() {
 		It("deletes a transcoding", func() {
 			err := adminRepo.Put(&model.Transcoding{ID: "to-delete", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 256, Command: "ffmpeg"})
 			Expect(err).ToNot(HaveOccurred())
-			err = adminRepo.(*transcodingRepository).Delete("to-delete")
+			err = adminRepo.Delete(adminCtx, "to-delete")
 			Expect(err).ToNot(HaveOccurred())
 			_, err = adminRepo.Get("to-delete")
 			Expect(err).To(MatchError(model.ErrNotFound))
@@ -74,9 +75,9 @@ var _ = Describe("TranscodingRepository", func() {
 			tr := &model.Transcoding{ID: "adminread", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
 			Expect(adminRepo.Put(tr)).To(Succeed())
 
-			res, err := adminRepo.(*transcodingRepository).Read("adminread")
+			res, err := adminRepo.Read(adminCtx, "adminread")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.(*model.Transcoding).Command).To(Equal("ffmpeg -secret"))
+			Expect(res.Command).To(Equal("ffmpeg -secret"))
 		})
 	})
 
@@ -85,9 +86,8 @@ var _ = Describe("TranscodingRepository", func() {
 			tr := &model.Transcoding{ID: "readreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
 			Expect(adminRepo.Put(tr)).To(Succeed())
 
-			res, err := repo.(*transcodingRepository).Read("readreg")
+			t, err := repo.Read(ctx, "readreg")
 			Expect(err).ToNot(HaveOccurred())
-			t := res.(*model.Transcoding)
 			Expect(t.Name).To(Equal("temp"))
 			Expect(t.TargetFormat).To(Equal("test_format"))
 			Expect(t.Command).To(BeEmpty())
@@ -97,9 +97,8 @@ var _ = Describe("TranscodingRepository", func() {
 			tr := &model.Transcoding{ID: "listreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
 			Expect(adminRepo.Put(tr)).To(Succeed())
 
-			res, err := repo.(*transcodingRepository).ReadAll()
+			list, err := repo.ReadAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			list := res.(model.Transcodings)
 			Expect(list).ToNot(BeEmpty())
 			for _, t := range list {
 				Expect(t.Command).To(BeEmpty())
@@ -107,7 +106,7 @@ var _ = Describe("TranscodingRepository", func() {
 		})
 
 		It("counts transcodings", func() {
-			count, err := repo.(*transcodingRepository).Count()
+			count, err := repo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(BeNumerically(">=", 0))
 		})
@@ -145,17 +144,15 @@ var _ = Describe("TranscodingRepository", func() {
 			err := repo.Put(tr)
 			Expect(err).To(Equal(rest.ErrPermissionDenied))
 
-			//_ = adminRepo.(*transcodingRepository).Delete("updreg")
 		})
 
 		It("fails to delete", func() {
 			tr := &model.Transcoding{ID: "delreg", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg"}
 			Expect(adminRepo.Put(tr)).To(Succeed())
 
-			err := repo.(*transcodingRepository).Delete("delreg")
+			err := repo.Delete(ctx, "delreg")
 			Expect(err).To(Equal(rest.ErrPermissionDenied))
 
-			//_ = adminRepo.(*transcodingRepository).Delete("delreg")
 		})
 	})
 })

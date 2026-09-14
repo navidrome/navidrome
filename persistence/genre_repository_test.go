@@ -16,7 +16,7 @@ import (
 
 var _ = Describe("GenreRepository", func() {
 	var repo model.GenreRepository
-	var restRepo model.ResourceRepository
+	var restRepo rest.Repository[model.Genre]
 	var tagRepo model.TagRepository
 	var ctx context.Context
 
@@ -24,7 +24,7 @@ var _ = Describe("GenreRepository", func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		genreRepo := NewGenreRepository(ctx, GetDBXBuilder())
 		repo = genreRepo
-		restRepo = genreRepo.(model.ResourceRepository)
+		restRepo = genreRepo
 		tagRepo = NewTagRepository(ctx, GetDBXBuilder())
 
 		// Clear any existing tags to ensure test isolation
@@ -148,7 +148,7 @@ var _ = Describe("GenreRepository", func() {
 
 	Describe("Count", func() {
 		It("should return correct count of genres", func() {
-			count, err := restRepo.Count()
+			count, err := restRepo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(12))) // We have 12 genre tags
 		})
@@ -158,7 +158,7 @@ var _ = Describe("GenreRepository", func() {
 			_, err := GetDBXBuilder().NewQuery("DELETE FROM tag WHERE tag_name = 'genre'").Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			count, err := restRepo.Count()
+			count, err := restRepo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(BeZero())
 		})
@@ -173,7 +173,7 @@ var _ = Describe("GenreRepository", func() {
 			err := tagRepo.Add(1, nonGenreTag)
 			Expect(err).ToNot(HaveOccurred())
 
-			count, err := restRepo.Count()
+			count, err := restRepo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			// Count should not include the mood tag
 			Expect(count).To(Equal(int64(12))) // Should still be 12 genre tags
@@ -184,7 +184,7 @@ var _ = Describe("GenreRepository", func() {
 			options := rest.QueryOptions{
 				Filters: map[string]any{"name": "%rock%"},
 			}
-			count, err := restRepo.Count(options)
+			count, err := restRepo.Count(ctx, options)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(BeNumerically("==", 2))
 		})
@@ -194,30 +194,28 @@ var _ = Describe("GenreRepository", func() {
 		It("should return existing genre", func() {
 			// Use one of the existing genres from our consolidated dataset
 			genreID := id.NewTagID("genre", "rock")
-			result, err := restRepo.Read(genreID)
+			genre, err := restRepo.Read(ctx, genreID)
 			Expect(err).ToNot(HaveOccurred())
-			genre := result.(*model.Genre)
 			Expect(genre.ID).To(Equal(genreID))
 			Expect(genre.Name).To(Equal("rock"))
 		})
 
 		It("should return error for non-existent genre", func() {
-			_, err := restRepo.Read("non-existent-id")
+			_, err := restRepo.Read(ctx, "non-existent-id")
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should not return non-genre tags", func() {
 			moodID := id.NewTagID("mood", "happy") // This exists as a mood tag, not genre
-			_, err := restRepo.Read(moodID)
+			_, err := restRepo.Read(ctx, moodID)
 			Expect(err).To(HaveOccurred()) // Should not find it as a genre
 		})
 	})
 
 	Describe("ReadAll", func() {
 		It("should return all genres through ReadAll", func() {
-			result, err := restRepo.ReadAll()
+			genres, err := restRepo.ReadAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			genres := result.(model.Genres)
 			Expect(genres).To(HaveLen(12)) // We have 12 genre tags
 
 			genreNames := make([]string, len(genres))
@@ -231,7 +229,7 @@ var _ = Describe("GenreRepository", func() {
 		})
 
 		It("should support rest query options", func() {
-			result, err := restRepo.ReadAll()
+			result, err := restRepo.ReadAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).ToNot(BeNil())
 		})
@@ -240,13 +238,13 @@ var _ = Describe("GenreRepository", func() {
 	Describe("Library Filtering", func() {
 		Context("Headless Processes (No User Context)", func() {
 			var headlessRepo model.GenreRepository
-			var headlessRestRepo model.ResourceRepository
+			var headlessRestRepo rest.Repository[model.Genre]
 
 			BeforeEach(func() {
 				// Create a repository with no user context (headless)
 				headlessGenreRepo := NewGenreRepository(context.Background(), GetDBXBuilder())
 				headlessRepo = headlessGenreRepo
-				headlessRestRepo = headlessGenreRepo.(model.ResourceRepository)
+				headlessRestRepo = headlessGenreRepo
 
 				// Add genres to different libraries
 				db := GetDBXBuilder()
@@ -279,7 +277,7 @@ var _ = Describe("GenreRepository", func() {
 			})
 
 			It("should count all genres from all libraries when no user is in context", func() {
-				count, err := headlessRestRepo.Count()
+				count, err := headlessRestRepo.Count(context.Background())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should count all genres from all libraries
@@ -288,12 +286,11 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should allow headless processes to apply explicit library_id filters", func() {
 				// Filter by specific library
-				genres, err := headlessRestRepo.ReadAll(rest.QueryOptions{
+				genreList, err := headlessRestRepo.ReadAll(context.Background(), rest.QueryOptions{
 					Filters: map[string]any{"library_id": 2},
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				genreList := genres.(model.Genres)
 				// Should see only genres from library 2
 				Expect(genreList).To(HaveLen(1))
 				Expect(genreList[0].Name).To(Equal("jazz"))
@@ -306,24 +303,10 @@ var _ = Describe("GenreRepository", func() {
 				Expect(genres).ToNot(BeEmpty())
 
 				// Headless process should be able to get the genre
-				genre, err := headlessRestRepo.Read(genres[0].ID)
+				genre, err := headlessRestRepo.Read(context.Background(), genres[0].ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genre).ToNot(BeNil())
 			})
-		})
-	})
-
-	Describe("EntityName", func() {
-		It("should return correct entity name", func() {
-			name := restRepo.EntityName()
-			Expect(name).To(Equal("tag")) // Genre repository uses tag table
-		})
-	})
-
-	Describe("NewInstance", func() {
-		It("should return new genre instance", func() {
-			instance := restRepo.NewInstance()
-			Expect(instance).To(BeAssignableToTypeOf(&model.Genre{}))
 		})
 	})
 })

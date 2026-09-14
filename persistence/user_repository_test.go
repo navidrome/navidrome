@@ -239,30 +239,28 @@ var _ = Describe("UserRepository", func() {
 	})
 
 	Describe("ReadAll name filter", func() {
-		var adminRepo model.ResourceRepository
+		var adminRepo model.UserRepository
+		var adminCtx context.Context
 
 		BeforeEach(func() {
-			adminCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin-id", UserName: "admin", IsAdmin: true})
-			adminRepo = NewUserRepository(adminCtx, GetDBXBuilder()).(model.ResourceRepository)
+			adminCtx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-id", UserName: "admin", IsAdmin: true})
+			adminRepo = NewUserRepository(adminCtx, GetDBXBuilder())
 
 			for _, u := range []model.User{
 				{ID: "filter-alice", UserName: "alice_filter", Name: "Alice Filter", NewPassword: "x"},
 				{ID: "filter-bob", UserName: "bob_filter", Name: "Bob Filter", NewPassword: "x"},
 			} {
-				Expect(adminRepo.(model.UserRepository).Put(&u)).To(Succeed())
+				Expect(adminRepo.Put(&u)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			ur := adminRepo.(model.UserRepository)
-			_ = ur.Delete("filter-alice")
-			_ = ur.Delete("filter-bob")
+			_ = adminRepo.Delete(adminCtx, "filter-alice", "filter-bob")
 		})
 
 		It("matches users whose name starts with the given prefix", func() {
-			res, err := adminRepo.ReadAll(rest.QueryOptions{Filters: map[string]any{"name": "Alice"}})
+			users, err := adminRepo.ReadAll(adminCtx, rest.QueryOptions{Filters: map[string]any{"name": "Alice"}})
 			Expect(err).ToNot(HaveOccurred())
-			users := res.(model.Users)
 
 			var names []string
 			for _, u := range users {
@@ -273,9 +271,8 @@ var _ = Describe("UserRepository", func() {
 		})
 
 		It("does not match names by mid-string substring (startsWith, not contains)", func() {
-			res, err := adminRepo.ReadAll(rest.QueryOptions{Filters: map[string]any{"name": "Filter"}})
+			users, err := adminRepo.ReadAll(adminCtx, rest.QueryOptions{Filters: map[string]any{"name": "Filter"}})
 			Expect(err).ToNot(HaveOccurred())
-			users := res.(model.Users)
 
 			for _, u := range users {
 				Expect(u.ID).ToNot(Or(Equal("filter-alice"), Equal("filter-bob")),

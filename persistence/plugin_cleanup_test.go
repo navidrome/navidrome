@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
@@ -11,10 +13,10 @@ var _ = Describe("Plugin Cleanup", func() {
 	var pluginRepo model.PluginRepository
 	var userRepo model.UserRepository
 	var libraryRepo model.LibraryRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := GinkgoT().Context()
-		ctx = request.WithUser(ctx, model.User{ID: "admin", UserName: "admin", IsAdmin: true})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin", UserName: "admin", IsAdmin: true})
 		db := GetDBXBuilder()
 		pluginRepo = NewPluginRepository(ctx, db)
 		userRepo = NewUserRepository(ctx, db)
@@ -221,7 +223,7 @@ var _ = Describe("Plugin Cleanup", func() {
 			Expect(pluginRepo.Put(plugin)).To(Succeed())
 
 			// Delete the user
-			Expect(userRepo.Delete("test-delete-user")).To(Succeed())
+			Expect(userRepo.Delete(ctx, "test-delete-user")).To(Succeed())
 
 			// Verify user was removed from plugin
 			updated, err := pluginRepo.Get("user-ref-plugin")

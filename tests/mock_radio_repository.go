@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -30,18 +31,16 @@ func (m *MockedRadioRepo) CountAll(options ...model.QueryOptions) (int64, error)
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockedRadioRepo) Delete(id string) error {
+func (m *MockedRadioRepo) Delete(_ context.Context, ids ...string) error {
 	if m.Err {
 		return errors.New("Error!")
 	}
-
-	_, found := m.Data[id]
-
-	if !found {
-		return errors.New("not found")
+	for _, id := range ids {
+		if _, found := m.Data[id]; !found {
+			return errors.New("not found")
+		}
+		delete(m.Data, id)
 	}
-
-	delete(m.Data, id)
 	return nil
 }
 

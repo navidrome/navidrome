@@ -103,8 +103,8 @@ func (r *playlistRepository) Exists(id string) (bool, error) {
 	return r.exists(And{Eq{"id": id}, r.userFilter()})
 }
 
-func (r *playlistRepository) Delete(id string) error {
-	return r.delete(And{Eq{"id": id}, r.userFilter()})
+func (r *playlistRepository) Delete(ctx context.Context, ids ...string) error {
+	return r.delete(And{Eq{"id": ids}, r.userFilter()})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
@@ -381,28 +381,19 @@ func (r *playlistRepository) loadTracks(query SelectBuilder, id string) (model.P
 	return res, err
 }
 
-func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *playlistRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *playlistRepository) Read(id string) (any, error) {
+func (r *playlistRepository) Read(ctx context.Context, id string) (*model.Playlist, error) {
 	return r.Get(id)
 }
 
-func (r *playlistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+func (r *playlistRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Playlist, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *playlistRepository) EntityName() string {
-	return "playlist"
-}
-
-func (r *playlistRepository) NewInstance() any {
-	return &model.Playlist{}
-}
-
-func (r *playlistRepository) Save(entity any) (string, error) {
-	pls := entity.(*model.Playlist)
+func (r *playlistRepository) Save(ctx context.Context, pls *model.Playlist) (string, error) {
 	pls.ID = "" // Force new creation
 	err := r.Put(pls)
 	if err != nil {
@@ -411,8 +402,8 @@ func (r *playlistRepository) Save(entity any) (string, error) {
 	return pls.ID, err
 }
 
-func (r *playlistRepository) Update(id string, entity any, cols ...string) error {
-	pls := dbPlaylist{Playlist: *entity.(*model.Playlist)}
+func (r *playlistRepository) Update(ctx context.Context, id string, entity model.Playlist, cols ...string) error {
+	pls := dbPlaylist{Playlist: entity}
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
 	_, err := r.put(id, pls, append(cols, "updatedAt")...)
@@ -481,5 +472,5 @@ func (r *playlistRepository) renumber(id string) error {
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
-var _ rest.Repository = (*playlistRepository)(nil)
-var _ rest.Persistable = (*playlistRepository)(nil)
+var _ rest.Repository[model.Playlist] = (*playlistRepository)(nil)
+var _ rest.Persistable[model.Playlist] = (*playlistRepository)(nil)

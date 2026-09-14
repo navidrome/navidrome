@@ -2,6 +2,8 @@ package model
 
 import (
 	"time"
+
+	"github.com/deluan/rest"
 )
 
 type User struct {
@@ -46,9 +48,9 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 type Users []User
 
 type UserRepository interface {
-	ResourceRepository
+	rest.Repository[User]
+	rest.Persistable[User]
 	CountAll(...QueryOptions) (int64, error)
-	Delete(id string) error
 	Get(id string) (*User, error)
 	GetAll(options ...QueryOptions) (Users, error)
 	Put(*User) error

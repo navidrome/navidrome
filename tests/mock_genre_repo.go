@@ -1,10 +1,12 @@
 package tests
 
 import (
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
 
 type MockedGenreRepo struct {
+	rest.Repository[model.Genre]
 	Error   error
 	Data    map[string]model.Genre
 	Options model.QueryOptions

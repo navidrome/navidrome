@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/deluan/rest"
+)
 
 type Plugin struct {
 	ID               string    `structs:"id"                 json:"id"`
@@ -22,7 +26,7 @@ type Plugin struct {
 type Plugins []Plugin
 
 type PluginRepository interface {
-	ResourceRepository
+	rest.Repository[Plugin]
 	ClearErrors() error
 	CountAll(options ...QueryOptions) (int64, error)
 	Delete(id string) error

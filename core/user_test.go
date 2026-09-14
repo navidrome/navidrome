@@ -29,19 +29,19 @@ var _ = Describe("User Service", func() {
 	})
 
 	Describe("NewRepository", func() {
-		It("returns a rest.Persistable", func() {
+		It("returns a rest.Persistable[model.User]", func() {
 			repo := service.NewRepository(ctx)
-			_, ok := repo.(rest.Persistable)
+			_, ok := repo.(rest.Persistable[model.User])
 			Expect(ok).To(BeTrue())
 		})
 	})
 
 	Describe("Delete", func() {
-		var repo rest.Persistable
+		var repo rest.Persistable[model.User]
 
 		BeforeEach(func() {
 			r := service.NewRepository(ctx)
-			repo = r.(rest.Persistable)
+			repo = r.(rest.Persistable[model.User])
 
 			// Add a test user
 			user := &model.User{
@@ -54,7 +54,7 @@ var _ = Describe("User Service", func() {
 		})
 
 		It("deletes the user successfully", func() {
-			err := repo.Delete("user-123")
+			err := repo.Delete(ctx, "user-123")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify user is deleted
@@ -63,21 +63,21 @@ var _ = Describe("User Service", func() {
 		})
 
 		It("calls UnloadDisabledPlugins after successful deletion", func() {
-			err := repo.Delete("user-123")
+			err := repo.Delete(ctx, "user-123")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pluginManager.unloadCalls).To(Equal(1))
 		})
 
 		It("does not call UnloadDisabledPlugins when deletion fails", func() {
 			// Try to delete non-existent user
-			err := repo.Delete("non-existent")
+			err := repo.Delete(ctx, "non-existent")
 			Expect(err).To(HaveOccurred())
 			Expect(pluginManager.unloadCalls).To(Equal(0))
 		})
 
 		It("returns error when repository fails", func() {
 			userRepo.Error = errors.New("database error")
-			err := repo.Delete("user-123")
+			err := repo.Delete(ctx, "user-123")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("database error"))
 			Expect(pluginManager.unloadCalls).To(Equal(0))

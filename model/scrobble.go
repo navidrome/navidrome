@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/deluan/rest"
+)
 
 type Scrobble struct {
 	ID             int64  `structs:"id" json:"id"`
@@ -10,6 +14,7 @@ type Scrobble struct {
 }
 
 type ScrobbleRepository interface {
+	rest.Repository[Scrobble]
 	CountAll(options ...QueryOptions) (int64, error)
 	Get(id string) (*Scrobble, error)
 	GetAll(options ...QueryOptions) (Scrobbles, error)

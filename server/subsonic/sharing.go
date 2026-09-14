@@ -68,7 +68,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 		ResourceIDs:  strings.Join(ids, ","),
 	}
 
-	id, err := repo.(rest.Persistable).Save(share)
+	id, err := repo.(rest.Persistable[model.Share]).Save(r.Context(), share)
 	if err != nil {
 		return nil, err
 	}
@@ -97,11 +97,10 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 	description := p.StringPtr("description")
 	downloadable := p.BoolPtr("downloadable")
 	if description == nil || downloadable == nil {
-		current, err := repo.Read(id)
+		cur, err := repo.Read(r.Context(), id)
 		if err != nil {
 			return nil, err
 		}
-		cur := current.(*model.Share)
 		description = cmp.Or(description, &cur.Description)
 		downloadable = cmp.Or(downloadable, &cur.Downloadable)
 	}
@@ -113,7 +112,7 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 	}
 
-	err = repo.(rest.Persistable).Update(id, share)
+	err = repo.(rest.Persistable[model.Share]).Update(r.Context(), id, *share)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +128,7 @@ func (api *Router) DeleteShare(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	repo := api.share.NewRepository(r.Context())
-	err = repo.(rest.Persistable).Delete(id)
+	err = repo.(rest.Persistable[model.Share]).Delete(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}

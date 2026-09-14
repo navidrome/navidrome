@@ -15,10 +15,11 @@ var _ = Describe("Annotation Filters", func() {
 	var (
 		albumRepo              *albumRepository
 		albumWithoutAnnotation model.Album
+		ctx                    context.Context
 	)
 
 	BeforeEach(func() {
-		ctx := request.WithUser(context.Background(), model.User{ID: "userid", UserName: "johndoe"})
+		ctx = request.WithUser(context.Background(), model.User{ID: "userid", UserName: "johndoe"})
 		albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
 
 		// Create album without any annotation (no star, no rating)
@@ -182,11 +183,11 @@ var _ = Describe("Annotation Filters", func() {
 	})
 
 	It("ignores invalid filter values (not strings)", func() {
-		res, err := albumRepo.ReadAll(rest.QueryOptions{
+		res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 			Filters: map[string]any{"starred": 123},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		albums := res.(model.Albums)
+		albums := res
 
 		var found bool
 		for _, a := range albums {

@@ -231,44 +231,35 @@ func (r *userRepository) UpdateLastAccessAt(id string) error {
 	return err
 }
 
-func (r *userRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	usr := loggedUser(r.ctx)
+func (r *userRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	usr := loggedUser(ctx)
 	if !usr.IsAdmin {
 		return 0, rest.ErrPermissionDenied
 	}
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *userRepository) Read(id string) (any, error) {
-	usr := loggedUser(r.ctx)
+func (r *userRepository) Read(ctx context.Context, id string) (*model.User, error) {
+	usr := loggedUser(ctx)
 	if !usr.IsAdmin && usr.ID != id {
 		return nil, rest.ErrPermissionDenied
 	}
 	return r.Get(id)
 }
 
-func (r *userRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	usr := loggedUser(r.ctx)
+func (r *userRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.User, error) {
+	usr := loggedUser(ctx)
 	if !usr.IsAdmin {
 		return nil, rest.ErrPermissionDenied
 	}
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *userRepository) EntityName() string {
-	return "user"
-}
-
-func (r *userRepository) NewInstance() any {
-	return &model.User{}
-}
-
-func (r *userRepository) Save(entity any) (string, error) {
-	usr := loggedUser(r.ctx)
+func (r *userRepository) Save(ctx context.Context, u *model.User) (string, error) {
+	usr := loggedUser(ctx)
 	if !usr.IsAdmin {
 		return "", rest.ErrPermissionDenied
 	}
-	u := entity.(*model.User)
 	if err := validateUsernameUnique(r, u); err != nil {
 		return "", err
 	}
@@ -282,10 +273,10 @@ func (r *userRepository) Save(entity any) (string, error) {
 	return u.ID, err
 }
 
-func (r *userRepository) Update(id string, entity any, _ ...string) error {
-	u := entity.(*model.User)
+func (r *userRepository) Update(ctx context.Context, id string, entity model.User, _ ...string) error {
+	u := &entity
 	u.ID = id
-	usr := loggedUser(r.ctx)
+	usr := loggedUser(ctx)
 	if !usr.IsAdmin && usr.ID != u.ID {
 		return rest.ErrPermissionDenied
 	}
@@ -380,18 +371,22 @@ func invalidScrobbleFilter() error {
 	}}
 }
 
-func (r *userRepository) Delete(id string) error {
-	usr := loggedUser(r.ctx)
+func (r *userRepository) Delete(ctx context.Context, ids ...string) error {
+	usr := loggedUser(ctx)
 	if !usr.IsAdmin {
 		return rest.ErrPermissionDenied
 	}
-	if err := r.deleteByID(id); err != nil {
-		return err
+	for _, id := range ids {
+		if err := r.deleteByID(id); err != nil {
+			return err
+		}
 	}
 
-	// Clean up orphaned plugin references for the deleted user
-	if err := cleanupPluginUserReferences(r.db, id); err != nil {
-		log.Error(r.ctx, "Failed to cleanup plugin user references", "userID", id, err)
+	// Clean up orphaned plugin references for the deleted users
+	for _, id := range ids {
+		if err := cleanupPluginUserReferences(r.db, id); err != nil {
+			log.Error(ctx, "Failed to cleanup plugin user references", "userID", id, err)
+		}
 	}
 	return nil
 }
@@ -524,5 +519,5 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 }
 
 var _ model.UserRepository = (*userRepository)(nil)
-var _ rest.Repository = (*userRepository)(nil)
-var _ rest.Persistable = (*userRepository)(nil)
+var _ rest.Repository[model.User] = (*userRepository)(nil)
+var _ rest.Persistable[model.User] = (*userRepository)(nil)

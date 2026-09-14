@@ -18,7 +18,7 @@ import (
 
 var _ = Describe("TagRepository", func() {
 	var repo model.TagRepository
-	var restRepo model.ResourceRepository
+	var restRepo rest.Repository[model.Tag]
 	var ctx context.Context
 
 	BeforeEach(func() {
@@ -26,7 +26,7 @@ var _ = Describe("TagRepository", func() {
 		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		tagRepo := NewTagRepository(ctx, GetDBXBuilder())
 		repo = tagRepo
-		restRepo = tagRepo.(model.ResourceRepository)
+		restRepo = tagRepo
 
 		// Clean the database before each test to ensure isolation
 		db := GetDBXBuilder()
@@ -88,13 +88,12 @@ var _ = Describe("TagRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify tag was added
-			result, err := restRepo.Read(newTag.ID)
+			resultTag, err := restRepo.Read(ctx, newTag.ID)
 			Expect(err).ToNot(HaveOccurred())
-			resultTag := result.(*model.Tag)
 			Expect(resultTag.TagValue).To(Equal("experimental"))
 
 			// Check count increased
-			count, err := restRepo.Count()
+			count, err := restRepo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(21))) // 20 from dataset + 1 new
 		})
@@ -107,7 +106,7 @@ var _ = Describe("TagRepository", func() {
 				TagValue: "rock",
 			}
 
-			count, err := restRepo.Count()
+			count, err := restRepo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(20))) // Still 20 tags
 
@@ -115,7 +114,7 @@ var _ = Describe("TagRepository", func() {
 			Expect(err).ToNot(HaveOccurred()) // Should not error
 
 			// Count should remain the same
-			count, err = restRepo.Count()
+			count, err = restRepo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(20))) // Still 20 tags
 		})
@@ -201,7 +200,7 @@ var _ = Describe("TagRepository", func() {
 
 	Describe("Count", func() {
 		It("should return correct count of tags", func() {
-			count, err := restRepo.Count()
+			count, err := restRepo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(20))) // From the test dataset
 		})
@@ -210,25 +209,23 @@ var _ = Describe("TagRepository", func() {
 	Describe("Read", func() {
 		It("should return existing tag", func() {
 			rockID := id.NewTagID("genre", "rock")
-			result, err := restRepo.Read(rockID)
+			resultTag, err := restRepo.Read(ctx, rockID)
 			Expect(err).ToNot(HaveOccurred())
-			resultTag := result.(*model.Tag)
 			Expect(resultTag.ID).To(Equal(rockID))
 			Expect(resultTag.TagName).To(Equal(model.TagName("genre")))
 			Expect(resultTag.TagValue).To(Equal("rock"))
 		})
 
 		It("should return error for non-existent tag", func() {
-			_, err := restRepo.Read("non-existent-id")
+			_, err := restRepo.Read(ctx, "non-existent-id")
 			Expect(err).To(HaveOccurred())
 		})
 	})
 
 	Describe("ReadAll", func() {
 		It("should return all tags from dataset", func() {
-			result, err := restRepo.ReadAll()
+			tags, err := restRepo.ReadAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
-			tags := result.(model.TagList)
 			Expect(tags).To(HaveLen(20))
 		})
 
@@ -236,9 +233,8 @@ var _ = Describe("TagRepository", func() {
 			options := rest.QueryOptions{
 				Filters: map[string]any{"name": "%rock%"}, // Tags containing 'rock'
 			}
-			result, err := restRepo.ReadAll(options)
+			tags, err := restRepo.ReadAll(ctx, options)
 			Expect(err).ToNot(HaveOccurred())
-			tags := result.(model.TagList)
 			Expect(tags).To(HaveLen(2)) // "rock" and "Alternative Rock"
 
 			// Verify all returned tags contain 'rock' in their value
@@ -251,9 +247,8 @@ var _ = Describe("TagRepository", func() {
 			options := rest.QueryOptions{
 				Filters: map[string]any{"name": "%e%"}, // Tags containing 'e'
 			}
-			result, err := restRepo.ReadAll(options)
+			tags, err := restRepo.ReadAll(ctx, options)
 			Expect(err).ToNot(HaveOccurred())
-			tags := result.(model.TagList)
 			Expect(tags).To(HaveLen(8)) // electronic, house, trance, energetic, Blues, decade x2, Alternative Rock
 
 			// Verify all returned tags contain 'e' in their value
@@ -268,9 +263,8 @@ var _ = Describe("TagRepository", func() {
 				Sort:    "name",
 				Order:   "asc",
 			}
-			result, err := restRepo.ReadAll(options)
+			tags, err := restRepo.ReadAll(ctx, options)
 			Expect(err).ToNot(HaveOccurred())
-			tags := result.(model.TagList)
 			Expect(tags).To(HaveLen(7))
 
 			Expect(slices.IsSortedFunc(tags, func(a, b model.Tag) int {
@@ -284,28 +278,13 @@ var _ = Describe("TagRepository", func() {
 				Sort:    "name",
 				Order:   "desc",
 			}
-			result, err := restRepo.ReadAll(options)
+			tags, err := restRepo.ReadAll(ctx, options)
 			Expect(err).ToNot(HaveOccurred())
-			tags := result.(model.TagList)
 			Expect(tags).To(HaveLen(7))
 
 			Expect(slices.IsSortedFunc(tags, func(a, b model.Tag) int {
 				return strings.Compare(strings.ToLower(b.TagValue), strings.ToLower(a.TagValue)) // Descending order
 			}))
-		})
-	})
-
-	Describe("EntityName", func() {
-		It("should return correct entity name", func() {
-			name := restRepo.EntityName()
-			Expect(name).To(Equal("tag"))
-		})
-	})
-
-	Describe("NewInstance", func() {
-		It("should return new tag instance", func() {
-			instance := restRepo.NewInstance()
-			Expect(instance).To(BeAssignableToTypeOf(model.Tag{}))
 		})
 	})
 })

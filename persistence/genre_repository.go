@@ -37,19 +37,15 @@ func (r *genreRepository) Get(id string) (*model.Genre, error) {
 	return &res, err
 }
 
-// Override ResourceRepository methods to return Genre objects instead of Tag objects
+// Override the base tag REST methods to return Genre objects instead of Tag objects
 
-func (r *genreRepository) Read(id string) (any, error) {
+func (r *genreRepository) Read(ctx context.Context, id string) (*model.Genre, error) {
 	return r.Get(id)
 }
 
-func (r *genreRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *genreRepository) NewInstance() any {
-	return &model.Genre{}
+func (r *genreRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Genre, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 var _ model.GenreRepository = (*genreRepository)(nil)
-var _ model.ResourceRepository = (*genreRepository)(nil)
+var _ rest.Repository[model.Genre] = (*genreRepository)(nil)

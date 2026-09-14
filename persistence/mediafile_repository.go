@@ -599,25 +599,17 @@ func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (m
 	return mfs, nil
 }
 
-func (r *mediaFileRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *mediaFileRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *mediaFileRepository) Read(id string) (any, error) {
+func (r *mediaFileRepository) Read(ctx context.Context, id string) (*model.MediaFile, error) {
 	return r.Get(id)
 }
 
-func (r *mediaFileRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *mediaFileRepository) EntityName() string {
-	return "mediafile"
-}
-
-func (r *mediaFileRepository) NewInstance() any {
-	return &model.MediaFile{}
+func (r *mediaFileRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.MediaFile, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 var _ model.MediaFileRepository = (*mediaFileRepository)(nil)
-var _ model.ResourceRepository = (*mediaFileRepository)(nil)
+var _ rest.Repository[model.MediaFile] = (*mediaFileRepository)(nil)
