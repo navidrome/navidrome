@@ -15,17 +15,15 @@ import (
 )
 
 func (api *Router) addPluginRoute(r chi.Router) {
-	constructor := func(ctx context.Context) rest.Repository {
-		return api.ds.Plugin(ctx)
-	}
+	repo := lazy(func(ctx context.Context) rest.Repository[model.Plugin] { return api.ds.Plugin(ctx) })
 
 	r.Route("/plugin", func(r chi.Router) {
 		r.Use(pluginsEnabledMiddleware)
-		r.Get("/", rest.GetAll(constructor))
+		r.Get("/", rest.GetAll(repo))
 		r.Post("/rescan", api.rescanPlugins)
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
-			r.Get("/", rest.Get(constructor))
+			r.Get("/", rest.Get(repo))
 			r.Put("/", api.updatePlugin)
 		})
 	})

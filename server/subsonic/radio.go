@@ -47,7 +47,7 @@ func (api *Router) DeleteInternetRadio(r *http.Request) (*responses.Subsonic, er
 		return nil, err
 	}
 
-	err = api.ds.Radio(r.Context()).Delete(id)
+	err = api.ds.Radio(r.Context()).Delete(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}

@@ -179,12 +179,12 @@ var _ = Describe("ShareRepository", func() {
 			b := GetDBXBuilder()
 			_, _ = b.NewQuery(`DELETE FROM share WHERE id = 'share-scope'`).Execute()
 			pr := NewPlaylistRepository(adminCtx, b)
-			_ = pr.Delete(plsID)
+			_ = pr.Delete(adminCtx, plsID)
 			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
 			_, _ = mr.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
 			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
 			_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
-			_ = NewUserRepository(adminCtx, b).Delete(owner.ID)
+			_ = NewUserRepository(adminCtx, b).Delete(adminCtx, owner.ID)
 		})
 
 		It("excludes tracks the owner cannot access from the shared playlist", func() {
@@ -209,7 +209,7 @@ var _ = Describe("ShareRepository", func() {
 			privatePls := &model.Playlist{ID: privatePlsID, Name: "Private", OwnerID: adminUser.ID, Public: false}
 			privatePls.AddMediaFiles(model.MediaFiles{{ID: "share-ok"}})
 			Expect(pr.Put(privatePls)).To(Succeed())
-			DeferCleanup(func() { _ = pr.Delete(privatePlsID) })
+			DeferCleanup(func() { _ = pr.Delete(adminCtx, privatePlsID) })
 
 			_, err := GetDBXBuilder().NewQuery(`
 				INSERT INTO share (id, user_id, description, resource_type, resource_ids, created_at, updated_at)
@@ -295,7 +295,7 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = ar.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))
 			lr := NewLibraryRepository(adminCtx, b).(*libraryRepository)
 			_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
-			_ = NewUserRepository(adminCtx, b).Delete(owner.ID)
+			_ = NewUserRepository(adminCtx, b).Delete(adminCtx, owner.ID)
 		})
 
 		It("includes co-album-artist tracks the owner can access and excludes those they cannot", func() {
@@ -359,7 +359,7 @@ var _ = Describe("ShareRepository", func() {
 				insertShare("own-share-del", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Delete("own-share-del")
+				err := repo.Delete(ctx, "own-share-del")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -367,13 +367,13 @@ var _ = Describe("ShareRepository", func() {
 				insertShare("other-share-del", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), otherUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Delete("other-share-del")
+				err := repo.Delete(ctx, "other-share-del")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 
 				// The share was not deleted: the owner can still read it.
 				ownerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
 				ownerRepo := NewShareRepository(ownerCtx, GetDBXBuilder())
-				_, err = ownerRepo.(rest.Repository).Read("other-share-del")
+				_, err = ownerRepo.Read(ownerCtx, "other-share-del")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -381,14 +381,15 @@ var _ = Describe("ShareRepository", func() {
 				insertShare("admin-del-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Delete("admin-del-share")
+				err := repo.Delete(ctx, "admin-del-share")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("allows headless context (no user) to delete a share", func() {
 				insertShare("headless-del-share", ownerUser.ID)
-				repo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
-				err := repo.(rest.Persistable).Delete("headless-del-share")
+				headlessCtx := GinkgoT().Context()
+				repo := NewShareRepository(headlessCtx, GetDBXBuilder())
+				err := repo.Delete(headlessCtx, "headless-del-share")
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -400,9 +401,9 @@ var _ = Describe("ShareRepository", func() {
 				Expect(ur.Put(&otherUser)).To(Succeed())
 
 				attackerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
-				attackerRepo := NewShareRepository(attackerCtx, GetDBXBuilder()).(rest.Persistable)
+				attackerRepo := NewShareRepository(attackerCtx, GetDBXBuilder())
 
-				id, err := attackerRepo.Save(&model.Share{
+				id, err := attackerRepo.Save(attackerCtx, &model.Share{
 					ID: "spoof-save-share", UserID: otherUser.ID,
 					ResourceType: "media_file", ResourceIDs: "1001",
 				})
@@ -420,7 +421,7 @@ var _ = Describe("ShareRepository", func() {
 				insertShare("own-share-upd", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Update("own-share-upd", &model.Share{Description: "Updated"}, "description")
+				err := repo.Update(ctx, "own-share-upd", model.Share{Description: "Updated"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -428,7 +429,7 @@ var _ = Describe("ShareRepository", func() {
 				insertShare("other-share-upd", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), otherUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Update("other-share-upd", &model.Share{Description: "Hacked"}, "description")
+				err := repo.Update(ctx, "other-share-upd", model.Share{Description: "Hacked"}, "description")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 
@@ -436,21 +437,22 @@ var _ = Describe("ShareRepository", func() {
 				insertShare("admin-upd-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Update("admin-upd-share", &model.Share{Description: "Admin Updated"}, "description")
+				err := repo.Update(ctx, "admin-upd-share", model.Share{Description: "Admin Updated"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("allows headless context (no user) to update a share", func() {
 				insertShare("headless-upd-share", ownerUser.ID)
-				repo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
-				err := repo.(rest.Persistable).Update("headless-upd-share", &model.Share{Description: "Headless"}, "description")
+				headlessCtx := GinkgoT().Context()
+				repo := NewShareRepository(headlessCtx, GetDBXBuilder())
+				err := repo.Update(headlessCtx, "headless-upd-share", model.Share{Description: "Headless"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("returns not found when updating a nonexistent share", func() {
 				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Update("does-not-exist", &model.Share{Description: "Ghost"}, "description")
+				err := repo.Update(ctx, "does-not-exist", model.Share{Description: "Ghost"}, "description")
 				Expect(err).To(Equal(rest.ErrNotFound))
 			})
 
@@ -459,13 +461,12 @@ var _ = Describe("ShareRepository", func() {
 				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
 				// No cols: the update must write every column, not just updated_at.
-				err := repo.(rest.Persistable).Update("all-cols-share",
-					&model.Share{Description: "All Updated", MaxBitRate: 192, ResourceType: "album", ResourceIDs: "2002"})
+				err := repo.Update(ctx, "all-cols-share",
+					model.Share{Description: "All Updated", MaxBitRate: 192, ResourceType: "album", ResourceIDs: "2002"})
 				Expect(err).ToNot(HaveOccurred())
 
-				got, err := repo.(rest.Repository).Read("all-cols-share")
+				share, err := repo.Read(ctx, "all-cols-share")
 				Expect(err).ToNot(HaveOccurred())
-				share := got.(*model.Share)
 				Expect(share.Description).To(Equal("All Updated"))
 				Expect(share.MaxBitRate).To(Equal(192))
 				Expect(share.ResourceType).To(Equal("album"))
@@ -475,14 +476,14 @@ var _ = Describe("ShareRepository", func() {
 				insertShare("reassign-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
 				repo := NewShareRepository(ctx, GetDBXBuilder())
-				err := repo.(rest.Persistable).Update("reassign-share",
-					&model.Share{UserID: otherUser.ID, Description: "Given away"}, "user_id", "description")
+				err := repo.Update(ctx, "reassign-share",
+					model.Share{UserID: otherUser.ID, Description: "Given away"}, "user_id", "description")
 				Expect(err).ToNot(HaveOccurred())
 
 				// Ownership must not have moved, even though user_id was passed in the body and cols.
-				got, err := repo.(rest.Repository).Read("reassign-share")
+				got, err := repo.Read(ctx, "reassign-share")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(got.(*model.Share).UserID).To(Equal(ownerUser.ID))
+				Expect(got.UserID).To(Equal(ownerUser.ID))
 			})
 		})
 
@@ -500,12 +501,11 @@ var _ = Describe("ShareRepository", func() {
 
 			Context("non-admin user", func() {
 				var nonAdminRepo model.ShareRepository
-				var nonAdminRest rest.Repository
+				var nonAdminCtx context.Context
 
 				BeforeEach(func() {
-					nonAdminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
+					nonAdminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
 					nonAdminRepo = NewShareRepository(nonAdminCtx, GetDBXBuilder())
-					nonAdminRest = nonAdminRepo.(rest.Repository)
 				})
 
 				It("GetAll returns only own shares", func() {
@@ -519,9 +519,8 @@ var _ = Describe("ShareRepository", func() {
 				})
 
 				It("ReadAll returns only own shares", func() {
-					res, err := nonAdminRest.ReadAll()
+					shares, err := nonAdminRepo.ReadAll(nonAdminCtx)
 					Expect(err).ToNot(HaveOccurred())
-					shares := res.(model.Shares)
 					ids := make([]string, len(shares))
 					for i, s := range shares {
 						ids[i] = s.ID
@@ -541,7 +540,7 @@ var _ = Describe("ShareRepository", func() {
 				})
 
 				It("Read returns ErrNotFound for another user's share", func() {
-					_, err := nonAdminRest.Read("share-other-1")
+					_, err := nonAdminRepo.Read(nonAdminCtx, "share-other-1")
 					Expect(err).To(MatchError(model.ErrNotFound))
 				})
 
@@ -564,7 +563,7 @@ var _ = Describe("ShareRepository", func() {
 				})
 
 				It("Count (rest) counts only own shares", func() {
-					count, err := nonAdminRest.Count()
+					count, err := nonAdminRepo.Count(nonAdminCtx)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(count).To(BeNumerically("==", 2))
 				})

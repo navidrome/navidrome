@@ -121,25 +121,17 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 	return err
 }
 
-func (r *pluginRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *pluginRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *pluginRepository) EntityName() string {
-	return "plugin"
-}
-
-func (r *pluginRepository) NewInstance() any {
-	return &model.Plugin{}
-}
-
-func (r *pluginRepository) Read(id string) (any, error) {
+func (r *pluginRepository) Read(ctx context.Context, id string) (*model.Plugin, error) {
 	return r.Get(id)
 }
 
-func (r *pluginRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+func (r *pluginRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Plugin, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 var _ model.PluginRepository = (*pluginRepository)(nil)
-var _ rest.Repository = (*pluginRepository)(nil)
+var _ rest.Repository[model.Plugin] = (*pluginRepository)(nil)

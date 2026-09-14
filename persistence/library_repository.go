@@ -298,51 +298,22 @@ func (r *libraryRepository) GetUsersWithLibraryAccess(libraryID int) (model.User
 
 // REST interface methods
 
-func (r *libraryRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *libraryRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *libraryRepository) Read(id string) (any, error) {
+func (r *libraryRepository) Read(ctx context.Context, id string) (*model.Library, error) {
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		log.Trace(r.ctx, "invalid library id: %s", id, err)
+		log.Trace(ctx, "invalid library id: %s", id, err)
 		return nil, rest.ErrNotFound
 	}
 	return r.Get(idInt)
 }
 
-func (r *libraryRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *libraryRepository) EntityName() string {
-	return "library"
-}
-
-func (r *libraryRepository) NewInstance() any {
-	return &model.Library{}
-}
-
-func (r *libraryRepository) Save(entity any) (string, error) {
-	lib := entity.(*model.Library)
-	lib.ID = 0 // Reset ID to ensure we create a new library
-	err := r.Put(lib)
-	if err != nil {
-		return "", err
-	}
-	return strconv.Itoa(lib.ID), nil
-}
-
-func (r *libraryRepository) Update(id string, entity any, cols ...string) error {
-	lib := entity.(*model.Library)
-	idInt, err := strconv.Atoi(id)
-	if err != nil {
-		return fmt.Errorf("invalid library ID: %s", id)
-	}
-
-	lib.ID = idInt
-	return r.Put(lib, cols...)
+func (r *libraryRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Library, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 var _ model.LibraryRepository = (*libraryRepository)(nil)
-var _ rest.Repository = (*libraryRepository)(nil)
+var _ rest.Repository[model.Library] = (*libraryRepository)(nil)

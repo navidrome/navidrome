@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -17,10 +18,10 @@ import (
 
 var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 	var repo model.PlaylistRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(GinkgoT().Context())
-		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
 	})
 
@@ -37,7 +38,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Specify("Put/Get", func() {
 				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
 				Expect(repo.Put(&newPls)).To(Succeed())
-				DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+				DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
 				savedPls, err := repo.Get(newPls.ID)
 				Expect(err).ToNot(HaveOccurred())
@@ -49,7 +50,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			It("stamps updated_at and evaluated_at with the same instant", func() {
 				newPls := model.Playlist{Name: "Evaluated", OwnerID: "userid", Rules: rules}
 				Expect(repo.Put(&newPls)).To(Succeed())
-				DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+				DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
 				refreshed, err := repo.GetWithTracks(newPls.ID, true, false)
 				Expect(err).ToNot(HaveOccurred())
@@ -86,7 +87,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				}
 				pls := model.Playlist{Name: "Smart", OwnerID: "userid", Rules: rules, Path: "/music/smart.nsp", Sync: true}
 				Expect(repo.Put(&pls)).To(Succeed())
-				DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+				DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
 
 				evaluated, err := repo.GetWithTracks(pls.ID, true, false)
 				Expect(err).ToNot(HaveOccurred())
@@ -126,7 +127,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					}
 					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Public: true, Rules: childRules}
 					Expect(repo.Put(&nestedPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
+					DeferCleanup(func() { _ = repo.Delete(ctx, nestedPls.ID) })
 
 					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
 						Expression: criteria.All{
@@ -134,7 +135,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 						},
 					}}
 					Expect(repo.Put(&parentPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
+					DeferCleanup(func() { _ = repo.Delete(ctx, parentPls.ID) })
 
 					// Nested playlist has not been evaluated yet
 					nestedPlsRead, err := repo.Get(nestedPls.ID)
@@ -171,7 +172,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					}
 					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Public: true, Rules: childRules, EvaluatedAt: &childEvaluatedAt}
 					Expect(repo.Put(&nestedPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
+					DeferCleanup(func() { _ = repo.Delete(ctx, nestedPls.ID) })
 
 					// Parent has no EvaluatedAt, so it WILL refresh, but the child should not
 					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
@@ -180,7 +181,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 						},
 					}}
 					Expect(repo.Put(&parentPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
+					DeferCleanup(func() { _ = repo.Delete(ctx, parentPls.ID) })
 
 					nestedPlsRead, err := repo.Get(nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
@@ -216,7 +217,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					}
 					pls := model.Playlist{Name: "Frozen Daily", OwnerID: "userid", Rules: rules, EvaluatedAt: &evaluatedAt}
 					Expect(repo.Put(&pls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+					DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
 
 					got, err := repo.GetWithTracks(pls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
@@ -235,7 +236,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					}
 					pls := model.Playlist{Name: "Fast Refresh", OwnerID: "userid", Rules: rules, EvaluatedAt: &evaluatedAt}
 					Expect(repo.Put(&pls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+					DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
 
 					got, err := repo.GetWithTracks(pls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
@@ -252,7 +253,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				Expect(repo.Delete(ctx, testPlaylistID)).To(BeNil())
 				testPlaylistID = ""
 			}
 		})
@@ -285,7 +286,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				_ = repo.Delete(testPlaylistID)
+				_ = repo.Delete(ctx, testPlaylistID)
 				testPlaylistID = ""
 			}
 		})
@@ -414,7 +415,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			}
 			boolPls := model.Playlist{Name: "Bool Loved", OwnerID: "userid", Rules: boolRules}
 			Expect(repo.Put(&boolPls)).To(Succeed())
-			DeferCleanup(func() { _ = repo.Delete(boolPls.ID) })
+			DeferCleanup(func() { _ = repo.Delete(ctx, boolPls.ID) })
 
 			stringRules := &criteria.Criteria{
 				Expression: criteria.All{
@@ -454,7 +455,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		trackIDsOf := func(rules *criteria.Criteria) []string {
 			newPls := model.Playlist{Name: "Album Aggregates", OwnerID: "userid", Rules: rules}
 			Expect(repo.Put(&newPls)).To(Succeed())
-			DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+			DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
 			pls, err := repo.GetWithTracks(newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -529,7 +530,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				_ = repo.Delete(testPlaylistID)
+				_ = repo.Delete(ctx, testPlaylistID)
 				testPlaylistID = ""
 			}
 			// Clean up test media files
@@ -661,7 +662,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		AfterEach(func() {
 			db := GetDBXBuilder()
 			if testPlaylistID != "" {
-				_ = repo.Delete(testPlaylistID)
+				_ = repo.Delete(ctx, testPlaylistID)
 				testPlaylistID = ""
 			}
 			// Clean up test data

@@ -464,25 +464,17 @@ func (r *albumRepository) Search(q string, options ...model.QueryOptions) (model
 	return albums, nil
 }
 
-func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *albumRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *albumRepository) Read(id string) (any, error) {
+func (r *albumRepository) Read(ctx context.Context, id string) (*model.Album, error) {
 	return r.Get(id)
 }
 
-func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *albumRepository) EntityName() string {
-	return "album"
-}
-
-func (r *albumRepository) NewInstance() any {
-	return &model.Album{}
+func (r *albumRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Album, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 var _ model.AlbumRepository = (*albumRepository)(nil)
-var _ model.ResourceRepository = (*albumRepository)(nil)
+var _ rest.Repository[model.Album] = (*albumRepository)(nil)

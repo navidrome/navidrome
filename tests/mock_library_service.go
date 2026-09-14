@@ -14,7 +14,7 @@ type MockLibraryService struct {
 	*MockLibraryRepo
 }
 
-// MockLibraryRestAdapter adapts MockLibraryRepo to rest.Repository interface
+// MockLibraryRestAdapter adapts MockLibraryRepo to the REST repository interface
 type MockLibraryRestAdapter struct {
 	*MockLibraryRepo
 }
@@ -33,12 +33,15 @@ func NewMockLibraryService() *MockLibraryService {
 	return &MockLibraryService{MockLibraryRepo: repo}
 }
 
-func (m *MockLibraryService) NewRepository(ctx context.Context) rest.Repository {
+func (m *MockLibraryService) NewRepository(ctx context.Context) rest.Repository[model.Library] {
 	return &MockLibraryRestAdapter{MockLibraryRepo: m.MockLibraryRepo}
 }
 
-// rest.Repository interface implementation
-
-func (a *MockLibraryRestAdapter) Delete(id string) error {
-	return a.DeleteByStringID(id)
+func (a *MockLibraryRestAdapter) Delete(_ context.Context, ids ...string) error {
+	for _, id := range ids {
+		if err := a.DeleteByStringID(id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

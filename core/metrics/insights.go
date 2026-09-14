@@ -265,7 +265,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading shares count", err)
 	}
-	data.Library.Radios, err = c.ds.Radio(ctx).Count()
+	data.Library.Radios, err = c.ds.Radio(ctx).CountAll()
 	if err != nil {
 		log.Trace(ctx, "Error reading radios count", err)
 	}

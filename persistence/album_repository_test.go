@@ -357,11 +357,11 @@ var _ = Describe("AlbumRepository", func() {
 
 		Describe("starred", func() {
 			It("false includes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"starred": "false"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				var found bool
 				for _, a := range albums {
@@ -374,11 +374,11 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("true excludes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"starred": "true"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				for _, a := range albums {
 					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
@@ -388,11 +388,11 @@ var _ = Describe("AlbumRepository", func() {
 
 		Describe("has_rating", func() {
 			It("false includes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"has_rating": "false"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				var found bool
 				for _, a := range albums {
@@ -405,11 +405,11 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("true excludes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"has_rating": "true"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				for _, a := range albums {
 					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))

@@ -15,7 +15,7 @@ type PluginUnloader interface {
 
 // User provides business logic for user management with plugin coordination.
 type User interface {
-	NewRepository(ctx context.Context) rest.Repository
+	NewRepository(ctx context.Context) rest.Repository[model.User]
 }
 
 type userService struct {
@@ -33,44 +33,23 @@ func NewUser(ds model.DataStore, pluginManager PluginUnloader) User {
 
 // NewRepository returns a REST repository wrapper for user operations.
 // The wrapper intercepts Delete operations to coordinate plugin unloading.
-func (s *userService) NewRepository(ctx context.Context) rest.Repository {
-	repo := s.ds.User(ctx)
-	wrapper := &userRepositoryWrapper{
-		ctx:            ctx,
-		UserRepository: repo,
+func (s *userService) NewRepository(ctx context.Context) rest.Repository[model.User] {
+	return &userRepositoryWrapper{
+		UserRepository: s.ds.User(ctx),
 		pluginManager:  s.pluginManager,
 	}
-	return wrapper
 }
 
 type userRepositoryWrapper struct {
 	model.UserRepository
-	ctx           context.Context
 	pluginManager PluginUnloader
 }
 
-// Save implements rest.Persistable by delegating to the underlying repository.
-func (r *userRepositoryWrapper) Save(entity any) (string, error) {
-	return r.UserRepository.(rest.Persistable).Save(entity)
-}
-
-// Update implements rest.Persistable by delegating to the underlying repository.
-func (r *userRepositoryWrapper) Update(id string, entity any, cols ...string) error {
-	return r.UserRepository.(rest.Persistable).Update(id, entity, cols...)
-}
-
-// Delete implements rest.Persistable and coordinates plugin unloading.
-func (r *userRepositoryWrapper) Delete(id string) error {
-	// The underlying repository Delete handles the database cleanup
-	// including calling cleanupPluginUserReferences
-	err := r.UserRepository.(rest.Persistable).Delete(id)
-	if err != nil {
+// Delete coordinates plugin unloading after the repository cleans up the database.
+func (r *userRepositoryWrapper) Delete(ctx context.Context, ids ...string) error {
+	if err := r.UserRepository.Delete(ctx, ids...); err != nil {
 		return err
 	}
-
-	// After successful deletion, check if any plugins were auto-disabled
-	// and need to be unloaded from memory
-	r.pluginManager.UnloadDisabledPlugins(r.ctx)
-
+	r.pluginManager.UnloadDisabledPlugins(ctx)
 	return nil
 }

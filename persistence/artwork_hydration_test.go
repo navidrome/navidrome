@@ -409,7 +409,7 @@ var _ = Describe("Artwork hydration", func() {
 			// order by; this one is also private, which the non-admin visibility spec needs.
 			foreign := model.Playlist{Name: "Foreign", OwnerID: thirdUser.ID, OwnerName: thirdUser.UserName}
 			Expect(playlistRepo.Put(&foreign)).To(Succeed())
-			DeferCleanup(func() { Expect(playlistRepo.Delete(foreign.ID)).To(Succeed()) })
+			DeferCleanup(func() { Expect(playlistRepo.Delete(ctx, foreign.ID)).To(Succeed()) })
 			onlyPlaylists = squirrel.Eq{"playlist.id": []string{plsBest.ID, plsCool.ID, foreign.ID}}
 
 			// The suite annotates a single album and artist, leaving the annotation-backed sorts

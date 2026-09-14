@@ -2,6 +2,7 @@ package tests
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"maps"
 	"slices"
@@ -296,25 +297,17 @@ func (m *MockMediaFileRepo) DeleteAllMissing() (int64, error) {
 	return count, nil
 }
 
-// ResourceRepository methods
-func (m *MockMediaFileRepo) Count(...rest.QueryOptions) (int64, error) {
+// REST repository methods
+func (m *MockMediaFileRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
 	return m.CountAll()
 }
 
-func (m *MockMediaFileRepo) Read(id string) (any, error) {
+func (m *MockMediaFileRepo) Read(_ context.Context, id string) (*model.MediaFile, error) {
 	return m.Get(id)
 }
 
-func (m *MockMediaFileRepo) ReadAll(...rest.QueryOptions) (any, error) {
+func (m *MockMediaFileRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]model.MediaFile, error) {
 	return m.GetAll()
-}
-
-func (m *MockMediaFileRepo) EntityName() string {
-	return "mediafile"
-}
-
-func (m *MockMediaFileRepo) NewInstance() any {
-	return &model.MediaFile{}
 }
 
 func (m *MockMediaFileRepo) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
@@ -385,4 +378,4 @@ func (m *MockMediaFileRepo) MatchesCriteria(string, criteria.Criteria) (bool, er
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)
-var _ model.ResourceRepository = (*MockMediaFileRepo)(nil)
+var _ rest.Repository[model.MediaFile] = (*MockMediaFileRepo)(nil)

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -68,7 +69,7 @@ func (m *MockPluginRepo) Get(id string) (*model.Plugin, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPluginRepo) Read(id string) (any, error) {
+func (m *MockPluginRepo) Read(_ context.Context, id string) (*model.Plugin, error) {
 	return m.Get(id)
 }
 
@@ -149,36 +150,16 @@ func (m *MockPluginRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
 	return int64(len(m.All)), nil
 }
 
-// rest.Repository interface methods
-func (m *MockPluginRepo) Count(options ...rest.QueryOptions) (int64, error) {
+// REST repository methods
+func (m *MockPluginRepo) Count(_ context.Context, _ ...rest.QueryOptions) (int64, error) {
 	if !m.Permitted {
 		return 0, rest.ErrPermissionDenied
 	}
 	return int64(len(m.All)), nil
 }
 
-func (m *MockPluginRepo) EntityName() string {
-	return "plugin"
-}
-
-func (m *MockPluginRepo) NewInstance() any {
-	return &model.Plugin{}
-}
-
-func (m *MockPluginRepo) ReadAll(options ...rest.QueryOptions) (any, error) {
+func (m *MockPluginRepo) ReadAll(_ context.Context, _ ...rest.QueryOptions) ([]model.Plugin, error) {
 	return m.GetAll()
-}
-
-func (m *MockPluginRepo) Save(entity any) (string, error) {
-	p := entity.(*model.Plugin)
-	err := m.Put(p)
-	return p.ID, err
-}
-
-func (m *MockPluginRepo) Update(id string, entity any, cols ...string) error {
-	p := entity.(*model.Plugin)
-	p.ID = id
-	return m.Put(p)
 }
 
 var _ model.PluginRepository = (*MockPluginRepo)(nil)

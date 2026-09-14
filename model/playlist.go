@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -142,7 +144,8 @@ type Playlists []Playlist
 type PlaylistCursor iter.Seq2[Playlist, error]
 
 type PlaylistRepository interface {
-	ResourceRepository
+	rest.Repository[Playlist]
+	rest.Persistable[Playlist]
 	AnnotatedRepository
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
@@ -152,7 +155,6 @@ type PlaylistRepository interface {
 	GetAll(options ...QueryOptions) (Playlists, error)
 	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
-	Delete(id string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 	GetPlaylists(mediaFileId string) (Playlists, error)
 }
@@ -177,7 +179,7 @@ func (plt PlaylistTracks) MediaFiles() MediaFiles {
 type PlaylistTrackCursor iter.Seq2[PlaylistTrack, error]
 
 type PlaylistTrackRepository interface {
-	ResourceRepository
+	rest.Repository[PlaylistTrack]
 	CountAll(options ...QueryOptions) (int64, error)
 	GetAll(options ...QueryOptions) (PlaylistTracks, error)
 	GetCursor(options ...QueryOptions) (PlaylistTrackCursor, error)

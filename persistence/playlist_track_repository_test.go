@@ -97,7 +97,7 @@ var _ = Describe("PlaylistTrackRepository", func() {
 
 			pls := model.Playlist{Name: "Chunked Delete", OwnerID: "userid", OwnerName: "userid"}
 			Expect(plsRepo.Put(&pls)).To(Succeed())
-			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+			DeferCleanup(func() { Expect(plsRepo.Delete(ctx, pls.ID)).To(Succeed()) })
 
 			tracks = plsRepo.Tracks(pls.ID, false)
 			songIds := make([]string, numTracks)

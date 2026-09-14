@@ -13,11 +13,11 @@ import (
 
 var _ = Describe("RadioRepository", func() {
 	var repo model.RadioRepository
+	var ctx context.Context
 
 	Describe("Admin User", func() {
 		BeforeEach(func() {
-			ctx := log.NewContext(context.TODO())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 			repo = NewRadioRepository(ctx, GetDBXBuilder())
 			_ = repo.Put(&radioWithHomePage)
 		})
@@ -26,7 +26,7 @@ var _ = Describe("RadioRepository", func() {
 			all, _ := repo.GetAll()
 
 			for _, radio := range all {
-				_ = repo.Delete(radio.ID)
+				_ = repo.Delete(ctx, radio.ID)
 			}
 
 			for i := range testRadios {
@@ -45,7 +45,7 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("Delete", func() {
 			It("deletes existing item", func() {
-				err := repo.Delete(radioWithHomePage.ID)
+				err := repo.Delete(ctx, radioWithHomePage.ID)
 
 				Expect(err).To(BeNil())
 
@@ -140,8 +140,7 @@ var _ = Describe("RadioRepository", func() {
 				radio.UploadedImage = "cover.png"
 				Expect(repo.Put(&radio)).To(Succeed())
 
-				persistable := repo.(rest.Persistable)
-				Expect(persistable.Update(radio.ID, &model.Radio{Name: "Renamed"}, "name")).To(Succeed())
+				Expect(repo.Update(ctx, radio.ID, model.Radio{Name: "Renamed"}, "name")).To(Succeed())
 
 				item, err := repo.Get(radio.ID)
 				Expect(err).To(BeNil())
@@ -155,8 +154,7 @@ var _ = Describe("RadioRepository", func() {
 
 	Describe("Regular User", func() {
 		BeforeEach(func() {
-			ctx := log.NewContext(context.TODO())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: false})
+			ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "userid", IsAdmin: false})
 			repo = NewRadioRepository(ctx, GetDBXBuilder())
 		})
 
@@ -168,7 +166,7 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("Delete", func() {
 			It("fails to delete items", func() {
-				err := repo.Delete(radioWithHomePage.ID)
+				err := repo.Delete(ctx, radioWithHomePage.ID)
 
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})

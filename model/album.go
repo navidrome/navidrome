@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/conf"
 
 	"github.com/gohugoio/hashstructure"
@@ -137,6 +139,7 @@ type Albums []Album
 type AlbumCursor iter.Seq2[Album, error]
 
 type AlbumRepository interface {
+	rest.Repository[Album]
 	CountAll(...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(*Album) error

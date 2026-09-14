@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/rest"
 )
 
 type QueryOptions struct {
@@ -14,10 +13,6 @@ type QueryOptions struct {
 	Offset  int
 	Filters squirrel.Sqlizer
 	Seed    string // for random sorting
-}
-
-type ResourceRepository interface {
-	rest.Repository
 }
 
 type DataStore interface {
@@ -42,8 +37,6 @@ type DataStore interface {
 	Plugin(ctx context.Context) PluginRepository
 	Artwork(ctx context.Context) ArtworkRepository
 	ArtworkQueue(ctx context.Context) ArtworkQueueRepository
-
-	Resource(ctx context.Context, model any) ResourceRepository
 
 	WithTx(block func(tx DataStore) error, scope ...string) error
 	WithTxImmediate(block func(tx DataStore) error, scope ...string) error

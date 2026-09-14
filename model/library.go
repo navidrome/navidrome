@@ -3,6 +3,8 @@ package model
 import (
 	"time"
 
+	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -39,6 +41,7 @@ func (l Libraries) IDs() []int {
 }
 
 type LibraryRepository interface {
+	rest.Repository[Library]
 	Get(id int) (*Library, error)
 	// GetPath returns the path of the library with the given ID.
 	// Its implementation must be optimized to avoid unnecessary queries.

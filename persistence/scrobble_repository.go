@@ -61,8 +61,8 @@ func (r *scrobbleRepository) CountAll(options ...model.QueryOptions) (int64, err
 	return r.count(r.baseQuery(), options...)
 }
 
-func (r *scrobbleRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *scrobbleRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
 func (r *scrobbleRepository) Get(id string) (*model.Scrobble, error) {
@@ -79,21 +79,13 @@ func (r *scrobbleRepository) GetAll(options ...model.QueryOptions) (model.Scrobb
 	return scrobbles, err
 }
 
-func (r *scrobbleRepository) Read(id string) (any, error) {
+func (r *scrobbleRepository) Read(ctx context.Context, id string) (*model.Scrobble, error) {
 	return r.Get(id)
 }
 
-func (r *scrobbleRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *scrobbleRepository) EntityName() string {
-	return "scrobble"
-}
-
-func (r *scrobbleRepository) NewInstance() any {
-	return &model.Scrobble{}
+func (r *scrobbleRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Scrobble, error) {
+	return r.GetAll(r.parseRestOptions(ctx, options...))
 }
 
 var _ model.ScrobbleRepository = (*scrobbleRepository)(nil)
-var _ model.ResourceRepository = (*scrobbleRepository)(nil)
+var _ rest.Repository[model.Scrobble] = (*scrobbleRepository)(nil)

@@ -203,23 +203,15 @@ type mockPlaylistTrackRepo struct {
 	tracks model.PlaylistTracks
 }
 
-func (m *mockPlaylistTrackRepo) Count(...rest.QueryOptions) (int64, error) {
+func (m *mockPlaylistTrackRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
 	return int64(len(m.tracks)), nil
 }
 
-func (m *mockPlaylistTrackRepo) ReadAll(...rest.QueryOptions) (any, error) {
+func (m *mockPlaylistTrackRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]model.PlaylistTrack, error) {
 	return m.tracks, nil
 }
 
-func (m *mockPlaylistTrackRepo) EntityName() string {
-	return "playlist_track"
-}
-
-func (m *mockPlaylistTrackRepo) NewInstance() any {
-	return &model.PlaylistTrack{}
-}
-
-func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
+func (m *mockPlaylistTrackRepo) Read(_ context.Context, id string) (*model.PlaylistTrack, error) {
 	for _, t := range m.tracks {
 		if t.ID == id {
 			return &t, nil
@@ -230,7 +222,7 @@ func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
 
 type mockPlaylistsService struct {
 	playlists.Playlists
-	tracksRepo    rest.Repository
+	tracksRepo    rest.Repository[model.PlaylistTrack]
 	removeImageFn func(ctx context.Context, id string) error
 	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
 }
@@ -249,6 +241,6 @@ func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader i
 	return model.ErrNotFound
 }
 
-func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
+func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository[model.PlaylistTrack] {
 	return m.tracksRepo
 }

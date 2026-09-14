@@ -29,8 +29,13 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 	return r
 }
 
-func (r *shareRepository) Delete(id string) error {
-	return r.deleteOwned(id)
+func (r *shareRepository) Delete(ctx context.Context, ids ...string) error {
+	for _, id := range ids {
+		if err := r.deleteOwned(id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
@@ -156,8 +161,8 @@ func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
 	return sorted
 }
 
-func (r *shareRepository) Update(id string, entity any, cols ...string) error {
-	s := entity.(*model.Share)
+func (r *shareRepository) Update(ctx context.Context, id string, entity model.Share, cols ...string) error {
+	s := &entity
 	s.ID = id
 	s.UpdatedAt = time.Now()
 	if len(cols) > 0 {
@@ -166,12 +171,11 @@ func (r *shareRepository) Update(id string, entity any, cols ...string) error {
 	return r.updateOwned(id, s, cols...)
 }
 
-func (r *shareRepository) Save(entity any) (string, error) {
-	s := entity.(*model.Share)
+func (r *shareRepository) Save(ctx context.Context, s *model.Share) (string, error) {
 	// TODO Validate record
 	// Owner is server-managed: for an authenticated request, never trust a
 	// client-supplied UserID, as it drives the share's library-access context.
-	u := loggedUser(r.ctx)
+	u := loggedUser(ctx)
 	if u.ID != invalidUserId || s.UserID == "" {
 		s.UserID = u.ID
 	}
@@ -184,32 +188,24 @@ func (r *shareRepository) CountAll(options ...model.QueryOptions) (int64, error)
 	return r.count(r.selectShare(), options...)
 }
 
-func (r *shareRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *shareRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(ctx, options...))
 }
 
-func (r *shareRepository) EntityName() string {
-	return "share"
-}
-
-func (r *shareRepository) NewInstance() any {
-	return &model.Share{}
-}
-
-func (r *shareRepository) Read(id string) (any, error) {
+func (r *shareRepository) Read(ctx context.Context, id string) (*model.Share, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
 	err := r.queryOne(sel, &res)
 	return &res, err
 }
 
-func (r *shareRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	sq := r.selectShare(r.parseRestOptions(r.ctx, options...))
+func (r *shareRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Share, error) {
+	sq := r.selectShare(r.parseRestOptions(ctx, options...))
 	res := model.Shares{}
 	err := r.queryAll(sq, &res)
 	return res, err
 }
 
 var _ model.ShareRepository = (*shareRepository)(nil)
-var _ rest.Repository = (*shareRepository)(nil)
-var _ rest.Persistable = (*shareRepository)(nil)
+var _ rest.Repository[model.Share] = (*shareRepository)(nil)
+var _ rest.Persistable[model.Share] = (*shareRepository)(nil)

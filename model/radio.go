@@ -3,6 +3,8 @@ package model
 import (
 	"time"
 
+	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/consts"
 )
 
@@ -29,9 +31,9 @@ func (r Radio) UploadedImagePath() string {
 type Radios []Radio
 
 type RadioRepository interface {
-	ResourceRepository
+	rest.Repository[Radio]
+	rest.Persistable[Radio]
 	CountAll(options ...QueryOptions) (int64, error)
-	Delete(id string) error
 	Exists(id string) (bool, error)
 	Get(id string) (*Radio, error)
 	GetAll(options ...QueryOptions) (Radios, error)

@@ -48,8 +48,8 @@ type Playlists interface {
 	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
 
 	// REST adapters
-	NewRepository(ctx context.Context) rest.Repository
-	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository
+	NewRepository(ctx context.Context) rest.Repository[model.Playlist]
+	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository[model.PlaylistTrack]
 }
 
 // ImageUploadService is a local interface satisfied by artwork.Uploader.
@@ -164,7 +164,7 @@ func (s *playlists) Delete(ctx context.Context, id string) error {
 		}
 	}
 
-	return s.ds.Playlist(ctx).Delete(id)
+	return s.ds.Playlist(ctx).Delete(ctx, id)
 }
 
 func (s *playlists) Update(ctx context.Context, playlistID string,

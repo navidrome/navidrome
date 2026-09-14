@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -109,11 +110,11 @@ func (m *MockPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPlaylistRepo) Delete(id string) error {
+func (m *MockPlaylistRepo) Delete(_ context.Context, ids ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
-	m.Deleted = append(m.Deleted, id)
+	m.Deleted = append(m.Deleted, ids...)
 	return nil
 }
 
@@ -171,7 +172,7 @@ func (m *MockPlaylistRepo) Exists(id string) (bool, error) {
 	return false, nil
 }
 
-func (m *MockPlaylistRepo) Count(_ ...rest.QueryOptions) (int64, error) {
+func (m *MockPlaylistRepo) Count(_ context.Context, _ ...rest.QueryOptions) (int64, error) {
 	if m.Err {
 		return 0, errors.New("error")
 	}

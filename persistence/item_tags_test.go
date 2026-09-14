@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -14,9 +16,10 @@ var _ = Describe("item genre tag indexes", func() {
 	var mr model.MediaFileRepository
 	var ar model.AlbumRepository
 	var rock, jazz model.Tag
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := request.WithUser(GinkgoT().Context(), model.User{ID: "userid"})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
 		mr = NewMediaFileRepository(ctx, conn)
 		ar = NewAlbumRepository(ctx, conn)
@@ -91,18 +94,18 @@ var _ = Describe("item genre tag indexes", func() {
 			mf := model.MediaFile{ID: "mf-nat1", LibraryID: 1, Path: "/m/nat1.mp3", Title: "Nat1",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue}}}
 			Expect(mr.Put(&mf)).To(Succeed())
-			res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{Filters: map[string]any{"genre_id": rock.ID}})
+			res, err := mr.ReadAll(ctx, rest.QueryOptions{Filters: map[string]any{"genre_id": rock.ID}})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.(model.MediaFiles)).To(ContainElement(HaveField("ID", "mf-nat1")))
+			Expect(res).To(ContainElement(HaveField("ID", "mf-nat1")))
 		})
 
 		It("filters albums by genre_id", func() {
 			al := model.Album{ID: "al-nat1", LibraryID: 1, Name: "ANat1",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue}}}
 			Expect(ar.Put(&al)).To(Succeed())
-			res, err := ar.(model.ResourceRepository).ReadAll(rest.QueryOptions{Filters: map[string]any{"genre_id": rock.ID}})
+			res, err := ar.ReadAll(ctx, rest.QueryOptions{Filters: map[string]any{"genre_id": rock.ID}})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.(model.Albums)).To(ContainElement(HaveField("ID", "al-nat1")))
+			Expect(res).To(ContainElement(HaveField("ID", "al-nat1")))
 		})
 	})
 })

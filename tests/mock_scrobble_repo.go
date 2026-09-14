@@ -5,11 +5,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 )
 
 type MockScrobbleRepo struct {
+	rest.Repository[model.Scrobble]
 	RecordedScrobbles []model.Scrobble
 	ctx               context.Context
 }

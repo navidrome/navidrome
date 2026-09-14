@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/utils/random"
 )
 
@@ -56,6 +58,8 @@ func (s Share) ToM3U8() string {
 }
 
 type ShareRepository interface {
+	rest.Repository[Share]
+	rest.Persistable[Share]
 	Exists(id string) (bool, error)
 	Get(id string) (*Share, error)
 	GetAll(options ...QueryOptions) (Shares, error)

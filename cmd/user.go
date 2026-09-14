@@ -250,7 +250,7 @@ func runDeleteUser(ctx context.Context) {
 			return err
 		}
 
-		return tx.User(ctx).Delete(user.ID)
+		return tx.User(ctx).Delete(ctx, user.ID)
 	})
 
 	if err != nil {
@@ -393,12 +393,10 @@ func runUserList(ctx context.Context) {
 
 	ds, ctx := getAdminContext(ctx)
 
-	users, err := ds.User(ctx).ReadAll()
+	userList, err := ds.User(ctx).ReadAll(ctx)
 	if err != nil {
 		log.Fatal(ctx, "Failed to retrieve users", err)
 	}
-
-	userList := users.(model.Users)
 
 	if outputFormat == "csv" {
 		w := csv.NewWriter(os.Stdout)

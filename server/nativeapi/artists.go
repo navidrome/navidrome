@@ -15,14 +15,12 @@ import (
 )
 
 func (api *Router) addArtistRoute(r chi.Router) {
-	constructor := func(ctx context.Context) rest.Repository {
-		return api.ds.Resource(ctx, model.Artist{})
-	}
+	repo := lazy(func(ctx context.Context) rest.Repository[model.Artist] { return api.ds.Artist(ctx) })
 	r.Route("/artist", func(r chi.Router) {
-		r.Get("/", rest.GetAll(constructor))
+		r.Get("/", rest.GetAll(repo))
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
-			r.Get("/", rest.Get(constructor))
+			r.Get("/", rest.Get(repo))
 			r.Post("/image", api.uploadArtistImage())
 			r.Delete("/image", api.deleteArtistImage())
 		})

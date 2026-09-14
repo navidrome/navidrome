@@ -119,17 +119,16 @@ var _ = Describe("Tag Library Filtering", func() {
 				ctx = context.Background() // Headless context
 			}
 
-			tagRepo := NewTagRepository(ctx, GetDBXBuilder())
-			repo := tagRepo.(model.ResourceRepository)
+			repo := NewTagRepository(ctx, GetDBXBuilder())
 
 			var opts rest.QueryOptions
 			if len(filters) > 0 {
 				opts = filters[0]
 			}
 
-			tags, err := repo.ReadAll(opts)
+			tags, err := repo.ReadAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
-			return tags.(model.TagList)
+			return tags
 		}
 
 		// Helper to count tags
@@ -141,10 +140,9 @@ var _ = Describe("Tag Library Filtering", func() {
 				ctx = context.Background()
 			}
 
-			tagRepo := NewTagRepository(ctx, GetDBXBuilder())
-			repo := tagRepo.(model.ResourceRepository)
+			repo := NewTagRepository(ctx, GetDBXBuilder())
 
-			count, err := repo.Count()
+			count, err := repo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			return count
 		}

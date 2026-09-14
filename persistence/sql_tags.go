@@ -198,9 +198,9 @@ func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuild
 	return sq
 }
 
-// ResourceRepository interface implementation
+// REST interface methods
 
-func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
+func (r *baseTagRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
 	sq := Select("COUNT(DISTINCT tag.id)").From("tag")
 
 	// Apply tag name filtering if specified
@@ -211,30 +211,22 @@ func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	// Apply library filtering
 	sq = r.applyLibraryFiltering(sq)
 
-	return r.count(sq, r.parseRestOptions(r.ctx, options...))
+	return r.count(sq, r.parseRestOptions(ctx, options...))
 }
 
-func (r *baseTagRepository) Read(id string) (any, error) {
+func (r *baseTagRepository) Read(ctx context.Context, id string) (*model.Tag, error) {
 	query := r.newSelect().Where(Eq{"id": id})
 	var res model.Tag
 	err := r.queryOne(query, &res)
 	return &res, err
 }
 
-func (r *baseTagRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	query := r.newSelect(r.parseRestOptions(r.ctx, options...))
+func (r *baseTagRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Tag, error) {
+	query := r.newSelect(r.parseRestOptions(ctx, options...))
 	var res model.TagList
 	err := r.queryAll(query, &res)
 	return res, err
 }
 
-func (r *baseTagRepository) EntityName() string {
-	return "tag"
-}
-
-func (r *baseTagRepository) NewInstance() any {
-	return model.Tag{}
-}
-
 // Interface compliance check
-var _ model.ResourceRepository = (*baseTagRepository)(nil)
+var _ rest.Repository[model.Tag] = (*baseTagRepository)(nil)

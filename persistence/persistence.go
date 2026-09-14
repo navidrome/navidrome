@@ -3,7 +3,6 @@ package persistence
 import (
 	"context"
 	"database/sql"
-	"reflect"
 	"time"
 
 	"github.com/navidrome/navidrome/db"
@@ -103,39 +102,6 @@ func (s *SQLStore) Artwork(ctx context.Context) model.ArtworkRepository {
 
 func (s *SQLStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
 	return NewArtworkQueueRepository(ctx, s.getDBXBuilder())
-}
-
-func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
-	switch m.(type) {
-	case model.User:
-		return s.User(ctx).(model.ResourceRepository)
-	case model.Transcoding:
-		return s.Transcoding(ctx).(model.ResourceRepository)
-	case model.Player:
-		return s.Player(ctx).(model.ResourceRepository)
-	case model.Artist:
-		return s.Artist(ctx).(model.ResourceRepository)
-	case model.Album:
-		return s.Album(ctx).(model.ResourceRepository)
-	case model.MediaFile:
-		return s.MediaFile(ctx).(model.ResourceRepository)
-	case model.Genre:
-		return s.Genre(ctx).(model.ResourceRepository)
-	case model.Playlist:
-		return s.Playlist(ctx).(model.ResourceRepository)
-	case model.Radio:
-		return s.Radio(ctx).(model.ResourceRepository)
-	case model.Share:
-		return s.Share(ctx).(model.ResourceRepository)
-	case model.Tag:
-		return s.Tag(ctx).(model.ResourceRepository)
-	case model.Plugin:
-		return s.Plugin(ctx).(model.ResourceRepository)
-	case model.Scrobble:
-		return s.Scrobble(ctx).(model.ResourceRepository)
-	}
-	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
-	return nil
 }
 
 func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {

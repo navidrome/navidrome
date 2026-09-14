@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/deluan/rest"
+
 	"github.com/navidrome/navidrome/consts"
 )
 
@@ -84,6 +86,7 @@ type ArtistIndexes []ArtistIndex
 type ArtistCursor iter.Seq2[Artist, error]
 
 type ArtistRepository interface {
+	rest.Repository[Artist]
 	CountAll(options ...QueryOptions) (int64, error)
 	Exists(id string) (bool, error)
 	Put(m *Artist, colsToUpdate ...string) error
