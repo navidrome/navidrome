@@ -316,7 +316,7 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 		log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
 
 		start = time.Now()
-		err = s.ds.Tag(ctx).UpdateCounts()
+		err = s.ds.Tag().UpdateCounts(ctx)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error updating tag counts", err)
 			return fmt.Errorf("updating tag counts: %w", err)

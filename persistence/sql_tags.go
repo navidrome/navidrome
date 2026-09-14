@@ -146,11 +146,10 @@ type baseTagRepository struct {
 // newBaseTagRepository creates a new base tag repository with optional tag filtering.
 // If tagFilter is nil, the repository will work with all tags.
 // If tagFilter is provided, the repository will only work with tags of that specific name.
-func newBaseTagRepository(ctx context.Context, db dbx.Builder, tagFilter *model.TagName) *baseTagRepository {
+func newBaseTagRepository(db dbx.Builder, tagFilter *model.TagName) *baseTagRepository {
 	r := &baseTagRepository{
 		tagFilter: tagFilter,
 	}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "tag"
 	r.registerModel(&model.Tag{}, map[string]filterFunc{

@@ -24,7 +24,7 @@ var _ = Describe("TagRepository", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
-		tagRepo := NewTagRepository(ctx, GetDBXBuilder())
+		tagRepo := NewTagRepository(GetDBXBuilder())
 		repo = tagRepo
 		restRepo = tagRepo
 
@@ -48,7 +48,7 @@ var _ = Describe("TagRepository", func() {
 			return model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
 		}
 
-		err = repo.Add(1,
+		err = repo.Add(ctx, 1,
 			// Genre tags
 			newTag("genre", "rock"),
 			newTag("genre", "pop"),
@@ -84,7 +84,7 @@ var _ = Describe("TagRepository", func() {
 				TagValue: "experimental",
 			}
 
-			err := repo.Add(1, newTag)
+			err := repo.Add(ctx, 1, newTag)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify tag was added
@@ -110,7 +110,7 @@ var _ = Describe("TagRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(20))) // Still 20 tags
 
-			err = repo.Add(1, duplicateTag)
+			err = repo.Add(ctx, 1, duplicateTag)
 			Expect(err).ToNot(HaveOccurred()) // Should not error
 
 			// Count should remain the same
@@ -122,7 +122,7 @@ var _ = Describe("TagRepository", func() {
 
 	Describe("UpdateCounts", func() {
 		It("should update tag counts successfully", func() {
-			err := repo.UpdateCounts()
+			err := repo.UpdateCounts(ctx)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -132,7 +132,7 @@ var _ = Describe("TagRepository", func() {
 			_, err := db.NewQuery("DELETE FROM tag").Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			err = repo.UpdateCounts()
+			err = repo.UpdateCounts(ctx)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -158,7 +158,7 @@ var _ = Describe("TagRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// This should not fail with foreign key constraint error
-			err = repo.UpdateCounts()
+			err = repo.UpdateCounts(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Cleanup
@@ -188,7 +188,7 @@ var _ = Describe("TagRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			// This should not fail with foreign key constraint error
-			err = repo.UpdateCounts()
+			err = repo.UpdateCounts(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Cleanup

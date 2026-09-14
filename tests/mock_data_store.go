@@ -64,14 +64,14 @@ func (db *MockDataStore) Folder(ctx context.Context) model.FolderRepository {
 	return db.MockedFolder
 }
 
-func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
+func (db *MockDataStore) Tag() model.TagRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedTag != nil {
 		return db.MockedTag
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Tag(ctx)
+		return db.RealDS.Tag()
 	}
 	db.MockedTag = &MockTagRepo{}
 	return db.MockedTag
@@ -115,14 +115,14 @@ func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepositor
 	return db.MockedMediaFile
 }
 
-func (db *MockDataStore) Genre(ctx context.Context) model.GenreRepository {
+func (db *MockDataStore) Genre() model.GenreRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedGenre != nil {
 		return db.MockedGenre
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Genre(ctx)
+		return db.RealDS.Genre()
 	}
 	db.MockedGenre = &MockedGenreRepo{}
 	return db.MockedGenre

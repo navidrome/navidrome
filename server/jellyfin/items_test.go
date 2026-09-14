@@ -1030,7 +1030,7 @@ var _ = Describe("Items", func() {
 
 		// Finamp's genre "See all" fetches the genre by id; a 404 white-screens it (see resolveItemByID).
 		It("resolves a genre id as a MusicGenre item", func() {
-			Expect(ds.Genre(context.Background()).(*tests.MockedGenreRepo).Put(&model.Genre{ID: testID("g1"), Name: "Rock"})).To(Succeed())
+			Expect(ds.Genre().(*tests.MockedGenreRepo).Put(&model.Genre{ID: testID("g1"), Name: "Rock"})).To(Succeed())
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeID(testID("g1")), nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("g1")))

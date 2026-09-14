@@ -21,8 +21,8 @@ type DataStore interface {
 	Album(ctx context.Context) AlbumRepository
 	Artist(ctx context.Context) ArtistRepository
 	MediaFile(ctx context.Context) MediaFileRepository
-	Genre(ctx context.Context) GenreRepository
-	Tag(ctx context.Context) TagRepository
+	Genre() GenreRepository
+	Tag() TagRepository
 	Playlist(ctx context.Context) PlaylistRepository
 	PlayQueue() PlayQueueRepository
 	Transcoding() TranscodingRepository

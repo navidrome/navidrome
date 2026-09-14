@@ -22,10 +22,10 @@ var _ = Describe("GenreRepository", func() {
 
 	BeforeEach(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
-		genreRepo := NewGenreRepository(ctx, GetDBXBuilder())
+		genreRepo := NewGenreRepository(GetDBXBuilder())
 		repo = genreRepo
 		restRepo = genreRepo
-		tagRepo = NewTagRepository(ctx, GetDBXBuilder())
+		tagRepo = NewTagRepository(GetDBXBuilder())
 
 		// Clear any existing tags to ensure test isolation
 		db := GetDBXBuilder()
@@ -43,7 +43,7 @@ var _ = Describe("GenreRepository", func() {
 			return model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
 		}
 
-		err = tagRepo.Add(1,
+		err = tagRepo.Add(ctx, 1,
 			newTag("genre", "rock"),
 			newTag("genre", "pop"),
 			newTag("genre", "jazz"),
@@ -65,7 +65,7 @@ var _ = Describe("GenreRepository", func() {
 
 	Describe("GetAll", func() {
 		It("should return all genres", func() {
-			genres, err := repo.GetAll()
+			genres, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(genres).To(HaveLen(12))
 
@@ -83,7 +83,7 @@ var _ = Describe("GenreRepository", func() {
 
 		It("should support query options", func() {
 			// Test with limiting results
-			genres, err := repo.GetAll(model.QueryOptions{Max: 1})
+			genres, err := repo.GetAll(ctx, model.QueryOptions{Max: 1})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(genres).To(HaveLen(1))
 		})
@@ -93,7 +93,7 @@ var _ = Describe("GenreRepository", func() {
 			_, err := GetDBXBuilder().NewQuery("DELETE FROM tag WHERE tag_name = 'genre'").Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			genres, err := repo.GetAll()
+			genres, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(genres).To(BeEmpty())
 		})
@@ -103,7 +103,7 @@ var _ = Describe("GenreRepository", func() {
 				options := model.QueryOptions{
 					Filters: squirrel.Like{"tag_value": "%rock%"}, // Direct field access
 				}
-				genres, err := repo.GetAll(options)
+				genres, err := repo.GetAll(ctx, options)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genres).To(HaveLen(2)) // Should match "rock" and "Alternative Rock"
 
@@ -119,7 +119,7 @@ var _ = Describe("GenreRepository", func() {
 					Filters: squirrel.Like{"tag_value": "%e%"}, // Should match genres containing "e"
 					Sort:    "name",
 				}
-				genres, err := repo.GetAll(options)
+				genres, err := repo.GetAll(ctx, options)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genres).To(HaveLen(7))
 
@@ -135,7 +135,7 @@ var _ = Describe("GenreRepository", func() {
 					Sort:    "name",
 					Order:   "desc",
 				}
-				genres, err := repo.GetAll(options)
+				genres, err := repo.GetAll(ctx, options)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genres).To(HaveLen(7))
 
@@ -170,7 +170,7 @@ var _ = Describe("GenreRepository", func() {
 				TagName:  "mood",
 				TagValue: "energetic",
 			}
-			err := tagRepo.Add(1, nonGenreTag)
+			err := tagRepo.Add(ctx, 1, nonGenreTag)
 			Expect(err).ToNot(HaveOccurred())
 
 			count, err := restRepo.Count(ctx)
@@ -242,7 +242,7 @@ var _ = Describe("GenreRepository", func() {
 
 			BeforeEach(func() {
 				// Create a repository with no user context (headless)
-				headlessGenreRepo := NewGenreRepository(context.Background(), GetDBXBuilder())
+				headlessGenreRepo := NewGenreRepository(GetDBXBuilder())
 				headlessRepo = headlessGenreRepo
 				headlessRestRepo = headlessGenreRepo
 
@@ -256,13 +256,13 @@ var _ = Describe("GenreRepository", func() {
 					return model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
 				}
 
-				err = tagRepo.Add(2, newTag("genre", "jazz"))
+				err = tagRepo.Add(ctx, 2, newTag("genre", "jazz"))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("should see all genres from all libraries when no user is in context", func() {
 				// Headless processes should see all genres regardless of library
-				genres, err := headlessRepo.GetAll()
+				genres, err := headlessRepo.GetAll(context.Background())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should see genres from all libraries
@@ -298,7 +298,7 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should get individual genres when no user is in context", func() {
 				// Get all genres first to find an ID
-				genres, err := headlessRepo.GetAll()
+				genres, err := headlessRepo.GetAll(context.Background())
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genres).ToNot(BeEmpty())
 

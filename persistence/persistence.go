@@ -22,6 +22,8 @@ type SQLStore struct {
 	player      model.PlayerRepository
 	radio       model.RadioRepository
 	playQueue   model.PlayQueueRepository
+	tag         model.TagRepository
+	genre       model.GenreRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -34,6 +36,8 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.player = NewPlayerRepository(db)
 	s.radio = NewRadioRepository(db)
 	s.playQueue = NewPlayQueueRepository(db)
+	s.tag = NewTagRepository(db)
+	s.genre = NewGenreRepository(db)
 	return s
 }
 
@@ -61,12 +65,12 @@ func (s *SQLStore) Folder(ctx context.Context) model.FolderRepository {
 	return newFolderRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
-	return NewGenreRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Genre() model.GenreRepository {
+	return s.genre
 }
 
-func (s *SQLStore) Tag(ctx context.Context) model.TagRepository {
-	return NewTagRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Tag() model.TagRepository {
+	return s.tag
 }
 
 func (s *SQLStore) PlayQueue() model.PlayQueueRepository {
@@ -190,7 +194,7 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean playlist annotations", func() error { return s.Playlist(ctx).(*playlistRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean media file bookmarks", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks(ctx) }),
-		trace(ctx, "purge non used tags", func() error { return s.Tag(ctx).(*tagRepository).purgeUnused() }),
+		trace(ctx, "purge non used tags", func() error { return s.tag.(*tagRepository).purgeUnused(ctx) }),
 		trace(ctx, "remove orphan playlist tracks", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
 	)
 	if err != nil {

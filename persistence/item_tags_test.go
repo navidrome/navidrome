@@ -27,7 +27,7 @@ var _ = Describe("item genre tag indexes", func() {
 		rock = model.NewTag(model.TagGenre, "GenreIdxRock")
 		jazz = model.NewTag(model.TagGenre, "GenreIdxJazz")
 		// The join tables FK to tag(id); the scanner adds tags before saving items.
-		Expect(NewTagRepository(ctx, conn).Add(1, rock, jazz)).To(Succeed())
+		Expect(NewTagRepository(conn).Add(ctx, 1, rock, jazz)).To(Succeed())
 		// The suite shares one golden DB with no per-test restore, so undo the rows we add
 		// (media_file/album deletes cascade to the *_tags join rows; tag deletes cascade too).
 		DeferCleanup(func() {

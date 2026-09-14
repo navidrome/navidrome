@@ -791,7 +791,7 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 // the one listXxx that stays materialized: GenreRepository has no CountAll, so the total is the
 // length of the full list and paging is in-memory — nothing for a cursor to page over.
 func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (itemsResult, error) {
-	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: opts.Sort, Order: opts.Order})
+	genres, err := api.ds.Genre().GetAll(ctx, model.QueryOptions{Sort: opts.Sort, Order: opts.Order})
 	if err != nil {
 		return itemsResult{}, err
 	}
@@ -859,7 +859,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	if pl, err := api.playlists.Get(ctx, id); err == nil {
 		return dto.PlaylistToBaseItem(*pl, fields), true
 	}
-	if g, err := api.ds.Genre(ctx).Get(id); err == nil {
+	if g, err := api.ds.Genre().Get(ctx, id); err == nil {
 		return dto.GenreToBaseItem(*g), true
 	}
 	return dto.BaseItemDto{}, false

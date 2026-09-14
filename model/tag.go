@@ -2,6 +2,7 @@ package model
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -158,9 +159,9 @@ func (t Tags) Add(name TagName, v string) {
 
 type TagRepository interface {
 	rest.Repository[Tag]
-	Add(libraryID int, tags ...Tag) error
-	UpdateCounts() error
-	GetAll(name TagName, options ...QueryOptions) (TagList, error)
+	Add(ctx context.Context, libraryID int, tags ...Tag) error
+	UpdateCounts(ctx context.Context) error
+	GetAll(ctx context.Context, name TagName, options ...QueryOptions) (TagList, error)
 }
 
 type TagName string
