@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/deluan/rest"
@@ -27,9 +28,9 @@ type Players []Player
 type PlayerRepository interface {
 	rest.Repository[Player]
 	rest.Persistable[Player]
-	Get(id string) (*Player, error)
-	FindMatch(userId, client, userAgent string) (*Player, error)
-	Put(p *Player) error
-	CountAll(...QueryOptions) (int64, error)
-	CountByClient(...QueryOptions) (map[string]int64, error)
+	Get(ctx context.Context, id string) (*Player, error)
+	FindMatch(ctx context.Context, userId, client, userAgent string) (*Player, error)
+	Put(ctx context.Context, p *Player) error
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	CountByClient(ctx context.Context, options ...QueryOptions) (map[string]int64, error)
 }

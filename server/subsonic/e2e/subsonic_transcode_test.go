@@ -153,29 +153,29 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 		// It makes a dummy request to register the player, then updates it via the repository.
 		setPlayerMaxBitRate := func(maxBitRate int) {
 			doReq("ping")
-			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
 			Expect(err).ToNot(HaveOccurred())
 			player.MaxBitRate = maxBitRate
-			Expect(ds.Player(ctx).Put(player)).To(Succeed())
+			Expect(ds.Player().Put(ctx, player)).To(Succeed())
 		}
 
 		setPlayerForcedFormat := func(format string) {
 			doReq("ping")
-			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
 			Expect(err).ToNot(HaveOccurred())
 			trc, err := ds.Transcoding().FindByFormat(ctx, format)
 			Expect(err).ToNot(HaveOccurred())
 			player.TranscodingId = trc.ID
-			Expect(ds.Player(ctx).Put(player)).To(Succeed())
+			Expect(ds.Player().Put(ctx, player)).To(Succeed())
 		}
 
 		AfterEach(func() {
 			// Reset player MaxBitRate to 0 after each test
-			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
 			if err == nil {
 				player.MaxBitRate = 0
 				player.TranscodingId = ""
-				_ = ds.Player(ctx).Put(player)
+				_ = ds.Player().Put(ctx, player)
 			}
 		})
 

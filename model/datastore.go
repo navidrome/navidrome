@@ -26,7 +26,7 @@ type DataStore interface {
 	Playlist(ctx context.Context) PlaylistRepository
 	PlayQueue(ctx context.Context) PlayQueueRepository
 	Transcoding() TranscodingRepository
-	Player(ctx context.Context) PlayerRepository
+	Player() PlayerRepository
 	Radio(ctx context.Context) RadioRepository
 	Share() ShareRepository
 	Property() PropertyRepository

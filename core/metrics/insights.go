@@ -297,7 +297,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 	// Collect active players if permitted
 	if conf.Server.DevEnablePlayerInsights {
-		data.Library.ActivePlayers, err = c.ds.Player(ctx).CountByClient(model.QueryOptions{
+		data.Library.ActivePlayers, err = c.ds.Player().CountByClient(ctx, model.QueryOptions{
 			Filters: squirrel.Gt{"last_seen": time.Now().Add(-7 * 24 * time.Hour)},
 		})
 		if err != nil {

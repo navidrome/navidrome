@@ -72,7 +72,7 @@ func (api *Router) routes() http.Handler {
 		rx(r, "/album", lazy(func(ctx context.Context) rest.Repository[model.Album] { return api.ds.Album(ctx) }), false)
 		api.addArtistRoute(r)
 		rx(r, "/genre", lazy(func(ctx context.Context) rest.Repository[model.Genre] { return api.ds.Genre(ctx) }), false)
-		rx(r, "/player", lazyRW(func(ctx context.Context) rest.Repository[model.Player] { return api.ds.Player(ctx) }), true)
+		rx(r, "/player", api.ds.Player(), true)
 		rx(r, "/transcoding", api.ds.Transcoding(), conf.Server.EnableTranscodingConfig)
 		api.addRadioRoute(r)
 		rx(r, "/tag", lazy(func(ctx context.Context) rest.Repository[model.Tag] { return api.ds.Tag(ctx) }), false)

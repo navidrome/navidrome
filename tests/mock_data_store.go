@@ -219,14 +219,14 @@ func (db *MockDataStore) Transcoding() model.TranscodingRepository {
 	return db.MockedTranscoding
 }
 
-func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
+func (db *MockDataStore) Player() model.PlayerRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlayer != nil {
 		return db.MockedPlayer
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Player(ctx)
+		return db.RealDS.Player()
 	}
 	db.MockedPlayer = struct{ model.PlayerRepository }{}
 	return db.MockedPlayer
