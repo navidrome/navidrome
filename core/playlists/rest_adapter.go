@@ -25,6 +25,8 @@ type playlistRepositoryWrapper struct {
 	service *playlists
 }
 
+var _ rest.Persistable[model.Playlist] = (*playlistRepositoryWrapper)(nil)
+
 func (r *playlistRepositoryWrapper) Save(ctx context.Context, entity *model.Playlist) (string, error) {
 	return r.service.savePlaylist(ctx, entity)
 }
