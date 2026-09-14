@@ -225,7 +225,7 @@ var _ = BeforeSuite(func() {
 		if a.AlbumArtistID == "" || !artistIDs[a.AlbumArtistID] {
 			continue
 		}
-		_, err := alr.executeSQL(alr.ctx, squirrel.Insert("album_artists").SetMap(map[string]any{
+		_, err := alr.executeSQL(ctx, squirrel.Insert("album_artists").SetMap(map[string]any{
 			"album_id":  a.ID,
 			"artist_id": a.AlbumArtistID,
 			"role":      "artist",

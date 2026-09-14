@@ -28,7 +28,7 @@ var _ = Describe("Annotation Filters", func() {
 	})
 
 	AfterEach(func() {
-		_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
+		_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
 	})
 
 	Describe("ReassignAnnotation", func() {
@@ -42,8 +42,8 @@ var _ = Describe("Annotation Filters", func() {
 		})
 
 		AfterEach(func() {
-			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
-			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{prev.ID, next.ID}}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{prev.ID, next.ID}}))
 		})
 
 		It("moves the annotation when the new item has none", func() {
@@ -162,8 +162,8 @@ var _ = Describe("Annotation Filters", func() {
 			Expect(albumRepo.Put(ctx, &ratedAlbum)).To(Succeed())
 			Expect(albumRepo.SetRating(ctx, 1, ratedAlbum.ID)).To(Succeed())
 			defer func() {
-				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": ratedAlbum.ID}))
-				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": ratedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": ratedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": ratedAlbum.ID}))
 			}()
 
 			albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
@@ -271,8 +271,8 @@ var _ = Describe("Annotation Filters", func() {
 			Expect(albumRepo.Put(ctx, &starredAlbum)).To(Succeed())
 			Expect(albumRepo.SetStar(ctx, true, starredAlbum.ID)).To(Succeed())
 			defer func() {
-				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": starredAlbum.ID}))
-				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": starredAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": starredAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": starredAlbum.ID}))
 			}()
 
 			// Exactly two albums are starred for this user: the one created above and
