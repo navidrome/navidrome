@@ -156,7 +156,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should import all albums", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				albums, _ := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "name"})
+				albums, _ := ds.Album().GetAll(ctx, model.QueryOptions{Sort: "name"})
 				Expect(albums).To(HaveLen(2))
 				Expect(albums[0]).To(SatisfyAll(
 					HaveField("Name", Equal("Help!")),
@@ -170,7 +170,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should enqueue artwork resolution for the scanned albums and artists", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				albums, _ := ds.Album(ctx).GetAll()
+				albums, _ := ds.Album().GetAll(ctx)
 				artists, _ := ds.Artist().GetAll(ctx, model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
 				queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
@@ -227,7 +227,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
 				Expect(runScanner(ctx, false)).To(Succeed())
 
-				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				requeued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
@@ -241,7 +241,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums).ToNot(BeEmpty())
 				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(BeEmpty())
@@ -250,7 +250,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
 				Expect(runScanner(ctx, false)).To(Succeed())
 
-				albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				albums, err = ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(Equal("George Martin"))
 				Expect(albums[0].SongCount).To(Equal(3))
@@ -284,7 +284,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 		albumID := func(name string) string {
 			GinkgoHelper()
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(1))
 			return albums[0].ID
@@ -479,7 +479,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		It("should import as one album", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			albums, err := ds.Album(ctx).GetAll()
+			albums, err := ds.Album().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(1))
 
@@ -505,7 +505,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		It("should import as two distinct albums", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "release_date"})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Sort: "release_date"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(2))
 			Expect(albums[0]).To(SatisfyAll(

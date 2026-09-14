@@ -47,7 +47,7 @@ func (p *phaseRefreshAlbums) producer() ppl.Producer[*model.Album] {
 func (p *phaseRefreshAlbums) produce(put func(album *model.Album)) error {
 	count := 0
 	for _, lib := range p.state.libraries {
-		cursor, err := p.ds.Album(p.ctx).GetTouchedAlbums(lib.ID)
+		cursor, err := p.ds.Album().GetTouchedAlbums(p.ctx, lib.ID)
 		if err != nil {
 			return fmt.Errorf("loading touched albums: %w", err)
 		}
@@ -103,7 +103,7 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 		return nil, nil
 	}
 	start := time.Now()
-	err := p.ds.Album(p.ctx).Put(album)
+	err := p.ds.Album().Put(p.ctx, album)
 	log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start), err)
 	if err != nil {
 		return nil, fmt.Errorf("refreshing album %s: %w", album.ID, err)
@@ -130,7 +130,7 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	}
 	// Refresh album annotations
 	start := time.Now()
-	cnt, err := p.ds.Album(p.ctx).RefreshPlayCounts()
+	cnt, err := p.ds.Album().RefreshPlayCounts(p.ctx)
 	if err != nil {
 		return fmt.Errorf("refreshing album annotations: %w", err)
 	}

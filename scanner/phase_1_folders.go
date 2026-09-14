@@ -340,7 +340,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		tagRepo := tx.Tag()
 		artistRepo := tx.Artist()
 		libraryRepo := tx.Library()
-		albumRepo := tx.Album(p.ctx)
+		albumRepo := tx.Album()
 		mfRepo := tx.MediaFile(p.ctx)
 
 		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
@@ -427,7 +427,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return mf.AlbumID, struct{}{}
 			})
 			albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))
-			err = albumRepo.Touch(albumsToUpdate...)
+			err = albumRepo.Touch(p.ctx, albumsToUpdate...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching album", "folder", entry.path, "albums", albumsToUpdate, err)
 				return err
@@ -459,7 +459,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, idMap map[string]string) error {
 	prevID := idMap[a.ID]
 	log.Trace(p.ctx, "Persisting album", "album", a.Name, "albumArtist", a.AlbumArtist, "id", a.ID, "prevID", cmp.Or(prevID, "nil"))
-	if err := repo.Put(a); err != nil {
+	if err := repo.Put(p.ctx, a); err != nil {
 		return fmt.Errorf("persisting album %s: %w", a.ID, err)
 	}
 	if prevID == "" {
@@ -474,7 +474,7 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 	}
 
 	// Keep created_at field from previous instance of the album
-	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
+	if err := repo.CopyAttributes(p.ctx, prevID, a.ID, "created_at"); err != nil {
 		// Silently ignore when the previous album is not found
 		if !errors.Is(err, model.ErrNotFound) {
 			log.Warn(p.ctx, "Scanner: Could not copy fields", "from", prevID, "to", a.ID, "album", a.Name, err)
@@ -517,7 +517,7 @@ func (p *phaseFolders) finalize(err error) error {
 				return err
 			}
 			// Touch all albums that have missing folders, so they get refreshed in later phases
-			_, err = tx.Album(p.ctx).TouchByMissingFolder()
+			_, err = tx.Album().TouchByMissingFolder(p.ctx)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching albums with missing folders", "lib", job.lib.Name, err)
 				return err

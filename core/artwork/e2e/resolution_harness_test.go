@@ -345,7 +345,7 @@ func replaceWithRealMP3(relPath string) {
 
 func firstAlbum() model.Album {
 	GinkgoHelper()
-	albums, err := rds.Album(rctx).GetAll(model.QueryOptions{})
+	albums, err := rds.Album().GetAll(rctx, model.QueryOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(albums).To(HaveLen(1), "expected exactly one album, got %d", len(albums))
 	return albums[0]
@@ -353,7 +353,7 @@ func firstAlbum() model.Album {
 
 func albumByName(name string) model.Album {
 	GinkgoHelper()
-	albums, err := rds.Album(rctx).GetAll(model.QueryOptions{})
+	albums, err := rds.Album().GetAll(rctx, model.QueryOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	for _, al := range albums {
 		if al.Name == name {

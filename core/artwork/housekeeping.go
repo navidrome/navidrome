@@ -114,7 +114,7 @@ func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id strin
 		}
 		return ar.Name, nil
 	case model.KindAlbumArtwork:
-		al, err := ds.Album(ctx).Get(id)
+		al, err := ds.Album().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
@@ -148,7 +148,7 @@ func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string
 	if err != nil {
 		return "", err
 	}
-	al, err := ds.Album(ctx).Get(albumID)
+	al, err := ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return "", err
 	}

@@ -71,14 +71,14 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 
 	opts.Offset = p.IntOr("offset", 0)
 	opts.Max = min(p.IntOr("size", 10), 500)
-	albums, err := api.ds.Album(r.Context()).GetAll(opts)
+	albums, err := api.ds.Album().GetAll(r.Context(), opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
-	count, err := api.ds.Album(r.Context()).CountAll(opts)
+	count, err := api.ds.Album().CountAll(r.Context(), opts)
 	if err != nil {
 		log.Error(r, "Error counting albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
@@ -147,7 +147,7 @@ func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums
 		func() error {
 			albumOpts := filter.ApplyLibraryFilter(filter.ByStarred(), musicFolderIds)
 			var err error
-			albums, err = api.ds.Album(ctx).GetAll(albumOpts)
+			albums, err = api.ds.Album().GetAll(ctx, albumOpts)
 			if err != nil {
 				log.Error(r, "Error retrieving starred albums", err)
 			}

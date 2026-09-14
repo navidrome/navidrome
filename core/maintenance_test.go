@@ -369,14 +369,14 @@ var _ = Describe("Maintenance", func() {
 			Expect(artistRepo.IsRefreshStatsCalled()).To(BeTrue(), "Artist stats should be refreshed")
 
 			// The old album lost the remapped track, so its stats are recalculated from the remaining one
-			oldAlbum, err := albumRepo.Get("album1")
+			oldAlbum, err := albumRepo.Get(ctx, "album1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(oldAlbum.SongCount).To(Equal(1))
 			Expect(oldAlbum.Size).To(Equal(int64(1000)))
 			Expect(oldAlbum.Duration).To(BeNumerically("==", 100))
 
 			// The target album keeps the track, now under the missing file's ID
-			newAlbum, err := albumRepo.Get("album2")
+			newAlbum, err := albumRepo.Get(ctx, "album2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newAlbum.SongCount).To(Equal(1))
 			Expect(newAlbum.Size).To(Equal(int64(2000)))
@@ -470,7 +470,7 @@ type extendedAlbumRepo struct {
 	failOnce     bool
 }
 
-func (m *extendedAlbumRepo) Put(album *model.Album) error {
+func (m *extendedAlbumRepo) Put(ctx context.Context, album *model.Album) error {
 	m.mu.Lock()
 	m.putCallCount++
 	m.lastPutData = album
@@ -490,7 +490,7 @@ func (m *extendedAlbumRepo) Put(album *model.Album) error {
 	}
 	m.mu.Unlock()
 
-	return m.MockAlbumRepo.Put(album)
+	return m.MockAlbumRepo.Put(ctx, album)
 }
 
 func (m *extendedAlbumRepo) GetPutCallCount() int {

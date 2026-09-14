@@ -190,9 +190,9 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
+	alr := NewAlbumRepository(conn).(*albumRepository)
 	for i := range testAlbums {
-		err := alr.Put(new(testAlbums[i]))
+		err := alr.Put(ctx, new(testAlbums[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -291,7 +291,7 @@ var _ = BeforeSuite(func() {
 	if err := alr.SetStar(ctx, true, albumRadioactivity.ID); err != nil {
 		panic(err)
 	}
-	al, err := alr.Get(albumRadioactivity.ID)
+	al, err := alr.Get(ctx, albumRadioactivity.ID)
 	if err != nil {
 		panic(err)
 	}

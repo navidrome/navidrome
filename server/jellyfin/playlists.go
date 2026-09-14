@@ -239,7 +239,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []strin
 	for _, id := range ids {
 		if _, ok := songs[id]; ok {
 			out = append(out, id) // already a song
-		} else if _, err := api.ds.Album(ctx).Get(id); err == nil {
+		} else if _, err := api.ds.Album().Get(ctx, id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id))...)
 		} else if _, err := api.ds.Artist().Get(ctx, id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByArtistID(id))...)

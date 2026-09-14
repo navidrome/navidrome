@@ -254,9 +254,9 @@ var _ = Describe("ShareRepository", func() {
 				{Artist: model.Artist{ID: primaryID, Name: "AA Primary"}},
 				{Artist: model.Artist{ID: secondaryID, Name: "AA Secondary"}},
 			}}
-			alr := NewAlbumRepository(adminCtx, b)
-			Expect(alr.Put(&model.Album{ID: "art-album-ok", LibraryID: 1, Name: "Art Album OK", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
-			Expect(alr.Put(&model.Album{ID: "art-album-other", LibraryID: otherLib.ID, Name: "Art Album Other", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
+			alr := NewAlbumRepository(b)
+			Expect(alr.Put(ctx, &model.Album{ID: "art-album-ok", LibraryID: 1, Name: "Art Album OK", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
+			Expect(alr.Put(ctx, &model.Album{ID: "art-album-other", LibraryID: otherLib.ID, Name: "Art Album Other", AlbumArtistID: primaryID, AlbumArtist: "AA Primary", Participants: aaParticipants})).To(Succeed())
 
 			mr := NewMediaFileRepository(adminCtx, b)
 			Expect(mr.Put(&model.MediaFile{ID: "art-ok", LibraryID: 1, AlbumID: "art-album-ok", Path: "a/ok.mp3", Title: "ArtOK", AlbumArtistID: primaryID, Participants: aaParticipants})).To(Succeed())
@@ -290,7 +290,7 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = b.NewQuery(`DELETE FROM share WHERE id IN ('art-share', 'art-album-share', 'art-mf-share')`).Execute()
 			mr := NewMediaFileRepository(adminCtx, b).(*mediaFileRepository)
 			_, _ = mr.executeSQL(mr.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"art-ok", "art-other"}}))
-			alr := NewAlbumRepository(adminCtx, b).(*albumRepository)
+			alr := NewAlbumRepository(b).(*albumRepository)
 			_, _ = alr.executeSQL(alr.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"art-album-ok", "art-album-other"}}))
 			ar := NewArtistRepository(b).(*artistRepository)
 			_, _ = ar.executeSQL(adminCtx, squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))

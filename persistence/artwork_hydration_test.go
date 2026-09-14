@@ -59,14 +59,14 @@ var _ = Describe("Artwork hydration", func() {
 
 	Describe("albums", func() {
 		var repo model.AlbumRepository
-		BeforeEach(func() { repo = NewAlbumRepository(ctx, GetDBXBuilder()) })
+		BeforeEach(func() { repo = NewAlbumRepository(GetDBXBuilder()) })
 
 		It("hydrates the found / known-absent / unresolved states", func() {
 			putInfo("al", albumSgtPeppers.ID, "althash11111111")
 			putInfo("al", albumAbbeyRoad.ID, "")
 			// albumRadioactivity: no row -> unresolved
 
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			byID := slice.ToMap(all, func(a model.Album) (string, model.Album) { return a.ID, a })
 
@@ -80,7 +80,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates Get", func() {
 			putInfo("al", albumSgtPeppers.ID, "gethash22222222")
-			got, err := repo.Get(albumSgtPeppers.ID)
+			got, err := repo.Get(ctx, albumSgtPeppers.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.ImageHash).To(Equal("gethash22222222"))
 		})
@@ -97,9 +97,9 @@ var _ = Describe("Artwork hydration", func() {
 			al := albumSgtPeppers
 			al.ImageHash = "shouldnotpersist"
 			al.ImageAbsent = true
-			Expect(repo.(*albumRepository).Put(&al)).To(Succeed())
+			Expect(repo.(*albumRepository).Put(ctx, &al)).To(Succeed())
 
-			got, err := repo.Get(al.ID)
+			got, err := repo.Get(ctx, al.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.ImageHash).To(BeEmpty())
 			Expect(got.ImageAbsent).To(BeFalse())
@@ -397,7 +397,7 @@ var _ = Describe("Artwork hydration", func() {
 		}
 
 		BeforeEach(func() {
-			albumRepo = NewAlbumRepository(ctx, GetDBXBuilder())
+			albumRepo = NewAlbumRepository(GetDBXBuilder())
 			artistRepo = NewArtistRepository(GetDBXBuilder())
 			playlistRepo = NewPlaylistRepository(ctx, GetDBXBuilder())
 			// Other specs leave rows behind, so scope every cursor spec to the fixtures.
@@ -428,10 +428,10 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates every streamed album, like GetAll", func() {
 			opts := model.QueryOptions{Sort: "name", Filters: onlyAlbums}
-			want, err := albumRepo.GetAll(opts)
+			want, err := albumRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 
-			got := collectCursor(albumRepo.GetCursor(opts))
+			got := collectCursor(albumRepo.GetCursor(ctx, opts))
 
 			Expect(got).To(ConsistOf(want))
 			byID := map[string]model.Album{}
@@ -471,11 +471,11 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("honors Max and Offset exactly once", func() {
 			opts := model.QueryOptions{Sort: "name", Filters: onlyAlbums, Max: 2, Offset: 1}
-			want, err := albumRepo.GetAll(opts)
+			want, err := albumRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).To(HaveLen(2))
 
-			got := collectCursor(albumRepo.GetCursor(opts))
+			got := collectCursor(albumRepo.GetCursor(ctx, opts))
 
 			Expect(slice.Map(got, func(a model.Album) string { return a.ID })).
 				To(Equal(slice.Map(want, func(a model.Album) string { return a.ID })))
@@ -485,11 +485,11 @@ var _ = Describe("Artwork hydration", func() {
 		DescribeTable("orders albums like GetAll",
 			func(opts model.QueryOptions, key func(model.Album) string) {
 				opts = scoped(opts, onlyAlbums)
-				want, err := albumRepo.GetAll(opts)
+				want, err := albumRepo.GetAll(ctx, opts)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(want).ToNot(BeEmpty())
 
-				got := collectCursor(albumRepo.GetCursor(opts))
+				got := collectCursor(albumRepo.GetCursor(ctx, opts))
 
 				Expect(slice.Map(got, key)).To(Equal(slice.Map(want, key)))
 				Expect(slice.Map(got, func(a model.Album) string { return a.ID })).
@@ -563,10 +563,10 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("streams every album exactly once when sorted randomly", func() {
 			opts := model.QueryOptions{Sort: "random", Filters: onlyAlbums}
-			want, err := albumRepo.GetAll(opts)
+			want, err := albumRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 
-			got := collectCursor(albumRepo.GetCursor(opts))
+			got := collectCursor(albumRepo.GetCursor(ctx, opts))
 
 			Expect(slice.Map(got, func(a model.Album) string { return a.ID })).
 				To(ConsistOf(slice.Map(want, func(a model.Album) string { return a.ID })))

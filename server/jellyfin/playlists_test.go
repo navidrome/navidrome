@@ -258,7 +258,7 @@ var _ = Describe("Playlists", func() {
 		})
 
 		It("expands an album id into its songs, filtered by album", func() {
-			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("al1")}})
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("al1")}})
 			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), AlbumID: testID("al1")}, {ID: testID("s2"), AlbumID: testID("al1")},
 			})

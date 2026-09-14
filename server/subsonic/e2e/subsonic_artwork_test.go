@@ -277,7 +277,7 @@ func wipeScannedContent() {
 
 func albumIDByName(name string) string {
 	GinkgoHelper()
-	albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
+	albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(albums).To(HaveLen(1), "expected exactly one album named %q", name)
 	return albums[0].ID

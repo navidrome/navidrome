@@ -46,7 +46,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("stars an album and returns IsFavorite=true", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
@@ -100,7 +100,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not star an album in a library the user can't access", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
@@ -130,7 +130,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 500 (not 404) when a repository lookup fails for a reason other than not-found", func() {
-			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetError(true)
+			ds.Album().(*tests.MockAlbumRepo).SetError(true)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("x1")))
@@ -150,7 +150,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("emits a refreshResource event when starring an album", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
@@ -161,7 +161,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("does not emit an event when the item is not accessible", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
@@ -189,7 +189,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("rates an album", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser())
@@ -225,7 +225,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not rate an album in a library the user can't access", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1

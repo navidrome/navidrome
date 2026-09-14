@@ -70,7 +70,7 @@ var _ = Describe("Similar", func() {
 			otherLib := model.Library{ID: 2, Name: "Other Library", Path: "fake:///other"}
 			Expect(ds.Library().Put(ctx, &otherLib)).To(Succeed())
 			otherAlbum := model.Album{ID: testID("other-album"), Name: "Other Album", LibraryID: 2}
-			Expect(ds.Album(ctx).Put(&otherAlbum)).To(Succeed())
+			Expect(ds.Album().Put(ctx, &otherAlbum)).To(Succeed())
 
 			providerFake.similarSongs = model.MediaFiles{
 				{ID: testID("x1"), AlbumID: albumID("IV")},         // library 1 -> visible

@@ -26,7 +26,7 @@ var _ = Describe("Search", func() {
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		// Get references to the mock repositories so we can inspect their Options
-		mockAlbumRepo = ds.Album(nil).(*tests.MockAlbumRepo)
+		mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
 		mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
 		mockMediaFileRepo = ds.MediaFile(nil).(*tests.MockMediaFileRepo)
 	})

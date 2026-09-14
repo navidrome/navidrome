@@ -18,7 +18,7 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 		conf.Server.EnableSharing = true
 		setupTestDB()
 
-		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+		albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"album.name": "Abbey Road"},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -139,7 +139,7 @@ var _ = Describe("Sharing Cross-User Isolation", Ordered, func() {
 		userA = createUser("share-user-a", "share-user-a", "Share User A", false)
 		userB = createUser("share-user-b", "share-user-b", "Share User B", false)
 
-		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+		albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"album.name": "Abbey Road"},
 		})
 		Expect(err).ToNot(HaveOccurred())

@@ -182,7 +182,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		}
 	}
 
-	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
+	err = e.ds.Album().UpdateExternalInfo(ctx, &album.Album)
 	if err != nil {
 		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", albumName,
 			"elapsed", time.Since(start), err)

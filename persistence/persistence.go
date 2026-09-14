@@ -32,6 +32,7 @@ type SQLStore struct {
 	artworkQ    model.ArtworkQueueRepository
 	user        model.UserRepository
 	artist      model.ArtistRepository
+	album       model.AlbumRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -54,6 +55,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.artworkQ = NewArtworkQueueRepository(db)
 	s.user = NewUserRepository(db)
 	s.artist = NewArtistRepository(db)
+	s.album = NewAlbumRepository(db)
 	return s
 }
 
@@ -61,8 +63,8 @@ func New(conn *sql.DB) model.DataStore {
 	return newSQLStore(dbx.NewFromDB(conn, db.Driver))
 }
 
-func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
-	return NewAlbumRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Album() model.AlbumRepository {
+	return s.album
 }
 
 func (s *SQLStore) Artist() model.ArtistRepository {
@@ -201,11 +203,11 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 	}
 
 	err := run.Sequentially(
-		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty(libraryIDs...) }),
+		trace(ctx, "purge empty albums", func() error { return s.album.(*albumRepository).purgeEmpty(ctx, libraryIDs...) }),
 		trace(ctx, "purge empty artists", func() error { return s.artist.(*artistRepository).purgeEmpty(ctx) }),
 		trace(ctx, "mark missing artists", func() error { return s.artist.(*artistRepository).markMissing(ctx) }),
 		trace(ctx, "purge empty folders", func() error { return s.folder.(*folderRepository).purgeEmpty(ctx, libraryIDs...) }),
-		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean album annotations", func() error { return s.album.(*albumRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean artist annotations", func() error { return s.artist.(*artistRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean playlist annotations", func() error { return s.Playlist(ctx).(*playlistRepository).cleanAnnotations(ctx) }),

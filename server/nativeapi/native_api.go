@@ -69,7 +69,7 @@ func (api *Router) routes() http.Handler {
 		r.Use(server.UpdateLastAccessMiddleware(api.ds))
 		rx(r, "/user", lazyRW(func(ctx context.Context) rest.Repository[model.User] { return api.users.NewRepository(ctx) }), true)
 		rx(r, "/song", lazy(func(ctx context.Context) rest.Repository[model.MediaFile] { return api.ds.MediaFile(ctx) }), false)
-		rx(r, "/album", lazy(func(ctx context.Context) rest.Repository[model.Album] { return api.ds.Album(ctx) }), false)
+		rx(r, "/album", api.ds.Album(), false)
 		api.addArtistRoute(r)
 		rx(r, "/genre", api.ds.Genre(), false)
 		rx(r, "/player", api.ds.Player(), true)

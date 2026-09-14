@@ -80,7 +80,7 @@ func hashFromTag(r *http.Request) string {
 // resolveArtworkID maps a Jellyfin item id to a Navidrome ArtworkID, probing
 // album -> artist -> media file -> playlist.
 func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
-	if al, err := api.ds.Album(ctx).Get(itemId); err == nil {
+	if al, err := api.ds.Album().Get(ctx, itemId); err == nil {
 		return al.CoverArtID().String()
 	}
 	if ar, err := api.ds.Artist().Get(ctx, itemId); err == nil {

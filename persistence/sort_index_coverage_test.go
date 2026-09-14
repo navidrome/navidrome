@@ -67,7 +67,7 @@ var _ = Describe("Sort index coverage", func() {
 		{
 			table: "album",
 			newRepo: func(ctx context.Context) *sqlRepository {
-				return &NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository).sqlRepository
+				return &NewAlbumRepository(GetDBXBuilder()).(*albumRepository).sqlRepository
 			},
 			exceptions: map[string]string{
 				"random":     "not a column sort",

@@ -197,7 +197,7 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 })
 
 func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetGauge *prometheus.GaugeVec) {
-	albumsCount, err := ds.Album(ctx).CountAll()
+	albumsCount, err := ds.Album().CountAll(ctx)
 	if err != nil {
 		log.Warn("album CountAll error", err)
 		return

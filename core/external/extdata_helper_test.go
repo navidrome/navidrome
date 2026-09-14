@@ -156,7 +156,7 @@ func newMockAlbumRepo() *mockAlbumRepo {
 }
 
 // Get implements model.AlbumRepository.
-func (m *mockAlbumRepo) Get(id string) (*model.Album, error) {
+func (m *mockAlbumRepo) Get(_ context.Context, id string) (*model.Album, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -165,7 +165,7 @@ func (m *mockAlbumRepo) Get(id string) (*model.Album, error) {
 }
 
 // GetAll implements model.AlbumRepository.
-func (m *mockAlbumRepo) GetAll(options ...model.QueryOptions) (model.Albums, error) {
+func (m *mockAlbumRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Albums, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v

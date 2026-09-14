@@ -324,7 +324,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 		ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
 		conn := GetDBXBuilder()
 		mr = NewMediaFileRepository(ctx, conn)
-		alr = NewAlbumRepository(ctx, conn)
+		alr = NewAlbumRepository(conn)
 		arr = NewArtistRepository(conn)
 	})
 
