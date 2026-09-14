@@ -15,7 +15,11 @@ const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
 })
 
-const Layout = (props) => {
+const hiddenChildren = {
+  display: 'none',
+}
+
+const FullLayout = (props) => {
   const theme = useCurrentTheme()
   const queue = useSelector((state) => state.player?.queue) || []
   const classes = useStyles({ addPadding: queue.length > 0 })
@@ -24,29 +28,6 @@ const Layout = (props) => {
 
   const keyHandlers = {
     TOGGLE_MENU: useCallback(() => dispatch(toggleSidebar()), [dispatch]),
-  }
-
-  let simple = false
-  try {
-    applySimpleMobileDomHint()
-    simple = shouldUseSimpleMobile()
-  } catch (e) {
-    simple = false
-    if (typeof document !== 'undefined') {
-      document.documentElement.removeAttribute('data-simple-mobile')
-    }
-  }
-
-  // Opt-in simple shell. Always keep RA children mounted (Player lives there).
-  if (simple) {
-    return (
-      <>
-        <SimpleMobileLayout />
-        <div style={{ display: 'none' }} aria-hidden="true">
-          {props.children}
-        </div>
-      </>
-    )
   }
 
   return (
@@ -61,6 +42,34 @@ const Layout = (props) => {
       />
     </HotKeys>
   )
+}
+
+const Layout = (props) => {
+  let simple = false
+  try {
+    applySimpleMobileDomHint()
+    simple = shouldUseSimpleMobile()
+  } catch (e) {
+    simple = false
+    if (typeof document !== 'undefined') {
+      document.documentElement.removeAttribute('data-simple-mobile')
+    }
+  }
+
+  // Opt-in simple shell. Keep RA children mounted (page + Player live there)
+  // but hide them so the two-button chrome is what the user sees.
+  if (simple) {
+    return (
+      <>
+        <SimpleMobileLayout />
+        <div style={hiddenChildren} aria-hidden="true">
+          {props.children}
+        </div>
+      </>
+    )
+  }
+
+  return <FullLayout {...props} />
 }
 
 export default Layout

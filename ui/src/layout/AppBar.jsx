@@ -29,7 +29,7 @@ import NowPlayingPanel from './NowPlayingPanel'
 import UserMenu from './UserMenu'
 import config from '../config'
 import { ShuffleAllButton } from '../common'
-import { isMobileDevice, setSimpleMobilePref } from './simpleMobile'
+import { setSimpleMobilePref } from './simpleMobile'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -77,14 +77,12 @@ AboutMenuItem.displayName = 'AboutMenuItem'
 const SimpleModeMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
   const classes = useStyles(rest)
   const translate = useTranslate()
-  if (!isMobileDevice()) {
-    return null
-  }
-  const label = translate('menu.simpleMode')
+  const label = translate('menu.simpleMode', { _: 'Simple mode' })
   return (
     <MenuItem
       ref={ref}
       className={classes.root}
+      data-testid="simple-mode-menu-item"
       onClick={() => {
         onClick && onClick()
         setSimpleMobilePref(true)

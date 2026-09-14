@@ -1,21 +1,23 @@
 import React, { useState } from 'react'
 import { Button, useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { Button as MuiButton, IconButton, Tooltip } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { IconButton, Tooltip } from '@material-ui/core'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import { shuffleTracks } from '../actions'
 import PropTypes from 'prop-types'
 
-const useHeroStyles = makeStyles((theme) => ({
-  root: {
-    minHeight: 72,
-    width: '100%',
-    fontSize: '1.25rem',
-    textTransform: 'none',
-    borderRadius: theme.spacing(1),
-  },
-}))
+const heroStyle = {
+  minHeight: 72,
+  width: '100%',
+  fontSize: '1.25rem',
+  fontWeight: 600,
+  textTransform: 'none',
+  borderRadius: 8,
+  border: 'none',
+  background: '#90caf9',
+  color: '#000',
+  cursor: 'pointer',
+}
 
 export const ShuffleAllButton = ({ filters, variant, className }) => {
   const translate = useTranslate()
@@ -23,7 +25,6 @@ export const ShuffleAllButton = ({ filters, variant, className }) => {
   const dispatch = useDispatch()
   const notify = useNotify()
   const [loading, setLoading] = useState(false)
-  const hero = useHeroStyles()
   const listLabel = translate('resources.song.actions.shuffleAll')
   const iconLabel = translate('menu.playRandom', { _: listLabel })
   const queryFilters = { ...filters, missing: false }
@@ -56,17 +57,16 @@ export const ShuffleAllButton = ({ filters, variant, className }) => {
 
   if (variant === 'hero') {
     return (
-      <MuiButton
+      <button
+        type="button"
         onClick={handleOnClick}
-        color="primary"
-        variant="contained"
-        startIcon={<ShuffleIcon />}
-        className={`${hero.root}${className ? ` ${className}` : ''}`}
+        className={className}
+        style={heroStyle}
         disabled={loading}
         data-testid="shuffle-all-hero"
       >
         {iconLabel}
-      </MuiButton>
+      </button>
     )
   }
 

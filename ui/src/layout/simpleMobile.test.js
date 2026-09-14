@@ -5,6 +5,7 @@ import {
   shouldUseSimpleMobile,
   setSimpleMobilePref,
   simpleMobilePlayerProps,
+  applySimpleMobileDomHint,
 } from './simpleMobile'
 
 const setMatchMedia = (narrow, coarse) => {
@@ -25,6 +26,7 @@ describe('simpleMobile detection', () => {
 
   beforeEach(() => {
     localStorage.clear()
+    document.documentElement.removeAttribute('data-simple-mobile')
     setMatchMedia(false, false)
     Object.defineProperty(navigator, 'userAgent', {
       value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/120',
@@ -87,9 +89,12 @@ describe('simpleMobile detection', () => {
   it('persists the pref and reloads', () => {
     const reload = vi.fn()
     vi.stubGlobal('location', { ...window.location, reload })
+    setSimpleMobilePref(true)
+    expect(localStorage.getItem(SIMPLE_MOBILE_KEY)).toBe('1')
+    expect(reload).toHaveBeenCalled()
     setSimpleMobilePref(false)
     expect(localStorage.getItem(SIMPLE_MOBILE_KEY)).toBe('0')
-    expect(reload).toHaveBeenCalled()
+    expect(reload).toHaveBeenCalledTimes(2)
     vi.unstubAllGlobals()
   })
 
@@ -119,5 +124,22 @@ describe('simpleMobile detection', () => {
 
   it('does not change player chrome on desktop full UI', () => {
     expect(simpleMobilePlayerProps()).toEqual({})
+  })
+
+  it('sets the DOM hint only when the pref is opted in', () => {
+    applySimpleMobileDomHint()
+    expect(document.documentElement.hasAttribute('data-simple-mobile')).toBe(
+      false,
+    )
+    localStorage.setItem(SIMPLE_MOBILE_KEY, '1')
+    applySimpleMobileDomHint()
+    expect(document.documentElement.getAttribute('data-simple-mobile')).toBe(
+      '1',
+    )
+    localStorage.setItem(SIMPLE_MOBILE_KEY, '0')
+    applySimpleMobileDomHint()
+    expect(document.documentElement.hasAttribute('data-simple-mobile')).toBe(
+      false,
+    )
   })
 })

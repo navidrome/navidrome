@@ -16,12 +16,16 @@ code {
   z-index: 78;
 }
 
-/* First-paint hint from index.html / simpleMobile.js; Layout skips RA chrome when set. */
+/* First-paint hint from index.html / simpleMobile.js; Layout skips RA chrome when set.
+   !important beats useCurrentTheme's inline body background (#303030). */
 html[data-simple-mobile='1'] body {
   margin: 0;
+  background-color: #121212 !important;
+  color: #ffffff;
 }
 
 /* Fullscreen jinke overlay would cover Play random / Open full version. */
-html[data-simple-mobile='1'] .react-jinke-music-player-mobile {
+html[data-simple-mobile='1'] .react-jinke-music-player-mobile,
+html[data-simple-mobile='1'] .react-jinke-music-player-mobile-wrapper {
   display: none !important;
 }

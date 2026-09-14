@@ -6,7 +6,10 @@ import { createStore } from 'redux'
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import SimpleMobileLayout from './SimpleMobileLayout'
 
-const mockSetPref = vi.fn()
+const { mockSetPref, throwHero } = vi.hoisted(() => ({
+  mockSetPref: vi.fn(),
+  throwHero: { on: false },
+}))
 
 vi.mock('react-admin', () => ({
   useTranslate: () => (x) => x,
@@ -18,11 +21,16 @@ vi.mock('../themes/useCurrentTheme', () => ({
 }))
 
 vi.mock('../common/ShuffleAllButton', () => ({
-  ShuffleAllButton: ({ variant }) => (
-    <button data-testid="shuffle-all-hero" data-variant={variant}>
-      menu.playRandom
-    </button>
-  ),
+  ShuffleAllButton: ({ variant }) => {
+    if (throwHero.on) {
+      throw new Error('hero crashed')
+    }
+    return (
+      <button data-testid="shuffle-all-hero" data-variant={variant}>
+        menu.playRandom
+      </button>
+    )
+  },
 }))
 
 vi.mock('./Notification', () => ({
@@ -45,6 +53,7 @@ const renderLayout = (storeState = { player: { queue: [] } }) =>
 describe('<SimpleMobileLayout />', () => {
   beforeEach(() => {
     mockSetPref.mockClear()
+    throwHero.on = false
   })
 
   it('shows shuffle and open-full-version actions', () => {
@@ -70,5 +79,16 @@ describe('<SimpleMobileLayout />', () => {
     renderLayout()
     fireEvent.click(screen.getByTestId('open-full-version'))
     expect(mockSetPref).toHaveBeenCalledWith(false)
+  })
+
+  it('still shows shuffle and open-full-version if the hero button crashes', () => {
+    throwHero.on = true
+    // React 17 logs the error boundary to stderr; the fallback must still paint.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderLayout()
+    expect(screen.getByTestId('simple-mobile-layout')).toBeInTheDocument()
+    expect(screen.getByTestId('shuffle-all-hero')).toBeInTheDocument()
+    expect(screen.getByTestId('open-full-version')).toBeInTheDocument()
+    spy.mockRestore()
   })
 })

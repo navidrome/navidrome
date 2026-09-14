@@ -77,6 +77,7 @@ describe('<Layout /> simple mobile routing', () => {
     renderLayout()
     expect(screen.getByTestId('simple-mobile-layout')).toBeInTheDocument()
     expect(screen.queryByTestId('ra-layout')).toBeNull()
+    expect(screen.getByText('library')).toBeInTheDocument()
   })
 
   it('still renders simple mode when player.queue is missing', () => {

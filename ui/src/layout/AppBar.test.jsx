@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, beforeEach, expect, vi } from 'vitest'
 import { Provider } from 'react-redux'
 import { createStore, combineReducers } from 'redux'
@@ -7,6 +7,12 @@ import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import { activityReducer } from '../reducers'
 import AppBar from './AppBar'
 import config from '../config'
+
+const mockSetPref = vi.hoisted(() => vi.fn())
+
+vi.mock('./simpleMobile', () => ({
+  setSimpleMobilePref: (...args) => mockSetPref(...args),
+}))
 
 let store
 
@@ -55,6 +61,7 @@ const renderAppBar = () =>
 
 describe('<AppBar />', () => {
   beforeEach(() => {
+    mockSetPref.mockClear()
     config.devActivityPanel = true
     config.enableNowPlaying = true
     store = createStore(combineReducers({ activity: activityReducer }), {
@@ -80,8 +87,11 @@ describe('<AppBar />', () => {
     expect(screen.getByLabelText('menu.playRandom')).toBeInTheDocument()
   })
 
-  it('hides the simple-mode menu item on desktop', () => {
+  it('shows a simple-mode menu item that opts in via setSimpleMobilePref', () => {
     renderAppBar()
-    expect(screen.queryByText('menu.simpleMode')).toBeNull()
+    const item = screen.getByTestId('simple-mode-menu-item')
+    expect(item).toHaveTextContent('menu.simpleMode')
+    fireEvent.click(item)
+    expect(mockSetPref).toHaveBeenCalledWith(true)
   })
 })
