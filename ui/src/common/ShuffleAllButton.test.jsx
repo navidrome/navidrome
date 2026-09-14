@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
@@ -42,12 +42,17 @@ const renderButton = (props) =>
 describe('<ShuffleAllButton />', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    delete window.__ndPlayRandom
     mockGetList.mockResolvedValue({
       data: [
         { id: 's1', artist: 'A', album: 'X' },
         { id: 's2', artist: 'B', album: 'Y' },
       ],
     })
+  })
+
+  afterEach(() => {
+    delete window.__ndPlayRandom
   })
 
   it('fetches random songs and plays a shuffled queue', async () => {
@@ -77,5 +82,13 @@ describe('<ShuffleAllButton />', () => {
     renderButton({ variant: 'hero' })
     const button = screen.getByTestId('shuffle-all-hero')
     expect(button).toHaveTextContent('menu.playRandom')
+  })
+
+  it('exposes window.__ndPlayRandom for the static simple-mode shell', async () => {
+    renderButton()
+    expect(typeof window.__ndPlayRandom).toBe('function')
+    window.__ndPlayRandom()
+    await waitFor(() => expect(mockGetList).toHaveBeenCalled())
+    expect(mockDispatch).toHaveBeenCalled()
   })
 })

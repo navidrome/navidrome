@@ -639,6 +639,10 @@
     "playRandom": "Play random songs",
     "openFullVersion": "Open full version",
     "simpleMode": "Simple mode",
+    "play": "Play",
+    "pause": "Pause",
+    "nothingPlaying": "Nothing playing",
+    "shuffleHint": "Shuffle to start",
     "about": "About"
   },
   "player": {

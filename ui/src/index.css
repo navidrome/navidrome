@@ -38,15 +38,6 @@ html[data-simple-mobile='1'] .music-player-controller-wrap {
   overflow: hidden !important;
 }
 
-/* Portal target for the two-button shell — always above RA + player. */
-#nd-simple-mobile-root {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 2147483000 !important;
-  pointer-events: auto !important;
-}
-
-
 /* Full RA UI stays mounted (needed for Player / shuffle) but is covered by
    the static #nd-static-simple shell from index.html. */
 html[data-simple-mobile='1'] #root {

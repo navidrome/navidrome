@@ -14,7 +14,7 @@
     <meta name="msapplication-TileColor" content="#da532c">
     <meta name="theme-color" content="#ffffff">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!--
       manifest.webmanifest provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -32,8 +32,8 @@
       window.process = { env: {} };
     </script>
     <script>
-      // Opt-in simple mode: paint buttons BEFORE React. Replacing RA Layout
-      // caused a blank #303030 screen; this shell cannot be blanked by React.
+      // Opt-in simple mode: paint the player shell BEFORE React. Replacing RA
+      // Layout caused a blank #303030 screen; this overlay cannot be blanked.
       (function () {
         try {
           if (localStorage.getItem('nd.simpleMobile') === '1') {
@@ -42,6 +42,158 @@
         } catch (e) {}
       })();
     </script>
+    <style>
+      /* Critical first-paint for simple mode. Do not move into the JS bundle. */
+      html[data-simple-mobile='1'] { background: #121212; }
+      html[data-simple-mobile='1'] body { background: #121212; color: #fff; }
+      #nd-static-simple {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2147483646;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 16px;
+        padding-top: max(20px, env(safe-area-inset-top, 0px));
+        padding-right: max(24px, env(safe-area-inset-right, 0px));
+        padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+        padding-left: max(24px, env(safe-area-inset-left, 0px));
+        box-sizing: border-box;
+        background: #121212;
+        color: #fff;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      html[data-simple-mobile='1'] #nd-static-simple { display: flex !important; }
+      #nd-static-simple button {
+        font-family: inherit;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+      }
+      #nd-static-full {
+        align-self: flex-end;
+        min-height: 44px;
+        padding: 8px 12px;
+        font-size: 14px;
+        border: none;
+        background: transparent;
+        color: #b3b3b3;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      #nd-static-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        min-height: 0;
+        text-align: center;
+      }
+      #nd-static-nowplaying {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        width: 100%;
+      }
+      #nd-static-cover {
+        width: 160px;
+        height: 160px;
+        border-radius: 12px;
+        object-fit: cover;
+        background: #1a1a1a;
+        flex-shrink: 0;
+      }
+      #nd-static-title, #nd-static-artist {
+        max-width: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+      #nd-static-title {
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+      #nd-static-artist {
+        font-size: 16px;
+        font-weight: 400;
+        color: #b3b3b3;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      #nd-static-empty {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-width: 22rem;
+      }
+      #nd-static-hint {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+      }
+      #nd-static-hint-sub {
+        margin: 0;
+        font-size: 16px;
+        color: #b3b3b3;
+      }
+      #nd-static-controls {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        width: 100%;
+        max-width: 420px;
+        margin: 0 auto;
+        padding-bottom: 8px;
+      }
+      #nd-static-play {
+        width: 96px;
+        height: 96px;
+        border: none;
+        border-radius: 50%;
+        background: #fff;
+        color: #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      #nd-static-play:disabled { opacity: 0.35; }
+      #nd-static-play svg { width: 44px; height: 44px; fill: currentColor; }
+      #nd-static-play .nd-icon-play { margin-left: 4px; }
+      #nd-static-simple[data-playing='1'] .nd-icon-play,
+      #nd-static-simple:not([data-playing='1']) .nd-icon-pause { display: none; }
+      #nd-static-shuffle {
+        min-height: 56px;
+        width: 100%;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid #555;
+        background: transparent;
+        color: #fff;
+      }
+      #nd-static-simple[data-has-track='1'] #nd-static-empty { display: none; }
+      #nd-static-simple[data-has-track='0'] #nd-static-nowplaying { display: none; }
+      #nd-static-simple[data-has-track='0'] #nd-static-play { display: none; }
+      #nd-static-simple[data-has-track='0'] #nd-static-shuffle {
+        min-height: 72px;
+        font-size: 20px;
+        border: none;
+        background: #90caf9;
+        color: #000;
+      }
+    </style>
     <script>
       window.__APP_CONFIG__ = {{ .AppConfig }}
     </script>
@@ -51,11 +203,25 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="nd-static-simple" role="main" style="display:none;position:fixed;inset:0;z-index:2147483646;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;background:#121212;color:#fff;font-family:system-ui,-apple-system,sans-serif;">
-      <h1 style="margin:0 0 8px;font-size:28px;font-weight:600;">Navidrome</h1>
-      <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:420px;">
-        <button type="button" id="nd-static-shuffle" style="min-height:72px;width:100%;font-size:20px;font-weight:600;border:none;border-radius:8px;background:#90caf9;color:#000;">Play random songs</button>
-        <button type="button" id="nd-static-full" style="min-height:56px;width:100%;font-size:16px;border-radius:8px;border:1px solid #666;background:transparent;color:#fff;">Open full version</button>
+    <div id="nd-static-simple" role="main" data-has-track="0" data-playing="0" aria-label="Navidrome">
+      <button type="button" id="nd-static-full">Open full version</button>
+      <div id="nd-static-main">
+        <div id="nd-static-nowplaying">
+          <img id="nd-static-cover" alt="" width="160" height="160" hidden onerror="this.hidden=true" />
+          <div id="nd-static-title" aria-live="polite"></div>
+          <div id="nd-static-artist"></div>
+        </div>
+        <div id="nd-static-empty">
+          <p id="nd-static-hint">Nothing playing</p>
+          <p id="nd-static-hint-sub">Shuffle to start</p>
+        </div>
+      </div>
+      <div id="nd-static-controls">
+        <button type="button" id="nd-static-play" aria-label="Play" aria-pressed="false" disabled>
+          <svg class="nd-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          <svg class="nd-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+        </button>
+        <button type="button" id="nd-static-shuffle">Play random songs</button>
       </div>
     </div>
     <script>
@@ -65,10 +231,31 @@
         var on = false;
         try { on = localStorage.getItem('nd.simpleMobile') === '1'; } catch (e) {}
         if (!on) return;
-        shell.style.display = 'flex';
         document.body.style.backgroundColor = '#121212';
         var full = document.getElementById('nd-static-full');
         var shuffle = document.getElementById('nd-static-shuffle');
+        var play = document.getElementById('nd-static-play');
+        function waitFor(getFn, done) {
+          if (typeof getFn() === 'function') {
+            try { getFn()(); } catch (e) {}
+            done(true);
+            return;
+          }
+          var tries = 0;
+          var t = setInterval(function () {
+            tries += 1;
+            if (typeof getFn() === 'function') {
+              clearInterval(t);
+              try { getFn()(); } catch (e) {}
+              done(true);
+              return;
+            }
+            if (tries > 40) {
+              clearInterval(t);
+              done(false);
+            }
+          }, 250);
+        }
         if (full) {
           full.onclick = function () {
             try { localStorage.setItem('nd.simpleMobile', '0'); } catch (e) {}
@@ -77,24 +264,19 @@
         }
         if (shuffle) {
           shuffle.onclick = function () {
+            var label = shuffle.textContent;
             shuffle.disabled = true;
-            shuffle.textContent = '…';
-            var tries = 0;
-            var t = setInterval(function () {
-              tries += 1;
-              if (typeof window.__ndPlayRandom === 'function') {
-                clearInterval(t);
-                try { window.__ndPlayRandom(); } catch (e) {}
-                shuffle.disabled = false;
-                shuffle.textContent = 'Play random songs';
-                return;
-              }
-              if (tries > 40) {
-                clearInterval(t);
-                shuffle.disabled = false;
-                shuffle.textContent = 'Play random songs';
-              }
-            }, 250);
+            waitFor(function () { return window.__ndPlayRandom; }, function () {
+              shuffle.disabled = false;
+              shuffle.textContent = label;
+            });
+          };
+        }
+        if (play) {
+          play.onclick = function () {
+            waitFor(function () {
+              return window.__ndPlayer && window.__ndPlayer.toggle;
+            }, function () {});
           };
         }
       })();

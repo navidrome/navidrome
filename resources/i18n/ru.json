@@ -626,6 +626,10 @@
     "playRandom": "Случайные треки",
     "openFullVersion": "Открыть полную версию",
     "simpleMode": "Простой режим",
+    "play": "Играть",
+    "pause": "Пауза",
+    "nothingPlaying": "Ничего не играет",
+    "shuffleHint": "Нажмите «случайные треки»",
     "librarySelector": {
       "allLibraries": "Все библиотеки (%{count})",
       "multipleLibraries": "%{selected} из %{total} библиотек |||| %{selected} из %{total} библиотек |||| %{selected} из %{total} библиотек",

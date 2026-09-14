@@ -35,6 +35,7 @@ import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 import { simpleMobilePlayerProps } from '../layout/simpleMobile'
+import { syncSimpleMobilePlayer } from '../layout/simpleMobileShell'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -424,6 +425,21 @@ const Player = () => {
       audioInstance.volume = 1
     }
   }, [isMobilePlayer, audioInstance])
+
+  useEffect(() => {
+    return syncSimpleMobilePlayer({
+      playerState,
+      audio: audioInstance,
+      labels: {
+        play: translate('menu.play', { _: 'Play' }),
+        pause: translate('menu.pause', { _: 'Pause' }),
+        shuffle: translate('menu.playRandom', { _: 'Play random songs' }),
+        full: translate('menu.openFullVersion', { _: 'Open full version' }),
+        hint: translate('menu.nothingPlaying', { _: 'Nothing playing' }),
+        shuffleHint: translate('menu.shuffleHint', { _: 'Shuffle to start' }),
+      },
+    })
+  }, [playerState, audioInstance, translate])
 
   // Report every seek (including programmatic ones the library does not surface
   // via onAudioSeeked, e.g. restartCurrentOnPrev). Debounce coalesces drag
