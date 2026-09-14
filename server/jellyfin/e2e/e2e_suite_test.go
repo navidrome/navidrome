@@ -408,7 +408,7 @@ func songAgent(title string) agents.Song {
 // resolved ArtworkID and that resolution runs under an elevated (admin) context.
 type spyArtwork struct {
 	lastID  string
-	lastCtx context.Context //nolint:containedctx // test spy records the ctx it was called with
+	lastCtx context.Context
 	data    []byte
 }
 
