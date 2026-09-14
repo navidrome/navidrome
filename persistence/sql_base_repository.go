@@ -520,6 +520,15 @@ func (r sqlRepository) deleteOwned(ctx context.Context, id string) error {
 	return nil
 }
 
+func (r sqlRepository) deleteOwnedAll(ctx context.Context, ids ...string) error {
+	for _, id := range ids {
+		if err := r.deleteOwned(ctx, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // classifyOwnedWriteMiss explains why an ownership-filtered write (updateOwned/deleteOwned) matched
 // no row: rest.ErrPermissionDenied if the row exists but is owned by another user, otherwise
 // rest.ErrNotFound. It runs only on the failure path (count == 0), where no write occurred.
