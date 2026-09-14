@@ -202,7 +202,7 @@ var _ = Describe("ArtistRepository", func() {
 				// it from the DB rather than assuming a count.
 				var allLibs []int
 				Expect(NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).(*libraryRepository).
-					queryAllSlice(squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
+					queryAllSlice(GinkgoT().Context(), squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
 				admin := model.User{ID: "a", IsAdmin: true}
 				Expect(scope(admin, squirrel.Eq{"library_id": allLibs})).To(BeNil())
 				Expect(scope(admin, nil)).To(BeNil())
@@ -498,14 +498,14 @@ var _ = Describe("ArtistRepository", func() {
 					producerStats := `{"producer": {"s": 500, "m": 3, "a": 1}}`
 
 					// Set Beatles as composer in library 1
-					_, err := raw.executeSQL(squirrel.Insert("library_artist").
+					_, err := raw.executeSQL(raw.ctx, squirrel.Insert("library_artist").
 						Columns("library_id", "artist_id", "stats").
 						Values(1, artistBeatles.ID, composerStats).
 						Suffix("ON CONFLICT(library_id, artist_id) DO UPDATE SET stats = excluded.stats"))
 					Expect(err).ToNot(HaveOccurred())
 
 					// Set Kraftwerk as producer in library 1
-					_, err = raw.executeSQL(squirrel.Insert("library_artist").
+					_, err = raw.executeSQL(raw.ctx, squirrel.Insert("library_artist").
 						Columns("library_id", "artist_id", "stats").
 						Values(1, artistKraftwerk.ID, producerStats).
 						Suffix("ON CONFLICT(library_id, artist_id) DO UPDATE SET stats = excluded.stats"))
@@ -514,10 +514,10 @@ var _ = Describe("ArtistRepository", func() {
 
 				AfterEach(func() {
 					// Clean up stats from library_artist table
-					_, _ = raw.executeSQL(squirrel.Update("library_artist").
+					_, _ = raw.executeSQL(raw.ctx, squirrel.Update("library_artist").
 						Set("stats", "{}").
 						Where(squirrel.Eq{"artist_id": artistBeatles.ID, "library_id": 1}))
-					_, _ = raw.executeSQL(squirrel.Update("library_artist").
+					_, _ = raw.executeSQL(raw.ctx, squirrel.Update("library_artist").
 						Set("stats", "{}").
 						Where(squirrel.Eq{"artist_id": artistKraftwerk.ID, "library_id": 1}))
 				})
@@ -592,7 +592,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			AfterEach(func() {
 				if raw, ok := repo.(*artistRepository); ok {
-					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithoutAnnotation.ID}))
+					_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithoutAnnotation.ID}))
 				}
 			})
 
@@ -669,7 +669,7 @@ var _ = Describe("ArtistRepository", func() {
 			AfterEach(func() {
 				// Clean up library 2
 				lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				_ = lr.(*libraryRepository).delete(squirrel.Eq{"id": lib2.ID})
+				_ = lr.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": lib2.ID})
 			})
 
 			DescribeTable("MBID search behavior across different user types",
@@ -693,7 +693,7 @@ var _ = Describe("ArtistRepository", func() {
 
 					// Clean up
 					if raw, ok := (*testRepo).(*artistRepository); ok {
-						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithMBID.ID}))
+						_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithMBID.ID}))
 					}
 				},
 				Entry("Admin user can find artist by MBID", &repo, true, "Admin should find MBID artist"),
@@ -723,7 +723,7 @@ var _ = Describe("ArtistRepository", func() {
 
 				// Clean up
 				if raw, ok := repo.(*artistRepository); ok {
-					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
+					_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
 				}
 			})
 
@@ -755,7 +755,7 @@ var _ = Describe("ArtistRepository", func() {
 
 					// Clean up
 					if raw, ok := repo.(*artistRepository); ok {
-						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
+						_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
 					}
 				})
 			})
@@ -815,7 +815,7 @@ var _ = Describe("ArtistRepository", func() {
 
 					// Clean up
 					if raw, ok := repo.(*artistRepository); ok {
-						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
+						_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
 					}
 				})
 
@@ -827,7 +827,7 @@ var _ = Describe("ArtistRepository", func() {
 					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
 					DeferCleanup(func() {
 						if raw, ok := repo.(*artistRepository); ok {
-							_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
+							_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
 						}
 					})
 
@@ -934,12 +934,12 @@ var _ = Describe("ArtistRepository", func() {
 				err := createArtistWithLibrary(repo, &missingArtist, 1)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = raw.executeSQL(squirrel.Update(raw.tableName).Set("missing", true).Where(squirrel.Eq{"id": missingArtist.ID}))
+				_, err = raw.executeSQL(raw.ctx, squirrel.Update(raw.tableName).Set("missing", true).Where(squirrel.Eq{"id": missingArtist.ID}))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			AfterEach(func() {
-				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
 			})
 
 			It("missing artists are never returned by search", func() {
@@ -1123,9 +1123,9 @@ var _ = Describe("ArtistRepository", func() {
 				for i := range allLibs {
 					allLibs[i] = i + 1
 				}
-				Expect(raw.userSeesAllLibraries(allLibs)).To(BeTrue())
-				Expect(raw.userSeesAllLibraries(allLibs[:total-1])).To(BeFalse())
-				Expect(raw.userSeesAllLibraries([]int{})).To(BeFalse())
+				Expect(raw.userSeesAllLibraries(raw.ctx, allLibs)).To(BeTrue())
+				Expect(raw.userSeesAllLibraries(raw.ctx, allLibs[:total-1])).To(BeFalse())
+				Expect(raw.userSeesAllLibraries(raw.ctx, []int{})).To(BeFalse())
 			})
 		})
 	})
@@ -1190,20 +1190,20 @@ var _ = Describe("ArtistRepository", func() {
 			imgPath := createImageFile("kept-artist_Kept_Artist.jpg")
 
 			// Insert an album_artists record to keep this artist from being purged
-			_, err := repo.executeSQL(squirrel.Insert("album_artists").
+			_, err := repo.executeSQL(repo.ctx, squirrel.Insert("album_artists").
 				SetMap(map[string]any{"album_id": "101", "artist_id": "kept-artist", "role": "artist", "sub_role": ""}))
 			Expect(err).ToNot(HaveOccurred())
 
 			DeferCleanup(func() {
-				_, _ = repo.executeSQL(squirrel.Delete("album_artists").Where(squirrel.Eq{"artist_id": "kept-artist"}))
-				_ = repo.delete(squirrel.Eq{"id": "kept-artist"})
+				_, _ = repo.executeSQL(repo.ctx, squirrel.Delete("album_artists").Where(squirrel.Eq{"artist_id": "kept-artist"}))
+				_ = repo.delete(repo.ctx, squirrel.Eq{"id": "kept-artist"})
 			})
 
 			Expect(repo.purgeEmpty()).To(Succeed())
 
 			// Artist should still exist (check directly, bypassing library filter)
 			var ids []string
-			err = repo.queryAllSlice(squirrel.Select("id").From("artist").Where(squirrel.Eq{"id": "kept-artist"}), &ids)
+			err = repo.queryAllSlice(repo.ctx, squirrel.Select("id").From("artist").Where(squirrel.Eq{"id": "kept-artist"}), &ids)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(HaveLen(1))
 
@@ -1218,7 +1218,7 @@ var _ = Describe("ArtistRepository", func() {
 
 		missing := func(id string) bool {
 			var vals []bool
-			Expect(repo.queryAllSlice(squirrel.Select("missing").From("artist").Where(squirrel.Eq{"id": id}), &vals)).To(Succeed())
+			Expect(repo.queryAllSlice(repo.ctx, squirrel.Select("missing").From("artist").Where(squirrel.Eq{"id": id}), &vals)).To(Succeed())
 			Expect(vals).To(HaveLen(1))
 			return vals[0]
 		}
@@ -1233,12 +1233,12 @@ var _ = Describe("ArtistRepository", func() {
 			// which would orphan this non-missing artist.
 			emptyArtist := model.Artist{ID: "refresh-empty", Name: "No Content Artist"}
 			Expect(repo.Put(&emptyArtist)).To(Succeed())
-			_, err := repo.executeSQL(squirrel.Insert("library_artist").
+			_, err := repo.executeSQL(repo.ctx, squirrel.Insert("library_artist").
 				SetMap(map[string]any{"library_id": 1, "artist_id": emptyArtist.ID, "stats": "{}"}))
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() {
-				_, _ = repo.executeSQL(squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": emptyArtist.ID}))
-				_ = repo.delete(squirrel.Eq{"id": emptyArtist.ID})
+				_, _ = repo.executeSQL(repo.ctx, squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": emptyArtist.ID}))
+				_ = repo.delete(repo.ctx, squirrel.Eq{"id": emptyArtist.ID})
 			})
 
 			Expect(missing(emptyArtist.ID)).To(BeFalse())
@@ -1248,7 +1248,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			Expect(missing(emptyArtist.ID)).To(BeTrue())
 			var orphanIDs []string
-			Expect(repo.queryAllSlice(squirrel.Select("id").From("artist").
+			Expect(repo.queryAllSlice(repo.ctx, squirrel.Select("id").From("artist").
 				Where("missing = false").
 				Where("id not in (select artist_id from library_artist)"), &orphanIDs)).To(Succeed())
 			Expect(orphanIDs).ToNot(ContainElement(emptyArtist.ID))
@@ -1261,7 +1261,7 @@ var _ = Describe("ArtistRepository", func() {
 			legacyOrphan := model.Artist{ID: "refresh-legacy-orphan", Name: "Legacy Orphan"}
 			Expect(repo.Put(&legacyOrphan)).To(Succeed())
 			DeferCleanup(func() {
-				_ = repo.delete(squirrel.Eq{"id": legacyOrphan.ID})
+				_ = repo.delete(repo.ctx, squirrel.Eq{"id": legacyOrphan.ID})
 			})
 
 			Expect(missing(legacyOrphan.ID)).To(BeFalse())

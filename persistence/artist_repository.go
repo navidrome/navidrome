@@ -206,33 +206,33 @@ func (r *artistRepository) applyLibraryFilterToArtistQuery(query SelectBuilder) 
 
 func (r *artistRepository) selectArtist(options ...model.QueryOptions) SelectBuilder {
 	// Stats Format: {"1": {"albumartist": {"m": 10, "a": 5, "s": 1024}, "artist": {...}}, "2": {...}}
-	query := r.newSelect(options...).Columns("artist.*",
+	query := r.newSelect(r.ctx, options...).Columns("artist.*",
 		"JSON_GROUP_OBJECT(library_artist.library_id, JSONB(library_artist.stats)) as library_stats_json")
 
 	query = r.applyLibraryFilterToArtistQuery(query)
 	query = query.GroupBy("artist.id")
-	return r.withAnnotation(query, "artist.id")
+	return r.withAnnotation(r.ctx, query, "artist.id")
 }
 
 func (r *artistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	query := r.newSelect()
+	query := r.newSelect(r.ctx)
 	query = r.applyLibraryFilterToArtistQuery(query)
 	// Only the annotation join is gated; the library_artist join above (and its count(distinct))
 	// must stay, since an artist can span multiple libraries.
 	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
-		query = r.withAnnotation(query, "artist.id")
+		query = r.withAnnotation(r.ctx, query, "artist.id")
 	}
-	return r.count(query, options...)
+	return r.count(r.ctx, query, options...)
 }
 
 // Exists checks if an artist with the given ID exists in the database and is accessible by the current user.
 func (r *artistRepository) Exists(id string) (bool, error) {
 	// Create a query using the same library filtering logic as selectArtist()
-	query := r.newSelect().Columns("count(distinct artist.id) as exist").Where(Eq{"artist.id": id})
+	query := r.newSelect(r.ctx).Columns("count(distinct artist.id) as exist").Where(Eq{"artist.id": id})
 	query = r.applyLibraryFilterToArtistQuery(query)
 
 	var res struct{ Exist int64 }
-	err := r.queryOne(query, &res)
+	err := r.queryOne(r.ctx, query, &res)
 	return res.Exist > 0, err
 }
 
@@ -240,13 +240,13 @@ func (r *artistRepository) Put(a *model.Artist, colsToUpdate ...string) error {
 	dba := &dbArtist{Artist: a}
 	dba.CreatedAt = new(time.Now())
 	dba.UpdatedAt = dba.CreatedAt
-	_, err := r.put(dba.ID, dba, colsToUpdate...)
+	_, err := r.put(r.ctx, dba.ID, dba, colsToUpdate...)
 	return err
 }
 
 func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
 	dba := &dbArtist{Artist: a}
-	_, err := r.put(a.ID, dba,
+	_, err := r.put(r.ctx, a.ID, dba,
 		"biography", "small_image_url", "medium_image_url", "large_image_url",
 		"similar_artists", "external_url", "external_info_updated_at")
 	return err
@@ -255,7 +255,7 @@ func (r *artistRepository) UpdateExternalInfo(a *model.Artist) error {
 func (r *artistRepository) Get(id string) (*model.Artist, error) {
 	sel := r.selectArtist().Where(Eq{"artist.id": id})
 	var dba dbArtists
-	if err := r.queryAll(sel, &dba); err != nil {
+	if err := r.queryAll(r.ctx, sel, &dba); err != nil {
 		return nil, err
 	}
 	if len(dba) == 0 {
@@ -269,7 +269,7 @@ func (r *artistRepository) Get(id string) (*model.Artist, error) {
 func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists, error) {
 	sel := r.selectArtist(options...)
 	var dba dbArtists
-	err := r.queryAll(sel, &dba)
+	err := r.queryAll(r.ctx, sel, &dba)
 	if err != nil {
 		return nil, err
 	}
@@ -281,12 +281,12 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 // getAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
 // heavy stats columns and JSON post-processing.
 func (r *artistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
-	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(options...).Columns("artist.id")).GroupBy("artist.id")
+	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(r.ctx, options...).Columns("artist.id")).GroupBy("artist.id")
 	if filtersNeedAnnotation(sq) {
-		sq = r.withAnnotation(sq, "artist.id")
+		sq = r.withAnnotation(r.ctx, sq, "artist.id")
 	}
 	ids := []string{}
-	err := r.queryAllSlice(sq, &ids)
+	err := r.queryAllSlice(r.ctx, sq, &ids)
 	return ids, err
 }
 
@@ -375,13 +375,13 @@ func (r *artistRepository) purgeEmpty() error {
 		Where(orphanFilter).
 		Where("uploaded_image != ''")
 	var imageFiles []string
-	if err := r.queryAllSlice(sel, &imageFiles); err != nil && !errors.Is(err, model.ErrNotFound) {
+	if err := r.queryAllSlice(r.ctx, sel, &imageFiles); err != nil && !errors.Is(err, model.ErrNotFound) {
 		return fmt.Errorf("collecting artist images for cleanup: %w", err)
 	}
 
 	// Delete orphan artists
 	del := Delete(r.tableName).Where(orphanFilter)
-	c, err := r.executeSQL(del)
+	c, err := r.executeSQL(r.ctx, del)
 	if err != nil {
 		return fmt.Errorf("purging empty artists: %w", err)
 	}
@@ -408,8 +408,8 @@ func (r *artistRepository) purgeEmpty() error {
 // search fast-path's `missing = false` filter correct (see searchCfg). Called wherever such a row can
 // be dropped: RefreshStats cleanup and library deletion cascade.
 func (r *artistRepository) markOrphansMissing() error {
-	_, err := r.executeSQL(Expr(
-		"update artist set missing = true where missing = false " +
+	_, err := r.executeSQL(r.ctx, Expr(
+		"update artist set missing = true where missing = false "+
 			"and not exists (select 1 from library_artist where library_artist.artist_id = artist.id)"))
 	if err != nil {
 		return fmt.Errorf("marking orphaned artists missing: %w", err)
@@ -429,7 +429,7 @@ with artists_with_non_missing_albums as (
 update artist
 set missing = (artist.id not in (select artist_id from artists_with_non_missing_albums));
         `)
-	_, err := r.executeSQL(q)
+	_, err := r.executeSQL(r.ctx, q)
 	if err != nil {
 		return fmt.Errorf("marking missing artists: %w", err)
 	}
@@ -456,7 +456,7 @@ on conflict (user_id, item_id, item_type) do update
     set play_count = excluded.play_count,
         play_date  = excluded.play_date;
 `)
-	return r.executeSQL(query)
+	return r.executeSQL(r.ctx, query)
 }
 
 // RefreshStats updates the stats field for artists whose associated media files were updated after the oldest recorded library scan time.
@@ -584,7 +584,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 		// Now use Expr with the expanded SQL and all parameters
 		sqlizer := Expr(batchSQL, args...)
 
-		rowsAffected, err := r.executeSQL(sqlizer)
+		rowsAffected, err := r.executeSQL(r.ctx, sqlizer)
 		if err != nil {
 			return totalRowsAffected, fmt.Errorf("executing batch update for artist stats (batch %d): %w", batchCounter, err)
 		}
@@ -593,7 +593,7 @@ func (r *artistRepository) RefreshStats(allArtists bool) (int64, error) {
 
 	// Remove library_artist entries for artists that no longer have any content in a library.
 	cleanupSQL := Delete("library_artist").Where("stats = '{}'")
-	cleanupRows, err := r.executeSQL(cleanupSQL)
+	cleanupRows, err := r.executeSQL(r.ctx, cleanupSQL)
 	if err != nil {
 		log.Warn(r.ctx, "Failed to cleanup empty library_artist entries", err)
 	} else {
@@ -661,7 +661,7 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 		opts.Filters = nil
 	}
 	var res dbArtists
-	err := r.doSearch(r.selectArtist(opts), q, &res, r.searchCfg(scope), opts)
+	err := r.doSearch(r.ctx, r.selectArtist(opts), q, &res, r.searchCfg(scope), opts)
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
@@ -674,14 +674,14 @@ func (r *artistRepository) Search(q string, options ...model.QueryOptions) (mode
 // entirely (the fast-path: the user sees everything the search could return, so a filter would be
 // pure O(offset) overhead). It intersects the requested libraries with what the user can see.
 func (r *artistRepository) searchScope(filter Sqlizer) []int {
-	visible, err := r.visibleLibraryIDs()
+	visible, err := r.visibleLibraryIDs(r.ctx)
 	if err != nil {
 		return r.requestedLibraryIDs(filter) // fail safe: narrow to the request rather than widen
 	}
 	requested := r.requestedLibraryIDs(filter)
 	if requested == nil {
 		// No explicit request: scope to the visible set, unless the user sees everything.
-		if r.userSeesAllLibraries(visible) {
+		if r.userSeesAllLibraries(r.ctx, visible) {
 			return nil
 		}
 		return visible

@@ -27,12 +27,12 @@ func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerReposi
 }
 
 func (r *playerRepository) Put(p *model.Player) error {
-	_, err := r.put(p.ID, p)
+	_, err := r.put(r.ctx, p.ID, p)
 	return err
 }
 
 func (r *playerRepository) selectPlayer(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).
+	return r.newSelect(r.ctx, options...).
 		Columns("player.*").
 		Join("user ON player.user_id = user.id").
 		Columns("user.user_name username")
@@ -41,7 +41,7 @@ func (r *playerRepository) selectPlayer(options ...model.QueryOptions) SelectBui
 func (r *playerRepository) Get(id string) (*model.Player, error) {
 	sel := r.selectPlayer().Where(Eq{"player.id": id})
 	var res model.Player
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	return &res, err
 }
 
@@ -52,17 +52,17 @@ func (r *playerRepository) FindMatch(userId, client, userAgent string) (*model.P
 		Eq{"user_id": userId},
 	})
 	var res model.Player
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	return &res, err
 }
 
 func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBuilder {
 	s := r.selectPlayer(options...)
-	return s.Where(r.addRestriction())
+	return s.Where(r.addRestriction(r.ctx))
 }
 
 func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[string]int64, error) {
-	sel := r.newSelect(options...).
+	sel := r.newSelect(r.ctx, options...).
 		Columns(
 			"case when client = 'NavidromeUI' then name else client end as player",
 			"count(*) as count",
@@ -71,7 +71,7 @@ func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[str
 		Player string
 		Count  int64
 	}
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[str
 }
 
 func (r *playerRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.newRestSelect(), options...)
+	return r.count(r.ctx, r.newRestSelect(), options...)
 }
 
 func (r *playerRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
@@ -93,14 +93,14 @@ func (r *playerRepository) Count(ctx context.Context, options ...rest.QueryOptio
 func (r *playerRepository) Read(ctx context.Context, id string) (*model.Player, error) {
 	sel := r.newRestSelect().Where(Eq{"player.id": id})
 	var res model.Player
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
 func (r *playerRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Player, error) {
 	sel := r.newRestSelect(r.parseRestOptions(ctx, options...))
 	res := model.Players{}
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	return res, err
 }
 
@@ -117,18 +117,18 @@ func (r *playerRepository) Save(ctx context.Context, t *model.Player) (string, e
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
 	}
-	return r.put(t.ID, t)
+	return r.put(ctx, t.ID, t)
 }
 
 func (r *playerRepository) Update(ctx context.Context, id string, entity model.Player, cols ...string) error {
 	t := &entity
 	t.ID = id
-	return r.updateOwned(id, t, cols...)
+	return r.updateOwned(ctx, id, t, cols...)
 }
 
 func (r *playerRepository) Delete(ctx context.Context, ids ...string) error {
 	for _, id := range ids {
-		if err := r.deleteOwned(id); err != nil {
+		if err := r.deleteOwned(ctx, id); err != nil {
 			return err
 		}
 	}

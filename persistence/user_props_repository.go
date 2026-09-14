@@ -23,7 +23,7 @@ func NewUserPropsRepository(ctx context.Context, db dbx.Builder) model.UserProps
 
 func (r userPropsRepository) Put(userId, key string, value string) error {
 	update := Update(r.tableName).Set("value", value).Where(And{Eq{"user_id": userId}, Eq{"key": key}})
-	count, err := r.executeSQL(update)
+	count, err := r.executeSQL(r.ctx, update)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (r userPropsRepository) Put(userId, key string, value string) error {
 		return nil
 	}
 	insert := Insert(r.tableName).Columns("user_id", "key", "value").Values(userId, key, value)
-	_, err = r.executeSQL(insert)
+	_, err = r.executeSQL(r.ctx, insert)
 	return err
 }
 
@@ -40,7 +40,7 @@ func (r userPropsRepository) Get(userId, key string) (string, error) {
 	resp := struct {
 		Value string
 	}{}
-	err := r.queryOne(sel, &resp)
+	err := r.queryOne(r.ctx, sel, &resp)
 	if err != nil {
 		return "", err
 	}
@@ -59,5 +59,5 @@ func (r userPropsRepository) DefaultGet(userId, key string, defaultValue string)
 }
 
 func (r userPropsRepository) Delete(userId, key string) error {
-	return r.delete(And{Eq{"user_id": userId}, Eq{"key": key}})
+	return r.delete(r.ctx, And{Eq{"user_id": userId}, Eq{"key": key}})
 }

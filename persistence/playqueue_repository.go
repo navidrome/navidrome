@@ -68,7 +68,7 @@ func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) erro
 		pq.CreatedAt = time.Now()
 	}
 	pq.UpdatedAt = time.Now()
-	_, err = r.put(pq.ID, pq, colNames...)
+	_, err = r.put(r.ctx, pq.ID, pq, colNames...)
 	if err != nil {
 		log.Error(r.ctx, "Error saving playqueue", "user", u.UserName, err)
 		return err
@@ -77,18 +77,18 @@ func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) erro
 }
 
 func (r *playQueueRepository) RetrieveWithMediaFiles(userId string) (*model.PlayQueue, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
+	sel := r.newSelect(r.ctx).Columns("*").Where(Eq{"user_id": userId})
 	var res playQueue
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	q := r.toModel(&res)
 	q.Items = r.loadTracks(q.Items)
 	return &q, err
 }
 
 func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"user_id": userId})
+	sel := r.newSelect(r.ctx).Columns("*").Where(Eq{"user_id": userId})
 	var res playQueue
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	return new(r.toModel(&res)), err
 }
 
@@ -167,7 +167,7 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 }
 
 func (r *playQueueRepository) clearPlayQueue(userId string) error {
-	return r.delete(Eq{"user_id": userId})
+	return r.delete(r.ctx, Eq{"user_id": userId})
 }
 
 func (r *playQueueRepository) Clear(userId string) error {

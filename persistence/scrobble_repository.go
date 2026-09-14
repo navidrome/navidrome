@@ -25,7 +25,7 @@ func toTs(_ string, value any) Sqlizer {
 func (r *scrobbleRepository) baseQuery(options ...model.QueryOptions) SelectBuilder {
 	user := loggedUser(r.ctx)
 
-	return r.newSelect(options...).
+	return r.newSelect(r.ctx, options...).
 		Columns("id", "media_file_id", "submission_time").
 		Where(Eq{"scrobbles.user_id": user.ID})
 }
@@ -53,12 +53,12 @@ func (r *scrobbleRepository) RecordScrobble(mediaFileID string, submissionTime t
 		"submission_time": submissionTime.Unix(),
 	}
 	insert := Insert(r.tableName).SetMap(values)
-	_, err := r.executeSQL(insert)
+	_, err := r.executeSQL(r.ctx, insert)
 	return err
 }
 
 func (r *scrobbleRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.baseQuery(), options...)
+	return r.count(r.ctx, r.baseQuery(), options...)
 }
 
 func (r *scrobbleRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
@@ -68,14 +68,14 @@ func (r *scrobbleRepository) Count(ctx context.Context, options ...rest.QueryOpt
 func (r *scrobbleRepository) Get(id string) (*model.Scrobble, error) {
 	sel := r.baseQuery().Where(Eq{"id": id})
 	var res model.Scrobble
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	return &res, err
 }
 
 func (r *scrobbleRepository) GetAll(options ...model.QueryOptions) (model.Scrobbles, error) {
 	sel := r.baseQuery(options...)
 	var scrobbles model.Scrobbles
-	err := r.queryAll(sel, &scrobbles)
+	err := r.queryAll(r.ctx, sel, &scrobbles)
 	return scrobbles, err
 }
 

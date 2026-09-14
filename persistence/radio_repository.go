@@ -32,13 +32,13 @@ func (r *radioRepository) isPermitted() bool {
 }
 
 func (r *radioRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	sql := r.newSelect()
-	return r.count(sql, options...)
+	sql := r.newSelect(r.ctx)
+	return r.count(r.ctx, sql, options...)
 }
 
 // Exists needs no library or ownership filter: radios are visible to every user.
 func (r *radioRepository) Exists(id string) (bool, error) {
-	return r.exists(Eq{"id": id})
+	return r.exists(r.ctx, Eq{"id": id})
 }
 
 func (r *radioRepository) Delete(ctx context.Context, ids ...string) error {
@@ -47,7 +47,7 @@ func (r *radioRepository) Delete(ctx context.Context, ids ...string) error {
 	}
 
 	for _, id := range ids {
-		if err := r.deleteByID(id); err != nil {
+		if err := r.deleteByID(ctx, id); err != nil {
 			return err
 		}
 	}
@@ -55,9 +55,9 @@ func (r *radioRepository) Delete(ctx context.Context, ids ...string) error {
 }
 
 func (r *radioRepository) Get(id string) (*model.Radio, error) {
-	sel := r.newSelect().Where(Eq{"id": id}).Columns("*")
+	sel := r.newSelect(r.ctx).Where(Eq{"id": id}).Columns("*")
 	res := model.Radio{}
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	if err != nil {
 		return &res, err
 	}
@@ -67,9 +67,9 @@ func (r *radioRepository) Get(id string) (*model.Radio, error) {
 }
 
 func (r *radioRepository) GetAll(options ...model.QueryOptions) (model.Radios, error) {
-	sel := r.newSelect(options...).Columns("*")
+	sel := r.newSelect(r.ctx, options...).Columns("*")
 	res := model.Radios{}
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	if err != nil {
 		return res, err
 	}
@@ -96,7 +96,7 @@ func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error 
 	if len(colsToUpdate) > 0 {
 		colsToUpdate = append(colsToUpdate, "UpdatedAt")
 	}
-	_, err := r.put(radio.ID, radio, colsToUpdate...)
+	_, err := r.put(r.ctx, radio.ID, radio, colsToUpdate...)
 	if err != nil {
 		return err
 	}

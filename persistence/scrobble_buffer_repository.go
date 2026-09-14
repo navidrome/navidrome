@@ -46,7 +46,7 @@ func (r *scrobbleBufferRepository) UserIDs(service string) ([]string, error) {
 		GroupBy("user_id").
 		OrderBy("count(*)")
 	var userIds []string
-	err := r.queryAllSlice(sql, &userIds)
+	err := r.queryAllSlice(r.ctx, sql, &userIds)
 	return userIds, err
 }
 
@@ -59,7 +59,7 @@ func (r *scrobbleBufferRepository) Enqueue(service, userId, mediaFileId string, 
 		"play_time":     playTime,
 		"enqueue_time":  time.Now(),
 	})
-	_, err := r.executeSQL(ins)
+	_, err := r.executeSQL(r.ctx, ins)
 	return err
 }
 
@@ -75,14 +75,14 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 		OrderBy("play_time", "s.rowid").Limit(1)
 
 	var res dbScrobbleBuffer
-	err := r.queryOne(sql, &res)
+	err := r.queryOne(r.ctx, sql, &res)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	res.ScrobbleEntry.Participants, err = r.getParticipants(&res.ScrobbleEntry.MediaFile)
+	res.ScrobbleEntry.Participants, err = r.getParticipants(r.ctx, &res.ScrobbleEntry.MediaFile)
 	if err != nil {
 		return nil, err
 	}
@@ -90,15 +90,15 @@ func (r *scrobbleBufferRepository) Next(service string, userId string) (*model.S
 }
 
 func (r *scrobbleBufferRepository) Dequeue(entry *model.ScrobbleEntry) error {
-	return r.delete(Eq{"id": entry.ID})
+	return r.delete(r.ctx, Eq{"id": entry.ID})
 }
 
 func (r *scrobbleBufferRepository) Discard(service string) error {
-	return r.delete(Eq{"service": service})
+	return r.delete(r.ctx, Eq{"service": service})
 }
 
 func (r *scrobbleBufferRepository) Length() (int64, error) {
-	return r.count(Select())
+	return r.count(r.ctx, Select())
 }
 
 var _ model.ScrobbleBufferRepository = (*scrobbleBufferRepository)(nil)

@@ -20,20 +20,20 @@ func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreReposito
 }
 
 func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(opt...).Columns("tag.tag_value as name")
+	return r.newSelect(r.ctx, opt...).Columns("tag.tag_value as name")
 }
 
 func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
 	sq := r.selectGenre(opt...)
 	res := model.Genres{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(r.ctx, sq, &res)
 	return res, err
 }
 
 func (r *genreRepository) Get(id string) (*model.Genre, error) {
 	sel := r.selectGenre().Where(Eq{"tag.id": id})
 	var res model.Genre
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	return &res, err
 }
 

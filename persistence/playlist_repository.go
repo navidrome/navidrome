@@ -94,17 +94,17 @@ func (r *playlistRepository) userFilter() Sqlizer {
 func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
 	query := Select().Where(r.userFilter())
 	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
-		query = r.withAnnotation(query, "playlist.id")
+		query = r.withAnnotation(r.ctx, query, "playlist.id")
 	}
-	return r.count(query, options...)
+	return r.count(r.ctx, query, options...)
 }
 
 func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(And{Eq{"id": id}, r.userFilter()})
+	return r.exists(r.ctx, And{Eq{"id": id}, r.userFilter()})
 }
 
 func (r *playlistRepository) Delete(ctx context.Context, ids ...string) error {
-	return r.delete(And{Eq{"id": ids}, r.userFilter()})
+	return r.delete(ctx, And{Eq{"id": ids}, r.userFilter()})
 }
 
 func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
@@ -113,7 +113,7 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 		if pls.ID == "" {
 			return errors.New("playlist id is required for partial update")
 		}
-		_, err := r.put(pls.ID, pls, cols...)
+		_, err := r.put(r.ctx, pls.ID, pls, cols...)
 		return err
 	}
 	isNew := pls.ID == ""
@@ -122,7 +122,7 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	}
 	pls.UpdatedAt = time.Now()
 
-	id, err := r.put(pls.ID, pls)
+	id, err := r.put(r.ctx, pls.ID, pls)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, incl
 		return nil, err
 	}
 	if refreshSmartPlaylist {
-		r.refreshSmartPlaylist(pls)
+		r.refreshSmartPlaylist(r.ctx, pls)
 	}
 	tracks, err := r.loadTracks(Select().From("playlist_tracks").
 		Where(Eq{"missing": false}).
@@ -175,7 +175,7 @@ func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
 func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 	sel := r.selectPlaylist().Where(sql)
 	var pls []dbPlaylist
-	err := r.queryAll(sel, &pls)
+	err := r.queryAll(r.ctx, sel, &pls)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func (r *playlistRepository) hydrateArtwork(playlists model.Playlists) {
 func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
 	sel := r.selectPlaylist(options...).Where(r.userFilter())
 	var res []dbPlaylist
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -212,13 +212,13 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 func (r *playlistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	// Joins a projection of user, not the table: its name/created_at columns would make an ORDER BY
 	// on the playlist's own ambiguous.
-	sq := r.newSelect(options...).Columns("playlist.id", "user.user_name as owner_name").
+	sq := r.newSelect(r.ctx, options...).Columns("playlist.id", "user.user_name as owner_name").
 		Join("(select id, user_name from user) user on user.id = owner_id").Where(r.userFilter())
 	if filtersNeedAnnotation(sq) {
-		sq = r.withAnnotation(sq, "playlist.id")
+		sq = r.withAnnotation(r.ctx, sq, "playlist.id")
 	}
 	ids := []string{}
-	err := r.queryAllSlice(sq, &ids)
+	err := r.queryAllSlice(r.ctx, sq, &ids)
 	return ids, err
 }
 
@@ -239,7 +239,7 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").
 		Where(And{Eq{"playlist_tracks.media_file_id": mediaFileId}, r.userFilter()})
 	var res []dbPlaylist
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return model.Playlists{}, nil
@@ -255,9 +255,9 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 }
 
 func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	sel := r.newSelect(options...).Join("user on user.id = owner_id").
+	sel := r.newSelect(r.ctx, options...).Join("user on user.id = owner_id").
 		Columns(r.tableName+".*", "user.user_name as owner_name")
-	return r.withAnnotation(sel, r.tableName+".id")
+	return r.withAnnotation(r.ctx, sel, r.tableName+".id")
 }
 
 func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
@@ -271,7 +271,7 @@ func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) er
 func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []string) error {
 	// Remove old tracks
 	del := Delete("playlist_tracks").Where(Eq{"playlist_id": playlistId})
-	_, err := r.executeSQL(del)
+	_, err := r.executeSQL(r.ctx, del)
 	if err != nil {
 		return err
 	}
@@ -289,7 +289,7 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 			ins = ins.Values(playlistId, t, pos)
 			pos++
 		}
-		_, err := r.executeSQL(ins)
+		_, err := r.executeSQL(r.ctx, ins)
 		if err != nil {
 			return err
 		}
@@ -310,7 +310,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 		Join("playlist_tracks f on f.media_file_id = media_file.id").
 		Where(Eq{"playlist_id": pls.ID})
 	var res struct{ Duration, Size, Count float32 }
-	err := r.queryOne(statsSql, &res)
+	err := r.queryOne(r.ctx, statsSql, &res)
 	if err != nil {
 		return err
 	}
@@ -323,7 +323,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 		Set("song_count", res.Count).
 		Set("updated_at", now).
 		Where(Eq{"id": pls.ID})
-	_, err = r.executeSQL(upd)
+	_, err = r.executeSQL(r.ctx, upd)
 	if err != nil {
 		return err
 	}
@@ -346,7 +346,7 @@ func (r *playlistRepository) enqueueCoverRebuild(id string) {
 
 // tracksQuery is shared by loadTracks and GetCursor, so both hydrate rows identically.
 func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectBuilder {
-	query = r.applyLibraryFilter(query, "f")
+	query = r.applyLibraryFilter(r.ctx, query, "f")
 	userID := loggedUser(r.ctx).ID
 	return query.
 		Columns(
@@ -372,7 +372,7 @@ func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectB
 
 func (r *playlistRepository) loadTracks(query SelectBuilder, id string) (model.PlaylistTracks, error) {
 	tracks := dbPlaylistTracks{}
-	err := r.queryAll(r.tracksQuery(query, id), &tracks)
+	err := r.queryAll(r.ctx, r.tracksQuery(query, id), &tracks)
 	if err != nil {
 		return nil, err
 	}
@@ -406,7 +406,7 @@ func (r *playlistRepository) Update(ctx context.Context, id string, entity model
 	pls := dbPlaylist{Playlist: entity}
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
-	_, err := r.put(id, pls, append(cols, "updatedAt")...)
+	_, err := r.put(ctx, id, pls, append(cols, "updatedAt")...)
 	return err
 }
 
@@ -418,7 +418,7 @@ func (r *playlistRepository) removeOrphans() error {
 		GroupBy("playlist_tracks.playlist_id")
 
 	var pls []struct{ Id, Name string }
-	err := r.queryAll(sel, &pls)
+	err := r.queryAll(r.ctx, sel, &pls)
 	if err != nil {
 		return fmt.Errorf("fetching playlists with orphan tracks: %w", err)
 	}
@@ -429,7 +429,7 @@ func (r *playlistRepository) removeOrphans() error {
 			ConcatExpr("media_file_id not in (select id from media_file)"),
 			Eq{"playlist_id": pl.Id},
 		})
-		n, err := r.executeSQL(del)
+		n, err := r.executeSQL(r.ctx, del)
 		if n == 0 || err != nil {
 			return fmt.Errorf("deleting orphan tracks from playlist %s: %w", pl.Name, err)
 		}
@@ -448,7 +448,7 @@ func (r *playlistRepository) removeOrphans() error {
 // The two-step approach (negate then reassign via CTE) avoids UNIQUE constraint violations on (playlist_id, id).
 func (r *playlistRepository) renumber(id string) error {
 	// Step 1: Negate all IDs to clear the positive ID space
-	_, err := r.executeSQL(Expr(
+	_, err := r.executeSQL(r.ctx, Expr(
 		`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ? AND id > 0`, id))
 	if err != nil {
 		return err
@@ -456,7 +456,7 @@ func (r *playlistRepository) renumber(id string) error {
 	// Step 2: Assign new sequential positive IDs using UPDATE...FROM with a CTE.
 	// The CTE is fully materialized before the UPDATE begins, avoiding self-referencing issues.
 	// ORDER BY id DESC restores original order since IDs are now negative.
-	_, err = r.executeSQL(Expr(
+	_, err = r.executeSQL(r.ctx, Expr(
 		`WITH new_ids AS (
 			SELECT rowid as rid, ROW_NUMBER() OVER (ORDER BY id DESC) as new_id
 			FROM playlist_tracks WHERE playlist_id = ?

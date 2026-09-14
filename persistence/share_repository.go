@@ -31,7 +31,7 @@ func NewShareRepository(ctx context.Context, db dbx.Builder) model.ShareReposito
 
 func (r *shareRepository) Delete(ctx context.Context, ids ...string) error {
 	for _, id := range ids {
-		if err := r.deleteOwned(id); err != nil {
+		if err := r.deleteOwned(ctx, id); err != nil {
 			return err
 		}
 	}
@@ -39,19 +39,19 @@ func (r *shareRepository) Delete(ctx context.Context, ids ...string) error {
 }
 
 func (r *shareRepository) selectShare(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).Join("user u on u.id = share.user_id").
+	return r.newSelect(r.ctx, options...).Join("user u on u.id = share.user_id").
 		Columns("share.*", "user_name as username").
-		Where(r.addRestriction())
+		Where(r.addRestriction(r.ctx))
 }
 
 func (r *shareRepository) Exists(id string) (bool, error) {
-	return r.exists(r.addRestriction(And{Eq{"id": id}}))
+	return r.exists(r.ctx, r.addRestriction(r.ctx, And{Eq{"id": id}}))
 }
 
 func (r *shareRepository) Get(id string) (*model.Share, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (r *shareRepository) Get(id string) (*model.Share, error) {
 func (r *shareRepository) GetAll(options ...model.QueryOptions) (model.Shares, error) {
 	sq := r.selectShare(options...)
 	res := model.Shares{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(r.ctx, sq, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (r *shareRepository) Update(ctx context.Context, id string, entity model.Sh
 	if len(cols) > 0 {
 		cols = append(cols, "updated_at")
 	}
-	return r.updateOwned(id, s, cols...)
+	return r.updateOwned(ctx, id, s, cols...)
 }
 
 func (r *shareRepository) Save(ctx context.Context, s *model.Share) (string, error) {
@@ -181,11 +181,11 @@ func (r *shareRepository) Save(ctx context.Context, s *model.Share) (string, err
 	}
 	s.CreatedAt = time.Now()
 	s.UpdatedAt = time.Now()
-	return r.put(s.ID, s)
+	return r.put(ctx, s.ID, s)
 }
 
 func (r *shareRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.selectShare(), options...)
+	return r.count(r.ctx, r.selectShare(), options...)
 }
 
 func (r *shareRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
@@ -195,14 +195,14 @@ func (r *shareRepository) Count(ctx context.Context, options ...rest.QueryOption
 func (r *shareRepository) Read(ctx context.Context, id string) (*model.Share, error) {
 	sel := r.selectShare().Where(Eq{"share.id": id})
 	var res model.Share
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
 func (r *shareRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Share, error) {
 	sq := r.selectShare(r.parseRestOptions(ctx, options...))
 	res := model.Shares{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(ctx, sq, &res)
 	return res, err
 }
 

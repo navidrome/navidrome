@@ -67,7 +67,7 @@ var _ = Describe("TranscodingRepository", func() {
 		})
 
 		It("returns not found when deleting a missing transcoding", func() {
-			err := adminRepo.(*transcodingRepository).Delete("does-not-exist")
+			err := adminRepo.(*transcodingRepository).Delete(adminCtx, "does-not-exist")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 

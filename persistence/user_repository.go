@@ -71,7 +71,7 @@ func NewUserRepository(ctx context.Context, db dbx.Builder) model.UserRepository
 
 // selectUserWithLibraries returns a SelectBuilder that includes library information
 func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).
+	return r.newSelect(r.ctx, options...).
 		Columns(`user.*`,
 			`COALESCE(json_group_array(json_object(
 				'id', library.id,
@@ -90,13 +90,13 @@ func (r *userRepository) selectUserWithLibraries(options ...model.QueryOptions) 
 }
 
 func (r *userRepository) CountAll(qo ...model.QueryOptions) (int64, error) {
-	return r.count(Select(), qo...)
+	return r.count(r.ctx, Select(), qo...)
 }
 
 func (r *userRepository) Get(id string) (*model.User, error) {
 	sel := r.selectUserWithLibraries().Where(Eq{"user.id": id})
 	var res dbUser
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (r *userRepository) Get(id string) (*model.User, error) {
 func (r *userRepository) GetAll(options ...model.QueryOptions) (model.Users, error) {
 	sel := r.selectUserWithLibraries(options...)
 	var res dbUsers
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func (r *userRepository) Put(u *model.User) error {
 	var epoch int
 	if u.NewPassword != "" {
 		var res struct{ TokenEpoch int }
-		err = r.queryOne(update.Set("token_epoch", Expr("token_epoch + 1")).
+		err = r.queryOne(r.ctx, update.Set("token_epoch", Expr("token_epoch + 1")).
 			Suffix("RETURNING token_epoch"), &res)
 		switch {
 		case errors.Is(err, model.ErrNotFound):
@@ -145,7 +145,7 @@ func (r *userRepository) Put(u *model.User) error {
 			epoch = res.TokenEpoch
 		}
 	} else {
-		count, err := r.executeSQL(update)
+		count, err := r.executeSQL(r.ctx, update)
 		if err != nil {
 			return err
 		}
@@ -154,7 +154,7 @@ func (r *userRepository) Put(u *model.User) error {
 	if isNewUser {
 		values["created_at"] = time.Now()
 		insert := Insert(r.tableName).SetMap(values)
-		_, err = r.executeSQL(insert)
+		_, err = r.executeSQL(r.ctx, insert)
 		if err != nil {
 			return err
 		}
@@ -166,7 +166,7 @@ func (r *userRepository) Put(u *model.User) error {
 			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library",
 			u.ID,
 		)
-		if _, err := r.executeSQL(sql); err != nil {
+		if _, err := r.executeSQL(r.ctx, sql); err != nil {
 			return fmt.Errorf("failed to assign all libraries to admin user: %w", err)
 		}
 	} else if isNewUser { // Only for new regular users
@@ -175,7 +175,7 @@ func (r *userRepository) Put(u *model.User) error {
 			"INSERT OR IGNORE INTO user_library (user_id, library_id) SELECT ?, id FROM library WHERE default_new_users = true",
 			u.ID,
 		)
-		if _, err := r.executeSQL(sql); err != nil {
+		if _, err := r.executeSQL(r.ctx, sql); err != nil {
 			return fmt.Errorf("failed to assign default libraries to new user: %w", err)
 		}
 	}
@@ -192,7 +192,7 @@ func (r *userRepository) Put(u *model.User) error {
 func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 	sel := r.selectUserWithLibraries(model.QueryOptions{Sort: "updated_at", Max: 1}).Where(Eq{"user.is_admin": true})
 	var usr dbUser
-	err := r.queryOne(sel, &usr)
+	err := r.queryOne(r.ctx, sel, &usr)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (r *userRepository) FindFirstAdmin() (*model.User, error) {
 func (r *userRepository) FindByUsername(username string) (*model.User, error) {
 	sel := r.selectUserWithLibraries().Where(Expr("user.user_name = ? COLLATE NOCASE", username))
 	var usr dbUser
-	err := r.queryOne(sel, &usr)
+	err := r.queryOne(r.ctx, sel, &usr)
 	if err != nil {
 		return nil, err
 	}
@@ -220,14 +220,14 @@ func (r *userRepository) FindByUsernameWithPassword(username string) (*model.Use
 
 func (r *userRepository) UpdateLastLoginAt(id string) error {
 	upd := Update(r.tableName).Where(Eq{"id": id}).Set("last_login_at", time.Now())
-	_, err := r.executeSQL(upd)
+	_, err := r.executeSQL(r.ctx, upd)
 	return err
 }
 
 func (r *userRepository) UpdateLastAccessAt(id string) error {
 	now := time.Now()
 	upd := Update(r.tableName).Where(Eq{"id": id}).Set("last_access_at", now)
-	_, err := r.executeSQL(upd)
+	_, err := r.executeSQL(r.ctx, upd)
 	return err
 }
 
@@ -377,7 +377,7 @@ func (r *userRepository) Delete(ctx context.Context, ids ...string) error {
 		return rest.ErrPermissionDenied
 	}
 	for _, id := range ids {
-		if err := r.deleteByID(id); err != nil {
+		if err := r.deleteByID(ctx, id); err != nil {
 			return err
 		}
 	}
@@ -420,9 +420,9 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 
 	// if not, try to re-encrypt all current passwords with new encryption key,
 	// assuming they were encrypted with the DefaultEncryptionKey
-	sql := r.newSelect().Columns("id", "user_name", "password")
+	sql := r.newSelect(r.ctx).Columns("id", "user_name", "password")
 	users := model.Users{}
-	err = r.queryAll(sql, &users)
+	err = r.queryAll(r.ctx, sql, &users)
 	if err != nil {
 		log.Error("Could not encrypt all passwords", err)
 		return err
@@ -437,7 +437,7 @@ func (r *userRepository) initPasswordEncryptionKey() error {
 		u.NewPassword = u.Password
 		if err := r.encryptPassword(&u); err == nil {
 			upd := Update(r.tableName).Set("password", u.NewPassword).Where(Eq{"id": u.ID})
-			_, err = r.executeSQL(upd)
+			_, err = r.executeSQL(r.ctx, upd)
 			if err != nil {
 				log.Error("Password NOT encrypted! This may cause problems!", "user", u.UserName, "id", u.ID, err)
 			} else {
@@ -495,14 +495,14 @@ func (r *userRepository) GetUserLibraries(userID string) (model.Libraries, error
 		OrderBy("l.name")
 
 	var res model.Libraries
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	return res, err
 }
 
 func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error {
 	// Remove existing associations
 	delSql := Delete("user_library").Where(Eq{"user_id": userID})
-	if _, err := r.executeSQL(delSql); err != nil {
+	if _, err := r.executeSQL(r.ctx, delSql); err != nil {
 		return err
 	}
 
@@ -512,7 +512,7 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 		for _, libID := range libraryIDs {
 			insert = insert.Values(userID, libID)
 		}
-		_, err := r.executeSQL(insert)
+		_, err := r.executeSQL(r.ctx, insert)
 		return err
 	}
 	return nil

@@ -35,7 +35,7 @@ func NewArtworkRepository(ctx context.Context, db dbx.Builder) model.ArtworkRepo
 func (r *artworkRepository) GetImage(hash string) (*model.Artwork, error) {
 	sel := Select("*").From(r.tableName).Where(Eq{"hash": hash})
 	var res model.Artwork
-	if err := r.queryOne(sel, &res); err != nil {
+	if err := r.queryOne(r.ctx, sel, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -53,7 +53,7 @@ func (r *artworkRepository) PutImage(a *model.Artwork) error {
 		height=excluded.height, size_bytes=excluded.size_bytes, blur_hash=excluded.blur_hash,
 		thumb_hash=excluded.thumb_hash, dominant_color=excluded.dominant_color,
 		created_at=excluded.created_at`)
-	_, err = r.executeSQL(ins)
+	_, err = r.executeSQL(r.ctx, ins)
 	return err
 }
 
@@ -63,7 +63,7 @@ func (r *artworkRepository) GetMimeByHash() (map[string]string, error) {
 		Hash string
 		Mime string
 	}
-	if err := r.queryAll(sel, &rows); err != nil {
+	if err := r.queryAll(r.ctx, sel, &rows); err != nil {
 		return nil, err
 	}
 	res := make(map[string]string, len(rows))
@@ -78,7 +78,7 @@ func (r *artworkRepository) PurgeOrphans(createdBefore time.Time) (int64, error)
 		Lt{"created_at": createdBefore},
 		Expr("hash NOT IN (SELECT hash FROM " + itemArtworkTable + " WHERE hash <> '')"),
 	})
-	return r.executeSQL(del)
+	return r.executeSQL(r.ctx, del)
 }
 
 // artworkOwnerTables maps an artwork kind to the table that owns the entity.
@@ -98,7 +98,7 @@ func purgeDangling(r sqlRepository) (int64, error) {
 			Eq{"item_kind": kind.Prefix()},
 			Expr("item_id NOT IN (SELECT id FROM " + entityTable + ")"),
 		})
-		c, err := r.executeSQL(del)
+		c, err := r.executeSQL(r.ctx, del)
 		if err != nil {
 			return total, err
 		}
@@ -115,7 +115,7 @@ func (r *artworkRepository) GetItemArtwork(kind model.Kind, id, imageType string
 	sel := Select("*").From(itemArtworkTable).
 		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType})
 	var res model.ItemArtwork
-	if err := r.items.queryOne(sel, &res); err != nil {
+	if err := r.items.queryOne(r.ctx, sel, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -136,7 +136,7 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 		hash=excluded.hash, source=excluded.source, source_path=excluded.source_path, ref_mtime=excluded.ref_mtime,
 		trace=excluded.trace, last_failure=excluded.last_failure,
 		attempted_at=excluded.attempted_at, updated_at=excluded.updated_at`)
-	_, err = r.items.executeSQL(ins)
+	_, err = r.items.executeSQL(r.ctx, ins)
 	return err
 }
 
@@ -145,13 +145,13 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 func (r *artworkRepository) PutLastFailure(kind model.Kind, id, imageType, trace string) error {
 	upd := Update(itemArtworkTable).Set("last_failure", trace).
 		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType})
-	_, err := r.items.executeSQL(upd)
+	_, err := r.items.executeSQL(r.ctx, upd)
 	return err
 }
 
 func (r *artworkRepository) DeleteForItems(kind model.Kind, ids []string) error {
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
-		if err := r.items.delete(Eq{"item_kind": kind.Prefix(), "item_id": chunk}); err != nil {
+		if err := r.items.delete(r.ctx, Eq{"item_kind": kind.Prefix(), "item_id": chunk}); err != nil {
 			return err
 		}
 	}
@@ -173,7 +173,7 @@ func (r *artworkRepository) GetInfoForItems(kind model.Kind, ids []string) (map[
 				Eq{"ia.item_id": chunk},
 			})
 		var rows []model.ItemArtworkInfo
-		if err := r.items.queryAll(sel, &rows); err != nil {
+		if err := r.items.queryAll(r.ctx, sel, &rows); err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
