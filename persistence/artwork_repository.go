@@ -21,27 +21,25 @@ type artworkRepository struct {
 	items sqlRepository
 }
 
-func NewArtworkRepository(ctx context.Context, db dbx.Builder) model.ArtworkRepository {
+func NewArtworkRepository(db dbx.Builder) model.ArtworkRepository {
 	r := &artworkRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "artwork"
-	r.items.ctx = ctx
 	r.items.db = db
 	r.items.tableName = itemArtworkTable
 	return r
 }
 
-func (r *artworkRepository) GetImage(hash string) (*model.Artwork, error) {
+func (r *artworkRepository) GetImage(ctx context.Context, hash string) (*model.Artwork, error) {
 	sel := Select("*").From(r.tableName).Where(Eq{"hash": hash})
 	var res model.Artwork
-	if err := r.queryOne(r.ctx, sel, &res); err != nil {
+	if err := r.queryOne(ctx, sel, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
 }
 
-func (r *artworkRepository) PutImage(a *model.Artwork) error {
+func (r *artworkRepository) PutImage(ctx context.Context, a *model.Artwork) error {
 	// created_at is the last-acquisition-write time the prune grace window keys on.
 	a.CreatedAt = time.Now()
 	values, err := toSQLArgs(*a)
@@ -53,17 +51,17 @@ func (r *artworkRepository) PutImage(a *model.Artwork) error {
 		height=excluded.height, size_bytes=excluded.size_bytes, blur_hash=excluded.blur_hash,
 		thumb_hash=excluded.thumb_hash, dominant_color=excluded.dominant_color,
 		created_at=excluded.created_at`)
-	_, err = r.executeSQL(r.ctx, ins)
+	_, err = r.executeSQL(ctx, ins)
 	return err
 }
 
-func (r *artworkRepository) GetMimeByHash() (map[string]string, error) {
+func (r *artworkRepository) GetMimeByHash(ctx context.Context) (map[string]string, error) {
 	sel := Select("hash", "mime").From(r.tableName)
 	var rows []struct {
 		Hash string
 		Mime string
 	}
-	if err := r.queryAll(r.ctx, sel, &rows); err != nil {
+	if err := r.queryAll(ctx, sel, &rows); err != nil {
 		return nil, err
 	}
 	res := make(map[string]string, len(rows))
@@ -73,12 +71,12 @@ func (r *artworkRepository) GetMimeByHash() (map[string]string, error) {
 	return res, nil
 }
 
-func (r *artworkRepository) PurgeOrphans(createdBefore time.Time) (int64, error) {
+func (r *artworkRepository) PurgeOrphans(ctx context.Context, createdBefore time.Time) (int64, error) {
 	del := Delete(r.tableName).Where(And{
 		Lt{"created_at": createdBefore},
 		Expr("hash NOT IN (SELECT hash FROM " + itemArtworkTable + " WHERE hash <> '')"),
 	})
-	return r.executeSQL(r.ctx, del)
+	return r.executeSQL(ctx, del)
 }
 
 // artworkOwnerTables maps an artwork kind to the table that owns the entity.
@@ -91,14 +89,14 @@ var artworkOwnerTables = map[model.Kind]string{
 }
 
 // purgeDangling deletes rows in r's table whose owning entity is gone, one statement per kind.
-func purgeDangling(r sqlRepository) (int64, error) {
+func purgeDangling(ctx context.Context, r sqlRepository) (int64, error) {
 	var total int64
 	for kind, entityTable := range artworkOwnerTables {
 		del := Delete(r.tableName).Where(And{
 			Eq{"item_kind": kind.Prefix()},
 			Expr("item_id NOT IN (SELECT id FROM " + entityTable + ")"),
 		})
-		c, err := r.executeSQL(r.ctx, del)
+		c, err := r.executeSQL(ctx, del)
 		if err != nil {
 			return total, err
 		}
@@ -107,21 +105,21 @@ func purgeDangling(r sqlRepository) (int64, error) {
 	return total, nil
 }
 
-func (r *artworkRepository) PurgeDanglingItems() (int64, error) {
-	return purgeDangling(r.items)
+func (r *artworkRepository) PurgeDanglingItems(ctx context.Context) (int64, error) {
+	return purgeDangling(ctx, r.items)
 }
 
-func (r *artworkRepository) GetItemArtwork(kind model.Kind, id, imageType string) (*model.ItemArtwork, error) {
+func (r *artworkRepository) GetItemArtwork(ctx context.Context, kind model.Kind, id, imageType string) (*model.ItemArtwork, error) {
 	sel := Select("*").From(itemArtworkTable).
 		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType})
 	var res model.ItemArtwork
-	if err := r.items.queryOne(r.ctx, sel, &res); err != nil {
+	if err := r.items.queryOne(ctx, sel, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
 }
 
-func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
+func (r *artworkRepository) PutItemArtwork(ctx context.Context, ia *model.ItemArtwork) error {
 	ia.ImageType = cmp.Or(ia.ImageType, model.ImageTypePrimary)
 	ia.UpdatedAt = time.Now()
 	// PutItemArtwork records the outcome of an attempt, so an unset attempted_at is now.
@@ -136,29 +134,29 @@ func (r *artworkRepository) PutItemArtwork(ia *model.ItemArtwork) error {
 		hash=excluded.hash, source=excluded.source, source_path=excluded.source_path, ref_mtime=excluded.ref_mtime,
 		trace=excluded.trace, last_failure=excluded.last_failure,
 		attempted_at=excluded.attempted_at, updated_at=excluded.updated_at`)
-	_, err = r.items.executeSQL(r.ctx, ins)
+	_, err = r.items.executeSQL(ctx, ins)
 	return err
 }
 
 // PutLastFailure records why an item exhausted its retry budget. It only updates an existing row:
 // inserting one would write an empty hash, which the rest of the system reads as a settled absent.
-func (r *artworkRepository) PutLastFailure(kind model.Kind, id, imageType, trace string) error {
+func (r *artworkRepository) PutLastFailure(ctx context.Context, kind model.Kind, id, imageType, trace string) error {
 	upd := Update(itemArtworkTable).Set("last_failure", trace).
 		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType})
-	_, err := r.items.executeSQL(r.ctx, upd)
+	_, err := r.items.executeSQL(ctx, upd)
 	return err
 }
 
-func (r *artworkRepository) DeleteForItems(kind model.Kind, ids []string) error {
+func (r *artworkRepository) DeleteForItems(ctx context.Context, kind model.Kind, ids []string) error {
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
-		if err := r.items.delete(r.ctx, Eq{"item_kind": kind.Prefix(), "item_id": chunk}); err != nil {
+		if err := r.items.delete(ctx, Eq{"item_kind": kind.Prefix(), "item_id": chunk}); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *artworkRepository) GetInfoForItems(kind model.Kind, ids []string) (map[string]model.ItemArtworkInfo, error) {
+func (r *artworkRepository) GetInfoForItems(ctx context.Context, kind model.Kind, ids []string) (map[string]model.ItemArtworkInfo, error) {
 	res := map[string]model.ItemArtworkInfo{}
 	for chunk := range slices.Chunk(ids, artworkBatchSize) {
 		sel := Select("ia.item_id", "ia.hash", "COALESCE(a.blur_hash, '') as blur_hash",
@@ -173,7 +171,7 @@ func (r *artworkRepository) GetInfoForItems(kind model.Kind, ids []string) (map[
 				Eq{"ia.item_id": chunk},
 			})
 		var rows []model.ItemArtworkInfo
-		if err := r.items.queryAll(r.ctx, sel, &rows); err != nil {
+		if err := r.items.queryAll(ctx, sel, &rows); err != nil {
 			return nil, err
 		}
 		for _, row := range rows {

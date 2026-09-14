@@ -286,10 +286,10 @@ func (s *scannerImpl) runEnqueueMissingArtwork(ctx context.Context, state *scanS
 			return nil
 		}
 		start := time.Now()
-		queue := s.ds.ArtworkQueue(ctx)
+		queue := s.ds.ArtworkQueue()
 		var total int64
 		for _, kind := range []model.Kind{model.KindAlbumArtwork, model.KindArtistArtwork} {
-			n, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityScan)
+			n, err := queue.EnqueueAllMissing(ctx, kind, model.ArtworkPriorityScan)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error enqueueing missing artwork", "kind", kind, err)
 				return fmt.Errorf("enqueueing missing artwork: %w", err)

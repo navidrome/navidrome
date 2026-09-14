@@ -103,7 +103,7 @@ func (r *radioRepository) Put(ctx context.Context, radio *model.Radio, colsToUpd
 	// radio's cover resolves proactively. Never fails the save.
 	item := model.ArtworkQueueItem{ItemKind: model.KindRadioArtwork.Prefix(), ItemID: radio.ID, ImageType: model.ImageTypePrimary,
 		Priority: model.ArtworkPriorityBump}
-	if err := NewArtworkQueueRepository(ctx, r.db).Enqueue(item); err != nil {
+	if err := NewArtworkQueueRepository(r.db).Enqueue(ctx, item); err != nil {
 		log.Warn(ctx, "could not enqueue radio artwork", "id", radio.ID, err)
 	}
 	return nil

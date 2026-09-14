@@ -204,7 +204,7 @@ var _ = Describe("phasePlaylists", func() {
 			_, err := phase.processPlaylistsInFolder(folder)
 			Expect(err).ToNot(HaveOccurred())
 
-			queued, err := ds.ArtworkQueue(ctx).DequeueBatch(10)
+			queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 10)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(queued).To(ContainElement(SatisfyAll(
 				HaveField("ItemKind", "pl"),

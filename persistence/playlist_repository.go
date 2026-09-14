@@ -339,7 +339,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 func (r *playlistRepository) enqueueCoverRebuild(id string) {
 	item := model.ArtworkQueueItem{ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: id,
 		ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityScan}
-	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
+	if err := NewArtworkQueueRepository(r.db).Enqueue(r.ctx, item); err != nil {
 		log.Warn(r.ctx, "could not enqueue playlist artwork after content change", "id", id, err)
 	}
 }

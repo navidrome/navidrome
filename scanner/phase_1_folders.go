@@ -409,7 +409,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// A re-imported track returns to unresolved so new embedded art is picked up lazily.
 		if len(entry.tracks) > 0 {
 			trackIDs := slice.Map(entry.tracks, func(t model.MediaFile) string { return t.ID })
-			if err := tx.Artwork(p.ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
+			if err := tx.Artwork().DeleteForItems(p.ctx, model.KindMediaFileArtwork, trackIDs); err != nil {
 				log.Warn(p.ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
 			}
 		}
@@ -437,12 +437,12 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
 		// A full scan re-imports every track, so a re-import is no evidence the art changed.
 		if len(queueItems) > 0 {
-			queue := tx.ArtworkQueue(p.ctx)
+			queue := tx.ArtworkQueue()
 			enqueue := queue.Enqueue
 			if p.state.fullScan {
 				enqueue = queue.EnqueueIfMissing
 			}
-			if err := enqueue(queueItems...); err != nil {
+			if err := enqueue(p.ctx, queueItems...); err != nil {
 				log.Warn(p.ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
 			}
 		}
