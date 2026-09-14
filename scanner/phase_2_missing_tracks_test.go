@@ -761,7 +761,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		var albumRepo *tests.MockAlbumRepo
 
 		BeforeEach(func() {
-			albumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			albumRepo = ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.ReassignAnnotationCalls = make(map[string]string)
 			albumRepo.CopyAttributesCalls = make(map[string]string)
 		})
@@ -836,7 +836,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(albumRepo.CopyAttributesCalls).To(HaveKeyWithValue("old-album", "new-album"))
 
 			// Verify the new album's CreatedAt was actually updated
-			newAlbum, err := albumRepo.Get("new-album")
+			newAlbum, err := albumRepo.Get(ctx, "new-album")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newAlbum.CreatedAt).To(Equal(originalTime))
 		})
@@ -881,7 +881,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		)
 
 		BeforeEach(func() {
-			albumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			albumRepo = ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.ReassignAnnotationCalls = make(map[string]string)
 
 			oldAlbumID = "old-album-id"

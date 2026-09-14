@@ -102,7 +102,7 @@ func (api *Router) getQueryFiltersLegacy(w http.ResponseWriter, r *http.Request)
 		api.internalError(w, r, err)
 		return
 	}
-	years, err := api.ds.Album(ctx).GetYears(scope...)
+	years, err := api.ds.Album().GetYears(ctx, scope...)
 	if err != nil {
 		api.internalError(w, r, err)
 		return

@@ -28,7 +28,7 @@ var _ = Describe("Share", func() {
 
 		BeforeEach(func() {
 			repo = share.NewRepository(ctx).(rest.Persistable[model.Share])
-			_ = ds.Album(ctx).Put(&model.Album{ID: "123", Name: "Album"})
+			_ = ds.Album().Put(ctx, &model.Album{ID: "123", Name: "Album"})
 		})
 
 		Describe("Save", func() {

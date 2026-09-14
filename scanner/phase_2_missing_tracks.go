@@ -309,13 +309,13 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 				if !p.processedAlbumAnnotations[newAlbumID] {
 					// Reassign direct album annotations (starred, rating)
 					log.Debug(p.ctx, "Scanner: Reassigning album annotations", "from", oldAlbumID, "to", newAlbumID)
-					if err := tx.Album(p.ctx).ReassignAnnotation(p.ctx, oldAlbumID, newAlbumID); err != nil {
+					if err := tx.Album().ReassignAnnotation(p.ctx, oldAlbumID, newAlbumID); err != nil {
 						log.Warn(p.ctx, "Scanner: Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
 					}
 
 					// Keep created_at field from previous instance of the album, so moved albums
 					// don't appear in "Recently Added"
-					if err := tx.Album(p.ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil {
+					if err := tx.Album().CopyAttributes(p.ctx, oldAlbumID, newAlbumID, "created_at"); err != nil {
 						if !errors.Is(err, model.ErrNotFound) {
 							log.Warn(p.ctx, "Scanner: Could not copy album created_at", "from", oldAlbumID, "to", newAlbumID, err)
 						}

@@ -237,7 +237,7 @@ func enc(id string) string { return dto.EncodeID(id) }
 // guessing repository filter column names.
 
 func albumID(name string) string {
-	albums, err := ds.Album(ctx).GetAll()
+	albums, err := ds.Album().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, a := range albums {
 		if a.Name == name {

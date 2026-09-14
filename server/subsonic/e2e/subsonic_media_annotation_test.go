@@ -23,7 +23,7 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 			songID = songs[0].ID
 
 			// Look up an album
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "name"})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "name"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).ToNot(BeEmpty())
 			albumID = albums[0].ID
@@ -102,7 +102,7 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 			Expect(songs).ToNot(BeEmpty())
 			songID = songs[0].ID
 
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "name"})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "name"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).ToNot(BeEmpty())
 			albumID = albums[0].ID

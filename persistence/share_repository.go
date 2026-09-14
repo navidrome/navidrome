@@ -91,8 +91,8 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 	case "artist":
 		// Match by album-artist participation, not the deprecated album_artist_id
 		// column (first album artist only), so co-album-artists are included too.
-		albumRepo := NewAlbumRepository(ownerCtx, r.db)
-		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("album", ids, model.RoleAlbumArtist)), Sort: "artist"})
+		albumRepo := NewAlbumRepository(r.db)
+		share.Albums, err = albumRepo.GetAll(ownerCtx, model.QueryOptions{Filters: noMissing(ParticipantIDFilter("album", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		if err != nil {
 			return err
 		}
@@ -100,8 +100,8 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 		share.Tracks, err = mfRepo.GetAll(model.QueryOptions{Filters: noMissing(ParticipantIDFilter("media_file", ids, model.RoleAlbumArtist)), Sort: "artist"})
 		return err
 	case "album":
-		albumRepo := NewAlbumRepository(ownerCtx, r.db)
-		share.Albums, err = albumRepo.GetAll(model.QueryOptions{Filters: noMissing(Eq{"album.id": ids})})
+		albumRepo := NewAlbumRepository(r.db)
+		share.Albums, err = albumRepo.GetAll(ownerCtx, model.QueryOptions{Filters: noMissing(Eq{"album.id": ids})})
 		if err != nil {
 			return err
 		}

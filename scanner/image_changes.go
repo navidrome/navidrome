@@ -90,7 +90,7 @@ func (c *imageChangeCollector) queueItems(ctx context.Context, lib model.Library
 	}
 	// The resolver climbs to the library root, so the subtree below the folder is the affected set.
 	// A failure here must not discard the album items already collected.
-	artistIDs, err := c.ds.Album(ctx).GetSoleAlbumArtistIDsInSubtrees(lib, artistFolderPaths...)
+	artistIDs, err := c.ds.Album().GetSoleAlbumArtistIDsInSubtrees(ctx, lib, artistFolderPaths...)
 	if err != nil {
 		log.Warn(ctx, "Scanner: could not map image changes to artists", "lib", lib.Name, err)
 		return items, nil

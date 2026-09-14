@@ -45,7 +45,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 		return nil, fmt.Errorf("invalid disc artwork id '%s': %w", artID.ID, err)
 	}
 
-	al, err := ds.Album(ctx).Get(albumID)
+	al, err := ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return nil, err
 	}

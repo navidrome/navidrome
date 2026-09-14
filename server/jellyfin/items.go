@@ -354,7 +354,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 		if q.parentId == dto.PlaylistsFolderID {
 			// Browsing into the synthetic playlists folder lists the user's playlists.
 			q.types = []string{"Playlist"}
-		} else if _, err := api.ds.Album(ctx).Get(q.parentId); err == nil {
+		} else if _, err := api.ds.Album().Get(ctx, q.parentId); err == nil {
 			q.types = []string{"Audio"}
 		}
 	}
@@ -648,7 +648,7 @@ func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryO
 
 func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
 	toItem := func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, q.fields) }
-	repo := api.ds.Album(ctx)
+	repo := api.ds.Album()
 	filters := squirrel.And{}
 	// For albums, ParentId (browse an artist) and AlbumArtistIds/ArtistIds both mean "this artist's
 	// albums"; contributingArtistIds means "albums they only appear on" (Featured On).
@@ -686,9 +686,9 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 		}
 		return materialized(result(slice.Map(albums, toItem), total, opts.Offset)), nil
 	}
-	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	total, _ := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
@@ -838,7 +838,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 			return libraryView(*lib), true
 		}
 	}
-	if al, err := api.ds.Album(ctx).Get(id); err == nil {
+	if al, err := api.ds.Album().Get(ctx, id); err == nil {
 		if !u.HasLibraryAccess(al.LibraryID) {
 			return dto.BaseItemDto{}, false
 		}
@@ -950,9 +950,9 @@ func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 		opts.Filters = squirrel.And{opts.Filters, filter.AlbumsByArtistID(parentID).Filters}
 	}
 	opts = filter.ApplyLibraryFilter(opts, scopeIDs)
-	repo := api.ds.Album(ctx)
+	repo := api.ds.Album()
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, fields) })
 	api.writeItemsArray(w, r, streamed(open, 0, 0))
 }

@@ -198,7 +198,7 @@ func (r *resolver) fetchExternalArtist(ctx context.Context, ar model.Artist) (io
 
 // resolveAlbum walks conf.Server.CoverArtPriority over the folder, embedded and external sources.
 func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution, error) {
-	al, err := r.ds.Album(ctx).Get(albumID)
+	al, err := r.ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -259,7 +259,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	}
 
 	// Only consider albums where the artist is the sole album artist.
-	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: persistence.SoleAlbumArtistFilter(artistID)})
+	als, err := r.ds.Album().GetAll(ctx, model.QueryOptions{Filters: persistence.SoleAlbumArtistFilter(artistID)})
 	if err != nil {
 		return resolution{}, err
 	}

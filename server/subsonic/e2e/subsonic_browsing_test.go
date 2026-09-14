@@ -105,7 +105,7 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns an album directory with its tracks as children", func() {
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Abbey Road"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -177,7 +177,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getAlbum", func() {
 		It("returns album with its tracks", func() {
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Abbey Road"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -193,7 +193,7 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("includes correct track metadata", func() {
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Abbey Road"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -210,7 +210,7 @@ var _ = Describe("Browsing Endpoints", func() {
 		})
 
 		It("returns album with correct artist and year", func() {
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Kind of Blue"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -343,7 +343,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getAlbumInfo", func() {
 		It("returns album info for a valid album", func() {
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Abbey Road"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -359,7 +359,7 @@ var _ = Describe("Browsing Endpoints", func() {
 
 	Describe("getAlbumInfo2", func() {
 		It("returns album info for a valid album", func() {
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.name": "Abbey Road"},
 			})
 			Expect(err).ToNot(HaveOccurred())

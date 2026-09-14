@@ -28,7 +28,7 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 	switch e := entity.(type) {
 	case *model.Album:
 		if u.HasLibraryAccess(e.LibraryID) {
-			return api.ds.Album(ctx), "album"
+			return api.ds.Album(), "album"
 		}
 	case *model.Artist:
 		return api.ds.Artist(), "artist"

@@ -124,7 +124,7 @@ var _ = Describe("PlayTracker", func() {
 		artist2 = model.Artist{ID: "ar-2"}
 		_ = ds.Artist().Put(ctx, &artist2)
 		album = model.Album{ID: "al-1"}
-		_ = ds.Album(ctx).(*tests.MockAlbumRepo).Put(&album)
+		_ = ds.Album().(*tests.MockAlbumRepo).Put(ctx, &album)
 	})
 
 	AfterEach(func() {

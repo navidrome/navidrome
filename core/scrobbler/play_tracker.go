@@ -501,7 +501,7 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 		if err != nil {
 			return err
 		}
-		err = tx.Album(ctx).IncPlayCount(ctx, track.AlbumID, timestamp)
+		err = tx.Album().IncPlayCount(ctx, track.AlbumID, timestamp)
 		if err != nil {
 			return err
 		}

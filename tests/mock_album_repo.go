@@ -40,7 +40,7 @@ func (m *MockAlbumRepo) SetData(albums model.Albums) {
 	}
 }
 
-func (m *MockAlbumRepo) Exists(id string) (bool, error) {
+func (m *MockAlbumRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Err {
 		return false, errors.New("unexpected error")
 	}
@@ -48,7 +48,7 @@ func (m *MockAlbumRepo) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockAlbumRepo) Get(id string) (*model.Album, error) {
+func (m *MockAlbumRepo) Get(_ context.Context, id string) (*model.Album, error) {
 	if m.Err {
 		return nil, errors.New("unexpected error")
 	}
@@ -58,7 +58,7 @@ func (m *MockAlbumRepo) Get(id string) (*model.Album, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockAlbumRepo) Put(al *model.Album) error {
+func (m *MockAlbumRepo) Put(_ context.Context, al *model.Album) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
@@ -72,7 +72,7 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 	return nil
 }
 
-func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
+func (m *MockAlbumRepo) GetAll(_ context.Context, qo ...model.QueryOptions) (model.Albums, error) {
 	if len(qo) > 0 {
 		// Recording the last options is a read-path write, and callers resolve concurrently.
 		m.optionsMu.Lock()
@@ -85,8 +85,8 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	return m.All, nil
 }
 
-func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, error) {
-	res, err := m.GetAll(qo...)
+func (m *MockAlbumRepo) GetCursor(ctx context.Context, qo ...model.QueryOptions) (model.AlbumCursor, error) {
+	res, err := m.GetAll(ctx, qo...)
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +110,11 @@ func (m *MockAlbumRepo) IncPlayCount(_ context.Context, id string, timestamp tim
 	}
 	return model.ErrNotFound
 }
-func (m *MockAlbumRepo) CountAll(...model.QueryOptions) (int64, error) {
+func (m *MockAlbumRepo) CountAll(_ context.Context, _ ...model.QueryOptions) (int64, error) {
 	return int64(len(m.All)), nil
 }
 
-func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
+func (m *MockAlbumRepo) GetTouchedAlbums(_ context.Context, libID int) (model.AlbumCursor, error) {
 	if m.Err {
 		return nil, errors.New("unexpected error")
 	}
@@ -136,8 +136,8 @@ func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 	}, nil
 }
 
-func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
-	return m.Put(album)
+func (m *MockAlbumRepo) UpdateExternalInfo(ctx context.Context, album *model.Album) error {
+	return m.Put(ctx, album)
 }
 
 func (m *MockAlbumRepo) Search(_ context.Context, q string, options ...model.QueryOptions) (model.Albums, error) {
@@ -166,7 +166,7 @@ func (m *MockAlbumRepo) ReassignAnnotation(_ context.Context, prevID string, new
 }
 
 // CopyAttributes copies attributes from one album to another
-func (m *MockAlbumRepo) CopyAttributes(fromID, toID string, columns ...string) error {
+func (m *MockAlbumRepo) CopyAttributes(_ context.Context, fromID, toID string, columns ...string) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
@@ -215,7 +215,7 @@ func (m *MockAlbumRepo) SetStar(_ context.Context, starred bool, itemIDs ...stri
 	return nil
 }
 
-func (m *MockAlbumRepo) GetYears(libraryIDs ...int) ([]int, error) {
+func (m *MockAlbumRepo) GetYears(_ context.Context, libraryIDs ...int) ([]int, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}

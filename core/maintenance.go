@@ -99,10 +99,10 @@ func (s *maintenanceService) RemapMissingFile(ctx context.Context, missingID, ta
 				return fmt.Errorf("get old album tracks: %w", err)
 			}
 			if oldAlbumTracks == 0 {
-				if err := tx.Album(ctx).ReassignAnnotation(ctx, oldAlbumID, newAlbumID); err != nil {
+				if err := tx.Album().ReassignAnnotation(ctx, oldAlbumID, newAlbumID); err != nil {
 					return fmt.Errorf("reassign album annotations: %w", err)
 				}
-				if err := tx.Album(ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil && !errors.Is(err, model.ErrNotFound) {
+				if err := tx.Album().CopyAttributes(ctx, oldAlbumID, newAlbumID, "created_at"); err != nil && !errors.Is(err, model.ErrNotFound) {
 					return fmt.Errorf("copy album attributes: %w", err)
 				}
 			}
@@ -192,11 +192,11 @@ func (s *maintenanceService) refreshAlbums(ctx context.Context, albumIDs []strin
 
 // refreshAlbumChunk processes a single chunk of album IDs
 func (s *maintenanceService) refreshAlbumChunk(ctx context.Context, albumIDs []string) error {
-	albumRepo := s.ds.Album(ctx)
+	albumRepo := s.ds.Album()
 	mfRepo := s.ds.MediaFile(ctx)
 
 	// Batch load existing albums
-	albums, err := albumRepo.GetAll(model.QueryOptions{
+	albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"album.id": albumIDs},
 	})
 	if err != nil {
@@ -243,7 +243,7 @@ func (s *maintenanceService) refreshAlbumChunk(ctx context.Context, albumIDs []s
 			newAlbum.UpdatedAt = time.Now()
 			newAlbum.CreatedAt = oldAlbum.CreatedAt
 
-			if err := albumRepo.Put(&newAlbum); err != nil {
+			if err := albumRepo.Put(ctx, &newAlbum); err != nil {
 				log.Error(ctx, "Error updating album during refresh", "albumID", albumID, err)
 				// Continue with other albums instead of failing entirely
 				continue

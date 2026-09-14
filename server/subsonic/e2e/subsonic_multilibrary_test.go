@@ -230,7 +230,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		var lib2AlbumID string
 
 		BeforeAll(func() {
-			lib2Albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			lib2Albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.library_id": lib2.ID},
 			})
 			Expect(err).ToNot(HaveOccurred())

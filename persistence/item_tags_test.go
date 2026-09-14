@@ -22,7 +22,7 @@ var _ = Describe("item genre tag indexes", func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid"})
 		conn = GetDBXBuilder()
 		mr = NewMediaFileRepository(ctx, conn)
-		ar = NewAlbumRepository(ctx, conn)
+		ar = NewAlbumRepository(conn)
 		// Test-only genre values, so they can't collide with the golden fixtures.
 		rock = model.NewTag(model.TagGenre, "GenreIdxRock")
 		jazz = model.NewTag(model.TagGenre, "GenreIdxJazz")
@@ -83,7 +83,7 @@ var _ = Describe("item genre tag indexes", func() {
 		It("writes an album_tags row for each genre when the album is saved", func() {
 			al := model.Album{ID: "al-g1", LibraryID: 1, Name: "AG1",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue, jazz.TagValue}}}
-			Expect(ar.Put(&al)).To(Succeed())
+			Expect(ar.Put(ctx, &al)).To(Succeed())
 			Expect(tagIDsFor("album_tags", "album_id", "al-g1")).To(ConsistOf(rock.ID, jazz.ID))
 		})
 	})
@@ -102,7 +102,7 @@ var _ = Describe("item genre tag indexes", func() {
 		It("filters albums by genre_id", func() {
 			al := model.Album{ID: "al-nat1", LibraryID: 1, Name: "ANat1",
 				Tags: model.Tags{model.TagGenre: []string{rock.TagValue}}}
-			Expect(ar.Put(&al)).To(Succeed())
+			Expect(ar.Put(ctx, &al)).To(Succeed())
 			res, err := ar.ReadAll(ctx, rest.QueryOptions{Filters: map[string]any{"genre_id": rock.ID}})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(ContainElement(HaveField("ID", "al-nat1")))

@@ -201,7 +201,7 @@ func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.
 			continue
 		}
 		seen[s.AlbumID] = true
-		if al, err := api.ds.Album(ctx).Get(s.AlbumID); err == nil && u.HasLibraryAccess(al.LibraryID) {
+		if al, err := api.ds.Album().Get(ctx, s.AlbumID); err == nil && u.HasLibraryAccess(al.LibraryID) {
 			items = append(items, dto.AlbumToBaseItem(*al, nil))
 			if len(items) >= limit {
 				break

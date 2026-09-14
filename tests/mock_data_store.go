@@ -77,14 +77,14 @@ func (db *MockDataStore) Tag() model.TagRepository {
 	return db.MockedTag
 }
 
-func (db *MockDataStore) Album(ctx context.Context) model.AlbumRepository {
+func (db *MockDataStore) Album() model.AlbumRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedAlbum != nil {
 		return db.MockedAlbum
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Album(ctx)
+		return db.RealDS.Album()
 	}
 	db.MockedAlbum = CreateMockAlbumRepo()
 	return db.MockedAlbum

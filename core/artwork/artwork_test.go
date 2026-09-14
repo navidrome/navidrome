@@ -56,7 +56,7 @@ var _ = Describe("Artwork", func() {
 		GinkgoHelper()
 		switch kind {
 		case "al":
-			Expect(albumRepo.Put(&model.Album{ID: id, Name: "Album"})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: id, Name: "Album"})).To(Succeed())
 		case "mf":
 			Expect(mfRepo.Put(&model.MediaFile{ID: id})).To(Succeed())
 		}

@@ -26,7 +26,7 @@ var _ = Describe("Album Lists", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		mockRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+		mockRepo = ds.Album().(*tests.MockAlbumRepo)
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		w = httptest.NewRecorder()
 	})
@@ -423,7 +423,7 @@ var _ = Describe("Album Lists", func() {
 
 		BeforeEach(func() {
 			mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
-			mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
 			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
 		})
 
@@ -485,7 +485,7 @@ var _ = Describe("Album Lists", func() {
 
 		BeforeEach(func() {
 			mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
-			mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
 			mockMediaFileRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
 		})
 

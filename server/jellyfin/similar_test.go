@@ -191,7 +191,7 @@ var _ = Describe("getSimilarAlbums", func() {
 		// With no external agent the provider falls back to the album's own tracks, which map
 		// straight back to the requested album.
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: testID("al-1"), Name: "Seed Album", LibraryID: 1},
 		})
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{
@@ -212,7 +212,7 @@ var _ = Describe("getSimilarAlbums", func() {
 
 	It("returns albums derived from the provider's similar songs", func() {
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: testID("al-2"), Name: "Other", LibraryID: 1},
 		})
 		api := &Router{ds: ds, provider: &fakeSimilarProvider{

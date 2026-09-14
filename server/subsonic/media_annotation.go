@@ -51,7 +51,7 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 		repo = api.ds.Artist()
 		resource = "artist"
 	case *model.Album:
-		repo = api.ds.Album(ctx)
+		repo = api.ds.Album()
 		resource = "album"
 	case *model.Playlist:
 		repo = api.ds.Playlist(ctx)
@@ -132,7 +132,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 				repo = tx.Artist()
 				resource = "artist"
 			case *model.Album:
-				repo = tx.Album(ctx)
+				repo = tx.Album()
 				resource = "album"
 			case *model.Playlist:
 				repo = tx.Playlist(ctx)

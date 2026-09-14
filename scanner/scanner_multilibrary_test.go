@@ -158,7 +158,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Check Rock library albums
-				rockAlbums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				rockAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 					Sort:    "name",
 				})
@@ -172,7 +172,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(rockAlbums[1].SongCount).To(Equal(2))
 
 				// Check Jazz library albums
-				jazzAlbums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				jazzAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 					Sort:    "name",
 				})
@@ -316,7 +316,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Verify that rock library only contains rock content
-				rockAlbums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				rockAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -325,7 +325,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(rockAlbumNames).ToNot(ContainElements("Kind of Blue", "Giant Steps"))
 
 				// Verify that jazz library only contains jazz content
-				jazzAlbums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				jazzAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -389,14 +389,14 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzCount).To(Equal(int64(1)))
 
 				// Verify Jeff Beck albums are in correct libraries
-				rockAlbums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				rockAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib1.ID, "album_artist": "Jeff Beck"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(rockAlbums).To(HaveLen(1))
 				Expect(rockAlbums[0].Name).To(Equal("Truth"))
 
-				jazzAlbums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+				jazzAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"library_id": lib2.ID, "album_artist": "Jeff Beck"},
 				})
 				Expect(err).ToNot(HaveOccurred())
