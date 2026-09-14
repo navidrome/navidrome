@@ -23,7 +23,7 @@ type DataStore interface {
 	MediaFile() MediaFileRepository
 	Genre() GenreRepository
 	Tag() TagRepository
-	Playlist(ctx context.Context) PlaylistRepository
+	Playlist() PlaylistRepository
 	PlayQueue() PlayQueueRepository
 	Transcoding() TranscodingRepository
 	Player() PlayerRepository

@@ -158,10 +158,10 @@ var _ = Describe("ShareRepository", func() {
 			// Owner-owned playlist containing tracks from both libraries
 			plsID = "share-scope-pls"
 			ownerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), owner)
-			pr := NewPlaylistRepository(ownerCtx, GetDBXBuilder())
+			pr := NewPlaylistRepository(GetDBXBuilder())
 			pls := &model.Playlist{ID: plsID, Name: "Scope Test", OwnerID: owner.ID}
 			pls.AddMediaFiles(model.MediaFiles{{ID: "share-ok"}, {ID: "share-other"}})
-			Expect(pr.Put(pls)).To(Succeed())
+			Expect(pr.Put(ownerCtx, pls)).To(Succeed())
 
 			// Share row owned by the non-admin owner
 			_, err := GetDBXBuilder().NewQuery(`
@@ -178,7 +178,7 @@ var _ = Describe("ShareRepository", func() {
 			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 			b := GetDBXBuilder()
 			_, _ = b.NewQuery(`DELETE FROM share WHERE id = 'share-scope'`).Execute()
-			pr := NewPlaylistRepository(adminCtx, b)
+			pr := NewPlaylistRepository(b)
 			_ = pr.Delete(adminCtx, plsID)
 			mr := NewMediaFileRepository(b).(*mediaFileRepository)
 			_, _ = mr.executeSQL(adminCtx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
@@ -206,10 +206,10 @@ var _ = Describe("ShareRepository", func() {
 			// instead of panicking.
 			privatePlsID := "private-pls"
 			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-			pr := NewPlaylistRepository(adminCtx, GetDBXBuilder())
+			pr := NewPlaylistRepository(GetDBXBuilder())
 			privatePls := &model.Playlist{ID: privatePlsID, Name: "Private", OwnerID: adminUser.ID, Public: false}
 			privatePls.AddMediaFiles(model.MediaFiles{{ID: "share-ok"}})
-			Expect(pr.Put(privatePls)).To(Succeed())
+			Expect(pr.Put(adminCtx, privatePls)).To(Succeed())
 			DeferCleanup(func() { _ = pr.Delete(adminCtx, privatePlsID) })
 
 			_, err := GetDBXBuilder().NewQuery(`

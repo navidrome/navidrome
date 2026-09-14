@@ -178,13 +178,13 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
 	// Refresh: a smart playlist materializes no tracks until it is evaluated, so skipping it would
 	// mix an empty seed set. It is a no-op for regular playlists and inside the refresh delay.
-	repo := e.ds.Playlist(ctx).Tracks(playlistID, true)
+	repo := e.ds.Playlist().Tracks(ctx, playlistID, true)
 	if repo == nil {
 		return nil, model.ErrNotFound
 	}
 	// A playlist can hold the same file at several positions, so over-fetch and dedup: a repeated
 	// seed wastes an agent call and can reach the mix twice through the seed fallback.
-	tracks, err := repo.GetAll(model.QueryOptions{
+	tracks, err := repo.GetAll(ctx, model.QueryOptions{
 		Sort:    "random",
 		Max:     n * 4,
 		Filters: squirrel.Eq{"missing": false},

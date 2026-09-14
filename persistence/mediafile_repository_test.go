@@ -923,14 +923,14 @@ var _ = Describe("MediaRepository", func() {
 
 		BeforeEach(func() {
 			ctx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
-			pr = NewPlaylistRepository(ctx, GetDBXBuilder())
+			pr = NewPlaylistRepository(GetDBXBuilder())
 			prev = model.MediaFile{ID: "reassign-prev", LibraryID: 1, Path: "reassign/prev.mp3", Title: "Prev"}
 			next = model.MediaFile{ID: "reassign-next", LibraryID: 1, Path: "reassign/next.mp3", Title: "Next"}
 			Expect(mr.Put(ctx, &prev)).To(Succeed())
 			Expect(mr.Put(ctx, &next)).To(Succeed())
 			pls = model.Playlist{Name: "Reassign", OwnerID: "userid"}
 			pls.AddMediaFilesByID([]string{prev.ID})
-			Expect(pr.Put(&pls)).To(Succeed())
+			Expect(pr.Put(ctx, &pls)).To(Succeed())
 		})
 
 		AfterEach(func() {
@@ -957,7 +957,7 @@ var _ = Describe("MediaRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bookmarks).To(ContainElement(HaveField("Item.ID", next.ID)))
 
-			withTracks, err := pr.GetWithTracks(pls.ID, false, false)
+			withTracks, err := pr.GetWithTracks(ctx, pls.ID, false, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(withTracks.Tracks).To(HaveLen(1))
 			Expect(withTracks.Tracks[0].MediaFileID).To(Equal(next.ID))

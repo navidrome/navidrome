@@ -37,7 +37,7 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 			return api.ds.MediaFile(), "song"
 		}
 	case *model.Playlist:
-		return api.ds.Playlist(ctx), "playlist"
+		return api.ds.Playlist(), "playlist"
 	}
 	// Unknown ids, inaccessible-library items and non-annotatable entities (radios) all read as absent.
 	http.Error(w, "Not Found", http.StatusNotFound)

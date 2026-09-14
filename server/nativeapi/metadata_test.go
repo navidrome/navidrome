@@ -56,7 +56,7 @@ var _ = Describe("Metadata API", func() {
 		playlistRepo := tests.CreateMockPlaylistRepo()
 		Expect(albumRepo.Put(GinkgoT().Context(), &model.Album{ID: "al-1", Name: "Kid A"})).To(Succeed())
 		Expect(artistRepo.Put(GinkgoT().Context(), &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
-		Expect(playlistRepo.Put(&model.Playlist{ID: "pl-1", Name: "My Playlist"})).To(Succeed())
+		Expect(playlistRepo.Put(GinkgoT().Context(), &model.Playlist{ID: "pl-1", Name: "My Playlist"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedArtwork:      artRepo,
 			MockedArtworkQueue: queueRepo,

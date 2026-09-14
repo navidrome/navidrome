@@ -34,6 +34,7 @@ type SQLStore struct {
 	artist      model.ArtistRepository
 	album       model.AlbumRepository
 	mediaFile   model.MediaFileRepository
+	playlist    model.PlaylistRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -58,6 +59,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.artist = NewArtistRepository(db)
 	s.album = NewAlbumRepository(db)
 	s.mediaFile = NewMediaFileRepository(db)
+	s.playlist = NewPlaylistRepository(db)
 	return s
 }
 
@@ -97,8 +99,8 @@ func (s *SQLStore) PlayQueue() model.PlayQueueRepository {
 	return s.playQueue
 }
 
-func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
-	return NewPlaylistRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Playlist() model.PlaylistRepository {
+	return s.playlist
 }
 
 func (s *SQLStore) Property() model.PropertyRepository {
@@ -212,20 +214,13 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "clean album annotations", func() error { return s.album.(*albumRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean artist annotations", func() error { return s.artist.(*artistRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean media file annotations", func() error { return s.mediaFile.(*mediaFileRepository).cleanAnnotations(ctx) }),
-		trace(ctx, "clean playlist annotations", func() error { return s.Playlist(ctx).(*playlistRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean playlist annotations", func() error { return s.playlist.(*playlistRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean media file bookmarks", func() error { return s.mediaFile.(*mediaFileRepository).cleanBookmarks(ctx) }),
 		trace(ctx, "purge non used tags", func() error { return s.tag.(*tagRepository).purgeUnused(ctx) }),
-		trace(ctx, "remove orphan playlist tracks", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
+		trace(ctx, "remove orphan playlist tracks", func() error { return s.playlist.(*playlistRepository).removeOrphans(ctx) }),
 	)
 	if err != nil {
 		log.Error(ctx, "Error tidying up database", err)
 	}
 	return err
-}
-
-func (s *SQLStore) getDBXBuilder() dbx.Builder {
-	if s.db == nil {
-		return dbx.NewFromDB(db.Db(), db.Driver)
-	}
-	return s.db
 }

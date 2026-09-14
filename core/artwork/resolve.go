@@ -328,7 +328,7 @@ const PlaylistGridSamples = 4
 
 // resolvePlaylist tries the uploaded image, the sidecar and ExternalImageURL, then a generated grid.
 func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (resolution, error) {
-	pl, err := r.ds.Playlist(ctx).Get(playlistID)
+	pl, err := r.ds.Playlist().Get(ctx, playlistID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -374,8 +374,8 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		}
 	}
 
-	albumIDs, err := r.ds.Playlist(ctx).Tracks(pl.ID, false).
-		GetAlbumIDs(model.QueryOptions{Max: PlaylistGridSamples, Sort: "random()"})
+	albumIDs, err := r.ds.Playlist().Tracks(ctx, pl.ID, false).
+		GetAlbumIDs(ctx, model.QueryOptions{Max: PlaylistGridSamples, Sort: "random()"})
 	if err != nil {
 		return resolution{}, err
 	}

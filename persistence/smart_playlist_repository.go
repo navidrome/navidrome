@@ -54,7 +54,7 @@ func (r *playlistRepository) refreshSmartPlaylist(ctx context.Context, pls *mode
 		return false
 	}
 
-	if err = r.refreshCounters(pls); err != nil {
+	if err = r.refreshCounters(ctx, pls); err != nil {
 		log.Error(ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
@@ -96,7 +96,7 @@ func (r *playlistRepository) refreshChildPlaylists(ctx context.Context, pls *mod
 		return true
 	}
 
-	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Eq{"playlist.id": childPlaylistIds}})
+	childPlaylists, err := r.GetAll(ctx, model.QueryOptions{Filters: Eq{"playlist.id": childPlaylistIds}})
 	if err != nil {
 		log.Error(ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
 		return false

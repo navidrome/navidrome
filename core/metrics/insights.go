@@ -257,7 +257,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading artists count", err)
 	}
-	data.Library.Playlists, err = c.ds.Playlist(ctx).CountAll()
+	data.Library.Playlists, err = c.ds.Playlist().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading playlists count", err)
 	}
@@ -324,7 +324,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 // hasSmartPlaylists checks if there are any smart playlists (playlists with rules)
 func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error) {
-	count, err := c.ds.Playlist(ctx).CountAll(model.QueryOptions{
+	count, err := c.ds.Playlist().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.And{squirrel.NotEq{"rules": ""}, squirrel.NotEq{"rules": nil}},
 	})
 	return count > 0, err
