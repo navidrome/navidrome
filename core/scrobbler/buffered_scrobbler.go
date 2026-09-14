@@ -97,7 +97,7 @@ func (b *bufferedScrobbler) NowPlaying(ctx context.Context, userId string, track
 }
 
 func (b *bufferedScrobbler) Scrobble(ctx context.Context, userId string, s Scrobble) error {
-	err := b.ds.ScrobbleBuffer(ctx).Enqueue(b.service, userId, s.ID, s.TimeStamp)
+	err := b.ds.ScrobbleBuffer().Enqueue(ctx, b.service, userId, s.ID, s.TimeStamp)
 	if err != nil {
 		return err
 	}
@@ -154,8 +154,8 @@ func (b *bufferedScrobbler) run(ctx context.Context) {
 }
 
 func (b *bufferedScrobbler) processQueue(ctx context.Context) (bool, time.Duration) {
-	buffer := b.ds.ScrobbleBuffer(ctx)
-	userIds, err := buffer.UserIDs(b.service)
+	buffer := b.ds.ScrobbleBuffer()
+	userIds, err := buffer.UserIDs(ctx, b.service)
 	if err != nil {
 		log.Error(ctx, "Error retrieving userIds from scrobble buffer", "scrobbler", b.service, err)
 		return false, 0
@@ -181,9 +181,9 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 	} else {
 		ctx = request.WithUser(ctx, *user)
 	}
-	buffer := b.ds.ScrobbleBuffer(ctx)
+	buffer := b.ds.ScrobbleBuffer()
 	for {
-		entry, err := buffer.Next(b.service, userId)
+		entry, err := buffer.Next(ctx, b.service, userId)
 		if err != nil {
 			log.Error(ctx, "Error reading from scrobble buffer", "scrobbler", b.service, err)
 			return false, 0
@@ -210,7 +210,7 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 			log.Error(ctx, "Error sending scrobble to service. Discarding", "scrobbler", b.service,
 				"userId", entry.UserID, "artist", entry.Artist, "track", entry.Title, err)
 		}
-		err = buffer.Dequeue(entry)
+		err = buffer.Dequeue(ctx, entry)
 		if err != nil {
 			log.Error(ctx, "Error removing entry from scrobble buffer", "userId", entry.UserID,
 				"track", entry.Title, "artist", entry.Artist, "scrobbler", b.service, err)

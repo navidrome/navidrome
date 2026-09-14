@@ -313,9 +313,9 @@ var _ = BeforeSuite(func() {
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
 
-	scrobbleRepo := NewScrobbleRepository(ctx, conn).(*scrobbleRepository)
+	scrobbleRepo := NewScrobbleRepository(conn).(*scrobbleRepository)
 	for _, s := range scrobbles {
-		_, err := scrobbleRepo.executeSQL(scrobbleRepo.ctx, squirrel.Insert("scrobbles").SetMap(map[string]any{
+		_, err := scrobbleRepo.executeSQL(ctx, squirrel.Insert("scrobbles").SetMap(map[string]any{
 			"media_file_id":   s.MediaFileID,
 			"user_id":         s.UserID,
 			"submission_time": s.SubmissionTime,

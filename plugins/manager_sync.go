@@ -115,7 +115,7 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 	// wipe the builtin Last.fm retry queue.
 	if scrobbler.IsBuiltinScrobbler(pluginID) {
 		log.Debug(ctx, "Keeping buffered scrobbles: name is owned by a builtin scrobbler", "plugin", pluginID)
-	} else if err := m.ds.ScrobbleBuffer(ctx).Discard(pluginID); err != nil {
+	} else if err := m.ds.ScrobbleBuffer().Discard(ctx, pluginID); err != nil {
 		log.Error(ctx, "Error discarding buffered scrobbles for removed plugin", "plugin", pluginID, err)
 	}
 	log.Info(ctx, "Plugin removed", "plugin", pluginID)

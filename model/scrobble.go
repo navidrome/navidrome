@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"time"
 
 	"github.com/deluan/rest"
@@ -15,10 +16,10 @@ type Scrobble struct {
 
 type ScrobbleRepository interface {
 	rest.Repository[Scrobble]
-	CountAll(options ...QueryOptions) (int64, error)
-	Get(id string) (*Scrobble, error)
-	GetAll(options ...QueryOptions) (Scrobbles, error)
-	RecordScrobble(mediaFileID string, submissionTime time.Time) error
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Get(ctx context.Context, id string) (*Scrobble, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Scrobbles, error)
+	RecordScrobble(ctx context.Context, mediaFileID string, submissionTime time.Time) error
 }
 
 type Scrobbles []Scrobble
