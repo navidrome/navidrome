@@ -45,7 +45,7 @@ type Worker struct {
 	broker  events.Broker
 	pruneMu sync.RWMutex
 	pools   []*drainPool
-	runCtx  context.Context
+	runCtx  context.Context //nolint:containedctx // worker lifecycle ctx, set at Run
 
 	gatesMu sync.Mutex
 	gates   map[string]*extGate

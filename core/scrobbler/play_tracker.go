@@ -67,14 +67,14 @@ type ReportPlaybackParams struct {
 }
 
 type nowPlayingEntry struct {
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // queued work item carries the request ctx to the worker
 	userId   string
 	track    *model.MediaFile
 	position int
 }
 
 type playbackReportEntry struct {
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // queued work item carries the request ctx to the worker
 	info     PlaybackSession
 	filtered bool
 }

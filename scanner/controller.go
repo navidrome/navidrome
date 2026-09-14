@@ -94,7 +94,7 @@ type scanner interface {
 }
 
 type controller struct {
-	rootCtx            context.Context
+	rootCtx            context.Context //nolint:containedctx // scanner lifecycle ctx
 	ds                 model.DataStore
 	broker             events.Broker
 	metrics            metrics.Metrics

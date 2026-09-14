@@ -498,7 +498,7 @@ func (d *ctxCapturingDataStore) lastMediaFileCtx() context.Context {
 
 type ctxCapturingMediaFileRepo struct {
 	model.MediaFileRepository
-	lastCtx context.Context
+	lastCtx context.Context //nolint:containedctx // test spy records the ctx it was called with
 }
 
 func (r *ctxCapturingMediaFileRepo) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {

@@ -32,7 +32,7 @@ type fakeArtwork struct {
 	artwork.Artwork
 	recvId   string
 	recvSize int
-	recvCtx  context.Context
+	recvCtx  context.Context //nolint:containedctx // test spy records the ctx it was called with
 	data     []byte
 	hash     string
 }

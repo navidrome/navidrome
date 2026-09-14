@@ -56,7 +56,7 @@ type wsConnection struct {
 // webSocketServiceImpl implements host.WebSocketService.
 // It provides plugins with WebSocket communication capabilities.
 type webSocketServiceImpl struct {
-	baseCtx       context.Context // bounds the read loops, which outlive the Connect() call
+	baseCtx       context.Context //nolint:containedctx // bounds the read loops, which outlive the Connect() call
 	pluginName    string
 	manager       *Manager
 	requiredHosts []string

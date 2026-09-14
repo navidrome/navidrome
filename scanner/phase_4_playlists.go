@@ -19,7 +19,7 @@ import (
 )
 
 type phasePlaylists struct {
-	ctx           context.Context
+	ctx           context.Context //nolint:containedctx // phase runs under a single scan ctx
 	scanState     *scanState
 	ds            model.DataStore
 	pls           playlists.Playlists

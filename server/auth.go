@@ -309,7 +309,7 @@ func tokenAllowed(ctx context.Context) bool {
 // epoch the handler bumped reaches the token the client stores.
 type refreshingWriter struct {
 	http.ResponseWriter
-	ctx   context.Context
+	ctx   context.Context //nolint:containedctx // ResponseWriter wrapper defers work to Write, which has no ctx
 	token jwt.Token
 	once  sync.Once
 }

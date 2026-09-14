@@ -25,7 +25,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	backOff := func(kind, id string, retryAt time.Time) {
 		GinkgoHelper()
 		r := repo.(*artworkQueueRepository)
-		_, err := r.executeSQL(r.ctx, squirrel.Update(r.tableName).
+		_, err := r.executeSQL(context.Background(), squirrel.Update(r.tableName).
 			Set("attempts", squirrel.Expr("attempts + 1")).
 			Set("retry_at", retryAt).
 			Where(squirrel.Eq{"item_kind": kind, "item_id": id, "image_type": model.ImageTypePrimary}))
@@ -35,7 +35,7 @@ var _ = Describe("ArtworkQueueRepository", func() {
 	remove := func(kind, id string) {
 		GinkgoHelper()
 		r := repo.(*artworkQueueRepository)
-		Expect(r.delete(r.ctx, squirrel.Eq{"item_kind": kind, "item_id": id, "image_type": model.ImageTypePrimary})).To(Succeed())
+		Expect(r.delete(context.Background(), squirrel.Eq{"item_kind": kind, "item_id": id, "image_type": model.ImageTypePrimary})).To(Succeed())
 	}
 
 	BeforeEach(func() {
