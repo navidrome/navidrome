@@ -141,14 +141,14 @@ func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository 
 	return db.MockedPlaylist
 }
 
-func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
+func (db *MockDataStore) PlayQueue() model.PlayQueueRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlayQueue != nil {
 		return db.MockedPlayQueue
 	}
 	if db.RealDS != nil {
-		return db.RealDS.PlayQueue(ctx)
+		return db.RealDS.PlayQueue()
 	}
 	db.MockedPlayQueue = &MockPlayQueueRepo{}
 	return db.MockedPlayQueue
