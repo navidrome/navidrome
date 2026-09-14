@@ -38,7 +38,7 @@ var _ = Describe("phasePlaylists", func() {
 		folderRepo = &mockFolderRepository{}
 		userRepo = tests.CreateMockUserRepo()
 		// An admin user exists by default, so playlist import proceeds.
-		Expect(userRepo.Put(&model.User{ID: "123", UserName: "admin", IsAdmin: true})).To(Succeed())
+		Expect(userRepo.Put(ctx, &model.User{ID: "123", UserName: "admin", IsAdmin: true})).To(Succeed())
 		propRepo = &tests.MockedPropertyRepo{}
 		ds = &tests.MockDataStore{
 			MockedFolder:   folderRepo,

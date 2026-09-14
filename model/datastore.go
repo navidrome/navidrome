@@ -30,7 +30,7 @@ type DataStore interface {
 	Radio() RadioRepository
 	Share() ShareRepository
 	Property() PropertyRepository
-	User(ctx context.Context) UserRepository
+	User() UserRepository
 	UserProps() UserPropsRepository
 	ScrobbleBuffer() ScrobbleBufferRepository
 	Scrobble() ScrobbleRepository

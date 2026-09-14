@@ -29,7 +29,7 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 		return nil, err
 	}
 	ctx := r.Context()
-	u, err := api.ds.User(ctx).FindByUsername(username)
+	u, err := api.ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		return nil, err
 	}

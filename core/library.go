@@ -58,16 +58,16 @@ func NewLibrary(ds model.DataStore, scanner model.Scanner, watcher Watcher, brok
 
 func (s *libraryService) GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error) {
 	// Verify user exists
-	if _, err := s.ds.User(ctx).Get(userID); err != nil {
+	if _, err := s.ds.User().Get(ctx, userID); err != nil {
 		return nil, err
 	}
 
-	return s.ds.User(ctx).GetUserLibraries(userID)
+	return s.ds.User().GetUserLibraries(ctx, userID)
 }
 
 func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error {
 	// Verify user exists
-	user, err := s.ds.User(ctx).Get(userID)
+	user, err := s.ds.User().Get(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, li
 	}
 
 	// Set user libraries
-	err = s.ds.User(ctx).SetUserLibraries(userID, libraryIDs)
+	err = s.ds.User().SetUserLibraries(ctx, userID, libraryIDs)
 	if err != nil {
 		return fmt.Errorf("error setting user libraries: %w", err)
 	}
@@ -115,7 +115,7 @@ func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID strin
 	}
 
 	// Check if user has explicit access to this library
-	libraries, err := s.ds.User(ctx).GetUserLibraries(userID)
+	libraries, err := s.ds.User().GetUserLibraries(ctx, userID)
 	if err != nil {
 		log.Error(ctx, "Error checking library access", "userID", userID, "libraryID", libraryID, err)
 		return fmt.Errorf("error checking library access: %w", err)

@@ -1149,9 +1149,9 @@ var _ = Describe("MediaRepository", func() {
 
 				// Non-admin user with access to library 1 ONLY
 				restrictedUser = createUserWithLibraries("restricted-finder", []int{1})
-				ur := NewUserRepository(adminCtx, GetDBXBuilder())
-				Expect(ur.Put(&restrictedUser)).To(Succeed())
-				Expect(ur.SetUserLibraries(restrictedUser.ID, []int{1})).To(Succeed())
+				ur := NewUserRepository(GetDBXBuilder())
+				Expect(ur.Put(adminCtx, &restrictedUser)).To(Succeed())
+				Expect(ur.SetUserLibraries(adminCtx, restrictedUser.ID, []int{1})).To(Succeed())
 			})
 
 			AfterEach(func() {
@@ -1159,7 +1159,7 @@ var _ = Describe("MediaRepository", func() {
 				_ = NewMediaFileRepository(adminCtx, GetDBXBuilder()).Delete("otherlib-track")
 				lr := NewLibraryRepository(GetDBXBuilder()).(*libraryRepository)
 				_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
-				_ = NewUserRepository(adminCtx, GetDBXBuilder()).Delete(adminCtx, restrictedUser.ID)
+				_ = NewUserRepository(GetDBXBuilder()).Delete(adminCtx, restrictedUser.ID)
 			})
 
 			It("does not resolve paths in libraries the user cannot access", func() {

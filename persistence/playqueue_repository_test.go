@@ -369,11 +369,11 @@ var _ = Describe("PlayQueueRepository", func() {
 
 		It("only clears the specified user's playqueue", func() {
 			By("Creating users in the database to avoid foreign key constraints")
-			userRepo := NewUserRepository(ctx, GetDBXBuilder())
+			userRepo := NewUserRepository(GetDBXBuilder())
 			user1 := &model.User{ID: "user1", UserName: "user1", Name: "User 1", Email: "user1@test.com"}
 			user2 := &model.User{ID: "user2", UserName: "user2", Name: "User 2", Email: "user2@test.com"}
-			Expect(userRepo.Put(user1)).To(Succeed())
-			Expect(userRepo.Put(user2)).To(Succeed())
+			Expect(userRepo.Put(ctx, user1)).To(Succeed())
+			Expect(userRepo.Put(ctx, user2)).To(Succeed())
 
 			By("Storing playqueues for two users")
 			user1Queue := aPlayQueue("user1", 0, 100, songComeTogether)

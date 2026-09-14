@@ -52,14 +52,14 @@ func getAdminContext(ctx context.Context) (model.DataStore, context.Context) {
 }
 
 func getUser(ctx context.Context, id string, ds model.DataStore) (*model.User, error) {
-	user, err := ds.User(ctx).FindByUsername(id)
+	user, err := ds.User().FindByUsername(ctx, id)
 
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, fmt.Errorf("finding user by name: %w", err)
 	}
 
 	if errors.Is(err, model.ErrNotFound) {
-		user, err = ds.User(ctx).Get(id)
+		user, err = ds.User().Get(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("finding user by id: %w", err)
 		}

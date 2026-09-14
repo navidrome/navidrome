@@ -87,7 +87,7 @@ func (c *insightsCollector) LastRun(context.Context) (timestamp time.Time, succe
 }
 
 func (c *insightsCollector) sendInsights(ctx context.Context) {
-	count, err := c.ds.User(ctx).CountAll(model.QueryOptions{})
+	count, err := c.ds.User().CountAll(ctx, model.QueryOptions{})
 	if err != nil {
 		log.Trace(ctx, "Could not check user count", err)
 		return
@@ -273,7 +273,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading libraries count", err)
 	}
-	data.Library.ActiveUsers, err = c.ds.User(ctx).CountAll(model.QueryOptions{
+	data.Library.ActiveUsers, err = c.ds.User().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
 	if err != nil {

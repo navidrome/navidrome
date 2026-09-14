@@ -71,8 +71,8 @@ var _ = Describe("Plugin API", func() {
 		}
 
 		// Store users in mock datastore
-		Expect(ds.User(GinkgoT().Context()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(GinkgoT().Context()).Put(&regularUser)).To(Succeed())
+		Expect(ds.User().Put(GinkgoT().Context(), &adminUser)).To(Succeed())
+		Expect(ds.User().Put(GinkgoT().Context(), &regularUser)).To(Succeed())
 	})
 
 	Context("when plugins are disabled", func() {

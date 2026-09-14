@@ -35,7 +35,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		checkShareError(ctx, w, model.ErrExpired, info.shareID)
 		return
 	}
-	shareOwner, err := pub.ds.User(ctx).Get(share.UserID)
+	shareOwner, err := pub.ds.User().Get(ctx, share.UserID)
 	if err != nil {
 		log.Error(ctx, "Error retrieving share owner for shared stream", "share", info.shareID, "owner", share.UserID, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)

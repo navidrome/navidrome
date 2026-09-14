@@ -193,14 +193,14 @@ func (db *MockDataStore) Share() model.ShareRepository {
 	return db.MockedShare
 }
 
-func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
+func (db *MockDataStore) User() model.UserRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedUser != nil {
 		return db.MockedUser
 	}
 	if db.RealDS != nil {
-		return db.RealDS.User(ctx)
+		return db.RealDS.User()
 	}
 	db.MockedUser = CreateMockUserRepo()
 	return db.MockedUser

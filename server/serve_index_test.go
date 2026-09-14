@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -339,7 +340,7 @@ type mockedUserRepo struct {
 	empty bool
 }
 
-func (u *mockedUserRepo) CountAll(...model.QueryOptions) (int64, error) {
+func (u *mockedUserRepo) CountAll(context.Context, ...model.QueryOptions) (int64, error) {
 	if u.empty {
 		return 0, nil
 	}

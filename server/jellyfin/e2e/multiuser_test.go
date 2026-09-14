@@ -19,8 +19,8 @@ var _ = Describe("Multi-user access control", func() {
 
 		It("hides all content from a user with no library access", func() {
 			noAccess := model.User{ID: testID("noaccess-1"), UserName: "noaccess", Name: "No Access", NewPassword: "password"}
-			Expect(ds.User(ctx).Put(&noAccess)).To(Succeed())
-			loaded, err := ds.User(ctx).FindByUsername("noaccess")
+			Expect(ds.User().Put(ctx, &noAccess)).To(Succeed())
+			loaded, err := ds.User().FindByUsername(ctx, "noaccess")
 			Expect(err).ToNot(HaveOccurred())
 
 			q := queryResult(getAs(*loaded, "/Items?IncludeItemTypes=MusicAlbum&Recursive=true"))

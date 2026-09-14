@@ -66,9 +66,9 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	for _, u := range users {
 		seeded := *u
 		seeded.NewPassword = "password"
-		Expect(ds.User(ctx).Put(&seeded)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(u.ID, []int{h.Library.ID})).To(Succeed())
-		loaded, err := ds.User(ctx).FindByUsername(u.UserName)
+		Expect(ds.User().Put(ctx, &seeded)).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, u.ID, []int{h.Library.ID})).To(Succeed())
+		loaded, err := ds.User().FindByUsername(ctx, u.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		u.Libraries = loaded.Libraries
 	}

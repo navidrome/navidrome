@@ -176,7 +176,7 @@ func (b *bufferedScrobbler) processUserQueue(ctx context.Context, userId string)
 	// Scrobbles are drained on a background context that no longer carries the
 	// request's authenticated user. Restore it from the buffered userId so that
 	// scrobblers relying on the user in the context (e.g. plugins) still get it.
-	if user, err := b.ds.User(ctx).Get(userId); err != nil {
+	if user, err := b.ds.User().Get(ctx, userId); err != nil {
 		log.Warn(ctx, "Could not load user for buffered scrobble", "userId", userId, "scrobbler", b.service, err)
 	} else {
 		ctx = request.WithUser(ctx, *user)

@@ -252,22 +252,22 @@ var _ = BeforeSuite(func() {
 
 	userWithPass := adminUser
 	userWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&userWithPass)).To(Succeed())
+	Expect(initDS.User().Put(ctx, &userWithPass)).To(Succeed())
 
 	regularUserWithPass := regularUser
 	regularUserWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
+	Expect(initDS.User().Put(ctx, &regularUserWithPass)).To(Succeed())
 
 	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
 	Expect(initDS.Library().Put(ctx, &lib)).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User().SetUserLibraries(ctx, adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User().SetUserLibraries(ctx, regularUser.ID, []int{lib.ID})).To(Succeed())
 
-	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
+	loadedUser, err := initDS.User().FindByUsername(ctx, adminUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	adminUser.Libraries = loadedUser.Libraries
 
-	loadedOther, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
+	loadedOther, err := initDS.User().FindByUsername(ctx, regularUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	regularUser.Libraries = loadedOther.Libraries
 

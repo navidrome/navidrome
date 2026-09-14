@@ -132,7 +132,7 @@ var _ = Describe("handleStream", func() {
 		shareRepo.ID = "share123"
 		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID, Tracks: model.MediaFiles{mf}}
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&owner)).To(Succeed())
+		Expect(userRepo.Put(GinkgoT().Context(), &owner)).To(Succeed())
 		ds.MockedUser = userRepo
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{mf})
@@ -171,7 +171,7 @@ var _ = Describe("handleStream", func() {
 	It("returns 404 when the track is not a member of the share", func() {
 		owner := model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&owner)).To(Succeed())
+		Expect(userRepo.Put(GinkgoT().Context(), &owner)).To(Succeed())
 		ds.MockedUser = userRepo
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{{ID: "mf-shared"}, {ID: "mf-other"}})

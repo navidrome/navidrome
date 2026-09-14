@@ -19,7 +19,7 @@ var _ = Describe("Plugin Cleanup", func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin", UserName: "admin", IsAdmin: true})
 		db := GetDBXBuilder()
 		pluginRepo = NewPluginRepository(db)
-		userRepo = NewUserRepository(ctx, db)
+		userRepo = NewUserRepository(db)
 		libraryRepo = NewLibraryRepository(db)
 
 		// Clean up any existing plugins
@@ -209,7 +209,7 @@ var _ = Describe("Plugin Cleanup", func() {
 				IsAdmin:  false,
 			}
 			user.NewPassword = "password123"
-			Expect(userRepo.Put(user)).To(Succeed())
+			Expect(userRepo.Put(ctx, user)).To(Succeed())
 
 			// Create a plugin referencing this user
 			plugin := &model.Plugin{

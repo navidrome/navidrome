@@ -35,7 +35,7 @@ func NewUser(ds model.DataStore, pluginManager PluginUnloader) User {
 // The wrapper intercepts Delete operations to coordinate plugin unloading.
 func (s *userService) NewRepository(ctx context.Context) rest.Repository[model.User] {
 	return &userRepositoryWrapper{
-		UserRepository: s.ds.User(ctx),
+		UserRepository: s.ds.User(),
 		pluginManager:  s.pluginManager,
 	}
 }

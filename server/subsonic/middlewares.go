@@ -108,7 +108,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			username, isInternalAuth := fromInternalOrProxyAuth(r)
 			if username != "" {
 				authType := If(isInternalAuth, "internal", "reverse-proxy")
-				usr, err = ds.User(ctx).FindByUsername(username)
+				usr, err = ds.User().FindByUsername(ctx, username)
 				if errors.Is(err, context.Canceled) {
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
 					return
@@ -126,7 +126,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				salt, _ := p.String("s")
 				jwt, _ := p.String("jwt")
 
-				usr, err = ds.User(ctx).FindByUsernameWithPassword(username)
+				usr, err = ds.User().FindByUsernameWithPassword(ctx, username)
 				if errors.Is(err, context.Canceled) {
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
 					return

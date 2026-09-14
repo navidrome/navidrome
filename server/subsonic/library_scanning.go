@@ -53,7 +53,7 @@ func (api *Router) StartScan(r *http.Request) (*responses.Subsonic, error) {
 		}
 
 		// Validate all libraries in targets exist and user has access to them
-		userLibraries, err := api.ds.User(ctx).GetUserLibraries(loggedUser.ID)
+		userLibraries, err := api.ds.User().GetUserLibraries(ctx, loggedUser.ID)
 		if err != nil {
 			return nil, newError(responses.ErrorGeneric, "Internal error")
 		}

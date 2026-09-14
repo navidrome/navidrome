@@ -35,21 +35,21 @@ var _ = Describe("UsersService", Ordered, func() {
 		var mockUserRepo *tests.MockedUserRepo
 
 		BeforeEach(func() {
-			mockUserRepo = ds.User(ctx).(*tests.MockedUserRepo)
+			mockUserRepo = ds.User().(*tests.MockedUserRepo)
 			// Add test users
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user1",
 				UserName: "alice",
 				Name:     "Alice Admin",
 				IsAdmin:  true,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user2",
 				UserName: "bob",
 				Name:     "Bob User",
 				IsAdmin:  false,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user3",
 				UserName: "charlie",
 				Name:     "Charlie User",
@@ -144,21 +144,21 @@ var _ = Describe("UsersService", Ordered, func() {
 		var mockUserRepo *tests.MockedUserRepo
 
 		BeforeEach(func() {
-			mockUserRepo = ds.User(ctx).(*tests.MockedUserRepo)
+			mockUserRepo = ds.User().(*tests.MockedUserRepo)
 			// Add test users - alice is admin, bob and charlie are not
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user1",
 				UserName: "alice",
 				Name:     "Alice Admin",
 				IsAdmin:  true,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user2",
 				UserName: "bob",
 				Name:     "Bob User",
 				IsAdmin:  false,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user3",
 				UserName: "charlie",
 				Name:     "Charlie User",
@@ -458,20 +458,20 @@ func setupTestUsersPlugin() (*testUsersSetup, error) {
 }
 
 // createTestUsers creates standard test users in the mock repo
-func createTestUsers(mockUserRepo *tests.MockedUserRepo) {
-	_ = mockUserRepo.Put(&model.User{
+func createTestUsers(ctx context.Context, mockUserRepo *tests.MockedUserRepo) {
+	_ = mockUserRepo.Put(ctx, &model.User{
 		ID:       "user1",
 		UserName: "alice",
 		Name:     "Alice Admin",
 		IsAdmin:  true,
 	})
-	_ = mockUserRepo.Put(&model.User{
+	_ = mockUserRepo.Put(ctx, &model.User{
 		ID:       "user2",
 		UserName: "bob",
 		Name:     "Bob User",
 		IsAdmin:  false,
 	})
-	_ = mockUserRepo.Put(&model.User{
+	_ = mockUserRepo.Put(ctx, &model.User{
 		ID:       "user3",
 		UserName: "charlie",
 		Name:     "Charlie User",
@@ -560,7 +560,7 @@ func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUser
 	}})
 
 	mockUserRepo := tests.CreateMockUserRepo()
-	createTestUsers(mockUserRepo)
+	createTestUsers(GinkgoT().Context(), mockUserRepo)
 
 	dataStore := &tests.MockDataStore{
 		MockedPlugin: mockPluginRepo,

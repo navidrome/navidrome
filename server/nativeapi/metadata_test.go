@@ -71,8 +71,8 @@ var _ = Describe("Metadata API", func() {
 
 		adminUser := model.User{ID: "admin-1", UserName: "admin", IsAdmin: true, NewPassword: "adminpass"}
 		regularUser := model.User{ID: "user-1", UserName: "regular", IsAdmin: false, NewPassword: "userpass"}
-		Expect(ds.User(context.TODO()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(context.TODO()).Put(&regularUser)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &adminUser)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &regularUser)).To(Succeed())
 
 		var err error
 		adminToken, err = auth.CreateToken(&adminUser)

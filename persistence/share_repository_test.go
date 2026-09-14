@@ -25,8 +25,8 @@ var _ = Describe("ShareRepository", func() {
 		repo = NewShareRepository(GetDBXBuilder())
 
 		// Insert the admin user into the database (required for foreign key constraint)
-		ur := NewUserRepository(ctx, GetDBXBuilder())
-		err := ur.Put(&adminUser)
+		ur := NewUserRepository(GetDBXBuilder())
+		err := ur.Put(ctx, &adminUser)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Clean up shares
@@ -151,9 +151,9 @@ var _ = Describe("ShareRepository", func() {
 
 			// Non-admin owner with access to library 1 only
 			owner = createUserWithLibraries("share-owner", []int{1})
-			ur := NewUserRepository(adminCtx, GetDBXBuilder())
-			Expect(ur.Put(&owner)).To(Succeed())
-			Expect(ur.SetUserLibraries(owner.ID, []int{1})).To(Succeed())
+			ur := NewUserRepository(GetDBXBuilder())
+			Expect(ur.Put(adminCtx, &owner)).To(Succeed())
+			Expect(ur.SetUserLibraries(adminCtx, owner.ID, []int{1})).To(Succeed())
 
 			// Owner-owned playlist containing tracks from both libraries
 			plsID = "share-scope-pls"
@@ -184,7 +184,7 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = mr.executeSQL(mr.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": []string{"share-other", "share-ok"}}))
 			lr := NewLibraryRepository(b).(*libraryRepository)
 			_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
-			_ = NewUserRepository(adminCtx, b).Delete(adminCtx, owner.ID)
+			_ = NewUserRepository(b).Delete(adminCtx, owner.ID)
 		})
 
 		It("excludes tracks the owner cannot access from the shared playlist", func() {
@@ -264,9 +264,9 @@ var _ = Describe("ShareRepository", func() {
 
 			// Non-admin owner with access to library 1 only
 			owner = createUserWithLibraries("artist-share-owner", []int{1})
-			ur := NewUserRepository(adminCtx, b)
-			Expect(ur.Put(&owner)).To(Succeed())
-			Expect(ur.SetUserLibraries(owner.ID, []int{1})).To(Succeed())
+			ur := NewUserRepository(b)
+			Expect(ur.Put(adminCtx, &owner)).To(Succeed())
+			Expect(ur.SetUserLibraries(adminCtx, owner.ID, []int{1})).To(Succeed())
 
 			for _, s := range []struct{ id, typ, ids string }{
 				{"art-share", "artist", secondaryID},
@@ -296,7 +296,7 @@ var _ = Describe("ShareRepository", func() {
 			_, _ = ar.executeSQL(ar.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": []string{primaryID, secondaryID}}))
 			lr := NewLibraryRepository(b).(*libraryRepository)
 			_ = lr.delete(adminCtx, squirrel.Eq{"id": otherLib.ID})
-			_ = NewUserRepository(adminCtx, b).Delete(adminCtx, owner.ID)
+			_ = NewUserRepository(b).Delete(adminCtx, owner.ID)
 		})
 
 		It("includes co-album-artist tracks the owner can access and excludes those they cannot", func() {
@@ -398,9 +398,9 @@ var _ = Describe("ShareRepository", func() {
 
 		Describe("Save", func() {
 			It("assigns the logged-in user as owner, ignoring a client-supplied UserID", func() {
-				ur := NewUserRepository(ctx, GetDBXBuilder())
-				Expect(ur.Put(&ownerUser)).To(Succeed())
-				Expect(ur.Put(&otherUser)).To(Succeed())
+				ur := NewUserRepository(GetDBXBuilder())
+				Expect(ur.Put(ctx, &ownerUser)).To(Succeed())
+				Expect(ur.Put(ctx, &otherUser)).To(Succeed())
 
 				attackerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
 				attackerRepo := NewShareRepository(GetDBXBuilder())
@@ -493,9 +493,9 @@ var _ = Describe("ShareRepository", func() {
 		Describe("Read scoping", func() {
 			BeforeEach(func() {
 				// Persist owner/other users so the JOIN in selectShare resolves.
-				ur := NewUserRepository(ctx, GetDBXBuilder())
-				Expect(ur.Put(&ownerUser)).To(Succeed())
-				Expect(ur.Put(&otherUser)).To(Succeed())
+				ur := NewUserRepository(GetDBXBuilder())
+				Expect(ur.Put(ctx, &ownerUser)).To(Succeed())
+				Expect(ur.Put(ctx, &otherUser)).To(Succeed())
 
 				insertShare("share-owner-1", ownerUser.ID)
 				insertShare("share-owner-2", ownerUser.ID)

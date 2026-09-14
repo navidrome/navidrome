@@ -24,7 +24,7 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Navidrome stores recoverable passwords; this mirrors Subsonic's validateCredentials plaintext path.
-	usr, err := api.ds.User(ctx).FindByUsernameWithPassword(body.Username)
+	usr, err := api.ds.User().FindByUsernameWithPassword(ctx, body.Username)
 	if body.Pw == "" || err != nil || usr == nil || usr.Password != body.Pw {
 		log.Warn(ctx, "Jellyfin API: invalid login", "username", body.Username, "remoteAddr", r.RemoteAddr)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -32,7 +32,7 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	}
 	// Best-effort, like the web UI's validateLogin: without it, Jellyfin-only users show a
 	// never/stale "Last Login" in the admin UI.
-	if err := api.ds.User(ctx).UpdateLastLoginAt(usr.ID); err != nil {
+	if err := api.ds.User().UpdateLastLoginAt(ctx, usr.ID); err != nil {
 		log.Error(ctx, "Jellyfin API: could not update last login date", "username", body.Username, err)
 	}
 

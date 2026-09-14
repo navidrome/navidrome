@@ -145,8 +145,8 @@ var _ = Describe("Middlewares", func() {
 
 	Describe("Authenticate", func() {
 		BeforeEach(func() {
-			ur := ds.User(context.TODO())
-			_ = ur.Put(&model.User{
+			ur := ds.User()
+			_ = ur.Put(context.TODO(), &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
@@ -421,14 +421,14 @@ var _ = Describe("Middlewares", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			ur := ds.User(context.TODO())
-			_ = ur.Put(&model.User{
+			ur := ds.User()
+			_ = ur.Put(context.TODO(), &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
 
 			var err error
-			usr, err = ur.FindByUsernameWithPassword("admin")
+			usr, err = ur.FindByUsernameWithPassword(context.TODO(), "admin")
 			if err != nil {
 				panic(err)
 			}
