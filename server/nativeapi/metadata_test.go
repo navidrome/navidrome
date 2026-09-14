@@ -83,7 +83,7 @@ var _ = Describe("Metadata API", func() {
 
 	Describe("POST /api/metadata/{kind}/{id}/refresh", func() {
 		It("clears state and enqueues a Bump for admins", func() {
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(GinkgoT().Context(), &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al-1", Hash: "oldhash", Source: "external",
 			})).To(Succeed())
 
@@ -93,10 +93,10 @@ var _ = Describe("Metadata API", func() {
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 
-			_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+			_, err := artRepo.GetItemArtwork(GinkgoT().Context(), model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 
-			queued, err := queueRepo.DequeueBatch(1000)
+			queued, err := queueRepo.DequeueBatch(GinkgoT().Context(), 1000)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(queued).To(ContainElement(SatisfyAll(
 				HaveField("ItemKind", "al"),

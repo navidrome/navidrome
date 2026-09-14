@@ -35,8 +35,8 @@ type DataStore interface {
 	ScrobbleBuffer() ScrobbleBufferRepository
 	Scrobble() ScrobbleRepository
 	Plugin() PluginRepository
-	Artwork(ctx context.Context) ArtworkRepository
-	ArtworkQueue(ctx context.Context) ArtworkQueueRepository
+	Artwork() ArtworkRepository
+	ArtworkQueue() ArtworkQueueRepository
 
 	WithTx(block func(tx DataStore) error, scope ...string) error
 	WithTxImmediate(block func(tx DataStore) error, scope ...string) error

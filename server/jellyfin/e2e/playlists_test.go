@@ -240,7 +240,7 @@ var _ = Describe("Playlists", func() {
 		// from their tag-keyed cache until the next scan.
 		It("clears the resolved image tag after a cover upload", func() {
 			plID := createPlaylist("Cover Tag", nil)
-			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: plID, Hash: "1111111111111111",
 			})).To(Succeed())
 

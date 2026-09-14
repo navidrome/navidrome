@@ -326,7 +326,7 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(newPls.ID).ToNot(BeEmpty())
 		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
-		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		queued, err := NewArtworkQueueRepository(GetDBXBuilder()).DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued).To(ContainElement(SatisfyAll(HaveField("ItemKind", "pl"), HaveField("ItemID", newPls.ID))))
 		Expect(queued).ToNot(ContainElement(HaveField("ItemID", "")), "must not enqueue an empty playlist id")
@@ -339,12 +339,12 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(repo.Put(&newPls)).To(Succeed())
 		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 		// Clear the row creation just enqueued, so anything present afterwards came from the update.
-		queueRepo := NewArtworkQueueRepository(ctx, GetDBXBuilder())
-		queued, err := queueRepo.DequeueBatch(1000)
+		queueRepo := NewArtworkQueueRepository(GetDBXBuilder())
+		queued, err := queueRepo.DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		for _, q := range queued {
 			if q.ItemID == newPls.ID {
-				Expect(queueRepo.DeleteIfUnchanged(q.ItemKind, q.ItemID, q.ImageType, q.RetryAt)).To(Succeed())
+				Expect(queueRepo.DeleteIfUnchanged(ctx, q.ItemKind, q.ItemID, q.ImageType, q.RetryAt)).To(Succeed())
 			}
 		}
 
@@ -352,7 +352,7 @@ var _ = Describe("PlaylistRepository", func() {
 		newPls.Comment = "edited"
 		Expect(repo.Put(&newPls)).To(Succeed())
 
-		queued, err = queueRepo.DequeueBatch(1000)
+		queued, err = queueRepo.DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued).ToNot(ContainElement(HaveField("ItemID", newPls.ID)))
 	})
@@ -364,7 +364,7 @@ var _ = Describe("PlaylistRepository", func() {
 		Expect(repo.Put(&newPls)).To(Succeed())
 		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
-		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		queued, err := NewArtworkQueueRepository(GetDBXBuilder()).DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued).To(ContainElement(SatisfyAll(
 			HaveField("ItemKind", "pl"),

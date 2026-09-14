@@ -54,7 +54,7 @@ func (c *imageChangeCollector) enqueue(ctx context.Context) {
 		if len(items) == 0 {
 			continue
 		}
-		if err := c.ds.ArtworkQueue(ctx).Enqueue(items...); err != nil {
+		if err := c.ds.ArtworkQueue().Enqueue(ctx, items...); err != nil {
 			log.Warn(ctx, "Scanner: could not enqueue artwork for image changes", "lib", lib.Name, err)
 			continue
 		}

@@ -28,6 +28,8 @@ type SQLStore struct {
 	scrobble    model.ScrobbleRepository
 	scrobbleBuf model.ScrobbleBufferRepository
 	folder      model.FolderRepository
+	artwork     model.ArtworkRepository
+	artworkQ    model.ArtworkQueueRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -46,6 +48,8 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.scrobble = NewScrobbleRepository(db)
 	s.scrobbleBuf = NewScrobbleBufferRepository(db)
 	s.folder = newFolderRepository(db)
+	s.artwork = NewArtworkRepository(db)
+	s.artworkQ = NewArtworkQueueRepository(db)
 	return s
 }
 
@@ -129,12 +133,12 @@ func (s *SQLStore) Plugin() model.PluginRepository {
 	return s.plugin
 }
 
-func (s *SQLStore) Artwork(ctx context.Context) model.ArtworkRepository {
-	return NewArtworkRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Artwork() model.ArtworkRepository {
+	return s.artwork
 }
 
-func (s *SQLStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
-	return NewArtworkQueueRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) ArtworkQueue() model.ArtworkQueueRepository {
+	return s.artworkQ
 }
 
 func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {

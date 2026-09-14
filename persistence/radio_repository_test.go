@@ -123,8 +123,8 @@ var _ = Describe("RadioRepository", func() {
 				Expect(err).To(BeNil())
 				created := all[len(all)-1]
 
-				queueRepo := NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
-				queued, err := queueRepo.DequeueBatch(1000)
+				queueRepo := NewArtworkQueueRepository(GetDBXBuilder())
+				queued, err := queueRepo.DequeueBatch(ctx, 1000)
 				Expect(err).To(BeNil())
 				Expect(queued).To(ContainElement(SatisfyAll(
 					HaveField("ItemKind", "ra"),

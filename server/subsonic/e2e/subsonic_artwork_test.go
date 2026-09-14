@@ -148,20 +148,20 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 	It("drains the queue: folder art is acquired, the artless album settles absent", func() {
 		// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
 		for _, id := range []string{artfulID, artlessID} {
-			Expect(ds.ArtworkQueue(ctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
+			Expect(ds.ArtworkQueue().EnqueuePreservingBackoff(ctx, model.ArtworkQueueItem{
 				ItemKind: model.KindAlbumArtwork.Prefix(), ItemID: id,
 				ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump,
 			})).To(Succeed())
 		}
 		runWorkerUntil(ctx, worker, func() bool {
-			found, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
+			found, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
 			if err != nil || found.Hash == "" {
 				return false
 			}
-			absent, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artlessID, model.ImageTypePrimary)
+			absent, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, artlessID, model.ImageTypePrimary)
 			return err == nil && absent.Hash == ""
 		})
-		ia, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
+		ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("folder"))
 		artfulHash = ia.Hash

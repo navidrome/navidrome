@@ -94,9 +94,9 @@ func MarkConfigApplied(ctx context.Context, ds model.DataStore) error {
 
 // enqueueMissingAll is the safety net for entities a scan never enqueued (added between scans, or scanner off).
 func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
-	queue := ds.ArtworkQueue(ctx)
+	queue := ds.ArtworkQueue()
 	for _, kind := range ReprocessKinds {
-		if _, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityRecheck); err != nil {
+		if _, err := queue.EnqueueAllMissing(ctx, kind, model.ArtworkPriorityRecheck); err != nil {
 			return err
 		}
 	}
@@ -162,11 +162,11 @@ func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string
 
 // Refresh drops an item's resolved artwork state and re-queues it at Bump priority.
 func Refresh(ctx context.Context, ds model.DataStore, kind model.Kind, id string) error {
-	if err := ds.Artwork(ctx).DeleteForItems(kind, []string{id}); err != nil {
+	if err := ds.Artwork().DeleteForItems(ctx, kind, []string{id}); err != nil {
 		return fmt.Errorf("clearing artwork state: %w", err)
 	}
 	item := model.ArtworkQueueItem{ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump}
-	if err := ds.ArtworkQueue(ctx).Enqueue(item); err != nil {
+	if err := ds.ArtworkQueue().Enqueue(ctx, item); err != nil {
 		return fmt.Errorf("enqueuing artwork refresh: %w", err)
 	}
 	return nil

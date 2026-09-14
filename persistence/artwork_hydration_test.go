@@ -45,7 +45,7 @@ var _ = Describe("Artwork hydration", func() {
 	var aw model.ArtworkRepository
 
 	putInfo := func(kind, id, hash string) {
-		Expect(aw.PutItemArtwork(&model.ItemArtwork{
+		Expect(aw.PutItemArtwork(ctx, &model.ItemArtwork{
 			ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary, Hash: hash,
 		})).To(Succeed())
 	}
@@ -54,7 +54,7 @@ var _ = Describe("Artwork hydration", func() {
 		clearArtworkTables()
 		DeferCleanup(clearArtworkTables)
 		ctx = request.WithUser(log.NewContext(context.Background()), adminUser)
-		aw = NewArtworkRepository(ctx, GetDBXBuilder())
+		aw = NewArtworkRepository(GetDBXBuilder())
 	})
 
 	Describe("albums", func() {
@@ -169,7 +169,7 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("hydrates the tracks reached through a playlist", func() {
-			Expect(aw.PutImage(&model.Artwork{Hash: "pltrackhash1234", Mime: "image/jpeg", BlurHash: "LPLBLURhash"})).To(Succeed())
+			Expect(aw.PutImage(ctx, &model.Artwork{Hash: "pltrackhash1234", Mime: "image/jpeg", BlurHash: "LPLBLURhash"})).To(Succeed())
 			putInfo("al", songDayInALife.AlbumID, "pltrackhash1234")
 
 			pls, err := repo.GetWithTracks(plsBest.ID, true, false)
@@ -293,8 +293,8 @@ var _ = Describe("Artwork hydration", func() {
 			setCover("1001", true) // eligible, resolves its own art -> own-art-wins branch
 			DeferCleanup(func() { setCover("1001", false) })
 
-			Expect(aw.PutImage(&model.Artwork{Hash: "mfh1001blurxxxxx", Mime: "image/jpeg", BlurHash: "LTRACKblur", ThumbHash: "THtrack", Width: 640, Height: 480})).To(Succeed())
-			Expect(aw.PutImage(&model.Artwork{Hash: "alh102blurxxxxxx", Mime: "image/jpeg", BlurHash: "LALBUMblur", ThumbHash: "THalbum", Width: 1200, Height: 800})).To(Succeed())
+			Expect(aw.PutImage(ctx, &model.Artwork{Hash: "mfh1001blurxxxxx", Mime: "image/jpeg", BlurHash: "LTRACKblur", ThumbHash: "THtrack", Width: 640, Height: 480})).To(Succeed())
+			Expect(aw.PutImage(ctx, &model.Artwork{Hash: "alh102blurxxxxxx", Mime: "image/jpeg", BlurHash: "LALBUMblur", ThumbHash: "THalbum", Width: 1200, Height: 800})).To(Succeed())
 			putInfo("mf", "1001", "mfh1001blurxxxxx")
 			putInfo("al", "102", "alh102blurxxxxxx") // 1002's album: single-disc inheritance branch
 
@@ -417,7 +417,7 @@ var _ = Describe("Artwork hydration", func() {
 			seedAnnotations("album", albumSgtPeppers.ID, albumAbbeyRoad.ID)
 			seedAnnotations("artist", artistKraftwerk.ID, artistCJK.ID)
 
-			Expect(aw.PutImage(&model.Artwork{
+			Expect(aw.PutImage(ctx, &model.Artwork{
 				Hash: "curhash11111111", Mime: "image/jpeg", BlurHash: "LEHV6nWB2yk8",
 			})).To(Succeed())
 			putInfo("al", albumSgtPeppers.ID, "curhash11111111")

@@ -285,36 +285,36 @@ func (db *MockDataStore) Plugin() model.PluginRepository {
 	return db.MockedPlugin
 }
 
-func (db *MockDataStore) Artwork(ctx context.Context) model.ArtworkRepository {
+func (db *MockDataStore) Artwork() model.ArtworkRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
-	return db.artworkLocked(ctx)
+	return db.artworkLocked()
 }
 
 // artworkLocked is the body of Artwork for callers already holding repoMu; repoMu is a plain
 // Mutex, so re-entering through the exported method would deadlock.
-func (db *MockDataStore) artworkLocked(ctx context.Context) model.ArtworkRepository {
+func (db *MockDataStore) artworkLocked() model.ArtworkRepository {
 	if db.MockedArtwork != nil {
 		return db.MockedArtwork
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Artwork(ctx)
+		return db.RealDS.Artwork()
 	}
 	db.MockedArtwork = CreateMockArtworkRepo()
 	return db.MockedArtwork
 }
 
-func (db *MockDataStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
+func (db *MockDataStore) ArtworkQueue() model.ArtworkQueueRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedArtworkQueue != nil {
 		return db.MockedArtworkQueue
 	}
 	if db.RealDS != nil {
-		return db.RealDS.ArtworkQueue(ctx)
+		return db.RealDS.ArtworkQueue()
 	}
 	q := CreateMockArtworkQueueRepo()
-	if aw, ok := db.artworkLocked(ctx).(*MockArtworkRepo); ok {
+	if aw, ok := db.artworkLocked().(*MockArtworkRepo); ok {
 		q.ItemArtworkSource = aw
 	}
 	db.MockedArtworkQueue = q

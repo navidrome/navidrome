@@ -101,14 +101,14 @@ var _ = Describe("Scanner", Ordered, func() {
 	// so a later scan can only queue genuine reprocessing.
 	resolveQueuedArtwork := func() []model.ArtworkQueueItem {
 		GinkgoHelper()
-		queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+		queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		for _, it := range queued {
-			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: it.ItemKind, ItemID: it.ItemID, ImageType: it.ImageType,
 				Hash: "resolved", Source: "embedded", UpdatedAt: time.Now(),
 			})).To(Succeed())
-			Expect(ds.ArtworkQueue(ctx).DeleteIfUnchanged(it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
+			Expect(ds.ArtworkQueue().DeleteIfUnchanged(ctx, it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
 		}
 		return queued
 	}
@@ -172,7 +172,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				albums, _ := ds.Album(ctx).GetAll()
 				artists, _ := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
-				queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
 
 				for _, al := range albums {
@@ -197,7 +197,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				requeued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(requeued).To(BeEmpty())
 			})
@@ -229,7 +229,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
-				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				requeued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(requeued).To(ContainElement(SatisfyAll(
 					HaveField("ItemKind", "al"),
@@ -264,7 +264,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(mf).ToNot(BeEmpty())
 				trackID := mf[0].ID
 
-				Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+				Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 					ItemKind: "mf", ItemID: trackID, ImageType: model.ImageTypePrimary,
 					Source: "embedded", Hash: "stalehash",
 				})).To(Succeed())
@@ -272,7 +272,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "reimport"})
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				_, err = ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
+				_, err = ds.Artwork().GetItemArtwork(ctx, model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
@@ -298,7 +298,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		}
 		queuedItems := func() []model.ArtworkQueueItem {
 			GinkgoHelper()
-			queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+			queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 			Expect(err).ToNot(HaveOccurred())
 			return queued
 		}
