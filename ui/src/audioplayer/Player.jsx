@@ -34,6 +34,7 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
+import { simpleMobilePlayerProps } from '../layout/simpleMobile'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -41,6 +42,7 @@ const Player = () => {
   const playerTheme = theme.player?.theme || 'dark'
   const dataProvider = useDataProvider()
   const playerState = useSelector((state) => state.player)
+  const queue = playerState?.queue || []
   const dispatch = useDispatch()
   const [currentTrackId, setCurrentTrackId] = useState(null)
   const [heartbeatTrackId, setHeartbeatTrackId] = useState(null)
@@ -84,8 +86,8 @@ const Player = () => {
     dispatch(setTranscodingProfile(profile))
 
     const state = playerStateRef.current
-    const currentIdx = state.savedPlayIndex || 0
-    const trackIds = state.queue
+    const currentIdx = state?.savedPlayIndex || 0
+    const trackIds = (state?.queue || [])
       .slice(currentIdx, currentIdx + 4)
       .filter((item) => !item.isRadio && item.trackId)
       .map((item) => item.trackId)
@@ -112,10 +114,10 @@ const Player = () => {
 
   // Pre-fetch transcode decisions for next 2-3 songs when queue or position changes
   useEffect(() => {
-    if (!playerState.queue.length) return
+    if (!queue.length) return
 
     const currentIdx = playerState.savedPlayIndex || 0
-    const nextSongIds = playerState.queue
+    const nextSongIds = queue
       .slice(currentIdx + 1, currentIdx + 4)
       .filter((item) => !item.isRadio)
       .map((item) => item.trackId)
@@ -123,9 +125,9 @@ const Player = () => {
     if (nextSongIds.length > 0) {
       decisionService.prefetchDecisions(nextSongIds)
     }
-  }, [playerState.queue, playerState.savedPlayIndex])
+  }, [queue, playerState?.savedPlayIndex])
 
-  const visible = authenticated && playerState.queue.length > 0
+  const visible = authenticated && queue.length > 0
   const isRadio = playerState.current?.isRadio || false
   const classes = useStyle({
     isRadio,
@@ -206,7 +208,7 @@ const Player = () => {
     () => ({
       theme: playerTheme,
       bounds: 'body',
-      playMode: playerState.mode,
+      playMode: playerState?.mode,
       mode: 'full',
       loadAudioErrorPlayNext: false,
       autoPlayInitLoadPlayList: true,
@@ -235,25 +237,26 @@ const Player = () => {
       ),
       locale: locale(translate),
       sortableOptions: { delay: 200, delayOnTouchOnly: true },
+      ...simpleMobilePlayerProps(),
     }),
-    [gainInfo, isDesktop, playerTheme, translate, playerState.mode],
+    [gainInfo, isDesktop, playerTheme, translate, playerState?.mode],
   )
 
   const options = useMemo(() => {
-    const current = playerState.current || {}
+    const current = playerState?.current || {}
     return {
       ...defaultOptions,
-      audioLists: playerState.queue.map((item) => item),
-      playIndex: playerState.playIndex,
+      audioLists: queue.map((item) => item),
+      playIndex: playerState?.playIndex,
       autoPlay:
-        playerState.queue.length > 0 &&
-        playerState.autoPlay !== false &&
-        (playerState.clear || playerState.playIndex === 0),
-      clearPriorAudioLists: playerState.clear,
+        queue.length > 0 &&
+        playerState?.autoPlay !== false &&
+        (playerState?.clear || playerState?.playIndex === 0),
+      clearPriorAudioLists: playerState?.clear,
       extendsContent: (
         <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
       ),
-      defaultVolume: isMobilePlayer ? 1 : playerState.volume,
+      defaultVolume: isMobilePlayer ? 1 : playerState?.volume,
       showMediaSession: !current.isRadio,
     }
   }, [playerState, defaultOptions, isMobilePlayer])
@@ -377,11 +380,9 @@ const Player = () => {
       decisionService.invalidateAll()
 
       // Pre-fetch decisions for upcoming songs with fresh tokens
-      const currentIdx = playerState.queue.findIndex(
-        (item) => item.uuid === currentPlayId,
-      )
+      const currentIdx = queue.findIndex((item) => item.uuid === currentPlayId)
       if (currentIdx >= 0) {
-        const nextSongIds = playerState.queue
+        const nextSongIds = queue
           .slice(currentIdx + 1, currentIdx + 4)
           .filter((item) => !item.isRadio)
           .map((item) => item.trackId)
@@ -390,7 +391,7 @@ const Player = () => {
         }
       }
     },
-    [playerState.queue],
+    [queue],
   )
 
   const onBeforeDestroy = useCallback(() => {

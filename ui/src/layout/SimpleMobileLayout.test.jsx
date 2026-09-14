@@ -17,7 +17,7 @@ vi.mock('../themes/useCurrentTheme', () => ({
   default: () => createTheme(),
 }))
 
-vi.mock('../common', () => ({
+vi.mock('../common/ShuffleAllButton', () => ({
   ShuffleAllButton: ({ variant }) => (
     <button data-testid="shuffle-all-hero" data-variant={variant}>
       menu.playRandom
@@ -33,9 +33,9 @@ vi.mock('./simpleMobile', () => ({
   setSimpleMobilePref: (...args) => mockSetPref(...args),
 }))
 
-const renderLayout = () =>
+const renderLayout = (storeState = { player: { queue: [] } }) =>
   render(
-    <Provider store={createStore(() => ({ player: { queue: [] } }))}>
+    <Provider store={createStore(() => storeState)}>
       <ThemeProvider theme={createTheme()}>
         <SimpleMobileLayout />
       </ThemeProvider>
@@ -57,6 +57,13 @@ describe('<SimpleMobileLayout />', () => {
     expect(screen.getByTestId('open-full-version')).toHaveTextContent(
       'menu.openFullVersion',
     )
+  })
+
+  it('still shows the two actions when the persisted queue is missing', () => {
+    renderLayout({})
+    expect(screen.getByTestId('simple-mobile-layout')).toBeInTheDocument()
+    expect(screen.getByTestId('shuffle-all-hero')).toBeInTheDocument()
+    expect(screen.getByTestId('open-full-version')).toBeInTheDocument()
   })
 
   it('persists full-UI preference when opening the full version', () => {

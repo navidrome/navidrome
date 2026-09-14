@@ -20,3 +20,8 @@ code {
 html[data-simple-mobile='1'] body {
   margin: 0;
 }
+
+/* Fullscreen jinke overlay would cover Play random / Open full version. */
+html[data-simple-mobile='1'] .react-jinke-music-player-mobile {
+  display: none !important;
+}

@@ -86,3 +86,12 @@ export const applySimpleMobileDomHint = () => {
     document.documentElement.removeAttribute('data-simple-mobile')
   }
 }
+
+// jinke's mobile `mode: 'full'` is a fullscreen overlay. Use the desktop bottom
+// bar instead so the two simple-mode buttons stay tappable.
+export const simpleMobilePlayerProps = () => {
+  if (!shouldUseSimpleMobile()) {
+    return {}
+  }
+  return { responsive: false, toggleMode: false }
+}

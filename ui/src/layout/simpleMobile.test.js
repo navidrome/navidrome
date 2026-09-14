@@ -4,6 +4,7 @@ import {
   isMobileDevice,
   shouldUseSimpleMobile,
   setSimpleMobilePref,
+  simpleMobilePlayerProps,
 } from './simpleMobile'
 
 const setMatchMedia = (narrow, coarse) => {
@@ -90,5 +91,36 @@ describe('simpleMobile detection', () => {
     expect(localStorage.getItem(SIMPLE_MOBILE_KEY)).toBe('0')
     expect(reload).toHaveBeenCalled()
     vi.unstubAllGlobals()
+  })
+
+  it('does not crash when localStorage throws', () => {
+    const orig = window.localStorage
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('denied')
+      },
+    })
+    expect(() => shouldUseSimpleMobile()).not.toThrow()
+    expect(shouldUseSimpleMobile()).toBe(false)
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: orig,
+    })
+  })
+
+  it('keeps the player as a bottom bar in simple mode', () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+      configurable: true,
+    })
+    expect(simpleMobilePlayerProps()).toEqual({
+      responsive: false,
+      toggleMode: false,
+    })
+  })
+
+  it('does not change player chrome on desktop full UI', () => {
+    expect(simpleMobilePlayerProps()).toEqual({})
   })
 })

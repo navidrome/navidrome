@@ -5,11 +5,20 @@ import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { createTheme } from '@material-ui/core/styles'
 
-const simple = vi.hoisted(() => ({ on: false }))
+const simple = vi.hoisted(() => ({ on: false, throwOnDetect: false }))
 
 vi.mock('./simpleMobile', () => ({
-  shouldUseSimpleMobile: () => simple.on,
-  applySimpleMobileDomHint: vi.fn(),
+  shouldUseSimpleMobile: () => {
+    if (simple.throwOnDetect) {
+      throw new Error('detect failed')
+    }
+    return simple.on
+  },
+  applySimpleMobileDomHint: () => {
+    if (simple.throwOnDetect) {
+      throw new Error('detect failed')
+    }
+  },
 }))
 
 vi.mock('react-admin', () => ({
@@ -36,12 +45,13 @@ vi.mock('../common', () => ({
 
 import Layout from './Layout'
 
-const renderLayout = () =>
+const renderLayout = (storeState) =>
   render(
     <Provider
       store={createStore(() => ({
         player: { queue: [] },
         admin: { ui: { sidebarOpen: true } },
+        ...storeState,
       }))}
     >
       <Layout>
@@ -53,6 +63,7 @@ const renderLayout = () =>
 describe('<Layout /> simple mobile routing', () => {
   beforeEach(() => {
     simple.on = false
+    simple.throwOnDetect = false
   })
 
   it('renders the full React-Admin layout when simple mode is off', () => {
@@ -66,5 +77,18 @@ describe('<Layout /> simple mobile routing', () => {
     renderLayout()
     expect(screen.getByTestId('simple-mobile-layout')).toBeInTheDocument()
     expect(screen.queryByTestId('ra-layout')).toBeNull()
+  })
+
+  it('still renders simple mode when player.queue is missing', () => {
+    simple.on = true
+    renderLayout({ player: {} })
+    expect(screen.getByTestId('simple-mobile-layout')).toBeInTheDocument()
+  })
+
+  it('falls back to the full UI if simple-mode detection throws', () => {
+    simple.throwOnDetect = true
+    renderLayout()
+    expect(screen.getByTestId('ra-layout')).toBeInTheDocument()
+    expect(screen.queryByTestId('simple-mobile-layout')).toBeNull()
   })
 })
