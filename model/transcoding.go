@@ -1,6 +1,10 @@
 package model
 
-import "github.com/deluan/rest"
+import (
+	"context"
+
+	"github.com/deluan/rest"
+)
 
 type Transcoding struct {
 	ID             string `structs:"id" json:"id"`
@@ -15,8 +19,8 @@ type Transcodings []Transcoding
 type TranscodingRepository interface {
 	rest.Repository[Transcoding]
 	rest.Persistable[Transcoding]
-	Get(id string) (*Transcoding, error)
-	CountAll(...QueryOptions) (int64, error)
-	Put(*Transcoding) error
-	FindByFormat(format string) (*Transcoding, error)
+	Get(ctx context.Context, id string) (*Transcoding, error)
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Put(ctx context.Context, t *Transcoding) error
+	FindByFormat(ctx context.Context, format string) (*Transcoding, error)
 }

@@ -72,7 +72,7 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 		}
 	})
 	if plr.TranscodingId != "" {
-		trc, err = p.ds.Transcoding(ctx).Get(plr.TranscodingId)
+		trc, err = p.ds.Transcoding().Get(ctx, plr.TranscodingId)
 	}
 	return plr, trc, err
 }
