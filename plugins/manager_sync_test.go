@@ -36,7 +36,7 @@ var _ = Describe("syncPlugins", func() {
 
 		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
 
-		_, err := repo.Get("my-plugin")
+		_, err := repo.Get(GinkgoT().Context(), "my-plugin")
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -46,7 +46,7 @@ var _ = Describe("syncPlugins", func() {
 
 		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
 
-		all, err := repo.GetAll()
+		all, err := repo.GetAll(GinkgoT().Context())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(all).To(BeEmpty())
 	})
@@ -70,7 +70,7 @@ var _ = Describe("removePluginFromDB", func() {
 		}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
-		_, err := repo.Get("my-plugin")
+		_, err := repo.Get(GinkgoT().Context(), "my-plugin")
 		Expect(err).To(MatchError(model.ErrNotFound))
 
 		remaining, err := buffer.Length()

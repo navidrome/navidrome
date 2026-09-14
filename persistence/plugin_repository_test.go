@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -10,50 +12,51 @@ import (
 
 var _ = Describe("PluginRepository", func() {
 	var repo model.PluginRepository
+	var ctx context.Context
 
 	Describe("Admin User", func() {
 		BeforeEach(func() {
-			ctx := GinkgoT().Context()
+			ctx = GinkgoT().Context()
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			repo = NewPluginRepository(ctx, GetDBXBuilder())
+			repo = NewPluginRepository(GetDBXBuilder())
 
 			// Clean up any existing plugins
-			all, _ := repo.GetAll()
+			all, _ := repo.GetAll(ctx)
 			for _, p := range all {
-				_ = repo.Delete(p.ID)
+				_ = repo.Delete(ctx, p.ID)
 			}
 		})
 
 		AfterEach(func() {
 			// Clean up after tests
-			all, _ := repo.GetAll()
+			all, _ := repo.GetAll(ctx)
 			for _, p := range all {
-				_ = repo.Delete(p.ID)
+				_ = repo.Delete(ctx, p.ID)
 			}
 		})
 
 		Describe("CountAll", func() {
 			It("returns 0 when no plugins exist", func() {
-				Expect(repo.CountAll()).To(Equal(int64(0)))
+				Expect(repo.CountAll(ctx)).To(Equal(int64(0)))
 			})
 
 			It("returns the number of plugins in the DB", func() {
-				_ = repo.Put(&model.Plugin{ID: "test-plugin-1", Path: "/plugins/test1.wasm", Manifest: "{}", SHA256: "abc123"})
-				_ = repo.Put(&model.Plugin{ID: "test-plugin-2", Path: "/plugins/test2.wasm", Manifest: "{}", SHA256: "def456"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "test-plugin-1", Path: "/plugins/test1.wasm", Manifest: "{}", SHA256: "abc123"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "test-plugin-2", Path: "/plugins/test2.wasm", Manifest: "{}", SHA256: "def456"})
 
-				Expect(repo.CountAll()).To(Equal(int64(2)))
+				Expect(repo.CountAll(ctx)).To(Equal(int64(2)))
 			})
 		})
 
 		Describe("Delete", func() {
 			It("deletes existing item", func() {
 				plugin := &model.Plugin{ID: "to-delete", Path: "/plugins/delete.wasm", Manifest: "{}", SHA256: "hash"}
-				_ = repo.Put(plugin)
+				_ = repo.Put(ctx, plugin)
 
-				err := repo.Delete(plugin.ID)
+				err := repo.Delete(ctx, plugin.ID)
 				Expect(err).To(BeNil())
 
-				_, err = repo.Get(plugin.ID)
+				_, err = repo.Get(ctx, plugin.ID)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
@@ -61,9 +64,9 @@ var _ = Describe("PluginRepository", func() {
 		Describe("Get", func() {
 			It("returns an existing item", func() {
 				plugin := &model.Plugin{ID: "test-get", Path: "/plugins/test.wasm", Manifest: `{"name":"test"}`, SHA256: "hash123"}
-				_ = repo.Put(plugin)
+				_ = repo.Put(ctx, plugin)
 
-				res, err := repo.Get(plugin.ID)
+				res, err := repo.Get(ctx, plugin.ID)
 				Expect(err).To(BeNil())
 				Expect(res.ID).To(Equal(plugin.ID))
 				Expect(res.Path).To(Equal(plugin.Path))
@@ -71,31 +74,31 @@ var _ = Describe("PluginRepository", func() {
 			})
 
 			It("errors when missing", func() {
-				_, err := repo.Get("notanid")
+				_, err := repo.Get(ctx, "notanid")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
 
 		Describe("GetAll", func() {
 			It("returns all items from the DB", func() {
-				_ = repo.Put(&model.Plugin{ID: "plugin-a", Path: "/plugins/a.wasm", Manifest: "{}", SHA256: "hash1"})
-				_ = repo.Put(&model.Plugin{ID: "plugin-b", Path: "/plugins/b.wasm", Manifest: "{}", SHA256: "hash2"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "plugin-a", Path: "/plugins/a.wasm", Manifest: "{}", SHA256: "hash1"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "plugin-b", Path: "/plugins/b.wasm", Manifest: "{}", SHA256: "hash2"})
 
-				all, err := repo.GetAll()
+				all, err := repo.GetAll(ctx)
 				Expect(err).To(BeNil())
 				Expect(all).To(HaveLen(2))
 			})
 
 			It("supports pagination", func() {
-				_ = repo.Put(&model.Plugin{ID: "plugin-1", Path: "/plugins/1.wasm", Manifest: "{}", SHA256: "h1"})
-				_ = repo.Put(&model.Plugin{ID: "plugin-2", Path: "/plugins/2.wasm", Manifest: "{}", SHA256: "h2"})
-				_ = repo.Put(&model.Plugin{ID: "plugin-3", Path: "/plugins/3.wasm", Manifest: "{}", SHA256: "h3"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "plugin-1", Path: "/plugins/1.wasm", Manifest: "{}", SHA256: "h1"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "plugin-2", Path: "/plugins/2.wasm", Manifest: "{}", SHA256: "h2"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "plugin-3", Path: "/plugins/3.wasm", Manifest: "{}", SHA256: "h3"})
 
-				page1, err := repo.GetAll(model.QueryOptions{Max: 2, Offset: 0, Sort: "id"})
+				page1, err := repo.GetAll(ctx, model.QueryOptions{Max: 2, Offset: 0, Sort: "id"})
 				Expect(err).To(BeNil())
 				Expect(page1).To(HaveLen(2))
 
-				page2, err := repo.GetAll(model.QueryOptions{Max: 2, Offset: 2, Sort: "id"})
+				page2, err := repo.GetAll(ctx, model.QueryOptions{Max: 2, Offset: 2, Sort: "id"})
 				Expect(err).To(BeNil())
 				Expect(page2).To(HaveLen(1))
 			})
@@ -112,10 +115,10 @@ var _ = Describe("PluginRepository", func() {
 					Enabled:  false,
 				}
 
-				err := repo.Put(plugin)
+				err := repo.Put(ctx, plugin)
 				Expect(err).To(BeNil())
 
-				saved, err := repo.Get(plugin.ID)
+				saved, err := repo.Get(ctx, plugin.ID)
 				Expect(err).To(BeNil())
 				Expect(saved.Path).To(Equal(plugin.Path))
 				Expect(saved.Manifest).To(Equal(plugin.Manifest))
@@ -133,15 +136,15 @@ var _ = Describe("PluginRepository", func() {
 					SHA256:   "original",
 					Enabled:  false,
 				}
-				_ = repo.Put(plugin)
+				_ = repo.Put(ctx, plugin)
 
 				plugin.Enabled = true
 				plugin.Config = `{"new":"config"}`
 				plugin.SHA256 = "updated"
-				err := repo.Put(plugin)
+				err := repo.Put(ctx, plugin)
 				Expect(err).To(BeNil())
 
-				saved, err := repo.Get(plugin.ID)
+				saved, err := repo.Get(ctx, plugin.ID)
 				Expect(err).To(BeNil())
 				Expect(saved.Enabled).To(BeTrue())
 				Expect(saved.Config).To(Equal(`{"new":"config"}`))
@@ -156,10 +159,10 @@ var _ = Describe("PluginRepository", func() {
 					SHA256:    "hash",
 					LastError: "failed to load: missing export",
 				}
-				err := repo.Put(plugin)
+				err := repo.Put(ctx, plugin)
 				Expect(err).To(BeNil())
 
-				saved, err := repo.Get(plugin.ID)
+				saved, err := repo.Get(ctx, plugin.ID)
 				Expect(err).To(BeNil())
 				Expect(saved.LastError).To(Equal("failed to load: missing export"))
 			})
@@ -170,7 +173,7 @@ var _ = Describe("PluginRepository", func() {
 					Manifest: "{}",
 					SHA256:   "hash",
 				}
-				err := repo.Put(plugin)
+				err := repo.Put(ctx, plugin)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("ID cannot be empty"))
 			})
@@ -178,14 +181,14 @@ var _ = Describe("PluginRepository", func() {
 
 		Describe("ClearErrors", func() {
 			It("clears last_error on all plugins with errors", func() {
-				_ = repo.Put(&model.Plugin{ID: "ok-plugin", Path: "/plugins/ok.wasm", Manifest: "{}", SHA256: "h1"})
-				_ = repo.Put(&model.Plugin{ID: "err-plugin-1", Path: "/plugins/e1.wasm", Manifest: "{}", SHA256: "h2", LastError: "incompatible version"})
-				_ = repo.Put(&model.Plugin{ID: "err-plugin-2", Path: "/plugins/e2.wasm", Manifest: "{}", SHA256: "h3", LastError: "missing export"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "ok-plugin", Path: "/plugins/ok.wasm", Manifest: "{}", SHA256: "h1"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "err-plugin-1", Path: "/plugins/e1.wasm", Manifest: "{}", SHA256: "h2", LastError: "incompatible version"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "err-plugin-2", Path: "/plugins/e2.wasm", Manifest: "{}", SHA256: "h3", LastError: "missing export"})
 
-				err := repo.ClearErrors()
+				err := repo.ClearErrors(ctx)
 				Expect(err).To(BeNil())
 
-				all, err := repo.GetAll()
+				all, err := repo.GetAll(ctx)
 				Expect(err).To(BeNil())
 				for _, p := range all {
 					Expect(p.LastError).To(BeEmpty(), "plugin %s should have no error", p.ID)
@@ -193,9 +196,9 @@ var _ = Describe("PluginRepository", func() {
 			})
 
 			It("succeeds when no plugins have errors", func() {
-				_ = repo.Put(&model.Plugin{ID: "clean-plugin", Path: "/plugins/c.wasm", Manifest: "{}", SHA256: "h1"})
+				_ = repo.Put(ctx, &model.Plugin{ID: "clean-plugin", Path: "/plugins/c.wasm", Manifest: "{}", SHA256: "h1"})
 
-				err := repo.ClearErrors()
+				err := repo.ClearErrors(ctx)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -203,42 +206,42 @@ var _ = Describe("PluginRepository", func() {
 
 	Describe("Regular User", func() {
 		BeforeEach(func() {
-			ctx := GinkgoT().Context()
+			ctx = GinkgoT().Context()
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: false})
-			repo = NewPluginRepository(ctx, GetDBXBuilder())
+			repo = NewPluginRepository(GetDBXBuilder())
 		})
 
 		Describe("CountAll", func() {
 			It("fails to count items", func() {
-				_, err := repo.CountAll()
+				_, err := repo.CountAll(ctx)
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 		})
 
 		Describe("Delete", func() {
 			It("fails to delete items", func() {
-				err := repo.Delete("any-id")
+				err := repo.Delete(ctx, "any-id")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 		})
 
 		Describe("Get", func() {
 			It("fails to get items", func() {
-				_, err := repo.Get("any-id")
+				_, err := repo.Get(ctx, "any-id")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 		})
 
 		Describe("GetAll", func() {
 			It("fails to get all items", func() {
-				_, err := repo.GetAll()
+				_, err := repo.GetAll(ctx)
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
 		})
 
 		Describe("Put", func() {
 			It("fails to create/update item", func() {
-				err := repo.Put(&model.Plugin{
+				err := repo.Put(ctx, &model.Plugin{
 					ID:       "user-create",
 					Path:     "/plugins/create.wasm",
 					Manifest: "{}",

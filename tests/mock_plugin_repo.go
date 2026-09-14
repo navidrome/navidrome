@@ -30,7 +30,7 @@ func (m *MockPluginRepo) SetError(err bool) {
 	m.Err = err
 }
 
-func (m *MockPluginRepo) ClearErrors() error {
+func (m *MockPluginRepo) ClearErrors(context.Context) error {
 	if m.Err {
 		return errors.New("unexpected error")
 	}
@@ -56,7 +56,7 @@ func (m *MockPluginRepo) SetPermitted(permitted bool) {
 	m.Permitted = permitted
 }
 
-func (m *MockPluginRepo) Get(id string) (*model.Plugin, error) {
+func (m *MockPluginRepo) Get(_ context.Context, id string) (*model.Plugin, error) {
 	if !m.Permitted {
 		return nil, rest.ErrPermissionDenied
 	}
@@ -69,11 +69,11 @@ func (m *MockPluginRepo) Get(id string) (*model.Plugin, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPluginRepo) Read(_ context.Context, id string) (*model.Plugin, error) {
-	return m.Get(id)
+func (m *MockPluginRepo) Read(ctx context.Context, id string) (*model.Plugin, error) {
+	return m.Get(ctx, id)
 }
 
-func (m *MockPluginRepo) Put(p *model.Plugin) error {
+func (m *MockPluginRepo) Put(_ context.Context, p *model.Plugin) error {
 	if !m.Permitted {
 		return rest.ErrPermissionDenied
 	}
@@ -106,7 +106,7 @@ func (m *MockPluginRepo) Put(p *model.Plugin) error {
 	return nil
 }
 
-func (m *MockPluginRepo) Delete(id string) error {
+func (m *MockPluginRepo) Delete(_ context.Context, id string) error {
 	if !m.Permitted {
 		return rest.ErrPermissionDenied
 	}
@@ -124,7 +124,7 @@ func (m *MockPluginRepo) Delete(id string) error {
 	return nil
 }
 
-func (m *MockPluginRepo) GetAll(qo ...model.QueryOptions) (model.Plugins, error) {
+func (m *MockPluginRepo) GetAll(_ context.Context, qo ...model.QueryOptions) (model.Plugins, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
@@ -137,7 +137,7 @@ func (m *MockPluginRepo) GetAll(qo ...model.QueryOptions) (model.Plugins, error)
 	return m.All, nil
 }
 
-func (m *MockPluginRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+func (m *MockPluginRepo) CountAll(_ context.Context, qo ...model.QueryOptions) (int64, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
@@ -158,8 +158,8 @@ func (m *MockPluginRepo) Count(_ context.Context, _ ...rest.QueryOptions) (int64
 	return int64(len(m.All)), nil
 }
 
-func (m *MockPluginRepo) ReadAll(_ context.Context, _ ...rest.QueryOptions) ([]model.Plugin, error) {
-	return m.GetAll()
+func (m *MockPluginRepo) ReadAll(ctx context.Context, _ ...rest.QueryOptions) ([]model.Plugin, error) {
+	return m.GetAll(ctx)
 }
 
 var _ model.PluginRepository = (*MockPluginRepo)(nil)

@@ -15,7 +15,7 @@ import (
 )
 
 func (api *Router) addPluginRoute(r chi.Router) {
-	repo := lazy(func(ctx context.Context) rest.Repository[model.Plugin] { return api.ds.Plugin(ctx) })
+	repo := api.ds.Plugin()
 
 	r.Route("/plugin", func(r chi.Router) {
 		r.Use(pluginsEnabledMiddleware)
@@ -66,10 +66,10 @@ type PluginUpdateRequest struct {
 func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	ctx := r.Context()
-	repo := api.ds.Plugin(ctx)
+	repo := api.ds.Plugin()
 
 	// Get existing plugin to verify it exists
-	if _, err := repo.Get(id); err != nil {
+	if _, err := repo.Get(ctx, id); err != nil {
 		if errors.Is(err, rest.ErrPermissionDenied) {
 			http.Error(w, "Access denied: admin privileges required", http.StatusForbidden)
 			return
@@ -121,7 +121,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 			if enableErr := api.pluginManager.EnablePlugin(ctx, id); enableErr != nil {
 				log.Error(ctx, "Error enabling plugin", "id", id, enableErr)
 				// Refresh plugin from DB to get the error
-				plugin, err := repo.Get(id)
+				plugin, err := repo.Get(ctx, id)
 				if err != nil {
 					log.Error(ctx, "Error getting updated plugin after enable failure", "id", id, err)
 					http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -151,7 +151,7 @@ func (api *Router) updatePlugin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Refresh and return updated plugin
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(ctx, id)
 	if err != nil {
 		log.Error(ctx, "Error getting updated plugin", "id", id, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -202,7 +202,7 @@ func validateAndUpdateConfig(ctx context.Context, pm PluginManager, id, configJS
 // Returns an error if validation or update fails (error response already written).
 func validateAndUpdateUsers(ctx context.Context, pm PluginManager, repo model.PluginRepository, id string, req PluginUpdateRequest, w http.ResponseWriter) error {
 	// Get current values if not provided in request
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(ctx, id)
 	if err != nil {
 		log.Error(ctx, "Error getting plugin for users update", "id", id, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -235,7 +235,7 @@ func validateAndUpdateUsers(ctx context.Context, pm PluginManager, repo model.Pl
 // Returns an error if validation or update fails (error response already written).
 func validateAndUpdateLibraries(ctx context.Context, pm PluginManager, repo model.PluginRepository, id string, req PluginUpdateRequest, w http.ResponseWriter) error {
 	// Get current values if not provided in request
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(ctx, id)
 	if err != nil {
 		log.Error(ctx, "Error getting plugin for libraries update", "id", id, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
