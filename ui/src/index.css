@@ -16,7 +16,7 @@ code {
   z-index: 78;
 }
 
-/* First-paint hint from index.html / simpleMobile.js; Layout skips RA chrome when set.
+/* First-paint hint from index.html / simpleMobile.js.
    !important beats useCurrentTheme's inline body background (#303030). */
 html[data-simple-mobile='1'] body {
   margin: 0;
