@@ -55,7 +55,7 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		seen[key] = true
-		usr, err := api.ds.User(ctx).FindByUsername(name)
+		usr, err := api.ds.User().FindByUsername(ctx, name)
 		if err != nil {
 			log.Warn(ctx, "Jellyfin API: configured public user not found", "username", name, err)
 			continue

@@ -63,8 +63,8 @@ var _ = Describe("Library API", func() {
 		}
 
 		// Store in mock datastore
-		Expect(ds.User(context.TODO()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(context.TODO()).Put(&regularUser)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &adminUser)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &regularUser)).To(Succeed())
 		Expect(ds.Library().Put(context.TODO(), &library1)).To(Succeed())
 		Expect(ds.Library().Put(context.TODO(), &library2)).To(Succeed())
 	})
@@ -293,7 +293,7 @@ var _ = Describe("Library API", func() {
 			Describe("GET /api/user/{id}/library", func() {
 				It("returns user's libraries", func() {
 					// Set up user libraries
-					err := ds.User(context.TODO()).SetUserLibraries(regularUser.ID, []int{1, 2})
+					err := ds.User().SetUserLibraries(context.TODO(), regularUser.ID, []int{1, 2})
 					Expect(err).ToNot(HaveOccurred())
 
 					req := createAuthenticatedRequest("GET", fmt.Sprintf("/user/%s/library", regularUser.ID), nil, adminToken)

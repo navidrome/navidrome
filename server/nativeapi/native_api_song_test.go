@@ -56,7 +56,7 @@ var _ = Describe("Song Endpoints", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(&testUser)
+		err := userRepo.Put(GinkgoT().Context(), &testUser)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Create test songs
@@ -369,7 +369,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     true,
 					NewPassword: "adminpass",
 				}
-				err := userRepo.Put(&adminUser)
+				err := userRepo.Put(GinkgoT().Context(), &adminUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create JWT token for admin user
@@ -392,7 +392,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     false,
 					NewPassword: "userpass",
 				}
-				err := userRepo.Put(&regularUser)
+				err := userRepo.Put(GinkgoT().Context(), &regularUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create JWT token for regular user

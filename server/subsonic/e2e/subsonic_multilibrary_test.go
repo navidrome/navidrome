@@ -47,7 +47,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 		Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
 
 		// Reload admin user to get both libraries in the Libraries field
-		loadedAdmin, err := ds.User(ctx).FindByUsername(adminUser.UserName)
+		loadedAdmin, err := ds.User().FindByUsername(ctx, adminUser.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		adminWithLibs = *loadedAdmin
 
@@ -65,10 +65,10 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			IsAdmin:     false,
 			NewPassword: "password",
 		}
-		Expect(ds.User(ctx).Put(&userLib1Only)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(userLib1Only.ID, []int{lib.ID})).To(Succeed())
+		Expect(ds.User().Put(ctx, &userLib1Only)).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, userLib1Only.ID, []int{lib.ID})).To(Succeed())
 
-		loadedUser, err := ds.User(ctx).FindByUsername(userLib1Only.UserName)
+		loadedUser, err := ds.User().FindByUsername(ctx, userLib1Only.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		userLib1Only.Libraries = loadedUser.Libraries
 	})

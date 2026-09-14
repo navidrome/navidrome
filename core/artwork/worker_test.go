@@ -135,7 +135,7 @@ func (v *visibilityPlaylistDS) Playlist(ctx context.Context) model.PlaylistRepos
 
 func adminUserRepo() *tests.MockedUserRepo {
 	repo := tests.CreateMockUserRepo()
-	Expect(repo.Put(&model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
+	Expect(repo.Put(GinkgoT().Context(), &model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
 	return repo
 }
 

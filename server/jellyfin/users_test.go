@@ -117,9 +117,9 @@ var _ = Describe("Users", func() {
 
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			ur = api.ds.User(context.Background()).(*tests.MockedUserRepo)
-			Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
-			Expect(ur.Put(&model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
+			ur = api.ds.User().(*tests.MockedUserRepo)
+			Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
+			Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
 		})
 
 		It("returns an empty list when the config is unset", func() {

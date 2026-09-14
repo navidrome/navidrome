@@ -129,11 +129,9 @@ func idFilter(tableName string) func(string, any) Sqlizer {
 	return func(field string, value any) Sqlizer { return Eq{tableName + ".id": value} }
 }
 
-func invalidFilter(ctx context.Context) func(string, any) Sqlizer {
-	return func(field string, value any) Sqlizer {
-		log.Warn(ctx, "Invalid filter", "fieldName", field, "value", value)
-		return Eq{"1": "0"}
-	}
+func invalidFilter(field string, value any) Sqlizer {
+	log.Warn("Invalid filter", "fieldName", field, "value", value)
+	return Eq{"1": "0"}
 }
 
 var (

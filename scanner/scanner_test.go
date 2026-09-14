@@ -83,7 +83,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			IsAdmin:     true,
 			NewPassword: "password",
 		}
-		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())

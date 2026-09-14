@@ -109,7 +109,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		wipeScannedContent()
 		artLib := model.Library{Name: "Artwork Library", Path: musicDir}
 		Expect(ds.Library().Put(ctx, &artLib)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(adminUser.ID, []int{artLib.ID})).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, adminUser.ID, []int{artLib.ID})).To(Succeed())
 
 		s := scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())

@@ -24,14 +24,14 @@ type MockedUserRepo struct {
 	UserLibraries map[string][]int // userID -> libraryIDs
 }
 
-func (u *MockedUserRepo) CountAll(qo ...model.QueryOptions) (int64, error) {
+func (u *MockedUserRepo) CountAll(_ context.Context, qo ...model.QueryOptions) (int64, error) {
 	if u.Error != nil {
 		return 0, u.Error
 	}
 	return int64(len(u.Data)), nil
 }
 
-func (u *MockedUserRepo) Put(usr *model.User) error {
+func (u *MockedUserRepo) Put(_ context.Context, usr *model.User) error {
 	if u.Error != nil {
 		return u.Error
 	}
@@ -43,7 +43,7 @@ func (u *MockedUserRepo) Put(usr *model.User) error {
 	return nil
 }
 
-func (u *MockedUserRepo) FindByUsername(username string) (*model.User, error) {
+func (u *MockedUserRepo) FindByUsername(_ context.Context, username string) (*model.User, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}
@@ -54,11 +54,11 @@ func (u *MockedUserRepo) FindByUsername(username string) (*model.User, error) {
 	return usr, nil
 }
 
-func (u *MockedUserRepo) FindByUsernameWithPassword(username string) (*model.User, error) {
-	return u.FindByUsername(username)
+func (u *MockedUserRepo) FindByUsernameWithPassword(ctx context.Context, username string) (*model.User, error) {
+	return u.FindByUsername(ctx, username)
 }
 
-func (u *MockedUserRepo) FindFirstAdmin() (*model.User, error) {
+func (u *MockedUserRepo) FindFirstAdmin(_ context.Context) (*model.User, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}
@@ -70,7 +70,7 @@ func (u *MockedUserRepo) FindFirstAdmin() (*model.User, error) {
 	return nil, model.ErrNotFound
 }
 
-func (u *MockedUserRepo) Get(id string) (*model.User, error) {
+func (u *MockedUserRepo) Get(_ context.Context, id string) (*model.User, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}
@@ -82,7 +82,7 @@ func (u *MockedUserRepo) Get(id string) (*model.User, error) {
 	return nil, model.ErrNotFound
 }
 
-func (u *MockedUserRepo) GetAll(options ...model.QueryOptions) (model.Users, error) {
+func (u *MockedUserRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Users, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}
@@ -93,7 +93,7 @@ func (u *MockedUserRepo) GetAll(options ...model.QueryOptions) (model.Users, err
 	return users, nil
 }
 
-func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
+func (u *MockedUserRepo) UpdateLastLoginAt(_ context.Context, id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {
 			usr.LastLoginAt = new(time.Now())
@@ -103,7 +103,7 @@ func (u *MockedUserRepo) UpdateLastLoginAt(id string) error {
 	return u.Error
 }
 
-func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
+func (u *MockedUserRepo) UpdateLastAccessAt(_ context.Context, id string) error {
 	for _, usr := range u.Data {
 		if usr.ID == id {
 			usr.LastAccessAt = new(time.Now())
@@ -115,7 +115,7 @@ func (u *MockedUserRepo) UpdateLastAccessAt(id string) error {
 
 // Library association methods - mock implementations
 
-func (u *MockedUserRepo) GetUserLibraries(userID string) (model.Libraries, error) {
+func (u *MockedUserRepo) GetUserLibraries(_ context.Context, userID string) (model.Libraries, error) {
 	if u.Error != nil {
 		return nil, u.Error
 	}
@@ -136,7 +136,7 @@ func (u *MockedUserRepo) GetUserLibraries(userID string) (model.Libraries, error
 	return libraries, nil
 }
 
-func (u *MockedUserRepo) SetUserLibraries(userID string, libraryIDs []int) error {
+func (u *MockedUserRepo) SetUserLibraries(_ context.Context, userID string, libraryIDs []int) error {
 	if u.Error != nil {
 		return u.Error
 	}
@@ -170,17 +170,17 @@ func (u *MockedUserRepo) deleteOne(id string) error {
 	return model.ErrNotFound
 }
 
-func (u *MockedUserRepo) Save(_ context.Context, usr *model.User) (string, error) {
-	if err := u.Put(usr); err != nil {
+func (u *MockedUserRepo) Save(ctx context.Context, usr *model.User) (string, error) {
+	if err := u.Put(ctx, usr); err != nil {
 		return "", err
 	}
 	return usr.ID, nil
 }
 
-func (u *MockedUserRepo) Update(_ context.Context, id string, entity model.User, _ ...string) error {
+func (u *MockedUserRepo) Update(ctx context.Context, id string, entity model.User, _ ...string) error {
 	if u.Error != nil {
 		return u.Error
 	}
 	entity.ID = id
-	return u.Put(&entity)
+	return u.Put(ctx, &entity)
 }

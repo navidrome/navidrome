@@ -136,7 +136,7 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 // ownerContext returns a context scoped to the share owner, so repository
 // queries apply the owner's library access when a public share is rendered.
 func (r *shareRepository) ownerContext(ctx context.Context, share *model.Share) (context.Context, error) {
-	owner, err := NewUserRepository(ctx, r.db).Get(share.UserID)
+	owner, err := NewUserRepository(r.db).Get(ctx, share.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("loading share owner %q: %w", share.UserID, err)
 	}

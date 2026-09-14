@@ -99,11 +99,11 @@ func setupResolutionHarness() {
 	rds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
 	adminUser := model.User{ID: "admin-1", UserName: "admin", Name: "Admin", IsAdmin: true, NewPassword: "password"}
-	Expect(rds.User(rctx).Put(&adminUser)).To(Succeed())
+	Expect(rds.User().Put(rctx, &adminUser)).To(Succeed())
 
 	lib := model.Library{ID: 1, Name: "Music", Path: fakeLibPath}
 	Expect(rds.Library().Put(rctx, &lib)).To(Succeed())
-	Expect(rds.User(rctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(rds.User().SetUserLibraries(rctx, adminUser.ID, []int{lib.ID})).To(Succeed())
 
 	loadEmbeddedFixture()
 

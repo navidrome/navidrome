@@ -50,7 +50,7 @@ var _ = Describe("User Service", func() {
 				IsAdmin:  false,
 			}
 			user.NewPassword = "password"
-			Expect(userRepo.Put(user)).To(Succeed())
+			Expect(userRepo.Put(ctx, user)).To(Succeed())
 		})
 
 		It("deletes the user successfully", func() {
@@ -58,7 +58,7 @@ var _ = Describe("User Service", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify user is deleted
-			_, err = userRepo.Get("user-123")
+			_, err = userRepo.Get(ctx, "user-123")
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 

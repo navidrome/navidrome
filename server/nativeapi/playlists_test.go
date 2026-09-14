@@ -96,7 +96,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(&testUser)
+		err := userRepo.Put(GinkgoT().Context(), &testUser)
 		Expect(err).ToNot(HaveOccurred())
 
 		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)

@@ -193,7 +193,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 				mediaFileRepo.SetData(model.MediaFiles{mf})
 
 				userRepo = tests.CreateMockUserRepo()
-				Expect(userRepo.Put(&model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
+				Expect(userRepo.Put(GinkgoT().Context(), &model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
 
 				ds = &tests.MockDataStore{MockedMediaFile: mediaFileRepo, MockedUser: userRepo}
 			})
@@ -395,7 +395,7 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		mediaFileRepo.SetData(model.MediaFiles{hit})
 
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
+		Expect(userRepo.Put(GinkgoT().Context(), &model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
 
 		dataStore := &tests.MockDataStore{
 			MockedPlugin:    mockPluginRepo,

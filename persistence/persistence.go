@@ -30,6 +30,7 @@ type SQLStore struct {
 	folder      model.FolderRepository
 	artwork     model.ArtworkRepository
 	artworkQ    model.ArtworkQueueRepository
+	user        model.UserRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -50,6 +51,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.folder = newFolderRepository(db)
 	s.artwork = NewArtworkRepository(db)
 	s.artworkQ = NewArtworkQueueRepository(db)
+	s.user = NewUserRepository(db)
 	return s
 }
 
@@ -109,8 +111,8 @@ func (s *SQLStore) Share() model.ShareRepository {
 	return s.share
 }
 
-func (s *SQLStore) User(ctx context.Context) model.UserRepository {
-	return NewUserRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) User() model.UserRepository {
+	return s.user
 }
 
 func (s *SQLStore) Transcoding() model.TranscodingRepository {

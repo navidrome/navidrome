@@ -28,7 +28,7 @@ func initialSetup(ds model.DataStore) {
 		}
 		log.Info("Running initial setup")
 		if conf.Server.DevAutoCreateAdminPassword != "" {
-			if err = createInitialAdminUser(tx, conf.Server.DevAutoCreateAdminPassword); err != nil {
+			if err = createInitialAdminUser(ctx, tx, conf.Server.DevAutoCreateAdminPassword); err != nil {
 				return err
 			}
 		}
@@ -39,9 +39,9 @@ func initialSetup(ds model.DataStore) {
 }
 
 // If the Dev Admin user is not present, create it
-func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
-	users := ds.User(context.TODO())
-	c, err := users.CountAll(model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})
+func createInitialAdminUser(ctx context.Context, ds model.DataStore, initialPassword string) error {
+	users := ds.User()
+	c, err := users.CountAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})
 	if err != nil {
 		panic(fmt.Sprintf("Could not access User table: %s", err))
 	}
@@ -57,7 +57,7 @@ func createInitialAdminUser(ds model.DataStore, initialPassword string) error {
 			NewPassword: initialPassword,
 			IsAdmin:     true,
 		}
-		err := users.Put(&initialUser)
+		err := users.Put(ctx, &initialUser)
 		if err != nil {
 			log.Error("Could not create initial admin user", "user", initialUser, err)
 		}

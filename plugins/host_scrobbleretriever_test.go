@@ -75,14 +75,14 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 		conf.Server.Plugins.AutoReload = false
 
-		userRepo := dataStore.User(ctx)
+		userRepo := dataStore.User()
 		// Add test users
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(ctx, &model.User{
 			ID:       "user1",
 			UserName: "testuser",
 			IsAdmin:  false,
 		})
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(ctx, &model.User{
 			ID:       "admin1",
 			UserName: "adminuser",
 			IsAdmin:  true,

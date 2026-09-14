@@ -26,7 +26,7 @@ var _ = Describe("BufferedScrobbler", func() {
 		ctx = context.Background()
 		buffer = tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&model.User{ID: "user1", UserName: "alice"})).To(Succeed())
+		Expect(userRepo.Put(ctx, &model.User{ID: "user1", UserName: "alice"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedScrobbleBuffer: buffer,
 			MockedUser:           userRepo,
@@ -131,7 +131,7 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		g := NewWithT(t)
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		g.Expect(userRepo.Put(&model.User{ID: "user1", UserName: "alice"})).To(Succeed())
+		g.Expect(userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})).To(Succeed())
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 
 		flaky := &recoveringScrobbler{}
@@ -176,7 +176,7 @@ func TestBufferedScrobblerBackoffWindow(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &fakeScrobbler{Authorized: true}
 		scr.SetError(errors.Join(errors.New("boom"), ErrRetryLater))
@@ -211,7 +211,7 @@ func TestBufferedScrobblerHonorsServerDelay(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &fakeScrobbler{Authorized: true}
 		scr.SetError(errors.Join(errors.New("429"), &agents.RetryLaterError{RetryIn: 30 * time.Second}))
@@ -244,8 +244,8 @@ func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
-		_ = userRepo.Put(&model.User{ID: "user2", UserName: "bob"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user2", UserName: "bob"})
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &recoveringScrobbler{delays: map[string]time.Duration{
 			"user1": 10 * time.Second,

@@ -154,9 +154,9 @@ func CheckClaims(c Claims, usr model.User, audience string) error {
 }
 
 func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
-	u, err := ds.User(ctx).FindFirstAdmin()
+	u, err := ds.User().FindFirstAdmin(ctx)
 	if err != nil {
-		c, err := ds.User(ctx).CountAll()
+		c, err := ds.User().CountAll(ctx)
 		if c == 0 && err == nil {
 			log.Debug(ctx, "No admin user yet!", err)
 		} else {

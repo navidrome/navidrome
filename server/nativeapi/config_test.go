@@ -49,8 +49,8 @@ var _ = Describe("Config API", func() {
 		}
 
 		// Store in mock datastore
-		Expect(ds.User(context.TODO()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(context.TODO()).Put(&regularUser)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &adminUser)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &regularUser)).To(Succeed())
 	})
 
 	Describe("GET /api/config", func() {

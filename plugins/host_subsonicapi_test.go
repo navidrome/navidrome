@@ -51,12 +51,12 @@ var _ = Describe("SubsonicAPI Host Function", Ordered, func() {
 		dataStore = &tests.MockDataStore{MockedUser: userRepo}
 
 		// Add test users
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(GinkgoT().Context(), &model.User{
 			ID:       "user1",
 			UserName: "testuser",
 			IsAdmin:  false,
 		})
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(GinkgoT().Context(), &model.User{
 			ID:       "admin1",
 			UserName: "adminuser",
 			IsAdmin:  true,
@@ -244,17 +244,17 @@ var _ = Describe("SubsonicAPIService", func() {
 		userRepo = tests.CreateMockUserRepo()
 		dataStore = &tests.MockDataStore{MockedUser: userRepo}
 
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(GinkgoT().Context(), &model.User{
 			ID:       "user1",
 			UserName: "testuser",
 			IsAdmin:  false,
 		})
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(GinkgoT().Context(), &model.User{
 			ID:       "admin1",
 			UserName: "adminuser",
 			IsAdmin:  true,
 		})
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(GinkgoT().Context(), &model.User{
 			ID:       "user2",
 			UserName: "alloweduser",
 			IsAdmin:  false,

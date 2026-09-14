@@ -174,9 +174,9 @@ var _ = BeforeSuite(func() {
 	ctx := log.NewContext(context.TODO())
 	ctx = request.WithUser(ctx, adminUser)
 
-	ur := NewUserRepository(ctx, conn)
+	ur := NewUserRepository(conn)
 	for i := range testUsers {
-		err := ur.Put(&testUsers[i])
+		err := ur.Put(ctx, &testUsers[i])
 		if err != nil {
 			panic(err)
 		}
@@ -184,7 +184,7 @@ var _ = BeforeSuite(func() {
 
 	// Associate users with library 1 (default test library)
 	for i := range testUsers {
-		err := ur.SetUserLibraries(testUsers[i].ID, []int{1})
+		err := ur.SetUserLibraries(ctx, testUsers[i].ID, []int{1})
 		if err != nil {
 			panic(err)
 		}

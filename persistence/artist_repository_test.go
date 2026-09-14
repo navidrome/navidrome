@@ -661,10 +661,11 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create the restricted user in the database
-				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				err = ur.Put(&restrictedUser)
+				urCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				ur := NewUserRepository(GetDBXBuilder())
+				err = ur.Put(urCtx, &restrictedUser)
 				Expect(err).ToNot(HaveOccurred())
-				err = ur.SetUserLibraries(restrictedUser.ID, []int{1})
+				err = ur.SetUserLibraries(urCtx, restrictedUser.ID, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -1025,18 +1026,19 @@ var _ = Describe("ArtistRepository", func() {
 			BeforeEach(func() {
 				ctx := GinkgoT().Context()
 				// Give the user access to library 1
-				ur := NewUserRepository(request.WithUser(ctx, adminUser), GetDBXBuilder())
+				urCtx := request.WithUser(ctx, adminUser)
+				ur := NewUserRepository(GetDBXBuilder())
 
 				// First create the user if not exists
-				err := ur.Put(&unauthorizedUser)
+				err := ur.Put(urCtx, &unauthorizedUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Then add library access
-				err = ur.SetUserLibraries(unauthorizedUser.ID, []int{1})
+				err = ur.SetUserLibraries(urCtx, unauthorizedUser.ID, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 
 				// Update the user object with the libraries to simulate middleware behavior
-				libraries, err := ur.GetUserLibraries(unauthorizedUser.ID)
+				libraries, err := ur.GetUserLibraries(urCtx, unauthorizedUser.ID)
 				Expect(err).ToNot(HaveOccurred())
 				unauthorizedUser.Libraries = libraries
 
@@ -1047,8 +1049,9 @@ var _ = Describe("ArtistRepository", func() {
 
 			AfterEach(func() {
 				// Clean up: remove the user's library access
-				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				_ = ur.SetUserLibraries(unauthorizedUser.ID, []int{})
+				urCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				ur := NewUserRepository(GetDBXBuilder())
+				_ = ur.SetUserLibraries(urCtx, unauthorizedUser.ID, []int{})
 			})
 
 			It("CountAll returns correct count after gaining access", func() {
