@@ -35,8 +35,8 @@ type shareService struct {
 }
 
 func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error) {
-	repo := s.ds.Share(ctx)
-	share, err := repo.Get(id)
+	repo := s.ds.Share()
+	share, err := repo.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 
 func (s *shareService) NewRepository(ctx context.Context) rest.Repository[model.Share] {
 	return &shareRepositoryWrapper{
-		ShareRepository: s.ds.Share(ctx),
+		ShareRepository: s.ds.Share(),
 		ds:              s.ds,
 	}
 }
@@ -66,13 +66,13 @@ type shareRepositoryWrapper struct {
 	ds model.DataStore
 }
 
-func (r *shareRepositoryWrapper) newId() (string, error) {
+func (r *shareRepositoryWrapper) newId(ctx context.Context) (string, error) {
 	for {
 		id, err := nanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 10)
 		if err != nil {
 			return "", err
 		}
-		exists, err := r.Exists(id)
+		exists, err := r.Exists(ctx, id)
 		if err != nil {
 			return "", err
 		}
@@ -88,7 +88,7 @@ func (r *shareRepositoryWrapper) Save(ctx context.Context, s *model.Share) (stri
 	if user, ok := request.UserFrom(ctx); ok {
 		s.UserID = user.ID
 	}
-	id, err := r.newId()
+	id, err := r.newId(ctx)
 	if err != nil {
 		return "", err
 	}

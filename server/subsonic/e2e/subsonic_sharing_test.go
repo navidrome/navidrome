@@ -221,7 +221,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("createShare", append([]string{"id", albumID}, params...)...)
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares.Share).To(HaveLen(1))
-		share, err := ds.Share(ctx).Get(resp.Shares.Share[0].ID)
+		share, err := ds.Share().Get(ctx, resp.Shares.Share[0].ID)
 		Expect(err).ToNot(HaveOccurred())
 		return share
 	}
@@ -248,7 +248,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("updateShare", "id", share.ID, "description", "Updated")
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
-		updated, err := ds.Share(ctx).Get(share.ID)
+		updated, err := ds.Share().Get(ctx, share.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updated.Description).To(Equal("Updated"))
 		Expect(updated.Downloadable).To(BeTrue())
@@ -261,7 +261,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("updateShare", "id", share.ID, "downloadable", "false")
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
-		updated, err := ds.Share(ctx).Get(share.ID)
+		updated, err := ds.Share().Get(ctx, share.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updated.Downloadable).To(BeFalse())
 		Expect(updated.Description).To(Equal("Keep me"))
@@ -273,7 +273,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("updateShare", "id", share.ID, "description", "")
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
-		updated, err := ds.Share(ctx).Get(share.ID)
+		updated, err := ds.Share().Get(ctx, share.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updated.Description).To(BeEmpty())
 	})

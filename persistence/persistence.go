@@ -18,6 +18,7 @@ type SQLStore struct {
 	property    model.PropertyRepository
 	userProps   model.UserPropsRepository
 	transcoding model.TranscodingRepository
+	share       model.ShareRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -26,6 +27,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.property = NewPropertyRepository(db)
 	s.userProps = NewUserPropsRepository(db)
 	s.transcoding = NewTranscodingRepository(db)
+	s.share = NewShareRepository(db)
 	return s
 }
 
@@ -81,8 +83,8 @@ func (s *SQLStore) UserProps() model.UserPropsRepository {
 	return s.userProps
 }
 
-func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
-	return NewShareRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Share() model.ShareRepository {
+	return s.share
 }
 
 func (s *SQLStore) User(ctx context.Context) model.UserRepository {

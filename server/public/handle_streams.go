@@ -26,7 +26,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, err := pub.ds.Share(ctx).Get(info.shareID)
+	share, err := pub.ds.Share().Get(ctx, info.shareID)
 	if err != nil {
 		checkShareError(ctx, w, err, info.shareID)
 		return

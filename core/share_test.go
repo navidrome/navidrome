@@ -19,7 +19,7 @@ var _ = Describe("Share", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		mockedRepo = ds.Share(ctx).(rest.Persistable[model.Share])
+		mockedRepo = ds.Share().(rest.Persistable[model.Share])
 		share = NewShare(ds)
 	})
 

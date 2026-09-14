@@ -261,7 +261,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading playlists count", err)
 	}
-	data.Library.Shares, err = c.ds.Share(ctx).CountAll()
+	data.Library.Shares, err = c.ds.Share().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading shares count", err)
 	}

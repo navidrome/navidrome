@@ -17,7 +17,7 @@ import (
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
 	repo := api.share.NewRepository(r.Context()).(model.ShareRepository)
-	shares, err := repo.GetAll(model.QueryOptions{Sort: "created_at desc"})
+	shares, err := repo.GetAll(r.Context(), model.QueryOptions{Sort: "created_at desc"})
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	share, err = repo.(model.ShareRepository).Get(id)
+	share, err = repo.(model.ShareRepository).Get(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
