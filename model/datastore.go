@@ -31,7 +31,7 @@ type DataStore interface {
 	Share(ctx context.Context) ShareRepository
 	Property() PropertyRepository
 	User(ctx context.Context) UserRepository
-	UserProps(ctx context.Context) UserPropsRepository
+	UserProps() UserPropsRepository
 	ScrobbleBuffer(ctx context.Context) ScrobbleBufferRepository
 	Scrobble(ctx context.Context) ScrobbleRepository
 	Plugin(ctx context.Context) PluginRepository

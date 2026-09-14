@@ -154,14 +154,14 @@ func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepositor
 	return db.MockedPlayQueue
 }
 
-func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepository {
+func (db *MockDataStore) UserProps() model.UserPropsRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedUserProps != nil {
 		return db.MockedUserProps
 	}
 	if db.RealDS != nil {
-		return db.RealDS.UserProps(ctx)
+		return db.RealDS.UserProps()
 	}
 	db.MockedUserProps = &MockedUserPropsRepo{}
 	return db.MockedUserProps
