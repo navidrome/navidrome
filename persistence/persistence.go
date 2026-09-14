@@ -13,54 +13,55 @@ import (
 )
 
 type SQLStore struct {
-	db          dbx.Builder
-	library     model.LibraryRepository
-	property    model.PropertyRepository
-	userProps   model.UserPropsRepository
-	transcoding model.TranscodingRepository
-	share       model.ShareRepository
-	player      model.PlayerRepository
-	radio       model.RadioRepository
-	playQueue   model.PlayQueueRepository
-	tag         model.TagRepository
-	genre       model.GenreRepository
-	plugin      model.PluginRepository
-	scrobble    model.ScrobbleRepository
-	scrobbleBuf model.ScrobbleBufferRepository
-	folder      model.FolderRepository
-	artwork     model.ArtworkRepository
-	artworkQ    model.ArtworkQueueRepository
-	user        model.UserRepository
-	artist      model.ArtistRepository
-	album       model.AlbumRepository
-	mediaFile   model.MediaFileRepository
-	playlist    model.PlaylistRepository
+	db           dbx.Builder
+	library      model.LibraryRepository
+	folder       model.FolderRepository
+	album        model.AlbumRepository
+	artist       model.ArtistRepository
+	mediaFile    model.MediaFileRepository
+	genre        model.GenreRepository
+	tag          model.TagRepository
+	playlist     model.PlaylistRepository
+	playQueue    model.PlayQueueRepository
+	transcoding  model.TranscodingRepository
+	player       model.PlayerRepository
+	radio        model.RadioRepository
+	share        model.ShareRepository
+	property     model.PropertyRepository
+	user         model.UserRepository
+	userProps    model.UserPropsRepository
+	scrobbleBuf  model.ScrobbleBufferRepository
+	scrobble     model.ScrobbleRepository
+	plugin       model.PluginRepository
+	artwork      model.ArtworkRepository
+	artworkQueue model.ArtworkQueueRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
-	s := &SQLStore{db: db}
-	s.library = NewLibraryRepository(db)
-	s.property = NewPropertyRepository(db)
-	s.userProps = NewUserPropsRepository(db)
-	s.transcoding = NewTranscodingRepository(db)
-	s.share = NewShareRepository(db)
-	s.player = NewPlayerRepository(db)
-	s.radio = NewRadioRepository(db)
-	s.playQueue = NewPlayQueueRepository(db)
-	s.tag = NewTagRepository(db)
-	s.genre = NewGenreRepository(db)
-	s.plugin = NewPluginRepository(db)
-	s.scrobble = NewScrobbleRepository(db)
-	s.scrobbleBuf = NewScrobbleBufferRepository(db)
-	s.folder = newFolderRepository(db)
-	s.artwork = NewArtworkRepository(db)
-	s.artworkQ = NewArtworkQueueRepository(db)
-	s.user = NewUserRepository(db)
-	s.artist = NewArtistRepository(db)
-	s.album = NewAlbumRepository(db)
-	s.mediaFile = NewMediaFileRepository(db)
-	s.playlist = NewPlaylistRepository(db)
-	return s
+	return &SQLStore{
+		db:           db,
+		library:      NewLibraryRepository(db),
+		folder:       newFolderRepository(db),
+		album:        NewAlbumRepository(db),
+		artist:       NewArtistRepository(db),
+		mediaFile:    NewMediaFileRepository(db),
+		genre:        NewGenreRepository(db),
+		tag:          NewTagRepository(db),
+		playlist:     NewPlaylistRepository(db),
+		playQueue:    NewPlayQueueRepository(db),
+		transcoding:  NewTranscodingRepository(db),
+		player:       NewPlayerRepository(db),
+		radio:        NewRadioRepository(db),
+		share:        NewShareRepository(db),
+		property:     NewPropertyRepository(db),
+		user:         NewUserRepository(db),
+		userProps:    NewUserPropsRepository(db),
+		scrobbleBuf:  NewScrobbleBufferRepository(db),
+		scrobble:     NewScrobbleRepository(db),
+		plugin:       NewPluginRepository(db),
+		artwork:      NewArtworkRepository(db),
+		artworkQueue: NewArtworkQueueRepository(db),
+	}
 }
 
 func New(conn *sql.DB) model.DataStore {
@@ -148,7 +149,7 @@ func (s *SQLStore) Artwork() model.ArtworkRepository {
 }
 
 func (s *SQLStore) ArtworkQueue() model.ArtworkQueueRepository {
-	return s.artworkQ
+	return s.artworkQueue
 }
 
 func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {
