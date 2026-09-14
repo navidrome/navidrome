@@ -31,7 +31,6 @@ var _ = Describe("ScrobbleRepository", func() {
 			repo = NewScrobbleRepository(db)
 
 			rawRepo = sqlRepository{
-				ctx:       ctx,
 				tableName: "scrobbles",
 				db:        db,
 			}

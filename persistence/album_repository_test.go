@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -1203,6 +1204,36 @@ var _ = Describe("AlbumRepository", func() {
 			restricted := model.User{ID: "restricted_album_user", UserName: "ra", Name: "RA", Email: "ra@t.com"}
 			rctx := request.WithUser(GinkgoT().Context(), restricted)
 			Expect(albumRepo.Exists(rctx, "vis-album")).To(BeFalse())
+		})
+
+		It("keeps per-user library visibility separate on a shared repository", func() {
+			adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+			adminCount, err := albumRepo.CountAll(adminCtx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(adminCount).To(BeNumerically(">", 0))
+
+			// A user with no library grants, so its visibility can't drift with other specs
+			restrictedCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "shared-repo-restricted"})
+			restrictedCount, err := albumRepo.CountAll(restrictedCtx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(restrictedCount).To(BeZero())
+
+			var wg sync.WaitGroup
+			for i := range 20 {
+				wg.Add(1)
+				go func(i int) {
+					defer GinkgoRecover()
+					defer wg.Done()
+					c, want := adminCtx, adminCount
+					if i%2 == 1 {
+						c, want = restrictedCtx, restrictedCount
+					}
+					got, err := albumRepo.CountAll(c)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(got).To(Equal(want))
+				}(i)
+			}
+			wg.Wait()
 		})
 	})
 })

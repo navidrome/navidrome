@@ -26,7 +26,7 @@ import (
 //  5. As a last step, it refreshes the artist statistics to reflect the changes
 type phaseRefreshAlbums struct {
 	ds        model.DataStore
-	ctx       context.Context
+	ctx       context.Context //nolint:containedctx // phase runs under a single scan ctx
 	refreshed atomic.Uint32
 	skipped   atomic.Uint32
 	state     *scanState

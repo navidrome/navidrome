@@ -70,7 +70,7 @@ type bufferedScrobbler struct {
 	loader     Loader
 	service    string
 	wakeSignal chan struct{}
-	ctx        context.Context
+	ctx        context.Context //nolint:containedctx // scrobbler lifecycle ctx, cancelled by Stop
 	cancel     context.CancelFunc
 }
 

@@ -122,7 +122,7 @@ func (j *scanJob) createFolderEntry(path string) *folderEntry {
 type phaseFolders struct {
 	jobs             []*scanJob
 	ds               model.DataStore
-	ctx              context.Context
+	ctx              context.Context //nolint:containedctx // phase runs under a single scan ctx
 	state            *scanState
 	prevAlbumPIDConf string
 	imageChanges     *imageChangeCollector

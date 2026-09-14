@@ -33,7 +33,7 @@ type missingTracks struct {
 // 4. Updates the database with the new locations of the matched files and removes the old entries.
 // 5. Logs the results and finalizes the phase by reporting the total number of matched files.
 type phaseMissingTracks struct {
-	ctx                       context.Context
+	ctx                       context.Context //nolint:containedctx // phase runs under a single scan ctx
 	ds                        model.DataStore
 	totalMatched              atomic.Uint32
 	state                     *scanState

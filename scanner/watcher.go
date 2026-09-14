@@ -23,7 +23,7 @@ type Watcher interface {
 }
 
 type watcher struct {
-	mainCtx         context.Context
+	mainCtx         context.Context //nolint:containedctx // watcher lifecycle ctx
 	ds              model.DataStore
 	scanner         model.Scanner
 	triggerWait     time.Duration

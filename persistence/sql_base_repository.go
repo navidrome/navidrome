@@ -29,7 +29,7 @@ import (
 // When creating a new repository using this base, you must:
 //
 //   - Embed this struct.
-//   - Set ctx and db fields. ctx should be the context passed to the constructor method, usually obtained from the request
+//   - Set the db field.
 //   - Call registerModel with the model instance and any possible filters.
 //   - If the model has a different table name than the default (lowercase of the model name), it should be set manually
 //     using the tableName field.
@@ -38,7 +38,6 @@ import (
 // All fields in filters and sortMappings must be in snake_case. Only sorts and filters based on real field names or
 // defined in the mappings will be allowed.
 type sqlRepository struct {
-	ctx       context.Context
 	tableName string
 	db        dbx.Builder
 

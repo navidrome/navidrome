@@ -177,7 +177,7 @@ var _ = Describe("Manager", Ordered, func() {
 // testBroker is a simple mock implementation of events.Broker for testing
 type testBroker struct {
 	lastEvent       events.Event
-	lastEventCtx    context.Context
+	lastEventCtx    context.Context //nolint:containedctx // test spy records the ctx it was called with
 	broadcastCalled bool
 }
 

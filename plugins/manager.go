@@ -49,7 +49,7 @@ type PluginMetricsRecorder interface {
 type Manager struct {
 	mu      sync.RWMutex
 	plugins map[string]*plugin
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // manager lifecycle ctx, cancelled by Stop
 	cancel  context.CancelFunc
 	cache   wazero.CompilationCache
 	stopped atomic.Bool    // Set to true when Stop() is called

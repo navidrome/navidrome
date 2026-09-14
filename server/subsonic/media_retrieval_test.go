@@ -266,7 +266,7 @@ type fakeArtwork struct {
 	recvId        string
 	recvSize      int
 	recvSquare    bool
-	recvCtx       context.Context
+	recvCtx       context.Context //nolint:containedctx // test spy records the ctx it was called with
 }
 
 func (c *fakeArtwork) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*artwork.Image, error) {
