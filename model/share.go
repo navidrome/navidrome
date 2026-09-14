@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-
 	"github.com/navidrome/navidrome/utils/random"
 )
 

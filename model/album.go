@@ -8,10 +8,8 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-
-	"github.com/navidrome/navidrome/conf"
-
 	"github.com/gohugoio/hashstructure"
+	"github.com/navidrome/navidrome/conf"
 )
 
 type Album struct {
