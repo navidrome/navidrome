@@ -13,6 +13,10 @@ if [ ! -f /etc/navidrome/navidrome.toml ]; then
     printf "MusicFolder = \"/opt/navidrome/music\"\n" >> /etc/navidrome/navidrome.toml
 fi
 
+# Navidrome 0.57 and 0.60-0.61 created these folders as root when this script ran `navidrome`.
+# They were created empty, so fixing the folder itself is enough (no -R).
+find /var/lib/navidrome/artwork /var/lib/navidrome/plugins -maxdepth 0 -user root -exec chown navidrome:navidrome {} \; 2>/dev/null
+
 postinstall_flag="/var/lib/navidrome/.installed"
 
 if [ ! -f "$postinstall_flag" ]; then
