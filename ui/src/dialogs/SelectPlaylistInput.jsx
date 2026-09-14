@@ -263,7 +263,7 @@ export const SelectPlaylistInput = ({ onChange }) => {
   const { ids, data } = useGetList(
     'playlist',
     { page: 1, perPage: -1 },
-    { field: 'name', order: 'ASC' },
+    { field: 'custom', order: 'ASC' },
     { smart: false },
   )
 
