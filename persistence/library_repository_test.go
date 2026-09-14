@@ -301,7 +301,7 @@ var _ = Describe("LibraryRepository", func() {
 			Expect(adminRepo.AddArtist(1, sharedArtist.ID)).To(Succeed())
 			DeferCleanup(func() {
 				if raw, ok := artistRepo.(*artistRepository); ok {
-					_, _ = raw.executeSQL(squirrel.Delete("artist").
+					_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("artist").
 						Where(squirrel.Eq{"id": []string{orphanArtist.ID, sharedArtist.ID}}))
 				}
 			})

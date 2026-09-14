@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -74,12 +75,12 @@ func unmarshalParticipants(data string) (model.Participants, error) {
 	return participants, nil
 }
 
-func (r sqlRepository) updateParticipants(itemID string, participants model.Participants) error {
+func (r sqlRepository) updateParticipants(ctx context.Context, itemID string, participants model.Participants) error {
 	// Delete all existing participant entries for this item.
 	// This ensures stale role associations are removed when an artist's role changes
 	// (e.g., an artist was both albumartist and composer, but is now only composer).
 	sqd := Delete(r.tableName + "_artists").Where(Eq{r.tableName + "_id": itemID})
-	_, err := r.executeSQL(sqd)
+	_, err := r.executeSQL(ctx, sqd)
 	if err != nil {
 		return err
 	}
@@ -119,12 +120,12 @@ func (r sqlRepository) updateParticipants(itemID string, participants model.Part
 		ON CONFLICT (artist_id, %[1]s_id, role, sub_role) DO NOTHING   -- Ignore duplicates
 	`, r.tableName)
 
-	_, err = r.executeSQL(Expr(query, itemID, string(participantsJSON)))
+	_, err = r.executeSQL(ctx, Expr(query, itemID, string(participantsJSON)))
 	return err
 }
 
-func (r *sqlRepository) getParticipants(m *model.MediaFile) (model.Participants, error) {
-	ar := NewArtistRepository(r.ctx, r.db)
+func (r *sqlRepository) getParticipants(ctx context.Context, m *model.MediaFile) (model.Participants, error) {
+	ar := NewArtistRepository(ctx, r.db)
 	ids := m.Participants.AllIDs()
 	artists, err := ar.GetAll(model.QueryOptions{Filters: Eq{"artist.id": ids}})
 	if err != nil {

@@ -26,7 +26,7 @@ func rawColumn(r sqlRepository, id, column string) string {
 	var res struct{ Value string }
 	sel := squirrel.Select("cast(" + column + " as text) as value").
 		From(r.tableName).Where(squirrel.Eq{"id": id})
-	ExpectWithOffset(1, r.queryOne(sel, &res)).To(Succeed())
+	ExpectWithOffset(1, r.queryOne(r.ctx, sel, &res)).To(Succeed())
 	return res.Value
 }
 
@@ -53,7 +53,7 @@ var _ = Describe("AlbumRepository", func() {
 				})).To(Succeed())
 			}
 			DeferCleanup(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": ids}))
+				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": ids}))
 			})
 		})
 
@@ -103,7 +103,7 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(albumRepo.Put(&model.Album{ID: "copy-dst", Name: "dst", LibraryID: 1, CreatedAt: dstTime})).To(Succeed())
 			Expect(albumRepo.Put(&model.Album{ID: "copy-zero", Name: "zero", LibraryID: 1})).To(Succeed())
 			DeferCleanup(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"copy-src", "copy-dst", "copy-zero"}}))
+				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"copy-src", "copy-dst", "copy-zero"}}))
 			})
 		})
 		It("copies a valid created_at from source to destination", func() {
@@ -280,7 +280,7 @@ var _ = Describe("AlbumRepository", func() {
 
 	Describe("recently_added sort", func() {
 		AfterEach(func() {
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").
 				Where(squirrel.Like{"id": "ra-%"}))
 		})
 
@@ -301,11 +301,11 @@ var _ = Describe("AlbumRepository", func() {
 			later := &model.Album{LibraryID: 1, ID: "ra-later", Name: "Later"}
 			Expect(albumRepo.Put(earlier)).To(Succeed())
 			Expect(albumRepo.Put(later)).To(Succeed())
-			_, err := albumRepo.executeSQL(squirrel.Update("album").
+			_, err := albumRepo.executeSQL(albumRepo.ctx, squirrel.Update("album").
 				Set("created_at", "2024-01-15 10:00:00.100000000+00:00").
 				Where(squirrel.Eq{"id": "ra-earlier"}))
 			Expect(err).ToNot(HaveOccurred())
-			_, err = albumRepo.executeSQL(squirrel.Update("album").
+			_, err = albumRepo.executeSQL(albumRepo.ctx, squirrel.Update("album").
 				Set("created_at", "2024-01-15 10:00:00.900000000+00:00").
 				Where(squirrel.Eq{"id": "ra-later"}))
 			Expect(err).ToNot(HaveOccurred())
@@ -323,7 +323,7 @@ var _ = Describe("AlbumRepository", func() {
 			for _, aid := range ids {
 				Expect(albumRepo.Put(&model.Album{LibraryID: 1, ID: aid, Name: aid})).To(Succeed())
 			}
-			_, err := albumRepo.executeSQL(squirrel.Update("album").
+			_, err := albumRepo.executeSQL(albumRepo.ctx, squirrel.Update("album").
 				Set("created_at", "2024-02-20 12:00:00+00:00").
 				Where(squirrel.Eq{"id": ids}))
 			Expect(err).ToNot(HaveOccurred())
@@ -352,7 +352,7 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		AfterEach(func() {
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
 		})
 
 		Describe("starred", func() {
@@ -476,7 +476,7 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(0.0))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("returns the user's rating as average when only one user rated", func() {
@@ -488,8 +488,8 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(4.0))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("calculates average across multiple users", func() {
@@ -506,8 +506,8 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(4.5))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("excludes zero ratings from average calculation", func() {
@@ -523,8 +523,8 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(3.0))
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 
 		It("rounds to 2 decimal places", func() {
@@ -545,8 +545,8 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(album.AverageRating).To(Equal(4.33)) // (5 + 4 + 4) / 3 = 4.333...
 
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": newID}))
 		})
 	})
 
@@ -730,7 +730,7 @@ var _ = Describe("AlbumRepository", func() {
 				Where(squirrel.Eq{"album_id": albumID}).
 				OrderBy("role", "artist_id", "sub_role")
 
-			err := albumRepo.queryAll(sq, &actual)
+			err := albumRepo.queryAll(albumRepo.ctx, sq, &actual)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual).To(Equal(expected))
 		}
@@ -775,8 +775,8 @@ var _ = Describe("AlbumRepository", func() {
 			verifyAlbumArtists(album.ID, expected)
 
 			// Clean up the test artist and album created for this test
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistRepo.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("finds albums through the participant-based filters", func() {
@@ -817,8 +817,8 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(1)))
 
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistRepo.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("clears album_artists rows when saved with empty participants", func() {
@@ -836,8 +836,8 @@ var _ = Describe("AlbumRepository", func() {
 				},
 			}
 			DeferCleanup(func() {
-				_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+				_, _ = artistRepo.executeSQL(artistRepo.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 			})
 			Expect(albumRepo.Put(album)).To(Succeed())
 			verifyAlbumArtists(album.ID, []albumArtistRecord{{ArtistID: artist.ID, Role: "albumartist", SubRole: ""}})
@@ -899,8 +899,8 @@ var _ = Describe("AlbumRepository", func() {
 
 			// Clean up the test artists and album created for this test
 			artistIDs := []string{artist1.ID, artist2.ID}
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistRepo.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("handles complex nested JSON with multiple roles and sub-roles", func() {
@@ -959,8 +959,8 @@ var _ = Describe("AlbumRepository", func() {
 			for i, artist := range artists {
 				artistIDs[i] = artist.ID
 			}
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistRepo.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artistIDs}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("handles albums with non-existent artist IDs without constraint errors", func() {
@@ -999,7 +999,7 @@ var _ = Describe("AlbumRepository", func() {
 			verifyAlbumArtists(album.ID, []albumArtistRecord{})
 
 			// Clean up the test album created for this test
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 
 		It("removes stale role associations when artist role changes", func() {
@@ -1062,8 +1062,8 @@ var _ = Describe("AlbumRepository", func() {
 			verifyAlbumArtists(album.ID, expectedAfter)
 
 			// Clean up
-			_, _ = artistRepo.executeSQL(squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
+			_, _ = artistRepo.executeSQL(artistRepo.ctx, squirrel.Delete("artist").Where(squirrel.Eq{"id": artist.ID}))
+			_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": album.ID}))
 		})
 	})
 
@@ -1087,7 +1087,7 @@ var _ = Describe("AlbumRepository", func() {
 			Expect(albumRepo.Put(album1)).To(Succeed())
 			Expect(albumRepo.Put(album2)).To(Succeed())
 			DeferCleanup(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"dedup-test-1", "dedup-test-2"}}))
+				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"dedup-test-1", "dedup-test-2"}}))
 			})
 
 			years, err := albumRepo.GetYears()
@@ -1117,7 +1117,7 @@ var _ = Describe("AlbumRepository", func() {
 			gone := &model.Album{LibraryID: 1, ID: "missing-year-1", Name: "Gone", MaxYear: 1911, Missing: true}
 			Expect(albumRepo.Put(gone)).To(Succeed())
 			DeferCleanup(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "missing-year-1"}))
+				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": "missing-year-1"}))
 			})
 
 			years, err := albumRepo.GetYears()
@@ -1169,7 +1169,7 @@ var _ = Describe("AlbumRepository", func() {
 	Describe("ReplayGain", func() {
 		BeforeEach(func() {
 			DeferCleanup(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"rg-1", "rg-2"}}))
+				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{"rg-1", "rg-2"}}))
 			})
 		})
 		It("round-trips album ReplayGain gain and peak", func() {
@@ -1198,7 +1198,7 @@ var _ = Describe("AlbumRepository", func() {
 		It("hides an album the user has no library access to", func() {
 			Expect(albumRepo.Put(&model.Album{ID: "vis-album", Name: "Vis", LibraryID: 1})).To(Succeed())
 			DeferCleanup(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": "vis-album"}))
+				_, _ = albumRepo.executeSQL(albumRepo.ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": "vis-album"}))
 			})
 
 			Expect(albumRepo.Exists("vis-album")).To(BeTrue(), "admin sees it")

@@ -74,7 +74,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 		return nil
 	}
 	if refreshSmartPlaylist {
-		r.refreshSmartPlaylist(pls)
+		r.refreshSmartPlaylist(r.ctx, pls)
 	}
 	p.playlist = pls
 	return p
@@ -84,20 +84,20 @@ func (r *playlistTrackRepository) CountAll(options ...model.QueryOptions) (int64
 	query := Select().
 		Join("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
-	query = r.applyLibraryFilter(query, "f")
-	return r.count(query, options...)
+	query = r.applyLibraryFilter(r.ctx, query, "f")
+	return r.count(r.ctx, query, options...)
 }
 
 func (r *playlistTrackRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
 	query := Select().
 		LeftJoin("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
-	return r.count(query, r.parseRestOptions(ctx, options...))
+	return r.count(ctx, query, r.parseRestOptions(ctx, options...))
 }
 
 func (r *playlistTrackRepository) Read(ctx context.Context, id string) (*model.PlaylistTrack, error) {
 	userID := loggedUser(ctx).ID
-	sel := r.newSelect().
+	sel := r.newSelect(ctx).
 		LeftJoin("annotation on ("+
 			"annotation.item_id = media_file_id"+
 			" AND annotation.item_type = 'media_file'"+
@@ -115,12 +115,12 @@ func (r *playlistTrackRepository) Read(ctx context.Context, id string) (*model.P
 		Join("media_file f on f.id = media_file_id").
 		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"playlist_tracks.id": id}})
 	var trk dbPlaylistTrack
-	err := r.queryOne(sel, &trk)
+	err := r.queryOne(ctx, sel, &trk)
 	return trk.PlaylistTrack, err
 }
 
 func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
-	tracks, err := r.playlistRepo.loadTracks(r.newSelect(options...), r.playlistId)
+	tracks, err := r.playlistRepo.loadTracks(r.newSelect(r.ctx, options...), r.playlistId)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +128,8 @@ func (r *playlistTrackRepository) GetAll(options ...model.QueryOptions) (model.P
 }
 
 func (r *playlistTrackRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistTrackCursor, error) {
-	sel := r.playlistRepo.tracksQuery(r.newSelect(options...), r.playlistId)
-	cursor, err := queryWithStableResults[dbPlaylistTrack](r.sqlRepository, sel)
+	sel := r.playlistRepo.tracksQuery(r.newSelect(r.ctx, options...), r.playlistId)
+	cursor, err := queryWithStableResults[dbPlaylistTrack](r.ctx, r.sqlRepository, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -143,23 +143,23 @@ func (r *playlistTrackRepository) GetCursor(options ...model.QueryOptions) (mode
 
 // GetMediaFileIDs returns the tracks' song ids, for callers that need every id but no track data.
 func (r *playlistTrackRepository) GetMediaFileIDs(options ...model.QueryOptions) ([]string, error) {
-	query := r.newSelect(options...).Columns("media_file_id").
+	query := r.newSelect(r.ctx, options...).Columns("media_file_id").
 		Join("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
-	query = r.applyLibraryFilter(query, "f")
+	query = r.applyLibraryFilter(r.ctx, query, "f")
 	var ids []string
-	if err := r.queryAllSlice(query, &ids); err != nil {
+	if err := r.queryAllSlice(r.ctx, query, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]string, error) {
-	query := r.newSelect(options...).Columns("distinct mf.album_id").
+	query := r.newSelect(r.ctx, options...).Columns("distinct mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
 	var ids []string
-	err := r.queryAllSlice(query, &ids)
+	err := r.queryAllSlice(r.ctx, query, &ids)
 	if err != nil {
 		return nil, err
 	}
@@ -178,9 +178,9 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 	}
 
 	// Get next pos (ID) in playlist
-	sq := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
+	sq := r.newSelect(r.ctx).Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
 	var res struct{ Max sql.NullInt32 }
-	err := r.queryOne(sq, &res)
+	err := r.queryOne(r.ctx, sq, &res)
 	if err != nil {
 		return 0, err
 	}
@@ -191,7 +191,7 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 func (r *playlistTrackRepository) addMediaFileIds(cond Sqlizer) (int, error) {
 	sq := Select("id").From("media_file").Where(cond).OrderBy("album_artist, album, release_date, disc_number, track_number")
 	var ids []string
-	err := r.queryAllSlice(sq, &ids)
+	err := r.queryAllSlice(r.ctx, sq, &ids)
 	if err != nil {
 		log.Error(r.ctx, "Error getting tracks to add to playlist", err)
 		return 0, err
@@ -223,7 +223,7 @@ const deleteChunkSize = 200
 
 func (r *playlistTrackRepository) Delete(ids ...string) error {
 	for chunk := range slices.Chunk(ids, deleteChunkSize) {
-		if err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": chunk}}); err != nil {
+		if err := r.delete(r.ctx, And{Eq{"playlist_id": r.playlistId}, Eq{"id": chunk}}); err != nil {
 			return err
 		}
 	}
@@ -232,7 +232,7 @@ func (r *playlistTrackRepository) Delete(ids ...string) error {
 }
 
 func (r *playlistTrackRepository) DeleteAll() error {
-	err := r.delete(Eq{"playlist_id": r.playlistId})
+	err := r.delete(r.ctx, Eq{"playlist_id": r.playlistId})
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
 	pid := r.playlistId
 
 	// Step 1: Move the source track out of the way (temporary sentinel value)
-	_, err := r.executeSQL(Expr(
+	_, err := r.executeSQL(r.ctx, Expr(
 		`UPDATE playlist_tracks SET id = -999999 WHERE playlist_id = ? AND id = ?`, pid, pos))
 	if err != nil {
 		return err
@@ -256,11 +256,11 @@ func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
 
 	// Step 2: Shift the affected range using negative values to avoid unique constraint violations
 	if pos < newPos {
-		_, err = r.executeSQL(Expr(
+		_, err = r.executeSQL(r.ctx, Expr(
 			`UPDATE playlist_tracks SET id = -(id - 1) WHERE playlist_id = ? AND id > ? AND id <= ?`,
 			pid, pos, newPos))
 	} else {
-		_, err = r.executeSQL(Expr(
+		_, err = r.executeSQL(r.ctx, Expr(
 			`UPDATE playlist_tracks SET id = -(id + 1) WHERE playlist_id = ? AND id >= ? AND id < ?`,
 			pid, newPos, pos))
 	}
@@ -269,14 +269,14 @@ func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
 	}
 
 	// Step 3: Flip the shifted range back to positive
-	_, err = r.executeSQL(Expr(
+	_, err = r.executeSQL(r.ctx, Expr(
 		`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ? AND id < 0 AND id != -999999`, pid))
 	if err != nil {
 		return err
 	}
 
 	// Step 4: Place the source track at its new position
-	_, err = r.executeSQL(Expr(
+	_, err = r.executeSQL(r.ctx, Expr(
 		`UPDATE playlist_tracks SET id = ? WHERE playlist_id = ? AND id = -999999`, newPos, pid))
 	return err
 }

@@ -54,7 +54,7 @@ func (r *sqlRepository) parseRestFilters(ctx context.Context, options rest.Query
 func (r *sqlRepository) parseRestOptions(ctx context.Context, options ...rest.QueryOptions) model.QueryOptions {
 	qo := model.QueryOptions{}
 	if len(options) > 0 {
-		qo.Sort, qo.Order = r.sanitizeSort(options[0].Sort, options[0].Order)
+		qo.Sort, qo.Order = r.sanitizeSort(ctx, options[0].Sort, options[0].Order)
 		qo.Max = options[0].Max
 		qo.Offset = options[0].Offset
 		if seed, ok := options[0].Filters["seed"].(string); ok {
@@ -66,13 +66,13 @@ func (r *sqlRepository) parseRestOptions(ctx context.Context, options ...rest.Qu
 	return qo
 }
 
-func (r sqlRepository) sanitizeSort(sort, order string) (string, string) {
+func (r sqlRepository) sanitizeSort(ctx context.Context, sort, order string) (string, string) {
 	if sort != "" {
 		sort = toSnakeCase(sort)
 		// Validate only: buildSortOrder resolves the mapping later, and mapping here as well would
 		// feed sortMapping its own output.
 		if _, _, known := r.lookupSortMapping(sort); !known && !r.isFieldWhiteListed(sort) {
-			log.Warn(r.ctx, "Ignoring sort not whitelisted", "sort", sort, "table", r.tableName)
+			log.Warn(ctx, "Ignoring sort not whitelisted", "sort", sort, "table", r.tableName)
 			sort = ""
 		}
 	}

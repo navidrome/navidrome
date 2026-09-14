@@ -234,7 +234,7 @@ var _ = Describe("UserRepository", func() {
 		It("returns not found for a missing user", func() {
 			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 			adminRepo := NewUserRepository(adminCtx, GetDBXBuilder()).(*userRepository)
-			Expect(adminRepo.Delete("does-not-exist")).To(MatchError(model.ErrNotFound))
+			Expect(adminRepo.Delete(adminCtx, "does-not-exist")).To(MatchError(model.ErrNotFound))
 		})
 	})
 
@@ -345,7 +345,7 @@ var _ = Describe("UserRepository", func() {
 
 			// Clean up test libraries to ensure isolation between test groups
 			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+			_ = libRepo.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 		})
 
 		Describe("GetUserLibraries", func() {
@@ -436,10 +436,10 @@ var _ = Describe("UserRepository", func() {
 
 		AfterEach(func() {
 			// Clean up test libraries and their associations
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+			_ = libRepo.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 
 			// Clean up user-library associations for these test libraries
-			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
+			_, _ = repo.(*userRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
 		})
 
 		It("automatically assigns all libraries to admin users when created", func() {
@@ -559,11 +559,11 @@ var _ = Describe("UserRepository", func() {
 
 		AfterEach(func() {
 			// Clean up test libraries and their associations
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
-			_ = repo.(*userRepository).delete(squirrel.Eq{"id": testUser.ID})
+			_ = libRepo.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+			_ = repo.(*userRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": testUser.ID})
 
 			// Clean up user-library associations for these test libraries
-			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
+			_, _ = repo.(*userRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
 		})
 
 		It("populates Libraries field when getting a single user", func() {
@@ -623,7 +623,7 @@ var _ = Describe("UserRepository", func() {
 				IsAdmin:     false,
 			}
 			Expect(repo.Put(&userWithoutLibs)).To(BeNil())
-			defer func() { _ = repo.(*userRepository).delete(squirrel.Eq{"id": userWithoutLibs.ID}) }()
+			defer func() { _ = repo.(*userRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": userWithoutLibs.ID}) }()
 
 			user, err := repo.Get(userWithoutLibs.ID)
 			Expect(err).ToNot(HaveOccurred())

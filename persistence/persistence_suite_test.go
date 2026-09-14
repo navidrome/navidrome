@@ -225,7 +225,7 @@ var _ = BeforeSuite(func() {
 		if a.AlbumArtistID == "" || !artistIDs[a.AlbumArtistID] {
 			continue
 		}
-		_, err := alr.executeSQL(squirrel.Insert("album_artists").SetMap(map[string]any{
+		_, err := alr.executeSQL(alr.ctx, squirrel.Insert("album_artists").SetMap(map[string]any{
 			"album_id":  a.ID,
 			"artist_id": a.AlbumArtistID,
 			"role":      "artist",
@@ -315,7 +315,7 @@ var _ = BeforeSuite(func() {
 
 	scrobbleRepo := NewScrobbleRepository(ctx, conn).(*scrobbleRepository)
 	for _, s := range scrobbles {
-		_, err := scrobbleRepo.executeSQL(squirrel.Insert("scrobbles").SetMap(map[string]any{
+		_, err := scrobbleRepo.executeSQL(scrobbleRepo.ctx, squirrel.Insert("scrobbles").SetMap(map[string]any{
 			"media_file_id":   s.MediaFileID,
 			"user_id":         s.UserID,
 			"submission_time": s.SubmissionTime,

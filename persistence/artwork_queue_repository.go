@@ -35,7 +35,7 @@ func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.Artwor
 
 func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
 	var res model.ArtworkQueueItem
-	err := r.queryOne(Select("*").From(r.tableName).
+	err := r.queryOne(r.ctx, Select("*").From(r.tableName).
 		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType}), &res)
 	if err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ const skipIfQueued = ` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`
 
 // insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE.
 func (r *artworkQueueRepository) insertIfNotQueued(with, sql string, args ...any) (int64, error) {
-	return r.executeSQL(Expr(with+`INSERT INTO `+r.tableName+
+	return r.executeSQL(r.ctx, Expr(with+`INSERT INTO `+r.tableName+
 		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+skipIfQueued, args...))
 }
 
@@ -123,14 +123,14 @@ func artworkSourceFilter(kind model.Kind, sources []string) Sqlizer {
 
 func (r *artworkQueueRepository) CountBySource(kind model.Kind, sources []string) (int64, error) {
 	var res struct{ Count int64 }
-	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
+	err := r.queryOne(r.ctx, Select("count(*) as count").From(itemArtworkTable).
 		Where(artworkSourceFilter(kind, sources)), &res)
 	return res.Count, err
 }
 
 func (r *artworkQueueRepository) SourcesInUse(kind model.Kind) ([]string, error) {
 	var res []struct{ Source string }
-	err := r.queryAll(Select("distinct source").From(itemArtworkTable).
+	err := r.queryAll(r.ctx, Select("distinct source").From(itemArtworkTable).
 		Where(Eq{"item_kind": kind.Prefix()}), &res)
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (r *artworkQueueRepository) EnqueueBySource(kind model.Kind, sources []stri
 	sel := Select("item_kind", "item_id", "image_type").
 		Column(Expr("?", priority)).Column("0").Column(Expr("?", now)).Column(Expr("?", now)).
 		From(itemArtworkTable).Where(artworkSourceFilter(kind, sources))
-	return r.executeSQL(Insert(r.tableName).Columns(enqueueColumns...).Select(sel).Suffix(skipIfQueued))
+	return r.executeSQL(r.ctx, Insert(r.tableName).Columns(enqueueColumns...).Select(sel).Suffix(skipIfQueued))
 }
 
 func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQueueItem) error {
@@ -156,7 +156,7 @@ func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQ
 			ins = ins.Values(it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority, 0, now, now)
 		}
 		ins = ins.Suffix(conflict)
-		if _, err := r.executeSQL(ins); err != nil {
+		if _, err := r.executeSQL(r.ctx, ins); err != nil {
 			return err
 		}
 	}
@@ -172,7 +172,7 @@ func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.A
 		sel = sel.Where(Eq{"item_kind": kinds})
 	}
 	var res []model.ArtworkQueueItem
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	return res, err
 }
 
@@ -182,12 +182,12 @@ func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType strin
 		Set("retry_at", retryAt).
 		Set("trace", trace).
 		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": seenRetryAt})
-	_, err := r.executeSQL(upd)
+	_, err := r.executeSQL(r.ctx, upd)
 	return err
 }
 
 func (r *artworkQueueRepository) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
-	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": retryAt})
+	return r.delete(r.ctx, Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": retryAt})
 }
 
 func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
@@ -215,7 +215,7 @@ func (r *artworkQueueRepository) CountQueued(kinds []model.Kind, priorities []in
 		sel = sel.Where(f)
 	}
 	var res []model.ArtworkQueueStat
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	return res, err
 }
 
@@ -224,12 +224,12 @@ func (r *artworkQueueRepository) PurgeQueued(kinds []model.Kind, priorities []in
 	if f := artworkQueueFilter(kinds, priorities); len(f) > 0 {
 		del = del.Where(f)
 	}
-	return r.executeSQL(del)
+	return r.executeSQL(r.ctx, del)
 }
 
 func (r *artworkQueueRepository) Count() (int64, error) {
 	var res struct{ Count int64 }
-	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)
+	err := r.queryOne(r.ctx, Select("count(*) as count").From(r.tableName), &res)
 	return res.Count, err
 }
 

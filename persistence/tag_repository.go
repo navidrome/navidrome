@@ -30,7 +30,7 @@ func (r *tagRepository) Add(libraryID int, tags ...model.Tag) error {
 		for _, t := range chunk {
 			sq = sq.Values(t.ID, t.TagName, t.TagValue)
 		}
-		_, err := r.executeSQL(sq)
+		_, err := r.executeSQL(r.ctx, sq)
 		if err != nil {
 			return err
 		}
@@ -41,7 +41,7 @@ func (r *tagRepository) Add(libraryID int, tags ...model.Tag) error {
 		for _, t := range chunk {
 			libSq = libSq.Values(t.ID, libraryID, 0, 0)
 		}
-		_, err = r.executeSQL(libSq)
+		_, err = r.executeSQL(r.ctx, libSq)
 		if err != nil {
 			return fmt.Errorf("adding library_tag entries: %w", err)
 		}
@@ -66,7 +66,7 @@ DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
 	for _, table := range []string{"album", "media_file"} {
 		start := time.Now()
 		query := Expr(fmt.Sprintf(template, table))
-		c, err := r.executeSQL(query)
+		c, err := r.executeSQL(r.ctx, query)
 		log.Debug(r.ctx, "Updated library tag counts", "table", table, "elapsed", time.Since(start), "updated", c)
 		if err != nil {
 			return fmt.Errorf("updating %s library tag counts: %w", table, err)
@@ -76,9 +76,9 @@ DO UPDATE SET %[1]s_count = excluded.%[1]s_count;
 }
 
 func (r *tagRepository) GetAll(name model.TagName, options ...model.QueryOptions) (model.TagList, error) {
-	sq := r.newSelect(options...).Where(Eq{"tag.tag_name": name})
+	sq := r.newSelect(r.ctx, options...).Where(Eq{"tag.tag_name": name})
 	res := model.TagList{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(r.ctx, sq, &res)
 	return res, err
 }
 
@@ -94,7 +94,7 @@ func (r *tagRepository) purgeUnused() error {
 	where atom is not null
 	  and key = 'id')
 `)
-	c, err := r.executeSQL(del)
+	c, err := r.executeSQL(r.ctx, del)
 	if err != nil {
 		return fmt.Errorf("error purging %s unused tags: %w", r.tableName, err)
 	}

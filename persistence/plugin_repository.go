@@ -43,24 +43,24 @@ func (r *pluginRepository) CountAll(options ...model.QueryOptions) (int64, error
 	if !r.isPermitted() {
 		return 0, rest.ErrPermissionDenied
 	}
-	sql := r.newSelect()
-	return r.count(sql, options...)
+	sql := r.newSelect(r.ctx)
+	return r.count(r.ctx, sql, options...)
 }
 
 func (r *pluginRepository) Delete(id string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
-	return r.delete(Eq{"id": id})
+	return r.delete(r.ctx, Eq{"id": id})
 }
 
 func (r *pluginRepository) Get(id string) (*model.Plugin, error) {
 	if !r.isPermitted() {
 		return nil, rest.ErrPermissionDenied
 	}
-	sel := r.newSelect().Where(Eq{"id": id}).Columns("*")
+	sel := r.newSelect(r.ctx).Where(Eq{"id": id}).Columns("*")
 	res := model.Plugin{}
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(r.ctx, sel, &res)
 	return &res, err
 }
 
@@ -68,9 +68,9 @@ func (r *pluginRepository) GetAll(options ...model.QueryOptions) (model.Plugins,
 	if !r.isPermitted() {
 		return nil, rest.ErrPermissionDenied
 	}
-	sel := r.newSelect(options...).Columns("*")
+	sel := r.newSelect(r.ctx, options...).Columns("*")
 	res := model.Plugins{}
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	return res, err
 }
 

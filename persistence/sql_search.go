@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -32,7 +33,7 @@ type searchConfig struct {
 // including FTS Phase 1 which builds its own query outside sq.
 type searchStrategy interface {
 	Sqlizer
-	execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error
+	execute(ctx context.Context, r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error
 }
 
 // getSearchStrategy returns the appropriate search strategy based on config and query content.
@@ -51,7 +52,7 @@ func getSearchStrategy(tableName, query string) searchStrategy {
 // otherwise delegates to getSearchStrategy. sq must already have LIMIT/OFFSET set
 // via newSelect(options...). options is forwarded so FTS Phase 1 can apply the same
 // filters and pagination independently.
-func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg searchConfig, options model.QueryOptions) error {
+func (r sqlRepository) doSearch(ctx context.Context, sq SelectBuilder, q string, results any, cfg searchConfig, options model.QueryOptions) error {
 	q = strings.TrimSpace(q)
 	q = strings.TrimSuffix(q, "*")
 
@@ -60,13 +61,13 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 	// Empty query (OpenSubsonic `search3?query=""`) — return all in natural order.
 	if q == "" || q == `""` {
 		rowidCore := Select(r.tableName + ".rowid").From(r.tableName).OrderBy(cfg.NaturalOrder)
-		return r.executeTwoPhase(sq, results, rowidCore, cfg, options)
+		return r.executeTwoPhase(ctx, sq, results, rowidCore, cfg, options)
 	}
 
 	// MBID search: if query is a valid UUID, search by MBID fields instead
 	if uuid.Validate(q) == nil && len(cfg.MBIDFields) > 0 {
 		sq = sq.Where(mbidExpr(r.tableName, q, cfg.MBIDFields...))
-		return r.queryAll(sq, results)
+		return r.queryAll(ctx, sq, results)
 	}
 
 	// Min-length guard: single-character queries are too broad for search3.
@@ -81,7 +82,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 		return nil
 	}
 
-	return strategy.execute(r, sq, results, cfg, options)
+	return strategy.execute(ctx, r, sq, results, cfg, options)
 }
 
 // executeTwoPhase runs a search in two phases:
@@ -91,7 +92,7 @@ func (r sqlRepository) doSearch(sq SelectBuilder, q string, results any, cfg sea
 //     covering index; with those JOINs, large offsets degrade to O(offset) join probes —
 //     multi-second responses on 100k+ libraries.
 //   - Phase 2: full SELECT with all JOINs, scoped to Phase 1's rowid page.
-func (r sqlRepository) executeTwoPhase(sq SelectBuilder, results any, rowidCore SelectBuilder, cfg searchConfig, options model.QueryOptions) error {
+func (r sqlRepository) executeTwoPhase(ctx context.Context, sq SelectBuilder, results any, rowidCore SelectBuilder, cfg searchConfig, options model.QueryOptions) error {
 	rowidQuery := rowidCore.
 		Where(Eq{r.tableName + ".missing": false})
 	if options.Max > 0 {
@@ -103,17 +104,17 @@ func (r sqlRepository) executeTwoPhase(sq SelectBuilder, results any, rowidCore 
 	if cfg.LibraryFilter != nil {
 		rowidQuery = cfg.LibraryFilter(rowidQuery)
 	} else {
-		rowidQuery = r.applyLibraryFilter(rowidQuery)
+		rowidQuery = r.applyLibraryFilter(ctx, rowidQuery)
 	}
 	if options.Filters != nil {
 		rowidQuery = rowidQuery.Where(options.Filters)
 	}
-	return r.hydrateRowidPage(sq, rowidQuery, results)
+	return r.hydrateRowidPage(ctx, sq, rowidQuery, results)
 }
 
 // hydrateRowidPage joins sq to the ordered rowid set produced by rowidQuery, preserving its
 // ordering. rowidQuery must handle pagination itself; sq's LIMIT/OFFSET are stripped.
-func (r sqlRepository) hydrateRowidPage(sq SelectBuilder, rowidQuery SelectBuilder, results any) error {
+func (r sqlRepository) hydrateRowidPage(ctx context.Context, sq SelectBuilder, rowidQuery SelectBuilder, results any) error {
 	rowidSQL, rowidArgs, err := rowidQuery.ToSql()
 	if err != nil {
 		return fmt.Errorf("building rowid query: %w", err)
@@ -125,7 +126,7 @@ func (r sqlRepository) hydrateRowidPage(sq SelectBuilder, rowidQuery SelectBuild
 	)
 	sq = sq.Join(rankedSubquery+" ON "+r.tableName+".rowid = _ranked._rid", rowidArgs...)
 	sq = sq.OrderBy("_ranked._rn")
-	return r.queryAll(sq, results)
+	return r.queryAll(ctx, sq, results)
 }
 
 func mbidExpr(tableName, mbid string, mbidFields ...string) Sqlizer {

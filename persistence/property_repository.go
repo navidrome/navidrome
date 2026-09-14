@@ -23,7 +23,7 @@ func NewPropertyRepository(ctx context.Context, db dbx.Builder) model.PropertyRe
 
 func (r propertyRepository) Put(id string, value string) error {
 	update := Update(r.tableName).Set("value", value).Where(Eq{"id": id})
-	count, err := r.executeSQL(update)
+	count, err := r.executeSQL(r.ctx, update)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (r propertyRepository) Put(id string, value string) error {
 		return nil
 	}
 	insert := Insert(r.tableName).Columns("id", "value").Values(id, value)
-	_, err = r.executeSQL(insert)
+	_, err = r.executeSQL(r.ctx, insert)
 	return err
 }
 
@@ -40,7 +40,7 @@ func (r propertyRepository) Get(id string) (string, error) {
 	resp := struct {
 		Value string
 	}{}
-	err := r.queryOne(sel, &resp)
+	err := r.queryOne(r.ctx, sel, &resp)
 	if err != nil {
 		return "", err
 	}
@@ -59,5 +59,5 @@ func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, 
 }
 
 func (r propertyRepository) Delete(id string) error {
-	return r.delete(Eq{"id": id})
+	return r.delete(r.ctx, Eq{"id": id})
 }

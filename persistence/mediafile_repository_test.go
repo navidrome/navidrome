@@ -431,7 +431,7 @@ var _ = Describe("MediaRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.AverageRating).To(Equal(0.0))
 
-				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
 			})
 
 			It("returns the user's rating as average when only one user rated", func() {
@@ -443,8 +443,8 @@ var _ = Describe("MediaRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.AverageRating).To(Equal(5.0))
 
-				_, _ = raw.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
 			})
 
 			It("calculates average across multiple users", func() {
@@ -461,8 +461,8 @@ var _ = Describe("MediaRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.AverageRating).To(Equal(4.0))
 
-				_, _ = raw.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
 			})
 
 			It("excludes zero ratings from average calculation", func() {
@@ -479,8 +479,8 @@ var _ = Describe("MediaRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf.AverageRating).To(Equal(4.0))
 
-				_, _ = raw.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
-				_, _ = raw.executeSQL(squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": newID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete("media_file").Where(squirrel.Eq{"id": newID}))
 			})
 		})
 
@@ -826,7 +826,7 @@ var _ = Describe("MediaRepository", func() {
 
 			AfterEach(func() {
 				// Clean up test data using direct SQL
-				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": mediaFileWithMBID.ID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": mediaFileWithMBID.ID}))
 			})
 
 			It("finds media file by mbz_recording_id", func() {
@@ -871,7 +871,7 @@ var _ = Describe("MediaRepository", func() {
 				Expect(results).To(BeEmpty())
 
 				// Clean up
-				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingMediaFile.ID}))
+				_, _ = raw.executeSQL(raw.ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingMediaFile.ID}))
 			})
 		})
 
@@ -940,10 +940,10 @@ var _ = Describe("MediaRepository", func() {
 			_ = pr.Delete(ctx, pls.ID)
 			_ = mr.Delete(prev.ID)
 			_ = mr.Delete(next.ID)
-			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
-			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("bookmark").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
-			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("scrobbles").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
-			_, _ = mr.(*mediaFileRepository).executeSQL(squirrel.Delete("scrobble_buffer").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("bookmark").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("scrobbles").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("scrobble_buffer").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
 		})
 
 		It("moves annotations, bookmarks and playlist entries onto the new id", func() {
@@ -1158,7 +1158,7 @@ var _ = Describe("MediaRepository", func() {
 				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
 				_ = NewMediaFileRepository(adminCtx, GetDBXBuilder()).Delete("otherlib-track")
 				lr := NewLibraryRepository(adminCtx, GetDBXBuilder()).(*libraryRepository)
-				_ = lr.delete(squirrel.Eq{"id": otherLib.ID})
+				_ = lr.delete(lr.ctx, squirrel.Eq{"id": otherLib.ID})
 				_ = NewUserRepository(adminCtx, GetDBXBuilder()).Delete(adminCtx, restrictedUser.ID)
 			})
 

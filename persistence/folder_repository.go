@@ -65,15 +65,15 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 }
 
 func (r folderRepository) selectFolder(options ...model.QueryOptions) SelectBuilder {
-	sql := r.newSelect(options...).Columns("folder.*", "library.path as library_path").
+	sql := r.newSelect(r.ctx, options...).Columns("folder.*", "library.path as library_path").
 		Join("library on library.id = folder.library_id")
-	return r.applyLibraryFilter(sql)
+	return r.applyLibraryFilter(r.ctx, sql)
 }
 
 func (r folderRepository) Get(id string) (*model.Folder, error) {
 	sq := r.selectFolder().Where(Eq{"folder.id": id})
 	var res dbFolder
-	err := r.queryOne(sq, &res)
+	err := r.queryOne(r.ctx, sq, &res)
 	return res.Folder, err
 }
 
@@ -85,14 +85,14 @@ func (r folderRepository) GetByPath(lib model.Library, path string) (*model.Fold
 func (r folderRepository) GetAll(opt ...model.QueryOptions) ([]model.Folder, error) {
 	sq := r.selectFolder(opt...)
 	var res dbFolders
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(r.ctx, sq, &res)
 	return res.toModels(), err
 }
 
 func (r folderRepository) CountAll(opt ...model.QueryOptions) (int64, error) {
-	query := r.newSelect(opt...).Columns("count(*)")
-	query = r.applyLibraryFilter(query)
-	return r.count(query)
+	query := r.newSelect(r.ctx, opt...).Columns("count(*)")
+	query = r.applyLibraryFilter(r.ctx, query)
+	return r.count(r.ctx, query)
 }
 
 func (r folderRepository) GetFolderUpdateInfo(lib model.Library, targetPaths ...string) (map[string]model.FolderUpdateInfo, error) {
@@ -169,7 +169,7 @@ func (r folderRepository) getFolderUpdateInfoBatch(lib model.Library, targetPath
 
 // queryFolderUpdateInfo executes the query and returns the result map
 func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.FolderUpdateInfo, error) {
-	sq := r.newSelect().Columns("id", "updated_at", "hash", "image_files", "images_updated_at").Where(where)
+	sq := r.newSelect(r.ctx).Columns("id", "updated_at", "hash", "image_files", "images_updated_at").Where(where)
 	var res []struct {
 		ID              string
 		UpdatedAt       time.Time
@@ -177,7 +177,7 @@ func (r folderRepository) queryFolderUpdateInfo(where And) (map[string]model.Fol
 		ImageFiles      string
 		ImagesUpdatedAt time.Time
 	}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(r.ctx, sq, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (r folderRepository) HasAudioOutsideFolders(parent model.Folder, excludeFol
 		return true, nil
 	}
 	parentPath := strings.TrimPrefix(path.Join(parent.Path, parent.Name), "/")
-	return r.exists(And{
+	return r.exists(r.ctx, And{
 		Eq{"library_id": parent.LibraryID, "missing": false},
 		Gt{"num_audio_files": 0},
 		NotEq{"id": excludeFolderIDs},
@@ -247,7 +247,7 @@ func escapeLikePrefix(s string) string {
 
 func (r folderRepository) Put(f *model.Folder) error {
 	dbf := dbFolder{Folder: f}
-	_, err := r.put(dbf.ID, &dbf)
+	_, err := r.put(r.ctx, dbf.ID, &dbf)
 	return err
 }
 
@@ -258,7 +258,7 @@ func (r folderRepository) MarkMissing(missing bool, ids ...string) error {
 			Set("missing", missing).
 			Set("updated_at", time.Now()).
 			Where(Eq{"id": chunk})
-		_, err := r.executeSQL(sq)
+		_, err := r.executeSQL(r.ctx, sq)
 		if err != nil {
 			return err
 		}
@@ -272,7 +272,7 @@ func (r folderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) 
 		Gt{"num_playlists": 0},
 		ConcatExpr("folder.updated_at > library.last_scan_at"),
 	})
-	cursor, err := queryWithStableResults[dbFolder](r.sqlRepository, query)
+	cursor, err := queryWithStableResults[dbFolder](r.ctx, r.sqlRepository, query)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func (r folderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
 		Eq{"missing": false},
 		Gt{"num_playlists": 0},
 	})
-	cursor, err := queryWithStableResults[dbFolder](r.sqlRepository, query)
+	cursor, err := queryWithStableResults[dbFolder](r.ctx, r.sqlRepository, query)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (r folderRepository) purgeEmpty(libraryIDs ...int) error {
 	if len(libraryIDs) > 0 {
 		sq = sq.Where(Eq{"library_id": libraryIDs})
 	}
-	c, err := r.executeSQL(sq)
+	c, err := r.executeSQL(r.ctx, sq)
 	if err != nil {
 		return fmt.Errorf("purging empty folders: %w", err)
 	}

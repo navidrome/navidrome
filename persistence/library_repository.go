@@ -34,9 +34,9 @@ func NewLibraryRepository(ctx context.Context, db dbx.Builder) model.LibraryRepo
 }
 
 func (r *libraryRepository) Get(id int) (*model.Library, error) {
-	sq := r.newSelect().Columns("*").Where(Eq{"id": id})
+	sq := r.newSelect(r.ctx).Columns("*").Where(Eq{"id": id})
 	var res model.Library
-	err := r.queryOne(sq, &res)
+	err := r.queryOne(r.ctx, sq, &res)
 	return &res, err
 }
 
@@ -97,7 +97,7 @@ func (r *libraryRepository) Put(l *model.Library, colsToUpdate ...string) error 
 		}, colsToUpdate...)
 		cols["updated_at"] = l.UpdatedAt
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
-		rowsAffected, updateErr := r.executeSQL(sq)
+		rowsAffected, updateErr := r.executeSQL(r.ctx, sq)
 		if updateErr != nil {
 			return updateErr
 		}
@@ -122,7 +122,7 @@ CROSS JOIN library l
 WHERE u.is_admin = true
 ON CONFLICT (user_id, library_id) DO NOTHING;`,
 	)
-	if _, err = r.executeSQL(sql); err != nil {
+	if _, err = r.executeSQL(r.ctx, sql); err != nil {
 		return fmt.Errorf("failed to assign library to admin users: %w", err)
 	}
 
@@ -139,7 +139,7 @@ func (r *libraryRepository) StoreMusicFolder() error {
 		Set("updated_at", time.Now()).
 		Where(Eq{"id": model.DefaultLibraryID}).
 		Where(NotEq{"path": conf.Server.MusicFolder})
-	rowsAffected, err := r.executeSQL(sq)
+	rowsAffected, err := r.executeSQL(r.ctx, sq)
 	if err == nil && rowsAffected > 0 {
 		libLock.Lock()
 		defer libLock.Unlock()
@@ -151,7 +151,7 @@ func (r *libraryRepository) StoreMusicFolder() error {
 func (r *libraryRepository) AddArtist(id int, artistID string) error {
 	sq := Insert("library_artist").Columns("library_id", "artist_id").Values(id, artistID).
 		Suffix(`on conflict(library_id, artist_id) do nothing`)
-	_, err := r.executeSQL(sq)
+	_, err := r.executeSQL(r.ctx, sq)
 	if err != nil {
 		return err
 	}
@@ -163,7 +163,7 @@ func (r *libraryRepository) ScanBegin(id int, fullScan bool) error {
 		Set("last_scan_started_at", time.Now()).
 		Set("full_scan_in_progress", fullScan).
 		Where(Eq{"id": id})
-	_, err := r.executeSQL(sq)
+	_, err := r.executeSQL(r.ctx, sq)
 	return err
 }
 
@@ -173,13 +173,13 @@ func (r *libraryRepository) ScanEnd(id int) error {
 		Set("full_scan_in_progress", false).
 		Set("last_scan_started_at", time.Time{}).
 		Where(Eq{"id": id})
-	_, err := r.executeSQL(sq)
+	_, err := r.executeSQL(r.ctx, sq)
 	return err
 }
 
 func (r *libraryRepository) ScanInProgress() (bool, error) {
-	query := r.newSelect().Where(NotEq{"last_scan_started_at": time.Time{}})
-	count, err := r.count(query)
+	query := r.newSelect(r.ctx).Where(NotEq{"last_scan_started_at": time.Time{}})
+	count, err := r.count(r.ctx, query)
 	return count > 0, err
 }
 
@@ -190,35 +190,35 @@ func (r *libraryRepository) RefreshStats(id int) error {
 
 	err := run.Parallel(
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": false}), &songsRes)
+			return r.queryOne(r.ctx, Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": false}), &songsRes)
 		},
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("album").Where(Eq{"library_id": id, "missing": false}), &albumsRes)
+			return r.queryOne(r.ctx, Select("count(*) as count").From("album").Where(Eq{"library_id": id, "missing": false}), &albumsRes)
 		},
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("library_artist la").
+			return r.queryOne(r.ctx, Select("count(*) as count").From("library_artist la").
 				Join("artist a on la.artist_id = a.id").
 				Where(Eq{"la.library_id": id, "a.missing": false}), &artistsRes)
 		},
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("folder").
+			return r.queryOne(r.ctx, Select("count(*) as count").From("folder").
 				Where(And{
 					Eq{"library_id": id, "missing": false},
 					Gt{"num_audio_files": 0},
 				}), &foldersRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").
+			return r.queryOne(r.ctx, Select("ifnull(sum(num_audio_files + num_playlists + json_array_length(image_files)),0) as count").
 				From("folder").Where(Eq{"library_id": id, "missing": false}), &filesRes)
 		},
 		func() error {
-			return r.queryOne(Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": true}), &missingRes)
+			return r.queryOne(r.ctx, Select("count(*) as count").From("media_file").Where(Eq{"library_id": id, "missing": true}), &missingRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
+			return r.queryOne(r.ctx, Select("ifnull(sum(size),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &sizeRes)
 		},
 		func() error {
-			return r.queryOne(Select("ifnull(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
+			return r.queryOne(r.ctx, Select("ifnull(sum(duration),0) as sum").From("album").Where(Eq{"library_id": id, "missing": false}), &durationRes)
 		},
 	)()
 	if err != nil {
@@ -236,7 +236,7 @@ func (r *libraryRepository) RefreshStats(id int) error {
 		Set("total_duration", durationRes.Sum).
 		Set("updated_at", time.Now()).
 		Where(Eq{"id": id})
-	_, err = r.executeSQL(sq)
+	_, err = r.executeSQL(r.ctx, sq)
 	return err
 }
 
@@ -248,7 +248,7 @@ func (r *libraryRepository) Delete(id int) error {
 		return fmt.Errorf("%w: library with ID 1 cannot be deleted", model.ErrValidation)
 	}
 
-	err := r.delete(Eq{"id": id})
+	err := r.delete(r.ctx, Eq{"id": id})
 	if err != nil {
 		return err
 	}
@@ -271,15 +271,15 @@ func (r *libraryRepository) Delete(id int) error {
 }
 
 func (r *libraryRepository) GetAll(ops ...model.QueryOptions) (model.Libraries, error) {
-	sq := r.newSelect(ops...).Columns("*")
+	sq := r.newSelect(r.ctx, ops...).Columns("*")
 	res := model.Libraries{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(r.ctx, sq, &res)
 	return res, err
 }
 
 func (r *libraryRepository) CountAll(ops ...model.QueryOptions) (int64, error) {
-	sq := r.newSelect(ops...)
-	return r.count(sq)
+	sq := r.newSelect(r.ctx, ops...)
+	return r.count(r.ctx, sq)
 }
 
 // User-library association methods
@@ -292,7 +292,7 @@ func (r *libraryRepository) GetUsersWithLibraryAccess(libraryID int) (model.User
 		OrderBy("u.name")
 
 	var res model.Users
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(r.ctx, sel, &res)
 	return res, err
 }
 

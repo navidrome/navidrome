@@ -54,7 +54,7 @@ var _ = Describe("RadioRepository", func() {
 			})
 
 			It("errors when missing", func() {
-				Expect(repo.Delete("notanid")).To(MatchError(model.ErrNotFound))
+				Expect(repo.Delete(ctx, "notanid")).To(MatchError(model.ErrNotFound))
 			})
 		})
 

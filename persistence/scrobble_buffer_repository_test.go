@@ -32,7 +32,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 			"play_time":     playTime,
 			"enqueue_time":  enqueueTime,
 		})
-		_, err := rawRepo.executeSQL(ins)
+		_, err := rawRepo.executeSQL(rawRepo.ctx, ins)
 		Expect(err).ToNot(HaveOccurred())
 	}
 
@@ -51,7 +51,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 
 	AfterEach(func() {
 		del := squirrel.Delete(rawRepo.tableName)
-		_, err := rawRepo.executeSQL(del)
+		_, err := rawRepo.executeSQL(rawRepo.ctx, del)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
