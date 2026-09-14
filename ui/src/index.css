@@ -45,3 +45,11 @@ html[data-simple-mobile='1'] .music-player-controller-wrap {
   z-index: 2147483000 !important;
   pointer-events: auto !important;
 }
+
+
+/* Full RA UI stays mounted (needed for Player / shuffle) but is covered by
+   the static #nd-static-simple shell from index.html. */
+html[data-simple-mobile='1'] #root {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

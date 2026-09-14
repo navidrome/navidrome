@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button, useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { IconButton, Tooltip } from '@material-ui/core'
@@ -54,6 +54,16 @@ export const ShuffleAllButton = ({ filters, variant, className }) => {
         setLoading(false)
       })
   }
+
+  // Static #nd-static-simple shell in index.html calls this.
+  useEffect(() => {
+    window.__ndPlayRandom = handleOnClick
+    return () => {
+      if (window.__ndPlayRandom === handleOnClick) {
+        delete window.__ndPlayRandom
+      }
+    }
+  })
 
   if (variant === 'hero') {
     return (

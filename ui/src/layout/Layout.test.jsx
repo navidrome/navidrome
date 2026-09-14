@@ -5,15 +5,9 @@ import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { createTheme } from '@material-ui/core/styles'
 
-const simple = vi.hoisted(() => ({ on: false, throwOnDetect: false }))
+const simple = vi.hoisted(() => ({ throwOnDetect: false }))
 
 vi.mock('./simpleMobile', () => ({
-  shouldUseSimpleMobile: () => {
-    if (simple.throwOnDetect) {
-      throw new Error('detect failed')
-    }
-    return simple.on
-  },
   applySimpleMobileDomHint: () => {
     if (simple.throwOnDetect) {
       throw new Error('detect failed')
@@ -33,9 +27,6 @@ vi.mock('react-hotkeys', () => ({
 vi.mock('./Menu', () => ({ default: () => null }))
 vi.mock('./AppBar', () => ({ default: () => null }))
 vi.mock('./Notification', () => ({ default: () => null }))
-vi.mock('./SimpleMobileLayout', () => ({
-  default: () => <div data-testid="simple-mobile-layout" />,
-}))
 vi.mock('../themes/useCurrentTheme', () => ({
   default: () => createTheme(),
 }))
@@ -60,36 +51,20 @@ const renderLayout = (storeState) =>
     </Provider>,
   )
 
-describe('<Layout /> simple mobile routing', () => {
+describe('<Layout />', () => {
   beforeEach(() => {
-    simple.on = false
     simple.throwOnDetect = false
   })
 
-  it('renders the full React-Admin layout when simple mode is off', () => {
+  it('always renders the full React-Admin layout (simple chrome is static HTML)', () => {
     renderLayout()
     expect(screen.getByTestId('ra-layout')).toBeInTheDocument()
-    expect(screen.queryByTestId('simple-mobile-layout')).toBeNull()
-  })
-
-  it('renders SimpleMobileLayout instead of RA chrome when simple mode is on', () => {
-    simple.on = true
-    renderLayout()
-    expect(screen.getByTestId('simple-mobile-layout')).toBeInTheDocument()
-    expect(screen.queryByTestId('ra-layout')).toBeNull()
     expect(screen.getByText('library')).toBeInTheDocument()
   })
 
-  it('still renders simple mode when player.queue is missing', () => {
-    simple.on = true
-    renderLayout({ player: {} })
-    expect(screen.getByTestId('simple-mobile-layout')).toBeInTheDocument()
-  })
-
-  it('falls back to the full UI if simple-mode detection throws', () => {
+  it('still renders RA layout if the simple-mode DOM hint throws', () => {
     simple.throwOnDetect = true
     renderLayout()
     expect(screen.getByTestId('ra-layout')).toBeInTheDocument()
-    expect(screen.queryByTestId('simple-mobile-layout')).toBeNull()
   })
 })

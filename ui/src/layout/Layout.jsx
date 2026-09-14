@@ -6,8 +6,7 @@ import { HotKeys } from 'react-hotkeys'
 import Menu from './Menu'
 import AppBar from './AppBar'
 import Notification from './Notification'
-import SimpleMobileLayout from './SimpleMobileLayout'
-import { applySimpleMobileDomHint, shouldUseSimpleMobile } from './simpleMobile'
+import { applySimpleMobileDomHint } from './simpleMobile'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import { useSearchRefocus } from '../common'
 
@@ -15,11 +14,15 @@ const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
 })
 
-const hiddenChildren = {
-  display: 'none',
-}
+const Layout = (props) => {
+  // Simple mode chrome lives in index.html (#nd-static-simple). Replacing
+  // RALayout with a custom shell painted a blank #303030 page on phones.
+  try {
+    applySimpleMobileDomHint()
+  } catch (e) {
+    // ignore
+  }
 
-const FullLayout = (props) => {
   const theme = useCurrentTheme()
   const queue = useSelector((state) => state.player?.queue) || []
   const classes = useStyles({ addPadding: queue.length > 0 })
@@ -42,34 +45,6 @@ const FullLayout = (props) => {
       />
     </HotKeys>
   )
-}
-
-const Layout = (props) => {
-  let simple = false
-  try {
-    applySimpleMobileDomHint()
-    simple = shouldUseSimpleMobile()
-  } catch (e) {
-    simple = false
-    if (typeof document !== 'undefined') {
-      document.documentElement.removeAttribute('data-simple-mobile')
-    }
-  }
-
-  // Opt-in simple shell. Keep RA children mounted (page + Player live there)
-  // but hide them so the two-button chrome is what the user sees.
-  if (simple) {
-    return (
-      <>
-        <SimpleMobileLayout />
-        <div style={hiddenChildren} aria-hidden="true">
-          {props.children}
-        </div>
-      </>
-    )
-  }
-
-  return <FullLayout {...props} />
 }
 
 export default Layout

@@ -32,7 +32,8 @@
       window.process = { env: {} };
     </script>
     <script>
-      // Opt-in only: first-paint hint when localStorage nd.simpleMobile === '1'.
+      // Opt-in simple mode: paint buttons BEFORE React. Replacing RA Layout
+      // caused a blank #303030 screen; this shell cannot be blanked by React.
       (function () {
         try {
           if (localStorage.getItem('nd.simpleMobile') === '1') {
@@ -50,6 +51,54 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="nd-static-simple" role="main" style="display:none;position:fixed;inset:0;z-index:2147483646;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;background:#121212;color:#fff;font-family:system-ui,-apple-system,sans-serif;">
+      <h1 style="margin:0 0 8px;font-size:28px;font-weight:600;">Navidrome</h1>
+      <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:420px;">
+        <button type="button" id="nd-static-shuffle" style="min-height:72px;width:100%;font-size:20px;font-weight:600;border:none;border-radius:8px;background:#90caf9;color:#000;">Play random songs</button>
+        <button type="button" id="nd-static-full" style="min-height:56px;width:100%;font-size:16px;border-radius:8px;border:1px solid #666;background:transparent;color:#fff;">Open full version</button>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var shell = document.getElementById('nd-static-simple');
+        if (!shell) return;
+        var on = false;
+        try { on = localStorage.getItem('nd.simpleMobile') === '1'; } catch (e) {}
+        if (!on) return;
+        shell.style.display = 'flex';
+        document.body.style.backgroundColor = '#121212';
+        var full = document.getElementById('nd-static-full');
+        var shuffle = document.getElementById('nd-static-shuffle');
+        if (full) {
+          full.onclick = function () {
+            try { localStorage.setItem('nd.simpleMobile', '0'); } catch (e) {}
+            location.reload();
+          };
+        }
+        if (shuffle) {
+          shuffle.onclick = function () {
+            shuffle.disabled = true;
+            shuffle.textContent = '…';
+            var tries = 0;
+            var t = setInterval(function () {
+              tries += 1;
+              if (typeof window.__ndPlayRandom === 'function') {
+                clearInterval(t);
+                try { window.__ndPlayRandom(); } catch (e) {}
+                shuffle.disabled = false;
+                shuffle.textContent = 'Play random songs';
+                return;
+              }
+              if (tries > 40) {
+                clearInterval(t);
+                shuffle.disabled = false;
+                shuffle.textContent = 'Play random songs';
+              }
+            }, 250);
+          };
+        }
+      })();
+    </script>
     <div id="root"></div>
     <!--
       This HTML file is a template.
