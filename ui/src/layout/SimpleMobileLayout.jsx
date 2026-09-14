@@ -1,15 +1,16 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslate } from 'react-admin'
 import { ShuffleAllButton } from '../common/ShuffleAllButton'
 import Notification from './Notification'
 import { setSimpleMobilePref } from './simpleMobile'
 
-// Inline styles only: MUI makeStyles/theme.palette.background.default (#303030)
-// produced a blank gray screen when JSS or the ThemeProvider failed.
+// Painted into #nd-simple-mobile-root (portaled to document.body) so the
+// jinke player + RA chrome cannot cover the two buttons with a gray sheet.
 
 const shell = {
   position: 'relative',
-  zIndex: 20,
+  zIndex: 1,
   minHeight: '100vh',
   display: 'flex',
   flexDirection: 'column',
@@ -47,6 +48,7 @@ const fullBtn = {
   border: '1px solid #666',
   background: 'transparent',
   color: '#fff',
+  cursor: 'pointer',
 }
 
 const heroBtn = {
@@ -58,6 +60,7 @@ const heroBtn = {
   border: 'none',
   background: '#90caf9',
   color: '#000',
+  cursor: 'pointer',
 }
 
 class ShellErrorBoundary extends React.Component {
@@ -104,6 +107,7 @@ export const SimpleMobileFallback = () => (
 const SimpleMobileInner = () => {
   const translate = useTranslate()
   const openFull = translate('menu.openFullVersion', { _: 'Open full version' })
+  const playRandom = translate('menu.playRandom', { _: 'Play random songs' })
 
   return (
     <>
@@ -112,12 +116,8 @@ const SimpleMobileInner = () => {
         <div style={actions}>
           <ShellErrorBoundary
             fallback={
-              <button
-                type="button"
-                style={heroBtn}
-                data-testid="shuffle-all-hero"
-              >
-                {translate('menu.playRandom', { _: 'Play random songs' })}
+              <button type="button" style={heroBtn} data-testid="shuffle-all-hero">
+                {playRandom}
               </button>
             }
           >
@@ -131,10 +131,42 @@ const SimpleMobileInner = () => {
   )
 }
 
-const SimpleMobileLayout = () => (
-  <ShellErrorBoundary fallback={<SimpleMobileFallback />}>
-    <SimpleMobileInner />
-  </ShellErrorBoundary>
-)
+const ensurePortalRoot = () => {
+  if (typeof document === 'undefined') {
+    return null
+  }
+  let el = document.getElementById('nd-simple-mobile-root')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'nd-simple-mobile-root'
+    document.body.appendChild(el)
+  }
+  return el
+}
+
+const SimpleMobileLayout = () => {
+  const [root, setRoot] = useState(null)
+
+  useEffect(() => {
+    const el = ensurePortalRoot()
+    setRoot(el)
+    return () => {
+      // Keep the node; next mount reuses it. Clear contents via React unmount.
+    }
+  }, [])
+
+  const content = (
+    <ShellErrorBoundary fallback={<SimpleMobileFallback />}>
+      <SimpleMobileInner />
+    </ShellErrorBoundary>
+  )
+
+  if (!root) {
+    // First paint before effect: still render inline so tests / SSR see buttons.
+    return content
+  }
+
+  return createPortal(content, root)
+}
 
 export default SimpleMobileLayout

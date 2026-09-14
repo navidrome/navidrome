@@ -116,9 +116,10 @@ describe('simpleMobile detection', () => {
 
   it('keeps the player as a bottom bar when simple mode is opted in', () => {
     localStorage.setItem(SIMPLE_MOBILE_KEY, '1')
-    expect(simpleMobilePlayerProps()).toEqual({
+    expect(simpleMobilePlayerProps()).toMatchObject({
       responsive: false,
       toggleMode: false,
+      mode: 'mini',
     })
   })
 

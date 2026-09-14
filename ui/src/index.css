@@ -24,8 +24,24 @@ html[data-simple-mobile='1'] body {
   color: #ffffff;
 }
 
-/* Fullscreen jinke overlay would cover Play random / Open full version. */
+/* Player ThemeProvider still mounts; its mobile/desktop chrome covered the two buttons. */
+html[data-simple-mobile='1'] .react-jinke-music-player,
 html[data-simple-mobile='1'] .react-jinke-music-player-mobile,
-html[data-simple-mobile='1'] .react-jinke-music-player-mobile-wrapper {
-  display: none !important;
+html[data-simple-mobile='1'] .react-jinke-music-player-mobile-wrapper,
+html[data-simple-mobile='1'] .react-jinke-music-player-main,
+html[data-simple-mobile='1'] .music-player-panel,
+html[data-simple-mobile='1'] .music-player-controller-wrap {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Portal target for the two-button shell — always above RA + player. */
+#nd-simple-mobile-root {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
 }

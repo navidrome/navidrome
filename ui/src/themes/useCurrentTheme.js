@@ -1,4 +1,5 @@
 import { useSelector } from 'react-redux'
+import { shouldUseSimpleMobile } from '../layout/simpleMobile'
 import useMediaQuery from '@material-ui/core/useMediaQuery'
 import themes from './index'
 import { AUTO_THEME_ID } from '../consts'
@@ -43,6 +44,11 @@ const useCurrentTheme = () => {
       }
     }
 
+    // Simple mode owns the body color; theme #303030 was the blank gray screen.
+    if (shouldUseSimpleMobile()) {
+      document.body.style.backgroundColor = '#121212'
+      return
+    }
     // Set body background color to match theme (fixes white background on pull-to-refresh)
     const isDark = theme.palette?.type === 'dark'
     const bgColor =

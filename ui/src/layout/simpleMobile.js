@@ -68,11 +68,17 @@ export const applySimpleMobileDomHint = () => {
   try {
     if (shouldUseSimpleMobile()) {
       document.documentElement.setAttribute('data-simple-mobile', '1')
+      document.body.style.backgroundColor = '#121212'
+      document.body.style.color = '#ffffff'
     } else {
       document.documentElement.removeAttribute('data-simple-mobile')
     }
   } catch (e) {
-    document.documentElement.removeAttribute('data-simple-mobile')
+    try {
+      document.documentElement.removeAttribute('data-simple-mobile')
+    } catch (e2) {
+      // ignore
+    }
   }
 }
 
@@ -80,5 +86,14 @@ export const simpleMobilePlayerProps = () => {
   if (!shouldUseSimpleMobile()) {
     return {}
   }
-  return { responsive: false, toggleMode: false }
+  // Keep audio engine mounted; never show mobile fullscreen / mini chrome.
+  return {
+    responsive: false,
+    toggleMode: false,
+    mode: 'mini',
+    once: true,
+    autoHiddenCover: true,
+    showMiniModeCover: false,
+    showDestroy: false,
+  }
 }
