@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-
 	"github.com/gohugoio/hashstructure"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"

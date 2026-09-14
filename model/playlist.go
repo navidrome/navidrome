@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
