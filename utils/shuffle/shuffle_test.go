@@ -53,6 +53,25 @@ func minAdjacent(n, maxFreq int) int {
 	return max(0, 2*maxFreq-n-1)
 }
 
+var _ = Describe("IsRandomSort", func() {
+	It("matches Native API, SQL random(), and SEEDEDRAND rewrite", func() {
+		Expect(shuffle.IsRandomSort("random")).To(BeTrue())
+		Expect(shuffle.IsRandomSort("RANDOM")).To(BeTrue())
+		Expect(shuffle.IsRandomSort("random()")).To(BeTrue())
+		Expect(shuffle.IsRandomSort("SEEDEDRAND('media_file|abc', media_file.id)")).To(BeTrue())
+		Expect(shuffle.IsRandomSort("title")).To(BeFalse())
+		Expect(shuffle.IsRandomSort("")).To(BeFalse())
+		Expect(shuffle.IsRandomSort("order_title")).To(BeFalse())
+	})
+})
+
+var _ = Describe("TrackKeys", func() {
+	It("falls back to album artist when track artist is empty", func() {
+		Expect(shuffle.TrackKeys("", "AA", "X")).To(Equal(shuffle.Keys{Artist: "AA", Album: "X"}))
+		Expect(shuffle.TrackKeys("A", "AA", "X")).To(Equal(shuffle.Keys{Artist: "A", Album: "X"}))
+	})
+})
+
 var _ = Describe("Slice", func() {
 	It("leaves empty and single-item slices unchanged", func() {
 		empty := []track{}

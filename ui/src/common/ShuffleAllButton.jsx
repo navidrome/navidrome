@@ -1,23 +1,31 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button, useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
+import { IconButton, Tooltip } from '@material-ui/core'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import { shuffleTracks } from '../actions'
 import PropTypes from 'prop-types'
 
-export const ShuffleAllButton = ({ filters }) => {
+export const ShuffleAllButton = ({ filters, variant }) => {
   const translate = useTranslate()
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const notify = useNotify()
-  filters = { ...filters, missing: false }
+  const [loading, setLoading] = useState(false)
+  const listLabel = translate('resources.song.actions.shuffleAll')
+  const iconLabel = translate('menu.playRandom', { _: listLabel })
+  const queryFilters = { ...filters, missing: false }
 
   const handleOnClick = () => {
+    if (loading) {
+      return
+    }
+    setLoading(true)
     dataProvider
       .getList('song', {
         pagination: { page: 1, perPage: 500 },
         sort: { field: 'random', order: 'ASC' },
-        filter: filters,
+        filter: queryFilters,
       })
       .then((res) => {
         const data = {}
@@ -29,12 +37,33 @@ export const ShuffleAllButton = ({ filters }) => {
       .catch(() => {
         notify('ra.page.error', 'warning')
       })
+      .finally(() => {
+        setLoading(false)
+      })
+  }
+
+  if (variant === 'icon') {
+    return (
+      <Tooltip title={iconLabel}>
+        <IconButton
+          color="inherit"
+          onClick={handleOnClick}
+          aria-label={iconLabel}
+          disabled={loading}
+          data-testid="title-shuffle-button"
+        >
+          <ShuffleIcon />
+        </IconButton>
+      </Tooltip>
+    )
   }
 
   return (
     <Button
       onClick={handleOnClick}
-      label={translate('resources.song.actions.shuffleAll')}
+      label={listLabel}
+      disabled={loading}
+      data-testid="shuffle-all-button"
     >
       <ShuffleIcon />
     </Button>
@@ -43,7 +72,9 @@ export const ShuffleAllButton = ({ filters }) => {
 
 ShuffleAllButton.propTypes = {
   filters: PropTypes.object,
+  variant: PropTypes.oneOf(['default', 'icon']),
 }
 ShuffleAllButton.defaultProps = {
   filters: {},
+  variant: 'default',
 }

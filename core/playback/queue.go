@@ -93,14 +93,6 @@ func (pd *Queue) Remove(idx int) {
 	}
 }
 
-func mediaFileKeys(mf model.MediaFile) shuffle.Keys {
-	artist := mf.Artist
-	if artist == "" {
-		artist = mf.AlbumArtist
-	}
-	return shuffle.Keys{Artist: artist, Album: mf.Album}
-}
-
 func (pd *Queue) Shuffle() {
 	current := pd.Current()
 	backupID := ""
@@ -108,7 +100,9 @@ func (pd *Queue) Shuffle() {
 		backupID = current.ID
 	}
 
-	shuffle.Slice(pd.Items, mediaFileKeys)
+	shuffle.Slice(pd.Items, func(mf model.MediaFile) shuffle.Keys {
+		return shuffle.TrackKeys(mf.Artist, mf.AlbumArtist, mf.Album)
+	})
 
 	var err error
 	pd.Index, err = pd.getMediaFileIndexByID(backupID)

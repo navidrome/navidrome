@@ -8,7 +8,13 @@ import {
 } from 'react-admin'
 import { MdInfo, MdPerson, MdSupervisorAccount } from 'react-icons/md'
 import { useSelector } from 'react-redux'
-import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
+import {
+  makeStyles,
+  MenuItem,
+  ListItemIcon,
+  Divider,
+  Typography,
+} from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import { Dialogs } from '../dialogs/Dialogs'
 import { AboutDialog } from '../dialogs'
@@ -17,6 +23,7 @@ import ActivityPanel from './ActivityPanel'
 import NowPlayingPanel from './NowPlayingPanel'
 import UserMenu from './UserMenu'
 import config from '../config'
+import { ShuffleAllButton } from '../common'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -139,8 +146,28 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   )
 }
 
-const AppBar = (props) => (
-  <RAAppBar {...props} container={Fragment} userMenu={<CustomUserMenu />} />
-)
+const useAppBarStyles = makeStyles({
+  title: {
+    flex: 1,
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+  },
+})
+
+const AppBar = (props) => {
+  const classes = useAppBarStyles()
+  return (
+    <RAAppBar {...props} container={Fragment} userMenu={<CustomUserMenu />}>
+      <Typography
+        variant="h6"
+        color="inherit"
+        className={classes.title}
+        id="react-admin-title"
+      />
+      <ShuffleAllButton variant="icon" />
+    </RAAppBar>
+  )
+}
 
 export default AppBar

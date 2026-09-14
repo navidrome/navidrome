@@ -1,12 +1,32 @@
 package shuffle
 
-import "github.com/navidrome/navidrome/utils/random"
+import (
+	"strings"
+
+	"github.com/navidrome/navidrome/utils/random"
+)
 
 // Keys are the attributes used to keep same-artist (and same-album) tracks
 // from sitting next to each other after a shuffle.
 type Keys struct {
 	Artist string
 	Album  string
+}
+
+// TrackKeys maps media-file artist/album fields onto shuffle Keys.
+// Artist falls back to albumArtist when the track artist is empty.
+func TrackKeys(artist, albumArtist, album string) Keys {
+	if artist == "" {
+		artist = albumArtist
+	}
+	return Keys{Artist: artist, Album: album}
+}
+
+// IsRandomSort reports whether a query sort is a random ordering
+// (Native API `_sort=random`, SQL `random()`, or the SEEDEDRAND rewrite).
+func IsRandomSort(sort string) bool {
+	s := strings.ToLower(strings.TrimSpace(sort))
+	return s == "random" || s == "random()" || strings.HasPrefix(s, "seededrand(")
 }
 
 // Slice is a full permutation of items: Fisher-Yates, then a greedy spacing

@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/shuffle"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
@@ -198,13 +199,24 @@ func (r *mediaFileRepository) GetWithParticipants(id string) (*model.MediaFile, 
 }
 
 func (r *mediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+	// Capture before newSelect rewrites Sort "random" to SEEDEDRAND(...).
+	sort := ""
+	if len(options) > 0 {
+		sort = options[0].Sort
+	}
 	sq := r.selectMediaFile(options...)
 	var res dbMediaFiles
 	err := r.queryAll(sq, &res, options...)
 	if err != nil {
 		return nil, err
 	}
-	return res.toModels(), nil
+	mfs := res.toModels()
+	if shuffle.IsRandomSort(sort) {
+		shuffle.Slice(mfs, func(mf model.MediaFile) shuffle.Keys {
+			return shuffle.TrackKeys(mf.Artist, mf.AlbumArtist, mf.Album)
+		})
+	}
+	return mfs, nil
 }
 
 func (r *mediaFileRepository) GetAllByTags(tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {

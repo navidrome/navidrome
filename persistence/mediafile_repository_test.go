@@ -44,6 +44,64 @@ var _ = Describe("MediaRepository", func() {
 		Expect(mr.CountAll()).To(Equal(int64(13)))
 	})
 
+	Describe("GetAll random sort", func() {
+		idsOf := func(mfs model.MediaFiles) []string {
+			out := make([]string, len(mfs))
+			for i, mf := range mfs {
+				out[i] = mf.ID
+			}
+			return out
+		}
+		adjacentArtists := func(mfs model.MediaFiles) int {
+			n := 0
+			for i := 1; i < len(mfs); i++ {
+				if mfs[i].Artist != "" && mfs[i].Artist == mfs[i-1].Artist {
+					n++
+				}
+			}
+			return n
+		}
+
+		It("does not shuffle non-random sorts", func() {
+			a, err := mr.GetAll(model.QueryOptions{Sort: "title"})
+			Expect(err).ToNot(HaveOccurred())
+			b, err := mr.GetAll(model.QueryOptions{Sort: "title"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(idsOf(a)).To(Equal(idsOf(b)))
+		})
+
+		It("returns a permutation of the seeded page and spaces artists", func() {
+			opts := model.QueryOptions{Sort: "random", Seed: "balanced-shuffle-test"}
+			first, err := mr.GetAll(opts)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(first).ToNot(BeEmpty())
+
+			second, err := mr.GetAll(model.QueryOptions{Sort: "random", Seed: "balanced-shuffle-test"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(idsOf(second)).To(ConsistOf(idsOf(first)))
+			Expect(adjacentArtists(first)).To(Equal(0))
+			Expect(adjacentArtists(second)).To(Equal(0))
+		})
+
+		It("spaces artists for SQL random() sorts used by getRandomSongs", func() {
+			mfs, err := mr.GetAll(model.QueryOptions{Sort: "random()", Max: 13})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).ToNot(BeEmpty())
+			Expect(adjacentArtists(mfs)).To(Equal(0))
+		})
+
+		It("spaces artists on Native API ReadAll with _sort=random", func() {
+			res, err := mr.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+				Sort: "random",
+				Max:  13,
+			})
+			Expect(err).ToNot(HaveOccurred())
+			mfs := res.(model.MediaFiles)
+			Expect(mfs).ToNot(BeEmpty())
+			Expect(adjacentArtists(mfs)).To(Equal(0))
+		})
+	})
+
 	Describe("CountBySuffix", func() {
 		var mp3File, flacFile1, flacFile2, flacUpperFile model.MediaFile
 
