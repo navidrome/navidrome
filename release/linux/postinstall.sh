@@ -13,9 +13,9 @@ if [ ! -f /etc/navidrome/navidrome.toml ]; then
     printf "MusicFolder = \"/opt/navidrome/music\"\n" >> /etc/navidrome/navidrome.toml
 fi
 
-# Older versions created these folders as root when this script ran `navidrome`.
-# They were created empty, so fixing the folder itself is enough (no -R).
-find /var/lib/navidrome/cache /var/lib/navidrome/artwork /var/lib/navidrome/plugins -maxdepth 0 -user root -exec chown navidrome:navidrome {} \; 2>/dev/null
+# Older versions created these folders as root when this script ran `navidrome`. They were created empty,
+# so no -R. Real dirs only, never following links: navidrome owns /var/lib/navidrome and could plant symlinks.
+find /var/lib/navidrome/cache /var/lib/navidrome/artwork /var/lib/navidrome/plugins -maxdepth 0 -type d -user root -exec chown -h navidrome:navidrome {} + 2>/dev/null
 
 postinstall_flag="/var/lib/navidrome/.installed"
 
