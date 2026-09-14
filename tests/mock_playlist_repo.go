@@ -29,6 +29,7 @@ type MockPlaylistRepo struct {
 	Err             bool
 	TracksRepo      model.PlaylistTrackRepository
 	TracksRefreshed bool
+	Order           []string
 }
 
 func (m *MockPlaylistRepo) SetError(err bool) {
@@ -114,6 +115,14 @@ func (m *MockPlaylistRepo) Delete(id string) error {
 		return errors.New("error")
 	}
 	m.Deleted = append(m.Deleted, id)
+	return nil
+}
+
+func (m *MockPlaylistRepo) SetOrder(ids []string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	m.Order = append(m.Order[:0], ids...)
 	return nil
 }
 

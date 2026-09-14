@@ -24,6 +24,7 @@ type Playlists interface {
 	GetWithTracks(ctx context.Context, id string) (*model.Playlist, error)
 	Tracks(ctx context.Context, id string) (model.PlaylistTrackRepository, error)
 	GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error)
+	Reorder(ctx context.Context, ids []string) error
 
 	// Mutations
 	Create(ctx context.Context, playlistId string, name string, ids []string) (string, error)
@@ -86,6 +87,33 @@ func InPath(folder model.Folder) bool {
 
 func (s *playlists) GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error) {
 	return s.ds.Playlist(ctx).GetAll(options...)
+}
+
+// Reorder saves the caller's order for playlists visible to them. This applies
+// to their own and public playlists, but never lets a client persist IDs it is
+// not allowed to read.
+func (s *playlists) Reorder(ctx context.Context, ids []string) error {
+	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
+		visible, err := tx.Playlist(ctx).GetAll(model.QueryOptions{Sort: "name"})
+		if err != nil {
+			return err
+		}
+		allowed := make(map[string]struct{}, len(visible))
+		for _, playlist := range visible {
+			allowed[playlist.ID] = struct{}{}
+		}
+		seen := make(map[string]struct{}, len(ids))
+		for _, id := range ids {
+			if _, ok := allowed[id]; !ok {
+				return model.ErrInvalidPlaylistOrder
+			}
+			if _, duplicate := seen[id]; duplicate {
+				return model.ErrInvalidPlaylistOrder
+			}
+			seen[id] = struct{}{}
+		}
+		return tx.Playlist(ctx).SetOrder(ids)
+	})
 }
 
 func (s *playlists) Get(ctx context.Context, id string) (*model.Playlist, error) {
