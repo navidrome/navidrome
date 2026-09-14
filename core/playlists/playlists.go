@@ -48,7 +48,7 @@ type Playlists interface {
 	ImportM3U(ctx context.Context, reader io.Reader) (*model.Playlist, error)
 
 	// REST adapters
-	NewRepository(ctx context.Context) rest.Repository[model.Playlist]
+	Repository() rest.Repository[model.Playlist]
 	TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository[model.PlaylistTrack]
 }
 
@@ -63,10 +63,13 @@ type ImageUploadService interface {
 type playlists struct {
 	ds        model.DataStore
 	imgUpload ImageUploadService
+	repo      *playlistRepositoryWrapper
 }
 
 func NewPlaylists(ds model.DataStore, imgUpload ImageUploadService) Playlists {
-	return &playlists{ds: ds, imgUpload: imgUpload}
+	s := &playlists{ds: ds, imgUpload: imgUpload}
+	s.repo = &playlistRepositoryWrapper{PlaylistRepository: ds.Playlist(), service: s}
+	return s
 }
 
 func InPath(folder model.Folder) bool {

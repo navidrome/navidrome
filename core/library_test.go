@@ -69,7 +69,7 @@ var _ = Describe("Library Service", func() {
 		var repo rest.Persistable[model.Library]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
+			r := service.Repository()
 			repo = r.(rest.Persistable[model.Library])
 		})
 
@@ -616,7 +616,7 @@ var _ = Describe("Library Service", func() {
 		var repo rest.Persistable[model.Library]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
+			r := service.Repository()
 			repo = r.(rest.Persistable[model.Library])
 		})
 
@@ -841,7 +841,7 @@ var _ = Describe("Library Service", func() {
 		var repo rest.Persistable[model.Library]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
+			r := service.Repository()
 			repo = r.(rest.Persistable[model.Library])
 			// Clear any events from broker
 			broker.Events = []events.Event{}
@@ -888,7 +888,7 @@ var _ = Describe("Library Service", func() {
 		BeforeEach(func() {
 			// Reset the call count for each test
 			pluginManager.unloadCalls = 0
-			r := service.NewRepository(ctx)
+			r := service.Repository()
 			repo = r.(rest.Persistable[model.Library])
 		})
 

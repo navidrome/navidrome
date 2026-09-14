@@ -15,29 +15,27 @@ type PluginUnloader interface {
 
 // User provides business logic for user management with plugin coordination.
 type User interface {
-	NewRepository(ctx context.Context) rest.Repository[model.User]
+	Repository() rest.Repository[model.User]
 }
 
 type userService struct {
-	ds            model.DataStore
-	pluginManager PluginUnloader
+	repo *userRepositoryWrapper
 }
 
 // NewUser creates a new User service
 func NewUser(ds model.DataStore, pluginManager PluginUnloader) User {
 	return &userService{
-		ds:            ds,
-		pluginManager: pluginManager,
+		repo: &userRepositoryWrapper{
+			UserRepository: ds.User(),
+			pluginManager:  pluginManager,
+		},
 	}
 }
 
-// NewRepository returns a REST repository wrapper for user operations.
+// Repository returns a REST repository wrapper for user operations.
 // The wrapper intercepts Delete operations to coordinate plugin unloading.
-func (s *userService) NewRepository(ctx context.Context) rest.Repository[model.User] {
-	return &userRepositoryWrapper{
-		UserRepository: s.ds.User(),
-		pluginManager:  s.pluginManager,
-	}
+func (s *userService) Repository() rest.Repository[model.User] {
+	return s.repo
 }
 
 type userRepositoryWrapper struct {

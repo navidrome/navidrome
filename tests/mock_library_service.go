@@ -33,7 +33,7 @@ func NewMockLibraryService() *MockLibraryService {
 	return &MockLibraryService{MockLibraryRepo: repo}
 }
 
-func (m *MockLibraryService) NewRepository(ctx context.Context) rest.Repository[model.Library] {
+func (m *MockLibraryService) Repository() rest.Repository[model.Library] {
 	return &MockLibraryRestAdapter{MockLibraryRepo: m.MockLibraryRepo}
 }
 

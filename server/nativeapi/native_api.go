@@ -67,7 +67,7 @@ func (api *Router) routes() http.Handler {
 		r.Use(server.Authenticator(api.ds))
 		r.Use(server.JWTRefresher)
 		r.Use(server.UpdateLastAccessMiddleware(api.ds))
-		rx(r, "/user", lazyRW(func(ctx context.Context) rest.Repository[model.User] { return api.users.NewRepository(ctx) }), true)
+		rx(r, "/user", api.users.Repository(), true)
 		rx(r, "/song", api.ds.MediaFile(), false)
 		rx(r, "/album", api.ds.Album(), false)
 		api.addArtistRoute(r)
@@ -78,7 +78,7 @@ func (api *Router) routes() http.Handler {
 		rx(r, "/tag", api.ds.Tag(), false)
 		rx(r, "/scrobble", api.ds.Scrobble(), false)
 		if conf.Server.EnableSharing {
-			rx(r, "/share", lazyRW(func(ctx context.Context) rest.Repository[model.Share] { return api.share.NewRepository(ctx) }), true)
+			rx(r, "/share", api.share.Repository(), true)
 		}
 
 		api.addPlaylistRoute(r)
@@ -95,7 +95,7 @@ func (api *Router) routes() http.Handler {
 			api.addUserLibraryRoute(r)
 			api.addPluginRoute(r)
 			api.addMetadataRoute(r)
-			rx(r, "/library", lazyRW(func(ctx context.Context) rest.Repository[model.Library] { return api.libs.NewRepository(ctx) }), true)
+			rx(r, "/library", api.libs.Repository(), true)
 		})
 	})
 
@@ -120,7 +120,7 @@ func rx[T any](r chi.Router, pathPrefix string, repo rest.Repository[T], persist
 }
 
 func (api *Router) addPlaylistRoute(r chi.Router) {
-	repo := lazyRW(func(ctx context.Context) rest.Repository[model.Playlist] { return api.playlists.NewRepository(ctx) })
+	repo := api.playlists.Repository()
 
 	r.Route("/playlist", func(r chi.Router) {
 		r.Get("/", rest.GetAll(repo))

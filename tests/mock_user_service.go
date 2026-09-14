@@ -1,8 +1,6 @@
 package tests
 
 import (
-	"context"
-
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
@@ -26,6 +24,6 @@ func NewMockUserService() *MockUserService {
 	return &MockUserService{MockedUserRepo: repo}
 }
 
-func (m *MockUserService) NewRepository(ctx context.Context) rest.Repository[model.User] {
+func (m *MockUserService) Repository() rest.Repository[model.User] {
 	return &MockUserRestAdapter{MockedUserRepo: m.MockedUserRepo}
 }
