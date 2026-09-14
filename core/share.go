@@ -21,17 +21,19 @@ import (
 
 type Share interface {
 	Load(ctx context.Context, id string) (*model.Share, error)
-	NewRepository(ctx context.Context) rest.Repository[model.Share]
+	Repository() rest.Repository[model.Share]
 }
 
 func NewShare(ds model.DataStore) Share {
 	return &shareService{
-		ds: ds,
+		ds:   ds,
+		repo: &shareRepositoryWrapper{ShareRepository: ds.Share(), ds: ds},
 	}
 }
 
 type shareService struct {
-	ds model.DataStore
+	ds   model.DataStore
+	repo *shareRepositoryWrapper
 }
 
 func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error) {
@@ -54,11 +56,8 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	return share, nil
 }
 
-func (s *shareService) NewRepository(ctx context.Context) rest.Repository[model.Share] {
-	return &shareRepositoryWrapper{
-		ShareRepository: s.ds.Share(),
-		ds:              s.ds,
-	}
+func (s *shareService) Repository() rest.Repository[model.Share] {
+	return s.repo
 }
 
 type shareRepositoryWrapper struct {

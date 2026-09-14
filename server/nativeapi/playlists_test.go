@@ -222,6 +222,7 @@ func (m *mockPlaylistTrackRepo) Read(_ context.Context, id string) (*model.Playl
 
 type mockPlaylistsService struct {
 	playlists.Playlists
+	repo          rest.Repository[model.Playlist]
 	tracksRepo    rest.Repository[model.PlaylistTrack]
 	removeImageFn func(ctx context.Context, id string) error
 	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
@@ -239,6 +240,10 @@ func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader i
 		return m.setImageFn(ctx, id, reader, ext)
 	}
 	return model.ErrNotFound
+}
+
+func (m *mockPlaylistsService) Repository() rest.Repository[model.Playlist] {
+	return m.repo
 }
 
 func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository[model.PlaylistTrack] {

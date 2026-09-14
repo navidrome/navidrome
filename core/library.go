@@ -32,25 +32,28 @@ type Library interface {
 	SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error
 	ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error
 
-	NewRepository(ctx context.Context) rest.Repository[model.Library]
+	Repository() rest.Repository[model.Library]
 }
 
 type libraryService struct {
-	ds            model.DataStore
-	scanner       model.Scanner
-	watcher       Watcher
-	broker        events.Broker
-	pluginManager PluginUnloader
+	ds     model.DataStore
+	broker events.Broker
+	repo   *libraryRepositoryWrapper
 }
 
 // NewLibrary creates a new Library service
 func NewLibrary(ds model.DataStore, scanner model.Scanner, watcher Watcher, broker events.Broker, pluginManager PluginUnloader) Library {
 	return &libraryService{
-		ds:            ds,
-		scanner:       scanner,
-		watcher:       watcher,
-		broker:        broker,
-		pluginManager: pluginManager,
+		ds:     ds,
+		broker: broker,
+		repo: &libraryRepositoryWrapper{
+			LibraryRepository: ds.Library(),
+			ds:                ds,
+			scanner:           scanner,
+			watcher:           watcher,
+			broker:            broker,
+			pluginManager:     pluginManager,
+		},
 	}
 }
 
@@ -132,16 +135,11 @@ func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID strin
 
 // REST repository wrapper
 
-func (s *libraryService) NewRepository(ctx context.Context) rest.Repository[model.Library] {
-	return &libraryRepositoryWrapper{
-		LibraryRepository: s.ds.Library(),
-		ds:                s.ds,
-		scanner:           s.scanner,
-		watcher:           s.watcher,
-		broker:            s.broker,
-		pluginManager:     s.pluginManager,
-	}
+func (s *libraryService) Repository() rest.Repository[model.Library] {
+	return s.repo
 }
+
+var _ rest.Persistable[model.Library] = (*libraryRepositoryWrapper)(nil)
 
 type libraryRepositoryWrapper struct {
 	model.LibraryRepository

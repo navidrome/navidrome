@@ -27,7 +27,7 @@ var _ = Describe("Share", func() {
 		var repo rest.Persistable[model.Share]
 
 		BeforeEach(func() {
-			repo = share.NewRepository(ctx).(rest.Persistable[model.Share])
+			repo = share.Repository().(rest.Persistable[model.Share])
 			_ = ds.Album().Put(ctx, &model.Album{ID: "123", Name: "Album"})
 		})
 
@@ -42,7 +42,7 @@ var _ = Describe("Share", func() {
 
 			It("assigns the logged-in user as owner, ignoring a client-supplied UserID", func() {
 				loggedInCtx := request.WithUser(context.Background(), model.User{ID: "logged-in-user"})
-				repo := share.NewRepository(loggedInCtx).(rest.Persistable[model.Share])
+				repo := share.Repository().(rest.Persistable[model.Share])
 				entity := &model.Share{Description: "test", ResourceIDs: "123", UserID: "victim-user"}
 				_, err := repo.Save(loggedInCtx, entity)
 				Expect(err).ToNot(HaveOccurred())

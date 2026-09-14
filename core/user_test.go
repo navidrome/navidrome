@@ -30,7 +30,7 @@ var _ = Describe("User Service", func() {
 
 	Describe("NewRepository", func() {
 		It("returns a rest.Persistable[model.User]", func() {
-			repo := service.NewRepository(ctx)
+			repo := service.Repository()
 			_, ok := repo.(rest.Persistable[model.User])
 			Expect(ok).To(BeTrue())
 		})
@@ -40,7 +40,7 @@ var _ = Describe("User Service", func() {
 		var repo rest.Persistable[model.User]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
+			r := service.Repository()
 			repo = r.(rest.Persistable[model.User])
 
 			// Add a test user

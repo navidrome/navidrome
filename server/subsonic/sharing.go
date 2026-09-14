@@ -16,7 +16,7 @@ import (
 )
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
-	repo := api.share.NewRepository(r.Context()).(model.ShareRepository)
+	repo := api.share.Repository().(model.ShareRepository)
 	shares, err := repo.GetAll(r.Context(), model.QueryOptions{Sort: "created_at desc"})
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	description, _ := p.String("description")
-	repo := api.share.NewRepository(r.Context())
+	repo := api.share.Repository()
 	share := &model.Share{
 		Description:  description,
 		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare && conf.Server.EnableDownloads),
@@ -90,7 +90,7 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	repo := api.share.NewRepository(r.Context())
+	repo := api.share.Repository()
 
 	// The update always writes description and downloadable, so read back the
 	// stored value for whichever one the client omitted.
@@ -127,7 +127,7 @@ func (api *Router) DeleteShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	repo := api.share.NewRepository(r.Context())
+	repo := api.share.Repository()
 	err = repo.(rest.Persistable[model.Share]).Delete(r.Context(), id)
 	if err != nil {
 		return nil, err

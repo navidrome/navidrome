@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -45,7 +46,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 		auth.Init(ds)
 
 		userService := core.NewUser(ds, noopPluginUnloader{})
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), userService, nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), userService, nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 	})
 

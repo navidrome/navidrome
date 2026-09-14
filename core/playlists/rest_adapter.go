@@ -14,11 +14,8 @@ import (
 
 // --- REST adapter (follows Share/Library pattern) ---
 
-func (s *playlists) NewRepository(ctx context.Context) rest.Repository[model.Playlist] {
-	return &playlistRepositoryWrapper{
-		PlaylistRepository: s.ds.Playlist(),
-		service:            s,
-	}
+func (s *playlists) Repository() rest.Repository[model.Playlist] {
+	return s.repo
 }
 
 // playlistRepositoryWrapper wraps the playlist repository as a thin REST-to-service adapter,
