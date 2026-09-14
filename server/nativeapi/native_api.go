@@ -133,6 +133,7 @@ func (api *Router) addPlaylistRoute(r chi.Router) {
 
 	r.Route("/playlist", func(r chi.Router) {
 		r.Get("/", rest.GetAll(constructor))
+		r.Put("/order", reorderPlaylists(api.playlists))
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 			if r.Header.Get("Content-type") == "application/json" {
 				rest.Post(constructor)(w, r)

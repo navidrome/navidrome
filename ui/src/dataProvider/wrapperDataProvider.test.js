@@ -120,4 +120,19 @@ describe('wrapperDataProvider', () => {
       ).resolves.toEqual({ data: { id: 'al-1' } })
     })
   })
+
+  describe('reorderPlaylists', () => {
+    it('saves the supplied playlist order', async () => {
+      mockHttpClient.mockResolvedValue({ status: 204 })
+
+      await expect(
+        wrapperDataProvider.reorderPlaylists(['pl-2', 'pl-1']),
+      ).resolves.toEqual({ data: { ids: ['pl-2', 'pl-1'] } })
+
+      expect(mockHttpClient).toHaveBeenCalledWith('/api/playlist/order', {
+        method: 'PUT',
+        body: JSON.stringify({ ids: ['pl-2', 'pl-1'] }),
+      })
+    })
+  })
 })

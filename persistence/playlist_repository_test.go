@@ -59,6 +59,40 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("custom ordering", func() {
+		It("returns explicitly ordered playlists before the name-sorted fallback", func() {
+			Expect(repo.SetOrder([]string{plsCool.ID})).To(Succeed())
+			DeferCleanup(func() { Expect(repo.SetOrder(nil)).To(Succeed()) })
+
+			playlists, err := repo.GetAll(model.QueryOptions{Sort: "custom"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playlists).To(HaveLen(2))
+			Expect(playlists[0].ID).To(Equal(plsCool.ID))
+			Expect(playlists[1].ID).To(Equal(plsBest.ID))
+		})
+
+		It("keeps each user's custom order independent", func() {
+			extra := &model.Playlist{Name: "Aardvark", OwnerID: adminUser.ID, Public: true}
+			Expect(repo.Put(extra)).To(Succeed())
+			DeferCleanup(func() { Expect(repo.Delete(extra.ID)).To(Succeed()) })
+
+			regularCtx := request.WithUser(GinkgoT().Context(), regularUser)
+			regularRepo := NewPlaylistRepository(regularCtx, GetDBXBuilder())
+			Expect(regularRepo.SetOrder([]string{plsBest.ID})).To(Succeed())
+			DeferCleanup(func() { Expect(regularRepo.SetOrder(nil)).To(Succeed()) })
+
+			regularPlaylists, err := regularRepo.GetAll(model.QueryOptions{Sort: "custom"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(regularPlaylists).To(HaveLen(2))
+			Expect(regularPlaylists[0].ID).To(Equal(plsBest.ID))
+			Expect(regularPlaylists[1].ID).To(Equal(extra.ID))
+
+			adminPlaylists, err := repo.GetAll(model.QueryOptions{Sort: "custom"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(adminPlaylists[0].ID).To(Equal(extra.ID))
+		})
+	})
+
 	Describe("Count", func() {
 		It("returns the number of playlists in the DB", func() {
 			Expect(repo.CountAll()).To(Equal(int64(2)))

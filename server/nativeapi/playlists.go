@@ -180,6 +180,30 @@ func addToPlaylist(pls playlists.Playlists) http.HandlerFunc {
 	}
 }
 
+func reorderPlaylists(pls playlists.Playlists) http.HandlerFunc {
+	type reorderPayload struct {
+		IDs []string `json:"ids"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var payload reorderPayload
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err := pls.Reorder(r.Context(), payload.IDs); err != nil {
+			if errors.Is(err, model.ErrInvalidPlaylistOrder) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			log.Error(r.Context(), "Error reordering playlists", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func reorderItem(pls playlists.Playlists) http.HandlerFunc {
 	type reorderPayload struct {
 		InsertBefore string `json:"insert_before"`

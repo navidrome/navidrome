@@ -218,6 +218,11 @@ const wrapperDataProvider = {
       ({ json }) => ({ data: json }),
     )
   },
+  reorderPlaylists: (ids) =>
+    httpClient(`${REST_URL}/playlist/order`, {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    }).then(() => ({ data: { ids } })),
   inspect: (songId) => {
     return httpClient(`${REST_URL}/inspect?id=${songId}`).then(({ json }) => ({
       data: json,
