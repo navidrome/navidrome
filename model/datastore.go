@@ -17,7 +17,7 @@ type QueryOptions struct {
 
 type DataStore interface {
 	Library() LibraryRepository
-	Folder(ctx context.Context) FolderRepository
+	Folder() FolderRepository
 	Album(ctx context.Context) AlbumRepository
 	Artist(ctx context.Context) ArtistRepository
 	MediaFile(ctx context.Context) MediaFileRepository

@@ -27,6 +27,7 @@ type SQLStore struct {
 	plugin      model.PluginRepository
 	scrobble    model.ScrobbleRepository
 	scrobbleBuf model.ScrobbleBufferRepository
+	folder      model.FolderRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -44,6 +45,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.plugin = NewPluginRepository(db)
 	s.scrobble = NewScrobbleRepository(db)
 	s.scrobbleBuf = NewScrobbleBufferRepository(db)
+	s.folder = newFolderRepository(db)
 	return s
 }
 
@@ -67,8 +69,8 @@ func (s *SQLStore) Library() model.LibraryRepository {
 	return s.library
 }
 
-func (s *SQLStore) Folder(ctx context.Context) model.FolderRepository {
-	return newFolderRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Folder() model.FolderRepository {
+	return s.folder
 }
 
 func (s *SQLStore) Genre() model.GenreRepository {
@@ -194,7 +196,7 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty(libraryIDs...) }),
 		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),
 		trace(ctx, "mark missing artists", func() error { return s.Artist(ctx).(*artistRepository).markMissing() }),
-		trace(ctx, "purge empty folders", func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty(libraryIDs...) }),
+		trace(ctx, "purge empty folders", func() error { return s.folder.(*folderRepository).purgeEmpty(ctx, libraryIDs...) }),
 		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations(ctx) }),
 		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations(ctx) }),

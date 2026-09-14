@@ -51,14 +51,14 @@ func (db *MockDataStore) Library() model.LibraryRepository {
 	return db.MockedLibrary
 }
 
-func (db *MockDataStore) Folder(ctx context.Context) model.FolderRepository {
+func (db *MockDataStore) Folder() model.FolderRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedFolder != nil {
 		return db.MockedFolder
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Folder(ctx)
+		return db.RealDS.Folder()
 	}
 	db.MockedFolder = struct{ model.FolderRepository }{}
 	return db.MockedFolder

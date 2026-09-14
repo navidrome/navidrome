@@ -165,13 +165,13 @@ var _ = Describe("AlbumRepository", func() {
 
 	Describe("GetSoleAlbumArtistIDsInSubtrees", func() {
 		It("returns the sole album artists of albums with folders in the subtree", func() {
-			folderRepo := newFolderRepository(ctx, GetDBXBuilder())
+			folderRepo := newFolderRepository(GetDBXBuilder())
 			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			inTree := model.NewFolder(*lib, "SubtreeAlbums/Artist")
 			outTree := model.NewFolder(*lib, "OtherTree/Artist")
-			Expect(folderRepo.Put(inTree)).To(Succeed())
-			Expect(folderRepo.Put(outTree)).To(Succeed())
+			Expect(folderRepo.Put(ctx, inTree)).To(Succeed())
+			Expect(folderRepo.Put(ctx, outTree)).To(Succeed())
 
 			// album_artist_id is deliberately wrong: the artist must come from participants
 			inAl := model.Album{ID: "subtree-in-al", Name: "In", LibraryID: 1, AlbumArtistID: "999", FolderIDs: []string{inTree.ID},

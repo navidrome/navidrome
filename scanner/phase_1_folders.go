@@ -59,7 +59,7 @@ type scanJob struct {
 
 func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
 	// Get folder updates, optionally filtered to specific target folders
-	lastUpdates, err := ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
+	lastUpdates, err := ds.Folder().GetFolderUpdateInfo(ctx, lib, targetFolders...)
 	if err != nil {
 		return nil, fmt.Errorf("getting last updates: %w", err)
 	}
@@ -336,7 +336,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
-		folderRepo := tx.Folder(p.ctx)
+		folderRepo := tx.Folder()
 		tagRepo := tx.Tag()
 		artistRepo := tx.Artist(p.ctx)
 		libraryRepo := tx.Library()
@@ -354,7 +354,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save folder to DB
 		folder := entry.toFolder()
-		err := folderRepo.Put(folder)
+		err := folderRepo.Put(p.ctx, folder)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting folder to DB", "folder", entry.path, err)
 			return err
@@ -506,7 +506,7 @@ func (p *phaseFolders) finalize(err error) error {
 				continue
 			}
 			folderIDs := slices.Collect(maps.Keys(job.lastUpdates))
-			err := tx.Folder(p.ctx).MarkMissing(true, folderIDs...)
+			err := tx.Folder().MarkMissing(p.ctx, true, folderIDs...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing folders", "lib", job.lib.Name, err)
 				return err

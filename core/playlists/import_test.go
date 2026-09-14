@@ -1216,7 +1216,7 @@ type mockFolderRepoForImport struct {
 	folder *model.Folder
 }
 
-func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.Folder, error) {
+func (m *mockFolderRepoForImport) GetByPath(_ context.Context, _ model.Library, _ string) (*model.Folder, error) {
 	if m.folder != nil {
 		return m.folder, nil
 	}

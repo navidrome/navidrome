@@ -176,7 +176,7 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 	log.Trace(ctx, "Artwork: Calculating artist folder details", "folderPath", folderPath, "folderID", folderID,
 		"libPath", libPath, "libID", libID, "albumPaths", paths)
 
-	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
+	folders, err := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
 	if err != nil || len(folders) == 0 {
 		log.Warn(ctx, "Artwork: Could not find folder for artist", "folderPath", folderPath, "id", folderID,
 			"libPath", libPath, "libID", libID, err)

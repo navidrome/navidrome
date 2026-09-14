@@ -187,7 +187,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify initial state - all folders exist
-				folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
+				folders, err := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(folders).To(HaveLen(4)) // root, Artist, Album1, Album2
 
@@ -239,7 +239,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify the deleted child folder is now marked as missing
-				deletedFolder, err := ds.Folder(ctx).Get(album2FolderID)
+				deletedFolder, err := ds.Folder().Get(ctx, album2FolderID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(deletedFolder.Missing).To(BeTrue(), "Deleted child folder should be marked as missing")
 
@@ -251,12 +251,12 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				}
 
 				// Verify the parent folder is still present and not marked as missing
-				parentFolder, err := ds.Folder(ctx).Get(artistFolderID)
+				parentFolder, err := ds.Folder().Get(ctx, artistFolderID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(parentFolder.Missing).To(BeFalse(), "Parent folder should not be marked as missing")
 
 				// Verify the sibling folder and its tracks are still present and not missing
-				siblingFolder, err := ds.Folder(ctx).Get(album1FolderID)
+				siblingFolder, err := ds.Folder().Get(ctx, album1FolderID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(siblingFolder.Missing).To(BeFalse(), "Sibling folder should not be marked as missing")
 
@@ -283,7 +283,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify nested folders were created
-				allFolders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
+				allFolders, err := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(allFolders)).To(BeNumerically(">", 4), "Should have more folders with nested structure")
 
@@ -301,7 +301,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify all Help! folders (including nested ones) are marked as missing
-				missingFolders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+				missingFolders, err := ds.Folder().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.And{
 						squirrel.Eq{"library_id": lib.ID},
 						squirrel.Eq{"missing": true},
