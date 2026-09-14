@@ -102,8 +102,13 @@ func (ic *IgnoreChecker) ShouldIgnore(ctx context.Context, relPath string) bool 
 
 // loadPatternsFromFolder reads the .ndignore file in the specified folder and returns the patterns.
 // If the file doesn't exist, returns an empty slice.
-// If the file exists but is empty, returns a pattern to ignore everything ("**/*").
+// If the file exists but is empty, or a .nomedia file exists, returns a pattern to ignore everything ("**/*").
 func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder string) []string {
+	if _, err := fs.Stat(ic.fsys, path.Join(folder, consts.NoMediaFile)); err == nil {
+		log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
+		return []string{"**/*"}
+	}
+
 	ignoreFilePath := path.Join(folder, consts.ScanIgnoreFile)
 	var patterns []string
 

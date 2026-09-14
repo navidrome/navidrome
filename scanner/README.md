@@ -175,7 +175,7 @@ flowchart TD
 1. **Folder Traversal**
     - Uses `walkDirTree` to traverse the directory structure
     - Handles symbolic links and hidden files
-    - Processes `.ndignore` files for exclusions
+    - Processes `.ndignore` files for exclusions, and skips folders containing a `.nomedia` file
     - Maps files to appropriate types (audio, image, playlist)
 
 2. **Metadata Extraction**
