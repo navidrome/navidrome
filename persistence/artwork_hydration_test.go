@@ -145,13 +145,13 @@ var _ = Describe("Artwork hydration", func() {
 
 	Describe("playlists", func() {
 		var repo model.PlaylistRepository
-		BeforeEach(func() { repo = NewPlaylistRepository(ctx, GetDBXBuilder()) })
+		BeforeEach(func() { repo = NewPlaylistRepository(GetDBXBuilder()) })
 
 		It("hydrates the found / known-absent states", func() {
 			putInfo("pl", plsBest.ID, "plhash777777777")
 			putInfo("pl", plsCool.ID, "")
 
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			byID := slice.ToMap(all, func(p model.Playlist) (string, model.Playlist) { return p.ID, p })
 
@@ -163,7 +163,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates Get", func() {
 			putInfo("pl", plsBest.ID, "plget8888888888")
-			got, err := repo.Get(plsBest.ID)
+			got, err := repo.Get(ctx, plsBest.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.ImageHash).To(Equal("plget8888888888"))
 		})
@@ -172,7 +172,7 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(aw.PutImage(ctx, &model.Artwork{Hash: "pltrackhash1234", Mime: "image/jpeg", BlurHash: "LPLBLURhash"})).To(Succeed())
 			putInfo("al", songDayInALife.AlbumID, "pltrackhash1234")
 
-			pls, err := repo.GetWithTracks(plsBest.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, plsBest.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 			tracks := pls.Tracks
 			Expect(tracks).ToNot(BeEmpty())
@@ -181,7 +181,7 @@ var _ = Describe("Artwork hydration", func() {
 			Expect(byID[songDayInALife.ID].AlbumImage.ImageHash).To(Equal("pltrackhash1234"))
 			Expect(byID[songDayInALife.ID].BlurHash).To(Equal("LPLBLURhash"))
 
-			cursor, err := repo.Tracks(plsBest.ID, true).GetCursor()
+			cursor, err := repo.Tracks(ctx, plsBest.ID, true).GetCursor(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			var streamed *model.PlaylistTrack
 			for t, err := range cursor {
@@ -399,7 +399,7 @@ var _ = Describe("Artwork hydration", func() {
 		BeforeEach(func() {
 			albumRepo = NewAlbumRepository(GetDBXBuilder())
 			artistRepo = NewArtistRepository(GetDBXBuilder())
-			playlistRepo = NewPlaylistRepository(ctx, GetDBXBuilder())
+			playlistRepo = NewPlaylistRepository(GetDBXBuilder())
 			// Other specs leave rows behind, so scope every cursor spec to the fixtures.
 			onlyAlbums = squirrel.Eq{"album.id": []string{albumSgtPeppers.ID, albumAbbeyRoad.ID,
 				albumRadioactivity.ID, albumMultiDisc.ID, albumCJK.ID, albumPunctuation.ID}}
@@ -408,7 +408,7 @@ var _ = Describe("Artwork hydration", func() {
 			// Both fixture playlists share an owner, leaving the owner_name sort a single value to
 			// order by; this one is also private, which the non-admin visibility spec needs.
 			foreign := model.Playlist{Name: "Foreign", OwnerID: thirdUser.ID, OwnerName: thirdUser.UserName}
-			Expect(playlistRepo.Put(&foreign)).To(Succeed())
+			Expect(playlistRepo.Put(ctx, &foreign)).To(Succeed())
 			DeferCleanup(func() { Expect(playlistRepo.Delete(ctx, foreign.ID)).To(Succeed()) })
 			onlyPlaylists = squirrel.Eq{"playlist.id": []string{plsBest.ID, plsCool.ID, foreign.ID}}
 
@@ -459,10 +459,10 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("hydrates every streamed playlist, like GetAll", func() {
 			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
-			want, err := playlistRepo.GetAll(opts)
+			want, err := playlistRepo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 
-			got := collectCursor(playlistRepo.GetCursor(opts))
+			got := collectCursor(playlistRepo.GetCursor(ctx, opts))
 
 			Expect(got).To(ConsistOf(want))
 			Expect(slice.Map(got, func(p model.Playlist) string { return p.ImageHash })).
@@ -543,11 +543,11 @@ var _ = Describe("Artwork hydration", func() {
 		DescribeTable("orders playlists like GetAll",
 			func(opts model.QueryOptions, key func(model.Playlist) string) {
 				opts = scoped(opts, onlyPlaylists)
-				want, err := playlistRepo.GetAll(opts)
+				want, err := playlistRepo.GetAll(ctx, opts)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(want).ToNot(BeEmpty())
 
-				got := collectCursor(playlistRepo.GetCursor(opts))
+				got := collectCursor(playlistRepo.GetCursor(ctx, opts))
 
 				Expect(slice.Map(got, key)).To(Equal(slice.Map(want, key)))
 				Expect(slice.Map(got, func(p model.Playlist) string { return p.ID })).
@@ -574,16 +574,16 @@ var _ = Describe("Artwork hydration", func() {
 
 		It("keeps a non-admin from streaming another user's private playlists", func() {
 			otherCtx := request.WithUser(log.NewContext(context.Background()), regularUser)
-			repo := NewPlaylistRepository(otherCtx, GetDBXBuilder())
+			repo := NewPlaylistRepository(GetDBXBuilder())
 			opts := model.QueryOptions{Sort: "name", Filters: onlyPlaylists}
 
 			// Both phases must filter on their own: the id pre-pass and the chunk fetch.
-			Expect(repo.(*playlistRepository).getAllIDs(opts)).To(ConsistOf(plsBest.ID))
-			all, err := repo.GetAll(model.QueryOptions{Filters: onlyPlaylists})
+			Expect(repo.(*playlistRepository).getAllIDs(otherCtx, opts)).To(ConsistOf(plsBest.ID))
+			all, err := repo.GetAll(otherCtx, model.QueryOptions{Filters: onlyPlaylists})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(slice.Map(all, func(p model.Playlist) string { return p.ID })).To(ConsistOf(plsBest.ID))
 
-			got := collectCursor(repo.GetCursor(opts))
+			got := collectCursor(repo.GetCursor(otherCtx, opts))
 
 			Expect(slice.Map(got, func(p model.Playlist) string { return p.Name })).
 				To(ConsistOf(plsBest.Name))

@@ -412,7 +412,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
 	}
 	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
-		return api.playlistTrackPage(repo, q.fields, q.offset, q.limit)
+		return api.playlistTrackPage(ctx, repo, q.fields, q.offset, q.limit)
 	}
 	if q.search != "" {
 		q.limit = clampLimit(q.limit, defaultSearchLimit, maxSearchLimit)
@@ -836,13 +836,13 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q
 	if preds := q.filters.predicates(); len(preds) > 0 {
 		opts.Filters = squirrel.And(preds)
 	}
-	repo := api.ds.Playlist(ctx)
-	total, err := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	repo := api.ds.Playlist()
+	total, err := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	if err != nil {
 		return itemsResult{}, err
 	}
 	open := streamCursor(func() (func(func(model.Playlist, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, func(p model.Playlist) dto.BaseItemDto { return dto.PlaylistToBaseItem(p, q.fields) })
 	return streamed(open, int(total), opts.Offset), nil
 }

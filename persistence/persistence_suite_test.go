@@ -265,9 +265,9 @@ var _ = BeforeSuite(func() {
 	plsCool.AddMediaFilesByID([]string{"1004"})
 	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 
-	pr := NewPlaylistRepository(ctx, conn)
+	pr := NewPlaylistRepository(conn)
 	for i := range testPlaylists {
-		err := pr.Put(testPlaylists[i])
+		err := pr.Put(ctx, testPlaylists[i])
 		if err != nil {
 			panic(err)
 		}

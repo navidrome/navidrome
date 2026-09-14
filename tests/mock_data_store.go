@@ -128,14 +128,14 @@ func (db *MockDataStore) Genre() model.GenreRepository {
 	return db.MockedGenre
 }
 
-func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
+func (db *MockDataStore) Playlist() model.PlaylistRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlaylist != nil {
 		return db.MockedPlaylist
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Playlist(ctx)
+		return db.RealDS.Playlist()
 	}
 	db.MockedPlaylist = CreateMockPlaylistRepo()
 	return db.MockedPlaylist

@@ -178,10 +178,10 @@ func evaluateRuleOrderedAs(owner model.User, jsonRule string) []string {
 		OwnerID: owner.ID,
 		Rules:   &rules,
 	}
-	err = ds.Playlist(userCtx).Put(pls)
+	err = ds.Playlist().Put(userCtx, pls)
 	Expect(err).ToNot(HaveOccurred())
 
-	loaded, err := ds.Playlist(userCtx).GetWithTracks(pls.ID, true, false)
+	loaded, err := ds.Playlist().GetWithTracks(userCtx, pls.ID, true, false)
 	Expect(err).ToNot(HaveOccurred())
 
 	titles := make([]string, len(loaded.Tracks))
@@ -201,7 +201,7 @@ func createPlaylist(owner model.User, public bool, titles ...string) string {
 		mfID := findMediaFileByTitle(title)
 		pls.AddMediaFilesByID([]string{mfID})
 	}
-	Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())
+	Expect(ds.Playlist().Put(ctx, pls)).To(Succeed())
 	return pls.ID
 }
 
@@ -230,7 +230,7 @@ func createSmartPlaylist(owner model.User, public bool, jsonRule string) string 
 		Public:  public,
 		Rules:   &rules,
 	}
-	Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())
+	Expect(ds.Playlist().Put(ctx, pls)).To(Succeed())
 	return pls.ID
 }
 

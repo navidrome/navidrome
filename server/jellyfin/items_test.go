@@ -246,7 +246,7 @@ var _ = Describe("Items", func() {
 		})
 
 		It("lists playlists when IncludeItemTypes=Playlist", func() {
-			ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("p1"), Name: "My Mix", SongCount: 5}})
+			ds.Playlist().(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("p1"), Name: "My Mix", SongCount: 5}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Playlist", nil).WithContext(ctxUser())
 			invoke(api.getItems, w, r)
@@ -279,7 +279,7 @@ var _ = Describe("Items", func() {
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-			playlistRepo := ds.Playlist(context.Background()).(*tests.MockPlaylistRepo)
+			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
 			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "My Mix", Annotations: model.Annotations{Starred: true}}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum,Playlist&Filters=IsFavorite", nil).WithContext(ctxUser())

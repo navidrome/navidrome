@@ -118,7 +118,7 @@ func (a *archiver) ZipShare(ctx context.Context, s *model.Share, out io.Writer) 
 }
 
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	pls, err := a.ds.Playlist(ctx).GetWithTracks(id, true, false)
+	pls, err := a.ds.Playlist().GetWithTracks(ctx, id, true, false)
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from playlist", "id", id, err)
 		return err

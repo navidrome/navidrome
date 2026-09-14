@@ -65,7 +65,7 @@ func entityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID
 	case model.KindMediaFileArtwork:
 		found, err = ds.MediaFile().Exists(ctx, artID.ID)
 	case model.KindPlaylistArtwork:
-		found, err = ds.Playlist(ctx).Exists(artID.ID)
+		found, err = ds.Playlist().Exists(ctx, artID.ID)
 	case model.KindRadioArtwork:
 		found, err = ds.Radio().Exists(ctx, artID.ID)
 	case model.KindDiscArtwork:

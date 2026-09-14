@@ -120,7 +120,7 @@ func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id strin
 		}
 		return al.Name, nil
 	case model.KindPlaylistArtwork:
-		pls, err := ds.Playlist(ctx).Get(id)
+		pls, err := ds.Playlist().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}

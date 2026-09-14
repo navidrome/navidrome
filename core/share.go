@@ -171,7 +171,7 @@ func (r *shareRepositoryWrapper) contentsLabelFromAlbums(ctx context.Context, sh
 	return strings.Join(names, ", ")
 }
 func (r *shareRepositoryWrapper) contentsLabelFromPlaylist(ctx context.Context, shareID string, id string) string {
-	pls, err := r.ds.Playlist(ctx).Get(id)
+	pls, err := r.ds.Playlist().Get(ctx, id)
 	if err != nil {
 		log.Error(ctx, "Error retrieving album names for share", "share", shareID, err)
 		return ""

@@ -39,7 +39,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 		}
 		if pls.ID != "" && pls.Sync != sync {
 			pls.Sync = sync
-			if putErr := s.ds.Playlist(ctx).Put(pls); putErr != nil {
+			if putErr := s.ds.Playlist().Put(ctx, pls); putErr != nil {
 				return nil, putErr
 			}
 		}
@@ -122,7 +122,7 @@ func (s *playlists) ImportM3U(ctx context.Context, reader io.Reader) (*model.Pla
 		log.Error(ctx, "Error parsing playlist", err)
 		return nil, err
 	}
-	err = s.ds.Playlist(ctx).Put(pls)
+	err = s.ds.Playlist().Put(ctx, pls)
 	if err != nil {
 		log.Error(ctx, "Error saving playlist", err)
 		return nil, err
@@ -166,14 +166,14 @@ func fingerprint(h *xxh3.Hasher) string {
 // findByPathNormalized looks up a playlist by path, trying both NFC and NFD Unicode
 // normalization forms to handle cross-platform filesystem differences.
 func (s *playlists) findByPathNormalized(ctx context.Context, path string) (*model.Playlist, error) {
-	pls, err := s.ds.Playlist(ctx).FindByPath(path)
+	pls, err := s.ds.Playlist().FindByPath(ctx, path)
 	if errors.Is(err, model.ErrNotFound) {
 		altPath := norm.NFD.String(path)
 		if altPath == path {
 			altPath = norm.NFC.String(path)
 		}
 		if altPath != path {
-			pls, err = s.ds.Playlist(ctx).FindByPath(altPath)
+			pls, err = s.ds.Playlist().FindByPath(ctx, altPath)
 		}
 	}
 	return pls, err
@@ -221,5 +221,5 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 			newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
 		}
 	}
-	return s.ds.Playlist(ctx).Put(newPls)
+	return s.ds.Playlist().Put(ctx, newPls)
 }

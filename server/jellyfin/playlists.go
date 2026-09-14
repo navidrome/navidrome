@@ -136,14 +136,14 @@ func (api *Router) clearPlaylist(ctx context.Context, id string) error {
 // playlistTrackPage streams one page of a playlist's tracks. Streams because a playlist can be the
 // whole library (a smart playlist matching everything) and clients may omit Limit. Excludes missing
 // tracks, and counts the same set, like GetWithTracks.
-func (api *Router) playlistTrackPage(repo model.PlaylistTrackRepository, fields dto.Fields, offset, limit int) (itemsResult, error) {
-	total, err := repo.CountAll(model.QueryOptions{Filters: notMissing})
+func (api *Router) playlistTrackPage(ctx context.Context, repo model.PlaylistTrackRepository, fields dto.Fields, offset, limit int) (itemsResult, error) {
+	total, err := repo.CountAll(ctx, model.QueryOptions{Filters: notMissing})
 	if err != nil {
 		return itemsResult{}, err
 	}
 	opts := model.QueryOptions{Sort: "id", Offset: offset, Max: limit, Filters: notMissing}
 	open := streamCursor(func() (func(func(model.PlaylistTrack, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
 	return streamed(open, int(total), offset), nil
 }
@@ -178,7 +178,7 @@ func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// PlaylistInfo carries every track id, so this can't be paged — but it needs no track data.
-	trackIDs, err := repo.GetMediaFileIDs(model.QueryOptions{Sort: "id", Filters: notMissing})
+	trackIDs, err := repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id", Filters: notMissing})
 	if err != nil {
 		api.internalError(w, r, err)
 		return
@@ -206,7 +206,7 @@ func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	}
 	p := req.Params(r)
 	fields := dto.ParseFields(p.Strings("fields")...)
-	res, err := api.playlistTrackPage(repo, fields, p.IntOr("startindex", 0), p.IntOr("limit", 0))
+	res, err := api.playlistTrackPage(ctx, repo, fields, p.IntOr("startindex", 0), p.IntOr("limit", 0))
 	if err != nil {
 		api.internalError(w, r, err)
 		return

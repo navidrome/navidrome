@@ -124,13 +124,22 @@ type visibilityPlaylistDS struct {
 	tracks  model.PlaylistTrackRepository
 }
 
-func (v *visibilityPlaylistDS) Playlist(ctx context.Context) model.PlaylistRepository {
+func (v *visibilityPlaylistDS) Playlist() model.PlaylistRepository {
 	repo := tests.CreateMockPlaylistRepo()
 	repo.TracksRepo = v.tracks
-	if u, ok := request.UserFrom(ctx); ok && u.IsAdmin {
-		repo.SetData(model.Playlists{v.private})
+	repo.SetData(model.Playlists{v.private})
+	return &visibilityPlaylistRepo{MockPlaylistRepo: repo}
+}
+
+type visibilityPlaylistRepo struct {
+	*tests.MockPlaylistRepo
+}
+
+func (v *visibilityPlaylistRepo) Get(ctx context.Context, id string) (*model.Playlist, error) {
+	if u, ok := request.UserFrom(ctx); !ok || !u.IsAdmin {
+		return nil, model.ErrNotFound
 	}
-	return repo
+	return v.MockPlaylistRepo.Get(ctx, id)
 }
 
 func adminUserRepo() *tests.MockedUserRepo {

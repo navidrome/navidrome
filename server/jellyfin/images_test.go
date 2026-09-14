@@ -144,7 +144,7 @@ var _ = Describe("Images", func() {
 
 	It("resolves a playlist's cover regardless of visibility, even for an anonymous caller", func() {
 		ds := &tests.MockDataStore{}
-		ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")}})
+		ds.Playlist().(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")}})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 

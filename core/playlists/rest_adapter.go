@@ -16,7 +16,7 @@ import (
 
 func (s *playlists) NewRepository(ctx context.Context) rest.Repository[model.Playlist] {
 	return &playlistRepositoryWrapper{
-		PlaylistRepository: s.ds.Playlist(ctx),
+		PlaylistRepository: s.ds.Playlist(),
 		service:            s,
 	}
 }
@@ -46,8 +46,8 @@ func (r *playlistRepositoryWrapper) Delete(ctx context.Context, ids ...string) e
 }
 
 func (s *playlists) TracksRepository(ctx context.Context, playlistId string, refreshSmartPlaylist bool) rest.Repository[model.PlaylistTrack] {
-	repo := s.ds.Playlist(ctx)
-	tracks := repo.Tracks(playlistId, refreshSmartPlaylist)
+	repo := s.ds.Playlist()
+	tracks := repo.Tracks(ctx, playlistId, refreshSmartPlaylist)
 	if tracks == nil {
 		return nil
 	}
@@ -65,7 +65,7 @@ func (s *playlists) savePlaylist(ctx context.Context, pls *model.Playlist) (stri
 	pls.UploadedImage = ""    // Managed by image upload endpoint
 	pls.ExternalImageURL = "" // Managed by M3U import / plugins only
 	pls.EvaluatedAt = nil     // Server-managed
-	err := s.ds.Playlist(ctx).Put(pls)
+	err := s.ds.Playlist().Put(ctx, pls)
 	if err != nil {
 		return "", err
 	}
@@ -158,7 +158,7 @@ func (s *playlists) applyFlagsOnly(ctx context.Context, current, entity *model.P
 	if len(updateCols) == 0 {
 		return nil
 	}
-	return s.ds.Playlist(ctx).Put(current, updateCols...)
+	return s.ds.Playlist().Put(ctx, current, updateCols...)
 }
 
 // sentFields returns a predicate that reports whether a JSON field was present
