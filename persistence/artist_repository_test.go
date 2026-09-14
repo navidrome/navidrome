@@ -131,27 +131,68 @@ var _ = Describe("ArtistRepository", func() {
 			})
 		})
 
-		Describe("ReadAll role sort SQL injection", func() {
-			It("does not interpolate attacker-controlled role into ORDER BY", func() {
+		Describe("ReadAll role sort", func() {
+			payload := "total') OR 1=1--"
+
+			songCountSortFor := func(role any) string {
+				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
+				return repo.sortMappingsForRole(rest.QueryOptions{Filters: map[string]any{"role": role}})["song_count"]
+			}
+
+			It("falls back to the total stats role for an attacker-controlled role", func() {
+				Expect(songCountSortFor(payload)).To(Equal("sum(stats->>'total'->>'m')"))
+				Expect(songCountSortFor("bogus")).To(Equal("sum(stats->>'total'->>'m')"))
+				Expect(songCountSortFor(42)).To(Equal("sum(stats->>'total'->>'m')"))
+			})
+
+			It("keeps valid role sort paths", func() {
+				Expect(songCountSortFor("composer")).To(Equal("sum(stats->>'composer'->>'m')"))
+				Expect(songCountSortFor("albumartist")).To(Equal("sum(stats->>'albumartist'->>'m')"))
+			})
+
+			It("leaves the shared mappings untouched", func() {
+				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
+				Expect(repo.sortMappingsForRole(rest.QueryOptions{Filters: map[string]any{"role": "composer"}})).
+					ToNot(Equal(repo.sortMappings))
+				Expect(repo.sortMappings["song_count"]).To(Equal("stats->>'total'->>'m'"))
+			})
+
+			It("orders by the requested role's stats, not the total", func() {
 				ctx := request.WithUser(GinkgoT().Context(), adminUser)
 				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
-				payload := "total') OR 1=1--"
+				// Composer and total counts rank the two artists in opposite orders, so the
+				// resulting order alone proves which mapping the sort used.
+				seed := func(artistID, stats string) {
+					_, err := repo.executeSQL(ctx, squirrel.Insert("library_artist").
+						Columns("library_id", "artist_id", "stats").
+						Values(1, artistID, stats).
+						Suffix("ON CONFLICT(library_id, artist_id) DO UPDATE SET stats = excluded.stats"))
+					Expect(err).ToNot(HaveOccurred())
+					DeferCleanup(func() {
+						_, _ = repo.executeSQL(ctx, squirrel.Update("library_artist").Set("stats", "{}").
+							Where(squirrel.Eq{"library_id": 1, "artist_id": artistID}))
+					})
+				}
+				seed(artistBeatles.ID, `{"composer": {"s": 1, "m": 1, "a": 1}, "total": {"s": 1, "m": 100, "a": 1}}`)
+				seed(artistKraftwerk.ID, `{"composer": {"s": 1, "m": 9, "a": 1}, "total": {"s": 1, "m": 2, "a": 1}}`)
+
+				res, err := repo.ReadAll(ctx, rest.QueryOptions{
+					Sort:    "songCount",
+					Order:   "DESC",
+					Filters: map[string]any{"role": "composer"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(slice.Map(res, func(a model.Artist) string { return a.ID })).
+					To(Equal([]string{artistKraftwerk.ID, artistBeatles.ID}))
+			})
+
+			It("still returns results when the role is an injection payload", func() {
+				ctx := request.WithUser(GinkgoT().Context(), adminUser)
+				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
 				_, err := repo.ReadAll(ctx, rest.QueryOptions{
 					Sort:    "songCount",
 					Order:   "ASC",
 					Filters: map[string]any{"role": payload},
-				})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(repo.sortMappings["song_count"]).ToNot(ContainSubstring(payload))
-			})
-
-			It("keeps valid role sort paths", func() {
-				ctx := request.WithUser(GinkgoT().Context(), adminUser)
-				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
-				_, err := repo.ReadAll(ctx, rest.QueryOptions{
-					Sort:    "songCount",
-					Order:   "DESC",
-					Filters: map[string]any{"role": "composer"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 			})
