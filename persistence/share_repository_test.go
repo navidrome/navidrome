@@ -22,7 +22,7 @@ var _ = Describe("ShareRepository", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-		repo = NewShareRepository(ctx, GetDBXBuilder())
+		repo = NewShareRepository(GetDBXBuilder())
 
 		// Insert the admin user into the database (required for foreign key constraint)
 		ur := NewUserRepository(ctx, GetDBXBuilder())
@@ -39,7 +39,7 @@ var _ = Describe("ShareRepository", func() {
 		Context("Repository creation and basic operations", func() {
 			It("should create repository successfully with no user context", func() {
 				// Create repository with no user context (headless)
-				headlessRepo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
+				headlessRepo := NewShareRepository(GetDBXBuilder())
 				Expect(headlessRepo).ToNot(BeNil())
 			})
 
@@ -61,8 +61,8 @@ var _ = Describe("ShareRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Headless process should see all shares
-				headlessRepo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
-				shares, err := headlessRepo.GetAll()
+				headlessRepo := NewShareRepository(GetDBXBuilder())
+				shares, err := headlessRepo.GetAll(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 
 				found := false
@@ -93,8 +93,8 @@ var _ = Describe("ShareRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Headless process should be able to get the share
-				headlessRepo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
-				share, err := headlessRepo.Get(shareID)
+				headlessRepo := NewShareRepository(GetDBXBuilder())
+				share, err := headlessRepo.Get(GinkgoT().Context(), shareID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(share.ID).To(Equal(shareID))
 				Expect(share.Description).To(Equal("Headless Get Share"))
@@ -125,7 +125,7 @@ var _ = Describe("ShareRepository", func() {
 
 			// The Get operation should work without SQL ambiguity errors
 			// even if no albums are found
-			share, err := repo.Get(shareID)
+			share, err := repo.Get(ctx, shareID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(share.ID).To(Equal(shareID))
 			// Albums array should be empty since we used non-existent album ID
@@ -190,8 +190,9 @@ var _ = Describe("ShareRepository", func() {
 		It("excludes tracks the owner cannot access from the shared playlist", func() {
 			// Read the share as admin (mimics the public-share render path, which uses
 			// the share repository's own context). loadMedia must scope to the owner.
-			adminRepo := NewShareRepository(request.WithUser(log.NewContext(GinkgoT().Context()), adminUser), GetDBXBuilder())
-			share, err := adminRepo.Get("share-scope")
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			adminRepo := NewShareRepository(GetDBXBuilder())
+			share, err := adminRepo.Get(adminCtx, "share-scope")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(share.Tracks).To(ContainElement(HaveField("ID", "share-ok")))
@@ -221,8 +222,8 @@ var _ = Describe("ShareRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() { _, _ = GetDBXBuilder().NewQuery(`DELETE FROM share WHERE id = 'share-private'`).Execute() })
 
-			adminRepo := NewShareRepository(adminCtx, GetDBXBuilder())
-			share, err := adminRepo.Get("share-private")
+			adminRepo := NewShareRepository(GetDBXBuilder())
+			share, err := adminRepo.Get(adminCtx, "share-private")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(share.Tracks).To(BeEmpty())
 		})
@@ -301,8 +302,9 @@ var _ = Describe("ShareRepository", func() {
 		It("includes co-album-artist tracks the owner can access and excludes those they cannot", func() {
 			// Read as admin (mimics the public-share render path); loadMedia must still
 			// scope to the owner's libraries.
-			adminRepo := NewShareRepository(request.WithUser(log.NewContext(GinkgoT().Context()), adminUser), GetDBXBuilder())
-			share, err := adminRepo.Get("art-share")
+			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			adminRepo := NewShareRepository(GetDBXBuilder())
+			share, err := adminRepo.Get(adminCtx, "art-share")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(share.Tracks).To(ContainElement(HaveField("ID", "art-ok")),
@@ -318,7 +320,7 @@ var _ = Describe("ShareRepository", func() {
 
 		It("excludes albums and their tracks outside the owner's libraries from an album share", func() {
 			// Public share rendering has no user in the context.
-			share, err := NewShareRepository(log.NewContext(GinkgoT().Context()), GetDBXBuilder()).Get("art-album-share")
+			share, err := NewShareRepository(GetDBXBuilder()).Get(log.NewContext(GinkgoT().Context()), "art-album-share")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(share.Albums).To(ContainElement(HaveField("ID", "art-album-ok")))
 			Expect(share.Albums).ToNot(ContainElement(HaveField("ID", "art-album-other")))
@@ -327,7 +329,7 @@ var _ = Describe("ShareRepository", func() {
 		})
 
 		It("excludes tracks outside the owner's libraries from a media file share", func() {
-			share, err := NewShareRepository(log.NewContext(GinkgoT().Context()), GetDBXBuilder()).Get("art-mf-share")
+			share, err := NewShareRepository(GetDBXBuilder()).Get(log.NewContext(GinkgoT().Context()), "art-mf-share")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(share.Tracks).To(ContainElement(HaveField("ID", "art-ok")))
 			Expect(share.Tracks).ToNot(ContainElement(HaveField("ID", "art-other")))
@@ -358,7 +360,7 @@ var _ = Describe("ShareRepository", func() {
 			It("allows a non-admin user to delete their own share", func() {
 				insertShare("own-share-del", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Delete(ctx, "own-share-del")
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -366,13 +368,13 @@ var _ = Describe("ShareRepository", func() {
 			It("denies a non-admin user from deleting another user's share", func() {
 				insertShare("other-share-del", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), otherUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Delete(ctx, "other-share-del")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 
 				// The share was not deleted: the owner can still read it.
 				ownerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
-				ownerRepo := NewShareRepository(ownerCtx, GetDBXBuilder())
+				ownerRepo := NewShareRepository(GetDBXBuilder())
 				_, err = ownerRepo.Read(ownerCtx, "other-share-del")
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -380,7 +382,7 @@ var _ = Describe("ShareRepository", func() {
 			It("allows an admin to delete any user's share", func() {
 				insertShare("admin-del-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Delete(ctx, "admin-del-share")
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -388,7 +390,7 @@ var _ = Describe("ShareRepository", func() {
 			It("allows headless context (no user) to delete a share", func() {
 				insertShare("headless-del-share", ownerUser.ID)
 				headlessCtx := GinkgoT().Context()
-				repo := NewShareRepository(headlessCtx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Delete(headlessCtx, "headless-del-share")
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -401,7 +403,7 @@ var _ = Describe("ShareRepository", func() {
 				Expect(ur.Put(&otherUser)).To(Succeed())
 
 				attackerCtx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
-				attackerRepo := NewShareRepository(attackerCtx, GetDBXBuilder())
+				attackerRepo := NewShareRepository(GetDBXBuilder())
 
 				id, err := attackerRepo.Save(attackerCtx, &model.Share{
 					ID: "spoof-save-share", UserID: otherUser.ID,
@@ -409,8 +411,9 @@ var _ = Describe("ShareRepository", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				adminRepo := NewShareRepository(request.WithUser(log.NewContext(GinkgoT().Context()), adminUser), GetDBXBuilder())
-				got, err := adminRepo.Get(id)
+				adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+				adminRepo := NewShareRepository(GetDBXBuilder())
+				got, err := adminRepo.Get(adminCtx, id)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(got.UserID).To(Equal(ownerUser.ID))
 			})
@@ -420,7 +423,7 @@ var _ = Describe("ShareRepository", func() {
 			It("allows a non-admin user to update their own share", func() {
 				insertShare("own-share-upd", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(ctx, "own-share-upd", model.Share{Description: "Updated"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -428,7 +431,7 @@ var _ = Describe("ShareRepository", func() {
 			It("denies a non-admin user from updating another user's share", func() {
 				insertShare("other-share-upd", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), otherUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(ctx, "other-share-upd", model.Share{Description: "Hacked"}, "description")
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
@@ -436,7 +439,7 @@ var _ = Describe("ShareRepository", func() {
 			It("allows an admin to update any user's share", func() {
 				insertShare("admin-upd-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(ctx, "admin-upd-share", model.Share{Description: "Admin Updated"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -444,14 +447,14 @@ var _ = Describe("ShareRepository", func() {
 			It("allows headless context (no user) to update a share", func() {
 				insertShare("headless-upd-share", ownerUser.ID)
 				headlessCtx := GinkgoT().Context()
-				repo := NewShareRepository(headlessCtx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(headlessCtx, "headless-upd-share", model.Share{Description: "Headless"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("returns not found when updating a nonexistent share", func() {
 				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(ctx, "does-not-exist", model.Share{Description: "Ghost"}, "description")
 				Expect(err).To(Equal(rest.ErrNotFound))
 			})
@@ -459,7 +462,7 @@ var _ = Describe("ShareRepository", func() {
 			It("updates all columns when no specific columns are given", func() {
 				insertShare("all-cols-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				// No cols: the update must write every column, not just updated_at.
 				err := repo.Update(ctx, "all-cols-share",
 					model.Share{Description: "All Updated", MaxBitRate: 192, ResourceType: "album", ResourceIDs: "2002"})
@@ -475,7 +478,7 @@ var _ = Describe("ShareRepository", func() {
 			It("does not let an owner reassign their share to another user", func() {
 				insertShare("reassign-share", ownerUser.ID)
 				ctx := request.WithUser(log.NewContext(context.TODO()), ownerUser)
-				repo := NewShareRepository(ctx, GetDBXBuilder())
+				repo := NewShareRepository(GetDBXBuilder())
 				err := repo.Update(ctx, "reassign-share",
 					model.Share{UserID: otherUser.ID, Description: "Given away"}, "user_id", "description")
 				Expect(err).ToNot(HaveOccurred())
@@ -505,11 +508,11 @@ var _ = Describe("ShareRepository", func() {
 
 				BeforeEach(func() {
 					nonAdminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
-					nonAdminRepo = NewShareRepository(nonAdminCtx, GetDBXBuilder())
+					nonAdminRepo = NewShareRepository(GetDBXBuilder())
 				})
 
 				It("GetAll returns only own shares", func() {
-					shares, err := nonAdminRepo.GetAll()
+					shares, err := nonAdminRepo.GetAll(nonAdminCtx)
 					Expect(err).ToNot(HaveOccurred())
 					ids := make([]string, len(shares))
 					for i, s := range shares {
@@ -529,13 +532,13 @@ var _ = Describe("ShareRepository", func() {
 				})
 
 				It("Get returns own share", func() {
-					s, err := nonAdminRepo.Get("share-owner-1")
+					s, err := nonAdminRepo.Get(nonAdminCtx, "share-owner-1")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(s.ID).To(Equal("share-owner-1"))
 				})
 
 				It("Get returns ErrNotFound for another user's share", func() {
-					_, err := nonAdminRepo.Get("share-other-1")
+					_, err := nonAdminRepo.Get(nonAdminCtx, "share-other-1")
 					Expect(err).To(MatchError(model.ErrNotFound))
 				})
 
@@ -545,19 +548,19 @@ var _ = Describe("ShareRepository", func() {
 				})
 
 				It("Exists returns true for own share", func() {
-					exists, err := nonAdminRepo.Exists("share-owner-1")
+					exists, err := nonAdminRepo.Exists(nonAdminCtx, "share-owner-1")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(exists).To(BeTrue())
 				})
 
 				It("Exists returns false for another user's share", func() {
-					exists, err := nonAdminRepo.Exists("share-other-1")
+					exists, err := nonAdminRepo.Exists(nonAdminCtx, "share-other-1")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(exists).To(BeFalse())
 				})
 
 				It("CountAll counts only own shares", func() {
-					count, err := nonAdminRepo.CountAll()
+					count, err := nonAdminRepo.CountAll(nonAdminCtx)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(count).To(BeNumerically("==", 2))
 				})
@@ -572,8 +575,8 @@ var _ = Describe("ShareRepository", func() {
 			Context("admin user", func() {
 				It("GetAll returns all shares", func() {
 					adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-					adminRepo := NewShareRepository(adminCtx, GetDBXBuilder())
-					shares, err := adminRepo.GetAll()
+					adminRepo := NewShareRepository(GetDBXBuilder())
+					shares, err := adminRepo.GetAll(adminCtx)
 					Expect(err).ToNot(HaveOccurred())
 					ids := make([]string, len(shares))
 					for i, s := range shares {
@@ -584,8 +587,8 @@ var _ = Describe("ShareRepository", func() {
 
 				It("CountAll counts all shares", func() {
 					adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-					adminRepo := NewShareRepository(adminCtx, GetDBXBuilder())
-					count, err := adminRepo.CountAll()
+					adminRepo := NewShareRepository(GetDBXBuilder())
+					count, err := adminRepo.CountAll(adminCtx)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(count).To(BeNumerically("==", 3))
 				})
@@ -593,22 +596,22 @@ var _ = Describe("ShareRepository", func() {
 
 			Context("headless context (public share route)", func() {
 				It("GetAll returns all shares", func() {
-					headlessRepo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
-					shares, err := headlessRepo.GetAll()
+					headlessRepo := NewShareRepository(GetDBXBuilder())
+					shares, err := headlessRepo.GetAll(GinkgoT().Context())
 					Expect(err).ToNot(HaveOccurred())
 					Expect(shares).To(HaveLen(3))
 				})
 
 				It("Get returns another user's share", func() {
-					headlessRepo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
-					s, err := headlessRepo.Get("share-other-1")
+					headlessRepo := NewShareRepository(GetDBXBuilder())
+					s, err := headlessRepo.Get(GinkgoT().Context(), "share-other-1")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(s.ID).To(Equal("share-other-1"))
 				})
 
 				It("Exists returns true for any share", func() {
-					headlessRepo := NewShareRepository(GinkgoT().Context(), GetDBXBuilder())
-					exists, err := headlessRepo.Exists("share-other-1")
+					headlessRepo := NewShareRepository(GetDBXBuilder())
+					exists, err := headlessRepo.Exists(GinkgoT().Context(), "share-other-1")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(exists).To(BeTrue())
 				})

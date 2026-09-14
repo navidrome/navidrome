@@ -180,14 +180,14 @@ func (db *MockDataStore) Property() model.PropertyRepository {
 	return db.MockedProperty
 }
 
-func (db *MockDataStore) Share(ctx context.Context) model.ShareRepository {
+func (db *MockDataStore) Share() model.ShareRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedShare != nil {
 		return db.MockedShare
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Share(ctx)
+		return db.RealDS.Share()
 	}
 	db.MockedShare = &MockShareRepo{}
 	return db.MockedShare

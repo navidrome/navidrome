@@ -36,14 +36,14 @@ func (m *MockShareRepo) Update(_ context.Context, id string, entity model.Share,
 	return nil
 }
 
-func (m *MockShareRepo) Exists(id string) (bool, error) {
+func (m *MockShareRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Error != nil {
 		return false, m.Error
 	}
 	return id == m.ID, nil
 }
 
-func (m *MockShareRepo) Get(id string) (*model.Share, error) {
+func (m *MockShareRepo) Get(_ context.Context, id string) (*model.Share, error) {
 	if m.Error != nil {
 		return nil, m.Error
 	}

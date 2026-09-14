@@ -2,6 +2,7 @@ package model
 
 import (
 	"cmp"
+	"context"
 	"strings"
 	"time"
 
@@ -60,8 +61,8 @@ func (s Share) ToM3U8() string {
 type ShareRepository interface {
 	rest.Repository[Share]
 	rest.Persistable[Share]
-	Exists(id string) (bool, error)
-	Get(id string) (*Share, error)
-	GetAll(options ...QueryOptions) (Shares, error)
-	CountAll(options ...QueryOptions) (int64, error)
+	Exists(ctx context.Context, id string) (bool, error)
+	Get(ctx context.Context, id string) (*Share, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Shares, error)
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
 }
