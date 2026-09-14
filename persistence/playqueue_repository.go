@@ -17,9 +17,8 @@ type playQueueRepository struct {
 	sqlRepository
 }
 
-func NewPlayQueueRepository(ctx context.Context, db dbx.Builder) model.PlayQueueRepository {
+func NewPlayQueueRepository(db dbx.Builder) model.PlayQueueRepository {
 	r := &playQueueRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "playqueue"
 	return r
@@ -36,13 +35,13 @@ type playQueue struct {
 	UpdatedAt time.Time `structs:"updated_at"`
 }
 
-func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) error {
-	u := loggedUser(r.ctx)
+func (r *playQueueRepository) Store(ctx context.Context, q *model.PlayQueue, colNames ...string) error {
+	u := loggedUser(ctx)
 
 	// Always find existing playqueue for this user
-	existingQueue, err := r.Retrieve(q.UserID)
+	existingQueue, err := r.Retrieve(ctx, q.UserID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
-		log.Error(r.ctx, "Error retrieving existing playqueue", "user", u.UserName, err)
+		log.Error(ctx, "Error retrieving existing playqueue", "user", u.UserName, err)
 		return err
 	}
 
@@ -53,9 +52,9 @@ func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) erro
 
 	// When no specific columns are provided, we replace the whole queue
 	if len(colNames) == 0 {
-		err := r.clearPlayQueue(q.UserID)
+		err := r.clearPlayQueue(ctx, q.UserID)
 		if err != nil {
-			log.Error(r.ctx, "Error deleting previous playqueue", "user", u.UserName, err)
+			log.Error(ctx, "Error deleting previous playqueue", "user", u.UserName, err)
 			return err
 		}
 		if len(q.Items) == 0 {
@@ -68,27 +67,27 @@ func (r *playQueueRepository) Store(q *model.PlayQueue, colNames ...string) erro
 		pq.CreatedAt = time.Now()
 	}
 	pq.UpdatedAt = time.Now()
-	_, err = r.put(r.ctx, pq.ID, pq, colNames...)
+	_, err = r.put(ctx, pq.ID, pq, colNames...)
 	if err != nil {
-		log.Error(r.ctx, "Error saving playqueue", "user", u.UserName, err)
+		log.Error(ctx, "Error saving playqueue", "user", u.UserName, err)
 		return err
 	}
 	return nil
 }
 
-func (r *playQueueRepository) RetrieveWithMediaFiles(userId string) (*model.PlayQueue, error) {
-	sel := r.newSelect(r.ctx).Columns("*").Where(Eq{"user_id": userId})
+func (r *playQueueRepository) RetrieveWithMediaFiles(ctx context.Context, userId string) (*model.PlayQueue, error) {
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"user_id": userId})
 	var res playQueue
-	err := r.queryOne(r.ctx, sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	q := r.toModel(&res)
-	q.Items = r.loadTracks(q.Items)
+	q.Items = r.loadTracks(ctx, q.Items)
 	return &q, err
 }
 
-func (r *playQueueRepository) Retrieve(userId string) (*model.PlayQueue, error) {
-	sel := r.newSelect(r.ctx).Columns("*").Where(Eq{"user_id": userId})
+func (r *playQueueRepository) Retrieve(ctx context.Context, userId string) (*model.PlayQueue, error) {
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"user_id": userId})
 	var res playQueue
-	err := r.queryOne(r.ctx, sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return new(r.toModel(&res)), err
 }
 
@@ -131,12 +130,12 @@ func (r *playQueueRepository) toModel(pq *playQueue) model.PlayQueue {
 
 // loadTracks loads the tracks from the database. It receives a list of track IDs and returns a list of MediaFiles
 // in the same order as the input list.
-func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFiles {
+func (r *playQueueRepository) loadTracks(ctx context.Context, tracks model.MediaFiles) model.MediaFiles {
 	if len(tracks) == 0 {
 		return nil
 	}
 
-	mfRepo := NewMediaFileRepository(r.ctx, r.db)
+	mfRepo := NewMediaFileRepository(ctx, r.db)
 	trackMap := map[string]model.MediaFile{}
 
 	// Create an iterator to collect all track IDs
@@ -147,8 +146,8 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 		idsFilter := Eq{"media_file.id": chunk}
 		tracks, err := mfRepo.GetAll(model.QueryOptions{Filters: idsFilter})
 		if err != nil {
-			u := loggedUser(r.ctx)
-			log.Error(r.ctx, "Could not load playqueue/bookmark's tracks", "user", u.UserName, err)
+			u := loggedUser(ctx)
+			log.Error(ctx, "Could not load playqueue/bookmark's tracks", "user", u.UserName, err)
 		}
 		for _, t := range tracks {
 			trackMap[t.ID] = t
@@ -166,12 +165,12 @@ func (r *playQueueRepository) loadTracks(tracks model.MediaFiles) model.MediaFil
 	return newTracks
 }
 
-func (r *playQueueRepository) clearPlayQueue(userId string) error {
-	return r.delete(r.ctx, Eq{"user_id": userId})
+func (r *playQueueRepository) clearPlayQueue(ctx context.Context, userId string) error {
+	return r.delete(ctx, Eq{"user_id": userId})
 }
 
-func (r *playQueueRepository) Clear(userId string) error {
-	return r.clearPlayQueue(userId)
+func (r *playQueueRepository) Clear(ctx context.Context, userId string) error {
+	return r.clearPlayQueue(ctx, userId)
 }
 
 var _ model.PlayQueueRepository = (*playQueueRepository)(nil)

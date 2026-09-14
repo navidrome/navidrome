@@ -21,6 +21,7 @@ type SQLStore struct {
 	share       model.ShareRepository
 	player      model.PlayerRepository
 	radio       model.RadioRepository
+	playQueue   model.PlayQueueRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -32,6 +33,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.share = NewShareRepository(db)
 	s.player = NewPlayerRepository(db)
 	s.radio = NewRadioRepository(db)
+	s.playQueue = NewPlayQueueRepository(db)
 	return s
 }
 
@@ -67,8 +69,8 @@ func (s *SQLStore) Tag(ctx context.Context) model.TagRepository {
 	return NewTagRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
-	return NewPlayQueueRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) PlayQueue() model.PlayQueueRepository {
+	return s.playQueue
 }
 
 func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
