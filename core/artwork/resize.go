@@ -3,6 +3,7 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/draw"
@@ -48,9 +49,9 @@ func resizeImageData(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size i
 	if isAnimatedGIF(data) {
 		if ffm.IsAvailable() {
 			// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
-			r, err := ffm.ConvertAnimatedImage(ctx, bytes.NewReader(data), size, conf.Server.CoverArtQuality)
+			out, err := convertAnimatedGIF(ctx, ffm, data, size)
 			if err == nil {
-				return r, 0, nil
+				return bytes.NewReader(out), 0, nil
 			}
 			log.Warn(ctx, "Artwork: Could not convert animated GIF, falling back to static", err)
 		}
@@ -60,6 +61,24 @@ func resizeImageData(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size i
 	}
 
 	return resizeStaticImage(data, size, square)
+}
+
+// convertAnimatedGIF buffers the output because ffmpeg can fail after it starts streaming,
+// too late for a caller holding the stream to fall back.
+func convertAnimatedGIF(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size int) ([]byte, error) {
+	r, err := ffm.ConvertAnimatedImage(ctx, bytes.NewReader(data), size, conf.Server.CoverArtQuality)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	out, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	if len(out) == 0 {
+		return nil, errors.New("ffmpeg produced no output")
+	}
+	return out, nil
 }
 
 // toFastScaleType converts types x/image/draw has no optimized scaler for (e.g. *image.NYCbCrA,

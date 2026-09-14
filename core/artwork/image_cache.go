@@ -42,6 +42,8 @@ type resizedItem struct {
 	square bool
 	ffmpeg ffmpeg.FFmpeg
 	open   func() (io.ReadCloser, error)
+	// deferAnimated, when set, receives an animated GIF's bytes, and a transient static stand-in is served.
+	deferAnimated func(data []byte)
 }
 
 // Key is the ETag namespaced for the cache, so the validator a client holds and the entry it
@@ -64,6 +66,14 @@ func (r *resizedItem) Reader(ctx context.Context) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	if r.deferAnimated != nil && isAnimatedGIF(data) && r.ffmpeg.IsAvailable() {
+		r.deferAnimated(data)
+		static, _, err := resizeStaticImage(data, r.size, r.square)
+		if err != nil || static == nil {
+			static = bytes.NewReader(data)
+		}
+		return cache.Transient(io.NopCloser(static)), nil
+	}
 	resized, _, err := resizeImageData(ctx, r.ffmpeg, data, r.size, r.square)
 	if err != nil || resized == nil {
 		// Resize failed or image already within bounds: serve the original bytes.
@@ -73,4 +83,16 @@ func (r *resizedItem) Reader(ctx context.Context) (io.ReadCloser, error) {
 		return rc, nil
 	}
 	return io.NopCloser(resized), nil
+}
+
+// storedItem caches bytes produced outside the cache.
+type storedItem struct {
+	key  string
+	data []byte
+}
+
+func (i *storedItem) Key() string { return i.key }
+
+func (i *storedItem) Reader(context.Context) (io.ReadCloser, error) {
+	return io.NopCloser(bytes.NewReader(i.data)), nil
 }

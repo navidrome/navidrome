@@ -31,6 +31,7 @@ type Image struct {
 	ETag        string // representation validator; "" means Hash applies (full-size original)
 	LastUpdated time.Time
 	Placeholder bool
+	Transient   bool // stand-in while the real representation is produced in the background
 }
 
 // representationTag varies with dimensions and encode settings, so a config change invalidates
@@ -152,13 +153,70 @@ func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate 
 		}
 		return img, nil
 	}
-	stream, err := s.cache.Get(ctx, &resizedItem{
-		hash: key, size: size, square: square, ffmpeg: s.ffmpeg, open: open,
-	})
+	item := &resizedItem{hash: key, size: size, square: square, ffmpeg: s.ffmpeg, open: open}
+	var animated []byte
+	// Without a cache a background conversion could never be served, so convert inline instead.
+	if s.cache.Available(ctx) {
+		item.deferAnimated = func(data []byte) { animated = data }
+	}
+	stream, err := s.cache.Get(ctx, item)
 	if err != nil {
 		return nil, err
 	}
+	if stream.Transient {
+		s.convertInBackground(item, animated)
+		return &Image{ReadCloser: stream, Hash: hash, LastUpdated: lastUpdate, Transient: true}, nil
+	}
 	return &Image{ReadCloser: stream, Hash: hash, ETag: representationTag(key, size, square), LastUpdated: lastUpdate}, nil
+}
+
+// animConvertSlot bounds animated conversions process-wide: they outlive their request, so no
+// request throttle limits them.
+var animConvertSlot = make(chan struct{}, 1)
+
+const animConvertTimeout = time.Minute
+
+// convertInBackground caches item's conversion of data. When the slot is busy it does nothing,
+// and a later request for the key tries again.
+func (s *service) convertInBackground(item *resizedItem, data []byte) {
+	select {
+	case animConvertSlot <- struct{}{}:
+	default:
+		return
+	}
+	conv := *item
+	conv.deferAnimated = nil
+	conv.open = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil }
+	key := conv.Key()
+	go func() {
+		defer func() { <-animConvertSlot }()
+		ctx, cancel := context.WithTimeout(context.Background(), animConvertTimeout)
+		defer cancel()
+		start := time.Now()
+		rc, err := conv.Reader(ctx)
+		if err != nil {
+			log.Warn(ctx, "Artwork: Could not convert animated image", "key", key, err)
+			return
+		}
+		out, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			log.Warn(ctx, "Artwork: Could not convert animated image", "key", key, err)
+			return
+		}
+		// Converting before touching the cache keeps the entry from blocking readers for the whole conversion.
+		stream, err := s.cache.Get(ctx, &storedItem{key: key, data: out})
+		if err != nil {
+			log.Warn(ctx, "Artwork: Could not cache animated image", "key", key, err)
+			return
+		}
+		defer stream.Close()
+		if _, err := io.Copy(io.Discard, stream); err != nil {
+			log.Debug(ctx, "Artwork: Could not cache animated image", "key", key, err)
+			return
+		}
+		log.Debug(ctx, "Artwork: Converted animated image", "key", key, "bytes", len(out), "elapsed", time.Since(start))
+	}()
 }
 
 // serveHash serves the bytes of a found state row. A mismatch/open error is dangling, but a

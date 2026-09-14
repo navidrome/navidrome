@@ -13,8 +13,8 @@ import (
 // (the caller must then not write a body). requestedHash is the hash the client asserted, or "".
 func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Image, requestedHash string) (wrote304 bool) {
 	h := w.Header()
-	// Placeholders are transient stand-ins for unresolved art: never cached, no validators.
-	if img.Placeholder {
+	// Placeholders and transient stand-ins must not outlive what they stand in for: never cached, no validators.
+	if img.Placeholder || img.Transient {
 		h.Set("Cache-Control", "no-store")
 		return false
 	}

@@ -41,6 +41,12 @@ func resized() *artwork.Image {
 	}
 }
 
+func transient() *artwork.Image {
+	img := resized()
+	img.Transient = true
+	return img
+}
+
 func unvalidated() *artwork.Image {
 	return &artwork.Image{ReadCloser: io.NopCloser(strings.NewReader("IMG")), LastUpdated: lastMod}
 }
@@ -105,6 +111,9 @@ var _ = Describe("WriteImageHeaders", func() {
 			testCase{img: found(), ifNoneMatch: `"deadbeefdeadbeef"`, want304: false, wantCache: "public, no-cache", wantETag: `"` + testHash + `"`, wantLastMod: true}),
 		Entry("placeholder ignores If-None-Match and never 304s",
 			testCase{img: placeholder(), ifNoneMatch: "*", want304: false, wantCache: "no-store"}),
+		// A stand-in shares the final representation's ETag inputs, so a validator would pin it.
+		Entry("transient stand-in is never cached and carries no validators",
+			testCase{img: transient(), ifNoneMatch: `"` + testRepTag + `"`, want304: false, wantCache: "no-store"}),
 
 		// With no validator, an emitted ETag would be the same empty tag on every such response,
 		// and matching it would 304 changed bytes.

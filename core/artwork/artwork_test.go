@@ -3,10 +3,12 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"errors"
 	"image"
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -419,6 +421,84 @@ var _ = Describe("Artwork", func() {
 			img, err := svc.Get(ctx, model.NewArtworkID(model.KindDiscArtwork, model.DiscArtworkID("aldc2", 1), nil), 0, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(readAll(img)).To(Equal(coverBytes))
+		})
+	})
+
+	Describe("animated GIF", func() {
+		var (
+			gifBytes []byte
+			fake     *animFFmpeg
+		)
+
+		get := func(id string) *Image {
+			GinkgoHelper()
+			img, err := svc.Get(ctx, model.MustParseArtworkID(id), 100, false)
+			Expect(err).ToNot(HaveOccurred())
+			return img
+		}
+		waitForConversions := func() {
+			GinkgoHelper()
+			// Taking the slot, not len(), gives the race detector a happens-before with the conversion.
+			Eventually(func() bool {
+				select {
+				case animConvertSlot <- struct{}{}:
+					<-animConvertSlot
+					return true
+				default:
+					return false
+				}
+			}).Should(BeTrue())
+		}
+
+		BeforeEach(func() {
+			gifBytes = createAnimatedGIF(3)
+			fake = &animFFmpeg{MockFFmpeg: tests.NewMockFFmpeg(""), out: []byte("animated-webp")}
+			svc = NewArtwork(ds, imgCache, store, fake)
+			seedFoundStore("al", "al1", gifBytes)
+			DeferCleanup(waitForConversions)
+		})
+
+		It("serves a transient stand-in, then the conversion from the cache", func() {
+			img := get("al-al1")
+			Expect(img.Transient).To(BeTrue())
+			Expect(readAll(img)).To(Equal(gifBytes))
+
+			waitForConversions()
+			img = get("al-al1")
+			Expect(img.Transient).To(BeFalse())
+			Expect(readAll(img)).To(Equal([]byte("animated-webp")))
+			Expect(fake.calls.Load()).To(Equal(int32(1)))
+		})
+
+		It("runs one conversion at a time and does not queue the others", func() {
+			fake.release = make(chan struct{})
+			release := sync.OnceFunc(func() { close(fake.release) })
+			DeferCleanup(release)
+			seedFoundStore("al", "al2", createAnimatedGIF(4))
+
+			readAll(get("al-al1"))
+			Eventually(fake.calls.Load).Should(Equal(int32(1)))
+			img := get("al-al2")
+			Expect(img.Transient).To(BeTrue())
+			readAll(img)
+			Consistently(fake.calls.Load, "100ms").Should(Equal(int32(1)))
+
+			release()
+			waitForConversions()
+			img = get("al-al2")
+			Expect(img.Transient).To(BeTrue())
+			readAll(img)
+		})
+
+		It("caches the static fallback when the conversion fails, so it is not retried", func() {
+			fake.err = errors.New("pipe:0: Input/output error")
+			readAll(get("al-al1"))
+			waitForConversions()
+
+			img := get("al-al1")
+			Expect(img.Transient).To(BeFalse())
+			Expect(readAll(img)).To(Equal(gifBytes))
+			Expect(fake.calls.Load()).To(Equal(int32(1)))
 		})
 	})
 

@@ -25,6 +25,18 @@ type Item interface {
 	Key() string
 }
 
+// Transient wraps a ReadFunc result that Get must serve but never store.
+func Transient(rc io.ReadCloser) io.ReadCloser { return transientReader{rc} }
+
+type transientReader struct{ io.ReadCloser }
+
+func unwrapTransient(r io.Reader) (io.Reader, bool) {
+	if t, ok := r.(transientReader); ok {
+		return t.ReadCloser, true
+	}
+	return r, false
+}
+
 // ReadFunc is a function that retrieves the data to be cached. It receives the Item to be cached and returns
 // an io.Reader with the data and an error.
 type ReadFunc func(ctx context.Context, item Item) (io.Reader, error)
@@ -155,7 +167,8 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &CachedStream{Reader: reader}, nil
+		reader, transient := unwrapTransient(reader)
+		return &CachedStream{Reader: reader, Transient: transient}, nil
 	}
 
 	key := arg.Key()
@@ -181,6 +194,10 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 			_ = w.Close()
 			_ = fc.invalidate(ctx, key)
 			return nil, err
+		}
+		if reader, transient := unwrapTransient(reader); transient {
+			fc.discard(ctx, key, r, w)
+			return &CachedStream{Reader: reader, Transient: true}, nil
 		}
 		go func() {
 			if err := fc.copyAndClose(ctx, key, w, reader); err != nil {
@@ -213,12 +230,27 @@ func (fc *fileCache) Get(ctx context.Context, arg Item) (*CachedStream, error) {
 	return &CachedStream{Reader: r, Cached: cached}, nil
 }
 
+// discard drops a miss entry that will never be written. Cancelling first makes the removal
+// non-blocking, so the key is free when Get returns; readers that joined meanwhile fail.
+func (fc *fileCache) discard(ctx context.Context, key string, r io.Closer, w io.WriteCloser) {
+	_ = r.Close()
+	if cw, ok := w.(interface{ CloseWithError(error) error }); ok {
+		_ = cw.CloseWithError(errTransientEntry)
+	} else {
+		_ = w.Close()
+	}
+	_ = fc.invalidate(ctx, key)
+}
+
+var errTransientEntry = errors.New("cache entry was served without being stored")
+
 // CachedStream is a wrapper around an io.ReadCloser that allows reading from a cache.
 type CachedStream struct {
 	io.Reader
 	io.Seeker
 	io.Closer
-	Cached bool
+	Cached    bool
+	Transient bool
 }
 
 func (s *CachedStream) Close() error {
