@@ -42,9 +42,12 @@ func (pd *Queue) Current() *model.MediaFile {
 	return &pd.Items[pd.Index]
 }
 
-// returns the whole queue
+// returns a copy of the whole queue, safe for the caller to use after
+// releasing any lock protecting the Queue.
 func (pd *Queue) Get() model.MediaFiles {
-	return pd.Items
+	items := make(model.MediaFiles, len(pd.Items))
+	copy(items, pd.Items)
+	return items
 }
 
 func (pd *Queue) Size() int {
