@@ -19,6 +19,7 @@ type SQLStore struct {
 	userProps   model.UserPropsRepository
 	transcoding model.TranscodingRepository
 	share       model.ShareRepository
+	player      model.PlayerRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
@@ -28,6 +29,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 	s.userProps = NewUserPropsRepository(db)
 	s.transcoding = NewTranscodingRepository(db)
 	s.share = NewShareRepository(db)
+	s.player = NewPlayerRepository(db)
 	return s
 }
 
@@ -95,8 +97,8 @@ func (s *SQLStore) Transcoding() model.TranscodingRepository {
 	return s.transcoding
 }
 
-func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
-	return NewPlayerRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Player() model.PlayerRepository {
+	return s.player
 }
 
 func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {

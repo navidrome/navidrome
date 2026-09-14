@@ -29,10 +29,10 @@ var _ = Describe("PlayerRepository", func() {
 		ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
 
 		database = GetDBXBuilder()
-		adminRepo = NewPlayerRepository(ctx, database).(*playerRepository)
+		adminRepo = NewPlayerRepository(database).(*playerRepository)
 
 		for idx := range players {
-			err := adminRepo.Put(&players[idx])
+			err := adminRepo.Put(ctx, &players[idx])
 			Expect(err).To(BeNil())
 		}
 	})
@@ -48,32 +48,32 @@ var _ = Describe("PlayerRepository", func() {
 
 	Describe("FindMatch", func() {
 		It("finds existing match", func() {
-			player, err := adminRepo.FindMatch(adminUser.ID, "NavidromeUI", "Firefox/Linux")
+			player, err := adminRepo.FindMatch(ctx, adminUser.ID, "NavidromeUI", "Firefox/Linux")
 			Expect(err).To(BeNil())
 			Expect(*player).To(Equal(adminPlayer1))
 		})
 
 		It("doesn't find bad match", func() {
-			_, err := adminRepo.FindMatch(regularUser.ID, "NavidromeUI", "Firefox/Linux")
+			_, err := adminRepo.FindMatch(ctx, regularUser.ID, "NavidromeUI", "Firefox/Linux")
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 	})
 
 	Describe("Get", func() {
 		It("Gets an existing item from user", func() {
-			player, err := adminRepo.Get(adminPlayer1.ID)
+			player, err := adminRepo.Get(ctx, adminPlayer1.ID)
 			Expect(err).To(BeNil())
 			Expect(*player).To(Equal(adminPlayer1))
 		})
 
 		It("Gets an existing item from another user", func() {
-			player, err := adminRepo.Get(regularPlayer.ID)
+			player, err := adminRepo.Get(ctx, regularPlayer.ID)
 			Expect(err).To(BeNil())
 			Expect(*player).To(Equal(regularPlayer))
 		})
 
 		It("does not get nonexistent item", func() {
-			_, err := adminRepo.Get("i don't exist")
+			_, err := adminRepo.Get(ctx, "i don't exist")
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 	})
@@ -88,7 +88,7 @@ var _ = Describe("PlayerRepository", func() {
 				repo = adminRepo
 			} else {
 				repoCtx = request.WithUser(log.NewContext(context.TODO()), regularUser)
-				repo = NewPlayerRepository(repoCtx, database).(*playerRepository)
+				repo = NewPlayerRepository(database).(*playerRepository)
 			}
 		})
 
@@ -111,7 +111,7 @@ var _ = Describe("PlayerRepository", func() {
 				Expect(err).To(BeNil())
 				Expect(count).To(Equal(baseCount - 1))
 
-				_, err = repo.Get(userPlayer.ID)
+				_, err = repo.Get(repoCtx, userPlayer.ID)
 				Expect(err).To(Equal(model.ErrNotFound))
 			})
 
@@ -122,14 +122,14 @@ var _ = Describe("PlayerRepository", func() {
 					// Admins may delete any player.
 					Expect(err).To(BeNil())
 					Expect(repo.Count(repoCtx)).To(Equal(baseCount - 1))
-					_, err = repo.Get(otherPlayer.ID)
+					_, err = repo.Get(repoCtx, otherPlayer.ID)
 					Expect(err).To(Equal(model.ErrNotFound))
 				} else {
 					// The ownership-restricted delete matches no owned row, so it reports
 					// permission-denied and leaves the other user's player untouched.
 					Expect(err).To(Equal(rest.ErrPermissionDenied))
 					Expect(repo.Count(repoCtx)).To(Equal(baseCount))
-					item, err := repo.Get(otherPlayer.ID)
+					item, err := repo.Get(repoCtx, otherPlayer.ID)
 					Expect(err).To(BeNil())
 					Expect(*item).To(Equal(otherPlayer))
 				}
@@ -194,7 +194,7 @@ var _ = Describe("PlayerRepository", func() {
 				Expect(err).To(BeNil())
 
 				clone.ID = id
-				newItem, err := repo.Get(id)
+				newItem, err := repo.Get(repoCtx, id)
 
 				if clone.UserId == "" {
 					Expect(count).To(Equal(baseCount))
@@ -231,7 +231,7 @@ var _ = Describe("PlayerRepository", func() {
 				}
 
 				clone.MaxBitRate = player.MaxBitRate
-				newItem, err := repo.Get(clone.ID)
+				newItem, err := repo.Get(repoCtx, clone.ID)
 
 				if player.UserId == "" {
 					Expect(err).To(Equal(model.ErrNotFound))
@@ -257,7 +257,7 @@ var _ = Describe("PlayerRepository", func() {
 
 		BeforeEach(func() {
 			regularCtx = request.WithUser(log.NewContext(context.TODO()), regularUser)
-			regularRepo = NewPlayerRepository(regularCtx, database).(*playerRepository)
+			regularRepo = NewPlayerRepository(database).(*playerRepository)
 		})
 
 		It("does not let a regular user hijack another user's player by spoofing userId in the body", func() {
@@ -276,7 +276,7 @@ var _ = Describe("PlayerRepository", func() {
 			Expect(err).To(Equal(rest.ErrPermissionDenied))
 
 			// The victim's player must remain untouched.
-			stored, err := adminRepo.Get(adminPlayer1.ID)
+			stored, err := adminRepo.Get(ctx, adminPlayer1.ID)
 			Expect(err).To(BeNil())
 			Expect(*stored).To(Equal(adminPlayer1))
 		})
@@ -292,7 +292,7 @@ var _ = Describe("PlayerRepository", func() {
 			Expect(err).To(BeNil())
 
 			// Ownership must not have changed.
-			stored, err := adminRepo.Get(regularPlayer.ID)
+			stored, err := adminRepo.Get(ctx, regularPlayer.ID)
 			Expect(err).To(BeNil())
 			Expect(stored.UserId).To(Equal(regularUser.ID))
 		})
@@ -307,7 +307,7 @@ var _ = Describe("PlayerRepository", func() {
 			Expect(err).To(BeNil())
 
 			// The name change applies, but ownership must not have moved.
-			stored, err := adminRepo.Get(regularPlayer.ID)
+			stored, err := adminRepo.Get(ctx, regularPlayer.ID)
 			Expect(err).To(BeNil())
 			Expect(stored.Name).To(Equal("admin-renamed"))
 			Expect(stored.UserId).To(Equal(regularUser.ID))
@@ -320,7 +320,7 @@ var _ = Describe("PlayerRepository", func() {
 			err := regularRepo.Update(regularCtx, regularPlayer.ID, update, "name")
 			Expect(err).To(BeNil())
 
-			stored, err := adminRepo.Get(regularPlayer.ID)
+			stored, err := adminRepo.Get(ctx, regularPlayer.ID)
 			Expect(err).To(BeNil())
 			Expect(stored.Name).To(Equal("renamed-by-owner"))
 			Expect(stored.UserId).To(Equal(regularUser.ID))
