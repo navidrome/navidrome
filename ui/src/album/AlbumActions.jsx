@@ -5,6 +5,8 @@ import {
   Button,
   sanitizeListRestProps,
   TopToolbar,
+  useDataProvider,
+  useNotify,
   useRecordContext,
   useTranslate,
 } from 'react-admin'
@@ -19,7 +21,6 @@ import {
   playNext,
   addTracks,
   playTracks,
-  shuffleTracks,
   openAddToPlaylist,
   openDownloadMenu,
   DOWNLOAD_MENU_ALBUM,
@@ -52,30 +53,76 @@ const AlbumActions = ({
 }) => {
   const dispatch = useDispatch()
   const translate = useTranslate()
+  const dataProvider = useDataProvider()
+  const notify = useNotify()
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   const isNotSmall = useMediaQuery((theme) => theme.breakpoints.up('sm'))
 
+  const getAllSongsAndDispatch = React.useCallback(
+    (action) => {
+      if (ids && ids.length === record.songCount) {
+        return dispatch(action(data, ids))
+      }
+      dataProvider
+        .getList('song', {
+          pagination: { page: 1, perPage: 0 },
+          sort: { field: 'album', order: 'ASC' },
+          filter: { album_id: record.id },
+        })
+        .then((res) => {
+          const allData = res.data.reduce(
+            (acc, curr) => ({ ...acc, [curr.id]: curr }),
+            {},
+          )
+          const allIds = res.data.map((s) => s.id)
+          dispatch(action(allData, allIds))
+        })
+        .catch(() => {
+          notify('ra.page.error', 'warning')
+        })
+    },
+    [dataProvider, dispatch, record, data, ids, notify],
+  )
+
   const handlePlay = React.useCallback(() => {
-    dispatch(playTracks(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(playTracks)
+  }, [getAllSongsAndDispatch])
 
   const handlePlayNext = React.useCallback(() => {
-    dispatch(playNext(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(playNext)
+  }, [getAllSongsAndDispatch])
 
   const handlePlayLater = React.useCallback(() => {
-    dispatch(addTracks(data, ids))
-  }, [dispatch, data, ids])
+    getAllSongsAndDispatch(addTracks)
+  }, [getAllSongsAndDispatch])
 
   const handleShuffle = React.useCallback(() => {
-    dispatch(shuffleTracks(data, ids))
-  }, [dispatch, data, ids])
+    const filter = { album_id: record.id }
+    if (config.skipLowRatingInShuffle) {
+      filter.not_disliked = true
+    }
+    dataProvider
+      .getList('song', {
+        pagination: { page: 1, perPage: 500 },
+        sort: { field: 'random', order: 'ASC' },
+        filter,
+      })
+      .then((res) => {
+        const allData = res.data.reduce(
+          (acc, curr) => ({ ...acc, [curr.id]: curr }),
+          {},
+        )
+        dispatch(playTracks(allData))
+      })
+      .catch(() => {
+        notify('ra.page.error', 'warning')
+      })
+  }, [dataProvider, dispatch, record, notify])
 
   const handleAddToPlaylist = React.useCallback(() => {
-    const selectedIds = ids.filter((id) => !data[id].missing)
-    dispatch(openAddToPlaylist({ selectedIds }))
-  }, [dispatch, data, ids])
+    dispatch(openAddToPlaylist({ albumIds: [record.id] }))
+  }, [dataProvider, dispatch, record, data, ids, notify])
 
   const handleShare = React.useCallback(() => {
     dispatch(openShareMenu([record.id], 'album', record.name))
