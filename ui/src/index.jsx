@@ -3,8 +3,10 @@ window.global = window // fix "global is not defined" error in react-image-light
 import ReactDOM from 'react-dom'
 import './index.css'
 import App from './App'
+import { applySimpleMobileDomHint } from './layout/simpleMobile'
 import { registerSW } from 'virtual:pwa-register'
 
+applySimpleMobileDomHint()
 registerSW({ immediate: true })
 
 ReactDOM.render(<App />, document.getElementById('root'))

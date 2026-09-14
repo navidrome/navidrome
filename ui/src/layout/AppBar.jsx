@@ -6,7 +6,12 @@ import {
   usePermissions,
   getResources,
 } from 'react-admin'
-import { MdInfo, MdPerson, MdSupervisorAccount } from 'react-icons/md'
+import {
+  MdInfo,
+  MdPerson,
+  MdPhoneIphone,
+  MdSupervisorAccount,
+} from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import {
   makeStyles,
@@ -24,6 +29,7 @@ import NowPlayingPanel from './NowPlayingPanel'
 import UserMenu from './UserMenu'
 import config from '../config'
 import { ShuffleAllButton } from '../common'
+import { isMobileDevice, setSimpleMobilePref } from './simpleMobile'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -67,6 +73,32 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
 })
 
 AboutMenuItem.displayName = 'AboutMenuItem'
+
+const SimpleModeMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
+  const classes = useStyles(rest)
+  const translate = useTranslate()
+  if (!isMobileDevice()) {
+    return null
+  }
+  const label = translate('menu.simpleMode')
+  return (
+    <MenuItem
+      ref={ref}
+      className={classes.root}
+      onClick={() => {
+        onClick && onClick()
+        setSimpleMobilePref(true)
+      }}
+    >
+      <ListItemIcon className={classes.icon}>
+        <MdPhoneIphone title={label} size={24} />
+      </ListItemIcon>
+      {label}
+    </MenuItem>
+  )
+})
+
+SimpleModeMenuItem.displayName = 'SimpleModeMenuItem'
 
 const settingsResources = (resource) =>
   resource.name !== 'user' &&
@@ -139,6 +171,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
           .filter(settingsResources)
           .map((r) => renderSettingsMenuItemLink(r))}
         <Divider />
+        <SimpleModeMenuItem />
         <AboutMenuItem />
       </UserMenu>
       <Dialogs />

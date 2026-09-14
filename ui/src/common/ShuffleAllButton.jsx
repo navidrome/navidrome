@@ -1,17 +1,29 @@
 import React, { useState } from 'react'
 import { Button, useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
-import { IconButton, Tooltip } from '@material-ui/core'
+import { Button as MuiButton, IconButton, Tooltip } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import { shuffleTracks } from '../actions'
 import PropTypes from 'prop-types'
 
-export const ShuffleAllButton = ({ filters, variant }) => {
+const useHeroStyles = makeStyles((theme) => ({
+  root: {
+    minHeight: 72,
+    width: '100%',
+    fontSize: '1.25rem',
+    textTransform: 'none',
+    borderRadius: theme.spacing(1),
+  },
+}))
+
+export const ShuffleAllButton = ({ filters, variant, className }) => {
   const translate = useTranslate()
   const dataProvider = useDataProvider()
   const dispatch = useDispatch()
   const notify = useNotify()
   const [loading, setLoading] = useState(false)
+  const hero = useHeroStyles()
   const listLabel = translate('resources.song.actions.shuffleAll')
   const iconLabel = translate('menu.playRandom', { _: listLabel })
   const queryFilters = { ...filters, missing: false }
@@ -40,6 +52,22 @@ export const ShuffleAllButton = ({ filters, variant }) => {
       .finally(() => {
         setLoading(false)
       })
+  }
+
+  if (variant === 'hero') {
+    return (
+      <MuiButton
+        onClick={handleOnClick}
+        color="primary"
+        variant="contained"
+        startIcon={<ShuffleIcon />}
+        className={`${hero.root}${className ? ` ${className}` : ''}`}
+        disabled={loading}
+        data-testid="shuffle-all-hero"
+      >
+        {iconLabel}
+      </MuiButton>
+    )
   }
 
   if (variant === 'icon') {
@@ -72,7 +100,8 @@ export const ShuffleAllButton = ({ filters, variant }) => {
 
 ShuffleAllButton.propTypes = {
   filters: PropTypes.object,
-  variant: PropTypes.oneOf(['default', 'icon']),
+  variant: PropTypes.oneOf(['default', 'icon', 'hero']),
+  className: PropTypes.string,
 }
 ShuffleAllButton.defaultProps = {
   filters: {},

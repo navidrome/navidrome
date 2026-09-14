@@ -6,6 +6,8 @@ import { HotKeys } from 'react-hotkeys'
 import Menu from './Menu'
 import AppBar from './AppBar'
 import Notification from './Notification'
+import SimpleMobileLayout from './SimpleMobileLayout'
+import { applySimpleMobileDomHint, shouldUseSimpleMobile } from './simpleMobile'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import { useSearchRefocus } from '../common'
 
@@ -22,6 +24,13 @@ const Layout = (props) => {
 
   const keyHandlers = {
     TOGGLE_MENU: useCallback(() => dispatch(toggleSidebar()), [dispatch]),
+  }
+
+  // Sync first-paint hint. Do not use useMediaQuery here — it is async and
+  // would flash the full React-Admin chrome on mobile.
+  applySimpleMobileDomHint()
+  if (shouldUseSimpleMobile()) {
+    return <SimpleMobileLayout />
   }
 
   return (

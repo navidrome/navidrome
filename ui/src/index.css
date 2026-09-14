@@ -15,3 +15,8 @@ code {
 .rc-slider {
   z-index: 78;
 }
+
+/* First-paint hint from index.html / simpleMobile.js; Layout skips RA chrome when set. */
+html[data-simple-mobile='1'] body {
+  margin: 0;
+}

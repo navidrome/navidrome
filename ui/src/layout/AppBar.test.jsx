@@ -79,4 +79,9 @@ describe('<AppBar />', () => {
     expect(screen.getByTestId('title-shuffle-button')).toBeInTheDocument()
     expect(screen.getByLabelText('menu.playRandom')).toBeInTheDocument()
   })
+
+  it('hides the simple-mode menu item on desktop', () => {
+    renderAppBar()
+    expect(screen.queryByText('menu.simpleMode')).toBeNull()
+  })
 })

@@ -77,6 +77,7 @@ func CreateToken(u *model.User) (string, error) {
 }
 
 func TouchToken(token jwt.Token) (string, error) {
+	// Expiry is SessionTimeout from now. No extra cap — ND_SESSIONTIMEOUT=8760h is a 1-year JWT.
 	claims := ClaimsFromToken(token).
 		WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
 	_, newToken, err := TokenAuth.Encode(claims.ToMap())

@@ -637,6 +637,8 @@
     "playlists": "Playlists",
     "sharedPlaylists": "Shared Playlists",
     "playRandom": "Play random songs",
+    "openFullVersion": "Open full version",
+    "simpleMode": "Simple mode",
     "about": "About"
   },
   "player": {

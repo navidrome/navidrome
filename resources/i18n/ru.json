@@ -623,6 +623,9 @@
     "about": "О программе",
     "playlists": "Плейлисты",
     "sharedPlaylists": "Общие плейлисты",
+    "playRandom": "Случайные треки",
+    "openFullVersion": "Открыть полную версию",
+    "simpleMode": "Простой режим",
     "librarySelector": {
       "allLibraries": "Все библиотеки (%{count})",
       "multipleLibraries": "%{selected} из %{total} библиотек |||| %{selected} из %{total} библиотек |||| %{selected} из %{total} библиотек",

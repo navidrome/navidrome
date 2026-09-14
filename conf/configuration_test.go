@@ -5,8 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
@@ -275,6 +277,20 @@ var _ = Describe("Configuration", func() {
 			conf.Load(true)
 
 			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+		})
+	})
+
+	Describe("SessionTimeout", func() {
+		It("defaults to 48h", func() {
+			conf.Load(true)
+			Expect(conf.Server.SessionTimeout).To(Equal(consts.DefaultSessionTimeout))
+			Expect(conf.Server.SessionTimeout).To(Equal(48 * time.Hour))
+		})
+
+		It("accepts 8760h (1 year) so ND_SESSIONTIMEOUT env overrides work", func() {
+			viper.Set("sessiontimeout", "8760h")
+			conf.Load(true)
+			Expect(conf.Server.SessionTimeout).To(Equal(8760 * time.Hour))
 		})
 	})
 

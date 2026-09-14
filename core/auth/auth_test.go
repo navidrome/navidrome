@@ -105,5 +105,19 @@ var _ = Describe("Auth", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(decodedClaims.ExpiresAt.Sub(yesterday)).To(BeNumerically(">=", oneDay))
 		})
+
+		It("honors a 1-year SessionTimeout without capping", func() {
+			previous := conf.Server.SessionTimeout
+			conf.Server.SessionTimeout = 8760 * time.Hour
+			DeferCleanup(func() { conf.Server.SessionTimeout = previous })
+
+			u := &model.User{ID: "1", UserName: "yearlong"}
+			tokenStr, err := auth.CreateToken(u)
+			Expect(err).NotTo(HaveOccurred())
+
+			claims, err := auth.Validate(tokenStr)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(claims.ExpiresAt).To(BeTemporally("~", time.Now().UTC().Add(8760*time.Hour), time.Minute))
+		})
 	})
 })

@@ -72,4 +72,10 @@ describe('<ShuffleAllButton />', () => {
     const button = screen.getByTestId('title-shuffle-button')
     expect(button).toHaveAttribute('aria-label', 'menu.playRandom')
   })
+
+  it('renders a large hero button labeled playRandom', () => {
+    renderButton({ variant: 'hero' })
+    const button = screen.getByTestId('shuffle-all-hero')
+    expect(button).toHaveTextContent('menu.playRandom')
+  })
 })
