@@ -1,5 +1,5 @@
 import subsonic from '../subsonic/index.js'
-import { playTracks } from '../actions/index.js'
+import { playTracks, shuffleTracks } from '../actions/index.js'
 import { processSongsForPlayback } from '../common/playbackActions.js'
 
 export const playTopSongs = async (dispatch, notify, artistName) => {
@@ -35,5 +35,5 @@ export const playShuffle = async (dataProvider, dispatch, id) => {
     data[s.id] = s
     ids.push(s.id)
   })
-  dispatch(playTracks(data, ids))
+  dispatch(shuffleTracks(data, ids))
 }

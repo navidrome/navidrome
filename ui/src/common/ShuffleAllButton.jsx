@@ -2,7 +2,7 @@ import React from 'react'
 import { Button, useDataProvider, useNotify, useTranslate } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
-import { playTracks } from '../actions'
+import { shuffleTracks } from '../actions'
 import PropTypes from 'prop-types'
 
 export const ShuffleAllButton = ({ filters }) => {
@@ -24,7 +24,7 @@ export const ShuffleAllButton = ({ filters }) => {
         res.data.forEach((song) => {
           data[song.id] = song
         })
-        dispatch(playTracks(data))
+        dispatch(shuffleTracks(data))
       })
       .catch(() => {
         notify('ra.page.error', 'warning')

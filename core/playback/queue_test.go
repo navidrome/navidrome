@@ -18,6 +18,12 @@ var _ = Describe("Queues", func() {
 			Expect(queue.Items).To(BeEmpty())
 			Expect(queue.Index).To(Equal(-1))
 		})
+
+		It("can shuffle without changing state", func() {
+			queue.Shuffle()
+			Expect(queue.Items).To(BeEmpty())
+			Expect(queue.Index).To(Equal(-1))
+		})
 	})
 
 	Describe("Operate on small queue", func() {
@@ -98,9 +104,32 @@ var _ = Describe("Queues", func() {
 			Expect(mf.Path).To(Equal("/music1/californication.mp3"))
 		})
 
-		It("could shuffle the data correctly", func() {
+		It("spaces different artists after shuffle", func() {
 			queue.Shuffle()
+			for i := 1; i < len(queue.Items); i++ {
+				Expect(queue.Items[i].Artist).ToNot(Equal(queue.Items[i-1].Artist))
+			}
+		})
+
+		It("could shuffle the data correctly", func() {
+			current := queue.Current()
+			Expect(current).ToNot(BeNil())
+			currentID := current.ID
+			originalIDs := make([]string, 0, queue.Size())
+			for _, mf := range queue.Items {
+				originalIDs = append(originalIDs, mf.ID)
+			}
+
+			queue.Shuffle()
+
 			Expect(queue.Size()).To(Equal(5))
+			Expect(queue.Current()).ToNot(BeNil())
+			Expect(queue.Current().ID).To(Equal(currentID))
+			shuffledIDs := make([]string, 0, queue.Size())
+			for _, mf := range queue.Items {
+				shuffledIDs = append(shuffledIDs, mf.ID)
+			}
+			Expect(shuffledIDs).To(ConsistOf(originalIDs))
 		})
 
 		It("could remove entries correctly", func() {

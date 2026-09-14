@@ -1,3 +1,5 @@
+import { balancedShuffle, songKeys } from '../utils/shuffle'
+
 export const PLAYER_ADD_TRACKS = 'PLAYER_ADD_TRACKS'
 export const PLAYER_PLAY_NEXT = 'PLAYER_PLAY_NEXT'
 export const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
@@ -47,14 +49,11 @@ export const playNext = (data, ids) => {
 
 export const shuffle = (data) => {
   const ids = Object.keys(data)
-  for (let i = ids.length - 1; i > 0; i--) {
-    let j = Math.floor(Math.random() * (i + 1))
-    ;[ids[i], ids[j]] = [ids[j], ids[i]]
-  }
+  const shuffledIds = balancedShuffle(ids, (id) => songKeys(data[id]))
   const shuffled = {}
   // The "_" is to force the object key to be a string, so it keeps the order when adding to object
   // or else the keys will always be in the same (numerically) order
-  ids.forEach((id) => (shuffled['_' + id] = data[id]))
+  shuffledIds.forEach((id) => (shuffled['_' + id] = data[id]))
   return shuffled
 }
 

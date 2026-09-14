@@ -1,14 +1,6 @@
 import subsonic from '../subsonic/index.js'
 import { playTracks } from '../actions/index.js'
-
-const shuffleArray = (array) => {
-  const shuffled = [...array]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled
-}
+import { balancedShuffle, songKeys } from '../utils/shuffle.js'
 
 const mapReplayGain = (song) => {
   const { replayGain: rg } = song
@@ -52,7 +44,7 @@ export const playSimilar = async (dispatch, notify, id, options = {}) => {
 
   // Randomize similar songs if requested
   if (shuffle) {
-    songs = shuffleArray(songs)
+    songs = balancedShuffle(songs, songKeys)
   }
 
   // If no similar songs found and no seed, show warning

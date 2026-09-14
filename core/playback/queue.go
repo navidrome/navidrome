@@ -2,11 +2,11 @@ package playback
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/shuffle"
 )
 
 type Queue struct {
@@ -93,6 +93,14 @@ func (pd *Queue) Remove(idx int) {
 	}
 }
 
+func mediaFileKeys(mf model.MediaFile) shuffle.Keys {
+	artist := mf.Artist
+	if artist == "" {
+		artist = mf.AlbumArtist
+	}
+	return shuffle.Keys{Artist: artist, Album: mf.Album}
+}
+
 func (pd *Queue) Shuffle() {
 	current := pd.Current()
 	backupID := ""
@@ -100,7 +108,7 @@ func (pd *Queue) Shuffle() {
 		backupID = current.ID
 	}
 
-	rand.Shuffle(len(pd.Items), func(i, j int) { pd.Items[i], pd.Items[j] = pd.Items[j], pd.Items[i] })
+	shuffle.Slice(pd.Items, mediaFileKeys)
 
 	var err error
 	pd.Index, err = pd.getMediaFileIndexByID(backupID)
