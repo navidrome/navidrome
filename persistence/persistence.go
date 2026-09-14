@@ -13,15 +13,17 @@ import (
 )
 
 type SQLStore struct {
-	db       dbx.Builder
-	library  model.LibraryRepository
-	property model.PropertyRepository
+	db        dbx.Builder
+	library   model.LibraryRepository
+	property  model.PropertyRepository
+	userProps model.UserPropsRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
 	s := &SQLStore{db: db}
 	s.library = NewLibraryRepository(db)
 	s.property = NewPropertyRepository(db)
+	s.userProps = NewUserPropsRepository(db)
 	return s
 }
 
@@ -73,8 +75,8 @@ func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
 	return NewRadioRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) UserProps(ctx context.Context) model.UserPropsRepository {
-	return NewUserPropsRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) UserProps() model.UserPropsRepository {
+	return s.userProps
 }
 
 func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
