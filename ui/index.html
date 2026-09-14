@@ -32,21 +32,10 @@
       window.process = { env: {} };
     </script>
     <script>
-      // First-paint simple-mobile hint (same rules as ui/src/layout/simpleMobile.js).
-      // localStorage nd.simpleMobile=1|0 wins; else phone UA or (max-width:600px AND pointer:coarse).
+      // Opt-in only: first-paint hint when localStorage nd.simpleMobile === '1'.
       (function () {
         try {
-          var stored = localStorage.getItem('nd.simpleMobile');
-          var on = stored === '1';
-          if (stored !== '0' && stored !== '1') {
-            var ua = navigator.userAgent || '';
-            var phone = /Android.+Mobile|iPhone|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-            var mq = window.matchMedia;
-            var narrow = mq && mq('(max-width: 600px)').matches;
-            var coarse = mq && mq('(pointer: coarse)').matches;
-            on = phone || (narrow && coarse);
-          }
-          if (on) {
+          if (localStorage.getItem('nd.simpleMobile') === '1') {
             document.documentElement.setAttribute('data-simple-mobile', '1');
           }
         } catch (e) {}

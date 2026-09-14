@@ -26,7 +26,6 @@ const Layout = (props) => {
     TOGGLE_MENU: useCallback(() => dispatch(toggleSidebar()), [dispatch]),
   }
 
-  // Sync first-paint hint. Prefer full UI over a blank screen if detection throws.
   let simple = false
   try {
     applySimpleMobileDomHint()
@@ -37,8 +36,17 @@ const Layout = (props) => {
       document.documentElement.removeAttribute('data-simple-mobile')
     }
   }
+
+  // Opt-in simple shell. Always keep RA children mounted (Player lives there).
   if (simple) {
-    return <SimpleMobileLayout />
+    return (
+      <>
+        <SimpleMobileLayout />
+        <div style={{ display: 'none' }} aria-hidden="true">
+          {props.children}
+        </div>
+      </>
+    )
   }
 
   return (

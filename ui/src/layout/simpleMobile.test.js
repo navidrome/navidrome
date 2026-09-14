@@ -62,12 +62,12 @@ describe('simpleMobile detection', () => {
     expect(isMobileDevice()).toBe(false)
   })
 
-  it('defaults to simple mode on mobile when the pref is unset', () => {
+  it('defaults to full UI when the pref is unset even on mobile', () => {
     Object.defineProperty(navigator, 'userAgent', {
       value: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile',
       configurable: true,
     })
-    expect(shouldUseSimpleMobile()).toBe(true)
+    expect(shouldUseSimpleMobile()).toBe(false)
   })
 
   it('stays in full UI when the pref is 0 even on a phone', () => {
@@ -109,11 +109,8 @@ describe('simpleMobile detection', () => {
     })
   })
 
-  it('keeps the player as a bottom bar in simple mode', () => {
-    Object.defineProperty(navigator, 'userAgent', {
-      value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
-      configurable: true,
-    })
+  it('keeps the player as a bottom bar when simple mode is opted in', () => {
+    localStorage.setItem(SIMPLE_MOBILE_KEY, '1')
     expect(simpleMobilePlayerProps()).toEqual({
       responsive: false,
       toggleMode: false,

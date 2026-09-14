@@ -1,11 +1,6 @@
-// Simple mobile mode: a two-button shell instead of the full React-Admin chrome.
-//
-// Detection (evaluated synchronously so the first React paint can skip the full UI):
-//   1. localStorage `nd.simpleMobile` is "1" or "0" and wins if set
-//   2. otherwise treat as mobile when the UA looks like a phone OR the viewport is
-//      ≤600px (Navidrome/MUI `xs`) AND the pointer is coarse (touch)
-// Default on an unset key: simple mode for those mobile devices, full UI elsewhere.
-// On any storage/UA error: fall back to FULL UI (never blank the app).
+// Simple mobile mode: opt-in only.
+// Default is FULL UI. Enable with localStorage nd.simpleMobile=1 or the Simple mode menu.
+// Never blank the app: any error falls back to full UI.
 
 export const SIMPLE_MOBILE_KEY = 'nd.simpleMobile'
 
@@ -48,16 +43,10 @@ export const isMobileDevice = () => {
   }
 }
 
+// Opt-in only. Auto-enabling on phone UA caused a blank screen after login for some users.
 export const shouldUseSimpleMobile = () => {
   try {
-    const stored = readStoredPref()
-    if (stored === '0') {
-      return false
-    }
-    if (stored === '1') {
-      return true
-    }
-    return isMobileDevice()
+    return readStoredPref() === '1'
   } catch (e) {
     return false
   }
@@ -67,7 +56,7 @@ export const setSimpleMobilePref = (on) => {
   try {
     localStorage.setItem(SIMPLE_MOBILE_KEY, on ? '1' : '0')
   } catch (e) {
-    // ignore quota / private mode
+    // ignore
   }
   window.location.reload()
 }
@@ -87,8 +76,6 @@ export const applySimpleMobileDomHint = () => {
   }
 }
 
-// jinke's mobile `mode: 'full'` is a fullscreen overlay. Use the desktop bottom
-// bar instead so the two simple-mode buttons stay tappable.
 export const simpleMobilePlayerProps = () => {
   if (!shouldUseSimpleMobile()) {
     return {}
