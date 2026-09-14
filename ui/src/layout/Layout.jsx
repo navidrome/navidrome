@@ -17,7 +17,7 @@ const useStyles = makeStyles({
 
 const Layout = (props) => {
   const theme = useCurrentTheme()
-  const queue = useSelector((state) => state.player?.queue)
+  const queue = useSelector((state) => state.player?.queue) || []
   const classes = useStyles({ addPadding: queue.length > 0 })
   const dispatch = useDispatch()
   useSearchRefocus()
@@ -26,10 +26,18 @@ const Layout = (props) => {
     TOGGLE_MENU: useCallback(() => dispatch(toggleSidebar()), [dispatch]),
   }
 
-  // Sync first-paint hint. Do not use useMediaQuery here — it is async and
-  // would flash the full React-Admin chrome on mobile.
-  applySimpleMobileDomHint()
-  if (shouldUseSimpleMobile()) {
+  // Sync first-paint hint. Prefer full UI over a blank screen if detection throws.
+  let simple = false
+  try {
+    applySimpleMobileDomHint()
+    simple = shouldUseSimpleMobile()
+  } catch (e) {
+    simple = false
+    if (typeof document !== 'undefined') {
+      document.documentElement.removeAttribute('data-simple-mobile')
+    }
+  }
+  if (simple) {
     return <SimpleMobileLayout />
   }
 

@@ -5,6 +5,7 @@
 //   2. otherwise treat as mobile when the UA looks like a phone OR the viewport is
 //      ≤600px (Navidrome/MUI `xs`) AND the pointer is coarse (touch)
 // Default on an unset key: simple mode for those mobile devices, full UI elsewhere.
+// On any storage/UA error: fall back to FULL UI (never blank the app).
 
 export const SIMPLE_MOBILE_KEY = 'nd.simpleMobile'
 
@@ -15,35 +16,59 @@ const match = (query) => {
   if (typeof window === 'undefined' || !window.matchMedia) {
     return false
   }
-  return window.matchMedia(query).matches
+  try {
+    return window.matchMedia(query).matches
+  } catch (e) {
+    return false
+  }
+}
+
+const readStoredPref = () => {
+  try {
+    if (typeof localStorage === 'undefined') {
+      return null
+    }
+    return localStorage.getItem(SIMPLE_MOBILE_KEY)
+  } catch (e) {
+    return null
+  }
 }
 
 export const isMobileDevice = () => {
-  if (typeof navigator === 'undefined') {
+  try {
+    if (typeof navigator === 'undefined') {
+      return false
+    }
+    const phoneUA = PHONE_UA.test(navigator.userAgent || '')
+    const narrow = match('(max-width: 600px)')
+    const coarse = match('(pointer: coarse)')
+    return phoneUA || (narrow && coarse)
+  } catch (e) {
     return false
   }
-  const phoneUA = PHONE_UA.test(navigator.userAgent)
-  const narrow = match('(max-width: 600px)')
-  const coarse = match('(pointer: coarse)')
-  return phoneUA || (narrow && coarse)
 }
 
 export const shouldUseSimpleMobile = () => {
-  if (typeof localStorage === 'undefined') {
+  try {
+    const stored = readStoredPref()
+    if (stored === '0') {
+      return false
+    }
+    if (stored === '1') {
+      return true
+    }
+    return isMobileDevice()
+  } catch (e) {
     return false
   }
-  const stored = localStorage.getItem(SIMPLE_MOBILE_KEY)
-  if (stored === '0') {
-    return false
-  }
-  if (stored === '1') {
-    return true
-  }
-  return isMobileDevice()
 }
 
 export const setSimpleMobilePref = (on) => {
-  localStorage.setItem(SIMPLE_MOBILE_KEY, on ? '1' : '0')
+  try {
+    localStorage.setItem(SIMPLE_MOBILE_KEY, on ? '1' : '0')
+  } catch (e) {
+    // ignore quota / private mode
+  }
   window.location.reload()
 }
 
@@ -51,9 +76,13 @@ export const applySimpleMobileDomHint = () => {
   if (typeof document === 'undefined') {
     return
   }
-  if (shouldUseSimpleMobile()) {
-    document.documentElement.setAttribute('data-simple-mobile', '1')
-  } else {
+  try {
+    if (shouldUseSimpleMobile()) {
+      document.documentElement.setAttribute('data-simple-mobile', '1')
+    } else {
+      document.documentElement.removeAttribute('data-simple-mobile')
+    }
+  } catch (e) {
     document.documentElement.removeAttribute('data-simple-mobile')
   }
 }
