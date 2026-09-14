@@ -102,7 +102,7 @@ var _ = Describe("phasePlaylists", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(called).To(BeFalse())
-			v, _ := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			v, _ := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(v).To(Equal("1"))
 		})
 
@@ -113,7 +113,7 @@ var _ = Describe("phasePlaylists", func() {
 
 			Expect(err).To(MatchError(ContainSubstring("finding admin user")))
 			// Must NOT have set the pending flag on a real error.
-			_, getErr := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			_, getErr := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(getErr).To(HaveOccurred())
 		})
 
@@ -127,7 +127,7 @@ var _ = Describe("phasePlaylists", func() {
 		})
 
 		It("imports all playlist folders when the pending flag is set", func() {
-			Expect(propRepo.Put(consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			folderRepo.SetAllData(map[*model.Folder]error{
 				{Path: "/path/to/folder1"}: nil,
 				{Path: "/path/to/folder2"}: nil,
@@ -146,22 +146,22 @@ var _ = Describe("phasePlaylists", func() {
 
 	Describe("finalize", func() {
 		It("clears the pending flag after a successful pending import", func() {
-			Expect(propRepo.Put(consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			phase.pendingImport = true
 
 			Expect(phase.finalize(nil)).To(Succeed())
 
-			_, err := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			_, err := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(err).To(HaveOccurred()) // deleted
 		})
 
 		It("keeps the pending flag when the import failed", func() {
-			Expect(propRepo.Put(consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			phase.pendingImport = true
 
 			Expect(phase.finalize(errors.New("boom"))).To(HaveOccurred())
 
-			v, _ := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			v, _ := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(v).To(Equal("1"))
 		})
 	})

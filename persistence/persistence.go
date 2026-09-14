@@ -13,13 +13,15 @@ import (
 )
 
 type SQLStore struct {
-	db      dbx.Builder
-	library model.LibraryRepository
+	db       dbx.Builder
+	library  model.LibraryRepository
+	property model.PropertyRepository
 }
 
 func newSQLStore(db dbx.Builder) *SQLStore {
 	s := &SQLStore{db: db}
 	s.library = NewLibraryRepository(db)
+	s.property = NewPropertyRepository(db)
 	return s
 }
 
@@ -63,8 +65,8 @@ func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
 	return NewPlaylistRepository(ctx, s.getDBXBuilder())
 }
 
-func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
-	return NewPropertyRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Property() model.PropertyRepository {
+	return s.property
 }
 
 func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
@@ -141,9 +143,9 @@ func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope .
 	return s.WithTx(func(tx model.DataStore) error {
 		// Workaround to force the transaction to be upgraded to immediate mode to avoid deadlocks
 		// See https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/
-		_ = tx.Property(ctx).Put("tmp_lock_flag", "")
+		_ = tx.Property().Put(ctx, "tmp_lock_flag", "")
 		defer func() {
-			_ = tx.Property(ctx).Delete("tmp_lock_flag")
+			_ = tx.Property().Delete(ctx, "tmp_lock_flag")
 		}()
 
 		return block(tx)

@@ -123,7 +123,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 			// Verify files in the pop folder were NOT scanned
 			Expect(paths).ToNot(ContainElement("pop/track6.mp3"))
-			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("1"))
+			Expect(ds.Property().Get(ctx, consts.DBAnalyzePendingKey)).To(Equal("1"))
 		})
 	})
 
@@ -135,12 +135,12 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			})
 			_, err := s.ScanAll(ctx, true)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("0"))
+			Expect(ds.Property().Get(ctx, consts.DBAnalyzePendingKey)).To(Equal("0"))
 
 			fsys.Add("rock/track2.mp3", rock(track(2, "Rock Track 2")), time.Now().Add(time.Second))
 			_, err = s.ScanAll(ctx, false)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("0"))
+			Expect(ds.Property().Get(ctx, consts.DBAnalyzePendingKey)).To(Equal("0"))
 		})
 
 		It("does not treat an interrupted scan in an untargeted library as a full scan", func() {
@@ -149,12 +149,12 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			Expect(ds.Library().ScanBegin(ctx, lib.ID, true)).To(Succeed())
 
 			lastAnalyze := "2026-07-09T12:00:00Z"
-			Expect(ds.Property(ctx).Put(consts.LastDBAnalyzeAtKey, lastAnalyze)).To(Succeed())
-			Expect(ds.Property(ctx).Put(consts.DBAnalyzePendingKey, "0")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastDBAnalyzeAtKey, lastAnalyze)).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.DBAnalyzePendingKey, "0")).To(Succeed())
 
 			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{{LibraryID: otherLib.ID, FolderPath: "."}})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.Property(ctx).Get(consts.LastDBAnalyzeAtKey)).To(Equal(lastAnalyze))
+			Expect(ds.Property().Get(ctx, consts.LastDBAnalyzeAtKey)).To(Equal(lastAnalyze))
 		})
 	})
 

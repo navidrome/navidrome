@@ -95,15 +95,15 @@ var _ = Describe("Housekeeping", func() {
 		It("records the current fingerprint when none was ever stored", func() {
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
+			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
 		})
 
 		It("leaves a stale fingerprint stored, so the warning survives a restart", func() {
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
+			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
 		})
 	})
 

@@ -205,7 +205,7 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 	}
 
 	rep.current, rep.inputs = artwork.ConfigFingerprint(), artwork.FingerprintInputs()
-	if rep.stored, err = ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, ""); err != nil {
+	if rep.stored, err = ds.Property().DefaultGet(ctx, consts.ArtConfFingerprintPropertyKey, ""); err != nil {
 		return rep, fmt.Errorf("reading the stored artwork fingerprint: %w", err)
 	}
 	return rep, nil

@@ -570,7 +570,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzLib.TotalSongs).To(Equal(2))
 
 				// Error should be empty (warnings don't count as scan errors)
-				lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "unset")
+				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "unset")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastError).To(BeEmpty())
 			})
@@ -599,7 +599,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzLib.TotalAlbums).To(Equal(1))
 
 				// Error should be empty (warnings don't count as scan errors)
-				lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "unset")
+				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "unset")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastError).To(BeEmpty())
 			})
@@ -632,7 +632,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, false)).To(MatchError(ContainSubstring("database connection failed")))
 
 				// Error should be recorded in scanner properties
-				lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
+				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastError).To(ContainSubstring("database connection failed"))
 			})
@@ -649,12 +649,12 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(runScanner(ctx, false)).To(HaveOccurred())
 
 				// Check that error is recorded in scanner properties
-				lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
+				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastError).To(ContainSubstring("critical database error"))
 
 				// Scan type should still be recorded
-				scanType, _ := ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
+				scanType, _ := ds.Property().DefaultGet(ctx, consts.LastScanTypeKey, "")
 				Expect(scanType).To(BeElementOf("incremental", "quick"))
 			})
 		})
@@ -709,7 +709,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				_ = rockFiles
 
 				// Error should be empty (warnings don't count as scan errors)
-				lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "unset")
+				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "unset")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastError).To(BeEmpty())
 			})
@@ -731,15 +731,15 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzFiles).To(HaveLen(1))
 
 				// Scanner properties should reflect successful completion despite warnings
-				scanType, _ := ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
+				scanType, _ := ds.Property().DefaultGet(ctx, consts.LastScanTypeKey, "")
 				Expect(scanType).To(Equal("full"))
 
 				// Start time should be recorded
-				startTimeStr, _ := ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+				startTimeStr, _ := ds.Property().DefaultGet(ctx, consts.LastScanStartTimeKey, "")
 				Expect(startTimeStr).ToNot(BeEmpty())
 
 				// Error should be empty (warnings don't count as scan errors)
-				lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "unset")
+				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "unset")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastError).To(BeEmpty())
 			})
@@ -803,7 +803,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 				Expect(jazzLib.TotalSongs).To(Equal(1))
 
 				// Error should be empty (successful recovery)
-				lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "unset")
+				lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "unset")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(lastError).To(BeEmpty())
 			})
@@ -822,15 +822,15 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			// Validate properties
-			scanType, _ := ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
+			scanType, _ := ds.Property().DefaultGet(ctx, consts.LastScanTypeKey, "")
 			Expect(scanType).To(Equal("full"))
 
-			startTimeStr, _ := ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+			startTimeStr, _ := ds.Property().DefaultGet(ctx, consts.LastScanStartTimeKey, "")
 			Expect(startTimeStr).ToNot(BeEmpty())
 			_, err := time.Parse(time.RFC3339, startTimeStr)
 			Expect(err).ToNot(HaveOccurred())
 
-			lastError, err := ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "unset")
+			lastError, err := ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "unset")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(lastError).To(BeEmpty())
 		})

@@ -13,17 +13,16 @@ type propertyRepository struct {
 	sqlRepository
 }
 
-func NewPropertyRepository(ctx context.Context, db dbx.Builder) model.PropertyRepository {
+func NewPropertyRepository(db dbx.Builder) model.PropertyRepository {
 	r := &propertyRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "property"
 	return r
 }
 
-func (r propertyRepository) Put(id string, value string) error {
+func (r propertyRepository) Put(ctx context.Context, id string, value string) error {
 	update := Update(r.tableName).Set("value", value).Where(Eq{"id": id})
-	count, err := r.executeSQL(r.ctx, update)
+	count, err := r.executeSQL(ctx, update)
 	if err != nil {
 		return err
 	}
@@ -31,24 +30,24 @@ func (r propertyRepository) Put(id string, value string) error {
 		return nil
 	}
 	insert := Insert(r.tableName).Columns("id", "value").Values(id, value)
-	_, err = r.executeSQL(r.ctx, insert)
+	_, err = r.executeSQL(ctx, insert)
 	return err
 }
 
-func (r propertyRepository) Get(id string) (string, error) {
+func (r propertyRepository) Get(ctx context.Context, id string) (string, error) {
 	sel := Select("value").From(r.tableName).Where(Eq{"id": id})
 	resp := struct {
 		Value string
 	}{}
-	err := r.queryOne(r.ctx, sel, &resp)
+	err := r.queryOne(ctx, sel, &resp)
 	if err != nil {
 		return "", err
 	}
 	return resp.Value, nil
 }
 
-func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, error) {
-	value, err := r.Get(id)
+func (r propertyRepository) DefaultGet(ctx context.Context, id string, defaultValue string) (string, error) {
+	value, err := r.Get(ctx, id)
 	if errors.Is(err, model.ErrNotFound) {
 		return defaultValue, nil
 	}
@@ -58,6 +57,6 @@ func (r propertyRepository) DefaultGet(id string, defaultValue string) (string, 
 	return value, nil
 }
 
-func (r propertyRepository) Delete(id string) error {
-	return r.delete(r.ctx, Eq{"id": id})
+func (r propertyRepository) Delete(ctx context.Context, id string) error {
+	return r.delete(ctx, Eq{"id": id})
 }

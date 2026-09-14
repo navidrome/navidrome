@@ -131,8 +131,8 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	if state.isSelectiveScan() {
 		scanType += "-selective"
 	}
-	_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, scanType)
-	_ = s.ds.Property(ctx).Put(consts.LastScanStartTimeKey, startTime.Format(time.RFC3339))
+	_ = s.ds.Property().Put(ctx, consts.LastScanTypeKey, scanType)
+	_ = s.ds.Property().Put(ctx, consts.LastScanStartTimeKey, startTime.Format(time.RFC3339))
 
 	// if there was a full scan in progress, force a full scan
 	if !state.fullScan {
@@ -141,9 +141,9 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 				log.Info(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
 				state.fullScan = true
 				if state.isSelectiveScan() {
-					_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full-selective")
+					_ = s.ds.Property().Put(ctx, consts.LastScanTypeKey, "full-selective")
 				} else {
-					_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full")
+					_ = s.ds.Property().Put(ctx, consts.LastScanTypeKey, "full")
 				}
 				break
 			}
@@ -190,12 +190,12 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
-		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, err.Error())
+		_ = s.ds.Property().Put(ctx, consts.LastScanErrorKey, err.Error())
 		state.sendError(err)
 		return
 	}
 
-	_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, "")
+	_ = s.ds.Property().Put(ctx, consts.LastScanErrorKey, "")
 
 	if state.changesDetected.Load() {
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
@@ -336,12 +336,12 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
 					return fmt.Errorf("updating last scan completed: %w", err)
 				}
-				err = tx.Property(ctx).Put(consts.PIDTrackKey, conf.Server.PID.Track)
+				err = tx.Property().Put(ctx, consts.PIDTrackKey, conf.Server.PID.Track)
 				if err != nil {
 					log.Error(ctx, "Scanner: Error updating track PID conf", err)
 					return fmt.Errorf("updating track PID conf: %w", err)
 				}
-				err = tx.Property(ctx).Put(consts.PIDAlbumKey, conf.Server.PID.Album)
+				err = tx.Property().Put(ctx, consts.PIDAlbumKey, conf.Server.PID.Album)
 				if err != nil {
 					log.Error(ctx, "Scanner: Error updating album PID conf", err)
 					return fmt.Errorf("updating album PID conf: %w", err)

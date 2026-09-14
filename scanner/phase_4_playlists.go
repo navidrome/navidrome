@@ -101,7 +101,7 @@ func (p *phasePlaylists) produce(put func(entry *model.Folder)) error {
 // import the playlists, and returns an error if the flag can't be persisted (so
 // the scan does not complete as successful without recording the recovery).
 func (p *phasePlaylists) deferImport() error {
-	if err := p.ds.Property(p.ctx).Put(consts.PlaylistsImportPendingFlagKey, "1"); err != nil {
+	if err := p.ds.Property().Put(p.ctx, consts.PlaylistsImportPendingFlagKey, "1"); err != nil {
 		return fmt.Errorf("recording pending playlist import: %w", err)
 	}
 	log.Warn(p.ctx, "Playlists will not be imported, as there are no admin users yet. "+
@@ -110,7 +110,7 @@ func (p *phasePlaylists) deferImport() error {
 }
 
 func (p *phasePlaylists) importPending() (bool, error) {
-	v, err := p.ds.Property(p.ctx).DefaultGet(consts.PlaylistsImportPendingFlagKey, "0")
+	v, err := p.ds.Property().DefaultGet(p.ctx, consts.PlaylistsImportPendingFlagKey, "0")
 	return v == "1", err
 }
 
@@ -164,7 +164,7 @@ func (p *phasePlaylists) finalize(err error) error {
 		p.scanState.changesDetected.Store(true)
 	}
 	if p.pendingImport && err == nil {
-		if derr := p.ds.Property(p.ctx).Delete(consts.PlaylistsImportPendingFlagKey); derr != nil {
+		if derr := p.ds.Property().Delete(p.ctx, consts.PlaylistsImportPendingFlagKey); derr != nil {
 			log.Warn(p.ctx, "Scanner: Could not clear pending playlist-import flag", derr)
 		}
 	}
