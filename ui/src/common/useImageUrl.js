@@ -34,8 +34,8 @@ const evictIfNeeded = () => {
 /**
  * Loads an image via fetch() with AbortController so that in-flight requests
  * are canceled on unmount (e.g., during pagination). Uses a module-level cache
- * so remounting returns the cached blob URL instantly. A new version re-fetches a cached url whose
- * image changed behind it, painting the old blob until the new one arrives.
+ * so remounting returns the cached blob URL instantly. A no-store response is a stand-in: it is
+ * re-fetched on remount and on a new version, and painted until its replacement arrives.
  */
 export const useImageUrl = (url, version) => {
   const cached = url ? cache.get(url) : null
@@ -69,7 +69,7 @@ export const useImageUrl = (url, version) => {
     // Re-check: another component's effect may have populated the cache
     // between this component's render and effect execution.
     const entry = cache.get(url)
-    if (entry && entry.version === version) {
+    if (entry && !entry.transient) {
       entry.refCount++
       setImgUrl(entry.blobUrl)
       setLoading(false)
@@ -78,11 +78,11 @@ export const useImageUrl = (url, version) => {
         entry.refCount--
       }
     }
-    const stale = entry?.blobUrl ? entry : null
+    const standIn = !!entry
 
     const controller = new AbortController()
     let queued = true
-    if (!stale) {
+    if (!standIn) {
       setImgUrl(null)
       setLoading(true)
       setError(false)
@@ -96,9 +96,12 @@ export const useImageUrl = (url, version) => {
           if (!res.ok) {
             throw new Error(`HTTP ${res.status}`)
           }
-          return res.blob()
+          const transient = !!res.headers
+            ?.get('Cache-Control')
+            ?.includes('no-store')
+          return res.blob().then((blob) => ({ blob, transient }))
         })
-        .then((blob) => {
+        .then(({ blob, transient }) => {
           activeFetches--
           processQueue()
           // Guard against late resolution after abort
@@ -109,7 +112,7 @@ export const useImageUrl = (url, version) => {
           // Handle concurrent fetches: if another component already cached
           // this URL, use its entry and discard our blob.
           const existing = cache.get(url)
-          if (existing && existing.blobUrl && existing.version === version) {
+          if (existing?.blobUrl && !existing.transient) {
             existing.refCount++
             URL.revokeObjectURL(objectUrl)
             setImgUrl(existing.blobUrl)
@@ -117,7 +120,7 @@ export const useImageUrl = (url, version) => {
             if (existing?.blobUrl && existing.refCount <= 0) {
               URL.revokeObjectURL(existing.blobUrl)
             }
-            cache.set(url, { blobUrl: objectUrl, refCount: 1, version })
+            cache.set(url, { blobUrl: objectUrl, refCount: 1, transient })
             evictIfNeeded()
             setImgUrl(objectUrl)
           }
@@ -129,11 +132,11 @@ export const useImageUrl = (url, version) => {
           if (err.name === 'AbortError') {
             return // Expected on unmount or URL change
           }
-          if (stale) {
-            return // The old image is still valid; keep showing it
+          if (standIn) {
+            return // Keep painting the stand-in
           }
           // Cache the error so repeated mounts don't re-fetch broken URLs
-          cache.set(url, { blobUrl: null, error: true, refCount: 0, version })
+          cache.set(url, { blobUrl: null, error: true, refCount: 0 })
           setError(true)
           setLoading(false)
         })

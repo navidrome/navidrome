@@ -235,89 +235,97 @@ describe('useImageUrl', () => {
     expect(result2.current.fromCache).toBe(false)
   })
 
-  describe('version', () => {
-    const ok = (data) =>
+  describe('no-store stand-ins', () => {
+    const image = (data, cacheControl = 'public, no-cache') =>
       Promise.resolve({
         ok: true,
+        headers: {
+          get: (name) => (name === 'Cache-Control' ? cacheControl : null),
+        },
         blob: () => Promise.resolve(new Blob([data])),
       })
+    const standIn = (data) => image(data, 'no-store')
     const renderVersioned = (version) =>
       renderHook(
         ({ version }) => useImageUrl('http://example.com/img.jpg', version),
         { initialProps: { version } },
       )
+    const settle = () =>
+      act(async () => {
+        await flushPromises()
+      })
 
-    it('re-fetches a cached url when its version changes, showing the old image meanwhile', async () => {
-      let resolveNew
+    it('re-fetches a stand-in when its version changes, painting it meanwhile', async () => {
+      let resolveFinal
       global.URL.createObjectURL = vi
         .fn()
-        .mockReturnValueOnce('blob:old')
-        .mockReturnValueOnce('blob:new')
+        .mockReturnValueOnce('blob:stand-in')
+        .mockReturnValueOnce('blob:final')
       global.fetch = vi
         .fn()
-        .mockImplementationOnce(() => ok('old'))
+        .mockImplementationOnce(() => standIn('still'))
         .mockImplementationOnce(
-          () => new Promise((resolve) => (resolveNew = resolve)),
+          () => new Promise((resolve) => (resolveFinal = resolve)),
         )
 
       const { result, rerender } = renderVersioned(undefined)
-      await act(async () => {
-        await flushPromises()
-      })
-      expect(result.current.imgUrl).toBe('blob:old')
+      await settle()
+      expect(result.current.imgUrl).toBe('blob:stand-in')
 
       rerender({ version: 1 })
-      await act(async () => {
-        await flushPromises()
-      })
+      await settle()
       expect(global.fetch).toHaveBeenCalledTimes(2)
-      expect(result.current.imgUrl).toBe('blob:old')
+      expect(result.current.imgUrl).toBe('blob:stand-in')
       expect(result.current.loading).toBe(false)
 
       await act(async () => {
-        resolveNew({ ok: true, blob: () => Promise.resolve(new Blob(['new'])) })
+        resolveFinal(image('animated'))
         await flushPromises()
       })
-      expect(result.current.imgUrl).toBe('blob:new')
+      expect(result.current.imgUrl).toBe('blob:final')
     })
 
-    it('keeps the old image when the re-fetch fails', async () => {
+    it('keeps the stand-in when the re-fetch fails', async () => {
       global.fetch = vi
         .fn()
-        .mockImplementationOnce(() => ok('old'))
+        .mockImplementationOnce(() => standIn('still'))
         .mockImplementationOnce(() =>
           Promise.resolve({ ok: false, status: 500 }),
         )
 
       const { result, rerender } = renderVersioned(undefined)
-      await act(async () => {
-        await flushPromises()
-      })
+      await settle()
       rerender({ version: 1 })
-      await act(async () => {
-        await flushPromises()
-      })
+      await settle()
 
       expect(global.fetch).toHaveBeenCalledTimes(2)
       expect(result.current.imgUrl).toBe('blob:mock-url')
       expect(result.current.error).toBe(false)
     })
 
-    it('does not re-fetch on remount with the version it already has', async () => {
-      global.fetch = vi.fn(() => ok('data'))
+    // Plays, stars and ratings also name items, and must not re-download final images.
+    it('does not re-fetch a final image when its version changes', async () => {
+      global.fetch = vi.fn(() => image('final'))
 
-      const { unmount } = renderVersioned(1)
-      await act(async () => {
-        await flushPromises()
-      })
-      unmount()
-      const { result } = renderVersioned(1)
-      await act(async () => {
-        await flushPromises()
-      })
+      const { rerender } = renderVersioned(undefined)
+      await settle()
+      rerender({ version: 1 })
+      await settle()
 
       expect(global.fetch).toHaveBeenCalledTimes(1)
-      expect(result.current.fromCache).toBe(true)
+    })
+
+    it('re-fetches a stand-in on remount', async () => {
+      global.fetch = vi.fn(() => standIn('still'))
+
+      const { unmount } = renderVersioned(undefined)
+      await settle()
+      unmount()
+      const { result } = renderVersioned(undefined)
+      await settle()
+
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+      expect(result.current.imgUrl).toBe('blob:mock-url')
     })
   })
 })
