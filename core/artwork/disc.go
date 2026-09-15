@@ -244,7 +244,7 @@ func (d *discArtworkReader) fromExternalFile(ctx context.Context, pattern string
 				log.Warn(ctx, "Artwork: Error matching disc art file to pattern", "pattern", pattern, "file", file)
 				continue
 			}
-			if !match {
+			if !match || !model.IsImageFile(name) {
 				continue
 			}
 

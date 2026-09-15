@@ -309,7 +309,7 @@ func resolveImageURL(value string, folder *model.Folder, matcher *libraryMatcher
 	}
 
 	lib, ok := matcher.findLibrary(localPath)
-	// A playlist without a folder was uploaded by a user, who may only use covers from their own libraries.
+	// A playlist without a folder (API upload, or CLI import from outside all libraries) may only use the owner's libraries.
 	if !ok || (folder == nil && !owner.HasLibraryAccess(lib.ID)) {
 		return ""
 	}

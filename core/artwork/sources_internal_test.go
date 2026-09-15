@@ -48,6 +48,18 @@ var _ = Describe("fromExternalFile", func() {
 		Expect(b).To(Equal([]byte("a")))
 		Expect(path).To(Equal("a/cover.jpg"))
 	})
+
+	It("skips a matching file that is not an image", func() {
+		fsys := fstest.MapFS{
+			"a/cover.ini": &fstest.MapFile{Data: []byte("password=secret")},
+			"a/cover.jpg": &fstest.MapFile{Data: []byte("a")},
+		}
+		f := fromExternalFile(GinkgoT().Context(), fsys, []string{"a/cover.ini", "a/cover.jpg"}, "cover.*")
+		r, path, err := f()
+		Expect(err).ToNot(HaveOccurred())
+		defer r.Close()
+		Expect(path).To(Equal("a/cover.jpg"))
+	})
 })
 
 var _ = Describe("fromTag", func() {

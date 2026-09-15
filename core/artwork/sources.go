@@ -37,7 +37,7 @@ func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern 
 				log.Warn(ctx, "Artwork: Error matching cover art file to pattern", "pattern", pattern, "file", file)
 				continue
 			}
-			if !match {
+			if !match || !model.IsImageFile(name) {
 				continue
 			}
 			f, err := libFS.Open(file)
