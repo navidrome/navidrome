@@ -46,7 +46,11 @@ func premiereDate(date string, year int) *string {
 		}
 		d = fmt.Sprintf("%04d-01-01", year)
 	}
-	s := d + "T00:00:00.0000000Z"
+	parsed, err := time.Parse(time.DateOnly, d)
+	if err != nil {
+		return nil
+	}
+	s := jellyfinDate(&parsed)
 	return &s
 }
 
@@ -60,17 +64,6 @@ func jellyfinDate(t *time.Time) string {
 		return ""
 	}
 	return t.UTC().Format(jellyfinDateLayout)
-}
-
-// emptyRequestedLists initialises the list fields Jellyfin emits for every item once Fields asks for
-// them, so an item with none of that data sends [] rather than nothing at all.
-func emptyRequestedLists(item *BaseItemDto, fields Fields) {
-	if fields.Has("Genres") {
-		item.Genres, item.GenreItems = []string{}, []NameGuidPair{}
-	}
-	if fields.Has("Tags") {
-		item.Tags = []string{}
-	}
 }
 
 // channelLayout maps a channel count to the label Jellyfin clients expect on a MediaStream.
@@ -141,8 +134,7 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
 		d.Rating = &r
 	}
-	if a.PlayDate != nil {
-		s := a.PlayDate.UTC().Format(jellyfinDateLayout)
+	if s := jellyfinDate(a.PlayDate); s != "" {
 		d.LastPlayedDate = &s
 	}
 	return d
@@ -209,7 +201,6 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if mf.DiscNumber > 0 {
 		item.ParentIndexNumber = new(mf.DiscNumber)
 	}
-	emptyRequestedLists(&item, fields)
 	if len(mf.Genres) > 0 {
 		for _, g := range mf.Genres {
 			item.Genres = append(item.Genres, g.Name)
@@ -267,7 +258,6 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		Type:                    "MusicAlbum",
 		IsFolder:                true,
 		LocationType:            "FileSystem",
-		Artists:                 []string{},
 		ParentId:                EncodeID(al.AlbumArtistID),
 		AlbumArtist:             al.AlbumArtist,
 		Album:                   al.Name,
@@ -283,8 +273,9 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
 	}
+	item.Artists = []string{}
 	if al.AlbumArtist != "" {
-		item.Artists = []string{al.AlbumArtist}
+		item.Artists = append(item.Artists, al.AlbumArtist)
 	}
 	if al.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: EncodeID(al.AlbumArtistID)}}
@@ -294,7 +285,6 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		item.ProductionYear = new(al.MaxYear)
 	}
 	item.PremiereDate = premiereDate(al.Date, al.MaxYear)
-	emptyRequestedLists(&item, fields)
 	if len(al.Genres) > 0 {
 		for _, g := range al.Genres {
 			item.Genres = append(item.Genres, g.Name)
@@ -339,7 +329,6 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 	if fields.Has("SortName") {
 		item.SortName = sortName(ar.SortArtistName, ar.OrderArtistName, ar.Name)
 	}
-	emptyRequestedLists(&item, fields)
 	return item
 }
 

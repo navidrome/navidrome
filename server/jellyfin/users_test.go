@@ -19,9 +19,14 @@ import (
 
 var _ = Describe("Users", func() {
 	var api *Router
+	// The repo holds the full rows; the user carries the id/name-only copy its projection returns.
 	authedWithLibraries := func(r *http.Request, libs model.Libraries) *http.Request {
 		api.ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(libs)
-		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
+		stripped := make(model.Libraries, len(libs))
+		for i, lib := range libs {
+			stripped[i] = model.Library{ID: lib.ID, Name: lib.Name}
+		}
+		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped})
 		return r.WithContext(ctx)
 	}
 	BeforeEach(func() { api = &Router{ds: &tests.MockDataStore{}} })

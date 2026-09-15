@@ -111,17 +111,16 @@ var _ = Describe("Browsing", func() {
 			Expect(q.Items).To(BeEmpty())
 		})
 
-		It("defaults to albums when IncludeItemTypes is unrecognized", func() {
-			q := queryResult(get("/Items?IncludeItemTypes=Nonsense&Recursive=true"))
-			Expect(q.TotalRecordCount).To(Equal(5))
-		})
-
-		// Manet syncs collections this way and fails its whole sync if albums come back instead.
-		It("returns no items for a Jellyfin type Navidrome has none of", func() {
-			q := queryResult(get("/Items?IncludeItemTypes=Boxset&Recursive=true"))
-			Expect(q.TotalRecordCount).To(Equal(0))
-			Expect(q.Items).To(BeEmpty())
-		})
+		// Manet syncs collections as Boxset, and took albums coming back instead as a sync failure.
+		DescribeTable("returns nothing for a type it does not serve",
+			func(itemType string) {
+				q := queryResult(get("/Items?IncludeItemTypes=" + itemType + "&Recursive=true"))
+				Expect(q.TotalRecordCount).To(Equal(0))
+				Expect(q.Items).To(BeEmpty())
+			},
+			Entry("a Jellyfin kind Navidrome has none of", "Boxset"),
+			Entry("a name Jellyfin does not know either", "Nonsense"),
+		)
 
 		// A strict client (Manet) fails its whole sync on the first item missing any of these.
 		DescribeTable("sends the keys Jellyfin puts on every item",
@@ -138,9 +137,9 @@ var _ = Describe("Browsing", func() {
 					}
 				}
 			},
-			Entry("songs", "Audio", "Genres,Tags", "ImageTags", "MediaType", "HasLyrics", "Genres", "GenreItems", "Tags"),
-			Entry("albums", "MusicAlbum", "Genres", "ImageTags", "MediaType", "Genres", "GenreItems"),
-			Entry("artists", "MusicArtist", "Genres", "ImageTags", "MediaType", "Genres", "GenreItems"),
+			Entry("songs", "Audio", "Genres,Tags", "ImageTags", "HasLyrics", "Genres", "GenreItems", "Tags"),
+			Entry("albums", "MusicAlbum", "Genres", "ImageTags", "Genres", "GenreItems"),
+			Entry("artists", "MusicArtist", "Genres", "ImageTags", "Genres", "GenreItems"),
 		)
 
 		It("sends MediaType Unknown on items without one, as Jellyfin always emits it", func() {

@@ -19,13 +19,13 @@ func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
 	// looks empty, so the rows are re-read in full here.
 	libs, err := api.ds.Library(ctx).GetAll()
 	if err != nil {
-		log.Warn(ctx, "Jellyfin API: could not load libraries, falling back to the user's", err)
-		libs = u.Libraries
+		api.internalError(w, r, err)
+		return
 	}
-	views := make([]dto.BaseItemDto, 0, len(u.Libraries))
+	views := make([]dto.BaseItemDto, 0, len(libs))
 	for _, lib := range libs {
 		if u.HasLibraryAccess(lib.ID) {
-			views = append(views, libraryView(lib))
+			views = append(views, dto.LibraryToBaseItem(lib))
 		}
 	}
 	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})

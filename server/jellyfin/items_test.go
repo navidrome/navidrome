@@ -981,6 +981,7 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id (from /UserViews) as a CollectionFolder item", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
+			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(libs)
 			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
@@ -1134,9 +1135,9 @@ var _ = Describe("Items", func() {
 			Expect(parseTypes("BoxSet,Movie")).To(BeEmpty())
 		})
 
-		It("defaults names Jellyfin does not know to albums", func() {
-			Expect(parseTypes("Nonsense")).To(Equal([]string{"MusicAlbum"}))
+		It("defaults to albums only when IncludeItemTypes is absent", func() {
 			Expect(parseTypes("")).To(Equal([]string{"MusicAlbum"}))
+			Expect(parseTypes("Nonsense")).To(BeEmpty())
 		})
 	})
 
