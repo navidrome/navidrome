@@ -302,11 +302,7 @@ func (m *MockMediaFileRepo) Count(...rest.QueryOptions) (int64, error) {
 }
 
 func (m *MockMediaFileRepo) Read(id string) (any, error) {
-	mf, err := m.Get(id)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, rest.ErrNotFound
-	}
-	return mf, err
+	return m.Get(id)
 }
 
 func (m *MockMediaFileRepo) ReadAll(...rest.QueryOptions) (any, error) {

@@ -192,6 +192,7 @@ var _ = Describe("writePlaylistError", func() {
 		},
 		Entry("not found -> 404", model.ErrNotFound, http.StatusNotFound),
 		Entry("not authorized -> 403", model.ErrNotAuthorized, http.StatusForbidden),
+		Entry("rest permission denied -> 403", rest.ErrPermissionDenied, http.StatusForbidden),
 		Entry("not editable -> 409", model.ErrPlaylistNotEditable, http.StatusConflict),
 		Entry("unrecognized -> default", model.ErrValidation, http.StatusBadRequest),
 	)
