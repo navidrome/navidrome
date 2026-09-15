@@ -49,11 +49,11 @@ func (api *Router) serverID(ctx context.Context) string {
 		api.serverIDVal = newServerID()
 		return api.serverIDVal
 	}
-	id, err := api.ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+	id, err := api.ds.Property().Get(ctx, consts.JellyfinServerIDKey)
 	switch {
 	case errors.Is(err, model.ErrNotFound):
 		id = newServerID()
-		if err := api.ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
+		if err := api.ds.Property().Put(ctx, consts.JellyfinServerIDKey, id); err != nil {
 			log.Error(ctx, "Jellyfin API: could not persist server id", err)
 			return id
 		}

@@ -491,17 +491,17 @@ var _ = Describe("explain/reprocess source round trip", func() {
 
 	It("names the absent state as reprocess --source accepts it", func() {
 		ds := &tests.MockDataStore{}
-		art := ds.Artwork(ctx).(*tests.MockArtworkRepo)
-		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: model.KindArtistArtwork.Prefix(),
+		art := ds.Artwork().(*tests.MockArtworkRepo)
+		Expect(art.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: model.KindArtistArtwork.Prefix(),
 			ItemID: "ar-1", ImageType: model.ImageTypePrimary})).To(Succeed())
 
 		shown := storedSource(formatExplain(explainReport{kind: model.KindArtistArtwork, id: "ar-1",
 			stored: &model.ItemArtwork{AttemptedAt: time.Now()}}))
 
-		q := ds.ArtworkQueue(ctx)
-		Expect(validateSources(q, repositorySources([]string{shown}))).To(Succeed(),
+		q := ds.ArtworkQueue()
+		Expect(validateSources(ctx, q, repositorySources([]string{shown}))).To(Succeed(),
 			"explain's spelling of a source must be pasteable into --source")
-		Expect(validateSources(q, repositorySources([]string{"(" + shown + ")"}))).ToNot(Succeed(),
+		Expect(validateSources(ctx, q, repositorySources([]string{"(" + shown + ")"}))).ToNot(Succeed(),
 			"a parenthesised name would be rejected, so explain must not print one")
 	})
 })
@@ -573,7 +573,7 @@ var _ = Describe("reprocessArtwork", func() {
 	decline := func(io.Writer, int64, int64) bool { return false }
 
 	put := func(kind model.Kind, id, source string) {
-		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: kind.Prefix(), ItemID: id,
+		Expect(art.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: kind.Prefix(), ItemID: id,
 			ImageType: model.ImageTypePrimary, Hash: "h" + id, Source: source})).To(Succeed())
 	}
 
@@ -584,8 +584,8 @@ var _ = Describe("reprocessArtwork", func() {
 		conf.Server.EnableM3UExternalAlbumArt = false
 		imageAgents = artwork.ImageAgentCount{Artist: 1, Album: 1}
 		ds = &tests.MockDataStore{}
-		art = ds.Artwork(ctx).(*tests.MockArtworkRepo)
-		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
+		art = ds.Artwork().(*tests.MockArtworkRepo)
+		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
 		out.Reset()
 		put(model.KindArtistArtwork, "ar-1", "external:deezer")
 		put(model.KindArtistArtwork, "ar-2", "")
@@ -601,19 +601,19 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(out.String()).To(ContainSubstring("album"))
 		Expect(out.String()).To(ContainSubstring("TOTAL"))
 		Expect(out.String()).To(ContainSubstring("Dry run"))
-		Expect(queue.Count()).To(BeZero())
+		Expect(queue.Count(ctx)).To(BeZero())
 	})
 
 	It("queues nothing when the operator declines", func() {
 		Expect(reprocessArtwork(ctx, ds, kinds, nil, imageAgents, false, decline, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Aborted"))
-		Expect(queue.Count()).To(BeZero())
+		Expect(queue.Count(ctx)).To(BeZero())
 	})
 
 	DescribeTable("records the applied config only for a run that leaves nothing on the old one",
 		func(selected []model.Kind, sources []string, dryRun, applied bool) {
-			Expect(ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
 			Expect(reprocessArtwork(ctx, ds, selected, sources, imageAgents, dryRun, accept, &out)).To(Succeed())
 
@@ -621,7 +621,7 @@ var _ = Describe("reprocessArtwork", func() {
 			if applied {
 				want = artwork.ConfigFingerprint()
 			}
-			Expect(ds.Property(ctx).Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(want))
+			Expect(ds.Property().Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal(want))
 		},
 		Entry("every kind, unfiltered", artwork.ReprocessKinds, nil, false, true),
 		Entry("every kind, but nothing matched", artwork.ReprocessKinds, []string{}, false, true),
@@ -633,14 +633,14 @@ var _ = Describe("reprocessArtwork", func() {
 	It("queues the matching items at recheck priority, leaving their artwork state alone", func() {
 		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, accept, &out)).To(Succeed())
 
-		Expect(queue.Count()).To(Equal(int64(2)))
-		queued, err := queue.Get(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+		Expect(queue.Count(ctx)).To(Equal(int64(2)))
+		queued, err := queue.Get(ctx, model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued.Priority).To(Equal(model.ArtworkPriorityRecheck))
-		_, err = queue.Get(model.KindAlbumArtwork, "al-2", model.ImageTypePrimary)
+		_, err = queue.Get(ctx, model.KindAlbumArtwork, "al-2", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "a non-matching source must not be queued")
 
-		stored, err := art.GetItemArtwork(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+		stored, err := art.GetItemArtwork(ctx, model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(stored.Hash).To(Equal("hal-1"), "bulk reprocessing must not blank the current artwork")
 	})
@@ -648,20 +648,20 @@ var _ = Describe("reprocessArtwork", func() {
 	It("targets the absent state", func() {
 		Expect(reprocessArtwork(ctx, ds, kinds, []string{""}, imageAgents, false, accept, &out)).To(Succeed())
 
-		Expect(queue.Count()).To(Equal(int64(1)))
-		_, err := queue.Get(model.KindArtistArtwork, "ar-2", model.ImageTypePrimary)
+		Expect(queue.Count(ctx)).To(Equal(int64(1)))
+		_, err := queue.Get(ctx, model.KindArtistArtwork, "ar-2", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("reports matched and queued separately when part of the set is already queued", func() {
-		Expect(queue.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-1",
+		Expect(queue.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-1",
 			ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump})).To(Succeed())
 
 		Expect(reprocessArtwork(ctx, ds, kinds, []string{"external:deezer"}, imageAgents, false, accept, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Queued 1 of 2 matched items"))
 		Expect(out.String()).To(ContainSubstring("Already queued, left unchanged: 1"))
-		queued, err := queue.Get(model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
+		queued, err := queue.Get(ctx, model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued.Priority).To(Equal(model.ArtworkPriorityBump),
 			"an already-queued row keeps its priority and backoff")
@@ -675,7 +675,7 @@ var _ = Describe("reprocessArtwork", func() {
 			}, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Nothing"))
-		Expect(queue.Count()).To(BeZero())
+		Expect(queue.Count(ctx)).To(BeZero())
 	})
 
 	It("reports an empty selection as a dry run when one was asked for", func() {
@@ -767,7 +767,7 @@ var _ = Describe("reprocessArtwork", func() {
 		Expect(err.Error()).To(ContainSubstring("external:deezer"))
 		Expect(err.Error()).To(ContainSubstring("folder"))
 		Expect(err.Error()).To(ContainSubstring("absent"), "the empty source prints under its user-facing name")
-		Expect(queue.Count()).To(BeZero())
+		Expect(queue.Count(ctx)).To(BeZero())
 	})
 
 	It("accepts the absent filter with nothing absent, still rejecting a typo", func() {
@@ -777,7 +777,7 @@ var _ = Describe("reprocessArtwork", func() {
 			imageAgents, false, accept, &out)).To(Succeed(),
 			"a reserved source must stay valid once the library has none of it")
 		Expect(out.String()).To(ContainSubstring("Nothing matches"))
-		Expect(queue.Count()).To(BeZero())
+		Expect(queue.Count(ctx)).To(BeZero())
 
 		Expect(reprocessArtwork(ctx, ds, kinds, repositorySources([]string{"absnt"}),
 			imageAgents, true, accept, &out)).ToNot(Succeed(), "a typo must still be rejected")
@@ -797,7 +797,7 @@ var _ = Describe("reprocessArtwork", func() {
 
 		Expect(out.String()).To(ContainSubstring("Nothing matches"),
 			"a well-formed filter must not be reported as a typo because of the kinds selected")
-		Expect(queue.Count()).To(BeZero())
+		Expect(queue.Count(ctx)).To(BeZero())
 	})
 })
 
@@ -816,19 +816,19 @@ var _ = Describe("collectStatus", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		art = ds.Artwork(ctx).(*tests.MockArtworkRepo)
-		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
+		art = ds.Artwork().(*tests.MockArtworkRepo)
+		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
 		put := func(kind model.Kind, id, source, hash string, attempted time.Time) {
-			Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: kind.Prefix(), ItemID: id,
+			Expect(art.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: kind.Prefix(), ItemID: id,
 				ImageType: model.ImageTypePrimary, Source: source, Hash: hash, AttemptedAt: attempted})).To(Succeed())
 		}
 		put(model.KindArtistArtwork, "ar-1", "external:deezer", "h1", time.Now())
 		put(model.KindArtistArtwork, "ar-2", "", "", time.Now().Add(-24*time.Hour))
 		// ar-3 is absent because it gave up, so the two absent artists split across the columns.
-		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "ar-3",
+		Expect(art.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "ar-3",
 			ImageType: model.ImageTypePrimary, LastFailure: "[]", AttemptedAt: time.Now()})).To(Succeed())
 		put(model.KindAlbumArtwork, "al-1", "folder", "h2", time.Now())
-		Expect(queue.Enqueue(model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-9",
+		Expect(queue.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-9",
 			ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBackfill})).To(Succeed())
 	})
 
@@ -848,7 +848,7 @@ var _ = Describe("collectStatus", func() {
 	})
 
 	It("compares the stored fingerprint against the current one", func() {
-		Expect(ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, "old-fingerprint")).To(Succeed())
+		Expect(ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, "old-fingerprint")).To(Succeed())
 
 		rep, err := collectStatus(ctx, ds)
 		Expect(err).ToNot(HaveOccurred())
@@ -860,7 +860,7 @@ var _ = Describe("collectStatus", func() {
 	It("queues nothing", func() {
 		_, err := collectStatus(ctx, ds)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(queue.Count()).To(Equal(int64(1)), "status must not enqueue anything")
+		Expect(queue.Count(ctx)).To(Equal(int64(1)), "status must not enqueue anything")
 	})
 })
 
@@ -973,21 +973,21 @@ var _ = Describe("refreshItems", func() {
 		albums := tests.CreateMockAlbumRepo()
 		albums.SetData(model.Albums{{ID: "al-1"}, {ID: "al-3"}})
 		ds = &tests.MockDataStore{MockedAlbum: albums}
-		art = ds.Artwork(ctx).(*tests.MockArtworkRepo)
-		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
+		art = ds.Artwork().(*tests.MockArtworkRepo)
+		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
 		out.Reset()
 	})
 
 	It("clears the stored state and queues each id at Bump priority", func() {
-		Expect(art.PutItemArtwork(&model.ItemArtwork{ItemKind: model.KindAlbumArtwork.Prefix(),
+		Expect(art.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: model.KindAlbumArtwork.Prefix(),
 			ItemID: "al-1", ImageType: model.ImageTypePrimary, Hash: "abc123"})).To(Succeed())
 
 		Expect(refreshItems(ctx, ds, []model.ArtworkID{
 			{Kind: model.KindAlbumArtwork, ID: "al-1"}, {Kind: model.KindAlbumArtwork, ID: "al-3"}}, &out)).To(BeZero())
 
-		_, err := art.GetItemArtwork(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+		_, err := art.GetItemArtwork(ctx, model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
-		queued, err := queue.Get(model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+		queued, err := queue.Get(ctx, model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued.Priority).To(Equal(model.ArtworkPriorityBump))
 		Expect(out.String()).To(Equal("al/al-1: queued\nal/al-3: queued\n"))
@@ -996,7 +996,7 @@ var _ = Describe("refreshItems", func() {
 	It("skips an id that does not exist instead of queuing it", func() {
 		Expect(refreshItems(ctx, ds, []model.ArtworkID{{Kind: model.KindAlbumArtwork, ID: "al-2"}}, &out)).To(Equal(1))
 
-		_, err := queue.Get(model.KindAlbumArtwork, "al-2", model.ImageTypePrimary)
+		_, err := queue.Get(ctx, model.KindAlbumArtwork, "al-2", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "a typo must not leave an orphan queue row")
 		Expect(out.String()).To(BeEmpty())
 	})
@@ -1145,9 +1145,9 @@ var _ = Describe("cancelArtwork", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		queue = ds.ArtworkQueue(ctx).(*tests.MockArtworkQueueRepo)
+		queue = ds.ArtworkQueue().(*tests.MockArtworkQueueRepo)
 		out.Reset()
-		Expect(queue.Enqueue(
+		Expect(queue.Enqueue(ctx,
 			model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-1", ImageType: model.ImageTypePrimary,
 				Priority: model.ArtworkPriorityBackfill},
 			model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar-2", ImageType: model.ImageTypePrimary,
@@ -1164,28 +1164,28 @@ var _ = Describe("cancelArtwork", func() {
 		Expect(out.String()).To(ContainSubstring("backfill"))
 		Expect(out.String()).To(ContainSubstring("TOTAL"))
 		Expect(out.String()).To(ContainSubstring("Dry run"))
-		Expect(queue.Count()).To(BeNumerically("==", 3))
+		Expect(queue.Count(ctx)).To(BeNumerically("==", 3))
 	})
 
 	It("cancels nothing when the operator declines", func() {
 		Expect(cancelArtwork(ctx, ds, nil, nil, false, decline, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Aborted"))
-		Expect(queue.Count()).To(BeNumerically("==", 3))
+		Expect(queue.Count(ctx)).To(BeNumerically("==", 3))
 	})
 
 	It("deletes the selected rows and leaves the rest queued", func() {
 		Expect(cancelArtwork(ctx, ds, nil, []int{model.ArtworkPriorityBackfill}, false, accept, &out)).To(Succeed())
 
-		Expect(queue.Count()).To(BeNumerically("==", 1))
-		_, err := queue.Get(model.KindArtistArtwork, "ar-2", model.ImageTypePrimary)
+		Expect(queue.Count(ctx)).To(BeNumerically("==", 1))
+		_, err := queue.Get(ctx, model.KindArtistArtwork, "ar-2", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred(), "a non-matching priority must stay queued")
 		Expect(out.String()).To(ContainSubstring("Cancelled 2 of 2 matched items."))
 	})
 
 	It("cancels every kind and priority when neither filter is given", func() {
 		Expect(cancelArtwork(ctx, ds, nil, nil, false, accept, &out)).To(Succeed())
-		Expect(queue.Count()).To(BeZero())
+		Expect(queue.Count(ctx)).To(BeZero())
 	})
 
 	It("stops at a selection that matches nothing instead of prompting", func() {
@@ -1196,7 +1196,7 @@ var _ = Describe("cancelArtwork", func() {
 		Expect(cancelArtwork(ctx, ds, []model.Kind{model.KindPlaylistArtwork}, nil, false, refuse, &out)).To(Succeed())
 
 		Expect(out.String()).To(ContainSubstring("Nothing matches this selection."))
-		Expect(queue.Count()).To(BeNumerically("==", 3))
+		Expect(queue.Count(ctx)).To(BeNumerically("==", 3))
 	})
 
 	It("reports a queue read failure instead of reporting nothing to cancel", func() {

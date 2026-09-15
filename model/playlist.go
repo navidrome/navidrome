@@ -1,11 +1,13 @@
 package model
 
 import (
+	"context"
 	"iter"
 	"slices"
 	"strconv"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -142,19 +144,19 @@ type Playlists []Playlist
 type PlaylistCursor iter.Seq2[Playlist, error]
 
 type PlaylistRepository interface {
-	ResourceRepository
+	rest.Repository[Playlist]
+	rest.Persistable[Playlist]
 	AnnotatedRepository
-	CountAll(options ...QueryOptions) (int64, error)
-	Exists(id string) (bool, error)
-	Put(pls *Playlist, cols ...string) error
-	Get(id string) (*Playlist, error)
-	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
-	GetAll(options ...QueryOptions) (Playlists, error)
-	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
-	FindByPath(path string) (*Playlist, error)
-	Delete(id string) error
-	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
-	GetPlaylists(mediaFileId string) (Playlists, error)
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Exists(ctx context.Context, id string) (bool, error)
+	Put(ctx context.Context, pls *Playlist, cols ...string) error
+	Get(ctx context.Context, id string) (*Playlist, error)
+	GetWithTracks(ctx context.Context, id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Playlists, error)
+	GetCursor(ctx context.Context, options ...QueryOptions) (PlaylistCursor, error)
+	FindByPath(ctx context.Context, path string) (*Playlist, error)
+	Tracks(ctx context.Context, playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
+	GetPlaylists(ctx context.Context, mediaFileId string) (Playlists, error)
 }
 
 type PlaylistTrack struct {
@@ -177,17 +179,17 @@ func (plt PlaylistTracks) MediaFiles() MediaFiles {
 type PlaylistTrackCursor iter.Seq2[PlaylistTrack, error]
 
 type PlaylistTrackRepository interface {
-	ResourceRepository
-	CountAll(options ...QueryOptions) (int64, error)
-	GetAll(options ...QueryOptions) (PlaylistTracks, error)
-	GetCursor(options ...QueryOptions) (PlaylistTrackCursor, error)
-	GetAlbumIDs(options ...QueryOptions) ([]string, error)
-	GetMediaFileIDs(options ...QueryOptions) ([]string, error)
-	Add(mediaFileIds []string) (int, error)
-	AddAlbums(albumIds []string) (int, error)
-	AddArtists(artistIds []string) (int, error)
-	AddDiscs(discs []DiscID) (int, error)
-	Delete(id ...string) error
-	DeleteAll() error
-	Reorder(pos int, newPos int) error
+	rest.Repository[PlaylistTrack]
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (PlaylistTracks, error)
+	GetCursor(ctx context.Context, options ...QueryOptions) (PlaylistTrackCursor, error)
+	GetAlbumIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
+	GetMediaFileIDs(ctx context.Context, options ...QueryOptions) ([]string, error)
+	Add(ctx context.Context, mediaFileIds []string) (int, error)
+	AddAlbums(ctx context.Context, albumIds []string) (int, error)
+	AddArtists(ctx context.Context, artistIds []string) (int, error)
+	AddDiscs(ctx context.Context, discs []DiscID) (int, error)
+	Delete(ctx context.Context, id ...string) error
+	DeleteAll(ctx context.Context) error
+	Reorder(ctx context.Context, pos int, newPos int) error
 }

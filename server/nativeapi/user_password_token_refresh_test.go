@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -45,13 +46,13 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 		auth.Init(ds)
 
 		userService := core.NewUser(ds, noopPluginUnloader{})
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), userService, nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), userService, nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 	})
 
 	It("carries the bumped epoch in the refreshed token, not the epoch the token was minted with", func() {
 		usr := model.User{UserName: "selfchanger", Name: "Self Changer", NewPassword: "old-password"}
-		Expect(ds.User(GinkgoT().Context()).Put(&usr)).To(Succeed())
+		Expect(ds.User().Put(GinkgoT().Context(), &usr)).To(Succeed())
 
 		token, err := auth.CreateToken(&usr)
 		Expect(err).ToNot(HaveOccurred())
@@ -72,7 +73,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 		claims, err := auth.Validate(refreshed)
 		Expect(err).ToNot(HaveOccurred())
 
-		reloaded, err := ds.User(GinkgoT().Context()).Get(usr.ID)
+		reloaded, err := ds.User().Get(GinkgoT().Context(), usr.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reloaded.TokenEpoch).To(Equal(1))
 		Expect(claims.Epoch).To(Equal(reloaded.TokenEpoch))

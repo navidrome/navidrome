@@ -21,9 +21,11 @@ import (
 
 var _ = Describe("UserRepository", func() {
 	var repo model.UserRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		repo = NewUserRepository(log.NewContext(GinkgoT().Context()), GetDBXBuilder())
+		ctx = log.NewContext(GinkgoT().Context())
+		repo = NewUserRepository(GetDBXBuilder())
 	})
 
 	Describe("Put/Get/FindByUsername", func() {
@@ -36,20 +38,20 @@ var _ = Describe("UserRepository", func() {
 			IsAdmin:     true,
 		}
 		It("saves the user to the DB", func() {
-			Expect(repo.Put(&usr)).To(BeNil())
+			Expect(repo.Put(ctx, &usr)).To(BeNil())
 		})
 		It("returns the newly created user", func() {
-			actual, err := repo.Get("123")
+			actual, err := repo.Get(ctx, "123")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Admin"))
 		})
 		It("find the user by case-insensitive username", func() {
-			actual, err := repo.FindByUsername("aDmIn")
+			actual, err := repo.FindByUsername(ctx, "aDmIn")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Admin"))
 		})
 		It("find the user by username and decrypts the password", func() {
-			actual, err := repo.FindByUsernameWithPassword("aDmIn")
+			actual, err := repo.FindByUsernameWithPassword(ctx, "aDmIn")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Admin"))
 			Expect(actual.Password).To(Equal("wordpass"))
@@ -57,27 +59,27 @@ var _ = Describe("UserRepository", func() {
 		It("updates the name and keep the same password", func() {
 			usr.Name = "Jane Doe"
 			usr.NewPassword = ""
-			Expect(repo.Put(&usr)).To(BeNil())
+			Expect(repo.Put(ctx, &usr)).To(BeNil())
 
-			actual, err := repo.FindByUsernameWithPassword("admin")
+			actual, err := repo.FindByUsernameWithPassword(ctx, "admin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Name).To(Equal("Jane Doe"))
 			Expect(actual.Password).To(Equal("wordpass"))
 		})
 		It("updates password if specified", func() {
 			usr.NewPassword = "newpass"
-			Expect(repo.Put(&usr)).To(BeNil())
+			Expect(repo.Put(ctx, &usr)).To(BeNil())
 
-			actual, err := repo.FindByUsernameWithPassword("admin")
+			actual, err := repo.FindByUsernameWithPassword(ctx, "admin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
 		})
 		It("persists and reads back the scrobble filter", func() {
 			usr := model.User{ID: "u-filter", UserName: "u-filter", Name: "Filter User",
 				ScrobbleFilter: `{"all":[{"contains":{"title":"????"}}]}`}
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
-			saved, err := repo.Get("u-filter")
+			saved, err := repo.Get(ctx, "u-filter")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(saved.ScrobbleFilter).To(Equal(`{"all":[{"contains":{"title":"????"}}]}`))
 		})
@@ -88,7 +90,7 @@ var _ = Describe("UserRepository", func() {
 					"values ('u-rawsql', 'u-rawsql', 'Raw', '', '', datetime('now'), datetime('now'))").Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			saved, err := repo.Get("u-rawsql")
+			saved, err := repo.Get(ctx, "u-rawsql")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(saved.ScrobbleFilter).To(Equal(""))
 		})
@@ -233,36 +235,34 @@ var _ = Describe("UserRepository", func() {
 	Describe("Delete", func() {
 		It("returns not found for a missing user", func() {
 			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-			adminRepo := NewUserRepository(adminCtx, GetDBXBuilder()).(*userRepository)
-			Expect(adminRepo.Delete("does-not-exist")).To(MatchError(model.ErrNotFound))
+			adminRepo := NewUserRepository(GetDBXBuilder()).(*userRepository)
+			Expect(adminRepo.Delete(adminCtx, "does-not-exist")).To(MatchError(model.ErrNotFound))
 		})
 	})
 
 	Describe("ReadAll name filter", func() {
-		var adminRepo model.ResourceRepository
+		var adminRepo model.UserRepository
+		var adminCtx context.Context
 
 		BeforeEach(func() {
-			adminCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin-id", UserName: "admin", IsAdmin: true})
-			adminRepo = NewUserRepository(adminCtx, GetDBXBuilder()).(model.ResourceRepository)
+			adminCtx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-id", UserName: "admin", IsAdmin: true})
+			adminRepo = NewUserRepository(GetDBXBuilder())
 
 			for _, u := range []model.User{
 				{ID: "filter-alice", UserName: "alice_filter", Name: "Alice Filter", NewPassword: "x"},
 				{ID: "filter-bob", UserName: "bob_filter", Name: "Bob Filter", NewPassword: "x"},
 			} {
-				Expect(adminRepo.(model.UserRepository).Put(&u)).To(Succeed())
+				Expect(adminRepo.Put(adminCtx, &u)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			ur := adminRepo.(model.UserRepository)
-			_ = ur.Delete("filter-alice")
-			_ = ur.Delete("filter-bob")
+			_ = adminRepo.Delete(adminCtx, "filter-alice", "filter-bob")
 		})
 
 		It("matches users whose name starts with the given prefix", func() {
-			res, err := adminRepo.ReadAll(rest.QueryOptions{Filters: map[string]any{"name": "Alice"}})
+			users, err := adminRepo.ReadAll(adminCtx, rest.QueryOptions{Filters: map[string]any{"name": "Alice"}})
 			Expect(err).ToNot(HaveOccurred())
-			users := res.(model.Users)
 
 			var names []string
 			for _, u := range users {
@@ -273,9 +273,8 @@ var _ = Describe("UserRepository", func() {
 		})
 
 		It("does not match names by mid-string substring (startsWith, not contains)", func() {
-			res, err := adminRepo.ReadAll(rest.QueryOptions{Filters: map[string]any{"name": "Filter"}})
+			users, err := adminRepo.ReadAll(adminCtx, rest.QueryOptions{Filters: map[string]any{"name": "Filter"}})
 			Expect(err).ToNot(HaveOccurred())
-			users := res.(model.Users)
 
 			for _, u := range users {
 				Expect(u.ID).ToNot(Or(Equal("filter-alice"), Equal("filter-bob")),
@@ -290,17 +289,17 @@ var _ = Describe("UserRepository", func() {
 		BeforeEach(func() {
 			existingUser = &model.User{ID: "1", UserName: "johndoe"}
 			repo = tests.CreateMockUserRepo()
-			err := repo.Put(existingUser)
+			err := repo.Put(ctx, existingUser)
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("allows unique usernames", func() {
 			var newUser = &model.User{ID: "2", UserName: "unique_username"}
-			err := validateUsernameUnique(repo, newUser)
+			err := validateUsernameUnique(ctx, repo, newUser)
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("returns ValidationError if username already exists", func() {
 			var newUser = &model.User{ID: "2", UserName: "johndoe"}
-			err := validateUsernameUnique(repo, newUser)
+			err := validateUsernameUnique(ctx, repo, newUser)
 			var verr *rest.ValidationError
 			isValidationError := errors.As(err, &verr)
 
@@ -311,7 +310,7 @@ var _ = Describe("UserRepository", func() {
 			repo.Error = errors.New("fake error")
 
 			var newUser = &model.User{ID: "2", UserName: "newuser"}
-			err := validateUsernameUnique(repo, newUser)
+			err := validateUsernameUnique(ctx, repo, newUser)
 			Expect(err).To(MatchError("fake error"))
 		})
 	})
@@ -330,39 +329,39 @@ var _ = Describe("UserRepository", func() {
 				NewPassword: "password",
 				IsAdmin:     false,
 			}
-			Expect(repo.Put(&testUser)).To(BeNil())
+			Expect(repo.Put(ctx, &testUser)).To(BeNil())
 			userID = testUser.ID
 
 			library1 = model.Library{ID: 0, Name: "Library 500", Path: "/path/500"}
 			library2 = model.Library{ID: 0, Name: "Library 501", Path: "/path/501"}
 
 			// Create test libraries
-			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
-			Expect(libRepo.Put(&library1)).To(BeNil())
-			Expect(libRepo.Put(&library2)).To(BeNil())
+			libRepo := NewLibraryRepository(GetDBXBuilder())
+			Expect(libRepo.Put(GinkgoT().Context(), &library1)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library2)).To(BeNil())
 		})
 
 		AfterEach(func() {
 			// Clean up user-library associations to ensure test isolation
-			_ = repo.SetUserLibraries(userID, []int{})
+			_ = repo.SetUserLibraries(ctx, userID, []int{})
 
 			// Clean up test libraries to ensure isolation between test groups
-			libRepo := NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+			libRepo := NewLibraryRepository(GetDBXBuilder())
+			_ = libRepo.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 		})
 
 		Describe("GetUserLibraries", func() {
 			It("returns empty list when user has no library associations", func() {
-				libraries, err := repo.GetUserLibraries("non-existent-user")
+				libraries, err := repo.GetUserLibraries(ctx, "non-existent-user")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libraries).To(HaveLen(0))
 			})
 
 			It("returns user's associated libraries", func() {
-				err := repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})
+				err := repo.SetUserLibraries(ctx, userID, []int{library1.ID, library2.ID})
 				Expect(err).ToNot(HaveOccurred())
 
-				libraries, err := repo.GetUserLibraries(userID)
+				libraries, err := repo.GetUserLibraries(ctx, userID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libraries).To(HaveLen(2))
 
@@ -374,24 +373,24 @@ var _ = Describe("UserRepository", func() {
 		Describe("SetUserLibraries", func() {
 			It("sets user's library associations", func() {
 				libraryIDs := []int{library1.ID, library2.ID}
-				err := repo.SetUserLibraries(userID, libraryIDs)
+				err := repo.SetUserLibraries(ctx, userID, libraryIDs)
 				Expect(err).ToNot(HaveOccurred())
 
-				libraries, err := repo.GetUserLibraries(userID)
+				libraries, err := repo.GetUserLibraries(ctx, userID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libraries).To(HaveLen(2))
 			})
 
 			It("replaces existing associations", func() {
 				// Set initial associations
-				err := repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})
+				err := repo.SetUserLibraries(ctx, userID, []int{library1.ID, library2.ID})
 				Expect(err).ToNot(HaveOccurred())
 
 				// Replace with just one library
-				err = repo.SetUserLibraries(userID, []int{library1.ID})
+				err = repo.SetUserLibraries(ctx, userID, []int{library1.ID})
 				Expect(err).ToNot(HaveOccurred())
 
-				libraries, err := repo.GetUserLibraries(userID)
+				libraries, err := repo.GetUserLibraries(ctx, userID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libraries).To(HaveLen(1))
 				Expect(libraries[0].ID).To(Equal(library1.ID))
@@ -399,14 +398,14 @@ var _ = Describe("UserRepository", func() {
 
 			It("removes all associations when passed empty slice", func() {
 				// Set initial associations
-				err := repo.SetUserLibraries(userID, []int{library1.ID, library2.ID})
+				err := repo.SetUserLibraries(ctx, userID, []int{library1.ID, library2.ID})
 				Expect(err).ToNot(HaveOccurred())
 
 				// Remove all
-				err = repo.SetUserLibraries(userID, []int{})
+				err = repo.SetUserLibraries(ctx, userID, []int{})
 				Expect(err).ToNot(HaveOccurred())
 
-				libraries, err := repo.GetUserLibraries(userID)
+				libraries, err := repo.GetUserLibraries(ctx, userID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libraries).To(HaveLen(0))
 			})
@@ -422,10 +421,10 @@ var _ = Describe("UserRepository", func() {
 		)
 
 		BeforeEach(func() {
-			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			libRepo = NewLibraryRepository(GetDBXBuilder())
 
 			// Count initial libraries
-			existingLibs, err := libRepo.GetAll()
+			existingLibs, err := libRepo.GetAll(GinkgoT().Context())
 			Expect(err).ToNot(HaveOccurred())
 			initialLibCount = len(existingLibs)
 
@@ -433,16 +432,16 @@ var _ = Describe("UserRepository", func() {
 			library2 = model.Library{ID: 0, Name: "Admin Test Library 2", Path: "/admin/test/path2"}
 
 			// Create test libraries
-			Expect(libRepo.Put(&library1)).To(BeNil())
-			Expect(libRepo.Put(&library2)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library1)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library2)).To(BeNil())
 		})
 
 		AfterEach(func() {
 			// Clean up test libraries and their associations
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+			_ = libRepo.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": []int{library1.ID, library2.ID}})
 
 			// Clean up user-library associations for these test libraries
-			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
+			_, _ = repo.(*userRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
 		})
 
 		It("automatically assigns all libraries to admin users when created", func() {
@@ -455,11 +454,11 @@ var _ = Describe("UserRepository", func() {
 				IsAdmin:     true,
 			}
 
-			err := repo.Put(&adminUser)
+			err := repo.Put(ctx, &adminUser)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Admin should automatically have access to all libraries (including existing ones)
-			libraries, err := repo.GetUserLibraries(adminUser.ID)
+			libraries, err := repo.GetUserLibraries(ctx, adminUser.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(libraries).To(HaveLen(initialLibCount + 2)) // Initial libraries + our 2 test libraries
 
@@ -481,20 +480,20 @@ var _ = Describe("UserRepository", func() {
 				IsAdmin:     false,
 			}
 
-			err := repo.Put(&regularUser)
+			err := repo.Put(ctx, &regularUser)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Give them access to just one library
-			err = repo.SetUserLibraries(regularUser.ID, []int{library1.ID})
+			err = repo.SetUserLibraries(ctx, regularUser.ID, []int{library1.ID})
 			Expect(err).ToNot(HaveOccurred())
 
 			// Promote to admin
 			regularUser.IsAdmin = true
-			err = repo.Put(&regularUser)
+			err = repo.Put(ctx, &regularUser)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Should now have access to all libraries (including existing ones)
-			libraries, err := repo.GetUserLibraries(regularUser.ID)
+			libraries, err := repo.GetUserLibraries(ctx, regularUser.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(libraries).To(HaveLen(initialLibCount + 2)) // Initial libraries + our 2 test libraries
 
@@ -516,11 +515,11 @@ var _ = Describe("UserRepository", func() {
 				IsAdmin:     false,
 			}
 
-			err := repo.Put(&regularUser)
+			err := repo.Put(ctx, &regularUser)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Regular user should be assigned to default libraries (library ID 1 from migration)
-			libraries, err := repo.GetUserLibraries(regularUser.ID)
+			libraries, err := repo.GetUserLibraries(ctx, regularUser.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(libraries).To(HaveLen(1))
 			Expect(libraries[0].ID).To(Equal(1))
@@ -537,13 +536,13 @@ var _ = Describe("UserRepository", func() {
 		)
 
 		BeforeEach(func() {
-			libRepo = NewLibraryRepository(log.NewContext(context.TODO()), GetDBXBuilder())
+			libRepo = NewLibraryRepository(GetDBXBuilder())
 			library1 = model.Library{ID: 0, Name: "Field Test Library 1", Path: "/field/test/path1"}
 			library2 = model.Library{ID: 0, Name: "Field Test Library 2", Path: "/field/test/path2"}
 
 			// Create test libraries
-			Expect(libRepo.Put(&library1)).To(BeNil())
-			Expect(libRepo.Put(&library2)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library1)).To(BeNil())
+			Expect(libRepo.Put(GinkgoT().Context(), &library2)).To(BeNil())
 
 			// Create test user
 			testUser = model.User{
@@ -554,23 +553,23 @@ var _ = Describe("UserRepository", func() {
 				NewPassword: "password",
 				IsAdmin:     false,
 			}
-			Expect(repo.Put(&testUser)).To(BeNil())
+			Expect(repo.Put(ctx, &testUser)).To(BeNil())
 
 			// Assign libraries to user
-			Expect(repo.SetUserLibraries(testUser.ID, []int{library1.ID, library2.ID})).To(BeNil())
+			Expect(repo.SetUserLibraries(ctx, testUser.ID, []int{library1.ID, library2.ID})).To(BeNil())
 		})
 
 		AfterEach(func() {
 			// Clean up test libraries and their associations
-			_ = libRepo.(*libraryRepository).delete(squirrel.Eq{"id": []int{library1.ID, library2.ID}})
-			_ = repo.(*userRepository).delete(squirrel.Eq{"id": testUser.ID})
+			_ = libRepo.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": []int{library1.ID, library2.ID}})
+			_ = repo.(*userRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": testUser.ID})
 
 			// Clean up user-library associations for these test libraries
-			_, _ = repo.(*userRepository).executeSQL(squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
+			_, _ = repo.(*userRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("user_library").Where(squirrel.Eq{"library_id": []int{library1.ID, library2.ID}}))
 		})
 
 		It("populates Libraries field when getting a single user", func() {
-			user, err := repo.Get(testUser.ID)
+			user, err := repo.Get(ctx, testUser.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(user.Libraries).To(HaveLen(2))
 
@@ -591,7 +590,7 @@ var _ = Describe("UserRepository", func() {
 		})
 
 		It("populates Libraries field when getting all users", func() {
-			users, err := repo.(*userRepository).GetAll()
+			users, err := repo.(*userRepository).GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Find our test user in the results
@@ -607,7 +606,7 @@ var _ = Describe("UserRepository", func() {
 		})
 
 		It("populates Libraries field when finding user by username", func() {
-			user, err := repo.FindByUsername(testUser.UserName)
+			user, err := repo.FindByUsername(ctx, testUser.UserName)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(user.Libraries).To(HaveLen(2))
 
@@ -625,10 +624,10 @@ var _ = Describe("UserRepository", func() {
 				NewPassword: "password",
 				IsAdmin:     false,
 			}
-			Expect(repo.Put(&userWithoutLibs)).To(BeNil())
-			defer func() { _ = repo.(*userRepository).delete(squirrel.Eq{"id": userWithoutLibs.ID}) }()
+			Expect(repo.Put(ctx, &userWithoutLibs)).To(BeNil())
+			defer func() { _ = repo.(*userRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": userWithoutLibs.ID}) }()
 
-			user, err := repo.Get(userWithoutLibs.ID)
+			user, err := repo.Get(ctx, userWithoutLibs.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(user.Libraries).ToNot(BeNil())
 			// Regular users should be assigned to default libraries (library ID 1 from migration)
@@ -686,8 +685,8 @@ var _ = Describe("UserRepository", func() {
 	Describe("filters", func() {
 		It("qualifies id filter with table name", func() {
 			r := repo.(*userRepository)
-			qo := r.parseRestOptions(r.ctx, rest.QueryOptions{Filters: map[string]any{"id": "123"}})
-			sel := r.selectUserWithLibraries(qo)
+			qo := r.parseRestOptions(ctx, rest.QueryOptions{Filters: map[string]any{"id": "123"}})
+			sel := r.selectUserWithLibraries(ctx, qo)
 			query, _, err := r.toSQL(sel)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(query).To(ContainSubstring("user.id = {:p0}"))
@@ -705,29 +704,29 @@ var _ = Describe("UserRepository", func() {
 		}
 
 		BeforeEach(func() {
-			ctx := log.NewContext(context.TODO())
+			ctx = log.NewContext(context.TODO())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
-			repo = NewUserRepository(ctx, GetDBXBuilder())
+			repo = NewUserRepository(GetDBXBuilder())
 			usr = newUser()
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 		})
 
 		It("starts at zero for a new user", func() {
-			got, err := repo.Get(usr.ID)
+			got, err := repo.Get(ctx, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(0))
 		})
 
 		It("increments once per password change", func() {
 			usr.NewPassword = "second"
-			Expect(repo.Put(&usr)).To(Succeed())
-			got, err := repo.Get(usr.ID)
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
+			got, err := repo.Get(ctx, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(1))
 
 			usr.NewPassword = "third"
-			Expect(repo.Put(&usr)).To(Succeed())
-			got, err = repo.Get(usr.ID)
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
+			got, err = repo.Get(ctx, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(2))
 		})
@@ -735,9 +734,9 @@ var _ = Describe("UserRepository", func() {
 		It("leaves the epoch alone when the password is untouched", func() {
 			usr.NewPassword = ""
 			usr.Name = "Renamed"
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
-			got, err := repo.Get(usr.ID)
+			got, err := repo.Get(ctx, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(0))
 			Expect(got.Name).To(Equal("Renamed"))
@@ -754,11 +753,11 @@ var _ = Describe("UserRepository", func() {
 					ctx := log.NewContext(context.TODO())
 					ctx = request.WithUser(ctx, model.User{ID: usr.ID})
 					ctx = request.WithTokenEpochHolder(ctx)
-					own := NewUserRepository(ctx, GetDBXBuilder())
+					own := NewUserRepository(GetDBXBuilder())
 
 					u := usr
 					u.NewPassword = "concurrent"
-					if err := own.Put(&u); err != nil {
+					if err := own.Put(ctx, &u); err != nil {
 						return // the shared in-memory test DB can raise SQLITE_LOCKED
 					}
 					epoch, ok := request.TokenEpochFrom(ctx)
@@ -778,73 +777,73 @@ var _ = Describe("UserRepository", func() {
 	})
 
 	Describe("Put and the token epoch", func() {
-		newRepo := func(actingUserID string) model.UserRepository {
+		newRepo := func(actingUserID string) (context.Context, model.UserRepository) {
 			ctx := log.NewContext(context.TODO())
 			ctx = request.WithUser(ctx, model.User{ID: actingUserID, IsAdmin: true})
 			ctx = request.WithTokenEpochHolder(ctx)
-			return NewUserRepository(ctx, GetDBXBuilder())
+			return ctx, NewUserRepository(GetDBXBuilder())
 		}
 
 		It("does not bump when creating a user", func() {
-			repo := newRepo("admin")
+			ctx, repo := newRepo("admin")
 			usr := model.User{ID: id.NewRandom(), UserName: "fresh", NewPassword: "pw1"}
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
-			got, err := repo.Get(usr.ID)
+			got, err := repo.Get(ctx, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(0))
 		})
 
 		It("bumps when the password changes", func() {
-			repo := newRepo("admin")
+			ctx, repo := newRepo("admin")
 			usr := model.User{ID: id.NewRandom(), UserName: "changer", NewPassword: "pw1"}
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
 			usr.NewPassword = "pw2"
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
-			got, err := repo.Get(usr.ID)
+			got, err := repo.Get(ctx, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(1))
 		})
 
 		It("does not bump on an edit that leaves the password alone", func() {
-			repo := newRepo("admin")
+			ctx, repo := newRepo("admin")
 			usr := model.User{ID: id.NewRandom(), UserName: "renamer", NewPassword: "pw1"}
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
 			usr.NewPassword = ""
 			usr.Name = "New Display Name"
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
-			got, err := repo.Get(usr.ID)
+			got, err := repo.Get(ctx, usr.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.TokenEpoch).To(Equal(0))
 		})
 
 		It("signals the new epoch when a user changes their own password", func() {
 			userID := id.NewRandom()
-			repo := newRepo(userID)
+			ctx, repo := newRepo(userID)
 			usr := model.User{ID: userID, UserName: "self", NewPassword: "pw1"}
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
 			usr.NewPassword = "pw2"
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
-			epoch, ok := request.TokenEpochFrom(repo.(*userRepository).ctx)
+			epoch, ok := request.TokenEpochFrom(ctx)
 			Expect(ok).To(BeTrue())
 			Expect(epoch).To(Equal(1))
 		})
 
 		It("does not signal when an admin changes someone else's password", func() {
-			repo := newRepo("some-admin")
+			ctx, repo := newRepo("some-admin")
 			usr := model.User{ID: id.NewRandom(), UserName: "other", NewPassword: "pw1"}
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
 			usr.NewPassword = "pw2"
-			Expect(repo.Put(&usr)).To(Succeed())
+			Expect(repo.Put(ctx, &usr)).To(Succeed())
 
-			_, ok := request.TokenEpochFrom(repo.(*userRepository).ctx)
+			_, ok := request.TokenEpochFrom(ctx)
 			Expect(ok).To(BeFalse())
 		})
 	})

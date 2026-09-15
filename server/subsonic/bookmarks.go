@@ -15,8 +15,8 @@ import (
 func (api *Router) GetBookmarks(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
-	repo := api.ds.MediaFile(r.Context())
-	bookmarks, err := repo.GetBookmarks()
+	repo := api.ds.MediaFile()
+	bookmarks, err := repo.GetBookmarks(r.Context())
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +46,8 @@ func (api *Router) CreateBookmark(r *http.Request) (*responses.Subsonic, error) 
 	comment, _ := p.String("comment")
 	position := p.Int64Or("position", 0)
 
-	repo := api.ds.MediaFile(r.Context())
-	err = repo.AddBookmark(id, comment, position)
+	repo := api.ds.MediaFile()
+	err = repo.AddBookmark(r.Context(), id, comment, position)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +61,8 @@ func (api *Router) DeleteBookmark(r *http.Request) (*responses.Subsonic, error) 
 		return nil, err
 	}
 
-	repo := api.ds.MediaFile(r.Context())
-	err = repo.DeleteBookmark(id)
+	repo := api.ds.MediaFile()
+	err = repo.DeleteBookmark(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func (api *Router) DeleteBookmark(r *http.Request) (*responses.Subsonic, error) 
 func (api *Router) GetPlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
-	repo := api.ds.PlayQueue(r.Context())
-	pq, err := repo.RetrieveWithMediaFiles(user.ID)
+	repo := api.ds.PlayQueue()
+	pq, err := repo.RetrieveWithMediaFiles(r.Context(), user.ID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
@@ -132,8 +132,8 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 		UpdatedAt: time.Time{},
 	}
 
-	repo := api.ds.PlayQueue(r.Context())
-	err := repo.Store(pq)
+	repo := api.ds.PlayQueue()
+	err := repo.Store(r.Context(), pq)
 	if err != nil {
 		return nil, err
 	}
@@ -143,8 +143,8 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 func (api *Router) GetPlayQueueByIndex(r *http.Request) (*responses.Subsonic, error) {
 	user, _ := request.UserFrom(r.Context())
 
-	repo := api.ds.PlayQueue(r.Context())
-	pq, err := repo.RetrieveWithMediaFiles(user.ID)
+	repo := api.ds.PlayQueue()
+	pq, err := repo.RetrieveWithMediaFiles(r.Context(), user.ID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, err
 	}
@@ -207,8 +207,8 @@ func (api *Router) SavePlayQueueByIndex(r *http.Request) (*responses.Subsonic, e
 		UpdatedAt: time.Time{},
 	}
 
-	repo := api.ds.PlayQueue(r.Context())
-	err = repo.Store(pq)
+	repo := api.ds.PlayQueue()
+	err = repo.Store(r.Context(), pq)
 	if err != nil {
 		return nil, err
 	}

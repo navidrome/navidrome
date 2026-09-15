@@ -2,6 +2,7 @@ package tests
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"maps"
 	"slices"
@@ -54,7 +55,7 @@ func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
 	}
 }
 
-func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
+func (m *MockMediaFileRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Err {
 		return false, errors.New("error")
 	}
@@ -62,7 +63,7 @@ func (m *MockMediaFileRepo) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
+func (m *MockMediaFileRepo) Get(_ context.Context, id string) (*model.MediaFile, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -76,7 +77,7 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
+func (m *MockMediaFileRepo) GetWithParticipants(_ context.Context, id string) (*model.MediaFile, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -86,11 +87,11 @@ func (m *MockMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, er
 	return nil, model.ErrNotFound
 }
 
-func (m *MockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
-	return m.GetAll(options...)
+func (m *MockMediaFileRepo) GetAllByTags(ctx context.Context, _ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	return m.GetAll(ctx, options...)
 }
 
-func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) GetAll(_ context.Context, qo ...model.QueryOptions) (model.MediaFiles, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
@@ -108,8 +109,8 @@ func (m *MockMediaFileRepo) GetAll(qo ...model.QueryOptions) (model.MediaFiles, 
 	return result, nil
 }
 
-func (m *MockMediaFileRepo) GetRandom(qo ...model.QueryOptions) (model.MediaFiles, error) {
-	res, err := m.GetAll(qo...)
+func (m *MockMediaFileRepo) GetRandom(ctx context.Context, qo ...model.QueryOptions) (model.MediaFiles, error) {
+	res, err := m.GetAll(ctx, qo...)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +120,8 @@ func (m *MockMediaFileRepo) GetRandom(qo ...model.QueryOptions) (model.MediaFile
 	return res, nil
 }
 
-func (m *MockMediaFileRepo) GetCursor(qo ...model.QueryOptions) (model.MediaFileCursor, error) {
-	res, err := m.GetAll(qo...)
+func (m *MockMediaFileRepo) GetCursor(ctx context.Context, qo ...model.QueryOptions) (model.MediaFileCursor, error) {
+	res, err := m.GetAll(ctx, qo...)
 	if err != nil {
 		return nil, err
 	}
@@ -133,11 +134,11 @@ func (m *MockMediaFileRepo) GetCursor(qo ...model.QueryOptions) (model.MediaFile
 	}, nil
 }
 
-func (m *MockMediaFileRepo) GetCursorWithArtwork(qo ...model.QueryOptions) (model.MediaFileCursor, error) {
-	return m.GetCursor(qo...)
+func (m *MockMediaFileRepo) GetCursorWithArtwork(ctx context.Context, qo ...model.QueryOptions) (model.MediaFileCursor, error) {
+	return m.GetCursor(ctx, qo...)
 }
 
-func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
+func (m *MockMediaFileRepo) Put(_ context.Context, mf *model.MediaFile) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -148,7 +149,7 @@ func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	return nil
 }
 
-func (m *MockMediaFileRepo) UpdateProbeData(id string, data string) error {
+func (m *MockMediaFileRepo) UpdateProbeData(_ context.Context, id string, data string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -159,7 +160,7 @@ func (m *MockMediaFileRepo) UpdateProbeData(id string, data string) error {
 	return model.ErrNotFound
 }
 
-func (m *MockMediaFileRepo) Delete(id string) error {
+func (m *MockMediaFileRepo) Delete(_ context.Context, id string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -170,7 +171,7 @@ func (m *MockMediaFileRepo) Delete(id string) error {
 	return nil
 }
 
-func (m *MockMediaFileRepo) ReassignReferences(prevID, newID string) error {
+func (m *MockMediaFileRepo) ReassignReferences(_ context.Context, prevID, newID string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -181,7 +182,7 @@ func (m *MockMediaFileRepo) ReassignReferences(prevID, newID string) error {
 	return nil
 }
 
-func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
+func (m *MockMediaFileRepo) IncPlayCount(_ context.Context, id string, timestamp time.Time) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -193,7 +194,7 @@ func (m *MockMediaFileRepo) IncPlayCount(id string, timestamp time.Time) error {
 	return model.ErrNotFound
 }
 
-func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
+func (m *MockMediaFileRepo) SetStar(_ context.Context, starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -205,7 +206,7 @@ func (m *MockMediaFileRepo) SetStar(starred bool, itemIDs ...string) error {
 	return nil
 }
 
-func (m *MockMediaFileRepo) SetRating(rating int, itemID string) error {
+func (m *MockMediaFileRepo) SetRating(_ context.Context, rating int, itemID string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -231,7 +232,7 @@ func (m *MockMediaFileRepo) FindByAlbum(artistId string) (model.MediaFiles, erro
 	return res, nil
 }
 
-func (m *MockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
+func (m *MockMediaFileRepo) GetMissingAndMatching(_ context.Context, libId int) (model.MediaFileCursor, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -265,7 +266,7 @@ func (m *MockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCur
 	}, nil
 }
 
-func (m *MockMediaFileRepo) CountAll(opts ...model.QueryOptions) (int64, error) {
+func (m *MockMediaFileRepo) CountAll(_ context.Context, opts ...model.QueryOptions) (int64, error) {
 	if m.Err {
 		return 0, errors.New("error")
 	}
@@ -278,7 +279,7 @@ func (m *MockMediaFileRepo) CountAll(opts ...model.QueryOptions) (int64, error) 
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockMediaFileRepo) DeleteAllMissing() (int64, error) {
+func (m *MockMediaFileRepo) DeleteAllMissing(_ context.Context) (int64, error) {
 	if m.Err {
 		return 0, errors.New("error")
 	}
@@ -296,28 +297,20 @@ func (m *MockMediaFileRepo) DeleteAllMissing() (int64, error) {
 	return count, nil
 }
 
-// ResourceRepository methods
-func (m *MockMediaFileRepo) Count(...rest.QueryOptions) (int64, error) {
-	return m.CountAll()
+// REST repository methods
+func (m *MockMediaFileRepo) Count(ctx context.Context, _ ...rest.QueryOptions) (int64, error) {
+	return m.CountAll(ctx)
 }
 
-func (m *MockMediaFileRepo) Read(id string) (any, error) {
-	return m.Get(id)
+func (m *MockMediaFileRepo) Read(ctx context.Context, id string) (*model.MediaFile, error) {
+	return m.Get(ctx, id)
 }
 
-func (m *MockMediaFileRepo) ReadAll(...rest.QueryOptions) (any, error) {
-	return m.GetAll()
+func (m *MockMediaFileRepo) ReadAll(ctx context.Context, _ ...rest.QueryOptions) ([]model.MediaFile, error) {
+	return m.GetAll(ctx)
 }
 
-func (m *MockMediaFileRepo) EntityName() string {
-	return "mediafile"
-}
-
-func (m *MockMediaFileRepo) NewInstance() any {
-	return &model.MediaFile{}
-}
-
-func (m *MockMediaFileRepo) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) Search(ctx context.Context, q string, options ...model.QueryOptions) (model.MediaFiles, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
@@ -325,11 +318,11 @@ func (m *MockMediaFileRepo) Search(q string, options ...model.QueryOptions) (mod
 		return nil, errors.New("unexpected error")
 	}
 	// Simple mock implementation - just return all media files for testing
-	return m.GetAll()
+	return m.GetAll(ctx)
 }
 
 // Cross-library move detection mock methods
-func (m *MockMediaFileRepo) FindRecentFilesByMBZTrackID(missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) FindRecentFilesByMBZTrackID(_ context.Context, missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -351,7 +344,7 @@ func (m *MockMediaFileRepo) FindRecentFilesByMBZTrackID(missing model.MediaFile,
 	return result, nil
 }
 
-func (m *MockMediaFileRepo) FindRecentFilesByProperties(missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
+func (m *MockMediaFileRepo) FindRecentFilesByProperties(_ context.Context, missing model.MediaFile, since time.Time) (model.MediaFiles, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -377,7 +370,7 @@ func (m *MockMediaFileRepo) FindRecentFilesByProperties(missing model.MediaFile,
 	return result, nil
 }
 
-func (m *MockMediaFileRepo) MatchesCriteria(string, criteria.Criteria) (bool, error) {
+func (m *MockMediaFileRepo) MatchesCriteria(context.Context, string, criteria.Criteria) (bool, error) {
 	if m.MatchesCriteriaErr != nil {
 		return false, m.MatchesCriteriaErr
 	}
@@ -385,4 +378,4 @@ func (m *MockMediaFileRepo) MatchesCriteria(string, criteria.Criteria) (bool, er
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)
-var _ model.ResourceRepository = (*MockMediaFileRepo)(nil)
+var _ rest.Repository[model.MediaFile] = (*MockMediaFileRepo)(nil)

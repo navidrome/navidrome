@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -17,11 +18,11 @@ import (
 
 var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 	var repo model.PlaylistRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(GinkgoT().Context())
-		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		repo = NewPlaylistRepository(GetDBXBuilder())
 	})
 
 	Context("Smart Playlists", func() {
@@ -36,10 +37,10 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		Context("valid rules", func() {
 			Specify("Put/Get", func() {
 				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
-				Expect(repo.Put(&newPls)).To(Succeed())
-				DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+				Expect(repo.Put(ctx, &newPls)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
-				savedPls, err := repo.Get(newPls.ID)
+				savedPls, err := repo.Get(ctx, newPls.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(savedPls.Rules).To(Equal(rules))
 			})
@@ -48,13 +49,13 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		Context("after an evaluation", func() {
 			It("stamps updated_at and evaluated_at with the same instant", func() {
 				newPls := model.Playlist{Name: "Evaluated", OwnerID: "userid", Rules: rules}
-				Expect(repo.Put(&newPls)).To(Succeed())
-				DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+				Expect(repo.Put(ctx, &newPls)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
-				refreshed, err := repo.GetWithTracks(newPls.ID, true, false)
+				refreshed, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 				Expect(err).ToNot(HaveOccurred())
 
-				stored, err := repo.Get(newPls.ID)
+				stored, err := repo.Get(ctx, newPls.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stored.EvaluatedAt).ToNot(BeNil())
 				Expect(stored.UpdatedAt).To(BeTemporally("==", *stored.EvaluatedAt))
@@ -71,7 +72,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					},
 				}
 				newPls := model.Playlist{Name: "Great!", OwnerID: "userid", Rules: rules}
-				Expect(repo.Put(&newPls)).To(MatchError(ContainSubstring("invalid criteria expression")))
+				Expect(repo.Put(ctx, &newPls)).To(MatchError(ContainSubstring("invalid criteria expression")))
 			})
 		})
 
@@ -85,14 +86,14 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					},
 				}
 				pls := model.Playlist{Name: "Smart", OwnerID: "userid", Rules: rules, Path: "/music/smart.nsp", Sync: true}
-				Expect(repo.Put(&pls)).To(Succeed())
-				DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+				Expect(repo.Put(ctx, &pls)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
 
-				evaluated, err := repo.GetWithTracks(pls.ID, true, false)
+				evaluated, err := repo.GetWithTracks(ctx, pls.ID, true, false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(evaluated.SongCount).To(BeNumerically(">", 0))
 
-				stored, err := repo.Get(pls.ID)
+				stored, err := repo.Get(ctx, pls.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(stored.SongCount).To(Equal(evaluated.SongCount))
 
@@ -100,9 +101,9 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					ID: pls.ID, Name: pls.Name, OwnerID: "userid", Rules: rules,
 					Path: pls.Path, Sync: true,
 				}
-				Expect(repo.Put(&reimported)).To(Succeed())
+				Expect(repo.Put(ctx, &reimported)).To(Succeed())
 
-				afterImport, err := repo.Get(pls.ID)
+				afterImport, err := repo.Get(ctx, pls.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(afterImport.SongCount).To(Equal(stored.SongCount))
 				Expect(afterImport.Duration).To(Equal(stored.Duration))
@@ -125,24 +126,24 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 						},
 					}
 					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Public: true, Rules: childRules}
-					Expect(repo.Put(&nestedPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
+					Expect(repo.Put(ctx, &nestedPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(ctx, nestedPls.ID) })
 
 					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
 						Expression: criteria.All{
 							criteria.InPlaylist{"id": nestedPls.ID},
 						},
 					}}
-					Expect(repo.Put(&parentPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
+					Expect(repo.Put(ctx, &parentPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(ctx, parentPls.ID) })
 
 					// Nested playlist has not been evaluated yet
-					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					nestedPlsRead, err := repo.Get(ctx, nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(nestedPlsRead.EvaluatedAt).To(BeNil())
 
 					// Getting parent with refresh should recursively refresh the nested playlist
-					pls, err := repo.GetWithTracks(parentPls.ID, true, false)
+					pls, err := repo.GetWithTracks(ctx, parentPls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(pls.EvaluatedAt).ToNot(BeNil())
 					Expect(*pls.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
@@ -152,7 +153,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					Expect(pls.Tracks[0].MediaFileID).To(Equal(songDayInALife.ID))
 
 					// Nested playlist should now have been refreshed (EvaluatedAt set)
-					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					nestedPlsAfterParentGet, err := repo.Get(ctx, nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(nestedPlsAfterParentGet.EvaluatedAt).ToNot(BeNil())
 					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
@@ -170,8 +171,8 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 						},
 					}
 					nestedPls := model.Playlist{Name: "Nested", OwnerID: "userid", Public: true, Rules: childRules, EvaluatedAt: &childEvaluatedAt}
-					Expect(repo.Put(&nestedPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(nestedPls.ID) })
+					Expect(repo.Put(ctx, &nestedPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(ctx, nestedPls.ID) })
 
 					// Parent has no EvaluatedAt, so it WILL refresh, but the child should not
 					parentPls := model.Playlist{Name: "Parent", OwnerID: "userid", Rules: &criteria.Criteria{
@@ -179,14 +180,14 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 							criteria.InPlaylist{"id": nestedPls.ID},
 						},
 					}}
-					Expect(repo.Put(&parentPls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(parentPls.ID) })
+					Expect(repo.Put(ctx, &parentPls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(ctx, parentPls.ID) })
 
-					nestedPlsRead, err := repo.Get(nestedPls.ID)
+					nestedPlsRead, err := repo.Get(ctx, nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Getting parent with refresh should NOT recursively refresh the nested playlist
-					parent, err := repo.GetWithTracks(parentPls.ID, true, false)
+					parent, err := repo.GetWithTracks(ctx, parentPls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Parent should have been refreshed (its EvaluatedAt was nil)
@@ -194,7 +195,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 					Expect(*parent.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
 
 					// Nested playlist should NOT have been refreshed (still within delay window)
-					nestedPlsAfterParentGet, err := repo.Get(nestedPls.ID)
+					nestedPlsAfterParentGet, err := repo.Get(ctx, nestedPls.ID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(BeTemporally("~", childEvaluatedAt, time.Second))
 					Expect(*nestedPlsAfterParentGet.EvaluatedAt).To(Equal(*nestedPlsRead.EvaluatedAt))
@@ -215,10 +216,10 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 						RefreshDelay: 24 * time.Hour,
 					}
 					pls := model.Playlist{Name: "Frozen Daily", OwnerID: "userid", Rules: rules, EvaluatedAt: &evaluatedAt}
-					Expect(repo.Put(&pls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+					Expect(repo.Put(ctx, &pls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
 
-					got, err := repo.GetWithTracks(pls.ID, true, false)
+					got, err := repo.GetWithTracks(ctx, pls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
 					// Not re-evaluated: EvaluatedAt unchanged, no tracks materialized
 					Expect(*got.EvaluatedAt).To(BeTemporally("~", evaluatedAt, time.Second))
@@ -234,10 +235,10 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 						RefreshDelay: 5 * time.Minute,
 					}
 					pls := model.Playlist{Name: "Fast Refresh", OwnerID: "userid", Rules: rules, EvaluatedAt: &evaluatedAt}
-					Expect(repo.Put(&pls)).To(Succeed())
-					DeferCleanup(func() { _ = repo.Delete(pls.ID) })
+					Expect(repo.Put(ctx, &pls)).To(Succeed())
+					DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
 
-					got, err := repo.GetWithTracks(pls.ID, true, false)
+					got, err := repo.GetWithTracks(ctx, pls.ID, true, false)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(*got.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
 					Expect(got.Tracks).To(HaveLen(1))
@@ -252,7 +253,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				Expect(repo.Delete(ctx, testPlaylistID)).To(BeNil())
 				testPlaylistID = ""
 			}
 		})
@@ -262,12 +263,12 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			newPls := model.Playlist{Name: "Multi-Disc Test", OwnerID: "userid"}
 			// Add tracks in intentionally scrambled order
 			newPls.AddMediaFilesByID([]string{"2001", "2002", "2003", "2004"})
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			By("retrieving tracks sorted by album")
-			tracksRepo := repo.Tracks(newPls.ID, false)
-			tracks, err := tracksRepo.GetAll(model.QueryOptions{Sort: "album", Order: "asc"})
+			tracksRepo := repo.Tracks(ctx, newPls.ID, false)
+			tracks, err := tracksRepo.GetAll(ctx, model.QueryOptions{Sort: "album", Order: "asc"})
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying tracks are sorted by disc number then track number")
@@ -285,7 +286,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				_ = repo.Delete(testPlaylistID)
+				_ = repo.Delete(ctx, testPlaylistID)
 				testPlaylistID = ""
 			}
 		})
@@ -299,11 +300,11 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "Starred Album Songs", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			trackIDs := make([]string, len(pls.Tracks))
@@ -322,11 +323,11 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "Starred Artist Songs", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			trackIDs := make([]string, len(pls.Tracks))
@@ -347,11 +348,11 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "Combined Album+Artist", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			trackIDs := make([]string, len(pls.Tracks))
@@ -369,11 +370,11 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "No Match", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(pls.Tracks).To(BeEmpty())
@@ -389,11 +390,11 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "String Loved Nested", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			trackIDs := make([]string, len(pls.Tracks))
@@ -413,8 +414,8 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			boolPls := model.Playlist{Name: "Bool Loved", OwnerID: "userid", Rules: boolRules}
-			Expect(repo.Put(&boolPls)).To(Succeed())
-			DeferCleanup(func() { _ = repo.Delete(boolPls.ID) })
+			Expect(repo.Put(ctx, &boolPls)).To(Succeed())
+			DeferCleanup(func() { _ = repo.Delete(ctx, boolPls.ID) })
 
 			stringRules := &criteria.Criteria{
 				Expression: criteria.All{
@@ -424,13 +425,13 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			stringPls := model.Playlist{Name: "String Loved", OwnerID: "userid", Rules: stringRules}
-			Expect(repo.Put(&stringPls)).To(Succeed())
+			Expect(repo.Put(ctx, &stringPls)).To(Succeed())
 			testPlaylistID = stringPls.ID
 
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
-			boolResult, err := repo.GetWithTracks(boolPls.ID, true, false)
+			boolResult, err := repo.GetWithTracks(ctx, boolPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
-			stringResult, err := repo.GetWithTracks(stringPls.ID, true, false)
+			stringResult, err := repo.GetWithTracks(ctx, stringPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			boolIDs := make([]string, len(boolResult.Tracks))
@@ -453,10 +454,10 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 		trackIDsOf := func(rules *criteria.Criteria) []string {
 			newPls := model.Playlist{Name: "Album Aggregates", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
-			DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
+			DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 			return slice.Map(pls.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })
 		}
@@ -487,7 +488,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		BeforeEach(func() {
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			mfRepo = NewMediaFileRepository(ctx, GetDBXBuilder())
+			mfRepo = NewMediaFileRepository(GetDBXBuilder())
 
 			// Register 'grouping' as a valid tag for smart playlists
 			criteria.AddTagNames([]string{"grouping"})
@@ -508,7 +509,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				LibraryID:    1,
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songWithGrouping)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songWithGrouping)).To(Succeed())
 
 			// Create a song without the grouping tag
 			songWithoutGrouping = model.MediaFile{
@@ -524,12 +525,12 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				LibraryID:    1,
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songWithoutGrouping)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songWithoutGrouping)).To(Succeed())
 		})
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				_ = repo.Delete(testPlaylistID)
+				_ = repo.Delete(ctx, testPlaylistID)
 				testPlaylistID = ""
 			}
 			// Clean up test media files
@@ -547,12 +548,12 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "Tracks with Grouping", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			By("refreshing the smart playlist")
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying only the track with grouping tag is matched")
@@ -568,12 +569,12 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "Tracks without Grouping", OwnerID: "userid", Rules: rules}
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			By("refreshing the smart playlist")
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
-			pls, err := repo.GetWithTracks(newPls.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying the track with grouping is NOT in the playlist")
@@ -623,7 +624,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			// Create test media files in each library
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			mfRepo = NewMediaFileRepository(ctx, db)
+			mfRepo = NewMediaFileRepository(db)
 
 			// Song in library 1 (accessible by restricted user)
 			songLib1 := model.MediaFile{
@@ -639,7 +640,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				Tags:         model.Tags{},
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songLib1)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songLib1)).To(Succeed())
 
 			// Song in library 2 (NOT accessible by restricted user)
 			songLib2 := model.MediaFile{
@@ -655,13 +656,13 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				Tags:         model.Tags{},
 				Lyrics:       "[]",
 			}
-			Expect(mfRepo.Put(&songLib2)).To(Succeed())
+			Expect(mfRepo.Put(ctx, &songLib2)).To(Succeed())
 		})
 
 		AfterEach(func() {
 			db := GetDBXBuilder()
 			if testPlaylistID != "" {
-				_ = repo.Delete(testPlaylistID)
+				_ = repo.Delete(ctx, testPlaylistID)
 				testPlaylistID = ""
 			}
 			// Clean up test data
@@ -679,7 +680,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			// Create the smart playlist as the restricted user
 			restrictedUser := model.User{ID: restrictedUserID, UserName: restrictedUserID, IsAdmin: false}
 			ctx = request.WithUser(ctx, restrictedUser)
-			restrictedRepo := NewPlaylistRepository(ctx, db)
+			restrictedRepo := NewPlaylistRepository(db)
 
 			// Create a smart playlist that matches all songs
 			rules := &criteria.Criteria{
@@ -688,12 +689,12 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				},
 			}
 			newPls := model.Playlist{Name: "All Songs", OwnerID: restrictedUserID, Rules: rules}
-			Expect(restrictedRepo.Put(&newPls)).To(Succeed())
+			Expect(restrictedRepo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			By("refreshing the smart playlist")
 			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
-			pls, err := restrictedRepo.GetWithTracks(newPls.ID, true, false)
+			pls, err := restrictedRepo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
 			By("verifying only the track from library 1 is in the playlist")

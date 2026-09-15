@@ -18,8 +18,6 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
-type restHandler = func(rest.RepositoryConstructor, ...rest.Logger) http.HandlerFunc
-
 // writePlaylistError maps a playlist service error to an HTTP status, or defaultStatus if unknown.
 func writePlaylistError(w http.ResponseWriter, err error, defaultStatus int) {
 	switch {
@@ -34,7 +32,7 @@ func writePlaylistError(w http.ResponseWriter, err error, defaultStatus int) {
 	}
 }
 
-func playlistTracksHandler(pls playlists.Playlists, handler restHandler, refreshSmartPlaylist func(*http.Request) bool) http.HandlerFunc {
+func playlistTracksHandler(pls playlists.Playlists, handler func(rest.Repository[model.PlaylistTrack]) http.HandlerFunc, refreshSmartPlaylist func(*http.Request) bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		plsId := chi.URLParam(r, "playlistId")
 		tracks := pls.TracksRepository(r.Context(), plsId, refreshSmartPlaylist(r))
@@ -42,12 +40,12 @@ func playlistTracksHandler(pls playlists.Playlists, handler restHandler, refresh
 			http.Error(w, "not found", http.StatusNotFound)
 			return
 		}
-		handler(func(ctx context.Context) rest.Repository { return tracks }).ServeHTTP(w, r)
+		handler(tracks).ServeHTTP(w, r)
 	}
 }
 
 func getPlaylist(pls playlists.Playlists) http.HandlerFunc {
-	handler := playlistTracksHandler(pls, rest.GetAll, func(r *http.Request) bool {
+	handler := playlistTracksHandler(pls, rest.GetAll[model.PlaylistTrack], func(r *http.Request) bool {
 		return req.Params(r).Int64Or("_start", 0) == 0
 	})
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +58,7 @@ func getPlaylist(pls playlists.Playlists) http.HandlerFunc {
 }
 
 func getPlaylistTrack(pls playlists.Playlists) http.HandlerFunc {
-	return playlistTracksHandler(pls, rest.Get, func(*http.Request) bool { return true })
+	return playlistTracksHandler(pls, rest.Get[model.PlaylistTrack], func(*http.Request) bool { return true })
 }
 
 func createPlaylistFromM3U(pls playlists.Playlists) http.HandlerFunc {

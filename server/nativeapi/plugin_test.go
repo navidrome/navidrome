@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
@@ -34,7 +35,7 @@ var _ = Describe("Plugin API", func() {
 		ds = &tests.MockDataStore{}
 		mockManager = &tests.MockPluginManager{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, mockManager, nil, nil)
+		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, mockManager, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -71,8 +72,8 @@ var _ = Describe("Plugin API", func() {
 		}
 
 		// Store users in mock datastore
-		Expect(ds.User(GinkgoT().Context()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(GinkgoT().Context()).Put(&regularUser)).To(Succeed())
+		Expect(ds.User().Put(GinkgoT().Context(), &adminUser)).To(Succeed())
+		Expect(ds.User().Put(GinkgoT().Context(), &regularUser)).To(Succeed())
 	})
 
 	Context("when plugins are disabled", func() {
@@ -106,8 +107,8 @@ var _ = Describe("Plugin API", func() {
 				// Store test plugins as admin
 				ctx := GinkgoT().Context()
 				adminCtx := request.WithUser(ctx, adminUser)
-				Expect(ds.Plugin(adminCtx).Put(&testPlugin1)).To(Succeed())
-				Expect(ds.Plugin(adminCtx).Put(&testPlugin2)).To(Succeed())
+				Expect(ds.Plugin().Put(adminCtx, &testPlugin1)).To(Succeed())
+				Expect(ds.Plugin().Put(adminCtx, &testPlugin2)).To(Succeed())
 			})
 
 			Describe("GET /api/plugin", func() {
@@ -160,9 +161,9 @@ var _ = Describe("Plugin API", func() {
 					// Configure mock to update the repo when EnablePlugin is called
 					mockManager.EnablePluginFn = func(ctx context.Context, id string) error {
 						adminCtx := request.WithUser(ctx, adminUser)
-						p, _ := ds.Plugin(adminCtx).Get(id)
+						p, _ := ds.Plugin().Get(adminCtx, id)
 						p.Enabled = true
-						return ds.Plugin(adminCtx).Put(p)
+						return ds.Plugin().Put(adminCtx, p)
 					}
 
 					body := bytes.NewBufferString(`{"enabled":true}`)
@@ -186,9 +187,9 @@ var _ = Describe("Plugin API", func() {
 					// Configure mock to update the repo when UpdatePluginConfig is called
 					mockManager.UpdatePluginConfigFn = func(ctx context.Context, id, configJSON string) error {
 						adminCtx := request.WithUser(ctx, adminUser)
-						p, _ := ds.Plugin(adminCtx).Get(id)
+						p, _ := ds.Plugin().Get(adminCtx, id)
 						p.Config = configJSON
-						return ds.Plugin(adminCtx).Put(p)
+						return ds.Plugin().Put(adminCtx, p)
 					}
 
 					body := bytes.NewBufferString(`{"config":"{\"key\":\"value\"}"}`)
@@ -226,9 +227,9 @@ var _ = Describe("Plugin API", func() {
 					// Configure mock to update the repo when UpdatePluginConfig is called
 					mockManager.UpdatePluginConfigFn = func(ctx context.Context, id, configJSON string) error {
 						adminCtx := request.WithUser(ctx, adminUser)
-						p, _ := ds.Plugin(adminCtx).Get(id)
+						p, _ := ds.Plugin().Get(adminCtx, id)
 						p.Config = configJSON
-						return ds.Plugin(adminCtx).Put(p)
+						return ds.Plugin().Put(adminCtx, p)
 					}
 
 					body := bytes.NewBufferString(`{"config":""}`)
@@ -251,10 +252,10 @@ var _ = Describe("Plugin API", func() {
 					// Configure mock to update the repo when UpdatePluginUsers is called
 					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
 						adminCtx := request.WithUser(ctx, adminUser)
-						p, _ := ds.Plugin(adminCtx).Get(id)
+						p, _ := ds.Plugin().Get(adminCtx, id)
 						p.Users = usersJSON
 						p.AllUsers = allUsers
-						return ds.Plugin(adminCtx).Put(p)
+						return ds.Plugin().Put(adminCtx, p)
 					}
 
 					body := bytes.NewBufferString(`{"users":"[\"user1\",\"user2\"]"}`)
@@ -279,10 +280,10 @@ var _ = Describe("Plugin API", func() {
 					// Configure mock to update the repo when UpdatePluginUsers is called
 					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
 						adminCtx := request.WithUser(ctx, adminUser)
-						p, _ := ds.Plugin(adminCtx).Get(id)
+						p, _ := ds.Plugin().Get(adminCtx, id)
 						p.Users = usersJSON
 						p.AllUsers = allUsers
-						return ds.Plugin(adminCtx).Put(p)
+						return ds.Plugin().Put(adminCtx, p)
 					}
 
 					body := bytes.NewBufferString(`{"allUsers":true}`)
@@ -307,10 +308,10 @@ var _ = Describe("Plugin API", func() {
 					// Configure mock to update the repo when UpdatePluginUsers is called
 					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
 						adminCtx := request.WithUser(ctx, adminUser)
-						p, _ := ds.Plugin(adminCtx).Get(id)
+						p, _ := ds.Plugin().Get(adminCtx, id)
 						p.Users = usersJSON
 						p.AllUsers = allUsers
-						return ds.Plugin(adminCtx).Put(p)
+						return ds.Plugin().Put(adminCtx, p)
 					}
 
 					body := bytes.NewBufferString(`{"users":"[\"user1\"]","allUsers":false}`)
@@ -348,10 +349,10 @@ var _ = Describe("Plugin API", func() {
 					// Configure mock to update the repo when UpdatePluginUsers is called
 					mockManager.UpdatePluginUsersFn = func(ctx context.Context, id, usersJSON string, allUsers bool) error {
 						adminCtx := request.WithUser(ctx, adminUser)
-						p, _ := ds.Plugin(adminCtx).Get(id)
+						p, _ := ds.Plugin().Get(adminCtx, id)
 						p.Users = usersJSON
 						p.AllUsers = allUsers
-						return ds.Plugin(adminCtx).Put(p)
+						return ds.Plugin().Put(adminCtx, p)
 					}
 
 					body := bytes.NewBufferString(`{"users":""}`)

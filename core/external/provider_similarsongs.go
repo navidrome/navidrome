@@ -37,7 +37,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 		if !errors.Is(err, model.ErrNotFound) {
 			return nil, err
 		}
-		genre, err := e.ds.Genre(ctx).Get(id)
+		genre, err := e.ds.Genre().Get(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -178,13 +178,13 @@ func (e *provider) seedMix(ctx context.Context, count int, sample func() (model.
 func (e *provider) samplePlaylistTracks(ctx context.Context, playlistID string, n int) (model.MediaFiles, error) {
 	// Refresh: a smart playlist materializes no tracks until it is evaluated, so skipping it would
 	// mix an empty seed set. It is a no-op for regular playlists and inside the refresh delay.
-	repo := e.ds.Playlist(ctx).Tracks(playlistID, true)
+	repo := e.ds.Playlist().Tracks(ctx, playlistID, true)
 	if repo == nil {
 		return nil, model.ErrNotFound
 	}
 	// A playlist can hold the same file at several positions, so over-fetch and dedup: a repeated
 	// seed wastes an agent call and can reach the mix twice through the seed fallback.
-	tracks, err := repo.GetAll(model.QueryOptions{
+	tracks, err := repo.GetAll(ctx, model.QueryOptions{
 		Sort:    "random",
 		Max:     n * 4,
 		Filters: squirrel.Eq{"missing": false},
@@ -225,7 +225,7 @@ func (e *provider) sampleGenreTracks(ctx context.Context, genre *model.Genre, n 
 // sampleTracks returns up to n random present tracks. Seeds can end up in the mix verbatim, so
 // missing files would surface as unplayable entries.
 func (e *provider) sampleTracks(ctx context.Context, filter squirrel.Sqlizer, n int) (model.MediaFiles, error) {
-	return e.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+	return e.ds.MediaFile().GetRandom(ctx, model.QueryOptions{
 		Filters: squirrel.And{filter, squirrel.Eq{"missing": false}},
 		Max:     n,
 	})

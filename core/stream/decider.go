@@ -311,7 +311,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 // It checks the DB first (for user-customized values), then falls back to
 // the built-in defaults, and finally to fallbackBitrate.
 func lookupDefaultBitrate(ctx context.Context, ds model.DataStore, format string) int {
-	if t, err := ds.Transcoding(ctx).FindByFormat(format); err == nil && t.DefaultBitRate > 0 {
+	if t, err := ds.Transcoding().FindByFormat(ctx, format); err == nil && t.DefaultBitRate > 0 {
 		return t.DefaultBitRate
 	}
 	for _, dt := range consts.DefaultTranscodings {
@@ -326,7 +326,7 @@ func lookupDefaultBitrate(ctx context.Context, ds model.DataStore, format string
 // It checks the DB first (for user-customized commands), then falls back to
 // the built-in default command. Returns "" if the format is unknown.
 func LookupTranscodeCommand(ctx context.Context, ds model.DataStore, format string) string {
-	t, err := ds.Transcoding(ctx).FindByFormat(format)
+	t, err := ds.Transcoding().FindByFormat(ctx, format)
 	if err == nil && t.Command != "" {
 		return t.Command
 	}
@@ -446,7 +446,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	}
 	mf.ProbeData = string(data)
 
-	if err := s.ds.MediaFile(ctx).UpdateProbeData(mf.ID, mf.ProbeData); err != nil {
+	if err := s.ds.MediaFile().UpdateProbeData(ctx, mf.ID, mf.ProbeData); err != nil {
 		log.Error(ctx, "Failed to persist probe data", "mediaID", mf.ID, err)
 		// Don't fail the decision — we have the data in memory
 	}

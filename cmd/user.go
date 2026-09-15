@@ -183,7 +183,7 @@ func runCreateUser(ctx context.Context) {
 	ds, ctx := getAdminContext(ctx)
 
 	err := ds.WithTx(func(tx model.DataStore) error {
-		existingUser, err := tx.User(ctx).FindByUsername(userID)
+		existingUser, err := tx.User().FindByUsername(ctx, userID)
 		if existingUser != nil {
 			return fmt.Errorf("existing user '%s'", userID)
 		}
@@ -193,7 +193,7 @@ func runCreateUser(ctx context.Context) {
 		}
 
 		if len(libraryIds) > 0 && !setAdmin {
-			user.Libraries, err = tx.Library(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
+			user.Libraries, err = tx.Library().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
 			if err != nil {
 				return err
 			}
@@ -202,13 +202,13 @@ func runCreateUser(ctx context.Context) {
 				return libraryError(user.Libraries)
 			}
 		} else {
-			user.Libraries, err = tx.Library(ctx).GetAll()
+			user.Libraries, err = tx.Library().GetAll(ctx)
 			if err != nil {
 				return err
 			}
 		}
 
-		err = tx.User(ctx).Put(&user)
+		err = tx.User().Put(ctx, &user)
 		if err != nil {
 			return err
 		}
@@ -218,7 +218,7 @@ func runCreateUser(ctx context.Context) {
 			updatedIds[idx] = lib.ID
 		}
 
-		err = tx.User(ctx).SetUserLibraries(user.ID, updatedIds)
+		err = tx.User().SetUserLibraries(ctx, user.ID, updatedIds)
 		return err
 	})
 
@@ -236,7 +236,7 @@ func runDeleteUser(ctx context.Context) {
 	var user *model.User
 
 	err = ds.WithTx(func(tx model.DataStore) error {
-		count, err := tx.User(ctx).CountAll()
+		count, err := tx.User().CountAll(ctx)
 		if err != nil {
 			return err
 		}
@@ -250,7 +250,7 @@ func runDeleteUser(ctx context.Context) {
 			return err
 		}
 
-		return tx.User(ctx).Delete(user.ID)
+		return tx.User().Delete(ctx, user.ID)
 	})
 
 	if err != nil {
@@ -276,7 +276,7 @@ func runUserEdit(ctx context.Context) {
 		}
 
 		if len(libraryIds) > 0 && !setAdmin {
-			libraries, err := tx.Library(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
+			libraries, err := tx.Library().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"id": libraryIds}})
 
 			if err != nil {
 				return err
@@ -291,7 +291,7 @@ func runUserEdit(ctx context.Context) {
 		}
 
 		if setAdmin && !user.IsAdmin {
-			libraries, err := tx.Library(ctx).GetAll()
+			libraries, err := tx.Library().GetAll(ctx)
 			if err != nil {
 				return err
 			}
@@ -337,7 +337,7 @@ func runUserEdit(ctx context.Context) {
 			return nil
 		}
 
-		err := tx.User(ctx).Put(user)
+		err := tx.User().Put(ctx, user)
 		if err != nil {
 			return err
 		}
@@ -348,7 +348,7 @@ func runUserEdit(ctx context.Context) {
 				updatedIds[idx] = lib.ID
 			}
 
-			err := tx.User(ctx).SetUserLibraries(user.ID, updatedIds)
+			err := tx.User().SetUserLibraries(ctx, user.ID, updatedIds)
 			if err != nil {
 				return err
 			}
@@ -393,12 +393,10 @@ func runUserList(ctx context.Context) {
 
 	ds, ctx := getAdminContext(ctx)
 
-	users, err := ds.User(ctx).ReadAll()
+	userList, err := ds.User().ReadAll(ctx)
 	if err != nil {
 		log.Fatal(ctx, "Failed to retrieve users", err)
 	}
-
-	userList := users.(model.Users)
 
 	if outputFormat == "csv" {
 		w := csv.NewWriter(os.Stdout)

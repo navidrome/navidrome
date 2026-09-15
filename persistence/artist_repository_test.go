@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -130,31 +131,70 @@ var _ = Describe("ArtistRepository", func() {
 			})
 		})
 
-		Describe("ReadAll role sort SQL injection", func() {
-			It("does not interpolate attacker-controlled role into ORDER BY", func() {
-				ctx := request.WithUser(GinkgoT().Context(), adminUser)
-				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
-				payload := "total') OR 1=1--"
-				_, err := repo.ReadAll(rest.QueryOptions{
-					Sort:    "songCount",
-					Order:   "ASC",
-					Filters: map[string]any{"role": payload},
-				})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(repo.sortMappings["song_count"]).To(Equal("sum(stats->>'total'->>'m')"))
-				Expect(repo.sortMappings["song_count"]).ToNot(ContainSubstring(payload))
+		Describe("ReadAll role sort", func() {
+			payload := "total') OR 1=1--"
+
+			songCountSortFor := func(role any) string {
+				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
+				return repo.sortMappingsForRole(rest.QueryOptions{Filters: map[string]any{"role": role}})["song_count"]
+			}
+
+			It("falls back to the total stats role for an attacker-controlled role", func() {
+				Expect(songCountSortFor(payload)).To(Equal("sum(stats->>'total'->>'m')"))
+				Expect(songCountSortFor("bogus")).To(Equal("sum(stats->>'total'->>'m')"))
+				Expect(songCountSortFor(42)).To(Equal("sum(stats->>'total'->>'m')"))
 			})
 
 			It("keeps valid role sort paths", func() {
+				Expect(songCountSortFor("composer")).To(Equal("sum(stats->>'composer'->>'m')"))
+				Expect(songCountSortFor("albumartist")).To(Equal("sum(stats->>'albumartist'->>'m')"))
+			})
+
+			It("leaves the shared mappings untouched", func() {
+				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
+				Expect(repo.sortMappingsForRole(rest.QueryOptions{Filters: map[string]any{"role": "composer"}})).
+					ToNot(Equal(repo.sortMappings))
+				Expect(repo.sortMappings["song_count"]).To(Equal("stats->>'total'->>'m'"))
+			})
+
+			It("orders by the requested role's stats, not the total", func() {
 				ctx := request.WithUser(GinkgoT().Context(), adminUser)
-				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
-				_, err := repo.ReadAll(rest.QueryOptions{
+				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
+				// Composer and total counts rank the two artists in opposite orders, so the
+				// resulting order alone proves which mapping the sort used.
+				seed := func(artistID, stats string) {
+					_, err := repo.executeSQL(ctx, squirrel.Insert("library_artist").
+						Columns("library_id", "artist_id", "stats").
+						Values(1, artistID, stats).
+						Suffix("ON CONFLICT(library_id, artist_id) DO UPDATE SET stats = excluded.stats"))
+					Expect(err).ToNot(HaveOccurred())
+					DeferCleanup(func() {
+						_, _ = repo.executeSQL(ctx, squirrel.Update("library_artist").Set("stats", "{}").
+							Where(squirrel.Eq{"library_id": 1, "artist_id": artistID}))
+					})
+				}
+				seed(artistBeatles.ID, `{"composer": {"s": 1, "m": 1, "a": 1}, "total": {"s": 1, "m": 100, "a": 1}}`)
+				seed(artistKraftwerk.ID, `{"composer": {"s": 1, "m": 9, "a": 1}, "total": {"s": 1, "m": 2, "a": 1}}`)
+
+				res, err := repo.ReadAll(ctx, rest.QueryOptions{
 					Sort:    "songCount",
 					Order:   "DESC",
 					Filters: map[string]any{"role": "composer"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(repo.sortMappings["song_count"]).To(Equal("sum(stats->>'composer'->>'m')"))
+				Expect(slice.Map(res, func(a model.Artist) string { return a.ID })).
+					To(Equal([]string{artistKraftwerk.ID, artistBeatles.ID}))
+			})
+
+			It("still returns results when the role is an injection payload", func() {
+				ctx := request.WithUser(GinkgoT().Context(), adminUser)
+				repo := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
+				_, err := repo.ReadAll(ctx, rest.QueryOptions{
+					Sort:    "songCount",
+					Order:   "ASC",
+					Filters: map[string]any{"role": payload},
+				})
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
@@ -163,8 +203,8 @@ var _ = Describe("ArtistRepository", func() {
 			// the way Search() does, for a repo whose context carries the given user.
 			scope := func(user model.User, filter squirrel.Sqlizer) []int {
 				ctx := request.WithUser(GinkgoT().Context(), user)
-				r := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
-				return r.searchScope(filter)
+				r := NewArtistRepository(GetDBXBuilder()).(*artistRepository)
+				return r.searchScope(ctx, filter)
 			}
 			subsetUser := model.User{ID: "u", Libraries: model.Libraries{{ID: 1}, {ID: 2}, {ID: 3}}}
 
@@ -185,7 +225,7 @@ var _ = Describe("ArtistRepository", func() {
 				// A restricted user (strictly fewer libs than exist) with no musicFolderId is still
 				// confined to their granted libs. Build the user with total-1 libraries derived from
 				// the real DB total, so the "sees all" fast-path can't kick in regardless of count.
-				total, err := NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).CountAll()
+				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 				Expect(total).To(BeNumerically(">", 0))
 				libs := make(model.Libraries, 0, total-1)
@@ -201,8 +241,8 @@ var _ = Describe("ArtistRepository", func() {
 				// Admins see every library, so the visible set is the whole library table — derive
 				// it from the DB rather than assuming a count.
 				var allLibs []int
-				Expect(NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).(*libraryRepository).
-					queryAllSlice(squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
+				Expect(NewLibraryRepository(GetDBXBuilder()).(*libraryRepository).
+					queryAllSlice(GinkgoT().Context(), squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
 				admin := model.User{ID: "a", IsAdmin: true}
 				Expect(scope(admin, squirrel.Eq{"library_id": allLibs})).To(BeNil())
 				Expect(scope(admin, nil)).To(BeNil())
@@ -308,35 +348,57 @@ var _ = Describe("ArtistRepository", func() {
 
 	Context("Admin User Operations", func() {
 		var repo model.ArtistRepository
+		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx := GinkgoT().Context()
-			ctx = request.WithUser(ctx, adminUser)
-			repo = NewArtistRepository(ctx, GetDBXBuilder())
+			ctx = request.WithUser(GinkgoT().Context(), adminUser)
+			repo = NewArtistRepository(GetDBXBuilder())
+		})
+
+		Describe("ReadAll with role sort", func() {
+			It("does not change the shared sort mappings", func() {
+				original := repo.(*artistRepository).sortMappings["song_count"]
+				var wg sync.WaitGroup
+				for i := 0; i < 20; i++ {
+					role := "artist"
+					if i%2 == 1 {
+						role = "composer"
+					}
+					wg.Add(1)
+					go func() {
+						defer GinkgoRecover()
+						defer wg.Done()
+						_, err := repo.ReadAll(ctx, rest.QueryOptions{Sort: "song_count", Filters: map[string]any{"role": role}})
+						Expect(err).ToNot(HaveOccurred())
+					}()
+				}
+				wg.Wait()
+				Expect(repo.(*artistRepository).sortMappings["song_count"]).To(Equal(original))
+			})
 		})
 
 		Describe("GetCursor", func() {
 			It("yields the same artists as GetAll", func() {
 				opts := model.QueryOptions{Sort: "name"}
-				want, err := repo.GetAll(opts)
+				want, err := repo.GetAll(ctx, opts)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Artist(want)))
+				Expect(collectCursor(repo.GetCursor(ctx, opts))).To(Equal([]model.Artist(want)))
 			})
 
 			It("honors Max/Offset like GetAll", func() {
 				opts := model.QueryOptions{Sort: "name", Max: 2, Offset: 1}
-				want, err := repo.GetAll(opts)
+				want, err := repo.GetAll(ctx, opts)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Artist(want)))
+				Expect(collectCursor(repo.GetCursor(ctx, opts))).To(Equal([]model.Artist(want)))
 			})
 		})
 
 		Describe("getAllIDs", func() {
 			It("returns the same id set as GetAll", func() {
-				want, err := repo.GetAll()
+				want, err := repo.GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(want).ToNot(BeEmpty())
-				ids, err := repo.(*artistRepository).getAllIDs()
+				ids, err := repo.(*artistRepository).getAllIDs(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ids).To(ConsistOf(slice.Map(want, func(a model.Artist) string { return a.ID })))
 			})
@@ -345,12 +407,12 @@ var _ = Describe("ArtistRepository", func() {
 		Describe("Basic Operations", func() {
 			Describe("Count", func() {
 				It("returns the number of artists in the DB", func() {
-					Expect(repo.CountAll()).To(Equal(int64(4)))
+					Expect(repo.CountAll(ctx)).To(Equal(int64(4)))
 				})
 
 				It("counts starred artists when an annotation filter is present", func() {
 					// The Beatles (id 3) is starred for the admin user in the seed data
-					count, err := repo.CountAll(model.QueryOptions{
+					count, err := repo.CountAll(ctx, model.QueryOptions{
 						Filters: annotationBoolFilter("starred")("starred", "true"),
 					})
 					Expect(err).ToNot(HaveOccurred())
@@ -358,7 +420,7 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("counts with has_rating=false without a 'no such column' error (join kept)", func() {
-					count, err := repo.CountAll(model.QueryOptions{
+					count, err := repo.CountAll(ctx, model.QueryOptions{
 						Filters: annotationBoolFilter("rating")("rating", "false"),
 					})
 					Expect(err).ToNot(HaveOccurred())
@@ -368,16 +430,16 @@ var _ = Describe("ArtistRepository", func() {
 
 			Describe("Exists", func() {
 				It("returns true for an artist that is in the DB", func() {
-					Expect(repo.Exists("3")).To(BeTrue())
+					Expect(repo.Exists(ctx, "3")).To(BeTrue())
 				})
 				It("returns false for an artist that is NOT in the DB", func() {
-					Expect(repo.Exists("666")).To(BeFalse())
+					Expect(repo.Exists(ctx, "666")).To(BeFalse())
 				})
 			})
 
 			Describe("Get", func() {
 				It("retrieves existing artist data", func() {
-					artist, err := repo.Get("2")
+					artist, err := repo.Get(ctx, "2")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(artist.Name).To(Equal(artistKraftwerk.Name))
 				})
@@ -392,10 +454,10 @@ var _ = Describe("ArtistRepository", func() {
 				It("returns the index when PreferSortTags is true and SortArtistName is not empty", func() {
 					// Set SortArtistName to "Foo" for Beatles
 					artistBeatles.SortArtistName = "Foo"
-					er := repo.Put(&artistBeatles)
+					er := repo.Put(ctx, &artistBeatles)
 					Expect(er).To(BeNil())
 
-					idx, err := repo.GetIndex(false, []int{1})
+					idx, err := repo.GetIndex(ctx, false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("F"))
@@ -413,13 +475,13 @@ var _ = Describe("ArtistRepository", func() {
 
 					// Restore the original value
 					artistBeatles.SortArtistName = ""
-					er = repo.Put(&artistBeatles)
+					er = repo.Put(ctx, &artistBeatles)
 					Expect(er).To(BeNil())
 				})
 
 				// BFR Empty SortArtistName is not saved in the DB anymore
 				XIt("returns the index when PreferSortTags is true and SortArtistName is empty", func() {
-					idx, err := repo.GetIndex(false, []int{1})
+					idx, err := repo.GetIndex(ctx, false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("B"))
@@ -444,10 +506,10 @@ var _ = Describe("ArtistRepository", func() {
 				It("returns the index when SortArtistName is NOT empty", func() {
 					// Set SortArtistName to "Foo" for Beatles
 					artistBeatles.SortArtistName = "Foo"
-					er := repo.Put(&artistBeatles)
+					er := repo.Put(ctx, &artistBeatles)
 					Expect(er).To(BeNil())
 
-					idx, err := repo.GetIndex(false, []int{1})
+					idx, err := repo.GetIndex(ctx, false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("B"))
@@ -465,12 +527,12 @@ var _ = Describe("ArtistRepository", func() {
 
 					// Restore the original value
 					artistBeatles.SortArtistName = ""
-					er = repo.Put(&artistBeatles)
+					er = repo.Put(ctx, &artistBeatles)
 					Expect(er).To(BeNil())
 				})
 
 				It("returns the index when SortArtistName is empty", func() {
-					idx, err := repo.GetIndex(false, []int{1})
+					idx, err := repo.GetIndex(ctx, false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(4))
 					Expect(idx[0].ID).To(Equal("B"))
@@ -498,14 +560,14 @@ var _ = Describe("ArtistRepository", func() {
 					producerStats := `{"producer": {"s": 500, "m": 3, "a": 1}}`
 
 					// Set Beatles as composer in library 1
-					_, err := raw.executeSQL(squirrel.Insert("library_artist").
+					_, err := raw.executeSQL(ctx, squirrel.Insert("library_artist").
 						Columns("library_id", "artist_id", "stats").
 						Values(1, artistBeatles.ID, composerStats).
 						Suffix("ON CONFLICT(library_id, artist_id) DO UPDATE SET stats = excluded.stats"))
 					Expect(err).ToNot(HaveOccurred())
 
 					// Set Kraftwerk as producer in library 1
-					_, err = raw.executeSQL(squirrel.Insert("library_artist").
+					_, err = raw.executeSQL(ctx, squirrel.Insert("library_artist").
 						Columns("library_id", "artist_id", "stats").
 						Values(1, artistKraftwerk.ID, producerStats).
 						Suffix("ON CONFLICT(library_id, artist_id) DO UPDATE SET stats = excluded.stats"))
@@ -514,16 +576,16 @@ var _ = Describe("ArtistRepository", func() {
 
 				AfterEach(func() {
 					// Clean up stats from library_artist table
-					_, _ = raw.executeSQL(squirrel.Update("library_artist").
+					_, _ = raw.executeSQL(ctx, squirrel.Update("library_artist").
 						Set("stats", "{}").
 						Where(squirrel.Eq{"artist_id": artistBeatles.ID, "library_id": 1}))
-					_, _ = raw.executeSQL(squirrel.Update("library_artist").
+					_, _ = raw.executeSQL(ctx, squirrel.Update("library_artist").
 						Set("stats", "{}").
 						Where(squirrel.Eq{"artist_id": artistKraftwerk.ID, "library_id": 1}))
 				})
 
 				It("returns only artists with the specified role", func() {
-					idx, err := repo.GetIndex(false, []int{1}, model.RoleComposer)
+					idx, err := repo.GetIndex(ctx, false, []int{1}, model.RoleComposer)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(1))
 					Expect(idx[0].ID).To(Equal("B"))
@@ -532,7 +594,7 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("returns artists with any of the specified roles", func() {
-					idx, err := repo.GetIndex(false, []int{1}, model.RoleComposer, model.RoleProducer)
+					idx, err := repo.GetIndex(ctx, false, []int{1}, model.RoleComposer, model.RoleProducer)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(2))
 
@@ -553,7 +615,7 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("returns empty index when no artists have the specified role", func() {
-					idx, err := repo.GetIndex(false, []int{1}, model.RoleDirector)
+					idx, err := repo.GetIndex(ctx, false, []int{1}, model.RoleDirector)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(0))
 				})
@@ -561,19 +623,19 @@ var _ = Describe("ArtistRepository", func() {
 
 			When("validating library IDs", func() {
 				It("returns nil when no library IDs are provided", func() {
-					idx, err := repo.GetIndex(false, []int{})
+					idx, err := repo.GetIndex(ctx, false, []int{})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(BeNil())
 				})
 
 				It("returns artists when library IDs are provided (admin user sees all content)", func() {
 					// Admin users can see all content when valid library IDs are provided
-					idx, err := repo.GetIndex(false, []int{1})
+					idx, err := repo.GetIndex(ctx, false, []int{1})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(4))
 
 					// With non-existent library ID, admin users see no content because no artists are associated with that library
-					idx, err = repo.GetIndex(false, []int{999})
+					idx, err = repo.GetIndex(ctx, false, []int{999})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(idx).To(HaveLen(0)) // Even admin users need valid library associations
 				})
@@ -586,23 +648,23 @@ var _ = Describe("ArtistRepository", func() {
 			BeforeEach(func() {
 				// Create artist without any annotation
 				artistWithoutAnnotation = model.Artist{ID: "no-annotation-artist", Name: "No Annotation Artist"}
-				err := createArtistWithLibrary(repo, &artistWithoutAnnotation, 1)
+				err := createArtistWithLibrary(ctx, repo, &artistWithoutAnnotation, 1)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			AfterEach(func() {
 				if raw, ok := repo.(*artistRepository); ok {
-					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithoutAnnotation.ID}))
+					_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithoutAnnotation.ID}))
 				}
 			})
 
 			Describe("starred", func() {
 				It("false includes items without annotations", func() {
-					res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					res, err := repo.ReadAll(ctx, rest.QueryOptions{
 						Filters: map[string]any{"starred": "false"},
 					})
 					Expect(err).ToNot(HaveOccurred())
-					artists := res.(model.Artists)
+					artists := res
 
 					var found bool
 					for _, a := range artists {
@@ -615,11 +677,11 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("true excludes items without annotations", func() {
-					res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+					res, err := repo.ReadAll(ctx, rest.QueryOptions{
 						Filters: map[string]any{"starred": "true"},
 					})
 					Expect(err).ToNot(HaveOccurred())
-					artists := res.(model.Artists)
+					artists := res
 
 					for _, a := range artists {
 						Expect(a.ID).ToNot(Equal(artistWithoutAnnotation.ID))
@@ -631,57 +693,63 @@ var _ = Describe("ArtistRepository", func() {
 		Describe("MBID and Text Search", func() {
 			var lib2 model.Library
 			var lr model.LibraryRepository
+			var lrCtx context.Context
 			var restrictedUser model.User
 			var restrictedRepo model.ArtistRepository
+			var restrictedCtx context.Context
 			var headlessRepo model.ArtistRepository
+			var headlessCtx context.Context
 
 			BeforeEach(func() {
 				// Set up headless repo (no user context)
-				headlessRepo = NewArtistRepository(context.Background(), GetDBXBuilder())
+				headlessCtx = context.Background()
+				headlessRepo = NewArtistRepository(GetDBXBuilder())
 
 				// Create library for testing access restrictions
 				lib2 = model.Library{ID: 0, Name: "Artist Test Library", Path: "/artist/test/lib"}
-				lr = NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				err := lr.Put(&lib2)
+				lrCtx = request.WithUser(GinkgoT().Context(), adminUser)
+				lr = NewLibraryRepository(GetDBXBuilder())
+				err := lr.Put(lrCtx, &lib2)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create a user with access to only library 1
 				restrictedUser = createUserWithLibraries("search_user", []int{1})
 
 				// Create repository context for the restricted user
-				ctx := request.WithUser(GinkgoT().Context(), restrictedUser)
-				restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
+				restrictedCtx = request.WithUser(GinkgoT().Context(), restrictedUser)
+				restrictedRepo = NewArtistRepository(GetDBXBuilder())
 
 				// Ensure both test artists are associated with library 1
-				err = lr.AddArtist(1, artistBeatles.ID)
+				err = lr.AddArtist(lrCtx, 1, artistBeatles.ID)
 				Expect(err).ToNot(HaveOccurred())
-				err = lr.AddArtist(1, artistKraftwerk.ID)
+				err = lr.AddArtist(lrCtx, 1, artistKraftwerk.ID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create the restricted user in the database
-				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				err = ur.Put(&restrictedUser)
+				urCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				ur := NewUserRepository(GetDBXBuilder())
+				err = ur.Put(urCtx, &restrictedUser)
 				Expect(err).ToNot(HaveOccurred())
-				err = ur.SetUserLibraries(restrictedUser.ID, []int{1})
+				err = ur.SetUserLibraries(urCtx, restrictedUser.ID, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			AfterEach(func() {
 				// Clean up library 2
-				lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				_ = lr.(*libraryRepository).delete(squirrel.Eq{"id": lib2.ID})
+				lr := NewLibraryRepository(GetDBXBuilder())
+				_ = lr.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": lib2.ID})
 			})
 
 			DescribeTable("MBID search behavior across different user types",
-				func(testRepo *model.ArtistRepository, shouldFind bool, testDesc string) {
+				func(testRepo *model.ArtistRepository, testCtx *context.Context, shouldFind bool, testDesc string) {
 					// Create test artist with MBID
 					artistWithMBID := createTestArtistWithMBID("test-mbid-artist", "Test MBID Artist", "550e8400-e29b-41d4-a716-446655440010")
 
-					err := createArtistWithLibrary(*testRepo, &artistWithMBID, 1)
+					err := createArtistWithLibrary(*testCtx, *testRepo, &artistWithMBID, 1)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Test the search
-					results, err := (*testRepo).Search("550e8400-e29b-41d4-a716-446655440010", model.QueryOptions{Max: 10})
+					results, err := (*testRepo).Search(*testCtx, "550e8400-e29b-41d4-a716-446655440010", model.QueryOptions{Max: 10})
 					Expect(err).ToNot(HaveOccurred())
 
 					if shouldFind {
@@ -693,43 +761,43 @@ var _ = Describe("ArtistRepository", func() {
 
 					// Clean up
 					if raw, ok := (*testRepo).(*artistRepository); ok {
-						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithMBID.ID}))
+						_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artistWithMBID.ID}))
 					}
 				},
-				Entry("Admin user can find artist by MBID", &repo, true, "Admin should find MBID artist"),
-				Entry("Restricted user can find artist by MBID in accessible library", &restrictedRepo, true, "Restricted user should find MBID artist in accessible library"),
-				Entry("Headless process can find artist by MBID", &headlessRepo, true, "Headless process should find MBID artist"),
+				Entry("Admin user can find artist by MBID", &repo, &ctx, true, "Admin should find MBID artist"),
+				Entry("Restricted user can find artist by MBID in accessible library", &restrictedRepo, &restrictedCtx, true, "Restricted user should find MBID artist in accessible library"),
+				Entry("Headless process can find artist by MBID", &headlessRepo, &headlessCtx, true, "Headless process should find MBID artist"),
 			)
 
 			It("prevents restricted user from finding artist by MBID when not in accessible library", func() {
 				// Create an artist in library 2 (not accessible to restricted user)
 				inaccessibleArtist := createTestArtistWithMBID("inaccessible-mbid-artist", "Inaccessible MBID Artist", "a74b1b7f-71a5-4011-9441-d0b5e4122711")
-				err := repo.Put(&inaccessibleArtist)
+				err := repo.Put(ctx, &inaccessibleArtist)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Add to library 2 (not accessible to restricted user)
-				err = lr.AddArtist(lib2.ID, inaccessibleArtist.ID)
+				err = lr.AddArtist(lrCtx, lib2.ID, inaccessibleArtist.ID)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Restricted user should not find this artist
-				results, err := restrictedRepo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", model.QueryOptions{Max: 10})
+				results, err := restrictedRepo.Search(restrictedCtx, "a74b1b7f-71a5-4011-9441-d0b5e4122711", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
 				// But admin should find it
-				results, err = repo.Search("a74b1b7f-71a5-4011-9441-d0b5e4122711", model.QueryOptions{Max: 10})
+				results, err = repo.Search(ctx, "a74b1b7f-71a5-4011-9441-d0b5e4122711", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(HaveLen(1))
 
 				// Clean up
 				if raw, ok := repo.(*artistRepository); ok {
-					_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
+					_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
 				}
 			})
 
 			Context("Text Search", func() {
 				It("allows admin to find artists by name regardless of library", func() {
-					results, err := repo.Search("Beatles", model.QueryOptions{Max: 10})
+					results, err := repo.Search(ctx, "Beatles", model.QueryOptions{Max: 10})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(HaveLen(1))
 					Expect(results[0].Name).To(Equal("The Beatles"))
@@ -741,21 +809,21 @@ var _ = Describe("ArtistRepository", func() {
 						ID:   "inaccessible-text-artist",
 						Name: "Unique Search Name Artist",
 					}
-					err := repo.Put(&inaccessibleArtist)
+					err := repo.Put(ctx, &inaccessibleArtist)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Add to library 2 (not accessible to restricted user)
-					err = lr.AddArtist(lib2.ID, inaccessibleArtist.ID)
+					err = lr.AddArtist(lrCtx, lib2.ID, inaccessibleArtist.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Restricted user should not find this artist
-					results, err := restrictedRepo.Search("Unique Search Name", model.QueryOptions{Max: 10})
+					results, err := restrictedRepo.Search(restrictedCtx, "Unique Search Name", model.QueryOptions{Max: 10})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(BeEmpty(), "Text search should respect library filtering")
 
 					// Clean up
 					if raw, ok := repo.(*artistRepository); ok {
-						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
+						_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
 					}
 				})
 			})
@@ -764,15 +832,15 @@ var _ = Describe("ArtistRepository", func() {
 				It("does not duplicate artists that belong to multiple libraries", func() {
 					// An artist in two libraries has two library_artist rows; pagination
 					// must still enumerate it exactly once, at a stable offset.
-					Expect(lr.AddArtist(lib2.ID, artistBeatles.ID)).To(Succeed())
+					Expect(lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)).To(Succeed())
 
-					all, err := repo.Search("", model.QueryOptions{Max: 1000})
+					all, err := repo.Search(ctx, "", model.QueryOptions{Max: 1000})
 					Expect(err).ToNot(HaveOccurred())
 
 					seen := map[string]bool{}
 					var paged model.Artists
 					for offset := range len(all) {
-						page, err := repo.Search("", model.QueryOptions{Max: 1, Offset: offset})
+						page, err := repo.Search(ctx, "", model.QueryOptions{Max: 1, Offset: offset})
 						Expect(err).ToNot(HaveOccurred())
 						for _, a := range page {
 							Expect(seen[a.ID]).To(BeFalse(), fmt.Sprintf("artist %s returned twice", a.ID))
@@ -784,14 +852,14 @@ var _ = Describe("ArtistRepository", func() {
 				})
 
 				It("paginates all artists in natural order without overlaps or gaps", func() {
-					all, err := repo.Search("", model.QueryOptions{Max: 1000})
+					all, err := repo.Search(ctx, "", model.QueryOptions{Max: 1000})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(len(all)).To(BeNumerically(">", 1))
 
 					var paged model.Artists
 					pageSize := 2
 					for offset := 0; offset < len(all); offset += pageSize {
-						page, err := repo.Search("", model.QueryOptions{Max: pageSize, Offset: offset})
+						page, err := repo.Search(ctx, "", model.QueryOptions{Max: pageSize, Offset: offset})
 						Expect(err).ToNot(HaveOccurred())
 						paged = append(paged, page...)
 					}
@@ -804,10 +872,10 @@ var _ = Describe("ArtistRepository", func() {
 				It("respects library filtering for restricted users", func() {
 					// Create an artist only in library 2 (not accessible to restricted user)
 					lib2Artist := model.Artist{ID: "empty-query-lib2-artist", Name: "Empty Query Lib2 Artist"}
-					Expect(repo.Put(&lib2Artist)).To(Succeed())
-					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
+					Expect(repo.Put(ctx, &lib2Artist)).To(Succeed())
+					Expect(lr.AddArtist(lrCtx, lib2.ID, lib2Artist.ID)).To(Succeed())
 
-					results, err := restrictedRepo.Search("", model.QueryOptions{Max: 1000})
+					results, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1000})
 					Expect(err).ToNot(HaveOccurred())
 					for _, a := range results {
 						Expect(a.ID).ToNot(Equal(lib2Artist.ID), "Empty query search should respect library filtering")
@@ -815,7 +883,7 @@ var _ = Describe("ArtistRepository", func() {
 
 					// Clean up
 					if raw, ok := repo.(*artistRepository); ok {
-						_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
+						_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
 					}
 				})
 
@@ -823,15 +891,15 @@ var _ = Describe("ArtistRepository", func() {
 					// ID "25" sorts between base fixtures "2" and "3", so this lib2-only artist lands
 					// inside the restricted user's visible range — exercising the no-gap guarantee.
 					lib2Artist := model.Artist{ID: "25", Name: "Restricted Lib2 Artist"}
-					Expect(repo.Put(&lib2Artist)).To(Succeed())
-					Expect(lr.AddArtist(lib2.ID, lib2Artist.ID)).To(Succeed())
+					Expect(repo.Put(ctx, &lib2Artist)).To(Succeed())
+					Expect(lr.AddArtist(lrCtx, lib2.ID, lib2Artist.ID)).To(Succeed())
 					DeferCleanup(func() {
 						if raw, ok := repo.(*artistRepository); ok {
-							_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
+							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": lib2Artist.ID}))
 						}
 					})
 
-					all, err := restrictedRepo.Search("", model.QueryOptions{Max: 1000})
+					all, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1000})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(len(all)).To(BeNumerically(">", 1))
 					for _, a := range all {
@@ -840,7 +908,7 @@ var _ = Describe("ArtistRepository", func() {
 
 					var paged model.Artists
 					for offset := range len(all) {
-						page, err := restrictedRepo.Search("", model.QueryOptions{Max: 1, Offset: offset})
+						page, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1, Offset: offset})
 						Expect(err).ToNot(HaveOccurred())
 						Expect(page).To(HaveLen(1), fmt.Sprintf("page at offset %d should be full", offset))
 						paged = append(paged, page...)
@@ -855,11 +923,11 @@ var _ = Describe("ArtistRepository", func() {
 			Context("Headless Processes (No User Context)", func() {
 				It("should see all artists from all libraries when no user is in context", func() {
 					// Add artists to different libraries
-					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					err := lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Headless processes should see all artists regardless of library
-					artists, err := headlessRepo.GetAll()
+					artists, err := headlessRepo.GetAll(headlessCtx)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Should see all artists from all libraries
@@ -875,11 +943,11 @@ var _ = Describe("ArtistRepository", func() {
 
 				It("should allow headless processes to apply explicit library_id filters", func() {
 					// Add artists to different libraries
-					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					err := lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Filter by specific library
-					artists, err := headlessRepo.GetAll(model.QueryOptions{
+					artists, err := headlessRepo.GetAll(headlessCtx, model.QueryOptions{
 						Filters: squirrel.Eq{"library_id": lib2.ID},
 					})
 					Expect(err).ToNot(HaveOccurred())
@@ -895,11 +963,11 @@ var _ = Describe("ArtistRepository", func() {
 
 				It("should get individual artists when no user is in context", func() {
 					// Add artist to a library
-					err := lr.AddArtist(lib2.ID, artistBeatles.ID)
+					err := lr.AddArtist(lrCtx, lib2.ID, artistBeatles.ID)
 					Expect(err).ToNot(HaveOccurred())
 
 					// Headless process should be able to get the artist
-					artist, err := headlessRepo.Get(artistBeatles.ID)
+					artist, err := headlessRepo.Get(headlessCtx, artistBeatles.ID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(artist.ID).To(Equal(artistBeatles.ID))
 				})
@@ -908,15 +976,15 @@ var _ = Describe("ArtistRepository", func() {
 
 		Describe("Admin User Library Access", func() {
 			It("sees all artists regardless of library permissions", func() {
-				count, err := repo.CountAll()
+				count, err := repo.CountAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(4)))
 
-				artists, err := repo.GetAll()
+				artists, err := repo.GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(artists).To(HaveLen(4))
 
-				exists, err := repo.Exists(artistBeatles.ID)
+				exists, err := repo.Exists(ctx, artistBeatles.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeTrue())
 			})
@@ -931,25 +999,25 @@ var _ = Describe("ArtistRepository", func() {
 				missingArtist = model.Artist{ID: "missing_test", Name: "Missing Artist", OrderArtistName: "missing artist"}
 
 				// Create and mark as missing
-				err := createArtistWithLibrary(repo, &missingArtist, 1)
+				err := createArtistWithLibrary(ctx, repo, &missingArtist, 1)
 				Expect(err).ToNot(HaveOccurred())
 
-				_, err = raw.executeSQL(squirrel.Update(raw.tableName).Set("missing", true).Where(squirrel.Eq{"id": missingArtist.ID}))
+				_, err = raw.executeSQL(ctx, squirrel.Update(raw.tableName).Set("missing", true).Where(squirrel.Eq{"id": missingArtist.ID}))
 				Expect(err).ToNot(HaveOccurred())
 			})
 
 			AfterEach(func() {
-				_, _ = raw.executeSQL(squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
+				_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": missingArtist.ID}))
 			})
 
 			It("missing artists are never returned by search", func() {
 				// Should see missing artist in GetAll by default for admin users
-				artists, err := repo.GetAll()
+				artists, err := repo.GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(artists).To(HaveLen(5)) // Including the missing artist
 
 				// Search never returns missing artists (hardcoded behavior)
-				results, err := repo.Search("Missing Artist", model.QueryOptions{Max: 10})
+				results, err := repo.Search(ctx, "Missing Artist", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
@@ -958,6 +1026,7 @@ var _ = Describe("ArtistRepository", func() {
 
 	Context("Regular User Operations", func() {
 		var restrictedRepo model.ArtistRepository
+		var restrictedCtx context.Context
 		var unauthorizedUser model.User
 
 		BeforeEach(func() {
@@ -965,55 +1034,54 @@ var _ = Describe("ArtistRepository", func() {
 			unauthorizedUser = model.User{ID: "restricted_user", UserName: "restricted", Name: "Restricted User", Email: "restricted@test.com", IsAdmin: false}
 
 			// Create repository context for the unauthorized user
-			ctx := GinkgoT().Context()
-			ctx = request.WithUser(ctx, unauthorizedUser)
-			restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
+			restrictedCtx = request.WithUser(GinkgoT().Context(), unauthorizedUser)
+			restrictedRepo = NewArtistRepository(GetDBXBuilder())
 		})
 
 		Describe("Library Access Restrictions", func() {
 			It("CountAll returns 0 for users without library access", func() {
-				count, err := restrictedRepo.CountAll()
+				count, err := restrictedRepo.CountAll(restrictedCtx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(0)))
 			})
 
 			It("GetAll returns empty list for users without library access", func() {
-				artists, err := restrictedRepo.GetAll()
+				artists, err := restrictedRepo.GetAll(restrictedCtx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(artists).To(BeEmpty())
 			})
 
 			It("Exists returns false for existing artists when user has no library access", func() {
 				// These artists exist in the DB but the user has no access to them
-				exists, err := restrictedRepo.Exists(artistBeatles.ID)
+				exists, err := restrictedRepo.Exists(restrictedCtx, artistBeatles.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeFalse())
 
-				exists, err = restrictedRepo.Exists(artistKraftwerk.ID)
+				exists, err = restrictedRepo.Exists(restrictedCtx, artistKraftwerk.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeFalse())
 			})
 
 			It("Get returns ErrNotFound for existing artists when user has no library access", func() {
-				_, err := restrictedRepo.Get(artistBeatles.ID)
+				_, err := restrictedRepo.Get(restrictedCtx, artistBeatles.ID)
 				Expect(err).To(Equal(model.ErrNotFound))
 
-				_, err = restrictedRepo.Get(artistKraftwerk.ID)
+				_, err = restrictedRepo.Get(restrictedCtx, artistKraftwerk.ID)
 				Expect(err).To(Equal(model.ErrNotFound))
 			})
 
 			It("Search returns empty results for users without library access", func() {
-				results, err := restrictedRepo.Search("Beatles", model.QueryOptions{Max: 10})
+				results, err := restrictedRepo.Search(restrictedCtx, "Beatles", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 
-				results, err = restrictedRepo.Search("Kraftwerk", model.QueryOptions{Max: 10})
+				results, err = restrictedRepo.Search(restrictedCtx, "Kraftwerk", model.QueryOptions{Max: 10})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(results).To(BeEmpty())
 			})
 
 			It("GetIndex returns empty index for users without library access", func() {
-				idx, err := restrictedRepo.GetIndex(false, []int{1})
+				idx, err := restrictedRepo.GetIndex(restrictedCtx, false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(0))
 			})
@@ -1023,40 +1091,42 @@ var _ = Describe("ArtistRepository", func() {
 			BeforeEach(func() {
 				ctx := GinkgoT().Context()
 				// Give the user access to library 1
-				ur := NewUserRepository(request.WithUser(ctx, adminUser), GetDBXBuilder())
+				urCtx := request.WithUser(ctx, adminUser)
+				ur := NewUserRepository(GetDBXBuilder())
 
 				// First create the user if not exists
-				err := ur.Put(&unauthorizedUser)
+				err := ur.Put(urCtx, &unauthorizedUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Then add library access
-				err = ur.SetUserLibraries(unauthorizedUser.ID, []int{1})
+				err = ur.SetUserLibraries(urCtx, unauthorizedUser.ID, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 
 				// Update the user object with the libraries to simulate middleware behavior
-				libraries, err := ur.GetUserLibraries(unauthorizedUser.ID)
+				libraries, err := ur.GetUserLibraries(urCtx, unauthorizedUser.ID)
 				Expect(err).ToNot(HaveOccurred())
 				unauthorizedUser.Libraries = libraries
 
 				// Recreate repository context with updated user
-				ctx = request.WithUser(ctx, unauthorizedUser)
-				restrictedRepo = NewArtistRepository(ctx, GetDBXBuilder())
+				restrictedCtx = request.WithUser(GinkgoT().Context(), unauthorizedUser)
+				restrictedRepo = NewArtistRepository(GetDBXBuilder())
 			})
 
 			AfterEach(func() {
 				// Clean up: remove the user's library access
-				ur := NewUserRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				_ = ur.SetUserLibraries(unauthorizedUser.ID, []int{})
+				urCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				ur := NewUserRepository(GetDBXBuilder())
+				_ = ur.SetUserLibraries(urCtx, unauthorizedUser.ID, []int{})
 			})
 
 			It("CountAll returns correct count after gaining access", func() {
-				count, err := restrictedRepo.CountAll()
+				count, err := restrictedRepo.CountAll(restrictedCtx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(count).To(Equal(int64(4))) // Beatles, Kraftwerk, Seatbelts, and The Roots
 			})
 
 			It("GetAll returns artists after gaining access", func() {
-				artists, err := restrictedRepo.GetAll()
+				artists, err := restrictedRepo.GetAll(restrictedCtx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(artists).To(HaveLen(4))
 
@@ -1068,23 +1138,23 @@ var _ = Describe("ArtistRepository", func() {
 			})
 
 			It("Exists returns true for accessible artists", func() {
-				exists, err := restrictedRepo.Exists(artistBeatles.ID)
+				exists, err := restrictedRepo.Exists(restrictedCtx, artistBeatles.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeTrue())
 
-				exists, err = restrictedRepo.Exists(artistKraftwerk.ID)
+				exists, err = restrictedRepo.Exists(restrictedCtx, artistKraftwerk.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(exists).To(BeTrue())
 			})
 
 			It("GetIndex returns artists with proper library filtering", func() {
 				// With valid library access, should see artists
-				idx, err := restrictedRepo.GetIndex(false, []int{1})
+				idx, err := restrictedRepo.GetIndex(restrictedCtx, false, []int{1})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(4))
 
 				// With non-existent library ID, should see nothing (non-admin user)
-				idx, err = restrictedRepo.GetIndex(false, []int{999})
+				idx, err = restrictedRepo.GetIndex(restrictedCtx, false, []int{999})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(idx).To(HaveLen(0))
 			})
@@ -1092,11 +1162,12 @@ var _ = Describe("ArtistRepository", func() {
 			It("takes the unfiltered fast-path when the user can access every library", func() {
 				// The fixture DB has a single library and the user was granted it, so it has access
 				// to all libraries: search results must match what an admin sees.
-				adminRepo := NewArtistRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-				adminAll, err := adminRepo.Search("", model.QueryOptions{Max: 1000})
+				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				adminRepo := NewArtistRepository(GetDBXBuilder())
+				adminAll, err := adminRepo.Search(adminCtx, "", model.QueryOptions{Max: 1000})
 				Expect(err).ToNot(HaveOccurred())
 
-				userAll, err := restrictedRepo.Search("", model.QueryOptions{Max: 1000})
+				userAll, err := restrictedRepo.Search(restrictedCtx, "", model.QueryOptions{Max: 1000})
 				Expect(err).ToNot(HaveOccurred())
 
 				ids := func(artists model.Artists) []string {
@@ -1115,7 +1186,7 @@ var _ = Describe("ArtistRepository", func() {
 				// visible-library count reaches the DB total. Derive the total from the DB so the
 				// assertion doesn't depend on how many libraries other specs left behind.
 				raw := restrictedRepo.(*artistRepository) // context carries a non-admin user
-				total, err := NewLibraryRepository(GinkgoT().Context(), GetDBXBuilder()).CountAll()
+				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 				Expect(total).To(BeNumerically(">", 0))
 
@@ -1123,15 +1194,16 @@ var _ = Describe("ArtistRepository", func() {
 				for i := range allLibs {
 					allLibs[i] = i + 1
 				}
-				Expect(raw.userSeesAllLibraries(allLibs)).To(BeTrue())
-				Expect(raw.userSeesAllLibraries(allLibs[:total-1])).To(BeFalse())
-				Expect(raw.userSeesAllLibraries([]int{})).To(BeFalse())
+				Expect(raw.userSeesAllLibraries(restrictedCtx, allLibs)).To(BeTrue())
+				Expect(raw.userSeesAllLibraries(restrictedCtx, allLibs[:total-1])).To(BeFalse())
+				Expect(raw.userSeesAllLibraries(restrictedCtx, []int{})).To(BeFalse())
 			})
 		})
 	})
 
 	Describe("purgeEmpty", func() {
 		var repo *artistRepository
+		var ctx context.Context
 		var tmpDir string
 
 		BeforeEach(func() {
@@ -1139,8 +1211,8 @@ var _ = Describe("ArtistRepository", func() {
 			tmpDir = GinkgoT().TempDir()
 			conf.Server.DataFolder = conf.NewDir(tmpDir)
 
-			ctx := request.WithUser(GinkgoT().Context(), adminUser)
-			repo = NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+			ctx = request.WithUser(GinkgoT().Context(), adminUser)
+			repo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)
 		})
 
 		// Helper to create an artist image file on disk and return its path
@@ -1155,13 +1227,13 @@ var _ = Describe("ArtistRepository", func() {
 		It("removes uploaded image files for purged artists", func() {
 			// Create an orphan artist (not in album_artists) with an uploaded image
 			orphanArtist := model.Artist{ID: "orphan-with-image", Name: "Orphan Artist", UploadedImage: "orphan-with-image_Orphan_Artist.jpg"}
-			Expect(repo.Put(&orphanArtist)).To(Succeed())
+			Expect(repo.Put(ctx, &orphanArtist)).To(Succeed())
 			imgPath := createImageFile("orphan-with-image_Orphan_Artist.jpg")
 
-			Expect(repo.purgeEmpty()).To(Succeed())
+			Expect(repo.purgeEmpty(ctx)).To(Succeed())
 
 			// Artist should be gone from DB
-			exists, err := repo.Exists("orphan-with-image")
+			exists, err := repo.Exists(ctx, "orphan-with-image")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeFalse())
 
@@ -1173,12 +1245,12 @@ var _ = Describe("ArtistRepository", func() {
 		It("handles missing image files gracefully", func() {
 			// Artist has UploadedImage set but no actual file on disk
 			orphanArtist := model.Artist{ID: "orphan-no-file", Name: "Ghost Image", UploadedImage: "orphan-no-file_Ghost_Image.jpg"}
-			Expect(repo.Put(&orphanArtist)).To(Succeed())
+			Expect(repo.Put(ctx, &orphanArtist)).To(Succeed())
 
-			Expect(repo.purgeEmpty()).To(Succeed())
+			Expect(repo.purgeEmpty(ctx)).To(Succeed())
 
 			// Artist should be gone from DB
-			exists, err := repo.Exists("orphan-no-file")
+			exists, err := repo.Exists(ctx, "orphan-no-file")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(exists).To(BeFalse())
 		})
@@ -1186,24 +1258,24 @@ var _ = Describe("ArtistRepository", func() {
 		It("does not delete images for artists that are kept", func() {
 			// Create an artist with an uploaded image AND an album_artists entry so it won't be purged
 			keptArtist := model.Artist{ID: "kept-artist", Name: "Kept Artist", UploadedImage: "kept-artist_Kept_Artist.jpg"}
-			Expect(repo.Put(&keptArtist)).To(Succeed())
+			Expect(repo.Put(ctx, &keptArtist)).To(Succeed())
 			imgPath := createImageFile("kept-artist_Kept_Artist.jpg")
 
 			// Insert an album_artists record to keep this artist from being purged
-			_, err := repo.executeSQL(squirrel.Insert("album_artists").
+			_, err := repo.executeSQL(ctx, squirrel.Insert("album_artists").
 				SetMap(map[string]any{"album_id": "101", "artist_id": "kept-artist", "role": "artist", "sub_role": ""}))
 			Expect(err).ToNot(HaveOccurred())
 
 			DeferCleanup(func() {
-				_, _ = repo.executeSQL(squirrel.Delete("album_artists").Where(squirrel.Eq{"artist_id": "kept-artist"}))
-				_ = repo.delete(squirrel.Eq{"id": "kept-artist"})
+				_, _ = repo.executeSQL(ctx, squirrel.Delete("album_artists").Where(squirrel.Eq{"artist_id": "kept-artist"}))
+				_ = repo.delete(ctx, squirrel.Eq{"id": "kept-artist"})
 			})
 
-			Expect(repo.purgeEmpty()).To(Succeed())
+			Expect(repo.purgeEmpty(ctx)).To(Succeed())
 
 			// Artist should still exist (check directly, bypassing library filter)
 			var ids []string
-			err = repo.queryAllSlice(squirrel.Select("id").From("artist").Where(squirrel.Eq{"id": "kept-artist"}), &ids)
+			err = repo.queryAllSlice(ctx, squirrel.Select("id").From("artist").Where(squirrel.Eq{"id": "kept-artist"}), &ids)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(HaveLen(1))
 
@@ -1215,40 +1287,41 @@ var _ = Describe("ArtistRepository", func() {
 
 	Describe("RefreshStats", func() {
 		var repo *artistRepository
+		var ctx context.Context
 
 		missing := func(id string) bool {
 			var vals []bool
-			Expect(repo.queryAllSlice(squirrel.Select("missing").From("artist").Where(squirrel.Eq{"id": id}), &vals)).To(Succeed())
+			Expect(repo.queryAllSlice(ctx, squirrel.Select("missing").From("artist").Where(squirrel.Eq{"id": id}), &vals)).To(Succeed())
 			Expect(vals).To(HaveLen(1))
 			return vals[0]
 		}
 
 		BeforeEach(func() {
-			ctx := request.WithUser(GinkgoT().Context(), adminUser)
-			repo = NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+			ctx = request.WithUser(GinkgoT().Context(), adminUser)
+			repo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)
 		})
 
 		It("marks artists missing when the empty-stats cleanup drops their last library_artist row", func() {
 			// A library_artist row with stats '{}' (no content) gets deleted by the cleanup,
 			// which would orphan this non-missing artist.
 			emptyArtist := model.Artist{ID: "refresh-empty", Name: "No Content Artist"}
-			Expect(repo.Put(&emptyArtist)).To(Succeed())
-			_, err := repo.executeSQL(squirrel.Insert("library_artist").
+			Expect(repo.Put(ctx, &emptyArtist)).To(Succeed())
+			_, err := repo.executeSQL(ctx, squirrel.Insert("library_artist").
 				SetMap(map[string]any{"library_id": 1, "artist_id": emptyArtist.ID, "stats": "{}"}))
 			Expect(err).ToNot(HaveOccurred())
 			DeferCleanup(func() {
-				_, _ = repo.executeSQL(squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": emptyArtist.ID}))
-				_ = repo.delete(squirrel.Eq{"id": emptyArtist.ID})
+				_, _ = repo.executeSQL(ctx, squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": emptyArtist.ID}))
+				_ = repo.delete(ctx, squirrel.Eq{"id": emptyArtist.ID})
 			})
 
 			Expect(missing(emptyArtist.ID)).To(BeFalse())
 
-			_, err = repo.RefreshStats(true)
+			_, err = repo.RefreshStats(ctx, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(missing(emptyArtist.ID)).To(BeTrue())
 			var orphanIDs []string
-			Expect(repo.queryAllSlice(squirrel.Select("id").From("artist").
+			Expect(repo.queryAllSlice(ctx, squirrel.Select("id").From("artist").
 				Where("missing = false").
 				Where("id not in (select artist_id from library_artist)"), &orphanIDs)).To(Succeed())
 			Expect(orphanIDs).ToNot(ContainElement(emptyArtist.ID))
@@ -1259,14 +1332,14 @@ var _ = Describe("ArtistRepository", func() {
 			// all. The cleanup deletes nothing for it, so a full refresh (allArtists) must still
 			// reconcile it.
 			legacyOrphan := model.Artist{ID: "refresh-legacy-orphan", Name: "Legacy Orphan"}
-			Expect(repo.Put(&legacyOrphan)).To(Succeed())
+			Expect(repo.Put(ctx, &legacyOrphan)).To(Succeed())
 			DeferCleanup(func() {
-				_ = repo.delete(squirrel.Eq{"id": legacyOrphan.ID})
+				_ = repo.delete(ctx, squirrel.Eq{"id": legacyOrphan.ID})
 			})
 
 			Expect(missing(legacyOrphan.ID)).To(BeFalse())
 
-			_, err := repo.RefreshStats(true)
+			_, err := repo.RefreshStats(ctx, true)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(missing(legacyOrphan.ID)).To(BeTrue())
@@ -1276,13 +1349,13 @@ var _ = Describe("ArtistRepository", func() {
 
 // Helper function to create an artist with proper library association.
 // This ensures test artists always have library_artist associations to avoid orphaned artists in tests.
-func createArtistWithLibrary(repo model.ArtistRepository, artist *model.Artist, libraryID int) error {
-	err := repo.Put(artist)
+func createArtistWithLibrary(ctx context.Context, repo model.ArtistRepository, artist *model.Artist, libraryID int) error {
+	err := repo.Put(ctx, artist)
 	if err != nil {
 		return err
 	}
 
 	// Add the artist to the specified library
-	lr := NewLibraryRepository(request.WithUser(GinkgoT().Context(), adminUser), GetDBXBuilder())
-	return lr.AddArtist(libraryID, artist.ID)
+	lr := NewLibraryRepository(GetDBXBuilder())
+	return lr.AddArtist(request.WithUser(GinkgoT().Context(), adminUser), libraryID, artist.ID)
 }

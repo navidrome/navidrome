@@ -38,76 +38,76 @@ type MockDataStore struct {
 	GCError  error
 }
 
-func (db *MockDataStore) Library(ctx context.Context) model.LibraryRepository {
+func (db *MockDataStore) Library() model.LibraryRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedLibrary != nil {
 		return db.MockedLibrary
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Library(ctx)
+		return db.RealDS.Library()
 	}
 	db.MockedLibrary = &MockLibraryRepo{}
 	return db.MockedLibrary
 }
 
-func (db *MockDataStore) Folder(ctx context.Context) model.FolderRepository {
+func (db *MockDataStore) Folder() model.FolderRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedFolder != nil {
 		return db.MockedFolder
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Folder(ctx)
+		return db.RealDS.Folder()
 	}
 	db.MockedFolder = struct{ model.FolderRepository }{}
 	return db.MockedFolder
 }
 
-func (db *MockDataStore) Tag(ctx context.Context) model.TagRepository {
+func (db *MockDataStore) Tag() model.TagRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedTag != nil {
 		return db.MockedTag
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Tag(ctx)
+		return db.RealDS.Tag()
 	}
 	db.MockedTag = &MockTagRepo{}
 	return db.MockedTag
 }
 
-func (db *MockDataStore) Album(ctx context.Context) model.AlbumRepository {
+func (db *MockDataStore) Album() model.AlbumRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedAlbum != nil {
 		return db.MockedAlbum
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Album(ctx)
+		return db.RealDS.Album()
 	}
 	db.MockedAlbum = CreateMockAlbumRepo()
 	return db.MockedAlbum
 }
 
-func (db *MockDataStore) Artist(ctx context.Context) model.ArtistRepository {
+func (db *MockDataStore) Artist() model.ArtistRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedArtist != nil {
 		return db.MockedArtist
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Artist(ctx)
+		return db.RealDS.Artist()
 	}
 	db.MockedArtist = CreateMockArtistRepo()
 	return db.MockedArtist
 }
 
-func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
+func (db *MockDataStore) MediaFile() model.MediaFileRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.RealDS != nil && db.MockedMediaFile == nil {
-		return db.RealDS.MediaFile(ctx)
+		return db.RealDS.MediaFile()
 	}
 	if db.MockedMediaFile == nil {
 		db.MockedMediaFile = CreateMockMediaFileRepo()
@@ -115,128 +115,128 @@ func (db *MockDataStore) MediaFile(ctx context.Context) model.MediaFileRepositor
 	return db.MockedMediaFile
 }
 
-func (db *MockDataStore) Genre(ctx context.Context) model.GenreRepository {
+func (db *MockDataStore) Genre() model.GenreRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedGenre != nil {
 		return db.MockedGenre
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Genre(ctx)
+		return db.RealDS.Genre()
 	}
 	db.MockedGenre = &MockedGenreRepo{}
 	return db.MockedGenre
 }
 
-func (db *MockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
+func (db *MockDataStore) Playlist() model.PlaylistRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlaylist != nil {
 		return db.MockedPlaylist
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Playlist(ctx)
+		return db.RealDS.Playlist()
 	}
 	db.MockedPlaylist = CreateMockPlaylistRepo()
 	return db.MockedPlaylist
 }
 
-func (db *MockDataStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
+func (db *MockDataStore) PlayQueue() model.PlayQueueRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlayQueue != nil {
 		return db.MockedPlayQueue
 	}
 	if db.RealDS != nil {
-		return db.RealDS.PlayQueue(ctx)
+		return db.RealDS.PlayQueue()
 	}
 	db.MockedPlayQueue = &MockPlayQueueRepo{}
 	return db.MockedPlayQueue
 }
 
-func (db *MockDataStore) UserProps(ctx context.Context) model.UserPropsRepository {
+func (db *MockDataStore) UserProps() model.UserPropsRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedUserProps != nil {
 		return db.MockedUserProps
 	}
 	if db.RealDS != nil {
-		return db.RealDS.UserProps(ctx)
+		return db.RealDS.UserProps()
 	}
 	db.MockedUserProps = &MockedUserPropsRepo{}
 	return db.MockedUserProps
 }
 
-func (db *MockDataStore) Property(ctx context.Context) model.PropertyRepository {
+func (db *MockDataStore) Property() model.PropertyRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedProperty != nil {
 		return db.MockedProperty
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Property(ctx)
+		return db.RealDS.Property()
 	}
 	db.MockedProperty = &MockedPropertyRepo{}
 	return db.MockedProperty
 }
 
-func (db *MockDataStore) Share(ctx context.Context) model.ShareRepository {
+func (db *MockDataStore) Share() model.ShareRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedShare != nil {
 		return db.MockedShare
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Share(ctx)
+		return db.RealDS.Share()
 	}
 	db.MockedShare = &MockShareRepo{}
 	return db.MockedShare
 }
 
-func (db *MockDataStore) User(ctx context.Context) model.UserRepository {
+func (db *MockDataStore) User() model.UserRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedUser != nil {
 		return db.MockedUser
 	}
 	if db.RealDS != nil {
-		return db.RealDS.User(ctx)
+		return db.RealDS.User()
 	}
 	db.MockedUser = CreateMockUserRepo()
 	return db.MockedUser
 }
 
-func (db *MockDataStore) Transcoding(ctx context.Context) model.TranscodingRepository {
+func (db *MockDataStore) Transcoding() model.TranscodingRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedTranscoding != nil {
 		return db.MockedTranscoding
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Transcoding(ctx)
+		return db.RealDS.Transcoding()
 	}
 	db.MockedTranscoding = struct{ model.TranscodingRepository }{}
 	return db.MockedTranscoding
 }
 
-func (db *MockDataStore) Player(ctx context.Context) model.PlayerRepository {
+func (db *MockDataStore) Player() model.PlayerRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlayer != nil {
 		return db.MockedPlayer
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Player(ctx)
+		return db.RealDS.Player()
 	}
 	db.MockedPlayer = struct{ model.PlayerRepository }{}
 	return db.MockedPlayer
 }
 
-func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
+func (db *MockDataStore) ScrobbleBuffer() model.ScrobbleBufferRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.RealDS != nil && db.MockedScrobbleBuffer == nil {
-		return db.RealDS.ScrobbleBuffer(ctx)
+		return db.RealDS.ScrobbleBuffer()
 	}
 	db.scrobbleBufferMu.Lock()
 	defer db.scrobbleBufferMu.Unlock()
@@ -246,75 +246,75 @@ func (db *MockDataStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBuffe
 	return db.MockedScrobbleBuffer
 }
 
-func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
+func (db *MockDataStore) Scrobble() model.ScrobbleRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedScrobble != nil {
 		return db.MockedScrobble
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Scrobble(ctx)
+		return db.RealDS.Scrobble()
 	}
-	db.MockedScrobble = &MockScrobbleRepo{ctx: ctx}
+	db.MockedScrobble = &MockScrobbleRepo{}
 	return db.MockedScrobble
 }
 
-func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {
+func (db *MockDataStore) Radio() model.RadioRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedRadio != nil {
 		return db.MockedRadio
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Radio(ctx)
+		return db.RealDS.Radio()
 	}
 	db.MockedRadio = CreateMockedRadioRepo()
 	return db.MockedRadio
 }
 
-func (db *MockDataStore) Plugin(ctx context.Context) model.PluginRepository {
+func (db *MockDataStore) Plugin() model.PluginRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedPlugin != nil {
 		return db.MockedPlugin
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Plugin(ctx)
+		return db.RealDS.Plugin()
 	}
 	db.MockedPlugin = CreateMockPluginRepo()
 	return db.MockedPlugin
 }
 
-func (db *MockDataStore) Artwork(ctx context.Context) model.ArtworkRepository {
+func (db *MockDataStore) Artwork() model.ArtworkRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
-	return db.artworkLocked(ctx)
+	return db.artworkLocked()
 }
 
 // artworkLocked is the body of Artwork for callers already holding repoMu; repoMu is a plain
 // Mutex, so re-entering through the exported method would deadlock.
-func (db *MockDataStore) artworkLocked(ctx context.Context) model.ArtworkRepository {
+func (db *MockDataStore) artworkLocked() model.ArtworkRepository {
 	if db.MockedArtwork != nil {
 		return db.MockedArtwork
 	}
 	if db.RealDS != nil {
-		return db.RealDS.Artwork(ctx)
+		return db.RealDS.Artwork()
 	}
 	db.MockedArtwork = CreateMockArtworkRepo()
 	return db.MockedArtwork
 }
 
-func (db *MockDataStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
+func (db *MockDataStore) ArtworkQueue() model.ArtworkQueueRepository {
 	db.repoMu.Lock()
 	defer db.repoMu.Unlock()
 	if db.MockedArtworkQueue != nil {
 		return db.MockedArtworkQueue
 	}
 	if db.RealDS != nil {
-		return db.RealDS.ArtworkQueue(ctx)
+		return db.RealDS.ArtworkQueue()
 	}
 	q := CreateMockArtworkQueueRepo()
-	if aw, ok := db.artworkLocked(ctx).(*MockArtworkRepo); ok {
+	if aw, ok := db.artworkLocked().(*MockArtworkRepo); ok {
 		q.ItemArtworkSource = aw
 	}
 	db.MockedArtworkQueue = q
@@ -327,37 +327,6 @@ func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...s
 
 func (db *MockDataStore) WithTxImmediate(block func(tx model.DataStore) error, label ...string) error {
 	return block(db)
-}
-
-func (db *MockDataStore) Resource(ctx context.Context, m any) model.ResourceRepository {
-	switch m.(type) {
-	case model.MediaFile, *model.MediaFile:
-		return db.MediaFile(ctx).(model.ResourceRepository)
-	case model.Album, *model.Album:
-		return db.Album(ctx).(model.ResourceRepository)
-	case model.Artist, *model.Artist:
-		return db.Artist(ctx).(model.ResourceRepository)
-	case model.User, *model.User:
-		return db.User(ctx).(model.ResourceRepository)
-	case model.Playlist, *model.Playlist:
-		return db.Playlist(ctx).(model.ResourceRepository)
-	case model.Radio, *model.Radio:
-		return db.Radio(ctx).(model.ResourceRepository)
-	case model.Share, *model.Share:
-		return db.Share(ctx).(model.ResourceRepository)
-	case model.Genre, *model.Genre:
-		return db.Genre(ctx).(model.ResourceRepository)
-	case model.Tag, *model.Tag:
-		return db.Tag(ctx).(model.ResourceRepository)
-	case model.Transcoding, *model.Transcoding:
-		return db.Transcoding(ctx).(model.ResourceRepository)
-	case model.Player, *model.Player:
-		return db.Player(ctx).(model.ResourceRepository)
-	case model.Plugin, *model.Plugin:
-		return db.Plugin(ctx).(model.ResourceRepository)
-	default:
-		return struct{ model.ResourceRepository }{}
-	}
 }
 
 func (db *MockDataStore) GC(context.Context, ...int) error {

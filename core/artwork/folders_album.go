@@ -36,7 +36,7 @@ func loadAlbumFoldersPaths(ctx context.Context, ds model.DataStore, album model.
 }
 
 func loadFolders(ctx context.Context, ds model.DataStore, folderIDs []string) ([]model.Folder, error) {
-	return ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
+	return ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderIDs, "missing": false}})
 }
 
 // folderImages collects the folders' image files, sorted so files without
@@ -79,7 +79,7 @@ func albumRootParent(ctx context.Context, ds model.DataStore, folders []model.Fo
 	if len(folders) < 2 && anyFolderHasImages(folders) {
 		return nil, nil
 	}
-	parent, err := ds.Folder(ctx).Get(commonParentID)
+	parent, err := ds.Folder().Get(ctx, commonParentID)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Warn(ctx, "Artwork: Parent folder not found for album cover art lookup", "parentID", commonParentID)
 		return nil, nil
@@ -91,7 +91,7 @@ func albumRootParent(ctx context.Context, ds model.DataStore, folders []model.Fo
 		// The library root can never be an album root
 		return nil, nil
 	}
-	hasOtherAudio, err := ds.Folder(ctx).HasAudioOutsideFolders(*parent, folderIDs)
+	hasOtherAudio, err := ds.Folder().HasAudioOutsideFolders(ctx, *parent, folderIDs)
 	if err != nil {
 		return nil, err
 	}

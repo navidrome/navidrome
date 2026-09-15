@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
@@ -56,7 +57,7 @@ var _ = Describe("Song Endpoints", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(&testUser)
+		err := userRepo.Put(GinkgoT().Context(), &testUser)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Create test songs
@@ -95,7 +96,7 @@ var _ = Describe("Song Endpoints", func() {
 		mfRepo.SetData(testSongs)
 
 		// Create the native API router and wrap it with the JWTVerifier middleware
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})
@@ -369,7 +370,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     true,
 					NewPassword: "adminpass",
 				}
-				err := userRepo.Put(&adminUser)
+				err := userRepo.Put(GinkgoT().Context(), &adminUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create JWT token for admin user
@@ -392,7 +393,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     false,
 					NewPassword: "userpass",
 				}
-				err := userRepo.Put(&regularUser)
+				err := userRepo.Put(GinkgoT().Context(), &regularUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create JWT token for regular user

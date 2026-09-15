@@ -20,37 +20,37 @@ var _ = Describe("SQLStore", func() {
 		Context("When block returns nil", func() {
 			It("commits changes to the DB", func() {
 				err := ds.WithTx(func(tx model.DataStore) error {
-					pl := tx.Player(ctx)
-					err := pl.Put(&model.Player{ID: "666", UserId: "userid"})
+					pl := tx.Player()
+					err := pl.Put(ctx, &model.Player{ID: "666", UserId: "userid"})
 					Expect(err).ToNot(HaveOccurred())
 
-					pr := tx.Property(ctx)
-					err = pr.Put("777", "value")
+					pr := tx.Property()
+					err = pr.Put(ctx, "777", "value")
 					Expect(err).ToNot(HaveOccurred())
 					return nil
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(ds.Player(ctx).Get("666")).To(Equal(&model.Player{ID: "666", UserId: "userid", Username: "userid"}))
-				Expect(ds.Property(ctx).Get("777")).To(Equal("value"))
+				Expect(ds.Player().Get(ctx, "666")).To(Equal(&model.Player{ID: "666", UserId: "userid", Username: "userid"}))
+				Expect(ds.Property().Get(ctx, "777")).To(Equal("value"))
 			})
 		})
 		Context("When block returns an error", func() {
 			It("rollbacks changes to the DB", func() {
 				err := ds.WithTx(func(tx model.DataStore) error {
-					pr := tx.Property(ctx)
-					err := pr.Put("999", "value")
+					pr := tx.Property()
+					err := pr.Put(ctx, "999", "value")
 					Expect(err).ToNot(HaveOccurred())
 
 					// Will fail as it is missing the UserName
-					pl := tx.Player(ctx)
-					err = pl.Put(&model.Player{ID: "888"})
+					pl := tx.Player()
+					err = pl.Put(ctx, &model.Player{ID: "888"})
 					Expect(err).To(HaveOccurred())
 					return err
 				})
 				Expect(err).To(HaveOccurred())
-				_, err = ds.Property(ctx).Get("999")
+				_, err = ds.Property().Get(ctx, "999")
 				Expect(err).To(MatchError(model.ErrNotFound))
-				_, err = ds.Player(ctx).Get("888")
+				_, err = ds.Player().Get(ctx, "888")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})

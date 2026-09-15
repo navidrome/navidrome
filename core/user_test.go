@@ -29,19 +29,19 @@ var _ = Describe("User Service", func() {
 	})
 
 	Describe("NewRepository", func() {
-		It("returns a rest.Persistable", func() {
-			repo := service.NewRepository(ctx)
-			_, ok := repo.(rest.Persistable)
+		It("returns a rest.Persistable[model.User]", func() {
+			repo := service.Repository()
+			_, ok := repo.(rest.Persistable[model.User])
 			Expect(ok).To(BeTrue())
 		})
 	})
 
 	Describe("Delete", func() {
-		var repo rest.Persistable
+		var repo rest.Persistable[model.User]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
-			repo = r.(rest.Persistable)
+			r := service.Repository()
+			repo = r.(rest.Persistable[model.User])
 
 			// Add a test user
 			user := &model.User{
@@ -50,34 +50,34 @@ var _ = Describe("User Service", func() {
 				IsAdmin:  false,
 			}
 			user.NewPassword = "password"
-			Expect(userRepo.Put(user)).To(Succeed())
+			Expect(userRepo.Put(ctx, user)).To(Succeed())
 		})
 
 		It("deletes the user successfully", func() {
-			err := repo.Delete("user-123")
+			err := repo.Delete(ctx, "user-123")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify user is deleted
-			_, err = userRepo.Get("user-123")
+			_, err = userRepo.Get(ctx, "user-123")
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 
 		It("calls UnloadDisabledPlugins after successful deletion", func() {
-			err := repo.Delete("user-123")
+			err := repo.Delete(ctx, "user-123")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pluginManager.unloadCalls).To(Equal(1))
 		})
 
 		It("does not call UnloadDisabledPlugins when deletion fails", func() {
 			// Try to delete non-existent user
-			err := repo.Delete("non-existent")
+			err := repo.Delete(ctx, "non-existent")
 			Expect(err).To(HaveOccurred())
 			Expect(pluginManager.unloadCalls).To(Equal(0))
 		})
 
 		It("returns error when repository fails", func() {
 			userRepo.Error = errors.New("database error")
-			err := repo.Delete("user-123")
+			err := repo.Delete(ctx, "user-123")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("database error"))
 			Expect(pluginManager.unloadCalls).To(Equal(0))

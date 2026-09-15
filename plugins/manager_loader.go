@@ -219,9 +219,9 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugins, err := repo.GetAll()
+	plugins, err := repo.GetAll(adminCtx)
 	if err != nil {
 		return fmt.Errorf("reading plugins from DB: %w", err)
 	}
@@ -257,7 +257,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 					plugin.LastError = err.Error()
 					plugin.Enabled = false
 					plugin.UpdatedAt = time.Now()
-					if putErr := repo.Put(&plugin); putErr != nil {
+					if putErr := repo.Put(adminCtx, &plugin); putErr != nil {
 						log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
 					}
 				}
@@ -269,7 +269,7 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			if plugin.LastError != "" && m.transient == nil {
 				plugin.LastError = ""
 				plugin.UpdatedAt = time.Now()
-				if putErr := repo.Put(&plugin); putErr != nil {
+				if putErr := repo.Put(adminCtx, &plugin); putErr != nil {
 					log.Error(ctx, "Failed to clear plugin error in DB", "plugin", plugin.ID, putErr)
 				}
 			}
@@ -347,7 +347,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 
 		if pkg.Manifest.HasLibraryFilesystemPermission() {
 			adminCtx := adminContext(ctx)
-			libraries, err := m.ds.Library(adminCtx).GetAll()
+			libraries, err := m.ds.Library().GetAll(adminCtx)
 			if err != nil {
 				return fmt.Errorf("failed to get libraries for filesystem access: %w", err)
 			}

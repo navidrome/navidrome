@@ -12,23 +12,23 @@ import (
 
 var _ = Describe("sqlBookmarks", func() {
 	var mr model.MediaFileRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, model.User{ID: "userid"})
-		mr = NewMediaFileRepository(ctx, GetDBXBuilder())
+		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+		mr = NewMediaFileRepository(GetDBXBuilder())
 	})
 
 	Describe("Bookmarks", func() {
 		It("returns an empty collection if there are no bookmarks", func() {
-			Expect(mr.GetBookmarks()).To(BeEmpty())
+			Expect(mr.GetBookmarks(ctx)).To(BeEmpty())
 		})
 
 		It("saves and overrides bookmarks", func() {
 			By("Saving the bookmark")
-			Expect(mr.AddBookmark(songAntenna.ID, "this is a comment", 123)).To(BeNil())
+			Expect(mr.AddBookmark(ctx, songAntenna.ID, "this is a comment", 123)).To(BeNil())
 
-			bms, err := mr.GetBookmarks()
+			bms, err := mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bms).To(HaveLen(1))
@@ -42,9 +42,9 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(updated).To(BeTemporally(">=", created))
 
 			By("Overriding the bookmark")
-			Expect(mr.AddBookmark(songAntenna.ID, "another comment", 333)).To(BeNil())
+			Expect(mr.AddBookmark(ctx, songAntenna.ID, "another comment", 333)).To(BeNil())
 
-			bms, err = mr.GetBookmarks()
+			bms, err = mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
@@ -54,21 +54,21 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(bms[0].UpdatedAt).To(BeTemporally(">=", updated))
 
 			By("Saving another bookmark")
-			Expect(mr.AddBookmark(songComeTogether.ID, "one more comment", 444)).To(BeNil())
-			bms, err = mr.GetBookmarks()
+			Expect(mr.AddBookmark(ctx, songComeTogether.ID, "one more comment", 444)).To(BeNil())
+			bms, err = mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bms).To(HaveLen(2))
 
 			By("Delete bookmark")
-			Expect(mr.DeleteBookmark(songAntenna.ID)).To(Succeed())
-			bms, err = mr.GetBookmarks()
+			Expect(mr.DeleteBookmark(ctx, songAntenna.ID)).To(Succeed())
+			bms, err = mr.GetBookmarks(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(bms).To(HaveLen(1))
 			Expect(bms[0].Item.ID).To(Equal(songComeTogether.ID))
 			Expect(bms[0].Item.Title).To(Equal(songComeTogether.Title))
 
-			Expect(mr.DeleteBookmark(songComeTogether.ID)).To(Succeed())
-			Expect(mr.GetBookmarks()).To(BeEmpty())
+			Expect(mr.DeleteBookmark(ctx, songComeTogether.ID)).To(Succeed())
+			Expect(mr.GetBookmarks(ctx)).To(BeEmpty())
 		})
 	})
 })

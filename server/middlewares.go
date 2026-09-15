@@ -375,7 +375,7 @@ func UpdateLastAccessMiddleware(ds model.DataStore) func(next http.Handler) http
 					ctx, cancel := context.WithTimeout(ctx, time.Second)
 					defer cancel()
 
-					err := ds.User(ctx).UpdateLastAccessAt(usr.ID)
+					err := ds.User().UpdateLastAccessAt(ctx, usr.ID)
 					if err != nil {
 						log.Warn(ctx, "Could not update user's lastAccessAt", "username", usr.UserName,
 							"elapsed", time.Since(start), err)

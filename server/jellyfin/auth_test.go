@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -22,8 +21,8 @@ var _ = Describe("AuthenticateByName", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		ur := ds.User().(*tests.MockedUserRepo)
+		Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
@@ -61,15 +60,15 @@ var _ = Describe("AuthenticateByName", func() {
 		api.authenticateByName(w, r)
 
 		Expect(w.Code).To(Equal(http.StatusOK))
-		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		usr, err := ur.FindByUsername("alice")
+		ur := ds.User().(*tests.MockedUserRepo)
+		usr, err := ur.FindByUsername(GinkgoT().Context(), "alice")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(usr.LastLoginAt).ToNot(BeNil())
 	})
 
 	It("reflects an administrator in the User.Policy", func() {
-		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: testID("admin1"), UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
+		ur := ds.User().(*tests.MockedUserRepo)
+		Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("admin1"), UserName: "root", NewPassword: "secret", IsAdmin: true})).To(Succeed())
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",
@@ -92,8 +91,8 @@ var _ = Describe("AuthenticateByName", func() {
 	})
 
 	It("rejects an empty password even for a user with an empty stored password with 401", func() {
-		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: testID("e"), UserName: "empty", NewPassword: ""})).To(Succeed())
+		ur := ds.User().(*tests.MockedUserRepo)
+		Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("e"), UserName: "empty", NewPassword: ""})).To(Succeed())
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Users/AuthenticateByName",

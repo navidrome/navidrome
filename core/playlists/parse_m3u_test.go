@@ -24,7 +24,7 @@ var _ = Describe("libraryMatcher", func() {
 
 	// Helper function to create a libraryMatcher from the mock datastore
 	createMatcher := func(ds model.DataStore) *libraryMatcher {
-		libs, err := ds.Library(ctx).GetAll()
+		libs, err := ds.Library().GetAll(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		return newLibraryMatcher(libs)
 	}

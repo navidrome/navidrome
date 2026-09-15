@@ -26,7 +26,7 @@ var _ = Describe("BufferedScrobbler", func() {
 		ctx = context.Background()
 		buffer = tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&model.User{ID: "user1", UserName: "alice"})).To(Succeed())
+		Expect(userRepo.Put(ctx, &model.User{ID: "user1", UserName: "alice"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedScrobbleBuffer: buffer,
 			MockedUser:           userRepo,
@@ -55,7 +55,7 @@ var _ = Describe("BufferedScrobbler", func() {
 		track := model.MediaFile{ID: "123", Title: "Test Track"}
 		now := time.Now()
 		scrobble := Scrobble{MediaFile: track, TimeStamp: now}
-		Expect(buffer.Length()).To(Equal(int64(0)))
+		Expect(buffer.Length(context.Background())).To(Equal(int64(0)))
 		Expect(scr.ScrobbleCalled.Load()).To(BeFalse())
 
 		Expect(bs.Scrobble(ctx, "user1", scrobble)).To(Succeed())
@@ -131,7 +131,7 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		g := NewWithT(t)
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		g.Expect(userRepo.Put(&model.User{ID: "user1", UserName: "alice"})).To(Succeed())
+		g.Expect(userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})).To(Succeed())
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 
 		flaky := &recoveringScrobbler{}
@@ -147,7 +147,7 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		// First attempt fires immediately on the enqueue wake and is left buffered.
 		synctest.Wait()
 		g.Expect(flaky.count.Load()).To(Equal(int32(1)))
-		g.Expect(buffer.Length()).To(Equal(int64(1)))
+		g.Expect(buffer.Length(context.Background())).To(Equal(int64(1)))
 
 		// Each subsequent retry waits exactly double the previous: 5s, 10s, 20s, 40s.
 		for i, gap := range []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second} {
@@ -165,10 +165,10 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		flaky.succeed()
 		bs.sendWakeSignal()
 		synctest.Wait()
-		g.Expect(buffer.Length()).To(Equal(int64(1)), "wake during backoff drained early")
+		g.Expect(buffer.Length(context.Background())).To(Equal(int64(1)), "wake during backoff drained early")
 		time.Sleep(80 * time.Second)
 		synctest.Wait()
-		g.Expect(buffer.Length()).To(Equal(int64(0)))
+		g.Expect(buffer.Length(context.Background())).To(Equal(int64(0)))
 	})
 }
 
@@ -176,7 +176,7 @@ func TestBufferedScrobblerBackoffWindow(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &fakeScrobbler{Authorized: true}
 		scr.SetError(errors.Join(errors.New("boom"), ErrRetryLater))
@@ -211,7 +211,7 @@ func TestBufferedScrobblerHonorsServerDelay(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &fakeScrobbler{Authorized: true}
 		scr.SetError(errors.Join(errors.New("429"), &agents.RetryLaterError{RetryIn: 30 * time.Second}))
@@ -244,8 +244,8 @@ func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		userRepo := tests.CreateMockUserRepo()
-		_ = userRepo.Put(&model.User{ID: "user1", UserName: "alice"})
-		_ = userRepo.Put(&model.User{ID: "user2", UserName: "bob"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user1", UserName: "alice"})
+		_ = userRepo.Put(t.Context(), &model.User{ID: "user2", UserName: "bob"})
 		ds := &tests.MockDataStore{MockedScrobbleBuffer: buffer, MockedUser: userRepo}
 		scr := &recoveringScrobbler{delays: map[string]time.Duration{
 			"user1": 10 * time.Second,
@@ -253,8 +253,8 @@ func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
 		}}
 		// Both are buffered before the drain goroutine exists: it drains once on startup, and
 		// seeing only one user there would park it on that user's delay, ignoring the other.
-		_ = buffer.Enqueue("test", "user1", "1", time.Now())
-		_ = buffer.Enqueue("test", "user2", "2", time.Now())
+		_ = buffer.Enqueue(context.Background(), "test", "user1", "1", time.Now())
+		_ = buffer.Enqueue(context.Background(), "test", "user2", "2", time.Now())
 		bs := newBufferedScrobbler(ds, scr, "test")
 		defer bs.Stop()
 

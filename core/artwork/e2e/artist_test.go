@@ -179,7 +179,7 @@ var _ = Describe("Artist artwork resolution", func() {
 			uploaded := ar.ID + "_upload.jpg"
 			writeUploadedImage(consts.EntityArtist, uploaded, pngBytes("artist-uploaded"))
 			ar.UploadedImage = uploaded
-			Expect(rds.Artist(rctx).Put(&ar)).To(Succeed())
+			Expect(rds.Artist().Put(rctx, &ar)).To(Succeed())
 
 			ia := acquire(model.KindArtistArtwork, ar.ID)
 			Expect(ia.Source).To(Equal("upload"))
@@ -257,7 +257,7 @@ var _ = Describe("Artist artwork resolution", func() {
 
 func soleArtist() model.Artist {
 	GinkgoHelper()
-	artists, err := rds.Artist(rctx).GetAll(model.QueryOptions{
+	artists, err := rds.Artist().GetAll(rctx, model.QueryOptions{
 		Filters: squirrel.Eq{"artist.name": "Artist"},
 	})
 	Expect(err).ToNot(HaveOccurred())
