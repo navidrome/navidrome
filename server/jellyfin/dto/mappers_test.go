@@ -104,10 +104,10 @@ var _ = Describe("mappers", func() {
 		})
 
 		It("sets HasLyrics from the media file's lyrics", func() {
-			Expect(SongToBaseItem(mf, nil).HasLyrics).To(BeTrue())
-			Expect(SongToBaseItem(model.MediaFile{ID: testID("s2"), Title: "No Lyrics"}, nil).HasLyrics).To(BeFalse())
+			Expect(*SongToBaseItem(mf, nil).HasLyrics).To(BeTrue())
+			Expect(*SongToBaseItem(model.MediaFile{ID: testID("s2"), Title: "No Lyrics"}, nil).HasLyrics).To(BeFalse())
 			// "[]" is the no-lyrics sentinel, not a truthy value.
-			Expect(SongToBaseItem(model.MediaFile{ID: testID("s3"), Title: "Empty Lyrics", Lyrics: "[]"}, nil).HasLyrics).To(BeFalse())
+			Expect(*SongToBaseItem(model.MediaFile{ID: testID("s3"), Title: "Empty Lyrics", Lyrics: "[]"}, nil).HasLyrics).To(BeFalse())
 		})
 	})
 
@@ -120,7 +120,7 @@ var _ = Describe("mappers", func() {
 
 	It("sets DateCreated from the media file's CreatedAt", func() {
 		mf := model.MediaFile{ID: testID("s1"), Title: "Song", CreatedAt: time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)}
-		Expect(SongToBaseItem(mf, nil).DateCreated).To(Equal("2024-01-15T10:30:00Z"))
+		Expect(SongToBaseItem(mf, nil).DateCreated).To(Equal("2024-01-15T10:30:00.0000000Z"))
 	})
 
 	It("omits DateCreated when CreatedAt is the zero time", func() {
@@ -282,7 +282,7 @@ var _ = Describe("mappers", func() {
 		mf.PlayDate = &playDate
 		item := SongToBaseItem(mf, nil)
 		Expect(item.UserData.LastPlayedDate).NotTo(BeNil())
-		Expect(*item.UserData.LastPlayedDate).To(Equal(playDate.Format(time.RFC3339)))
+		Expect(*item.UserData.LastPlayedDate).To(Equal("2023-05-17T12:30:00.0000000Z"))
 	})
 
 	It("maps an album to a MusicAlbum folder item", func() {
@@ -299,6 +299,9 @@ var _ = Describe("mappers", func() {
 		Expect(*item.ChildCount).To(Equal(10))
 		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", testID("alb-1")))
 		Expect(item.ImageBlurHashes).To(BeNil())
+		// Jellyfin sends both on every album; Manet stops its sync on an album without them.
+		Expect(item.Artists).To(Equal([]string{"AA"}))
+		Expect(item.LocationType).To(Equal("FileSystem"))
 		Expect(item.Genres).To(Equal([]string{"genre 1", "genre 2"}))
 		Expect(item.GenreItems).To(Equal([]NameGuidPair{{Id: EncodeID(testID("1")), Name: "genre 1"}, {Id: EncodeID(testID("2")), Name: "genre 2"}}))
 	})
@@ -426,22 +429,22 @@ var _ = Describe("mappers", func() {
 		It("serializes a full date", func() {
 			mf := model.MediaFile{ID: testID("s1"), Title: "Song", Date: "2007-02-01", Year: 2007}
 			item := SongToBaseItem(mf, nil)
-			Expect(*item.PremiereDate).To(Equal("2007-02-01T00:00:00Z"))
+			Expect(*item.PremiereDate).To(Equal("2007-02-01T00:00:00.0000000Z"))
 		})
 
 		It("pads a year-only date so clients can parse it", func() {
 			mf := model.MediaFile{ID: testID("s1"), Title: "Song", Date: "2007", Year: 2007}
-			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("2007-01-01T00:00:00Z"))
+			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("2007-01-01T00:00:00.0000000Z"))
 		})
 
 		It("pads a year-month date", func() {
 			mf := model.MediaFile{ID: testID("s1"), Title: "Song", Date: "2007-02"}
-			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("2007-02-01T00:00:00Z"))
+			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("2007-02-01T00:00:00.0000000Z"))
 		})
 
 		It("falls back to the year when no date tag exists", func() {
 			mf := model.MediaFile{ID: testID("s1"), Title: "Song", Year: 1999}
-			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("1999-01-01T00:00:00Z"))
+			Expect(*SongToBaseItem(mf, nil).PremiereDate).To(Equal("1999-01-01T00:00:00.0000000Z"))
 		})
 
 		It("is omitted when the track has no date at all", func() {
@@ -449,8 +452,8 @@ var _ = Describe("mappers", func() {
 		})
 
 		It("is set on albums from their date, falling back to MaxYear", func() {
-			Expect(*AlbumToBaseItem(model.Album{ID: testID("a1"), Date: "2013-09-06"}, nil).PremiereDate).To(Equal("2013-09-06T00:00:00Z"))
-			Expect(*AlbumToBaseItem(model.Album{ID: testID("a2"), MaxYear: 2013}, nil).PremiereDate).To(Equal("2013-01-01T00:00:00Z"))
+			Expect(*AlbumToBaseItem(model.Album{ID: testID("a1"), Date: "2013-09-06"}, nil).PremiereDate).To(Equal("2013-09-06T00:00:00.0000000Z"))
+			Expect(*AlbumToBaseItem(model.Album{ID: testID("a2"), MaxYear: 2013}, nil).PremiereDate).To(Equal("2013-01-01T00:00:00.0000000Z"))
 			Expect(AlbumToBaseItem(model.Album{ID: testID("a3")}, nil).PremiereDate).To(BeNil())
 		})
 	})
@@ -473,6 +476,13 @@ var _ = Describe("mappers", func() {
 		Expect(*item.UserData.Rating).To(Equal(8.0))
 		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", testID("pl-1")))
 		Expect(item.ImageBlurHashes).To(BeNil())
+	})
+
+	It("emits DateCreated and SortName on playlists, like albums and artists", func() {
+		p := model.Playlist{ID: testID("pl-1"), Name: "Chill", CreatedAt: time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)}
+		Expect(PlaylistToBaseItem(p, nil).DateCreated).To(Equal("2026-07-01T12:00:00.0000000Z"))
+		Expect(PlaylistToBaseItem(p, nil).SortName).To(BeEmpty())
+		Expect(PlaylistToBaseItem(p, ParseFields("SortName")).SortName).To(Equal("Chill"))
 	})
 
 	It("changes the playlist image tag when the cover content changes", func() {

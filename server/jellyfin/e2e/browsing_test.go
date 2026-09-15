@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"net/http"
 	"slices"
 	"sort"
@@ -113,6 +114,69 @@ var _ = Describe("Browsing", func() {
 		It("defaults to albums when IncludeItemTypes is unrecognized", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Nonsense&Recursive=true"))
 			Expect(q.TotalRecordCount).To(Equal(5))
+		})
+
+		// Manet syncs collections this way and fails its whole sync if albums come back instead.
+		It("returns no items for a Jellyfin type Navidrome has none of", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Boxset&Recursive=true"))
+			Expect(q.TotalRecordCount).To(Equal(0))
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("sends MediaType Unknown on items without one, as Jellyfin always emits it", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true"))
+			Expect(q.Items).ToNot(BeEmpty())
+			for _, it := range q.Items {
+				Expect(it.MediaType).To(Equal("Unknown"))
+			}
+			Expect(queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true")).Items[0].MediaType).To(Equal("Audio"))
+		})
+
+		// Jellyfin emits these on every item it returns; a client can require any of them.
+		It("sends ChannelId on every item, Tags when asked, and HasLyrics on songs", func() {
+			var songs struct{ Items []map[string]json.RawMessage }
+			Expect(json.Unmarshal(get("/Items?IncludeItemTypes=Audio&Fields=Tags&Recursive=true").Body.Bytes(), &songs)).To(Succeed())
+			Expect(songs.Items).ToNot(BeEmpty())
+			for _, it := range songs.Items {
+				Expect(it).To(HaveKey("HasLyrics"))
+				Expect(it).To(HaveKey("Tags"))
+				Expect(string(it["Tags"])).ToNot(Equal("null"))
+			}
+			for _, t := range []string{"Audio", "MusicAlbum", "MusicArtist", "Playlist"} {
+				var body struct{ Items []map[string]json.RawMessage }
+				Expect(json.Unmarshal(get("/Items?IncludeItemTypes="+t+"&Recursive=true").Body.Bytes(), &body)).To(Succeed())
+				for _, it := range body.Items {
+					Expect(it).To(HaveKey("ChannelId"), t)
+				}
+			}
+		})
+
+		// Jellyfin sends both for every item once Fields asks for them, empty when the item has none.
+		It("sends Genres and GenreItems on every item when Fields asks for them", func() {
+			for _, t := range []string{"Audio", "MusicAlbum", "MusicArtist"} {
+				var body struct{ Items []map[string]json.RawMessage }
+				res := get("/Items?IncludeItemTypes=" + t + "&Fields=Genres&Recursive=true")
+				Expect(json.Unmarshal(res.Body.Bytes(), &body)).To(Succeed())
+				Expect(body.Items).ToNot(BeEmpty(), t)
+				for _, it := range body.Items {
+					Expect(it).To(HaveKey("Genres"), t)
+					Expect(it).To(HaveKey("GenreItems"), t)
+					Expect(string(it["Genres"])).ToNot(Equal("null"), t)
+					Expect(string(it["GenreItems"])).ToNot(Equal("null"), t)
+				}
+			}
+		})
+
+		// Manet's sync fails on any item without the key; Jellyfin sends {} when there is no image.
+		It("always sends ImageTags, as an empty object when there is no image", func() {
+			for _, t := range []string{"Audio", "MusicAlbum", "MusicArtist", "Playlist"} {
+				var body struct{ Items []map[string]json.RawMessage }
+				Expect(json.Unmarshal(get("/Items?IncludeItemTypes="+t+"&Recursive=true").Body.Bytes(), &body)).To(Succeed())
+				for _, it := range body.Items {
+					Expect(it).To(HaveKey("ImageTags"), t)
+					Expect(string(it["ImageTags"])).ToNot(Equal("null"), t)
+				}
+			}
 		})
 	})
 

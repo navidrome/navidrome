@@ -219,8 +219,21 @@ func (api *Router) writeItemsArray(w http.ResponseWriter, r *http.Request, res i
 	api.streamResult(w, r, res, streamItemsArray)
 }
 
-// streamResult stamps every item's ServerId (constant per request, so it's set here rather than in
-// each mapper). The cursor opens before the first byte, so a failed open is still a clean 500.
+// stampItem sets the fields real Jellyfin emits on every item: ServerId (constant per request, so
+// set here rather than in each mapper), MediaType (an enum defaulting to Unknown) and ImageTags ({}).
+func stampItem(it dto.BaseItemDto, serverID string) dto.BaseItemDto {
+	it.ServerId = serverID
+	if it.MediaType == "" {
+		it.MediaType = "Unknown"
+	}
+	if it.ImageTags == nil {
+		it.ImageTags = map[string]string{}
+	}
+	return it
+}
+
+// streamResult stamps every item (see stampItem). The cursor opens before the first byte, so a
+// failed open is still a clean 500.
 func (api *Router) streamResult(w http.ResponseWriter, r *http.Request, res itemsResult,
 	write func(io.Writer, iter.Seq2[dto.BaseItemDto, error]) error) {
 	sid := api.serverID(r.Context())
@@ -235,8 +248,7 @@ func (api *Router) streamResult(w http.ResponseWriter, r *http.Request, res item
 				yield(dto.BaseItemDto{}, err)
 				return
 			}
-			it.ServerId = sid
-			if !yield(it, nil) {
+			if !yield(stampItem(it, sid), nil) {
 				return
 			}
 		}
@@ -559,20 +571,39 @@ func parseYears(r *http.Request) []int {
 	return years
 }
 
-// parseTypes returns the recognized entries in IncludeItemTypes in order, defaulting to
-// {"MusicAlbum"} when none are recognized (so ParentId=<artistId> browses that artist's albums).
+// supportedTypes maps lowercased IncludeItemTypes names (Jellyfin binds them case-insensitively)
+// to the item types Navidrome serves.
+var supportedTypes = map[string]string{
+	"audio": "Audio", "musicartist": "MusicArtist", "musicalbum": "MusicAlbum", "musicgenre": "MusicGenre", "playlist": "Playlist",
+}
+
+// otherJellyfinKinds are the remaining BaseItemKind names (Jellyfin 10.10), lowercased. Navidrome has
+// no items of these kinds, so a request for only these gets an empty list, as it would from Jellyfin.
+var otherJellyfinKinds = []string{
+	"aggregatefolder", "audiobook", "basepluginfolder", "book", "boxset", "channel", "channelfolderitem",
+	"collectionfolder", "episode", "folder", "genre", "manualplaylistsfolder", "movie", "livetvchannel",
+	"livetvprogram", "musicvideo", "person", "photo", "photoalbum", "playlistsfolder", "program",
+	"recording", "season", "series", "studio", "trailer", "tvchannel", "tvprogram", "userrootfolder",
+	"userview", "video", "year",
+}
+
+// parseTypes returns the supported entries in IncludeItemTypes in order. It returns none when only
+// other Jellyfin kinds are asked for, and defaults to {"MusicAlbum"} when no name is a Jellyfin kind
+// (so ParentId=<artistId> browses that artist's albums).
 func parseTypes(types string) []string {
 	var recognized []string
+	otherKind := false
 	for t := range strings.SplitSeq(types, ",") {
-		t = strings.TrimSpace(t)
-		switch t {
-		case "Audio", "MusicArtist", "MusicAlbum", "MusicGenre", "Playlist":
-			recognized = append(recognized, t)
+		t = strings.ToLower(strings.TrimSpace(t))
+		if name, ok := supportedTypes[t]; ok {
+			recognized = append(recognized, name)
+		} else if slices.Contains(otherJellyfinKinds, t) {
+			otherKind = true
 		}
 	}
 	// Dedupe: a repeated type would duplicate items in the merge and spawn a redundant query.
 	recognized = slice.Unique(recognized)
-	if len(recognized) == 0 {
+	if len(recognized) == 0 && !otherKind {
 		return []string{"MusicAlbum"}
 	}
 	return recognized

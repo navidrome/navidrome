@@ -1124,6 +1124,20 @@ var _ = Describe("Items", func() {
 		It("dedupes repeated types, preserving first-seen order", func() {
 			Expect(parseTypes("Audio,MusicAlbum,Audio")).To(Equal([]string{"Audio", "MusicAlbum"}))
 		})
+
+		It("matches type names case-insensitively, like Jellyfin's enum binding", func() {
+			Expect(parseTypes("musicalbum, AUDIO")).To(Equal([]string{"MusicAlbum", "Audio"}))
+		})
+
+		It("returns no types for real Jellyfin kinds Navidrome has none of", func() {
+			Expect(parseTypes("Boxset")).To(BeEmpty())
+			Expect(parseTypes("BoxSet,Movie")).To(BeEmpty())
+		})
+
+		It("defaults names Jellyfin does not know to albums", func() {
+			Expect(parseTypes("Nonsense")).To(Equal([]string{"MusicAlbum"}))
+			Expect(parseTypes("")).To(Equal([]string{"MusicAlbum"}))
+		})
 	})
 
 	Describe("decodeFilterParam", func() {
