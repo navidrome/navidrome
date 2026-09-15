@@ -153,19 +153,16 @@ func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate 
 		}
 		return img, nil
 	}
-	item := &resizedItem{hash: key, size: size, square: square, ffmpeg: s.ffmpeg, open: open}
-	var animated []byte
 	// Without a cache a background conversion could never be served, so convert inline instead.
-	if s.cache.Available(ctx) {
-		item.deferAnimated = func(data []byte) { animated = data }
-	}
+	item := &resizedItem{hash: key, size: size, square: square, ffmpeg: s.ffmpeg, open: open,
+		deferAnimated: s.cache.Available(ctx)}
 	stream, err := s.cache.Get(ctx, item)
+	if deferred, ok := errors.AsType[*deferredAnimation](err); ok {
+		s.convertInBackground(item, deferred.data)
+		return &Image{ReadCloser: io.NopCloser(deferred.standIn), Hash: hash, LastUpdated: lastUpdate, Transient: true}, nil
+	}
 	if err != nil {
 		return nil, err
-	}
-	if stream.Transient {
-		s.convertInBackground(item, animated)
-		return &Image{ReadCloser: stream, Hash: hash, LastUpdated: lastUpdate, Transient: true}, nil
 	}
 	return &Image{ReadCloser: stream, Hash: hash, ETag: representationTag(key, size, square), LastUpdated: lastUpdate}, nil
 }
@@ -184,35 +181,17 @@ func (s *service) convertInBackground(item *resizedItem, data []byte) {
 	default:
 		return
 	}
-	conv := *item
-	conv.deferAnimated = nil
-	conv.open = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil }
-	key := conv.Key()
+	key, size, square := item.Key(), item.size, item.square
 	go func() {
 		defer func() { <-animConvertSlot }()
 		ctx, cancel := context.WithTimeout(context.Background(), animConvertTimeout)
 		defer cancel()
 		start := time.Now()
-		rc, err := conv.Reader(ctx)
-		if err != nil {
-			log.Warn(ctx, "Artwork: Could not convert animated image", "key", key, err)
-			return
-		}
-		out, err := io.ReadAll(rc)
-		_ = rc.Close()
-		if err != nil {
-			log.Warn(ctx, "Artwork: Could not convert animated image", "key", key, err)
-			return
-		}
+		resized, _, err := resizeImageData(ctx, s.ffmpeg, data, size, square)
+		out, _ := io.ReadAll(orOriginal(data, resized, err))
 		// Converting before touching the cache keeps the entry from blocking readers for the whole conversion.
-		stream, err := s.cache.Get(ctx, &storedItem{key: key, data: out})
-		if err != nil {
+		if err := warmCache(ctx, s.cache, &storedItem{key: key, data: out}); err != nil {
 			log.Warn(ctx, "Artwork: Could not cache animated image", "key", key, err)
-			return
-		}
-		defer stream.Close()
-		if _, err := io.Copy(io.Discard, stream); err != nil {
-			log.Debug(ctx, "Artwork: Could not cache animated image", "key", key, err)
 			return
 		}
 		log.Debug(ctx, "Artwork: Converted animated image", "key", key, "bytes", len(out), "elapsed", time.Since(start))

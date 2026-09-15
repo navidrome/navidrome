@@ -106,65 +106,28 @@ var _ = Describe("File Caches", func() {
 			Expect(called).To(BeTrue())
 		})
 
-		It("serves a transient result without storing it", func() {
-			var calls atomic.Int32
+		It("fails a reader that joined a miss whose loader failed, without blocking the removal", func() {
+			entered, release := make(chan struct{}), make(chan struct{})
 			fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
-				calls.Add(1)
-				return Transient(io.NopCloser(strings.NewReader("stand-in"))), nil
+				close(entered)
+				<-release
+				return nil, errors.New("loader failed")
 			})
+			firstErr := make(chan error, 1)
+			go func() {
+				_, err := fc.Get(context.Background(), &testArg{"k"})
+				firstErr <- err
+			}()
+			<-entered
 
-			for range 2 {
-				s, err := fc.Get(context.Background(), &testArg{"transient"})
-				Expect(err).ToNot(HaveOccurred())
-				Expect(s.Transient).To(BeTrue())
-				Expect(s.Cached).To(BeFalse())
-				Expect(io.ReadAll(s)).To(Equal([]byte("stand-in")))
-				Expect(s.Close()).To(Succeed())
-			}
-			Expect(calls.Load()).To(Equal(int32(2)))
-
-			dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"transient"}).Key())
-			_, statErr := os.Stat(dataPath + ".complete")
-			Expect(os.IsNotExist(statErr)).To(BeTrue())
-		})
-
-		It("stores the next result once a transient one was served", func() {
-			var calls atomic.Int32
-			fc := callNewFileCache("test", "1KB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
-				if calls.Add(1) == 1 {
-					return Transient(io.NopCloser(strings.NewReader("stand-in"))), nil
-				}
-				return strings.NewReader("real"), nil
-			})
-
-			s, err := fc.Get(context.Background(), &testArg{"k"})
+			joined, err := fc.Get(context.Background(), &testArg{"k"})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(io.ReadAll(s)).To(Equal([]byte("stand-in")))
-			_ = s.Close()
+			close(release)
+			Eventually(firstErr).Should(Receive(MatchError("loader failed")))
 
-			// The transient entry is gone when Get returns, so this is a MISS that stores.
-			s, err = fc.Get(context.Background(), &testArg{"k"})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s.Transient).To(BeFalse())
-			Expect(io.ReadAll(s)).To(Equal([]byte("real")))
-			_ = s.Close()
-
-			Eventually(func() bool {
-				s, _ := fc.Get(context.Background(), &testArg{"k"})
-				defer s.Close()
-				return s.Cached
-			}).Should(BeTrue())
-			Expect(calls.Load()).To(Equal(int32(2)))
-		})
-
-		It("reports a transient result when the cache is disabled", func() {
-			fc := callNewFileCache("test", "0", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
-				return Transient(io.NopCloser(strings.NewReader("stand-in"))), nil
-			})
-			s, err := fc.Get(context.Background(), &testArg{"k"})
-			Expect(err).ToNot(HaveOccurred())
-			Expect(s.Transient).To(BeTrue())
-			Expect(io.ReadAll(s)).To(Equal([]byte("stand-in")))
+			_, err = io.ReadAll(joined)
+			Expect(err).To(MatchError("loader failed"))
+			_ = joined.Close()
 		})
 
 		It("writes a completion marker after a successful cache write", func() {

@@ -310,13 +310,10 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 		ffmpeg: w.ffmpeg,
 		open:   func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },
 	}
-	stream, err := w.cache.Get(ctx, item)
-	if err != nil {
+	if err := warmCache(ctx, w.cache, item); err != nil {
 		log.Debug(ctx, "Artwork: Precache failed", "kind", got.ia.ItemKind, "id", got.ia.ItemID, err)
 		return
 	}
-	_, _ = io.Copy(io.Discard, stream)
-	_ = stream.Close()
 	log.Trace(ctx, "Artwork: Precached UI size", "kind", got.ia.ItemKind, "id", got.ia.ItemID,
 		"size", conf.Server.UICoverArtSize, "elapsed", time.Since(precacheStart))
 }

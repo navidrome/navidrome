@@ -42,8 +42,8 @@ type resizedItem struct {
 	square bool
 	ffmpeg ffmpeg.FFmpeg
 	open   func() (io.ReadCloser, error)
-	// deferAnimated, when set, receives an animated GIF's bytes, and a transient static stand-in is served.
-	deferAnimated func(data []byte)
+	// deferAnimated makes Reader return a *deferredAnimation for animated GIFs instead of converting inline.
+	deferAnimated bool
 }
 
 // Key is the ETag namespaced for the cache, so the validator a client holds and the entry it
@@ -66,23 +66,40 @@ func (r *resizedItem) Reader(ctx context.Context) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	if r.deferAnimated != nil && isAnimatedGIF(data) && r.ffmpeg.IsAvailable() {
-		r.deferAnimated(data)
+	if r.deferAnimated && isAnimatedGIF(data) && r.ffmpeg.IsAvailable() {
 		static, _, err := resizeStaticImage(data, r.size, r.square)
-		if err != nil || static == nil {
-			static = bytes.NewReader(data)
-		}
-		return cache.Transient(io.NopCloser(static)), nil
+		return nil, &deferredAnimation{data: data, standIn: orOriginal(data, static, err)}
 	}
 	resized, _, err := resizeImageData(ctx, r.ffmpeg, data, r.size, r.square)
+	return io.NopCloser(orOriginal(data, resized, err)), nil
+}
+
+// orOriginal serves the original bytes when the resize failed or the image was already within bounds.
+func orOriginal(data []byte, resized io.Reader, err error) io.Reader {
 	if err != nil || resized == nil {
-		// Resize failed or image already within bounds: serve the original bytes.
-		return io.NopCloser(bytes.NewReader(data)), nil
+		return bytes.NewReader(data)
 	}
-	if rc, ok := resized.(io.ReadCloser); ok {
-		return rc, nil
+	return resized
+}
+
+// deferredAnimation is returned as an error so the cache stores nothing: it carries the GIF bytes
+// to convert in the background and a static stand-in to serve meanwhile.
+type deferredAnimation struct {
+	data    []byte
+	standIn io.Reader
+}
+
+func (*deferredAnimation) Error() string { return "animated image conversion deferred" }
+
+// warmCache stores item in c, returning once the entry is written.
+func warmCache(ctx context.Context, c cache.FileCache, item cache.Item) error {
+	stream, err := c.Get(ctx, item)
+	if err != nil {
+		return err
 	}
-	return io.NopCloser(resized), nil
+	defer stream.Close()
+	_, err = io.Copy(io.Discard, stream)
+	return err
 }
 
 // storedItem caches bytes produced outside the cache.

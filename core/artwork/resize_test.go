@@ -41,7 +41,6 @@ var _ = Describe("resizeImageData", func() {
 
 	DescribeTable("falls back to a static resize when ffmpeg fails",
 		func(fake *animFFmpeg) {
-			fake.MockFFmpeg = tests.NewMockFFmpeg("")
 			r, _, err := resizeImageData(context.Background(), fake, gifBytes, 1, false)
 			Expect(err).ToNot(HaveOccurred())
 			data, err := io.ReadAll(r)
@@ -50,9 +49,9 @@ var _ = Describe("resizeImageData", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(format).To(Equal("jpeg"))
 		},
-		Entry("before producing output", &animFFmpeg{err: errors.New("no libwebp_anim")}),
-		Entry("mid-stream, like ffmpeg 5.1 reading a GIF from a pipe", &animFFmpeg{streamErr: errors.New("pipe:0: Input/output error")}),
-		Entry("with empty output", &animFFmpeg{}),
+		Entry("before producing output", &animFFmpeg{MockFFmpeg: &tests.MockFFmpeg{Error: errors.New("no libwebp_anim")}}),
+		Entry("mid-stream, like ffmpeg 5.1 reading a GIF from a pipe", &animFFmpeg{MockFFmpeg: tests.NewMockFFmpeg(""), streamErr: errors.New("pipe:0: Input/output error")}),
+		Entry("with empty output", &animFFmpeg{MockFFmpeg: tests.NewMockFFmpeg("")}),
 	)
 })
 
@@ -62,7 +61,6 @@ type animFFmpeg struct {
 	calls     atomic.Int32
 	release   chan struct{}
 	out       []byte
-	err       error
 	streamErr error
 }
 
@@ -75,8 +73,8 @@ func (f *animFFmpeg) ConvertAnimatedImage(ctx context.Context, _ io.Reader, _ in
 			return nil, ctx.Err()
 		}
 	}
-	if f.err != nil {
-		return nil, f.err
+	if f.Error != nil {
+		return nil, f.Error
 	}
 	if f.streamErr != nil {
 		return io.NopCloser(iotest.ErrReader(f.streamErr)), nil //nolint:nilerr // the stream fails, not the call

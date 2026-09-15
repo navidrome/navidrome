@@ -491,7 +491,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("caches the static fallback when the conversion fails, so it is not retried", func() {
-			fake.err = errors.New("pipe:0: Input/output error")
+			fake.Error = errors.New("pipe:0: Input/output error")
 			readAll(get("al-al1"))
 			waitForConversions()
 
