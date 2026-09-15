@@ -398,7 +398,7 @@
         "invalidJson": "Konfiguration muss valides JSON sein"
       },
       "messages": {
-        "idHelp": "Die Plugin-ID, abgeleitet vom Dateinamen. Verwende diese, um in Konfigurationen (z. B. bei Agents) auf dieses Plugin verweisen.",
+        "idHelp": "Die Plugin-ID, abgeleitet vom Dateinamen. Verwende diese, um in Konfigurationen (z. B. bei Agents) auf dieses Plugin zu verweisen.",
         "configHelp": "Plugin mit Schlüssel-Werte Paaren konfigurieren. Leer lassen wenn das Plugin keine Konfiguration benötigt.",
         "clickPermissions": "Berechtigung anklicken für mehr Details",
         "noConfig": "Keine Konfiguration gesetzt",
