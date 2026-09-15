@@ -18,6 +18,7 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import {
   ArtistLinkField,
+  ArtworkInfo,
   MultiLineTextField,
   ParticipantsInfo,
   RangeField,
@@ -139,6 +140,7 @@ const AlbumInfo = (props) => {
             )
           })}
           <ParticipantsInfo record={record} classes={classes} />
+          <ArtworkInfo resource="album" id={record.id} />
         </TableBody>
       </Table>
     </TableContainer>
