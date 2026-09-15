@@ -94,7 +94,7 @@
         "download": "Herunterladen",
         "info": "Mehr Informationen",
         "share": "Freigabe erstellen",
-        "refresh": ""
+        "refresh": "Metadaten aktualisieren"
       },
       "lists": {
         "all": "Alle",
@@ -157,12 +157,12 @@
         "token": "Token",
         "lastAccessAt": "Letzter Zugriff am",
         "libraries": "Bibliotheken",
-        "scrobbleFilter": ""
+        "scrobbleFilter": "Scrobble-Filter"
       },
       "helperTexts": {
         "name": "Die Änderung wird erst nach dem nächsten Login gültig",
         "libraries": "Wähle spezifische Bibliotheken für diesen Benutzer, oder leer lassen für Standard Bibliotheken",
-        "scrobbleFilter": ""
+        "scrobbleFilter": "Titel, die diesen Regeln für intelligente Wiedergabelisten entsprechen, werden nicht an Last.fm, ListenBrainz oder Scrobbler-Plugins übermittelt. Es werden dieselbe JSON-Syntax und dasselbe Verhalten wie bei intelligenten Wiedergabelisten verwendet. Beispiel: {\"all\":[{\"lt\":{\"rating\":4}}]}. Lassen Sie das Feld leer, um alles zu scrobbeln. Lokale Wiedergabezahlen bleiben davon unberührt."
       },
       "notifications": {
         "created": "Benutzer erstellt",
@@ -177,7 +177,7 @@
       },
       "validation": {
         "librariesRequired": "Mindestens eine Bibliothek muss für nicht-administrator Benutzer ausgewählt sein",
-        "invalidScrobbleFilter": ""
+        "invalidScrobbleFilter": "Müssen gültige Regeln für intelligente Wiedergabelisten sein. Limit, Offset und Aktualisierungsverzögerung werden nicht unterstützt."
       }
     },
     "player": {
@@ -202,7 +202,7 @@
         "command": "Befehl"
       },
       "choices": {
-        "noDefaultBitRate": ""
+        "noDefaultBitRate": "Keine"
       }
     },
     "playlist": {
@@ -412,7 +412,7 @@
         "configValidationError": "Validierung der Konfiguration fehlgeschlagen:",
         "schemaRenderError": "Rendern der Konfiguration fehlgeschlagen. Das Schema das Plugins ist eventuell nicht korrekt.",
         "allowWriteAccessHelp": "Wenn aktiviert, kann das Plugin Dateien in den Bibliotheken verändern. Als Standard haben Plugins nur Lesezugriff.",
-        "idHelp": ""
+        "idHelp": "Die Plugin-ID, abgeleitet vom Dateinamen. Verwende diese, um in Konfigurationen auf dieses Plugin verweisen (z.B. bei Agents)"
       },
       "placeholders": {
         "configKey": "Schlüssel",
@@ -609,7 +609,7 @@
     "coverRemoved": "Cover entfernt",
     "coverUploadError": "Fehler beim Hochladen des Covers",
     "coverRemoveError": "Fehler beim Entfernen des Covers",
-    "metadataRefreshStarted": ""
+    "metadataRefreshStarted": "Aktualisiert Metadaten im Hintergrund"
   },
   "menu": {
     "library": "Bibliothek",
