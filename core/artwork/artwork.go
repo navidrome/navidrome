@@ -190,6 +190,9 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 // openOriginal enforces the mtime invariant: bytes are never served under a hash they no longer match.
 func openOriginal(ia *model.ItemArtwork, mime string, store *ImageStore) (io.ReadCloser, error) {
 	if isFileBacked(ia.Source) {
+		if !model.IsImageFile(ia.SourcePath) {
+			return nil, fmt.Errorf("artwork: %s is not an image", ia.SourcePath)
+		}
 		f, err := os.Open(ia.SourcePath)
 		if err != nil {
 			return nil, err

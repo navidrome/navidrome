@@ -159,6 +159,22 @@ var _ = Describe("Artwork", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
+		It("treats a file-backed row pointing at a non-image file as dangling", func() {
+			dir := GinkgoT().TempDir()
+			secretPath := filepath.Join(dir, "config.ini")
+			Expect(os.WriteFile(secretPath, []byte("password=secret"), 0600)).To(Succeed())
+			Expect(artRepo.PutImage(&model.Artwork{Hash: "dddddddddddddddd", Mime: "image/jpeg"})).To(Succeed())
+			seedEntity("al", "alni")
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "alni", Hash: "dddddddddddddddd",
+				Source: "folder", SourcePath: secretPath, RefMtime: fileMtime(secretPath),
+			})).To(Succeed())
+
+			_, err := svc.Get(ctx, model.MustParseArtworkID("al-alni"), 0, false)
+			Expect(err).To(MatchError(ErrUnavailable))
+			Expect(queueRepo.Data[primaryKey("al", "alni")].Priority).To(Equal(model.ArtworkPriorityScan))
+		})
+
 		It("treats a full-size mtime mismatch as dangling: unavailable, re-enqueued at Scan, state untouched", func() {
 			dir := GinkgoT().TempDir()
 			imgPath := filepath.Join(dir, "cover.jpg")

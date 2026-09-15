@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/text/unicode/norm"
 )
@@ -36,7 +37,8 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 				continue
 			}
 			if after, ok := strings.CutPrefix(line, "#EXTALBUMARTURL:"); ok {
-				pls.ExternalImageURL = resolveImageURL(after, folder, resolver.matcher)
+				owner, _ := request.UserFrom(ctx)
+				pls.ExternalImageURL = resolveImageURL(after, folder, resolver.matcher, owner)
 				continue
 			}
 			// Skip empty lines and extended info
@@ -286,7 +288,7 @@ func (r *pathResolver) resolvePaths(ctx context.Context, folder *model.Folder, l
 // HTTP(S) URLs are stored as-is (gated by EnableM3UExternalAlbumArt).
 // Local paths (file://, absolute, or relative) are resolved to an absolute path
 // and validated against known library boundaries via matcher.
-func resolveImageURL(value string, folder *model.Folder, matcher *libraryMatcher) string {
+func resolveImageURL(value string, folder *model.Folder, matcher *libraryMatcher, owner model.User) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return ""
@@ -302,12 +304,13 @@ func resolveImageURL(value string, folder *model.Folder, matcher *libraryMatcher
 
 	// Resolve to local absolute path
 	localPath, ok := resolveLocalPath(value, folder)
-	if !ok {
+	if !ok || !model.IsImageFile(localPath) {
 		return ""
 	}
 
-	// Validate path is within a known library
-	if libID, _ := matcher.findLibraryForPath(localPath); libID == 0 {
+	lib, ok := matcher.findLibrary(localPath)
+	// A playlist without a folder was uploaded by a user, who may only use covers from their own libraries.
+	if !ok || (folder == nil && !owner.HasLibraryAccess(lib.ID)) {
 		return ""
 	}
 	return localPath
