@@ -130,4 +130,12 @@ var _ = Describe("Internet Radio Endpoints", Ordered, func() {
 		Expect(resp.InternetRadioStations).ToNot(BeNil())
 		Expect(resp.InternetRadioStations.Radios).To(BeEmpty())
 	})
+
+	It("deleteInternetRadioStation returns not found for a missing station", func() {
+		resp := doReq("deleteInternetRadioStation", "id", radioID)
+
+		Expect(resp.Status).To(Equal(responses.StatusFailed))
+		Expect(resp.Error).ToNot(BeNil())
+		Expect(resp.Error.Code).To(Equal(responses.ErrorDataNotFound))
+	})
 })
