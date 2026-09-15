@@ -572,16 +572,24 @@ type CueLine struct {
 	Cue     []LyricCue `xml:"cue,omitempty"                 json:"cue,omitempty"`
 }
 
+type LyricsSource struct {
+	Type     string `xml:"type,attr"               json:"type"`
+	Name     string `xml:"name,attr,omitempty"     json:"name,omitempty"`
+	Provider string `xml:"provider,attr,omitempty" json:"provider,omitempty"`
+	Format   string `xml:"format,attr,omitempty"   json:"format,omitempty"`
+}
+
 type StructuredLyric struct {
-	DisplayArtist string    `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
-	DisplayTitle  string    `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
-	Kind          string    `xml:"kind,attr,omitempty"          json:"kind,omitempty"`
-	Lang          string    `xml:"lang,attr"                    json:"lang"`
-	Line          []Line    `xml:"line"                         json:"line"`
-	Agents        []Agent   `xml:"agent,omitempty"              json:"agents,omitempty"`
-	CueLine       []CueLine `xml:"cueLine,omitempty"     json:"cueLine,omitempty"`
-	Offset        *int64    `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
-	Synced        bool      `xml:"synced,attr"                  json:"synced"`
+	DisplayArtist string        `xml:"displayArtist,attr,omitempty" json:"displayArtist,omitempty"`
+	DisplayTitle  string        `xml:"displayTitle,attr,omitempty"  json:"displayTitle,omitempty"`
+	Kind          string        `xml:"kind,attr,omitempty"          json:"kind,omitempty"`
+	Lang          string        `xml:"lang,attr"                    json:"lang"`
+	Line          []Line        `xml:"line"                         json:"line"`
+	Agents        []Agent       `xml:"agent,omitempty"              json:"agents,omitempty"`
+	CueLine       []CueLine     `xml:"cueLine,omitempty"     json:"cueLine,omitempty"`
+	Offset        *int64        `xml:"offset,attr,omitempty"        json:"offset,omitempty"`
+	Source        *LyricsSource `xml:"source,omitempty"         json:"source,omitempty"`
+	Synced        bool          `xml:"synced,attr"                  json:"synced"`
 }
 
 type StructuredLyrics []StructuredLyric
