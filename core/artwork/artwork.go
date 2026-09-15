@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/cache"
 )
 
@@ -49,8 +50,8 @@ type Artwork interface {
 	GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*Image, error)
 }
 
-func NewArtwork(ds model.DataStore, cache cache.FileCache, store *ImageStore, ffm ffmpeg.FFmpeg) Artwork {
-	return &service{ds: ds, cache: cache, store: store, ffmpeg: ffm}
+func NewArtwork(ds model.DataStore, cache cache.FileCache, store *ImageStore, ffm ffmpeg.FFmpeg, broker events.Broker) Artwork {
+	return &service{ds: ds, cache: cache, store: store, ffmpeg: ffm, broker: broker}
 }
 
 // entityExists reports whether the entity an artwork id points at is still there: state rows
@@ -86,6 +87,7 @@ type service struct {
 	cache  cache.FileCache
 	store  *ImageStore
 	ffmpeg ffmpeg.FFmpeg
+	broker events.Broker
 }
 
 func (s *service) GetOrPlaceholder(ctx context.Context, id string, size int, square bool) (*Image, error) {
@@ -136,7 +138,7 @@ func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size i
 
 // serveSource is the one place bytes become an Image. hash is the pixel identity ("" for disc art)
 // and doubles as the full-size validator, so an ETag is only needed when resized or hash is "".
-func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate time.Time,
+func (s *service) serveSource(ctx context.Context, artID model.ArtworkID, key, hash string, lastUpdate time.Time,
 	size int, square bool, open func() (io.ReadCloser, error),
 ) (*Image, error) {
 	if size == 0 && !square {
@@ -158,7 +160,7 @@ func (s *service) serveSource(ctx context.Context, key, hash string, lastUpdate 
 		deferAnimated: s.cache.Available(ctx)}
 	stream, err := s.cache.Get(ctx, item)
 	if deferred, ok := errors.AsType[*deferredAnimation](err); ok {
-		s.convertInBackground(item, deferred.data)
+		s.convertInBackground(artID, item, deferred.data)
 		return &Image{ReadCloser: io.NopCloser(deferred.standIn), Hash: hash, LastUpdated: lastUpdate, Transient: true}, nil
 	}
 	if err != nil {
@@ -175,7 +177,7 @@ const animConvertTimeout = time.Minute
 
 // convertInBackground caches item's conversion of data. When the slot is busy it does nothing,
 // and a later request for the key tries again.
-func (s *service) convertInBackground(item *resizedItem, data []byte) {
+func (s *service) convertInBackground(artID model.ArtworkID, item *resizedItem, data []byte) {
 	select {
 	case animConvertSlot <- struct{}{}:
 	default:
@@ -195,6 +197,10 @@ func (s *service) convertInBackground(item *resizedItem, data []byte) {
 			return
 		}
 		log.Debug(ctx, "Artwork: Converted animated image", "key", key, "bytes", len(out), "elapsed", time.Since(start))
+		// The image URL is unchanged, so UIs holding the stand-in only reload it when told.
+		if res, ok := artworkKindToResource[artID.Kind]; ok {
+			s.broker.SendBroadcastMessage(ctx, (&events.RefreshResource{}).With(res, artID.ID))
+		}
 	}()
 }
 
@@ -212,7 +218,7 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 		}
 		return nil, err
 	}
-	img, err := s.serveSource(ctx, ia.Hash, ia.Hash, ia.UpdatedAt, size, square,
+	img, err := s.serveSource(ctx, artID, ia.Hash, ia.Hash, ia.UpdatedAt, size, square,
 		func() (io.ReadCloser, error) { return openOriginal(ia, art.Mime, s.store) })
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -270,11 +276,11 @@ func (s *service) provisional(ctx context.Context, artID model.ArtworkID, size i
 	s.enqueue(ctx, artID, model.ArtworkPriorityBump)
 	log.Debug(ctx, "Artwork: Provisional read-through, no state row yet", "artID", artID,
 		"source", res.source, "hit", res.reader != nil)
-	return s.serveResolution(ctx, res, size, square)
+	return s.serveResolution(ctx, artID, res, size, square)
 }
 
 // serveResolution turns a local resolution's bytes into a servable Image (byte-hash only, no decode).
-func (s *service) serveResolution(ctx context.Context, res resolution, size int, square bool) (*Image, error) {
+func (s *service) serveResolution(ctx context.Context, artID model.ArtworkID, res resolution, size int, square bool) (*Image, error) {
 	if res.reader == nil {
 		return nil, ErrUnavailable
 	}
@@ -288,7 +294,7 @@ func (s *service) serveResolution(ctx context.Context, res resolution, size int,
 		return nil, ErrUnavailable
 	}
 	// Keyed by the byte-hash, so the entry lines up with the worker's eventual store entry.
-	return s.serveSource(ctx, hash, hash, unixMtime(res.refMtime), size, square,
+	return s.serveSource(ctx, artID, hash, hash, unixMtime(res.refMtime), size, square,
 		func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil })
 }
 
@@ -338,7 +344,7 @@ func (s *service) provisionalEmbedded(ctx context.Context, artID model.ArtworkID
 		// Eligible but unextractable: fall back the way CoverArtID does, not to a placeholder.
 		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
 	}
-	return s.serveResolution(ctx, res, size, square)
+	return s.serveResolution(ctx, artID, res, size, square)
 }
 
 // serveDisc reads disc art through with no state row and no enqueue, falling back to the album cover.
@@ -356,7 +362,7 @@ func (s *service) serveDisc(ctx context.Context, artID model.ArtworkID, size int
 	// Disc art has no state row, hence no content hash: keying on id, album mtime and
 	// DiscArtPriority lets a warm cache answer without running the chain or touching the disk.
 	key := fmt.Sprintf("%s|%d|%s", artID.ID, dr.cacheTime().UnixNano(), conf.Server.DiscArtPriority)
-	img, err := s.serveSource(ctx, key, "", dr.cacheTime(), size, square, selectImage)
+	img, err := s.serveSource(ctx, artID, key, "", dr.cacheTime(), size, square, selectImage)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			return nil, err

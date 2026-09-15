@@ -5,6 +5,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import config from '../config'
 import subsonic from '../subsonic'
 import { useImageUrl } from './useImageUrl'
+import { useArtworkRefresh } from './useArtworkRefresh'
 import { ThumbHashCanvas } from './ThumbHashCanvas'
 
 // Drives both the CSS transition and the timer that retires the placeholder, so they cannot drift.
@@ -47,7 +48,8 @@ export const Artwork = ({
 }) => {
   const classes = useStyles()
   const url = record ? subsonic.getCoverArtUrl(record, size, square) : ''
-  const { imgUrl, fromCache } = useImageUrl(url)
+  const version = useArtworkRefresh(record?.id)
+  const { imgUrl, fromCache } = useImageUrl(url, version)
 
   const [decoded, setDecoded] = useState(false)
   const [faded, setFaded] = useState(false)

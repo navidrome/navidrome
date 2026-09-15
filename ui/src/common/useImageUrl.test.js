@@ -234,4 +234,90 @@ describe('useImageUrl', () => {
     // A remembered failure has no blob, so callers must not treat it as instantly painted.
     expect(result2.current.fromCache).toBe(false)
   })
+
+  describe('version', () => {
+    const ok = (data) =>
+      Promise.resolve({
+        ok: true,
+        blob: () => Promise.resolve(new Blob([data])),
+      })
+    const renderVersioned = (version) =>
+      renderHook(
+        ({ version }) => useImageUrl('http://example.com/img.jpg', version),
+        { initialProps: { version } },
+      )
+
+    it('re-fetches a cached url when its version changes, showing the old image meanwhile', async () => {
+      let resolveNew
+      global.URL.createObjectURL = vi
+        .fn()
+        .mockReturnValueOnce('blob:old')
+        .mockReturnValueOnce('blob:new')
+      global.fetch = vi
+        .fn()
+        .mockImplementationOnce(() => ok('old'))
+        .mockImplementationOnce(
+          () => new Promise((resolve) => (resolveNew = resolve)),
+        )
+
+      const { result, rerender } = renderVersioned(undefined)
+      await act(async () => {
+        await flushPromises()
+      })
+      expect(result.current.imgUrl).toBe('blob:old')
+
+      rerender({ version: 1 })
+      await act(async () => {
+        await flushPromises()
+      })
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+      expect(result.current.imgUrl).toBe('blob:old')
+      expect(result.current.loading).toBe(false)
+
+      await act(async () => {
+        resolveNew({ ok: true, blob: () => Promise.resolve(new Blob(['new'])) })
+        await flushPromises()
+      })
+      expect(result.current.imgUrl).toBe('blob:new')
+    })
+
+    it('keeps the old image when the re-fetch fails', async () => {
+      global.fetch = vi
+        .fn()
+        .mockImplementationOnce(() => ok('old'))
+        .mockImplementationOnce(() =>
+          Promise.resolve({ ok: false, status: 500 }),
+        )
+
+      const { result, rerender } = renderVersioned(undefined)
+      await act(async () => {
+        await flushPromises()
+      })
+      rerender({ version: 1 })
+      await act(async () => {
+        await flushPromises()
+      })
+
+      expect(global.fetch).toHaveBeenCalledTimes(2)
+      expect(result.current.imgUrl).toBe('blob:mock-url')
+      expect(result.current.error).toBe(false)
+    })
+
+    it('does not re-fetch on remount with the version it already has', async () => {
+      global.fetch = vi.fn(() => ok('data'))
+
+      const { unmount } = renderVersioned(1)
+      await act(async () => {
+        await flushPromises()
+      })
+      unmount()
+      const { result } = renderVersioned(1)
+      await act(async () => {
+        await flushPromises()
+      })
+
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+      expect(result.current.fromCache).toBe(true)
+    })
+  })
 })

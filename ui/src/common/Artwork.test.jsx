@@ -2,6 +2,7 @@ import { render, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('./useImageUrl', () => ({ useImageUrl: vi.fn() }))
+vi.mock('./useArtworkRefresh', () => ({ useArtworkRefresh: vi.fn() }))
 vi.mock('../subsonic', () => ({
   default: {
     // Mirrors the real hash suffix, so a refreshed record yields a different URL.
@@ -13,6 +14,7 @@ vi.mock('../subsonic', () => ({
 vi.mock('../config', () => ({ default: { uiCoverArtSize: 300 } }))
 
 import { useImageUrl } from './useImageUrl'
+import { useArtworkRefresh } from './useArtworkRefresh'
 import { Artwork } from './Artwork'
 
 const withArt = {
@@ -26,6 +28,14 @@ describe('Artwork', () => {
     vi.clearAllMocks()
     // jsdom has no 2D context; stub it so ThumbHashCanvas bails cleanly without console noise
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null)
+  })
+
+  it('loads the image under the version of the last refresh naming its record', () => {
+    useImageUrl.mockReturnValue({ imgUrl: null, loading: true })
+    useArtworkRefresh.mockReturnValue(1234)
+    render(<Artwork record={withArt} />)
+    expect(useArtworkRefresh).toHaveBeenCalledWith('al-1')
+    expect(useImageUrl).toHaveBeenCalledWith('/rest/getCoverArt?id=al-1', 1234)
   })
 
   it('renders nothing without a record', () => {

@@ -34,9 +34,10 @@ const evictIfNeeded = () => {
 /**
  * Loads an image via fetch() with AbortController so that in-flight requests
  * are canceled on unmount (e.g., during pagination). Uses a module-level cache
- * so remounting returns the cached blob URL instantly.
+ * so remounting returns the cached blob URL instantly. A new version re-fetches a cached url whose
+ * image changed behind it, painting the old blob until the new one arrives.
  */
-export const useImageUrl = (url) => {
+export const useImageUrl = (url, version) => {
   const cached = url ? cache.get(url) : null
   const [imgUrl, setImgUrl] = useState(cached?.blobUrl || null)
   const [loading, setLoading] = useState(!!url && !cached)
@@ -68,7 +69,7 @@ export const useImageUrl = (url) => {
     // Re-check: another component's effect may have populated the cache
     // between this component's render and effect execution.
     const entry = cache.get(url)
-    if (entry) {
+    if (entry && entry.version === version) {
       entry.refCount++
       setImgUrl(entry.blobUrl)
       setLoading(false)
@@ -77,12 +78,15 @@ export const useImageUrl = (url) => {
         entry.refCount--
       }
     }
+    const stale = entry?.blobUrl ? entry : null
 
     const controller = new AbortController()
     let queued = true
-    setImgUrl(null)
-    setLoading(true)
-    setError(false)
+    if (!stale) {
+      setImgUrl(null)
+      setLoading(true)
+      setError(false)
+    }
 
     const doFetch = () => {
       queued = false
@@ -105,12 +109,15 @@ export const useImageUrl = (url) => {
           // Handle concurrent fetches: if another component already cached
           // this URL, use its entry and discard our blob.
           const existing = cache.get(url)
-          if (existing && existing.blobUrl) {
+          if (existing && existing.blobUrl && existing.version === version) {
             existing.refCount++
             URL.revokeObjectURL(objectUrl)
             setImgUrl(existing.blobUrl)
           } else {
-            cache.set(url, { blobUrl: objectUrl, refCount: 1 })
+            if (existing?.blobUrl && existing.refCount <= 0) {
+              URL.revokeObjectURL(existing.blobUrl)
+            }
+            cache.set(url, { blobUrl: objectUrl, refCount: 1, version })
             evictIfNeeded()
             setImgUrl(objectUrl)
           }
@@ -122,8 +129,11 @@ export const useImageUrl = (url) => {
           if (err.name === 'AbortError') {
             return // Expected on unmount or URL change
           }
+          if (stale) {
+            return // The old image is still valid; keep showing it
+          }
           // Cache the error so repeated mounts don't re-fetch broken URLs
-          cache.set(url, { blobUrl: null, error: true, refCount: 0 })
+          cache.set(url, { blobUrl: null, error: true, refCount: 0, version })
           setError(true)
           setLoading(false)
         })
@@ -150,7 +160,7 @@ export const useImageUrl = (url) => {
         entry.refCount--
       }
     }
-  }, [url])
+  }, [url, version])
 
   return { imgUrl, loading, error, fromCache }
 }

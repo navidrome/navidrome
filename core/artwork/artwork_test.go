@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/cache"
 	. "github.com/onsi/ginkgo/v2"
@@ -109,7 +110,7 @@ var _ = Describe("Artwork", func() {
 				return arg.(artworkReader).Reader(ctx)
 			})
 		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
-		svc = NewArtwork(ds, imgCache, store, ffm)
+		svc = NewArtwork(ds, imgCache, store, ffm, events.NoopBroker())
 	})
 
 	Describe("found state", func() {
@@ -428,6 +429,7 @@ var _ = Describe("Artwork", func() {
 		var (
 			gifBytes []byte
 			fake     *animFFmpeg
+			broker   *fakeEventBroker
 		)
 
 		get := func(id string) *Image {
@@ -453,7 +455,8 @@ var _ = Describe("Artwork", func() {
 		BeforeEach(func() {
 			gifBytes = createAnimatedGIF(3)
 			fake = &animFFmpeg{MockFFmpeg: tests.NewMockFFmpeg(""), out: []byte("animated-webp")}
-			svc = NewArtwork(ds, imgCache, store, fake)
+			broker = &fakeEventBroker{}
+			svc = NewArtwork(ds, imgCache, store, fake, broker)
 			seedFoundStore("al", "al1", gifBytes)
 			DeferCleanup(waitForConversions)
 		})
@@ -468,6 +471,15 @@ var _ = Describe("Artwork", func() {
 			Expect(img.Transient).To(BeFalse())
 			Expect(readAll(img)).To(Equal([]byte("animated-webp")))
 			Expect(fake.calls.Load()).To(Equal(int32(1)))
+		})
+
+		It("tells the UI to reload the item once its conversion is cached", func() {
+			readAll(get("al-al1"))
+			waitForConversions()
+
+			sent := broker.getEvents()
+			Expect(sent).To(HaveLen(1))
+			Expect(sent[0].Data(sent[0])).To(MatchJSON(`{"album":["al1"]}`))
 		})
 
 		It("runs one conversion at a time and does not queue the others", func() {

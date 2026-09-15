@@ -108,7 +108,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 			})
 		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 
-		svc = artwork.NewArtwork(ds, imgCache, store, ffm)
+		svc = artwork.NewArtwork(ds, imgCache, store, ffm, events.NoopBroker())
 		worker = artwork.NewWorker(ds, store, agents.GetAgents(ds, nil), ffm, events.NoopBroker(), imgCache)
 	})
 

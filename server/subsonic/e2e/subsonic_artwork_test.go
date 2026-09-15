@@ -132,7 +132,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		store := artwork.NewImageStore(GinkgoT().TempDir())
 		imgCache := newDummyImageCache(ctx)
 		ffm := harness.NoopFFmpeg{}
-		artSvc = artwork.NewArtwork(ds, imgCache, store, ffm)
+		artSvc = artwork.NewArtwork(ds, imgCache, store, ffm, events.NoopBroker())
 		worker = artwork.NewWorker(ds, store, agents.GetAgents(ds, nil), ffm, events.NoopBroker(), imgCache)
 
 		artRouter = buildArtworkRouter(artSvc)

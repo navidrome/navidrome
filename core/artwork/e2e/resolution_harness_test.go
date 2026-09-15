@@ -119,7 +119,7 @@ func setupResolutionHarness() {
 		})
 	Eventually(func() bool { return imgCache.Available(rctx) }, 10*time.Second).Should(BeTrue())
 
-	rsvc = artwork.NewArtwork(rds, imgCache, rstore, ffm)
+	rsvc = artwork.NewArtwork(rds, imgCache, rstore, ffm, events.NoopBroker())
 	rworker = artwork.NewWorker(rds, rstore, agents.GetAgents(rds, nil), ffm, events.NoopBroker(), imgCache)
 }
 
