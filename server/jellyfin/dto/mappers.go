@@ -62,6 +62,17 @@ func jellyfinDate(t *time.Time) string {
 	return t.UTC().Format(jellyfinDateLayout)
 }
 
+// emptyRequestedLists initialises the list fields Jellyfin emits for every item once Fields asks for
+// them, so an item with none of that data sends [] rather than nothing at all.
+func emptyRequestedLists(item *BaseItemDto, fields Fields) {
+	if fields.Has("Genres") {
+		item.Genres, item.GenreItems = []string{}, []NameGuidPair{}
+	}
+	if fields.Has("Tags") {
+		item.Tags = []string{}
+	}
+}
+
 // channelLayout maps a channel count to the label Jellyfin clients expect on a MediaStream.
 func channelLayout(n int) string {
 	switch n {
@@ -198,13 +209,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 	if mf.DiscNumber > 0 {
 		item.ParentIndexNumber = new(mf.DiscNumber)
 	}
-	// Jellyfin emits these for every item once Fields asks for them, so an item without them sends [].
-	if fields.Has("Genres") {
-		item.Genres, item.GenreItems = []string{}, []NameGuidPair{}
-	}
-	if fields.Has("Tags") {
-		item.Tags = []string{}
-	}
+	emptyRequestedLists(&item, fields)
 	if len(mf.Genres) > 0 {
 		for _, g := range mf.Genres {
 			item.Genres = append(item.Genres, g.Name)
@@ -289,12 +294,7 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		item.ProductionYear = new(al.MaxYear)
 	}
 	item.PremiereDate = premiereDate(al.Date, al.MaxYear)
-	if fields.Has("Genres") {
-		item.Genres, item.GenreItems = []string{}, []NameGuidPair{}
-	}
-	if fields.Has("Tags") {
-		item.Tags = []string{}
-	}
+	emptyRequestedLists(&item, fields)
 	if len(al.Genres) > 0 {
 		for _, g := range al.Genres {
 			item.Genres = append(item.Genres, g.Name)
@@ -339,12 +339,7 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 	if fields.Has("SortName") {
 		item.SortName = sortName(ar.SortArtistName, ar.OrderArtistName, ar.Name)
 	}
-	if fields.Has("Genres") {
-		item.Genres, item.GenreItems = []string{}, []NameGuidPair{}
-	}
-	if fields.Has("Tags") {
-		item.Tags = []string{}
-	}
+	emptyRequestedLists(&item, fields)
 	return item
 }
 
