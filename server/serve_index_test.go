@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -42,6 +43,24 @@ var _ = Describe("serveIndex", func() {
 		Expect(config).To(BeAssignableToTypeOf(map[string]any{}))
 	})
 
+	DescribeTable("renders the instance name as text in the actual UI template", func(name string) {
+		conf.Server.InstanceName = name
+		r := httptest.NewRequest("GET", "/app/", nil)
+		w := httptest.NewRecorder()
+		serveIndex(ds, os.DirFS("ui"), nil)(w, r)
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.String()).To(ContainSubstring("<title>" + html.EscapeString(name) + "</title>"))
+		// The JSON configuration also preserves the name as plain text.
+		w = httptest.NewRecorder()
+		serveIndex(ds, fs, nil)(w, r)
+		Expect(extractAppConfig(w.Body.String())).To(HaveKeyWithValue("instanceName", name))
+	},
+		Entry("default name", "Navidrome"),
+		Entry("custom name", "mp3-player"),
+		Entry("Unicode and punctuation", `家の音楽 & "Friends"`),
+		Entry("HTML-like name", `</title><script>alert("name")</script>`),
+	)
+
 	It("sets firstTime = true when User table is empty", func() {
 		mockUser.empty = true
 		r := httptest.NewRequest("GET", "/index.html", nil)
@@ -76,6 +95,7 @@ var _ = Describe("serveIndex", func() {
 			Expect(config).To(HaveKeyWithValue(configKey, expectedValue))
 		},
 		Entry("baseURL", func() { conf.Server.BasePath = "base_url_test" }, "baseURL", "base_url_test"),
+		Entry("instanceName", func() { conf.Server.InstanceName = "mp3-player" }, "instanceName", "mp3-player"),
 		Entry("welcomeMessage", func() { conf.Server.UIWelcomeMessage = "Hello" }, "welcomeMessage", "Hello"),
 		Entry("maxSidebarPlaylists", func() { conf.Server.MaxSidebarPlaylists = 42 }, "maxSidebarPlaylists", float64(42)),
 		Entry("enableTranscodingConfig", func() { conf.Server.EnableTranscodingConfig = true }, "enableTranscodingConfig", true),

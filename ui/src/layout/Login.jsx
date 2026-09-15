@@ -56,8 +56,19 @@ const useStyles = makeStyles(
     systemName: {
       marginTop: '1em',
       display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
       justifyContent: 'center',
       color: '#3f51b5', //theme.palette.grey[500]
+    },
+    instanceName: {
+      color: theme.palette.text.primary,
+      fontSize: '1.25rem',
+      fontWeight: 500,
+      padding: '0 1em',
+      maxWidth: 300,
+      overflowWrap: 'anywhere',
+      textAlign: 'center',
     },
     welcome: {
       marginTop: '1em',
@@ -126,6 +137,11 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
                 <img src={Logo} className={classes.icon} alt={'logo'} />
               </div>
               <div className={classes.systemName}>
+                {config.instanceName !== 'Navidrome' && (
+                  <div className={classes.instanceName}>
+                    {config.instanceName}
+                  </div>
+                )}
                 <a
                   href="https://www.navidrome.org"
                   target="_blank"
