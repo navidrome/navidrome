@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"net/http"
 	"slices"
 	"sort"
@@ -110,10 +111,46 @@ var _ = Describe("Browsing", func() {
 			Expect(q.Items).To(BeEmpty())
 		})
 
-		It("defaults to albums when IncludeItemTypes is unrecognized", func() {
-			q := queryResult(get("/Items?IncludeItemTypes=Nonsense&Recursive=true"))
-			Expect(q.TotalRecordCount).To(Equal(5))
+		// Manet syncs collections as Boxset, and took albums coming back instead as a sync failure.
+		DescribeTable("returns nothing for a type it does not serve",
+			func(itemType string) {
+				q := queryResult(get("/Items?IncludeItemTypes=" + itemType + "&Recursive=true"))
+				Expect(q.TotalRecordCount).To(Equal(0))
+				Expect(q.Items).To(BeEmpty())
+			},
+			Entry("a Jellyfin kind Navidrome has none of", "Boxset"),
+			Entry("a name Jellyfin does not know either", "Nonsense"),
+		)
+
+		// A strict client (Manet) fails its whole sync on the first item missing any of these.
+		DescribeTable("sends the keys Jellyfin puts on every item",
+			func(itemType string, fields string, nonNull ...string) {
+				var body struct{ Items []map[string]json.RawMessage }
+				res := get("/Items?IncludeItemTypes=" + itemType + "&Fields=" + fields + "&Recursive=true")
+				Expect(json.Unmarshal(res.Body.Bytes(), &body)).To(Succeed())
+				Expect(body.Items).ToNot(BeEmpty())
+				for _, it := range body.Items {
+					Expect(it).To(HaveKey("ChannelId"), "ChannelId is null, but always present")
+					for _, k := range nonNull {
+						Expect(it).To(HaveKey(k))
+						Expect(string(it[k])).ToNot(Equal("null"), k)
+					}
+				}
+			},
+			Entry("songs", "Audio", "Genres,Tags", "ImageTags", "HasLyrics", "Genres", "GenreItems", "Tags"),
+			Entry("albums", "MusicAlbum", "Genres", "ImageTags", "Genres", "GenreItems"),
+			Entry("artists", "MusicArtist", "Genres", "ImageTags", "Genres", "GenreItems"),
+		)
+
+		It("sends MediaType Unknown on items without one, as Jellyfin always emits it", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true"))
+			Expect(q.Items).ToNot(BeEmpty())
+			for _, it := range q.Items {
+				Expect(it.MediaType).To(Equal("Unknown"))
+			}
+			Expect(queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true")).Items[0].MediaType).To(Equal("Audio"))
 		})
+
 	})
 
 	Describe("ParentId browsing", func() {
