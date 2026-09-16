@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -307,14 +306,7 @@ func (r *libraryRepositoryWrapper) mapError(err error) error {
 		}
 	}
 
-	switch {
-	case errors.Is(err, model.ErrNotFound):
-		return rest.ErrNotFound
-	case errors.Is(err, model.ErrNotAuthorized):
-		return rest.ErrPermissionDenied
-	default:
-		return err
-	}
+	return err
 }
 
 func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error {

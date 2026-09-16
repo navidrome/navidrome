@@ -69,11 +69,7 @@ func (m *MockPluginRepo) Get(id string) (*model.Plugin, error) {
 }
 
 func (m *MockPluginRepo) Read(id string) (any, error) {
-	p, err := m.Get(id)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, rest.ErrNotFound
-	}
-	return p, err
+	return m.Get(id)
 }
 
 func (m *MockPluginRepo) Put(p *model.Plugin) error {
