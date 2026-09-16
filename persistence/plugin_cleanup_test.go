@@ -37,6 +37,23 @@ var _ = Describe("Plugin Cleanup", func() {
 		}
 	})
 
+	Describe("UserRepository.Delete", func() {
+		It("cleans up plugin references for users deleted before a later id fails", func() {
+			Expect(userRepo.Put(ctx, &model.User{ID: "bulk-1", UserName: "bulk-1", NewPassword: "x"})).To(Succeed())
+			DeferCleanup(func() { _ = userRepo.Delete(ctx, "bulk-1") })
+			Expect(pluginRepo.Put(ctx, &model.Plugin{
+				ID: "bulk-plugin", Path: "/plugins/bulk.wasm", Manifest: `{"name":"bulk"}`, SHA256: "def456",
+				Users: `["bulk-1","other"]`, Enabled: true,
+			})).To(Succeed())
+
+			Expect(userRepo.Delete(ctx, "bulk-1", "does-not-exist")).To(MatchError(model.ErrNotFound))
+
+			updated, err := pluginRepo.Get(ctx, "bulk-plugin")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(updated.Users).To(Equal(`["other"]`))
+		})
+	})
+
 	Describe("cleanupPluginUserReferences", func() {
 		It("removes user ID from plugin users array", func() {
 			// Create a plugin with multiple users

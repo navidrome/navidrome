@@ -379,10 +379,6 @@ func (r *userRepository) Delete(ctx context.Context, ids ...string) error {
 		if err := r.deleteByID(ctx, id); err != nil {
 			return err
 		}
-	}
-
-	// Clean up orphaned plugin references for the deleted users
-	for _, id := range ids {
 		if err := cleanupPluginUserReferences(r.db, id); err != nil {
 			log.Error(ctx, "Failed to cleanup plugin user references", "userID", id, err)
 		}
