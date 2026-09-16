@@ -981,6 +981,7 @@ var _ = Describe("Items", func() {
 		It("resolves a library-view id (from /UserViews) as a CollectionFolder item", func() {
 			w := httptest.NewRecorder()
 			libs := model.Libraries{{ID: 1, Name: "Music Library"}}
+			ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(libs)
 			r := httptest.NewRequest("GET", "/Items/"+dto.EncodeLibraryID(1), nil).WithContext(ctxUserWithLibraries(libs))
 			r = withChiURLParam(r, "itemId", dto.EncodeLibraryID(1))
 			invoke(api.getItem, w, r)
@@ -1123,6 +1124,20 @@ var _ = Describe("Items", func() {
 	Describe("parseTypes", func() {
 		It("dedupes repeated types, preserving first-seen order", func() {
 			Expect(parseTypes("Audio,MusicAlbum,Audio")).To(Equal([]string{"Audio", "MusicAlbum"}))
+		})
+
+		It("matches type names case-insensitively, like Jellyfin's enum binding", func() {
+			Expect(parseTypes("musicalbum, AUDIO")).To(Equal([]string{"MusicAlbum", "Audio"}))
+		})
+
+		It("returns no types for real Jellyfin kinds Navidrome has none of", func() {
+			Expect(parseTypes("Boxset")).To(BeEmpty())
+			Expect(parseTypes("BoxSet,Movie")).To(BeEmpty())
+		})
+
+		It("defaults to albums only when IncludeItemTypes is absent", func() {
+			Expect(parseTypes("")).To(Equal([]string{"MusicAlbum"}))
+			Expect(parseTypes("Nonsense")).To(BeEmpty())
 		})
 	})
 

@@ -219,11 +219,40 @@ func (api *Router) writeItemsArray(w http.ResponseWriter, r *http.Request, res i
 	api.streamResult(w, r, res, streamItemsArray)
 }
 
-// streamResult stamps every item's ServerId (constant per request, so it's set here rather than in
-// each mapper). The cursor opens before the first byte, so a failed open is still a clean 500.
+// stampItem fills in what real Jellyfin puts on every item it returns, so a client that requires a
+// key never meets an item without it: ServerId, MediaType, ImageTags, and the Fields-gated lists.
+func stampItem(it dto.BaseItemDto, serverID string, fields dto.Fields) dto.BaseItemDto {
+	it.ServerId = serverID
+	if it.MediaType == "" {
+		it.MediaType = "Unknown"
+	}
+	if it.ImageTags == nil {
+		it.ImageTags = map[string]string{}
+	}
+	if fields.Has("Genres") {
+		if it.Genres == nil {
+			it.Genres = []string{}
+		}
+		if it.GenreItems == nil {
+			it.GenreItems = []dto.NameGuidPair{}
+		}
+	}
+	if fields.Has("Tags") && it.Tags == nil {
+		it.Tags = []string{}
+	}
+	return it
+}
+
+// requestFields parses the Fields param, which gates what stampItem and the mappers attach.
+func requestFields(r *http.Request) dto.Fields {
+	return dto.ParseFields(req.Params(r).Strings("fields")...)
+}
+
+// streamResult stamps every item (see stampItem). The cursor opens before the first byte, so a
+// failed open is still a clean 500.
 func (api *Router) streamResult(w http.ResponseWriter, r *http.Request, res itemsResult,
 	write func(io.Writer, iter.Seq2[dto.BaseItemDto, error]) error) {
-	sid := api.serverID(r.Context())
+	sid, fields := api.serverID(r.Context()), requestFields(r)
 	seq, err := res.seq()
 	if err != nil {
 		api.internalError(w, r, err)
@@ -235,8 +264,7 @@ func (api *Router) streamResult(w http.ResponseWriter, r *http.Request, res item
 				yield(dto.BaseItemDto{}, err)
 				return
 			}
-			it.ServerId = sid
-			if !yield(it, nil) {
+			if !yield(stampItem(it, sid, fields), nil) {
 				return
 			}
 		}
@@ -380,7 +408,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	case len(q.ids) > 0:
 		return materialized(api.itemsByIDs(ctx, q.ids, q.fields)), nil
 	// A ManualPlaylistsFolder query asks for the synthetic "playlists library" container, not real items.
-	case strings.Contains(q.rawTypes, "ManualPlaylistsFolder"):
+	case strings.Contains(strings.ToLower(q.rawTypes), "manualplaylistsfolder"):
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
 	}
 	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
@@ -559,23 +587,26 @@ func parseYears(r *http.Request) []int {
 	return years
 }
 
-// parseTypes returns the recognized entries in IncludeItemTypes in order, defaulting to
-// {"MusicAlbum"} when none are recognized (so ParentId=<artistId> browses that artist's albums).
+// supportedTypes maps lowercased IncludeItemTypes names (Jellyfin binds them case-insensitively)
+// to the item types Navidrome serves.
+var supportedTypes = map[string]string{
+	"audio": "Audio", "musicartist": "MusicArtist", "musicalbum": "MusicAlbum", "musicgenre": "MusicGenre", "playlist": "Playlist",
+}
+
+// parseTypes returns the supported entries in IncludeItemTypes in order. Only an absent param
+// defaults to albums, so ParentId=<artistId> still browses that artist's albums.
 func parseTypes(types string) []string {
+	if strings.TrimSpace(types) == "" {
+		return []string{"MusicAlbum"}
+	}
 	var recognized []string
 	for t := range strings.SplitSeq(types, ",") {
-		t = strings.TrimSpace(t)
-		switch t {
-		case "Audio", "MusicArtist", "MusicAlbum", "MusicGenre", "Playlist":
-			recognized = append(recognized, t)
+		if name, ok := supportedTypes[strings.ToLower(strings.TrimSpace(t))]; ok {
+			recognized = append(recognized, name)
 		}
 	}
 	// Dedupe: a repeated type would duplicate items in the merge and spawn a redundant query.
-	recognized = slice.Unique(recognized)
-	if len(recognized) == 0 {
-		return []string{"MusicAlbum"}
-	}
-	return recognized
+	return slice.Unique(recognized)
 }
 
 // paginate applies StartIndex/Limit to an in-memory item list, for the multi-type merge path only
@@ -828,14 +859,8 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	// Finamp resolves a /UserViews entry (Id=library id) by fetching it as a plain item; without this
 	// the home screen and library tabs 404.
 	if libID, err := strconv.Atoi(id); err == nil && u.HasLibraryAccess(libID) {
-		for _, lib := range u.Libraries {
-			if lib.ID == libID {
-				return libraryView(lib), true
-			}
-		}
-		// Admin bypass: Libraries is empty but all access is granted, so fetch the real library.
 		if lib, err := api.ds.Library(ctx).Get(libID); err == nil {
-			return libraryView(*lib), true
+			return dto.LibraryToBaseItem(*lib), true
 		}
 	}
 	if al, err := api.ds.Album(ctx).Get(id); err == nil {

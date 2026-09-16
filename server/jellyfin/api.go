@@ -213,8 +213,7 @@ func (api *Router) ok(w http.ResponseWriter, r *http.Request, payload any) {
 		api.writeItems(w, r, materialized(p))
 		return
 	case dto.BaseItemDto:
-		p.ServerId = api.serverID(r.Context())
-		payload = p
+		payload = stampItem(p, api.serverID(r.Context()), requestFields(r))
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if err := json.NewEncoder(w).Encode(payload); err != nil {

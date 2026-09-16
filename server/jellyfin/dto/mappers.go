@@ -46,17 +46,24 @@ func premiereDate(date string, year int) *string {
 		}
 		d = fmt.Sprintf("%04d-01-01", year)
 	}
-	s := d + "T00:00:00Z"
+	parsed, err := time.Parse(time.DateOnly, d)
+	if err != nil {
+		return nil
+	}
+	s := jellyfinDate(&parsed)
 	return &s
 }
 
-// jellyfinDate formats t as the ISO 8601 string clients expect, or "" for the zero time so the
+// Dates use .NET's round-trip layout, 7 fractional digits and all: Manet rejects plain RFC3339.
+const jellyfinDateLayout = "2006-01-02T15:04:05.0000000Z07:00"
+
+// jellyfinDate formats t as the date string clients expect, or "" for the zero time so the
 // field is omitted rather than sent as a meaningless epoch.
 func jellyfinDate(t *time.Time) string {
 	if t == nil || t.IsZero() {
 		return ""
 	}
-	return t.UTC().Format(time.RFC3339)
+	return t.UTC().Format(jellyfinDateLayout)
 }
 
 // channelLayout maps a channel count to the label Jellyfin clients expect on a MediaStream.
@@ -127,8 +134,7 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
 		d.Rating = &r
 	}
-	if a.PlayDate != nil {
-		s := a.PlayDate.UTC().Format(time.RFC3339)
+	if s := jellyfinDate(a.PlayDate); s != "" {
 		d.LastPlayedDate = &s
 	}
 	return d
@@ -146,7 +152,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		MediaType:         "Audio",
 		IsFolder:          false,
 		LocationType:      "FileSystem",
-		HasLyrics:         mf.HasEmbeddedLyrics(),
+		HasLyrics:         new(mf.HasEmbeddedLyrics()),
 		ParentId:          albumID,
 		Album:             mf.Album,
 		AlbumId:           albumID,
@@ -251,6 +257,7 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		Id:                      EncodeID(al.ID),
 		Type:                    "MusicAlbum",
 		IsFolder:                true,
+		LocationType:            "FileSystem",
 		ParentId:                EncodeID(al.AlbumArtistID),
 		AlbumArtist:             al.AlbumArtist,
 		Album:                   al.Name,
@@ -265,6 +272,10 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	item.Artists = []string{}
+	if al.AlbumArtist != "" {
+		item.Artists = append(item.Artists, al.AlbumArtist)
 	}
 	if al.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: EncodeID(al.AlbumArtistID)}}
@@ -321,6 +332,26 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 	return item
 }
 
+// LibraryToBaseItem maps a library to the CollectionFolder item clients browse as a top-level node.
+// Manet keeps no library, and so syncs nothing, unless it carries the fields Jellyfin sends here.
+func LibraryToBaseItem(lib model.Library) BaseItemDto {
+	id := EncodeLibraryID(lib.ID)
+	return BaseItemDto{
+		Id:                id,
+		Name:              lib.Name,
+		SortName:          lib.Name,
+		Type:              "CollectionFolder",
+		CollectionType:    "music",
+		IsFolder:          true,
+		Path:              lib.Path,
+		LocationType:      "FileSystem",
+		DateCreated:       jellyfinDate(&lib.CreatedAt),
+		ChildCount:        new(lib.TotalAlbums),
+		UserData:          &UserItemDataDto{Key: id, ItemId: id},
+		BackdropImageTags: []string{},
+	}
+}
+
 func GenreToBaseItem(g model.Genre) BaseItemDto {
 	return BaseItemDto{
 		Name:              g.Name,
@@ -354,6 +385,7 @@ func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
 		MediaType:               "Audio",
 		ChildCount:              new(p.SongCount),
 		RunTimeTicks:            TicksFromSeconds(p.Duration),
+		DateCreated:             jellyfinDate(&p.CreatedAt),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -361,6 +393,10 @@ func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	// Playlists have no sort tag; the repository orders them by name.
+	if fields.Has("SortName") {
+		item.SortName = p.Name
 	}
 	return item
 }

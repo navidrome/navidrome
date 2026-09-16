@@ -49,20 +49,23 @@ type BaseItemDto struct {
 	// PlaylistItemId identifies an entry within a playlist listing (GET /Playlists/{id}/Items),
 	// distinct from Id so a song appearing more than once can be removed by occurrence
 	// (DELETE .../Items?EntryIds=...) rather than by song id.
-	PlaylistItemId    string `json:"PlaylistItemId,omitempty"`
-	Type              string `json:"Type"`
-	IsFolder          bool   `json:"IsFolder"`
-	MediaType         string `json:"MediaType,omitempty"`
-	CollectionType    string `json:"CollectionType,omitempty"`
-	LocationType      string `json:"LocationType,omitempty"`
-	HasLyrics         bool   `json:"HasLyrics,omitempty"`
-	SortName          string `json:"SortName,omitempty"`
-	Path              string `json:"Path,omitempty"`
-	ParentId          string `json:"ParentId,omitempty"`
-	RunTimeTicks      int64  `json:"RunTimeTicks,omitempty"`
-	IndexNumber       *int   `json:"IndexNumber,omitempty"`
-	ParentIndexNumber *int   `json:"ParentIndexNumber,omitempty"`
-	ProductionYear    *int   `json:"ProductionYear,omitempty"`
+	PlaylistItemId string `json:"PlaylistItemId,omitempty"`
+	Type           string `json:"Type"`
+	IsFolder       bool   `json:"IsFolder"`
+	MediaType      string `json:"MediaType,omitempty"`
+	CollectionType string `json:"CollectionType,omitempty"`
+	LocationType   string `json:"LocationType,omitempty"`
+	HasLyrics      *bool  `json:"HasLyrics,omitempty"`
+	// ChannelId is always null for music, but Jellyfin emits it on every item and clients may require it.
+	ChannelId         *string  `json:"ChannelId"`
+	Tags              []string `json:"Tags,omitzero"`
+	SortName          string   `json:"SortName,omitempty"`
+	Path              string   `json:"Path,omitempty"`
+	ParentId          string   `json:"ParentId,omitempty"`
+	RunTimeTicks      int64    `json:"RunTimeTicks,omitempty"`
+	IndexNumber       *int     `json:"IndexNumber,omitempty"`
+	ParentIndexNumber *int     `json:"ParentIndexNumber,omitempty"`
+	ProductionYear    *int     `json:"ProductionYear,omitempty"`
 	// PremiereDate is the ISO 8601 release date; Finamp sorts "Latest Releases" by it client-side.
 	PremiereDate *string `json:"PremiereDate,omitempty"`
 	// DateCreated is the ISO 8601 date the item was added to the library; clients show it as
@@ -73,17 +76,17 @@ type BaseItemDto struct {
 	AlbumArtist            string            `json:"AlbumArtist,omitempty"`
 	AlbumArtists           []NameGuidPair    `json:"AlbumArtists,omitempty"`
 	AlbumPrimaryImageTag   string            `json:"AlbumPrimaryImageTag,omitempty"`
-	Artists                []string          `json:"Artists,omitempty"`
+	Artists                []string          `json:"Artists,omitzero"`
 	ArtistItems            []NameGuidPair    `json:"ArtistItems,omitempty"`
-	Genres                 []string          `json:"Genres,omitempty"`
-	GenreItems             []NameGuidPair    `json:"GenreItems,omitempty"`
+	Genres                 []string          `json:"Genres,omitzero"`
+	GenreItems             []NameGuidPair    `json:"GenreItems,omitzero"`
 	Studios                []NameGuidPair    `json:"Studios,omitempty"`
 	NormalizationGain      *float64          `json:"NormalizationGain,omitempty"`
 	AlbumNormalizationGain *float64          `json:"AlbumNormalizationGain,omitempty"`
 	ChildCount             *int              `json:"ChildCount,omitempty"`
 	SongCount              *int              `json:"SongCount,omitempty"`
 	AlbumCount             *int              `json:"AlbumCount,omitempty"`
-	ImageTags              map[string]string `json:"ImageTags,omitempty"`
+	ImageTags              map[string]string `json:"ImageTags"`
 	// ImageBlurHashes is keyed by image type (e.g. "Primary") then image tag. Finamp uses it as a
 	// de-dup key for image downloads (and a placeholder); absent, it warns the server isn't
 	// calculating blurhashes.

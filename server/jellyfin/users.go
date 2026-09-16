@@ -13,10 +13,20 @@ import (
 // getUserViews returns one CollectionFolder view per accessible library, so clients browse each
 // library as its own top-level view rather than one aggregate.
 func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
-	u, _ := request.UserFrom(r.Context())
-	views := make([]dto.BaseItemDto, 0, len(u.Libraries))
-	for _, lib := range u.Libraries {
-		views = append(views, libraryView(lib))
+	ctx := r.Context()
+	u, _ := request.UserFrom(ctx)
+	// u.Libraries comes from a projection without counts or stats, and clients hide a library that
+	// looks empty, so the rows are re-read in full here.
+	libs, err := api.ds.Library(ctx).GetAll()
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	views := make([]dto.BaseItemDto, 0, len(libs))
+	for _, lib := range libs {
+		if u.HasLibraryAccess(lib.ID) {
+			views = append(views, dto.LibraryToBaseItem(lib))
+		}
 	}
 	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})
 }
