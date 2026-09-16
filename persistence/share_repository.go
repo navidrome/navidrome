@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -178,11 +177,7 @@ func (r *shareRepository) Save(entity any) (string, error) {
 	}
 	s.CreatedAt = time.Now()
 	s.UpdatedAt = time.Now()
-	id, err := r.put(s.ID, s)
-	if errors.Is(err, model.ErrNotFound) {
-		return "", rest.ErrNotFound
-	}
-	return id, err
+	return r.put(s.ID, s)
 }
 
 func (r *shareRepository) CountAll(options ...model.QueryOptions) (int64, error) {

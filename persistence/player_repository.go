@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"errors"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -127,11 +126,7 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
 	}
-	id, err := r.put(t.ID, t)
-	if errors.Is(err, model.ErrNotFound) {
-		return "", rest.ErrNotFound
-	}
-	return id, err
+	return r.put(t.ID, t)
 }
 
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {

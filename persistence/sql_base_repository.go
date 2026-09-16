@@ -614,12 +614,20 @@ func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId stri
 }
 
 func (r sqlRepository) delete(cond Sqlizer) error {
-	del := Delete(r.tableName).Where(cond)
-	_, err := r.executeSQL(del)
-	if errors.Is(err, sql.ErrNoRows) {
+	_, err := r.executeSQL(Delete(r.tableName).Where(cond))
+	return err
+}
+
+// deleteByID is for single-item deletes that must report a missing row; delete succeeds silently.
+func (r sqlRepository) deleteByID(id string) error {
+	count, err := r.executeSQL(Delete(r.tableName).Where(Eq{"id": id}))
+	if err != nil {
+		return err
+	}
+	if count == 0 {
 		return model.ErrNotFound
 	}
-	return err
+	return nil
 }
 
 func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
