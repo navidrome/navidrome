@@ -24,6 +24,7 @@ GOLANGCI_LINT_VERSION ?= v2.14.0
 VACUUM_VERSION ?= v0.30.6
 OAPI_CODEGEN_VERSION ?= v2.8.0
 OASDIFF_VERSION ?= v1.32.1
+REDOCLY_VERSION ?= 2.53.2
 API_DIFF_BASE ?= origin/master
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
@@ -109,8 +110,8 @@ api-lint: install-api-tools ##@Development Lint the OpenAPI spec
 # vacuum v0.30.6's `bundle --composed` mangles component names for this spec's
 # file layout (emits both `Problem` and `Problem__schemas`), so use Redocly.
 api-bundle: ##@Development Bundle the multi-file OpenAPI spec into api/bundled
-	npx --yes @redocly/cli@latest bundle api/openapi/openapi.yaml -o api/bundled/openapi.yaml
-	npx --yes @redocly/cli@latest bundle api/openapi/openapi.yaml -o api/bundled/openapi.json --ext json
+	npx --yes @redocly/cli@$(REDOCLY_VERSION) bundle api/openapi/openapi.yaml -o api/bundled/openapi.yaml
+	npx --yes @redocly/cli@$(REDOCLY_VERSION) bundle api/openapi/openapi.yaml -o api/bundled/openapi.json --ext json
 .PHONY: api-bundle
 
 api-gen: api-bundle ##@Development Generate the API v1 server code from the bundled spec
