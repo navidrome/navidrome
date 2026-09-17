@@ -154,9 +154,12 @@
           },
           "loginMethods": {
             "type": "array",
-            "description": "Login methods this server accepts. Known values: `password`. Future values\n(for example `pairCode`, `external`) may be added; clients ignore unknown values.\n",
+            "description": "Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.",
             "items": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "password"
+              ]
             }
           }
         }

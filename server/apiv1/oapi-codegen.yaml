@@ -8,3 +8,5 @@ output-options:
   exclude-operation-ids:
     - getOpenAPISpecJSON
     - getOpenAPISpecYAML
+compatibility:
+  always-prefix-enum-values: true

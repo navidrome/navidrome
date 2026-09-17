@@ -18,6 +18,6 @@ func (rt *Router) GetServerInfo(ctx context.Context, _ GetServerInfoRequestObjec
 		ServerVersion: consts.Version,
 		SpecVersion:   api.SpecVersion(),
 		SetupRequired: count == 0,
-		LoginMethods:  []string{"password"},
+		LoginMethods:  []ServerInfoLoginMethods{ServerInfoLoginMethodsPassword},
 	}, nil
 }

@@ -16,8 +16,7 @@ properties:
     description: True until the first admin user has been created.
   loginMethods:
     type: array
-    description: |
-      Login methods this server accepts. Known values: `password`. Future values
-      (for example `pairCode`, `external`) may be added; clients ignore unknown values.
+    description: Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
     items:
       type: string
+      enum: [password]

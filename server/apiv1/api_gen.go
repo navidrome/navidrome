@@ -13,6 +13,21 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Defines values for ServerInfoLoginMethods.
+const (
+	ServerInfoLoginMethodsPassword ServerInfoLoginMethods = "password"
+)
+
+// Valid indicates whether the value is a known member of the ServerInfoLoginMethods enum.
+func (e ServerInfoLoginMethods) Valid() bool {
+	switch e {
+	case ServerInfoLoginMethodsPassword:
+		return true
+	default:
+		return false
+	}
+}
+
 // Problem RFC 9457 problem details, returned for every 4xx and 5xx response.
 type Problem struct {
 	// Code Machine-readable error code. Values: `validation`, `unauthorized`, `forbidden`,
@@ -37,9 +52,8 @@ type Problem struct {
 
 // ServerInfo Public server description. Everything an add-server screen needs before login.
 type ServerInfo struct {
-	// LoginMethods Login methods this server accepts. Known values: `password`. Future values
-	// (for example `pairCode`, `external`) may be added; clients ignore unknown values.
-	LoginMethods []string `json:"loginMethods"`
+	// LoginMethods Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
+	LoginMethods []ServerInfoLoginMethods `json:"loginMethods"`
 
 	// Name Human-readable server product name.
 	Name string `json:"name"`
@@ -53,6 +67,9 @@ type ServerInfo struct {
 	// SpecVersion Version of the OpenAPI document this server implements.
 	SpecVersion string `json:"specVersion"`
 }
+
+// ServerInfoLoginMethods defines model for ServerInfo.LoginMethods.
+type ServerInfoLoginMethods string
 
 // ValidationError One field-level validation failure.
 type ValidationError struct {
