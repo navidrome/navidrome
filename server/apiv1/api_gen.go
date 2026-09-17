@@ -13,6 +13,39 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Defines values for ProblemCode.
+const (
+	ProblemCodeForbidden        ProblemCode = "forbidden"
+	ProblemCodeInternal         ProblemCode = "internal"
+	ProblemCodeMethodNotAllowed ProblemCode = "method_not_allowed"
+	ProblemCodeNotFound         ProblemCode = "not_found"
+	ProblemCodeUnauthorized     ProblemCode = "unauthorized"
+	ProblemCodeUnavailable      ProblemCode = "unavailable"
+	ProblemCodeValidation       ProblemCode = "validation"
+)
+
+// Valid indicates whether the value is a known member of the ProblemCode enum.
+func (e ProblemCode) Valid() bool {
+	switch e {
+	case ProblemCodeForbidden:
+		return true
+	case ProblemCodeInternal:
+		return true
+	case ProblemCodeMethodNotAllowed:
+		return true
+	case ProblemCodeNotFound:
+		return true
+	case ProblemCodeUnauthorized:
+		return true
+	case ProblemCodeUnavailable:
+		return true
+	case ProblemCodeValidation:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ServerInfoLoginMethods.
 const (
 	ServerInfoLoginMethodsPassword ServerInfoLoginMethods = "password"
@@ -30,9 +63,8 @@ func (e ServerInfoLoginMethods) Valid() bool {
 
 // Problem RFC 9457 problem details, returned for every 4xx and 5xx response.
 type Problem struct {
-	// Code Machine-readable error code. Values: `validation`, `unauthorized`, `forbidden`,
-	// `not_found`, `method_not_allowed`, `unavailable`, `internal`. New codes may be added.
-	Code string `json:"code"`
+	// Code Machine-readable error code, and the value clients switch on. New codes may be added.
+	Code ProblemCode `json:"code"`
 
 	// Detail Human-readable explanation specific to this occurrence. Omitted for internal errors.
 	Detail *string `json:"detail,omitempty"`
@@ -46,11 +78,14 @@ type Problem struct {
 	// Title Short human-readable summary, the same for all occurrences of this problem type.
 	Title string `json:"title"`
 
-	// Type URI reference identifying the problem type, and the primary identifier a client should
-	// switch on. `about:blank` is the RFC 9457 registered type meaning "no semantics beyond the
-	// HTTP status code"; problem types with their own semantics get their own URI.
-	Type string `json:"type"`
+	// Type URI reference identifying the problem type. Omitted while the problem carries no semantics
+	// beyond its HTTP status code, which RFC 9457 defines as `about:blank`. Problems with their
+	// own semantics get their own URI; switch on `code` instead.
+	Type *string `json:"type,omitempty"`
 }
+
+// ProblemCode Machine-readable error code, and the value clients switch on. New codes may be added.
+type ProblemCode string
 
 // ServerInfo Public server description. Everything an add-server screen needs before login.
 type ServerInfo struct {

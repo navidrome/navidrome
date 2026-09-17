@@ -20,14 +20,14 @@ var _ = Describe("Router", func() {
 		w := serve(router, httptest.NewRequest(http.MethodGet, "/api/v1/nope", nil))
 		Expect(w.Code).To(Equal(http.StatusNotFound))
 		Expect(w.Header().Get("Content-Type")).To(Equal(problemContentType))
-		Expect(decodeProblem(w).Code).To(Equal("not_found"))
+		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeNotFound))
 	})
 
 	It("returns a 405 problem listing the allowed methods for a wrong method on a known path", func() {
 		w := serve(router, httptest.NewRequest(http.MethodPost, "/api/v1/server", nil))
 		Expect(w.Code).To(Equal(http.StatusMethodNotAllowed))
 		Expect(w.Header().Get("Allow")).To(Equal("GET, HEAD"))
-		Expect(decodeProblem(w).Code).To(Equal("method_not_allowed"))
+		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeMethodNotAllowed))
 	})
 
 	DescribeTable("answers HEAD wherever GET is routed",
@@ -63,7 +63,7 @@ var _ = Describe("Router", func() {
 		panicking("kaboom").ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/boom", nil))
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		p := decodeProblem(w)
-		Expect(p.Code).To(Equal("internal"))
+		Expect(p.Code).To(Equal(ProblemCodeInternal))
 		Expect(p.Detail).To(BeNil())
 	})
 

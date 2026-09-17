@@ -21,24 +21,24 @@ func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
 	writeProblemStatus(w, r, status, code, detail)
 }
 
-func classifyError(err error) (int, string) {
+func classifyError(err error) (int, ProblemCode) {
 	switch {
 	case errors.Is(err, model.ErrNotFound):
-		return http.StatusNotFound, "not_found"
+		return http.StatusNotFound, ProblemCodeNotFound
 	case errors.Is(err, model.ErrNotAuthorized):
-		return http.StatusForbidden, "forbidden"
+		return http.StatusForbidden, ProblemCodeForbidden
 	case errors.Is(err, model.ErrInvalidAuth), errors.Is(err, model.ErrExpired):
-		return http.StatusUnauthorized, "unauthorized"
+		return http.StatusUnauthorized, ProblemCodeUnauthorized
 	case errors.Is(err, model.ErrValidation):
-		return http.StatusBadRequest, "validation"
+		return http.StatusBadRequest, ProblemCodeValidation
 	case errors.Is(err, model.ErrNotAvailable):
-		return http.StatusServiceUnavailable, "unavailable"
+		return http.StatusServiceUnavailable, ProblemCodeUnavailable
 	}
-	return http.StatusInternalServerError, "internal"
+	return http.StatusInternalServerError, ProblemCodeInternal
 }
 
-func writeProblemStatus(w http.ResponseWriter, r *http.Request, status int, code, detail string, fieldErrors ...ValidationError) {
-	p := Problem{Type: "about:blank", Title: http.StatusText(status), Status: status, Code: code}
+func writeProblemStatus(w http.ResponseWriter, r *http.Request, status int, code ProblemCode, detail string, fieldErrors ...ValidationError) {
+	p := Problem{Title: http.StatusText(status), Status: status, Code: code}
 	if detail != "" {
 		p.Detail = &detail
 	}
@@ -68,5 +68,5 @@ func bindingErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.As(err, &unmarshal):
 		fieldErrors = append(fieldErrors, ValidationError{Field: unmarshal.ParamName, Message: unmarshal.Err.Error()})
 	}
-	writeProblemStatus(w, r, http.StatusBadRequest, "validation", err.Error(), fieldErrors...)
+	writeProblemStatus(w, r, http.StatusBadRequest, ProblemCodeValidation, err.Error(), fieldErrors...)
 }

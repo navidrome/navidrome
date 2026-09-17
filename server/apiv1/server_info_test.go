@@ -56,6 +56,6 @@ var _ = Describe("GET /server", func() {
 		users.Error = errors.New("db down")
 		w, _ := get()
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
-		Expect(decodeProblem(w).Code).To(Equal("internal"))
+		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInternal))
 	})
 })

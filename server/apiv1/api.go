@@ -28,11 +28,11 @@ func (rt *Router) routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(problemRecoverer, headAsGet(r))
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
-		writeProblemStatus(w, req, http.StatusNotFound, "not_found", "no such endpoint")
+		writeProblemStatus(w, req, http.StatusNotFound, ProblemCodeNotFound, "no such endpoint")
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Allow", strings.Join(allowedMethods(r, req), ", "))
-		writeProblemStatus(w, req, http.StatusMethodNotAllowed, "method_not_allowed", "")
+		writeProblemStatus(w, req, http.StatusMethodNotAllowed, ProblemCodeMethodNotAllowed, "")
 	})
 
 	r.Get("/openapi.json", specHandler(api.SpecJSON(), "application/json"))
@@ -59,7 +59,7 @@ func problemRecoverer(next http.Handler) http.Handler {
 				panic(rec)
 			}
 			log.Error(r.Context(), "API v1: panic in handler", "panic", rec, "stack", string(debug.Stack()))
-			writeProblemStatus(w, r, http.StatusInternalServerError, "internal", "")
+			writeProblemStatus(w, r, http.StatusInternalServerError, ProblemCodeInternal, "")
 		}()
 		next.ServeHTTP(w, r)
 	})

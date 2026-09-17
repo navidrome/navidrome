@@ -168,7 +168,6 @@
         "type": "object",
         "description": "RFC 9457 problem details, returned for every 4xx and 5xx response.",
         "required": [
-          "type",
           "title",
           "status",
           "code"
@@ -176,7 +175,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "URI reference identifying the problem type, and the primary identifier a client should\nswitch on. `about:blank` is the RFC 9457 registered type meaning \"no semantics beyond the\nHTTP status code\"; problem types with their own semantics get their own URI.\n"
+            "description": "URI reference identifying the problem type. Omitted while the problem carries no semantics\nbeyond its HTTP status code, which RFC 9457 defines as `about:blank`. Problems with their\nown semantics get their own URI; switch on `code` instead.\n"
           },
           "title": {
             "type": "string",
@@ -192,7 +191,16 @@
           },
           "code": {
             "type": "string",
-            "description": "Machine-readable error code. Values: `validation`, `unauthorized`, `forbidden`,\n`not_found`, `method_not_allowed`, `unavailable`, `internal`. New codes may be added.\n"
+            "description": "Machine-readable error code, and the value clients switch on. New codes may be added.",
+            "enum": [
+              "validation",
+              "unauthorized",
+              "forbidden",
+              "not_found",
+              "method_not_allowed",
+              "unavailable",
+              "internal"
+            ]
           },
           "errors": {
             "type": "array",

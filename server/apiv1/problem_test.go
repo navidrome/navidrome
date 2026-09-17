@@ -29,7 +29,7 @@ var _ = Describe("problem", func() {
 
 	Describe("writeProblem", func() {
 		DescribeTable("maps domain errors to status and code",
-			func(err error, status int, code string) {
+			func(err error, status int, code ProblemCode) {
 				writeProblem(w, r, err)
 				Expect(w.Code).To(Equal(status))
 				Expect(w.Header().Get("Content-Type")).To(Equal(problemContentType))
@@ -37,15 +37,16 @@ var _ = Describe("problem", func() {
 				Expect(p.Status).To(Equal(status))
 				Expect(p.Code).To(Equal(code))
 				Expect(p.Title).To(Equal(http.StatusText(status)))
-				Expect(p.Type).To(Equal("about:blank"))
+				Expect(p.Type).To(BeNil())
+				Expect(w.Body.String()).ToNot(ContainSubstring(`"type"`))
 			},
-			Entry("not found", model.ErrNotFound, http.StatusNotFound, "not_found"),
-			Entry("not authorized", model.ErrNotAuthorized, http.StatusForbidden, "forbidden"),
-			Entry("invalid auth", model.ErrInvalidAuth, http.StatusUnauthorized, "unauthorized"),
-			Entry("expired", model.ErrExpired, http.StatusUnauthorized, "unauthorized"),
-			Entry("validation", model.ErrValidation, http.StatusBadRequest, "validation"),
-			Entry("not available", model.ErrNotAvailable, http.StatusServiceUnavailable, "unavailable"),
-			Entry("unknown", errors.New("boom"), http.StatusInternalServerError, "internal"),
+			Entry("not found", model.ErrNotFound, http.StatusNotFound, ProblemCodeNotFound),
+			Entry("not authorized", model.ErrNotAuthorized, http.StatusForbidden, ProblemCodeForbidden),
+			Entry("invalid auth", model.ErrInvalidAuth, http.StatusUnauthorized, ProblemCodeUnauthorized),
+			Entry("expired", model.ErrExpired, http.StatusUnauthorized, ProblemCodeUnauthorized),
+			Entry("validation", model.ErrValidation, http.StatusBadRequest, ProblemCodeValidation),
+			Entry("not available", model.ErrNotAvailable, http.StatusServiceUnavailable, ProblemCodeUnavailable),
+			Entry("unknown", errors.New("boom"), http.StatusInternalServerError, ProblemCodeInternal),
 		)
 
 		DescribeTable("keeps the wrapping context as detail for client errors",
@@ -69,7 +70,7 @@ var _ = Describe("problem", func() {
 
 	Describe("writeProblemStatus", func() {
 		It("writes field errors only when provided", func() {
-			writeProblemStatus(w, r, http.StatusBadRequest, "validation", "bad input",
+			writeProblemStatus(w, r, http.StatusBadRequest, ProblemCodeValidation, "bad input",
 				ValidationError{Field: "limit", Message: "must be <= 2000"})
 			p := decodeProblem(w)
 			Expect(p.Errors).ToNot(BeNil())
@@ -78,7 +79,7 @@ var _ = Describe("problem", func() {
 		})
 
 		It("omits detail when empty", func() {
-			writeProblemStatus(w, r, http.StatusMethodNotAllowed, "method_not_allowed", "")
+			writeProblemStatus(w, r, http.StatusMethodNotAllowed, ProblemCodeMethodNotAllowed, "")
 			Expect(w.Body.String()).ToNot(ContainSubstring(`"detail"`))
 			Expect(w.Body.String()).ToNot(ContainSubstring(`"errors"`))
 		})
@@ -90,7 +91,7 @@ var _ = Describe("problem", func() {
 				bindingErrorHandler(w, r, err)
 				Expect(w.Code).To(Equal(http.StatusBadRequest))
 				p := decodeProblem(w)
-				Expect(p.Code).To(Equal("validation"))
+				Expect(p.Code).To(Equal(ProblemCodeValidation))
 				Expect(p.Errors).ToNot(BeNil())
 				Expect(*p.Errors).To(HaveLen(1))
 				Expect((*p.Errors)[0].Field).To(Equal(field))
@@ -106,7 +107,7 @@ var _ = Describe("problem", func() {
 			bindingErrorHandler(w, r, errors.New("weird"))
 			p := decodeProblem(w)
 			Expect(p.Status).To(Equal(http.StatusBadRequest))
-			Expect(p.Code).To(Equal("validation"))
+			Expect(p.Code).To(Equal(ProblemCodeValidation))
 			Expect(p.Errors).To(BeNil())
 		})
 	})
