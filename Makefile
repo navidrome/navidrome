@@ -103,7 +103,7 @@ install-api-tools: ##@Development Install OpenAPI tools (vacuum, oapi-codegen, o
 .PHONY: install-api-tools
 
 api-lint: install-api-tools ##@Development Lint the OpenAPI spec
-	./bin/vacuum lint -r api/.vacuum.yaml -d -q --fail-severity error api/openapi/openapi.yaml
+	./bin/vacuum lint -r api/.vacuum.yaml -d -q -b --fail-severity error api/openapi/openapi.yaml
 .PHONY: api-lint
 
 api-bundle: install-api-tools ##@Development Bundle the multi-file OpenAPI spec into api/bundled
@@ -115,12 +115,17 @@ api-gen: api-bundle ##@Development Generate the API v1 server code from the bund
 	./bin/oapi-codegen -config server/apiv1/oapi-codegen.yaml api/bundled/openapi.json
 .PHONY: api-gen
 
-api-diff: install-api-tools api-bundle ##@Development Fail on breaking OpenAPI changes against $(API_DIFF_BASE)
-	@if git cat-file -e $(API_DIFF_BASE):api/bundled/openapi.json 2>/dev/null; then \
-		git show $(API_DIFF_BASE):api/bundled/openapi.json > $(CURDIR)/bin/api-base.json && \
+api-diff: install-api-tools api-bundle ##@Development Fail on breaking OpenAPI changes against the merge-base with $(API_DIFF_BASE)
+	@BASE="$$(git merge-base HEAD $(API_DIFF_BASE) 2>/dev/null)"; \
+	if [ -z "$$BASE" ]; then \
+		echo "No merge-base with $(API_DIFF_BASE); falling back to its tip"; \
+		BASE=$(API_DIFF_BASE); \
+	fi; \
+	if git cat-file -e $$BASE:api/bundled/openapi.json 2>/dev/null; then \
+		git show $$BASE:api/bundled/openapi.json > $(CURDIR)/bin/api-base.json && \
 		./bin/oasdiff breaking $(CURDIR)/bin/api-base.json api/bundled/openapi.json --fail-on ERR; \
 	else \
-		echo "No bundled spec at $(API_DIFF_BASE); skipping breaking-change check"; \
+		echo "No bundled spec at $$BASE; skipping breaking-change check"; \
 	fi
 .PHONY: api-diff
 
@@ -143,7 +148,7 @@ wire: check_go_env ##@Development Update Dependency Injection
 	go tool wire gen -tags="$$(echo '$(GO_BUILD_TAGS)' | tr ',' ' ')" ./...
 .PHONY: wire
 
-gen: check_go_env api-gen ##@Development Run go generate for code generation
+gen: check_go_env ##@Development Run go generate for code generation
 	go generate ./...
 	cd plugins/cmd/ndpgen && go run . -shared-types -input=../../types -output=../../pdk -go -rust
 	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host -shared=../../types
