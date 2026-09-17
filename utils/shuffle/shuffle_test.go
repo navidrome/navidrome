@@ -136,7 +136,7 @@ var _ = Describe("Slice", func() {
 		}
 	})
 
-	It("meets the minimum adjacent-artist count when one artist dominates", func() {
+	It("keeps adjacent-artist count near the minimum when one artist dominates", func() {
 		// 11 of A, 3 of B, 2 of C → n=16, maxFreq=11, min adjacent = 2*11-16-1 = 5
 		original := make([]track, 0, 16)
 		for i := range 11 {
@@ -148,15 +148,16 @@ var _ = Describe("Slice", func() {
 		for i := range 2 {
 			original = append(original, track{id: "C" + strconv.Itoa(i), artist: "C", album: "Z"})
 		}
+		floor := minAdjacent(16, 11)
 		for range 20 {
 			tracks := clone(original)
 			shuffle.Slice(tracks, keys)
 			Expect(ids(tracks)).To(ConsistOf(ids(original)))
-			Expect(adjacentSame(tracks, func(t track) string { return t.artist })).To(Equal(minAdjacent(16, 11)))
+			Expect(adjacentSame(tracks, func(t track) string { return t.artist })).To(BeNumerically("<=", floor+4))
 		}
 	})
 
-	It("spaces albums when every track is the same artist", func() {
+	It("reduces adjacent same-album pairs when every track is the same artist", func() {
 		original := make([]track, 0, 12)
 		for i := range 12 {
 			original = append(original, track{
@@ -169,7 +170,35 @@ var _ = Describe("Slice", func() {
 			tracks := clone(original)
 			shuffle.Slice(tracks, keys)
 			Expect(ids(tracks)).To(ConsistOf(ids(original)))
-			Expect(adjacentSame(tracks, func(t track) string { return t.album })).To(Equal(0))
+			Expect(adjacentSame(tracks, func(t track) string { return t.album })).To(BeNumerically("<=", 2))
 		}
+	})
+
+	It("does not cycle only the top artists in a skewed library", func() {
+		original := make([]track, 0, 132)
+		for i := range 49 {
+			original = append(original, track{id: "U" + strconv.Itoa(i), artist: "Unknown Artist", album: "U"})
+		}
+		for i := range 24 {
+			original = append(original, track{id: "AM" + strconv.Itoa(i), artist: "Arctic Monkeys", album: "AM"})
+		}
+		for i := range 19 {
+			original = append(original, track{id: "M" + strconv.Itoa(i), artist: "Muse", album: "M"})
+		}
+		for i := range 40 {
+			original = append(original, track{id: "O" + strconv.Itoa(i), artist: "Other" + strconv.Itoa(i), album: "O" + strconv.Itoa(i)})
+		}
+		otherHits := 0
+		for range 30 {
+			tracks := clone(original)
+			shuffle.Slice(tracks, keys)
+			for _, t := range tracks[:20] {
+				if len(t.artist) >= 5 && t.artist[:5] == "Other" {
+					otherHits++
+					break
+				}
+			}
+		}
+		Expect(otherHits).To(BeNumerically(">", 20))
 	})
 })

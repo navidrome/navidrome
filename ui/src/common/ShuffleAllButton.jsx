@@ -36,7 +36,7 @@ export const ShuffleAllButton = ({ filters, variant, className }) => {
     setLoading(true)
     dataProvider
       .getList('song', {
-        pagination: { page: 1, perPage: 500 },
+        pagination: { page: 1, perPage: 2000 },
         sort: { field: 'random', order: 'ASC' },
         filter: queryFilters,
       })

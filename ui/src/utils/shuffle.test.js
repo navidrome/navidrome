@@ -105,7 +105,7 @@ describe('balancedShuffle', () => {
     }
   })
 
-  it('meets the minimum adjacent-artist count when one artist dominates', () => {
+  it('keeps adjacent-artist count near the minimum when one artist dominates', () => {
     const original = [
       ...Array.from({ length: 11 }, (_, i) => ({
         id: `A${i}`,
@@ -123,14 +123,51 @@ describe('balancedShuffle', () => {
         album: 'Z',
       })),
     ]
+    const floor = minAdjacent(16, 11)
     for (let n = 0; n < 20; n++) {
       const shuffled = balancedShuffle(original, songKeys)
       expect(ids(shuffled).sort()).toEqual(ids(original).sort())
-      expect(adjacentSame(shuffled, (t) => t.artist)).toBe(minAdjacent(16, 11))
+      // Adjacent repair is heuristic; stay near the theoretical floor.
+      expect(adjacentSame(shuffled, (t) => t.artist)).toBeLessThanOrEqual(floor + 4)
     }
   })
 
-  it('spaces albums when every track is the same artist', () => {
+  it('does not cycle only the top artists in a skewed library', () => {
+    const original = [
+      ...Array.from({ length: 49 }, (_, i) => ({
+        id: `U${i}`,
+        artist: 'Unknown Artist',
+        album: 'U',
+      })),
+      ...Array.from({ length: 24 }, (_, i) => ({
+        id: `AM${i}`,
+        artist: 'Arctic Monkeys',
+        album: 'AM',
+      })),
+      ...Array.from({ length: 19 }, (_, i) => ({
+        id: `M${i}`,
+        artist: 'Muse',
+        album: 'M',
+      })),
+      ...Array.from({ length: 40 }, (_, i) => ({
+        id: `O${i}`,
+        artist: `Other${i}`,
+        album: `O${i}`,
+      })),
+    ]
+    let otherHits = 0
+    for (let n = 0; n < 30; n++) {
+      const shuffled = balancedShuffle(original, songKeys)
+      const first20 = shuffled.slice(0, 20).map((t) => t.artist)
+      if (first20.some((a) => a.startsWith('Other'))) {
+        otherHits++
+      }
+    }
+    // Greedy largest-pile almost never put Others in the first 20; random does.
+    expect(otherHits).toBeGreaterThan(20)
+  })
+
+  it('reduces adjacent same-album pairs when every track is the same artist', () => {
     const original = Array.from({ length: 12 }, (_, i) => ({
       id: String(i),
       artist: 'A',
@@ -139,7 +176,7 @@ describe('balancedShuffle', () => {
     for (let n = 0; n < 20; n++) {
       const shuffled = balancedShuffle(original, songKeys)
       expect(ids(shuffled).sort()).toEqual(ids(original).sort())
-      expect(adjacentSame(shuffled, (t) => t.album)).toBe(0)
+      expect(adjacentSame(shuffled, (t) => t.album)).toBeLessThanOrEqual(2)
     }
   })
 })
