@@ -5,6 +5,9 @@ info:
   description: |
     Navidrome API v1. Spec-first, additive within v1. Clients discover implemented
     capability modules through `GET /server` and never sniff versions.
+
+    Enums are open: new values may be added to any enum within v1. Clients must
+    accept values they do not recognise instead of failing.
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html

@@ -129,7 +129,7 @@ api-diff: api-bundle ##@Development Fail on breaking OpenAPI changes against the
 	fi; \
 	if git cat-file -e $$BASE:api/bundled/openapi.json 2>/dev/null; then \
 		git show $$BASE:api/bundled/openapi.json > $(CURDIR)/bin/api-base.json && \
-		./bin/oasdiff breaking $(CURDIR)/bin/api-base.json api/bundled/openapi.json --fail-on ERR; \
+		./bin/oasdiff breaking $(CURDIR)/bin/api-base.json api/bundled/openapi.json --fail-on ERR --severity-levels api/.oasdiff-levels.txt; \
 	else \
 		echo "No bundled spec at $$BASE; skipping breaking-change check"; \
 	fi
