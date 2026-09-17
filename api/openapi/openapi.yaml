@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: Navidrome API
+  version: 1.0.0
+  description: |
+    Navidrome API v1. Spec-first, additive within v1. Clients discover implemented
+    capability modules through `GET /server` and never sniff versions.
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+servers:
+  - url: /api/v1
+tags:
+  - name: server
+    description: Server discovery and the published OpenAPI document.
+paths:
+  /server:
+    $ref: ./paths/server.yaml
+  /openapi.json:
+    $ref: ./paths/openapi.yaml#/json
+  /openapi.yaml:
+    $ref: ./paths/openapi.yaml#/yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived access token minted from a device grant. Not yet applied to any operation.
+  schemas:
+    Problem:
+      $ref: ./components/schemas/Problem.yaml
+    ValidationError:
+      $ref: ./components/schemas/ValidationError.yaml
+    ServerInfo:
+      $ref: ./components/schemas/ServerInfo.yaml
+    ListMeta:
+      $ref: ./components/schemas/ListMeta.yaml
+  parameters:
+    offset:
+      $ref: ./components/parameters/offset.yaml
+    limit:
+      $ref: ./components/parameters/limit.yaml
+  responses:
+    BadRequest:
+      $ref: ./components/responses/BadRequest.yaml
+    Unauthorized:
+      $ref: ./components/responses/Unauthorized.yaml
+    Forbidden:
+      $ref: ./components/responses/Forbidden.yaml
+    NotFound:
+      $ref: ./components/responses/NotFound.yaml
+    InternalError:
+      $ref: ./components/responses/InternalError.yaml

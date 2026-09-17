@@ -21,6 +21,10 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 GOLANGCI_LINT_VERSION ?= v2.14.0
+VACUUM_VERSION ?= v0.30.6
+OAPI_CODEGEN_VERSION ?= v2.8.0
+OASDIFF_VERSION ?= v1.32.1
+API_DIFF_BASE ?= origin/master
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -92,6 +96,36 @@ install-golangci-lint: ##@Development Install golangci-lint if not present
 	fi
 .PHONY: install-golangci-lint
 
+install-api-tools: ##@Development Install OpenAPI tools (vacuum, oapi-codegen, oasdiff) into ./bin
+	@GOBIN=$(CURDIR)/bin go install github.com/daveshanley/vacuum@$(VACUUM_VERSION)
+	@GOBIN=$(CURDIR)/bin go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION)
+	@GOBIN=$(CURDIR)/bin go install github.com/oasdiff/oasdiff@$(OASDIFF_VERSION)
+.PHONY: install-api-tools
+
+api-lint: install-api-tools ##@Development Lint the OpenAPI spec
+	./bin/vacuum lint -r api/.vacuum.yaml -d -q --fail-severity error api/openapi/openapi.yaml
+.PHONY: api-lint
+
+# vacuum v0.30.6's `bundle --composed` mangles component names for this spec's
+# file layout (emits both `Problem` and `Problem__schemas`), so use Redocly.
+api-bundle: ##@Development Bundle the multi-file OpenAPI spec into api/bundled
+	npx --yes @redocly/cli@latest bundle api/openapi/openapi.yaml -o api/bundled/openapi.yaml
+	npx --yes @redocly/cli@latest bundle api/openapi/openapi.yaml -o api/bundled/openapi.json --ext json
+.PHONY: api-bundle
+
+api-gen: api-bundle ##@Development Generate the API v1 server code from the bundled spec
+	./bin/oapi-codegen -config server/apiv1/oapi-codegen.yaml api/bundled/openapi.json
+.PHONY: api-gen
+
+api-diff: install-api-tools api-bundle ##@Development Fail on breaking OpenAPI changes against $(API_DIFF_BASE)
+	@if git cat-file -e $(API_DIFF_BASE):api/bundled/openapi.json 2>/dev/null; then \
+		git show $(API_DIFF_BASE):api/bundled/openapi.json > $(CURDIR)/bin/api-base.json && \
+		./bin/oasdiff breaking $(CURDIR)/bin/api-base.json api/bundled/openapi.json --fail-on ERR; \
+	else \
+		echo "No bundled spec at $(API_DIFF_BASE); skipping breaking-change check"; \
+	fi
+.PHONY: api-diff
+
 lint: install-golangci-lint ##@Development Lint Go code
 	PATH=./bin:$$PATH golangci-lint run --timeout 5m
 .PHONY: lint
@@ -111,7 +145,7 @@ wire: check_go_env ##@Development Update Dependency Injection
 	go tool wire gen -tags="$$(echo '$(GO_BUILD_TAGS)' | tr ',' ' ')" ./...
 .PHONY: wire
 
-gen: check_go_env ##@Development Run go generate for code generation
+gen: check_go_env api-gen ##@Development Run go generate for code generation
 	go generate ./...
 	cd plugins/cmd/ndpgen && go run . -shared-types -input=../../types -output=../../pdk -go -rust
 	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host -shared=../../types

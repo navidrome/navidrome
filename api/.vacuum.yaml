@@ -1,0 +1,124 @@
+extends: [[spectral:oas, recommended]]
+rules:
+  # vacuum's `enumeration` function mis-resolves hyphenated `then.field` names,
+  # so the value check below targets `x-module` via `given` instead.
+  nd-operation-x-module-required:
+    description: Every operation belongs to exactly one capability module.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: x-module
+      function: truthy
+  nd-operation-x-module:
+    description: Every operation's capability module is one of the known values.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]['x-module']
+    then:
+      function: enumeration
+      functionOptions:
+        values:
+          - core
+          - streaming
+          - download
+          - artwork
+          - lyrics
+          - transcoding
+          - annotations
+          - playback
+          - queue
+          - custom-tags
+          - grouping
+          - playlists
+          - smart-playlists
+          - sync
+          - events
+          - jukebox
+          - sharing
+          - radio
+          - admin
+  nd-operation-id-and-description:
+    description: Operations need a stable operationId and a description.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      - field: operationId
+        function: truthy
+      - field: description
+        function: truthy
+  nd-schema-property-descriptions:
+    description: Every schema property is documented.
+    severity: error
+    given: $.components.schemas[*].properties[*]
+    then:
+      field: description
+      function: truthy
+  # vacuum's `[?(...)]` filters don't match object maps keyed by status code,
+  # so error responses are enumerated explicitly instead of pattern-matched.
+  nd-error-responses-are-problems:
+    description: 4xx and 5xx responses use application/problem+json.
+    severity: error
+    given: $.paths[*][*].responses['400','401','403','404','405','406','409','415','422','429','500','501','502','503'].content
+    then:
+      function: schema
+      functionOptions:
+        forceValidationOnCurrentNode: true
+        schema:
+          type: object
+          properties:
+            application/problem+json: {}
+          required: [application/problem+json]
+          additionalProperties: false
+  # Same filter limitation applies here: "is this a list endpoint" is expressed
+  # as a JSON Schema if/then on the operation object instead of a `given` filter.
+  nd-list-endpoints-paginate:
+    description: List endpoints declare the shared offset and limit parameters.
+    severity: error
+    given: $.paths[*].get
+    then:
+      function: schema
+      functionOptions:
+        forceValidationOnCurrentNode: true
+        schema:
+          type: object
+          if:
+            required: [responses]
+            properties:
+              responses:
+                type: object
+                required: ['200']
+                properties:
+                  '200':
+                    type: object
+                    required: [content]
+                    properties:
+                      content:
+                        type: object
+                        required: [application/json]
+                        properties:
+                          application/json:
+                            type: object
+                            required: [schema]
+                            properties:
+                              schema:
+                                type: object
+                                required: [properties]
+                                properties:
+                                  properties:
+                                    type: object
+                                    required: [items]
+          then:
+            required: [parameters]
+            properties:
+              parameters:
+                type: array
+                allOf:
+                  - contains:
+                      type: object
+                      properties:
+                        name:
+                          const: offset
+                  - contains:
+                      type: object
+                      properties:
+                        name:
+                          const: limit

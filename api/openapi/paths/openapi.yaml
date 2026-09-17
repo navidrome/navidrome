@@ -1,0 +1,44 @@
+json:
+  get:
+    operationId: getOpenAPISpecJSON
+    x-module: core
+    tags: [server]
+    summary: Get the OpenAPI document (JSON)
+    description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
+    responses:
+      '200':
+        description: The OpenAPI document.
+        headers:
+          ETag:
+            description: Entity tag for `If-None-Match` revalidation.
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              type: object
+              description: OpenAPI 3.0 document.
+      '304':
+        description: Not modified.
+yaml:
+  get:
+    operationId: getOpenAPISpecYAML
+    x-module: core
+    tags: [server]
+    summary: Get the OpenAPI document (YAML)
+    description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
+    responses:
+      '200':
+        description: The OpenAPI document.
+        headers:
+          ETag:
+            description: Entity tag for `If-None-Match` revalidation.
+            schema:
+              type: string
+        content:
+          application/yaml:
+            schema:
+              type: string
+              description: OpenAPI 3.0 document as YAML text.
+      '304':
+        description: Not modified.
