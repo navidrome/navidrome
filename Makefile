@@ -97,9 +97,14 @@ install-golangci-lint: ##@Development Install golangci-lint if not present
 .PHONY: install-golangci-lint
 
 install-api-tools: ##@Development Install OpenAPI tools (vacuum, oapi-codegen, oasdiff) into ./bin
-	@GOBIN=$(CURDIR)/bin go install github.com/daveshanley/vacuum@$(VACUUM_VERSION)
-	@GOBIN=$(CURDIR)/bin go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION)
-	@GOBIN=$(CURDIR)/bin go install github.com/oasdiff/oasdiff@$(OASDIFF_VERSION)
+	@STAMP=bin/.api-tools-$(VACUUM_VERSION)-$(OAPI_CODEGEN_VERSION)-$(OASDIFF_VERSION); \
+	if [ ! -f $$STAMP ] || [ ! -x bin/vacuum ] || [ ! -x bin/oapi-codegen ] || [ ! -x bin/oasdiff ]; then \
+		echo "Installing OpenAPI tools..."; \
+		GOBIN=$(CURDIR)/bin go install github.com/daveshanley/vacuum@$(VACUUM_VERSION) && \
+		GOBIN=$(CURDIR)/bin go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) && \
+		GOBIN=$(CURDIR)/bin go install github.com/oasdiff/oasdiff@$(OASDIFF_VERSION) && \
+		rm -f bin/.api-tools-* && touch $$STAMP; \
+	fi
 .PHONY: install-api-tools
 
 api-lint: install-api-tools ##@Development Lint the OpenAPI spec
@@ -115,8 +120,9 @@ api-gen: api-bundle ##@Development Generate the API v1 server code from the bund
 	./bin/oapi-codegen -config server/apiv1/oapi-codegen.yaml api/bundled/openapi.json
 .PHONY: api-gen
 
-api-diff: install-api-tools api-bundle ##@Development Fail on breaking OpenAPI changes against the merge-base with $(API_DIFF_BASE)
-	@BASE="$$(git merge-base HEAD $(API_DIFF_BASE) 2>/dev/null)"; \
+api-diff: api-bundle ##@Development Fail on breaking OpenAPI changes against the merge-base with $(API_DIFF_BASE)
+	@git rev-parse --verify --quiet $(API_DIFF_BASE)^{commit} >/dev/null || { echo "Base ref $(API_DIFF_BASE) not found; set API_DIFF_BASE"; exit 1; }; \
+	BASE="$$(git merge-base HEAD $(API_DIFF_BASE) 2>/dev/null)"; \
 	if [ -z "$$BASE" ]; then \
 		echo "No merge-base with $(API_DIFF_BASE); falling back to its tip"; \
 		BASE=$(API_DIFF_BASE); \

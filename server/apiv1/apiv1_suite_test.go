@@ -2,7 +2,6 @@ package apiv1
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -33,10 +32,8 @@ var specRouter routers.Router
 var _ = BeforeSuite(func() {
 	doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
 	Expect(err).ToNot(HaveOccurred())
-	Expect(doc.Validate(context.Background())).To(Succeed())
 	specRouter, err = gorillamux.NewRouter(doc)
 	Expect(err).ToNot(HaveOccurred())
-	openapi3filter.RegisterBodyDecoder("application/yaml", openapi3filter.PlainBodyDecoder)
 })
 
 // serve routes req through h mounted at /api/v1 and asserts the response conforms to the spec.

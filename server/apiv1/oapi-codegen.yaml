@@ -4,7 +4,6 @@ generate:
   chi-server: true
   strict-server: true
   models: true
-  embedded-spec: false
 output-options:
   exclude-operation-ids:
     - getOpenAPISpecJSON

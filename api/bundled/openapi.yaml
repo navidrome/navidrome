@@ -45,16 +45,14 @@ paths:
           description: The OpenAPI document.
           headers:
             ETag:
-              description: Entity tag for `If-None-Match` revalidation.
-              schema:
-                type: string
+              $ref: '#/components/headers/ETag'
           content:
             application/json:
               schema:
                 type: object
                 description: OpenAPI 3.0 document.
         '304':
-          description: Not modified.
+          $ref: '#/components/responses/NotModified'
   /openapi.yaml:
     get:
       operationId: getOpenAPISpecYAML
@@ -67,16 +65,14 @@ paths:
           description: The OpenAPI document.
           headers:
             ETag:
-              description: Entity tag for `If-None-Match` revalidation.
-              schema:
-                type: string
+              $ref: '#/components/headers/ETag'
           content:
             application/yaml:
               schema:
-                type: string
-                description: OpenAPI 3.0 document as YAML text.
+                type: object
+                description: OpenAPI 3.0 document.
         '304':
-          description: Not modified.
+          $ref: '#/components/responses/NotModified'
 components:
   securitySchemes:
     bearerAuth:
@@ -165,3 +161,13 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    NotModified:
+      description: Not modified.
+      headers:
+        ETag:
+          $ref: '#/components/headers/ETag'
+  headers:
+    ETag:
+      description: Entity tag for `If-None-Match` revalidation.
+      schema:
+        type: string

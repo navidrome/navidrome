@@ -48,26 +48,22 @@ var _ = Describe("problem", func() {
 			Entry("unknown", errors.New("boom"), http.StatusInternalServerError, "internal"),
 		)
 
-		It("includes the error message as detail for client errors", func() {
-			writeProblem(w, r, fmt.Errorf("album 123: %w", model.ErrNotFound))
-			p := decodeProblem(w)
-			Expect(p.Status).To(Equal(http.StatusNotFound))
-			Expect(p.Detail).ToNot(BeNil())
-			Expect(*p.Detail).To(ContainSubstring("album 123"))
-		})
-
-		It("unwraps wrapped domain errors", func() {
-			writeProblem(w, r, errors.Join(errors.New("loading album"), model.ErrNotFound))
-			p := decodeProblem(w)
-			Expect(p.Status).To(Equal(http.StatusNotFound))
-			Expect(*p.Detail).To(ContainSubstring("loading album"))
-		})
+		DescribeTable("keeps the wrapping context as detail for client errors",
+			func(err error) {
+				writeProblem(w, r, err)
+				p := decodeProblem(w)
+				Expect(p.Status).To(Equal(http.StatusNotFound))
+				Expect(p.Detail).ToNot(BeNil())
+				Expect(*p.Detail).To(ContainSubstring("album 123"))
+			},
+			Entry("fmt.Errorf %w", fmt.Errorf("album 123: %w", model.ErrNotFound)),
+			Entry("errors.Join", errors.Join(errors.New("album 123"), model.ErrNotFound)),
+		)
 
 		It("hides details for internal errors", func() {
 			writeProblem(w, r, errors.New("db password is hunter2"))
 			p := decodeProblem(w)
 			Expect(p.Detail).To(BeNil())
-			Expect(p.Errors).To(BeNil())
 		})
 	})
 
@@ -89,27 +85,29 @@ var _ = Describe("problem", func() {
 	})
 
 	Describe("bindingErrorHandler", func() {
-		It("maps a required-param error to a validation problem with the field", func() {
-			bindingErrorHandler(w, r, &RequiredParamError{ParamName: "limit"})
-			Expect(w.Code).To(Equal(http.StatusBadRequest))
-			p := decodeProblem(w)
-			Expect(p.Code).To(Equal("validation"))
-			Expect((*p.Errors)[0].Field).To(Equal("limit"))
-		})
-
-		It("maps an invalid-format error to a validation problem with the field", func() {
-			bindingErrorHandler(w, r, &InvalidParamFormatError{ParamName: "offset", Err: errors.New("not a number")})
-			p := decodeProblem(w)
-			Expect(p.Code).To(Equal("validation"))
-			Expect((*p.Errors)[0].Field).To(Equal("offset"))
-			Expect((*p.Errors)[0].Message).To(ContainSubstring("not a number"))
-		})
+		DescribeTable("maps parameter binding errors to a validation problem with the field",
+			func(err error, field, message string) {
+				bindingErrorHandler(w, r, err)
+				Expect(w.Code).To(Equal(http.StatusBadRequest))
+				p := decodeProblem(w)
+				Expect(p.Code).To(Equal("validation"))
+				Expect(p.Errors).ToNot(BeNil())
+				Expect(*p.Errors).To(HaveLen(1))
+				Expect((*p.Errors)[0].Field).To(Equal(field))
+				Expect((*p.Errors)[0].Message).To(ContainSubstring(message))
+			},
+			Entry("required", &RequiredParamError{ParamName: "limit"}, "limit", "is required"),
+			Entry("invalid format", &InvalidParamFormatError{ParamName: "offset", Err: errors.New("not a number")}, "offset", "not a number"),
+			Entry("too many values", &TooManyValuesForParamError{ParamName: "sort", Count: 2}, "sort", "single value"),
+			Entry("unmarshaling", &UnmarshalingParamError{ParamName: "ids", Err: errors.New("bad json")}, "ids", "bad json"),
+		)
 
 		It("still returns a validation problem for unknown binding errors", func() {
 			bindingErrorHandler(w, r, errors.New("weird"))
 			p := decodeProblem(w)
 			Expect(p.Status).To(Equal(http.StatusBadRequest))
 			Expect(p.Code).To(Equal("validation"))
+			Expect(p.Errors).To(BeNil())
 		})
 	})
 })

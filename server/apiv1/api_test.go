@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,12 +29,13 @@ var _ = Describe("Router", func() {
 		Expect(decodeProblem(w).Code).To(Equal("method_not_allowed"))
 	})
 
+	panicking := func(v any) http.Handler {
+		return problemRecoverer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic(v) }))
+	}
+
 	It("turns a handler panic into a 500 problem", func() {
-		r := chi.NewRouter()
-		r.Use(problemRecoverer)
-		r.Get("/boom", func(http.ResponseWriter, *http.Request) { panic("kaboom") })
 		w := httptest.NewRecorder()
-		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/boom", nil))
+		panicking("kaboom").ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/boom", nil))
 		Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		p := decodeProblem(w)
 		Expect(p.Code).To(Equal("internal"))
@@ -43,11 +43,8 @@ var _ = Describe("Router", func() {
 	})
 
 	It("re-panics http.ErrAbortHandler so the server can drop the connection", func() {
-		r := chi.NewRouter()
-		r.Use(problemRecoverer)
-		r.Get("/abort", func(http.ResponseWriter, *http.Request) { panic(http.ErrAbortHandler) })
 		Expect(func() {
-			r.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/abort", nil))
+			panicking(http.ErrAbortHandler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/abort", nil))
 		}).To(PanicWith(http.ErrAbortHandler))
 	})
 })

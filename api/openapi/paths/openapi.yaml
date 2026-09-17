@@ -10,16 +10,14 @@ json:
         description: The OpenAPI document.
         headers:
           ETag:
-            description: Entity tag for `If-None-Match` revalidation.
-            schema:
-              type: string
+            $ref: ../components/headers/ETag.yaml
         content:
           application/json:
             schema:
               type: object
               description: OpenAPI 3.0 document.
       '304':
-        description: Not modified.
+        $ref: ../components/responses/NotModified.yaml
 yaml:
   get:
     operationId: getOpenAPISpecYAML
@@ -32,13 +30,11 @@ yaml:
         description: The OpenAPI document.
         headers:
           ETag:
-            description: Entity tag for `If-None-Match` revalidation.
-            schema:
-              type: string
+            $ref: ../components/headers/ETag.yaml
         content:
           application/yaml:
             schema:
-              type: string
-              description: OpenAPI 3.0 document as YAML text.
+              type: object
+              description: OpenAPI 3.0 document.
       '304':
-        description: Not modified.
+        $ref: ../components/responses/NotModified.yaml

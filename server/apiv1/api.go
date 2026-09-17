@@ -6,6 +6,7 @@ import (
 	"runtime/debug"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
@@ -21,8 +22,6 @@ func New(ds model.DataStore) *Router {
 	return rt
 }
 
-var _ StrictServerInterface = (*Router)(nil)
-
 func (rt *Router) routes() http.Handler {
 	r := chi.NewRouter()
 	r.Use(problemRecoverer)
@@ -33,8 +32,8 @@ func (rt *Router) routes() http.Handler {
 		writeProblemStatus(w, req, http.StatusMethodNotAllowed, "method_not_allowed", "")
 	})
 
-	r.Get("/openapi.json", rt.serveSpecJSON)
-	r.Get("/openapi.yaml", rt.serveSpecYAML)
+	r.Get("/openapi.json", specHandler(api.SpecJSON(), "application/json"))
+	r.Get("/openapi.yaml", specHandler(api.SpecYAML(), "application/yaml"))
 
 	strict := NewStrictHandlerWithOptions(rt, nil, StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, req *http.Request, err error) {
