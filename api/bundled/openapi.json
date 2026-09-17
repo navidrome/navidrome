@@ -128,6 +128,42 @@
       }
     },
     "schemas": {
+      "ServerInfo": {
+        "type": "object",
+        "description": "Public server description. Everything an add-server screen needs before login.",
+        "required": [
+          "name",
+          "serverVersion",
+          "specVersion",
+          "setupRequired",
+          "loginMethods"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable server product name."
+          },
+          "serverVersion": {
+            "type": "string",
+            "description": "Version of the running server build."
+          },
+          "specVersion": {
+            "type": "string",
+            "description": "Version of the OpenAPI document this server implements."
+          },
+          "setupRequired": {
+            "type": "boolean",
+            "description": "True until the first admin user has been created."
+          },
+          "loginMethods": {
+            "type": "array",
+            "description": "Login methods this server accepts. Known values: `password`. Future values\n(for example `pairCode`, `external`) may be added; clients ignore unknown values.\n",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "Problem": {
         "type": "object",
         "description": "RFC 9457 problem details, returned for every 4xx and 5xx response.",
@@ -184,133 +220,9 @@
             "description": "Why the value was rejected."
           }
         }
-      },
-      "ServerInfo": {
-        "type": "object",
-        "description": "Public server description. Everything an add-server screen needs before login.",
-        "required": [
-          "name",
-          "serverVersion",
-          "specVersion",
-          "setupRequired",
-          "loginMethods"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Human-readable server product name."
-          },
-          "serverVersion": {
-            "type": "string",
-            "description": "Version of the running server build."
-          },
-          "specVersion": {
-            "type": "string",
-            "description": "Version of the OpenAPI document this server implements."
-          },
-          "setupRequired": {
-            "type": "boolean",
-            "description": "True until the first admin user has been created."
-          },
-          "loginMethods": {
-            "type": "array",
-            "description": "Login methods this server accepts. Known values: `password`. Future values\n(for example `pairCode`, `external`) may be added; clients ignore unknown values.\n",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "ListMeta": {
-        "type": "object",
-        "description": "Pagination metadata carried by every list response.",
-        "required": [
-          "total",
-          "offset",
-          "limit"
-        ],
-        "properties": {
-          "total": {
-            "type": "integer",
-            "description": "Total number of items matching the request, ignoring pagination."
-          },
-          "offset": {
-            "type": "integer",
-            "description": "Zero-based index of the first returned item."
-          },
-          "limit": {
-            "type": "integer",
-            "description": "Maximum number of items in this page."
-          }
-        }
-      }
-    },
-    "parameters": {
-      "offset": {
-        "name": "offset",
-        "in": "query",
-        "description": "Zero-based index of the first item to return.",
-        "required": false,
-        "schema": {
-          "type": "integer",
-          "minimum": 0,
-          "default": 0
-        }
-      },
-      "limit": {
-        "name": "limit",
-        "in": "query",
-        "description": "Maximum number of items to return.",
-        "required": false,
-        "schema": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 500,
-          "default": 100
-        }
       }
     },
     "responses": {
-      "BadRequest": {
-        "description": "The request is malformed or fails validation.",
-        "content": {
-          "application/problem+json": {
-            "schema": {
-              "$ref": "#/components/schemas/Problem"
-            }
-          }
-        }
-      },
-      "Unauthorized": {
-        "description": "Missing, invalid, or expired credentials.",
-        "content": {
-          "application/problem+json": {
-            "schema": {
-              "$ref": "#/components/schemas/Problem"
-            }
-          }
-        }
-      },
-      "Forbidden": {
-        "description": "The caller is authenticated but not allowed to do this.",
-        "content": {
-          "application/problem+json": {
-            "schema": {
-              "$ref": "#/components/schemas/Problem"
-            }
-          }
-        }
-      },
-      "NotFound": {
-        "description": "No such resource or endpoint.",
-        "content": {
-          "application/problem+json": {
-            "schema": {
-              "$ref": "#/components/schemas/Problem"
-            }
-          }
-        }
-      },
       "InternalError": {
         "description": "Unexpected server failure. Details are in the server log.",
         "content": {

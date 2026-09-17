@@ -27,28 +27,3 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Short-lived access token minted from a device grant. Not yet applied to any operation.
-  schemas:
-    Problem:
-      $ref: ./components/schemas/Problem.yaml
-    ValidationError:
-      $ref: ./components/schemas/ValidationError.yaml
-    ServerInfo:
-      $ref: ./components/schemas/ServerInfo.yaml
-    ListMeta:
-      $ref: ./components/schemas/ListMeta.yaml
-  parameters:
-    offset:
-      $ref: ./components/parameters/offset.yaml
-    limit:
-      $ref: ./components/parameters/limit.yaml
-  responses:
-    BadRequest:
-      $ref: ./components/responses/BadRequest.yaml
-    Unauthorized:
-      $ref: ./components/responses/Unauthorized.yaml
-    Forbidden:
-      $ref: ./components/responses/Forbidden.yaml
-    NotFound:
-      $ref: ./components/responses/NotFound.yaml
-    InternalError:
-      $ref: ./components/responses/InternalError.yaml
