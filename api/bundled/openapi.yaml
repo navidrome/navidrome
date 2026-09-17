@@ -8,6 +8,10 @@ info:
 
     Enums are open: new values may be added to any enum within v1. Clients must
     accept values they do not recognise instead of failing.
+
+    Every operation declares `x-stability-level`: `alpha` operations may change or
+    disappear without notice, `beta` and `stable` operations only change additively.
+    A level is only ever raised, never lowered.
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
@@ -21,6 +25,7 @@ paths:
     get:
       operationId: getServerInfo
       x-module: core
+      x-stability-level: alpha
       tags: [server]
       summary: Describe the server
       description: |
@@ -40,6 +45,7 @@ paths:
     get:
       operationId: getOpenAPISpecJSON
       x-module: core
+      x-stability-level: alpha
       tags: [server]
       summary: Get the OpenAPI document (JSON)
       description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
@@ -60,6 +66,7 @@ paths:
     get:
       operationId: getOpenAPISpecYAML
       x-module: core
+      x-stability-level: alpha
       tags: [server]
       summary: Get the OpenAPI document (YAML)
       description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.

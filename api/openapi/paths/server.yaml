@@ -1,6 +1,7 @@
 get:
   operationId: getServerInfo
   x-module: core
+  x-stability-level: alpha
   tags: [server]
   summary: Describe the server
   description: |

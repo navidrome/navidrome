@@ -2,6 +2,7 @@ json:
   get:
     operationId: getOpenAPISpecJSON
     x-module: core
+    x-stability-level: alpha
     tags: [server]
     summary: Get the OpenAPI document (JSON)
     description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
@@ -22,6 +23,7 @@ yaml:
   get:
     operationId: getOpenAPISpecYAML
     x-module: core
+    x-stability-level: alpha
     tags: [server]
     summary: Get the OpenAPI document (YAML)
     description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.

@@ -36,6 +36,24 @@ rules:
           - sharing
           - radio
           - admin
+  nd-operation-stability-level-required:
+    description: Every operation declares its stability level, which the breaking-change gate relies on.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: x-stability-level
+      function: truthy
+  nd-operation-stability-level:
+    description: Every operation's stability level is alpha, beta, or stable.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]['x-stability-level']
+    then:
+      function: enumeration
+      functionOptions:
+        values:
+          - alpha
+          - beta
+          - stable
   nd-operation-required-fields:
     description: Operations need a stable operationId, summary, description and tags.
     severity: error
