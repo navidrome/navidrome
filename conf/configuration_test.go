@@ -77,6 +77,19 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("DevAPIv1", func() {
+		It("defaults to false", func() {
+			conf.Load(true)
+			Expect(conf.Server.DevAPIv1).To(BeFalse())
+		})
+
+		It("can be enabled", func() {
+			viper.Set("devapiv1", true)
+			conf.Load(true)
+			Expect(conf.Server.DevAPIv1).To(BeTrue())
+		})
+	})
+
 	Describe("ValidateURL", func() {
 		It("accepts a valid http URL", func() {
 			fn := conf.ValidateURL("TestOption", "http://example.com/path")

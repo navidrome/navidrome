@@ -133,6 +133,9 @@ func startServer(ctx context.Context) func() error {
 		if conf.Server.Jellyfin.Enabled {
 			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
 		}
+		if conf.Server.DevAPIv1 {
+			a.MountRouter("API v1", consts.URLPathAPIv1, CreateAPIv1Router(ctx))
+		}
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
 			// blocking call because takes <100ms but useful if fails
