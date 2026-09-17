@@ -5,5 +5,5 @@ required: false
 schema:
   type: integer
   minimum: 1
-  maximum: 500
+  maximum: 2000
   default: 100

@@ -70,7 +70,7 @@ var _ = Describe("problem", func() {
 	Describe("writeProblemStatus", func() {
 		It("writes field errors only when provided", func() {
 			writeProblemStatus(w, r, http.StatusBadRequest, "validation", "bad input",
-				ValidationError{Field: "limit", Message: "must be <= 500"})
+				ValidationError{Field: "limit", Message: "must be <= 2000"})
 			p := decodeProblem(w)
 			Expect(p.Errors).ToNot(BeNil())
 			Expect(*p.Errors).To(HaveLen(1))
