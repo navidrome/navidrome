@@ -13,24 +13,24 @@ import (
 
 var _ = Describe("RadioRepository", func() {
 	var repo model.RadioRepository
+	var ctx context.Context
 
 	Describe("Admin User", func() {
 		BeforeEach(func() {
-			ctx := log.NewContext(context.TODO())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			repo = NewRadioRepository(ctx, GetDBXBuilder())
-			_ = repo.Put(&radioWithHomePage)
+			ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			repo = NewRadioRepository(GetDBXBuilder())
+			_ = repo.Put(ctx, &radioWithHomePage)
 		})
 
 		AfterEach(func() {
-			all, _ := repo.GetAll()
+			all, _ := repo.GetAll(ctx)
 
 			for _, radio := range all {
-				_ = repo.Delete(radio.ID)
+				_ = repo.Delete(ctx, radio.ID)
 			}
 
 			for i := range testRadios {
-				err := repo.Put(new(testRadios[i]))
+				err := repo.Put(ctx, new(testRadios[i]))
 				if err != nil {
 					panic(err)
 				}
@@ -39,35 +39,35 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("Count", func() {
 			It("returns the number of radios in the DB", func() {
-				Expect(repo.CountAll()).To(Equal(int64(2)))
+				Expect(repo.CountAll(ctx)).To(Equal(int64(2)))
 			})
 		})
 
 		Describe("Delete", func() {
 			It("deletes existing item", func() {
-				err := repo.Delete(radioWithHomePage.ID)
+				err := repo.Delete(ctx, radioWithHomePage.ID)
 
 				Expect(err).To(BeNil())
 
-				_, err = repo.Get(radioWithHomePage.ID)
+				_, err = repo.Get(ctx, radioWithHomePage.ID)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 
 			It("errors when missing", func() {
-				Expect(repo.Delete("notanid")).To(MatchError(model.ErrNotFound))
+				Expect(repo.Delete(ctx, "notanid")).To(MatchError(model.ErrNotFound))
 			})
 		})
 
 		Describe("Get", func() {
 			It("returns an existing item", func() {
-				res, err := repo.Get(radioWithHomePage.ID)
+				res, err := repo.Get(ctx, radioWithHomePage.ID)
 
 				Expect(err).To(BeNil())
 				Expect(res.ID).To(Equal(radioWithHomePage.ID))
 			})
 
 			It("errors when missing", func() {
-				_, err := repo.Get("notanid")
+				_, err := repo.Get(ctx, "notanid")
 
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
@@ -75,7 +75,7 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("GetAll", func() {
 			It("returns all items from the DB", func() {
-				all, err := repo.GetAll()
+				all, err := repo.GetAll(ctx)
 				Expect(err).To(BeNil())
 				Expect(all[0].ID).To(Equal(radioWithoutHomePage.ID))
 				Expect(all[1].ID).To(Equal(radioWithHomePage.ID))
@@ -84,7 +84,7 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("Put", func() {
 			It("successfully updates item", func() {
-				err := repo.Put(&model.Radio{
+				err := repo.Put(ctx, &model.Radio{
 					ID:        radioWithHomePage.ID,
 					Name:      "New Name",
 					StreamUrl: "https://example.com:4533/app",
@@ -92,39 +92,39 @@ var _ = Describe("RadioRepository", func() {
 
 				Expect(err).To(BeNil())
 
-				item, err := repo.Get(radioWithHomePage.ID)
+				item, err := repo.Get(ctx, radioWithHomePage.ID)
 				Expect(err).To(BeNil())
 
 				Expect(item.HomePageUrl).To(Equal(""))
 			})
 
 			It("successfully creates item", func() {
-				err := repo.Put(&model.Radio{
+				err := repo.Put(ctx, &model.Radio{
 					Name:      "New radio",
 					StreamUrl: "https://example.com:4533/app",
 				})
 
 				Expect(err).To(BeNil())
-				Expect(repo.CountAll()).To(Equal(int64(3)))
+				Expect(repo.CountAll(ctx)).To(Equal(int64(3)))
 
-				all, err := repo.GetAll()
+				all, err := repo.GetAll(ctx)
 				Expect(err).To(BeNil())
 				Expect(all[2].StreamUrl).To(Equal("https://example.com:4533/app"))
 			})
 
 			It("enqueues artwork resolution for the saved radio", func() {
-				err := repo.Put(&model.Radio{
+				err := repo.Put(ctx, &model.Radio{
 					Name:      "Artwork radio",
 					StreamUrl: "https://example.com:4533/artwork",
 				})
 				Expect(err).To(BeNil())
 
-				all, err := repo.GetAll()
+				all, err := repo.GetAll(ctx)
 				Expect(err).To(BeNil())
 				created := all[len(all)-1]
 
-				queueRepo := NewArtworkQueueRepository(context.Background(), GetDBXBuilder())
-				queued, err := queueRepo.DequeueBatch(1000)
+				queueRepo := NewArtworkQueueRepository(GetDBXBuilder())
+				queued, err := queueRepo.DequeueBatch(ctx, 1000)
 				Expect(err).To(BeNil())
 				Expect(queued).To(ContainElement(SatisfyAll(
 					HaveField("ItemKind", "ra"),
@@ -138,12 +138,11 @@ var _ = Describe("RadioRepository", func() {
 			It("only writes the columns sent by the client", func() {
 				radio := radioWithHomePage
 				radio.UploadedImage = "cover.png"
-				Expect(repo.Put(&radio)).To(Succeed())
+				Expect(repo.Put(ctx, &radio)).To(Succeed())
 
-				persistable := repo.(rest.Persistable)
-				Expect(persistable.Update(radio.ID, &model.Radio{Name: "Renamed"}, "name")).To(Succeed())
+				Expect(repo.Update(ctx, radio.ID, model.Radio{Name: "Renamed"}, "name")).To(Succeed())
 
-				item, err := repo.Get(radio.ID)
+				item, err := repo.Get(ctx, radio.ID)
 				Expect(err).To(BeNil())
 				Expect(item.Name).To(Equal("Renamed"))
 				Expect(item.UploadedImage).To(Equal("cover.png"))
@@ -155,20 +154,19 @@ var _ = Describe("RadioRepository", func() {
 
 	Describe("Regular User", func() {
 		BeforeEach(func() {
-			ctx := log.NewContext(context.TODO())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: false})
-			repo = NewRadioRepository(ctx, GetDBXBuilder())
+			ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "userid", IsAdmin: false})
+			repo = NewRadioRepository(GetDBXBuilder())
 		})
 
 		Describe("Count", func() {
 			It("returns the number of radios in the DB", func() {
-				Expect(repo.CountAll()).To(Equal(int64(2)))
+				Expect(repo.CountAll(ctx)).To(Equal(int64(2)))
 			})
 		})
 
 		Describe("Delete", func() {
 			It("fails to delete items", func() {
-				err := repo.Delete(radioWithHomePage.ID)
+				err := repo.Delete(ctx, radioWithHomePage.ID)
 
 				Expect(err).To(Equal(rest.ErrPermissionDenied))
 			})
@@ -176,14 +174,14 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("Get", func() {
 			It("returns an existing item", func() {
-				res, err := repo.Get(radioWithHomePage.ID)
+				res, err := repo.Get(ctx, radioWithHomePage.ID)
 
 				Expect(err).To(BeNil())
 				Expect(res.ID).To(Equal(radioWithHomePage.ID))
 			})
 
 			It("errors when missing", func() {
-				_, err := repo.Get("notanid")
+				_, err := repo.Get(ctx, "notanid")
 
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
@@ -191,7 +189,7 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("GetAll", func() {
 			It("returns all items from the DB", func() {
-				all, err := repo.GetAll()
+				all, err := repo.GetAll(ctx)
 				Expect(err).To(BeNil())
 				Expect(all[0].ID).To(Equal(radioWithoutHomePage.ID))
 				Expect(all[1].ID).To(Equal(radioWithHomePage.ID))
@@ -200,7 +198,7 @@ var _ = Describe("RadioRepository", func() {
 
 		Describe("Put", func() {
 			It("fails to update item", func() {
-				err := repo.Put(&model.Radio{
+				err := repo.Put(ctx, &model.Radio{
 					ID:        radioWithHomePage.ID,
 					Name:      "New Name",
 					StreamUrl: "https://example.com:4533/app",

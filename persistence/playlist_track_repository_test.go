@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/navidrome/navidrome/log"
@@ -15,30 +16,31 @@ const sqliteMaxVariables = 32766
 
 var _ = Describe("PlaylistTrackRepository", func() {
 	var repo model.PlaylistTrackRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(GinkgoT().Context())
+		ctx = log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, GetDBXBuilder()).Tracks(plsBest.ID, true)
+		repo = NewPlaylistRepository(GetDBXBuilder()).Tracks(ctx, plsBest.ID, true)
 	})
 
 	Describe("GetCursor", func() {
 		It("yields the same tracks as GetAll", func() {
 			opts := model.QueryOptions{Sort: "id"}
-			want, err := repo.GetAll(opts)
+			want, err := repo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).To(HaveLen(2))
 
-			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.PlaylistTrack(want)))
+			Expect(collectCursor(repo.GetCursor(ctx, opts))).To(Equal([]model.PlaylistTrack(want)))
 		})
 
 		It("honors Max and Offset", func() {
 			opts := model.QueryOptions{Sort: "id", Max: 1, Offset: 1}
-			want, err := repo.GetAll(opts)
+			want, err := repo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).To(HaveLen(1))
 
-			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.PlaylistTrack(want)))
+			Expect(collectCursor(repo.GetCursor(ctx, opts))).To(Equal([]model.PlaylistTrack(want)))
 		})
 	})
 
@@ -46,11 +48,11 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		It("returns every row under a random sort, despite the integer id", func() {
 			// playlist_tracks.id is an INTEGER, so SEEDEDRAND drops every row unless it is cast to
 			// TEXT, and it fails silently: no error, just no rows.
-			all, err := repo.GetAll(model.QueryOptions{Sort: "random"})
+			all, err := repo.GetAll(ctx, model.QueryOptions{Sort: "random"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(all).To(HaveLen(2), "a random sort must not silently drop rows")
 
-			got, err := repo.GetAll(model.QueryOptions{Sort: "random", Max: 1})
+			got, err := repo.GetAll(ctx, model.QueryOptions{Sort: "random", Max: 1})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got).To(HaveLen(1))
 		})
@@ -58,22 +60,22 @@ var _ = Describe("PlaylistTrackRepository", func() {
 
 	Describe("CountAll", func() {
 		It("returns the number of tracks in the playlist", func() {
-			Expect(repo.CountAll()).To(Equal(int64(2)))
+			Expect(repo.CountAll(ctx)).To(Equal(int64(2)))
 		})
 
 		It("ignores Max and Offset", func() {
-			Expect(repo.CountAll(model.QueryOptions{Max: 1, Offset: 1})).To(Equal(int64(2)))
+			Expect(repo.CountAll(ctx, model.QueryOptions{Max: 1, Offset: 1})).To(Equal(int64(2)))
 		})
 	})
 
 	Describe("GetMediaFileIDs", func() {
 		It("returns the song ids in playlist order", func() {
-			Expect(repo.GetMediaFileIDs(model.QueryOptions{Sort: "id"})).
+			Expect(repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})).
 				To(Equal([]string{songDayInALife.ID, songRadioactivity.ID}))
 		})
 
 		It("honors Max and Offset", func() {
-			Expect(repo.GetMediaFileIDs(model.QueryOptions{Sort: "id", Max: 1, Offset: 1})).
+			Expect(repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id", Max: 1, Offset: 1})).
 				To(Equal([]string{songRadioactivity.ID}))
 		})
 	})
@@ -91,35 +93,33 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		}
 
 		BeforeEach(func() {
-			ctx := log.NewContext(GinkgoT().Context())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			plsRepo := NewPlaylistRepository(ctx, GetDBXBuilder())
+			plsRepo := NewPlaylistRepository(GetDBXBuilder())
 
 			pls := model.Playlist{Name: "Chunked Delete", OwnerID: "userid", OwnerName: "userid"}
-			Expect(plsRepo.Put(&pls)).To(Succeed())
-			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+			Expect(plsRepo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { Expect(plsRepo.Delete(ctx, pls.ID)).To(Succeed()) })
 
-			tracks = plsRepo.Tracks(pls.ID, false)
+			tracks = plsRepo.Tracks(ctx, pls.ID, false)
 			songIds := make([]string, numTracks)
 			for i := range songIds {
 				songIds[i] = songDayInALife.ID
 			}
-			Expect(tracks.Add(songIds)).To(Equal(numTracks))
+			Expect(tracks.Add(ctx, songIds)).To(Equal(numTracks))
 		})
 
 		It("removes positions spanning several chunks, and renumbers what is left", func() {
-			Expect(tracks.Delete(positionsUpTo(numTracks - 1)...)).To(Succeed())
+			Expect(tracks.Delete(ctx, positionsUpTo(numTracks-1)...)).To(Succeed())
 
-			Expect(tracks.CountAll()).To(Equal(int64(1)))
-			remaining, err := tracks.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(tracks.CountAll(ctx)).To(Equal(int64(1)))
+			remaining, err := tracks.GetAll(ctx, model.QueryOptions{Sort: "id"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(remaining[0].ID).To(Equal("1"), "the surviving track must be renumbered to position 1")
 		})
 
 		It("accepts more ids than SQLite allows as bind variables", func() {
-			Expect(tracks.Delete(positionsUpTo(sqliteMaxVariables + 100)...)).To(Succeed())
+			Expect(tracks.Delete(ctx, positionsUpTo(sqliteMaxVariables+100)...)).To(Succeed())
 
-			Expect(tracks.CountAll()).To(BeZero())
+			Expect(tracks.CountAll(ctx)).To(BeZero())
 		})
 	})
 })

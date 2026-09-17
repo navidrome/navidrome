@@ -382,7 +382,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 		if q.parentId == dto.PlaylistsFolderID {
 			// Browsing into the synthetic playlists folder lists the user's playlists.
 			q.types = []string{"Playlist"}
-		} else if _, err := api.ds.Album(ctx).Get(q.parentId); err == nil {
+		} else if _, err := api.ds.Album().Get(ctx, q.parentId); err == nil {
 			q.types = []string{"Audio"}
 		}
 	}
@@ -412,7 +412,7 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
 	}
 	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
-		return api.playlistTrackPage(repo, q.fields, q.offset, q.limit)
+		return api.playlistTrackPage(ctx, repo, q.fields, q.offset, q.limit)
 	}
 	if q.search != "" {
 		q.limit = clampLimit(q.limit, defaultSearchLimit, maxSearchLimit)
@@ -679,7 +679,7 @@ func searchPage[S ~[]E, E any](opts model.QueryOptions, search func(model.QueryO
 
 func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
 	toItem := func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, q.fields) }
-	repo := api.ds.Album(ctx)
+	repo := api.ds.Album()
 	filters := squirrel.And{}
 	// For albums, ParentId (browse an artist) and AlbumArtistIds/ArtistIds both mean "this artist's
 	// albums"; contributingArtistIds means "albums they only appear on" (Featured On).
@@ -710,23 +710,23 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 
 	if q.search != "" {
 		albums, total, err := searchPage(opts, func(o model.QueryOptions) (model.Albums, error) {
-			return repo.Search(q.search, o)
+			return repo.Search(ctx, q.search, o)
 		})
 		if err != nil {
 			return itemsResult{}, err
 		}
 		return materialized(result(slice.Map(albums, toItem), total, opts.Offset)), nil
 	}
-	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	total, _ := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
 
 func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
 	toItem := func(mf model.MediaFile) dto.BaseItemDto { return dto.SongToBaseItem(mf, q.fields) }
-	repo := api.ds.MediaFile(ctx)
+	repo := api.ds.MediaFile()
 	filters := squirrel.And{}
 	// For songs, ArtistIds/AlbumArtistIds selects an artist's tracks; ParentId selects an album's.
 	switch {
@@ -759,7 +759,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 
 	if q.search != "" {
 		mfs, total, err := searchPage(opts, func(o model.QueryOptions) (model.MediaFiles, error) {
-			return repo.Search(q.search, o)
+			return repo.Search(ctx, q.search, o)
 		})
 		if err != nil {
 			return itemsResult{}, err
@@ -772,9 +772,9 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 		opts.Sort = filter.SongsByAlbum(q.entityParent).Sort
 	}
 	// A full-library request (Finamp's sync, with MediaSources) is tens of thousands of fat rows.
-	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	total, _ := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.MediaFile, error) bool), error) {
-		return repo.GetCursorWithArtwork(opts)
+		return repo.GetCursorWithArtwork(ctx, opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
@@ -783,7 +783,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 // RoleArtist for performing artists (/Artists). Without the role filter both lists would be identical.
 // genreIds isn't applied to search — a name lookup, like role (see below).
 func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q itemsQuery, role model.Role) (itemsResult, error) {
-	repo := api.ds.Artist(ctx)
+	repo := api.ds.Artist()
 	toItem := func(ar model.Artist) dto.BaseItemDto { return dto.ArtistToBaseItem(ar, q.fields) }
 
 	// Artist Search does its own library scoping: it consumes a sole Eq{"library_id": ...} filter as a
@@ -795,7 +795,7 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 			opts.Filters = squirrel.Eq{"library_id": q.scopeIDs}
 		}
 		artists, total, err := searchPage(opts, func(o model.QueryOptions) (model.Artists, error) {
-			return repo.Search(q.search, o)
+			return repo.Search(ctx, q.search, o)
 		})
 		if err != nil {
 			return itemsResult{}, err
@@ -811,9 +811,9 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 	opts.Filters = filters
 	opts = filter.ArtistsByRole(opts, role)
 	opts = filter.ApplyArtistLibraryFilter(opts, q.scopeIDs)
-	total, _ := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	total, _ := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	open := streamCursor(func() (func(func(model.Artist, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, toItem)
 	return streamed(open, int(total), opts.Offset), nil
 }
@@ -822,7 +822,7 @@ func (api *Router) listArtists(ctx context.Context, opts model.QueryOptions, q i
 // the one listXxx that stays materialized: GenreRepository has no CountAll, so the total is the
 // length of the full list and paging is in-memory — nothing for a cursor to page over.
 func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (itemsResult, error) {
-	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: opts.Sort, Order: opts.Order})
+	genres, err := api.ds.Genre().GetAll(ctx, model.QueryOptions{Sort: opts.Sort, Order: opts.Order})
 	if err != nil {
 		return itemsResult{}, err
 	}
@@ -836,13 +836,13 @@ func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q
 	if preds := q.filters.predicates(); len(preds) > 0 {
 		opts.Filters = squirrel.And(preds)
 	}
-	repo := api.ds.Playlist(ctx)
-	total, err := repo.CountAll(model.QueryOptions{Filters: opts.Filters})
+	repo := api.ds.Playlist()
+	total, err := repo.CountAll(ctx, model.QueryOptions{Filters: opts.Filters})
 	if err != nil {
 		return itemsResult{}, err
 	}
 	open := streamCursor(func() (func(func(model.Playlist, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, func(p model.Playlist) dto.BaseItemDto { return dto.PlaylistToBaseItem(p, q.fields) })
 	return streamed(open, int(total), opts.Offset), nil
 }
@@ -859,22 +859,22 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	// Finamp resolves a /UserViews entry (Id=library id) by fetching it as a plain item; without this
 	// the home screen and library tabs 404.
 	if libID, err := strconv.Atoi(id); err == nil && u.HasLibraryAccess(libID) {
-		if lib, err := api.ds.Library(ctx).Get(libID); err == nil {
+		if lib, err := api.ds.Library().Get(ctx, libID); err == nil {
 			return dto.LibraryToBaseItem(*lib), true
 		}
 	}
-	if al, err := api.ds.Album(ctx).Get(id); err == nil {
+	if al, err := api.ds.Album().Get(ctx, id); err == nil {
 		if !u.HasLibraryAccess(al.LibraryID) {
 			return dto.BaseItemDto{}, false
 		}
 		return dto.AlbumToBaseItem(*al, fields), true
 	}
-	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
+	if ar, err := api.ds.Artist().Get(ctx, id); err == nil {
 		// TODO: an artist spans multiple libraries (library_artist), so there's no single
 		// LibraryID to gate here; artist access relies on list-time scoping and persistence.
 		return dto.ArtistToBaseItem(*ar, fields), true
 	}
-	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
+	if mf, err := api.ds.MediaFile().Get(ctx, id); err == nil {
 		if !u.HasLibraryAccess(mf.LibraryID) {
 			return dto.BaseItemDto{}, false
 		}
@@ -884,7 +884,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 	if pl, err := api.playlists.Get(ctx, id); err == nil {
 		return dto.PlaylistToBaseItem(*pl, fields), true
 	}
-	if g, err := api.ds.Genre(ctx).Get(id); err == nil {
+	if g, err := api.ds.Genre().Get(ctx, id); err == nil {
 		return dto.GenreToBaseItem(*g), true
 	}
 	return dto.BaseItemDto{}, false
@@ -895,7 +895,7 @@ func (api *Router) songsByIDs(ctx context.Context, ids []string) map[string]mode
 	songs := make(map[string]model.MediaFile, len(ids))
 	// Chunked to stay under SQLITE_MAX_VARIABLE_NUMBER, like playqueue's loadTracks.
 	for chunk := range slice.CollectChunks(slices.Values(ids), 500) {
-		mfs, err := api.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": chunk}})
+		mfs, err := api.ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"media_file.id": chunk}})
 		if err != nil {
 			log.Error(ctx, "Jellyfin API: error fetching songs by id", err)
 			continue
@@ -975,9 +975,9 @@ func (api *Router) getLatest(w http.ResponseWriter, r *http.Request) {
 		opts.Filters = squirrel.And{opts.Filters, filter.AlbumsByArtistID(parentID).Filters}
 	}
 	opts = filter.ApplyLibraryFilter(opts, scopeIDs)
-	repo := api.ds.Album(ctx)
+	repo := api.ds.Album()
 	open := streamCursor(func() (func(func(model.Album, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, func(al model.Album) dto.BaseItemDto { return dto.AlbumToBaseItem(al, fields) })
 	api.writeItemsArray(w, r, streamed(open, 0, 0))
 }

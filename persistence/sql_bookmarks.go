@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -14,8 +15,8 @@ import (
 
 const bookmarkTable = "bookmark"
 
-func (r sqlRepository) withBookmark(query SelectBuilder, idField string) SelectBuilder {
-	userID := loggedUser(r.ctx).ID
+func (r sqlRepository) withBookmark(ctx context.Context, query SelectBuilder, idField string) SelectBuilder {
+	userID := loggedUser(ctx).ID
 	if userID == invalidUserId {
 		return query
 	}
@@ -26,17 +27,17 @@ func (r sqlRepository) withBookmark(query SelectBuilder, idField string) SelectB
 		Columns("coalesce(position, 0) as bookmark_position")
 }
 
-func (r sqlRepository) bmkID(itemID ...string) And {
+func (r sqlRepository) bmkID(ctx context.Context, itemID ...string) And {
 	return And{
-		Eq{bookmarkTable + ".user_id": loggedUser(r.ctx).ID},
+		Eq{bookmarkTable + ".user_id": loggedUser(ctx).ID},
 		Eq{bookmarkTable + ".item_type": r.tableName},
 		Eq{bookmarkTable + ".item_id": itemID},
 	}
 }
 
-func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
-	client, _ := request.ClientFrom(r.ctx)
-	user, _ := request.UserFrom(r.ctx)
+func (r sqlRepository) bmkUpsert(ctx context.Context, itemID, comment string, position int64) error {
+	client, _ := request.ClientFrom(ctx)
+	user, _ := request.UserFrom(ctx)
 	values := map[string]any{
 		"comment":    comment,
 		"position":   position,
@@ -44,10 +45,10 @@ func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
 		"changed_by": client,
 	}
 
-	upd := Update(bookmarkTable).Where(r.bmkID(itemID)).SetMap(values)
-	c, err := r.executeSQL(upd)
+	upd := Update(bookmarkTable).Where(r.bmkID(ctx, itemID)).SetMap(values)
+	c, err := r.executeSQL(ctx, upd)
 	if err == nil {
-		log.Debug(r.ctx, "Updated bookmark", "id", itemID, "user", user.UserName, "position", position, "comment", comment)
+		log.Debug(ctx, "Updated bookmark", "id", itemID, "user", user.UserName, "position", position, "comment", comment)
 	}
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
 		values["user_id"] = user.ID
@@ -56,31 +57,31 @@ func (r sqlRepository) bmkUpsert(itemID, comment string, position int64) error {
 		values["created_at"] = time.Now()
 		values["updated_at"] = time.Now()
 		ins := Insert(bookmarkTable).SetMap(values)
-		_, err = r.executeSQL(ins)
+		_, err = r.executeSQL(ctx, ins)
 		if err != nil {
 			return err
 		}
-		log.Debug(r.ctx, "Added bookmark", "id", itemID, "user", user.UserName, "position", position, "comment", comment)
+		log.Debug(ctx, "Added bookmark", "id", itemID, "user", user.UserName, "position", position, "comment", comment)
 	}
 
 	return err
 }
 
-func (r sqlRepository) AddBookmark(id, comment string, position int64) error {
-	user, _ := request.UserFrom(r.ctx)
-	err := r.bmkUpsert(id, comment, position)
+func (r sqlRepository) AddBookmark(ctx context.Context, id, comment string, position int64) error {
+	user, _ := request.UserFrom(ctx)
+	err := r.bmkUpsert(ctx, id, comment, position)
 	if err != nil {
-		log.Error(r.ctx, "Error adding bookmark", "id", id, "user", user.UserName, "position", position, "comment", comment)
+		log.Error(ctx, "Error adding bookmark", "id", id, "user", user.UserName, "position", position, "comment", comment)
 	}
 	return err
 }
 
-func (r sqlRepository) DeleteBookmark(id string) error {
-	user, _ := request.UserFrom(r.ctx)
-	del := Delete(bookmarkTable).Where(r.bmkID(id))
-	_, err := r.executeSQL(del)
+func (r sqlRepository) DeleteBookmark(ctx context.Context, id string) error {
+	user, _ := request.UserFrom(ctx)
+	del := Delete(bookmarkTable).Where(r.bmkID(ctx, id))
+	_, err := r.executeSQL(ctx, del)
 	if err != nil {
-		log.Error(r.ctx, "Error removing bookmark", "id", id, "user", user.UserName)
+		log.Error(ctx, "Error removing bookmark", "id", id, "user", user.UserName)
 	}
 	return err
 }
@@ -96,17 +97,17 @@ type bookmark struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
-	user, _ := request.UserFrom(r.ctx)
+func (r sqlRepository) GetBookmarks(ctx context.Context) (model.Bookmarks, error) {
+	user, _ := request.UserFrom(ctx)
 
 	idField := r.tableName + ".id"
-	sq := r.newSelect().Columns(r.tableName + ".*")
-	sq = r.withAnnotation(sq, idField)
-	sq = r.withBookmark(sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
+	sq := r.newSelect(ctx).Columns(r.tableName + ".*")
+	sq = r.withAnnotation(ctx, sq, idField)
+	sq = r.withBookmark(ctx, sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
 	var mfs dbMediaFiles // TODO Decouple from media_file
-	err := r.queryAll(sq, &mfs)
+	err := r.queryAll(ctx, sq, &mfs)
 	if err != nil {
-		log.Error(r.ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
+		log.Error(ctx, "Error getting mediafiles with bookmarks", "user", user.UserName, err)
 		return nil, err
 	}
 
@@ -117,18 +118,18 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 		mfMap[mf.ID] = i
 	}
 
-	sq = Select("*").From(bookmarkTable).Where(r.bmkID(ids...))
+	sq = Select("*").From(bookmarkTable).Where(r.bmkID(ctx, ids...))
 	var bmks []bookmark
-	err = r.queryAll(sq, &bmks)
+	err = r.queryAll(ctx, sq, &bmks)
 	if err != nil {
-		log.Error(r.ctx, "Error getting bookmarks", "user", user.UserName, "ids", ids, err)
+		log.Error(ctx, "Error getting bookmarks", "user", user.UserName, "ids", ids, err)
 		return nil, err
 	}
 
 	resp := make(model.Bookmarks, len(bmks))
 	for i, bmk := range bmks {
 		if itemIdx, ok := mfMap[bmk.ItemID]; !ok {
-			log.Debug(r.ctx, "Invalid bookmark", "id", bmk.ItemID, "user", user.UserName)
+			log.Debug(ctx, "Invalid bookmark", "id", bmk.ItemID, "user", user.UserName)
 			continue
 		} else {
 			resp[i] = model.Bookmark{
@@ -144,21 +145,21 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 	return resp, nil
 }
 
-func (r sqlRepository) reassignBookmark(prevID, newID string) error {
+func (r sqlRepository) reassignBookmark(ctx context.Context, prevID, newID string) error {
 	upd := Expr("update or ignore "+bookmarkTable+" set item_id = ? where item_type = ? and item_id = ?",
 		newID, r.tableName, prevID)
-	_, err := r.executeSQL(upd)
+	_, err := r.executeSQL(ctx, upd)
 	return err
 }
 
-func (r sqlRepository) cleanBookmarks() error {
+func (r sqlRepository) cleanBookmarks(ctx context.Context) error {
 	del := Delete(bookmarkTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
-	c, err := r.executeSQL(del)
+	c, err := r.executeSQL(ctx, del)
 	if err != nil {
 		return fmt.Errorf("error cleaning up %s bookmarks: %w", r.tableName, err)
 	}
 	if c > 0 {
-		log.Debug(r.ctx, "Clean-up bookmarks", "totalDeleted", c, "itemType", r.tableName)
+		log.Debug(ctx, "Clean-up bookmarks", "totalDeleted", c, "itemType", r.tableName)
 	}
 	return nil
 }

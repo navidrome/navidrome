@@ -33,7 +33,7 @@ type missingTracks struct {
 // 4. Updates the database with the new locations of the matched files and removes the old entries.
 // 5. Logs the results and finalizes the phase by reporting the total number of matched files.
 type phaseMissingTracks struct {
-	ctx                       context.Context
+	ctx                       context.Context //nolint:containedctx // phase runs under a single scan ctx
 	ds                        model.DataStore
 	totalMatched              atomic.Uint32
 	state                     *scanState
@@ -71,7 +71,7 @@ func (p *phaseMissingTracks) produce(put func(tracks *missingTracks)) error {
 	}
 	for _, lib := range p.state.libraries {
 		log.Debug(p.ctx, "Scanner: Checking missing tracks", "libraryId", lib.ID, "libraryName", lib.Name)
-		cursor, err := p.ds.MediaFile(p.ctx).GetMissingAndMatching(lib.ID)
+		cursor, err := p.ds.MediaFile().GetMissingAndMatching(p.ctx, lib.ID)
 		if err != nil {
 			return fmt.Errorf("loading missing tracks for library %s: %w", lib.Name, err)
 		}
@@ -232,7 +232,7 @@ func (p *phaseMissingTracks) processCrossLibraryMoves(in *missingTracks) (*missi
 func (p *phaseMissingTracks) findCrossLibraryMatch(missing model.MediaFile) (model.MediaFile, error) {
 	// First tier: Search by MusicBrainz Track ID if available
 	if missing.MbzReleaseTrackID != "" {
-		matches, err := p.ds.MediaFile(p.ctx).FindRecentFilesByMBZTrackID(missing, missing.CreatedAt)
+		matches, err := p.ds.MediaFile().FindRecentFilesByMBZTrackID(p.ctx, missing, missing.CreatedAt)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error searching for recent files by MBZ Track ID", "mbzTrackID", missing.MbzReleaseTrackID, err)
 		} else {
@@ -251,7 +251,7 @@ func (p *phaseMissingTracks) findCrossLibraryMatch(missing model.MediaFile) (mod
 	}
 
 	// Second tier: Search by intrinsic properties (title, size, suffix, etc.)
-	matches, err := p.ds.MediaFile(p.ctx).FindRecentFilesByProperties(missing, missing.CreatedAt)
+	matches, err := p.ds.MediaFile().FindRecentFilesByProperties(p.ctx, missing, missing.CreatedAt)
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error searching for recent files by properties", "missing", missing.Path, err)
 		return model.MediaFile{}, err
@@ -285,13 +285,13 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 		// Update the target media file with the missing file's ID. This effectively "moves" the track
 		// to the new location while keeping its annotations and references intact.
 		target.ID = missing.ID
-		err := tx.MediaFile(p.ctx).Put(&target)
+		err := tx.MediaFile().Put(p.ctx, &target)
 		if err != nil {
 			return fmt.Errorf("update matched track: %w", err)
 		}
 
 		// Discard the new mediafile row (the one that was moved to)
-		err = tx.MediaFile(p.ctx).Delete(discardedID)
+		err = tx.MediaFile().Delete(p.ctx, discardedID)
 		if err != nil {
 			return fmt.Errorf("delete discarded track: %w", err)
 		}
@@ -309,13 +309,13 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 				if !p.processedAlbumAnnotations[newAlbumID] {
 					// Reassign direct album annotations (starred, rating)
 					log.Debug(p.ctx, "Scanner: Reassigning album annotations", "from", oldAlbumID, "to", newAlbumID)
-					if err := tx.Album(p.ctx).ReassignAnnotation(oldAlbumID, newAlbumID); err != nil {
+					if err := tx.Album().ReassignAnnotation(p.ctx, oldAlbumID, newAlbumID); err != nil {
 						log.Warn(p.ctx, "Scanner: Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
 					}
 
 					// Keep created_at field from previous instance of the album, so moved albums
 					// don't appear in "Recently Added"
-					if err := tx.Album(p.ctx).CopyAttributes(oldAlbumID, newAlbumID, "created_at"); err != nil {
+					if err := tx.Album().CopyAttributes(p.ctx, oldAlbumID, newAlbumID, "created_at"); err != nil {
 						if !errors.Is(err, model.ErrNotFound) {
 							log.Warn(p.ctx, "Scanner: Could not copy album created_at", "from", oldAlbumID, "to", newAlbumID, err)
 						}
@@ -355,7 +355,7 @@ func (p *phaseMissingTracks) finalize(err error) error {
 }
 
 func (p *phaseMissingTracks) purgeMissing() error {
-	deletedCount, err := p.ds.MediaFile(p.ctx).DeleteAllMissing()
+	deletedCount, err := p.ds.MediaFile().DeleteAllMissing(p.ctx)
 	if err != nil {
 		return fmt.Errorf("error deleting missing files: %w", err)
 	}

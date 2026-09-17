@@ -133,7 +133,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 }
 
 type Stream struct {
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // stream outlives the call that built it; Read has no ctx
 	mf      *model.MediaFile
 	bitRate int
 	format  string

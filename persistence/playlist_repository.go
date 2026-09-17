@@ -49,9 +49,8 @@ func (p dbPlaylist) PostMapArgs(args map[string]any) error {
 	return nil
 }
 
-func NewPlaylistRepository(ctx context.Context, db dbx.Builder) model.PlaylistRepository {
+func NewPlaylistRepository(db dbx.Builder) model.PlaylistRepository {
 	r := &playlistRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Playlist{}, map[string]filterFunc{
 		"id":      idFilter("playlist"),
@@ -80,8 +79,8 @@ func smartPlaylistFilter(string, any) Sqlizer {
 	}
 }
 
-func (r *playlistRepository) userFilter() Sqlizer {
-	user := loggedUser(r.ctx)
+func (r *playlistRepository) userFilter(ctx context.Context) Sqlizer {
+	user := loggedUser(ctx)
 	if user.IsAdmin {
 		return And{}
 	}
@@ -91,29 +90,29 @@ func (r *playlistRepository) userFilter() Sqlizer {
 	}
 }
 
-func (r *playlistRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	query := Select().Where(r.userFilter())
+func (r *playlistRepository) CountAll(ctx context.Context, options ...model.QueryOptions) (int64, error) {
+	query := Select().Where(r.userFilter(ctx))
 	if filtersNeedAnnotation(r.applyFilters(query, options...)) {
-		query = r.withAnnotation(query, "playlist.id")
+		query = r.withAnnotation(ctx, query, "playlist.id")
 	}
-	return r.count(query, options...)
+	return r.count(ctx, query, options...)
 }
 
-func (r *playlistRepository) Exists(id string) (bool, error) {
-	return r.exists(And{Eq{"id": id}, r.userFilter()})
+func (r *playlistRepository) Exists(ctx context.Context, id string) (bool, error) {
+	return r.exists(ctx, And{Eq{"id": id}, r.userFilter(ctx)})
 }
 
-func (r *playlistRepository) Delete(id string) error {
-	return r.delete(And{Eq{"id": id}, r.userFilter()})
+func (r *playlistRepository) Delete(ctx context.Context, ids ...string) error {
+	return r.delete(ctx, And{Eq{"id": ids}, r.userFilter(ctx)})
 }
 
-func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
+func (r *playlistRepository) Put(ctx context.Context, p *model.Playlist, cols ...string) error {
 	pls := dbPlaylist{Playlist: *p}
 	if len(cols) > 0 {
 		if pls.ID == "" {
 			return errors.New("playlist id is required for partial update")
 		}
-		_, err := r.put(pls.ID, pls, cols...)
+		_, err := r.put(ctx, pls.ID, pls, cols...)
 		return err
 	}
 	isNew := pls.ID == ""
@@ -122,7 +121,7 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	}
 	pls.UpdatedAt = time.Now()
 
-	id, err := r.put(pls.ID, pls)
+	id, err := r.put(ctx, pls.ID, pls)
 	if err != nil {
 		return err
 	}
@@ -134,48 +133,48 @@ func (r *playlistRepository) Put(p *model.Playlist, cols ...string) error {
 	}
 	// Only update tracks if they were specified
 	if len(pls.Tracks) > 0 {
-		return r.updateTracks(id, p.MediaFiles())
+		return r.updateTracks(ctx, id, p.MediaFiles())
 	}
 	pls.ID = id // r.put assigns the generated id to p, not to this copy
 	if isNew {
 		// Even a trackless new playlist has art to find (an imported m3u can carry an
 		// ExternalImageURL); an update landing here changed only metadata, so leave its cover be.
-		r.enqueueCoverRebuild(id)
+		r.enqueueCoverRebuild(ctx, id)
 	}
-	return r.refreshCounters(&pls.Playlist)
+	return r.refreshCounters(ctx, &pls.Playlist)
 }
 
-func (r *playlistRepository) Get(id string) (*model.Playlist, error) {
-	return r.findBy(And{Eq{"playlist.id": id}, r.userFilter()})
+func (r *playlistRepository) Get(ctx context.Context, id string) (*model.Playlist, error) {
+	return r.findBy(ctx, And{Eq{"playlist.id": id}, r.userFilter(ctx)})
 }
 
-func (r *playlistRepository) GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*model.Playlist, error) {
-	pls, err := r.Get(id)
+func (r *playlistRepository) GetWithTracks(ctx context.Context, id string, refreshSmartPlaylist, includeMissing bool) (*model.Playlist, error) {
+	pls, err := r.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if refreshSmartPlaylist {
-		r.refreshSmartPlaylist(pls)
+		r.refreshSmartPlaylist(ctx, pls)
 	}
-	tracks, err := r.loadTracks(Select().From("playlist_tracks").
+	tracks, err := r.loadTracks(ctx, Select().From("playlist_tracks").
 		Where(Eq{"missing": false}).
 		OrderBy("playlist_tracks.id"), id)
 	if err != nil {
-		log.Error(r.ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
+		log.Error(ctx, "Error loading playlist tracks ", "playlist", pls.Name, "id", pls.ID, err)
 		return nil, err
 	}
 	pls.SetTracks(tracks)
 	return pls, nil
 }
 
-func (r *playlistRepository) FindByPath(path string) (*model.Playlist, error) {
-	return r.findBy(Eq{"path": path})
+func (r *playlistRepository) FindByPath(ctx context.Context, path string) (*model.Playlist, error) {
+	return r.findBy(ctx, Eq{"path": path})
 }
 
-func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
-	sel := r.selectPlaylist().Where(sql)
+func (r *playlistRepository) findBy(ctx context.Context, sql Sqlizer) (*model.Playlist, error) {
+	sel := r.selectPlaylist(ctx).Where(sql)
 	var pls []dbPlaylist
-	err := r.queryAll(sel, &pls)
+	err := r.queryAll(ctx, sel, &pls)
 	if err != nil {
 		return nil, err
 	}
@@ -184,19 +183,19 @@ func (r *playlistRepository) findBy(sql Sqlizer) (*model.Playlist, error) {
 	}
 
 	list := model.Playlists{pls[0].Playlist}
-	r.hydrateArtwork(list)
+	r.hydrateArtwork(ctx, list)
 	return &list[0], nil
 }
 
-func (r *playlistRepository) hydrateArtwork(playlists model.Playlists) {
-	hydrateItems(r.ctx, r.db, model.KindPlaylistArtwork, playlists,
+func (r *playlistRepository) hydrateArtwork(ctx context.Context, playlists model.Playlists) {
+	hydrateItems(ctx, r.db, model.KindPlaylistArtwork, playlists,
 		func(p *model.Playlist) (string, *model.ItemImage) { return p.ID, &p.ItemImage })
 }
 
-func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
-	sel := r.selectPlaylist(options...).Where(r.userFilter())
+func (r *playlistRepository) GetAll(ctx context.Context, options ...model.QueryOptions) (model.Playlists, error) {
+	sel := r.selectPlaylist(ctx, options...).Where(r.userFilter(ctx))
 	var res []dbPlaylist
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -204,42 +203,42 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	for i, p := range res {
 		playlists[i] = p.Playlist
 	}
-	r.hydrateArtwork(playlists)
+	r.hydrateArtwork(ctx, playlists)
 	return playlists, err
 }
 
 // getAllIDs returns the IDs of GetAll's row set, skipping its per-row processing.
-func (r *playlistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
+func (r *playlistRepository) getAllIDs(ctx context.Context, options ...model.QueryOptions) ([]string, error) {
 	// Joins a projection of user, not the table: its name/created_at columns would make an ORDER BY
 	// on the playlist's own ambiguous.
-	sq := r.newSelect(options...).Columns("playlist.id", "user.user_name as owner_name").
-		Join("(select id, user_name from user) user on user.id = owner_id").Where(r.userFilter())
+	sq := r.newSelect(ctx, options...).Columns("playlist.id", "user.user_name as owner_name").
+		Join("(select id, user_name from user) user on user.id = owner_id").Where(r.userFilter(ctx))
 	if filtersNeedAnnotation(sq) {
-		sq = r.withAnnotation(sq, "playlist.id")
+		sq = r.withAnnotation(ctx, sq, "playlist.id")
 	}
 	ids := []string{}
-	err := r.queryAllSlice(sq, &ids)
+	err := r.queryAllSlice(ctx, sq, &ids)
 	return ids, err
 }
 
-func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
+func (r *playlistRepository) GetCursor(ctx context.Context, options ...model.QueryOptions) (model.PlaylistCursor, error) {
 	// Both passes apply userFilter, so a visibility change between them cannot widen the cursor.
-	ids, err := r.getAllIDs(options...)
+	ids, err := r.getAllIDs(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
 	opts := chunkOptions(options, "playlist.id")
 	return model.PlaylistCursor(streamByIDs(ids, func(chunk []string) (model.Playlists, error) {
-		return r.GetAll(opts(chunk))
+		return r.GetAll(ctx, opts(chunk))
 	})), nil
 }
 
-func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, error) {
-	sel := r.selectPlaylist(model.QueryOptions{Sort: "name"}).
+func (r *playlistRepository) GetPlaylists(ctx context.Context, mediaFileId string) (model.Playlists, error) {
+	sel := r.selectPlaylist(ctx, model.QueryOptions{Sort: "name"}).
 		Join("playlist_tracks on playlist.id = playlist_tracks.playlist_id").
-		Where(And{Eq{"playlist_tracks.media_file_id": mediaFileId}, r.userFilter()})
+		Where(And{Eq{"playlist_tracks.media_file_id": mediaFileId}, r.userFilter(ctx)})
 	var res []dbPlaylist
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return model.Playlists{}, nil
@@ -250,36 +249,36 @@ func (r *playlistRepository) GetPlaylists(mediaFileId string) (model.Playlists, 
 	for i, p := range res {
 		playlists[i] = p.Playlist
 	}
-	r.hydrateArtwork(playlists)
+	r.hydrateArtwork(ctx, playlists)
 	return playlists, nil
 }
 
-func (r *playlistRepository) selectPlaylist(options ...model.QueryOptions) SelectBuilder {
-	sel := r.newSelect(options...).Join("user on user.id = owner_id").
+func (r *playlistRepository) selectPlaylist(ctx context.Context, options ...model.QueryOptions) SelectBuilder {
+	sel := r.newSelect(ctx, options...).Join("user on user.id = owner_id").
 		Columns(r.tableName+".*", "user.user_name as owner_name")
-	return r.withAnnotation(sel, r.tableName+".id")
+	return r.withAnnotation(ctx, sel, r.tableName+".id")
 }
 
-func (r *playlistRepository) updateTracks(id string, tracks model.MediaFiles) error {
+func (r *playlistRepository) updateTracks(ctx context.Context, id string, tracks model.MediaFiles) error {
 	ids := make([]string, len(tracks))
 	for i := range tracks {
 		ids[i] = tracks[i].ID
 	}
-	return r.updatePlaylist(id, ids)
+	return r.updatePlaylist(ctx, id, ids)
 }
 
-func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []string) error {
+func (r *playlistRepository) updatePlaylist(ctx context.Context, playlistId string, mediaFileIds []string) error {
 	// Remove old tracks
 	del := Delete("playlist_tracks").Where(Eq{"playlist_id": playlistId})
-	_, err := r.executeSQL(del)
+	_, err := r.executeSQL(ctx, del)
 	if err != nil {
 		return err
 	}
 
-	return r.addTracks(playlistId, 1, mediaFileIds)
+	return r.addTracks(ctx, playlistId, 1, mediaFileIds)
 }
 
-func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) error {
+func (r *playlistRepository) addTracks(ctx context.Context, playlistId string, startingPos int, mediaFileIds []string) error {
 	// Break the track list in chunks to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
 	// Add new tracks, chunk by chunk
 	pos := startingPos
@@ -289,18 +288,18 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 			ins = ins.Values(playlistId, t, pos)
 			pos++
 		}
-		_, err := r.executeSQL(ins)
+		_, err := r.executeSQL(ctx, ins)
 		if err != nil {
 			return err
 		}
 	}
 
-	r.enqueueCoverRebuild(playlistId)
-	return r.refreshCounters(&model.Playlist{ID: playlistId})
+	r.enqueueCoverRebuild(ctx, playlistId)
+	return r.refreshCounters(ctx, &model.Playlist{ID: playlistId})
 }
 
 // refreshCounters updates total playlist duration, size and count
-func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
+func (r *playlistRepository) refreshCounters(ctx context.Context, pls *model.Playlist) error {
 	statsSql := Select(
 		"coalesce(sum(duration), 0) as duration",
 		"coalesce(sum(size), 0) as size",
@@ -310,7 +309,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 		Join("playlist_tracks f on f.media_file_id = media_file.id").
 		Where(Eq{"playlist_id": pls.ID})
 	var res struct{ Duration, Size, Count float32 }
-	err := r.queryOne(statsSql, &res)
+	err := r.queryOne(ctx, statsSql, &res)
 	if err != nil {
 		return err
 	}
@@ -323,7 +322,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 		Set("song_count", res.Count).
 		Set("updated_at", now).
 		Where(Eq{"id": pls.ID})
-	_, err = r.executeSQL(upd)
+	_, err = r.executeSQL(ctx, upd)
 	if err != nil {
 		return err
 	}
@@ -336,18 +335,18 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 
 // enqueueCoverRebuild re-resolves the generated 2x2 grid. Call it only when the track set changes:
 // the grid samples albums at random, so rebuilding after a mere rename would change the cover.
-func (r *playlistRepository) enqueueCoverRebuild(id string) {
+func (r *playlistRepository) enqueueCoverRebuild(ctx context.Context, id string) {
 	item := model.ArtworkQueueItem{ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: id,
 		ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityScan}
-	if err := NewArtworkQueueRepository(r.ctx, r.db).Enqueue(item); err != nil {
-		log.Warn(r.ctx, "could not enqueue playlist artwork after content change", "id", id, err)
+	if err := NewArtworkQueueRepository(r.db).Enqueue(ctx, item); err != nil {
+		log.Warn(ctx, "could not enqueue playlist artwork after content change", "id", id, err)
 	}
 }
 
 // tracksQuery is shared by loadTracks and GetCursor, so both hydrate rows identically.
-func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectBuilder {
-	query = r.applyLibraryFilter(query, "f")
-	userID := loggedUser(r.ctx).ID
+func (r *playlistRepository) tracksQuery(ctx context.Context, query SelectBuilder, id string) SelectBuilder {
+	query = r.applyLibraryFilter(ctx, query, "f")
+	userID := loggedUser(ctx).ID
 	return query.
 		Columns(
 			"coalesce(starred, 0) as starred",
@@ -370,56 +369,47 @@ func (r *playlistRepository) tracksQuery(query SelectBuilder, id string) SelectB
 		Where(Eq{"playlist_id": id})
 }
 
-func (r *playlistRepository) loadTracks(query SelectBuilder, id string) (model.PlaylistTracks, error) {
+func (r *playlistRepository) loadTracks(ctx context.Context, query SelectBuilder, id string) (model.PlaylistTracks, error) {
 	tracks := dbPlaylistTracks{}
-	err := r.queryAll(r.tracksQuery(query, id), &tracks)
+	err := r.queryAll(ctx, r.tracksQuery(ctx, query, id), &tracks)
 	if err != nil {
 		return nil, err
 	}
 	res := tracks.toModels()
-	hydratePlaylistTrackArtwork(r.ctx, r.db, res)
+	hydratePlaylistTrackArtwork(ctx, r.db, res)
 	return res, err
 }
 
-func (r *playlistRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *playlistRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
-func (r *playlistRepository) Read(id string) (any, error) {
-	return r.Get(id)
+func (r *playlistRepository) Read(ctx context.Context, id string) (*model.Playlist, error) {
+	return r.Get(ctx, id)
 }
 
-func (r *playlistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+func (r *playlistRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Playlist, error) {
+	return r.GetAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
-func (r *playlistRepository) EntityName() string {
-	return "playlist"
-}
-
-func (r *playlistRepository) NewInstance() any {
-	return &model.Playlist{}
-}
-
-func (r *playlistRepository) Save(entity any) (string, error) {
-	pls := entity.(*model.Playlist)
+func (r *playlistRepository) Save(ctx context.Context, pls *model.Playlist) (string, error) {
 	pls.ID = "" // Force new creation
-	err := r.Put(pls)
+	err := r.Put(ctx, pls)
 	if err != nil {
 		return "", err
 	}
 	return pls.ID, err
 }
 
-func (r *playlistRepository) Update(id string, entity any, cols ...string) error {
-	pls := dbPlaylist{Playlist: *entity.(*model.Playlist)}
+func (r *playlistRepository) Update(ctx context.Context, id string, entity model.Playlist, cols ...string) error {
+	pls := dbPlaylist{Playlist: entity}
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
-	_, err := r.put(id, pls, append(cols, "updatedAt")...)
+	_, err := r.put(ctx, id, pls, append(cols, "updatedAt")...)
 	return err
 }
 
-func (r *playlistRepository) removeOrphans() error {
+func (r *playlistRepository) removeOrphans(ctx context.Context) error {
 	sel := Select("playlist_tracks.playlist_id as id", "p.name").From("playlist_tracks").
 		Join("playlist p on playlist_tracks.playlist_id = p.id").
 		LeftJoin("media_file mf on playlist_tracks.media_file_id = mf.id").
@@ -427,25 +417,25 @@ func (r *playlistRepository) removeOrphans() error {
 		GroupBy("playlist_tracks.playlist_id")
 
 	var pls []struct{ Id, Name string }
-	err := r.queryAll(sel, &pls)
+	err := r.queryAll(ctx, sel, &pls)
 	if err != nil {
 		return fmt.Errorf("fetching playlists with orphan tracks: %w", err)
 	}
 
 	for _, pl := range pls {
-		log.Debug(r.ctx, "Cleaning-up orphan tracks from playlist", "id", pl.Id, "name", pl.Name)
+		log.Debug(ctx, "Cleaning-up orphan tracks from playlist", "id", pl.Id, "name", pl.Name)
 		del := Delete("playlist_tracks").Where(And{
 			ConcatExpr("media_file_id not in (select id from media_file)"),
 			Eq{"playlist_id": pl.Id},
 		})
-		n, err := r.executeSQL(del)
+		n, err := r.executeSQL(ctx, del)
 		if n == 0 || err != nil {
 			return fmt.Errorf("deleting orphan tracks from playlist %s: %w", pl.Name, err)
 		}
-		log.Debug(r.ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
+		log.Debug(ctx, "Deleted tracks, now reordering", "id", pl.Id, "name", pl.Name, "deleted", n)
 
 		// Renumber the playlist if any track was removed
-		if err := r.renumber(pl.Id); err != nil {
+		if err := r.renumber(ctx, pl.Id); err != nil {
 			return fmt.Errorf("renumbering playlist %s: %w", pl.Name, err)
 		}
 	}
@@ -455,9 +445,9 @@ func (r *playlistRepository) removeOrphans() error {
 // renumber updates the position of all tracks in the playlist to be sequential starting from 1, ordered by their
 // current position. This is needed after removing orphan tracks, to ensure there are no gaps in the track numbering.
 // The two-step approach (negate then reassign via CTE) avoids UNIQUE constraint violations on (playlist_id, id).
-func (r *playlistRepository) renumber(id string) error {
+func (r *playlistRepository) renumber(ctx context.Context, id string) error {
 	// Step 1: Negate all IDs to clear the positive ID space
-	_, err := r.executeSQL(Expr(
+	_, err := r.executeSQL(ctx, Expr(
 		`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ? AND id > 0`, id))
 	if err != nil {
 		return err
@@ -465,7 +455,7 @@ func (r *playlistRepository) renumber(id string) error {
 	// Step 2: Assign new sequential positive IDs using UPDATE...FROM with a CTE.
 	// The CTE is fully materialized before the UPDATE begins, avoiding self-referencing issues.
 	// ORDER BY id DESC restores original order since IDs are now negative.
-	_, err = r.executeSQL(Expr(
+	_, err = r.executeSQL(ctx, Expr(
 		`WITH new_ids AS (
 			SELECT rowid as rid, ROW_NUMBER() OVER (ORDER BY id DESC) as new_id
 			FROM playlist_tracks WHERE playlist_id = ?
@@ -476,10 +466,10 @@ func (r *playlistRepository) renumber(id string) error {
 	if err != nil {
 		return err
 	}
-	r.enqueueCoverRebuild(id)
-	return r.refreshCounters(&model.Playlist{ID: id})
+	r.enqueueCoverRebuild(ctx, id)
+	return r.refreshCounters(ctx, &model.Playlist{ID: id})
 }
 
 var _ model.PlaylistRepository = (*playlistRepository)(nil)
-var _ rest.Repository = (*playlistRepository)(nil)
-var _ rest.Persistable = (*playlistRepository)(nil)
+var _ rest.Repository[model.Playlist] = (*playlistRepository)(nil)
+var _ rest.Persistable[model.Playlist] = (*playlistRepository)(nil)

@@ -15,9 +15,8 @@ type pluginRepository struct {
 	sqlRepository
 }
 
-func NewPluginRepository(ctx context.Context, db dbx.Builder) model.PluginRepository {
+func NewPluginRepository(db dbx.Builder) model.PluginRepository {
 	r := &pluginRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Plugin{}, map[string]filterFunc{
 		"id":      idFilter("plugin"),
@@ -26,56 +25,56 @@ func NewPluginRepository(ctx context.Context, db dbx.Builder) model.PluginReposi
 	return r
 }
 
-func (r *pluginRepository) isPermitted() bool {
-	user := loggedUser(r.ctx)
+func (r *pluginRepository) isPermitted(ctx context.Context) bool {
+	user := loggedUser(ctx)
 	return user.IsAdmin
 }
 
-func (r *pluginRepository) ClearErrors() error {
-	if !r.isPermitted() {
+func (r *pluginRepository) ClearErrors(ctx context.Context) error {
+	if !r.isPermitted(ctx) {
 		return rest.ErrPermissionDenied
 	}
 	_, err := r.db.NewQuery("UPDATE plugin SET last_error = '' WHERE last_error != ''").Execute()
 	return err
 }
 
-func (r *pluginRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	if !r.isPermitted() {
+func (r *pluginRepository) CountAll(ctx context.Context, options ...model.QueryOptions) (int64, error) {
+	if !r.isPermitted(ctx) {
 		return 0, rest.ErrPermissionDenied
 	}
-	sql := r.newSelect()
-	return r.count(sql, options...)
+	sql := r.newSelect(ctx)
+	return r.count(ctx, sql, options...)
 }
 
-func (r *pluginRepository) Delete(id string) error {
-	if !r.isPermitted() {
+func (r *pluginRepository) Delete(ctx context.Context, id string) error {
+	if !r.isPermitted(ctx) {
 		return rest.ErrPermissionDenied
 	}
-	return r.delete(Eq{"id": id})
+	return r.delete(ctx, Eq{"id": id})
 }
 
-func (r *pluginRepository) Get(id string) (*model.Plugin, error) {
-	if !r.isPermitted() {
+func (r *pluginRepository) Get(ctx context.Context, id string) (*model.Plugin, error) {
+	if !r.isPermitted(ctx) {
 		return nil, rest.ErrPermissionDenied
 	}
-	sel := r.newSelect().Where(Eq{"id": id}).Columns("*")
+	sel := r.newSelect(ctx).Where(Eq{"id": id}).Columns("*")
 	res := model.Plugin{}
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-func (r *pluginRepository) GetAll(options ...model.QueryOptions) (model.Plugins, error) {
-	if !r.isPermitted() {
+func (r *pluginRepository) GetAll(ctx context.Context, options ...model.QueryOptions) (model.Plugins, error) {
+	if !r.isPermitted(ctx) {
 		return nil, rest.ErrPermissionDenied
 	}
-	sel := r.newSelect(options...).Columns("*")
+	sel := r.newSelect(ctx, options...).Columns("*")
 	res := model.Plugins{}
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	return res, err
 }
 
-func (r *pluginRepository) Put(plugin *model.Plugin) error {
-	if !r.isPermitted() {
+func (r *pluginRepository) Put(ctx context.Context, plugin *model.Plugin) error {
+	if !r.isPermitted(ctx) {
 		return rest.ErrPermissionDenied
 	}
 
@@ -121,25 +120,17 @@ func (r *pluginRepository) Put(plugin *model.Plugin) error {
 	return err
 }
 
-func (r *pluginRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *pluginRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
-func (r *pluginRepository) EntityName() string {
-	return "plugin"
+func (r *pluginRepository) Read(ctx context.Context, id string) (*model.Plugin, error) {
+	return r.Get(ctx, id)
 }
 
-func (r *pluginRepository) NewInstance() any {
-	return &model.Plugin{}
-}
-
-func (r *pluginRepository) Read(id string) (any, error) {
-	return r.Get(id)
-}
-
-func (r *pluginRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+func (r *pluginRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Plugin, error) {
+	return r.GetAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
 var _ model.PluginRepository = (*pluginRepository)(nil)
-var _ rest.Repository = (*pluginRepository)(nil)
+var _ rest.Repository[model.Plugin] = (*pluginRepository)(nil)

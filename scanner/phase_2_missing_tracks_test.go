@@ -129,8 +129,8 @@ var _ = Describe("phaseMissingTracks", func() {
 			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "dir1/path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
 			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "dir2/path2.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack},
@@ -142,7 +142,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
 			Expect(state.changesDetected.Load()).To(BeTrue())
 
-			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
 		})
 
@@ -150,8 +150,8 @@ var _ = Describe("phaseMissingTracks", func() {
 			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
 			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "path1.flac", Tags: model.Tags{"title": []string{"title1"}}, Size: 200}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack},
@@ -163,7 +163,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
 			Expect(state.changesDetected.Load()).To(BeTrue())
 
-			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
 			Expect(movedTrack.Size).To(Equal(matchedTrack.Size))
 		})
@@ -172,8 +172,8 @@ var _ = Describe("phaseMissingTracks", func() {
 			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "dir1/path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
 			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "dir2/path2.flac", Tags: model.Tags{"title": []string{"different title"}}, Size: 200}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack},
@@ -185,7 +185,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
 			Expect(state.changesDetected.Load()).To(BeTrue())
 
-			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
 			Expect(movedTrack.Size).To(Equal(matchedTrack.Size))
 		})
@@ -195,9 +195,9 @@ var _ = Describe("phaseMissingTracks", func() {
 			matchedEquivalent := model.MediaFile{ID: "2", PID: "A", Path: "dir1/file1.flac", Tags: model.Tags{"title": []string{"title1"}}, Size: 200}
 			matchedExact := model.MediaFile{ID: "3", PID: "A", Path: "dir2/file2.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedEquivalent)
-			_ = ds.MediaFile(ctx).Put(&matchedExact)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedEquivalent)
+			_ = ds.MediaFile().Put(ctx, &matchedExact)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack},
@@ -210,7 +210,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(phase.totalMatched.Load()).To(Equal(uint32(1)))
 			Expect(state.changesDetected.Load()).To(BeTrue())
 
-			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "1")
 			Expect(movedTrack.Path).To(Equal(matchedExact.Path))
 			Expect(movedTrack.Size).To(Equal(matchedExact.Size))
 		})
@@ -220,9 +220,9 @@ var _ = Describe("phaseMissingTracks", func() {
 			matched1 := model.MediaFile{ID: "2", PID: "A", Path: "dir1/file2.flac", Title: "another title", Size: 200}
 			matched2 := model.MediaFile{ID: "3", PID: "A", Path: "dir2/file3.mp3", Title: "different title", Size: 100}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matched1)
-			_ = ds.MediaFile(ctx).Put(&matched2)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matched1)
+			_ = ds.MediaFile().Put(ctx, &matched2)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack},
@@ -235,7 +235,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(state.changesDetected.Load()).To(BeFalse())
 
 			// The missing track should still be the same
-			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "1")
 			Expect(movedTrack.Path).To(Equal(missingTrack.Path))
 			Expect(movedTrack.Title).To(Equal(missingTrack.Title))
 			Expect(movedTrack.Size).To(Equal(missingTrack.Size))
@@ -250,9 +250,9 @@ var _ = Describe("phaseMissingTracks", func() {
 			missingTrack2 := model.MediaFile{ID: "2", PID: "A", Path: "old_dir2/song.mp3", Title: "title1", Size: 100}
 			matchedTrack := model.MediaFile{ID: "3", PID: "A", Path: "new_dir/song.mp3", Title: "title1", Size: 200}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack1)
-			_ = ds.MediaFile(ctx).Put(&missingTrack2)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack1)
+			_ = ds.MediaFile().Put(ctx, &missingTrack2)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack1, missingTrack2},
@@ -266,11 +266,11 @@ var _ = Describe("phaseMissingTracks", func() {
 			Expect(state.changesDetected.Load()).To(BeTrue())
 
 			// The matched track should have been consumed by the first missing track
-			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
 
 			// The second missing track should remain unchanged
-			unmatchedTrack, _ := ds.MediaFile(ctx).Get("2")
+			unmatchedTrack, _ := ds.MediaFile().Get(ctx, "2")
 			Expect(unmatchedTrack.Path).To(Equal(missingTrack2.Path))
 		})
 
@@ -278,8 +278,8 @@ var _ = Describe("phaseMissingTracks", func() {
 			missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "path1.mp3", Tags: model.Tags{"title": []string{"title1"}}}
 			matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "path1.mp3", Tags: model.Tags{"title": []string{"title1"}}}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack},
@@ -287,7 +287,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			}
 
 			// Simulate an error when moving the matched track by deleting the track from the DB
-			_ = ds.MediaFile(ctx).Delete("2")
+			_ = ds.MediaFile().Delete(ctx, "2")
 
 			_, err := phase.processMissingTracks(in)
 			Expect(err).To(HaveOccurred())
@@ -431,8 +431,8 @@ var _ = Describe("phaseMissingTracks", func() {
 					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
 				}
 
-				_ = ds.MediaFile(ctx).Put(&missingTrack)
-				_ = ds.MediaFile(ctx).Put(&movedTrack)
+				_ = ds.MediaFile().Put(ctx, &missingTrack)
+				_ = ds.MediaFile().Put(ctx, &movedTrack)
 
 				in := &missingTracks{
 					lib:     model.Library{ID: 1, Name: "Library 1"},
@@ -446,7 +446,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				Expect(state.changesDetected.Load()).To(BeTrue())
 
 				// Verify the move was performed
-				updatedTrack, _ := ds.MediaFile(ctx).Get("missing1")
+				updatedTrack, _ := ds.MediaFile().Get(ctx, "missing1")
 				Expect(updatedTrack.Path).To(Equal("/lib2/track.mp3"))
 				Expect(updatedTrack.LibraryID).To(Equal(2))
 			})
@@ -483,8 +483,8 @@ var _ = Describe("phaseMissingTracks", func() {
 					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
 				}
 
-				_ = ds.MediaFile(ctx).Put(&missingTrack)
-				_ = ds.MediaFile(ctx).Put(&movedTrack)
+				_ = ds.MediaFile().Put(ctx, &missingTrack)
+				_ = ds.MediaFile().Put(ctx, &movedTrack)
 
 				in := &missingTracks{
 					lib:     model.Library{ID: 1, Name: "Library 1"},
@@ -498,7 +498,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				Expect(state.changesDetected.Load()).To(BeTrue())
 
 				// Verify the move was performed
-				updatedTrack, _ := ds.MediaFile(ctx).Get("missing2")
+				updatedTrack, _ := ds.MediaFile().Get(ctx, "missing2")
 				Expect(updatedTrack.Path).To(Equal("/lib2/track2.flac"))
 				Expect(updatedTrack.LibraryID).To(Equal(2))
 			})
@@ -529,8 +529,8 @@ var _ = Describe("phaseMissingTracks", func() {
 					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
 				}
 
-				_ = ds.MediaFile(ctx).Put(&missingTrack)
-				_ = ds.MediaFile(ctx).Put(&sameLibTrack)
+				_ = ds.MediaFile().Put(ctx, &missingTrack)
+				_ = ds.MediaFile().Put(ctx, &sameLibTrack)
 
 				in := &missingTracks{
 					lib:     model.Library{ID: 1, Name: "Library 1"},
@@ -587,9 +587,9 @@ var _ = Describe("phaseMissingTracks", func() {
 					CreatedAt:         scanStartTime.Add(-5 * time.Minute),
 				}
 
-				_ = ds.MediaFile(ctx).Put(&missingTrack)
-				_ = ds.MediaFile(ctx).Put(&mbzTrack)
-				_ = ds.MediaFile(ctx).Put(&intrinsicTrack)
+				_ = ds.MediaFile().Put(ctx, &missingTrack)
+				_ = ds.MediaFile().Put(ctx, &mbzTrack)
+				_ = ds.MediaFile().Put(ctx, &intrinsicTrack)
 
 				in := &missingTracks{
 					lib:     model.Library{ID: 1, Name: "Library 1"},
@@ -603,7 +603,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				Expect(state.changesDetected.Load()).To(BeTrue())
 
 				// Verify the MBZ track was chosen (not the intrinsic one)
-				updatedTrack, _ := ds.MediaFile(ctx).Get("missing4")
+				updatedTrack, _ := ds.MediaFile().Get(ctx, "missing4")
 				Expect(updatedTrack.Path).To(Equal("/lib2/track4.mp3"))
 				Expect(updatedTrack.LibraryID).To(Equal(2))
 			})
@@ -635,8 +635,8 @@ var _ = Describe("phaseMissingTracks", func() {
 					CreatedAt:         scanStartTime.Add(-10 * time.Minute),
 				}
 
-				_ = ds.MediaFile(ctx).Put(&missingTrack)
-				_ = ds.MediaFile(ctx).Put(&equivalentTrack)
+				_ = ds.MediaFile().Put(ctx, &missingTrack)
+				_ = ds.MediaFile().Put(ctx, &equivalentTrack)
 
 				in := &missingTracks{
 					lib:     model.Library{ID: 1, Name: "Library 1"},
@@ -650,7 +650,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				Expect(state.changesDetected.Load()).To(BeTrue())
 
 				// Verify the equivalent match was accepted
-				updatedTrack, _ := ds.MediaFile(ctx).Get("missing5")
+				updatedTrack, _ := ds.MediaFile().Get(ctx, "missing5")
 				Expect(updatedTrack.Path).To(Equal("/lib2/different/track5.mp3"))
 				Expect(updatedTrack.LibraryID).To(Equal(2))
 			})
@@ -705,9 +705,9 @@ var _ = Describe("phaseMissingTracks", func() {
 					CreatedAt:         scanStartTime.Add(-5 * time.Minute),
 				}
 
-				_ = ds.MediaFile(ctx).Put(&missingTrack)
-				_ = ds.MediaFile(ctx).Put(&match1)
-				_ = ds.MediaFile(ctx).Put(&match2)
+				_ = ds.MediaFile().Put(ctx, &missingTrack)
+				_ = ds.MediaFile().Put(ctx, &match1)
+				_ = ds.MediaFile().Put(ctx, &match2)
 
 				in := &missingTracks{
 					lib:     model.Library{ID: 1, Name: "Library 1"},
@@ -721,7 +721,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				Expect(state.changesDetected.Load()).To(BeFalse())
 
 				// Verify no move was performed
-				unchangedTrack, _ := ds.MediaFile(ctx).Get("missing6")
+				unchangedTrack, _ := ds.MediaFile().Get(ctx, "missing6")
 				Expect(unchangedTrack.Path).To(Equal("/lib1/track6.mp3"))
 				Expect(unchangedTrack.LibraryID).To(Equal(1))
 			})
@@ -761,7 +761,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		var albumRepo *tests.MockAlbumRepo
 
 		BeforeEach(func() {
-			albumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			albumRepo = ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.ReassignAnnotationCalls = make(map[string]string)
 			albumRepo.CopyAttributesCalls = make(map[string]string)
 		})
@@ -785,8 +785,8 @@ var _ = Describe("phaseMissingTracks", func() {
 				Size:      100,
 			}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			in := &missingTracks{
 				missing: []model.MediaFile{missingTrack},
@@ -796,7 +796,7 @@ var _ = Describe("phaseMissingTracks", func() {
 			_, err := phase.processMissingTracks(in)
 			Expect(err).ToNot(HaveOccurred())
 
-			movedTrack, _ := ds.MediaFile(ctx).Get("1")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "1")
 			Expect(movedTrack.Path).To(Equal("new/song.mp3"))
 			Expect(movedTrack.CreatedAt).To(Equal(originalTime))
 		})
@@ -822,21 +822,21 @@ var _ = Describe("phaseMissingTracks", func() {
 				{ID: "new-album", LibraryID: 2, CreatedAt: time.Now()},
 			})
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			err := phase.moveMatched(matchedTrack, missingTrack)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Track's created_at should be preserved from the missing file
-			movedTrack, _ := ds.MediaFile(ctx).Get("missing-ca")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "missing-ca")
 			Expect(movedTrack.CreatedAt).To(Equal(originalTime))
 
 			// Album's created_at should be copied from old to new
 			Expect(albumRepo.CopyAttributesCalls).To(HaveKeyWithValue("old-album", "new-album"))
 
 			// Verify the new album's CreatedAt was actually updated
-			newAlbum, err := albumRepo.Get("new-album")
+			newAlbum, err := albumRepo.Get(ctx, "new-album")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newAlbum.CreatedAt).To(Equal(originalTime))
 		})
@@ -856,14 +856,14 @@ var _ = Describe("phaseMissingTracks", func() {
 				CreatedAt: time.Now(),
 			}
 
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 
 			err := phase.moveMatched(matchedTrack, missingTrack)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Track's created_at should still be preserved
-			movedTrack, _ := ds.MediaFile(ctx).Get("missing-same")
+			movedTrack, _ := ds.MediaFile().Get(ctx, "missing-same")
 			Expect(movedTrack.CreatedAt).To(Equal(originalTime))
 
 			// CopyAttributes should NOT have been called (same album)
@@ -881,7 +881,7 @@ var _ = Describe("phaseMissingTracks", func() {
 		)
 
 		BeforeEach(func() {
-			albumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+			albumRepo = ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.ReassignAnnotationCalls = make(map[string]string)
 
 			oldAlbumID = "old-album-id"
@@ -916,8 +916,8 @@ var _ = Describe("phaseMissingTracks", func() {
 			}
 
 			// Store both tracks in the database
-			_ = ds.MediaFile(ctx).Put(&missingTrack)
-			_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			_ = ds.MediaFile().Put(ctx, &missingTrack)
+			_ = ds.MediaFile().Put(ctx, &matchedTrack)
 		})
 
 		When("album ID changes during cross-library move", func() {
@@ -950,7 +950,7 @@ var _ = Describe("phaseMissingTracks", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify that the track was still moved (ID should be updated)
-				movedTrack, err := ds.MediaFile(ctx).Get(missingTrack.ID)
+				movedTrack, err := ds.MediaFile().Get(ctx, missingTrack.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
 			})

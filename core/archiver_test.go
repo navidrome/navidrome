@@ -45,7 +45,7 @@ var _ = Describe("Archiver", func() {
 				Sort:    "album",
 			}}).Return(mfs, nil)
 
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+			ds.On("MediaFile").Return(mfRepo)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(3)
 
 			out := new(bytes.Buffer)
@@ -77,7 +77,7 @@ var _ = Describe("Archiver", func() {
 				Sort: "album",
 			}}).Return(mfs, nil)
 
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+			ds.On("MediaFile").Return(mfRepo)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
@@ -105,7 +105,7 @@ var _ = Describe("Archiver", func() {
 				Filters: squirrel.Eq{"album_id": "1"},
 				Sort:    "album",
 			}}).Return(mfs, nil)
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+			ds.On("MediaFile").Return(mfRepo)
 
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).
 				Return(nil, stream.ErrTooManyTranscodes).Once()
@@ -169,7 +169,7 @@ var _ = Describe("Archiver", func() {
 
 			plRepo := &mockPlaylistRepository{}
 			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
-			ds.On("Playlist", mock.Anything).Return(plRepo)
+			ds.On("Playlist").Return(plRepo)
 			ms.On("NewStream", mock.Anything, mock.Anything, stream.Request{Format: "mp3", BitRate: 128}).Return(io.NopCloser(strings.NewReader("test")), nil).Times(2)
 
 			out := new(bytes.Buffer)
@@ -203,17 +203,17 @@ type mockDataStore struct {
 	model.DataStore
 }
 
-func (m *mockDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	args := m.Called(ctx)
+func (m *mockDataStore) MediaFile() model.MediaFileRepository {
+	args := m.Called()
 	return args.Get(0).(model.MediaFileRepository)
 }
 
-func (m *mockDataStore) Playlist(ctx context.Context) model.PlaylistRepository {
-	args := m.Called(ctx)
+func (m *mockDataStore) Playlist() model.PlaylistRepository {
+	args := m.Called()
 	return args.Get(0).(model.PlaylistRepository)
 }
 
-func (m *mockDataStore) Library(context.Context) model.LibraryRepository {
+func (m *mockDataStore) Library() model.LibraryRepository {
 	return &mockLibraryRepository{}
 }
 
@@ -222,7 +222,7 @@ type mockLibraryRepository struct {
 	model.LibraryRepository
 }
 
-func (m *mockLibraryRepository) GetPath(id int) (string, error) {
+func (m *mockLibraryRepository) GetPath(_ context.Context, id int) (string, error) {
 	return "/music", nil
 }
 
@@ -231,7 +231,7 @@ type mockMediaFileRepository struct {
 	model.MediaFileRepository
 }
 
-func (m *mockMediaFileRepository) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *mockMediaFileRepository) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
 	args := m.Called(options)
 	return args.Get(0).(model.MediaFiles), args.Error(1)
 }
@@ -241,7 +241,7 @@ type mockPlaylistRepository struct {
 	model.PlaylistRepository
 }
 
-func (m *mockPlaylistRepository) GetWithTracks(id string, refreshSmartPlaylists, includeMissing bool) (*model.Playlist, error) {
+func (m *mockPlaylistRepository) GetWithTracks(_ context.Context, id string, refreshSmartPlaylists, includeMissing bool) (*model.Playlist, error) {
 	args := m.Called(id, refreshSmartPlaylists, includeMissing)
 	return args.Get(0).(*model.Playlist), args.Error(1)
 }

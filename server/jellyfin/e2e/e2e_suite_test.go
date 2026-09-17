@@ -237,7 +237,7 @@ func enc(id string) string { return dto.EncodeID(id) }
 // guessing repository filter column names.
 
 func albumID(name string) string {
-	albums, err := ds.Album(ctx).GetAll()
+	albums, err := ds.Album().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, a := range albums {
 		if a.Name == name {
@@ -249,7 +249,7 @@ func albumID(name string) string {
 }
 
 func songID(title string) string {
-	mfs, err := ds.MediaFile(ctx).GetAll()
+	mfs, err := ds.MediaFile().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, mf := range mfs {
 		if mf.Title == title {
@@ -261,7 +261,7 @@ func songID(title string) string {
 }
 
 func artistID(name string) string {
-	artists, err := ds.Artist(ctx).GetAll()
+	artists, err := ds.Artist().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, a := range artists {
 		if a.Name == name {
@@ -273,7 +273,7 @@ func artistID(name string) string {
 }
 
 func genreID(name string) string {
-	genres, err := ds.Genre(ctx).GetAll()
+	genres, err := ds.Genre().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, g := range genres {
 		if g.Name == name {
@@ -391,7 +391,7 @@ func (f *fakeSonicProvider) FindSonicPath(context.Context, *model.MediaFile, *mo
 // songAgent looks a seeded track up by title (titles are unique in the seed) and builds an
 // agents.Song carrying its title+artist, so the matcher resolves it back to that MediaFile.
 func songAgent(title string) agents.Song {
-	mfs, err := ds.MediaFile(ctx).GetAll()
+	mfs, err := ds.MediaFile().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, mf := range mfs {
 		if mf.Title == title {

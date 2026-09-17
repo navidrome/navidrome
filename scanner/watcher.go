@@ -23,7 +23,7 @@ type Watcher interface {
 }
 
 type watcher struct {
-	mainCtx         context.Context
+	mainCtx         context.Context //nolint:containedctx // watcher lifecycle ctx
 	ds              model.DataStore
 	scanner         model.Scanner
 	triggerWait     time.Duration
@@ -60,7 +60,7 @@ func (w *watcher) Run(ctx context.Context) error {
 	w.mainCtx = ctx
 
 	// Start watchers for all existing libraries
-	libs, err := w.ds.Library(ctx).GetAll()
+	libs, err := w.ds.Library().GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("getting libraries: %w", err)
 	}

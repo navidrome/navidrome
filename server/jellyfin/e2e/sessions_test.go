@@ -27,12 +27,12 @@ var _ = Describe("Sessions", func() {
 
 		It("counts a play stopped past the threshold", func() {
 			id := songID("So What")
-			mf, err := ds.MediaFile(ctx).Get(id)
+			mf, err := ds.MediaFile().Get(ctx, id)
 			Expect(err).ToNot(HaveOccurred())
 			// Report a stop at the end of the track — comfortably past 50% / the 4-minute cap.
 			Expect(post("/Sessions/Playing/Stopped", reportBody(id, ticks(int64(mf.Duration*1000)))).Code).To(Equal(http.StatusNoContent))
 
-			mf, err = ds.MediaFile(ctx).Get(id)
+			mf, err = ds.MediaFile().Get(ctx, id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayCount).To(BeNumerically(">=", 1))
 		})
@@ -44,7 +44,7 @@ var _ = Describe("Sessions", func() {
 			id := songID("Help!")
 			Expect(post("/Sessions/Playing/Stopped", reportBody(id, ticks(1000))).Code).To(Equal(http.StatusNoContent))
 
-			mf, err := ds.MediaFile(ctx).Get(id)
+			mf, err := ds.MediaFile().Get(ctx, id)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.PlayCount).To(Equal(int64(0)))
 		})

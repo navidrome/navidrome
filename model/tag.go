@@ -2,10 +2,12 @@ package model
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/zeebo/xxh3"
@@ -155,9 +157,10 @@ func (t Tags) Add(name TagName, v string) {
 }
 
 type TagRepository interface {
-	Add(libraryID int, tags ...Tag) error
-	UpdateCounts() error
-	GetAll(name TagName, options ...QueryOptions) (TagList, error)
+	rest.Repository[Tag]
+	Add(ctx context.Context, libraryID int, tags ...Tag) error
+	UpdateCounts(ctx context.Context) error
+	GetAll(ctx context.Context, name TagName, options ...QueryOptions) (TagList, error)
 }
 
 type TagName string

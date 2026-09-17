@@ -29,7 +29,7 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 		return nil, err
 	}
 	ctx := r.Context()
-	u, err := api.ds.User(ctx).FindByUsername(username)
+	u, err := api.ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	mediaFile, err := api.ds.MediaFile(r.Context()).Get(id)
+	mediaFile, err := api.ds.MediaFile().Get(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}

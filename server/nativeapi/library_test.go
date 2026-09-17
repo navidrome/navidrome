@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
@@ -31,7 +32,7 @@ var _ = Describe("Library API", func() {
 		conf.Server.EnableSharing = false
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		// Create test users
@@ -63,10 +64,10 @@ var _ = Describe("Library API", func() {
 		}
 
 		// Store in mock datastore
-		Expect(ds.User(context.TODO()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(context.TODO()).Put(&regularUser)).To(Succeed())
-		Expect(ds.Library(context.TODO()).Put(&library1)).To(Succeed())
-		Expect(ds.Library(context.TODO()).Put(&library2)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &adminUser)).To(Succeed())
+		Expect(ds.User().Put(context.TODO(), &regularUser)).To(Succeed())
+		Expect(ds.Library().Put(context.TODO(), &library1)).To(Succeed())
+		Expect(ds.Library().Put(context.TODO(), &library2)).To(Succeed())
 	})
 
 	Describe("Library CRUD Operations", func() {
@@ -293,7 +294,7 @@ var _ = Describe("Library API", func() {
 			Describe("GET /api/user/{id}/library", func() {
 				It("returns user's libraries", func() {
 					// Set up user libraries
-					err := ds.User(context.TODO()).SetUserLibraries(regularUser.ID, []int{1, 2})
+					err := ds.User().SetUserLibraries(context.TODO(), regularUser.ID, []int{1, 2})
 					Expect(err).ToNot(HaveOccurred())
 
 					req := createAuthenticatedRequest("GET", fmt.Sprintf("/user/%s/library", regularUser.ID), nil, adminToken)

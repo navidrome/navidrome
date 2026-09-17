@@ -59,7 +59,7 @@ type scanJob struct {
 
 func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
 	// Get folder updates, optionally filtered to specific target folders
-	lastUpdates, err := ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
+	lastUpdates, err := ds.Folder().GetFolderUpdateInfo(ctx, lib, targetFolders...)
 	if err != nil {
 		return nil, fmt.Errorf("getting last updates: %w", err)
 	}
@@ -122,7 +122,7 @@ func (j *scanJob) createFolderEntry(path string) *folderEntry {
 type phaseFolders struct {
 	jobs             []*scanJob
 	ds               model.DataStore
-	ctx              context.Context
+	ctx              context.Context //nolint:containedctx // phase runs under a single scan ctx
 	state            *scanState
 	prevAlbumPIDConf string
 	imageChanges     *imageChangeCollector
@@ -135,7 +135,7 @@ func (p *phaseFolders) description() string {
 func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 	return ppl.NewProducer(func(put func(entry *folderEntry)) error {
 		var err error
-		p.prevAlbumPIDConf, err = p.ds.Property(p.ctx).DefaultGet(consts.PIDAlbumKey, "")
+		p.prevAlbumPIDConf, err = p.ds.Property().DefaultGet(p.ctx, consts.PIDAlbumKey, "")
 		if err != nil {
 			return fmt.Errorf("getting album PID conf: %w", err)
 		}
@@ -210,7 +210,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
 
 	// Load children mediafiles from DB
-	cursor, err := p.ds.MediaFile(p.ctx).GetCursor(model.QueryOptions{
+	cursor, err := p.ds.MediaFile().GetCursor(p.ctx, model.QueryOptions{
 		Filters: squirrel.And{squirrel.Eq{"folder_id": entry.id}},
 	})
 	if err != nil {
@@ -336,12 +336,12 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 	err := p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
-		folderRepo := tx.Folder(p.ctx)
-		tagRepo := tx.Tag(p.ctx)
-		artistRepo := tx.Artist(p.ctx)
-		libraryRepo := tx.Library(p.ctx)
-		albumRepo := tx.Album(p.ctx)
-		mfRepo := tx.MediaFile(p.ctx)
+		folderRepo := tx.Folder()
+		tagRepo := tx.Tag()
+		artistRepo := tx.Artist()
+		libraryRepo := tx.Library()
+		albumRepo := tx.Album()
+		mfRepo := tx.MediaFile()
 
 		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
 		if !entry.isNew() {
@@ -354,14 +354,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save folder to DB
 		folder := entry.toFolder()
-		err := folderRepo.Put(folder)
+		err := folderRepo.Put(p.ctx, folder)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting folder to DB", "folder", entry.path, err)
 			return err
 		}
 
 		// Save all tags to DB
-		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
+		err = tagRepo.Add(p.ctx, entry.job.lib.ID, entry.tags...)
 		if err != nil {
 			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
 			return err
@@ -369,13 +369,13 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.artists {
-			err = artistRepo.Put(&entry.artists[i], "name",
+			err = artistRepo.Put(p.ctx, &entry.artists[i], "name",
 				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text", "search_normalized", "updated_at")
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
 				return err
 			}
-			err = libraryRepo.AddArtist(entry.job.lib.ID, entry.artists[i].ID)
+			err = libraryRepo.AddArtist(p.ctx, entry.job.lib.ID, entry.artists[i].ID)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error adding artist to library", "lib", entry.job.lib.ID, "artist", entry.artists[i].Name, err)
 				return err
@@ -399,7 +399,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all tracks to DB
 		for i := range entry.tracks {
-			err = mfRepo.Put(&entry.tracks[i])
+			err = mfRepo.Put(p.ctx, &entry.tracks[i])
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
 				return err
@@ -409,14 +409,14 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// A re-imported track returns to unresolved so new embedded art is picked up lazily.
 		if len(entry.tracks) > 0 {
 			trackIDs := slice.Map(entry.tracks, func(t model.MediaFile) string { return t.ID })
-			if err := tx.Artwork(p.ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
+			if err := tx.Artwork().DeleteForItems(p.ctx, model.KindMediaFileArtwork, trackIDs); err != nil {
 				log.Warn(p.ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
 			}
 		}
 
 		// Mark all missing tracks as not available
 		if len(entry.missingTracks) > 0 {
-			err = mfRepo.MarkMissing(true, entry.missingTracks...)
+			err = mfRepo.MarkMissing(p.ctx, true, entry.missingTracks...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
 				return err
@@ -427,7 +427,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 				return mf.AlbumID, struct{}{}
 			})
 			albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))
-			err = albumRepo.Touch(albumsToUpdate...)
+			err = albumRepo.Touch(p.ctx, albumsToUpdate...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching album", "folder", entry.path, "albums", albumsToUpdate, err)
 				return err
@@ -437,12 +437,12 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
 		// A full scan re-imports every track, so a re-import is no evidence the art changed.
 		if len(queueItems) > 0 {
-			queue := tx.ArtworkQueue(p.ctx)
+			queue := tx.ArtworkQueue()
 			enqueue := queue.Enqueue
 			if p.state.fullScan {
 				enqueue = queue.EnqueueIfMissing
 			}
-			if err := enqueue(queueItems...); err != nil {
+			if err := enqueue(p.ctx, queueItems...); err != nil {
 				log.Warn(p.ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
 			}
 		}
@@ -459,7 +459,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, idMap map[string]string) error {
 	prevID := idMap[a.ID]
 	log.Trace(p.ctx, "Persisting album", "album", a.Name, "albumArtist", a.AlbumArtist, "id", a.ID, "prevID", cmp.Or(prevID, "nil"))
-	if err := repo.Put(a); err != nil {
+	if err := repo.Put(p.ctx, a); err != nil {
 		return fmt.Errorf("persisting album %s: %w", a.ID, err)
 	}
 	if prevID == "" {
@@ -468,13 +468,13 @@ func (p *phaseFolders) persistAlbum(repo model.AlbumRepository, a *model.Album, 
 
 	// Reassign annotation from previous album to new album
 	log.Trace(p.ctx, "Reassigning album annotations", "from", prevID, "to", a.ID, "album", a.Name)
-	if err := repo.ReassignAnnotation(prevID, a.ID); err != nil {
+	if err := repo.ReassignAnnotation(p.ctx, prevID, a.ID); err != nil {
 		log.Warn(p.ctx, "Scanner: Could not reassign annotations", "from", prevID, "to", a.ID, "album", a.Name, err)
 		p.state.sendWarning(fmt.Sprintf("Could not reassign annotations from %s to %s ('%s'): %v", prevID, a.ID, a.Name, err))
 	}
 
 	// Keep created_at field from previous instance of the album
-	if err := repo.CopyAttributes(prevID, a.ID, "created_at"); err != nil {
+	if err := repo.CopyAttributes(p.ctx, prevID, a.ID, "created_at"); err != nil {
 		// Silently ignore when the previous album is not found
 		if !errors.Is(err, model.ErrNotFound) {
 			log.Warn(p.ctx, "Scanner: Could not copy fields", "from", prevID, "to", a.ID, "album", a.Name, err)
@@ -506,18 +506,18 @@ func (p *phaseFolders) finalize(err error) error {
 				continue
 			}
 			folderIDs := slices.Collect(maps.Keys(job.lastUpdates))
-			err := tx.Folder(p.ctx).MarkMissing(true, folderIDs...)
+			err := tx.Folder().MarkMissing(p.ctx, true, folderIDs...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing folders", "lib", job.lib.Name, err)
 				return err
 			}
-			err = tx.MediaFile(p.ctx).MarkMissingByFolder(true, folderIDs...)
+			err = tx.MediaFile().MarkMissingByFolder(p.ctx, true, folderIDs...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking tracks in missing folders", "lib", job.lib.Name, err)
 				return err
 			}
 			// Touch all albums that have missing folders, so they get refreshed in later phases
-			_, err = tx.Album(p.ctx).TouchByMissingFolder()
+			_, err = tx.Album().TouchByMissingFolder(p.ctx)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching albums with missing folders", "lib", job.lib.Name, err)
 				return err

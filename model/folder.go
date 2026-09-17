@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"iter"
 	"os"
@@ -83,19 +84,19 @@ type FolderUpdateInfo struct {
 }
 
 type FolderRepository interface {
-	Get(id string) (*Folder, error)
-	GetByPath(lib Library, path string) (*Folder, error)
-	GetAll(...QueryOptions) ([]Folder, error)
-	CountAll(...QueryOptions) (int64, error)
-	GetFolderUpdateInfo(lib Library, targetPaths ...string) (map[string]FolderUpdateInfo, error)
+	Get(ctx context.Context, id string) (*Folder, error)
+	GetByPath(ctx context.Context, lib Library, path string) (*Folder, error)
+	GetAll(ctx context.Context, options ...QueryOptions) ([]Folder, error)
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	GetFolderUpdateInfo(ctx context.Context, lib Library, targetPaths ...string) (map[string]FolderUpdateInfo, error)
 	// HasAudioOutsideFolders reports whether any folder in parent's subtree
 	// (including parent itself) contains audio files and is not one of the
 	// given folder IDs.
-	HasAudioOutsideFolders(parent Folder, excludeFolderIDs []string) (bool, error)
-	Put(*Folder) error
-	MarkMissing(missing bool, ids ...string) error
-	GetTouchedWithPlaylists() (FolderCursor, error)
+	HasAudioOutsideFolders(ctx context.Context, parent Folder, excludeFolderIDs []string) (bool, error)
+	Put(ctx context.Context, f *Folder) error
+	MarkMissing(ctx context.Context, missing bool, ids ...string) error
+	GetTouchedWithPlaylists(ctx context.Context) (FolderCursor, error)
 	// GetAllWithPlaylists returns all non-missing folders with playlists, ignoring
 	// the scan-timestamp gate used by GetTouchedWithPlaylists.
-	GetAllWithPlaylists() (FolderCursor, error)
+	GetAllWithPlaylists(ctx context.Context) (FolderCursor, error)
 }
