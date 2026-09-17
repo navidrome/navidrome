@@ -42,6 +42,40 @@ var _ = Describe("OpenAPI document routes", func() {
 		Expect(w.Body.Len()).To(BeZero())
 	})
 
+	It("ignores Range and returns the full document", func() {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/openapi.json", nil)
+		req.Header.Set("Range", "bytes=0-9")
+		w := serve(router, req)
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Accept-Ranges")).To(BeEmpty())
+		Expect(w.Body.Bytes()).To(Equal(api.SpecJSON()))
+	})
+
+	It("answers 304 when If-None-Match lists the ETag", func() {
+		first := serve(router, httptest.NewRequest(http.MethodGet, "/api/v1/openapi.yaml", nil))
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/openapi.yaml", nil)
+		req.Header.Set("If-None-Match", `"other", `+first.Header().Get("ETag"))
+		w := serve(router, req)
+		Expect(w.Code).To(Equal(http.StatusNotModified))
+		Expect(w.Body.Len()).To(BeZero())
+	})
+
+	It("answers 304 when If-None-Match is *", func() {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/openapi.json", nil)
+		req.Header.Set("If-None-Match", "*")
+		w := serve(router, req)
+		Expect(w.Code).To(Equal(http.StatusNotModified))
+		Expect(w.Body.Len()).To(BeZero())
+	})
+
+	It("returns the full document when If-None-Match does not match", func() {
+		req := httptest.NewRequest(http.MethodGet, "/api/v1/openapi.json", nil)
+		req.Header.Set("If-None-Match", `"stale"`)
+		w := serve(router, req)
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Body.Bytes()).To(Equal(api.SpecJSON()))
+	})
+
 	It("uses different ETags for JSON and YAML", func() {
 		j := serve(router, httptest.NewRequest(http.MethodGet, "/api/v1/openapi.json", nil))
 		y := serve(router, httptest.NewRequest(http.MethodGet, "/api/v1/openapi.yaml", nil))

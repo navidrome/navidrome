@@ -1,28 +1,50 @@
 package apiv1
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
-	"time"
+	"strings"
 
 	"github.com/navidrome/navidrome/api"
 )
 
+var (
+	specJSONETag = computeETag(api.SpecJSON())
+	specYAMLETag = computeETag(api.SpecYAML())
+)
+
+func computeETag(body []byte) string {
+	sum := sha256.Sum256(body)
+	return fmt.Sprintf(`"%x"`, sum[:8])
+}
+
 func (rt *Router) serveSpecJSON(w http.ResponseWriter, r *http.Request) {
-	serveSpec(w, r, api.SpecJSON(), "application/json")
+	serveSpec(w, r, api.SpecJSON(), specJSONETag, "application/json")
 }
 
 func (rt *Router) serveSpecYAML(w http.ResponseWriter, r *http.Request) {
-	serveSpec(w, r, api.SpecYAML(), "application/yaml")
+	serveSpec(w, r, api.SpecYAML(), specYAMLETag, "application/yaml")
 }
 
-func serveSpec(w http.ResponseWriter, r *http.Request, body []byte, contentType string) {
-	sum := sha256.Sum256(body)
-	w.Header().Set("ETag", fmt.Sprintf(`"%x"`, sum[:8]))
+func serveSpec(w http.ResponseWriter, r *http.Request, body []byte, etag, contentType string) {
+	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Content-Type", contentType)
-	// ServeContent handles If-None-Match/304 and Range; zero modtime disables Last-Modified.
-	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(body))
+	if etagMatches(r.Header.Get("If-None-Match"), etag) {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
+}
+
+func etagMatches(ifNoneMatch, etag string) bool {
+	for candidate := range strings.SplitSeq(ifNoneMatch, ",") {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "*" || strings.TrimPrefix(candidate, "W/") == etag {
+			return true
+		}
+	}
+	return false
 }
