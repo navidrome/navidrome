@@ -46,7 +46,9 @@ type Problem struct {
 	// Title Short human-readable summary, the same for all occurrences of this problem type.
 	Title string `json:"title"`
 
-	// Type URI reference identifying the problem type. `about:blank` when the status code says it all.
+	// Type URI reference identifying the problem type, and the primary identifier a client should
+	// switch on. `about:blank` is the RFC 9457 registered type meaning "no semantics beyond the
+	// HTTP status code"; problem types with their own semantics get their own URI.
 	Type string `json:"type"`
 }
 

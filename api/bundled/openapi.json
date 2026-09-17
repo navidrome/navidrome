@@ -176,7 +176,7 @@
         "properties": {
           "type": {
             "type": "string",
-            "description": "URI reference identifying the problem type. `about:blank` when the status code says it all."
+            "description": "URI reference identifying the problem type, and the primary identifier a client should\nswitch on. `about:blank` is the RFC 9457 registered type meaning \"no semantics beyond the\nHTTP status code\"; problem types with their own semantics get their own URI.\n"
           },
           "title": {
             "type": "string",
