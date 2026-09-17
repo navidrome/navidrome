@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"runtime/debug"
+	"slices"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/api"
@@ -24,11 +26,12 @@ func New(ds model.DataStore) *Router {
 
 func (rt *Router) routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(problemRecoverer)
+	r.Use(problemRecoverer, headAsGet(r))
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		writeProblemStatus(w, req, http.StatusNotFound, "not_found", "no such endpoint")
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Allow", strings.Join(allowedMethods(r, req), ", "))
 		writeProblemStatus(w, req, http.StatusMethodNotAllowed, "method_not_allowed", "")
 	})
 
@@ -60,4 +63,36 @@ func problemRecoverer(next http.Handler) http.Handler {
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+var routableMethods = []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete}
+
+// Looks routes up on mux itself: chi's RouteContext().Routes points at the parent router when mounted.
+func allowedMethods(mux chi.Routes, req *http.Request) []string {
+	path := routePath(req)
+	var allowed []string
+	for _, m := range routableMethods {
+		if mux.Match(chi.NewRouteContext(), m, path) || (m == http.MethodHead && slices.Contains(allowed, http.MethodGet)) {
+			allowed = append(allowed, m)
+		}
+	}
+	return allowed
+}
+
+func headAsGet(mux chi.Routes) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if req.Method == http.MethodHead && !mux.Match(chi.NewRouteContext(), http.MethodHead, routePath(req)) {
+				chi.RouteContext(req.Context()).RouteMethod = http.MethodGet
+			}
+			next.ServeHTTP(w, req)
+		})
+	}
+}
+
+func routePath(req *http.Request) string {
+	if rctx := chi.RouteContext(req.Context()); rctx != nil && rctx.RoutePath != "" {
+		return rctx.RoutePath
+	}
+	return req.URL.Path
 }

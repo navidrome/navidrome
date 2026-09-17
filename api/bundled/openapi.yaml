@@ -12,6 +12,9 @@ info:
     Every operation declares `x-stability-level`: `alpha` operations may change or
     disappear without notice, `beta` and `stable` operations only change additively.
     A level is only ever raised, never lowered.
+
+    `HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods
+    in its `Allow` header.
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
