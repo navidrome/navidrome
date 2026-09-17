@@ -1,7 +1,6 @@
 package api_test
 
 import (
-	"context"
 	"os"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -15,7 +14,7 @@ var _ = Describe("Bundled spec", func() {
 	It("embeds a valid OpenAPI 3 document", func() {
 		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
 		Expect(err).ToNot(HaveOccurred())
-		Expect(doc.Validate(context.Background())).To(Succeed())
+		Expect(doc.Validate(GinkgoT().Context())).To(Succeed())
 		Expect(doc.Paths.Find("/server")).ToNot(BeNil())
 	})
 

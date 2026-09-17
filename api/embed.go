@@ -20,7 +20,7 @@ func SpecYAML() []byte {
 	return specYAML
 }
 
-var SpecVersion = sync.OnceValue(func() string {
+var specVersion = sync.OnceValue(func() string {
 	var doc struct {
 		Info struct {
 			Version string `json:"version"`
@@ -29,3 +29,7 @@ var SpecVersion = sync.OnceValue(func() string {
 	_ = json.Unmarshal(SpecJSON(), &doc)
 	return doc.Info.Version
 })
+
+func SpecVersion() string {
+	return specVersion()
+}

@@ -52,7 +52,6 @@ func writeProblemStatus(w http.ResponseWriter, r *http.Request, status int, code
 	}
 }
 
-// bindingErrorHandler turns oapi-codegen parameter binding failures into validation problems.
 func bindingErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	var fieldErrors []ValidationError
 	var required *RequiredParamError
