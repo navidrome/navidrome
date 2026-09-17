@@ -148,7 +148,7 @@ wire: check_go_env ##@Development Update Dependency Injection
 	go tool wire gen -tags="$$(echo '$(GO_BUILD_TAGS)' | tr ',' ' ')" ./...
 .PHONY: wire
 
-gen: check_go_env ##@Development Run go generate for code generation
+gen: check_go_env api-gen ##@Development Run go generate for code generation
 	go generate ./...
 	cd plugins/cmd/ndpgen && go run . -shared-types -input=../../types -output=../../pdk -go -rust
 	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host -shared=../../types
