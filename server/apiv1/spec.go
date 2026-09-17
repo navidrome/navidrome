@@ -1,16 +1,15 @@
 package apiv1
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"fmt"
 	"net/http"
 
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/zeebo/xxh3"
 )
 
 func specHandler(body []byte, contentType string) http.HandlerFunc {
-	sum := sha256.Sum256(body)
-	etag := hex.EncodeToString(sum[:8])
+	etag := fmt.Sprintf("%016x", xxh3.Hash(body))
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("ETag", `"`+etag+`"`)
 		w.Header().Set("Cache-Control", "no-cache")
