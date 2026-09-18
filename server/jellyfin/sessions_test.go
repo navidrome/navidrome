@@ -152,12 +152,12 @@ var _ = Describe("Sessions", func() {
 		})
 	})
 
-	Describe("postCapabilities", func() {
+	Describe("acknowledge", func() {
 		It("returns 204 No Content and does not touch the scrobbler", func() {
 			w := httptest.NewRecorder()
 			r := authed(httptest.NewRequest("POST", "/Sessions/Capabilities", strings.NewReader(`{"SupportsMediaControl":true}`)))
 
-			api.postCapabilities(w, r)
+			api.acknowledge(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(pt.reported).To(BeEmpty())

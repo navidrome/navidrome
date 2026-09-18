@@ -178,8 +178,9 @@ func (api *Router) routes() http.Handler {
 		r.Post("/sessions/playing", api.reportPlaybackStart)
 		r.Post("/sessions/playing/progress", api.reportPlaybackProgress)
 		r.Post("/sessions/playing/stopped", api.reportPlaybackStopped)
-		r.Post("/sessions/capabilities", api.postCapabilities)
-		r.Post("/sessions/capabilities/full", api.postCapabilities)
+		r.Post("/sessions/playing/ping", api.acknowledge)
+		r.Post("/sessions/capabilities", api.acknowledge)
+		r.Post("/sessions/capabilities/full", api.acknowledge)
 
 		// Real-time clients (e.g. Finamp) open this right after login; without it they 404-loop-reconnect.
 		r.Get("/socket", api.handleSocket)
