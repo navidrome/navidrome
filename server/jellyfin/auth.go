@@ -3,7 +3,6 @@ package jellyfin
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -47,7 +46,7 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	serverID := api.serverID(ctx)
 	api.ok(w, r, dto.AuthenticationResult{
 		User:        userToDto(usr, api.serverName(), serverID),
-		SessionInfo: dto.NewSessionInfo(usr, a.Client, a.DeviceId, a.Device, a.Version, serverID, time.Now()),
+		SessionInfo: dto.NewSessionInfo(usr, a.Client, a.DeviceId, a.Device, a.Version, serverID),
 		AccessToken: token,
 		ServerId:    serverID,
 	})

@@ -449,7 +449,8 @@ func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
 }
 
 // NewSessionInfo's Id is stable per client install, as Jellyfin reuses a device's session across logins.
-func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, serverID string, now time.Time) *SessionInfo {
+func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, serverID string) *SessionInfo {
+	now := time.Now()
 	return &SessionInfo{
 		Id:                 EncodeID(id.NewHash(client, deviceID)),
 		UserId:             EncodeID(u.ID),

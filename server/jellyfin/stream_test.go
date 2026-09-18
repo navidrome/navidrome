@@ -244,52 +244,42 @@ var _ = Describe("Stream", func() {
 		})
 	})
 
-	// Container on /universal lists what the client direct-plays ("container|codec" entries),
-	// not a target format. JellyBox sends it this way.
 	Describe("streamUniversal", func() {
-		universal := func(mf model.MediaFile, query string) {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{mf})
+		universal := func(query string) {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
+			})
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Audio/"+dto.EncodeID(mf.ID)+"/universal?"+query, nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", dto.EncodeID(mf.ID))
+			r := httptest.NewRequest("GET", "/Audio/"+dto.EncodeID(testID("s1"))+"/universal?"+query, nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
 			invoke(api.streamUniversal, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 		}
-		const jellyboxQuery = "Container=mp3,aac,m4a|aac,m4b|aac,flac,wav&TranscodingContainer=mp3&AudioCodec=mp3"
 
-		It("keeps the source format when its container is in the list", func() {
-			universal(model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1}, jellyboxQuery)
-			Expect(decider.req.Format).To(Equal("mp3"))
+		It("turns Container into direct play profiles and TranscodingContainer into the target", func() {
+			universal("Container=mp3,m4a|aac&TranscodingContainer=m4a&AudioCodec=aac&MaxStreamingBitrate=128000")
+			Expect(decider.client.DirectPlayProfiles).To(Equal([]stream.DirectPlayProfile{
+				{Containers: []string{"mp3"}, Protocols: []string{stream.ProtocolHTTP}},
+				{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{stream.ProtocolHTTP}},
+			}))
+			Expect(decider.client.TranscodingProfiles).To(Equal([]stream.Profile{
+				{Container: "m4a", AudioCodec: "aac", Protocol: stream.ProtocolHTTP},
+			}))
+			Expect(decider.client.MaxAudioBitrate).To(Equal(128))
+			Expect(decider.client.MaxTranscodingAudioBitrate).To(Equal(128))
 		})
 
-		It("matches the codec when an entry names one", func() {
-			universal(model.MediaFile{ID: testID("s1"), Suffix: "m4a", Codec: "AAC", LibraryID: 1}, jellyboxQuery)
-			Expect(decider.req.Format).To(Equal("m4a"))
-		})
-
-		It("transcodes to TranscodingContainer when the codec doesn't match", func() {
-			universal(model.MediaFile{ID: testID("s1"), Suffix: "m4a", Codec: "alac", LibraryID: 1}, jellyboxQuery)
-			Expect(decider.req.Format).To(Equal("mp3"))
-		})
-
-		It("transcodes to TranscodingContainer when the container isn't listed", func() {
-			universal(model.MediaFile{ID: testID("s1"), Suffix: "ogg", LibraryID: 1}, jellyboxQuery)
-			Expect(decider.req.Format).To(Equal("mp3"))
-		})
-
-		It("falls back to AudioCodec when no TranscodingContainer is given", func() {
-			universal(model.MediaFile{ID: testID("s1"), Suffix: "ogg", LibraryID: 1}, "Container=mp3&AudioCodec=aac")
-			Expect(decider.req.Format).To(Equal("aac"))
+		It("uses AudioCodec as the target when no TranscodingContainer is given", func() {
+			universal("Container=mp3&AudioCodec=aac")
+			Expect(decider.client.TranscodingProfiles).To(Equal([]stream.Profile{
+				{Container: "aac", AudioCodec: "aac", Protocol: stream.ProtocolHTTP},
+			}))
 		})
 
 		It("serves the file as is for static=true", func() {
-			universal(model.MediaFile{ID: testID("s1"), Suffix: "ogg", LibraryID: 1}, "static=true&"+jellyboxQuery)
+			universal("static=true&Container=ogg")
 			Expect(decider.req.Format).To(Equal("raw"))
-		})
-
-		It("converts the bps MaxStreamingBitrate param to kbps", func() {
-			universal(model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1}, "MaxStreamingBitrate=128000&"+jellyboxQuery)
-			Expect(decider.req.BitRate).To(Equal(128))
+			Expect(decider.client).To(BeNil())
 		})
 	})
 
@@ -413,6 +403,7 @@ var _ = Describe("Stream", func() {
 type fakeTranscodeDecider struct {
 	invoked bool
 	req     stream.Request
+	client  *stream.ClientInfo
 }
 
 func (f *fakeTranscodeDecider) MakeDecision(context.Context, *model.MediaFile, *stream.ClientInfo, stream.TranscodeOptions) (*stream.TranscodeDecision, error) {
@@ -430,6 +421,13 @@ func (f *fakeTranscodeDecider) ResolveRequestFromToken(context.Context, string, 
 func (f *fakeTranscodeDecider) ResolveRequest(_ context.Context, _ *model.MediaFile, format string, bitRate int, offset int) stream.Request {
 	f.invoked = true
 	f.req = stream.Request{Format: format, BitRate: bitRate, Offset: offset}
+	return f.req
+}
+
+func (f *fakeTranscodeDecider) ResolveClientRequest(_ context.Context, _ *model.MediaFile, ci *stream.ClientInfo, offset int) stream.Request {
+	f.invoked = true
+	f.client = ci
+	f.req = stream.Request{Offset: offset}
 	return f.req
 }
 

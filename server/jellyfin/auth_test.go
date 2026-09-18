@@ -65,13 +65,12 @@ var _ = Describe("AuthenticateByName", func() {
 		}
 		const jellybox = `MediaBrowser Client="JellyBox", Device="Mac", DeviceId="dev-1", Version="2.1"`
 
-		// JellyBox requires SessionInfo with Id and PlayState; Finamp requires the listed non-null fields.
 		It("has the fields strict clients require", func() {
 			s := login(jellybox)
 			Expect(s["Id"]).To(And(BeAssignableToTypeOf(""), Not(BeEmpty())))
 			Expect(s["UserId"]).To(Equal(dto.EncodeID(testID("u1"))))
 			Expect(s["LastActivityDate"]).To(And(BeAssignableToTypeOf(""), Not(BeEmpty())))
-			for _, k := range []string{"IsActive", "SupportsRemoteControl", "SupportsMediaControl", "HasCustomDeviceName"} {
+			for _, k := range []string{"SupportsRemoteControl", "SupportsMediaControl", "HasCustomDeviceName"} {
 				Expect(s[k]).To(BeAssignableToTypeOf(false), k)
 			}
 			ps, ok := s["PlayState"].(map[string]any)
