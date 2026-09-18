@@ -226,7 +226,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 		dbTracks[mf.Path] = &mf
 	}
 
-	// Get list of files to import, based on modtime (or all if fullScan),
+	// Get list of files to import, based on modtime and size (or all if fullScan),
 	// leave in dbTracks only tracks that are missing (not found in the FS)
 	filesToImport := make(map[string]*model.MediaFile, len(entry.audioFiles))
 	for afPath, af := range entry.audioFiles {
@@ -241,7 +241,12 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 				p.state.sendWarning(fmt.Sprintf("Error getting file info for %s/%s: %v", entry.path, af.Name(), err))
 				return entry, nil
 			}
-			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
+			// Re-import when the file is newer than the DB row, when its size
+			// changed (some taggers rewrite tags while preserving the modtime,
+			// but writing a tag still changes the file size), or when it was
+			// previously marked missing. This keeps the per-file decision
+			// consistent with the folder hash, which already covers size+modtime.
+			if info.ModTime().After(dbTrack.UpdatedAt) || info.Size() != dbTrack.Size || dbTrack.Missing {
 				filesToImport[fullPath] = dbTrack
 			}
 		}
