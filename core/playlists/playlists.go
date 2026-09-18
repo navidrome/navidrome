@@ -32,6 +32,7 @@ type Playlists interface {
 
 	// Track management
 	AddTracks(ctx context.Context, playlistID string, ids []string) (int, error)
+	InsertTracks(ctx context.Context, playlistID string, ids []string, pos int) (int, error)
 	AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error)
 	AddArtists(ctx context.Context, playlistID string, artistIds []string) (int, error)
 	AddDiscs(ctx context.Context, playlistID string, discs []model.DiscID) (int, error)
@@ -266,6 +267,22 @@ func (s *playlists) AddTracks(ctx context.Context, playlistID string, ids []stri
 		return 0, err
 	}
 	return s.ds.Playlist(ctx).Tracks(playlistID, false).Add(ids)
+}
+
+// InsertTracks adds tracks before the 1-based position pos; a position past the end appends.
+func (s *playlists) InsertTracks(ctx context.Context, playlistID string, ids []string, pos int) (int, error) {
+	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
+		return 0, err
+	}
+	var count int
+	// Immediate: a deferred tx that reads before shifting fails at once with SQLITE_BUSY under
+	// concurrent writers instead of waiting for the lock.
+	err := s.ds.WithTxImmediate(func(tx model.DataStore) error {
+		var err error
+		count, err = tx.Playlist(ctx).Tracks(playlistID, false).Insert(ids, pos)
+		return err
+	})
+	return count, err
 }
 
 func (s *playlists) AddAlbums(ctx context.Context, playlistID string, albumIds []string) (int, error) {

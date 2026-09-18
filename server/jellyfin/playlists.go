@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -262,8 +263,8 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 	return slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 }
 
-// addToPlaylist appends items by id, expanding containers into tracks (see expandContainerIDs).
-// AddTracks enforces ownership; a locked playlist maps to 403, any other error to 404.
+// addToPlaylist adds items by id (containers expand to tracks), inserting at the zero-based position
+// when given. Core enforces ownership: a locked playlist maps to 403, any other error to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -276,7 +277,13 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ids := api.expandContainerIDs(ctx, decoded)
-	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
+	var err error
+	if position, perr := req.Params(r).Int("position"); perr == nil {
+		_, err = api.playlists.InsertTracks(ctx, id, ids, min(position, math.MaxInt32)+1)
+	} else {
+		_, err = api.playlists.AddTracks(ctx, id, ids)
+	}
+	if err != nil {
 		if errors.Is(err, model.ErrPlaylistNotEditable) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
@@ -335,7 +342,7 @@ func (api *Router) movePlaylistItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	pls, err := api.ds.Playlist(ctx).Get(id)
+	pls, err := api.playlists.Get(ctx, id)
 	if err != nil {
 		api.playlistError(w, r, err)
 		return

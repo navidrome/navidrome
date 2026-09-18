@@ -78,6 +78,52 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		})
 	})
 
+	Describe("Insert", func() {
+		var tracks model.PlaylistTrackRepository
+
+		BeforeEach(func() {
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			plsRepo := NewPlaylistRepository(ctx, GetDBXBuilder())
+			pls := model.Playlist{Name: "Insert", OwnerID: "userid", OwnerName: "userid"}
+			Expect(plsRepo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+
+			tracks = plsRepo.Tracks(pls.ID, false)
+			Expect(tracks.Add([]string{songDayInALife.ID, songRadioactivity.ID})).To(Equal(2))
+		})
+
+		order := func() []string {
+			ids, err := tracks.GetMediaFileIDs(model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			return ids
+		}
+
+		DescribeTable("inserts before a 1-based position, keeping the new tracks' order",
+			func(pos int, want func() []string) {
+				Expect(tracks.Insert([]string{songComeTogether.ID, songAntenna.ID}, pos)).To(Equal(2))
+				Expect(order()).To(Equal(want()))
+				Expect(tracks.CountAll()).To(Equal(int64(4)))
+			},
+			Entry("in the middle", 2, func() []string {
+				return []string{songDayInALife.ID, songComeTogether.ID, songAntenna.ID, songRadioactivity.ID}
+			}),
+			Entry("at the start, for zero or less", 0, func() []string {
+				return []string{songComeTogether.ID, songAntenna.ID, songDayInALife.ID, songRadioactivity.ID}
+			}),
+			Entry("at the end, past the last position", 9, func() []string {
+				return []string{songDayInALife.ID, songRadioactivity.ID, songComeTogether.ID, songAntenna.ID}
+			}),
+		)
+
+		It("renumbers positions contiguously", func() {
+			Expect(tracks.Insert([]string{songComeTogether.ID}, 1)).To(Equal(1))
+			all, err := tracks.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect([]string{all[0].ID, all[1].ID, all[2].ID}).To(Equal([]string{"1", "2", "3"}))
+		})
+	})
+
 	Describe("Delete", func() {
 		var tracks model.PlaylistTrackRepository
 		const numTracks = deleteChunkSize*2 + 1
