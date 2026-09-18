@@ -93,6 +93,8 @@ func (api *Router) routes() http.Handler {
 			conf.Server.DevArtworkThrottleBacklogTimeout))
 		r.Get("/items/{itemId}/images/{type}", api.getItemImage)
 		r.Get("/items/{itemId}/images/{type}/{index}", api.getItemImage)
+		r.Head("/items/{itemId}/images/{type}", api.getItemImage)
+		r.Head("/items/{itemId}/images/{type}/{index}", api.getItemImage)
 	})
 
 	inner.Group(func(r chi.Router) {
@@ -173,6 +175,10 @@ func (api *Router) routes() http.Handler {
 		r.Get("/audio/{itemId}/stream", api.streamAudio)
 		r.Get("/audio/{itemId}/stream.{container}", api.streamAudio)
 		r.Get("/audio/{itemId}/universal", api.streamUniversal)
+		// Fintunes probes these with HEAD for the content type before playing or downloading.
+		r.Head("/audio/{itemId}/stream", api.streamAudio)
+		r.Head("/audio/{itemId}/stream.{container}", api.streamAudio)
+		r.Head("/audio/{itemId}/universal", api.streamUniversal)
 		r.Get("/audio/{itemId}/main.m3u8", api.streamHls)
 		r.Get("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
 		r.Post("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
@@ -181,6 +187,8 @@ func (api *Router) routes() http.Handler {
 		// /Audio/{id}/stream; /Download reuses the direct-play handler as Jellyfin serves the same file.
 		r.Get("/items/{itemId}/file", api.streamFile)
 		r.Get("/items/{itemId}/download", api.streamFile)
+		r.Head("/items/{itemId}/file", api.streamFile)
+		r.Head("/items/{itemId}/download", api.streamFile)
 
 		r.Post("/sessions/playing", api.reportPlaybackStart)
 		r.Post("/sessions/playing/progress", api.reportPlaybackProgress)
