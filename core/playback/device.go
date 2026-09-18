@@ -23,6 +23,7 @@ type Track interface {
 }
 
 type playbackDevice struct {
+	mutex                sync.RWMutex
 	serviceCtx           context.Context
 	ParentPlaybackServer PlaybackServer
 	Default              bool
@@ -31,7 +32,7 @@ type playbackDevice struct {
 	DeviceName           string
 	PlaybackQueue        *Queue
 	Gain                 float32
-	PlaybackDone         chan bool
+	PlaybackDone         chan *mpv.MpvTrack
 	ActiveTrack          Track
 	startTrackSwitcher   sync.Once
 }
@@ -45,14 +46,40 @@ type DeviceStatus struct {
 
 const DefaultGain float32 = 1.0
 
-func (pd *playbackDevice) getStatus() DeviceStatus {
+// getStatusLocked must be called with pd.mutex held. It performs blocking IPC
+// calls to mpv (Position/IsPlaying) while holding the lock; prefer getStatus
+// for read-only call sites that don't already need the lock for anything else.
+func (pd *playbackDevice) getStatusLocked() DeviceStatus {
 	pos := 0
 	if pd.ActiveTrack != nil {
 		pos = pd.ActiveTrack.Position()
 	}
 	return DeviceStatus{
 		CurrentIndex: pd.PlaybackQueue.Index,
-		Playing:      pd.isPlaying(),
+		Playing:      pd.isPlayingLocked(),
+		Gain:         pd.Gain,
+		Position:     pos,
+	}
+}
+
+// getStatus takes a read lock for the whole call, including the blocking mpv
+// IPC calls (Position/IsPlaying). This lets concurrent Status/Get requests
+// run in parallel with each other, while still preventing a concurrent
+// mutation (Skip/Clear/Set/track-switch) from closing ActiveTrack out from
+// under the IPC calls.
+func (pd *playbackDevice) getStatus() DeviceStatus {
+	pd.mutex.RLock()
+	defer pd.mutex.RUnlock()
+
+	pos := 0
+	playing := false
+	if pd.ActiveTrack != nil {
+		pos = pd.ActiveTrack.Position()
+		playing = pd.ActiveTrack.IsPlaying()
+	}
+	return DeviceStatus{
+		CurrentIndex: pd.PlaybackQueue.Index,
+		Playing:      playing,
 		Gain:         pd.Gain,
 		Position:     pos,
 	}
@@ -70,7 +97,7 @@ func NewPlaybackDevice(ctx context.Context, playbackServer PlaybackServer, name 
 		DeviceName:           deviceName,
 		Gain:                 DefaultGain,
 		PlaybackQueue:        NewQueue(),
-		PlaybackDone:         make(chan bool),
+		PlaybackDone:         make(chan *mpv.MpvTrack),
 	}
 }
 
@@ -80,7 +107,10 @@ func (pd *playbackDevice) String() string {
 
 func (pd *playbackDevice) Get(ctx context.Context) (model.MediaFiles, DeviceStatus, error) {
 	log.Debug(ctx, "Processing Get action", "device", pd)
-	return pd.PlaybackQueue.Get(), pd.getStatus(), nil
+	pd.mutex.RLock()
+	items := pd.PlaybackQueue.Get()
+	pd.mutex.RUnlock()
+	return items, pd.getStatus(), nil
 }
 
 func (pd *playbackDevice) Status(ctx context.Context) (DeviceStatus, error) {
@@ -92,12 +122,17 @@ func (pd *playbackDevice) Status(ctx context.Context) (DeviceStatus, error) {
 func (pd *playbackDevice) Set(ctx context.Context, ids []string) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Set action", "ids", ids, "device", pd)
 
-	_, err := pd.Clear(ctx)
+	items, err := pd.fetchMediaFiles(ctx, ids)
 	if err != nil {
-		log.Error(ctx, "error setting tracks", ids)
-		return pd.getStatus(), err
+		return DeviceStatus{}, err
 	}
-	return pd.Add(ctx, ids)
+
+	pd.mutex.Lock()
+	pd.clearLocked()
+	pd.PlaybackQueue.Add(items)
+	pd.mutex.Unlock()
+
+	return pd.getStatus(), nil
 }
 
 func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
@@ -111,37 +146,52 @@ func (pd *playbackDevice) Start(ctx context.Context) (DeviceStatus, error) {
 		}()
 	})
 
+	pd.mutex.Lock()
+	defer pd.mutex.Unlock()
+	return pd.startLocked(ctx)
+}
+
+func (pd *playbackDevice) startLocked(ctx context.Context) (DeviceStatus, error) {
 	if pd.ActiveTrack != nil {
-		if pd.isPlaying() {
+		if pd.isPlayingLocked() {
 			log.Debug("trying to start an already playing track")
 		} else {
 			pd.ActiveTrack.Unpause()
 		}
 	} else {
 		if !pd.PlaybackQueue.IsEmpty() {
-			err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+			err := pd.switchActiveTrackByIndexLocked(pd.PlaybackQueue.Index)
 			if err != nil {
-				return pd.getStatus(), err
+				return pd.getStatusLocked(), err
 			}
 			pd.ActiveTrack.Unpause()
 		}
 	}
 
-	return pd.getStatus(), nil
+	return pd.getStatusLocked(), nil
 }
 
 func (pd *playbackDevice) Stop(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Stop action", "device", pd)
+	pd.mutex.Lock()
+	defer pd.mutex.Unlock()
+	return pd.stopLocked(ctx)
+}
+
+func (pd *playbackDevice) stopLocked(ctx context.Context) (DeviceStatus, error) {
 	if pd.ActiveTrack != nil {
 		pd.ActiveTrack.Pause()
 	}
-	return pd.getStatus(), nil
+	return pd.getStatusLocked(), nil
 }
 
 func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Skip action", "index", index, "offset", offset, "device", pd)
 
-	wasPlaying := pd.isPlaying()
+	pd.mutex.Lock()
+	defer pd.mutex.Unlock()
+
+	wasPlaying := pd.isPlayingLocked()
 
 	if pd.ActiveTrack != nil && wasPlaying {
 		pd.ActiveTrack.Pause()
@@ -153,27 +203,27 @@ func (pd *playbackDevice) Skip(ctx context.Context, index int, offset int) (Devi
 	}
 
 	if pd.ActiveTrack == nil {
-		err := pd.switchActiveTrackByIndex(index)
+		err := pd.switchActiveTrackByIndexLocked(index)
 		if err != nil {
-			return pd.getStatus(), err
+			return pd.getStatusLocked(), err
 		}
 	}
 
 	err := pd.ActiveTrack.SetPosition(offset)
 	if err != nil {
 		log.Error(ctx, "error setting position", err)
-		return pd.getStatus(), err
+		return pd.getStatusLocked(), err
 	}
 
 	if wasPlaying {
-		_, err = pd.Start(ctx)
+		_, err = pd.startLocked(ctx)
 		if err != nil {
 			log.Error(ctx, "error starting new track after skipping")
-			return pd.getStatus(), err
+			return pd.getStatusLocked(), err
 		}
 	}
 
-	return pd.getStatus(), nil
+	return pd.getStatusLocked(), nil
 }
 
 func (pd *playbackDevice) Add(ctx context.Context, ids []string) (DeviceStatus, error) {
@@ -182,40 +232,61 @@ func (pd *playbackDevice) Add(ctx context.Context, ids []string) (DeviceStatus, 
 		return pd.getStatus(), nil
 	}
 
-	items := model.MediaFiles{}
-
-	for _, id := range ids {
-		mf, err := pd.ParentPlaybackServer.GetMediaFile(id)
-		if err != nil {
-			return DeviceStatus{}, err
-		}
-		log.Debug(ctx, "Found mediafile: "+mf.Path)
-		items = append(items, *mf)
+	items, err := pd.fetchMediaFiles(ctx, ids)
+	if err != nil {
+		return DeviceStatus{}, err
 	}
+
+	pd.mutex.Lock()
 	pd.PlaybackQueue.Add(items)
+	pd.mutex.Unlock()
 
 	return pd.getStatus(), nil
 }
 
+// fetchMediaFiles resolves media file IDs to model.MediaFiles. It performs
+// database queries and must not be called while pd.mutex is held.
+func (pd *playbackDevice) fetchMediaFiles(ctx context.Context, ids []string) (model.MediaFiles, error) {
+	items := model.MediaFiles{}
+	for _, id := range ids {
+		mf, err := pd.ParentPlaybackServer.GetMediaFile(id)
+		if err != nil {
+			return nil, err
+		}
+		log.Debug(ctx, "Found mediafile: "+mf.Path)
+		items = append(items, *mf)
+	}
+	return items, nil
+}
+
 func (pd *playbackDevice) Clear(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Clear action", "device", pd)
+	pd.mutex.Lock()
+	defer pd.mutex.Unlock()
+	pd.clearLocked()
+	return pd.getStatusLocked(), nil
+}
+
+func (pd *playbackDevice) clearLocked() {
 	if pd.ActiveTrack != nil {
 		pd.ActiveTrack.Pause()
 		pd.ActiveTrack.Close()
 		pd.ActiveTrack = nil
 	}
 	pd.PlaybackQueue.Clear()
-	return pd.getStatus(), nil
 }
 
 func (pd *playbackDevice) Remove(ctx context.Context, index int) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Remove action", "index", index, "device", pd)
+	pd.mutex.Lock()
+	defer pd.mutex.Unlock()
+
 	// pausing if attempting to remove running track
-	if pd.isPlaying() && pd.PlaybackQueue.Index == index {
-		_, err := pd.Stop(ctx)
+	if pd.isPlayingLocked() && pd.PlaybackQueue.Index == index {
+		_, err := pd.stopLocked(ctx)
 		if err != nil {
 			log.Error(ctx, "error stopping running track")
-			return pd.getStatus(), err
+			return pd.getStatusLocked(), err
 		}
 	}
 
@@ -224,30 +295,36 @@ func (pd *playbackDevice) Remove(ctx context.Context, index int) (DeviceStatus, 
 	} else {
 		log.Error(ctx, "Index to remove out of range: "+fmt.Sprint(index))
 	}
-	return pd.getStatus(), nil
+	return pd.getStatusLocked(), nil
 }
 
 func (pd *playbackDevice) Shuffle(ctx context.Context) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing Shuffle action", "device", pd)
+	pd.mutex.Lock()
+	defer pd.mutex.Unlock()
 	if pd.PlaybackQueue.Size() > 1 {
 		pd.PlaybackQueue.Shuffle()
 	}
-	return pd.getStatus(), nil
+	return pd.getStatusLocked(), nil
 }
 
 // SetGain is used to control the playback volume. A float value between 0.0 and 1.0.
 func (pd *playbackDevice) SetGain(ctx context.Context, gain float32) (DeviceStatus, error) {
 	log.Debug(ctx, "Processing SetGain action", "newGain", gain, "device", pd)
 
+	pd.mutex.Lock()
+	defer pd.mutex.Unlock()
+
 	if pd.ActiveTrack != nil {
 		pd.ActiveTrack.SetVolume(gain)
 	}
 	pd.Gain = gain
 
-	return pd.getStatus(), nil
+	return pd.getStatusLocked(), nil
 }
 
-func (pd *playbackDevice) isPlaying() bool {
+// isPlayingLocked must be called with pd.mutex held.
+func (pd *playbackDevice) isPlayingLocked() bool {
 	return pd.ActiveTrack != nil && pd.ActiveTrack.IsPlaying()
 }
 
@@ -255,17 +332,23 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 	log.Debug("Started trackSwitcher goroutine", "device", pd)
 	for {
 		select {
-		case <-pd.PlaybackDone:
+		case finishedTrack := <-pd.PlaybackDone:
 			log.Debug("Track switching detected")
-			if pd.ActiveTrack != nil {
-				pd.ActiveTrack.Close()
-				pd.ActiveTrack = nil
+			pd.mutex.Lock()
+			if pd.ActiveTrack != finishedTrack {
+				// The active track was already replaced (e.g. by Skip/Clear/Set)
+				// since this finish signal was sent. Ignore the stale signal.
+				log.Debug("Ignoring stale track-finished signal")
+				pd.mutex.Unlock()
+				continue
 			}
+			pd.ActiveTrack.Close()
+			pd.ActiveTrack = nil
 
 			if !pd.PlaybackQueue.IsAtLastElement() {
 				pd.PlaybackQueue.IncreaseIndex()
 				log.Debug("Switching to next song", "queue", pd.PlaybackQueue.String())
-				err := pd.switchActiveTrackByIndex(pd.PlaybackQueue.Index)
+				err := pd.switchActiveTrackByIndexLocked(pd.PlaybackQueue.Index)
 				if err != nil {
 					log.Error("Error switching track", err)
 				}
@@ -275,6 +358,7 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 			} else {
 				log.Debug("There is no song left in the playlist. Finish.")
 			}
+			pd.mutex.Unlock()
 		case <-pd.serviceCtx.Done():
 			log.Debug("Stopping trackSwitcher goroutine", "device", pd.Name)
 			return
@@ -282,7 +366,8 @@ func (pd *playbackDevice) trackSwitcherGoroutine() {
 	}
 }
 
-func (pd *playbackDevice) switchActiveTrackByIndex(index int) error {
+// switchActiveTrackByIndexLocked must be called with pd.mutex held.
+func (pd *playbackDevice) switchActiveTrackByIndexLocked(index int) error {
 	pd.PlaybackQueue.SetIndex(index)
 	currentTrack := pd.PlaybackQueue.Current()
 	if currentTrack == nil {
