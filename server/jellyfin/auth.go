@@ -42,12 +42,13 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// SessionInfo is omitted, not partially filled: a stub {Id, UserId} could fail a strict client's
-	// parse, and Finamp's login doesn't need it (its AuthenticationResult.sessionInfo is nullable).
+	a := parseMediaBrowserAuth(r)
+	serverID := api.serverID(ctx)
 	api.ok(w, r, dto.AuthenticationResult{
-		User:        userToDto(usr, api.serverName(), api.serverID(ctx)),
+		User:        userToDto(usr, api.serverName(), serverID),
+		SessionInfo: dto.NewSessionInfo(usr, a.Client, a.DeviceId, a.Device, a.Version, serverID),
 		AccessToken: token,
-		ServerId:    api.serverID(ctx),
+		ServerId:    serverID,
 	})
 }
 

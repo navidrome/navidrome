@@ -74,6 +74,18 @@ var _ = Describe("Items", func() {
 			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
 		})
 
+		It("ignores IncludeItemTypes names that aren't Jellyfin item kinds", func() {
+			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", AlbumID: testID("a1")}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?ParentId="+dto.EncodeID(testID("a1"))+"&IncludeItemTypes=music", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(1))
+			Expect(res.Items[0].Id).To(Equal(dto.EncodeID(testID("s1"))))
+		})
+
 		It("lists a playlist's tracks when ParentId is a playlist, whatever the type", func() {
 			fp.getPls = &model.Playlist{ID: testID("pl1"), Tracks: model.PlaylistTracks{
 				{ID: "1", MediaFileID: testID("s1"), PlaylistID: testID("pl1"), MediaFile: model.MediaFile{ID: testID("s1")}},
@@ -1133,6 +1145,11 @@ var _ = Describe("Items", func() {
 		It("returns no types for real Jellyfin kinds Navidrome has none of", func() {
 			Expect(parseTypes("Boxset")).To(BeEmpty())
 			Expect(parseTypes("BoxSet,Movie")).To(BeEmpty())
+		})
+
+		It("drops names that aren't Jellyfin item kinds, case-insensitively", func() {
+			Expect(knownItemKinds("music")).To(BeEmpty())
+			Expect(knownItemKinds("music, audio,MUSICVIDEO")).To(Equal("audio,MUSICVIDEO"))
 		})
 
 		It("defaults to albums only when IncludeItemTypes is absent", func() {

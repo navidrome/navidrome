@@ -202,14 +202,40 @@ type UserConfiguration struct {
 	CastReceiverId             string   `json:"CastReceiverId"`
 }
 
+// SessionInfo mirrors real Jellyfin's SessionInfoDto. JellyBox requires Id and PlayState, and Finamp
+// requires UserId, LastActivityDate and the bools, so none of those may be omitted.
 type SessionInfo struct {
-	Id     string `json:"Id"`
-	UserId string `json:"UserId"`
+	Id                    string          `json:"Id"`
+	UserId                string          `json:"UserId"`
+	UserName              string          `json:"UserName"`
+	Client                string          `json:"Client"`
+	DeviceId              string          `json:"DeviceId"`
+	DeviceName            string          `json:"DeviceName"`
+	ApplicationVersion    string          `json:"ApplicationVersion"`
+	ServerId              string          `json:"ServerId"`
+	LastActivityDate      string          `json:"LastActivityDate"`
+	IsActive              bool            `json:"IsActive"`
+	SupportsMediaControl  bool            `json:"SupportsMediaControl"`
+	SupportsRemoteControl bool            `json:"SupportsRemoteControl"`
+	HasCustomDeviceName   bool            `json:"HasCustomDeviceName"`
+	PlayableMediaTypes    []string        `json:"PlayableMediaTypes"`
+	SupportedCommands     []string        `json:"SupportedCommands"`
+	AdditionalUsers       []any           `json:"AdditionalUsers"`
+	NowPlayingQueue       []any           `json:"NowPlayingQueue"`
+	PlayState             PlayerStateInfo `json:"PlayState"`
+}
+
+type PlayerStateInfo struct {
+	CanSeek       bool   `json:"CanSeek"`
+	IsPaused      bool   `json:"IsPaused"`
+	IsMuted       bool   `json:"IsMuted"`
+	RepeatMode    string `json:"RepeatMode"`
+	PlaybackOrder string `json:"PlaybackOrder"`
 }
 
 type AuthenticationResult struct {
 	User        *UserDto     `json:"User"`
-	SessionInfo *SessionInfo `json:"SessionInfo,omitempty"`
+	SessionInfo *SessionInfo `json:"SessionInfo"`
 	AccessToken string       `json:"AccessToken"`
 	ServerId    string       `json:"ServerId"`
 }

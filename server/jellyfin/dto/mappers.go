@@ -7,6 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -445,4 +446,26 @@ func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
 		d.Lyrics = append(d.Lyrics, out)
 	}
 	return d
+}
+
+// NewSessionInfo's Id is stable per client install, as Jellyfin reuses a device's session across logins.
+func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, serverID string) *SessionInfo {
+	now := time.Now()
+	return &SessionInfo{
+		Id:                 EncodeID(id.NewHash(client, deviceID)),
+		UserId:             EncodeID(u.ID),
+		UserName:           u.UserName,
+		Client:             client,
+		DeviceId:           deviceID,
+		DeviceName:         deviceName,
+		ApplicationVersion: version,
+		ServerId:           serverID,
+		LastActivityDate:   jellyfinDate(&now),
+		IsActive:           true,
+		PlayableMediaTypes: []string{"Audio"},
+		SupportedCommands:  []string{},
+		AdditionalUsers:    []any{},
+		NowPlayingQueue:    []any{},
+		PlayState:          PlayerStateInfo{RepeatMode: "RepeatNone", PlaybackOrder: "Default"},
+	}
 }
