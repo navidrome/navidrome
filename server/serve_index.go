@@ -46,6 +46,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"baseURL":                   str.SanitizeText(strings.TrimSuffix(conf.Server.BasePath, "/")),
 			"loginBackgroundURL":        str.SanitizeText(conf.Server.UILoginBackgroundURL),
 			"welcomeMessage":            str.SanitizeHTML(conf.Server.UIWelcomeMessage),
+			"instanceName":              conf.Server.InstanceName,
 			"maxSidebarPlaylists":       conf.Server.MaxSidebarPlaylists,
 			"enableTranscodingConfig":   conf.Server.EnableTranscodingConfig,
 			"enableDownloads":           conf.Server.EnableDownloads,
@@ -101,8 +102,9 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			version = "v" + version
 		}
 		data := map[string]any{
-			"AppConfig": string(appConfigJson),
-			"Version":   version,
+			"InstanceName": conf.Server.InstanceName,
+			"AppConfig":    string(appConfigJson),
+			"Version":      version,
 		}
 		addShareData(r, data, shareInfo)
 
