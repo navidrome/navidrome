@@ -164,10 +164,16 @@ var _ = Describe("Playlists", func() {
 			func(entry int, newIndex string, want []string) {
 				Expect(move(adminUser, plID, entries[entry].PlaylistItemId, newIndex)).To(Equal(http.StatusNoContent))
 				Expect(order(plID)).To(Equal(want))
+				var positions []string
+				for _, it := range playlistItems(plID).Items {
+					positions = append(positions, it.PlaylistItemId)
+				}
+				Expect(positions).To(Equal([]string{dto.EncodePlaylistEntryID("1"), dto.EncodePlaylistEntryID("2"), dto.EncodePlaylistEntryID("3")}))
 			},
 			Entry("towards the end", 0, "2", []string{"Something", "So What", "Come Together"}),
 			Entry("towards the start", 2, "0", []string{"So What", "Come Together", "Something"}),
 			Entry("to the end, past the last index", 0, "99", []string{"Something", "So What", "Come Together"}),
+			Entry("to the end, for the largest int", 0, "9223372036854775807", []string{"Something", "So What", "Come Together"}),
 		)
 
 		It("ignores an entry that is not in the playlist", func() {

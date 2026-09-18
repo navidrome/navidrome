@@ -278,8 +278,8 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	ids := api.expandContainerIDs(ctx, decoded)
 	var err error
-	if position, perr := req.Params(r).Int("position"); perr == nil {
-		_, err = api.playlists.InsertTracks(ctx, id, ids, min(position, math.MaxInt32)+1)
+	if position, perr := req.Params(r).Int64("position"); perr == nil {
+		_, err = api.playlists.InsertTracks(ctx, id, ids, insertPosition(position))
 	} else {
 		_, err = api.playlists.AddTracks(ctx, id, ids)
 	}
@@ -292,6 +292,12 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// insertPosition maps Jellyfin's zero-based position to a 1-based one, clamped in int64 first so
+// it can't wrap on 32-bit builds.
+func insertPosition(position int64) int {
+	return int(min(max(position, 0), math.MaxInt32-1) + 1)
 }
 
 // removeFromPlaylist removes entries by entryIds — playlist-entry ids (PlaylistItemId), not media
@@ -352,7 +358,7 @@ func (api *Router) movePlaylistItem(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	if err := api.playlists.ReorderTrack(ctx, id, pos, min(newIndex+1, pls.SongCount)); err != nil {
+	if err := api.playlists.ReorderTrack(ctx, id, pos, min(newIndex, pls.SongCount-1)+1); err != nil {
 		api.playlistError(w, r, err)
 		return
 	}
