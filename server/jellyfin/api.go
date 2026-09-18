@@ -165,7 +165,7 @@ func (api *Router) routes() http.Handler {
 
 		r.Get("/audio/{itemId}/stream", api.streamAudio)
 		r.Get("/audio/{itemId}/stream.{container}", api.streamAudio)
-		r.Get("/audio/{itemId}/universal", api.streamAudio)
+		r.Get("/audio/{itemId}/universal", api.streamUniversal)
 		r.Get("/audio/{itemId}/main.m3u8", api.streamHls)
 		r.Get("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
 		r.Post("/items/{itemId}/playbackinfo", api.getPlaybackInfo)

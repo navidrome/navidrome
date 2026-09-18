@@ -244,6 +244,55 @@ var _ = Describe("Stream", func() {
 		})
 	})
 
+	// Container on /universal lists what the client direct-plays ("container|codec" entries),
+	// not a target format. JellyBox sends it this way.
+	Describe("streamUniversal", func() {
+		universal := func(mf model.MediaFile, query string) {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{mf})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Audio/"+dto.EncodeID(mf.ID)+"/universal?"+query, nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(mf.ID))
+			invoke(api.streamUniversal, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+		}
+		const jellyboxQuery = "Container=mp3,aac,m4a|aac,m4b|aac,flac,wav&TranscodingContainer=mp3&AudioCodec=mp3"
+
+		It("keeps the source format when its container is in the list", func() {
+			universal(model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1}, jellyboxQuery)
+			Expect(decider.req.Format).To(Equal("mp3"))
+		})
+
+		It("matches the codec when an entry names one", func() {
+			universal(model.MediaFile{ID: testID("s1"), Suffix: "m4a", Codec: "AAC", LibraryID: 1}, jellyboxQuery)
+			Expect(decider.req.Format).To(Equal("m4a"))
+		})
+
+		It("transcodes to TranscodingContainer when the codec doesn't match", func() {
+			universal(model.MediaFile{ID: testID("s1"), Suffix: "m4a", Codec: "alac", LibraryID: 1}, jellyboxQuery)
+			Expect(decider.req.Format).To(Equal("mp3"))
+		})
+
+		It("transcodes to TranscodingContainer when the container isn't listed", func() {
+			universal(model.MediaFile{ID: testID("s1"), Suffix: "ogg", LibraryID: 1}, jellyboxQuery)
+			Expect(decider.req.Format).To(Equal("mp3"))
+		})
+
+		It("falls back to AudioCodec when no TranscodingContainer is given", func() {
+			universal(model.MediaFile{ID: testID("s1"), Suffix: "ogg", LibraryID: 1}, "Container=mp3&AudioCodec=aac")
+			Expect(decider.req.Format).To(Equal("aac"))
+		})
+
+		It("serves the file as is for static=true", func() {
+			universal(model.MediaFile{ID: testID("s1"), Suffix: "ogg", LibraryID: 1}, "static=true&"+jellyboxQuery)
+			Expect(decider.req.Format).To(Equal("raw"))
+		})
+
+		It("converts the bps MaxStreamingBitrate param to kbps", func() {
+			universal(model.MediaFile{ID: testID("s1"), Suffix: "mp3", LibraryID: 1}, "MaxStreamingBitrate=128000&"+jellyboxQuery)
+			Expect(decider.req.BitRate).To(Equal(128))
+		})
+	})
+
 	Describe("streamHls", func() {
 		BeforeEach(func() {
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{

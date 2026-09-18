@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"net/http"
@@ -65,16 +66,14 @@ func (api *Router) getPlaybackInfo(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, dto.PlaybackInfoResponse{MediaSources: []dto.MediaSourceInfo{src}, PlaySessionId: dto.EncodeID(mf.ID)})
 }
 
-// streamAudio serves /Audio/{itemId}/stream[.container] and /Audio/{itemId}/universal,
-// reusing the same transcode-decision + streaming pipeline as the Subsonic /stream endpoint.
+// streamAudio serves /Audio/{itemId}/stream[.container], reusing the same transcode-decision +
+// streaming pipeline as the Subsonic /stream endpoint.
 func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 	mf, ok := api.mediaFileForRequest(w, r)
 	if !ok {
 		return
 	}
-	ctx := r.Context()
 	p := req.Params(r)
-
 	format := p.StringOr("container", "")
 	if format == "" {
 		// The /stream.{container} route form carries the format as a path segment, not a query param.
@@ -84,6 +83,38 @@ func (api *Router) streamAudio(w http.ResponseWriter, r *http.Request) {
 		// Jellyfin's audioCodec param names the target codec when no container is given.
 		format = p.StringOr("audiocodec", "")
 	}
+	api.serveAudio(w, r, mf, format)
+}
+
+// streamUniversal serves /Audio/{itemId}/universal, where Container lists the "container|codec"
+// entries the client direct-plays, and TranscodingContainer/AudioCodec name the fallback target.
+func (api *Router) streamUniversal(w http.ResponseWriter, r *http.Request) {
+	mf, ok := api.mediaFileForRequest(w, r)
+	if !ok {
+		return
+	}
+	p := req.Params(r)
+	format := cmp.Or(p.StringOr("transcodingcontainer", ""), p.StringOr("audiocodec", ""))
+	if canDirectPlay(mf, p.StringOr("container", "")) {
+		// The source format, not "raw", so a bitrate cap can still downsample it.
+		format = mf.Suffix
+	}
+	api.serveAudio(w, r, mf, format)
+}
+
+func canDirectPlay(mf *model.MediaFile, containers string) bool {
+	for entry := range strings.SplitSeq(containers, ",") {
+		container, codec, _ := strings.Cut(strings.TrimSpace(entry), "|")
+		if strings.EqualFold(container, mf.Suffix) && (codec == "" || strings.EqualFold(codec, mf.AudioCodec())) {
+			return true
+		}
+	}
+	return false
+}
+
+func (api *Router) serveAudio(w http.ResponseWriter, r *http.Request, mf *model.MediaFile, format string) {
+	ctx := r.Context()
+	p := req.Params(r)
 	if p.BoolOr("static", false) {
 		format = "raw"
 	}
