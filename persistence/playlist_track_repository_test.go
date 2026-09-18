@@ -124,6 +124,59 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		})
 	})
 
+	Describe("Reorder", func() {
+		var tracks model.PlaylistTrackRepository
+
+		BeforeEach(func() {
+			ctx := log.NewContext(GinkgoT().Context())
+			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+			plsRepo := NewPlaylistRepository(ctx, GetDBXBuilder())
+			pls := model.Playlist{Name: "Reorder", OwnerID: "userid", OwnerName: "userid"}
+			Expect(plsRepo.Put(&pls)).To(Succeed())
+			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+
+			tracks = plsRepo.Tracks(pls.ID, false)
+			Expect(tracks.Add([]string{songDayInALife.ID, songRadioactivity.ID, songComeTogether.ID})).To(Equal(3))
+		})
+
+		rows := func() ([]string, []string) {
+			all, err := tracks.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(err).ToNot(HaveOccurred())
+			var ids, songs []string
+			for _, t := range all {
+				ids = append(ids, t.ID)
+				songs = append(songs, t.MediaFileID)
+			}
+			return ids, songs
+		}
+
+		DescribeTable("clamps the destination to the playlist",
+			func(newPos int, want func() []string) {
+				Expect(tracks.Reorder(1, newPos)).To(Succeed())
+				ids, songs := rows()
+				Expect(ids).To(Equal([]string{"1", "2", "3"}))
+				Expect(songs).To(Equal(want()))
+			},
+			Entry("past the end moves to the end", 9, func() []string {
+				return []string{songRadioactivity.ID, songComeTogether.ID, songDayInALife.ID}
+			}),
+			Entry("below 1 stays first", -4, func() []string {
+				return []string{songDayInALife.ID, songRadioactivity.ID, songComeTogether.ID}
+			}),
+		)
+
+		DescribeTable("rejects a source position outside the playlist, leaving rows untouched",
+			func(pos int) {
+				Expect(tracks.Reorder(pos, 1)).To(MatchError(model.ErrNotFound))
+				ids, songs := rows()
+				Expect(ids).To(Equal([]string{"1", "2", "3"}))
+				Expect(songs).To(Equal([]string{songDayInALife.ID, songRadioactivity.ID, songComeTogether.ID}))
+			},
+			Entry("past the end", 4),
+			Entry("zero", 0),
+		)
+	})
+
 	Describe("Delete", func() {
 		var tracks model.PlaylistTrackRepository
 		const numTracks = deleteChunkSize*2 + 1

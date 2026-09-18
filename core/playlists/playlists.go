@@ -319,7 +319,7 @@ func (s *playlists) ReorderTrack(ctx context.Context, playlistID string, pos int
 	if _, err := s.checkTracksEditable(ctx, playlistID); err != nil {
 		return err
 	}
-	return s.ds.WithTx(func(tx model.DataStore) error {
+	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
 		return tx.Playlist(ctx).Tracks(playlistID, false).Reorder(pos, newPos)
 	})
 }

@@ -270,8 +270,18 @@ func (r *playlistTrackRepository) DeleteAll() error {
 	return r.playlistRepo.renumber(r.playlistId)
 }
 
-// Reorder moves a track from pos to newPos, shifting other tracks accordingly.
+// Reorder moves a track from pos to newPos, shifting other tracks accordingly. newPos is clamped
+// to the playlist; a pos outside it is ErrNotFound, since shifting around it would leave a gap.
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
+	var res struct{ Max sql.NullInt32 }
+	if err := r.queryOne(r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId}), &res); err != nil {
+		return err
+	}
+	last := int(res.Max.Int32)
+	if pos < 1 || pos > last {
+		return model.ErrNotFound
+	}
+	newPos = min(max(newPos, 1), last)
 	if pos == newPos {
 		return nil
 	}

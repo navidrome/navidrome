@@ -330,8 +330,8 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// movePlaylistItem moves an entry to Jellyfin's zero-based newIndex (past the end appends). Unknown
-// entries are a no-op, as in Jellyfin, so Reorder never sees a position outside the playlist.
+// movePlaylistItem moves an entry to Jellyfin's zero-based newIndex. Reorder clamps past-the-end
+// indexes and rejects unknown entries, which Jellyfin treats as a no-op.
 func (api *Router) movePlaylistItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -348,17 +348,14 @@ func (api *Router) movePlaylistItem(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	pls, err := api.playlists.Get(ctx, id)
-	if err != nil {
+	// Resolve first, so a missing or hidden playlist is still a 404 below the unknown-entry no-op.
+	if _, err := api.playlists.Get(ctx, id); err != nil {
 		api.playlistError(w, r, err)
 		return
 	}
 	pos, _ := strconv.Atoi(entry)
-	if pos < 1 || pos > pls.SongCount {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	if err := api.playlists.ReorderTrack(ctx, id, pos, min(newIndex, pls.SongCount-1)+1); err != nil {
+	err = api.playlists.ReorderTrack(ctx, id, pos, min(newIndex, math.MaxInt32-1)+1)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		api.playlistError(w, r, err)
 		return
 	}
