@@ -202,7 +202,7 @@
         "command": "Komento"
       },
       "choices": {
-        "noDefaultBitRate": ""
+        "noDefaultBitRate": "Ei mikään"
       }
     },
     "playlist": {
