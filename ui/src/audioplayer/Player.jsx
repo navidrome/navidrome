@@ -49,12 +49,22 @@ const Player = () => {
   const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
+  const [playerMode, setPlayerMode] = useState('full')
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent,
     )
 
   const { authenticated } = useAuthState()
+
+  // On desktop the player is the footer panel and `toggleMode` is disabled, so
+  // a player left collapsed while the window was narrow can never be reopened.
+  // Driving `mode` back to full on the transition restores the footer layout.
+  useEffect(() => {
+    if (isDesktop) {
+      setPlayerMode('full')
+    }
+  }, [isDesktop])
 
   // Keep a ref to playerState so the mount effect can read the latest value
   // without re-triggering on every queue/position change
@@ -207,7 +217,8 @@ const Player = () => {
       theme: playerTheme,
       bounds: 'body',
       playMode: playerState.mode,
-      mode: 'full',
+      mode: playerMode,
+      onModeChange: setPlayerMode,
       loadAudioErrorPlayNext: false,
       autoPlayInitLoadPlayList: true,
       clearPriorAudioLists: false,
@@ -236,7 +247,7 @@ const Player = () => {
       locale: locale(translate),
       sortableOptions: { delay: 200, delayOnTouchOnly: true },
     }),
-    [gainInfo, isDesktop, playerTheme, translate, playerState.mode],
+    [gainInfo, isDesktop, playerMode, playerTheme, translate, playerState.mode],
   )
 
   const options = useMemo(() => {
