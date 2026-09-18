@@ -53,6 +53,22 @@ var _ = Describe("helpers", func() {
 		})
 	})
 
+	Describe("lastFmURLOrEmpty", func() {
+		It("keeps Last.fm artist and album pages", func() {
+			Expect(lastFmURLOrEmpty("https://www.last.fm/music/Radiohead")).To(Equal("https://www.last.fm/music/Radiohead"))
+			Expect(lastFmURLOrEmpty("http://last.fm/music/Radiohead/OK+Computer")).To(Equal("http://last.fm/music/Radiohead/OK+Computer"))
+		})
+		It("omits URLs from other sites", func() {
+			Expect(lastFmURLOrEmpty("https://www.radiohead.com/")).To(BeEmpty())
+			Expect(lastFmURLOrEmpty("https://www.deezer.com/artist/399")).To(BeEmpty())
+			Expect(lastFmURLOrEmpty("https://evil.example/last.fm/music/Radiohead")).To(BeEmpty())
+			Expect(lastFmURLOrEmpty("https://notlast.fm/music/Radiohead")).To(BeEmpty())
+			Expect(lastFmURLOrEmpty("https://www.last.fm/user/someone")).To(BeEmpty())
+			Expect(lastFmURLOrEmpty("javascript:alert(1)//last.fm/music/")).To(BeEmpty())
+			Expect(lastFmURLOrEmpty("")).To(BeEmpty())
+		})
+	})
+
 	Describe("sanitizeSlashes", func() {
 		It("maps / to _", func() {
 			Expect(sanitizeSlashes("AC/DC")).To(Equal("AC_DC"))
