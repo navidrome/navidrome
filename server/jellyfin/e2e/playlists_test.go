@@ -118,6 +118,58 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("move", func() {
+		order := func(plID string) []string { return names(playlistItems(plID).Items) }
+		move := func(u model.User, plID, entryID string, newIndex string) int {
+			return jReq(u, "POST", "/Playlists/"+enc(plID)+"/Items/"+entryID+"/Move/"+newIndex, "").Code
+		}
+		var plID string
+		var entries []dto.BaseItemDto
+		BeforeEach(func() {
+			plID = createPlaylist("Move", []string{enc(songID("Come Together")), enc(songID("Something")), enc(songID("So What"))})
+			entries = playlistItems(plID).Items
+		})
+
+		It("moves an entry to a zero-based index", func() {
+			Expect(move(adminUser, plID, entries[0].PlaylistItemId, "2")).To(Equal(http.StatusNoContent))
+			Expect(order(plID)).To(Equal([]string{"Something", "So What", "Come Together"}))
+		})
+
+		It("moves an entry towards the start", func() {
+			Expect(move(adminUser, plID, entries[2].PlaylistItemId, "0")).To(Equal(http.StatusNoContent))
+			Expect(order(plID)).To(Equal([]string{"So What", "Come Together", "Something"}))
+		})
+
+		It("appends when the index is past the end", func() {
+			Expect(move(adminUser, plID, entries[0].PlaylistItemId, "99")).To(Equal(http.StatusNoContent))
+			Expect(order(plID)).To(Equal([]string{"Something", "So What", "Come Together"}))
+		})
+
+		It("ignores an entry that is not in the playlist", func() {
+			Expect(move(adminUser, plID, dto.EncodePlaylistEntryID("42"), "0")).To(Equal(http.StatusNoContent))
+			Expect(order(plID)).To(Equal([]string{"Come Together", "Something", "So What"}))
+		})
+
+		It("404s on a malformed entry id", func() {
+			Expect(move(adminUser, plID, enc(songID("So What")), "0")).To(Equal(http.StatusNotFound))
+		})
+
+		It("hides another user's private playlist", func() {
+			Expect(move(regularUser, plID, entries[0].PlaylistItemId, "2")).To(Equal(http.StatusNotFound))
+			Expect(order(plID)).To(Equal([]string{"Come Together", "Something", "So What"}))
+		})
+
+		It("forbids a non-owner on a public playlist", func() {
+			Expect(post("/Playlists/"+enc(plID), `{"Name":"Move","IsPublic":true}`).Code).To(Equal(http.StatusNoContent))
+			Expect(move(regularUser, plID, entries[0].PlaylistItemId, "2")).To(Equal(http.StatusForbidden))
+			Expect(order(plID)).To(Equal([]string{"Come Together", "Something", "So What"}))
+		})
+
+		It("rejects a negative index", func() {
+			Expect(move(adminUser, plID, entries[0].PlaylistItemId, "-1")).To(Equal(http.StatusBadRequest))
+		})
+	})
+
 	Describe("users", func() {
 		It("reports the current user as an editor", func() {
 			plID := createPlaylist("Perms", nil)

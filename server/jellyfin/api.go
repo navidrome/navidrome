@@ -155,6 +155,7 @@ func (api *Router) routes() http.Handler {
 		r.Post("/playlists/{playlistId}", api.updatePlaylist)
 		r.Post("/playlists/{playlistId}/items", api.addToPlaylist)
 		r.Delete("/playlists/{playlistId}/items", api.removeFromPlaylist)
+		r.Post("/playlists/{playlistId}/items/{entryId}/move/{newIndex}", api.movePlaylistItem)
 		r.Get("/playlists/{playlistId}/users", api.getPlaylistUsers)
 		r.Get("/playlists/{playlistId}/users/{userId}", api.getPlaylistUser)
 

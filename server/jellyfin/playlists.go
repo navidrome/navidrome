@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -311,6 +312,41 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// movePlaylistItem moves an entry to Jellyfin's zero-based newIndex (past the end appends). Unknown
+// entries are a no-op, as in Jellyfin, so Reorder never sees a position outside the playlist.
+func (api *Router) movePlaylistItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
+	entry, ok := dto.DecodePlaylistEntryID(chi.URLParam(r, "entryId"))
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	newIndex, err := strconv.Atoi(chi.URLParam(r, "newIndex"))
+	if err != nil || newIndex < 0 {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	pls, err := api.ds.Playlist(ctx).Get(id)
+	if err != nil {
+		api.playlistError(w, r, err)
+		return
+	}
+	pos, _ := strconv.Atoi(entry)
+	if pos < 1 || pos > pls.SongCount {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err := api.playlists.ReorderTrack(ctx, id, pos, min(newIndex+1, pls.SongCount)); err != nil {
+		api.playlistError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
