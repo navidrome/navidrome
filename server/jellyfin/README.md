@@ -350,7 +350,7 @@ make test PKG=./server/jellyfin/...
   just a list badge): browse lists advertise it from embedded lyrics only (the `"[]"` sentinel
   check — the column is never `""` post-scan), while `PlaybackInfo` runs the full pipeline per
   track so sidecar/plugin lyrics also light up. Feishin additionally requires server version
-  ≥ 10.9 — the reason `jellyfinVersion` is 10.9.11.
+  ≥ 10.9 (`jellyfinVersion` advertises 12.1.0).
   Concurrent misses on the same track share one pipeline invocation (`SimpleCache.GetWithLoader`
   is singleflighted), and the load runs detached from the request context with a one-minute bound,
   so a cancelled request or hung plugin can't fail or pin the load for other waiters.
