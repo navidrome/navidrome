@@ -9,6 +9,7 @@ import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
+import ArtistInfo from './ArtistInfo'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
 import { Artwork } from '../common/Artwork'
@@ -160,7 +161,8 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
           />
         )}
       </Card>
-      <ExpandInfoDialog content={<AlbumInfo />} />
+      <ExpandInfoDialog resource="album" content={<AlbumInfo />} />
+      <ExpandInfoDialog resource="artist" content={<ArtistInfo />} />
     </div>
   )
 }

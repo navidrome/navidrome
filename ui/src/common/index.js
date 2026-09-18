@@ -1,6 +1,7 @@
 export * from './AddToPlaylistButton'
 export * from './artist'
 export * from './ArtistLinkField'
+export * from './ArtworkInfo'
 export * from './BatchPlayButton'
 export * from './BitrateField'
 export * from './CollapsibleComment'
