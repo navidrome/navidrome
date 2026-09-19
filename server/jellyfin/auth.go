@@ -45,7 +45,7 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 	a := parseMediaBrowserAuth(r)
 	serverID := api.serverID(ctx)
 	api.ok(w, r, dto.AuthenticationResult{
-		User:        userToDto(usr, api.serverName(), serverID),
+		User:        userToDto(usr, serverName(), serverID),
 		SessionInfo: dto.NewSessionInfo(usr, a.Client, a.DeviceId, a.Device, a.Version, serverID),
 		AccessToken: token,
 		ServerId:    serverID,

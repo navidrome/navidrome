@@ -22,6 +22,8 @@ Enabled = true
 ServerName = "My Music Server"
 # Optional: usernames to show in the client login user-picker (default: none). See "Public user list".
 ExposedPublicUsers = "alice, bob"
+# Optional: answer LAN auto-discovery broadcasts on UDP 7359 (default: false). See "Auto discovery".
+AutoDiscovery = true
 # Optional: max collection responses streaming at once (default: half the DB connection pool,
 # min 2). Each streaming response holds a DB connection for its whole duration; excess requests
 # queue rather than fail.
@@ -34,6 +36,7 @@ or via environment variables:
 ND_JELLYFIN_ENABLED=true
 ND_JELLYFIN_SERVERNAME="My Music Server"
 ND_JELLYFIN_EXPOSEDPUBLICUSERS="alice,bob"
+ND_JELLYFIN_AUTODISCOVERY=true
 ```
 
 Once enabled, the API is mounted at:
@@ -45,6 +48,25 @@ http://<host>:<port>/jellyfin
 All the paths below are relative to that base URL (e.g. `System/Info/Public` means
 `http://localhost:4533/jellyfin/System/Info/Public`). Routes are matched **case-insensitively**,
 since real Jellyfin clients (and `jellyfin-apiclient-python`) send mixed-case paths.
+
+## Auto discovery
+
+With `AutoDiscovery = true`, Navidrome answers the Jellyfin LAN discovery broadcast
+(`who is JellyfinServer?` on UDP port 7359), so clients list the server without a typed URL.
+It is off by default because a real Jellyfin server on the same host owns that port. If the port
+is taken, Navidrome logs a warning and keeps running without discovery.
+
+The advertised address is `BaseURL` when it includes a host. Otherwise it is the bind `Address`
+when that is a specific IP, or else the local IP that faces the requesting client, plus `Port`. With a
+unix socket `Address` there is no port to advertise, so discovery only starts when `BaseURL` has a host.
+
+Discovery answers on all IPv4 interfaces, but the advertised address follows `BaseURL`, `Address` and
+`Port`. If `Address` is a loopback or a single interface IP and `BaseURL` has no host, clients on other
+networks get an address they cannot reach. Set `BaseURL` to the address clients should use.
+
+Docker: publish the port (`-p 7359:7359/udp`). In bridge mode the server only sees its container
+IP, so also set `ND_BASEURL` to the LAN address (for example `http://192.168.1.10:4533`), or use
+host networking. Keep UDP 7359 on the LAN: never forward it from the internet.
 
 ## Authentication
 
