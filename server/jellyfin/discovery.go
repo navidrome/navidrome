@@ -45,6 +45,10 @@ func (d *Discovery) serverID(ctx context.Context) string {
 
 // Serve runs until ctx is done. A failed bind is only logged: discovery is best-effort.
 func (d *Discovery) Serve(ctx context.Context) {
+	if !hasAdvertisableAddress() {
+		log.Warn(ctx, "Jellyfin API: auto-discovery is off, a unix socket server needs a BaseURL with a host to advertise")
+		return
+	}
 	// udp4 only: a dual-stack bind can share the port with another server and never get a packet.
 	conn, err := net.ListenPacket("udp4", net.JoinHostPort("0.0.0.0", strconv.Itoa(discoveryPort)))
 	if err != nil {
@@ -79,6 +83,11 @@ func (d *Discovery) ServeOn(ctx context.Context, conn net.PacketConn) {
 			log.Debug(ctx, "Jellyfin API: could not answer auto-discovery request", "to", remote.String(), err)
 		}
 	}
+}
+
+// Behind a unix socket nothing listens on Port, so only a BaseURL host gives clients an address.
+func hasAdvertisableAddress() bool {
+	return conf.Server.BaseHost != "" || !strings.HasPrefix(conf.Server.Address, "unix:")
 }
 
 func discoveryAddress(ctx context.Context, remote net.Addr) string {

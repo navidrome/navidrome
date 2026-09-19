@@ -61,7 +61,7 @@ var _ = Describe("Discovery", func() {
 		Entry("falls back to the interface facing the requester when Address is unspecified", func() {},
 			"http://127.0.0.1:4533/jellyfin"),
 		Entry("falls back to the interface facing the requester when Address is not an IP", func() {
-			conf.Server.Address = "unix:/tmp/navidrome.sock"
+			conf.Server.Address = "localhost"
 		}, "http://127.0.0.1:4533/jellyfin"),
 		Entry("advertises https when TLS is configured", func() {
 			conf.Server.TLSCert = "/path/cert.pem"
@@ -76,6 +76,17 @@ var _ = Describe("Discovery", func() {
 		Entry("does not double the slash when BasePath has a trailing slash", func() {
 			conf.Server.BasePath = "/music/"
 		}, "http://127.0.0.1:4533/music/jellyfin"),
+	)
+
+	DescribeTable("hasAdvertisableAddress",
+		func(address, baseHost string, expected bool) {
+			conf.Server.Address = address
+			conf.Server.BaseHost = baseHost
+			Expect(hasAdvertisableAddress()).To(Equal(expected))
+		},
+		Entry("TCP listener", "0.0.0.0", "", true),
+		Entry("unix socket without a BaseURL host", "unix:/tmp/navidrome.sock", "", false),
+		Entry("unix socket behind a proxy named by BaseURL", "unix:/tmp/navidrome.sock", "music.example.com", true),
 	)
 
 	It("closes the connection when the read loop fails", func() {

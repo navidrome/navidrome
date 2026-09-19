@@ -57,7 +57,8 @@ It is off by default because a real Jellyfin server on the same host owns that p
 is taken, Navidrome logs a warning and keeps running without discovery.
 
 The advertised address is `BaseURL` when it includes a host. Otherwise it is the bind `Address`
-when that is a specific IP, or else the local IP that faces the requesting client, plus `Port`.
+when that is a specific IP, or else the local IP that faces the requesting client, plus `Port`. With a
+unix socket `Address` there is no port to advertise, so discovery only starts when `BaseURL` has a host.
 
 Docker: publish the port (`-p 7359:7359/udp`). In bridge mode the server only sees its container
 IP, so also set `ND_BASEURL` to the LAN address (for example `http://192.168.1.10:4533`), or use
