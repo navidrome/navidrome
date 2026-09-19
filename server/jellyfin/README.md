@@ -60,6 +60,10 @@ The advertised address is `BaseURL` when it includes a host. Otherwise it is the
 when that is a specific IP, or else the local IP that faces the requesting client, plus `Port`. With a
 unix socket `Address` there is no port to advertise, so discovery only starts when `BaseURL` has a host.
 
+Discovery answers on all IPv4 interfaces, but the advertised address follows `BaseURL`, `Address` and
+`Port`. If `Address` is a loopback or a single interface IP and `BaseURL` has no host, clients on other
+networks get an address they cannot reach. Set `BaseURL` to the address clients should use.
+
 Docker: publish the port (`-p 7359:7359/udp`). In bridge mode the server only sees its container
 IP, so also set `ND_BASEURL` to the LAN address (for example `http://192.168.1.10:4533`), or use
 host networking. Keep UDP 7359 on the LAN: never forward it from the internet.

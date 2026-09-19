@@ -60,8 +60,8 @@ var _ = Describe("Discovery", func() {
 		}, "http://192.168.1.10:4533/jellyfin"),
 		Entry("falls back to the interface facing the requester when Address is unspecified", func() {},
 			"http://127.0.0.1:4533/jellyfin"),
-		Entry("falls back to the interface facing the requester when Address is not an IP", func() {
-			conf.Server.Address = "localhost"
+		Entry("falls back to the interface facing the requester when Address is empty", func() {
+			conf.Server.Address = ""
 		}, "http://127.0.0.1:4533/jellyfin"),
 		Entry("advertises https when TLS is configured", func() {
 			conf.Server.TLSCert = "/path/cert.pem"
