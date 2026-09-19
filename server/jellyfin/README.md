@@ -67,9 +67,10 @@ Discovery answers on all IPv4 interfaces, but the advertised address follows `Ba
 `Port`. If `Address` is a loopback or a single interface IP and `BaseURL` has no host, clients on other
 networks get an address they cannot reach. Set `BaseURL` to the address clients should use.
 
-Docker: publish the port (`-p 7359:7359/udp`). In bridge mode the server only sees its container
-IP, so also set `ND_BASEURL` to the LAN address (for example `http://192.168.1.10:4533`), or use
-host networking. Keep UDP 7359 on the LAN: never forward it from the internet.
+Docker: use host networking (`network_mode: host` / `--network host`). On Linux, bridge mode does not
+deliver broadcasts to the container, even with `-p 7359:7359/udp`, so clients never find the server.
+With host networking the server sees the host's IP, so `BaseURL` is not needed for discovery. If host
+networking is not an option, leave discovery off. Keep UDP 7359 on the LAN: never forward it from the internet.
 
 ## Authentication
 
