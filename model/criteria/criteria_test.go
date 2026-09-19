@@ -366,8 +366,8 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(ids).To(gomega.ConsistOf(topLevelInPlaylistID, topLevelNotInPlaylistID, nestedAnyInPlaylistID, nestedAnyNotInPlaylistID, nestedAllInPlaylistID, nestedAllNotInPlaylistID))
 		})
 		It("extracts all child smart playlist paths from expression criteria", func() {
-			ids := goObj.ChildPlaylistPaths()
-			gomega.Expect(ids).To(gomega.ConsistOf(topLevelInPlaylistPath, nestedAnyNotInPlaylistPath))
+			paths := goObj.ChildPlaylistPaths()
+			gomega.Expect(paths).To(gomega.ConsistOf(topLevelInPlaylistPath, nestedAnyNotInPlaylistPath))
 		})
 		It("ignores empty child playlist paths", func() {
 			c := Criteria{Expression: All{InPlaylist{"path": ""}, NotInPlaylist{"path": ""}}}

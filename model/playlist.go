@@ -141,16 +141,15 @@ func (pls Playlist) UploadedImagePath() string {
 	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)
 }
 
-func (pls Playlist) WithNormalizeChildPaths() Playlist {
+// NormalizedRules returns the rules with child playlist paths resolved to absolute, OS-native paths.
+func (pls Playlist) NormalizedRules() *criteria.Criteria {
 	if pls.Rules == nil || pls.Rules.Expression == nil {
-		return pls
+		return pls.Rules
 	}
 
 	rules := *pls.Rules
 	rules.Expression = normalizePlaylistPaths(pls.Rules.Expression, pls.Path)
-	plsClone := pls
-	plsClone.Rules = &rules
-	return plsClone
+	return &rules
 }
 
 func normalizePlaylistPaths(inputRule criteria.Expression, referencingPlaylistPath string) criteria.Expression {
@@ -177,22 +176,23 @@ func normalizePlaylistPaths(inputRule criteria.Expression, referencingPlaylistPa
 }
 
 func normalizeChildPathRule(rule map[string]any, referencingPlaylistPath string) map[string]any {
-	normalized := maps.Clone(rule)
 	path, ok := rule["path"].(string)
 	if !ok || path == "" {
-		return normalized
+		return rule
 	}
 
 	// References use forward slashes to stay portable, while Playlist.Path is OS-native.
 	path = filepath.FromSlash(path)
-	normalized["path"] = path
-	if isAbsPlaylistRef(path) {
-		normalized["path"] = filepath.Clean(path)
-	} else if referencingPlaylistPath != "" {
-		normalized["path"] = filepath.Clean(filepath.Join(filepath.Dir(referencingPlaylistPath), path))
-	} else {
+	switch {
+	case isAbsPlaylistRef(path):
+		path = filepath.Clean(path)
+	case referencingPlaylistPath != "":
+		path = filepath.Join(filepath.Dir(referencingPlaylistPath), path)
+	default:
 		log.Warn("Cannot resolve relative playlist reference: playlist has no file path", "reference", path)
 	}
+	normalized := maps.Clone(rule)
+	normalized["path"] = path
 	return normalized
 }
 

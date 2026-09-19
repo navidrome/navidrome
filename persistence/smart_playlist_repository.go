@@ -1,11 +1,13 @@
 package persistence
 
 import (
+	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -42,18 +44,17 @@ func (r *playlistRepository) refreshSmartPlaylistTree(pls *model.Playlist, visit
 		return false
 	}
 
-	normalisedPls := pls.WithNormalizeChildPaths()
-	rulesSQL := newSmartPlaylistCriteria(*normalisedPls.Rules, withSmartPlaylistOwner(*usr))
+	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(), withSmartPlaylistOwner(*usr))
 
-	if !r.refreshChildPlaylists(&normalisedPls, rulesSQL, visited) {
+	if !r.refreshChildPlaylists(pls, rulesSQL, visited) {
 		return false
 	}
 
-	if err := r.resolvePercentageLimit(&normalisedPls, &rulesSQL, usr.ID); err != nil {
+	if err := r.resolvePercentageLimit(pls, &rulesSQL, usr.ID); err != nil {
 		return false
 	}
 
-	sq := r.buildSmartPlaylistQuery(&normalisedPls, rulesSQL, usr.ID)
+	sq := r.buildSmartPlaylistQuery(pls, rulesSQL, usr.ID)
 	sq, err := r.addCriteria(sq, rulesSQL)
 	if err != nil {
 		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
@@ -114,10 +115,7 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 		conditions = append(conditions, Eq{"playlist.id": childPlaylistIds})
 	}
 	if len(childPlaylistPaths) > 0 {
-		lookupPaths := make([]string, 0, len(childPlaylistPaths))
-		for _, path := range childPlaylistPaths {
-			lookupPaths = append(lookupPaths, pathVariants(path)...)
-		}
+		lookupPaths := slices.Concat(slice.Map(childPlaylistPaths, pathVariants)...)
 		conditions = append(conditions, Eq{"playlist.path": lookupPaths})
 	}
 

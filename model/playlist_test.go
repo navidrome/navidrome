@@ -90,7 +90,7 @@ var _ = Describe("Playlist", func() {
 		})
 	})
 
-	Describe("WithNormalizeChildPaths()", func() {
+	Describe("NormalizedRules()", func() {
 		// absPath builds an OS-native absolute path so these specs also run on Windows.
 		absPath := func(parts ...string) string {
 			abs, err := filepath.Abs(filepath.Join(parts...))
@@ -98,7 +98,7 @@ var _ = Describe("Playlist", func() {
 			return abs
 		}
 		normalize := func(pls model.Playlist) criteria.Expression {
-			return pls.WithNormalizeChildPaths().Rules.Expression
+			return pls.NormalizedRules().Expression
 		}
 
 		It("resolves relative references against the playlist folder", func() {
@@ -175,7 +175,7 @@ var _ = Describe("Playlist", func() {
 			}
 			pls := model.Playlist{Path: absPath("test", "my-playlist.nsp"), Rules: &rules}
 
-			normalized := *pls.WithNormalizeChildPaths().Rules
+			normalized := *pls.NormalizedRules()
 			normalized.Expression = rules.Expression
 			Expect(normalized).To(Equal(rules))
 		})
@@ -183,7 +183,7 @@ var _ = Describe("Playlist", func() {
 		It("does not mutate the original playlist rules", func() {
 			original := criteria.All{criteria.InPlaylist{"path": "child.nsp"}}
 			pls := model.Playlist{Path: absPath("test", "my-playlist.nsp"), Rules: &criteria.Criteria{Expression: original}}
-			_ = pls.WithNormalizeChildPaths()
+			_ = pls.NormalizedRules()
 			Expect(original[0]).To(BeEquivalentTo(criteria.InPlaylist{"path": "child.nsp"}))
 		})
 	})

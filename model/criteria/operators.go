@@ -1,8 +1,9 @@
 package criteria
 
-// Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
+// Conjunctions need to implement this interface, to allow Criteria to extract child playlist references recursively
 type conjunction interface {
 	ChildPlaylistIds() []string
+	ChildPlaylistPaths() []string
 }
 
 type (
@@ -16,13 +17,9 @@ func (all All) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("all", all)
 }
 
-func (all All) ChildPlaylistIds() (ids []string) {
-	return extractPlaylistIds(all)
-}
+func (all All) ChildPlaylistIds() []string { return extractPlaylistField(all, "id") }
 
-func (all All) ChildPlaylistPaths() (paths []string) {
-	return extractPlaylistPaths(all)
-}
+func (all All) ChildPlaylistPaths() []string { return extractPlaylistField(all, "path") }
 
 type (
 	Any []Expression
@@ -35,13 +32,9 @@ func (any Any) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("any", any)
 }
 
-func (any Any) ChildPlaylistIds() (ids []string) {
-	return extractPlaylistIds(any)
-}
+func (any Any) ChildPlaylistIds() []string { return extractPlaylistField(any, "id") }
 
-func (any Any) ChildPlaylistPaths() (paths []string) {
-	return extractPlaylistPaths(any)
-}
+func (any Any) ChildPlaylistPaths() []string { return extractPlaylistField(any, "path") }
 
 type Is map[string]any
 type Eq = Is
@@ -196,12 +189,4 @@ func extractPlaylistField(inputRule any, field string) (values []string) {
 		}
 	}
 	return
-}
-
-func extractPlaylistIds(inputRule any) (ids []string) {
-	return extractPlaylistField(inputRule, "id")
-}
-
-func extractPlaylistPaths(inputRule any) (paths []string) {
-	return extractPlaylistField(inputRule, "path")
 }

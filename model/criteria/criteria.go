@@ -64,33 +64,21 @@ func (c Criteria) IsPercentageLimit() bool {
 }
 
 func (c Criteria) ChildPlaylistIds() []string {
-	if c.Expression == nil {
-		return nil
-	}
+	return c.childPlaylistRefs(conjunction.ChildPlaylistIds)
+}
 
+func (c Criteria) ChildPlaylistPaths() []string {
+	return c.childPlaylistRefs(conjunction.ChildPlaylistPaths)
+}
+
+func (c Criteria) childPlaylistRefs(extract func(conjunction) []string) []string {
 	parent, ok := c.Expression.(conjunction)
 	if !ok {
 		return nil
 	}
-
-	ids := parent.ChildPlaylistIds()
-	slices.Sort(ids)
-	return slices.Compact(ids)
-}
-
-func (c Criteria) ChildPlaylistPaths() []string {
-	if c.Expression == nil {
-		return nil
-	}
-
-	parent, ok := c.Expression.(interface{ ChildPlaylistPaths() []string })
-	if !ok {
-		return nil
-	}
-
-	paths := parent.ChildPlaylistPaths()
-	slices.Sort(paths)
-	return slices.Compact(paths)
+	refs := extract(parent)
+	slices.Sort(refs)
+	return slices.Compact(refs)
 }
 
 func (c Criteria) MarshalJSON() ([]byte, error) {
