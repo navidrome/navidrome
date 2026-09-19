@@ -44,50 +44,44 @@ var _ = Describe("Discovery", func() {
 		api = &Router{}
 	})
 
-	Describe("discoveryAddress", func() {
-		remote := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 50000}
-
-		It("uses the BaseURL host and scheme when set", func() {
+	DescribeTable("discoveryAddress",
+		func(setup func(), expected string) {
+			setup()
+			remote := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 50000}
+			Expect(discoveryAddress(context.Background(), remote)).To(Equal(expected))
+		},
+		Entry("uses the BaseURL host and scheme when set", func() {
 			conf.Server.BaseScheme = "https"
 			conf.Server.BaseHost = "music.example.com"
 			conf.Server.BasePath = "/nd"
-			Expect(api.discoveryAddress(remote)).To(Equal("https://music.example.com/nd/jellyfin"))
-		})
-
-		It("uses a specific bind Address with the Port", func() {
+		}, "https://music.example.com/nd/jellyfin"),
+		Entry("uses a specific bind Address with the Port", func() {
 			conf.Server.Address = "192.168.1.10"
-			Expect(api.discoveryAddress(remote)).To(Equal("http://192.168.1.10:4533/jellyfin"))
-		})
-
-		It("falls back to the interface facing the requester when Address is unspecified", func() {
-			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/jellyfin"))
-		})
-
-		It("falls back to the interface facing the requester when Address is not an IP", func() {
+		}, "http://192.168.1.10:4533/jellyfin"),
+		Entry("falls back to the interface facing the requester when Address is unspecified", func() {},
+			"http://127.0.0.1:4533/jellyfin"),
+		Entry("falls back to the interface facing the requester when Address is not an IP", func() {
 			conf.Server.Address = "unix:/tmp/navidrome.sock"
-			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/jellyfin"))
-		})
-
-		It("advertises https when TLS is configured", func() {
+		}, "http://127.0.0.1:4533/jellyfin"),
+		Entry("advertises https when TLS is configured", func() {
 			conf.Server.TLSCert = "/path/cert.pem"
 			conf.Server.TLSKey = "/path/key.pem"
-			Expect(api.discoveryAddress(remote)).To(Equal("https://127.0.0.1:4533/jellyfin"))
-		})
-
-		It("advertises http when only the TLS cert is configured", func() {
+		}, "https://127.0.0.1:4533/jellyfin"),
+		Entry("advertises http when only the TLS cert is configured", func() {
 			conf.Server.TLSCert = "/path/cert.pem"
-			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/jellyfin"))
-		})
-
-		It("keeps a path-only BaseURL as the path prefix", func() {
+		}, "http://127.0.0.1:4533/jellyfin"),
+		Entry("keeps a path-only BaseURL as the path prefix", func() {
 			conf.Server.BasePath = "/music"
-			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/music/jellyfin"))
-		})
-
-		It("does not double the slash when BasePath has a trailing slash", func() {
+		}, "http://127.0.0.1:4533/music/jellyfin"),
+		Entry("does not double the slash when BasePath has a trailing slash", func() {
 			conf.Server.BasePath = "/music/"
-			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/music/jellyfin"))
-		})
+		}, "http://127.0.0.1:4533/music/jellyfin"),
+	)
+
+	It("closes the connection when the read loop fails", func() {
+		fake := &failingConn{}
+		api.ServeDiscoveryOn(context.Background(), fake)
+		Expect(fake.closed).To(BeTrue())
 	})
 
 	Describe("ServeDiscoveryOn", func() {
@@ -119,17 +113,20 @@ var _ = Describe("Discovery", func() {
 			})
 		})
 
-		ask := func(msg string, wait time.Duration) ([]byte, error) {
+		send := func(msg string) {
 			_, err := client.WriteTo([]byte(msg), server.LocalAddr())
 			Expect(err).ToNot(HaveOccurred())
-			Expect(client.SetReadDeadline(time.Now().Add(wait))).To(Succeed())
+		}
+		receive := func() ([]byte, error) {
+			Expect(client.SetReadDeadline(time.Now().Add(time.Second))).To(Succeed())
 			buf := make([]byte, 1024)
 			n, _, err := client.ReadFrom(buf)
 			return buf[:n], err
 		}
 
 		It("answers the discovery query with the server identity", func() {
-			res, err := ask("who is JellyfinServer?", time.Second)
+			send("who is JellyfinServer?")
+			res, err := receive()
 			Expect(err).ToNot(HaveOccurred())
 
 			var info discoveryInfo
@@ -141,19 +138,20 @@ var _ = Describe("Discovery", func() {
 		})
 
 		It("matches the query case-insensitively", func() {
-			_, err := ask("WHO IS JELLYFINSERVER?", time.Second)
+			send("WHO IS JELLYFINSERVER?")
+			_, err := receive()
 			Expect(err).ToNot(HaveOccurred())
 		})
 
+		// The loop is serial, so a reply to the first packet would arrive before the second's.
 		It("ignores unrelated packets", func() {
-			_, err := ask("who is PlexServer?", 200*time.Millisecond)
+			send("who is PlexServer?")
+			send("who is JellyfinServer?")
+			_, err := receive()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.SetReadDeadline(time.Now().Add(50 * time.Millisecond))).To(Succeed())
+			_, _, err = client.ReadFrom(make([]byte, 1024))
 			Expect(errors.Is(err, os.ErrDeadlineExceeded)).To(BeTrue())
-		})
-
-		It("closes the connection when the read loop fails", func() {
-			fake := &failingConn{}
-			api.ServeDiscoveryOn(context.Background(), fake)
-			Expect(fake.closed).To(BeTrue())
 		})
 
 		It("stops and closes the socket when the context is cancelled", func() {

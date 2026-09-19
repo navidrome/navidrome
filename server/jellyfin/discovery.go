@@ -1,17 +1,17 @@
 package jellyfin
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"net"
-	"path"
 	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gg"
 )
 
@@ -28,16 +28,16 @@ type discoveryInfo struct {
 	EndpointAddress *string `json:"EndpointAddress"`
 }
 
-// ServeDiscovery serves until ctx is done; it returns an error only when the port can't be bound.
-func (api *Router) ServeDiscovery(ctx context.Context) error {
+// ServeDiscovery serves until ctx is done. A failed bind is only logged: discovery is best-effort.
+func (api *Router) ServeDiscovery(ctx context.Context) {
 	// udp4 only: a dual-stack bind can share the port with another server and never get a packet.
 	conn, err := net.ListenPacket("udp4", net.JoinHostPort("0.0.0.0", strconv.Itoa(discoveryPort)))
 	if err != nil {
-		return err
+		log.Warn(ctx, "Jellyfin API: auto-discovery is off, the UDP port is unavailable. Is another Jellyfin server running?", "port", discoveryPort, err)
+		return
 	}
 	log.Info(ctx, "Jellyfin API: listening for auto-discovery broadcasts", "port", discoveryPort)
 	api.ServeDiscoveryOn(ctx, conn)
-	return nil
 }
 
 // ServeDiscoveryOn answers discovery queries on conn until ctx is done, then closes conn.
@@ -57,7 +57,7 @@ func (api *Router) ServeDiscoveryOn(ctx context.Context, conn net.PacketConn) {
 		if !strings.Contains(strings.ToLower(string(buf[:n])), discoveryQuery) {
 			continue
 		}
-		info := discoveryInfo{Address: api.discoveryAddress(remote), Id: api.serverID(ctx), Name: api.serverName()}
+		info := discoveryInfo{Address: discoveryAddress(ctx, remote), Id: api.serverID(ctx), Name: api.serverName()}
 		res, _ := json.Marshal(info)
 		log.Debug(ctx, "Jellyfin API: answering auto-discovery request", "from", remote.String(), "address", info.Address)
 		if _, err := conn.WriteTo(res, remote); err != nil {
@@ -66,18 +66,15 @@ func (api *Router) ServeDiscoveryOn(ctx context.Context, conn net.PacketConn) {
 	}
 }
 
-func (api *Router) discoveryAddress(remote net.Addr) string {
-	scheme := cmp.Or(conf.Server.BaseScheme, gg.If(conf.Server.TLSEnabled(), "https", "http"))
-	host := conf.Server.BaseHost
-	if host == "" {
-		host = net.JoinHostPort(localIPFor(remote), strconv.Itoa(conf.Server.Port))
-	}
-	return scheme + "://" + host + path.Join(conf.Server.BasePath, consts.URLPathJellyfinAPI)
+func discoveryAddress(ctx context.Context, remote net.Addr) string {
+	scheme := gg.If(conf.Server.TLSEnabled(), "https", "http")
+	host := net.JoinHostPort(localIPFor(remote), strconv.Itoa(conf.Server.Port))
+	return publicurl.AbsoluteURL(request.WithServerAddress(ctx, scheme, host), consts.URLPathJellyfinAPI, nil)
 }
 
 // On a multi-homed host, only the interface that routes to the requester is reachable by it.
 func localIPFor(remote net.Addr) string {
-	if ip := net.ParseIP(conf.Server.Address); ip != nil && !ip.IsUnspecified() {
+	if ip := parseIP(conf.Server.Address); ip.IsValid() && !ip.IsUnspecified() {
 		return ip.String()
 	}
 	c, err := net.Dial("udp", remote.String())

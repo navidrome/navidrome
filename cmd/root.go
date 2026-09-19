@@ -133,11 +133,7 @@ func startServer(ctx context.Context) func() error {
 			jf := CreateJellyfinAPIRouter(ctx)
 			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, jf)
 			if conf.Server.Jellyfin.AutoDiscovery {
-				go func() {
-					if err := jf.ServeDiscovery(ctx); err != nil {
-						log.Warn(ctx, "Jellyfin API: auto-discovery is off, UDP port 7359 is unavailable. Is another Jellyfin server running?", err)
-					}
-				}()
+				go jf.ServeDiscovery(ctx)
 			}
 		}
 		if conf.Server.Prometheus.Enabled {
