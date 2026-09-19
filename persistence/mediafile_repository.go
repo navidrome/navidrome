@@ -362,19 +362,14 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 	var unqualified []string
 
 	for _, path := range paths {
-		parts := strings.SplitN(path, ":", 2)
-		if len(parts) == 2 {
-			// Library-qualified path: "libraryID:path"
-			libraryID, err := strconv.Atoi(parts[0])
-			if err != nil {
-				// Invalid format, skip
-				continue
+		// A numeric prefix is ambiguous: "1:foo.mp3" qualifies a library, but "1999: A Life/01.mp3"
+		// is a plain path. Search both ways rather than guessing.
+		if id, rest, ok := strings.Cut(path, ":"); ok {
+			if libraryID, err := strconv.Atoi(id); err == nil {
+				byLibrary[libraryID] = append(byLibrary[libraryID], rest)
 			}
-			byLibrary[libraryID] = append(byLibrary[libraryID], parts[1])
-		} else {
-			// Unqualified path: search across all libraries
-			unqualified = append(unqualified, path)
 		}
+		unqualified = append(unqualified, path)
 	}
 
 	query := Or{}
@@ -403,6 +398,29 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 
 func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
+}
+
+func (r *mediaFileRepository) ReassignReferences(prevID, newID string) error {
+	if err := r.ReassignAnnotation(prevID, newID); err != nil {
+		return fmt.Errorf("reassigning annotations: %w", err)
+	}
+	if err := r.reassignBookmark(prevID, newID); err != nil {
+		return fmt.Errorf("reassigning bookmarks: %w", err)
+	}
+	upd := Update("playlist_tracks").Set("media_file_id", newID).Where(Eq{"media_file_id": prevID})
+	if _, err := r.executeSQL(upd); err != nil {
+		return fmt.Errorf("reassigning playlist tracks: %w", err)
+	}
+	upd = Update("scrobbles").Set("media_file_id", newID).Where(Eq{"media_file_id": prevID})
+	if _, err := r.executeSQL(upd); err != nil {
+		return fmt.Errorf("reassigning scrobbles: %w", err)
+	}
+	// OR IGNORE: scrobble_buffer is unique on (user_id, service, media_file_id, play_time)
+	buf := Expr("update or ignore scrobble_buffer set media_file_id = ? where media_file_id = ?", newID, prevID)
+	if _, err := r.executeSQL(buf); err != nil {
+		return fmt.Errorf("reassigning buffered scrobbles: %w", err)
+	}
+	return nil
 }
 
 func (r *mediaFileRepository) DeleteAllMissing() (int64, error) {

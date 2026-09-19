@@ -244,11 +244,7 @@ func (r *userRepository) Read(id string) (any, error) {
 	if !usr.IsAdmin && usr.ID != id {
 		return nil, rest.ErrPermissionDenied
 	}
-	usr, err := r.Get(id)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, rest.ErrNotFound
-	}
-	return usr, err
+	return r.Get(id)
 }
 
 func (r *userRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
@@ -314,11 +310,7 @@ func (r *userRepository) Update(id string, entity any, _ ...string) error {
 	if err := validateScrobbleFilter(u); err != nil {
 		return err
 	}
-	err := r.Put(u)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.Put(u)
 }
 
 func validatePasswordChange(newUser *model.User, logged *model.User) error {
@@ -393,11 +385,7 @@ func (r *userRepository) Delete(id string) error {
 	if !usr.IsAdmin {
 		return rest.ErrPermissionDenied
 	}
-	err := r.delete(Eq{"id": id})
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	if err != nil {
+	if err := r.deleteByID(id); err != nil {
 		return err
 	}
 

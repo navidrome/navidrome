@@ -252,6 +252,7 @@ type PlaylistTrackRepository interface {
 	GetAlbumIDs(options ...QueryOptions) ([]string, error)
 	GetMediaFileIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
+	Insert(mediaFileIds []string, pos int) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)
 	AddDiscs(discs []DiscID) (int, error)

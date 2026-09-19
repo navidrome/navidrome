@@ -3,7 +3,6 @@ package migrations
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/pressly/goose/v3"
@@ -28,10 +27,10 @@ func upAddLibraryTable(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, fmt.Sprintf(`
-		insert into library(id, name, path) values(1, 'Music Library', '%s');
-		delete from property where id like 'LastScan-%%';
-`, conf.Server.MusicFolder))
+	_, err = tx.ExecContext(ctx, `
+		insert into library(id, name, path) values(1, 'Music Library', ?);
+		delete from property where id like 'LastScan-%';
+`, conf.Server.MusicFolder)
 	if err != nil {
 		return err
 	}

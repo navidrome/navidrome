@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -18,8 +19,14 @@ import (
 
 var _ = Describe("Users", func() {
 	var api *Router
+	// The repo holds the full rows; the user carries the id/name-only copy its projection returns.
 	authedWithLibraries := func(r *http.Request, libs model.Libraries) *http.Request {
-		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: libs})
+		api.ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(libs)
+		stripped := make(model.Libraries, len(libs))
+		for i, lib := range libs {
+			stripped[i] = model.Library{ID: lib.ID, Name: lib.Name}
+		}
+		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped})
 		return r.WithContext(ctx)
 	}
 	BeforeEach(func() { api = &Router{ds: &tests.MockDataStore{}} })
@@ -43,6 +50,25 @@ var _ = Describe("Users", func() {
 
 			Expect(res.Items[1].Id).To(Equal(dto.EncodeLibraryID(2)))
 			Expect(res.Items[1].Name).To(Equal("Podcasts"))
+		})
+
+		// Manet keeps no library, and so syncs no artists/albums/tracks, when these are missing.
+		It("describes the library like Jellyfin's CollectionFolder", func() {
+			created := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+			libs := model.Libraries{{ID: 1, Name: "Music", Path: "/music", TotalAlbums: 42, CreatedAt: created}}
+			w := httptest.NewRecorder()
+			api.getUserViews(w, authedWithLibraries(httptest.NewRequest("GET", "/UserViews", nil), libs))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+
+			item := res.Items[0]
+			Expect(*item.ChildCount).To(Equal(42))
+			Expect(item.DateCreated).To(Equal("2026-07-01T12:00:00.0000000Z"))
+			Expect(item.SortName).To(Equal("Music"))
+			Expect(item.Path).To(Equal("/music"))
+			Expect(item.LocationType).To(Equal("FileSystem"))
+			Expect(item.UserData).ToNot(BeNil())
+			Expect(item.UserData.ItemId).To(Equal(dto.EncodeLibraryID(1)))
 		})
 
 		It("returns a single view for a user with one library", func() {

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/navidrome/navidrome/log"
@@ -34,6 +35,7 @@ type httpServiceImpl struct {
 	pluginName    string
 	requiredHosts []string
 	client        *http.Client
+	transport     *http.Transport
 }
 
 // newHTTPService creates a new HTTPService for a plugin.
@@ -46,8 +48,14 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		pluginName:    pluginName,
 		requiredHosts: requiredHosts,
 	}
+	svc.transport = http.DefaultTransport.(*http.Transport).Clone()
+	svc.transport.DialContext = (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		Control:   svc.dialControl,
+	}).DialContext
 	// No client timeout: it is set per-request via context deadline.
-	svc.client = httpclient.New(0)
+	svc.client = &http.Client{Transport: httpclient.NewTransport(svc.transport)}
 	svc.client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		if req.Context().Value(noFollowRedirectsKey) != nil {
 			return http.ErrUseLastResponse
@@ -63,6 +71,12 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		return nil
 	}
 	return svc
+}
+
+// Close releases the plugin's pooled connections when the plugin is unloaded.
+func (s *httpServiceImpl) Close() error {
+	s.transport.CloseIdleConnections()
+	return nil
 }
 
 func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*host.HTTPResponse, error) {
@@ -145,7 +159,7 @@ func (s *httpServiceImpl) validateHost(ctx context.Context, hostStr string) erro
 	hostname := extractHostname(hostStr)
 
 	if len(s.requiredHosts) > 0 {
-		if !s.isHostAllowed(hostname) {
+		if !isHostInAllowlist(s.requiredHosts, hostname) {
 			return fmt.Errorf("host %q is not allowed", hostStr)
 		}
 		return nil
@@ -159,13 +173,8 @@ func (s *httpServiceImpl) validateHost(ctx context.Context, hostStr string) erro
 	return nil
 }
 
-func (s *httpServiceImpl) isHostAllowed(hostname string) bool {
-	for _, pattern := range s.requiredHosts {
-		if matchHostPattern(pattern, hostname) {
-			return true
-		}
-	}
-	return false
+func (s *httpServiceImpl) dialControl(_, address string, _ syscall.RawConn) error {
+	return checkPrivateDial(s.requiredHosts, address)
 }
 
 // extractHostname returns the hostname portion of a host string, stripping
@@ -182,11 +191,8 @@ func extractHostname(hostStr string) string {
 	return hostStr
 }
 
-// isPrivateOrLoopback returns true if the given hostname resolves to or is
-// a private, loopback, or link-local IP address. This includes:
-// IPv4: 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16
-// IPv6: ::1, fc00::/7, fe80::/10
-// It also blocks "localhost" by name.
+// isPrivateOrLoopback is a pre-flight check on the literal host (IP or "localhost"); it does not
+// resolve names, so dialControl remains the real guard.
 func isPrivateOrLoopback(hostname string) bool {
 	if strings.EqualFold(hostname, "localhost") {
 		return true
@@ -195,7 +201,7 @@ func isPrivateOrLoopback(hostname string) bool {
 	if ip == nil {
 		return false
 	}
-	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
+	return isPrivateIP(ip)
 }
 
 // Verify interface implementation

@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -496,6 +497,50 @@ var _ = Describe("WebSocketService", Ordered, func() {
 			Eventually(func() int {
 				return testService.getConnectionCount()
 			}).Should(Equal(0))
+		})
+	})
+
+	Describe("Private address protection", func() {
+		var wsServer *httptest.Server
+		var savedHosts []string
+
+		BeforeEach(func() {
+			savedHosts = testService.requiredHosts
+			upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
+			wsServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if conn, err := upgrader.Upgrade(w, r, nil); err == nil {
+					_, _, _ = conn.ReadMessage()
+				}
+			}))
+		})
+
+		AfterEach(func() {
+			testService.closeAllConnections()
+			testService.requiredHosts = savedHosts
+			wsServer.Close()
+		})
+
+		serverPort := func() string {
+			u, _ := url.Parse(wsServer.URL)
+			return u.Port()
+		}
+
+		It("blocks an allowlisted hostname that resolves to loopback", func() {
+			testService.requiredHosts = []string{"localhost."}
+			_, err := testService.Connect(GinkgoT().Context(), "ws://localhost.:"+serverPort(), nil, "")
+			Expect(err).To(MatchError(ContainSubstring("private/loopback")))
+		})
+
+		It("allows loopback when a CIDR entry covers it", func() {
+			testService.requiredHosts = []string{"127.0.0.0/8"}
+			_, err := testService.Connect(GinkgoT().Context(), "ws://127.0.0.1:"+serverPort(), nil, "")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("allows loopback when the allowlist is the bare '*' wildcard", func() {
+			testService.requiredHosts = []string{"*"}
+			_, err := testService.Connect(GinkgoT().Context(), "ws://localhost.:"+serverPort(), nil, "")
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 

@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/nanoid"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -89,6 +92,11 @@ func (r *shareRepositoryWrapper) newId() (string, error) {
 
 func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 	s := entity.(*model.Share)
+	// Owner is always the caller; never trust a client-supplied UserID, as it
+	// determines the library-access context used to resolve the share contents.
+	if user, ok := request.UserFrom(r.ctx); ok {
+		s.UserID = user.ID
+	}
 	id, err := r.newId()
 	if err != nil {
 		return "", err
@@ -98,32 +106,47 @@ func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 		s.ExpiresAt = new(time.Now().Add(conf.Server.DefaultShareExpiration))
 	}
 
-	firstId, _, _ := strings.Cut(s.ResourceIDs, ",")
-	v, err := model.GetEntityByID(r.ctx, r.ds, firstId)
+	s.ResourceType, err = r.resourceType(s.ResourceIDs)
 	if err != nil {
 		return "", err
 	}
-	switch v.(type) {
-	case *model.Artist:
-		s.ResourceType = "artist"
+	switch s.ResourceType {
+	case "artist":
 		s.Contents = r.contentsLabelFromArtist(s.ID, s.ResourceIDs)
-	case *model.Album:
-		s.ResourceType = "album"
+	case "album":
 		s.Contents = r.contentsLabelFromAlbums(s.ID, s.ResourceIDs)
-	case *model.Playlist:
-		s.ResourceType = "playlist"
+	case "playlist":
 		s.Contents = r.contentsLabelFromPlaylist(s.ID, s.ResourceIDs)
-	case *model.MediaFile:
-		s.ResourceType = "media_file"
+	case "media_file":
 		s.Contents = r.contentsLabelFromMediaFiles(s.ID, s.ResourceIDs)
-	default:
-		log.Error(r.ctx, "Invalid Resource ID", "id", firstId)
-		return "", model.ErrNotFound
 	}
 
 	s.Contents = str.TruncateRunes(s.Contents, 30, "...")
 
 	return r.Persistable.Save(s)
+}
+
+var shareableKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindMediaFileArtwork}
+
+// resourceType resolves every ID as the current user, so an entity they cannot see cannot
+// ride along behind a valid first one, and requires all IDs to be of the same kind.
+func (r *shareRepositoryWrapper) resourceType(resourceIDs string) (string, error) {
+	resourceType := ""
+	for _, id := range strings.Split(resourceIDs, ",") {
+		kind, err := model.GetEntityKindByID(r.ctx, r.ds, id)
+		if err != nil {
+			return "", err
+		}
+		if !slices.Contains(shareableKinds, kind) {
+			log.Error(r.ctx, "Invalid Resource ID", "id", id)
+			return "", model.ErrNotFound
+		}
+		if resourceType != "" && kind.String() != resourceType {
+			return "", fmt.Errorf("%w: share mixes %s and %s resources", model.ErrValidation, resourceType, kind)
+		}
+		resourceType = kind.String()
+	}
+	return resourceType, nil
 }
 
 func (r *shareRepositoryWrapper) Update(id string, entity any, _ ...string) error {
