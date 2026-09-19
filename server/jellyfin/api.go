@@ -3,7 +3,6 @@ package jellyfin
 import (
 	"encoding/json"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -41,7 +40,6 @@ type Router struct {
 	broker           events.Broker
 	lyricsCache      cache.SimpleCache[string, model.LyricList]
 	similarFlight    singleflight.Group
-	serverIDMu       sync.Mutex
 	serverIDVal      string
 }
 
@@ -93,6 +91,8 @@ func (api *Router) routes() http.Handler {
 			conf.Server.DevArtworkThrottleBacklogTimeout))
 		r.Get("/items/{itemId}/images/{type}", api.getItemImage)
 		r.Get("/items/{itemId}/images/{type}/{index}", api.getItemImage)
+		r.Head("/items/{itemId}/images/{type}", api.getItemImage)
+		r.Head("/items/{itemId}/images/{type}/{index}", api.getItemImage)
 	})
 
 	inner.Group(func(r chi.Router) {
@@ -145,6 +145,12 @@ func (api *Router) routes() http.Handler {
 		r.Get("/items/{itemId}/similar", api.getSimilarItems)
 		r.Get("/albums/{itemId}/similar", api.getSimilarAlbums)
 		r.Get("/items/{itemId}/instantmix", api.getInstantMix)
+		r.Get("/songs/{itemId}/instantmix", api.getInstantMix)
+		r.Get("/albums/{itemId}/instantmix", api.getInstantMix)
+		r.Get("/artists/{itemId}/instantmix", api.getInstantMix)
+		r.Get("/playlists/{itemId}/instantmix", api.getInstantMix)
+		r.Get("/artists/instantmix", api.getInstantMixByQuery)
+		r.Get("/musicgenres/instantmix", api.getInstantMixByQuery)
 		r.Get("/genres", api.getGenres)
 		r.Get("/musicgenres", api.getGenres)
 		r.Get("/studios", api.getStudios)
@@ -155,6 +161,7 @@ func (api *Router) routes() http.Handler {
 		r.Post("/playlists/{playlistId}", api.updatePlaylist)
 		r.Post("/playlists/{playlistId}/items", api.addToPlaylist)
 		r.Delete("/playlists/{playlistId}/items", api.removeFromPlaylist)
+		r.Post("/playlists/{playlistId}/items/{entryId}/move/{newIndex}", api.movePlaylistItem)
 		r.Get("/playlists/{playlistId}/users", api.getPlaylistUsers)
 		r.Get("/playlists/{playlistId}/users/{userId}", api.getPlaylistUser)
 
@@ -165,7 +172,11 @@ func (api *Router) routes() http.Handler {
 
 		r.Get("/audio/{itemId}/stream", api.streamAudio)
 		r.Get("/audio/{itemId}/stream.{container}", api.streamAudio)
-		r.Get("/audio/{itemId}/universal", api.streamAudio)
+		r.Get("/audio/{itemId}/universal", api.streamUniversal)
+		// Fintunes probes these with HEAD for the content type before playing or downloading.
+		r.Head("/audio/{itemId}/stream", api.streamAudio)
+		r.Head("/audio/{itemId}/stream.{container}", api.streamAudio)
+		r.Head("/audio/{itemId}/universal", api.streamUniversal)
 		r.Get("/audio/{itemId}/main.m3u8", api.streamHls)
 		r.Get("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
 		r.Post("/items/{itemId}/playbackinfo", api.getPlaybackInfo)
@@ -174,12 +185,15 @@ func (api *Router) routes() http.Handler {
 		// /Audio/{id}/stream; /Download reuses the direct-play handler as Jellyfin serves the same file.
 		r.Get("/items/{itemId}/file", api.streamFile)
 		r.Get("/items/{itemId}/download", api.streamFile)
+		r.Head("/items/{itemId}/file", api.streamFile)
+		r.Head("/items/{itemId}/download", api.streamFile)
 
 		r.Post("/sessions/playing", api.reportPlaybackStart)
 		r.Post("/sessions/playing/progress", api.reportPlaybackProgress)
 		r.Post("/sessions/playing/stopped", api.reportPlaybackStopped)
-		r.Post("/sessions/capabilities", api.postCapabilities)
-		r.Post("/sessions/capabilities/full", api.postCapabilities)
+		r.Post("/sessions/playing/ping", api.acknowledge)
+		r.Post("/sessions/capabilities", api.acknowledge)
+		r.Post("/sessions/capabilities/full", api.acknowledge)
 
 		// Real-time clients (e.g. Finamp) open this right after login; without it they 404-loop-reconnect.
 		r.Get("/socket", api.handleSocket)
