@@ -116,8 +116,8 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"artistdateloved":      {expr: "artist_annotation.starred_at", joinType: smartPlaylistJoinArtistAnnotation},
 	"artistdaterated":      {expr: "artist_annotation.rated_at", joinType: smartPlaylistJoinArtistAnnotation},
 	"mbz_album_id":         {expr: "media_file.mbz_album_id"},
-	"mbz_album_artist_id":  {expr: "media_file.mbz_album_artist_id"},
-	"mbz_artist_id":        {expr: "media_file.mbz_artist_id"},
+	"mbz_album_artist_id":  {order: participantSortExpr("albumartist", "artist.mbz_artist_id")},
+	"mbz_artist_id":        {order: participantSortExpr("artist", "artist.mbz_artist_id")},
 	"mbz_recording_id":     {expr: "media_file.mbz_recording_id"},
 	"mbz_release_track_id": {expr: "media_file.mbz_release_track_id"},
 	"mbz_release_group_id": {expr: "media_file.mbz_release_group_id"},
@@ -198,7 +198,7 @@ func (c smartPlaylistCriteria) exprSQL(expr criteria.Expression) (squirrel.Sqliz
 }
 
 func isNotExpr(values map[string]any) (squirrel.Sqlizer, error) {
-	if _, value, info, ok := singleField(values); ok && (info.IsTag || info.IsRole) {
+	if _, value, info, ok := singleField(values); ok && jsonField(info) {
 		return jsonExpr(info, squirrel.Eq{"value": value}, true), nil
 	}
 	return comparisonExpr(values, cmpNe)
@@ -219,6 +219,10 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 	negate := checkAbsence == b
 
 	switch {
+	case info.ParticipantRole != "":
+		// Present means the role has a participant with a non-empty attribute; a NULL column
+		// never satisfies <> '', so NULLs count as missing too.
+		return jsonExpr(info, squirrel.NotEq{"value": ""}, negate), nil
 	case info.IsTag || info.IsRole:
 		return jsonExpr(info, nil, negate), nil
 	case info.Nullable:
@@ -254,7 +258,7 @@ func missingExpr(values map[string]any, checkAbsence bool) (squirrel.Sqlizer, er
 
 func likeExpr(values map[string]any, pattern string, negate bool) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok {
-		if info.IsTag || info.IsRole {
+		if jsonField(info) {
 			return jsonExpr(info, squirrel.Like{"value": fmt.Sprintf(pattern, value)}, negate), nil
 		}
 		// LIKE can't use the column index, so annotation fields keep the COALESCE form: a NULL
@@ -294,8 +298,8 @@ func rangeExpr(values map[string]any) (squirrel.Sqlizer, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid field in criteria: %s", field)
 	}
-	if info.IsTag || info.IsRole {
-		// Tags/roles are multi-valued JSON, so splitting a range into two independent EXISTS
+	if jsonField(info) {
+		// Tags/roles are multi-valued, so splitting a range into two independent EXISTS
 		// subqueries would let different values satisfy each bound. Ranges are unsupported there.
 		return nil, fmt.Errorf("range operator not supported for tag/role field: %s", field)
 	}
@@ -373,7 +377,31 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 	return squirrel.Expr("media_file.id IN ("+subSQL+")", subArgs...), nil
 }
 
+// jsonField reports whether the field is matched via an EXISTS subquery (tags JSON, role
+// name, or another participant attribute) rather than a direct column comparison.
+func jsonField(info criteria.FieldInfo) bool {
+	return info.IsTag || info.IsRole || info.ParticipantRole != ""
+}
+
+// participantAttrCols maps a criteria participant attribute to the artist table column
+// holding it.
+var participantAttrCols = map[string]string{
+	criteria.ParticipantAttrMbid: "artist.mbz_artist_id",
+}
+
+// participantSortExpr resolves a participant attribute for ORDER BY. The participants JSON
+// column only carries id/name/subRole, so other attributes are read through the
+// media_file_artists join table; min() keeps the value deterministic for multi-artist tracks.
+func participantSortExpr(role, col string) string {
+	return "COALESCE((select min(" + col + ") from media_file_artists mfa" +
+		" join artist on artist.id = mfa.artist_id" +
+		" where mfa.media_file_id = media_file.id and mfa.role = '" + role + "'), '')"
+}
+
 func jsonExpr(info criteria.FieldInfo, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
+	if info.ParticipantRole != "" {
+		return roleCond{role: info.ParticipantRole, col: participantAttrCols[info.ParticipantAttr], cond: cond, not: negate}
+	}
 	if info.IsRole {
 		return roleCond{role: info.Name(), cond: cond, not: negate}
 	}
@@ -408,6 +436,7 @@ func (e tagCond) ToSql() (string, []any, error) {
 
 type roleCond struct {
 	role string
+	col  string
 	cond squirrel.Sqlizer
 	not  bool
 }
@@ -416,7 +445,7 @@ func (e roleCond) ToSql() (string, []any, error) {
 	var cond string
 	var args []any
 	if e.cond != nil {
-		innerSQL, innerArgs, err := roleCondSQL(e.cond)
+		innerSQL, innerArgs, err := roleCondSQL(e.cond, e.col)
 		if err != nil {
 			return "", nil, err
 		}
@@ -433,12 +462,15 @@ func (e roleCond) ToSql() (string, []any, error) {
 }
 
 // roleCondSQL extracts SQL from a squirrel condition and rewrites the placeholder column name.
-func roleCondSQL(cond squirrel.Sqlizer) (string, []any, error) {
+func roleCondSQL(cond squirrel.Sqlizer, col string) (string, []any, error) {
 	sql, args, err := cond.ToSql()
 	if err != nil {
 		return "", nil, err
 	}
-	return strings.ReplaceAll(sql, "value", "artist.name"), args, nil
+	if col == "" {
+		col = "artist.name"
+	}
+	return strings.ReplaceAll(sql, "value", col), args, nil
 }
 
 // roleExistsSQL wraps a condition fragment in the standard role EXISTS subquery.
@@ -485,6 +517,8 @@ func mergeSameFieldConds(conds []squirrel.Sqlizer, negated bool) ([]squirrel.Sql
 		isRole  bool
 		numeric bool
 		tag     string
+		role    string
+		col     string
 	}
 	groups := make(map[string]*group)
 	for i, s := range conds {
@@ -493,10 +527,13 @@ func mergeSameFieldConds(conds []squirrel.Sqlizer, negated bool) ([]squirrel.Sql
 			if c.not != negated || c.cond == nil {
 				continue
 			}
-			g, exists := groups["role:"+c.role]
+			// The column is part of the key: conditions on different artist columns for the
+			// same role must not be ORed inside one EXISTS.
+			key := "role:" + c.role + ":" + c.col
+			g, exists := groups[key]
 			if !exists {
-				g = &group{isRole: true}
-				groups["role:"+c.role] = g
+				g = &group{isRole: true, role: c.role, col: c.col}
+				groups[key] = g
 			}
 			g.entries = append(g.entries, condEntry{index: i, cond: c.cond})
 		case tagCond:
@@ -525,9 +562,8 @@ func mergeSameFieldConds(conds []squirrel.Sqlizer, negated bool) ([]squirrel.Sql
 			batchConds[i] = e.cond
 		}
 		if g.isRole {
-			role := key[len("role:"):]
 			for batch := range slices.Chunk(batchConds, jsonCondBatchSize) {
-				additions = append(additions, roleCondGroup{role: role, conds: batch, not: negated})
+				additions = append(additions, roleCondGroup{role: g.role, col: g.col, conds: batch, not: negated})
 			}
 		} else {
 			for batch := range slices.Chunk(batchConds, jsonCondBatchSize) {
@@ -553,6 +589,7 @@ func mergeSameFieldConds(conds []squirrel.Sqlizer, negated bool) ([]squirrel.Sql
 // (optionally negated) EXISTS subquery for performance.
 type roleCondGroup struct {
 	role  string
+	col   string
 	conds []squirrel.Sqlizer
 	not   bool
 }
@@ -561,7 +598,7 @@ func (g roleCondGroup) ToSql() (string, []any, error) {
 	innerParts := make([]string, 0, len(g.conds))
 	allArgs := []any{g.role}
 	for _, c := range g.conds {
-		part, args, err := roleCondSQL(c)
+		part, args, err := roleCondSQL(c, g.col)
 		if err != nil {
 			return "", nil, err
 		}
@@ -624,7 +661,7 @@ func sqlFields(values map[string]any) (map[string]any, error) {
 		if !ok {
 			return nil, fmt.Errorf("invalid field in criteria: %s", field)
 		}
-		if info.IsTag || info.IsRole {
+		if jsonField(info) {
 			return nil, fmt.Errorf("tag and role criteria must contain exactly one field: %s", field)
 		}
 		sqlField, ok := fieldExpr(info.Name())
@@ -681,7 +718,7 @@ func (f smartPlaylistField) coalesced() string {
 
 func comparisonExpr(values map[string]any, cmp comparator) (squirrel.Sqlizer, error) {
 	if _, value, info, ok := singleField(values); ok {
-		if info.IsTag || info.IsRole {
+		if jsonField(info) {
 			return jsonExpr(info, cmp.build(map[string]any{"value": value}), false), nil
 		}
 		if f, isAnnotation := annotationField(info); isAnnotation {
