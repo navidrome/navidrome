@@ -29,8 +29,7 @@ type discoveryInfo struct {
 	EndpointAddress *string `json:"EndpointAddress"`
 }
 
-// Discovery answers LAN auto-discovery broadcasts. It shares the server identity with the Router
-// through the DataStore, so it can run as its own service.
+// Discovery answers LAN auto-discovery broadcasts with the same identity the Router reports.
 type Discovery struct {
 	ds          model.DataStore
 	serverIDVal string

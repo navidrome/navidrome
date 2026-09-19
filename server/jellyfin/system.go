@@ -26,8 +26,6 @@ import (
 // for Feishin to use the server lyrics endpoint.
 const jellyfinVersion = "10.9.11"
 
-func (api *Router) serverName() string { return serverName() }
-
 func serverName() string {
 	if conf.Server.Jellyfin.ServerName != "" {
 		return conf.Server.Jellyfin.ServerName
@@ -39,15 +37,11 @@ func (api *Router) serverID(ctx context.Context) string {
 	return resolveServerID(ctx, api.ds, &api.serverIDVal)
 }
 
-// Package-level so every resolver sharing the DataStore serializes first-boot creation of the id.
+// Package-level: the Router and Discovery are separate objects and must not persist different ids.
 var serverIDMu sync.Mutex
 
-// resolveServerID returns a stable Id that survives restarts, get-or-created in the Property table.
-// Jellyfin clients cache ServerId across sessions, so a per-process value would break
-// re-authentication. ds is nil only in unit tests.
-//
-// Only a successful read or persisted id is cached; a transient failure yields a temporary id and
-// retries on the next call rather than pinning a value.
+// Clients cache ServerId across sessions, so it is persisted. Only a successful read or write is
+// cached: a transient failure yields a temporary id and retries on the next call.
 func resolveServerID(ctx context.Context, ds model.DataStore, cached *string) string {
 	serverIDMu.Lock()
 	defer serverIDMu.Unlock()
@@ -84,7 +78,7 @@ func newServerID() string {
 func (api *Router) publicInfo(r *http.Request) dto.PublicSystemInfo {
 	return dto.PublicSystemInfo{
 		LocalAddress:           localAddress(r),
-		ServerName:             api.serverName(),
+		ServerName:             serverName(),
 		Version:                jellyfinVersion,
 		ProductName:            "Jellyfin Server",
 		Id:                     api.serverID(r.Context()),
@@ -116,7 +110,7 @@ func (api *Router) getSystemInfo(w http.ResponseWriter, r *http.Request) {
 func (api *Router) ping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(api.serverName()))
+	_, _ = w.Write([]byte(serverName()))
 }
 
 // getEndpointInfo answers /System/Endpoint, which Finamp's connection test uses to pick between a

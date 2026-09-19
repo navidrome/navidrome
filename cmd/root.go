@@ -20,7 +20,6 @@ import (
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
-	"github.com/navidrome/navidrome/server/jellyfin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -345,12 +344,14 @@ func startInsightsCollector(ctx context.Context) func() error {
 	}
 }
 
-// startJellyfinDiscovery always returns nil: a discovery failure must never stop the server.
+// startJellyfinDiscovery never returns an error: a discovery failure must not stop the server.
 func startJellyfinDiscovery(ctx context.Context) func() error {
 	return func() error {
-		if conf.Server.Jellyfin.Enabled && conf.Server.Jellyfin.AutoDiscovery {
-			jellyfin.NewDiscovery(CreateDataStore()).Serve(ctx)
+		if !conf.Server.Jellyfin.Enabled || !conf.Server.Jellyfin.AutoDiscovery {
+			log.Debug("Jellyfin auto-discovery is DISABLED")
+			return nil
 		}
+		CreateJellyfinDiscovery().Serve(ctx)
 		return nil
 	}
 }
