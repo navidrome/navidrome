@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gg"
 )
@@ -28,8 +29,23 @@ type discoveryInfo struct {
 	EndpointAddress *string `json:"EndpointAddress"`
 }
 
-// ServeDiscovery serves until ctx is done. A failed bind is only logged: discovery is best-effort.
-func (api *Router) ServeDiscovery(ctx context.Context) {
+// Discovery answers LAN auto-discovery broadcasts. It shares the server identity with the Router
+// through the DataStore, so it can run as its own service.
+type Discovery struct {
+	ds          model.DataStore
+	serverIDVal string
+}
+
+func NewDiscovery(ds model.DataStore) *Discovery {
+	return &Discovery{ds: ds}
+}
+
+func (d *Discovery) serverID(ctx context.Context) string {
+	return resolveServerID(ctx, d.ds, &d.serverIDVal)
+}
+
+// Serve runs until ctx is done. A failed bind is only logged: discovery is best-effort.
+func (d *Discovery) Serve(ctx context.Context) {
 	// udp4 only: a dual-stack bind can share the port with another server and never get a packet.
 	conn, err := net.ListenPacket("udp4", net.JoinHostPort("0.0.0.0", strconv.Itoa(discoveryPort)))
 	if err != nil {
@@ -37,11 +53,11 @@ func (api *Router) ServeDiscovery(ctx context.Context) {
 		return
 	}
 	log.Info(ctx, "Jellyfin API: listening for auto-discovery broadcasts", "port", discoveryPort)
-	api.ServeDiscoveryOn(ctx, conn)
+	d.ServeOn(ctx, conn)
 }
 
-// ServeDiscoveryOn answers discovery queries on conn until ctx is done, then closes conn.
-func (api *Router) ServeDiscoveryOn(ctx context.Context, conn net.PacketConn) {
+// ServeOn answers discovery queries on conn until ctx is done, then closes conn.
+func (d *Discovery) ServeOn(ctx context.Context, conn net.PacketConn) {
 	defer conn.Close()
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
@@ -57,7 +73,7 @@ func (api *Router) ServeDiscoveryOn(ctx context.Context, conn net.PacketConn) {
 		if !strings.Contains(strings.ToLower(string(buf[:n])), discoveryQuery) {
 			continue
 		}
-		info := discoveryInfo{Address: discoveryAddress(ctx, remote), Id: api.serverID(ctx), Name: api.serverName()}
+		info := discoveryInfo{Address: discoveryAddress(ctx, remote), Id: d.serverID(ctx), Name: serverName()}
 		res, _ := json.Marshal(info)
 		log.Debug(ctx, "Jellyfin API: answering auto-discovery request", "from", remote.String(), "address", info.Address)
 		if _, err := conn.WriteTo(res, remote); err != nil {

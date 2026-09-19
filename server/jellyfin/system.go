@@ -10,6 +10,7 @@ import (
 	"net/netip"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
@@ -25,35 +26,43 @@ import (
 // for Feishin to use the server lyrics endpoint.
 const jellyfinVersion = "10.9.11"
 
-func (api *Router) serverName() string {
+func (api *Router) serverName() string { return serverName() }
+
+func serverName() string {
 	if conf.Server.Jellyfin.ServerName != "" {
 		return conf.Server.Jellyfin.ServerName
 	}
 	return fmt.Sprintf("Navidrome %s", consts.Version)
 }
 
-// serverID returns a stable Id that survives restarts, get-or-created in the Property table.
-// Jellyfin clients cache ServerId across sessions, so a per-process value would break
-// re-authentication. api.ds is nil only in unit tests; New() always sets it.
-//
-// The mutex serializes first-boot resolution so concurrent requests can't persist different
-// UUIDs. Only a successful read or persisted id is cached; a transient failure yields a
-// temporary id and retries on the next request rather than pinning a value.
 func (api *Router) serverID(ctx context.Context) string {
-	api.serverIDMu.Lock()
-	defer api.serverIDMu.Unlock()
-	if api.serverIDVal != "" {
-		return api.serverIDVal
+	return resolveServerID(ctx, api.ds, &api.serverIDVal)
+}
+
+// Package-level so every resolver sharing the DataStore serializes first-boot creation of the id.
+var serverIDMu sync.Mutex
+
+// resolveServerID returns a stable Id that survives restarts, get-or-created in the Property table.
+// Jellyfin clients cache ServerId across sessions, so a per-process value would break
+// re-authentication. ds is nil only in unit tests.
+//
+// Only a successful read or persisted id is cached; a transient failure yields a temporary id and
+// retries on the next call rather than pinning a value.
+func resolveServerID(ctx context.Context, ds model.DataStore, cached *string) string {
+	serverIDMu.Lock()
+	defer serverIDMu.Unlock()
+	if *cached != "" {
+		return *cached
 	}
-	if api.ds == nil {
-		api.serverIDVal = newServerID()
-		return api.serverIDVal
+	if ds == nil {
+		*cached = newServerID()
+		return *cached
 	}
-	id, err := api.ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+	id, err := ds.Property(ctx).Get(consts.JellyfinServerIDKey)
 	switch {
 	case errors.Is(err, model.ErrNotFound):
 		id = newServerID()
-		if err := api.ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
+		if err := ds.Property(ctx).Put(consts.JellyfinServerIDKey, id); err != nil {
 			log.Error(ctx, "Jellyfin API: could not persist server id", err)
 			return id
 		}
@@ -62,8 +71,8 @@ func (api *Router) serverID(ctx context.Context) string {
 		return newServerID()
 	}
 	// Ids persisted before this change are dashed; normalize on read rather than rewriting the DB.
-	api.serverIDVal = strings.ReplaceAll(id, "-", "")
-	return api.serverIDVal
+	*cached = strings.ReplaceAll(id, "-", "")
+	return *cached
 }
 
 // newServerID returns a UUID in Jellyfin's no-dash GUID form (Guid.ToString("N")).

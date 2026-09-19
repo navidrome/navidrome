@@ -20,6 +20,7 @@ import (
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/scheduler"
 	"github.com/navidrome/navidrome/server/backgrounds"
+	"github.com/navidrome/navidrome/server/jellyfin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -86,6 +87,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
+	g.Go(startJellyfinDiscovery(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBAnalyzer(ctx))
@@ -130,11 +132,7 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
 		if conf.Server.Jellyfin.Enabled {
-			jf := CreateJellyfinAPIRouter(ctx)
-			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, jf)
-			if conf.Server.Jellyfin.AutoDiscovery {
-				go jf.ServeDiscovery(ctx)
-			}
+			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
 		}
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
@@ -343,6 +341,16 @@ func startInsightsCollector(ctx context.Context) func() error {
 		}
 		ic := CreateInsights()
 		ic.Run(ctx)
+		return nil
+	}
+}
+
+// startJellyfinDiscovery always returns nil: a discovery failure must never stop the server.
+func startJellyfinDiscovery(ctx context.Context) func() error {
+	return func() error {
+		if conf.Server.Jellyfin.Enabled && conf.Server.Jellyfin.AutoDiscovery {
+			jellyfin.NewDiscovery(CreateDataStore()).Serve(ctx)
+		}
 		return nil
 	}
 }

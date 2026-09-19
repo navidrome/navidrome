@@ -25,7 +25,7 @@ var _ = Describe("Auto discovery", func() {
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			router.(*jellyfin.Router).ServeDiscoveryOn(ctx, server)
+			jellyfin.NewDiscovery(ds).ServeOn(ctx, server)
 		}()
 		DeferCleanup(func() {
 			cancel()

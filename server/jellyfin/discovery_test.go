@@ -29,7 +29,7 @@ func (c *failingConn) Close() error {
 }
 
 var _ = Describe("Discovery", func() {
-	var api *Router
+	var d *Discovery
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -41,7 +41,7 @@ var _ = Describe("Discovery", func() {
 		conf.Server.BasePath = ""
 		conf.Server.TLSCert = ""
 		conf.Server.TLSKey = ""
-		api = &Router{}
+		d = &Discovery{}
 	})
 
 	DescribeTable("discoveryAddress",
@@ -80,11 +80,11 @@ var _ = Describe("Discovery", func() {
 
 	It("closes the connection when the read loop fails", func() {
 		fake := &failingConn{}
-		api.ServeDiscoveryOn(context.Background(), fake)
+		d.ServeOn(context.Background(), fake)
 		Expect(fake.closed).To(BeTrue())
 	})
 
-	Describe("ServeDiscoveryOn", func() {
+	Describe("ServeOn", func() {
 		var (
 			server net.PacketConn
 			client net.PacketConn
@@ -105,7 +105,7 @@ var _ = Describe("Discovery", func() {
 			done = make(chan struct{})
 			go func() {
 				defer close(done)
-				api.ServeDiscoveryOn(ctx, server)
+				d.ServeOn(ctx, server)
 			}()
 			DeferCleanup(func() {
 				cancel()
@@ -132,7 +132,7 @@ var _ = Describe("Discovery", func() {
 			var info discoveryInfo
 			Expect(json.Unmarshal(res, &info)).To(Succeed())
 			Expect(info.Address).To(Equal("http://127.0.0.1:4533/jellyfin"))
-			Expect(info.Id).To(Equal(api.serverID(context.Background())))
+			Expect(info.Id).To(Equal(d.serverID(context.Background())))
 			Expect(info.Name).To(Equal("Test Server"))
 			Expect(string(res)).To(ContainSubstring(`"EndpointAddress":null`))
 		})
