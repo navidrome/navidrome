@@ -6,10 +6,12 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/server"
 )
 
 type quickConnectDevice struct {
@@ -23,6 +25,10 @@ func (api *Router) addQuickConnectRoute(r chi.Router) {
 		return
 	}
 	r.Route("/quickconnect", func(r chi.Router) {
+		// Throttled like login so a signed-in user cannot enumerate other people's pending codes.
+		if conf.Server.AuthRequestLimit > 0 {
+			r.Use(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		}
 		r.Get("/", lookupQuickConnect(api.quickConnect))
 		r.Post("/authorize", authorizeQuickConnect(api.quickConnect))
 	})

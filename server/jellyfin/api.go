@@ -114,7 +114,12 @@ func (api *Router) routes() http.Handler {
 		r.Get("/users/{userId}/views", api.getUserViews)
 		r.Get("/users/me", api.getCurrentUser)
 		r.Get("/users/{userId}", api.getCurrentUser)
-		r.With(requireQuickConnect).Post("/quickconnect/authorize", api.quickConnectAuthorize)
+		// Throttled like login so a signed-in user cannot enumerate other people's pending codes.
+		approve := r.With(requireQuickConnect)
+		if conf.Server.AuthRequestLimit > 0 {
+			approve = approve.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		}
+		approve.Post("/quickconnect/authorize", api.quickConnectAuthorize)
 
 		// Cursor-backed collections: each streams straight from the DB, holding a connection for the
 		// whole client-paced response, so enough slow clients would take the entire pool and stall the

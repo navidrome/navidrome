@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -84,6 +85,33 @@ var _ = Describe("Router", func() {
 		Expect(login()).To(Equal(http.StatusUnauthorized))
 		Expect(login()).To(Equal(http.StatusUnauthorized))
 		Expect(login()).To(Equal(http.StatusTooManyRequests))
+	})
+
+	It("rate-limits Quick Connect approval by IP when a login limit is configured", func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.AuthRequestLimit = 2
+		conf.Server.AuthWindowLength = time.Minute
+		conf.Server.Jellyfin.QuickConnect = true
+		ds := &tests.MockDataStore{}
+		auth.Init(ds)
+		usr := model.User{ID: testID("alice"), UserName: "alice"}
+		Expect(ds.User(GinkgoT().Context()).Put(&usr)).To(Succeed())
+		token, err := auth.CreateAPIToken(&usr, auth.AudienceJellyfin)
+		Expect(err).ToNot(HaveOccurred())
+		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, quickconnect.New())
+
+		authorize := func() int {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/QuickConnect/Authorize?code=000000", nil)
+			r.RemoteAddr = "10.0.0.1:1234"
+			r.Header.Set("X-Emby-Token", token)
+			api.ServeHTTP(w, r)
+			return w.Code
+		}
+		// An unknown code is 404; the limiter cuts in on the 3rd attempt with 429.
+		Expect(authorize()).To(Equal(http.StatusNotFound))
+		Expect(authorize()).To(Equal(http.StatusNotFound))
+		Expect(authorize()).To(Equal(http.StatusTooManyRequests))
 	})
 
 	It("rate-limits AuthenticateByName by resolved client IP, not by the proxy connection", func() {

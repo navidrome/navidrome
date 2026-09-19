@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
@@ -115,6 +116,23 @@ var _ = Describe("Quick Connect endpoints", func() {
 
 		It("mounts the routes when Jellyfin Quick Connect is on", func() {
 			Expect(serve()).To(Equal(http.StatusOK))
+		})
+
+		It("rate-limits code attempts when a login limit is configured", func() {
+			conf.Server.AuthRequestLimit = 2
+			conf.Server.AuthWindowLength = time.Minute
+			r := chi.NewRouter()
+			(&Router{quickConnect: qc}).addQuickConnectRoute(r)
+			attempt := func() int {
+				w := httptest.NewRecorder()
+				req := httptest.NewRequest("GET", "/quickconnect?code=000000", nil)
+				req.RemoteAddr = "10.0.0.1:1234"
+				r.ServeHTTP(w, asUser(req))
+				return w.Code
+			}
+			Expect(attempt()).To(Equal(http.StatusNotFound))
+			Expect(attempt()).To(Equal(http.StatusNotFound))
+			Expect(attempt()).To(Equal(http.StatusTooManyRequests))
 		})
 
 		It("skips the routes when the Jellyfin API is off", func() {

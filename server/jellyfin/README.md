@@ -102,8 +102,9 @@ Quick Connect call returns 401.
    `AuthenticateByName`.
 
 Pending codes live in memory and expire after 10 minutes (a server restart drops them). Unlike
-Jellyfin, a secret signs in only once. `Initiate` and `AuthenticateWithQuickConnect` share the
-login rate limiter; `Connect` does not, since some clients poll it every second.
+Jellyfin, a secret signs in only once. `Initiate`, `AuthenticateWithQuickConnect` and code approval
+(`Authorize` and the web UI) are rate-limited per IP like the login; `Connect` is not, since some
+clients poll it every second.
 
 ### Public user list (login picker)
 
