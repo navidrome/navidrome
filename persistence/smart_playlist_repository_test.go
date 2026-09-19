@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -222,14 +223,14 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			It("matches a child path stored in a different Unicode normalization form", func() {
 				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
 
-				child := model.Playlist{Name: "NFD Child", OwnerID: "userid", Public: true, Path: "/música/child.nsp", Rules: &criteria.Criteria{
+				child := model.Playlist{Name: "NFD Child", OwnerID: "userid", Public: true, Path: filepath.FromSlash("/mu\u0301sica/child.nsp"), Rules: &criteria.Criteria{
 					Expression: criteria.All{criteria.Contains{"title": "Day"}},
 				}}
 				Expect(repo.Put(&child)).To(Succeed())
 				DeferCleanup(func() { _ = repo.Delete(child.ID) })
 
 				parent := model.Playlist{Name: "NFC Parent", OwnerID: "userid", Rules: &criteria.Criteria{
-					Expression: criteria.All{criteria.InPlaylist{"path": "/música/child.nsp"}},
+					Expression: criteria.All{criteria.InPlaylist{"path": "/m\u00fasica/child.nsp"}},
 				}}
 				Expect(repo.Put(&parent)).To(Succeed())
 				DeferCleanup(func() { _ = repo.Delete(parent.ID) })
