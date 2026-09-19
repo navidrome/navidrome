@@ -345,7 +345,7 @@ func startOfPeriod(numDays int64, from time.Time) string {
 
 func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
 	var condition squirrel.Sqlizer
-	if playlistId, ok := values["id"].(string); ok {
+	if playlistId, ok := values["id"].(string); ok && playlistId != "" {
 		condition = squirrel.Eq{"pl.playlist_id": playlistId}
 	} else if playlistPath, ok := values["path"].(string); ok && playlistPath != "" {
 		condition = squirrel.Eq{"playlist.path": playlistPath}

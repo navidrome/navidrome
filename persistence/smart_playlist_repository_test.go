@@ -174,6 +174,29 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				})
 			})
 
+			It("does not treat an empty path as a reference to every playlist without a path", func() {
+				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+				bystander := model.Playlist{Name: "Bystander", OwnerID: "userid", Public: true, Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.Contains{"title": "Day"}},
+				}}
+				Expect(repo.Put(&bystander)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(bystander.ID) })
+
+				parent := model.Playlist{Name: "Empty Path", OwnerID: "userid", Public: true, Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.InPlaylist{"path": ""}},
+				}}
+				Expect(repo.Put(&parent)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(parent.ID) })
+
+				_, err := repo.GetWithTracks(parent.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				reloaded, err := repo.Get(bystander.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(reloaded.EvaluatedAt).To(BeNil())
+			})
+
 			When("refresh delay has not expired", func() {
 				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
 					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour

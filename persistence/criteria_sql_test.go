@@ -49,6 +49,7 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("after", criteria.After{"lastPlayed": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "annotation.play_date > ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
 		Entry("in playlist [path]", criteria.InPlaylist{"path": "lacuslacus.nsp"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (playlist.path = ? AND playlist.public = ?))", "lacuslacus.nsp", 1),
 		Entry("in playlist [id]", criteria.InPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
+		Entry("in playlist [empty id falls back to path]", criteria.InPlaylist{"id": "", "path": "/music/x.nsp"}, "media_file.id IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (playlist.path = ? AND playlist.public = ?))", "/music/x.nsp", 1),
 		Entry("not in playlist", criteria.NotInPlaylist{"id": "deadbeef-dead-beef"}, "media_file.id NOT IN (SELECT media_file_id FROM playlist_tracks pl LEFT JOIN playlist on pl.playlist_id = playlist.id WHERE (pl.playlist_id = ? AND playlist.public = ?))", "deadbeef-dead-beef", 1),
 		Entry("album annotation", criteria.Gt{"albumRating": 3}, "album_annotation.rating > ?", 3),
 		Entry("artist annotation", criteria.Is{"artistLoved": true}, "artist_annotation.starred = ?", true),

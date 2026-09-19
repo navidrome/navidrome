@@ -97,9 +97,17 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 		return true
 	}
 
-	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Or{Eq{"playlist.id": childPlaylistIds}, Eq{"playlist.path": childPlaylistPaths}}})
+	var conditions Or
+	if len(childPlaylistIds) > 0 {
+		conditions = append(conditions, Eq{"playlist.id": childPlaylistIds})
+	}
+	if len(childPlaylistPaths) > 0 {
+		conditions = append(conditions, Eq{"playlist.path": childPlaylistPaths})
+	}
+
+	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: conditions})
 	if err != nil {
-		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
+		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, "childPaths", childPlaylistPaths, err)
 		return false
 	}
 

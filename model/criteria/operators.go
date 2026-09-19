@@ -191,7 +191,7 @@ func extractPlaylistField(inputRule any, field string) (values []string) {
 			values = append(values, extractPlaylistField(rules, field)...)
 		}
 	case InPlaylist, NotInPlaylist:
-		if value, ok := rule.(Expression).fields()[field].(string); ok {
+		if value, ok := rule.(Expression).fields()[field].(string); ok && value != "" {
 			values = append(values, value)
 		}
 	}
