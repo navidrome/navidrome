@@ -100,13 +100,11 @@ func (api *Router) quickConnectAuthorize(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-type quickConnectDto struct {
-	Secret string `json:"Secret"`
-}
-
 func (api *Router) authenticateWithQuickConnect(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var body quickConnectDto
+	var body struct {
+		Secret string `json:"Secret"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Secret == "" {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -134,6 +132,6 @@ func quickConnectResult(req quickconnect.Request) dto.QuickConnectResult {
 		DeviceName:    req.Device.Name,
 		AppName:       req.Device.App,
 		AppVersion:    req.Device.AppVersion,
-		DateAdded:     dto.JellyfinDate(req.DateAdded),
+		DateAdded:     dto.JellyfinDate(&req.DateAdded),
 	}
 }
