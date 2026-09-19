@@ -6,7 +6,6 @@ import (
 	"maps"
 	"net/http"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
@@ -46,17 +45,14 @@ func (r *missingRepository) parseOptions(options []rest.QueryOptions) rest.Query
 }
 
 func (r *missingRepository) Read(id string) (any, error) {
-	all, err := r.mfRepo.GetAll(model.QueryOptions{Filters: squirrel.And{
-		squirrel.Eq{"id": id},
-		squirrel.Eq{"missing": true},
-	}})
+	mf, err := r.mfRepo.Get(id)
 	if err != nil {
 		return nil, err
 	}
-	if len(all) == 0 {
+	if !mf.Missing {
 		return nil, model.ErrNotFound
 	}
-	return all[0], nil
+	return mf, nil
 }
 
 func (r *missingRepository) EntityName() string {

@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -47,7 +46,7 @@ func (r *radioRepository) Delete(id string) error {
 		return rest.ErrPermissionDenied
 	}
 
-	return r.delete(Eq{"id": id})
+	return r.deleteByID(id)
 }
 
 func (r *radioRepository) Get(id string) (*model.Radio, error) {
@@ -132,9 +131,6 @@ func (r *radioRepository) Save(entity any) (string, error) {
 		return "", rest.ErrPermissionDenied
 	}
 	err := r.Put(t)
-	if errors.Is(err, model.ErrNotFound) {
-		return "", rest.ErrNotFound
-	}
 	return t.ID, err
 }
 
@@ -144,11 +140,7 @@ func (r *radioRepository) Update(id string, entity any, cols ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
-	err := r.Put(t, cols...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.Put(t, cols...)
 }
 
 var _ model.RadioRepository = (*radioRepository)(nil)

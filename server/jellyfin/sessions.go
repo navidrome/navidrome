@@ -113,8 +113,8 @@ func (api *Router) reportPlaybackStopped(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// postCapabilities acknowledges Jellyfin session-capability negotiation.
-// Navidrome doesn't track per-session client capabilities, so this is a no-op.
-func (api *Router) postCapabilities(w http.ResponseWriter, _ *http.Request) {
+// acknowledge answers requests Navidrome keeps no state for: session capabilities (not tracked per
+// session) and playback pings (transcodes live only as long as their stream request).
+func (api *Router) acknowledge(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
