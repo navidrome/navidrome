@@ -123,13 +123,13 @@ returns direct children only (no tracks — no track is a library's direct child
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
 | Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
 | Artists / genres | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres` |
-| Similar / mixes | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar`, `GET Items/{itemId}/InstantMix` |
+| Similar / mixes | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar`, `GET {Items,Songs,Albums,Artists,Playlists}/{itemId}/InstantMix`, `GET Artists/InstantMix?id=`, `GET MusicGenres/InstantMix?id=` |
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
 | Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
-| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
+| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` (`HEAD` too on stream, universal, File, Download and images; a transcode HEAD answers without starting it) |
 | Lyrics | `GET Audio/{itemId}/Lyrics` |
-| Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Capabilities[/Full]` |
-| Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items`, `GET Playlists/{playlistId}/Users[/{userId}]` |
+| Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Playing/Ping` (no-op), `POST Sessions/Capabilities[/Full]` |
+| Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items` (`POST` honors `position`), `POST Playlists/{playlistId}/Items/{entryId}/Move/{newIndex}`, `GET Playlists/{playlistId}/Users[/{userId}]` |
 | Real-time | `GET socket` (WebSocket; keeps clients like Finamp from 404-loop-reconnecting) |
 | AudioMuse-AI (see below) | `GET AudioMuseAI/info`, `GET AudioMuseAI/health`, `GET AudioMuseAI/similar_tracks`, `GET AudioMuseAI/find_path` |
 
@@ -350,7 +350,7 @@ make test PKG=./server/jellyfin/...
   just a list badge): browse lists advertise it from embedded lyrics only (the `"[]"` sentinel
   check — the column is never `""` post-scan), while `PlaybackInfo` runs the full pipeline per
   track so sidecar/plugin lyrics also light up. Feishin additionally requires server version
-  ≥ 10.9 — the reason `jellyfinVersion` is 10.9.11.
+  ≥ 10.9 (`jellyfinVersion` advertises 12.1.0).
   Concurrent misses on the same track share one pipeline invocation (`SimpleCache.GetWithLoader`
   is singleflighted), and the load runs detached from the request context with a one-minute bound,
   so a cancelled request or hung plugin can't fail or pin the load for other waiters.
