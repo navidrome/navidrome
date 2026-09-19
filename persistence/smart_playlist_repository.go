@@ -6,6 +6,7 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"golang.org/x/text/unicode/norm"
 )
 
 // PlaylistRepository methods to handle smart playlists, which are defined by criteria and automatically populated
@@ -102,7 +103,11 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 		conditions = append(conditions, Eq{"playlist.id": childPlaylistIds})
 	}
 	if len(childPlaylistPaths) > 0 {
-		conditions = append(conditions, Eq{"playlist.path": childPlaylistPaths})
+		lookupPaths := make([]string, 0, len(childPlaylistPaths))
+		for _, path := range childPlaylistPaths {
+			lookupPaths = append(lookupPaths, pathVariants(path)...)
+		}
+		conditions = append(conditions, Eq{"playlist.path": lookupPaths})
 	}
 
 	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: conditions})
@@ -115,7 +120,7 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 	for i := range childPlaylists {
 		found[childPlaylists[i].ID] = struct{}{}
 		if childPlaylists[i].Path != "" {
-			found[childPlaylists[i].Path] = struct{}{}
+			found[norm.NFC.String(childPlaylists[i].Path)] = struct{}{}
 		}
 		r.refreshSmartPlaylist(&childPlaylists[i])
 	}
@@ -126,7 +131,7 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 	}
 
 	for _, path := range childPlaylistPaths {
-		if _, ok := found[path]; !ok {
+		if _, ok := found[norm.NFC.String(path)]; !ok {
 			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "path", path, "ownerId", pls.OwnerID)
 		}
 	}

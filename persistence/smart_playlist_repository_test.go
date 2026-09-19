@@ -197,6 +197,27 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				Expect(reloaded.EvaluatedAt).To(BeNil())
 			})
 
+			It("matches a child path stored in a different Unicode normalization form", func() {
+				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+				child := model.Playlist{Name: "NFD Child", OwnerID: "userid", Public: true, Path: "/música/child.nsp", Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.Contains{"title": "Day"}},
+				}}
+				Expect(repo.Put(&child)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(child.ID) })
+
+				parent := model.Playlist{Name: "NFC Parent", OwnerID: "userid", Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.InPlaylist{"path": "/música/child.nsp"}},
+				}}
+				Expect(repo.Put(&parent)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(parent.ID) })
+
+				pls, err := repo.GetWithTracks(parent.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(1))
+				Expect(pls.Tracks[0].MediaFileID).To(Equal(songDayInALife.ID))
+			})
+
 			When("refresh delay has not expired", func() {
 				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
 					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
