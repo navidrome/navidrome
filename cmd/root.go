@@ -130,7 +130,15 @@ func startServer(ctx context.Context) func() error {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
 		if conf.Server.Jellyfin.Enabled {
-			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
+			jf := CreateJellyfinAPIRouter(ctx)
+			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, jf)
+			if conf.Server.Jellyfin.AutoDiscovery {
+				go func() {
+					if err := jf.ServeDiscovery(ctx); err != nil {
+						log.Warn(ctx, "Jellyfin API: auto-discovery is off, UDP port 7359 is unavailable. Is another Jellyfin server running?", err)
+					}
+				}()
+			}
 		}
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
