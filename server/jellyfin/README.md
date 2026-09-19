@@ -24,6 +24,8 @@ ServerName = "My Music Server"
 ExposedPublicUsers = "alice, bob"
 # Optional: answer LAN auto-discovery broadcasts on UDP 7359 (default: false). See "Auto discovery".
 AutoDiscovery = true
+# Optional: let users sign in new devices with a 6-digit code (default: true). See "Quick Connect".
+QuickConnect = false
 # Optional: max collection responses streaming at once (default: half the DB connection pool,
 # min 2). Each streaming response holds a DB connection for its whole duration; excess requests
 # queue rather than fail.
@@ -37,6 +39,7 @@ ND_JELLYFIN_ENABLED=true
 ND_JELLYFIN_SERVERNAME="My Music Server"
 ND_JELLYFIN_EXPOSEDPUBLICUSERS="alice,bob"
 ND_JELLYFIN_AUTODISCOVERY=true
+ND_JELLYFIN_QUICKCONNECT=false
 ```
 
 Once enabled, the API is mounted at:
@@ -81,6 +84,26 @@ query param — all forms are accepted, matching what different clients do).
 surface.
 
 Access tokens do not expire, matching real Jellyfin. They are revoked by a password change, which bumps the user's token epoch.
+
+### Quick Connect
+
+Quick Connect signs a new device in without typing a password. The client shows a 6-digit code,
+a signed-in user approves it, and the client gets its `AccessToken`. It is on by default
+(`Jellyfin.QuickConnect`); when off, `GET QuickConnect/Enabled` returns `false` and every other
+Quick Connect call returns 401.
+
+1. `POST QuickConnect/Initiate` (public; needs `Client`, `Device`, `DeviceId` and `Version` in the
+   auth header) returns the `Code` and a `Secret`.
+2. The user approves the code, either in the Navidrome web UI (user menu → **Quick Connect**, which
+   shows the app and device before approving) or from a signed-in Jellyfin client with
+   `POST QuickConnect/Authorize?Code=`. Admins may pass `UserId` to approve for another user.
+3. The client polls `GET QuickConnect/Connect?Secret=` until `Authenticated` is `true`.
+4. `POST Users/AuthenticateWithQuickConnect` with `{"Secret": "..."}` returns the same result as
+   `AuthenticateByName`.
+
+Pending codes live in memory and expire after 10 minutes (a server restart drops them). Unlike
+Jellyfin, a secret signs in only once. `Initiate` and `AuthenticateWithQuickConnect` share the
+login rate limiter; `Connect` does not, since some clients poll it every second.
 
 ### Public user list (login picker)
 
@@ -140,7 +163,8 @@ returns direct children only (no tracks — no track is a library's direct child
 
 | Area | Endpoints |
 |---|---|
-| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET System/Endpoint` (authenticated), `GET QuickConnect/Enabled` |
+| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET System/Endpoint` (authenticated) |
+| Quick Connect | `GET QuickConnect/Enabled`, `POST QuickConnect/Initiate`, `GET QuickConnect/Connect`, `POST QuickConnect/Authorize` (authenticated), `POST Users/AuthenticateWithQuickConnect` |
 | Auth | `POST Users/AuthenticateByName`, `GET Users/Public` |
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
 | Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |

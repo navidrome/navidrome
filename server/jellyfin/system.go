@@ -153,7 +153,3 @@ func parseIP(addr string) netip.Addr {
 	}
 	return ip.Unmap()
 }
-
-func (api *Router) quickConnectEnabled(w http.ResponseWriter, r *http.Request) {
-	api.ok(w, r, false)
-}

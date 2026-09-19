@@ -469,3 +469,8 @@ func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, server
 		PlayState:          PlayerStateInfo{RepeatMode: "RepeatNone", PlaybackOrder: "Default"},
 	}
 }
+
+// JellyfinDate formats t like the other dates in the API.
+func JellyfinDate(t time.Time) string {
+	return jellyfinDate(&t)
+}

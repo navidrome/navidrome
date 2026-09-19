@@ -145,17 +145,6 @@ var _ = Describe("System", func() {
 		Expect(info.IsInNetwork).To(BeTrue())
 	})
 
-	It("reports quick connect as disabled", func() {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/QuickConnect/Enabled", nil)
-		api.quickConnectEnabled(w, r)
-
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var enabled bool
-		Expect(json.Unmarshal(w.Body.Bytes(), &enabled)).To(Succeed())
-		Expect(enabled).To(BeFalse())
-	})
-
 	Context("serverID with a real DataStore", func() {
 		var ctx context.Context
 		var ds *tests.MockDataStore
