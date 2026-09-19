@@ -35,7 +35,7 @@ type Device struct {
 }
 
 type Request struct {
-	Device
+	Device    Device
 	Secret    string
 	Code      string
 	DateAdded time.Time

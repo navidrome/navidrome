@@ -12,7 +12,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 )
 
-type quickConnectRequest struct {
+type quickConnectDevice struct {
 	AppName    string `json:"appName"`
 	AppVersion string `json:"appVersion"`
 	DeviceName string `json:"deviceName"`
@@ -48,7 +48,7 @@ func authorizeQuickConnect(qc quickconnect.QuickConnect) http.HandlerFunc {
 		user, _ := request.UserFrom(ctx)
 		req, err := qc.Authorize(body.Code, user.ID)
 		if err == nil {
-			log.Info(ctx, "Quick Connect sign-in approved", "username", user.UserName, "client", req.App, "device", req.Name)
+			log.Info(ctx, "Quick Connect sign-in approved", "username", user.UserName, "client", req.Device.App, "device", req.Device.Name)
 		}
 		writeQuickConnectResult(w, r, req, err)
 	}
@@ -65,6 +65,6 @@ func writeQuickConnectResult(w http.ResponseWriter, r *http.Request, req quickco
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	default:
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(quickConnectRequest{AppName: req.App, AppVersion: req.AppVersion, DeviceName: req.Name})
+		_ = json.NewEncoder(w).Encode(quickConnectDevice{AppName: req.Device.App, AppVersion: req.Device.AppVersion, DeviceName: req.Device.Name})
 	}
 }

@@ -83,8 +83,9 @@ func (api *Router) routes() http.Handler {
 		login = login.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
 	}
 	login.Post("/users/authenticatebyname", api.authenticateByName)
-	login.With(requireQuickConnect).Post("/quickconnect/initiate", api.quickConnectInitiate)
-	login.With(requireQuickConnect).Post("/users/authenticatewithquickconnect", api.authenticateWithQuickConnect)
+	quickConnectLogin := login.With(requireQuickConnect)
+	quickConnectLogin.Post("/quickconnect/initiate", api.quickConnectInitiate)
+	quickConnectLogin.Post("/users/authenticatewithquickconnect", api.authenticateWithQuickConnect)
 	// Not rate-limited: Finamp and Streamyfin poll it every second while the code is shown.
 	inner.With(requireQuickConnect).Get("/quickconnect/connect", api.quickConnectConnect)
 	inner.Get("/users/public", api.getPublicUsers)

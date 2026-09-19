@@ -33,12 +33,12 @@ var _ = Describe("Quick Connect endpoints", func() {
 	asUser := func(r *http.Request) *http.Request {
 		return r.WithContext(request.WithUser(r.Context(), user))
 	}
-	decode := func(w *httptest.ResponseRecorder) quickConnectRequest {
-		var res quickConnectRequest
+	decode := func(w *httptest.ResponseRecorder) quickConnectDevice {
+		var res quickConnectDevice
 		Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 		return res
 	}
-	finamp := quickConnectRequest{AppName: "Finamp", AppVersion: "1.0.0", DeviceName: "Pixel 7"}
+	finamp := quickConnectDevice{AppName: "Finamp", AppVersion: "1.0.0", DeviceName: "Pixel 7"}
 
 	Describe("GET /quickconnect", func() {
 		lookup := func(code string) *httptest.ResponseRecorder {

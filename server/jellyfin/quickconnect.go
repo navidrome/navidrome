@@ -95,7 +95,7 @@ func (api *Router) quickConnectAuthorize(w http.ResponseWriter, r *http.Request)
 		api.internalError(w, r, err)
 	default:
 		log.Info(ctx, "Jellyfin API: Quick Connect sign-in approved", "username", target.UserName,
-			"approvedBy", caller.UserName, "client", req.App, "device", req.Name)
+			"approvedBy", caller.UserName, "client", req.Device.App, "device", req.Device.Name)
 		api.ok(w, r, true)
 	}
 }
@@ -130,10 +130,10 @@ func quickConnectResult(req quickconnect.Request) dto.QuickConnectResult {
 		Authenticated: req.Authorized(),
 		Secret:        req.Secret,
 		Code:          req.Code,
-		DeviceId:      req.ID,
-		DeviceName:    req.Name,
-		AppName:       req.App,
-		AppVersion:    req.AppVersion,
+		DeviceId:      req.Device.ID,
+		DeviceName:    req.Device.Name,
+		AppName:       req.Device.App,
+		AppVersion:    req.Device.AppVersion,
 		DateAdded:     dto.JellyfinDate(req.DateAdded),
 	}
 }
