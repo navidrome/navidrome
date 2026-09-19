@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
@@ -79,7 +80,8 @@ func CreateNativeAPIRouter(ctx context.Context) *nativeapi.Router {
 	agentsAgents := agents.GetAgents(dataStore, manager)
 	matcherMatcher := matcher.New(dataStore)
 	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher, broker)
-	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, uploader, provider)
+	quickConnect := quickconnect.GetInstance()
+	router := nativeapi.New(dataStore, share, playlistsPlaylists, insights, library, user, maintenance, manager, uploader, provider, quickConnect)
 	return router
 }
 
@@ -135,7 +137,8 @@ func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	provider := external.NewProvider(dataStore, agentsAgents, matcherMatcher, broker)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
-	router := jellyfin.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, players, playTracker, playlistsPlaylists, provider, sonicSonic, lyricsLyrics, broker)
+	quickConnect := quickconnect.GetInstance()
+	router := jellyfin.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, players, playTracker, playlistsPlaylists, provider, sonicSonic, lyricsLyrics, broker, quickConnect)
 	return router
 }
 

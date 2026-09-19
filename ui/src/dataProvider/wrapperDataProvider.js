@@ -218,6 +218,15 @@ const wrapperDataProvider = {
       ({ json }) => ({ data: json }),
     )
   },
+  lookupQuickConnect: (code) =>
+    httpClient(
+      `${REST_URL}/quickconnect?code=${encodeURIComponent(code)}`,
+    ).then(({ json }) => ({ data: json })),
+  authorizeQuickConnect: (code) =>
+    httpClient(`${REST_URL}/quickconnect/authorize`, {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }).then(({ json }) => ({ data: json })),
   inspect: (songId) => {
     return httpClient(`${REST_URL}/inspect?id=${songId}`).then(({ json }) => ({
       data: json,

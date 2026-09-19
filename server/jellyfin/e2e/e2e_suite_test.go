@@ -44,6 +44,7 @@ import (
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
@@ -338,6 +339,7 @@ func setupTestDB() {
 		sonicSvc,
 		lyrics.NewLyrics(ds, nil),
 		events.NoopBroker(),
+		quickconnect.New(),
 	)
 }
 
