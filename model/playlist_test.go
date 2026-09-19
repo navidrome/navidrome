@@ -135,6 +135,22 @@ var _ = Describe("Playlist", func() {
 			}))
 		})
 
+		It("cleans absolute references", func() {
+			tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
+
+			pls := model.Playlist{
+				Path: "/test/my-playlist.nsp",
+				Rules: &criteria.Criteria{Expression: criteria.All{
+					criteria.InPlaylist{"path": "/music/./child.nsp"},
+					criteria.NotInPlaylist{"path": "/music/sub/../other.nsp"},
+				}},
+			}
+			Expect(pls.WithNormalizeChildPaths().Rules.Expression).To(BeEquivalentTo(criteria.All{
+				criteria.InPlaylist{"path": "/music/child.nsp"},
+				criteria.NotInPlaylist{"path": "/music/other.nsp"},
+			}))
+		})
+
 		It("preserves every other criteria field", func() {
 			rules := criteria.Criteria{
 				Expression:   criteria.All{criteria.InPlaylist{"path": "child.nsp"}},

@@ -152,10 +152,6 @@ func (pls Playlist) WithNormalizeChildPaths() Playlist {
 }
 
 func normalizePlaylistPaths(inputRule criteria.Expression, referencingPlaylistPath string) criteria.Expression {
-	if referencingPlaylistPath == "" {
-		return inputRule
-	}
-
 	switch rule := inputRule.(type) {
 	case criteria.Any:
 		anyCriteria := make(criteria.Any, len(rule))
@@ -170,34 +166,26 @@ func normalizePlaylistPaths(inputRule criteria.Expression, referencingPlaylistPa
 		}
 		return allCriteria
 	case criteria.InPlaylist:
-		inPlaylist := maps.Clone(rule)
-		if path, ok := rule["path"].(string); ok {
-			if path == "" {
-				return inPlaylist
-			}
-
-			if !filepath.IsAbs(path) {
-				dir := filepath.Dir(referencingPlaylistPath)
-				inPlaylist["path"] = filepath.Clean(filepath.Join(dir, path))
-			}
-		}
-		return inPlaylist
+		return criteria.InPlaylist(normalizeChildPathRule(rule, referencingPlaylistPath))
 	case criteria.NotInPlaylist:
-		notInPlaylist := maps.Clone(rule)
-		if path, ok := rule["path"].(string); ok {
-			if path == "" {
-				return notInPlaylist
-			}
-
-			if !filepath.IsAbs(path) {
-				dir := filepath.Dir(referencingPlaylistPath)
-				notInPlaylist["path"] = filepath.Clean(filepath.Join(dir, path))
-			}
-		}
-		return notInPlaylist
+		return criteria.NotInPlaylist(normalizeChildPathRule(rule, referencingPlaylistPath))
 	}
 
 	return inputRule
+}
+
+func normalizeChildPathRule(rule map[string]any, referencingPlaylistPath string) map[string]any {
+	normalized := maps.Clone(rule)
+	path, ok := rule["path"].(string)
+	if !ok || path == "" {
+		return normalized
+	}
+	if filepath.IsAbs(path) {
+		normalized["path"] = filepath.Clean(path)
+	} else if referencingPlaylistPath != "" {
+		normalized["path"] = filepath.Clean(filepath.Join(filepath.Dir(referencingPlaylistPath), path))
+	}
+	return normalized
 }
 
 type Playlists []Playlist
