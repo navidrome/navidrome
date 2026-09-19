@@ -11,6 +11,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
@@ -189,6 +190,8 @@ func normalizeChildPathRule(rule map[string]any, referencingPlaylistPath string)
 		normalized["path"] = filepath.Clean(path)
 	} else if referencingPlaylistPath != "" {
 		normalized["path"] = filepath.Clean(filepath.Join(filepath.Dir(referencingPlaylistPath), path))
+	} else {
+		log.Warn("Cannot resolve relative playlist reference: playlist has no file path", "reference", path)
 	}
 	return normalized
 }
