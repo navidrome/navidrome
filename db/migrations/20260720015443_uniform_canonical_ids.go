@@ -77,14 +77,6 @@ var idColumns = []struct{ table, col string }{
 	{"media_file_artists", "media_file_id"}, {"media_file_artists", "artist_id"},
 	{"album_artists", "album_id"}, {"album_artists", "artist_id"},
 	{"library_tag", "tag_id"},
-	{"podcast_channel", "id"},
-	{"podcast_episode", "id"}, {"podcast_episode", "channel_id"}, {"podcast_episode", "stream_id"},
-	{"podcast_transcript", "id"}, {"podcast_transcript", "episode_id"},
-	{"podcast_person", "id"}, {"podcast_person", "channel_id"}, {"podcast_person", "episode_id"},
-	{"podcast_podroll", "id"}, {"podcast_podroll", "channel_id"},
-	{"podcast_live_item", "id"}, {"podcast_live_item", "channel_id"},
-	{"podcast_funding", "id"}, {"podcast_funding", "channel_id"},
-	{"podcast_image", "id"}, {"podcast_image", "channel_id"}, {"podcast_image", "episode_id"},
 }
 
 // embeddedIDColumns holds ids nested inside a larger value; the id-columns guard checks this
@@ -100,7 +92,7 @@ var embeddedIDColumns = []struct {
 }
 
 func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
-	if err := buildIDMap(ctx, tx); err != nil {
+	if err := buildIDMap(ctx, tx, idColumns); err != nil {
 		return err
 	}
 	for _, tc := range idColumns {
@@ -137,7 +129,10 @@ func rotateSessionSecret(ctx context.Context, tx *sql.Tx) error {
 }
 
 // buildIDMap stages old->new pairs for every id that changes, indexed for the update joins.
-func buildIDMap(ctx context.Context, tx *sql.Tx) error {
+// columns is a parameter (not always the package-level idColumns) so a later migration can
+// reuse this same collect-and-rewrite machinery for a different, disjoint set of columns - see
+// podcast_uniform_canonical_ids.go, which does exactly that for tables idColumns predates.
+func buildIDMap(ctx context.Context, tx *sql.Tx, columns []struct{ table, col string }) error {
 	_, err := tx.ExecContext(ctx,
 		"CREATE TEMP TABLE _id_map (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL) WITHOUT ROWID")
 	if err != nil {
@@ -148,7 +143,7 @@ func buildIDMap(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 	defer ins.Close()
-	for _, tc := range idColumns {
+	for _, tc := range columns {
 		if err := collectColumn(ctx, tx, ins, tc.table, tc.col); err != nil {
 			return fmt.Errorf("collecting %s.%s: %w", tc.table, tc.col, err)
 		}

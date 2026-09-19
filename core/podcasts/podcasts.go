@@ -316,7 +316,7 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 		s.setEpisodeError(ctx, ep, fmt.Errorf("invalid enclosure URL: %w", err))
 		return
 	}
-	httpClient := &http.Client{Timeout: 30 * time.Second}
+	httpClient := &http.Client{Timeout: 30 * time.Second, Transport: safeHTTPTransport}
 	resp, err := httpClient.Get(ep.EnclosureURL) //nolint:gosec
 	if err != nil {
 		s.setEpisodeError(ctx, ep, err)
@@ -535,11 +535,102 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
+// validateURL rejects any URL that is not a plain http/https request to a
+// named host. It exists to prevent SSRF: without it, an authenticated user
+// could point the preview/download endpoints at internal services, cloud
+// metadata endpoints (e.g. 169.254.169.254), or any other host only
+// reachable from the server itself. This is a cheap, fast-failing check on
+// the URL's shape - the actual IP-level check happens per-connection in
+// safeHTTPTransport below, since the host a URL names and the IP it
+// resolves to at request time aren't guaranteed to be the same thing.
+func validateURL(rawURL string) error {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("parsing URL: %w", err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("unsupported URL scheme %q, only http/https are allowed", u.Scheme)
+	}
+	if u.Hostname() == "" {
+		return fmt.Errorf("URL has no host")
+	}
+	return nil
+}
+
+// isReservedIP reports whether ip is a loopback, private, link-local,
+// multicast, or otherwise non-routable/internal address. Cloud metadata
+// endpoints (e.g. AWS/GCP/Azure's 169.254.169.254) fall under the
+// link-local range, so they're covered without a special case.
+//
+// This is a var, not a plain func, only so AllowLoopbackHTTPForTests (below)
+// can narrow it for test binaries - production code never reassigns it.
+var isReservedIP = func(ip net.IP) bool {
+	return ip.IsLoopback() ||
+		ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() ||
+		ip.IsInterfaceLocalMulticast() ||
+		ip.IsMulticast() ||
+		ip.IsUnspecified()
+}
+
+// AllowLoopbackHTTPForTests relaxes safeHTTPTransport's SSRF guard to permit
+// loopback addresses (127.0.0.0/8, ::1) - every other reserved/private/
+// link-local range (including cloud metadata endpoints) is still refused.
+// It exists because httptest.Server always binds to loopback, so the podcast
+// test suite needs a way to point the service at one without disabling the
+// guard entirely. Not for production use.
+func AllowLoopbackHTTPForTests() {
+	strict := isReservedIP
+	isReservedIP = func(ip net.IP) bool {
+		if ip.IsLoopback() {
+			return false
+		}
+		return strict(ip)
+	}
+}
+
+// safeHTTPTransport is shared by every outbound podcast HTTP request (RSS
+// feed fetch and episode download). Its DialContext resolves the host and
+// checks isReservedIP at the moment of connection, not just once via
+// validateURL up front - so a DNS answer that changes between the URL
+// check and the actual TCP connect (DNS rebinding) can't be used to reach
+// a reserved address that validateURL alone would have caught.
+var safeHTTPTransport = &http.Transport{
+	DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, fmt.Errorf("parsing address %q: %w", addr, err)
+		}
+		ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return nil, fmt.Errorf("resolving host %q: %w", host, err)
+		}
+		if len(ips) == 0 {
+			return nil, fmt.Errorf("host %q did not resolve to any address", host)
+		}
+		var dialer net.Dialer
+		var lastErr error
+		for _, ip := range ips {
+			if isReservedIP(ip.IP) {
+				lastErr = fmt.Errorf("host %q resolves to a reserved/internal address (%s), refusing to connect", host, ip.IP)
+				continue
+			}
+			conn, dialErr := dialer.DialContext(ctx, network, net.JoinHostPort(ip.IP.String(), port))
+			if dialErr == nil {
+				return conn, nil
+			}
+			lastErr = dialErr
+		}
+		return nil, lastErr
+	},
+}
+
 func fetchAndParse(rssURL string) (*rssFeed, error) {
 	if err := validateURL(rssURL); err != nil {
 		return nil, fmt.Errorf("invalid RSS feed URL: %w", err)
 	}
-	httpClient := &http.Client{Timeout: 15 * time.Second}
+	httpClient := &http.Client{Timeout: 15 * time.Second, Transport: safeHTTPTransport}
 	resp, err := httpClient.Get(rssURL) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("fetching RSS feed: %w", err)
