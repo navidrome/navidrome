@@ -1,6 +1,7 @@
 package model_test
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -89,65 +90,76 @@ var _ = Describe("Playlist", func() {
 		})
 	})
 
-	Describe("NormalizeChildPaths()", func() {
-		It("normalizes file paths", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
+	Describe("WithNormalizeChildPaths()", func() {
+		// absPath builds an OS-native absolute path so these specs also run on Windows.
+		absPath := func(parts ...string) string {
+			abs, err := filepath.Abs(filepath.Join(parts...))
+			Expect(err).ToNot(HaveOccurred())
+			return abs
+		}
+		normalize := func(pls model.Playlist) criteria.Expression {
+			return pls.WithNormalizeChildPaths().Rules.Expression
+		}
 
+		It("resolves relative references against the playlist folder", func() {
 			pls := model.Playlist{
-				Rules: &criteria.Criteria{
-					Expression: criteria.All{
-						criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
-						criteria.InPlaylist{"path": "../my-test-path.m3u"},
-						criteria.NotInPlaylist{"path": "/not-test/not-my-test-path.m3u"},
-						criteria.Eq{"artist": "Bob Dealin'"},
-						criteria.Any{
-							criteria.InPlaylist{"path": "../../in-the-test.nsp"},
-							criteria.NotInPlaylist{"path": "./sibling.nsp"},
-							criteria.NotInPlaylist{"path": ""},
-							criteria.All{
-								criteria.InPlaylist{"path": "/other-root/other.m3u"},
-								criteria.NotInPlaylist{"path": "../../../out-of-containment.nsp"},
-								criteria.InPlaylist{"id": "94d8ba52-7aca-40e2-af82-4cb09c43d710"},
-							},
-						},
-					},
-				},
-				Path: "/test/nested/my-playlist.nsp"}
-
-			newPls := pls.WithNormalizeChildPaths()
-			Expect(newPls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
-				Expression: criteria.All{
-					criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
-					criteria.InPlaylist{"path": "/test/my-test-path.m3u"},
-					criteria.NotInPlaylist{"path": "/not-test/not-my-test-path.m3u"},
-					criteria.Eq{"artist": "Bob Dealin'"},
-					criteria.Any{
-						criteria.InPlaylist{"path": "/in-the-test.nsp"},
-						criteria.NotInPlaylist{"path": "/test/nested/sibling.nsp"},
-						criteria.NotInPlaylist{"path": ""},
-						criteria.All{
-							criteria.InPlaylist{"path": "/other-root/other.m3u"},
-							criteria.NotInPlaylist{"path": "/out-of-containment.nsp"},
-							criteria.InPlaylist{"id": "94d8ba52-7aca-40e2-af82-4cb09c43d710"},
-						},
-					},
-				},
+				Path: absPath("test", "nested", "my-playlist.nsp"),
+				Rules: &criteria.Criteria{Expression: criteria.All{
+					criteria.InPlaylist{"path": "../up.m3u"},
+					criteria.NotInPlaylist{"path": "./sibling.nsp"},
+					criteria.Any{criteria.InPlaylist{"path": "sub/deep.nsp"}},
+				}},
+			}
+			Expect(normalize(pls)).To(BeEquivalentTo(criteria.All{
+				criteria.InPlaylist{"path": absPath("test", "up.m3u")},
+				criteria.NotInPlaylist{"path": absPath("test", "nested", "sibling.nsp")},
+				criteria.Any{criteria.InPlaylist{"path": absPath("test", "nested", "sub", "deep.nsp")}},
 			}))
 		})
 
 		It("cleans absolute references", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-model)")
-
+			dirty := absPath("music") + string(filepath.Separator) + "." + string(filepath.Separator) + "child.nsp"
 			pls := model.Playlist{
-				Path: "/test/my-playlist.nsp",
+				Path:  absPath("test", "my-playlist.nsp"),
+				Rules: &criteria.Criteria{Expression: criteria.All{criteria.NotInPlaylist{"path": dirty}}},
+			}
+			Expect(normalize(pls)).To(BeEquivalentTo(criteria.All{
+				criteria.NotInPlaylist{"path": absPath("music", "child.nsp")},
+			}))
+		})
+
+		It("treats a leading slash as absolute on every OS", func() {
+			pls := model.Playlist{
+				Path:  absPath("test", "my-playlist.nsp"),
+				Rules: &criteria.Criteria{Expression: criteria.All{criteria.InPlaylist{"path": "/other/./root.m3u"}}},
+			}
+			Expect(normalize(pls)).To(BeEquivalentTo(criteria.All{
+				criteria.InPlaylist{"path": filepath.FromSlash("/other/root.m3u")},
+			}))
+		})
+
+		It("leaves empty paths and id references untouched", func() {
+			pls := model.Playlist{
+				Path: absPath("test", "my-playlist.nsp"),
 				Rules: &criteria.Criteria{Expression: criteria.All{
-					criteria.InPlaylist{"path": "/music/./child.nsp"},
-					criteria.NotInPlaylist{"path": "/music/sub/../other.nsp"},
+					criteria.InPlaylist{"path": ""},
+					criteria.InPlaylist{"id": "94d8ba52-7aca-40e2-af82-4cb09c43d710"},
+					criteria.Eq{"artist": "Bob Dealin"},
 				}},
 			}
-			Expect(pls.WithNormalizeChildPaths().Rules.Expression).To(BeEquivalentTo(criteria.All{
-				criteria.InPlaylist{"path": "/music/child.nsp"},
-				criteria.NotInPlaylist{"path": "/music/other.nsp"},
+			Expect(normalize(pls)).To(BeEquivalentTo(criteria.All{
+				criteria.InPlaylist{"path": ""},
+				criteria.InPlaylist{"id": "94d8ba52-7aca-40e2-af82-4cb09c43d710"},
+				criteria.Eq{"artist": "Bob Dealin"},
+			}))
+		})
+
+		It("skips relative references when the playlist has no path", func() {
+			pls := model.Playlist{
+				Rules: &criteria.Criteria{Expression: criteria.All{criteria.InPlaylist{"path": "../up.m3u"}}},
+			}
+			Expect(normalize(pls)).To(BeEquivalentTo(criteria.All{
+				criteria.InPlaylist{"path": filepath.FromSlash("../up.m3u")},
 			}))
 		})
 
@@ -161,28 +173,18 @@ var _ = Describe("Playlist", func() {
 				Offset:       5,
 				RefreshDelay: 3 * time.Hour,
 			}
-			pls := model.Playlist{Path: "/test/my-playlist.nsp", Rules: &rules}
+			pls := model.Playlist{Path: absPath("test", "my-playlist.nsp"), Rules: &rules}
 
 			normalized := *pls.WithNormalizeChildPaths().Rules
 			normalized.Expression = rules.Expression
 			Expect(normalized).To(Equal(rules))
 		})
 
-		It("skips normalization when playlist path is empty", func() {
-			pls := model.Playlist{
-				Rules: &criteria.Criteria{
-					Expression: criteria.All{
-						criteria.InPlaylist{"path": "../my-test-path.m3u"},
-					},
-				},
-				Path: ""}
-
-			newPls := pls.WithNormalizeChildPaths()
-			Expect(newPls.Rules).Should(BeEquivalentTo(&criteria.Criteria{
-				Expression: criteria.All{
-					criteria.InPlaylist{"path": "../my-test-path.m3u"},
-				},
-			}))
+		It("does not mutate the original playlist rules", func() {
+			original := criteria.All{criteria.InPlaylist{"path": "child.nsp"}}
+			pls := model.Playlist{Path: absPath("test", "my-playlist.nsp"), Rules: &criteria.Criteria{Expression: original}}
+			_ = pls.WithNormalizeChildPaths()
+			Expect(original[0]).To(BeEquivalentTo(criteria.InPlaylist{"path": "child.nsp"}))
 		})
 	})
 })

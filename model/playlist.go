@@ -3,6 +3,7 @@ package model
 import (
 	"iter"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -180,12 +181,21 @@ func normalizeChildPathRule(rule map[string]any, referencingPlaylistPath string)
 	if !ok || path == "" {
 		return normalized
 	}
-	if filepath.IsAbs(path) {
+
+	// References use forward slashes to stay portable, while Playlist.Path is OS-native.
+	path = filepath.FromSlash(path)
+	normalized["path"] = path
+	if isAbsPlaylistRef(path) {
 		normalized["path"] = filepath.Clean(path)
 	} else if referencingPlaylistPath != "" {
 		normalized["path"] = filepath.Clean(filepath.Join(filepath.Dir(referencingPlaylistPath), path))
 	}
 	return normalized
+}
+
+// filepath.IsAbs rejects a bare leading separator on Windows, but that is how Unix spells absolute.
+func isAbsPlaylistRef(path string) bool {
+	return filepath.IsAbs(path) || os.IsPathSeparator(path[0])
 }
 
 type Playlists []Playlist
