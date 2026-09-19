@@ -1,7 +1,10 @@
 package jellyfin
 
 import (
+	"context"
+	"encoding/json"
 	"net"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -68,6 +71,74 @@ var _ = Describe("Discovery", func() {
 		It("does not double the slash when BasePath has a trailing slash", func() {
 			conf.Server.BasePath = "/music/"
 			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/music/jellyfin"))
+		})
+	})
+
+	Describe("ServeDiscoveryOn", func() {
+		var (
+			server net.PacketConn
+			client net.PacketConn
+			cancel context.CancelFunc
+			done   chan struct{}
+		)
+
+		BeforeEach(func() {
+			var err error
+			server, err = net.ListenPacket("udp4", "127.0.0.1:0")
+			Expect(err).ToNot(HaveOccurred())
+			client, err = net.ListenPacket("udp4", "127.0.0.1:0")
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(client.Close)
+
+			var ctx context.Context
+			ctx, cancel = context.WithCancel(context.Background())
+			done = make(chan struct{})
+			go func() {
+				defer close(done)
+				api.ServeDiscoveryOn(ctx, server)
+			}()
+			DeferCleanup(func() {
+				cancel()
+				Eventually(done).Should(BeClosed())
+			})
+		})
+
+		ask := func(msg string, wait time.Duration) ([]byte, error) {
+			_, err := client.WriteTo([]byte(msg), server.LocalAddr())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(client.SetReadDeadline(time.Now().Add(wait))).To(Succeed())
+			buf := make([]byte, 1024)
+			n, _, err := client.ReadFrom(buf)
+			return buf[:n], err
+		}
+
+		It("answers the discovery query with the server identity", func() {
+			res, err := ask("who is JellyfinServer?", time.Second)
+			Expect(err).ToNot(HaveOccurred())
+
+			var info discoveryInfo
+			Expect(json.Unmarshal(res, &info)).To(Succeed())
+			Expect(info.Address).To(Equal("http://127.0.0.1:4533/jellyfin"))
+			Expect(info.Id).To(Equal(api.serverID(context.Background())))
+			Expect(info.Name).To(Equal("Test Server"))
+			Expect(string(res)).To(ContainSubstring(`"EndpointAddress":null`))
+		})
+
+		It("matches the query case-insensitively", func() {
+			_, err := ask("WHO IS JELLYFINSERVER?", time.Second)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("ignores unrelated packets", func() {
+			_, err := ask("who is PlexServer?", 200*time.Millisecond)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("stops and closes the socket when the context is cancelled", func() {
+			cancel()
+			Eventually(done).Should(BeClosed())
+			_, _, err := server.ReadFrom(make([]byte, 1))
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
