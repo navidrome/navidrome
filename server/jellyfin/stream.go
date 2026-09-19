@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"math"
+	"mime"
 	"net/http"
 	"net/url"
 	"slices"
@@ -139,6 +140,14 @@ func (api *Router) serveAudio(w http.ResponseWriter, r *http.Request, mf *model.
 
 func (api *Router) serveStream(w http.ResponseWriter, r *http.Request, mf *model.MediaFile, streamReq stream.Request) {
 	ctx := r.Context()
+	// A probe must not start a transcode. Omitting Content-Length is what tells a client (Fintunes)
+	// this is not direct play; direct play falls through to Serve, which answers HEAD itself.
+	if r.Method == http.MethodHead && streamReq.Format != "" && streamReq.Format != "raw" {
+		w.Header().Set("Content-Type", mime.TypeByExtension("."+streamReq.Format))
+		w.Header().Set("Accept-Ranges", "none")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	s, err := api.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
 		api.internalError(w, r, err)

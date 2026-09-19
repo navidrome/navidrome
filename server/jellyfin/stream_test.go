@@ -244,6 +244,36 @@ var _ = Describe("Stream", func() {
 		})
 	})
 
+	Describe("HEAD requests", func() {
+		head := func(query string) *httptest.ResponseRecorder {
+			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			})
+			streamer.content = "audio-bytes"
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("HEAD", "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?"+query, nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+			return w
+		}
+
+		It("answers a transcode with the target type and no length, without starting it", func() {
+			w := head("audioCodec=mp3")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("audio/mpeg"))
+			Expect(w.Header().Get("Content-Length")).To(BeEmpty())
+			Expect(w.Body.String()).To(BeEmpty())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+
+		It("answers direct play through the streamer, without a body", func() {
+			w := head("static=true")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamer.invoked).To(BeTrue())
+			Expect(w.Body.String()).To(BeEmpty())
+		})
+	})
+
 	Describe("streamUniversal", func() {
 		universal := func(query string) {
 			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
