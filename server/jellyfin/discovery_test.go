@@ -21,6 +21,7 @@ var _ = Describe("Discovery", func() {
 		conf.Server.BaseScheme = ""
 		conf.Server.BasePath = ""
 		conf.Server.TLSCert = ""
+		conf.Server.TLSKey = ""
 		api = &Router{}
 	})
 
@@ -50,11 +51,22 @@ var _ = Describe("Discovery", func() {
 
 		It("advertises https when TLS is configured", func() {
 			conf.Server.TLSCert = "/path/cert.pem"
+			conf.Server.TLSKey = "/path/key.pem"
 			Expect(api.discoveryAddress(remote)).To(Equal("https://127.0.0.1:4533/jellyfin"))
+		})
+
+		It("advertises http when only the TLS cert is configured", func() {
+			conf.Server.TLSCert = "/path/cert.pem"
+			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/jellyfin"))
 		})
 
 		It("keeps a path-only BaseURL as the path prefix", func() {
 			conf.Server.BasePath = "/music"
+			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/music/jellyfin"))
+		})
+
+		It("does not double the slash when BasePath has a trailing slash", func() {
+			conf.Server.BasePath = "/music/"
 			Expect(api.discoveryAddress(remote)).To(Equal("http://127.0.0.1:4533/music/jellyfin"))
 		})
 	})
