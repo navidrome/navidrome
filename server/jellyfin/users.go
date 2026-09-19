@@ -34,7 +34,7 @@ func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
 func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u, _ := request.UserFrom(ctx)
-	api.ok(w, r, userToDto(&u, api.serverName(), api.serverID(ctx)))
+	api.ok(w, r, userToDto(&u, serverName(), api.serverID(ctx)))
 }
 
 // getPublicUsers advertises the users named in Jellyfin.ExposedPublicUsers for a client login
