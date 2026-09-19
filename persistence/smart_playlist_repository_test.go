@@ -174,6 +174,28 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				})
 			})
 
+			It("does not recurse forever when two smart playlists reference each other", func() {
+				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+
+				plsA := model.Playlist{Name: "Cycle A", OwnerID: "userid", Public: true, Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.Contains{"title": "Day"}},
+				}}
+				Expect(repo.Put(&plsA)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(plsA.ID) })
+
+				plsB := model.Playlist{Name: "Cycle B", OwnerID: "userid", Public: true, Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.InPlaylist{"id": plsA.ID}},
+				}}
+				Expect(repo.Put(&plsB)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(plsB.ID) })
+
+				plsA.Rules = &criteria.Criteria{Expression: criteria.All{criteria.InPlaylist{"id": plsB.ID}}}
+				Expect(repo.Put(&plsA)).To(Succeed())
+
+				_, err := repo.GetWithTracks(plsA.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
 			It("does not treat an empty path as a reference to every playlist without a path", func() {
 				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
 

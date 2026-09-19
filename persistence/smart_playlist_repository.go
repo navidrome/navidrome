@@ -17,6 +17,17 @@ import (
 
 // refreshSmartPlaylist evaluates the criteria of a smart playlist and updates its tracks accordingly.
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
+	return r.refreshSmartPlaylistTree(pls, map[string]struct{}{})
+}
+
+// The visited set stops playlists that reference each other from recursing forever.
+func (r *playlistRepository) refreshSmartPlaylistTree(pls *model.Playlist, visited map[string]struct{}) bool {
+	if _, seen := visited[pls.ID]; seen {
+		log.Trace(r.ctx, "Skipping already visited smart playlist", "playlist", pls.Name, "id", pls.ID)
+		return false
+	}
+	visited[pls.ID] = struct{}{}
+
 	usr := loggedUser(r.ctx)
 	if !r.shouldRefreshSmartPlaylist(pls, usr) {
 		return false
@@ -34,7 +45,7 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 	normalisedPls := pls.WithNormalizeChildPaths()
 	rulesSQL := newSmartPlaylistCriteria(*normalisedPls.Rules, withSmartPlaylistOwner(*usr))
 
-	if !r.refreshChildPlaylists(&normalisedPls, rulesSQL) {
+	if !r.refreshChildPlaylists(&normalisedPls, rulesSQL, visited) {
 		return false
 	}
 
@@ -91,7 +102,7 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 
 // refreshChildPlaylists handles refreshing any child playlists that are referenced in the smart playlist criteria.
 // Returns false if child playlists could not be loaded (DB error), signaling the parent refresh should abort.
-func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) bool {
+func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria, visited map[string]struct{}) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
 	childPlaylistPaths := rulesSQL.ChildPlaylistPaths()
 	if len(childPlaylistIds) == 0 && len(childPlaylistPaths) == 0 {
@@ -122,7 +133,7 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 		if childPlaylists[i].Path != "" {
 			found[norm.NFC.String(childPlaylists[i].Path)] = struct{}{}
 		}
-		r.refreshSmartPlaylist(&childPlaylists[i])
+		r.refreshSmartPlaylistTree(&childPlaylists[i], visited)
 	}
 	for _, id := range childPlaylistIds {
 		if _, ok := found[id]; !ok {
