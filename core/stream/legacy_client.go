@@ -73,37 +73,8 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 	}
 
 	clientInfo := buildLegacyClientInfo(mf, reqFormat, reqBitRate, playerMaxBitRate)
-
-	// Apply server-side player transcoding override before making the decision
-	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
-		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
-	} else if player, ok := request.PlayerFrom(ctx); ok {
-		modified := *clientInfo
-		if modified.CapBitrate(player.MaxBitRate) {
-			clientInfo = &modified
-			log.Debug(ctx, "Applied player MaxBitRate cap", "playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
-		}
-	}
-
-	decision, err := s.MakeDecision(ctx, mf, clientInfo, TranscodeOptions{SkipProbe: true})
-	if err != nil {
-		log.Error(ctx, "Error making transcode decision, falling back to raw", "id", mf.ID, err)
-		req.Format = "raw"
-		return req
-	}
-
-	if decision.CanDirectPlay {
-		req.Format = "raw"
-		return req
-	}
-
-	if decision.CanTranscode {
-		req.Format = decision.TargetFormat
-		req.BitRate = decision.TargetBitrate
-		req.SampleRate = decision.TargetSampleRate
-		req.BitDepth = decision.TargetBitDepth
-		req.Channels = decision.TargetChannels
-		return req
+	if resolved, ok := s.resolve(ctx, mf, clientInfo, offset); ok {
+		return resolved
 	}
 
 	// No compatible profile for the requested format — retry with DefaultDownsamplingFormat
@@ -118,4 +89,48 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 	// Ultimate fallback — raw
 	req.Format = "raw"
 	return req
+}
+
+// ResolveClientRequest resolves a stream request for a client that declared its own direct play
+// and transcoding profiles, falling back to raw when none fits.
+func (s *deciderService) ResolveClientRequest(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, offset int) Request {
+	if req, ok := s.resolve(ctx, mf, clientInfo, offset); ok {
+		return req
+	}
+	return Request{Format: "raw", Offset: offset}
+}
+
+// resolve applies the server-side player overrides to clientInfo and maps the decision to a
+// Request. ok is false when no profile fits.
+func (s *deciderService) resolve(ctx context.Context, mf *model.MediaFile, clientInfo *ClientInfo, offset int) (Request, bool) {
+	req := Request{Offset: offset}
+	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
+		clientInfo = applyServerOverride(ctx, clientInfo, &trc)
+	} else if player, ok := request.PlayerFrom(ctx); ok {
+		modified := *clientInfo
+		if modified.CapBitrate(player.MaxBitRate) {
+			clientInfo = &modified
+			log.Debug(ctx, "Applied player MaxBitRate cap", "playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
+		}
+	}
+
+	decision, err := s.MakeDecision(ctx, mf, clientInfo, TranscodeOptions{SkipProbe: true})
+	if err != nil {
+		log.Error(ctx, "Error making transcode decision, falling back to raw", "id", mf.ID, err)
+		req.Format = "raw"
+		return req, true
+	}
+	switch {
+	case decision.CanDirectPlay:
+		req.Format = "raw"
+	case decision.CanTranscode:
+		req.Format = decision.TargetFormat
+		req.BitRate = decision.TargetBitrate
+		req.SampleRate = decision.TargetSampleRate
+		req.BitDepth = decision.TargetBitDepth
+		req.Channels = decision.TargetChannels
+	default:
+		return req, false
+	}
+	return req, true
 }
