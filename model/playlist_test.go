@@ -135,6 +135,23 @@ var _ = Describe("Playlist", func() {
 			}))
 		})
 
+		It("preserves every other criteria field", func() {
+			rules := criteria.Criteria{
+				Expression:   criteria.All{criteria.InPlaylist{"path": "child.nsp"}},
+				Sort:         "title",
+				Order:        "desc",
+				Limit:        10,
+				LimitPercent: 25,
+				Offset:       5,
+				RefreshDelay: 3 * time.Hour,
+			}
+			pls := model.Playlist{Path: "/test/my-playlist.nsp", Rules: &rules}
+
+			normalized := *pls.WithNormalizeChildPaths().Rules
+			normalized.Expression = rules.Expression
+			Expect(normalized).To(Equal(rules))
+		})
+
 		It("skips normalization when playlist path is empty", func() {
 			pls := model.Playlist{
 				Rules: &criteria.Criteria{

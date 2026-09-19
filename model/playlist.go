@@ -144,15 +144,10 @@ func (pls Playlist) WithNormalizeChildPaths() Playlist {
 		return pls
 	}
 
+	rules := *pls.Rules
+	rules.Expression = normalizePlaylistPaths(pls.Rules.Expression, pls.Path)
 	plsClone := pls
-	plsClone.Rules = &criteria.Criteria{
-		Sort:         pls.Rules.Sort,
-		Limit:        pls.Rules.Limit,
-		LimitPercent: pls.Rules.LimitPercent,
-		Offset:       pls.Rules.Offset,
-		Order:        pls.Rules.Order,
-		Expression:   normalizePlaylistPaths(pls.Rules.Expression, pls.Path),
-	}
+	plsClone.Rules = &rules
 	return plsClone
 }
 
