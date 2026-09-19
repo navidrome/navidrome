@@ -3,7 +3,6 @@ package jellyfin
 import (
 	"encoding/json"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -41,7 +40,6 @@ type Router struct {
 	broker           events.Broker
 	lyricsCache      cache.SimpleCache[string, model.LyricList]
 	similarFlight    singleflight.Group
-	serverIDMu       sync.Mutex
 	serverIDVal      string
 }
 
