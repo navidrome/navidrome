@@ -27,9 +27,13 @@ func (api *Router) quickConnectEnabled(w http.ResponseWriter, r *http.Request) {
 	api.ok(w, r, conf.Server.Jellyfin.QuickConnect)
 }
 
+// Initiate is unauthenticated and its fields are kept for minutes, so their size must be bounded.
+const maxQuickConnectField = 512
+
 func (api *Router) quickConnectInitiate(w http.ResponseWriter, r *http.Request) {
 	a := parseMediaBrowserAuth(r)
-	if a.Client == "" || a.Device == "" || a.DeviceId == "" || a.Version == "" {
+	if a.Client == "" || a.Device == "" || a.DeviceId == "" || a.Version == "" ||
+		max(len(a.Client), len(a.Device), len(a.DeviceId), len(a.Version)) > maxQuickConnectField {
 		http.Error(w, "Client, Device, DeviceId and Version are required", http.StatusBadRequest)
 		return
 	}
@@ -115,9 +119,13 @@ func (api *Router) authenticateWithQuickConnect(w http.ResponseWriter, r *http.R
 		return
 	}
 	usr, err := api.ds.User(ctx).Get(userID)
-	if err != nil {
-		log.Warn(ctx, "Jellyfin API: Quick Connect user not found", "userID", userID, err)
+	if errors.Is(err, model.ErrNotFound) {
+		log.Warn(ctx, "Jellyfin API: Quick Connect user not found", "userID", userID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if err != nil {
+		api.internalError(w, r, err)
 		return
 	}
 	api.signIn(w, r, usr)

@@ -3,6 +3,7 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -120,6 +121,13 @@ var _ = Describe("QuickConnect", func() {
 
 		It("returns 400 when the auth header does not identify the client", func() {
 			w := initiateWith(`MediaBrowser Client="Finamp", Device="Pixel 7", Version="1.0.0"`)
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("returns 400 when a client field is oversized", func() {
+			long := strings.Repeat("x", maxQuickConnectField+1)
+			api.quickConnect = fullQuickConnect{qc}
+			w := initiateWith(`MediaBrowser Client="Finamp", Device="` + long + `", DeviceId="dev-1", Version="1.0.0"`)
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
@@ -281,6 +289,13 @@ var _ = Describe("QuickConnect", func() {
 			req := initiate()
 			_, _ = qc.Authorize(req.Code, testID("ghost"))
 			Expect(redeemSecret(req.Secret).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("returns 500 when the user lookup fails", func() {
+			req := initiate()
+			_, _ = qc.Authorize(req.Code, alice.ID)
+			ds.User(context.Background()).(*tests.MockedUserRepo).Error = errors.New("db down")
+			Expect(redeemSecret(req.Secret).Code).To(Equal(http.StatusInternalServerError))
 		})
 	})
 })

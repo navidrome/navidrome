@@ -95,6 +95,9 @@ func (qc *quickConnect) Initiate(device Device) (Request, error) {
 	if len(qc.bySecret) >= maxPending {
 		return Request{}, ErrTooManyRequests
 	}
+	// The fields may be substrings of a much larger header; copy them so the header isn't retained.
+	device = Device{ID: strings.Clone(device.ID), Name: strings.Clone(device.Name),
+		App: strings.Clone(device.App), AppVersion: strings.Clone(device.AppVersion)}
 	now := time.Now()
 	e := &entry{
 		Request:   Request{Device: device, Secret: newSecret(), Code: qc.newCode(), DateAdded: now},
