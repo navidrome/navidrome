@@ -15,7 +15,7 @@ import (
 	"github.com/navidrome/navidrome/utils/gg"
 )
 
-// Wire format of Jellyfin's AutoDiscoveryHost: clients broadcast the query text to this UDP port.
+// Jellyfin clients broadcast this query text to this UDP port.
 const (
 	discoveryPort  = 7359
 	discoveryQuery = "who is jellyfinserver?"
@@ -28,7 +28,7 @@ type discoveryInfo struct {
 	EndpointAddress *string `json:"EndpointAddress"`
 }
 
-// ServeDiscovery returns an error only when the port can't be bound.
+// ServeDiscovery serves until ctx is done; it returns an error only when the port can't be bound.
 func (api *Router) ServeDiscovery(ctx context.Context) error {
 	// udp4 only: a dual-stack bind can share the port with another server and never get a packet.
 	conn, err := net.ListenPacket("udp4", net.JoinHostPort("0.0.0.0", strconv.Itoa(discoveryPort)))
@@ -42,6 +42,7 @@ func (api *Router) ServeDiscovery(ctx context.Context) error {
 
 // ServeDiscoveryOn answers discovery queries on conn until ctx is done, then closes conn.
 func (api *Router) ServeDiscoveryOn(ctx context.Context, conn net.PacketConn) {
+	defer conn.Close()
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
 	buf := make([]byte, 1024)
@@ -60,7 +61,7 @@ func (api *Router) ServeDiscoveryOn(ctx context.Context, conn net.PacketConn) {
 		res, _ := json.Marshal(info)
 		log.Debug(ctx, "Jellyfin API: answering auto-discovery request", "from", remote.String(), "address", info.Address)
 		if _, err := conn.WriteTo(res, remote); err != nil {
-			log.Warn(ctx, "Jellyfin API: could not answer auto-discovery request", "to", remote.String(), err)
+			log.Debug(ctx, "Jellyfin API: could not answer auto-discovery request", "to", remote.String(), err)
 		}
 	}
 }

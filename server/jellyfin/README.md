@@ -36,6 +36,7 @@ or via environment variables:
 ND_JELLYFIN_ENABLED=true
 ND_JELLYFIN_SERVERNAME="My Music Server"
 ND_JELLYFIN_EXPOSEDPUBLICUSERS="alice,bob"
+ND_JELLYFIN_AUTODISCOVERY=true
 ```
 
 Once enabled, the API is mounted at:
@@ -60,7 +61,7 @@ when that is a specific IP, or else the local IP that faces the requesting clien
 
 Docker: publish the port (`-p 7359:7359/udp`). In bridge mode the server only sees its container
 IP, so also set `ND_BASEURL` to the LAN address (for example `http://192.168.1.10:4533`), or use
-host networking.
+host networking. Keep UDP 7359 on the LAN: never forward it from the internet.
 
 ## Authentication
 

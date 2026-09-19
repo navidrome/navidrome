@@ -3,7 +3,9 @@ package jellyfin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
+	"os"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -11,6 +13,20 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+type failingConn struct {
+	net.PacketConn
+	closed bool
+}
+
+func (c *failingConn) ReadFrom([]byte) (int, net.Addr, error) {
+	return 0, nil, errors.New("read failed")
+}
+
+func (c *failingConn) Close() error {
+	c.closed = true
+	return nil
+}
 
 var _ = Describe("Discovery", func() {
 	var api *Router
@@ -131,7 +147,13 @@ var _ = Describe("Discovery", func() {
 
 		It("ignores unrelated packets", func() {
 			_, err := ask("who is PlexServer?", 200*time.Millisecond)
-			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, os.ErrDeadlineExceeded)).To(BeTrue())
+		})
+
+		It("closes the connection when the read loop fails", func() {
+			fake := &failingConn{}
+			api.ServeDiscoveryOn(context.Background(), fake)
+			Expect(fake.closed).To(BeTrue())
 		})
 
 		It("stops and closes the socket when the context is cancelled", func() {
