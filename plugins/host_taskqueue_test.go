@@ -689,8 +689,7 @@ var _ = Describe("TaskQueueService", func() {
 			copy(times, dispatchTimes)
 			mu.Unlock()
 
-			// The limiter spaces its slots 200ms apart, but each worker wakes with its own timer latency,
-			// so only the offset from the first (unthrottled) dispatch is guaranteed, not consecutive gaps.
+			// Wake-up latency varies per worker, so check offsets from the first dispatch, not gaps.
 			for i := 1; i < len(times); i++ {
 				offset := times[i].Sub(times[0])
 				minOffset := time.Duration(i)*200*time.Millisecond - 50*time.Millisecond
