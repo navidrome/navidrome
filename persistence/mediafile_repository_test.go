@@ -1203,6 +1203,13 @@ var _ = Describe("MediaRepository", func() {
 		})
 	})
 
+	Describe("dbMediaFile.String", func() {
+		It("does not dereference a nil MediaFile", func() {
+			Expect(fmt.Sprint(dbMediaFile{})).To(Equal("<nil>"))
+			Expect(fmt.Sprint(&dbMediaFile{})).To(Equal("<nil>"))
+		})
+	})
+
 	Describe("wrapMediaFileCursor", func() {
 		It("does not panic when the cursor yields a dbMediaFile with nil MediaFile", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:
