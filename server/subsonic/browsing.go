@@ -4,8 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
+	"strconv"
 	"time"
+	"unicode"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
@@ -15,6 +19,7 @@ import (
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
@@ -59,25 +64,6 @@ func (api *Router) getArtist(r *http.Request, libIds []int, ifModifiedSince time
 	return indexes, lastScan.UnixMilli(), err
 }
 
-func (api *Router) getArtistIndex(r *http.Request, libIds []int, ifModifiedSince time.Time) (*responses.Indexes, error) {
-	indexes, modified, err := api.getArtist(r, libIds, ifModifiedSince)
-	if err != nil {
-		return nil, err
-	}
-
-	res := &responses.Indexes{
-		IgnoredArticles: conf.Server.IgnoredArticles,
-		LastModified:    modified,
-	}
-
-	res.Index = make([]responses.Index, len(indexes))
-	for i, idx := range indexes {
-		res.Index[i].Name = idx.ID
-		res.Index[i].Artists = slice.MapWithArg(idx.Artists, r, toArtist)
-	}
-	return res, nil
-}
-
 func (api *Router) getArtistIndexID3(r *http.Request, libIds []int, ifModifiedSince time.Time) (*responses.Artists, error) {
 	indexes, modified, err := api.getArtist(r, libIds, ifModifiedSince)
 	if err != nil {
@@ -97,15 +83,123 @@ func (api *Router) getArtistIndexID3(r *http.Request, libIds []int, ifModifiedSi
 	return res, nil
 }
 
-func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
-	p := req.Params(r)
-	musicFolderIds, _ := selectedMusicFolderIds(r, false)
-	ifModifiedSince := p.TimeOr("ifModifiedSince", time.Time{})
+func folderIndexKey(name string) string {
+	s := str.SanitizeFieldForSortingNoArticle(name)
+	if len(s) == 0 {
+		return "#"
+	}
+	r := []rune(s)[0]
+	if r >= 'a' && r <= 'z' {
+		return string(unicode.ToUpper(r))
+	}
+	if r >= 'A' && r <= 'Z' {
+		return string(r)
+	}
+	return "#"
+}
 
-	res, err := api.getArtistIndex(r, musicFolderIds, ifModifiedSince)
+func (api *Router) GetIndexes(r *http.Request) (*responses.Subsonic, error) {
+	ctx := r.Context()
+	p := req.Params(r)
+	musicFolderIds, err := selectedMusicFolderIds(r, false)
 	if err != nil {
 		return nil, err
 	}
+	ifModifiedSince := p.TimeOr("ifModifiedSince", time.Time{})
+
+	lastScanStr, err := api.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+	if err != nil {
+		log.Error(ctx, "Error retrieving last scan start time", err)
+		return nil, err
+	}
+	lastScan := time.Now()
+	if lastScanStr != "" {
+		if t, err := time.Parse(time.RFC3339, lastScanStr); err == nil {
+			lastScan = t
+		}
+	}
+
+	if !lastScan.After(ifModifiedSince) {
+		return newResponse(), nil
+	}
+
+	res := &responses.Indexes{
+		IgnoredArticles: conf.Server.IgnoredArticles,
+		LastModified:    lastScan.UnixMilli(),
+	}
+
+	folders, err := api.ds.Folder(ctx).GetRootSubfoldersWithAudio(musicFolderIds...)
+	if err != nil {
+		log.Error(ctx, "Error retrieving root subfolders", err)
+		return nil, err
+	}
+
+		var folderIDs []string
+		for _, f := range folders {
+			folderIDs = append(folderIDs, f.ID)
+		}
+		coverArtMap, _ := api.ds.Folder(ctx).GetCoverArtForFolders(folderIDs...)
+
+		indexMap := make(map[string][]responses.Artist)
+		for _, f := range folders {
+			key := folderIndexKey(f.Name)
+			artist := responses.Artist{
+				Id:   f.ID,
+				Name: f.Name,
+			}
+			if art, ok := coverArtMap[f.ID]; ok && art != "" {
+				artist.CoverArt = art
+			}
+			indexMap[key] = append(indexMap[key], artist)
+		}
+		keys := make([]string, 0, len(indexMap))
+		for k := range indexMap {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys)
+		for _, k := range keys {
+			res.Index = append(res.Index, responses.Index{
+				Name:    k,
+				Artists: indexMap[k],
+			})
+		}
+
+		accessibleLibs := getUserAccessibleLibraries(ctx)
+		libMap := make(map[int]model.Library, len(accessibleLibs))
+		for _, lib := range accessibleLibs {
+			libMap[lib.ID] = lib
+		}
+
+		for _, libID := range musicFolderIds {
+			lib, ok := libMap[libID]
+			if !ok {
+				continue
+			}
+			rootFolder, err := api.ds.Folder(ctx).GetByPath(lib, ".")
+			if err != nil {
+				if !errors.Is(err, model.ErrNotFound) {
+					log.Error(ctx, "Error retrieving root folder", "libraryId", lib.ID, err)
+				}
+				continue
+			}
+			if rootFolder == nil || rootFolder.Missing {
+				continue
+			}
+			mfs, err := api.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				Filters: squirrel.And{
+					squirrel.Eq{"media_file.folder_id": rootFolder.ID},
+					squirrel.Eq{"media_file.missing": false},
+				},
+				Sort: "disc_number, track_number, title",
+			})
+			if err != nil {
+				log.Error(ctx, "Error retrieving loose tracks", "folderId", rootFolder.ID, err)
+				return nil, err
+			}
+			for _, mf := range mfs {
+				res.Child = append(res.Child, childFromMediaFile(ctx, mf))
+			}
+		}
 
 	response := newResponse()
 	response.Indexes = res
@@ -130,6 +224,58 @@ func (api *Router) GetMusicDirectory(r *http.Request) (*responses.Subsonic, erro
 	id, _ := p.String("id")
 	ctx := r.Context()
 
+	// 1. Check if id is a model.Folder
+	folder, err := api.ds.Folder(ctx).Get(id)
+	if err == nil && folder != nil {
+		if folder.Missing {
+			return nil, newError(responses.ErrorDataNotFound, "Directory not found")
+		}
+		dir, err := api.buildFolderDirectory(ctx, folder)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+		if dir.Name == "." {
+			for _, lib := range getUserAccessibleLibraries(ctx) {
+				if lib.ID == folder.LibraryID {
+					dir.Name = lib.Name
+					break
+				}
+			}
+			if dir.Name == "." {
+				if lib, err := api.ds.Library(ctx).Get(folder.LibraryID); err == nil && lib != nil {
+					dir.Name = lib.Name
+				}
+			}
+		}
+		response := newResponse()
+		response.Directory = dir
+		return response, nil
+	}
+
+	// 2. Check if id is an accessible Library.ID
+	if libID, err := strconv.Atoi(id); err == nil {
+		accessibleLibs := getUserAccessibleLibraries(ctx)
+		for _, lib := range accessibleLibs {
+			if lib.ID == libID {
+				rootFolder, err := api.ds.Folder(ctx).GetByPath(lib, ".")
+				if err != nil || rootFolder == nil || rootFolder.Missing {
+					return nil, newError(responses.ErrorDataNotFound, "Directory not found")
+				}
+				dir, err := api.buildFolderDirectory(ctx, rootFolder)
+				if err != nil {
+					log.Error(err)
+					return nil, err
+				}
+				dir.Name = lib.Name
+				response := newResponse()
+				response.Directory = dir
+				return response, nil
+			}
+		}
+	}
+
+	// 3. Fallback to existing model.GetEntityByID (*model.Artist and *model.Album)
 	entity, err := model.GetEntityByID(ctx, api.ds, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested ID not found ", "id", id)
@@ -477,4 +623,55 @@ func (api *Router) buildAlbum(ctx context.Context, album *model.Album, mfs model
 	dir.AlbumID3 = buildAlbumID3(ctx, *album)
 	dir.Song = slice.MapWithArg(mfs, ctx, childFromMediaFile)
 	return dir
+}
+
+func (api *Router) buildFolderDirectory(ctx context.Context, folder *model.Folder) (*responses.Directory, error) {
+	dir := &responses.Directory{}
+	dir.Id = folder.ID
+	dir.Name = folder.Name
+	if folder.ParentID != "" {
+		dir.Parent = folder.ParentID
+	}
+
+	subfolders, err := api.ds.Folder(ctx).GetSubfoldersWithAudio(folder.ID, folder.LibraryID)
+	if err != nil {
+		return nil, err
+	}
+
+	songs, err := api.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		Filters: squirrel.And{
+			squirrel.Eq{"media_file.folder_id": folder.ID},
+			squirrel.Eq{"media_file.missing": false},
+		},
+		Sort: "disc_number, track_number, title",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(songs) > 0 {
+		if album, err := api.ds.Album(ctx).Get(songs[0].AlbumID); err == nil && album != nil {
+			dir.CoverArt = coverArtOrEmpty(album.CoverArtID(), album.ImageAbsent)
+		}
+	} else {
+		folderCovers, _ := api.ds.Folder(ctx).GetCoverArtForFolders(folder.ID)
+		if art, ok := folderCovers[folder.ID]; ok {
+			dir.CoverArt = art
+		}
+	}
+
+	var subfolderIDs []string
+	for _, sf := range subfolders {
+		subfolderIDs = append(subfolderIDs, sf.ID)
+	}
+	coverArtMap, _ := api.ds.Folder(ctx).GetCoverArtForFolders(subfolderIDs...)
+
+	for _, sf := range subfolders {
+		dir.Child = append(dir.Child, childFromFolder(ctx, sf, coverArtMap[sf.ID]))
+	}
+	for _, song := range songs {
+		dir.Child = append(dir.Child, childFromMediaFile(ctx, song))
+	}
+
+	return dir, nil
 }

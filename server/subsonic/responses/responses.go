@@ -109,6 +109,7 @@ type Index struct {
 
 type Indexes struct {
 	Index           []Index `xml:"index"                  json:"index,omitempty"`
+	Child           []Child `xml:"child"                  json:"child,omitempty"`
 	LastModified    int64   `xml:"lastModified,attr"      json:"lastModified"`
 	IgnoredArticles string  `xml:"ignoredArticles,attr"   json:"ignoredArticles"`
 }
