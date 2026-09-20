@@ -689,11 +689,13 @@ var _ = Describe("TaskQueueService", func() {
 			copy(times, dispatchTimes)
 			mu.Unlock()
 
-			// Consecutive dispatches should have at least ~160ms gap (80% of 200ms)
+			// The limiter spaces its slots 200ms apart, but each worker wakes with its own timer latency,
+			// so only the offset from the first (unthrottled) dispatch is guaranteed, not consecutive gaps.
 			for i := 1; i < len(times); i++ {
-				gap := times[i].Sub(times[i-1])
-				Expect(gap).To(BeNumerically(">=", 160*time.Millisecond),
-					fmt.Sprintf("gap between dispatch %d and %d was %v, expected >= 160ms", i-1, i, gap))
+				offset := times[i].Sub(times[0])
+				minOffset := time.Duration(i)*200*time.Millisecond - 50*time.Millisecond
+				Expect(offset).To(BeNumerically(">=", minOffset),
+					fmt.Sprintf("dispatch %d ran %v after the first, expected >= %v", i, offset, minOffset))
 			}
 		})
 	})
