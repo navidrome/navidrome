@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
@@ -40,17 +41,18 @@ type Router struct {
 	broker           events.Broker
 	lyricsCache      cache.SimpleCache[string, model.LyricList]
 	similarFlight    singleflight.Group
+	quickConnect     quickconnect.QuickConnect
 	serverIDVal      string
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer,
 	transcodeDecider stream.TranscodeDecider, players core.Players,
 	scrobbler scrobbler.PlayTracker, playlists playlists.Playlists, provider external.Provider,
-	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics, broker events.Broker) *Router {
+	sonicSvc sonic.Engine, lyricsSvc lyrics.Lyrics, broker events.Broker, quickConnect quickconnect.QuickConnect) *Router {
 	r := &Router{
 		ds: ds, artwork: artwork, streamer: streamer, transcodeDecider: transcodeDecider,
 		players: players, scrobbler: scrobbler, playlists: playlists, provider: provider,
-		sonic: sonicSvc, lyrics: lyricsSvc, broker: broker,
+		sonic: sonicSvc, lyrics: lyricsSvc, broker: broker, quickConnect: quickConnect,
 		lyricsCache: cache.NewSimpleCache[string, model.LyricList](cache.Options{
 			SizeLimit:  1000,
 			DefaultTTL: 5 * time.Minute,
@@ -81,6 +83,11 @@ func (api *Router) routes() http.Handler {
 		login = login.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
 	}
 	login.Post("/users/authenticatebyname", api.authenticateByName)
+	quickConnectLogin := login.With(requireQuickConnect)
+	quickConnectLogin.Post("/quickconnect/initiate", api.quickConnectInitiate)
+	quickConnectLogin.Post("/users/authenticatewithquickconnect", api.authenticateWithQuickConnect)
+	// Not rate-limited: Finamp and Streamyfin poll it every second while the code is shown.
+	inner.With(requireQuickConnect).Get("/quickconnect/connect", api.quickConnectConnect)
 	inner.Get("/users/public", api.getPublicUsers)
 
 	// Images are intentionally public: artwork isn't sensitive, matching Jellyfin's image handling.
@@ -107,6 +114,12 @@ func (api *Router) routes() http.Handler {
 		r.Get("/users/{userId}/views", api.getUserViews)
 		r.Get("/users/me", api.getCurrentUser)
 		r.Get("/users/{userId}", api.getCurrentUser)
+		// Throttled like login so a signed-in user cannot enumerate other people's pending codes.
+		approve := r.With(requireQuickConnect)
+		if conf.Server.AuthRequestLimit > 0 {
+			approve = approve.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		}
+		approve.Post("/quickconnect/authorize", api.quickConnectAuthorize)
 
 		// Cursor-backed collections: each streams straight from the DB, holding a connection for the
 		// whole client-paced response, so enough slow clients would take the entire pool and stall the

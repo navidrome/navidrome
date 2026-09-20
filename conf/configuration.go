@@ -236,6 +236,7 @@ type jellyfinOptions struct {
 	// GET /Users/Public, so Jellyfin clients can show a login user-picker. Empty exposes no users.
 	ExposedPublicUsers string
 	AutoDiscovery      bool
+	QuickConnect       bool
 	// MaxConcurrentStreams bounds how many collection responses can stream at once. Each holds a DB
 	// cursor — and its pooled connection — for the whole client-paced response, so without a bound
 	// enough slow clients would take the entire pool and stall the scanner, scrobbles and the UI.
@@ -1089,6 +1090,7 @@ func setViperDefaults() {
 	viper.SetDefault("jellyfin.enabled", false)
 	viper.SetDefault("jellyfin.servername", "")
 	viper.SetDefault("jellyfin.autodiscovery", false)
+	viper.SetDefault("jellyfin.quickconnect", true)
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")
