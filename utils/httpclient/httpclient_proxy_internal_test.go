@@ -38,6 +38,20 @@ var _ = Describe("NewExternal with a proxy", func() {
 		Expect(proxied.Load()).To(Equal(int32(1)))
 	})
 
+	// net/http never proxies loopback targets, so a URL aimed at a loopback proxy is dialed directly.
+	It("refuses a direct dial to the proxy's own address when the request is not proxied", func() {
+		proxyFunc = func(r *http.Request) (*url.URL, error) {
+			if r.URL.Hostname() == "127.0.0.1" {
+				return nil, nil
+			}
+			return proxyURL, nil
+		}
+
+		_, err := NewExternal(time.Second).Get(proxy.URL + "/secret")
+		Expect(err).To(MatchError(netguard.ErrPrivateAddress))
+		Expect(proxied.Load()).To(BeZero())
+	})
+
 	It("still refuses a direct dial to a private address", func() {
 		proxyFunc = func(r *http.Request) (*url.URL, error) {
 			if r.URL.Scheme == "https" {

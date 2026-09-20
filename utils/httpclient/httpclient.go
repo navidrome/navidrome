@@ -42,6 +42,8 @@ func New(timeout time.Duration) *http.Client {
 // proxyFunc resolves the proxy for a request; tests replace it.
 var proxyFunc = http.ProxyFromEnvironment
 
+type proxyAddrKey struct{}
+
 // NewExternal is New for URLs from untrusted sources: it refuses to dial private, loopback,
 // link-local and unspecified addresses, except those covered by allowed.
 func NewExternal(timeout time.Duration, allowed ...netip.Prefix) *http.Client {
@@ -50,29 +52,26 @@ func NewExternal(timeout time.Duration, allowed ...netip.Prefix) *http.Client {
 	direct := net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
 	guarded := direct
 	guarded.Control = netguard.DialControl(allowed...)
-	proxies := proxyEndpoints()
 	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		// A proxy relays the request itself, so the guard cannot see the target through it;
-		// refusing the operator's own proxy would only break every fetch.
-		if proxies[addr] {
+		// Exempt the hop to the proxy, which relays the request and is operator config. A URL
+		// aimed at the proxy's own address is not proxied, so it stays guarded.
+		if proxy, ok := ctx.Value(proxyAddrKey{}).(string); ok && proxy == addr {
 			return direct.DialContext(ctx, network, addr)
 		}
 		return guarded.DialContext(ctx, network, addr)
 	}
-	return &http.Client{Timeout: timeout, Transport: NewTransport(t)}
+	return &http.Client{Timeout: timeout, Transport: NewTransport(&proxyTagger{base: t})}
 }
 
-// proxyEndpoints lists the addresses the configured proxies are reached at.
-func proxyEndpoints() map[string]bool {
-	endpoints := map[string]bool{}
-	for _, scheme := range []string{"http", "https"} {
-		u, err := proxyFunc(&http.Request{URL: &url.URL{Scheme: scheme, Host: "navidrome.example.com"}})
-		if err != nil || u == nil {
-			continue
-		}
-		endpoints[proxyAddr(u)] = true
+// proxyTagger records the proxy each request resolves to, so the dialer can tell a hop to the
+// proxy from a dial to the URL's own host.
+type proxyTagger struct{ base http.RoundTripper }
+
+func (p *proxyTagger) RoundTrip(req *http.Request) (*http.Response, error) {
+	if u, err := proxyFunc(req); err == nil && u != nil {
+		req = req.WithContext(context.WithValue(req.Context(), proxyAddrKey{}, proxyAddr(u)))
 	}
-	return endpoints
+	return p.base.RoundTrip(req)
 }
 
 // proxyAddr mirrors how net/http addresses a proxy connection.
