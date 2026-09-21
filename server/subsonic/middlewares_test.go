@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -410,6 +412,62 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeTrue())
 			})
 		})
+
+		When("valid requests overlap", func() {
+			var gate *gatedUserRepo
+			var gatedDS model.DataStore
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.AuthRequestLimit = 5
+				conf.Server.AuthWindowLength = time.Minute
+				gate = &gatedUserRepo{
+					UserRepository: ds.User(context.TODO()),
+					entered:        make(chan struct{}, 64),
+					proceed:        make(chan struct{}),
+				}
+				gatedDS = &gatedDataStore{DataStore: ds, users: gate}
+			})
+
+			It("lets every valid request through while checks are in flight", func() {
+				const burst = 6
+				cp := authenticate(gatedDS)(&countingHandler{})
+				var passed atomic.Int32
+				var wg sync.WaitGroup
+				for range burst {
+					wg.Go(func() {
+						rec := httptest.NewRecorder()
+						cp.ServeHTTP(rec, newGetRequest("u=admin", "p=wordpass"))
+						if !strings.Contains(rec.Body.String(), `code="40"`) {
+							passed.Add(1)
+						}
+					})
+				}
+				for range conf.Server.AuthRequestLimit {
+					Eventually(gate.entered).Should(Receive())
+				}
+				close(gate.proceed)
+				wg.Wait()
+
+				Expect(passed.Load()).To(Equal(int32(burst)))
+			})
+
+			It("caps concurrent credential checks for wrong passwords", func() {
+				cp := authenticate(gatedDS)(&countingHandler{})
+				var wg sync.WaitGroup
+				for i := range 100 {
+					wg.Go(func() {
+						cp.ServeHTTP(httptest.NewRecorder(), newGetRequest("u=admin", fmt.Sprintf("p=wrong%d", i)))
+					})
+				}
+
+				limit := int32(conf.Server.AuthRequestLimit)
+				Eventually(gate.lookups.Load).Should(Equal(limit))
+				Consistently(gate.lookups.Load, 100*time.Millisecond).Should(Equal(limit))
+				close(gate.proceed)
+				wg.Wait()
+			})
+		})
 	})
 
 	Describe("AdminOnly", func() {
@@ -664,3 +722,28 @@ func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string)
 	}
 	return &model.Player{ID: id}, mp.transcoding, nil
 }
+
+type gatedDataStore struct {
+	model.DataStore
+	users model.UserRepository
+}
+
+func (g *gatedDataStore) User(context.Context) model.UserRepository { return g.users }
+
+type gatedUserRepo struct {
+	model.UserRepository
+	entered chan struct{}
+	proceed chan struct{}
+	lookups atomic.Int32
+}
+
+func (g *gatedUserRepo) FindByUsernameWithPassword(username string) (*model.User, error) {
+	g.lookups.Add(1)
+	g.entered <- struct{}{}
+	<-g.proceed
+	return g.UserRepository.FindByUsernameWithPassword(username)
+}
+
+type countingHandler struct{ calls atomic.Int32 }
+
+func (c *countingHandler) ServeHTTP(http.ResponseWriter, *http.Request) { c.calls.Add(1) }

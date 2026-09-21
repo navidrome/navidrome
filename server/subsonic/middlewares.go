@@ -129,7 +129,11 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 
 				// Blocked attempts get the same response as a wrong password, so they reveal nothing
 				limitKey := server.ClientIP(r) + "\x00" + strings.ToLower(username)
-				if !limiter.acquire(limitKey) {
+				slot, allowed := limiter.acquire(ctx, limitKey)
+				if !allowed {
+					if ctx.Err() != nil {
+						return
+					}
 					log.Warn(ctx, "API: Too many failed login attempts", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr)
 					sendError(w, r, newError(responses.ErrorAuthenticationFail))
 					return
@@ -140,9 +144,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 					err = validateCredentials(usr, pass, token, salt, jwt)
 				}
 				invalidLogin := errors.Is(err, model.ErrNotFound) || errors.Is(err, model.ErrInvalidAuth)
-				if !invalidLogin {
-					limiter.release(limitKey)
-				}
+				slot.release(invalidLogin)
 				switch {
 				case errors.Is(err, context.Canceled):
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", "subsonic", "username", username, "remoteAddr", r.RemoteAddr, err)
