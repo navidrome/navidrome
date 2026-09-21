@@ -10,9 +10,8 @@ import (
 	"github.com/navidrome/navidrome/consts"
 )
 
-// authLimiter caps failed Subsonic logins per key. Credential checks for a key run at most `limit`
-// at a time and failures are recorded after the check, so a burst of guesses cannot overshoot while
-// a client sending valid requests in parallel only ever waits.
+// authLimiter caps failed Subsonic logins per key. Checks run at most `limit` at a time and failures
+// are recorded afterwards, so a window admits up to 2*limit-1 guesses and valid requests only wait.
 type authLimiter struct {
 	limit     int
 	window    time.Duration
