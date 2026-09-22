@@ -37,6 +37,10 @@ var _ = Describe("Sessions", func() {
 			Expect(mf.PlayCount).To(BeNumerically(">=", 1))
 		})
 
+		It("acknowledges a playback session ping", func() {
+			Expect(post("/Sessions/Playing/Ping?playSessionId=abc", "").Code).To(Equal(http.StatusNoContent))
+		})
+
 		It("does not count a brief play stopped before the threshold", func() {
 			// Regression: Finamp sends a Stopped report on every track switch, so an immediate skip
 			// (1 second in) must not mark the track played. Seeded tracks are >= 120s, so the 50%

@@ -41,7 +41,7 @@ var _ = Describe("Missing Files Endpoint", func() {
 		token, err = auth.CreateToken(&user)
 		Expect(err).ToNot(HaveOccurred())
 
-		router = server.JWTVerifier(New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil))
+		router = server.JWTVerifier(New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil))
 	})
 
 	DescribeTable("GET /missing/{id}",

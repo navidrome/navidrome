@@ -15,6 +15,7 @@ type MockPlaylistTrackRepo struct {
 	DeletedIds []string
 	Reordered  bool
 	AddCount   int
+	InsertPos  int
 	Err        error
 	AlbumIDs   []string // stubbed result for GetAlbumIDs, ignoring options
 }
@@ -89,6 +90,11 @@ func (m *MockPlaylistTrackRepo) Add(_ context.Context, ids []string) (int, error
 		return 0, m.Err
 	}
 	return m.AddCount, nil
+}
+
+func (m *MockPlaylistTrackRepo) Insert(ctx context.Context, ids []string, pos int) (int, error) {
+	m.InsertPos = pos
+	return m.Add(ctx, ids)
 }
 
 func (m *MockPlaylistTrackRepo) AddAlbums(_ context.Context, _ []string) (int, error) {

@@ -244,6 +244,75 @@ var _ = Describe("Stream", func() {
 		})
 	})
 
+	Describe("HEAD requests", func() {
+		head := func(query string) *httptest.ResponseRecorder {
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
+			})
+			streamer.content = "audio-bytes"
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("HEAD", "/Audio/"+dto.EncodeID(testID("s1"))+"/stream?"+query, nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamAudio, w, r)
+			return w
+		}
+
+		It("answers a transcode with the target type and no length, without starting it", func() {
+			w := head("audioCodec=mp3")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("audio/mpeg"))
+			Expect(w.Header().Get("Content-Length")).To(BeEmpty())
+			Expect(w.Body.String()).To(BeEmpty())
+			Expect(streamer.invoked).To(BeFalse())
+		})
+
+		It("answers direct play through the streamer, without a body", func() {
+			w := head("static=true")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(streamer.invoked).To(BeTrue())
+			Expect(w.Body.String()).To(BeEmpty())
+		})
+	})
+
+	Describe("streamUniversal", func() {
+		universal := func(query string) {
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
+			})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Audio/"+dto.EncodeID(testID("s1"))+"/universal?"+query, nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
+			invoke(api.streamUniversal, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+		}
+
+		It("turns Container into direct play profiles and TranscodingContainer into the target", func() {
+			universal("Container=mp3,m4a|aac&TranscodingContainer=m4a&AudioCodec=aac&MaxStreamingBitrate=128000")
+			Expect(decider.client.DirectPlayProfiles).To(Equal([]stream.DirectPlayProfile{
+				{Containers: []string{"mp3"}, Protocols: []string{stream.ProtocolHTTP}},
+				{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{stream.ProtocolHTTP}},
+			}))
+			Expect(decider.client.TranscodingProfiles).To(Equal([]stream.Profile{
+				{Container: "m4a", AudioCodec: "aac", Protocol: stream.ProtocolHTTP},
+			}))
+			Expect(decider.client.MaxAudioBitrate).To(Equal(128))
+			Expect(decider.client.MaxTranscodingAudioBitrate).To(Equal(128))
+		})
+
+		It("uses AudioCodec as the target when no TranscodingContainer is given", func() {
+			universal("Container=mp3&AudioCodec=aac")
+			Expect(decider.client.TranscodingProfiles).To(Equal([]stream.Profile{
+				{Container: "aac", AudioCodec: "aac", Protocol: stream.ProtocolHTTP},
+			}))
+		})
+
+		It("serves the file as is for static=true", func() {
+			universal("static=true&Container=ogg")
+			Expect(decider.req.Format).To(Equal("raw"))
+			Expect(decider.client).To(BeNil())
+		})
+	})
+
 	Describe("streamHls", func() {
 		BeforeEach(func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
@@ -364,6 +433,7 @@ var _ = Describe("Stream", func() {
 type fakeTranscodeDecider struct {
 	invoked bool
 	req     stream.Request
+	client  *stream.ClientInfo
 }
 
 func (f *fakeTranscodeDecider) MakeDecision(context.Context, *model.MediaFile, *stream.ClientInfo, stream.TranscodeOptions) (*stream.TranscodeDecision, error) {
@@ -381,6 +451,13 @@ func (f *fakeTranscodeDecider) ResolveRequestFromToken(context.Context, string, 
 func (f *fakeTranscodeDecider) ResolveRequest(_ context.Context, _ *model.MediaFile, format string, bitRate int, offset int) stream.Request {
 	f.invoked = true
 	f.req = stream.Request{Format: format, BitRate: bitRate, Offset: offset}
+	return f.req
+}
+
+func (f *fakeTranscodeDecider) ResolveClientRequest(_ context.Context, _ *model.MediaFile, ci *stream.ClientInfo, offset int) stream.Request {
+	f.invoked = true
+	f.client = ci
+	f.req = stream.Request{Offset: offset}
 	return f.req
 }
 

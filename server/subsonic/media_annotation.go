@@ -181,6 +181,9 @@ func (api *Router) Scrobble(r *http.Request) (*responses.Subsonic, error) {
 			log.Error(ctx, "Error registering scrobbles", "ids", ids, "times", times, err)
 		}
 	} else {
+		if len(ids) > 1 {
+			log.Warn(ctx, "Multiple ids sent to a nowPlaying notification, only the first one will be used", "ids", ids)
+		}
 		err := api.scrobblerNowPlaying(ctx, ids[0], position)
 		if err != nil {
 			log.Error(ctx, "Error setting NowPlaying", "id", ids[0], err)

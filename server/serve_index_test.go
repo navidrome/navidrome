@@ -98,6 +98,8 @@ var _ = Describe("serveIndex", func() {
 		Entry("devUIShowConfig", func() { conf.Server.DevUIShowConfig = true }, "devUIShowConfig", true),
 		Entry("listenBrainzEnabled", func() { conf.Server.ListenBrainz.Enabled = true }, "listenBrainzEnabled", true),
 		Entry("enableReplayGain", func() { conf.Server.EnableReplayGain = true }, "enableReplayGain", true),
+		Entry("enableQuickConnect", func() { conf.Server.Jellyfin.Enabled = true; conf.Server.Jellyfin.QuickConnect = true }, "enableQuickConnect", true),
+		Entry("enableQuickConnect without the Jellyfin API", func() { conf.Server.Jellyfin.Enabled = false; conf.Server.Jellyfin.QuickConnect = true }, "enableQuickConnect", false),
 		Entry("enableExternalServices", func() { conf.Server.EnableExternalServices = true }, "enableExternalServices", true),
 		Entry("devActivityPanel", func() { conf.Server.DevActivityPanel = true }, "devActivityPanel", true),
 		Entry("shareURL", func() { conf.Server.ShareURL = "https://share.example.com" }, "shareURL", "https://share.example.com"),

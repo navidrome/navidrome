@@ -91,6 +91,7 @@ func (r *playlistTrackRepository) Count(ctx context.Context, options ...rest.Que
 	query := Select().
 		LeftJoin("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(ctx, query, "f")
 	return r.count(ctx, query, r.parseRestOptions(ctx, options...))
 }
 
@@ -113,6 +114,7 @@ func (r *playlistTrackRepository) Read(ctx context.Context, id string) (*model.P
 		).
 		Join("media_file f on f.id = media_file_id").
 		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"playlist_tracks.id": id}})
+	sel = r.applyLibraryFilter(ctx, sel, "f")
 	var trk dbPlaylistTrack
 	err := r.queryOne(ctx, sel, &trk)
 	return trk.PlaylistTrack, err
@@ -157,6 +159,7 @@ func (r *playlistTrackRepository) GetAlbumIDs(ctx context.Context, options ...mo
 	query := r.newSelect(ctx, options...).Columns("distinct mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(ctx, query, "mf")
 	var ids []string
 	err := r.queryAllSlice(ctx, query, &ids)
 	if err != nil {
@@ -179,12 +182,40 @@ func (r *playlistTrackRepository) Add(ctx context.Context, mediaFileIds []string
 	// Get next pos (ID) in playlist
 	sq := r.newSelect(ctx).Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
 	var res struct{ Max sql.NullInt32 }
-	err := r.queryOne(ctx, sq, &res)
-	if err != nil {
+	if err := r.queryOne(ctx, sq, &res); err != nil {
 		return 0, err
 	}
 
-	return len(mediaFileIds), r.playlistRepo.addTracks(ctx, r.playlistId, int(res.Max.Int32+1), mediaFileIds)
+	return r.playlistRepo.addTracks(ctx, r.playlistId, int(res.Max.Int32+1), mediaFileIds)
+}
+
+// Insert adds tracks before the 1-based position pos, shifting the following entries down; a
+// position past the end appends. Callers must run it in a transaction.
+func (r *playlistTrackRepository) Insert(ctx context.Context, mediaFileIds []string, pos int) (int, error) {
+	if len(mediaFileIds) == 0 {
+		return 0, nil
+	}
+	pos = max(pos, 1)
+	n := len(mediaFileIds)
+	// Negate while shifting, so no intermediate row hits the unique (playlist_id, id) index.
+	_, err := r.executeSQL(ctx, Expr(`UPDATE playlist_tracks SET id = -(id + ?) WHERE playlist_id = ? AND id >= ?`, n, r.playlistId, pos))
+	if err != nil {
+		return 0, err
+	}
+	res, err := r.executeSQL(ctx, Expr(`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ? AND id < 0`, r.playlistId))
+	if err != nil {
+		return 0, err
+	}
+	if res == 0 {
+		return r.Add(ctx, mediaFileIds)
+	}
+	inserted, err := r.playlistRepo.addTracks(ctx, r.playlistId, pos, mediaFileIds)
+	if err != nil || inserted == n {
+		return inserted, err
+	}
+	// The shift above reserved a slot per requested id, so ids dropped by the library filter
+	// leave a hole. Close it.
+	return inserted, r.playlistRepo.renumber(ctx, r.playlistId)
 }
 
 func (r *playlistTrackRepository) addMediaFileIds(ctx context.Context, cond Sqlizer) (int, error) {
@@ -239,8 +270,18 @@ func (r *playlistTrackRepository) DeleteAll(ctx context.Context) error {
 	return r.playlistRepo.renumber(ctx, r.playlistId)
 }
 
-// Reorder moves a track from pos to newPos, shifting other tracks accordingly.
+// Reorder moves a track from pos to newPos, shifting other tracks accordingly. newPos is clamped
+// to the playlist; a pos outside it is ErrNotFound, since shifting around it would leave a gap.
 func (r *playlistTrackRepository) Reorder(ctx context.Context, pos int, newPos int) error {
+	var res struct{ Max sql.NullInt32 }
+	if err := r.queryOne(ctx, r.newSelect(ctx).Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId}), &res); err != nil {
+		return err
+	}
+	last := int(res.Max.Int32)
+	if pos < 1 || pos > last {
+		return model.ErrNotFound
+	}
+	newPos = min(max(newPos, 1), last)
 	if pos == newPos {
 		return nil
 	}

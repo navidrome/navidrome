@@ -119,8 +119,13 @@ var _ = Describe("Browsing", func() {
 				Expect(q.Items).To(BeEmpty())
 			},
 			Entry("a Jellyfin kind Navidrome has none of", "Boxset"),
-			Entry("a name Jellyfin does not know either", "Nonsense"),
 		)
+
+		It("treats a name Jellyfin does not know as an absent IncludeItemTypes", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Nonsense&Recursive=true"))
+			Expect(q.TotalRecordCount).To(Equal(queryResult(get("/Items?Recursive=true")).TotalRecordCount))
+			Expect(q.TotalRecordCount).To(BeNumerically(">", 0))
+		})
 
 		// A strict client (Manet) fails its whole sync on the first item missing any of these.
 		DescribeTable("sends the keys Jellyfin puts on every item",

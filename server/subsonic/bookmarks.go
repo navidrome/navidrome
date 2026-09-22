@@ -47,6 +47,14 @@ func (api *Router) CreateBookmark(r *http.Request) (*responses.Subsonic, error) 
 	position := p.Int64Or("position", 0)
 
 	repo := api.ds.MediaFile()
+	ok, err := repo.Exists(r.Context(), id)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, newError(responses.ErrorDataNotFound, "Song not found")
+	}
+
 	err = repo.AddBookmark(r.Context(), id, comment, position)
 	if err != nil {
 		return nil, err

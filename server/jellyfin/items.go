@@ -349,7 +349,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	}
 	q := listParams(p)
 	q.ids = ids
-	q.rawTypes = p.StringOr("includeitemtypes", "")
+	q.rawTypes = knownItemKinds(p.StringOr("includeitemtypes", ""))
 	q.parentId = parentId
 	q.genreIds = genreIds
 	q.albumIds = albumIds
@@ -591,6 +591,29 @@ func parseYears(r *http.Request) []int {
 // to the item types Navidrome serves.
 var supportedTypes = map[string]string{
 	"audio": "Audio", "musicartist": "MusicArtist", "musicalbum": "MusicAlbum", "musicgenre": "MusicGenre", "playlist": "Playlist",
+}
+
+// jellyfinItemKinds lists Jellyfin's BaseItemKind names, lowercased.
+var jellyfinItemKinds = map[string]bool{
+	"aggregatefolder": true, "audio": true, "audiobook": true, "basepluginfolder": true, "book": true,
+	"boxset": true, "channel": true, "channelfolderitem": true, "collectionfolder": true, "episode": true,
+	"folder": true, "genre": true, "manualplaylistsfolder": true, "movie": true, "livetvchannel": true,
+	"livetvprogram": true, "musicalbum": true, "musicartist": true, "musicgenre": true, "musicvideo": true,
+	"person": true, "photo": true, "photoalbum": true, "playlist": true, "playlistsfolder": true,
+	"program": true, "recording": true, "season": true, "series": true, "studio": true, "trailer": true,
+	"tvchannel": true, "tvprogram": true, "userrootfolder": true, "userview": true, "video": true, "year": true,
+}
+
+// knownItemKinds drops IncludeItemTypes entries that aren't BaseItemKind names, as Jellyfin's binder
+// does, so an all-unknown list (JellyBox sends "music") behaves like an absent one.
+func knownItemKinds(types string) string {
+	var known []string
+	for t := range strings.SplitSeq(types, ",") {
+		if t = strings.TrimSpace(t); jellyfinItemKinds[strings.ToLower(t)] {
+			known = append(known, t)
+		}
+	}
+	return strings.Join(known, ",")
 }
 
 // parseTypes returns the supported entries in IncludeItemTypes in order. Only an absent param

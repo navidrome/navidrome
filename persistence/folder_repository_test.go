@@ -310,6 +310,13 @@ var _ = Describe("FolderRepository", func() {
 		})
 	})
 
+	Describe("dbFolder.String", func() {
+		It("does not dereference a nil Folder", func() {
+			Expect(fmt.Sprint(dbFolder{})).To(Equal("<nil>"))
+			Expect(fmt.Sprint(&dbFolder{})).To(Equal("<nil>"))
+		})
+	})
+
 	Describe("wrapFolderCursor", func() {
 		It("does not panic when the cursor yields a dbFolder with nil Folder", func() {
 			// Simulate what queryWithStableResults does on the rows.Err() path:

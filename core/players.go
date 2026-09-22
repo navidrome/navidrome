@@ -38,7 +38,7 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 	user, _ := request.UserFrom(ctx)
 	if playerID != "" {
 		plr, err = p.ds.Player().Get(ctx, playerID)
-		if err == nil && plr.Client != client {
+		if err == nil && (plr.Client != client || plr.UserId != user.ID) {
 			playerID = ""
 		}
 	}

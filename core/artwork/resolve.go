@@ -572,7 +572,7 @@ func resolveArtistFolderPattern(ctx context.Context, lib libraryView, artistFold
 // resolveLocalFile opens an absolute path directly. A missing path is "no source"; any other
 // open failure says nothing about whether the image exists.
 func resolveLocalFile(path, source string) (resolution, bool) {
-	if path == "" {
+	if path == "" || !model.IsImageFile(path) {
 		return resolution{}, false
 	}
 	f, err := os.Open(path)

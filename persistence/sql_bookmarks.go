@@ -104,6 +104,7 @@ func (r sqlRepository) GetBookmarks(ctx context.Context) (model.Bookmarks, error
 	sq := r.newSelect(ctx).Columns(r.tableName + ".*")
 	sq = r.withAnnotation(ctx, sq, idField)
 	sq = r.withBookmark(ctx, sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
+	sq = r.applyLibraryFilter(ctx, sq)
 	var mfs dbMediaFiles // TODO Decouple from media_file
 	err := r.queryAll(ctx, sq, &mfs)
 	if err != nil {

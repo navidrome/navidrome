@@ -56,7 +56,8 @@ func runWorkerUntil(ctx context.Context, worker *artwork.Worker, until func() bo
 	runCtx, cancel := context.WithCancel(ctx)
 	done := make(chan error, 1)
 	go func() { done <- worker.Run(runCtx) }()
-	Eventually(until, 5*time.Second, 10*time.Millisecond).Should(BeTrue())
+	// Long enough for one retry (3-7s backoff, 5s poll tick).
+	Eventually(until, 15*time.Second, 10*time.Millisecond).Should(BeTrue())
 	cancel()
 	Eventually(done, 2*time.Second).Should(Receive(BeNil()))
 }

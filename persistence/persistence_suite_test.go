@@ -169,6 +169,28 @@ func p(path string) string {
 	return filepath.FromSlash(path)
 }
 
+// restrictedFixture creates a second library plus a non-admin user granted library 1 only, so
+// specs can assert that a query filters by library. Cleans itself up after the spec.
+func restrictedFixture(name string) (context.Context, model.Library, model.User) {
+	adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+	db := GetDBXBuilder()
+
+	lib := model.Library{Name: name + " Library", Path: "/" + name}
+	lr := NewLibraryRepository(db)
+	Expect(lr.Put(adminCtx, &lib)).To(Succeed())
+
+	user := createUserWithLibraries(name+"-restricted", []int{1})
+	ur := NewUserRepository(db)
+	Expect(ur.Put(adminCtx, &user)).To(Succeed())
+	Expect(ur.SetUserLibraries(adminCtx, user.ID, []int{1})).To(Succeed())
+
+	DeferCleanup(func() {
+		_ = NewUserRepository(db).Delete(adminCtx, user.ID)
+		_ = NewLibraryRepository(db).(*libraryRepository).delete(adminCtx, squirrel.Eq{"id": lib.ID})
+	})
+	return adminCtx, lib, user
+}
+
 var _ = BeforeSuite(func() {
 	conn := GetDBXBuilder()
 	ctx := log.NewContext(context.TODO())

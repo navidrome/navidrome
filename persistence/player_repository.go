@@ -116,7 +116,7 @@ func (r *playerRepository) Save(ctx context.Context, t *model.Player) (string, e
 	if !r.isPermitted(ctx, t) {
 		return "", rest.ErrPermissionDenied
 	}
-	return r.put(ctx, t.ID, t)
+	return r.put(ctx, "", t) // Save only creates; edits go through the owner-scoped Update
 }
 
 func (r *playerRepository) Update(ctx context.Context, id string, entity model.Player, cols ...string) error {

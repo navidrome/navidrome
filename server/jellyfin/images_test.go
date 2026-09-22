@@ -65,7 +65,7 @@ func newImageRequest(itemId string) (*httptest.ResponseRecorder, *http.Request) 
 var _ = Describe("Images", func() {
 	// Real Jellyfin fits the image inside either bound, so a client that sends only MaxHeight must
 	// still get a resized image rather than the full-size original.
-	DescribeTable("derives the requested size from MaxWidth or MaxHeight",
+	DescribeTable("derives the requested size from the Jellyfin size params",
 		func(query string, wantSize int) {
 			ds := &tests.MockDataStore{}
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
@@ -84,6 +84,15 @@ var _ = Describe("Images", func() {
 		Entry("both, smaller bound wins", "maxwidth=200&maxheight=300", 200),
 		Entry("both, smaller bound wins regardless of order", "maxwidth=300&maxheight=200", 200),
 		Entry("neither", "", 0),
+		Entry("Width only", "width=300", 300),
+		Entry("Height only", "height=300", 300),
+		Entry("Width capped by MaxWidth", "width=500&maxwidth=300", 300),
+		Entry("FillWidth only", "fillwidth=300", 300),
+		Entry("FillHeight only", "fillheight=300", 300),
+		Entry("both fill sides, larger one covers the box", "fillwidth=200&fillheight=300", 300),
+		Entry("fill smaller than MaxWidth wins", "maxwidth=500&fillwidth=300&fillheight=300", 300),
+		Entry("MaxWidth smaller than fill wins", "maxwidth=200&fillwidth=300&fillheight=300", 200),
+		Entry("non-positive values are ignored", "fillwidth=0&maxwidth=-5&height=250", 250),
 	)
 
 	It("streams album artwork", func() {

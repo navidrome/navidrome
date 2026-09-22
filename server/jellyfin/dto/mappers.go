@@ -7,6 +7,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -50,16 +51,16 @@ func premiereDate(date string, year int) *string {
 	if err != nil {
 		return nil
 	}
-	s := jellyfinDate(&parsed)
+	s := JellyfinDate(&parsed)
 	return &s
 }
 
 // Dates use .NET's round-trip layout, 7 fractional digits and all: Manet rejects plain RFC3339.
 const jellyfinDateLayout = "2006-01-02T15:04:05.0000000Z07:00"
 
-// jellyfinDate formats t as the date string clients expect, or "" for the zero time so the
+// JellyfinDate formats t as the date string clients expect, or "" for the zero time so the
 // field is omitted rather than sent as a meaningless epoch.
-func jellyfinDate(t *time.Time) string {
+func JellyfinDate(t *time.Time) string {
 	if t == nil || t.IsZero() {
 		return ""
 	}
@@ -134,7 +135,7 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
 		d.Rating = &r
 	}
-	if s := jellyfinDate(a.PlayDate); s != "" {
+	if s := JellyfinDate(a.PlayDate); s != "" {
 		d.LastPlayedDate = &s
 	}
 	return d
@@ -158,7 +159,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		AlbumId:           albumID,
 		AlbumArtist:       mf.AlbumArtist,
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
-		DateCreated:       jellyfinDate(&mf.CreatedAt),
+		DateCreated:       JellyfinDate(&mf.CreatedAt),
 		Container:         mf.Suffix,
 		CanDownload:       true,
 		BackdropImageTags: []string{},
@@ -264,7 +265,7 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		ChildCount:              new(al.SongCount),
 		SongCount:               new(al.SongCount),
 		RunTimeTicks:            TicksFromSeconds(al.Duration),
-		DateCreated:             jellyfinDate(&al.CreatedAt),
+		DateCreated:             JellyfinDate(&al.CreatedAt),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -317,7 +318,7 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 		IsFolder:                true,
 		AlbumCount:              new(ar.AlbumCount),
 		SongCount:               new(ar.SongCount),
-		DateCreated:             jellyfinDate(ar.CreatedAt),
+		DateCreated:             JellyfinDate(ar.CreatedAt),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -345,7 +346,7 @@ func LibraryToBaseItem(lib model.Library) BaseItemDto {
 		IsFolder:          true,
 		Path:              lib.Path,
 		LocationType:      "FileSystem",
-		DateCreated:       jellyfinDate(&lib.CreatedAt),
+		DateCreated:       JellyfinDate(&lib.CreatedAt),
 		ChildCount:        new(lib.TotalAlbums),
 		UserData:          &UserItemDataDto{Key: id, ItemId: id},
 		BackdropImageTags: []string{},
@@ -385,7 +386,7 @@ func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
 		MediaType:               "Audio",
 		ChildCount:              new(p.SongCount),
 		RunTimeTicks:            TicksFromSeconds(p.Duration),
-		DateCreated:             jellyfinDate(&p.CreatedAt),
+		DateCreated:             JellyfinDate(&p.CreatedAt),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -445,4 +446,26 @@ func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
 		d.Lyrics = append(d.Lyrics, out)
 	}
 	return d
+}
+
+// NewSessionInfo's Id is stable per client install, as Jellyfin reuses a device's session across logins.
+func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, serverID string) *SessionInfo {
+	now := time.Now()
+	return &SessionInfo{
+		Id:                 EncodeID(id.NewHash(client, deviceID)),
+		UserId:             EncodeID(u.ID),
+		UserName:           u.UserName,
+		Client:             client,
+		DeviceId:           deviceID,
+		DeviceName:         deviceName,
+		ApplicationVersion: version,
+		ServerId:           serverID,
+		LastActivityDate:   JellyfinDate(&now),
+		IsActive:           true,
+		PlayableMediaTypes: []string{"Audio"},
+		SupportedCommands:  []string{},
+		AdditionalUsers:    []any{},
+		NowPlayingQueue:    []any{},
+		PlayState:          PlayerStateInfo{RepeatMode: "RepeatNone", PlaybackOrder: "Default"},
+	}
 }

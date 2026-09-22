@@ -38,6 +38,14 @@ type dbMediaFile struct {
 	RgTrackPeak *float64 `structs:"-" json:"-"`
 }
 
+// String guards the promoted MediaFile.String(), which would dereference a nil MediaFile.
+func (m dbMediaFile) String() string {
+	if m.MediaFile == nil {
+		return "<nil>"
+	}
+	return m.MediaFile.String()
+}
+
 func (m *dbMediaFile) PostScan() error {
 	m.RGTrackGain = m.RgTrackGain
 	m.RGTrackPeak = m.RgTrackPeak

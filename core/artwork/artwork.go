@@ -168,6 +168,11 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 	if !entityExists(ctx, s.ds, artID) {
 		return nil, ErrUnavailable
 	}
+	// Checked here, not in openOriginal: a resize-cache hit never opens the source.
+	if isFileBacked(ia.Source) && !model.IsImageFile(ia.SourcePath) {
+		log.Warn(ctx, "Artwork: Stored source is not an image file, re-resolving", "artID", artID, "path", ia.SourcePath)
+		return s.dangling(ctx, artID)
+	}
 	art, err := s.ds.Artwork().GetImage(ctx, ia.Hash)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {

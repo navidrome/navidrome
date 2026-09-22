@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -144,17 +145,6 @@ var _ = Describe("System", func() {
 		Expect(info.IsInNetwork).To(BeTrue())
 	})
 
-	It("reports quick connect as disabled", func() {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/QuickConnect/Enabled", nil)
-		api.quickConnectEnabled(w, r)
-
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var enabled bool
-		Expect(json.Unmarshal(w.Body.Bytes(), &enabled)).To(Succeed())
-		Expect(enabled).To(BeFalse())
-	})
-
 	Context("serverID with a real DataStore", func() {
 		var ctx context.Context
 		var ds *tests.MockDataStore
@@ -171,6 +161,17 @@ var _ = Describe("System", func() {
 
 			second := &Router{ds: ds}
 			Expect(second.serverID(ctx)).To(Equal(id))
+		})
+
+		It("resolves one id when a Router and a Discovery race on first boot", func() {
+			r, d := &Router{ds: ds}, NewDiscovery(ds)
+			ids := make([]string, 2)
+			var wg sync.WaitGroup
+			wg.Go(func() { ids[0] = r.serverID(ctx) })
+			wg.Go(func() { ids[1] = d.serverID(ctx) })
+			wg.Wait()
+			Expect(ids[0]).ToNot(BeEmpty())
+			Expect(ids[1]).To(Equal(ids[0]))
 		})
 
 		It("memoizes the id across repeated calls on the same Router", func() {

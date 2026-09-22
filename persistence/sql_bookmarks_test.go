@@ -71,4 +71,52 @@ var _ = Describe("sqlBookmarks", func() {
 			Expect(mr.GetBookmarks(ctx)).To(BeEmpty())
 		})
 	})
+
+	Describe("library access", func() {
+		var otherLib model.Library
+		var restrictedUser model.User
+		var adminCtx, userCtx context.Context
+		var userMr model.MediaFileRepository
+
+		BeforeEach(func() {
+			adminCtx, otherLib, restrictedUser = restrictedFixture("bmk")
+
+			adminMr := NewMediaFileRepository(GetDBXBuilder())
+			Expect(adminMr.Put(adminCtx, &model.MediaFile{
+				ID: "bmk-otherlib-track", LibraryID: otherLib.ID,
+				Path: "hidden/bookmarked.mp3", Title: "Hidden Bookmarked",
+			})).To(Succeed())
+			DeferCleanup(func() { _ = adminMr.Delete(adminCtx, "bmk-otherlib-track") })
+
+			userCtx = request.WithUser(log.NewContext(GinkgoT().Context()), restrictedUser)
+			userMr = NewMediaFileRepository(GetDBXBuilder())
+		})
+
+		It("does not return bookmarks for tracks outside the user's libraries", func() {
+			Expect(userMr.AddBookmark(userCtx, "bmk-otherlib-track", "sneaky", 1)).To(Succeed())
+
+			Expect(userMr.GetBookmarks(userCtx)).To(BeEmpty())
+		})
+
+		It("still returns the bookmark for an admin", func() {
+			adminMr := NewMediaFileRepository(GetDBXBuilder())
+			Expect(adminMr.AddBookmark(adminCtx, "bmk-otherlib-track", "mine", 1)).To(Succeed())
+			DeferCleanup(func() { _ = adminMr.DeleteBookmark(adminCtx, "bmk-otherlib-track") })
+
+			bms, err := adminMr.GetBookmarks(adminCtx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bms).To(HaveLen(1))
+			Expect(bms[0].Item.ID).To(Equal("bmk-otherlib-track"))
+		})
+
+		It("keeps returning bookmarks for tracks inside the user's libraries", func() {
+			Expect(userMr.AddBookmark(userCtx, songAntenna.ID, "allowed", 5)).To(Succeed())
+			DeferCleanup(func() { _ = userMr.DeleteBookmark(userCtx, songAntenna.ID) })
+
+			bms, err := userMr.GetBookmarks(userCtx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(bms).To(HaveLen(1))
+			Expect(bms[0].Item.ID).To(Equal(songAntenna.ID))
+		})
+	})
 })
