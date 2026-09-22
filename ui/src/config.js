@@ -38,6 +38,7 @@ const defaultConfig = {
   devUIShowConfig: true,
   devNewEventStream: false,
   enableReplayGain: true,
+  enableQuickConnect: false,
   defaultDownsamplingFormat: 'opus',
   publicBaseUrl: '/share',
   separator: '/',

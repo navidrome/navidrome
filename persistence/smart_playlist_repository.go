@@ -1,11 +1,14 @@
 package persistence
 
 import (
+	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/text/unicode/norm"
 )
 
 // PlaylistRepository methods to handle smart playlists, which are defined by criteria and automatically populated
@@ -16,6 +19,17 @@ import (
 
 // refreshSmartPlaylist evaluates the criteria of a smart playlist and updates its tracks accordingly.
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
+	return r.refreshSmartPlaylistTree(pls, map[string]struct{}{})
+}
+
+// The visited set stops playlists that reference each other from recursing forever.
+func (r *playlistRepository) refreshSmartPlaylistTree(pls *model.Playlist, visited map[string]struct{}) bool {
+	if _, seen := visited[pls.ID]; seen {
+		log.Trace(r.ctx, "Skipping already visited smart playlist", "playlist", pls.Name, "id", pls.ID)
+		return false
+	}
+	visited[pls.ID] = struct{}{}
+
 	usr := loggedUser(r.ctx)
 	if !r.shouldRefreshSmartPlaylist(pls, usr) {
 		return false
@@ -30,9 +44,9 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	rulesSQL := newSmartPlaylistCriteria(*pls.Rules, withSmartPlaylistOwner(*usr))
+	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(), withSmartPlaylistOwner(*usr))
 
-	if !r.refreshChildPlaylists(pls, rulesSQL) {
+	if !r.refreshChildPlaylists(pls, rulesSQL, visited) {
 		return false
 	}
 
@@ -89,26 +103,45 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 
 // refreshChildPlaylists handles refreshing any child playlists that are referenced in the smart playlist criteria.
 // Returns false if child playlists could not be loaded (DB error), signaling the parent refresh should abort.
-func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) bool {
+func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria, visited map[string]struct{}) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
-	if len(childPlaylistIds) == 0 {
+	childPlaylistPaths := rulesSQL.ChildPlaylistPaths()
+	if len(childPlaylistIds) == 0 && len(childPlaylistPaths) == 0 {
 		return true
 	}
 
-	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Eq{"playlist.id": childPlaylistIds}})
+	var conditions Or
+	if len(childPlaylistIds) > 0 {
+		conditions = append(conditions, Eq{"playlist.id": childPlaylistIds})
+	}
+	if len(childPlaylistPaths) > 0 {
+		lookupPaths := slices.Concat(slice.Map(childPlaylistPaths, pathVariants)...)
+		conditions = append(conditions, Eq{"playlist.path": lookupPaths})
+	}
+
+	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: conditions})
 	if err != nil {
-		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
+		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, "childPaths", childPlaylistPaths, err)
 		return false
 	}
 
-	found := make(map[string]struct{}, len(childPlaylists))
+	found := make(map[string]struct{}, len(childPlaylists)*2)
 	for i := range childPlaylists {
 		found[childPlaylists[i].ID] = struct{}{}
-		r.refreshSmartPlaylist(&childPlaylists[i])
+		if childPlaylists[i].Path != "" {
+			found[norm.NFC.String(childPlaylists[i].Path)] = struct{}{}
+		}
+		r.refreshSmartPlaylistTree(&childPlaylists[i], visited)
 	}
 	for _, id := range childPlaylistIds {
 		if _, ok := found[id]; !ok {
 			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "childId", id, "ownerId", pls.OwnerID)
+		}
+	}
+
+	for _, path := range childPlaylistPaths {
+		if _, ok := found[norm.NFC.String(path)]; !ok {
+			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "path", path, "ownerId", pls.OwnerID)
 		}
 	}
 	return true

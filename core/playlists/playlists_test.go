@@ -324,6 +324,43 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("InsertTracks", func() {
+		var mockTracks *tests.MockPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &tests.MockPlaylistTrackRepo{AddCount: 2}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+			}
+			mockPlsRepo.TracksRepo = mockTracks
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+		})
+
+		It("inserts the tracks at the given position for the owner", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			count, err := ps.InsertTracks(ctx, "pls-1", []string{"song-1", "song-2"}, 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(2))
+			Expect(mockTracks.AddedIds).To(Equal([]string{"song-1", "song-2"}))
+			Expect(mockTracks.InsertPos).To(Equal(3))
+		})
+
+		It("denies non-owner, non-admin", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+			_, err := ps.InsertTracks(ctx, "pls-1", []string{"song-1"}, 1)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(mockTracks.AddedIds).To(BeEmpty())
+		})
+
+		It("denies editing smart playlists", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.InsertTracks(ctx, "pls-smart", []string{"song-1"}, 1)
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
+		})
+	})
+
 	Describe("ReorderTrack", func() {
 		var mockTracks *tests.MockPlaylistTrackRepo
 

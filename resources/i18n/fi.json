@@ -202,7 +202,7 @@
         "command": "Komento"
       },
       "choices": {
-        "noDefaultBitRate": ""
+        "noDefaultBitRate": "Ei mikään"
       }
     },
     "playlist": {
@@ -609,7 +609,10 @@
     "coverRemoved": "Kansikuva poistettu",
     "coverUploadError": "Virhe ladattaessa kansikuvaa",
     "coverRemoveError": "Virhe poistettaessa kansikuvaa",
-    "metadataRefreshStarted": "Metatietoja päivitetään taustalla"
+    "metadataRefreshStarted": "Metatietoja päivitetään taustalla",
+    "quickConnectApproved": "",
+    "quickConnectInvalidCode": "",
+    "quickConnectError": ""
   },
   "menu": {
     "library": "Kirjasto",
@@ -645,7 +648,15 @@
       "selectLibraries": "Valitse kirjastot",
       "none": "Ei mitään"
     },
-    "onlyFavourites": "Näytä vain suosikit"
+    "onlyFavourites": "Näytä vain suosikit",
+    "quickConnect": {
+      "name": "",
+      "code": "",
+      "help": "",
+      "confirm": "",
+      "continue": "",
+      "approve": ""
+    }
   },
   "player": {
     "playListsText": "Jono",

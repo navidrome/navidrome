@@ -23,14 +23,17 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-// imageSize picks the tighter of Jellyfin's two bounds, because Navidrome resizes on a single
-// dimension: reading only MaxWidth serves the full-size original to a client that sent MaxHeight.
-func imageSize(maxWidth, maxHeight int) int {
-	w, h := max(maxWidth, 0), max(maxHeight, 0)
-	if w == 0 || h == 0 {
-		return max(w, h)
+// imageSize reduces Jellyfin's size params to Navidrome's single bound. Width/Height/Max* are
+// bounds, so the tightest wins; Fill* must cover its box, so its larger side is the bound.
+func imageSize(p *req.Values) int {
+	fill := max(p.IntOr("fillwidth", 0), p.IntOr("fillheight", 0))
+	size := 0
+	for _, v := range []int{p.IntOr("width", 0), p.IntOr("height", 0), p.IntOr("maxwidth", 0), p.IntOr("maxheight", 0), fill} {
+		if v > 0 && (size == 0 || v < size) {
+			size = v
+		}
 	}
-	return min(w, h)
+	return size
 }
 
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
@@ -41,8 +44,7 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	p := req.Params(r)
-	size := imageSize(p.IntOr("maxwidth", 0), p.IntOr("maxheight", 0))
+	size := imageSize(req.Params(r))
 
 	artID := api.resolveArtworkID(ctx, itemId)
 	img, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)

@@ -218,12 +218,12 @@ func UsernameFromExtAuthHeader(r *http.Request) string {
 		log.Error("ExtAuth enabled but no proxy IP found in request context. Please report this error.")
 		return ""
 	}
-	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
-		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
-		return ""
-	}
 	username := r.Header.Get(conf.Server.ExtAuth.UserHeader)
 	if username == "" {
+		return ""
+	}
+	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
+		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
 	log.Trace(r, "Found username in ExtAuth.UserHeader", "username", username)

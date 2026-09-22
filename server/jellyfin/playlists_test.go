@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -132,6 +133,17 @@ func (f *fakePlaylists) RemoveImage(_ context.Context, playlistID string) error 
 	f.removeImagePlaylistID = playlistID
 	return f.removeImageErr
 }
+
+var _ = DescribeTable("insertPosition",
+	func(position int64, want int) {
+		Expect(insertPosition(position)).To(Equal(want))
+	},
+	Entry("zero-based index becomes a 1-based position", int64(2), 3),
+	Entry("negative prepends", int64(-5), 1),
+	Entry("beyond int32 stays past the end instead of wrapping", int64(1)<<32+1, math.MaxInt32),
+	Entry("largest int64 stays past the end", int64(math.MaxInt64), math.MaxInt32),
+	Entry("smallest int64 prepends", int64(math.MinInt64), 1),
+)
 
 var _ = Describe("Playlists", func() {
 	var api *Router

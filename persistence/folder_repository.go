@@ -27,6 +27,14 @@ type dbFolder struct {
 	ImageFiles    string `structs:"-" json:"-"`
 }
 
+// String guards the promoted Folder.String(), which would dereference a nil Folder.
+func (f dbFolder) String() string {
+	if f.Folder == nil {
+		return "<nil>"
+	}
+	return f.Folder.String()
+}
+
 func (f *dbFolder) PostScan() error {
 	var err error
 	if f.ImageFiles != "" {

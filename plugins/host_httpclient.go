@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/utils/httpclient"
+	"github.com/navidrome/navidrome/utils/netguard"
 )
 
 const (
@@ -201,7 +202,7 @@ func isPrivateOrLoopback(hostname string) bool {
 	if ip == nil {
 		return false
 	}
-	return isPrivateIP(ip)
+	return netguard.IsPrivateIP(ip)
 }
 
 // Verify interface implementation

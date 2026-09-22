@@ -86,6 +86,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
 	g.Go(startPlaybackServer(ctx))
+	g.Go(startJellyfinDiscovery(ctx))
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBAnalyzer(ctx))
@@ -339,6 +340,18 @@ func startInsightsCollector(ctx context.Context) func() error {
 		}
 		ic := CreateInsights()
 		ic.Run(ctx)
+		return nil
+	}
+}
+
+// startJellyfinDiscovery never returns an error: a discovery failure must not stop the server.
+func startJellyfinDiscovery(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.Jellyfin.Enabled || !conf.Server.Jellyfin.AutoDiscovery {
+			log.Debug("Jellyfin auto-discovery is DISABLED")
+			return nil
+		}
+		CreateJellyfinDiscovery().Serve(ctx)
 		return nil
 	}
 }

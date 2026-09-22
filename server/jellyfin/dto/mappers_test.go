@@ -17,10 +17,10 @@ var _ = Describe("mappers", func() {
 			ID: testID("song-1"), Title: "Song", Album: "Alb", AlbumID: testID("alb-1"),
 			Artist: "Art", AlbumArtist: "AA", TrackNumber: 3, DiscNumber: 1,
 			Year: 1999, Duration: 60, Size: 2_500_000,
-			Genres: []model.Genre{{ID: testID("1"), Name: "genre 1"}, {ID: testID("2"), Name: "genre 2"}},
+			Genres:    []model.Genre{{ID: testID("1"), Name: "genre 1"}, {ID: testID("2"), Name: "genre 2"}},
+			PlayCount: 2,
+			Starred:   true,
 		}
-		mf.PlayCount = 2
-		mf.Starred = true
 		item := SongToBaseItem(mf, nil)
 		Expect(item.Type).To(Equal("Audio"))
 		Expect(item.MediaType).To(Equal("Audio"))

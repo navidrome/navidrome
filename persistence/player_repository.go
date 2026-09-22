@@ -126,7 +126,7 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
 	}
-	return r.put(t.ID, t)
+	return r.put("", t) // Save only creates; edits go through the owner-scoped Update
 }
 
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {

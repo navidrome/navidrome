@@ -16,12 +16,15 @@ import (
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("Auth", func() {
@@ -231,6 +234,56 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
 			})
+		})
+	})
+
+	Describe("UsernameFromExtAuthHeader", func() {
+		var hook *test.Hook
+		var r *http.Request
+
+		BeforeEach(func() {
+			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
+			prevLevel := log.CurrentLevel()
+			l, h := test.NewNullLogger()
+			hook = h
+			prevLogger := log.SetDefaultLogger(l)
+			log.SetLevel(log.LevelWarn)
+			DeferCleanup(func() {
+				log.SetDefaultLogger(prevLogger)
+				log.SetLevel(prevLevel)
+			})
+			r = httptest.NewRequest("GET", "/", nil)
+		})
+
+		warnings := func() []*logrus.Entry {
+			var ws []*logrus.Entry
+			for _, e := range hook.AllEntries() {
+				if e.Level == logrus.WarnLevel {
+					ws = append(ws, e)
+				}
+			}
+			return ws
+		}
+
+		It("returns the username from a trusted source", func() {
+			r.Header.Set("Remote-User", "janedoe")
+			r = r.WithContext(request.WithReverseProxyIp(r.Context(), "192.168.0.42"))
+			Expect(UsernameFromExtAuthHeader(r)).To(Equal("janedoe"))
+			Expect(warnings()).To(BeEmpty())
+		})
+
+		It("does not warn when an untrusted source sends no user header", func() {
+			r = r.WithContext(request.WithReverseProxyIp(r.Context(), "8.8.8.8"))
+			Expect(UsernameFromExtAuthHeader(r)).To(BeEmpty())
+			Expect(warnings()).To(BeEmpty())
+		})
+
+		It("warns when an untrusted source sends the user header", func() {
+			r.Header.Set("Remote-User", "janedoe")
+			r = r.WithContext(request.WithReverseProxyIp(r.Context(), "8.8.8.8"))
+			Expect(UsernameFromExtAuthHeader(r)).To(BeEmpty())
+			Expect(warnings()).To(HaveLen(1))
+			Expect(warnings()[0].Message).To(Equal("IP is not whitelisted for external authentication"))
 		})
 	})
 

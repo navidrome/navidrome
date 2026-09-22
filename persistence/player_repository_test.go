@@ -288,6 +288,27 @@ var _ = Describe("PlayerRepository", func() {
 			Expect(*stored).To(Equal(adminPlayer1))
 		})
 
+		It("does not let a regular user overwrite another user's player via Save with a spoofed id", func() {
+			spoofed := model.Player{
+				ID:             adminPlayer1.ID,
+				Name:           "HIJACKED",
+				UserId:         regularUser.ID,
+				ReportRealPath: true,
+			}
+
+			id, err := regularRepo.Save(&spoofed)
+			Expect(err).To(BeNil())
+			Expect(id).ToNot(Equal(adminPlayer1.ID))
+
+			stored, err := adminRepo.Get(adminPlayer1.ID)
+			Expect(err).To(BeNil())
+			Expect(*stored).To(Equal(adminPlayer1))
+
+			created, err := adminRepo.Get(id)
+			Expect(err).To(BeNil())
+			Expect(created.UserId).To(Equal(regularUser.ID))
+		})
+
 		It("does not let a regular user reassign their own player to another user", func() {
 			// Owner updates their own player but tries to give it away to the admin. The update
 			// succeeds for the other fields, but user_id is never written, so ownership stays put.

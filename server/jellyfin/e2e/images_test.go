@@ -41,6 +41,10 @@ var _ = Describe("Item images", func() {
 		Expect(u.IsAdmin).To(BeTrue())
 	})
 
+	It("answers HEAD without authentication", func() {
+		Expect(rawReq("HEAD", "/Items/"+enc(albumID("Abbey Road"))+"/Images/Primary", "").Code).To(Equal(http.StatusOK))
+	})
+
 	It("serves images without authentication (public route)", func() {
 		id := albumID("IV")
 		w := rawReq("GET", "/Items/"+enc(id)+"/Images/Primary", "")

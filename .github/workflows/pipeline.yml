@@ -549,7 +549,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
+          for artifact in $(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
             gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
           done
 

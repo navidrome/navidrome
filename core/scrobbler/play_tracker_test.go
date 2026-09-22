@@ -92,7 +92,7 @@ var _ = Describe("PlayTracker", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = GinkgoT().Context()
-		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
+		ctx = request.WithUser(ctx, model.User{ID: "u-1", Libraries: model.Libraries{{ID: 1}}})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
 		fake = &fakeScrobbler{Authorized: true}
@@ -108,6 +108,7 @@ var _ = Describe("PlayTracker", func() {
 
 		track = model.MediaFile{
 			ID:             "123",
+			LibraryID:      1,
 			Title:          "Track Title",
 			Album:          "Track Album",
 			AlbumID:        "al-1",
@@ -173,6 +174,46 @@ var _ = Describe("PlayTracker", func() {
 			Expect(playing[1].PlayerName).To(Equal("player-one"))
 			Expect(playing[1].Username).To(Equal("user-1"))
 			Expect(playing[1].MediaFile.ID).To(Equal("123"))
+		})
+
+		It("hides sessions playing from libraries the caller cannot access", func() {
+			hidden := track
+			hidden.ID = "789"
+			hidden.LibraryID = 2
+			_ = ds.MediaFile(ctx).Put(&hidden)
+			reporter := request.WithPlayer(
+				request.WithUser(GinkgoT().Context(), model.User{ID: "u-2", UserName: "user-2"}),
+				model.Player{ScrobbleEnabled: true},
+			)
+			_ = tracker.ReportPlayback(reporter, ReportPlaybackParams{
+				MediaId: "789", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-2", ClientName: "player-two",
+			})
+
+			playing, err := tracker.GetNowPlaying(ctx)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(BeEmpty(), "u-1 is granted library 1 only")
+		})
+
+		It("shows every session to an admin", func() {
+			hidden := track
+			hidden.ID = "789"
+			hidden.LibraryID = 2
+			_ = ds.MediaFile(ctx).Put(&hidden)
+			reporter := request.WithPlayer(
+				request.WithUser(GinkgoT().Context(), model.User{ID: "u-2", UserName: "user-2"}),
+				model.Player{ScrobbleEnabled: true},
+			)
+			_ = tracker.ReportPlayback(reporter, ReportPlaybackParams{
+				MediaId: "789", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-2", ClientName: "player-two",
+			})
+
+			adminCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "adm", IsAdmin: true})
+			playing, err := tracker.GetNowPlaying(adminCtx)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].MediaFile.ID).To(Equal("789"))
 		})
 	})
 

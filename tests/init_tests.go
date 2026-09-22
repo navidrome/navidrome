@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
+	_ "github.com/navidrome/navidrome/conf/mime" // registers mime_types.yaml, so tests see the same image types as the server
 	"github.com/navidrome/navidrome/log"
 )
 

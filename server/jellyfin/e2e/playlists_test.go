@@ -19,6 +19,7 @@ var _ = Describe("Playlists", func() {
 	playlistItems := func(plID string) dto.QueryResult {
 		return queryResult(get("/Playlists/" + enc(plID) + "/Items"))
 	}
+	order := func(plID string) []string { return names(playlistItems(plID).Items) }
 
 	Describe("create", func() {
 		It("creates an empty playlist", func() {
@@ -102,6 +103,36 @@ var _ = Describe("Playlists", func() {
 			Expect(playlistItems(plID).TotalRecordCount).To(BeZero())
 		})
 
+		Describe("at a position", func() {
+			var plID string
+			addAt := func(position string, ids ...string) {
+				url := "/Playlists/" + enc(plID) + "/Items?position=" + position
+				for _, id := range ids {
+					url += "&ids=" + enc(id)
+				}
+				Expect(post(url, "").Code).To(Equal(http.StatusNoContent))
+			}
+			BeforeEach(func() {
+				plID = createPlaylist("Insert", []string{enc(songID("Come Together")), enc(songID("Something"))})
+			})
+
+			DescribeTable("inserts at Jellyfin's zero-based position",
+				func(position string, want []string) {
+					addAt(position, songID("So What"), songID("Help!"))
+					Expect(order(plID)).To(Equal(want))
+				},
+				Entry("in the middle", "1", []string{"Come Together", "So What", "Help!", "Something"}),
+				Entry("first, for zero or less", "-3", []string{"So What", "Help!", "Come Together", "Something"}),
+				Entry("last, past the end", "9", []string{"Come Together", "Something", "So What", "Help!"}),
+			)
+
+			It("keeps an expanded album's track order", func() {
+				albumOrder := order(createPlaylist("Album", []string{enc(albumID("Abbey Road"))}))
+				addAt("1", albumID("Abbey Road"))
+				Expect(order(plID)).To(Equal(append(append([]string{"Come Together"}, albumOrder...), "Something")))
+			})
+		})
+
 		It("removes an entry by its PlaylistItemId", func() {
 			plID := createPlaylist("Remove", []string{enc(songID("Come Together")), enc(songID("Something"))})
 			entryID := playlistItems(plID).Items[0].PlaylistItemId
@@ -115,6 +146,58 @@ var _ = Describe("Playlists", func() {
 			url := "/Playlists/" + enc(plID) + "/Items?entryIds=" + items[0].PlaylistItemId + "&entryIds=" + items[1].PlaylistItemId
 			Expect(del(url).Code).To(Equal(http.StatusNoContent))
 			Expect(playlistItems(plID).TotalRecordCount).To(Equal(1))
+		})
+	})
+
+	Describe("move", func() {
+		move := func(u model.User, plID, entryID string, newIndex string) int {
+			return jReq(u, "POST", "/Playlists/"+enc(plID)+"/Items/"+entryID+"/Move/"+newIndex, "").Code
+		}
+		var plID string
+		var entries []dto.BaseItemDto
+		BeforeEach(func() {
+			plID = createPlaylist("Move", []string{enc(songID("Come Together")), enc(songID("Something")), enc(songID("So What"))})
+			entries = playlistItems(plID).Items
+		})
+
+		DescribeTable("moves an entry to Jellyfin's zero-based index",
+			func(entry int, newIndex string, want []string) {
+				Expect(move(adminUser, plID, entries[entry].PlaylistItemId, newIndex)).To(Equal(http.StatusNoContent))
+				Expect(order(plID)).To(Equal(want))
+				var positions []string
+				for _, it := range playlistItems(plID).Items {
+					positions = append(positions, it.PlaylistItemId)
+				}
+				Expect(positions).To(Equal([]string{dto.EncodePlaylistEntryID("1"), dto.EncodePlaylistEntryID("2"), dto.EncodePlaylistEntryID("3")}))
+			},
+			Entry("towards the end", 0, "2", []string{"Something", "So What", "Come Together"}),
+			Entry("towards the start", 2, "0", []string{"So What", "Come Together", "Something"}),
+			Entry("to the end, past the last index", 0, "99", []string{"Something", "So What", "Come Together"}),
+			Entry("to the end, for the largest int", 0, "9223372036854775807", []string{"Something", "So What", "Come Together"}),
+		)
+
+		It("ignores an entry that is not in the playlist", func() {
+			Expect(move(adminUser, plID, dto.EncodePlaylistEntryID("42"), "0")).To(Equal(http.StatusNoContent))
+			Expect(order(plID)).To(Equal([]string{"Come Together", "Something", "So What"}))
+		})
+
+		It("404s on a malformed entry id", func() {
+			Expect(move(adminUser, plID, enc(songID("So What")), "0")).To(Equal(http.StatusNotFound))
+		})
+
+		It("hides another user's private playlist", func() {
+			Expect(move(regularUser, plID, entries[0].PlaylistItemId, "2")).To(Equal(http.StatusNotFound))
+			Expect(order(plID)).To(Equal([]string{"Come Together", "Something", "So What"}))
+		})
+
+		It("forbids a non-owner on a public playlist", func() {
+			Expect(post("/Playlists/"+enc(plID), `{"Name":"Move","IsPublic":true}`).Code).To(Equal(http.StatusNoContent))
+			Expect(move(regularUser, plID, entries[0].PlaylistItemId, "2")).To(Equal(http.StatusForbidden))
+			Expect(order(plID)).To(Equal([]string{"Come Together", "Something", "So What"}))
+		})
+
+		It("rejects a negative index", func() {
+			Expect(move(adminUser, plID, entries[0].PlaylistItemId, "-1")).To(Equal(http.StatusBadRequest))
 		})
 	})
 

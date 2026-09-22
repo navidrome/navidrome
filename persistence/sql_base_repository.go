@@ -378,8 +378,9 @@ func wrapCursor[D, T any](cursor iter.Seq2[D, error], toModel func(D) *T) iter.S
 		for row, err := range cursor {
 			m := toModel(row)
 			if m == nil {
+				// Don't format row: its String() derefs the nil model (golang/go#81238).
 				var zero T
-				yield(zero, fmt.Errorf("unexpected nil %T (%v): %w", zero, row, err))
+				yield(zero, fmt.Errorf("unexpected nil %T: %w", zero, err))
 				return
 			}
 			if !yield(*m, err) || err != nil {

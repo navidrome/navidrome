@@ -2,18 +2,21 @@ package artwork
 
 import (
 	"io/fs"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/goleak"
@@ -36,6 +39,14 @@ func TestArtwork(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Artwork Suite")
 }
+
+// productionImageClient keeps the guarded client for the specs that assert it refuses loopback.
+var productionImageClient = remoteImageClient
+
+// httptest servers listen on loopback, which the production client refuses.
+var _ = BeforeSuite(func() {
+	remoteImageClient = httpclient.NewExternal(5*time.Second, netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("::1/128"))
+})
 
 // osDirFS wraps os.DirFS as a storage.MusicFS for integration tests.
 type osDirFS struct{ fs.FS }

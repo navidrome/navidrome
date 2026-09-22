@@ -233,6 +233,17 @@ type PlayerStateInfo struct {
 	PlaybackOrder string `json:"PlaybackOrder"`
 }
 
+type QuickConnectResult struct {
+	Authenticated bool   `json:"Authenticated"`
+	Secret        string `json:"Secret"`
+	Code          string `json:"Code"`
+	DeviceId      string `json:"DeviceId"`
+	DeviceName    string `json:"DeviceName"`
+	AppName       string `json:"AppName"`
+	AppVersion    string `json:"AppVersion"`
+	DateAdded     string `json:"DateAdded"`
+}
+
 type AuthenticationResult struct {
 	User        *UserDto     `json:"User"`
 	SessionInfo *SessionInfo `json:"SessionInfo"`
