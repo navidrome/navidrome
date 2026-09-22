@@ -134,9 +134,11 @@ var _ = Describe("ToMediaFile", func() {
 		It("leaves BPM nil when the tag does not fit in 32 bits", func() {
 			Expect(toMediaFile(model.RawTags{"BPM": {"4294967295"}}).BPM).To(BeNil())
 		})
-		It("keeps BPM values at the int32 boundaries", func() {
+		It("leaves BPM nil when the tag is negative", func() {
+			Expect(toMediaFile(model.RawTags{"BPM": {"-120"}}).BPM).To(BeNil())
+		})
+		It("keeps the largest 32-bit BPM value", func() {
 			Expect(toMediaFile(model.RawTags{"BPM": {"2147483647"}}).BPM).To(Equal(new(2147483647)))
-			Expect(toMediaFile(model.RawTags{"BPM": {"-2147483648"}}).BPM).To(Equal(new(-2147483648)))
 		})
 	})
 

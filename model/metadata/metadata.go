@@ -152,13 +152,13 @@ func (md Metadata) tuple(key model.TagName) (int, int) {
 	if len(tuple) > 1 {
 		total = tuple[1]
 	}
-	return atoi32(tuple[0]), atoi32(total)
+	return tagNumber(tuple[0]), tagNumber(total)
 }
 
-// atoi32 rejects values outside the int32 range, so the DB stays readable by 32-bit builds.
-func atoi32(s string) int {
+// tagNumber rejects negatives and values above int32, so the DB stays readable by 32-bit builds.
+func tagNumber(s string) int {
 	v, err := strconv.ParseInt(s, 10, 32)
-	if err != nil {
+	if err != nil || v < 0 {
 		return 0
 	}
 	return int(v)
