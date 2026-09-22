@@ -148,15 +148,20 @@ func (md Metadata) tuple(key model.TagName) (int, int) {
 		return 0, 0
 	}
 	tuple := strings.Split(tag, "/")
-	t1, t2 := 0, 0
-	t1, _ = strconv.Atoi(tuple[0])
+	total := md.first(key + "total")
 	if len(tuple) > 1 {
-		t2, _ = strconv.Atoi(tuple[1])
-	} else {
-		t2tag := md.first(key + "total")
-		t2, _ = strconv.Atoi(t2tag)
+		total = tuple[1]
 	}
-	return t1, t2
+	return atoi32(tuple[0]), atoi32(total)
+}
+
+// atoi32 rejects values outside the int32 range, so the DB stays readable by 32-bit builds.
+func atoi32(s string) int {
+	v, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0
+	}
+	return int(v)
 }
 
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)

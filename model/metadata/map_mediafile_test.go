@@ -131,6 +131,9 @@ var _ = Describe("ToMediaFile", func() {
 			Expect(toMediaFile(model.RawTags{"BPM": {"0"}}).BPM).To(BeNil())
 			Expect(toMediaFile(model.RawTags{"BPM": {"fast"}}).BPM).To(BeNil())
 		})
+		It("leaves BPM nil when the tag does not fit in 32 bits", func() {
+			Expect(toMediaFile(model.RawTags{"BPM": {"4294967295"}}).BPM).To(BeNil())
+		})
 	})
 
 	Describe("BitDepth", func() {
