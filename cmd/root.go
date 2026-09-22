@@ -375,6 +375,8 @@ func startPlaybackServer(ctx context.Context) func() error {
 func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() error {
 	return func() error {
 		log.Info(ctx, "Starting artwork worker")
+		// The scanner writes to the DB for its whole run; competing for the write lock makes both fail.
+		worker.PauseWhile(scanner.IsScanning)
 		return worker.Run(ctx)
 	}
 }

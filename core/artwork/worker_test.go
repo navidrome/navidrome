@@ -866,6 +866,34 @@ var _ = Describe("Worker", func() {
 			}
 		})
 
+		It("stops dispatching and leaves the rest queued when paused mid-batch", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			albums := model.Albums{}
+			for i := range 8 {
+				id := fmt.Sprintf("alp%d", i)
+				albums = append(albums, model.Album{ID: id, Name: "Album", FolderIDs: []string{"f1"}})
+				Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+					ItemKind: "al", ItemID: id, Priority: model.ArtworkPriorityScan,
+				})).To(Succeed())
+			}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(albums)
+			// Pauses as soon as the first item has left the queue.
+			w.PauseWhile(func() bool {
+				n, _ := queueRepo.Count()
+				return n < 8
+			})
+
+			_, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+
+			count, err := queueRepo.Count()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(int64(7)), "only the item dispatched before the pause may leave the queue")
+		})
+
 		It("dequeues past the worker pool so one drain covers many items", func() {
 			for i := range 16 {
 				ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: fmt.Sprintf("alb%d", i), Name: "Album"}})
@@ -894,6 +922,30 @@ var _ = Describe("Worker", func() {
 
 			cancel()
 			Eventually(done, time.Second).Should(Receive(BeNil()))
+		})
+
+		It("does not drain the queue while paused", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
+				{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+				ItemKind: "al", ItemID: "al1", Priority: model.ArtworkPriorityScan,
+			})).To(Succeed())
+			w.PauseWhile(func() bool { return true })
+
+			runCtx, cancel := context.WithCancel(ctx)
+			done := make(chan error, 1)
+			go func() { done <- w.Run(runCtx) }()
+			DeferCleanup(func() {
+				cancel()
+				Eventually(done, 2*time.Second).Should(Receive(BeNil()))
+			})
+
+			Consistently(func() any { return findQueued(queueRepo, "al", "al1") }, 300*time.Millisecond).ShouldNot(BeNil())
 		})
 
 		It("does not leak goroutines after Run exits", func() {
