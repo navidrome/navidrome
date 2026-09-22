@@ -65,6 +65,11 @@ var _ = Describe("TranscodingRepository", func() {
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
+		It("returns not found when deleting a missing transcoding", func() {
+			err := adminRepo.(*transcodingRepository).Delete("does-not-exist")
+			Expect(err).To(MatchError(model.ErrNotFound))
+		})
+
 		It("reads the Command field via the REST Read method", func() {
 			tr := &model.Transcoding{ID: "adminread", Name: "temp", TargetFormat: "test_format", DefaultBitRate: 64, Command: "ffmpeg -secret"}
 			Expect(adminRepo.Put(tr)).To(Succeed())

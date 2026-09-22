@@ -202,7 +202,7 @@
         "command": "Comando"
       },
       "choices": {
-        "noDefaultBitRate": ""
+        "noDefaultBitRate": "Nenhum"
       }
     },
     "playlist": {
@@ -609,7 +609,10 @@
     "coverRemoved": "Capa removida",
     "coverUploadError": "Erro ao enviar capa",
     "coverRemoveError": "Erro ao remover capa",
-    "metadataRefreshStarted": "Atualizando metadados em segundo plano"
+    "metadataRefreshStarted": "Atualizando metadados em segundo plano",
+    "quickConnectApproved": "%{app} em %{device} está conectado agora",
+    "quickConnectInvalidCode": "Código inválido ou expirado",
+    "quickConnectError": "Não foi possível aprovar o código"
   },
   "menu": {
     "library": "Biblioteca",
@@ -645,7 +648,15 @@
       "selectLibraries": "Selecionar Bibliotecas",
       "none": "Nenhuma"
     },
-    "onlyFavourites": "Somente favoritas"
+    "onlyFavourites": "Somente favoritas",
+    "quickConnect": {
+      "name": "Conexão Rápida",
+      "code": "Código",
+      "help": "Digite o código exibido por um aplicativo Jellyfin para conectá-lo à sua conta",
+      "confirm": "Conectar %{app} %{version} em %{device} à sua conta?",
+      "continue": "Continuar",
+      "approve": "Aprovar"
+    }
   },
   "player": {
     "playListsText": "Fila de Execução",

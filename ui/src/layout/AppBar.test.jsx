@@ -33,12 +33,14 @@ vi.mock('../dialogs/Dialogs', () => ({
 }))
 vi.mock('../dialogs', () => ({
   AboutDialog: () => <div />,
+  QuickConnectDialog: () => <div />,
 }))
 
 describe('<AppBar />', () => {
   beforeEach(() => {
     config.devActivityPanel = true
     config.enableNowPlaying = true
+    config.enableQuickConnect = false
     store = createStore(combineReducers({ activity: activityReducer }), {
       activity: { nowPlayingCount: 0 },
     })
@@ -61,5 +63,25 @@ describe('<AppBar />', () => {
       </Provider>,
     )
     expect(screen.queryByTestId('now-playing-panel')).toBeNull()
+  })
+
+  it('shows the Quick Connect menu item when enabled', () => {
+    config.enableQuickConnect = true
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.queryAllByText('menu.quickConnect.name')).not.toHaveLength(0)
+  })
+
+  it('hides the Quick Connect menu item when disabled', () => {
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.queryAllByText('menu.quickConnect.name')).toHaveLength(0)
+    expect(screen.queryAllByText('menu.about')).not.toHaveLength(0)
   })
 })

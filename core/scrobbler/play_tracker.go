@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/cache"
 	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const (
@@ -444,8 +445,14 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	return nil
 }
 
-func (p *playTracker) GetNowPlaying(_ context.Context) ([]PlaybackSession, error) {
+func (p *playTracker) GetNowPlaying(ctx context.Context) ([]PlaybackSession, error) {
+	// The cache is process-global, so it holds every user's playback, across all libraries.
 	res := p.playMap.Values()
+	if user, ok := request.UserFrom(ctx); ok {
+		res = slice.Filter(res, func(s PlaybackSession) bool {
+			return user.HasLibraryAccess(s.MediaFile.LibraryID)
+		})
+	}
 	slices.SortFunc(res, func(a, b PlaybackSession) int {
 		return b.Start.Compare(a.Start)
 	})

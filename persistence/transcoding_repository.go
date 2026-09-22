@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"errors"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -91,11 +90,7 @@ func (r *transcodingRepository) Save(entity any) (string, error) {
 		return "", rest.ErrPermissionDenied
 	}
 	t := entity.(*model.Transcoding)
-	id, err := r.put(t.ID, t)
-	if errors.Is(err, model.ErrNotFound) {
-		return "", rest.ErrNotFound
-	}
-	return id, err
+	return r.put(t.ID, t)
 }
 
 func (r *transcodingRepository) Update(id string, entity any, cols ...string) error {
@@ -105,9 +100,6 @@ func (r *transcodingRepository) Update(id string, entity any, cols ...string) er
 	t := entity.(*model.Transcoding)
 	t.ID = id
 	_, err := r.put(id, t)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
 	return err
 }
 
@@ -115,11 +107,7 @@ func (r *transcodingRepository) Delete(id string) error {
 	if !loggedUser(r.ctx).IsAdmin {
 		return rest.ErrPermissionDenied
 	}
-	err := r.delete(Eq{"id": id})
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.deleteByID(id)
 }
 
 var _ model.TranscodingRepository = (*transcodingRepository)(nil)
