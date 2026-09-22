@@ -291,6 +291,7 @@ var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
 	"@Recycle",
+	"@eaDir",
 	"@Recently-Snapshot",
 	".git",
 	".streams",
