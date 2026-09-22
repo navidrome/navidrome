@@ -114,7 +114,7 @@ func (s *webSocketServiceImpl) Connect(ctx context.Context, urlStr string, heade
 	// Establish WebSocket connection
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 30 * time.Second,
-		NetDialContext:   (&net.Dialer{Control: s.dialControl}).DialContext,
+		NetDialContext:   (&net.Dialer{Control: s.dialControl, Resolver: dialResolver}).DialContext,
 	}
 
 	conn, resp, err := dialer.DialContext(ctx, urlStr, httpHeaders)

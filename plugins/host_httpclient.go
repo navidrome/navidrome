@@ -54,6 +54,7 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 		Timeout:   30 * time.Second,
 		KeepAlive: 30 * time.Second,
 		Control:   svc.dialControl,
+		Resolver:  dialResolver,
 	}).DialContext
 	// No client timeout: it is set per-request via context deadline.
 	svc.client = &http.Client{Transport: httpclient.NewTransport(svc.transport)}
