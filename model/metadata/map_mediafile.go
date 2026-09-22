@@ -37,7 +37,7 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.CatalogNum = md.String(model.TagCatalogNumber)
 	mf.Comment = md.String(model.TagComment)
 	if f := md.NullableFloat(model.TagBPM); f != nil {
-		if r := math.Round(*f); r != 0 && math.Abs(r) <= math.MaxInt32 {
+		if r := math.Round(*f); r != 0 && r >= math.MinInt32 && r <= math.MaxInt32 {
 			mf.BPM = new(int(r))
 		}
 	}
