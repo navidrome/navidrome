@@ -144,15 +144,15 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 	return nil
 }
 
-// One ANALYZE per index (whole table if unindexed or WITHOUT ROWID) yields the same sqlite_stat1
-// rows as a full ANALYZE, but frees the write lock between steps instead of holding it throughout.
+// One ANALYZE per index (whole table if WITHOUT ROWID or lacking a non-partial index) yields the
+// same sqlite_stat1 rows as a full ANALYZE, but frees the write lock between steps.
 const analyzeTargetsSQL = `
 SELECT i.name FROM sqlite_schema i JOIN pragma_table_list t ON t.schema = 'main' AND t.name = i.tbl_name
-WHERE i.type = 'index' AND t.wr = 0
+WHERE i.type = 'index' AND t.wr = 0 AND EXISTS (SELECT 1 FROM pragma_index_list(t.name) l WHERE l.partial = 0)
 UNION ALL
 SELECT t.name FROM pragma_table_list t
 WHERE t.schema = 'main' AND t.type IN ('table', 'shadow') AND t.name NOT LIKE 'sqlite_%'
-  AND (t.wr = 1 OR NOT EXISTS (SELECT 1 FROM sqlite_schema i WHERE i.type = 'index' AND i.tbl_name = t.name))`
+  AND (t.wr = 1 OR NOT EXISTS (SELECT 1 FROM pragma_index_list(t.name) l WHERE l.partial = 0))`
 
 // analyzeMaxYield is just above SQLite's longest busy-handler sleep, so every waiting writer
 // retries during the pause.

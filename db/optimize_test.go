@@ -83,6 +83,9 @@ var _ = Describe("Optimize", func() {
 			"create table no_rowid(k text primary key, v int) without rowid",
 			"insert into no_rowid select 'k' || id, id % 7 from analyze_probe",
 			"create index no_rowid_v on no_rowid(v)",
+			"create table partial_only(id integer primary key, v int)",
+			"insert into partial_only(v) select id % 5 from analyze_probe",
+			"create index partial_only_v on partial_only(v) where v = 1",
 			"analyze",
 		} {
 			_, err := database.Exec(stmt)
