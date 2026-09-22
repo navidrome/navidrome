@@ -13,6 +13,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -276,10 +277,17 @@ func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []st
 		return err
 	}
 
-	return r.addTracks(playlistId, 1, mediaFileIds)
+	_, err = r.addTracks(playlistId, 1, mediaFileIds)
+	return err
 }
 
-func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) error {
+// addTracks is the only path that writes playlist_tracks rows (smart playlists aside), so it owns
+// the library check: every caller, including a full replace through Put, goes through it.
+func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) (int, error) {
+	mediaFileIds, err := r.keepAccessible(mediaFileIds)
+	if err != nil {
+		return 0, err
+	}
 	// Break the track list in chunks to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
 	// Add new tracks, chunk by chunk
 	pos := startingPos
@@ -289,14 +297,36 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 			ins = ins.Values(playlistId, t, pos)
 			pos++
 		}
-		_, err := r.executeSQL(ins)
-		if err != nil {
-			return err
+		if _, err := r.executeSQL(ins); err != nil {
+			return 0, err
 		}
 	}
 
 	r.enqueueCoverRebuild(playlistId)
-	return r.refreshCounters(&model.Playlist{ID: playlistId})
+	return len(mediaFileIds), r.refreshCounters(&model.Playlist{ID: playlistId})
+}
+
+// keepAccessible drops ids the caller cannot read, preserving order and duplicates. Chunked
+// because callers pass unbounded id lists (M3U import), well past SQLITE_MAX_VARIABLE_NUMBER.
+func (r *playlistRepository) keepAccessible(mediaFileIds []string) ([]string, error) {
+	if visible, err := r.visibleLibraryIDs(); err == nil && r.userSeesAllLibraries(visible) {
+		return mediaFileIds, nil
+	}
+	accessible := make(map[string]struct{}, len(mediaFileIds))
+	for chunk := range slices.Chunk(slice.Unique(mediaFileIds), 200) {
+		sq := r.applyLibraryFilter(Select("id").From("media_file").Where(Eq{"id": chunk}), "media_file")
+		var found []string
+		if err := r.queryAllSlice(sq, &found); err != nil {
+			return nil, err
+		}
+		for _, id := range found {
+			accessible[id] = struct{}{}
+		}
+	}
+	return slice.Filter(mediaFileIds, func(id string) bool {
+		_, ok := accessible[id]
+		return ok
+	}), nil
 }
 
 // refreshCounters updates total playlist duration, size and count

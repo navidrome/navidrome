@@ -6,6 +6,8 @@ import { isDateSet } from '../utils/validations'
 import StarBorderIcon from '@material-ui/icons/StarBorder'
 import clsx from 'clsx'
 import { useRating } from './useRating'
+import { useDateLocale } from '../i18n/useDateLocale'
+import { formatDateTime } from '../utils/formatters'
 import { useRecordContext } from 'react-admin'
 
 const useStyles = makeStyles({
@@ -32,6 +34,7 @@ export const RatingField = ({
   const record = useRecordContext(rest) || {}
   const [rate, rating] = useRating(resource, record)
   const classes = useStyles({ color, visible })
+  const locale = useDateLocale()
 
   const stopPropagation = (e) => {
     e.stopPropagation()
@@ -50,7 +53,7 @@ export const RatingField = ({
       onClick={(e) => stopPropagation(e)}
       title={
         isDateSet(record.ratedAt)
-          ? new Date(record.ratedAt).toLocaleString()
+          ? formatDateTime(record.ratedAt, locale)
           : undefined
       }
     >
