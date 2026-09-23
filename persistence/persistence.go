@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/db"
@@ -175,6 +176,51 @@ func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope .
 
 		return block(tx)
 	}, scope...)
+}
+
+// txRetryDelay spaces out reruns of a busy transaction. Each attempt has already waited out the
+// busy timeout, so WithTxRetry gives up only after a sustained lock.
+var txRetryDelay = 5 * time.Second
+
+const txMaxRetries = 3
+
+func (s *SQLStore) WithTxRetry(ctx context.Context, block func(ctx context.Context, tx model.DataStore) error, scope ...string) error {
+	// Inside a transaction the outer one holds the lock, so waiting for it cannot succeed
+	if _, ok := s.db.(*dbx.DB); !ok {
+		return s.WithTx(func(tx model.DataStore) error { return block(ctx, tx) }, scope...)
+	}
+	for attempt := 0; ; attempt++ {
+		attemptCtx := ctx
+		if attempt < txMaxRetries {
+			attemptCtx = withBusyRetry(ctx)
+		}
+		err := s.WithTx(func(tx model.DataStore) error { return block(attemptCtx, tx) }, scope...)
+		if attempt == txMaxRetries || !db.IsBusy(err) {
+			return err
+		}
+		log.Warn(ctx, "Database busy, retrying transaction", "scope", strings.Join(scope, " "), "attempt", attempt+1, err)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Duration(attempt+1) * txRetryDelay):
+		}
+	}
+}
+
+type busyRetryKey struct{}
+
+// withBusyRetry marks a transaction attempt that WithTxRetry will rerun, so a busy statement in it
+// is logged as a warning rather than an error.
+func withBusyRetry(ctx context.Context) context.Context {
+	return context.WithValue(ctx, busyRetryKey{}, true)
+}
+
+func hasBusyRetry(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	retry, _ := ctx.Value(busyRetryKey{}).(bool)
+	return retry
 }
 
 func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {

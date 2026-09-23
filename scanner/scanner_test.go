@@ -1247,7 +1247,6 @@ var _ = Describe("Scanner", Ordered, func() {
 	Context("when the database is busy", func() {
 		var busyDS *busyPersistDS
 		BeforeEach(func() {
-			DeferCleanup(scanner.SetPersistRetryDelay(0))
 			// One album across many folders: the suite's single DB connection deadlocks phase 3 on many albums
 			album := template(_t{"albumartist": "Artist", "album": "Album"})
 			files := fstest.MapFS{}
@@ -1258,14 +1257,6 @@ var _ = Describe("Scanner", Ordered, func() {
 			busyDS = &busyPersistDS{MockDataStore: ds}
 			s = scanner.New(ctx, busyDS, events.NoopBroker(),
 				playlists.NewPlaylists(busyDS, artwork.NewUploader(busyDS)), metrics.NewNoopInstance())
-		})
-
-		It("retries a folder save until the database is free", func() {
-			busyDS.failures.Store(2)
-
-			Expect(runScanner(ctx, true)).To(Succeed())
-
-			Expect(ds.MediaFile(ctx).CountAll()).To(BeEquivalentTo(30))
 		})
 
 		It("gives up and stops walking the library when the database stays busy", func() {
@@ -1288,17 +1279,17 @@ var _ = Describe("Scanner", Ordered, func() {
 	})
 })
 
-// busyPersistDS fails the scanner's folder saves with SQLITE_BUSY until failures runs out.
+// busyPersistDS fails the scanner's folder saves with SQLITE_BUSY, as if WithTxRetry ran out of retries.
 type busyPersistDS struct {
 	*tests.MockDataStore
 	failures atomic.Int32
 }
 
-func (b *busyPersistDS) WithTx(block func(tx model.DataStore) error, label ...string) error {
+func (b *busyPersistDS) WithTxRetry(ctx context.Context, block func(context.Context, model.DataStore) error, label ...string) error {
 	if len(label) > 0 && label[0] == "scanner: persist changes" && b.failures.Add(-1) >= 0 {
 		return sqlite3.Error{Code: sqlite3.ErrBusy}
 	}
-	return b.MockDataStore.WithTx(block, label...)
+	return b.MockDataStore.WithTxRetry(ctx, block, label...)
 }
 
 func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {

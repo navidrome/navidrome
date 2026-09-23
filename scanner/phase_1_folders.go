@@ -17,7 +17,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
-	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -335,26 +334,14 @@ func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) {
 	entry.artists = participants.AllArtists()
 }
 
-// persistRetryDelay spaces out retries of a folder save that found the database busy. Each attempt
-// has already waited out the busy timeout, so a scan gives up only after a sustained lock.
-var persistRetryDelay = 5 * time.Second
-
-const persistMaxRetries = 3
-
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
 	p.state.changesDetected.Store(true)
 
-	err := p.persistFolder(entry)
-	for attempt := 1; attempt <= persistMaxRetries && db.IsBusy(err); attempt++ {
-		log.Warn(p.ctx, "Scanner: Database busy, retrying folder", "folder", entry.path, "attempt", attempt, err)
-		select {
-		case <-p.ctx.Done():
-			err = p.ctx.Err()
-		case <-time.After(time.Duration(attempt) * persistRetryDelay):
-			err = p.persistFolder(entry)
-		}
-	}
+	ctx := log.NewContext(p.ctx, "folder", entry.path)
+	err := p.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
+		return p.persistFolder(ctx, tx, entry)
+	}, "scanner: persist changes")
 	if err != nil {
 		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
 		p.stopWalk(err)
@@ -372,118 +359,108 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 	return entry, nil
 }
 
-// persistFolder saves the folder in one transaction; it can be rerun after a rollback.
-func (p *phaseFolders) persistFolder(entry *folderEntry) error {
+// persistFolder writes the folder in tx. WithTxRetry may rerun it after a rollback.
+func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, entry *folderEntry) error {
 	// Collect artwork queue items for changed albums/artists, enqueued in the same transaction
 	var queueItems []model.ArtworkQueueItem
-	// persistAlbum consumes the map, so a retried transaction needs the original
+	// persistAlbum consumes the map, so a rerun needs the original
 	albumIDMap := maps.Clone(entry.albumIDMap)
 
-	return p.ds.WithTx(func(tx model.DataStore) error {
-		// Instantiate all repositories just once per folder
-		folderRepo := tx.Folder(p.ctx)
-		tagRepo := tx.Tag(p.ctx)
-		artistRepo := tx.Artist(p.ctx)
-		libraryRepo := tx.Library(p.ctx)
-		albumRepo := tx.Album(p.ctx)
-		mfRepo := tx.MediaFile(p.ctx)
+	// Instantiate all repositories just once per folder
+	folderRepo := tx.Folder(ctx)
+	tagRepo := tx.Tag(ctx)
+	artistRepo := tx.Artist(ctx)
+	libraryRepo := tx.Library(ctx)
+	albumRepo := tx.Album(ctx)
+	mfRepo := tx.MediaFile(ctx)
 
-		// Save folder to DB
-		folder := entry.toFolder()
-		err := folderRepo.Put(folder)
+	// Save folder to DB
+	folder := entry.toFolder()
+	err := folderRepo.Put(folder)
+	if err != nil {
+		return fmt.Errorf("persisting folder: %w", err)
+	}
+
+	// Save all tags to DB
+	err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
+	if err != nil {
+		return fmt.Errorf("persisting tags: %w", err)
+	}
+
+	// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
+	for i := range entry.artists {
+		err = artistRepo.Put(&entry.artists[i], "name",
+			"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text", "search_normalized", "updated_at")
 		if err != nil {
-			log.Error(p.ctx, "Scanner: Error persisting folder to DB", "folder", entry.path, err)
+			return fmt.Errorf("persisting artist %q: %w", entry.artists[i].Name, err)
+		}
+		err = libraryRepo.AddArtist(entry.job.lib.ID, entry.artists[i].ID)
+		if err != nil {
+			return fmt.Errorf("adding artist %q to library: %w", entry.artists[i].Name, err)
+		}
+		if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
+			queueItems = append(queueItems, scanArtworkItem(model.KindArtistArtwork, entry.artists[i].ID))
+		}
+	}
+
+	// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
+	for i := range entry.albums {
+		err = p.persistAlbum(albumRepo, &entry.albums[i], albumIDMap)
+		if err != nil {
 			return err
 		}
+		if entry.albums[i].Name != consts.UnknownAlbum {
+			queueItems = append(queueItems, scanArtworkItem(model.KindAlbumArtwork, entry.albums[i].ID))
+		}
+	}
 
-		// Save all tags to DB
-		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
+	// Save all tracks to DB
+	for i := range entry.tracks {
+		err = mfRepo.Put(&entry.tracks[i])
 		if err != nil {
-			log.Error(p.ctx, "Scanner: Error persisting tags to DB", "folder", entry.path, err)
-			return err
+			return fmt.Errorf("persisting track %q: %w", entry.tracks[i].Path, err)
+		}
+	}
+
+	// A re-imported track returns to unresolved so new embedded art is picked up lazily.
+	if len(entry.tracks) > 0 {
+		trackIDs := slice.Map(entry.tracks, func(t model.MediaFile) string { return t.ID })
+		if err := tx.Artwork(ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
+			log.Warn(ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
+		}
+	}
+
+	// Mark all missing tracks as not available
+	if len(entry.missingTracks) > 0 {
+		err = mfRepo.MarkMissing(true, entry.missingTracks...)
+		if err != nil {
+			return fmt.Errorf("marking missing tracks: %w", err)
 		}
 
-		// Save all new/modified artists to DB. Their information will be incomplete, but they will be refreshed later
-		for i := range entry.artists {
-			err = artistRepo.Put(&entry.artists[i], "name",
-				"mbz_artist_id", "sort_artist_name", "order_artist_name", "full_text", "search_normalized", "updated_at")
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error persisting artist to DB", "folder", entry.path, "artist", entry.artists[i].Name, err)
-				return err
-			}
-			err = libraryRepo.AddArtist(entry.job.lib.ID, entry.artists[i].ID)
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error adding artist to library", "lib", entry.job.lib.ID, "artist", entry.artists[i].Name, err)
-				return err
-			}
-			if entry.artists[i].Name != consts.UnknownArtist && entry.artists[i].Name != consts.VariousArtists {
-				queueItems = append(queueItems, scanArtworkItem(model.KindArtistArtwork, entry.artists[i].ID))
-			}
+		// Touch all albums that have missing tracks, so they get refreshed in later phases
+		groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf *model.MediaFile) (string, struct{}) {
+			return mf.AlbumID, struct{}{}
+		})
+		albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))
+		err = albumRepo.Touch(albumsToUpdate...)
+		if err != nil {
+			return fmt.Errorf("touching albums %v: %w", albumsToUpdate, err)
 		}
+	}
 
-		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
-		for i := range entry.albums {
-			err = p.persistAlbum(albumRepo, &entry.albums[i], albumIDMap)
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
-				return err
-			}
-			if entry.albums[i].Name != consts.UnknownAlbum {
-				queueItems = append(queueItems, scanArtworkItem(model.KindAlbumArtwork, entry.albums[i].ID))
-			}
+	// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
+	// A full scan re-imports every track, so a re-import is no evidence the art changed.
+	if len(queueItems) > 0 {
+		queue := tx.ArtworkQueue(ctx)
+		enqueue := queue.Enqueue
+		if p.state.fullScan {
+			enqueue = queue.EnqueueIfMissing
 		}
-
-		// Save all tracks to DB
-		for i := range entry.tracks {
-			err = mfRepo.Put(&entry.tracks[i])
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error persisting mediafile to DB", "folder", entry.path, "track", entry.tracks[i], err)
-				return err
-			}
+		if err := enqueue(queueItems...); err != nil {
+			log.Warn(ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
 		}
-
-		// A re-imported track returns to unresolved so new embedded art is picked up lazily.
-		if len(entry.tracks) > 0 {
-			trackIDs := slice.Map(entry.tracks, func(t model.MediaFile) string { return t.ID })
-			if err := tx.Artwork(p.ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
-				log.Warn(p.ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
-			}
-		}
-
-		// Mark all missing tracks as not available
-		if len(entry.missingTracks) > 0 {
-			err = mfRepo.MarkMissing(true, entry.missingTracks...)
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error marking missing tracks", "folder", entry.path, err)
-				return err
-			}
-
-			// Touch all albums that have missing tracks, so they get refreshed in later phases
-			groupedMissingTracks := slice.ToMap(entry.missingTracks, func(mf *model.MediaFile) (string, struct{}) {
-				return mf.AlbumID, struct{}{}
-			})
-			albumsToUpdate := slices.Collect(maps.Keys(groupedMissingTracks))
-			err = albumRepo.Touch(albumsToUpdate...)
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error touching album", "folder", entry.path, "albums", albumsToUpdate, err)
-				return err
-			}
-		}
-
-		// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
-		// A full scan re-imports every track, so a re-import is no evidence the art changed.
-		if len(queueItems) > 0 {
-			queue := tx.ArtworkQueue(p.ctx)
-			enqueue := queue.Enqueue
-			if p.state.fullScan {
-				enqueue = queue.EnqueueIfMissing
-			}
-			if err := enqueue(queueItems...); err != nil {
-				log.Warn(p.ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
-			}
-		}
-		return nil
-	}, "scanner: persist changes")
+	}
+	return nil
 }
 
 // persistAlbum persists the given album to the database, and reassigns annotations from the previous album ID
