@@ -1,10 +1,7 @@
 package str_test
 
 import (
-	"bufio"
 	"mime"
-	"net/http"
-	"net/http/httptest"
 	"regexp"
 	"strings"
 
@@ -15,16 +12,14 @@ import (
 
 var asciiFilenameRe = regexp.MustCompile(`(?:^|; )filename="([^"]*)"`)
 
-// asciiName returns the plain (quoted, ASCII) filename parameter, the one used by
-// clients that don't understand filename*.
+// asciiName returns the quoted filename parameter, the one used by clients that ignore filename*.
 func asciiName(filename string) string {
 	m := asciiFilenameRe.FindAllStringSubmatch(str.ContentDispositionAttachment(filename), -1)
 	ExpectWithOffset(1, m).To(HaveLen(1), "expected exactly one quoted filename parameter")
 	return m[0][1]
 }
 
-// decodedName returns what a client sees after parsing the header, which per
-// RFC 6266 §4.3 means the filename* value wins when both are present.
+// decodedName returns the name an RFC 6266 client picks, preferring filename* when present.
 func decodedName(filename string) string {
 	disp, params, err := mime.ParseMediaType(str.ContentDispositionAttachment(filename))
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
@@ -34,75 +29,82 @@ func decodedName(filename string) string {
 
 var _ = Describe("ContentDispositionAttachment", func() {
 	Describe("parameter injection", func() {
-		// Without escaping, this name yields:
-		//   attachment; filename="party"; filename="evil.html.m3u"
 		const attack = `party"; filename="evil.html.m3u`
 
 		It("does not let a quote in the name open a second parameter", func() {
-			Expect(asciiName(attack)).To(Equal("party_; filename=_evil.html.m3u"))
+			Expect(str.ContentDispositionAttachment(attack)).To(Equal(`attachment; filename="party_; filename=_evil.html.m3u"`))
 		})
 
-		It("keeps the header parseable, with the attack contained in the value", func() {
-			Expect(decodedName(attack)).To(Equal(attack))
+		It("keeps the header parseable", func() {
+			Expect(decodedName(attack)).To(Equal("party_; filename=_evil.html.m3u"))
 		})
 
-		It("emits no quotes beyond the ones delimiting the ASCII name", func() {
-			Expect(strings.Count(str.ContentDispositionAttachment(attack), `"`)).To(Equal(2))
-		})
-
-		It("survives a round trip through net/http", func() {
-			rec := httptest.NewRecorder()
-			rec.Header().Set("Content-Disposition", str.ContentDispositionAttachment(`x"; filename="y.exe`))
-			rec.WriteHeader(http.StatusOK)
-
-			var sb strings.Builder
-			w := bufio.NewWriter(&sb)
-			Expect(rec.Result().Write(w)).To(Succeed())
-			Expect(w.Flush()).To(Succeed())
-
-			Expect(sb.String()).ToNot(ContainSubstring(`filename="y.exe"`))
+		It("does not let a quote in a non-ASCII name inject either", func() {
+			const utf8Attack = `東京"; filename="evil.html.m3u`
+			header := str.ContentDispositionAttachment(utf8Attack)
+			Expect(strings.Count(header, `"`)).To(Equal(2))
+			Expect(decodedName(utf8Attack)).To(Equal("東京_; filename=_evil.html.m3u"))
 		})
 	})
 
-	Describe("ASCII filename parameter", func() {
-		It("leaves a name that is already safe untouched", func() {
-			Expect(asciiName("My Playlist.m3u")).To(Equal("My Playlist.m3u"))
+	Describe("ASCII names", func() {
+		It("sends only the quoted filename, unchanged", func() {
+			Expect(str.ContentDispositionAttachment("My Playlist.m3u")).To(Equal(`attachment; filename="My Playlist.m3u"`))
 		})
 
-		It("strips path separators and control characters", func() {
-			Expect(asciiName("../../etc/passwd\x00\t")).To(Equal("_.._etc_passwd"))
+		It("keeps leading dots", func() {
+			Expect(asciiName("...And Justice for All.zip")).To(Equal("...And Justice for All.zip"))
 		})
 
-		It("replaces commas, which some clients treat as value separators", func() {
-			Expect(asciiName("Bowie, David.zip")).To(Equal("Bowie_ David.zip"))
+		It("trims surrounding spaces and trailing dots", func() {
+			Expect(asciiName("  Greatest Hits  .zip")).To(Equal("Greatest Hits.zip"))
+			Expect(asciiName("Loose End. ")).To(Equal("Loose End"))
 		})
 
-		It("drops non-ASCII runes", func() {
-			Expect(asciiName("Legião Urbana.zip")).To(Equal("Legio Urbana.zip"))
+		It("replaces path separators and reserved characters", func() {
+			Expect(asciiName("AC/DC: Live, 1979?.zip")).To(Equal("AC_DC_ Live_ 1979_.zip"))
 		})
 
-		It("falls back to a placeholder when nothing ASCII survives", func() {
+		It("drops control characters", func() {
+			Expect(asciiName("line\r\nbreak\x00\t.mp3")).To(Equal("linebreak.mp3"))
+		})
+	})
+
+	Describe("non-ASCII names", func() {
+		It("transliterates accents in the ASCII fallback", func() {
+			Expect(asciiName("Legião Urbana.zip")).To(Equal("Legiao Urbana.zip"))
+		})
+
+		It("converts typographic punctuation in the ASCII fallback", func() {
+			Expect(asciiName("She’s a Woman — Live.mp3")).To(Equal("She's a Woman - Live.mp3"))
+			Expect(asciiName("“Heroes”.mp3")).To(Equal("_Heroes_.mp3"))
+			Expect(decodedName("She’s a Woman.mp3")).To(Equal("She’s a Woman.mp3"))
+		})
+
+		It("keeps the extension when no ASCII letters survive", func() {
+			Expect(asciiName("東京.mp3")).To(Equal("download.mp3"))
+			Expect(asciiName("Кино.m3u")).To(Equal("download.m3u"))
 			Expect(asciiName("東京")).To(Equal("download"))
 		})
 
-		It("trims leading and trailing dots and spaces", func() {
-			Expect(asciiName("  ..hidden..  ")).To(Equal("hidden"))
-		})
-	})
-
-	Describe("filename* parameter", func() {
-		DescribeTable("round-trips the original name",
-			func(filename string) {
-				Expect(decodedName(filename)).To(Equal(filename))
+		DescribeTable("filename* carries the sanitized UTF-8 name",
+			func(filename, expected string) {
+				Expect(decodedName(filename)).To(Equal(expected))
 			},
-			Entry("plain ASCII", "My Playlist.m3u"),
-			Entry("accented", "Legião Urbana.zip"),
-			Entry("CJK", "東京.zip"),
-			Entry("emoji", "🎵 mix.zip"),
-			Entry("comma", "Bowie, David.zip"),
-			Entry("quote", `12" Mixes.zip`),
-			Entry("percent", "100% Hits.zip"),
-			Entry("semicolon", "a;b.zip"),
+			Entry("accented", "Legião Urbana.zip", "Legião Urbana.zip"),
+			Entry("CJK", "東京.zip", "東京.zip"),
+			Entry("emoji", "🎵 mix.zip", "🎵 mix.zip"),
+			Entry("comma and percent", "Sigur Rós, 100%.zip", "Sigur Rós, 100%.zip"),
+			Entry("path separators", "Sigur Rós/Live: Heima.zip", "Sigur Rós_Live_ Heima.zip"),
+			Entry("control characters", "Sigur Rós\r\n\x00.zip", "Sigur Rós.zip"),
+			Entry("bidi override", "Björk\u202Eexe.mp3", "Björkexe.mp3"),
+			Entry("invalid UTF-8", "Bj\xf6rk Café.mp3", "Bj_rk Café.mp3"),
 		)
+
+		It("caps the name length and keeps the extension", func() {
+			name := decodedName(strings.Repeat("東", 300) + ".zip")
+			Expect(len(name)).To(BeNumerically("<=", 255))
+			Expect(name).To(HaveSuffix("東.zip"))
+		})
 	})
 })

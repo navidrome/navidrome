@@ -74,7 +74,7 @@ var _ = Describe("handleDownloads", func() {
 		w := makeRequest("abc123")
 
 		Expect(w.Code).To(Equal(http.StatusOK))
-		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="My Mixtape.zip"; filename*=UTF-8''My%20Mixtape.zip`))
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="My Mixtape.zip"`))
 		Expect(w.Header().Get("Content-Type")).To(Equal("application/zip"))
 		Expect(archiver.called).To(BeTrue())
 		Expect(w.Body.String()).To(Equal("zip-contents"))
@@ -85,7 +85,7 @@ var _ = Describe("handleDownloads", func() {
 
 		w := makeRequest("abc123")
 
-		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="abc123.zip"; filename*=UTF-8''abc123.zip`))
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="abc123.zip"`))
 	})
 
 	It("sanitizes characters that are unsafe in a filename", func() {
@@ -93,7 +93,15 @@ var _ = Describe("handleDownloads", func() {
 
 		w := makeRequest("abc123")
 
-		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="AC_DC_ Live_ 1979.zip"; filename*=UTF-8''AC%2FDC%3A%20Live%2C%201979.zip`))
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="AC_DC_ Live_ 1979.zip"`))
+	})
+
+	It("sanitizes the UTF-8 filename* as well", func() {
+		shareIs(&model.Share{ID: "abc123", Description: "Sigur Rós/Live", Downloadable: true})
+
+		w := makeRequest("abc123")
+
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="Sigur Ros_Live.zip"; filename*=utf-8''Sigur%20R%C3%B3s_Live.zip`))
 	})
 
 	It("does not let the share description inject a second filename parameter", func() {
@@ -105,7 +113,7 @@ var _ = Describe("handleDownloads", func() {
 		Expect(disposition).ToNot(ContainSubstring(`filename="evil.html`))
 		_, params, err := mime.ParseMediaType(disposition)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(params["filename"]).To(Equal(`mix"; filename="evil.html.zip`))
+		Expect(params["filename"]).To(Equal(`mix_; filename=_evil.html.zip`))
 	})
 
 	It("returns 403 without invoking the archiver when the share is not downloadable", func() {
