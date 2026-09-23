@@ -360,6 +360,18 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 			return err
 		}
 
+		// A selective scan only walks the targeted folders, so rows for their ancestors
+		// may not exist yet: a watcher-triggered scan of a newly created Artist/Album
+		// never walks Artist itself, leaving the album row with a dangling parent_id
+		// that artwork resolution then trips over. Materialize the chain up to the
+		// library root. A full scan walks every folder and needs no help.
+		if !p.state.fullScan {
+			if err := ensureAncestorFolders(p.ctx, folderRepo, entry.job.lib, entry.path); err != nil {
+				log.Error(p.ctx, "Scanner: Error creating ancestor folders", "folder", entry.path, err)
+				return err
+			}
+		}
+
 		// Save all tags to DB
 		err = tagRepo.Add(entry.job.lib.ID, entry.tags...)
 		if err != nil {
@@ -530,3 +542,26 @@ func (p *phaseFolders) finalize(err error) error {
 }
 
 var _ phase[*folderEntry] = (*phaseFolders)(nil)
+
+// ensureAncestorFolders creates placeholder rows for every folder between the
+// given path and the library root that does not have a row yet, so that
+// folder.parent_id never dangles after a selective scan. Existing rows (and
+// everything above them) are left untouched; the placeholders carry no content
+// state and are refreshed with real data the first time a scan walks them.
+func ensureAncestorFolders(ctx context.Context, folderRepo model.FolderRepository, lib model.Library, folderPath string) error {
+	parent := path.Dir(folderPath)
+	for {
+		if _, err := folderRepo.Get(model.FolderID(lib, parent)); err == nil {
+			return nil
+		} else if !errors.Is(err, model.ErrNotFound) {
+			return err
+		}
+		if err := folderRepo.Put(model.NewFolder(lib, parent)); err != nil {
+			return fmt.Errorf("creating ancestor folder %q: %w", parent, err)
+		}
+		if parent == "." {
+			return nil
+		}
+		parent = path.Dir(parent)
+	}
+}

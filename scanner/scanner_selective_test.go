@@ -2,6 +2,7 @@ package scanner_test
 
 import (
 	"context"
+	"io/fs"
 	"path/filepath"
 	"testing/fstest"
 	"time"
@@ -323,6 +324,65 @@ var _ = Describe("ScanFolders", Ordered, func() {
 					}
 				}
 			})
+		})
+	})
+
+	Describe("New ancestor folders (issue #6159)", func() {
+		assertNoOrphanFolders := func() {
+			folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
+			Expect(err).ToNot(HaveOccurred())
+			ids := make(map[string]bool, len(folders))
+			for _, f := range folders {
+				ids[f.ID] = true
+			}
+			for _, f := range folders {
+				if f.ParentID != "" {
+					Expect(ids).To(HaveKey(f.ParentID), "folder %q points to missing parent %q", f.Path, f.ParentID)
+				}
+			}
+		}
+
+		It("creates rows for new ancestors targeted in the same scan", func() {
+			// `mkdir -p NewArtist/NewAlbum && cp track.mp3 NewArtist/NewAlbum/` fires
+			// create events for both directories within one debounce window, so the
+			// selective scan targets both.
+			artist := template(_t{"albumartist": "New Artist", "album": "New Album"})
+			fsys = createFS(fstest.MapFS{
+				"NewArtist/NewAlbum/track1.mp3": artist(track(1, "Track 1")),
+			})
+
+			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{
+				{LibraryID: lib.ID, FolderPath: "NewArtist"},
+				{LibraryID: lib.ID, FolderPath: "NewArtist/NewAlbum"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			assertNoOrphanFolders()
+		})
+
+		It("creates ancestor rows when the empty parent was scanned in an earlier batch", func() {
+			// The watcher debounce can split the events: an early scan sees only the
+			// still-empty artist folder, a later scan sees only the new album folder.
+			// The album row must not end up with a dangling parent_id.
+			fsys = createFS(fstest.MapFS{
+				"NewArtist": {Mode: fs.ModeDir, ModTime: time.Now()},
+			})
+			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{
+				{LibraryID: lib.ID, FolderPath: "NewArtist"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			artist := template(_t{"albumartist": "New Artist", "album": "New Album"})
+			fsys.SetFiles(fstest.MapFS{
+				"NewArtist":                     {Mode: fs.ModeDir, ModTime: time.Now()},
+				"NewArtist/NewAlbum/track1.mp3": artist(track(1, "Track 1")),
+			})
+			_, err = s.ScanFolders(ctx, false, []model.ScanTarget{
+				{LibraryID: lib.ID, FolderPath: "NewArtist/NewAlbum"},
+			})
+			Expect(err).ToNot(HaveOccurred())
+
+			assertNoOrphanFolders()
 		})
 	})
 })
