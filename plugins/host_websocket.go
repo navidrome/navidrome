@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -112,6 +114,7 @@ func (s *webSocketServiceImpl) Connect(ctx context.Context, urlStr string, heade
 	// Establish WebSocket connection
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 30 * time.Second,
+		NetDialContext:   (&net.Dialer{Control: s.dialControl}).DialContext,
 	}
 
 	conn, resp, err := dialer.DialContext(ctx, urlStr, httpHeaders)
@@ -243,14 +246,11 @@ func (s *webSocketServiceImpl) getConnection(connectionID string) (*wsConnection
 }
 
 func (s *webSocketServiceImpl) isHostAllowed(host string) bool {
-	hostWithoutPort := extractHostname(host)
+	return isHostInAllowlist(s.requiredHosts, extractHostname(host))
+}
 
-	for _, pattern := range s.requiredHosts {
-		if matchHostPattern(pattern, hostWithoutPort) {
-			return true
-		}
-	}
-	return false
+func (s *webSocketServiceImpl) dialControl(_, address string, _ syscall.RawConn) error {
+	return checkPrivateDial(s.requiredHosts, address)
 }
 
 // matchHostPattern matches a host against a pattern.

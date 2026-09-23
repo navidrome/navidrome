@@ -112,6 +112,52 @@ var _ = Describe("ArtistRepository", func() {
 			})
 		})
 
+		Describe("sanitizeArtistStatsRole", func() {
+			It("allowlists total and registered roles", func() {
+				role, ok := sanitizeArtistStatsRole("total")
+				Expect(ok).To(BeTrue())
+				Expect(role).To(Equal("total"))
+				role, ok = sanitizeArtistStatsRole("albumartist")
+				Expect(ok).To(BeTrue())
+				Expect(role).To(Equal("albumartist"))
+			})
+
+			It("rejects SQL injection payloads used in sort mappings", func() {
+				payload := "total'||(SELECT password FROM user LIMIT 1)||'"
+				role, ok := sanitizeArtistStatsRole(payload)
+				Expect(ok).To(BeFalse())
+				Expect(role).To(BeEmpty())
+			})
+		})
+
+		Describe("ReadAll role sort SQL injection", func() {
+			It("does not interpolate attacker-controlled role into ORDER BY", func() {
+				ctx := request.WithUser(GinkgoT().Context(), adminUser)
+				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+				payload := "total') OR 1=1--"
+				_, err := repo.ReadAll(rest.QueryOptions{
+					Sort:    "songCount",
+					Order:   "ASC",
+					Filters: map[string]any{"role": payload},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(repo.sortMappings["song_count"]).To(Equal("sum(stats->>'total'->>'m')"))
+				Expect(repo.sortMappings["song_count"]).ToNot(ContainSubstring(payload))
+			})
+
+			It("keeps valid role sort paths", func() {
+				ctx := request.WithUser(GinkgoT().Context(), adminUser)
+				repo := NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository)
+				_, err := repo.ReadAll(rest.QueryOptions{
+					Sort:    "songCount",
+					Order:   "DESC",
+					Filters: map[string]any{"role": "composer"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(repo.sortMappings["song_count"]).To(Equal("sum(stats->>'composer'->>'m')"))
+			})
+		})
+
 		Describe("searchScope", func() {
 			// Resolves the library IDs a search must be restricted to (nil = fast-path / no filter),
 			// the way Search() does, for a repo whose context carries the given user.

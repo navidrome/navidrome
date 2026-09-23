@@ -162,11 +162,24 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 
 func roleFilter(_ string, role any) Sqlizer {
 	if role, ok := role.(string); ok {
-		if _, ok := model.AllRoles[role]; ok {
-			return Expr("JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL")
+		if safe, ok := sanitizeArtistStatsRole(role); ok && safe != "total" {
+			return Expr("JSON_EXTRACT(library_artist.stats, '$." + safe + ".m') IS NOT NULL")
 		}
 	}
 	return Eq{"1": 2}
+}
+
+// sanitizeArtistStatsRole allowlists values interpolated into JSON paths for artist
+// stats (filter and sort). "total" is the aggregate key stored by the scanner.
+// Unknown values must not reach SQL string concatenation.
+func sanitizeArtistStatsRole(role string) (string, bool) {
+	if role == "" || role == "total" {
+		return "total", true
+	}
+	if _, ok := model.AllRoles[role]; ok {
+		return role, true
+	}
+	return "", false
 }
 
 // artistLibraryIdFilter filters artists based on library access through the library_artist table
@@ -716,7 +729,9 @@ func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	role := "total"
 	if len(options) > 0 {
 		if v, ok := options[0].Filters["role"].(string); ok {
-			role = v
+			if safe, ok := sanitizeArtistStatsRole(v); ok {
+				role = safe
+			}
 		}
 	}
 	r.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"

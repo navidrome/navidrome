@@ -172,11 +172,7 @@ func (m *MockLibraryRepo) Count(options ...rest.QueryOptions) (int64, error) {
 
 func (m *MockLibraryRepo) Read(id string) (any, error) {
 	idInt, _ := strconv.Atoi(id)
-	mf, err := m.Get(idInt)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, rest.ErrNotFound
-	}
-	return mf, err
+	return m.Get(idInt)
 }
 
 func (m *MockLibraryRepo) ReadAll(options ...rest.QueryOptions) (any, error) {

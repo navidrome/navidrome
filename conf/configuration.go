@@ -235,6 +235,8 @@ type jellyfinOptions struct {
 	// ExposedPublicUsers is a comma-separated list of usernames to advertise on the unauthenticated
 	// GET /Users/Public, so Jellyfin clients can show a login user-picker. Empty exposes no users.
 	ExposedPublicUsers string
+	AutoDiscovery      bool
+	QuickConnect       bool
 	// MaxConcurrentStreams bounds how many collection responses can stream at once. Each holds a DB
 	// cursor — and its pooled connection — for the whole client-paced response, so without a bound
 	// enough slow clients would take the entire pool and stall the scanner, scrobbles and the UI.
@@ -407,7 +409,7 @@ func Load(noConfigDump bool) {
 		if mkErr := os.MkdirAll(filepath.Dir(Server.LogFile), os.ModePerm); mkErr != nil {
 			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
 		}
-		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
 			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
 		}
@@ -1087,6 +1089,8 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
 	viper.SetDefault("jellyfin.enabled", false)
 	viper.SetDefault("jellyfin.servername", "")
+	viper.SetDefault("jellyfin.autodiscovery", false)
+	viper.SetDefault("jellyfin.quickconnect", true)
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")

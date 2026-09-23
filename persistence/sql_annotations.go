@@ -185,12 +185,14 @@ func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
 	if prevID == newID || prevID == "" || newID == "" {
 		return nil
 	}
-	upd := Update(annotationTable).Where(And{
-		Eq{annotationTable + ".item_type": r.tableName},
-		Eq{annotationTable + ".item_id": prevID},
-	}).Set("item_id", newID)
-	_, err := r.executeSQL(upd)
-	return err
+	// OR IGNORE keeps newID's own row where a user annotated both, instead of aborting the whole statement
+	upd := Expr("update or ignore "+annotationTable+" set item_id = ? where item_type = ? and item_id = ?",
+		newID, r.tableName, prevID)
+	if _, err := r.executeSQL(upd); err != nil {
+		return err
+	}
+	// The moved rows change newID's rating population, so its cached average no longer matches
+	return r.updateAvgRating(newID)
 }
 
 func (r sqlRepository) cleanAnnotations() error {

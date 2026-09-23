@@ -93,7 +93,8 @@
         "shuffle": "随机播放",
         "addToPlaylist": "添加到歌单",
         "download": "下载",
-        "info": "查看信息"
+        "info": "查看信息",
+        "refresh": "刷新元数据"
       },
       "lists": {
         "all": "全部",
@@ -155,11 +156,13 @@
         "currentPassword": "当前密码",
         "newPassword": "新密码",
         "token": "令牌",
-        "libraries": "媒体库"
+        "libraries": "媒体库",
+        "scrobbleFilter": "个性化记录过滤器"
       },
       "helperTexts": {
         "name": "名称的更改将在下次登录时生效",
-        "libraries": "为此用户选择指定媒体库，留空则使用默认媒体库"
+        "libraries": "为此用户选择指定媒体库，留空则使用默认媒体库",
+        "scrobbleFilter": "符合这些智能歌单规则的歌曲不会发送到 Last.fm、ListenBrainz 或个性化记录插件。使用与智能歌单相同的 JSON 语法和行为。例如：{\"all\":[{\"lt\":{\"rating\":4}}]}。留空则记录所有播放。本地播放次数不受影响。"
       },
       "notifications": {
         "created": "用户已创建",
@@ -167,7 +170,8 @@
         "deleted": "用户已删除"
       },
       "validation": {
-        "librariesRequired": "至少为非管理员用户选择一个媒体库"
+        "librariesRequired": "至少为非管理员用户选择一个媒体库",
+        "invalidScrobbleFilter": "必须是有效的智能歌单规则。不支持数量限制（limit）、偏移量（offset）和刷新延迟（refresh delay）。"
       },
       "message": {
         "listenBrainzToken": "输入您的 ListenBrainz 用户令牌",
@@ -196,6 +200,9 @@
         "targetFormat": "目标格式",
         "defaultBitRate": "默认比特率",
         "command": "命令"
+      },
+      "choices": {
+        "noDefaultBitRate": "无"
       }
     },
     "playlist": {
@@ -393,6 +400,7 @@
         "invalidJson": "配置必须是有效的 JSON"
       },
       "messages": {
+        "idHelp": "由插件文件名派生的插件 ID。在 Agents 等配置选项中引用此插件时使用。",
         "configHelp": "使用键值对配置插件。如果插件无需配置则留空。",
         "configValidationError": "配置验证失败：",
         "schemaRenderError": "无法渲染配置表单。此插件的 schema 定义可能无效。",
@@ -401,10 +409,10 @@
         "allUsersHelp": "启用时，插件将可以访问所有用户，包括将来创建的。",
         "noUsers": "未选择用户",
         "permissionReason": "原因",
-        "usersRequired": "此插件需要访问用户信息。请选择允许此插件访问的用户, 或启用 '允许所有用户'。",
+        "usersRequired": "此插件需要访问用户信息。请选择允许此插件访问的用户，或启用 '允许所有用户'。",
         "allLibrariesHelp": "启用时，插件将可以访问所有媒体库，包括将来创建的。",
         "noLibraries": "未选择媒体库",
-        "librariesRequired": "此插件需要访问媒体库信息。请选择允许此插件访问的媒体库, 或启用 '允许所有媒体库'。",
+        "librariesRequired": "此插件需要访问媒体库信息。请选择允许此插件访问的媒体库，或启用 '允许所有媒体库'。",
         "allowWriteAccessHelp": "启用时，插件将可以修改媒体库目录中的文件。默认情况下，插件仅拥有只读权限。",
         "requiredHosts": "必需的主机"
       },
@@ -566,6 +574,7 @@
     "coverRemoved": "封面已移除",
     "coverUploadError": "上传封面时出错",
     "coverRemoveError": "移除封面时出错",
+    "metadataRefreshStarted": "正在后台刷新元数据",
     "note": "注意",
     "transcodingDisabled": "出于安全原因，从 Web 界面更改转码配置的功能已被禁用。要更改（编辑或新增）转码选项，请在启用 %{config} 选项的情况下重新启动服务器。",
     "transcodingEnabled": "Navidrome 当前与 %{config} 一起使用，可以通过从 Web 界面配置转码选项来执行任意命令。建议禁用此选项，并且仅在需要配置转码选项时启用此功能。",
@@ -598,7 +607,7 @@
     "shareOriginalFormat": "分享原始格式",
     "shareDialogTitle": "分享 %{resource} '%{name}'",
     "shareBatchDialogTitle": "分享 %{smart_count} 项 %{resource}",
-    "shareCopyToClipboard": "复制到剪切板: Ctrl+C, Enter",
+    "shareCopyToClipboard": "复制到剪切板: Ctrl+C，Enter",
     "shareSuccess": "URL 已复制: %{url}",
     "shareFailure": "URL 复制失败: %{url}",
     "downloadDialogTitle": "下载 %{resource} '%{name}' (%{size})",

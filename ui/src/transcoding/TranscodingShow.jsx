@@ -1,7 +1,8 @@
 import React from 'react'
-import { Show, SimpleShowLayout, TextField } from 'react-admin'
+import { SelectField, Show, SimpleShowLayout, TextField } from 'react-admin'
 import { Title } from '../common'
 import { TranscodingNote } from './TranscodingNote'
+import { TRANSCODING_BITRATE_CHOICES } from '../consts'
 
 const TranscodingTitle = ({ record }) => {
   return <Title subTitle={`Transcoding ${record ? record.name : ''}`} />
@@ -16,7 +17,10 @@ const TranscodingShow = (props) => {
         <SimpleShowLayout>
           <TextField source="name" />
           <TextField source="targetFormat" />
-          <TextField source="defaultBitRate" />
+          <SelectField
+            source="defaultBitRate"
+            choices={TRANSCODING_BITRATE_CHOICES}
+          />
           <TextField source="command" />
         </SimpleShowLayout>
       </Show>

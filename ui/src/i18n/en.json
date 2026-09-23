@@ -200,6 +200,9 @@
         "targetFormat": "Target Format",
         "defaultBitRate": "Default Bit Rate",
         "command": "Command"
+      },
+      "choices": {
+        "noDefaultBitRate": "None"
       }
     },
     "playlist": {
@@ -589,6 +592,9 @@
     "remove_all_missing_content": "Are you sure you want to remove all missing files from the database? This will permanently remove any references to them, including their play counts and ratings.",
     "notifications_blocked": "You have blocked Notifications for this site in your browser's settings",
     "notifications_not_available": "This browser does not support desktop notifications or you are not accessing Navidrome over https",
+    "quickConnectApproved": "%{app} on %{device} is now signed in",
+    "quickConnectInvalidCode": "Invalid or expired code",
+    "quickConnectError": "Could not approve the code",
     "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",
     "lastfmLinkFailure": "Last.fm could not be linked",
     "lastfmUnlinkSuccess": "Last.fm unlinked and scrobbling disabled",
@@ -620,6 +626,14 @@
       "none": "None"
     },
     "settings": "Settings",
+    "quickConnect": {
+      "name": "Quick Connect",
+      "code": "Code",
+      "help": "Enter the code shown by a Jellyfin app to sign it in to your account",
+      "confirm": "Sign in %{app} %{version} on %{device} to your account?",
+      "continue": "Continue",
+      "approve": "Approve"
+    },
     "version": "Version",
     "theme": "Theme",
     "personal": {

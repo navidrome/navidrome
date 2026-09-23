@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -432,6 +433,102 @@ var _ = Describe("middlewares", func() {
 
 				usr, _ := ds.MockedUser.FindByUsername("johndoe")
 				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
+			})
+		})
+	})
+	Describe("realIPMiddleware", func() {
+		var resolved, remoteAddr string
+		var proxyIP any
+		next := func(w http.ResponseWriter, r *http.Request) {
+			resolved = middleware.GetClientIP(r.Context())
+			remoteAddr = r.RemoteAddr
+			proxyIP = r.Context().Value(request.ReverseProxyIp)
+		}
+		call := func(peer string, headers map[string]string) {
+			resolved, remoteAddr, proxyIP = "", "", nil
+			r := httptest.NewRequest("POST", "/auth/login", nil)
+			r.RemoteAddr = peer
+			for k, v := range headers {
+				r.Header.Set(k, v)
+			}
+			realIPMiddleware(http.HandlerFunc(next)).ServeHTTP(httptest.NewRecorder(), r)
+		}
+
+		Context("without a trusted proxy", func() {
+			It("ignores client-supplied forwarding headers", func() {
+				call("10.0.0.1:1234", map[string]string{
+					"X-Forwarded-For": "203.0.113.5",
+					"X-Real-IP":       "203.0.113.6",
+					"True-Client-IP":  "203.0.113.7",
+				})
+				Expect(resolved).To(Equal("10.0.0.1"))
+			})
+			It("leaves RemoteAddr untouched", func() {
+				call("10.0.0.1:1234", map[string]string{"X-Forwarded-For": "203.0.113.5"})
+				Expect(remoteAddr).To(Equal("10.0.0.1:1234"))
+			})
+		})
+
+		Context("with a trusted proxy", func() {
+			BeforeEach(func() {
+				conf.Server.ExtAuth.TrustedSources = "10.0.0.0/8"
+			})
+			It("uses the forwarded client IP when the peer is a trusted proxy", func() {
+				call("10.0.0.1:1234", map[string]string{"X-Forwarded-For": "203.0.113.5, 10.0.0.1"})
+				Expect(resolved).To(Equal("203.0.113.5"))
+				Expect(remoteAddr).To(Equal("203.0.113.5"))
+			})
+			It("honours X-Real-IP from a trusted proxy", func() {
+				call("10.0.0.1:1234", map[string]string{"X-Real-IP": "203.0.113.6"})
+				Expect(resolved).To(Equal("203.0.113.6"))
+			})
+			It("ignores forwarding headers when the peer is not a trusted proxy", func() {
+				call("198.51.100.9:1234", map[string]string{"X-Forwarded-For": "203.0.113.5"})
+				Expect(resolved).To(Equal("198.51.100.9"))
+				Expect(remoteAddr).To(Equal("198.51.100.9:1234"))
+			})
+			It("keeps the peer address in the context for external auth", func() {
+				call("10.0.0.1:1234", map[string]string{"X-Forwarded-For": "203.0.113.5"})
+				Expect(proxyIP).To(Equal("10.0.0.1:1234"))
+			})
+		})
+	})
+
+	Describe("ClientIPRateLimiter", func() {
+		var handler http.Handler
+		JustBeforeEach(func() {
+			handler = realIPMiddleware(ClientIPRateLimiter(2, time.Minute)(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })))
+		})
+		attempt := func(peer string, header, value string) int {
+			r := httptest.NewRequest("POST", "/auth/login", nil)
+			r.RemoteAddr = peer
+			r.Header.Set(header, value)
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+			return w.Code
+		}
+
+		DescribeTable("keeps one bucket per peer when the forwarding header is rotated",
+			func(header string) {
+				Expect(attempt("198.51.100.9:1", header, "203.0.113.1")).To(Equal(http.StatusOK))
+				Expect(attempt("198.51.100.9:2", header, "203.0.113.2")).To(Equal(http.StatusOK))
+				Expect(attempt("198.51.100.9:3", header, "203.0.113.3")).To(Equal(http.StatusTooManyRequests))
+			},
+			Entry("X-Forwarded-For", "X-Forwarded-For"),
+			Entry("X-Real-IP", "X-Real-IP"),
+			Entry("True-Client-IP", "True-Client-IP"),
+		)
+
+		Context("behind a trusted proxy", func() {
+			BeforeEach(func() {
+				conf.Server.ExtAuth.TrustedSources = "10.0.0.0/8"
+			})
+			It("gives each real client its own bucket", func() {
+				Expect(attempt("10.0.0.1:1", "X-Forwarded-For", "203.0.113.1")).To(Equal(http.StatusOK))
+				Expect(attempt("10.0.0.1:2", "X-Forwarded-For", "203.0.113.1")).To(Equal(http.StatusOK))
+				Expect(attempt("10.0.0.1:3", "X-Forwarded-For", "203.0.113.1")).To(Equal(http.StatusTooManyRequests))
+				Expect(attempt("10.0.0.1:4", "X-Forwarded-For", "203.0.113.2")).To(Equal(http.StatusOK))
 			})
 		})
 	})

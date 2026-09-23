@@ -103,6 +103,7 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 	sq := r.newSelect().Columns(r.tableName + ".*")
 	sq = r.withAnnotation(sq, idField)
 	sq = r.withBookmark(sq, idField).Where(NotEq{bookmarkTable + ".item_id": nil})
+	sq = r.applyLibraryFilter(sq)
 	var mfs dbMediaFiles // TODO Decouple from media_file
 	err := r.queryAll(sq, &mfs)
 	if err != nil {
@@ -142,6 +143,13 @@ func (r sqlRepository) GetBookmarks() (model.Bookmarks, error) {
 		}
 	}
 	return resp, nil
+}
+
+func (r sqlRepository) reassignBookmark(prevID, newID string) error {
+	upd := Expr("update or ignore "+bookmarkTable+" set item_id = ? where item_type = ? and item_id = ?",
+		newID, r.tableName, prevID)
+	_, err := r.executeSQL(upd)
+	return err
 }
 
 func (r sqlRepository) cleanBookmarks() error {
