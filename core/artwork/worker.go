@@ -46,6 +46,7 @@ type Worker struct {
 	pruneMu sync.RWMutex
 	pools   []*drainPool
 	runCtx  context.Context
+	paused  func() bool
 
 	gatesMu sync.Mutex
 	gates   map[string]*extGate
@@ -59,6 +60,7 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 		broker: broker,
 		pools:  newDrainPools(),
 		runCtx: context.Background(),
+		paused: func() bool { return false },
 		gates:  map[string]*extGate{},
 	}
 	w.proc.resolver = newResolver(ds, ag, ffmpeg, w.gate)
@@ -89,6 +91,11 @@ var (
 		model.KindMediaFileArtwork.Prefix(),
 	}
 )
+
+// PauseWhile holds off queue draining whenever paused reports true. Call it before Run.
+func (w *Worker) PauseWhile(paused func() bool) {
+	w.paused = paused
+}
 
 // Run blocks draining the queue until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) error {
@@ -143,6 +150,9 @@ func (w *Worker) EnqueueMissingAll(ctx context.Context) error {
 }
 
 func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (int, error) {
+	if w.paused() {
+		return 0, nil
+	}
 	// Dequeue well past the pool size so a slow external lookup never idles the other slots.
 	// DequeueBatch does not mark rows taken, so this is one query per pass, not per slot.
 	items, err := w.proc.ds.ArtworkQueue(ctx).DequeueBatch(max(16, 4*concurrency), kinds...)
@@ -169,6 +179,9 @@ func (w *Worker) drain(ctx context.Context, concurrency int, kinds ...string) (i
 		if ctx.Err() != nil {
 			wg.Wait()
 			return len(items), nil //nolint:nilerr // a cancelled drain is a clean stop, not an error
+		}
+		if w.paused() {
+			break
 		}
 		wg.Go(func() {
 			defer func() { <-sem }()
