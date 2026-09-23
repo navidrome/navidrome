@@ -381,6 +381,20 @@ func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() erro
 	}
 }
 
+// outsideScan runs a DB maintenance job unless a scan is running, and keeps a scan from starting
+// until it ends; both write to the DB, and competing for the lock can make either fail.
+func outsideScan(ctx context.Context, job string, run func(context.Context) error) {
+	release, ok := scanner.LockForMaintenance()
+	if !ok {
+		log.Debug(ctx, "Skipping "+job+" because a scan is in progress")
+		return
+	}
+	defer release()
+	if err := run(ctx); err != nil {
+		log.Error(ctx, "Error running "+job, err)
+	}
+}
+
 // scheduleArtworkHousekeeping registers the recurring missing-state and prune jobs, and
 // reports an artwork config change without acting on it.
 func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) func() error {
@@ -388,26 +402,20 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 		schedulerInstance := scheduler.GetInstance()
 
 		if _, err := schedulerInstance.Add(consts.ArtworkEnqueueMissingSchedule, func() {
-			if err := worker.EnqueueMissingAll(ctx); err != nil {
-				log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
-			}
+			outsideScan(ctx, "artwork missing-state recheck", worker.EnqueueMissingAll)
 		}); err != nil {
 			log.Error(ctx, "Error scheduling artwork missing-state recheck", err)
 		}
 
 		if _, err := schedulerInstance.Add(consts.ArtworkPruneSchedule, func() {
-			if err := worker.RunPrune(ctx); err != nil {
-				log.Error(ctx, "Error running artwork prune", err)
-			}
+			outsideScan(ctx, "artwork prune", worker.RunPrune)
 		}); err != nil {
 			log.Error(ctx, "Error scheduling artwork prune", err)
 		}
 
 		// Also run the missing-row recheck once at startup so a never-scanned entity is picked up
 		// immediately, not only on the next hourly tick (e.g. after enabling the feature).
-		if err := worker.EnqueueMissingAll(ctx); err != nil {
-			log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
-		}
+		outsideScan(ctx, "artwork missing-state recheck", worker.EnqueueMissingAll)
 
 		if err := worker.ReconcileConfig(ctx); err != nil {
 			log.Error(ctx, "Error checking the artwork config fingerprint", err)
