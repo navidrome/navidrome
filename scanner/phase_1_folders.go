@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -45,7 +46,9 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		jobs = append(jobs, job)
 	}
 
-	return &phaseFolders{jobs: jobs, ctx: ctx, ds: ds, state: state, imageChanges: &imageChangeCollector{ds: ds}}
+	walkCtx, stopWalk := context.WithCancelCause(ctx)
+	return &phaseFolders{jobs: jobs, ctx: ctx, walkCtx: walkCtx, stopWalk: stopWalk, ds: ds, state: state,
+		imageChanges: &imageChangeCollector{ds: ds}}
 }
 
 type scanJob struct {
@@ -123,6 +126,8 @@ type phaseFolders struct {
 	jobs             []*scanJob
 	ds               model.DataStore
 	ctx              context.Context
+	walkCtx          context.Context // cancelled when a folder fails to persist, so the walk stops early
+	stopWalk         context.CancelCauseFunc
 	state            *scanState
 	prevAlbumPIDConf string
 	imageChanges     *imageChangeCollector
@@ -144,15 +149,15 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 		var total int64
 		var totalChanged int64
 		for _, job := range p.jobs {
-			if utils.IsCtxDone(p.ctx) {
+			if utils.IsCtxDone(p.walkCtx) {
 				break
 			}
 
-			outputChan, err := walkDirTree(p.ctx, job, job.targetFolders...)
+			outputChan, err := walkDirTree(p.walkCtx, job, job.targetFolders...)
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error scanning library", "lib", job.lib.Name, err)
 			}
-			for folder := range pl.ReadOrDone(p.ctx, outputChan) {
+			for folder := range pl.ReadOrDone(p.walkCtx, outputChan) {
 				job.numFolders.Add(1)
 				p.state.sendProgress(&ProgressInfo{
 					LibID:     job.lib.ID,
@@ -208,6 +213,9 @@ func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 
 func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
+	if p.walkCtx.Err() != nil {
+		return entry, context.Cause(p.walkCtx)
+	}
 
 	// Load children mediafiles from DB
 	cursor, err := p.ds.MediaFile(p.ctx).GetCursor(model.QueryOptions{
@@ -327,14 +335,51 @@ func (p *phaseFolders) createArtistsFromMediaFiles(entry *folderEntry) {
 	entry.artists = participants.AllArtists()
 }
 
+// persistRetryDelay spaces out retries of a folder save that found the database busy. Each attempt
+// has already waited out the busy timeout, so a scan gives up only after a sustained lock.
+var persistRetryDelay = 5 * time.Second
+
+const persistMaxRetries = 3
+
 func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
 	p.state.changesDetected.Store(true)
 
+	err := p.persistFolder(entry)
+	for attempt := 1; attempt <= persistMaxRetries && db.IsBusy(err); attempt++ {
+		log.Warn(p.ctx, "Scanner: Database busy, retrying folder", "folder", entry.path, "attempt", attempt, err)
+		select {
+		case <-p.ctx.Done():
+			err = p.ctx.Err()
+		case <-time.After(time.Duration(attempt) * persistRetryDelay):
+			err = p.persistFolder(entry)
+		}
+	}
+	if err != nil {
+		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
+		p.stopWalk(err)
+		return entry, err
+	}
+
+	// A new folder's albums/artists were enqueued with it; only pre-existing folders need the diff.
+	if !entry.isNew() {
+		if changed, artistImage := entry.imagesChanged(); changed {
+			p.imageChanges.record(entry.job.lib, imageChangedFolder{
+				id: entry.id, path: entry.path, artistImage: artistImage,
+			})
+		}
+	}
+	return entry, nil
+}
+
+// persistFolder saves the folder in one transaction; it can be rerun after a rollback.
+func (p *phaseFolders) persistFolder(entry *folderEntry) error {
 	// Collect artwork queue items for changed albums/artists, enqueued in the same transaction
 	var queueItems []model.ArtworkQueueItem
+	// persistAlbum consumes the map, so a retried transaction needs the original
+	albumIDMap := maps.Clone(entry.albumIDMap)
 
-	err := p.ds.WithTx(func(tx model.DataStore) error {
+	return p.ds.WithTx(func(tx model.DataStore) error {
 		// Instantiate all repositories just once per folder
 		folderRepo := tx.Folder(p.ctx)
 		tagRepo := tx.Tag(p.ctx)
@@ -342,15 +387,6 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		libraryRepo := tx.Library(p.ctx)
 		albumRepo := tx.Album(p.ctx)
 		mfRepo := tx.MediaFile(p.ctx)
-
-		// A new folder's albums/artists are enqueued below; only pre-existing folders need the diff.
-		if !entry.isNew() {
-			if changed, artistImage := entry.imagesChanged(); changed {
-				p.imageChanges.record(entry.job.lib, imageChangedFolder{
-					id: entry.id, path: entry.path, artistImage: artistImage,
-				})
-			}
-		}
 
 		// Save folder to DB
 		folder := entry.toFolder()
@@ -387,7 +423,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 
 		// Save all new/modified albums to DB. Their information will be incomplete, but they will be refreshed later
 		for i := range entry.albums {
-			err = p.persistAlbum(albumRepo, &entry.albums[i], entry.albumIDMap)
+			err = p.persistAlbum(albumRepo, &entry.albums[i], albumIDMap)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error persisting album to DB", "folder", entry.path, "album", entry.albums[i], err)
 				return err
@@ -448,11 +484,6 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		}
 		return nil
 	}, "scanner: persist changes")
-	if err != nil {
-		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
-	}
-
-	return entry, err
 }
 
 // persistAlbum persists the given album to the database, and reassigns annotations from the previous album ID
@@ -499,6 +530,12 @@ func (p *phaseFolders) logFolder(entry *folderEntry) (*folderEntry, error) {
 }
 
 func (p *phaseFolders) finalize(err error) error {
+	p.stopWalk(nil)
+	defer p.imageChanges.enqueue(p.ctx)
+	// A failed phase may not have walked every folder, and unvisited ones must not be marked missing
+	if err != nil {
+		return err
+	}
 	errF := p.ds.WithTx(func(tx model.DataStore) error {
 		for _, job := range p.jobs {
 			// Mark all folders that were not updated as missing
@@ -525,8 +562,7 @@ func (p *phaseFolders) finalize(err error) error {
 		}
 		return nil
 	}, "scanner: finalize phaseFolders")
-	p.imageChanges.enqueue(p.ctx)
-	return errors.Join(err, errF)
+	return errF
 }
 
 var _ phase[*folderEntry] = (*phaseFolders)(nil)
