@@ -21,12 +21,19 @@ var _ = Describe("Playlists", func() {
 	}
 	order := func(plID string) []string { return names(playlistItems(plID).Items) }
 
+	createWith := func(body string) string { return createPlaylistBodyAs(adminUser, body) }
+	openAccess := func(plID string) bool {
+		var info dto.PlaylistInfo
+		parseInto(get("/Playlists/"+enc(plID)), &info)
+		return info.OpenAccess
+	}
+
 	Describe("create", func() {
 		It("creates an empty playlist", func() {
 			plID := createPlaylist("Empty", nil)
 			var info dto.PlaylistInfo
 			parseInto(get("/Playlists/"+enc(plID)), &info)
-			Expect(info.OpenAccess).To(BeFalse())
+			Expect(info.OpenAccess).To(BeFalse(), "a playlist created without IsPublic stays private")
 			Expect(info.Shares).To(BeEmpty())
 			Expect(info.ItemIds).To(BeEmpty())
 		})
@@ -46,6 +53,14 @@ var _ = Describe("Playlists", func() {
 		It("expands an artist id into its tracks", func() {
 			plID := createPlaylist("From Artist", []string{enc(artistID("The Beatles"))})
 			Expect(playlistItems(plID).TotalRecordCount).To(Equal(3)) // Abbey Road (2) + Help! (1)
+		})
+
+		It("creates a public playlist when the client sends IsPublic true", func() {
+			Expect(openAccess(createWith(`{"Name":"Public","Ids":[],"IsPublic":true}`))).To(BeTrue())
+		})
+
+		It("creates a private playlist when the client sends IsPublic false", func() {
+			Expect(openAccess(createWith(`{"Name":"Private","Ids":[],"IsPublic":false}`))).To(BeFalse())
 		})
 
 		// dto.DecodeIDs is all-or-nothing: a malformed entry must 404 the whole request, not get
@@ -355,10 +370,7 @@ var _ = Describe("Playlists", func() {
 		It("makes a playlist public", func() {
 			plID := createPlaylist("Make Public", nil)
 			Expect(post("/Playlists/"+enc(plID), `{"Name":"Make Public","IsPublic":true}`).Code).To(Equal(http.StatusNoContent))
-
-			var info dto.PlaylistInfo
-			parseInto(get("/Playlists/"+enc(plID)), &info)
-			Expect(info.OpenAccess).To(BeTrue())
+			Expect(openAccess(plID)).To(BeTrue())
 			// Now visible to other users.
 			Expect(queryResult(getAs(regularUser, "/Items?IncludeItemTypes=Playlist&Recursive=true")).TotalRecordCount).To(Equal(1))
 		})

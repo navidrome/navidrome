@@ -378,8 +378,9 @@ func wrapCursor[D, T any](cursor iter.Seq2[D, error], toModel func(D) *T) iter.S
 		for row, err := range cursor {
 			m := toModel(row)
 			if m == nil {
+				// Don't format row: its String() derefs the nil model (golang/go#81238).
 				var zero T
-				yield(zero, fmt.Errorf("unexpected nil %T (%v): %w", zero, row, err))
+				yield(zero, fmt.Errorf("unexpected nil %T: %w", zero, err))
 				return
 			}
 			if !yield(*m, err) || err != nil {
@@ -641,6 +642,10 @@ func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffect
 	// SQLITE_BUSY_SNAPSHOT, which no busy_timeout can retry.
 	if code, extended, ok := db.ErrorCodes(err); ok {
 		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
+	}
+	if db.IsBusy(err) && hasBusyRetry(r.ctx) {
+		log.Warn(append(fields, err)...)
+		return
 	}
 	log.Error(append(fields, err)...)
 }
