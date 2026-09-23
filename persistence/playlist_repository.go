@@ -13,6 +13,7 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -208,8 +209,8 @@ func (r *playlistRepository) GetAll(options ...model.QueryOptions) (model.Playli
 	return playlists, err
 }
 
-// GetAllIDs returns the IDs of GetAll's row set, skipping its per-row processing.
-func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+// getAllIDs returns the IDs of GetAll's row set, skipping its per-row processing.
+func (r *playlistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	// Joins a projection of user, not the table: its name/created_at columns would make an ORDER BY
 	// on the playlist's own ambiguous.
 	sq := r.newSelect(options...).Columns("playlist.id", "user.user_name as owner_name").
@@ -224,7 +225,7 @@ func (r *playlistRepository) GetAllIDs(options ...model.QueryOptions) ([]string,
 
 func (r *playlistRepository) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
 	// Both passes apply userFilter, so a visibility change between them cannot widen the cursor.
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
@@ -276,10 +277,17 @@ func (r *playlistRepository) updatePlaylist(playlistId string, mediaFileIds []st
 		return err
 	}
 
-	return r.addTracks(playlistId, 1, mediaFileIds)
+	_, err = r.addTracks(playlistId, 1, mediaFileIds)
+	return err
 }
 
-func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) error {
+// addTracks is the only path that writes playlist_tracks rows (smart playlists aside), so it owns
+// the library check: every caller, including a full replace through Put, goes through it.
+func (r *playlistRepository) addTracks(playlistId string, startingPos int, mediaFileIds []string) (int, error) {
+	mediaFileIds, err := r.keepAccessible(mediaFileIds)
+	if err != nil {
+		return 0, err
+	}
 	// Break the track list in chunks to avoid hitting SQLITE_MAX_VARIABLE_NUMBER limit
 	// Add new tracks, chunk by chunk
 	pos := startingPos
@@ -289,14 +297,36 @@ func (r *playlistRepository) addTracks(playlistId string, startingPos int, media
 			ins = ins.Values(playlistId, t, pos)
 			pos++
 		}
-		_, err := r.executeSQL(ins)
-		if err != nil {
-			return err
+		if _, err := r.executeSQL(ins); err != nil {
+			return 0, err
 		}
 	}
 
 	r.enqueueCoverRebuild(playlistId)
-	return r.refreshCounters(&model.Playlist{ID: playlistId})
+	return len(mediaFileIds), r.refreshCounters(&model.Playlist{ID: playlistId})
+}
+
+// keepAccessible drops ids the caller cannot read, preserving order and duplicates. Chunked
+// because callers pass unbounded id lists (M3U import), well past SQLITE_MAX_VARIABLE_NUMBER.
+func (r *playlistRepository) keepAccessible(mediaFileIds []string) ([]string, error) {
+	if visible, err := r.visibleLibraryIDs(); err == nil && r.userSeesAllLibraries(visible) {
+		return mediaFileIds, nil
+	}
+	accessible := make(map[string]struct{}, len(mediaFileIds))
+	for chunk := range slices.Chunk(slice.Unique(mediaFileIds), 200) {
+		sq := r.applyLibraryFilter(Select("id").From("media_file").Where(Eq{"id": chunk}), "media_file")
+		var found []string
+		if err := r.queryAllSlice(sq, &found); err != nil {
+			return nil, err
+		}
+		for _, id := range found {
+			accessible[id] = struct{}{}
+		}
+	}
+	return slice.Filter(mediaFileIds, func(id string) bool {
+		_, ok := accessible[id]
+		return ok
+	}), nil
 }
 
 // refreshCounters updates total playlist duration, size and count
@@ -316,11 +346,12 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	}
 
 	// Update playlist's total duration, size and count
+	now := time.Now()
 	upd := Update("playlist").
 		Set("duration", res.Duration).
 		Set("size", res.Size).
 		Set("song_count", res.Count).
-		Set("updated_at", time.Now()).
+		Set("updated_at", now).
 		Where(Eq{"id": pls.ID})
 	_, err = r.executeSQL(upd)
 	if err != nil {
@@ -329,6 +360,7 @@ func (r *playlistRepository) refreshCounters(pls *model.Playlist) error {
 	pls.SongCount = int(res.Count)
 	pls.Duration = res.Duration
 	pls.Size = int64(res.Size)
+	pls.UpdatedAt = now
 	return nil
 }
 
@@ -414,9 +446,6 @@ func (r *playlistRepository) Update(id string, entity any, cols ...string) error
 	pls.ID = id
 	pls.UpdatedAt = time.Now()
 	_, err := r.put(id, pls, append(cols, "updatedAt")...)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
 	return err
 }
 

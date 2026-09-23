@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
@@ -47,7 +46,7 @@ func (r *radioRepository) Delete(id string) error {
 		return rest.ErrPermissionDenied
 	}
 
-	return r.delete(Eq{"id": id})
+	return r.deleteByID(id)
 }
 
 func (r *radioRepository) Get(id string) (*model.Radio, error) {
@@ -77,14 +76,6 @@ func (r *radioRepository) GetAll(options ...model.QueryOptions) (model.Radios, e
 func (r *radioRepository) hydrateArtwork(radios model.Radios) {
 	hydrateItems(r.ctx, r.db, model.KindRadioArtwork, radios,
 		func(rd *model.Radio) (string, *model.ItemImage) { return rd.ID, &rd.ItemImage })
-}
-
-// GetAllIDs returns just the radio IDs. Used by bulk enumeration (artwork backfill).
-func (r *radioRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
-	sel := r.newSelect(options...).Columns("id")
-	ids := []string{}
-	err := r.queryAllSlice(sel, &ids)
-	return ids, err
 }
 
 func (r *radioRepository) Put(radio *model.Radio, colsToUpdate ...string) error {
@@ -140,9 +131,6 @@ func (r *radioRepository) Save(entity any) (string, error) {
 		return "", rest.ErrPermissionDenied
 	}
 	err := r.Put(t)
-	if errors.Is(err, model.ErrNotFound) {
-		return "", rest.ErrNotFound
-	}
 	return t.ID, err
 }
 
@@ -152,11 +140,7 @@ func (r *radioRepository) Update(id string, entity any, cols ...string) error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
-	err := r.Put(t)
-	if errors.Is(err, model.ErrNotFound) {
-		return rest.ErrNotFound
-	}
-	return err
+	return r.Put(t, cols...)
 }
 
 var _ model.RadioRepository = (*radioRepository)(nil)

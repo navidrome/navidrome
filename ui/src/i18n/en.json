@@ -93,7 +93,8 @@
         "shuffle": "Shuffle",
         "addToPlaylist": "Add to Playlist",
         "download": "Download",
-        "info": "Get Info"
+        "info": "Get Info",
+        "refresh": "Refresh Metadata"
       },
       "lists": {
         "all": "All",
@@ -199,6 +200,9 @@
         "targetFormat": "Target Format",
         "defaultBitRate": "Default Bit Rate",
         "command": "Command"
+      },
+      "choices": {
+        "noDefaultBitRate": "None"
       }
     },
     "playlist": {
@@ -396,6 +400,7 @@
         "invalidJson": "Configuration must be valid JSON"
       },
       "messages": {
+        "idHelp": "The plugin ID, derived from its file name. Use it when referencing this plugin in configuration options, such as Agents.",
         "configHelp": "Configure the plugin using key-value pairs. Leave empty if the plugin requires no configuration.",
         "configValidationError": "Configuration validation failed:",
         "schemaRenderError": "Unable to render configuration form. The plugin's schema may be invalid.",
@@ -569,6 +574,7 @@
     "coverRemoved": "Cover art removed",
     "coverUploadError": "Error uploading cover art",
     "coverRemoveError": "Error removing cover art",
+    "metadataRefreshStarted": "Refreshing metadata in the background",
     "note": "NOTE",
     "transcodingDisabled": "Changing the transcoding configuration through the web interface is disabled for security reasons. If you would like to change (edit or add) transcoding options, restart the server with the %{config} configuration option.",
     "transcodingEnabled": "Navidrome is currently running with %{config}, making it possible to run system commands from the transcoding settings using the web interface. We recommend to disable it for security reasons and only enable it when configuring Transcoding options.",
@@ -585,6 +591,9 @@
     "remove_all_missing_content": "Are you sure you want to remove all missing files from the database? This will permanently remove any references to them, including their play counts and ratings.",
     "notifications_blocked": "You have blocked Notifications for this site in your browser's settings",
     "notifications_not_available": "This browser does not support desktop notifications or you are not accessing Navidrome over https",
+    "quickConnectApproved": "%{app} on %{device} is now signed in",
+    "quickConnectInvalidCode": "Invalid or expired code",
+    "quickConnectError": "Could not approve the code",
     "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",
     "lastfmLinkFailure": "Last.fm could not be linked",
     "lastfmUnlinkSuccess": "Last.fm unlinked and scrobbling disabled",
@@ -616,6 +625,14 @@
       "none": "None"
     },
     "settings": "Settings",
+    "quickConnect": {
+      "name": "Quick Connect",
+      "code": "Code",
+      "help": "Enter the code shown by a Jellyfin app to sign it in to your account",
+      "confirm": "Sign in %{app} %{version} on %{device} to your account?",
+      "continue": "Continue",
+      "approve": "Approve"
+    },
     "version": "Version",
     "theme": "Theme",
     "personal": {

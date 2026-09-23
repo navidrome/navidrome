@@ -14,9 +14,10 @@ import (
 
 type MockLibraryRepo struct {
 	model.LibraryRepository
-	Data  map[int]model.Library
-	Err   error
-	PutFn func(*model.Library) error // Allow custom Put behavior for testing
+	Data    map[int]model.Library
+	Err     error
+	PutFn   func(*model.Library) error // Allow custom Put behavior for testing
+	PutCols []string
 }
 
 func (m *MockLibraryRepo) SetData(data model.Libraries) {
@@ -90,7 +91,8 @@ func (m *MockLibraryRepo) GetPath(id int) (string, error) {
 	return "", model.ErrNotFound
 }
 
-func (m *MockLibraryRepo) Put(library *model.Library) error {
+func (m *MockLibraryRepo) Put(library *model.Library, colsToUpdate ...string) error {
+	m.PutCols = colsToUpdate
 	if m.PutFn != nil {
 		return m.PutFn(library)
 	}
@@ -170,11 +172,7 @@ func (m *MockLibraryRepo) Count(options ...rest.QueryOptions) (int64, error) {
 
 func (m *MockLibraryRepo) Read(id string) (any, error) {
 	idInt, _ := strconv.Atoi(id)
-	mf, err := m.Get(idInt)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, rest.ErrNotFound
-	}
-	return mf, err
+	return m.Get(idInt)
 }
 
 func (m *MockLibraryRepo) ReadAll(options ...rest.QueryOptions) (any, error) {

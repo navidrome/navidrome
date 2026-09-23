@@ -70,7 +70,7 @@ func (r *libraryRepository) GetPath(id int) (string, error) {
 	}
 }
 
-func (r *libraryRepository) Put(l *model.Library) error {
+func (r *libraryRepository) Put(l *model.Library, colsToUpdate ...string) error {
 	if l.ID == model.DefaultLibraryID {
 		currentLib, err := r.Get(1)
 		// if we are creating it, it's ok.
@@ -89,13 +89,13 @@ func (r *libraryRepository) Put(l *model.Library) error {
 		err = r.db.Model(l).Insert()
 	} else {
 		// Try to update first
-		cols := map[string]any{
+		cols := selectUpdateColumns(map[string]any{
 			"name":              l.Name,
 			"path":              l.Path,
 			"remote_path":       l.RemotePath,
 			"default_new_users": l.DefaultNewUsers,
-			"updated_at":        l.UpdatedAt,
-		}
+		}, colsToUpdate...)
+		cols["updated_at"] = l.UpdatedAt
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
 		rowsAffected, updateErr := r.executeSQL(sq)
 		if updateErr != nil {
@@ -137,9 +137,10 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 func (r *libraryRepository) StoreMusicFolder() error {
 	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).
 		Set("updated_at", time.Now()).
-		Where(Eq{"id": model.DefaultLibraryID})
-	_, err := r.executeSQL(sq)
-	if err != nil {
+		Where(Eq{"id": model.DefaultLibraryID}).
+		Where(NotEq{"path": conf.Server.MusicFolder})
+	rowsAffected, err := r.executeSQL(sq)
+	if err == nil && rowsAffected > 0 {
 		libLock.Lock()
 		defer libLock.Unlock()
 		libCache[model.DefaultLibraryID] = conf.Server.MusicFolder
@@ -340,7 +341,7 @@ func (r *libraryRepository) Update(id string, entity any, cols ...string) error 
 	}
 
 	lib.ID = idInt
-	return r.Put(lib)
+	return r.Put(lib, cols...)
 }
 
 var _ model.LibraryRepository = (*libraryRepository)(nil)

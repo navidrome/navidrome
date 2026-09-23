@@ -100,6 +100,15 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(httpClient.RequestCount).To(Equal(1))
 			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("U2"))
 		})
+
+		It("returns ErrRetryLater on error 29 (rate limit exceeded)", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{"error":29,"message":"Rate limit exceeded"}`)),
+				StatusCode: 200,
+			}
+			_, err := agent.GetArtistBiography(ctx, "123", "U2", "")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+		})
 	})
 
 	Describe("Language Fallback", func() {
@@ -497,6 +506,16 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
 			})
 
+			It("returns ErrRetryLater on error 29 (rate limit exceeded)", func() {
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":29,"message":"Rate limit exceeded"}`)),
+					StatusCode: 200,
+				}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+				Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
+			})
+
 			It("returns ErrRetryLater on http errors", func() {
 				httpClient.Res = http.Response{
 					Body:       io.NopCloser(bytes.NewBufferString(`internal server error`)),
@@ -629,16 +648,39 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(images).To(BeEmpty())
 		})
 
-		It("returns empty list if page has no meta tags", func() {
+		It("errors when the page has no meta tags", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.no_meta.html")
 			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
 
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).To(MatchError(errNoArtistPage))
+		})
+
+		It("errors when Last.fm serves a bot challenge page", func() {
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
 			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(MatchError(errNoArtistPage))
 			Expect(images).To(BeEmpty())
+		})
+
+		It("does not park the agent: the failure is not a retry-later", func() {
+			// A RetryLaterError would cool down the agent's API-backed methods too.
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeFalse())
 		})
 
 		It("returns error if API call fails", func() {

@@ -20,6 +20,7 @@ const (
 	ReverseProxyIp   = contextKey("reverseProxyIp")
 	InternalAuth     = contextKey("internalAuth") // Used for internal API calls, e.g., from the plugins
 	TokenEpochHolder = contextKey("tokenEpochHolder")
+	ServerAddress    = contextKey("serverAddress")
 )
 
 var allKeys = []contextKey{
@@ -32,6 +33,7 @@ var allKeys = []contextKey{
 	ClientUniqueId,
 	ReverseProxyIp,
 	InternalAuth,
+	ServerAddress,
 }
 
 func WithUser(ctx context.Context, u model.User) context.Context {
@@ -68,6 +70,25 @@ func WithReverseProxyIp(ctx context.Context, reverseProxyIp string) context.Cont
 
 func WithInternalAuth(ctx context.Context, username string) context.Context {
 	return context.WithValue(ctx, InternalAuth, username)
+}
+
+// serverAddress is the public scheme and host the client used to reach this server,
+// so code running without an http.Request can still build absolute URLs.
+type serverAddress struct {
+	scheme string
+	host   string
+}
+
+func WithServerAddress(ctx context.Context, scheme, host string) context.Context {
+	return context.WithValue(ctx, ServerAddress, serverAddress{scheme: scheme, host: host})
+}
+
+func ServerAddressFrom(ctx context.Context) (scheme, host string, ok bool) {
+	a, ok := ctx.Value(ServerAddress).(serverAddress)
+	if !ok || a.host == "" {
+		return "", "", false
+	}
+	return a.scheme, a.host, true
 }
 
 func UserFrom(ctx context.Context) (model.User, bool) {

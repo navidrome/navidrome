@@ -67,3 +67,13 @@ func GetInstance[T any](constructor func() T) T {
 
 	return newInstance
 }
+
+// DeleteInstance drops the cached instance of type T so the next GetInstance rebuilds it.
+// Intended for tests and benchmarks that need a fresh instance regardless of run order.
+func DeleteInstance[T any]() {
+	var v T
+	name := reflect.TypeOf(v).String()
+	lock.Lock()
+	delete(instances, name)
+	lock.Unlock()
+}

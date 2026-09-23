@@ -36,13 +36,14 @@ var allProviders = wire.NewSet(
 	server.New,
 	subsonic.New,
 	jellyfin.New,
+	jellyfin.NewDiscovery,
 	nativeapi.New,
 	public.New,
 	persistence.New,
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner.New,
+	scanner.GetInstance,
 	scanner.GetWatcher,
 	metrics.GetPrometheusInstance,
 	db.Db,
@@ -103,6 +104,12 @@ func CreateLastFMRouter() *lastfm.Router {
 }
 
 func CreateListenBrainzRouter() *listenbrainz.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateJellyfinDiscovery() *jellyfin.Discovery {
 	panic(wire.Build(
 		allProviders,
 	))

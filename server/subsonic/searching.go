@@ -116,7 +116,7 @@ func (api *Router) Search2(r *http.Request) (*responses.Subsonic, error) {
 			CoverArt:   coverArtOrEmpty(artist.CoverArtID(), artist.ImageAbsent),
 		}
 		if !artist.ImageAbsent {
-			a.ArtistImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 600)
+			a.ArtistImageUrl = publicurl.ImageURL(r.Context(), artist.CoverArtID(), 600)
 		}
 		if artist.Starred {
 			a.Starred = artist.StarredAt

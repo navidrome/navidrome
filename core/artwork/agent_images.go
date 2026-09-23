@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/url"
 
@@ -41,22 +42,36 @@ func bestImageURL(imgs []agents.ExternalImage) *url.URL {
 	return best
 }
 
-// fetchArtistImage tries each enabled artist-image agent in order. extErr is true only when no
+// longerRetry keeps whichever external failure asks for the longer wait, so one provider's
+// short delay cannot shorten another's.
+func longerRetry(a, b error) error {
+	if a == nil {
+		return b
+	}
+	var ra, rb *agents.RetryLaterError
+	if errors.As(b, &rb) && (!errors.As(a, &ra) || rb.RetryIn > ra.RetryIn) {
+		return b
+	}
+	return a
+}
+
+// fetchArtistImage tries each enabled artist-image agent in order. The error is non-nil only when no
 // agent succeeded and at least one failed transiently.
-func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar model.Artist) (r io.ReadCloser, agentName string, extErr bool) {
+func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar model.Artist) (io.ReadCloser, string, error) {
 	// Synthetic artists would otherwise get an unrelated agent result assigned to them.
 	switch ar.ID {
 	case consts.UnknownArtistID, consts.VariousArtistsID:
 		traceFrom(ctx).add(TraceStep{Candidate: externalCandidate, Outcome: OutcomeSkipped, Detail: "synthetic artist"})
-		return nil, "", false
+		return nil, "", nil
 	}
 	name := externalName(ar.Name)
 	imageAgents := ag.ArtistImageAgents()
 	if len(imageAgents) == 0 {
 		traceFrom(ctx).add(TraceStep{Candidate: externalCandidate, Outcome: OutcomeSkipped,
 			Detail: "no enabled agent provides artist images"})
-		return nil, "", false
+		return nil, "", nil
 	}
+	var extErr error
 	for _, a := range imageAgents {
 		reader, path, err := gate(a.Name, func() (io.ReadCloser, string, error) {
 			imgs, err := a.Retriever.GetArtistImages(ctx, ar.ID, name, ar.MbzArtistID)
@@ -71,10 +86,10 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 		})
 		recordAgent(ctx, a.Name, reader, path, err)
 		if reader != nil {
-			return reader, a.Name, false
+			return reader, a.Name, nil
 		}
 		if isTransientExternal(err) {
-			extErr = true
+			extErr = longerRetry(extErr, err)
 			log.Debug(ctx, "Artwork: External artist-image lookup failed", "agent", a.Name, "artist", ar.Name, err)
 		}
 	}
@@ -82,14 +97,15 @@ func fetchArtistImage(ctx context.Context, ag *agents.Agents, gate gateFunc, ar 
 }
 
 // fetchAlbumImage is the album counterpart of fetchArtistImage.
-func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al model.Album) (r io.ReadCloser, agentName string, extErr bool) {
+func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al model.Album) (io.ReadCloser, string, error) {
 	name, artist := externalName(al.Name), externalName(al.AlbumArtist)
 	imageAgents := ag.AlbumImageAgents()
 	if len(imageAgents) == 0 {
 		traceFrom(ctx).add(TraceStep{Candidate: externalCandidate, Outcome: OutcomeSkipped,
 			Detail: "no enabled agent provides album images"})
-		return nil, "", false
+		return nil, "", nil
 	}
+	var extErr error
 	for _, a := range imageAgents {
 		reader, path, err := gate(a.Name, func() (io.ReadCloser, string, error) {
 			imgs, err := a.Retriever.GetAlbumImages(ctx, name, artist, al.MbzAlbumID)
@@ -104,10 +120,10 @@ func fetchAlbumImage(ctx context.Context, ag *agents.Agents, gate gateFunc, al m
 		})
 		recordAgent(ctx, a.Name, reader, path, err)
 		if reader != nil {
-			return reader, a.Name, false
+			return reader, a.Name, nil
 		}
 		if isTransientExternal(err) {
-			extErr = true
+			extErr = longerRetry(extErr, err)
 			log.Debug(ctx, "Artwork: External album-image lookup failed", "agent", a.Name, "album", al.Name, err)
 		}
 	}

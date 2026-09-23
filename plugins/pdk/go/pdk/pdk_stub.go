@@ -114,6 +114,8 @@ func LogMemory(level LogLevel, m Memory) {
 }
 
 // NewHTTPRequest NewHTTPRequest returns a new `HTTPRequest`.
+//
+// Deprecated: Navidrome does not enable extism's http_request host function, so every request sent this way fails. Use host.HTTPSend instead.
 func NewHTTPRequest(method HTTPMethod, url string) *HTTPRequest {
 	args := PDKMock.Called(method, url)
 	var r0 *HTTPRequest

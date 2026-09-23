@@ -96,6 +96,16 @@ func buildAuthPayload(user *model.User) map[string]any {
 	return payload
 }
 
+// MaxLoginBodySize bounds the payload of unauthenticated login routes across all APIs.
+const MaxLoginBodySize = 8 << 10
+
+func LimitLoginBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, MaxLoginBodySize)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func getCredentialsFromBody(r *http.Request) (username string, password string, err error) {
 	data := make(map[string]string)
 	decoder := json.NewDecoder(r.Body)
@@ -151,7 +161,7 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 	if err != nil {
 		// Log the username only: initialUser carries the password in clear text
 		log.Error(ctx, "Could not create initial user", "user", initialUser.UserName, err)
-		return err
+		return fmt.Errorf("creating initial user: %w", err)
 	}
 	return nil
 }
@@ -209,12 +219,12 @@ func UsernameFromExtAuthHeader(r *http.Request) string {
 		log.Error("ExtAuth enabled but no proxy IP found in request context. Please report this error.")
 		return ""
 	}
-	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
-		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
-		return ""
-	}
 	username := r.Header.Get(conf.Server.ExtAuth.UserHeader)
 	if username == "" {
+		return ""
+	}
+	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
+		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
 	log.Trace(r, "Found username in ExtAuth.UserHeader", "username", username)

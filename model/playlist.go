@@ -2,12 +2,16 @@ package model
 
 import (
 	"iter"
+	"maps"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/criteria"
 )
 
@@ -137,6 +141,66 @@ func (pls Playlist) UploadedImagePath() string {
 	return UploadedImagePath(consts.EntityPlaylist, pls.UploadedImage)
 }
 
+// NormalizedRules returns the rules with child playlist paths resolved to absolute, OS-native paths.
+func (pls Playlist) NormalizedRules() *criteria.Criteria {
+	if pls.Rules == nil || pls.Rules.Expression == nil {
+		return pls.Rules
+	}
+
+	rules := *pls.Rules
+	rules.Expression = normalizePlaylistPaths(pls.Rules.Expression, pls.Path)
+	return &rules
+}
+
+func normalizePlaylistPaths(inputRule criteria.Expression, referencingPlaylistPath string) criteria.Expression {
+	switch rule := inputRule.(type) {
+	case criteria.Any:
+		anyCriteria := make(criteria.Any, len(rule))
+		for i, rules := range rule {
+			anyCriteria[i] = normalizePlaylistPaths(rules, referencingPlaylistPath)
+		}
+		return anyCriteria
+	case criteria.All:
+		allCriteria := make(criteria.All, len(rule))
+		for i, rules := range rule {
+			allCriteria[i] = normalizePlaylistPaths(rules, referencingPlaylistPath)
+		}
+		return allCriteria
+	case criteria.InPlaylist:
+		return criteria.InPlaylist(normalizeChildPathRule(rule, referencingPlaylistPath))
+	case criteria.NotInPlaylist:
+		return criteria.NotInPlaylist(normalizeChildPathRule(rule, referencingPlaylistPath))
+	}
+
+	return inputRule
+}
+
+func normalizeChildPathRule(rule map[string]any, referencingPlaylistPath string) map[string]any {
+	path, ok := rule["path"].(string)
+	if !ok || path == "" {
+		return rule
+	}
+
+	// References use forward slashes to stay portable, while Playlist.Path is OS-native.
+	path = filepath.FromSlash(path)
+	switch {
+	case isAbsPlaylistRef(path):
+		path = filepath.Clean(path)
+	case referencingPlaylistPath != "":
+		path = filepath.Join(filepath.Dir(referencingPlaylistPath), path)
+	default:
+		log.Warn("Cannot resolve relative playlist reference: playlist has no file path", "reference", path)
+	}
+	normalized := maps.Clone(rule)
+	normalized["path"] = path
+	return normalized
+}
+
+// filepath.IsAbs rejects a bare leading separator on Windows, but that is how Unix spells absolute.
+func isAbsPlaylistRef(path string) bool {
+	return filepath.IsAbs(path) || os.IsPathSeparator(path[0])
+}
+
 type Playlists []Playlist
 
 type PlaylistCursor iter.Seq2[Playlist, error]
@@ -150,7 +214,6 @@ type PlaylistRepository interface {
 	Get(id string) (*Playlist, error)
 	GetWithTracks(id string, refreshSmartPlaylist, includeMissing bool) (*Playlist, error)
 	GetAll(options ...QueryOptions) (Playlists, error)
-	GetAllIDs(options ...QueryOptions) ([]string, error)
 	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
@@ -185,6 +248,7 @@ type PlaylistTrackRepository interface {
 	GetAlbumIDs(options ...QueryOptions) ([]string, error)
 	GetMediaFileIDs(options ...QueryOptions) ([]string, error)
 	Add(mediaFileIds []string) (int, error)
+	Insert(mediaFileIds []string, pos int) (int, error)
 	AddAlbums(albumIds []string) (int, error)
 	AddArtists(artistIds []string) (int, error)
 	AddDiscs(discs []DiscID) (int, error)

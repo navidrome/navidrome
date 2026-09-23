@@ -188,6 +188,15 @@ var _ = Describe("Library Service", func() {
 				Expect(libraryRepo.Data[1].Path).To(Equal(newTempDir))
 			})
 
+			It("forwards the columns sent by the client to the repository", func() {
+				library := &model.Library{ID: 1, Name: "Updated Library", Path: tempDir}
+
+				err := repo.Update("1", library, "name", "path")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(libraryRepo.PutCols).To(Equal([]string{"name", "path"}))
+			})
+
 			It("fails when library doesn't exist", func() {
 				// Create a unique temporary directory to avoid path conflicts
 				uniqueTempDir, err := os.MkdirTemp("", "navidrome-nonexistent-")

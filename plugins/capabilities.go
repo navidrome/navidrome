@@ -1,6 +1,11 @@
 package plugins
 
-import "slices"
+import (
+	"regexp"
+	"slices"
+
+	"github.com/navidrome/navidrome/core/agents"
+)
 
 // Capability represents a plugin capability type.
 // Capabilities are detected by checking which functions a plugin exports.
@@ -38,4 +43,26 @@ func detectCapabilities(plugin functionExistsChecker) []Capability {
 // hasCapability checks if the given capabilities slice contains a specific capability.
 func hasCapability(capabilities []Capability, cap Capability) bool {
 	return slices.Contains(capabilities, cap)
+}
+
+// retryLaterRe matches one capability's `<capability>(retry_later[:seconds])` token, which is
+// all a plugin fault carries back across the WASM boundary. The capability is part of the
+// pattern, so another capability's token in the same message cannot mask this one. The leading
+// \b keeps a superstring like `useragent(retry_later)` from matching `agent`.
+var (
+	agentRetryLaterRe     = retryLaterRe("agent")
+	scrobblerRetryLaterRe = retryLaterRe("scrobbler")
+)
+
+func retryLaterRe(capability string) *regexp.Regexp {
+	return regexp.MustCompile(`\b` + capability + `\(retry_later(?::(\d+))?\)`)
+}
+
+// parseRetryLater reports whether msg carries the capability's retry_later token, with its delay.
+func parseRetryLater(re *regexp.Regexp, msg string) (*agents.RetryLaterError, bool) {
+	m := re.FindStringSubmatch(msg)
+	if m == nil {
+		return nil, false
+	}
+	return &agents.RetryLaterError{RetryIn: agents.ParseRetryIn(m[1])}, true
 }

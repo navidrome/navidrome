@@ -7,7 +7,6 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -53,6 +52,10 @@ var _ = Describe("RadioRepository", func() {
 				_, err = repo.Get(radioWithHomePage.ID)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
+
+			It("errors when missing", func() {
+				Expect(repo.Delete("notanid")).To(MatchError(model.ErrNotFound))
+			})
 		})
 
 		Describe("Get", func() {
@@ -76,17 +79,6 @@ var _ = Describe("RadioRepository", func() {
 				Expect(err).To(BeNil())
 				Expect(all[0].ID).To(Equal(radioWithoutHomePage.ID))
 				Expect(all[1].ID).To(Equal(radioWithHomePage.ID))
-			})
-		})
-
-		Describe("GetAllIDs", func() {
-			It("returns the same id set as GetAll", func() {
-				want, err := repo.GetAll()
-				Expect(err).To(BeNil())
-				Expect(want).ToNot(BeEmpty())
-				ids, err := repo.GetAllIDs()
-				Expect(err).To(BeNil())
-				Expect(ids).To(ConsistOf(slice.Map(want, func(r model.Radio) string { return r.ID })))
 			})
 		})
 
@@ -139,6 +131,24 @@ var _ = Describe("RadioRepository", func() {
 					HaveField("ItemID", created.ID),
 					HaveField("Priority", model.ArtworkPriorityBump),
 				)))
+			})
+		})
+
+		Describe("Update", func() {
+			It("only writes the columns sent by the client", func() {
+				radio := radioWithHomePage
+				radio.UploadedImage = "cover.png"
+				Expect(repo.Put(&radio)).To(Succeed())
+
+				persistable := repo.(rest.Persistable)
+				Expect(persistable.Update(radio.ID, &model.Radio{Name: "Renamed"}, "name")).To(Succeed())
+
+				item, err := repo.Get(radio.ID)
+				Expect(err).To(BeNil())
+				Expect(item.Name).To(Equal("Renamed"))
+				Expect(item.UploadedImage).To(Equal("cover.png"))
+				Expect(item.StreamUrl).To(Equal(radio.StreamUrl))
+				Expect(item.HomePageUrl).To(Equal(radio.HomePageUrl))
 			})
 		})
 	})

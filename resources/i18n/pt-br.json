@@ -35,12 +35,12 @@
         "rawTags": "Tags originais",
         "bitDepth": "Profundidade de bits",
         "sampleRate": "Taxa de amostragem",
-        "albumGain": "Ganho do álbum",
-        "trackGain": "Ganho da faixa",
         "missing": "Ausente",
         "libraryName": "Biblioteca",
         "composer": "Compositor",
-        "disc": "Disco %{discNumber}"
+        "disc": "Disco %{discNumber}",
+        "albumGain": "Ganho do álbum",
+        "trackGain": "Ganho da faixa"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -93,7 +93,8 @@
         "addToPlaylist": "Adicionar à playlist",
         "download": "Baixar",
         "info": "Detalhes",
-        "share": "Compartilhar"
+        "share": "Compartilhar",
+        "refresh": "Atualizar Metadados"
       },
       "lists": {
         "all": "Todos",
@@ -199,6 +200,9 @@
         "targetFormat": "Formato",
         "defaultBitRate": "Bitrate padrão",
         "command": "Comando"
+      },
+      "choices": {
+        "noDefaultBitRate": "Nenhum"
       }
     },
     "playlist": {
@@ -213,7 +217,8 @@
         "songCount": "Músicas",
         "comment": "Comentário",
         "sync": "Auto-importar",
-        "path": "Importar de"
+        "path": "Importar de",
+        "starred": "Favorita"
       },
       "actions": {
         "selectPlaylist": "Selecione a playlist:",
@@ -406,7 +411,8 @@
         "requiredHosts": "Hosts necessários",
         "configValidationError": "Falha na validação da configuração:",
         "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido.",
-        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura."
+        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura.",
+        "idHelp": "O ID do plugin, derivado do nome do arquivo. Use-o ao referenciar este plugin em opções de configuração, como Agents."
       },
       "placeholders": {
         "configKey": "chave",
@@ -602,7 +608,11 @@
     "coverUploaded": "Capa atualizada",
     "coverRemoved": "Capa removida",
     "coverUploadError": "Erro ao enviar capa",
-    "coverRemoveError": "Erro ao remover capa"
+    "coverRemoveError": "Erro ao remover capa",
+    "metadataRefreshStarted": "Atualizando metadados em segundo plano",
+    "quickConnectApproved": "%{app} em %{device} está conectado agora",
+    "quickConnectInvalidCode": "Código inválido ou expirado",
+    "quickConnectError": "Não foi possível aprovar o código"
   },
   "menu": {
     "library": "Biblioteca",
@@ -637,6 +647,15 @@
       "multipleLibraries": "%{selected} de %{total} Bibliotecas",
       "selectLibraries": "Selecionar Bibliotecas",
       "none": "Nenhuma"
+    },
+    "onlyFavourites": "Somente favoritas",
+    "quickConnect": {
+      "name": "Conexão Rápida",
+      "code": "Código",
+      "help": "Digite o código exibido por um aplicativo Jellyfin para conectá-lo à sua conta",
+      "confirm": "Conectar %{app} %{version} em %{device} à sua conta?",
+      "continue": "Continuar",
+      "approve": "Aprovar"
     }
   },
   "player": {

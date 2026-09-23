@@ -95,7 +95,7 @@ var _ = Describe("Worker soak", func() {
 		start := time.Now()
 		for i := range soakCycles {
 			it := items[i%len(items)]
-			out, _ := proc.acquire(context.Background(), it)
+			out, _, _ := proc.acquire(context.Background(), it)
 
 			// Read-back exercises the surfaces a caller would use after acquisition.
 			if out == outcomeFound {

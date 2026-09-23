@@ -3,6 +3,8 @@ package agents
 import (
 	"context"
 	"errors"
+	"slices"
+	"time"
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -13,6 +15,29 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var _ = Describe("cooldowns", func() {
+	// Calls to one agent overlap, so a short cooldown can land after a long one started.
+	It("keeps the longer deadline when a shorter park lands after it", func() {
+		c := cooldowns{until: map[string]time.Time{}}
+
+		c.park("fake", time.Hour)
+		c.park("fake", time.Millisecond)
+
+		time.Sleep(10 * time.Millisecond)
+		Expect(c.active("fake")).To(BeTrue())
+	})
+
+	It("extends the deadline when the later park is longer", func() {
+		c := cooldowns{until: map[string]time.Time{}}
+
+		c.park("fake", time.Millisecond)
+		c.park("fake", time.Hour)
+
+		time.Sleep(10 * time.Millisecond)
+		Expect(c.active("fake")).To(BeTrue())
+	})
+})
 
 var _ = Describe("Agents", func() {
 	var ctx context.Context
@@ -65,6 +90,22 @@ var _ = Describe("Agents", func() {
 			// local agent is always appended to the end of the agents list
 			Expect(ags).To(HaveExactElements("empty", "fake", "local"))
 			Expect(ags).ToNot(ContainElement("disabled"))
+		})
+
+		Describe("availableAgentNames", func() {
+			It("combines built-in agents with the given plugins", func() {
+				names := availableAgentNames([]string{"apple-music"})
+				Expect(names).To(ContainElements("apple-music", LocalAgentName, "fake", "empty"))
+			})
+
+			It("returns the names sorted", func() {
+				names := availableAgentNames([]string{"zz-plugin", "aa-plugin"})
+				Expect(slices.IsSorted(names)).To(BeTrue())
+			})
+
+			It("works when there are no plugins", func() {
+				Expect(availableAgentNames(nil)).To(ContainElement(LocalAgentName))
+			})
 		})
 
 		Describe("GetArtistMBID", func() {
@@ -157,6 +198,102 @@ var _ = Describe("Agents", func() {
 				_, err := ag.GetArtistBiography(ctx, "123", "test", "mb123")
 				Expect(err).To(MatchError(ErrNotFound))
 				Expect(mock.Args).To(BeEmpty())
+			})
+		})
+
+		Describe("cooldown", func() {
+			It("skips an agent that returned RetryLaterError until the deadline", func() {
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+
+				// Immediately after: agent is skipped, not called
+				mock.Err = nil
+				calls := mock.Calls
+				_, err = ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(mock.Calls).To(Equal(calls))
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+			})
+
+			// Providers that throttle without saying for how long (Last.fm sends no delay at all)
+			// must still be parked, or the aggregate keeps calling them on every request.
+			It("parks an agent that asked to be retried without a delay", func() {
+				mock.Err = ErrRetryLater
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+
+				mock.Err = nil
+				calls := mock.Calls
+				_, err = ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(mock.Calls).To(Equal(calls), "the default cooldown must outlast the request")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+			})
+
+			It("calls the agent again once the cooldown expires", func() {
+				mock.Err = &RetryLaterError{RetryIn: 10 * time.Millisecond}
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+
+				mock.Err = nil
+				Eventually(func() (string, error) {
+					return ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				}, 5*time.Second, 10*time.Millisecond).Should(Equal("bio"))
+			})
+
+			It("returns ErrNotFound, not ErrRetryLater, when agents failed for other reasons", func() {
+				mock.Err = errors.New("boom")
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
+			})
+
+			// ErrRetryLater tells the caller "nobody answered, do not cache this". A definitive
+			// answer from any other agent is an answer, throttled peer or not.
+			It("returns ErrNotFound when another agent answered with a definitive miss", func() {
+				other := &mockAgent{Err: ErrNotFound}
+				Register("fake2", func(model.DataStore) Interface { return other })
+				conf.Server.Agents = "fake,fake2"
+				ag = createAgents(ds, nil)
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+
+				_, err := ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
+
+				// The cooldown was still recorded for the throttled agent
+				calls := mock.Calls
+				_, _ = ag.GetArtistBiography(ctx, "id", "name", "mbid")
+				Expect(mock.Calls).To(Equal(calls))
+			})
+
+			It("returns ErrNotFound when another agent answered with an empty slice", func() {
+				empty := &testImageAgent{Name: "emptyImages"}
+				Register("emptyImages", func(model.DataStore) Interface { return empty })
+				conf.Server.Agents = "fake,emptyImages"
+				ag = createAgents(ds, nil)
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+
+				_, err := ag.GetArtistImages(ctx, "123", "test", "mb123")
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
+			})
+
+			It("returns ErrRetryLater from GetSimilarArtists when only cooling agents remain", func() {
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+				_, err := ag.GetSimilarArtists(ctx, "123", "test", "mb123", 2)
+				Expect(errors.Is(err, ErrRetryLater)).To(BeTrue())
+			})
+
+			It("returns ErrNotFound from GetSimilarArtists when another agent answered", func() {
+				other := &mockAgent{Err: ErrNotFound}
+				Register("fake2", func(model.DataStore) Interface { return other })
+				conf.Server.Agents = "fake,fake2"
+				ag = createAgents(ds, nil)
+				mock.Err = &RetryLaterError{RetryIn: time.Hour}
+
+				_, err := ag.GetSimilarArtists(ctx, "123", "test", "mb123", 2)
+				Expect(errors.Is(err, ErrNotFound)).To(BeTrue())
+				Expect(errors.Is(err, ErrRetryLater)).To(BeFalse())
 			})
 		})
 
@@ -423,8 +560,9 @@ var _ = Describe("Agents", func() {
 })
 
 type mockAgent struct {
-	Args []any
-	Err  error
+	Args  []any
+	Err   error
+	Calls int
 }
 
 func (a *mockAgent) AgentName() string {
@@ -449,6 +587,7 @@ func (a *mockAgent) GetArtistURL(_ context.Context, id, name, mbid string) (stri
 
 func (a *mockAgent) GetArtistBiography(_ context.Context, id, name, mbid string) (string, error) {
 	a.Args = []any{id, name, mbid}
+	a.Calls++
 	if a.Err != nil {
 		return "", a.Err
 	}

@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -459,6 +463,75 @@ var _ = Describe("client", func() {
 					Score:       124,
 				},
 			}))
+		})
+	})
+
+	Describe("rate limiting", func() {
+		It("returns RetryLaterError with the header delay on 429", func() {
+			httpClient.Res = http.Response{
+				StatusCode: 429,
+				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"3"}},
+				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"You have exceeded your rate limit."}`)),
+			}
+			_, err := client.validateToken(context.Background(), "token")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
+			Expect(ok).To(BeTrue())
+			Expect(retry.RetryIn).To(Equal(3 * time.Second))
+		})
+
+		It("returns RetryLaterError with zero delay when no header is present", func() {
+			httpClient.Res = http.Response{
+				StatusCode: 429,
+				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"rate limited"}`)),
+			}
+			_, err := client.validateToken(context.Background(), "token")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+			retry, _ := errors.AsType[*agents.RetryLaterError](err)
+			Expect(retry.RetryIn).To(BeZero())
+		})
+
+		DescribeTable("caps absurd header values at one hour",
+			func(header string) {
+				httpClient.Res = http.Response{
+					StatusCode: 429,
+					Header:     http.Header{"X-Ratelimit-Reset-In": []string{header}},
+					Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"rate limited"}`)),
+				}
+				_, err := client.validateToken(context.Background(), "token")
+				retry, _ := errors.AsType[*agents.RetryLaterError](err)
+				Expect(retry.RetryIn).To(Equal(time.Hour))
+			},
+			Entry("a large value", "999999"),
+			Entry("a huge value", "99999999999"),
+			// Scaling this to nanoseconds before capping wraps past 2^64, landing on ~0.29s.
+			Entry("a value that overflows int64 nanoseconds", "18446744074"),
+		)
+
+		It("maps a body-level 429 sent with a non-429 status", func() {
+			httpClient.Res = http.Response{
+				StatusCode: 200,
+				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"7"}},
+				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"You have exceeded your rate limit."}`)),
+			}
+			_, err := client.validateToken(context.Background(), "token")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
+			Expect(ok).To(BeTrue())
+			Expect(retry.RetryIn).To(Equal(7 * time.Second))
+		})
+
+		It("returns RetryLaterError on a 429 from makeGenericRequest", func() {
+			httpClient.Res = http.Response{
+				StatusCode: 429,
+				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"5"}},
+				Body:       io.NopCloser(strings.NewReader(`{"code":429,"error":"rate limited"}`)),
+			}
+			_, err := client.getArtistUrl(context.Background(), "1")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
+			Expect(ok).To(BeTrue())
+			Expect(retry.RetryIn).To(Equal(5 * time.Second))
 		})
 	})
 })
