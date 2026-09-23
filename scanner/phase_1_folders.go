@@ -513,25 +513,25 @@ func (p *phaseFolders) finalize(err error) error {
 	if err != nil {
 		return err
 	}
-	errF := p.ds.WithTx(func(tx model.DataStore) error {
+	errF := p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
 		for _, job := range p.jobs {
 			// Mark all folders that were not updated as missing
 			if len(job.lastUpdates) == 0 {
 				continue
 			}
 			folderIDs := slices.Collect(maps.Keys(job.lastUpdates))
-			err := tx.Folder(p.ctx).MarkMissing(true, folderIDs...)
+			err := tx.Folder(ctx).MarkMissing(true, folderIDs...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking missing folders", "lib", job.lib.Name, err)
 				return err
 			}
-			err = tx.MediaFile(p.ctx).MarkMissingByFolder(true, folderIDs...)
+			err = tx.MediaFile(ctx).MarkMissingByFolder(true, folderIDs...)
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error marking tracks in missing folders", "lib", job.lib.Name, err)
 				return err
 			}
 			// Touch all albums that have missing folders, so they get refreshed in later phases
-			_, err = tx.Album(p.ctx).TouchByMissingFolder()
+			_, err = tx.Album(ctx).TouchByMissingFolder()
 			if err != nil {
 				log.Error(p.ctx, "Scanner: Error touching albums with missing folders", "lib", job.lib.Name, err)
 				return err

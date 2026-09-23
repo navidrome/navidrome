@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"maps"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -144,6 +145,59 @@ var _ = Describe("phaseMissingTracks", func() {
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
+		})
+
+		Context("when the move transaction is rerun after a busy rollback", func() {
+			var rerunDS *rerunTxDS
+			BeforeEach(func() {
+				rerunDS = &rerunTxDS{MockDataStore: ds.(*tests.MockDataStore)}
+				rerunDS.snapshot = func() func() {
+					saved := maps.Clone(mr.Data)
+					return func() { mr.Data = saved }
+				}
+				phase = createPhaseMissingTracks(ctx, state, rerunDS)
+			})
+
+			It("keeps the moved track", func() {
+				missingTrack := model.MediaFile{ID: "1", PID: "A", Path: "dir1/path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+				matchedTrack := model.MediaFile{ID: "2", PID: "A", Path: "dir2/path2.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+				_, err := phase.processMissingTracks(&missingTracks{
+					missing: []model.MediaFile{missingTrack},
+					matched: []model.MediaFile{matchedTrack},
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				movedTrack, err := ds.MediaFile(ctx).Get("1")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
+			})
+
+			It("reassigns the album annotations in the attempt that commits", func() {
+				albumRepo := tests.CreateMockAlbumRepo()
+				rerunDS.MockedAlbum = albumRepo
+				restoreTracks := rerunDS.snapshot
+				rerunDS.snapshot = func() func() {
+					restore := restoreTracks()
+					return func() {
+						restore()
+						albumRepo.ReassignAnnotationCalls = nil
+					}
+				}
+				missingTrack := model.MediaFile{ID: "1", PID: "A", AlbumID: "old-album", Path: "dir1/path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+				matchedTrack := model.MediaFile{ID: "2", PID: "A", AlbumID: "new-album", Path: "dir2/path2.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&matchedTrack)
+
+				_, err := phase.processMissingTracks(&missingTracks{
+					missing: []model.MediaFile{missingTrack},
+					matched: []model.MediaFile{matchedTrack},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(albumRepo.ReassignAnnotationCalls).To(HaveKeyWithValue("old-album", "new-album"))
+			})
 		})
 
 		It("should move the matched track when the missing track has the same tags and filename", func() {
@@ -957,3 +1011,17 @@ var _ = Describe("phaseMissingTracks", func() {
 		})
 	})
 })
+
+// rerunTxDS runs every WithTxRetry block twice, as a retry after a rolled-back busy attempt would.
+// The mock is not transactional, so snapshot returns the function that plays the rollback.
+type rerunTxDS struct {
+	*tests.MockDataStore
+	snapshot func() (rollback func())
+}
+
+func (d *rerunTxDS) WithTxRetry(ctx context.Context, block func(context.Context, model.DataStore) error, _ ...string) error {
+	rollback := d.snapshot()
+	_ = block(ctx, d.MockDataStore)
+	rollback()
+	return block(ctx, d.MockDataStore)
+}
