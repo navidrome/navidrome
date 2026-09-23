@@ -3,8 +3,8 @@ package persistence
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/db"
@@ -139,11 +139,15 @@ func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository
 	return nil
 }
 
-func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {
-	var msg string
+func scopeLabel(scope []string) string {
 	if len(scope) > 0 {
-		msg = scope[0]
+		return scope[0]
 	}
+	return ""
+}
+
+func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string) error {
+	msg := scopeLabel(scope)
 	start := time.Now()
 	conn, inTx := s.db.(*dbx.DB)
 	if !inTx {
@@ -198,7 +202,7 @@ func (s *SQLStore) WithTxRetry(ctx context.Context, block func(ctx context.Conte
 		if attempt == txMaxRetries || !db.IsBusy(err) {
 			return err
 		}
-		log.Warn(ctx, "Database busy, retrying transaction", "scope", strings.Join(scope, " "), "attempt", attempt+1, err)
+		log.Warn(ctx, "Database busy, retrying transaction", "scope", scopeLabel(scope), "attempt", attempt+1, err)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -253,9 +257,9 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "remove orphan playlist tracks", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
 	)
 	if err != nil {
-		log.Error(ctx, "Error tidying up database", err)
+		return fmt.Errorf("tidying up database: %w", err)
 	}
-	return err
+	return nil
 }
 
 func (s *SQLStore) getDBXBuilder() dbx.Builder {

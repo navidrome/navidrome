@@ -212,8 +212,8 @@ func (p *phaseFolders) stages() []ppl.Stage[*folderEntry] {
 
 func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	defer p.measure(entry)()
-	if p.walkCtx.Err() != nil {
-		return entry, context.Cause(p.walkCtx)
+	if err := context.Cause(p.walkCtx); err != nil {
+		return entry, err
 	}
 
 	// Load children mediafiles from DB
@@ -343,7 +343,7 @@ func (p *phaseFolders) persistChanges(entry *folderEntry) (*folderEntry, error) 
 		return p.persistFolder(ctx, tx, entry)
 	}, "scanner: persist changes")
 	if err != nil {
-		log.Error(p.ctx, "Scanner: Error persisting changes to DB", "folder", entry.path, err)
+		log.Error(ctx, "Scanner: Error persisting changes to DB", err)
 		p.stopWalk(err)
 		return entry, err
 	}
@@ -426,7 +426,7 @@ func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, en
 	if len(entry.tracks) > 0 {
 		trackIDs := slice.Map(entry.tracks, func(t model.MediaFile) string { return t.ID })
 		if err := tx.Artwork(ctx).DeleteForItems(model.KindMediaFileArtwork, trackIDs); err != nil {
-			log.Warn(ctx, "Scanner: could not invalidate media_file artwork", "folder", entry.path, err)
+			log.Warn(ctx, "Scanner: could not invalidate media_file artwork", err)
 		}
 	}
 
@@ -457,7 +457,7 @@ func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, en
 			enqueue = queue.EnqueueIfMissing
 		}
 		if err := enqueue(queueItems...); err != nil {
-			log.Warn(ctx, "Scanner: could not enqueue artwork resolution", "folder", entry.path, err)
+			log.Warn(ctx, "Scanner: could not enqueue artwork resolution", err)
 		}
 	}
 	return nil
@@ -513,33 +513,26 @@ func (p *phaseFolders) finalize(err error) error {
 	if err != nil {
 		return err
 	}
-	errF := p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
+	return p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
 		for _, job := range p.jobs {
 			// Mark all folders that were not updated as missing
 			if len(job.lastUpdates) == 0 {
 				continue
 			}
 			folderIDs := slices.Collect(maps.Keys(job.lastUpdates))
-			err := tx.Folder(ctx).MarkMissing(true, folderIDs...)
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error marking missing folders", "lib", job.lib.Name, err)
-				return err
+			if err := tx.Folder(ctx).MarkMissing(true, folderIDs...); err != nil {
+				return fmt.Errorf("marking missing folders in %s: %w", job.lib.Name, err)
 			}
-			err = tx.MediaFile(ctx).MarkMissingByFolder(true, folderIDs...)
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error marking tracks in missing folders", "lib", job.lib.Name, err)
-				return err
+			if err := tx.MediaFile(ctx).MarkMissingByFolder(true, folderIDs...); err != nil {
+				return fmt.Errorf("marking tracks in missing folders in %s: %w", job.lib.Name, err)
 			}
 			// Touch all albums that have missing folders, so they get refreshed in later phases
-			_, err = tx.Album(ctx).TouchByMissingFolder()
-			if err != nil {
-				log.Error(p.ctx, "Scanner: Error touching albums with missing folders", "lib", job.lib.Name, err)
-				return err
+			if _, err := tx.Album(ctx).TouchByMissingFolder(); err != nil {
+				return fmt.Errorf("touching albums with missing folders in %s: %w", job.lib.Name, err)
 			}
 		}
 		return nil
 	}, "scanner: finalize phaseFolders")
-	return errF
 }
 
 var _ phase[*folderEntry] = (*phaseFolders)(nil)

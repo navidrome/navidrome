@@ -266,9 +266,7 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 					log.Debug(ctx, "Scanner: Running selective GC", "libraryIDs", libraryIDs)
 				}
 
-				err := tx.GC(ctx, libraryIDs...)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error running GC", err)
+				if err := tx.GC(ctx, libraryIDs...); err != nil {
 					return fmt.Errorf("running GC: %w", err)
 				}
 				log.Debug(ctx, "Scanner: GC completed", "elapsed", time.Since(start))
@@ -339,26 +337,19 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 		start := time.Now()
 		return s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
 			for _, lib := range state.libraries {
-				err := tx.Library(ctx).ScanEnd(lib.ID)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
-					return fmt.Errorf("updating last scan completed: %w", err)
+				if err := tx.Library(ctx).ScanEnd(lib.ID); err != nil {
+					return fmt.Errorf("updating last scan completed for %s: %w", lib.Name, err)
 				}
-				err = tx.Property(ctx).Put(consts.PIDTrackKey, conf.Server.PID.Track)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error updating track PID conf", err)
+				if err := tx.Property(ctx).Put(consts.PIDTrackKey, conf.Server.PID.Track); err != nil {
 					return fmt.Errorf("updating track PID conf: %w", err)
 				}
-				err = tx.Property(ctx).Put(consts.PIDAlbumKey, conf.Server.PID.Album)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error updating album PID conf", err)
+				if err := tx.Property(ctx).Put(consts.PIDAlbumKey, conf.Server.PID.Album); err != nil {
 					return fmt.Errorf("updating album PID conf: %w", err)
 				}
 				if state.changesDetected.Load() {
 					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
 					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
-						log.Error(ctx, "Scanner: Error refreshing library stats", "lib", lib.Name, err)
-						return fmt.Errorf("refreshing library stats: %w", err)
+						return fmt.Errorf("refreshing library stats for %s: %w", lib.Name, err)
 					}
 				} else {
 					log.Debug(ctx, "Scanner: No changes detected, skipping library stats refresh", "lib", lib.Name)

@@ -134,9 +134,9 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	start := time.Now()
 	var cnt int64
 	err = p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
-		var err error
-		cnt, err = tx.Album(ctx).RefreshPlayCounts()
-		return err
+		var txErr error
+		cnt, txErr = tx.Album(ctx).RefreshPlayCounts()
+		return txErr
 	}, "scanner: refresh album play counts")
 	if err != nil {
 		return fmt.Errorf("refreshing album annotations: %w", err)
@@ -146,9 +146,9 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	// Refresh artist annotations
 	start = time.Now()
 	err = p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
-		var err error
-		cnt, err = tx.Artist(ctx).RefreshPlayCounts()
-		return err
+		var txErr error
+		cnt, txErr = tx.Artist(ctx).RefreshPlayCounts()
+		return txErr
 	}, "scanner: refresh artist play counts")
 	if err != nil {
 		return fmt.Errorf("refreshing artist annotations: %w", err)
