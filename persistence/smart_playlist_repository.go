@@ -1,11 +1,14 @@
 package persistence
 
 import (
+	"slices"
 	"time"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
+	"golang.org/x/text/unicode/norm"
 )
 
 // PlaylistRepository methods to handle smart playlists, which are defined by criteria and automatically populated
@@ -16,6 +19,17 @@ import (
 
 // refreshSmartPlaylist evaluates the criteria of a smart playlist and updates its tracks accordingly.
 func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
+	return r.refreshSmartPlaylistTree(pls, map[string]struct{}{})
+}
+
+// The visited set stops playlists that reference each other from recursing forever.
+func (r *playlistRepository) refreshSmartPlaylistTree(pls *model.Playlist, visited map[string]struct{}) bool {
+	if _, seen := visited[pls.ID]; seen {
+		log.Trace(r.ctx, "Skipping already visited smart playlist", "playlist", pls.Name, "id", pls.ID)
+		return false
+	}
+	visited[pls.ID] = struct{}{}
+
 	usr := loggedUser(r.ctx)
 	if !r.shouldRefreshSmartPlaylist(pls, usr) {
 		return false
@@ -30,9 +44,9 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	rulesSQL := newSmartPlaylistCriteria(*pls.Rules, withSmartPlaylistOwner(*usr))
+	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(), withSmartPlaylistOwner(*usr))
 
-	if !r.refreshChildPlaylists(pls, rulesSQL) {
+	if !r.refreshChildPlaylists(pls, rulesSQL, visited) {
 		return false
 	}
 
@@ -58,7 +72,8 @@ func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
 		return false
 	}
 
-	now := time.Now()
+	// Reuse the stamp refreshCounters just wrote, so evaluated_at and updated_at agree
+	now := pls.UpdatedAt
 	updSql := Update(r.tableName).Set("evaluated_at", now).Where(Eq{"id": pls.ID})
 	if _, err = r.executeSQL(updSql); err != nil {
 		log.Error(r.ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
@@ -88,26 +103,45 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 
 // refreshChildPlaylists handles refreshing any child playlists that are referenced in the smart playlist criteria.
 // Returns false if child playlists could not be loaded (DB error), signaling the parent refresh should abort.
-func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria) bool {
+func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria, visited map[string]struct{}) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
-	if len(childPlaylistIds) == 0 {
+	childPlaylistPaths := rulesSQL.ChildPlaylistPaths()
+	if len(childPlaylistIds) == 0 && len(childPlaylistPaths) == 0 {
 		return true
 	}
 
-	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: Eq{"playlist.id": childPlaylistIds}})
+	var conditions Or
+	if len(childPlaylistIds) > 0 {
+		conditions = append(conditions, Eq{"playlist.id": childPlaylistIds})
+	}
+	if len(childPlaylistPaths) > 0 {
+		lookupPaths := slices.Concat(slice.Map(childPlaylistPaths, pathVariants)...)
+		conditions = append(conditions, Eq{"playlist.path": lookupPaths})
+	}
+
+	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: conditions})
 	if err != nil {
-		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, err)
+		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, "childPaths", childPlaylistPaths, err)
 		return false
 	}
 
-	found := make(map[string]struct{}, len(childPlaylists))
+	found := make(map[string]struct{}, len(childPlaylists)*2)
 	for i := range childPlaylists {
 		found[childPlaylists[i].ID] = struct{}{}
-		r.refreshSmartPlaylist(&childPlaylists[i])
+		if childPlaylists[i].Path != "" {
+			found[norm.NFC.String(childPlaylists[i].Path)] = struct{}{}
+		}
+		r.refreshSmartPlaylistTree(&childPlaylists[i], visited)
 	}
 	for _, id := range childPlaylistIds {
 		if _, ok := found[id]; !ok {
 			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "childId", id, "ownerId", pls.OwnerID)
+		}
+	}
+
+	for _, path := range childPlaylistPaths {
+		if _, ok := found[norm.NFC.String(path)]; !ok {
+			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "path", path, "ownerId", pls.OwnerID)
 		}
 	}
 	return true
@@ -119,13 +153,11 @@ func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQ
 		return nil
 	}
 
-	exprJoins := rulesSQL.ExpressionJoins()
 	countSq := Select("count(*) as count").From("media_file")
-	countSq = r.addMediaFileAnnotationJoin(countSq, userID)
-	countSq = r.addSmartPlaylistJoins(countSq, exprJoins, userID)
+	countSq = rulesSQL.applyExpressionJoins(countSq, userID)
 	countSq = r.applyLibraryFilter(countSq, "media_file")
 
-	cond, err := rulesSQL.Where()
+	cond, err := rulesSQL.where()
 	if err != nil {
 		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
 		return err
@@ -146,50 +178,18 @@ func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQ
 // buildSmartPlaylistQuery constructs the SQL query to select media files matching the smart playlist criteria,
 // including the joins its fields require and library filtering.
 func (r *playlistRepository) buildSmartPlaylistQuery(pls *model.Playlist, rulesSQL smartPlaylistCriteria, userID string) SelectBuilder {
-	orderBy := rulesSQL.OrderBy()
+	orderBy := rulesSQL.orderBy()
 	sq := Select("row_number() over (order by "+orderBy+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file")
-	sq = r.addMediaFileAnnotationJoin(sq, userID)
-
-	requiredJoins := rulesSQL.RequiredJoins()
-	sq = r.addSmartPlaylistJoins(sq, requiredJoins, userID)
+	sq = rulesSQL.applyRequiredJoins(sq, userID)
 	sq = r.applyLibraryFilter(sq, "media_file")
-	return sq
-}
-
-// addMediaFileAnnotationJoin adds a left join to the annotation table for media files, filtering by user ID to include
-// user-specific annotations in the smart playlist criteria evaluation.
-func (r *playlistRepository) addMediaFileAnnotationJoin(sq SelectBuilder, userID string) SelectBuilder {
-	return sq.LeftJoin("annotation on ("+
-		"annotation.item_id = media_file.id"+
-		" AND annotation.item_type = 'media_file'"+
-		" AND annotation.user_id = ?)", userID)
-}
-
-// addSmartPlaylistJoins adds the left joins required by the criteria's fields.
-func (r *playlistRepository) addSmartPlaylistJoins(sq SelectBuilder, joins smartPlaylistJoinType, userID string) SelectBuilder {
-	if joins.has(smartPlaylistJoinAlbumAnnotation) {
-		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
-			"album_annotation.item_id = media_file.album_id"+
-			" AND album_annotation.item_type = 'album'"+
-			" AND album_annotation.user_id = ?)", userID)
-	}
-	if joins.has(smartPlaylistJoinArtistAnnotation) {
-		sq = sq.LeftJoin("annotation AS artist_annotation ON ("+
-			"artist_annotation.item_id = media_file.artist_id"+
-			" AND artist_annotation.item_type = 'artist'"+
-			" AND artist_annotation.user_id = ?)", userID)
-	}
-	if joins.has(smartPlaylistJoinAlbum) {
-		sq = sq.LeftJoin("album ON album.id = media_file.album_id")
-	}
 	return sq
 }
 
 // addCriteria applies the where conditions, limit, offset, and order by clauses to the SQL query based on the
 // smart playlist criteria.
 func (r *playlistRepository) addCriteria(sql SelectBuilder, cSQL smartPlaylistCriteria) (SelectBuilder, error) {
-	cond, err := cSQL.Where()
+	cond, err := cSQL.where()
 	if err != nil {
 		return sql, err
 	}
@@ -197,7 +197,7 @@ func (r *playlistRepository) addCriteria(sql SelectBuilder, cSQL smartPlaylistCr
 	if cSQL.Criteria.Limit > 0 {
 		sql = sql.Limit(uint64(cSQL.Criteria.Limit)).Offset(uint64(cSQL.Criteria.Offset))
 	}
-	if order := cSQL.OrderBy(); order != "" {
+	if order := cSQL.orderBy(); order != "" {
 		sql = sql.OrderBy(order)
 	}
 	return sql, nil

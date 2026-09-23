@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,10 +42,9 @@ var _ = Describe("common.go", func() {
 		})
 
 		It("returns the absolute path when library exists", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-core)")
 			ctx := context.Background()
 			abs := AbsolutePath(ctx, ds, libId, path)
-			Expect(abs).To(Equal("/library/root/music/file.mp3"))
+			Expect(abs).To(Equal(filepath.FromSlash("/library/root/music/file.mp3")))
 		})
 
 		It("returns the original path if library not found", func() {

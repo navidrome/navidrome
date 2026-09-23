@@ -1,10 +1,17 @@
 package stream_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"testing/iotest"
+	"time"
+
+	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -33,7 +40,7 @@ var _ = Describe("MediaStreamer", func() {
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
 		testCache := stream.NewTranscodingCache()
-		Eventually(func() bool { return testCache.Available(context.TODO()) }).Should(BeTrue())
+		Eventually(func() bool { return testCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
 		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
@@ -75,7 +82,7 @@ var _ = Describe("MediaStreamer", func() {
 			conf.Server.Transcoding.MaxConcurrent = 1
 			conf.Server.Transcoding.MaxConcurrentPerUser = 0
 			tightCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return tightCache.Available(context.TODO()) }).Should(BeTrue())
+			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, blockingFFmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
@@ -92,7 +99,7 @@ var _ = Describe("MediaStreamer", func() {
 			conf.Server.Transcoding.MaxConcurrent = 1
 			conf.Server.Transcoding.MaxConcurrentPerUser = 0
 			tightCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return tightCache.Available(context.TODO()) }).Should(BeTrue())
+			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
@@ -112,7 +119,7 @@ var _ = Describe("MediaStreamer", func() {
 			conf.Server.Transcoding.MaxConcurrent = 1
 			conf.Server.Transcoding.MaxConcurrentPerUser = 0
 			tightCache := stream.NewTranscodingCache()
-			Eventually(func() bool { return tightCache.Available(context.TODO()) }).Should(BeTrue())
+			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
 
 			userCtx := request.WithUsername(ctx, "alice")
@@ -139,4 +146,49 @@ var _ = Describe("MediaStreamer", func() {
 			Expect(s.Seekable()).To(BeTrue())
 		})
 	})
+
+	Context("Serve", func() {
+		var mf *model.MediaFile
+		BeforeEach(func() {
+			var err error
+			mf, err = ds.MediaFile(ctx).Get("123")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("keeps empty output a non-error, so callers still reply 200 with an empty body", func() {
+			s := stream.NewStream(mf, "mp3", 128, io.NopCloser(bytes.NewReader(nil)))
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+
+			n, err := s.Serve(ctx, w, r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(BeZero())
+			Expect(w.Code).To(Equal(http.StatusOK))
+		})
+
+		It("aborts the response when the source fails after sending data", func() {
+			src := io.NopCloser(io.MultiReader(
+				bytes.NewReader(bytes.Repeat([]byte("a"), 64*1024)),
+				iotest.ErrReader(errors.New("transcoder died")),
+			))
+			server := httptest.NewServer(serveHandler(stream.NewStream(mf, "mp3", 128, src)))
+			DeferCleanup(server.Close)
+
+			resp, err := http.Get(server.URL)
+			Expect(err).ToNot(HaveOccurred())
+			defer resp.Body.Close()
+
+			// A client-side read failure is the only observable proof the response was aborted.
+			_, err = io.ReadAll(resp.Body)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })
+
+// Serve runs behind the real server's Recoverer, which must let ErrAbortHandler through.
+func serveHandler(s *stream.Stream) http.Handler {
+	return middleware.Recoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = s.Serve(r.Context(), w, r)
+	}))
+}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"time"
 
 	extism "github.com/extism/go-sdk"
@@ -147,7 +148,7 @@ var hostServices = []hostServiceEntry{
 		create: func(ctx *serviceContext) ([]extism.HostFunction, io.Closer, error) {
 			perm := ctx.permissions.Http
 			service := newHTTPService(ctx.pluginName, perm)
-			return host.RegisterHTTPHostFunctions(service), nil, nil
+			return host.RegisterHTTPHostFunctions(service), service, nil
 		},
 	},
 	{
@@ -232,6 +233,11 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 		if !p.Enabled {
 			continue
 		}
+		// Instantiating a plugin creates its host services, so a transient load takes only the
+		// ones it may actually consult.
+		if m.transient != nil && !slices.Contains(m.transient.only, p.ID) {
+			continue
+		}
 
 		plugin := p // Capture for goroutine
 		g.Go(func() error {
@@ -246,19 +252,21 @@ func (m *Manager) loadEnabledPlugins(ctx context.Context) error {
 			}()
 
 			if err := m.loadPluginWithConfig(&plugin); err != nil {
-				// Store error in DB
-				plugin.LastError = err.Error()
-				plugin.Enabled = false
-				plugin.UpdatedAt = time.Now()
-				if putErr := repo.Put(&plugin); putErr != nil {
-					log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+				// A transient load must not disable the user's plugin just for looking at it.
+				if m.transient == nil {
+					plugin.LastError = err.Error()
+					plugin.Enabled = false
+					plugin.UpdatedAt = time.Now()
+					if putErr := repo.Put(&plugin); putErr != nil {
+						log.Error(ctx, "Failed to update plugin error in DB", "plugin", plugin.ID, putErr)
+					}
 				}
 				log.Error(ctx, "Failed to load plugin", "plugin", plugin.ID, err)
 				return nil
 			}
 
 			// Clear any previous error
-			if plugin.LastError != "" {
+			if plugin.LastError != "" && m.transient == nil {
 				plugin.LastError = ""
 				plugin.UpdatedAt = time.Now()
 				if putErr := repo.Put(&plugin); putErr != nil {
@@ -426,8 +434,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
-	m.mu.Lock()
-	m.plugins[p.ID] = &plugin{
+	loadedPlugin := &plugin{
 		name:           p.ID,
 		path:           p.Path,
 		manifest:       pkg.Manifest,
@@ -441,11 +448,17 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		fsConfig:       fsConfig,
 		lyricsSem:      make(chan struct{}, maxConcurrentLyricsCalls),
 	}
+	m.mu.Lock()
+	m.plugins[p.ID] = loadedPlugin
 	m.mu.Unlock()
 	loaded = true
 
-	// Call plugin init function
-	callPluginInit(ctx, m.plugins[p.ID])
+	// Init is the plugin's first chance to run arbitrary code: open sockets, create task queues,
+	// schedule work. Only a caller that already intends to reach the network asks for it.
+	// Use the local: loads run concurrently, so reading the map back here would race the writes.
+	if m.transient == nil || m.transient.runInit {
+		callPluginInit(ctx, loadedPlugin)
+	}
 
 	return nil
 }
@@ -485,18 +498,12 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 	return pluginConfig, nil
 }
 
-// buildExtismManifest describes the plugin to extism. It must never set
-// AllowedPaths: extism would replace our jailed FSConfig with plain dir mounts.
+// buildExtismManifest describes the plugin to extism. It must never set AllowedPaths (extism would replace our
+// jailed FSConfig) nor AllowedHosts (extism's http_request has no SSRF guard; plugins must use host.HTTPSend).
 func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
-	manifest := extism.Manifest{
+	return extism.Manifest{
 		Wasm:    []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
 		Config:  pluginConfig,
 		Timeout: uint64(defaultTimeout.Milliseconds()),
 	}
-	if pkg.Manifest.Permissions != nil && pkg.Manifest.Permissions.Http != nil {
-		if hosts := pkg.Manifest.Permissions.Http.RequiredHosts; len(hosts) > 0 {
-			manifest.AllowedHosts = hosts
-		}
-	}
-	return manifest
 }

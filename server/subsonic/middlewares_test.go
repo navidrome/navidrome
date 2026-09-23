@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -306,6 +308,166 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeFalse())
 			})
 		})
+
+		When("failed attempts reach AuthRequestLimit", func() {
+			var cp http.Handler
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.AuthRequestLimit = 3
+				conf.Server.AuthWindowLength = time.Minute
+				cp = authenticate(ds)(next)
+			})
+
+			serve := func(r *http.Request) *httptest.ResponseRecorder {
+				next.called = false
+				rec := httptest.NewRecorder()
+				cp.ServeHTTP(rec, r)
+				return rec
+			}
+			failTimes := func(n int, params ...string) {
+				for range n {
+					Expect(serve(newGetRequest(params...)).Body.String()).To(ContainSubstring(`code="40"`))
+				}
+			}
+
+			It("rejects the correct password exactly like a wrong one", func() {
+				failTimes(3, "u=admin", "p=WRONG")
+
+				rec := serve(newGetRequest("u=admin", "p=wordpass"))
+
+				Expect(next.called).To(BeFalse())
+				Expect(rec.Code).To(Equal(http.StatusOK))
+				Expect(rec.Body.String()).To(ContainSubstring(`code="40"`))
+				Expect(rec.Header().Get("Retry-After")).To(BeEmpty())
+			})
+
+			It("counts attempts against unknown usernames", func() {
+				failTimes(3, "u=newuser", "p=secret")
+				_ = ds.User(context.TODO()).Put(&model.User{UserName: "newuser", NewPassword: "secret"})
+
+				serve(newGetRequest("u=newuser", "p=secret"))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("treats usernames case-insensitively", func() {
+				failTimes(3, "u=ADMIN", "p=WRONG")
+
+				serve(newGetRequest("u=admin", "p=wordpass"))
+				Expect(next.called).To(BeFalse())
+			})
+
+			It("does not count successful logins", func() {
+				for range 10 {
+					serve(newGetRequest("u=admin", "p=wordpass"))
+					Expect(next.called).To(BeTrue())
+				}
+			})
+
+			It("does not count server errors", func() {
+				userRepo := ds.User(context.TODO()).(*tests.MockedUserRepo)
+				userRepo.Error = errors.New("db down")
+				failTimes(5, "u=admin", "p=wordpass")
+				userRepo.Error = nil
+
+				serve(newGetRequest("u=admin", "p=wordpass"))
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("does not block other usernames from the same IP", func() {
+				_ = ds.User(context.TODO()).Put(&model.User{UserName: "other", NewPassword: "otherpass"})
+				failTimes(3, "u=admin", "p=WRONG")
+
+				serve(newGetRequest("u=other", "p=otherpass"))
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("does not block the same username from another IP", func() {
+				failTimes(3, "u=admin", "p=WRONG")
+
+				r := newGetRequest("u=admin", "p=wordpass")
+				r.RemoteAddr = "198.51.100.7:1234"
+				serve(r)
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("does not limit reverse proxy authentication", func() {
+				conf.Server.ExtAuth.TrustedSources = "192.168.1.1/24"
+				conf.Server.ExtAuth.UserHeader = "Remote-User"
+				failTimes(3, "u=admin", "p=WRONG")
+
+				r := newGetRequest()
+				r.Header.Add("Remote-User", "admin")
+				r = r.WithContext(request.WithReverseProxyIp(r.Context(), "192.168.1.1"))
+				serve(r)
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("is disabled when AuthRequestLimit is 0", func() {
+				conf.Server.AuthRequestLimit = 0
+				cp = authenticate(ds)(next)
+				failTimes(10, "u=admin", "p=WRONG")
+
+				serve(newGetRequest("u=admin", "p=wordpass"))
+				Expect(next.called).To(BeTrue())
+			})
+		})
+
+		When("valid requests overlap", func() {
+			var gate *gatedUserRepo
+			var gatedDS model.DataStore
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.AuthRequestLimit = 5
+				conf.Server.AuthWindowLength = time.Minute
+				gate = &gatedUserRepo{
+					UserRepository: ds.User(context.TODO()),
+					entered:        make(chan struct{}, 64),
+					proceed:        make(chan struct{}),
+				}
+				gatedDS = &gatedDataStore{DataStore: ds, users: gate}
+			})
+
+			It("lets every valid request through while checks are in flight", func() {
+				const burst = 6
+				cp := authenticate(gatedDS)(&countingHandler{})
+				var passed atomic.Int32
+				var wg sync.WaitGroup
+				for range burst {
+					wg.Go(func() {
+						rec := httptest.NewRecorder()
+						cp.ServeHTTP(rec, newGetRequest("u=admin", "p=wordpass"))
+						if !strings.Contains(rec.Body.String(), `code="40"`) {
+							passed.Add(1)
+						}
+					})
+				}
+				for range conf.Server.AuthRequestLimit {
+					Eventually(gate.entered).Should(Receive())
+				}
+				close(gate.proceed)
+				wg.Wait()
+
+				Expect(passed.Load()).To(Equal(int32(burst)))
+			})
+
+			It("caps concurrent credential checks for wrong passwords", func() {
+				cp := authenticate(gatedDS)(&countingHandler{})
+				var wg sync.WaitGroup
+				for i := range 100 {
+					wg.Go(func() {
+						cp.ServeHTTP(httptest.NewRecorder(), newGetRequest("u=admin", fmt.Sprintf("p=wrong%d", i)))
+					})
+				}
+
+				limit := int32(conf.Server.AuthRequestLimit)
+				Eventually(gate.lookups.Load).Should(Equal(limit))
+				Consistently(gate.lookups.Load, 100*time.Millisecond).Should(Equal(limit))
+				close(gate.proceed)
+				wg.Wait()
+			})
+		})
 	})
 
 	Describe("AdminOnly", func() {
@@ -470,6 +632,7 @@ var _ = Describe("Middlewares", func() {
 			var validToken string
 
 			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
 				conf.Server.SessionTimeout = time.Minute
 				auth.Init(ds)
 
@@ -497,6 +660,36 @@ var _ = Describe("Middlewares", func() {
 				validToken, _ = auth.CreateToken(u)
 				err := validateCredentials(usr, "", "", "", validToken)
 				Expect(err).To(MatchError(model.ErrInvalidAuth))
+			})
+		})
+
+		Context("JWT credentials", func() {
+			var usr *model.User
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.SessionTimeout = time.Minute
+				auth.Init(ds)
+				usr = &model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}
+			})
+
+			It("accepts an unscoped session token", func() {
+				tokenStr, err := auth.CreateToken(usr)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(validateCredentials(usr, "", "", "", tokenStr)).To(Succeed())
+			})
+
+			It("rejects a jellyfin-scoped token", func() {
+				tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(validateCredentials(usr, "", "", "", tokenStr)).To(MatchError(model.ErrInvalidAuth))
+			})
+
+			It("rejects a token with a stale epoch", func() {
+				tokenStr, err := auth.CreateToken(usr)
+				Expect(err).ToNot(HaveOccurred())
+				usr.TokenEpoch = 2
+				Expect(validateCredentials(usr, "", "", "", tokenStr)).To(MatchError(model.ErrInvalidAuth))
 			})
 		})
 	})
@@ -529,3 +722,28 @@ func (mp *mockPlayers) Register(ctx context.Context, id, client, typ, ip string)
 	}
 	return &model.Player{ID: id}, mp.transcoding, nil
 }
+
+type gatedDataStore struct {
+	model.DataStore
+	users model.UserRepository
+}
+
+func (g *gatedDataStore) User(context.Context) model.UserRepository { return g.users }
+
+type gatedUserRepo struct {
+	model.UserRepository
+	entered chan struct{}
+	proceed chan struct{}
+	lookups atomic.Int32
+}
+
+func (g *gatedUserRepo) FindByUsernameWithPassword(username string) (*model.User, error) {
+	g.lookups.Add(1)
+	g.entered <- struct{}{}
+	<-g.proceed
+	return g.UserRepository.FindByUsernameWithPassword(username)
+}
+
+type countingHandler struct{ calls atomic.Int32 }
+
+func (c *countingHandler) ServeHTTP(http.ResponseWriter, *http.Request) { c.calls.Add(1) }

@@ -21,6 +21,31 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var _ = Describe("IsArtistImageFile", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("matches bare and album/-prefixed glob tokens, case-insensitively", func() {
+		conf.Server.ArtistArtPriority = "artist.*, album/artistfolder.*, external"
+		Expect(IsArtistImageFile("Artist.jpg")).To(BeTrue())
+		Expect(IsArtistImageFile("artistfolder.png")).To(BeTrue())
+		Expect(IsArtistImageFile("cover.jpg")).To(BeFalse())
+	})
+
+	It("matches a directory-bearing glob by its basename", func() {
+		conf.Server.ArtistArtPriority = "images/artist.*, external"
+		Expect(IsArtistImageFile("artist.jpg")).To(BeTrue())
+		Expect(IsArtistImageFile("cover.jpg")).To(BeFalse())
+	})
+
+	It("does not treat non-file tokens as globs", func() {
+		conf.Server.ArtistArtPriority = "image-folder, external"
+		Expect(IsArtistImageFile("image-folder")).To(BeFalse())
+		Expect(IsArtistImageFile("external")).To(BeFalse())
+	})
+})
+
 var _ = Describe("resolveItem", func() {
 	var (
 		ctx        context.Context
@@ -75,7 +100,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.source).To(Equal("embedded"))
 			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/test.mp3"))
 			Expect(res.refMtime).To(BeNumerically(">", 0))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
 		It("resolves absent when the track has no cover art", func() {
@@ -86,7 +111,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "mf", ItemID: "mf2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
 		It("resolves absent when media file cover art is disabled", func() {
@@ -129,7 +154,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.source).To(Equal("folder"))
 			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/cover.jpg"))
 			Expect(res.refMtime).To(BeNumerically(">", 0))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
 		It("falls back to embedded art when no folder image matches", func() {
@@ -147,7 +172,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.refMtime).To(BeNumerically(">", 0))
 		})
 
-		It("sets extError when the external source errors without being not-found", func() {
+		It("sets extErr when the external source errors without being not-found", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "al3", Name: "Album"},
@@ -157,10 +182,10 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extErr).To(HaveOccurred())
 		})
 
-		It("does not set extError when the external source reports not-found", func() {
+		It("does not set extErr when the external source reports not-found", func() {
 			conf.Server.CoverArtPriority = "external"
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "al4", Name: "Album"},
@@ -170,10 +195,10 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
-		It("carries extError onto a fallback folder hit after a transient external failure", func() {
+		It("carries extErr onto a fallback folder hit after a transient external failure", func() {
 			conf.Server.CoverArtPriority = "external, cover.jpg"
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",
@@ -189,10 +214,10 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("folder"))
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extErr).To(HaveOccurred())
 		})
 
-		It("does not carry extError onto a fallback folder hit after a definitive external not-found", func() {
+		It("does not carry extErr onto a fallback folder hit after a definitive external not-found", func() {
 			conf.Server.CoverArtPriority = "external, cover.jpg"
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",
@@ -208,7 +233,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("folder"))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
@@ -225,7 +250,7 @@ var _ = Describe("resolveItem", func() {
 
 			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extErr).To(HaveOccurred())
 			Expect(gatedNames).To(Equal([]string{"failAgent"}))
 		})
 	})
@@ -273,7 +298,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(filepath.ToSlash(res.sourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/artist.png"))
 		})
 
-		It("sets extError when the external source errors without being not-found", func() {
+		It("sets extErr when the external source errors without being not-found", func() {
 			conf.Server.ArtistArtPriority = "external"
 			artistRepo := tests.CreateMockArtistRepo()
 			artistRepo.SetData(model.Artists{{ID: "ar3", Name: "Artist"}})
@@ -283,10 +308,10 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar3"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extErr).To(HaveOccurred())
 		})
 
-		It("does not set extError when the external source reports not-found", func() {
+		It("does not set extErr when the external source reports not-found", func() {
 			conf.Server.ArtistArtPriority = "external"
 			artistRepo := tests.CreateMockArtistRepo()
 			artistRepo.SetData(model.Artists{{ID: "ar4", Name: "Artist"}})
@@ -296,7 +321,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar4"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
@@ -313,7 +338,7 @@ var _ = Describe("resolveItem", func() {
 
 			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar5"})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extErr).To(HaveOccurred())
 			Expect(gatedNames).To(Equal([]string{"failAgent"}))
 		})
 	})
@@ -394,6 +419,28 @@ var _ = Describe("resolveItem", func() {
 			Entry("4 albums -> full grid", []string{"t1", "t2", "t3", "t4"}, tileSize-1),
 		)
 
+		// The grid samples album art through the full album chain, so a playlist reaches the
+		// network even with the m3u fetch off.
+		It("calls the album image agents for its grid tiles when m3u art is disabled", func() {
+			conf.Server.EnableM3UExternalAlbumArt = false
+			conf.Server.CoverArtPriority = "external"
+			folderRepo.result = nil
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plgrid", Name: "Playlist"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1", "t2"}}
+			ds.MockedPlaylist = plRepo
+			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("boom")})
+			var gatedNames []string
+			gate := func(name string, f func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+				gatedNames = append(gatedNames, name)
+				return f()
+			}
+
+			_, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plgrid"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(gatedNames).To(Equal([]string{"failAgent", "failAgent"}), "one lookup per sampled album")
+		})
+
 		It("resolves the uploaded image before the generated grid", func() {
 			tmpDir := GinkgoT().TempDir()
 			conf.Server.DataFolder = conf.NewDir(tmpDir)
@@ -451,6 +498,23 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.refMtime).To(BeNumerically(">", 0))
 		})
 
+		It("never opens a local ExternalImageURL that is not an image file", func() {
+			folderRepo.result = nil // no grid tiles, so only the local file could produce a reader
+			dir := GinkgoT().TempDir()
+			secretPath := filepath.Join(dir, "config.ini")
+			Expect(os.WriteFile(secretPath, []byte("password=secret"), 0600)).To(Succeed())
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plni", Name: "Playlist", ExternalImageURL: secretPath}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plni"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.sourcePath).ToNot(Equal(secretPath))
+		})
+
 		It("routes ExternalImageURL through extGate and sets extError on transient failure", func() {
 			conf.Server.EnableM3UExternalAlbumArt = true
 			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
@@ -469,8 +533,39 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, gate).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "ple"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extErr).To(HaveOccurred())
 			Expect(gatedNames).To(Equal([]string{"m3u"}), "the playlist URL fetch is gated under \"m3u\"")
+		})
+
+		It("records the m3u failure in the trace even when album sampling adds its own steps", func() {
+			conf.Server.EnableM3UExternalAlbumArt = true
+			folderRepo.result = nil // the sampled album yields no tile, so the m3u failure is what forced the retry
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plm3u", Name: "Playlist", ExternalImageURL: "http://example.com/cover.jpg"}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			gate := func(string, func() (io.ReadCloser, string, error)) (io.ReadCloser, string, error) {
+				return nil, "", errors.New("network down")
+			}
+
+			trace := &ChainTrace{}
+			res, err := newResolver(ds, ag, ffm, gate).resolve(withTrace(ctx, trace),
+				model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm3u"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.extErr).To(HaveOccurred())
+
+			steps := trace.Steps()
+			var m3u *TraceStep
+			for i := range steps {
+				if steps[i].Candidate == ExternalPrefix+"m3u" && steps[i].Outcome == OutcomeError {
+					m3u = &steps[i]
+				}
+			}
+			Expect(m3u).ToNot(BeNil(), "the m3u fetch error must be traced at its source, not left to the empty-trace fallback")
+			Expect(m3u.Detail).To(Equal("network down"),
+				"the trace must carry the underlying error so explain can tell a timeout from an HTTP error")
 		})
 
 		It("treats a missing local ExternalImageURL as a definitive miss, not extError", func() {
@@ -484,7 +579,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plm"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
 		It("treats an ExternalImageURL 404 as a definitive miss and falls through to the grid", func() {
@@ -504,7 +599,7 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.reader).ToNot(BeNil())
 			defer res.reader.Close()
 			Expect(res.source).To(Equal("generated"))
-			Expect(res.extError).To(BeFalse())
+			Expect(res.extErr).ToNot(HaveOccurred())
 		})
 
 		// A local resolver holds no agents: reaching the external branch would panic, not degrade.
@@ -516,7 +611,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newLocalResolver(ds, ffm).resolve(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeFalse(), "a skipped step is not a failed one")
+			Expect(res.extErr).ToNot(HaveOccurred(), "a skipped step is not a failed one")
 		})
 
 		// The worker resolving the same playlist is asserted alongside, so this cannot pass vacuously.
@@ -564,7 +659,7 @@ var _ = Describe("resolveItem", func() {
 			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl500"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res.reader).To(BeNil())
-			Expect(res.extError).To(BeTrue())
+			Expect(res.extErr).To(HaveOccurred())
 		})
 
 		It("yields an empty resolution when no album has art", func() {
@@ -628,5 +723,112 @@ var _ = Describe("decodeTile", func() {
 		data := bytes.Repeat([]byte{0}, int(maxImageBytes())+1)
 		_, err := decodeTile(io.NopCloser(bytes.NewReader(data)))
 		Expect(err).To(HaveOccurred())
+	})
+})
+
+var _ = Describe("Explainable", func() {
+	It("is true for the kinds the resolver walks", func() {
+		Expect(Explainable(model.KindArtistArtwork)).To(BeTrue())
+		Expect(Explainable(model.KindAlbumArtwork)).To(BeTrue())
+		Expect(Explainable(model.KindDiscArtwork)).To(BeTrue())
+		Expect(Explainable(model.KindMediaFileArtwork)).To(BeTrue())
+	})
+
+	It("is false for the kinds resolved from a fixed internal order", func() {
+		Expect(Explainable(model.KindPlaylistArtwork)).To(BeFalse())
+		Expect(Explainable(model.KindRadioArtwork)).To(BeFalse())
+	})
+})
+
+var _ = Describe("MayFetchExternal", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "cover.*, embedded"
+		conf.Server.ArtistArtPriority = "artist.*"
+		conf.Server.EnableM3UExternalAlbumArt = false
+	})
+
+	It("is true for the kinds whose chain includes the external candidate", func() {
+		conf.Server.CoverArtPriority = "cover.*, external"
+		conf.Server.ArtistArtPriority = "artist.*, external"
+		Expect(MayFetchExternal(model.KindAlbumArtwork)).To(BeTrue())
+		Expect(MayFetchExternal(model.KindArtistArtwork)).To(BeTrue())
+	})
+
+	It("is false for a chain with no external candidate", func() {
+		Expect(MayFetchExternal(model.KindAlbumArtwork)).To(BeFalse())
+		Expect(MayFetchExternal(model.KindArtistArtwork)).To(BeFalse())
+	})
+
+	It("is true for playlists when the m3u image fetch is enabled", func() {
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeTrue())
+	})
+
+	It("is true for playlists whose grid tiles resolve through an external album chain", func() {
+		conf.Server.CoverArtPriority = "cover.*, external"
+		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeTrue())
+	})
+
+	It("is false for playlists with both paths off", func() {
+		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeFalse())
+	})
+
+	It("is false for the kinds that only read local files", func() {
+		conf.Server.CoverArtPriority = "external"
+		conf.Server.ArtistArtPriority = "external"
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(MayFetchExternal(model.KindRadioArtwork)).To(BeFalse())
+		Expect(MayFetchExternal(model.KindMediaFileArtwork)).To(BeFalse())
+	})
+})
+
+var _ = Describe("ExternalLookupsPerItem", func() {
+	count := ImageAgentCount{Artist: 3, Album: 2}
+
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+		conf.Server.CoverArtPriority = "cover.*, external"
+		conf.Server.ArtistArtPriority = "artist.*, external"
+		conf.Server.EnableM3UExternalAlbumArt = false
+	})
+
+	It("bills one call per agent, since the walk only stops early on a hit", func() {
+		Expect(ExternalLookupsPerItem(model.KindArtistArtwork, count)).To(Equal(int64(3)))
+		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, count)).To(Equal(int64(2)))
+	})
+
+	It("bills a playlist for every album its grid samples", func() {
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).
+			To(Equal(int64(PlaylistGridSamples) * 2))
+	})
+
+	It("adds the m3u image fetch on top of the grid", func() {
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).
+			To(Equal(int64(PlaylistGridSamples)*2 + 1))
+	})
+
+	It("bills only the m3u fetch when the album chain stays local", func() {
+		conf.Server.CoverArtPriority = "cover.*"
+		conf.Server.EnableM3UExternalAlbumArt = true
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).To(Equal(int64(1)))
+	})
+
+	It("still bills a call when no agent is visible, which plugins never are offline", func() {
+		none := ImageAgentCount{}
+		Expect(ExternalLookupsPerItem(model.KindArtistArtwork, none)).To(Equal(int64(1)))
+		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, none)).To(Equal(int64(1)))
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, none)).
+			To(Equal(int64(PlaylistGridSamples)))
+	})
+
+	It("is zero whenever the kind reaches no agent at all", func() {
+		conf.Server.CoverArtPriority = "cover.*"
+		conf.Server.ArtistArtPriority = "artist.*"
+		Expect(ExternalLookupsPerItem(model.KindArtistArtwork, count)).To(BeZero())
+		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, count)).To(BeZero())
+		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).To(BeZero())
+		Expect(ExternalLookupsPerItem(model.KindRadioArtwork, count)).To(BeZero())
 	})
 })

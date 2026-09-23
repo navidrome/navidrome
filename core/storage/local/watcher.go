@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -18,22 +19,18 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 		return nil, errors.New("watcher already started")
 	}
 	input := make(chan notify.EventInfo, 500)
-	output := make(chan string, 500)
+	libPath := filepath.Join(s.u.Path, "...")
+	log.Debug(ctx, "Starting watcher", "lib", libPath)
+	if err := notify.Watch(libPath, input, WatchEvents); err != nil {
+		s.watching.Store(false)
+		return nil, fmt.Errorf("starting watcher on %s: %w", libPath, err)
+	}
 
-	started := make(chan struct{})
+	output := make(chan string, 500)
 	go func() {
 		defer close(input)
 		defer close(output)
-
-		libPath := filepath.Join(s.u.Path, "...")
-		log.Debug(ctx, "Starting watcher", "lib", libPath)
-		err := notify.Watch(libPath, input, WatchEvents)
-		if err != nil {
-			log.Error("Error starting watcher", "lib", libPath, err)
-			return
-		}
 		defer notify.Stop(input)
-		close(started) // signals the main goroutine we have started
 
 		for {
 			select {
@@ -49,9 +46,5 @@ func (s *localStorage) Start(ctx context.Context) (<-chan string, error) {
 			}
 		}
 	}()
-	select {
-	case <-started:
-	case <-ctx.Done():
-	}
 	return output, nil
 }

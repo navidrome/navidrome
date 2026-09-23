@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 {{if .Doc}}
 {{rustDocComment .Doc}}
 {{else}}
-{{end}}#[derive(Debug, Clone, Serialize, Deserialize)]
+{{end}}#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct {{.Name}} {
 {{- range .Fields}}

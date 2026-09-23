@@ -9,6 +9,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -23,18 +24,28 @@ type MockMediaFileRepo struct {
 	model.MediaFileRepository
 	Data map[string]*model.MediaFile
 	Err  bool
-	// Add fields and methods for controlling CountAll and DeleteAllMissing in tests
-	CountAllValue         int64
+	// Add fields and methods for controlling CountAll and DeleteAllMissing in tests.
+	// A nil CountAllValue is unset, and CountAll falls back to counting rows in Data.
+	CountAllValue         *int64
 	CountAllOptions       model.QueryOptions
 	DeleteAllMissingValue int64
-	Options               model.QueryOptions
+	// ReassignReferencesCalls records prevID -> newID
+	ReassignReferencesCalls map[string]string
+	Options                 model.QueryOptions
 	// Add fields for cross-library move detection tests
 	FindRecentFilesByMBZTrackIDFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
 	FindRecentFilesByPropertiesFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
+	MatchesCriteriaValue            bool
+	MatchesCriteriaErr              error
+	BookmarksAdded                  []string
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
 	m.Err = err
+}
+
+func (m *MockMediaFileRepo) SetCountAll(count int64) {
+	m.CountAllValue = &count
 }
 
 func (m *MockMediaFileRepo) SetData(mfs model.MediaFiles) {
@@ -64,6 +75,14 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 		return &res, nil
 	}
 	return nil, model.ErrNotFound
+}
+
+func (m *MockMediaFileRepo) AddBookmark(id, _ string, _ int64) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	m.BookmarksAdded = append(m.BookmarksAdded, id)
+	return nil
 }
 
 func (m *MockMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
@@ -127,14 +146,6 @@ func (m *MockMediaFileRepo) GetCursorWithArtwork(qo ...model.QueryOptions) (mode
 	return m.GetCursor(qo...)
 }
 
-func (m *MockMediaFileRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
-	all, err := m.GetAll(qo...)
-	if err != nil {
-		return nil, err
-	}
-	return slice.Map(all, func(mf model.MediaFile) string { return mf.ID }), nil
-}
-
 func (m *MockMediaFileRepo) Put(mf *model.MediaFile) error {
 	if m.Err {
 		return errors.New("error")
@@ -165,6 +176,17 @@ func (m *MockMediaFileRepo) Delete(id string) error {
 		return model.ErrNotFound
 	}
 	delete(m.Data, id)
+	return nil
+}
+
+func (m *MockMediaFileRepo) ReassignReferences(prevID, newID string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	if m.ReassignReferencesCalls == nil {
+		m.ReassignReferencesCalls = make(map[string]string)
+	}
+	m.ReassignReferencesCalls[prevID] = newID
 	return nil
 }
 
@@ -256,11 +278,11 @@ func (m *MockMediaFileRepo) CountAll(opts ...model.QueryOptions) (int64, error) 
 	if m.Err {
 		return 0, errors.New("error")
 	}
-	if m.CountAllValue != 0 {
-		if len(opts) > 0 {
-			m.CountAllOptions = opts[0]
-		}
-		return m.CountAllValue, nil
+	if len(opts) > 0 {
+		m.CountAllOptions = opts[0]
+	}
+	if m.CountAllValue != nil {
+		return *m.CountAllValue, nil
 	}
 	return int64(len(m.Data)), nil
 }
@@ -289,11 +311,7 @@ func (m *MockMediaFileRepo) Count(...rest.QueryOptions) (int64, error) {
 }
 
 func (m *MockMediaFileRepo) Read(id string) (any, error) {
-	mf, err := m.Get(id)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, rest.ErrNotFound
-	}
-	return mf, err
+	return m.Get(id)
 }
 
 func (m *MockMediaFileRepo) ReadAll(...rest.QueryOptions) (any, error) {
@@ -316,8 +334,7 @@ func (m *MockMediaFileRepo) Search(q string, options ...model.QueryOptions) (mod
 		return nil, errors.New("unexpected error")
 	}
 	// Simple mock implementation - just return all media files for testing
-	allFiles, err := m.GetAll()
-	return allFiles, err
+	return m.GetAll()
 }
 
 // Cross-library move detection mock methods
@@ -367,6 +384,13 @@ func (m *MockMediaFileRepo) FindRecentFilesByProperties(missing model.MediaFile,
 		}
 	}
 	return result, nil
+}
+
+func (m *MockMediaFileRepo) MatchesCriteria(string, criteria.Criteria) (bool, error) {
+	if m.MatchesCriteriaErr != nil {
+		return false, m.MatchesCriteriaErr
+	}
+	return m.MatchesCriteriaValue, nil
 }
 
 var _ model.MediaFileRepository = (*MockMediaFileRepo)(nil)

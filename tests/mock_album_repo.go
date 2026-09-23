@@ -7,7 +7,6 @@ import (
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func CreateMockAlbumRepo() *MockAlbumRepo {
@@ -65,6 +64,9 @@ func (m *MockAlbumRepo) Put(al *model.Album) error {
 	if al.ID == "" {
 		al.ID = id.NewRandom()
 	}
+	if m.Data == nil {
+		m.Data = make(map[string]*model.Album)
+	}
 	m.Data[al.ID] = al
 	return nil
 }
@@ -80,14 +82,6 @@ func (m *MockAlbumRepo) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 		return nil, errors.New("unexpected error")
 	}
 	return m.All, nil
-}
-
-func (m *MockAlbumRepo) GetAllIDs(qo ...model.QueryOptions) ([]string, error) {
-	all, err := m.GetAll(qo...)
-	if err != nil {
-		return nil, err
-	}
-	return slice.Map(all, func(a model.Album) string { return a.ID }), nil
 }
 
 func (m *MockAlbumRepo) GetCursor(qo ...model.QueryOptions) (model.AlbumCursor, error) {
@@ -142,10 +136,7 @@ func (m *MockAlbumRepo) GetTouchedAlbums(libID int) (model.AlbumCursor, error) {
 }
 
 func (m *MockAlbumRepo) UpdateExternalInfo(album *model.Album) error {
-	if m.Err {
-		return errors.New("unexpected error")
-	}
-	return nil
+	return m.Put(album)
 }
 
 func (m *MockAlbumRepo) Search(q string, options ...model.QueryOptions) (model.Albums, error) {

@@ -156,6 +156,29 @@ var _ = Describe("Browsing", func() {
 			Expect(sql).NotTo(ContainSubstring("library_artist.library_id"))
 		})
 
+		DescribeTable("restricts to favorites",
+			func(url string, handler func(*Router) http.HandlerFunc) {
+				artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
+				artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", url, nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+				invoke(handler(api), w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := artistRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("starred"))
+				// listArtists always ANDs notMissing, favorites filter or not.
+				Expect(sql).To(ContainSubstring("missing"))
+				Expect(args).To(ContainElement(true))
+			},
+			Entry("Filters=IsFavorite", "/Artists?Filters=IsFavorite",
+				func(a *Router) http.HandlerFunc { return a.getArtists }),
+			Entry("isFavorite=true", "/Artists?isFavorite=true",
+				func(a *Router) http.HandlerFunc { return a.getArtists }),
+			Entry("on /Artists/AlbumArtists", "/Artists/AlbumArtists?Filters=IsFavorite",
+				func(a *Router) http.HandlerFunc { return a.getAlbumArtists }),
+		)
+
 		It("404s a malformed ParentId instead of listing every library's artists", func() {
 			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})

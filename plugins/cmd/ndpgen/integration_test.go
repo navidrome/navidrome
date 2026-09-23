@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -32,6 +33,9 @@ var _ = Describe("ndpgen CLI", Ordered, func() {
 
 		// Build the ndpgen binary
 		ndpgenBin = filepath.Join(os.TempDir(), "ndpgen-test")
+		if runtime.GOOS == "windows" {
+			ndpgenBin += ".exe" // Windows refuses to exec a file without it
+		}
 		cmd := exec.Command("go", "build", "-o", ndpgenBin, ".")
 		cmd.Dir = mustGetWd(GinkgoT())
 		output, err := cmd.CombinedOutput()

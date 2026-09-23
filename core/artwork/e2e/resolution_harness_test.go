@@ -117,7 +117,7 @@ func setupResolutionHarness() {
 		func(context.Context, cache.Item) (io.Reader, error) {
 			return nil, fmt.Errorf("resize not exercised in e2e")
 		})
-	Eventually(func() bool { return imgCache.Available(rctx) }).Should(BeTrue())
+	Eventually(func() bool { return imgCache.Available(rctx) }, 10*time.Second).Should(BeTrue())
 
 	rsvc = artwork.NewArtwork(rds, imgCache, rstore, ffm)
 	rworker = artwork.NewWorker(rds, rstore, agents.GetAgents(rds, nil), ffm, events.NoopBroker(), imgCache)

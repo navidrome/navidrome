@@ -8,7 +8,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import { Title } from '../common'
-import { BITRATE_CHOICES } from '../consts'
+import { TRANSCODING_BITRATE_CHOICES } from '../consts'
 
 const TranscodingTitle = () => {
   const translate = useTranslate()
@@ -28,7 +28,7 @@ const TranscodingCreate = (props) => (
       <TextInput source="targetFormat" validate={[required()]} />
       <SelectInput
         source="defaultBitRate"
-        choices={BITRATE_CHOICES}
+        choices={TRANSCODING_BITRATE_CHOICES}
         defaultValue={192}
       />
       <TextInput

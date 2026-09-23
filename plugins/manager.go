@@ -61,6 +61,9 @@ type Manager struct {
 	debounceTimers map[string]*time.Timer
 	debounceMu     sync.Mutex
 
+	// transient is set by LoadPlugins, and nil for a server Start.
+	transient *transientLoad
+
 	// SubsonicAPI host function dependencies (set once before Start, not modified after)
 	subsonicRouter SubsonicRouter
 	ds             model.DataStore
@@ -110,27 +113,14 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	if m.subsonicRouter == nil {
-		log.Fatal(ctx, "Plugin manager requires DataStore to be configured")
+		log.Fatal(ctx, "Plugin manager requires the SubsonicAPI router to be configured")
 	}
 
-	// Set extism log level based on plugin-specific config or global log level
-	pluginLogLevel := conf.Server.Plugins.LogLevel
-	if pluginLogLevel == "" {
-		pluginLogLevel = conf.Server.LogLevel
-	}
-	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
-
-	m.ctx, m.cancel = context.WithCancel(ctx)
-
-	// Initialize wazero compilation cache for better performance
 	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
 	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
 
-	var err error
-	m.cache, err = wazero.NewCompilationCacheWithDir(cacheDir)
-	if err != nil {
-		log.Error(ctx, "Failed to create wazero compilation cache", err)
-		return fmt.Errorf("creating wazero compilation cache: %w", err)
+	if err := m.initRuntime(ctx, cacheDir); err != nil {
+		return err
 	}
 
 	if conf.Server.Plugins.Folder.String() == "" {
@@ -168,6 +158,49 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	return nil
+}
+
+// initRuntime prepares the extism/wazero runtime that instantiating a plugin needs.
+func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
+	pluginLogLevel := conf.Server.Plugins.LogLevel
+	if pluginLogLevel == "" {
+		pluginLogLevel = conf.Server.LogLevel
+	}
+	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
+
+	m.ctx, m.cancel = context.WithCancel(ctx)
+
+	var err error
+	m.cache, err = wazero.NewCompilationCacheWithDir(cacheDir)
+	if err != nil {
+		log.Error(ctx, "Failed to create wazero compilation cache", err)
+		return fmt.Errorf("creating wazero compilation cache: %w", err)
+	}
+	return nil
+}
+
+// transientLoad scopes a load that will not outlive the command asking for it; see LoadPlugins.
+type transientLoad struct {
+	only    []string
+	runInit bool
+}
+
+// LoadPlugins loads the plugins named in only, so a CLI sees the agents a server would. Each is
+// instantiated, creating any KVStore, TaskQueue or Storage it declares; call Stop when done.
+func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) error {
+	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" || len(only) == 0 {
+		return nil
+	}
+	m.transient = &transientLoad{only: only, runInit: runInit}
+
+	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
+	if err := m.initRuntime(ctx, cacheDir); err != nil {
+		return err
+	}
+	if err := m.loadEnabledPlugins(ctx); err != nil {
+		return fmt.Errorf("loading enabled plugins: %w", err)
+	}
 	return nil
 }
 

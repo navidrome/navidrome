@@ -1,11 +1,13 @@
 package subsonic
 
 import (
+	"cmp"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -31,7 +33,7 @@ func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
 func (api *Router) buildShare(r *http.Request, share model.Share) responses.Share {
 	resp := responses.Share{
 		ID:          share.ID,
-		Url:         public.ShareURL(r, share.ID),
+		Url:         public.ShareURL(r.Context(), share.ID),
 		Description: share.Description,
 		Username:    share.Username,
 		Created:     share.CreatedAt,
@@ -60,9 +62,10 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	description, _ := p.String("description")
 	repo := api.share.NewRepository(r.Context())
 	share := &model.Share{
-		Description: description,
-		ExpiresAt:   new(p.TimeOr("expires", time.Time{})),
-		ResourceIDs: strings.Join(ids, ","),
+		Description:  description,
+		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare && conf.Server.EnableDownloads),
+		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
+		ResourceIDs:  strings.Join(ids, ","),
 	}
 
 	id, err := repo.(rest.Persistable).Save(share)
@@ -87,12 +90,27 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	description, _ := p.String("description")
 	repo := api.share.NewRepository(r.Context())
+
+	// The update always writes description and downloadable, so read back the
+	// stored value for whichever one the client omitted.
+	description := p.StringPtr("description")
+	downloadable := p.BoolPtr("downloadable")
+	if description == nil || downloadable == nil {
+		current, err := repo.Read(id)
+		if err != nil {
+			return nil, err
+		}
+		cur := current.(*model.Share)
+		description = cmp.Or(description, &cur.Description)
+		downloadable = cmp.Or(downloadable, &cur.Downloadable)
+	}
+
 	share := &model.Share{
-		ID:          id,
-		Description: description,
-		ExpiresAt:   new(p.TimeOr("expires", time.Time{})),
+		ID:           id,
+		Description:  *description,
+		Downloadable: *downloadable,
+		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 	}
 
 	err = repo.(rest.Persistable).Update(id, share)

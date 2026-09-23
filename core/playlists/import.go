@@ -12,8 +12,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/ioutils"
+	"github.com/zeebo/xxh3"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -57,10 +59,12 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	}
 	defer file.Close()
 
-	reader := ioutils.UTF8Reader(file)
+	hasher := xxh3.New()
+	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
 	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
 		return nil, err
 	}
+	pls.ImportedHash = fingerprint(hasher)
 	if err := s.updatePlaylist(ctx, pls, sync); err != nil {
 		return nil, err
 	}
@@ -138,7 +142,9 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	}
 	defer file.Close()
 
-	reader := ioutils.UTF8Reader(file)
+	// Hash the bytes the parser consumes, giving every imported playlist a content fingerprint
+	hasher := xxh3.New()
+	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
@@ -146,7 +152,15 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 	default:
 		err = s.parseM3U(ctx, pls, folder, reader)
 	}
-	return pls, err
+	if err != nil {
+		return pls, err
+	}
+	pls.ImportedHash = fingerprint(hasher)
+	return pls, nil
+}
+
+func fingerprint(h *xxh3.Hasher) string {
+	return id.Encode(h.Sum128().Bytes())
 }
 
 // findByPathNormalized looks up a playlist by path, trying both NFC and NFD Unicode
@@ -179,6 +193,12 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 	}
 
 	if err == nil {
+		// Only smart playlists skip on an unchanged file; M3U must re-run so newly-added tracks resolve.
+		if !forceSync && newPls.IsSmartPlaylist() && newPls.ImportedHash != "" && newPls.ImportedHash == pls.ImportedHash {
+			log.Trace(ctx, "Playlist file unchanged since last import, skipping", "playlist", pls.Name, "path", pls.Path)
+			*newPls = *pls // callers must see the stored record, so e.g. ImportFile can still flip Sync
+			return nil
+		}
 		log.Info(ctx, "Updating synced playlist", "playlist", pls.Name, "path", newPls.Path)
 		newPls.ID = pls.ID
 		newPls.Name = pls.Name
@@ -187,6 +207,12 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		newPls.Public = pls.Public
 		newPls.UploadedImage = pls.UploadedImage // Preserve manual upload
 		newPls.EvaluatedAt = nil                 // force re-evaluation on next read
+		if newPls.IsSmartPlaylist() {
+			// Tracks aren't materialized at parse time; carry the stored counters so callers see real values
+			newPls.SongCount = pls.SongCount
+			newPls.Duration = pls.Duration
+			newPls.Size = pls.Size
+		}
 	} else {
 		log.Info(ctx, "Adding synced playlist", "playlist", newPls.Name, "path", newPls.Path, "owner", owner.UserName)
 		newPls.OwnerID = owner.ID

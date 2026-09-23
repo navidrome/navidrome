@@ -113,7 +113,7 @@ func NewAlbumRepository(ctx context.Context, db dbx.Builder) model.AlbumReposito
 		"artist":       "compilation, order_album_artist_name, order_album_name",
 		"album_artist": "compilation, order_album_artist_name, order_album_name",
 		// TODO Rename this to just year (or date)
-		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, name",
+		"max_year":       "coalesce(nullif(original_date,''), cast(max_year as text)), release_date, " + naturalSort("album.name"),
 		"random":         "random",
 		"recently_added": recentlyAddedSort(),
 		"starred_at":     "starred, starred_at",
@@ -259,8 +259,8 @@ func (r *albumRepository) hydrateArtwork(albums model.Albums) {
 		func(a *model.Album) (string, *model.ItemImage) { return a.ID, &a.ItemImage })
 }
 
-// GetAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.
-func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+// getAllIDs returns the IDs of GetAll's row set, skipping its column projection and JSON decoding.
+func (r *albumRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("album.id"))
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "album.id")
@@ -270,8 +270,41 @@ func (r *albumRepository) GetAllIDs(options ...model.QueryOptions) ([]string, er
 	return ids, err
 }
 
+// soleAlbumArtistFilter matches albums with exactly one album artist. The artist artwork
+// resolver and the scanner's image-change enqueue must select the same albums.
+var soleAlbumArtistFilter = Eq{"json_array_length(participants, '$.albumartist')": 1}
+
+// SoleAlbumArtistFilter matches the albums where the given artist is the only album artist.
+// Matches by album-artist participation, not the deprecated album_artist_id column.
+func SoleAlbumArtistFilter(artistID string) Sqlizer {
+	return And{ParticipantIDFilter("album", artistID, model.RoleAlbumArtist), soleAlbumArtistFilter}
+}
+
+// GetSoleAlbumArtistIDsInSubtrees matches albums by their own folder_ids, which is the resolver's
+// notion of an album's folders.
+func (r *albumRepository) GetSoleAlbumArtistIDsInSubtrees(lib model.Library, paths ...string) ([]string, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	ids := []string{}
+	// Repeated IDs across chunks are fine: the queue upserts by PK.
+	for chunk := range slices.Chunk(paths, subtreePathChunkSize) {
+		inSubtree := Exists("json_each(album.folder_ids) je join folder on folder.id = je.value",
+			folderSubtreeFilter(lib, chunk))
+		// Sole album artist, so participants[0] is the only one.
+		sq := Select("distinct json_extract(participants, '$.albumartist[0].id')").From("album").
+			Where(And{soleAlbumArtistFilter, inSubtree})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
+}
+
 func (r *albumRepository) GetCursor(options ...model.QueryOptions) (model.AlbumCursor, error) {
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,8 +329,11 @@ func (r *albumRepository) GetYears(libraryIDs ...int) ([]int, error) {
 }
 
 func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string) error {
+	// Cast values to text so go-sqlite3 does not decode datetime columns as time.Time
+	// and reformat them as RFC3339 when written back.
+	sel := slice.Map(columns, func(c string) string { return fmt.Sprintf("cast(%[1]s as text) as %[1]s", c) })
 	var from dbx.NullStringMap
-	err := r.queryOne(Select(columns...).From(r.tableName).Where(Eq{"id": fromID}), &from)
+	err := r.queryOne(Select(sel...).From(r.tableName).Where(Eq{"id": fromID}), &from)
 	if err != nil {
 		return fmt.Errorf("getting album to copy fields from: %w", err)
 	}

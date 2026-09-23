@@ -1144,6 +1144,82 @@ var _ = Describe("Decider", func() {
 			})
 		})
 
+		Context("Player-forced format", func() {
+			symfonium := func() *ClientInfo {
+				return &ClientInfo{
+					Name: "Symfonium",
+					DirectPlayProfiles: []DirectPlayProfile{
+						{Containers: []string{"mp3", "flac", "ogg"}, Protocols: []string{ProtocolHTTP}},
+					},
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+						{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+					},
+				}
+			}
+
+			It("direct plays a flac source forced to flac", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1026, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+				ci := symfonium()
+				Expect(ci.ForceFormat("flac")).To(BeTrue())
+
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+
+			It("still transcodes a 24-bit flac when the client caps bit depth", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 4600, Channels: 2, SampleRate: 96000, BitDepth: new(24)})
+				ci := symfonium()
+				ci.CodecProfiles = []CodecProfile{{
+					Type: CodecProfileTypeAudio, Name: "flac",
+					Limitations: []Limitation{{Name: LimitationAudioBitdepth, Comparison: ComparisonLessThanEqual, Values: []string{"16"}, Required: true}},
+				}}
+				Expect(ci.ForceFormat("flac")).To(BeTrue())
+
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TranscodeStream.BitDepth).To(Equal(16))
+			})
+
+			It("still transcodes a 320 mp3 forced to mp3 at a lower bitrate", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
+				ci := symfonium()
+				Expect(ci.ForceFormat("mp3")).To(BeTrue())
+				ci.CapBitrate(192)
+
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetBitrate).To(Equal(192))
+			})
+
+			It("direct plays a 128 mp3 forced to mp3 at a higher bitrate", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 128, Channels: 2, SampleRate: 44100})
+				ci := symfonium()
+				Expect(ci.ForceFormat("mp3")).To(BeTrue())
+				ci.CapBitrate(192)
+
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeTrue())
+			})
+
+			It("transcodes a flac source forced to mp3", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1026, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+				ci := symfonium()
+				Expect(ci.ForceFormat("mp3")).To(BeTrue())
+
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanDirectPlay).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("mp3"))
+			})
+		})
 	})
 
 	Describe("ensureProbed", func() {

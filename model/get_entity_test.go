@@ -38,3 +38,25 @@ var _ = Describe("GetEntityByID", func() {
 		Expect(err).ToNot(MatchError(model.ErrNotFound))
 	})
 })
+
+var _ = Describe("GetEntityKindByID", func() {
+	var ds *tests.MockDataStore
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ds = &tests.MockDataStore{}
+		ctx = GinkgoT().Context()
+	})
+
+	It("returns the artwork kind for the matching id", func() {
+		ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1"}})
+		kind, err := model.GetEntityKindByID(ctx, ds, "a1")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(kind).To(Equal(model.KindAlbumArtwork))
+	})
+
+	It("returns ErrNotFound when no entity matches", func() {
+		_, err := model.GetEntityKindByID(ctx, ds, "missing")
+		Expect(err).To(MatchError(model.ErrNotFound))
+	})
+})

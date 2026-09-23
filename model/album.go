@@ -143,7 +143,9 @@ type AlbumRepository interface {
 	UpdateExternalInfo(*Album) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
-	GetAllIDs(...QueryOptions) ([]string, error)
+	// GetSoleAlbumArtistIDsInSubtrees returns the sole album artists of the albums with folders in
+	// any of the given library-relative subtrees.
+	GetSoleAlbumArtistIDsInSubtrees(lib Library, paths ...string) ([]string, error)
 	GetCursor(...QueryOptions) (AlbumCursor, error)
 	GetYears(libraryIDs ...int) ([]int, error)
 

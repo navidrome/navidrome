@@ -5,11 +5,12 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"testing/fstest"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/resources"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -17,13 +18,12 @@ import (
 var _ = Describe("Translations", func() {
 	Describe("I18n files", func() {
 		It("contains only valid json language files", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-nativeapi)")
 			fsys := resources.FS()
 			dir, _ := fsys.Open(consts.I18nFolder)
 			files, _ := dir.(fs.ReadDirFile).ReadDir(-1)
 			for _, f := range files {
 				name := filepath.Base(f.Name())
-				filePath := filepath.Join(consts.I18nFolder, name)
+				filePath := path.Join(consts.I18nFolder, name)
 				file, _ := fsys.Open(filePath)
 				data, _ := io.ReadAll(file)
 				var out map[string]any
@@ -44,6 +44,17 @@ var _ = Describe("Translations", func() {
 			Expect(tr.Name).To(Equal("English"))
 			var out map[string]any
 			Expect(json.Unmarshal([]byte(tr.Data), &out)).To(BeNil())
+		})
+
+		It("counts only non-empty leaf terms", func() {
+			fsys := fstest.MapFS{
+				"i18n/test.json": &fstest.MapFile{
+					Data: []byte(`{"languageName":"Test","a":"x","b":"","nested":{"c":"y","d":""}}`),
+				},
+			}
+			tr, err := loadTranslation(fsys, "test.json")
+			Expect(err).To(BeNil())
+			Expect(tr.TermCount).To(Equal(3))
 		})
 	})
 })

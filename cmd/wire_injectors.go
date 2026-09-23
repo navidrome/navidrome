@@ -36,13 +36,14 @@ var allProviders = wire.NewSet(
 	server.New,
 	subsonic.New,
 	jellyfin.New,
+	jellyfin.NewDiscovery,
 	nativeapi.New,
 	public.New,
 	persistence.New,
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner.New,
+	scanner.GetInstance,
 	scanner.GetWatcher,
 	metrics.GetPrometheusInstance,
 	db.Db,
@@ -108,6 +109,12 @@ func CreateListenBrainzRouter() *listenbrainz.Router {
 	))
 }
 
+func CreateJellyfinDiscovery() *jellyfin.Discovery {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
 func CreateInsights() metrics.Insights {
 	panic(wire.Build(
 		allProviders,
@@ -141,6 +148,13 @@ func GetPlaybackServer() playback.PlaybackServer {
 func CreateArtworkWorker() *artwork.Worker {
 	panic(wire.Build(
 		allProviders,
+	))
+}
+
+func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.TracingResolver {
+	panic(wire.Build(
+		allProviders,
+		artwork.NewTracingResolver,
 	))
 }
 

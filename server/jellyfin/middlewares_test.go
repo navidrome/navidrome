@@ -95,6 +95,52 @@ var _ = Describe("authenticate middleware", func() {
 		api.authenticate(next).ServeHTTP(w, r)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
+
+	Context("token scoping and revocation", func() {
+		var usr *model.User
+
+		BeforeEach(func() {
+			ur := ds.User(context.Background()).(*tests.MockedUserRepo)
+			usr = &model.User{ID: testID("u2"), UserName: "bob", NewPassword: "secret", TokenEpoch: 3}
+			Expect(ur.Put(usr)).To(Succeed())
+		})
+
+		serve := func(token string) *httptest.ResponseRecorder {
+			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items", nil)
+			r.Header.Set("X-Emby-Token", token)
+			api.authenticate(next).ServeHTTP(w, r)
+			return w
+		}
+
+		It("accepts a jellyfin-scoped token with the current epoch", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+
+		It("rejects a token whose epoch is stale", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+			usr.TokenEpoch = 4
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("rejects a token minted for another API", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceNative)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("still accepts an unscoped session token", func() {
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+	})
 })
 
 var _ = Describe("withPlayer middleware", func() {

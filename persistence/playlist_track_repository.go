@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"database/sql"
+	"slices"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
@@ -55,7 +56,7 @@ func (r *playlistRepository) Tracks(playlistId string, refreshSmartPlaylist bool
 			"id":           "playlist_tracks.id",
 			"artist":       "order_artist_name",
 			"album_artist": "order_album_artist_name",
-			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
+			"album":        "order_album_name, album_id, disc_number, track_number, order_artist_name, " + naturalSort("f.title"),
 			"title":        "order_title",
 			"random":       "random()",
 			// To make sure these fields will be whitelisted
@@ -90,6 +91,7 @@ func (r *playlistTrackRepository) Count(options ...rest.QueryOptions) (int64, er
 	query := Select().
 		LeftJoin("media_file f on f.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(query, "f")
 	return r.count(query, r.parseRestOptions(r.ctx, options...))
 }
 
@@ -112,6 +114,7 @@ func (r *playlistTrackRepository) Read(id string) (any, error) {
 		).
 		Join("media_file f on f.id = media_file_id").
 		Where(And{Eq{"playlist_id": r.playlistId}, Eq{"playlist_tracks.id": id}})
+	sel = r.applyLibraryFilter(sel, "f")
 	var trk dbPlaylistTrack
 	err := r.queryOne(sel, &trk)
 	return trk.PlaylistTrack, err
@@ -156,6 +159,7 @@ func (r *playlistTrackRepository) GetAlbumIDs(options ...model.QueryOptions) ([]
 	query := r.newSelect(options...).Columns("distinct mf.album_id").
 		Join("media_file mf on mf.id = media_file_id").
 		Where(Eq{"playlist_id": r.playlistId})
+	query = r.applyLibraryFilter(query, "mf")
 	var ids []string
 	err := r.queryAllSlice(query, &ids)
 	if err != nil {
@@ -186,12 +190,40 @@ func (r *playlistTrackRepository) Add(mediaFileIds []string) (int, error) {
 	// Get next pos (ID) in playlist
 	sq := r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId})
 	var res struct{ Max sql.NullInt32 }
-	err := r.queryOne(sq, &res)
-	if err != nil {
+	if err := r.queryOne(sq, &res); err != nil {
 		return 0, err
 	}
 
-	return len(mediaFileIds), r.playlistRepo.addTracks(r.playlistId, int(res.Max.Int32+1), mediaFileIds)
+	return r.playlistRepo.addTracks(r.playlistId, int(res.Max.Int32+1), mediaFileIds)
+}
+
+// Insert adds tracks before the 1-based position pos, shifting the following entries down; a
+// position past the end appends. Callers must run it in a transaction.
+func (r *playlistTrackRepository) Insert(mediaFileIds []string, pos int) (int, error) {
+	if len(mediaFileIds) == 0 {
+		return 0, nil
+	}
+	pos = max(pos, 1)
+	n := len(mediaFileIds)
+	// Negate while shifting, so no intermediate row hits the unique (playlist_id, id) index.
+	_, err := r.executeSQL(Expr(`UPDATE playlist_tracks SET id = -(id + ?) WHERE playlist_id = ? AND id >= ?`, n, r.playlistId, pos))
+	if err != nil {
+		return 0, err
+	}
+	res, err := r.executeSQL(Expr(`UPDATE playlist_tracks SET id = -id WHERE playlist_id = ? AND id < 0`, r.playlistId))
+	if err != nil {
+		return 0, err
+	}
+	if res == 0 {
+		return r.Add(mediaFileIds)
+	}
+	inserted, err := r.playlistRepo.addTracks(r.playlistId, pos, mediaFileIds)
+	if err != nil || inserted == n {
+		return inserted, err
+	}
+	// The shift above reserved a slot per requested id, so ids dropped by the library filter
+	// leave a hole. Close it.
+	return inserted, r.playlistRepo.renumber(r.playlistId)
 }
 
 func (r *playlistTrackRepository) addMediaFileIds(cond Sqlizer) (int, error) {
@@ -224,10 +256,14 @@ func (r *playlistTrackRepository) AddDiscs(discs []model.DiscID) (int, error) {
 	return r.addMediaFileIds(clauses)
 }
 
+// deleteChunkSize keeps each DELETE under SQLITE_MAX_VARIABLE_NUMBER, matching addTracks.
+const deleteChunkSize = 200
+
 func (r *playlistTrackRepository) Delete(ids ...string) error {
-	err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": ids}})
-	if err != nil {
-		return err
+	for chunk := range slices.Chunk(ids, deleteChunkSize) {
+		if err := r.delete(And{Eq{"playlist_id": r.playlistId}, Eq{"id": chunk}}); err != nil {
+			return err
+		}
 	}
 
 	return r.playlistRepo.renumber(r.playlistId)
@@ -242,8 +278,18 @@ func (r *playlistTrackRepository) DeleteAll() error {
 	return r.playlistRepo.renumber(r.playlistId)
 }
 
-// Reorder moves a track from pos to newPos, shifting other tracks accordingly.
+// Reorder moves a track from pos to newPos, shifting other tracks accordingly. newPos is clamped
+// to the playlist; a pos outside it is ErrNotFound, since shifting around it would leave a gap.
 func (r *playlistTrackRepository) Reorder(pos int, newPos int) error {
+	var res struct{ Max sql.NullInt32 }
+	if err := r.queryOne(r.newSelect().Columns("max(id) as max").Where(Eq{"playlist_id": r.playlistId}), &res); err != nil {
+		return err
+	}
+	last := int(res.Max.Int32)
+	if pos < 1 || pos > last {
+		return model.ErrNotFound
+	}
+	newPos = min(max(newPos, 1), last)
 	if pos == newPos {
 		return nil
 	}

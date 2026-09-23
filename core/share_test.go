@@ -5,6 +5,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -39,6 +40,15 @@ var _ = Describe("Share", func() {
 				Expect(entity.ID).To(Equal(id))
 			})
 
+			It("assigns the logged-in user as owner, ignoring a client-supplied UserID", func() {
+				loggedInCtx := request.WithUser(context.Background(), model.User{ID: "logged-in-user"})
+				repo := share.NewRepository(loggedInCtx).(rest.Persistable)
+				entity := &model.Share{Description: "test", ResourceIDs: "123", UserID: "victim-user"}
+				_, err := repo.Save(entity)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entity.UserID).To(Equal("logged-in-user"))
+			})
+
 			It("does not truncate ASCII labels shorter than 30 characters", func() {
 				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "Example Media File"})
 				entity := &model.Share{Description: "test", ResourceIDs: "456"}
@@ -69,6 +79,19 @@ var _ = Describe("Share", func() {
 				_, err := repo.Save(entity)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(entity.Contents).To(Equal("私の中の幻想的世界観及びその顕現を想起させたある現実で..."))
+			})
+
+			It("fails when any of the resource IDs does not exist", func() {
+				entity := &model.Share{Description: "test", ResourceIDs: "123,missing"}
+				_, err := repo.Save(entity)
+				Expect(err).To(MatchError(model.ErrNotFound))
+			})
+
+			It("fails when the resource IDs are of mixed types", func() {
+				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "456", Title: "Example Media File"})
+				entity := &model.Share{Description: "test", ResourceIDs: "123,456"}
+				_, err := repo.Save(entity)
+				Expect(err).To(HaveOccurred())
 			})
 		})
 

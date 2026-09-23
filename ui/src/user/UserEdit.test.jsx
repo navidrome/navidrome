@@ -127,6 +127,12 @@ describe('<UserEdit />', () => {
     expect(screen.getByTestId('date-field-createdAt')).toBeInTheDocument()
   })
 
+  it('should render the scrobble filter input', () => {
+    render(<UserEdit id="user1" permissions="admin" />)
+
+    expect(screen.getByTestId('text-input-scrobbleFilter')).toBeInTheDocument()
+  })
+
   it('should not render username input for non-admin users', () => {
     render(<UserEdit id="user1" permissions="user" />)
 

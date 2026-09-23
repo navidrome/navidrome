@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"encoding/json"
 	"net/http"
 	"slices"
 	"sort"
@@ -110,10 +111,51 @@ var _ = Describe("Browsing", func() {
 			Expect(q.Items).To(BeEmpty())
 		})
 
-		It("defaults to albums when IncludeItemTypes is unrecognized", func() {
+		// Manet syncs collections as Boxset, and took albums coming back instead as a sync failure.
+		DescribeTable("returns nothing for a type it does not serve",
+			func(itemType string) {
+				q := queryResult(get("/Items?IncludeItemTypes=" + itemType + "&Recursive=true"))
+				Expect(q.TotalRecordCount).To(Equal(0))
+				Expect(q.Items).To(BeEmpty())
+			},
+			Entry("a Jellyfin kind Navidrome has none of", "Boxset"),
+		)
+
+		It("treats a name Jellyfin does not know as an absent IncludeItemTypes", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Nonsense&Recursive=true"))
-			Expect(q.TotalRecordCount).To(Equal(5))
+			Expect(q.TotalRecordCount).To(Equal(queryResult(get("/Items?Recursive=true")).TotalRecordCount))
+			Expect(q.TotalRecordCount).To(BeNumerically(">", 0))
 		})
+
+		// A strict client (Manet) fails its whole sync on the first item missing any of these.
+		DescribeTable("sends the keys Jellyfin puts on every item",
+			func(itemType string, fields string, nonNull ...string) {
+				var body struct{ Items []map[string]json.RawMessage }
+				res := get("/Items?IncludeItemTypes=" + itemType + "&Fields=" + fields + "&Recursive=true")
+				Expect(json.Unmarshal(res.Body.Bytes(), &body)).To(Succeed())
+				Expect(body.Items).ToNot(BeEmpty())
+				for _, it := range body.Items {
+					Expect(it).To(HaveKey("ChannelId"), "ChannelId is null, but always present")
+					for _, k := range nonNull {
+						Expect(it).To(HaveKey(k))
+						Expect(string(it[k])).ToNot(Equal("null"), k)
+					}
+				}
+			},
+			Entry("songs", "Audio", "Genres,Tags", "ImageTags", "HasLyrics", "Genres", "GenreItems", "Tags"),
+			Entry("albums", "MusicAlbum", "Genres", "ImageTags", "Genres", "GenreItems"),
+			Entry("artists", "MusicArtist", "Genres", "ImageTags", "Genres", "GenreItems"),
+		)
+
+		It("sends MediaType Unknown on items without one, as Jellyfin always emits it", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true"))
+			Expect(q.Items).ToNot(BeEmpty())
+			for _, it := range q.Items {
+				Expect(it.MediaType).To(Equal("Unknown"))
+			}
+			Expect(queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true")).Items[0].MediaType).To(Equal("Audio"))
+		})
+
 	})
 
 	Describe("ParentId browsing", func() {
@@ -560,6 +602,43 @@ var _ = Describe("Browsing", func() {
 			for _, it := range items {
 				Expect(it.Type).To(Equal("MusicAlbum"))
 			}
+		})
+	})
+
+	Describe("GET /Items/Latest", func() {
+		// Jellyfin marks the /Users/{userId} form obsolete and hides it from the OpenAPI spec, so
+		// SDK-generated clients (Jellify) only ever call this one.
+		It("serves the same response as the legacy /Users/{userId} route", func() {
+			Expect(get("/Items/Latest?Limit=3").Body.String()).
+				To(Equal(get("/Users/admin-1/Items/Latest?Limit=3").Body.String()))
+		})
+
+		It("scopes to ParentId when it names a library", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+dto.EncodeLibraryID(1)), &items)
+			Expect(names(items)).To(ConsistOf("Abbey Road", "Help!", "IV", "Kind of Blue", "Singles"))
+		})
+
+		It("scopes to ParentId when it names an artist", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+enc(artistID("The Beatles"))), &items)
+			Expect(names(items)).To(ConsistOf("Abbey Road", "Help!"))
+		})
+
+		It("returns nothing for a library the user cannot access", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+dto.EncodeLibraryID(99)), &items)
+			Expect(items).To(BeEmpty())
+		})
+
+		It("returns nothing for an id that is neither a library nor an artist", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+enc(testID("does-not-exist"))), &items)
+			Expect(items).To(BeEmpty())
+		})
+
+		It("404s a malformed ParentId, like every other filtered endpoint", func() {
+			Expect(get("/Items/Latest?ParentId=not-a-valid-id").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 

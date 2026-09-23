@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,14 +13,18 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/test"
 )
 
 var _ = Describe("Auth", func() {
@@ -60,6 +65,14 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["name"]).To(Equal("Johndoe"))
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
+			})
+		})
+
+		Describe("createAdminUser", func() {
+			It("returns the error when the user cannot be saved", func() {
+				ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: errors.New("db is down")}}
+				err := createAdminUser(context.Background(), ds, "johndoe", "secret")
+				Expect(err).To(MatchError(ContainSubstring("db is down")))
 			})
 		})
 
@@ -199,6 +212,13 @@ var _ = Describe("Auth", func() {
 				Expect(resp.Code).To(Equal(http.StatusUnauthorized))
 			})
 
+			It("rejects a request body larger than the limit", func() {
+				body := `{"username":"janedoe", "password":"abc123", "padding":"` + strings.Repeat("x", MaxLoginBodySize) + `"}`
+				req = httptest.NewRequest("POST", "/login", strings.NewReader(body))
+				LimitLoginBody(http.HandlerFunc(login(ds))).ServeHTTP(resp, req)
+				Expect(resp.Code).To(Equal(http.StatusUnprocessableEntity))
+			})
+
 			It("logs in successfully if user exists", func() {
 				usr := ds.User(context.Background())
 				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
@@ -214,6 +234,56 @@ var _ = Describe("Auth", func() {
 				Expect(parsed["id"]).ToNot(BeEmpty())
 				Expect(parsed["token"]).ToNot(BeEmpty())
 			})
+		})
+	})
+
+	Describe("UsernameFromExtAuthHeader", func() {
+		var hook *test.Hook
+		var r *http.Request
+
+		BeforeEach(func() {
+			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
+			prevLevel := log.CurrentLevel()
+			l, h := test.NewNullLogger()
+			hook = h
+			prevLogger := log.SetDefaultLogger(l)
+			log.SetLevel(log.LevelWarn)
+			DeferCleanup(func() {
+				log.SetDefaultLogger(prevLogger)
+				log.SetLevel(prevLevel)
+			})
+			r = httptest.NewRequest("GET", "/", nil)
+		})
+
+		warnings := func() []*logrus.Entry {
+			var ws []*logrus.Entry
+			for _, e := range hook.AllEntries() {
+				if e.Level == logrus.WarnLevel {
+					ws = append(ws, e)
+				}
+			}
+			return ws
+		}
+
+		It("returns the username from a trusted source", func() {
+			r.Header.Set("Remote-User", "janedoe")
+			r = r.WithContext(request.WithReverseProxyIp(r.Context(), "192.168.0.42"))
+			Expect(UsernameFromExtAuthHeader(r)).To(Equal("janedoe"))
+			Expect(warnings()).To(BeEmpty())
+		})
+
+		It("does not warn when an untrusted source sends no user header", func() {
+			r = r.WithContext(request.WithReverseProxyIp(r.Context(), "8.8.8.8"))
+			Expect(UsernameFromExtAuthHeader(r)).To(BeEmpty())
+			Expect(warnings()).To(BeEmpty())
+		})
+
+		It("warns when an untrusted source sends the user header", func() {
+			r.Header.Set("Remote-User", "janedoe")
+			r = r.WithContext(request.WithReverseProxyIp(r.Context(), "8.8.8.8"))
+			Expect(UsernameFromExtAuthHeader(r)).To(BeEmpty())
+			Expect(warnings()).To(HaveLen(1))
+			Expect(warnings()[0].Message).To(Equal("IP is not whitelisted for external authentication"))
 		})
 	})
 
@@ -340,6 +410,140 @@ var _ = Describe("Auth", func() {
 			u, err := ds.User(context.Background()).FindByUsername("seconduser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeFalse())
+		})
+	})
+
+	Describe("Authenticator token gating", func() {
+		var ds *tests.MockDataStore
+		var usr *model.User
+
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.SessionTimeout = time.Hour
+			ds = &tests.MockDataStore{}
+			auth.Init(ds)
+			ur := ds.User(context.TODO()).(*tests.MockedUserRepo)
+			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
+			Expect(ur.Put(usr)).To(Succeed())
+		})
+
+		serve := func(token string) *httptest.ResponseRecorder {
+			r := httptest.NewRequest("GET", "/api/song", nil)
+			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+token)
+			w := httptest.NewRecorder()
+			handler := JWTVerifier(Authenticator(ds)(http.HandlerFunc(
+				func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) },
+			)))
+			handler.ServeHTTP(w, r)
+			return w
+		}
+
+		It("accepts a current session token", func() {
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+
+		It("rejects a jellyfin-scoped token", func() {
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("rejects a token with a stale epoch", func() {
+			tokenStr, err := auth.CreateToken(usr)
+			Expect(err).ToNot(HaveOccurred())
+			usr.TokenEpoch = 3
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+
+		It("ignores a stray token for someone else when config auto-login resolves the user", func() {
+			conf.Server.DevAutoLoginUsername = usr.UserName
+			tokenStr, err := auth.CreateToken(&model.User{UserName: "someone-else"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
+		})
+
+		It("rejects a stale-epoch token whose subject differs only in case from the resolved user", func() {
+			tokenStr, err := auth.CreateToken(&model.User{UserName: strings.ToUpper(usr.UserName), TokenEpoch: usr.TokenEpoch})
+			Expect(err).ToNot(HaveOccurred())
+			usr.TokenEpoch = 5
+			Expect(serve(tokenStr).Code).To(Equal(http.StatusUnauthorized))
+		})
+	})
+
+	Describe("JWTRefresher", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			// TouchClaims reads this; left at zero every refreshed token is born expired.
+			conf.Server.SessionTimeout = time.Hour
+			auth.Init(&tests.MockDataStore{})
+		})
+
+		serveWith := func(handler http.HandlerFunc) *httptest.ResponseRecorder {
+			usr := model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}
+			tokenStr, err := auth.CreateToken(&usr)
+			Expect(err).ToNot(HaveOccurred())
+
+			r := httptest.NewRequest("GET", "/api/song", nil)
+			r.Header.Set(consts.UIAuthorizationHeader, "Bearer "+tokenStr)
+			w := httptest.NewRecorder()
+			JWTVerifier(JWTRefresher(handler)).ServeHTTP(w, r)
+			return w
+		}
+
+		It("writes a refreshed token when the handler writes a body", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte("ok"))
+			})
+			Expect(w.Header().Get(consts.UIAuthorizationHeader)).ToNot(BeEmpty())
+		})
+
+		It("writes a refreshed token when the handler writes no body", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+			Expect(w.Header().Get(consts.UIAuthorizationHeader)).ToNot(BeEmpty())
+		})
+
+		It("picks up an epoch the handler reported", func() {
+			w := serveWith(func(w http.ResponseWriter, r *http.Request) {
+				request.SetTokenEpoch(r.Context(), 42)
+				w.WriteHeader(http.StatusOK)
+			})
+
+			claims, err := auth.Validate(w.Header().Get(consts.UIAuthorizationHeader))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(42))
+		})
+
+		It("keeps the original epoch when the handler reports nothing", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			claims, err := auth.Validate(w.Header().Get(consts.UIAuthorizationHeader))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(claims.Epoch).To(Equal(1))
+		})
+
+		It("propagates Flush to the underlying ResponseWriter", func() {
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				w.(http.Flusher).Flush()
+			})
+			Expect(w.Flushed).To(BeTrue())
+		})
+
+		It("exposes the underlying ResponseWriter via Unwrap, for http.ResponseController lookups", func() {
+			var unwrapped http.ResponseWriter
+			w := serveWith(func(w http.ResponseWriter, _ *http.Request) {
+				u, ok := w.(interface{ Unwrap() http.ResponseWriter })
+				Expect(ok).To(BeTrue())
+				unwrapped = u.Unwrap()
+				w.WriteHeader(http.StatusOK)
+			})
+			Expect(unwrapped).To(BeIdenticalTo(w))
 		})
 	})
 })

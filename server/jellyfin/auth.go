@@ -30,24 +30,30 @@ func (api *Router) authenticateByName(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+	api.signIn(w, r, usr)
+}
+
+func (api *Router) signIn(w http.ResponseWriter, r *http.Request, usr *model.User) {
+	ctx := r.Context()
 	// Best-effort, like the web UI's validateLogin: without it, Jellyfin-only users show a
 	// never/stale "Last Login" in the admin UI.
 	if err := api.ds.User(ctx).UpdateLastLoginAt(usr.ID); err != nil {
-		log.Error(ctx, "Jellyfin API: could not update last login date", "username", body.Username, err)
+		log.Error(ctx, "Jellyfin API: could not update last login date", "username", usr.UserName, err)
 	}
 
-	token, err := auth.CreateToken(usr)
+	token, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
 	if err != nil {
 		api.internalError(w, r, err)
 		return
 	}
 
-	// SessionInfo is omitted, not partially filled: a stub {Id, UserId} could fail a strict client's
-	// parse, and Finamp's login doesn't need it (its AuthenticationResult.sessionInfo is nullable).
+	a := parseMediaBrowserAuth(r)
+	serverID := api.serverID(ctx)
 	api.ok(w, r, dto.AuthenticationResult{
-		User:        userToDto(usr, api.serverName(), api.serverID(ctx)),
+		User:        userToDto(usr, serverName(), serverID),
+		SessionInfo: dto.NewSessionInfo(usr, a.Client, a.DeviceId, a.Device, a.Version, serverID),
 		AccessToken: token,
-		ServerId:    api.serverID(ctx),
+		ServerId:    serverID,
 	})
 }
 

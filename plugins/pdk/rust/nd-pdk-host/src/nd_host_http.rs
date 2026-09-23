@@ -30,7 +30,7 @@ mod base64_bytes {
 }
 
 /// HTTPRequest represents an outbound HTTP request from a plugin.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HTTPRequest {
     pub method: String,
@@ -47,7 +47,7 @@ pub struct HTTPRequest {
 }
 
 /// HTTPResponse represents the response from an outbound HTTP request.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HTTPResponse {
     pub status_code: i32,

@@ -4,6 +4,8 @@ import { useRating } from './useRating'
 import subsonic from '../subsonic'
 import { useDataProvider } from 'react-admin'
 
+const mockRefresh = vi.fn()
+
 vi.mock('../subsonic', () => ({
   default: {
     setRating: vi.fn(() => Promise.resolve()),
@@ -16,13 +18,16 @@ vi.mock('react-admin', async () => {
     ...actual,
     useDataProvider: vi.fn(),
     useNotify: vi.fn(() => vi.fn()),
+    useRefresh: vi.fn(() => mockRefresh),
   }
 })
 
 describe('useRating', () => {
   let getOne
   beforeEach(() => {
-    getOne = vi.fn(() => Promise.resolve())
+    getOne = vi.fn((resource, params) =>
+      Promise.resolve({ data: { id: params.id } }),
+    )
     useDataProvider.mockReturnValue({ getOne })
     vi.clearAllMocks()
   })
@@ -56,9 +61,9 @@ describe('useRating', () => {
   })
 
   describe('playlist track scenarios', () => {
-    it('refreshes both playlist track and song for playlist tracks', async () => {
+    it('refreshes the song and reloads the list for playlist tracks', async () => {
       const record = {
-        id: 'pt-1',
+        id: '1',
         mediaFileId: 'sg-1',
         playlistId: 'pl-1',
         rating: 2,
@@ -71,18 +76,21 @@ describe('useRating', () => {
       // Should rate using the media file ID
       expect(subsonic.setRating).toHaveBeenCalledWith('sg-1', 5)
 
-      // Should refresh both the playlist track and the song
-      expect(getOne).toHaveBeenCalledTimes(2)
-      expect(getOne).toHaveBeenCalledWith('playlistTrack', {
-        id: 'pt-1',
-        filter: { playlist_id: 'pl-1' },
-      })
+      // The row is a position in the playlist, so it cannot be refetched by id:
+      // rating can drop the track out of a smart playlist and shift every row up
+      expect(getOne).toHaveBeenCalledTimes(1)
       expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
+      expect(getOne).not.toHaveBeenCalledWith(
+        'playlistTrack',
+        expect.anything(),
+      )
+      expect(mockRefresh).toHaveBeenCalled()
     })
 
-    it('includes playlist_id filter when refreshing playlist tracks', async () => {
+    it('reloads the list even when the song refresh fails', async () => {
+      getOne.mockImplementation(() => Promise.reject(new Error('boom')))
       const record = {
-        id: 'pt-5',
+        id: '5',
         mediaFileId: 'sg-10',
         playlistId: 'pl-123',
         rating: 1,
@@ -92,16 +100,8 @@ describe('useRating', () => {
         await result.current[0](3, 'sg-10')
       })
 
-      // Should rate using the media file ID
       expect(subsonic.setRating).toHaveBeenCalledWith('sg-10', 3)
-
-      // Should refresh playlist track with correct playlist_id filter
-      expect(getOne).toHaveBeenCalledWith('playlistTrack', {
-        id: 'pt-5',
-        filter: { playlist_id: 'pl-123' },
-      })
-      // Should also refresh the underlying song
-      expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-10' })
+      expect(mockRefresh).toHaveBeenCalled()
     })
 
     it('only refreshes original resource when no mediaFileId present', async () => {
@@ -111,9 +111,10 @@ describe('useRating', () => {
         await result.current[0](2, 'sg-1')
       })
 
-      // Should only refresh the original resource (song)
+      // Should only refresh the original resource (song), without reloading the list
       expect(getOne).toHaveBeenCalledTimes(1)
       expect(getOne).toHaveBeenCalledWith('song', { id: 'sg-1' })
+      expect(mockRefresh).not.toHaveBeenCalled()
     })
 
     it('does not include playlist_id filter for non-playlist resources', async () => {

@@ -162,11 +162,24 @@ func NewArtistRepository(ctx context.Context, db dbx.Builder) model.ArtistReposi
 
 func roleFilter(_ string, role any) Sqlizer {
 	if role, ok := role.(string); ok {
-		if _, ok := model.AllRoles[role]; ok {
-			return Expr("JSON_EXTRACT(library_artist.stats, '$." + role + ".m') IS NOT NULL")
+		if safe, ok := sanitizeArtistStatsRole(role); ok && safe != "total" {
+			return Expr("JSON_EXTRACT(library_artist.stats, '$." + safe + ".m') IS NOT NULL")
 		}
 	}
 	return Eq{"1": 2}
+}
+
+// sanitizeArtistStatsRole allowlists values interpolated into JSON paths for artist
+// stats (filter and sort). "total" is the aggregate key stored by the scanner.
+// Unknown values must not reach SQL string concatenation.
+func sanitizeArtistStatsRole(role string) (string, bool) {
+	if role == "" || role == "total" {
+		return "total", true
+	}
+	if _, ok := model.AllRoles[role]; ok {
+		return role, true
+	}
+	return "", false
 }
 
 // artistLibraryIdFilter filters artists based on library access through the library_artist table
@@ -265,9 +278,9 @@ func (r *artistRepository) GetAll(options ...model.QueryOptions) (model.Artists,
 	return res, err
 }
 
-// GetAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
+// getAllIDs returns just the artist IDs for the same row set as GetAll, skipping the
 // heavy stats columns and JSON post-processing.
-func (r *artistRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+func (r *artistRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilterToArtistQuery(r.newSelect(options...).Columns("artist.id")).GroupBy("artist.id")
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "artist.id")
@@ -284,7 +297,7 @@ func (r *artistRepository) hydrateArtwork(artists model.Artists) {
 }
 
 func (r *artistRepository) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
@@ -716,7 +729,9 @@ func (r *artistRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
 	role := "total"
 	if len(options) > 0 {
 		if v, ok := options[0].Filters["role"].(string); ok {
-			role = v
+			if safe, ok := sanitizeArtistStatsRole(v); ok {
+				role = safe
+			}
 		}
 	}
 	r.sortMappings["song_count"] = "sum(stats->>'" + role + "'->>'m')"

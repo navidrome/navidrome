@@ -231,9 +231,9 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 	response.AlbumInfo = &responses.AlbumInfo{}
 	response.AlbumInfo.Notes = album.Description
 	if !album.ImageAbsent {
-		response.AlbumInfo.SmallImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 300)
-		response.AlbumInfo.MediumImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 600)
-		response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r, album.CoverArtID(), 1200)
+		response.AlbumInfo.SmallImageUrl = publicurl.ImageURL(r.Context(), album.CoverArtID(), 300)
+		response.AlbumInfo.MediumImageUrl = publicurl.ImageURL(r.Context(), album.CoverArtID(), 600)
+		response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r.Context(), album.CoverArtID(), 1200)
 	}
 
 	response.AlbumInfo.LastFmUrl = album.ExternalUrl
@@ -298,9 +298,9 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 	base := responses.ArtistInfoBase{}
 	base.Biography = artist.Biography
 	if !artist.ImageAbsent {
-		base.SmallImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 300)
-		base.MediumImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 600)
-		base.LargeImageUrl = publicurl.ImageURL(r, artist.CoverArtID(), 1200)
+		base.SmallImageUrl = publicurl.ImageURL(r.Context(), artist.CoverArtID(), 300)
+		base.MediumImageUrl = publicurl.ImageURL(r.Context(), artist.CoverArtID(), 600)
+		base.LargeImageUrl = publicurl.ImageURL(r.Context(), artist.CoverArtID(), 1200)
 	}
 	base.LastFmUrl = artist.ExternalUrl
 	base.MusicBrainzID = artist.MbzArtistID

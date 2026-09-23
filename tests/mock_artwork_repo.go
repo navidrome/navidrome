@@ -122,6 +122,20 @@ func (m *MockArtworkRepo) GetItemArtwork(kind model.Kind, id, imageType string) 
 	return nil, model.ErrNotFound
 }
 
+func (m *MockArtworkRepo) PutLastFailure(kind model.Kind, id, imageType, trace string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Err != nil {
+		return m.Err
+	}
+	key := iaKey(kind.Prefix(), id, imageType)
+	if ia, ok := m.ItemData[key]; ok {
+		ia.LastFailure = trace
+		m.ItemData[key] = ia
+	}
+	return nil
+}
+
 func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

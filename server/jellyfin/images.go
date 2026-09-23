@@ -11,7 +11,6 @@ import (
 	_ "image/png"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/dustin/go-humanize"
 	"github.com/navidrome/navidrome/conf"
@@ -20,18 +19,32 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/imghttp"
+	"github.com/navidrome/navidrome/utils/req"
 	_ "golang.org/x/image/webp"
 )
 
+// imageSize reduces Jellyfin's size params to Navidrome's single bound. Width/Height/Max* are
+// bounds, so the tightest wins; Fill* must cover its box, so its larger side is the bound.
+func imageSize(p *req.Values) int {
+	fill := max(p.IntOr("fillwidth", 0), p.IntOr("fillheight", 0))
+	size := 0
+	for _, v := range []int{p.IntOr("width", 0), p.IntOr("height", 0), p.IntOr("maxwidth", 0), p.IntOr("maxheight", 0), fill} {
+		if v > 0 && (size == 0 || v < size) {
+			size = v
+		}
+	}
+	return size
+}
+
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
-	// Public endpoint, like real Jellyfin's image routes: clients fetch cover URLs without credentials
-	// and item ids are unguessable, so resolution runs elevated to bypass the visibility filter.
+	// Public, like Jellyfin's own image routes: clients build cover URLs without credentials, and
+	// upstream resolves them with no visibility check either (LibraryManager.ItemIsVisible, null user).
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
 	itemId, ok := itemIDParam(w, r, "itemId")
 	if !ok {
 		return
 	}
-	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
+	size := imageSize(req.Params(r))
 
 	artID := api.resolveArtworkID(ctx, itemId)
 	img, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)

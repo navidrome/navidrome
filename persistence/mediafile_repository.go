@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
 	"github.com/pocketbase/dbx"
@@ -34,6 +36,14 @@ type dbMediaFile struct {
 	RgAlbumPeak *float64 `structs:"-" json:"-"`
 	RgTrackGain *float64 `structs:"-" json:"-"`
 	RgTrackPeak *float64 `structs:"-" json:"-"`
+}
+
+// String guards the promoted MediaFile.String(), which would dereference a nil MediaFile.
+func (m dbMediaFile) String() string {
+	if m.MediaFile == nil {
+		return "<nil>"
+	}
+	return m.MediaFile.String()
 }
 
 func (m *dbMediaFile) PostScan() error {
@@ -85,7 +95,7 @@ func NewMediaFileRepository(ctx context.Context, db dbx.Builder) model.MediaFile
 		"title":          "order_title",
 		"artist":         "order_artist_name, order_album_name, release_date, disc_number, track_number",
 		"album_artist":   "order_album_artist_name, order_album_name, release_date, disc_number, track_number",
-		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, title",
+		"album":          "order_album_name, album_id, disc_number, track_number, order_artist_name, " + naturalSort("media_file.title"),
 		"random":         "random",
 		"created_at":     "media_file.created_at",
 		"recently_added": mediaFileRecentlyAddedSort(),
@@ -306,8 +316,8 @@ func (r *mediaFileRepository) GetCursor(options ...model.QueryOptions) (model.Me
 	return wrapMediaFileCursor(cursor), nil
 }
 
-// GetAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
-func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
+// getAllIDs returns the IDs of GetAll's row set, skipping its wide column projection.
+func (r *mediaFileRepository) getAllIDs(options ...model.QueryOptions) ([]string, error) {
 	sq := r.applyLibraryFilter(r.newSelect(options...).Columns("media_file.id"))
 	if filtersNeedAnnotation(sq) {
 		sq = r.withAnnotation(sq, "media_file.id")
@@ -317,9 +327,29 @@ func (r *mediaFileRepository) GetAllIDs(options ...model.QueryOptions) ([]string
 	return ids, err
 }
 
+func (r *mediaFileRepository) GetAlbumIDsByFolder(lib model.Library, folderIDs ...string) ([]string, error) {
+	ids := []string{}
+	for chunk := range slices.Chunk(folderIDs, 200) {
+		// A folder's own cover also covers albums whose tracks sit in its disc subfolders.
+		inFolders := Select("f.id").From("folder f").Where(And{
+			Eq{"f.library_id": lib.ID},
+			Eq{"f.missing": false},
+			Or{Eq{"f.id": chunk}, Eq{"f.parent_id": chunk}},
+		})
+		sq := Select("distinct album_id").From("media_file").
+			Where(And{Eq{"missing": false}, ConcatExpr("folder_id IN (", inFolders, ")")})
+		var chunkIDs []string
+		if err := r.queryAllSlice(sq, &chunkIDs); err != nil {
+			return nil, err
+		}
+		ids = append(ids, chunkIDs...)
+	}
+	return ids, nil
+}
+
 // GetCursorWithArtwork streams the same rows as GetCursor, hydrated, via an id pre-pass.
 func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions) (model.MediaFileCursor, error) {
-	ids, err := r.GetAllIDs(options...)
+	ids, err := r.getAllIDs(options...)
 	if err != nil {
 		return nil, err
 	}
@@ -334,26 +364,31 @@ func (r *mediaFileRepository) GetCursorWithArtwork(options ...model.QueryOptions
 // Library-qualified paths search within the specified library, while unqualified paths
 // search across all libraries for backward compatibility.
 func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, error) {
-	query := Or{}
+	// One IN list per library instead of one OR term per path: SQLite abandons the
+	// path index at just two OR-ed equality terms and scans the whole table.
+	byLibrary := map[int][]string{}
+	var unqualified []string
 
 	for _, path := range paths {
-		parts := strings.SplitN(path, ":", 2)
-		if len(parts) == 2 {
-			// Library-qualified path: "libraryID:path"
-			libraryID, err := strconv.Atoi(parts[0])
-			if err != nil {
-				// Invalid format, skip
-				continue
+		// A numeric prefix is ambiguous: "1:foo.mp3" qualifies a library, but "1999: A Life/01.mp3"
+		// is a plain path. Search both ways rather than guessing.
+		if id, rest, ok := strings.Cut(path, ":"); ok {
+			if libraryID, err := strconv.Atoi(id); err == nil {
+				byLibrary[libraryID] = append(byLibrary[libraryID], rest)
 			}
-			relativePath := parts[1]
-			query = append(query, And{
-				Eq{"path collate nocase": relativePath},
-				Eq{"library_id": libraryID},
-			})
-		} else {
-			// Unqualified path: search across all libraries
-			query = append(query, Eq{"path collate nocase": path})
 		}
+		unqualified = append(unqualified, path)
+	}
+
+	query := Or{}
+	for _, libraryID := range slices.Sorted(maps.Keys(byLibrary)) {
+		query = append(query, And{
+			Eq{"path collate nocase": byLibrary[libraryID]},
+			Eq{"library_id": libraryID},
+		})
+	}
+	if len(unqualified) > 0 {
+		query = append(query, Eq{"path collate nocase": unqualified})
 	}
 
 	if len(query) == 0 {
@@ -371,6 +406,29 @@ func (r *mediaFileRepository) FindByPaths(paths []string) (model.MediaFiles, err
 
 func (r *mediaFileRepository) Delete(id string) error {
 	return r.delete(Eq{"id": id})
+}
+
+func (r *mediaFileRepository) ReassignReferences(prevID, newID string) error {
+	if err := r.ReassignAnnotation(prevID, newID); err != nil {
+		return fmt.Errorf("reassigning annotations: %w", err)
+	}
+	if err := r.reassignBookmark(prevID, newID); err != nil {
+		return fmt.Errorf("reassigning bookmarks: %w", err)
+	}
+	upd := Update("playlist_tracks").Set("media_file_id", newID).Where(Eq{"media_file_id": prevID})
+	if _, err := r.executeSQL(upd); err != nil {
+		return fmt.Errorf("reassigning playlist tracks: %w", err)
+	}
+	upd = Update("scrobbles").Set("media_file_id", newID).Where(Eq{"media_file_id": prevID})
+	if _, err := r.executeSQL(upd); err != nil {
+		return fmt.Errorf("reassigning scrobbles: %w", err)
+	}
+	// OR IGNORE: scrobble_buffer is unique on (user_id, service, media_file_id, play_time)
+	buf := Expr("update or ignore scrobble_buffer set media_file_id = ? where media_file_id = ?", newID, prevID)
+	if _, err := r.executeSQL(buf); err != nil {
+		return fmt.Errorf("reassigning buffered scrobbles: %w", err)
+	}
+	return nil
 }
 
 func (r *mediaFileRepository) DeleteAllMissing() (int64, error) {
@@ -515,6 +573,23 @@ var mediaFileSearchConfig = searchConfig{
 	NaturalOrder: "media_file.rowid",
 	OrderBy:      []string{"title"},
 	MBIDFields:   []string{"mbz_recording_id", "mbz_release_track_id"},
+}
+
+func (r *mediaFileRepository) MatchesCriteria(id string, c criteria.Criteria) (bool, error) {
+	usr := loggedUser(r.ctx)
+	rulesSQL := newSmartPlaylistCriteria(c, withSmartPlaylistOwner(*usr))
+	cond, err := rulesSQL.where()
+	if err != nil {
+		return false, err
+	}
+	sq := Select("count(*) as count").From("media_file")
+	sq = rulesSQL.applyExpressionJoins(sq, usr.ID)
+	sq = sq.Where(And{Eq{"media_file.id": id}, cond})
+	var res struct{ Count int64 }
+	if err := r.queryOne(sq, &res); err != nil {
+		return false, err
+	}
+	return res.Count > 0, nil
 }
 
 func (r *mediaFileRepository) Search(q string, options ...model.QueryOptions) (model.MediaFiles, error) {
