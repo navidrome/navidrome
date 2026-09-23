@@ -159,7 +159,6 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 	}
 	err := ds.User(ctx).Put(&initialUser)
 	if err != nil {
-		// Log the username only: initialUser carries the password in clear text
 		log.Error(ctx, "Could not create initial user", "user", initialUser.UserName, err)
 		return fmt.Errorf("creating initial user: %w", err)
 	}

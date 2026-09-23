@@ -10,8 +10,6 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// failingPutUserRepo counts users normally but fails to store them, to exercise the
-// error path of the initial user creation.
 type failingPutUserRepo struct {
 	model.UserRepository
 	err error
@@ -47,11 +45,15 @@ var _ = Describe("initial_setup", func() {
 			Expect(ur.CountAll()).To(Equal(int64(1)))
 		})
 
-		// The error was assigned to a shadowed err and dropped, so the caller saw
-		// success and went on to commit the "setup complete" flag.
 		It("returns the error when the user cannot be stored", func() {
 			boom := errors.New("db is down")
 			Expect(createInitialAdminUser(dsWithFailingPut(boom), "pass123")).To(MatchError(boom))
+		})
+
+		It("returns the error when the user table cannot be read", func() {
+			boom := errors.New("db is down")
+			ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: boom}}
+			Expect(createInitialAdminUser(ds, "pass123")).To(MatchError(boom))
 		})
 	})
 })

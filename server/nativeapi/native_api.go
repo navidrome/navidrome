@@ -2,7 +2,6 @@ package nativeapi
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -205,9 +204,6 @@ func (api *Router) addMissingFilesRoute(r chi.Router) {
 }
 
 func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []string) {
-	// Marshal both shapes instead of building the single-id case by hand: ids come
-	// from the query string, and html.EscapeString leaves backslashes untouched, so
-	// an id containing one produced a malformed body.
 	var payload any
 	if len(ids) == 1 {
 		payload = struct {
@@ -218,13 +214,7 @@ func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []strin
 			Ids []string `json:"ids"`
 		}{Ids: ids}
 	}
-	resp, err := json.Marshal(payload)
-	if err != nil {
-		log.Error(r.Context(), "Error marshaling response", "ids", ids, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if _, err := w.Write(resp); err != nil {
+	if err := rest.RespondWithJSON(w, http.StatusOK, payload); err != nil {
 		log.Error(r.Context(), "Error writing response", "ids", ids, err)
 	}
 }

@@ -76,8 +76,6 @@ var _ = Describe("Auth", func() {
 			})
 		})
 
-		// createAdminUser used to swallow the Put error and return nil, so a failure
-		// fell through to doLogin and surfaced as a misleading 401.
 		Describe("createAdmin when the user cannot be stored", func() {
 			It("responds 500 rather than falling through to login", func() {
 				failing := dsWithFailingPut(errors.New("db is down"))

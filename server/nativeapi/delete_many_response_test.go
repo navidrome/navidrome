@@ -29,8 +29,6 @@ var _ = Describe("writeDeleteManyResponse", func() {
 		Expect(write("a", "b")).To(HaveKeyWithValue("ids", ConsistOf("a", "b")))
 	})
 
-	// ids come straight from the query string. html.EscapeString, used previously to
-	// build the single-id body, does not escape backslashes, so `{"id":"a\"}` went out.
 	It("stays valid JSON when the id contains a backslash", func() {
 		Expect(write(`a\`)).To(HaveKeyWithValue("id", `a\`))
 	})
@@ -43,8 +41,9 @@ var _ = Describe("writeDeleteManyResponse", func() {
 		Expect(write("a&b")).To(HaveKeyWithValue("id", "a&b"))
 	})
 
-	It("responds 200 on success", func() {
+	It("responds 200 with a JSON content type", func() {
 		write("abc123")
 		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
 	})
 })
