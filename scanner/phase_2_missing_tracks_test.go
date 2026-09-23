@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"time"
 
@@ -145,6 +146,34 @@ var _ = Describe("phaseMissingTracks", func() {
 
 			movedTrack, _ := ds.MediaFile(ctx).Get("1")
 			Expect(movedTrack.Path).To(Equal(matchedTrack.Path))
+		})
+
+		Context("claiming the album annotation reassignment", func() {
+			var probe *probeTxDS
+			missingTrack := model.MediaFile{ID: "1", PID: "A", AlbumID: "old-album", Path: "dir1/path1.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+			matchedTrack := model.MediaFile{ID: "2", PID: "A", AlbumID: "new-album", Path: "dir2/path2.mp3", Tags: model.Tags{"title": []string{"title1"}}, Size: 100}
+			BeforeEach(func() {
+				probe = &probeTxDS{MockDataStore: ds.(*tests.MockDataStore)}
+				probe.MockedAlbum = tests.CreateMockAlbumRepo()
+				phase = createPhaseMissingTracks(ctx, state, probe)
+				_ = ds.MediaFile(ctx).Put(&missingTrack)
+				_ = ds.MediaFile(ctx).Put(&matchedTrack)
+			})
+
+			It("claims the target album before the transaction, so a concurrent move skips it", func() {
+				probe.during = func() {
+					phase.annotationMutex.RLock()
+					defer phase.annotationMutex.RUnlock()
+					Expect(phase.processedAlbumAnnotations).To(HaveKeyWithValue("new-album", true))
+				}
+				Expect(phase.moveMatched(matchedTrack, missingTrack)).To(Succeed())
+			})
+
+			It("releases the claim when the move fails, so a later move can reassign", func() {
+				probe.err = errors.New("boom")
+				Expect(phase.moveMatched(matchedTrack, missingTrack)).To(MatchError("boom"))
+				Expect(phase.processedAlbumAnnotations).ToNot(HaveKey("new-album"))
+			})
 		})
 
 		Context("when the move transaction is rerun after a busy rollback", func() {
@@ -1024,4 +1053,21 @@ func (d *rerunTxDS) WithTxRetry(ctx context.Context, block func(context.Context,
 	_ = block(ctx, d.MockDataStore)
 	rollback()
 	return block(ctx, d.MockDataStore)
+}
+
+// probeTxDS runs a hook inside each WithTxRetry block, and can fail the transaction after it.
+type probeTxDS struct {
+	*tests.MockDataStore
+	during func()
+	err    error
+}
+
+func (d *probeTxDS) WithTxRetry(ctx context.Context, block func(context.Context, model.DataStore) error, _ ...string) error {
+	if err := block(ctx, d.MockDataStore); err != nil {
+		return err
+	}
+	if d.during != nil {
+		d.during()
+	}
+	return d.err
 }

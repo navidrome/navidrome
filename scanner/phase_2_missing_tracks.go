@@ -275,12 +275,14 @@ func (p *phaseMissingTracks) findCrossLibraryMatch(missing model.MediaFile) (mod
 func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error {
 	oldAlbumID := missing.AlbumID
 	newAlbumID := target.AlbumID
-	// Use newAlbumID as key since we only care about avoiding duplicate reassignments to the same target
+	// Use newAlbumID as key since we only care about avoiding duplicate reassignments to the same target.
+	// Claimed before the transaction so a concurrent move skips it, and released if the move fails.
 	reassignAlbum := oldAlbumID != newAlbumID
 	if reassignAlbum {
-		p.annotationMutex.RLock()
+		p.annotationMutex.Lock()
 		reassignAlbum = !p.processedAlbumAnnotations[newAlbumID]
-		p.annotationMutex.RUnlock()
+		p.processedAlbumAnnotations[newAlbumID] = true
+		p.annotationMutex.Unlock()
 		if !reassignAlbum {
 			log.Trace(p.ctx, "Scanner: Skipping album annotation reassignment", "from", oldAlbumID, "to", newAlbumID)
 		}
@@ -324,13 +326,12 @@ func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error 
 		return nil
 	}, "scanner: move matched track")
 	if err != nil {
+		if reassignAlbum {
+			p.annotationMutex.Lock()
+			delete(p.processedAlbumAnnotations, newAlbumID)
+			p.annotationMutex.Unlock()
+		}
 		return err
-	}
-
-	if reassignAlbum {
-		p.annotationMutex.Lock()
-		p.processedAlbumAnnotations[newAlbumID] = true
-		p.annotationMutex.Unlock()
 	}
 	p.state.changesDetected.Store(true)
 	return nil
