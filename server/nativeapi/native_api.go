@@ -2,8 +2,6 @@ package nativeapi
 
 import (
 	"context"
-	"encoding/json"
-	"html"
 	"net/http"
 	"strconv"
 	"time"
@@ -206,22 +204,18 @@ func (api *Router) addMissingFilesRoute(r chi.Router) {
 }
 
 func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []string) {
-	var resp []byte
-	var err error
+	var payload any
 	if len(ids) == 1 {
-		resp = []byte(`{"id":"` + html.EscapeString(ids[0]) + `"}`)
+		payload = struct {
+			ID string `json:"id"`
+		}{ID: ids[0]}
 	} else {
-		resp, err = json.Marshal(&struct {
+		payload = struct {
 			Ids []string `json:"ids"`
-		}{Ids: ids})
-		if err != nil {
-			log.Error(r.Context(), "Error marshaling response", "ids", ids, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		}{Ids: ids}
 	}
-	_, err = w.Write(resp) //nolint:gosec
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := rest.RespondWithJSON(w, http.StatusOK, payload); err != nil {
+		log.Error(r.Context(), "Error writing response", "ids", ids, err)
 	}
 }
 
