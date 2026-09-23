@@ -76,6 +76,18 @@ var _ = Describe("Auth", func() {
 			})
 		})
 
+		Describe("createAdmin when the user cannot be stored", func() {
+			It("responds 500 rather than falling through to login", func() {
+				failing := dsWithFailingPut(errors.New("db is down"))
+				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
+				resp = httptest.NewRecorder()
+
+				createAdmin(failing)(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			})
+		})
+
 		Describe("Login from HTTP headers", func() {
 			const (
 				trustedIpv4   = "192.168.0.42"

@@ -2,12 +2,24 @@ package server
 
 import (
 	"context"
+	"errors"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+type failingPutUserRepo struct {
+	model.UserRepository
+	err error
+}
+
+func (r *failingPutUserRepo) Put(*model.User) error { return r.err }
+
+func dsWithFailingPut(err error) model.DataStore {
+	return &tests.MockDataStore{MockedUser: &failingPutUserRepo{UserRepository: tests.CreateMockUserRepo(), err: err}}
+}
 
 var _ = Describe("initial_setup", func() {
 	var ds model.DataStore
@@ -31,6 +43,17 @@ var _ = Describe("initial_setup", func() {
 			Expect(ur.CountAll()).To(Equal(int64(1)))
 			Expect(createInitialAdminUser(ds, "second")).To(BeNil())
 			Expect(ur.CountAll()).To(Equal(int64(1)))
+		})
+
+		It("returns the error when the user cannot be stored", func() {
+			boom := errors.New("db is down")
+			Expect(createInitialAdminUser(dsWithFailingPut(boom), "pass123")).To(MatchError(boom))
+		})
+
+		It("returns the error when the user table cannot be read", func() {
+			boom := errors.New("db is down")
+			ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: boom}}
+			Expect(createInitialAdminUser(ds, "pass123")).To(MatchError(boom))
 		})
 	})
 })
