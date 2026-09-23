@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -110,6 +111,21 @@ var _ = Describe("SQLStore", func() {
 			})
 			Expect(db.IsBusy(err)).To(BeTrue())
 			Expect(calls).To(Equal(1))
+		})
+
+		It("joins the enclosing transaction instead of opening another", func() {
+			rollback := errors.New("rollback")
+			err := ds.WithTx(func(tx model.DataStore) error {
+				Expect(tx.Property(ctx).Put("outer-key", "v")).To(Succeed())
+				Expect(tx.WithTxRetry(ctx, func(ctx context.Context, inner model.DataStore) error {
+					Expect(inner.Property(ctx).Get("outer-key")).To(Equal("v"))
+					return inner.Property(ctx).Put("inner-key", "v")
+				})).To(Succeed())
+				return rollback
+			})
+			Expect(err).To(MatchError(rollback))
+			_, err = ds.Property(ctx).Get("inner-key")
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 })

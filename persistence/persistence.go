@@ -185,9 +185,9 @@ var txRetryDelay = 5 * time.Second
 const txMaxRetries = 3
 
 func (s *SQLStore) WithTxRetry(ctx context.Context, block func(ctx context.Context, tx model.DataStore) error, scope ...string) error {
-	// Inside a transaction the outer one holds the lock, so waiting for it cannot succeed
+	// Inside a transaction, join it: the outer one holds the lock and owns commit and rollback
 	if _, ok := s.db.(*dbx.DB); !ok {
-		return s.WithTx(func(tx model.DataStore) error { return block(ctx, tx) }, scope...)
+		return block(ctx, s)
 	}
 	for attempt := 0; ; attempt++ {
 		attemptCtx := ctx
