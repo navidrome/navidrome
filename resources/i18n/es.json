@@ -83,7 +83,8 @@
         "mood": "Estado de ánimo",
         "date": "Fecha de grabación",
         "missing": "Faltante",
-        "libraryName": "Biblioteca"
+        "libraryName": "Biblioteca",
+        "unplayed": "Sin reproducir"
       },
       "actions": {
         "playAll": "Reproducir",

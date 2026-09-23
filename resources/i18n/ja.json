@@ -83,7 +83,8 @@
         "grouping": "グループ化",
         "media": "メディア",
         "mood": "ムード",
-        "missing": "不明"
+        "missing": "不明",
+        "unplayed": "未再生"
       },
       "actions": {
         "playAll": "すべて再生",
