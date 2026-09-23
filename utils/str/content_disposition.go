@@ -12,7 +12,11 @@ import (
 	"github.com/deluan/sanitize"
 )
 
-const maxFilenameBytes = 255
+const (
+	maxFilenameBytes  = 255
+	maxExtensionBytes = 16
+	fallbackFilename  = "download"
+)
 
 // ContentDispositionAttachment builds an RFC 6266 attachment header value for a user-controlled filename.
 // Non-ASCII names also get a filename* parameter, which clients prefer over the ASCII fallback.
@@ -36,8 +40,11 @@ func splitFilename(filename string) (stem, ext string) {
 		return r
 	}, SanitizeFilename(strings.ToValidUTF8(filename, "_")))
 	ext = path.Ext(name)
+	if len(ext) > maxExtensionBytes {
+		ext = ""
+	}
 	stem = strings.TrimSuffix(name, ext)
-	if limit := max(maxFilenameBytes-len(ext), 0); len(stem) > limit {
+	if limit := maxFilenameBytes - len(ext); len(stem) > limit {
 		for limit > 0 && !utf8.RuneStart(stem[limit]) {
 			limit--
 		}
@@ -47,8 +54,8 @@ func splitFilename(filename string) (stem, ext string) {
 }
 
 func joinFilename(stem, ext string) string {
-	stem = cmp.Or(strings.TrimSpace(stem), "download")
-	return strings.TrimRight(stem+ext, " .")
+	stem = cmp.Or(strings.TrimSpace(stem), fallbackFilename)
+	return cmp.Or(strings.TrimRight(stem+ext, " ."), fallbackFilename)
 }
 
 func toASCII(s string) string {

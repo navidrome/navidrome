@@ -61,6 +61,16 @@ var _ = Describe("ContentDispositionAttachment", func() {
 			Expect(asciiName("Loose End. ")).To(Equal("Loose End"))
 		})
 
+		It("falls back to a placeholder when only dots are left", func() {
+			Expect(str.ContentDispositionAttachment("...")).To(Equal(`attachment; filename="download"`))
+		})
+
+		It("caps a long name whose last dot is not an extension", func() {
+			name := asciiName("a." + strings.Repeat("x", 300))
+			Expect(len(name)).To(BeNumerically("<=", 255))
+			Expect(name).To(HavePrefix("a.xxx"))
+		})
+
 		It("replaces path separators and reserved characters", func() {
 			Expect(asciiName("AC/DC: Live, 1979?.zip")).To(Equal("AC_DC_ Live_ 1979_.zip"))
 		})
