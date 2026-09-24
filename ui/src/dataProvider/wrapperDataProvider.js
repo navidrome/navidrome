@@ -148,6 +148,14 @@ const updateUser = async (params) => {
   return userResponse
 }
 
+// json-server echoes the request body, which would cache the plaintext key
+const createPlayer = async (resource, params) => {
+  const { data } = await dataProvider.create(resource, params)
+  const player = { ...data, hasApiKey: !!params.data.apiKey }
+  delete player.apiKey
+  return { data: player }
+}
+
 const wrapperDataProvider = {
   ...dataProvider,
   getList: (resource, params) => {
@@ -194,6 +202,9 @@ const wrapperDataProvider = {
       return createUser(params)
     }
     const [r, p] = mapResource(resource, params)
+    if (resource === 'player') {
+      return createPlayer(r, p)
+    }
     return dataProvider.create(r, p)
   },
   delete: (resource, params) => {

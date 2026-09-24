@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { Form } from 'react-final-form'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ApiKeyInput from './ApiKeyInput'
@@ -105,6 +105,38 @@ describe('ApiKeyInput', () => {
       text('resources.player.actions.regenerateApiKey'),
     ).not.toBeInTheDocument()
     expect(text('resources.player.actions.revokeApiKey')).toBeInTheDocument()
+  })
+
+  it('falls back to a prompt when the clipboard write fails', async () => {
+    const key = 'nav_0123456789abcdefghijkl'
+    vi.stubGlobal('isSecureContext', true)
+    vi.stubGlobal('prompt', vi.fn())
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    })
+    try {
+      renderInput({
+        record: {},
+        isCreate: true,
+        initialValues: { apiKey: key },
+      })
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'resources.player.actions.copyApiKey',
+        }),
+      )
+      await waitFor(() =>
+        expect(window.prompt).toHaveBeenCalledWith(
+          'message.shareCopyToClipboard',
+          key,
+        ),
+      )
+      expect(hooks.notify).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+      delete navigator.clipboard
+    }
   })
 
   it('shows no actions to another regular user', () => {

@@ -42,7 +42,7 @@ const PlayerEditToolbar = (props) => (
 )
 
 const PlayerEdit = (props) => (
-  <Edit title={<PlayerTitle />} {...props}>
+  <Edit title={<PlayerTitle />} mutationMode="pessimistic" {...props}>
     <SimpleForm variant={'outlined'} toolbar={<PlayerEditToolbar />}>
       {playerInputs()}
       <TextField source="client" />

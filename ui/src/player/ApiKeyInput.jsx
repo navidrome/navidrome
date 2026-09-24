@@ -32,12 +32,17 @@ const ApiKeyInput = ({ record, isCreate, ...props }) => {
   const saved = !pending && !revoking && !!record?.hasApiKey
 
   const copy = () => {
+    const fallback = () =>
+      prompt(translate('message.shareCopyToClipboard'), value)
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard
         .writeText(value)
-        .then(() => notify('resources.player.notifications.apiKeyCopied'))
+        .then(
+          () => notify('resources.player.notifications.apiKeyCopied'),
+          fallback,
+        )
     } else {
-      prompt(translate('message.shareCopyToClipboard'), value)
+      fallback()
     }
   }
 

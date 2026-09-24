@@ -88,6 +88,18 @@ describe('wrapperDataProvider', () => {
     })
   })
 
+  describe('create player', () => {
+    it('keeps the API key out of the returned record', async () => {
+      const data = { name: 'Phone', apiKey: 'nav_0123456789abcdefghijkl' }
+      mockProvider.create.mockResolvedValue({ data: { ...data, id: 'p1' } })
+
+      const result = await wrapperDataProvider.create('player', { data })
+
+      expect(mockProvider.create).toHaveBeenCalledWith('player', { data })
+      expect(result.data).toEqual({ id: 'p1', name: 'Phone', hasApiKey: true })
+    })
+  })
+
   describe('refreshMetadata', () => {
     it('posts to the album metadata refresh endpoint', () => {
       mockHttpClient.mockResolvedValue({ json: {} })
