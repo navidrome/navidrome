@@ -194,13 +194,12 @@ func (r *playerRepository) FindByAPIKey(key string) (*model.Player, error) {
 // admins, so nobody can mint a login for someone else.
 func (r *playerRepository) SetAPIKey(playerID, key string) error {
 	if key == "" {
-		return r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", nil).Where(r.addRestriction(Eq{"id": playerID})))
+		return r.updateOwnedRow(playerID, ownerOrAdmin, map[string]any{"api_key_hash": nil})
 	}
 	if !apiKeyFormat.MatchString(key) {
 		return apiKeyValidationError("resources.player.validation.apiKeyFormat")
 	}
-	err := r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
-		Where(Eq{"id": playerID, "user_id": loggedUser(r.ctx).ID}))
+	err := r.updateOwnedRow(playerID, ownerOnly, map[string]any{"api_key_hash": hashAPIKey(key)})
 	if isUniqueViolation(err) {
 		return apiKeyValidationError("ra.validation.unique")
 	}

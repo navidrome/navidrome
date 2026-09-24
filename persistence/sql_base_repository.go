@@ -86,6 +86,22 @@ func (r sqlRepository) addRestriction(sql ...Sqlizer) Sqlizer {
 	return s
 }
 
+// writeAccess says who may change a row in a table with a user_id column.
+type writeAccess int
+
+const (
+	ownerOrAdmin writeAccess = iota // admins may write any row
+	ownerOnly                       // even admins may only write their own rows
+)
+
+// ownedRow matches the row rowID only if the logged-in user may write it under access.
+func (r sqlRepository) ownedRow(rowID string, access writeAccess) Sqlizer {
+	if access == ownerOnly {
+		return And{Eq{"id": rowID}, Eq{"user_id": loggedUser(r.ctx).ID}}
+	}
+	return r.addRestriction(Eq{"id": rowID})
+}
+
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
 	if r.tableName == "" {
 		r.tableName = strings.TrimPrefix(reflect.TypeOf(instance).String(), "*model.")
@@ -494,7 +510,12 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 	}
 	updateValues := filterUpdateValues(values, id, colsToUpdate...)
 	delete(updateValues, "user_id") // ownership is immutable on update
-	return r.execOwned(id, Update(r.tableName).Where(r.addRestriction(Eq{"id": id})).SetMap(updateValues))
+	return r.updateOwnedRow(id, ownerOrAdmin, updateValues)
+}
+
+// updateOwnedRow sets values on the row rowID if the logged-in user may write it under access.
+func (r sqlRepository) updateOwnedRow(rowID string, access writeAccess, values map[string]any) error {
+	return r.runRowWrite(rowID, Update(r.tableName).SetMap(values).Where(r.ownedRow(rowID, access)))
 }
 
 // deleteOwned performs an atomic, ownership-restricted delete of the row identified by id, for
@@ -503,17 +524,17 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 // does not match and is left untouched. The failure path mirrors updateOwned (see
 // classifyOwnedWriteMiss), so there is no TOCTOU on the delete.
 func (r sqlRepository) deleteOwned(id string) error {
-	return r.execOwned(id, Delete(r.tableName).Where(r.addRestriction(Eq{"id": id})))
+	return r.runRowWrite(id, Delete(r.tableName).Where(r.ownedRow(id, ownerOrAdmin)))
 }
 
-// execOwned runs an ownership-filtered write on the row identified by id, classifying a miss.
-func (r sqlRepository) execOwned(id string, q Sqlizer) error {
+// runRowWrite executes q, a write already filtered by ownedRow(rowID, …), and classifies a miss.
+func (r sqlRepository) runRowWrite(rowID string, q Sqlizer) error {
 	count, err := r.executeSQL(q)
 	if err != nil {
 		return err
 	}
 	if count == 0 {
-		return r.classifyOwnedWriteMiss(id)
+		return r.classifyOwnedWriteMiss(rowID)
 	}
 	return nil
 }

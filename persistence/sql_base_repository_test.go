@@ -18,6 +18,26 @@ var _ = Describe("sqlRepository", func() {
 		r.tableName = "table"
 	})
 
+	Describe("ownedRow", func() {
+		DescribeTable("matches the row, limited to what the logged-in user may write",
+			func(user model.User, access writeAccess, expectedSQL string, expectedArgs ...any) {
+				r.ctx = request.WithUser(context.Background(), user)
+				sql, args, err := r.ownedRow("row-1", access).ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(Equal(expectedSQL))
+				Expect(args).To(Equal(expectedArgs))
+			},
+			Entry("admin, ownerOrAdmin: any row", model.User{ID: "admin", IsAdmin: true}, ownerOrAdmin,
+				"(id = ?)", "row-1"),
+			Entry("regular, ownerOrAdmin: own rows", model.User{ID: "user"}, ownerOrAdmin,
+				"(id = ? AND user_id = ?)", "row-1", "user"),
+			Entry("admin, ownerOnly: own rows", model.User{ID: "admin", IsAdmin: true}, ownerOnly,
+				"(id = ? AND user_id = ?)", "row-1", "admin"),
+			Entry("regular, ownerOnly: own rows", model.User{ID: "user"}, ownerOnly,
+				"(id = ? AND user_id = ?)", "row-1", "user"),
+		)
+	})
+
 	Describe("applyOptions", func() {
 		var sq squirrel.SelectBuilder
 		BeforeEach(func() {
