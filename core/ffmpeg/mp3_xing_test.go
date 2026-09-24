@@ -34,26 +34,25 @@ var _ = Describe("patchMP3Duration", func() {
 	})
 
 	readAll := func(in []byte, duration float32) []byte {
-		out, err := io.ReadAll(patchMP3Duration(io.NopCloser(bytes.NewReader(in)), duration))
+		out, err := io.ReadAll(patchPipedHeader(io.NopCloser(bytes.NewReader(in)), duration))
 		Expect(err).ToNot(HaveOccurred())
 		return out
 	}
 
-	// Reads the tag, flags and frame count of the frame starting at frameStart.
-	readXing := func(b []byte, frameStart, tagOffset int) (string, uint32, uint32) {
+	// Reads the tag and frame count of the frame starting at frameStart.
+	readXing := func(b []byte, frameStart, tagOffset int) (string, uint32) {
 		at := frameStart + tagOffset
-		return string(b[at : at+4]),
-			binary.BigEndian.Uint32(b[at+4:]),
-			binary.BigEndian.Uint32(b[at+8:])
+		return string(b[at : at+4]), binary.BigEndian.Uint32(b[at+8:])
 	}
 
 	It("inserts a Xing frame declaring the duration in frames", func() {
 		out := readAll(pipedMP3, 1.0)
 
-		tag, flags, frames := readXing(out, fixtureID3Len, stereoTagOffset)
+		tag, frames := readXing(out, fixtureID3Len, stereoTagOffset)
 		Expect(tag).To(Equal("Xing"))
-		Expect(flags).To(Equal(uint32(1)), "only the frame count is present")
 		Expect(frames).To(Equal(uint32(38)), "1s at 44100Hz is 38 frames of 1152 samples")
+		flags := binary.BigEndian.Uint32(out[fixtureID3Len+stereoTagOffset+4:])
+		Expect(flags).To(Equal(uint32(1)), "only the frame count is present")
 	})
 
 	It("leaves the ID3 tag and the audio frames untouched", func() {
@@ -72,13 +71,13 @@ var _ = Describe("patchMP3Duration", func() {
 
 		out := readAll(in, 1.0)
 
-		_, _, frames := readXing(out, start, stereoTagOffset)
+		_, frames := readXing(out, start, stereoTagOffset)
 		Expect(frames).To(Equal(uint32(42))) // 48000/1152, rounded
 	})
 
 	It("rounds the frame count to the nearest frame", func() {
 		out := readAll(pipedMP3, 0.99) // 37.9 frames
-		_, _, frames := readXing(out, fixtureID3Len, stereoTagOffset)
+		_, frames := readXing(out, fixtureID3Len, stereoTagOffset)
 		Expect(frames).To(Equal(uint32(38)))
 	})
 
@@ -87,7 +86,7 @@ var _ = Describe("patchMP3Duration", func() {
 
 		out := readAll(in, 1.0)
 
-		tag, _, frames := readXing(out, 0, monoTagOffset)
+		tag, frames := readXing(out, 0, monoTagOffset)
 		Expect(tag).To(Equal("Xing"))
 		Expect(frames).To(Equal(uint32(38)))
 	})
@@ -97,7 +96,7 @@ var _ = Describe("patchMP3Duration", func() {
 
 		out := readAll(in, 1.0)
 
-		tag, _, _ := readXing(out, 0, stereoTagOffset)
+		tag, _ := readXing(out, 0, stereoTagOffset)
 		Expect(tag).To(Equal("Xing"))
 		Expect(out[fixtureFrameLen:]).To(Equal(in))
 	})
@@ -142,16 +141,15 @@ var _ = Describe("patchMP3Duration", func() {
 	})
 
 	It("propagates a read error from the underlying stream", func() {
-		r := patchMP3Duration(io.NopCloser(iotest.ErrReader(errors.New("ffmpeg died"))), 1.0)
+		r := patchPipedHeader(io.NopCloser(iotest.ErrReader(errors.New("ffmpeg died"))), 1.0)
 		_, err := io.ReadAll(r)
 		Expect(err).To(MatchError(ContainSubstring("ffmpeg died")))
 	})
 })
 
-// monoMP3 is two silent MPEG1 Layer III frames, 128kbps, 44100Hz, mono.
+// monoMP3 is one silent MPEG1 Layer III frame, 128kbps, 44100Hz, mono.
 func monoMP3() []byte {
-	b := make([]byte, 2*417)
+	b := make([]byte, 417)
 	copy(b, []byte{0xFF, 0xFB, 0x90, 0xC0})
-	copy(b[417:], []byte{0xFF, 0xFB, 0x90, 0xC0})
 	return b
 }

@@ -32,7 +32,7 @@ type TranscodeOptions struct {
 	Channels   int     // 0 = no constraint
 	BitDepth   int     // 0 = no constraint; valid values: 16, 24, 32
 	Offset     int     // seconds
-	Duration   float32 // seconds; 0 = unknown. Only used to repair a piped FLAC or mp3 header.
+	Duration   float32 // seconds; 0 = unknown. Only used to repair a header ffmpeg piped out unfinished.
 }
 
 // AudioProbeResult contains authoritative audio stream properties from ffprobe.
@@ -91,13 +91,7 @@ func (e *ffmpeg) Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadC
 	if err != nil {
 		return nil, err
 	}
-	duration := opts.Duration - float32(opts.Offset)
-	switch opts.Format {
-	case "mp3":
-		return patchMP3Duration(out, duration), nil
-	default:
-		return patchFLACDuration(out, duration), nil
-	}
+	return patchPipedHeader(out, opts.Duration-float32(opts.Offset)), nil
 }
 
 func (e *ffmpeg) ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error) {
