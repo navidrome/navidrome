@@ -159,7 +159,9 @@ in Jellyfin; `Likes`, `Dislikes`, `IsFolder`, `IsNotFolder` and `IsResumable` ha
 equivalent and are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
 unrecognized keys are skipped, and `Random` always sorts alone);
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
-returns direct children only (no tracks — no track is a library's direct child).
+returns direct children only (no tracks — no track is a library's direct child). With no `ParentId`,
+no `Recursive=true` and none of the filters above, `/Items` lists the user's libraries (the same
+views as `UserViews`), as Jellyfin does at the user root.
 
 ## Implemented endpoints
 
