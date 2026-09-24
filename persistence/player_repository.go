@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"regexp"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -125,20 +125,46 @@ func (r *playerRepository) isPermitted(p *model.Player) bool {
 	return u.IsAdmin || p.UserId == u.ID
 }
 
+var apiKeyFormat = regexp.MustCompile(`^` + consts.APIKeyPrefix + `[0-9A-Za-z]{22}$`)
+
+func apiKeyValidationError(msg string) error {
+	return &rest.ValidationError{Errors: map[string]string{"apiKey": msg}}
+}
+
 func (r *playerRepository) Save(entity any) (string, error) {
 	t := entity.(*model.Player)
-	if u := loggedUser(r.ctx); t.UserId == "" && u.ID != invalidUserId {
+	u := loggedUser(r.ctx)
+	if t.UserId == "" && u.ID != invalidUserId {
 		t.UserId = u.ID
 	}
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
 	}
-	return r.put("", t) // Save only creates; edits go through the owner-scoped Update
+	// Hand-made players are only reachable through a key, so one is required
+	if t.APIKey == nil || *t.APIKey == "" {
+		return "", apiKeyValidationError("ra.validation.required")
+	}
+	if !apiKeyFormat.MatchString(*t.APIKey) {
+		return "", apiKeyValidationError("resources.player.validation.apiKeyFormat")
+	}
+	if t.UserId != u.ID {
+		return "", rest.ErrPermissionDenied
+	}
+	id, err := r.put("", t) // Save only creates; edits go through the owner-scoped Update
+	if err != nil {
+		return "", err
+	}
+	return id, r.SetAPIKey(id, *t.APIKey)
 }
 
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
+	if t.APIKey != nil {
+		if err := r.SetAPIKey(id, *t.APIKey); err != nil {
+			return err
+		}
+	}
 	return r.updateOwned(id, t, cols...)
 }
 
@@ -164,19 +190,17 @@ func (r *playerRepository) FindByAPIKey(key string) (*model.Player, error) {
 	return &res, nil
 }
 
-// GenerateAPIKey is owner-only, even for admins, so nobody can mint a login for someone else.
-func (r *playerRepository) GenerateAPIKey(playerID string) (string, error) {
-	key := consts.APIKeyPrefix + id.NewRandom()
-	upd := Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
-		Where(Eq{"id": playerID, "user_id": loggedUser(r.ctx).ID})
-	if err := r.execOwned(playerID, upd); err != nil {
-		return "", err
+// SetAPIKey stores the key's hash, or revokes it when key is empty. Setting is owner-only, even for
+// admins, so nobody can mint a login for someone else.
+func (r *playerRepository) SetAPIKey(playerID, key string) error {
+	if key == "" {
+		return r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", nil).Where(r.addRestriction(Eq{"id": playerID})))
 	}
-	return key, nil
-}
-
-func (r *playerRepository) RevokeAPIKey(playerID string) error {
-	return r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", nil).Where(r.addRestriction(Eq{"id": playerID})))
+	if !apiKeyFormat.MatchString(key) {
+		return apiKeyValidationError("resources.player.validation.apiKeyFormat")
+	}
+	return r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
+		Where(Eq{"id": playerID, "user_id": loggedUser(r.ctx).ID}))
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)

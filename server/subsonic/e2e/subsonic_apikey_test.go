@@ -19,9 +19,8 @@ var _ = Describe("API key authentication", func() {
 		userCtx := request.WithUser(ctx, regularUser)
 		player := &model.Player{ID: "apikey-player", Name: "Phone", UserId: regularUser.ID, Client: "test-client"}
 		Expect(ds.Player(userCtx).Put(player)).To(Succeed())
-		var err error
-		key, err = ds.Player(userCtx).GenerateAPIKey(player.ID)
-		Expect(err).ToNot(HaveOccurred())
+		key = "nav_0123456789abcdefghijkl"
+		Expect(ds.Player(userCtx).SetAPIKey(player.ID, key)).To(Succeed())
 	})
 
 	doKeyReq := func(endpoint, apiKey string) *responses.Subsonic {

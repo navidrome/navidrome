@@ -328,8 +328,8 @@ var _ = Describe("Middlewares", func() {
 				usr, err := ds.User(context.TODO()).FindByUsername("admin")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ds.Player(context.TODO()).Put(&model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
-				key, err = ds.Player(context.TODO()).GenerateAPIKey("player-1")
-				Expect(err).ToNot(HaveOccurred())
+				key = "nav_0123456789abcdefghijkl"
+				Expect(ds.Player(context.TODO()).SetAPIKey("player-1", key)).To(Succeed())
 			})
 
 			It("authenticates the owner and binds the key's player", func() {
@@ -509,8 +509,8 @@ var _ = Describe("Middlewares", func() {
 				usr, _ := ds.User(context.TODO()).FindByUsername("admin")
 				playerRepo := ds.Player(context.TODO()).(*tests.MockPlayerRepo)
 				Expect(playerRepo.Put(&model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
-				key, err := playerRepo.GenerateAPIKey("player-1")
-				Expect(err).ToNot(HaveOccurred())
+				key := "nav_0123456789abcdefghijkl"
+				Expect(playerRepo.SetAPIKey("player-1", key)).To(Succeed())
 
 				for range 3 {
 					Expect(serve(newGetRequest("apiKey=nav_bad")).Body.String()).To(ContainSubstring(`code="44"`))

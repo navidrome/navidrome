@@ -4,7 +4,6 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
 )
@@ -56,20 +55,7 @@ func (m *MockPlayerRepo) FindByAPIKey(key string) (*model.Player, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPlayerRepo) GenerateAPIKey(playerID string) (string, error) {
-	if m.Error != nil {
-		return "", m.Error
-	}
-	if _, ok := m.Data[playerID]; !ok {
-		return "", model.ErrNotFound
-	}
-	m.removeKeys(playerID)
-	key := consts.APIKeyPrefix + id.NewRandom()
-	m.APIKeys[key] = playerID
-	return key, nil
-}
-
-func (m *MockPlayerRepo) RevokeAPIKey(playerID string) error {
+func (m *MockPlayerRepo) SetAPIKey(playerID, key string) error {
 	if m.Error != nil {
 		return m.Error
 	}
@@ -77,6 +63,9 @@ func (m *MockPlayerRepo) RevokeAPIKey(playerID string) error {
 		return model.ErrNotFound
 	}
 	m.removeKeys(playerID)
+	if key != "" {
+		m.APIKeys[key] = playerID
+	}
 	return nil
 }
 
