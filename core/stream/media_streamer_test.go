@@ -183,6 +183,18 @@ var _ = Describe("MediaStreamer", func() {
 			_, err = io.ReadAll(resp.Body)
 			Expect(err).To(HaveOccurred())
 		})
+
+		It("estimates the content length from a bitrate in kilobits of 1000 bits", func() {
+			hundredSeconds := *mf
+			hundredSeconds.Duration = 100
+			s := stream.NewStream(&hundredSeconds, "mp3", 128, io.NopCloser(bytes.NewReader(nil)))
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/?estimateContentLength=true", nil)
+
+			_, _ = s.Serve(ctx, w, r)
+
+			Expect(w.Header().Get("Content-Length")).To(Equal("1600000"))
+		})
 	})
 })
 

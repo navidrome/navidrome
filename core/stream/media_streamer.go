@@ -147,7 +147,7 @@ func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.form
 func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 func (s *Stream) EstimatedContentLength() int {
-	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
+	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1000)
 }
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
