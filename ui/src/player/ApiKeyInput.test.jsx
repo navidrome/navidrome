@@ -4,13 +4,14 @@ import { Form } from 'react-final-form'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ApiKeyInput from './ApiKeyInput'
 
-const hooks = vi.hoisted(() => ({ permissions: 'regular', notify: vi.fn() }))
+const hooks = vi.hoisted(() => ({ notify: vi.fn() }))
+const KEY = 'nav_0123456789abcdefghijkl'
+const KEY_FORMAT = /^nav_[0-9A-Za-z]{22}$/
 
 vi.mock('react-admin', async () => {
   const actual = await vi.importActual('react-admin')
   return {
     ...actual,
-    usePermissions: () => ({ permissions: hooks.permissions }),
     useNotify: () => hooks.notify,
     useTranslate: () => (key) => key,
   }
@@ -39,18 +40,16 @@ describe('ApiKeyInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.setItem('userId', 'owner')
-    hooks.permissions = 'regular'
+    localStorage.setItem('role', 'regular')
   })
 
   it('shows a pending key with copy and regenerate on create', () => {
     const { values } = renderInput({
       record: {},
       isCreate: true,
-      initialValues: { apiKey: 'nav_0123456789abcdefghijkl' },
+      initialValues: { apiKey: KEY },
     })
-    expect(
-      screen.getByDisplayValue('nav_0123456789abcdefghijkl'),
-    ).toBeInTheDocument()
+    expect(screen.getByDisplayValue(KEY)).toBeInTheDocument()
     expect(text('resources.player.message.apiKeyPending')).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
@@ -64,8 +63,8 @@ describe('ApiKeyInput', () => {
     fireEvent.click(
       screen.getByText('resources.player.actions.regenerateApiKey'),
     )
-    expect(values().apiKey).toMatch(/^nav_[0-9A-Za-z]{22}$/)
-    expect(values().apiKey).not.toBe('nav_0123456789abcdefghijkl')
+    expect(values().apiKey).toMatch(KEY_FORMAT)
+    expect(values().apiKey).not.toBe(KEY)
   })
 
   it('masks a saved key and lets the owner regenerate or revoke', () => {
@@ -94,12 +93,12 @@ describe('ApiKeyInput', () => {
     expect(text('resources.player.message.apiKeyNone')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('resources.player.actions.generateApiKey'))
-    expect(values().apiKey).toMatch(/^nav_[0-9A-Za-z]{22}$/)
+    expect(values().apiKey).toMatch(KEY_FORMAT)
     expect(text('resources.player.message.apiKeyPending')).toBeInTheDocument()
   })
 
   it('lets an admin revoke but not set a key on another user player', () => {
-    hooks.permissions = 'admin'
+    localStorage.setItem('role', 'admin')
     renderInput({ record: { id: 'p1', userId: 'someone', hasApiKey: true } })
     expect(
       text('resources.player.actions.regenerateApiKey'),
@@ -108,7 +107,6 @@ describe('ApiKeyInput', () => {
   })
 
   it('falls back to a prompt when the clipboard write fails', async () => {
-    const key = 'nav_0123456789abcdefghijkl'
     vi.stubGlobal('isSecureContext', true)
     vi.stubGlobal('prompt', vi.fn())
     Object.defineProperty(navigator, 'clipboard', {
@@ -119,7 +117,7 @@ describe('ApiKeyInput', () => {
       renderInput({
         record: {},
         isCreate: true,
-        initialValues: { apiKey: key },
+        initialValues: { apiKey: KEY },
       })
       fireEvent.click(
         screen.getByRole('button', {
@@ -129,7 +127,7 @@ describe('ApiKeyInput', () => {
       await waitFor(() =>
         expect(window.prompt).toHaveBeenCalledWith(
           'message.shareCopyToClipboard',
-          key,
+          KEY,
         ),
       )
       expect(hooks.notify).not.toHaveBeenCalled()
@@ -140,7 +138,7 @@ describe('ApiKeyInput', () => {
   })
 
   it('shows a neutral message to an admin viewing another user player with no key', () => {
-    hooks.permissions = 'admin'
+    localStorage.setItem('role', 'admin')
     renderInput({ record: { id: 'p1', userId: 'someone', hasApiKey: false } })
     expect(text('resources.player.message.apiKeyNoneOther')).toBeInTheDocument()
     expect(text('resources.player.message.apiKeyNone')).not.toBeInTheDocument()

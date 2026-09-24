@@ -10,8 +10,8 @@ import (
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -140,25 +140,21 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	if !apiKeyFormat.MatchString(*t.APIKey) {
 		return "", apiKeyValidationError("resources.player.validation.apiKeyFormat")
 	}
-	inUse, err := r.exists(Eq{"api_key_hash": hashAPIKey(*t.APIKey)})
+	values, err := toSQLArgs(t)
 	if err != nil {
 		return "", err
 	}
-	if inUse {
+	// Save only creates, so the key hash goes in the same INSERT and the unique index settles races
+	values["id"] = id.NewRandom()
+	values["api_key_hash"] = hashAPIKey(*t.APIKey)
+	_, err = r.executeSQL(Insert(r.tableName).SetMap(values))
+	if isUniqueViolation(err) {
 		return "", apiKeyValidationError("ra.validation.unique")
 	}
-	id, err := r.put("", t) // Save only creates; edits go through the owner-scoped Update
 	if err != nil {
 		return "", err
 	}
-	if err := r.SetAPIKey(id, *t.APIKey); err != nil {
-		// A concurrent create can claim the key after the check above; don't leave a keyless player
-		if delErr := r.delete(Eq{"id": id}); delErr != nil {
-			log.Error(r.ctx, "Could not remove player after failing to set its API key", "id", id, delErr)
-		}
-		return "", err
-	}
-	return id, nil
+	return values["id"].(string), nil
 }
 
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {
@@ -205,10 +201,14 @@ func (r *playerRepository) SetAPIKey(playerID, key string) error {
 	}
 	err := r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
 		Where(Eq{"id": playerID, "user_id": loggedUser(r.ctx).ID}))
-	if err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed") {
+	if isUniqueViolation(err) {
 		return apiKeyValidationError("ra.validation.unique")
 	}
 	return err
+}
+
+func isUniqueViolation(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)

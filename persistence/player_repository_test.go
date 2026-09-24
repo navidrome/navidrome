@@ -13,6 +13,14 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
+const testAPIKey = "nav_0123456789abcdefghijkl"
+
+func expectAPIKeyError(err error, msg string) {
+	var verr *rest.ValidationError
+	ExpectWithOffset(1, errors.As(err, &verr)).To(BeTrue())
+	ExpectWithOffset(1, verr.Errors).To(HaveKeyWithValue("apiKey", msg))
+}
+
 var _ = Describe("PlayerRepository", func() {
 	var adminRepo *playerRepository
 	var database *dbx.DB
@@ -186,7 +194,7 @@ var _ = Describe("PlayerRepository", func() {
 				clone := player
 				clone.ID = ""
 				clone.IP = "192.168.1.1"
-				clone.APIKey = new("nav_0123456789abcdefghijkl")
+				clone.APIKey = new(testAPIKey)
 				id, err := repo.Save(&clone)
 
 				if clone.UserId == "" {
@@ -262,7 +270,7 @@ var _ = Describe("PlayerRepository", func() {
 	)
 
 	Describe("API keys", func() {
-		const key = "nav_0123456789abcdefghijkl"
+		const key = testAPIKey
 		const otherKey = "nav_ABCDEFGHIJKLMNOPQRSTUV"
 		var ownerRepo, otherRepo *playerRepository
 
@@ -305,9 +313,7 @@ var _ = Describe("PlayerRepository", func() {
 			DescribeTable("rejects malformed keys",
 				func(bad string) {
 					err := ownerRepo.SetAPIKey(regularPlayer.ID, bad)
-					var verr *rest.ValidationError
-					Expect(errors.As(err, &verr)).To(BeTrue())
-					Expect(verr.Errors).To(HaveKeyWithValue("apiKey", "resources.player.validation.apiKeyFormat"))
+					expectAPIKeyError(err, "resources.player.validation.apiKeyFormat")
 					Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
 				},
 				Entry("no prefix", "0123456789abcdefghijklmn"),
@@ -376,20 +382,17 @@ var _ = Describe("PlayerRepository", func() {
 			It("requires a key", func() {
 				count, _ := adminRepo.CountAll()
 				_, err := ownerRepo.Save(&model.Player{Name: "No key"})
-				var verr *rest.ValidationError
-				Expect(errors.As(err, &verr)).To(BeTrue())
-				Expect(verr.Errors).To(HaveKeyWithValue("apiKey", "ra.validation.required"))
+				expectAPIKeyError(err, "ra.validation.required")
 
 				_, err = ownerRepo.Save(&model.Player{Name: "Empty key", APIKey: new("")})
-				Expect(errors.As(err, &verr)).To(BeTrue())
+				expectAPIKeyError(err, "ra.validation.required")
 				Expect(adminRepo.CountAll()).To(Equal(count))
 			})
 
 			It("rejects a malformed key without creating the player", func() {
 				count, _ := adminRepo.CountAll()
 				_, err := ownerRepo.Save(&model.Player{Name: "Bad", APIKey: new("nav_bad")})
-				var verr *rest.ValidationError
-				Expect(errors.As(err, &verr)).To(BeTrue())
+				expectAPIKeyError(err, "resources.player.validation.apiKeyFormat")
 				Expect(adminRepo.CountAll()).To(Equal(count))
 			})
 
@@ -406,9 +409,7 @@ var _ = Describe("PlayerRepository", func() {
 				Expect(adminRepo.SetAPIKey(adminPlayer1.ID, key)).To(Succeed())
 				count, _ := adminRepo.CountAll()
 				_, err := ownerRepo.Save(&model.Player{Name: "Duplicate", APIKey: new(key)})
-				var verr *rest.ValidationError
-				Expect(errors.As(err, &verr)).To(BeTrue())
-				Expect(verr.Errors).To(HaveKeyWithValue("apiKey", "ra.validation.unique"))
+				expectAPIKeyError(err, "ra.validation.unique")
 				Expect(adminRepo.CountAll()).To(Equal(count))
 			})
 		})
@@ -468,9 +469,7 @@ var _ = Describe("PlayerRepository", func() {
 				plr.Name = "Renamed"
 				plr.APIKey = new(key)
 				err := ownerRepo.Update(plr.ID, &plr, "name", "apiKey")
-				var verr *rest.ValidationError
-				Expect(errors.As(err, &verr)).To(BeTrue())
-				Expect(verr.Errors).To(HaveKeyWithValue("apiKey", "ra.validation.unique"))
+				expectAPIKeyError(err, "ra.validation.unique")
 
 				got, err := adminRepo.Get(regularPlayer.ID)
 				Expect(err).ToNot(HaveOccurred())
@@ -517,7 +516,7 @@ var _ = Describe("PlayerRepository", func() {
 				Name:           "HIJACKED",
 				UserId:         regularUser.ID,
 				ReportRealPath: true,
-				APIKey:         new("nav_0123456789abcdefghijkl"),
+				APIKey:         new(testAPIKey),
 			}
 
 			id, err := regularRepo.Save(&spoofed)

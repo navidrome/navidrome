@@ -1,6 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import { useInput, useNotify, usePermissions, useTranslate } from 'react-admin'
+import { useInput, useNotify, useTranslate } from 'react-admin'
 import {
   Button,
   IconButton,
@@ -10,6 +10,7 @@ import {
 } from '@material-ui/core'
 import { FaKey } from 'react-icons/fa'
 import { MdContentCopy, MdDelete, MdRefresh } from 'react-icons/md'
+import { isWritable } from '../common/playlistUtils'
 import { generateApiKey } from './apiKey'
 
 const identity = (v) => v
@@ -18,7 +19,6 @@ const MASK = '•'.repeat(26)
 const ApiKeyInput = ({ record, isCreate, ...props }) => {
   const translate = useTranslate()
   const notify = useNotify()
-  const { permissions } = usePermissions()
   // Identity format/parse keep "" (revoke) distinct from undefined (untouched)
   const {
     input: { value, onChange },
@@ -26,10 +26,10 @@ const ApiKeyInput = ({ record, isCreate, ...props }) => {
   } = useInput({ ...props, format: identity, parse: identity })
 
   const isOwner = isCreate || record?.userId === localStorage.getItem('userId')
-  const canRevoke = !isCreate && (isOwner || permissions === 'admin')
-  const pending = typeof value === 'string' && value !== ''
+  const pending = !!value
   const revoking = value === '' && !!record?.hasApiKey
-  const saved = !pending && !revoking && !!record?.hasApiKey
+  const saved = value == null && !!record?.hasApiKey
+  const hasKey = pending || saved
 
   const copy = () => {
     const fallback = () =>
@@ -46,12 +46,15 @@ const ApiKeyInput = ({ record, isCreate, ...props }) => {
     }
   }
 
-  let helperText = isOwner
-    ? 'resources.player.message.apiKeyNone'
-    : 'resources.player.message.apiKeyNoneOther'
-  if (pending) helperText = 'resources.player.message.apiKeyPending'
-  else if (revoking) helperText = 'resources.player.message.apiKeyRevokePending'
-  else if (saved) helperText = 'resources.player.message.apiKeyActive'
+  const helperText = pending
+    ? 'resources.player.message.apiKeyPending'
+    : revoking
+      ? 'resources.player.message.apiKeyRevokePending'
+      : saved
+        ? 'resources.player.message.apiKeyActive'
+        : isOwner
+          ? 'resources.player.message.apiKeyNone'
+          : 'resources.player.message.apiKeyNoneOther'
 
   return (
     <div>
@@ -80,23 +83,19 @@ const ApiKeyInput = ({ record, isCreate, ...props }) => {
         error={!!(touched && error)}
         helperText={translate(touched && error ? error : helperText)}
       />
-      {isOwner && (pending || saved) && (
+      {isOwner && (
         <Button
-          startIcon={<MdRefresh />}
+          startIcon={hasKey ? <MdRefresh /> : <FaKey />}
           onClick={() => onChange(generateApiKey())}
         >
-          {translate('resources.player.actions.regenerateApiKey')}
+          {translate(
+            hasKey
+              ? 'resources.player.actions.regenerateApiKey'
+              : 'resources.player.actions.generateApiKey',
+          )}
         </Button>
       )}
-      {isOwner && !pending && !saved && (
-        <Button
-          startIcon={<FaKey />}
-          onClick={() => onChange(generateApiKey())}
-        >
-          {translate('resources.player.actions.generateApiKey')}
-        </Button>
-      )}
-      {canRevoke && saved && (
+      {saved && isWritable(record?.userId) && (
         <Button startIcon={<MdDelete />} onClick={() => onChange('')}>
           {translate('resources.player.actions.revokeApiKey')}
         </Button>
