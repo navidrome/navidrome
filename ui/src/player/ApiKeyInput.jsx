@@ -16,7 +16,7 @@ import { generateApiKey } from './apiKey'
 const identity = (v) => v
 const MASK = '•'.repeat(26)
 
-const ApiKeyInput = ({ record, isCreate, ...props }) => {
+const ApiKeyInput = ({ record, isCreate, fullWidth, ...props }) => {
   const translate = useTranslate()
   const notify = useNotify()
   // Identity format/parse keep "" (revoke) distinct from undefined (untouched)
@@ -63,7 +63,7 @@ const ApiKeyInput = ({ record, isCreate, ...props }) => {
         value={pending ? value : saved ? MASK : ''}
         variant="outlined"
         margin="dense"
-        fullWidth
+        fullWidth={fullWidth}
         InputProps={{
           readOnly: true,
           endAdornment: pending && (
@@ -108,6 +108,7 @@ ApiKeyInput.propTypes = {
   source: PropTypes.string.isRequired,
   record: PropTypes.object,
   isCreate: PropTypes.bool,
+  fullWidth: PropTypes.bool,
   validate: PropTypes.oneOfType([PropTypes.func, PropTypes.array]),
 }
 

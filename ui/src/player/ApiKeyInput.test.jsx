@@ -17,7 +17,12 @@ vi.mock('react-admin', async () => {
   }
 })
 
-const renderInput = ({ record, initialValues = {}, isCreate = false }) => {
+const renderInput = ({
+  record,
+  initialValues = {},
+  isCreate = false,
+  fullWidth,
+}) => {
   let values
   const utils = render(
     <Form
@@ -26,7 +31,12 @@ const renderInput = ({ record, initialValues = {}, isCreate = false }) => {
       render={({ values: v }) => {
         values = v
         return (
-          <ApiKeyInput source="apiKey" record={record} isCreate={isCreate} />
+          <ApiKeyInput
+            source="apiKey"
+            record={record}
+            isCreate={isCreate}
+            fullWidth={fullWidth}
+          />
         )
       }}
     />,
@@ -148,5 +158,15 @@ describe('ApiKeyInput', () => {
   it('shows no actions to another regular user', () => {
     renderInput({ record: { id: 'p1', userId: 'someone', hasApiKey: true } })
     expect(screen.queryAllByRole('button')).toHaveLength(0)
+  })
+
+  it('is not full width unless asked', () => {
+    const record = { id: 'p1', userId: 'owner', hasApiKey: true }
+    const { container, unmount } = renderInput({ record })
+    expect(container.querySelector('.MuiFormControl-fullWidth')).toBeNull()
+    unmount()
+
+    const { container: wide } = renderInput({ record, fullWidth: true })
+    expect(wide.querySelector('.MuiFormControl-fullWidth')).not.toBeNull()
   })
 })
