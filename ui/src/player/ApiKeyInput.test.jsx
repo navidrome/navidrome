@@ -139,6 +139,14 @@ describe('ApiKeyInput', () => {
     }
   })
 
+  it('shows a neutral message to an admin viewing another user player with no key', () => {
+    hooks.permissions = 'admin'
+    renderInput({ record: { id: 'p1', userId: 'someone', hasApiKey: false } })
+    expect(text('resources.player.message.apiKeyNoneOther')).toBeInTheDocument()
+    expect(text('resources.player.message.apiKeyNone')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+  })
+
   it('shows no actions to another regular user', () => {
     renderInput({ record: { id: 'p1', userId: 'someone', hasApiKey: true } })
     expect(screen.queryAllByRole('button')).toHaveLength(0)

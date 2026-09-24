@@ -46,7 +46,9 @@ const ApiKeyInput = ({ record, isCreate, ...props }) => {
     }
   }
 
-  let helperText = 'resources.player.message.apiKeyNone'
+  let helperText = isOwner
+    ? 'resources.player.message.apiKeyNone'
+    : 'resources.player.message.apiKeyNoneOther'
   if (pending) helperText = 'resources.player.message.apiKeyPending'
   else if (revoking) helperText = 'resources.player.message.apiKeyRevokePending'
   else if (saved) helperText = 'resources.player.message.apiKeyActive'

@@ -90,13 +90,19 @@ describe('wrapperDataProvider', () => {
 
   describe('create player', () => {
     it('keeps the API key out of the returned record', async () => {
+      localStorage.setItem('userId', 'u1')
       const data = { name: 'Phone', apiKey: 'nav_0123456789abcdefghijkl' }
       mockProvider.create.mockResolvedValue({ data: { ...data, id: 'p1' } })
 
       const result = await wrapperDataProvider.create('player', { data })
 
       expect(mockProvider.create).toHaveBeenCalledWith('player', { data })
-      expect(result.data).toEqual({ id: 'p1', name: 'Phone', hasApiKey: true })
+      expect(result.data).toEqual({
+        id: 'p1',
+        name: 'Phone',
+        hasApiKey: true,
+        userId: 'u1',
+      })
     })
   })
 
