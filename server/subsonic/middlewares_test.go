@@ -516,19 +516,23 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeTrue())
 			})
 
-			It("blocks repeated bad API keys from the same IP", func() {
+			It("throttles a repeated bad key without locking out valid keys from the same IP", func() {
 				usr, _ := ds.User(context.TODO()).FindByUsername("admin")
-				Expect(ds.Player(context.TODO()).Put(&model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
-				key, err := ds.Player(context.TODO()).GenerateAPIKey("player-1")
+				playerRepo := ds.Player(context.TODO()).(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(&model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				key, err := playerRepo.GenerateAPIKey("player-1")
 				Expect(err).ToNot(HaveOccurred())
 
 				for range 3 {
 					Expect(serve(newGetRequest("apiKey=nav_bad")).Body.String()).To(ContainSubstring(`code="44"`))
 				}
-				rec := serve(newGetRequest("apiKey=" + key))
-
+				playerRepo.APIKeys["nav_bad"] = "player-1"
+				rec := serve(newGetRequest("apiKey=nav_bad"))
 				Expect(next.called).To(BeFalse())
 				Expect(rec.Body.String()).To(ContainSubstring(`code="44"`))
+
+				serve(newGetRequest("apiKey=" + key))
+				Expect(next.called).To(BeTrue())
 			})
 
 			It("is disabled when AuthRequestLimit is 0", func() {

@@ -198,7 +198,8 @@ func authenticateAPIKey(ctx context.Context, ds model.DataStore, limiter *authLi
 		}
 	}
 
-	slot, allowed := limiter.acquire(ctx, "apikey\x00"+server.ClientIP(r))
+	// Per key, so a stale key on one device cannot lock out valid keys sharing the IP
+	slot, allowed := limiter.acquire(ctx, "apikey\x00"+server.ClientIP(r)+"\x00"+key)
 	if !allowed {
 		if err := ctx.Err(); err != nil {
 			return nil, nil, err
@@ -312,7 +313,7 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 				player, trc, err = players.Register(ctx, playerIDFromCookie(r, userName), client, userAgent, ip)
 			}
 			if err != nil {
-				log.Error(ctx, "Could not register player", "username", userName, "client", client, err)
+				log.Error(ctx, "Could not resolve player", "username", userName, "client", client, err)
 			} else {
 				ctx = request.WithPlayer(ctx, *player)
 				if trc != nil {
