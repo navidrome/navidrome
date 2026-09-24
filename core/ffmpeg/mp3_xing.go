@@ -14,7 +14,7 @@ const (
 	mp3MaxPrefix = 64 << 10 // ffmpeg cannot write an attached picture to a pipe, so the tag stays small
 )
 
-// mp3Prefix returns the head of the stream with a Xing frame inserted before the first
+// mp3Prefix returns the head of the stream with an Info frame inserted before the first
 // audio frame, which ffmpeg omits on a pipe since it only knows the frame count once it
 // can rewind. It returns the head unchanged when it cannot make sense of what ffmpeg wrote.
 func (h *headerPatcher) mp3Prefix(buf []byte) ([]byte, error) {
@@ -116,7 +116,7 @@ func isXingFrame(frame []byte, tagOffset int) bool {
 	return tag == "Xing" || tag == "Info"
 }
 
-// xingFrame builds a silent frame declaring how many frames follow it. It reuses the
+// xingFrame builds a silent Info frame declaring how many frames follow it. It reuses the
 // first frame's header, minus its CRC, so the two describe the same stream.
 func xingFrame(first []byte, f mp3Frame, duration float32) ([]byte, bool) {
 	frames := math.Round(float64(duration) * float64(f.sampleRate) / float64(f.samples))
@@ -127,7 +127,7 @@ func xingFrame(first []byte, f mp3Frame, duration float32) ([]byte, bool) {
 	copy(frame, first[:mp3HeaderLen])
 	frame[1] |= 0x01 // no CRC, so the tag follows the side info directly
 	at := mp3HeaderLen + f.sideInfo
-	copy(frame[at:], "Xing")
+	copy(frame[at:], "Info")                    // a Xing tag without a seek table marks the stream unseekable to some decoders
 	binary.BigEndian.PutUint32(frame[at+4:], 1) // only the frame count is present
 	binary.BigEndian.PutUint32(frame[at+8:], uint32(frames))
 	return frame, true
