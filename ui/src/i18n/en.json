@@ -201,7 +201,7 @@
         "copyApiKey": "Copy"
       },
       "message": {
-        "apiKeyActive": "This player has an API key. Use it in your app as the API key or as the password.",
+        "apiKeyActive": "This player has an API key. Use it in your app as the API key, or as the password if the app does not use token authentication.",
         "apiKeyNone": "No API key. Generate one to connect an app to this player.",
         "apiKeyDialogTitle": "New API key",
         "apiKeyDialogContent": "Copy this key now. It will not be shown again.",

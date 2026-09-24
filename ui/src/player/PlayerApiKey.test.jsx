@@ -58,6 +58,33 @@ describe('PlayerApiKey', () => {
     expect(hooks.dataProvider.generatePlayerApiKey).toHaveBeenCalledWith('p1')
   })
 
+  it('keeps the new key open on Escape and backdrop click until Close', async () => {
+    hooks.record = { id: 'p1', userId: 'owner', hasApiKey: false }
+    hooks.dataProvider.generatePlayerApiKey.mockResolvedValue({
+      data: { apiKey: 'nav_secret' },
+    })
+    render(<PlayerApiKey />)
+    fireEvent.click(screen.getByText('resources.player.actions.generateApiKey'))
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('nav_secret')).toBeInTheDocument(),
+    )
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    const backdrop = document.querySelector('.MuiDialog-container')
+    fireEvent.mouseDown(backdrop)
+    fireEvent.click(backdrop)
+
+    expect(screen.getByDisplayValue('nav_secret')).toBeInTheDocument()
+    expect(hooks.refresh).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('ra.action.close'))
+
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue('nav_secret')).not.toBeInTheDocument(),
+    )
+    expect(hooks.refresh).toHaveBeenCalled()
+  })
+
   it('shows regenerate and revoke to the owner when a key exists', () => {
     hooks.record = { id: 'p1', userId: 'owner', hasApiKey: true }
     render(<PlayerApiKey />)

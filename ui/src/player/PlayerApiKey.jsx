@@ -127,7 +127,8 @@ const PlayerApiKey = (props) => {
         onConfirm={revoke}
         onClose={() => setConfirm(null)}
       />
-      <Dialog open={!!newKey} onClose={closeKeyDialog} fullWidth>
+      {/* The key is shown only once, so Escape or a stray click must not dismiss it */}
+      <Dialog open={!!newKey} fullWidth>
         <DialogTitle>
           {translate('resources.player.message.apiKeyDialogTitle')}
         </DialogTitle>
