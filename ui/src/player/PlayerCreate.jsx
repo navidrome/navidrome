@@ -20,7 +20,7 @@ const PlayerCreate = (props) => {
     <Create title={<PlayerCreateTitle />} {...props}>
       <SimpleForm
         variant="outlined"
-        redirect="edit"
+        redirect="list"
         initialValues={initialValues}
       >
         {playerInputs()}
