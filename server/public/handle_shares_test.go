@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -21,6 +23,8 @@ var _ = Describe("handleM3U", func() {
 		shareRepo = &tests.MockShareRepo{}
 		ds.MockedShare = shareRepo
 		pub = &Router{ds: ds, share: core.NewShare(ds)}
+		// The M3U body carries signed stream URLs; don't depend on another spec having set this.
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
 	})
 
 	makeRequest := func(id string) *httptest.ResponseRecorder {
