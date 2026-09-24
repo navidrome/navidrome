@@ -1,13 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useInput, useNotify, useTranslate } from 'react-admin'
-import {
-  Button,
-  IconButton,
-  InputAdornment,
-  TextField,
-  Tooltip,
-} from '@material-ui/core'
+import { Button, TextField } from '@material-ui/core'
 import { FaKey } from 'react-icons/fa'
 import { MdContentCopy, MdDelete, MdRefresh } from 'react-icons/md'
 import { isWritable } from '../common/playlistUtils'
@@ -16,7 +10,7 @@ import { generateApiKey } from './apiKey'
 const identity = (v) => v
 const MASK = '•'.repeat(26)
 
-const ApiKeyInput = ({ record, isCreate, fullWidth, ...props }) => {
+const ApiKeyInput = ({ record, isCreate, fullWidth, className, ...props }) => {
   const translate = useTranslate()
   const notify = useNotify()
   // Identity format/parse keep "" (revoke) distinct from undefined (untouched)
@@ -64,42 +58,39 @@ const ApiKeyInput = ({ record, isCreate, fullWidth, ...props }) => {
         variant="outlined"
         margin="dense"
         fullWidth={fullWidth}
-        InputProps={{
-          readOnly: true,
-          endAdornment: pending && (
-            <InputAdornment position="end">
-              <Tooltip title={translate('resources.player.actions.copyApiKey')}>
-                <IconButton
-                  aria-label={translate('resources.player.actions.copyApiKey')}
-                  onClick={copy}
-                  edge="end"
-                >
-                  <MdContentCopy />
-                </IconButton>
-              </Tooltip>
-            </InputAdornment>
-          ),
+        className={className}
+        // Monospace keeps the whole key visible in a standard-width input
+        inputProps={{
+          style: { fontFamily: 'monospace', fontSize: '0.875rem' },
         }}
+        InputProps={{ readOnly: true }}
         error={!!(touched && error)}
         helperText={translate(touched && error ? error : helperText)}
       />
-      {isOwner && (
-        <Button
-          startIcon={hasKey ? <MdRefresh /> : <FaKey />}
-          onClick={() => onChange(generateApiKey())}
-        >
-          {translate(
-            hasKey
-              ? 'resources.player.actions.regenerateApiKey'
-              : 'resources.player.actions.generateApiKey',
-          )}
-        </Button>
-      )}
-      {saved && isWritable(record?.userId) && (
-        <Button startIcon={<MdDelete />} onClick={() => onChange('')}>
-          {translate('resources.player.actions.revokeApiKey')}
-        </Button>
-      )}
+      <div>
+        {pending && (
+          <Button startIcon={<MdContentCopy />} onClick={copy}>
+            {translate('resources.player.actions.copyApiKey')}
+          </Button>
+        )}
+        {isOwner && (
+          <Button
+            startIcon={hasKey ? <MdRefresh /> : <FaKey />}
+            onClick={() => onChange(generateApiKey())}
+          >
+            {translate(
+              hasKey
+                ? 'resources.player.actions.regenerateApiKey'
+                : 'resources.player.actions.generateApiKey',
+            )}
+          </Button>
+        )}
+        {saved && isWritable(record?.userId) && (
+          <Button startIcon={<MdDelete />} onClick={() => onChange('')}>
+            {translate('resources.player.actions.revokeApiKey')}
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
@@ -109,6 +100,7 @@ ApiKeyInput.propTypes = {
   record: PropTypes.object,
   isCreate: PropTypes.bool,
   fullWidth: PropTypes.bool,
+  className: PropTypes.string,
   validate: PropTypes.oneOfType([PropTypes.func, PropTypes.array]),
 }
 
