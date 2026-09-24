@@ -10,7 +10,7 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { Title } from '../common'
-import PlayerApiKey from './PlayerApiKey'
+import ApiKeyInput from './ApiKeyInput'
 import { playerInputs } from './playerInputs'
 
 const PlayerTitle = ({ record }) => {
@@ -47,7 +47,7 @@ const PlayerEdit = (props) => (
       {playerInputs()}
       <TextField source="client" />
       <TextField source="userName" />
-      <PlayerApiKey />
+      <ApiKeyInput source="apiKey" />
     </SimpleForm>
   </Edit>
 )

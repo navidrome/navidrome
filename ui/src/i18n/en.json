@@ -202,19 +202,16 @@
       "message": {
         "apiKeyActive": "This player has an API key. Use it in your app as the API key, or as the password if the app does not use token authentication.",
         "apiKeyNone": "No API key. Generate one to connect an app to this player.",
-        "apiKeyDialogTitle": "New API key",
-        "apiKeyDialogContent": "Copy this key now. It will not be shown again.",
-        "regenerateApiKeyTitle": "Regenerate API key",
-        "regenerateApiKeyContent": "The current key will stop working. Apps using it must be updated.",
-        "revokeApiKeyTitle": "Revoke API key",
-        "revokeApiKeyContent": "Apps using this key will stop working.",
+        "apiKeyPending": "Copy this key now. It is saved when you click Save and will not be shown again.",
+        "apiKeyRevokePending": "The API key will be removed when you save.",
         "deleteWithKeyTitle": "Delete player",
         "deleteWithKeyContent": "This player has an API key. Apps using it will stop working."
       },
       "notifications": {
-        "apiKeyCopied": "API key copied to clipboard",
-        "apiKeyRevoked": "API key revoked",
-        "apiKeyError": "Could not change the API key"
+        "apiKeyCopied": "API key copied to clipboard"
+      },
+      "validation": {
+        "apiKeyFormat": "Invalid API key format"
       }
     },
     "transcoding": {

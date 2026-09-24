@@ -232,14 +232,6 @@ const wrapperDataProvider = {
       data: json,
     }))
   },
-  generatePlayerApiKey: (id) =>
-    httpClient(`${REST_URL}/player/${id}/apiKey`, { method: 'POST' }).then(
-      ({ json }) => ({ data: json }),
-    ),
-  revokePlayerApiKey: (id) =>
-    httpClient(`${REST_URL}/player/${id}/apiKey`, { method: 'DELETE' }).then(
-      () => ({ data: { id } }),
-    ),
   // The endpoint answers 204 with no body, but react-admin rejects any response without a
   // `data` key, so the id stands in for one.
   refreshMetadata: (resource, id) =>
