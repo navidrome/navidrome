@@ -190,7 +190,32 @@
         "userName": "Username",
         "lastSeen": "Last Seen At",
         "reportRealPath": "Report Real Path",
-        "scrobbleEnabled": "Send Scrobbles to external services"
+        "scrobbleEnabled": "Send Scrobbles to external services",
+        "hasApiKey": "API Key",
+        "apiKey": "API Key"
+      },
+      "actions": {
+        "generateApiKey": "Generate API key",
+        "regenerateApiKey": "Regenerate",
+        "revokeApiKey": "Revoke",
+        "copyApiKey": "Copy"
+      },
+      "message": {
+        "apiKeyActive": "This player has an API key. Use it in your app as the API key or as the password.",
+        "apiKeyNone": "No API key. Generate one to connect an app to this player.",
+        "apiKeyDialogTitle": "New API key",
+        "apiKeyDialogContent": "Copy this key now. It will not be shown again.",
+        "regenerateApiKeyTitle": "Regenerate API key",
+        "regenerateApiKeyContent": "The current key will stop working. Apps using it must be updated.",
+        "revokeApiKeyTitle": "Revoke API key",
+        "revokeApiKeyContent": "Apps using this key will stop working.",
+        "deleteWithKeyTitle": "Delete player",
+        "deleteWithKeyContent": "This player has an API key. Apps using it will stop working."
+      },
+      "notifications": {
+        "apiKeyCopied": "API key copied to clipboard",
+        "apiKeyRevoked": "API key revoked",
+        "apiKeyError": "Could not change the API key"
       }
     },
     "transcoding": {
