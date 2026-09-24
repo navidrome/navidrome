@@ -625,6 +625,10 @@ func (m *mockTranscodeDecision) ResolveRequest(_ context.Context, _ *model.Media
 	return stream.Request{Format: "raw"}
 }
 
+func (m *mockTranscodeDecision) ResolveClientRequest(context.Context, *model.MediaFile, *stream.ClientInfo, int) stream.Request {
+	return stream.Request{Format: "raw"}
+}
+
 func (m *mockTranscodeDecision) CreateTranscodeParams(_ *stream.TranscodeDecision) (string, error) {
 	return m.token, m.tokenErr
 }

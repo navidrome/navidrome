@@ -2,8 +2,6 @@ package nativeapi
 
 import (
 	"context"
-	"encoding/json"
-	"html"
 	"net/http"
 	"strconv"
 	"time"
@@ -17,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/metrics"
 	playlistsvc "github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -48,10 +47,11 @@ type Router struct {
 	pluginManager PluginManager
 	imgUpload     artwork.Uploader
 	provider      external.Provider
+	quickConnect  quickconnect.QuickConnect
 }
 
-func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload artwork.Uploader, provider external.Provider) *Router {
-	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, provider: provider}
+func New(ds model.DataStore, share core.Share, playlists playlistsvc.Playlists, insights metrics.Insights, libraryService core.Library, userService core.User, maintenance core.Maintenance, pluginManager PluginManager, imgUpload artwork.Uploader, provider external.Provider, quickConnect quickconnect.QuickConnect) *Router {
+	r := &Router{ds: ds, share: share, playlists: playlists, insights: insights, libs: libraryService, users: userService, maintenance: maintenance, pluginManager: pluginManager, imgUpload: imgUpload, provider: provider, quickConnect: quickConnect}
 	r.Handler = r.routes()
 	return r
 }
@@ -88,6 +88,7 @@ func (api *Router) routes() http.Handler {
 		api.addMissingFilesRoute(r)
 		api.addKeepAliveRoute(r)
 		api.addInsightsRoute(r)
+		api.addQuickConnectRoute(r)
 
 		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
 			api.addInspectRoute(r)
@@ -203,22 +204,18 @@ func (api *Router) addMissingFilesRoute(r chi.Router) {
 }
 
 func writeDeleteManyResponse(w http.ResponseWriter, r *http.Request, ids []string) {
-	var resp []byte
-	var err error
+	var payload any
 	if len(ids) == 1 {
-		resp = []byte(`{"id":"` + html.EscapeString(ids[0]) + `"}`)
+		payload = struct {
+			ID string `json:"id"`
+		}{ID: ids[0]}
 	} else {
-		resp, err = json.Marshal(&struct {
+		payload = struct {
 			Ids []string `json:"ids"`
-		}{Ids: ids})
-		if err != nil {
-			log.Error(r.Context(), "Error marshaling response", "ids", ids, err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		}{Ids: ids}
 	}
-	_, err = w.Write(resp) //nolint:gosec
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := rest.RespondWithJSON(w, http.StatusOK, payload); err != nil {
+		log.Error(r.Context(), "Error writing response", "ids", ids, err)
 	}
 }
 

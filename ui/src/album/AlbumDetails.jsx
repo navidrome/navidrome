@@ -31,6 +31,7 @@ import {
   SizeField,
   useAlbumsPerPage,
 } from '../common'
+import { useDateLocale } from '../i18n/useDateLocale'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
 import { SafeHTML } from '../common/SafeHTML'
@@ -151,6 +152,7 @@ export const Details = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
   const record = useRecordContext(props)
+  const locale = useDateLocale()
 
   // Create an array of detail elements
   let details = []
@@ -161,12 +163,13 @@ export const Details = (props) => {
 
   // Calculate date related fields
   const yearRange = formatRange(record, 'year')
-  const date = record.date ? formatFullDate(record.date) : yearRange
+  const date = record.date ? formatFullDate(record.date, locale) : yearRange
 
   const originalDate = record.originalDate
-    ? formatFullDate(record.originalDate)
+    ? formatFullDate(record.originalDate, locale)
     : formatRange(record, 'originalYear')
-  const releaseDate = record?.releaseDate && formatFullDate(record.releaseDate)
+  const releaseDate =
+    record?.releaseDate && formatFullDate(record.releaseDate, locale)
 
   const dateToUse = originalDate || date
   const isOriginalDate = originalDate && dateToUse !== date

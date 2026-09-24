@@ -37,6 +37,7 @@ type MockMediaFileRepo struct {
 	FindRecentFilesByPropertiesFunc func(missing model.MediaFile, since time.Time) (model.MediaFiles, error)
 	MatchesCriteriaValue            bool
 	MatchesCriteriaErr              error
+	BookmarksAdded                  []string
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -74,6 +75,14 @@ func (m *MockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 		return &res, nil
 	}
 	return nil, model.ErrNotFound
+}
+
+func (m *MockMediaFileRepo) AddBookmark(id, _ string, _ int64) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	m.BookmarksAdded = append(m.BookmarksAdded, id)
+	return nil
 }
 
 func (m *MockMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
@@ -302,11 +311,7 @@ func (m *MockMediaFileRepo) Count(...rest.QueryOptions) (int64, error) {
 }
 
 func (m *MockMediaFileRepo) Read(id string) (any, error) {
-	mf, err := m.Get(id)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, rest.ErrNotFound
-	}
-	return mf, err
+	return m.Get(id)
 }
 
 func (m *MockMediaFileRepo) ReadAll(...rest.QueryOptions) (any, error) {

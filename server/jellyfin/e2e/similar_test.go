@@ -150,4 +150,33 @@ var _ = Describe("Similar", func() {
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 		})
 	})
+
+	Describe("type-specific InstantMix routes", func() {
+		BeforeEach(func() {
+			providerFake.similarSongs = model.MediaFiles{{ID: testID("x1"), Title: "Mix Song", LibraryID: 1}}
+		})
+
+		It("leads a song mix with the seed on /Songs/{id}/InstantMix", func() {
+			q := queryResult(get("/Songs/" + enc(songID("So What")) + "/InstantMix"))
+			Expect(names(q.Items)).To(Equal([]string{"So What", "Mix Song"}))
+		})
+
+		DescribeTable("returns the provider's mix",
+			func(path func() string) {
+				q := queryResult(get(path()))
+				Expect(names(q.Items)).To(Equal([]string{"Mix Song"}))
+			},
+			Entry("Albums/{id}", func() string { return "/Albums/" + enc(albumID("Abbey Road")) + "/InstantMix" }),
+			Entry("Artists/{id}", func() string { return "/Artists/" + enc(artistID("Miles Davis")) + "/InstantMix" }),
+			Entry("Playlists/{id}", func() string {
+				return "/Playlists/" + enc(createPlaylist("Seed", []string{enc(songID("So What"))})) + "/InstantMix"
+			}),
+			Entry("Artists/InstantMix?id=", func() string { return "/Artists/InstantMix?id=" + enc(artistID("Miles Davis")) }),
+			Entry("MusicGenres/InstantMix?id=", func() string { return "/MusicGenres/InstantMix?id=" + enc(genreID("Jazz")) }),
+		)
+
+		It("404s a malformed id query param", func() {
+			Expect(get("/Artists/InstantMix?id=not-a-valid-id").Code).To(Equal(http.StatusNotFound))
+		})
+	})
 })

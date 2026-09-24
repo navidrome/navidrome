@@ -378,8 +378,9 @@ func wrapCursor[D, T any](cursor iter.Seq2[D, error], toModel func(D) *T) iter.S
 		for row, err := range cursor {
 			m := toModel(row)
 			if m == nil {
+				// Don't format row: its String() derefs the nil model (golang/go#81238).
 				var zero T
-				yield(zero, fmt.Errorf("unexpected nil %T (%v): %w", zero, row, err))
+				yield(zero, fmt.Errorf("unexpected nil %T: %w", zero, err))
 				return
 			}
 			if !yield(*m, err) || err != nil {
@@ -614,12 +615,20 @@ func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId stri
 }
 
 func (r sqlRepository) delete(cond Sqlizer) error {
-	del := Delete(r.tableName).Where(cond)
-	_, err := r.executeSQL(del)
-	if errors.Is(err, sql.ErrNoRows) {
+	_, err := r.executeSQL(Delete(r.tableName).Where(cond))
+	return err
+}
+
+// deleteByID is for single-item deletes that must report a missing row; delete succeeds silently.
+func (r sqlRepository) deleteByID(id string) error {
+	count, err := r.executeSQL(Delete(r.tableName).Where(Eq{"id": id}))
+	if err != nil {
+		return err
+	}
+	if count == 0 {
 		return model.ErrNotFound
 	}
-	return err
+	return nil
 }
 
 func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
@@ -633,6 +642,10 @@ func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffect
 	// SQLITE_BUSY_SNAPSHOT, which no busy_timeout can retry.
 	if code, extended, ok := db.ErrorCodes(err); ok {
 		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
+	}
+	if db.IsBusy(err) && hasBusyRetry(r.ctx) {
+		log.Warn(append(fields, err)...)
+		return
 	}
 	log.Error(append(fields, err)...)
 }

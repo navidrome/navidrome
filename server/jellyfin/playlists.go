@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -46,6 +48,7 @@ type createPlaylistRequest struct {
 	Name      string   `json:"Name"`
 	Ids       []string `json:"Ids"`
 	MediaType string   `json:"MediaType"`
+	IsPublic  *bool    `json:"IsPublic"`
 }
 
 // createPlaylist always creates a new playlist (playlistId "" tells core/playlists.Create not to
@@ -66,6 +69,13 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		api.internalError(w, r, err)
 		return
+	}
+	// Create takes no visibility, so a requested one costs a second write.
+	if body.IsPublic != nil {
+		if err := api.playlists.Update(r.Context(), id, nil, nil, body.IsPublic, nil, nil); err != nil {
+			api.playlistError(w, r, err)
+			return
+		}
 	}
 	api.ok(w, r, map[string]string{"Id": dto.EncodeID(id)})
 }
@@ -261,8 +271,8 @@ func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []strin
 	return slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 }
 
-// addToPlaylist appends items by id, expanding containers into tracks (see expandContainerIDs).
-// AddTracks enforces ownership; a locked playlist maps to 403, any other error to 404.
+// addToPlaylist adds items by id (containers expand to tracks), inserting at the zero-based position
+// when given. Core enforces ownership: a locked playlist maps to 403, any other error to 404.
 func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "playlistId")
@@ -275,7 +285,13 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ids := api.expandContainerIDs(ctx, decoded)
-	if _, err := api.playlists.AddTracks(ctx, id, ids); err != nil {
+	var err error
+	if position, perr := req.Params(r).Int64("position"); perr == nil {
+		_, err = api.playlists.InsertTracks(ctx, id, ids, insertPosition(position))
+	} else {
+		_, err = api.playlists.AddTracks(ctx, id, ids)
+	}
+	if err != nil {
 		if errors.Is(err, model.ErrPlaylistNotEditable) {
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
@@ -284,6 +300,12 @@ func (api *Router) addToPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// insertPosition maps Jellyfin's zero-based position to a 1-based one, clamped in int64 first so
+// it can't wrap on 32-bit builds.
+func insertPosition(position int64) int {
+	return int(min(max(position, 0), math.MaxInt32-1) + 1)
 }
 
 // removeFromPlaylist removes entries by entryIds — playlist-entry ids (PlaylistItemId), not media
@@ -311,6 +333,38 @@ func (api *Router) removeFromPlaylist(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// movePlaylistItem moves an entry to Jellyfin's zero-based newIndex. Reorder clamps past-the-end
+// indexes and rejects unknown entries, which Jellyfin treats as a no-op.
+func (api *Router) movePlaylistItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, ok := itemIDParam(w, r, "playlistId")
+	if !ok {
+		return
+	}
+	entry, ok := dto.DecodePlaylistEntryID(chi.URLParam(r, "entryId"))
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	newIndex, err := strconv.Atoi(chi.URLParam(r, "newIndex"))
+	if err != nil || newIndex < 0 {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+	// Resolve first, so a missing or hidden playlist is still a 404 below the unknown-entry no-op.
+	if _, err := api.playlists.Get(ctx, id); err != nil {
+		api.playlistError(w, r, err)
+		return
+	}
+	pos, _ := strconv.Atoi(entry)
+	err = api.playlists.ReorderTrack(ctx, id, pos, min(newIndex, math.MaxInt32-1)+1)
+	if err != nil && !errors.Is(err, model.ErrNotFound) {
+		api.playlistError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

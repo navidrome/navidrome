@@ -159,6 +159,53 @@ var _ = Describe("Artwork", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 		})
 
+		It("treats a file-backed row pointing at a non-image file as dangling", func() {
+			dir := GinkgoT().TempDir()
+			secretPath := filepath.Join(dir, "config.ini")
+			Expect(os.WriteFile(secretPath, []byte("password=secret"), 0600)).To(Succeed())
+			Expect(artRepo.PutImage(&model.Artwork{Hash: "dddddddddddddddd", Mime: "image/jpeg"})).To(Succeed())
+			seedEntity("al", "alni")
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "alni", Hash: "dddddddddddddddd",
+				Source: "folder", SourcePath: secretPath, RefMtime: fileMtime(secretPath),
+			})).To(Succeed())
+
+			_, err := svc.Get(ctx, model.MustParseArtworkID("al-alni"), 0, false)
+			Expect(err).To(MatchError(ErrUnavailable))
+			Expect(queueRepo.Data[primaryKey("al", "alni")].Priority).To(Equal(model.ArtworkPriorityScan))
+		})
+
+		It("refuses a non-image file-backed row even when a resized copy is already cached", func() {
+			secret := []byte("password=secret")
+			dir := GinkgoT().TempDir()
+			secretPath := filepath.Join(dir, "config.ini")
+			Expect(os.WriteFile(secretPath, secret, 0600)).To(Succeed())
+			Expect(artRepo.PutImage(&model.Artwork{Hash: "eeeeeeeeeeeeeeee", Mime: "image/jpeg"})).To(Succeed())
+			seedEntity("al", "alnic")
+			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+				ItemKind: "al", ItemID: "alnic", Hash: "eeeeeeeeeeeeeeee",
+				Source: "folder", SourcePath: secretPath, RefMtime: fileMtime(secretPath),
+			})).To(Succeed())
+
+			// Older versions cached the raw bytes when the resize failed.
+			seed := func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(secret)), nil }
+			stream, err := imgCache.Get(ctx, &resizedItem{hash: "eeeeeeeeeeeeeeee", size: 100, open: seed, ffmpeg: ffm})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(io.ReadAll(stream)).To(Equal(secret))
+			Expect(stream.Close()).To(Succeed())
+			Eventually(func(g Gomega) {
+				s, err := imgCache.Get(ctx, &resizedItem{hash: "eeeeeeeeeeeeeeee", size: 100, ffmpeg: ffm,
+					open: func() (io.ReadCloser, error) { return nil, os.ErrNotExist }})
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(s.Cached).To(BeTrue())
+				_ = s.Close()
+			}).Should(Succeed())
+
+			_, err = svc.Get(ctx, model.MustParseArtworkID("al-alnic"), 100, false)
+			Expect(err).To(MatchError(ErrUnavailable))
+			Expect(queueRepo.Data[primaryKey("al", "alnic")].Priority).To(Equal(model.ArtworkPriorityScan))
+		})
+
 		It("treats a full-size mtime mismatch as dangling: unavailable, re-enqueued at Scan, state untouched", func() {
 			dir := GinkgoT().TempDir()
 			imgPath := filepath.Join(dir, "cover.jpg")

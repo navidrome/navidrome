@@ -4,12 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing/fstest"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -52,7 +56,10 @@ var _ = Describe("Scanner", Ordered, func() {
 
 	BeforeAll(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		tmpDir := GinkgoT().TempDir()
+		// The DB stays open until the suite ends, and Windows can't delete an open file
+		tmpDir, err := os.MkdirTemp("", "scanner-test")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
 		//conf.Server.DbPath = ":memory:"
@@ -1240,7 +1247,54 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(albumArtistStats.SongCount).To(Equal(3))  // 3 songs
 		})
 	})
+
+	Context("when the database is busy", func() {
+		var busyDS *busyPersistDS
+		BeforeEach(func() {
+			// One album across many folders: the suite's single DB connection deadlocks phase 3 on many albums
+			album := template(_t{"albumartist": "Artist", "album": "Album"})
+			files := fstest.MapFS{}
+			for i := range 30 {
+				files[fmt.Sprintf("Artist/Part %02d/%02d - Song.mp3", i, i+1)] = album(track(i+1, fmt.Sprintf("Song %02d", i+1)))
+			}
+			createFS(files)
+			busyDS = &busyPersistDS{MockDataStore: ds}
+			s = scanner.New(ctx, busyDS, events.NoopBroker(),
+				playlists.NewPlaylists(busyDS, artwork.NewUploader(busyDS)), metrics.NewNoopInstance())
+		})
+
+		It("gives up and stops walking the library when the database stays busy", func() {
+			busyDS.failures.Store(1000)
+
+			Expect(runScanner(ctx, true)).To(MatchError(ContainSubstring("database is locked")))
+
+			Expect(mfRepo.cursorCalls.Load()).To(BeNumerically("<", 30))
+		})
+
+		It("does not mark unvisited folders missing when the scan gives up", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			busyDS.failures.Store(1000)
+
+			Expect(runScanner(ctx, true)).ToNot(Succeed())
+
+			Expect(ds.Folder(ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})).To(BeZero())
+			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{Filters: squirrel.Eq{"missing": true}})).To(BeZero())
+		})
+	})
 })
+
+// busyPersistDS fails the scanner's folder saves with SQLITE_BUSY, as if WithTxRetry ran out of retries.
+type busyPersistDS struct {
+	*tests.MockDataStore
+	failures atomic.Int32
+}
+
+func (b *busyPersistDS) WithTxRetry(ctx context.Context, block func(context.Context, model.DataStore) error, label ...string) error {
+	if len(label) > 0 && label[0] == "scanner: persist changes" && b.failures.Add(-1) >= 0 {
+		return sqlite3.Error{Code: sqlite3.ErrBusy}
+	}
+	return b.MockDataStore.WithTxRetry(ctx, block, label...)
+}
 
 func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {
 	return func(path string) (*model.MediaFile, error) {
@@ -1258,6 +1312,12 @@ func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*mo
 type mockMediaFileRepo struct {
 	model.MediaFileRepository
 	GetMissingAndMatchingError error
+	cursorCalls                atomic.Int32
+}
+
+func (m *mockMediaFileRepo) GetCursor(options ...model.QueryOptions) (model.MediaFileCursor, error) {
+	m.cursorCalls.Add(1)
+	return m.MediaFileRepository.GetCursor(options...)
 }
 
 func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
