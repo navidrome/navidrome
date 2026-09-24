@@ -2,10 +2,14 @@ package persistence
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -33,7 +37,7 @@ func (r *playerRepository) Put(p *model.Player) error {
 
 func (r *playerRepository) selectPlayer(options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(options...).
-		Columns("player.*").
+		Columns("player.*", "player.api_key_hash is not null as has_api_key").
 		Join("user ON player.user_id = user.id").
 		Columns("user.user_name username")
 }
@@ -123,6 +127,9 @@ func (r *playerRepository) isPermitted(p *model.Player) bool {
 
 func (r *playerRepository) Save(entity any) (string, error) {
 	t := entity.(*model.Player)
+	if u := loggedUser(r.ctx); t.UserId == "" && u.ID != invalidUserId {
+		t.UserId = u.ID
+	}
 	if !r.isPermitted(t) {
 		return "", rest.ErrPermissionDenied
 	}
@@ -137,6 +144,51 @@ func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 
 func (r *playerRepository) Delete(id string) error {
 	return r.deleteOwned(id)
+}
+
+// Keys are 128-bit random values, so a fast unsalted hash is enough and allows an indexed lookup.
+func hashAPIKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+func (r *playerRepository) FindByAPIKey(key string) (*model.Player, error) {
+	if key == "" {
+		return nil, model.ErrNotFound
+	}
+	sel := r.selectPlayer().Where(Eq{"player.api_key_hash": hashAPIKey(key)})
+	var res model.Player
+	if err := r.queryOne(sel, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GenerateAPIKey is owner-only, even for admins, so nobody can mint a login for someone else.
+func (r *playerRepository) GenerateAPIKey(playerID string) (string, error) {
+	key := consts.APIKeyPrefix + id.NewRandom()
+	upd := Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
+		Where(Eq{"id": playerID, "user_id": loggedUser(r.ctx).ID})
+	count, err := r.executeSQL(upd)
+	if err != nil {
+		return "", err
+	}
+	if count == 0 {
+		return "", r.classifyOwnedWriteMiss(playerID)
+	}
+	return key, nil
+}
+
+func (r *playerRepository) RevokeAPIKey(playerID string) error {
+	upd := Update(r.tableName).Set("api_key_hash", nil).Where(r.addRestriction(Eq{"id": playerID}))
+	count, err := r.executeSQL(upd)
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return r.classifyOwnedWriteMiss(playerID)
+	}
+	return nil
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)
