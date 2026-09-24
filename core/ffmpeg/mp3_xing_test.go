@@ -92,6 +92,20 @@ var _ = Describe("patchMP3Duration", func() {
 		Expect(frames).To(Equal(uint32(38)))
 	})
 
+	It("raises the bitrate of the inserted frame when the first frame is too small for the tag", func() {
+		// MPEG 2, 8kbps, 22050Hz, stereo: 26 bytes, as a VBR encode starting on silence emits.
+		in := make([]byte, 26)
+		copy(in, []byte{0xFF, 0xF3, 0x10, 0x00})
+
+		out := readAll(in, 1.0)
+
+		Expect(out[2]>>4).To(Equal(byte(2)), "16kbps, the first bitrate whose frame fits the tag")
+		tag, frames := readXing(out, 0, 21) // 4 header + 17 side info
+		Expect(tag).To(Equal("Info"))
+		Expect(frames).To(Equal(uint32(38))) // 1s at 22050Hz is 38 frames of 576 samples
+		Expect(out[52:]).To(Equal(in))       // 52 bytes = frame size at 16kbps, 22050Hz
+	})
+
 	It("inserts the frame at the start of a stream with no ID3 tag", func() {
 		in := pipedMP3[fixtureID3Len:]
 

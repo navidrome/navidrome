@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	mp3HeaderLen = 4
-	mp3ID3Len    = 10
-	mp3MaxPrefix = 64 << 10 // ffmpeg cannot write an attached picture to a pipe, so the tag stays small
+	mp3HeaderLen  = 4
+	mp3ID3Len     = 10
+	mp3InfoTagLen = 12       // tag, flags and frame count
+	mp3MaxPrefix  = 64 << 10 // ffmpeg cannot write an attached picture to a pipe, so the tag stays small
 )
 
 // mp3Prefix returns the head of the stream with an Info frame inserted before the first
@@ -41,7 +42,7 @@ func (h *headerPatcher) mp3Prefix(buf []byte) ([]byte, error) {
 	if isXingFrame(buf[start:], frame.tagOffset) {
 		return buf, nil
 	}
-	xing, ok := xingFrame(buf[start:], frame, h.duration)
+	xing, ok := xingFrame(buf[start:], h.duration)
 	if !ok {
 		return buf, nil
 	}
@@ -60,7 +61,6 @@ type mp3Frame struct {
 	sampleRate int
 	samples    int // per frame
 	size       int // bytes, including the header
-	sideInfo   int
 	tagOffset  int // where a Xing tag sits in the incoming frame, which may carry a CRC
 }
 
@@ -89,19 +89,20 @@ func parseMP3Header(h []byte) (mp3Frame, bool) {
 		return mp3Frame{}, false
 	}
 	f := mp3Frame{sampleRate: sampleRate, samples: 576}
+	var sideInfo int
 	mono := (h[3]>>6)&0x03 == 3
 	switch {
 	case mpeg1 && mono:
-		f.samples, f.sideInfo = 1152, 17
+		f.samples, sideInfo = 1152, 17
 	case mpeg1:
-		f.samples, f.sideInfo = 1152, 32
+		f.samples, sideInfo = 1152, 32
 	case mono:
-		f.sideInfo = 9
+		sideInfo = 9
 	default:
-		f.sideInfo = 17
+		sideInfo = 17
 	}
 	f.size = f.samples/8*bitRate/sampleRate + int((h[2]>>1)&0x01)
-	f.tagOffset = mp3HeaderLen + f.sideInfo
+	f.tagOffset = mp3HeaderLen + sideInfo
 	if h[1]&0x01 == 0 { // CRC follows the header
 		f.tagOffset += 2
 	}
@@ -116,19 +117,27 @@ func isXingFrame(frame []byte, tagOffset int) bool {
 	return tag == "Xing" || tag == "Info"
 }
 
-// xingFrame builds a silent Info frame declaring how many frames follow it. It reuses the
-// first frame's header, minus its CRC, so the two describe the same stream.
-func xingFrame(first []byte, f mp3Frame, duration float32) ([]byte, bool) {
+// xingFrame builds a silent Info frame declaring how many frames follow it. Its header is
+// the first frame's minus the CRC, with the bitrate raised until the frame fits the tag.
+func xingFrame(first []byte, duration float32) ([]byte, bool) {
+	header := [mp3HeaderLen]byte(first)
+	header[1] |= 0x01
+	f, ok := parseMP3Header(header[:])
+	for ok && f.size < f.tagOffset+mp3InfoTagLen {
+		header[2] += 0x10 // next bitrate index; 15 is invalid, which ends the loop
+		f, ok = parseMP3Header(header[:])
+	}
+	if !ok {
+		return nil, false
+	}
 	frames := math.Round(float64(duration) * float64(f.sampleRate) / float64(f.samples))
 	if frames < 1 || frames > math.MaxUint32 {
 		return nil, false
 	}
 	frame := make([]byte, f.size)
-	copy(frame, first[:mp3HeaderLen])
-	frame[1] |= 0x01 // no CRC, so the tag follows the side info directly
-	at := mp3HeaderLen + f.sideInfo
-	copy(frame[at:], "Info")                    // a Xing tag without a seek table marks the stream unseekable to some decoders
-	binary.BigEndian.PutUint32(frame[at+4:], 1) // only the frame count is present
-	binary.BigEndian.PutUint32(frame[at+8:], uint32(frames))
+	copy(frame, header[:])
+	copy(frame[f.tagOffset:], "Info")                    // a Xing tag without a seek table marks the stream unseekable to some decoders
+	binary.BigEndian.PutUint32(frame[f.tagOffset+4:], 1) // only the frame count is present
+	binary.BigEndian.PutUint32(frame[f.tagOffset+8:], uint32(frames))
 	return frame, true
 }
