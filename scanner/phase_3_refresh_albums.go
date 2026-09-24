@@ -103,7 +103,9 @@ func (p *phaseRefreshAlbums) refreshAlbum(album *model.Album) (*model.Album, err
 		return nil, nil
 	}
 	start := time.Now()
-	err := p.ds.Album(p.ctx).Put(album)
+	err := p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
+		return tx.Album(ctx).Put(album)
+	}, "scanner: refresh album")
 	log.Debug(p.ctx, "Scanner: refreshing album", "album_id", album.ID, "name", album.Name, "songCount", album.SongCount, "elapsed", time.Since(start), err)
 	if err != nil {
 		return nil, fmt.Errorf("refreshing album %s: %w", album.ID, err)
@@ -130,7 +132,12 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 	}
 	// Refresh album annotations
 	start := time.Now()
-	cnt, err := p.ds.Album(p.ctx).RefreshPlayCounts()
+	var cnt int64
+	err = p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
+		var txErr error
+		cnt, txErr = tx.Album(ctx).RefreshPlayCounts()
+		return txErr
+	}, "scanner: refresh album play counts")
 	if err != nil {
 		return fmt.Errorf("refreshing album annotations: %w", err)
 	}
@@ -138,7 +145,11 @@ func (p *phaseRefreshAlbums) finalize(err error) error {
 
 	// Refresh artist annotations
 	start = time.Now()
-	cnt, err = p.ds.Artist(p.ctx).RefreshPlayCounts()
+	err = p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
+		var txErr error
+		cnt, txErr = tx.Artist(ctx).RefreshPlayCounts()
+		return txErr
+	}, "scanner: refresh artist play counts")
 	if err != nil {
 		return fmt.Errorf("refreshing artist annotations: %w", err)
 	}
