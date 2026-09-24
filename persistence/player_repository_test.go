@@ -397,6 +397,18 @@ var _ = Describe("PlayerRepository", func() {
 				count, _ := adminRepo.CountAll()
 				_, err := adminRepo.Save(&model.Player{Name: "For someone", UserId: regularUser.ID, APIKey: new(key)})
 				Expect(err).To(MatchError(rest.ErrPermissionDenied))
+				_, err = adminRepo.Save(&model.Player{Name: "For someone", UserId: regularUser.ID})
+				Expect(err).To(MatchError(rest.ErrPermissionDenied))
+				Expect(adminRepo.CountAll()).To(Equal(count))
+			})
+
+			It("rejects a key already used by another player without creating the player", func() {
+				Expect(adminRepo.SetAPIKey(adminPlayer1.ID, key)).To(Succeed())
+				count, _ := adminRepo.CountAll()
+				_, err := ownerRepo.Save(&model.Player{Name: "Duplicate", APIKey: new(key)})
+				var verr *rest.ValidationError
+				Expect(errors.As(err, &verr)).To(BeTrue())
+				Expect(verr.Errors).To(HaveKeyWithValue("apiKey", "ra.validation.unique"))
 				Expect(adminRepo.CountAll()).To(Equal(count))
 			})
 		})
@@ -448,6 +460,23 @@ var _ = Describe("PlayerRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(got.Name).To(Equal(regularPlayer.Name))
 				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+			})
+
+			It("refuses a key already used by another player and leaves other columns alone", func() {
+				Expect(adminRepo.SetAPIKey(adminPlayer1.ID, key)).To(Succeed())
+				plr := regularPlayer
+				plr.Name = "Renamed"
+				plr.APIKey = new(key)
+				err := ownerRepo.Update(plr.ID, &plr, "name", "apiKey")
+				var verr *rest.ValidationError
+				Expect(errors.As(err, &verr)).To(BeTrue())
+				Expect(verr.Errors).To(HaveKeyWithValue("apiKey", "ra.validation.unique"))
+
+				got, err := adminRepo.Get(regularPlayer.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(got.Name).To(Equal(regularPlayer.Name))
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+				Expect(storedHash(adminPlayer1.ID)).To(Equal(hashAPIKey(key)))
 			})
 		})
 	})

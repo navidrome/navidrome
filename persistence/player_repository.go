@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"regexp"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/pocketbase/dbx"
 )
@@ -116,15 +118,6 @@ func (r *playerRepository) NewInstance() any {
 	return &model.Player{}
 }
 
-// isPermitted authorizes creating a new record, based on the owner declared in the request body.
-// This is only safe for inserts: there is no stored row yet, and a non-admin may only create a
-// player they own. Updates must not use this (the body owner is attacker-controlled); they go
-// through updateOwned, which authorizes against the persisted user_id in the WHERE clause.
-func (r *playerRepository) isPermitted(p *model.Player) bool {
-	u := loggedUser(r.ctx)
-	return u.IsAdmin || p.UserId == u.ID
-}
-
 var apiKeyFormat = regexp.MustCompile(`^` + consts.APIKeyPrefix + `[0-9A-Za-z]{22}$`)
 
 func apiKeyValidationError(msg string) error {
@@ -137,7 +130,7 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	if t.UserId == "" && u.ID != invalidUserId {
 		t.UserId = u.ID
 	}
-	if !r.isPermitted(t) {
+	if t.UserId != u.ID {
 		return "", rest.ErrPermissionDenied
 	}
 	// Hand-made players are only reachable through a key, so one is required
@@ -147,14 +140,25 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	if !apiKeyFormat.MatchString(*t.APIKey) {
 		return "", apiKeyValidationError("resources.player.validation.apiKeyFormat")
 	}
-	if t.UserId != u.ID {
-		return "", rest.ErrPermissionDenied
+	inUse, err := r.exists(Eq{"api_key_hash": hashAPIKey(*t.APIKey)})
+	if err != nil {
+		return "", err
+	}
+	if inUse {
+		return "", apiKeyValidationError("ra.validation.unique")
 	}
 	id, err := r.put("", t) // Save only creates; edits go through the owner-scoped Update
 	if err != nil {
 		return "", err
 	}
-	return id, r.SetAPIKey(id, *t.APIKey)
+	if err := r.SetAPIKey(id, *t.APIKey); err != nil {
+		// A concurrent create can claim the key after the check above; don't leave a keyless player
+		if delErr := r.delete(Eq{"id": id}); delErr != nil {
+			log.Error(r.ctx, "Could not remove player after failing to set its API key", "id", id, delErr)
+		}
+		return "", err
+	}
+	return id, nil
 }
 
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {
@@ -172,7 +176,7 @@ func (r *playerRepository) Delete(id string) error {
 	return r.deleteOwned(id)
 }
 
-// Keys are 128-bit random values, so a fast unsalted hash is enough and allows an indexed lookup.
+// Keys are long random strings, not user-chosen passwords, so a fast unsalted hash is enough and keeps lookups indexed.
 func hashAPIKey(key string) string {
 	sum := sha256.Sum256([]byte(key))
 	return hex.EncodeToString(sum[:])
@@ -199,8 +203,12 @@ func (r *playerRepository) SetAPIKey(playerID, key string) error {
 	if !apiKeyFormat.MatchString(key) {
 		return apiKeyValidationError("resources.player.validation.apiKeyFormat")
 	}
-	return r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
+	err := r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
 		Where(Eq{"id": playerID, "user_id": loggedUser(r.ctx).ID}))
+	if err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		return apiKeyValidationError("ra.validation.unique")
+	}
+	return err
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)
