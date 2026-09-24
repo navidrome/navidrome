@@ -1,7 +1,9 @@
 package ffmpeg
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"io"
 	"os"
@@ -718,6 +720,23 @@ var _ = Describe("ffmpeg", func() {
 				out, err := io.ReadAll(stream)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(readTotalSamples(out)).To(Equal(uint64(2 * 44100)))
+			})
+
+			It("inserts a Xing frame on a piped mp3 transcode", func() {
+				stream, err := ff.Transcode(GinkgoT().Context(), TranscodeOptions{
+					Command:  "ffmpeg -i %s -map 0:a:0 -v 0 -b:a 128k -f mp3 -",
+					Format:   "mp3",
+					FilePath: "tests/fixtures/test.flac",
+					Duration: 1, // the fixture is exactly 1s at 44100Hz
+				})
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				out, err := io.ReadAll(stream)
+				Expect(err).ToNot(HaveOccurred())
+				at := bytes.Index(out, []byte("Xing"))
+				Expect(at).To(BeNumerically(">", 0))
+				Expect(binary.BigEndian.Uint32(out[at+8:])).To(Equal(uint32(38)))
 			})
 		})
 
