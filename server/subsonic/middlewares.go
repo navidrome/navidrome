@@ -125,7 +125,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 					log.Error(ctx, "API: Error authenticating username", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
 				}
 			case apiKey != "":
-				usr, keyPlayer, err = authenticateAPIKey(ctx, ds, limiter, r, p, apiKey)
+				usr, keyPlayer, err = authenticateAPIKey(ctx, ds, limiter, r, apiKey)
 				if err != nil {
 					if ctx.Err() == nil {
 						sendError(w, r, err)
@@ -190,9 +190,10 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 
 var apiKeyConflicts = []string{"u", "p", "t", "s", "jwt"}
 
-func authenticateAPIKey(ctx context.Context, ds model.DataStore, limiter *authLimiter, r *http.Request, p *req.Values, key string) (*model.User, *model.Player, error) {
+func authenticateAPIKey(ctx context.Context, ds model.DataStore, limiter *authLimiter, r *http.Request, key string) (*model.User, *model.Player, error) {
+	query := r.URL.Query()
 	for _, param := range apiKeyConflicts {
-		if v, _ := p.String(param); v != "" {
+		if query.Get(param) != "" {
 			log.Warn(ctx, "API: apiKey sent with other credentials", "auth", "apikey", "param", param, "remoteAddr", r.RemoteAddr)
 			return nil, nil, newError(responses.ErrorMultipleAuthMechanismsProvided)
 		}

@@ -71,11 +71,23 @@ const PlayerApiKey = (props) => {
     setNewKey(null)
     refresh()
   }
+  const confirmProps = {
+    regenerate: {
+      title: 'resources.player.message.regenerateApiKeyTitle',
+      content: 'resources.player.message.regenerateApiKeyContent',
+      onConfirm: generate,
+    },
+    revoke: {
+      title: 'resources.player.message.revokeApiKeyTitle',
+      content: 'resources.player.message.revokeApiKeyContent',
+      onConfirm: revoke,
+    },
+  }
 
   return (
     <div>
       <Typography variant="subtitle2">
-        {translate('resources.player.fields.apiKey')}
+        {translate('resources.player.fields.hasApiKey')}
       </Typography>
       <Typography variant="body2" color="textSecondary">
         {translate(
@@ -111,22 +123,14 @@ const PlayerApiKey = (props) => {
           <MdDelete />
         </Button>
       )}
-      <Confirm
-        isOpen={confirm === 'regenerate'}
-        loading={loading}
-        title="resources.player.message.regenerateApiKeyTitle"
-        content="resources.player.message.regenerateApiKeyContent"
-        onConfirm={generate}
-        onClose={() => setConfirm(null)}
-      />
-      <Confirm
-        isOpen={confirm === 'revoke'}
-        loading={loading}
-        title="resources.player.message.revokeApiKeyTitle"
-        content="resources.player.message.revokeApiKeyContent"
-        onConfirm={revoke}
-        onClose={() => setConfirm(null)}
-      />
+      {confirm && (
+        <Confirm
+          isOpen
+          loading={loading}
+          onClose={() => setConfirm(null)}
+          {...confirmProps[confirm]}
+        />
+      )}
       {/* The key is shown only once, so Escape or a stray click must not dismiss it */}
       <Dialog open={!!newKey} fullWidth>
         <DialogTitle>

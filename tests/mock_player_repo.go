@@ -2,6 +2,7 @@ package tests
 
 import (
 	"maps"
+	"slices"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -29,6 +30,7 @@ func (m *MockPlayerRepo) Get(id string) (*model.Player, error) {
 		return nil, model.ErrNotFound
 	}
 	cp := *p
+	cp.HasAPIKey = slices.Contains(slices.Collect(maps.Values(m.APIKeys)), id)
 	return &cp, nil
 }
 
@@ -58,14 +60,12 @@ func (m *MockPlayerRepo) GenerateAPIKey(playerID string) (string, error) {
 	if m.Error != nil {
 		return "", m.Error
 	}
-	p, ok := m.Data[playerID]
-	if !ok {
+	if _, ok := m.Data[playerID]; !ok {
 		return "", model.ErrNotFound
 	}
 	m.removeKeys(playerID)
 	key := consts.APIKeyPrefix + id.NewRandom()
 	m.APIKeys[key] = playerID
-	p.HasAPIKey = true
 	return key, nil
 }
 
@@ -73,12 +73,10 @@ func (m *MockPlayerRepo) RevokeAPIKey(playerID string) error {
 	if m.Error != nil {
 		return m.Error
 	}
-	p, ok := m.Data[playerID]
-	if !ok {
+	if _, ok := m.Data[playerID]; !ok {
 		return model.ErrNotFound
 	}
 	m.removeKeys(playerID)
-	p.HasAPIKey = false
 	return nil
 }
 

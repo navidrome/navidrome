@@ -191,8 +191,7 @@
         "lastSeen": "Last Seen At",
         "reportRealPath": "Report Real Path",
         "scrobbleEnabled": "Send Scrobbles to external services",
-        "hasApiKey": "API Key",
-        "apiKey": "API Key"
+        "hasApiKey": "API Key"
       },
       "actions": {
         "generateApiKey": "Generate API key",

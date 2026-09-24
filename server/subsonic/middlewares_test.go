@@ -320,6 +320,9 @@ var _ = Describe("Middlewares", func() {
 
 		When("using API key authentication", func() {
 			var key string
+			serve := func(params ...string) {
+				authenticate(ds)(next).ServeHTTP(w, newGetRequest(params...))
+			}
 
 			BeforeEach(func() {
 				usr, err := ds.User(context.TODO()).FindByUsername("admin")
@@ -330,9 +333,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("authenticates the owner and binds the key's player", func() {
-				r := newGetRequest("apiKey=" + key)
-				cp := authenticate(ds)(next)
-				cp.ServeHTTP(w, r)
+				serve("apiKey=" + key)
 
 				Expect(next.called).To(BeTrue())
 				user, _ := request.UserFrom(next.req.Context())
@@ -355,9 +356,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("rejects an unknown key with error 44", func() {
-				r := newGetRequest("apiKey=nav_unknown")
-				cp := authenticate(ds)(next)
-				cp.ServeHTTP(w, r)
+				serve("apiKey=nav_unknown")
 
 				Expect(w.Body.String()).To(ContainSubstring(`code="44"`))
 				Expect(next.called).To(BeFalse())
@@ -365,9 +364,7 @@ var _ = Describe("Middlewares", func() {
 
 			DescribeTable("rejects apiKey mixed with other credentials with error 43",
 				func(extra string) {
-					r := newGetRequest("apiKey="+key, extra)
-					cp := authenticate(ds)(next)
-					cp.ServeHTTP(w, r)
+					serve("apiKey="+key, extra)
 
 					Expect(w.Body.String()).To(ContainSubstring(`code="43"`))
 					Expect(next.called).To(BeFalse())
@@ -381,9 +378,7 @@ var _ = Describe("Middlewares", func() {
 
 			Context("key sent as the password", func() {
 				It("authenticates and binds the key's player", func() {
-					r := newGetRequest("u=admin", "p="+key)
-					cp := authenticate(ds)(next)
-					cp.ServeHTTP(w, r)
+					serve("u=admin", "p="+key)
 
 					Expect(next.called).To(BeTrue())
 					player, ok := request.PlayerFrom(next.req.Context())
@@ -392,18 +387,14 @@ var _ = Describe("Middlewares", func() {
 				})
 
 				It("accepts the hex-encoded form", func() {
-					r := newGetRequest("u=admin", "p=enc:"+hex.EncodeToString([]byte(key)))
-					cp := authenticate(ds)(next)
-					cp.ServeHTTP(w, r)
+					serve("u=admin", "p=enc:"+hex.EncodeToString([]byte(key)))
 
 					Expect(next.called).To(BeTrue())
 				})
 
 				It("still accepts a real password that starts with the key prefix", func() {
 					Expect(ds.User(context.TODO()).Put(&model.User{UserName: "prefixed", NewPassword: "nav_secret"})).To(Succeed())
-					r := newGetRequest("u=prefixed", "p=nav_secret")
-					cp := authenticate(ds)(next)
-					cp.ServeHTTP(w, r)
+					serve("u=prefixed", "p=nav_secret")
 
 					Expect(next.called).To(BeTrue())
 					_, ok := request.PlayerFrom(next.req.Context())
@@ -412,9 +403,7 @@ var _ = Describe("Middlewares", func() {
 
 				It("rejects another user's key with error 40", func() {
 					Expect(ds.User(context.TODO()).Put(&model.User{UserName: "other", NewPassword: "pw"})).To(Succeed())
-					r := newGetRequest("u=other", "p="+key)
-					cp := authenticate(ds)(next)
-					cp.ServeHTTP(w, r)
+					serve("u=other", "p="+key)
 
 					Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
 					Expect(next.called).To(BeFalse())

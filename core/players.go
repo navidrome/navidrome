@@ -34,7 +34,6 @@ type players struct {
 
 func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
 	var plr *model.Player
-	var trc *model.Transcoding
 	var err error
 	user, _ := request.UserFrom(ctx)
 	if playerID != "" {
@@ -62,12 +61,7 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 	if !plr.HasAPIKey {
 		plr.Name = fmt.Sprintf("%s [%s]", client, userAgent)
 	}
-	plr.UserAgent = userAgent
-	plr.IP = ip
-	plr.LastSeen = time.Now()
-	p.save(ctx, plr)
-	trc, err = p.transcoding(ctx, plr)
-	return plr, trc, err
+	return p.refresh(ctx, plr, userAgent, ip)
 }
 
 // Touch refreshes a player that the request already identified (by API key), without guessing or renaming it.
@@ -75,15 +69,13 @@ func (p *players) Touch(ctx context.Context, plr model.Player, client, userAgent
 	if plr.Client == "" {
 		plr.Client = client
 	}
+	return p.refresh(ctx, &plr, userAgent, ip)
+}
+
+func (p *players) refresh(ctx context.Context, plr *model.Player, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
 	plr.UserAgent = userAgent
 	plr.IP = ip
 	plr.LastSeen = time.Now()
-	p.save(ctx, &plr)
-	trc, err := p.transcoding(ctx, &plr)
-	return &plr, trc, err
-}
-
-func (p *players) save(ctx context.Context, plr *model.Player) {
 	p.limiter.Do(plr.ID, func() {
 		ctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
@@ -92,13 +84,11 @@ func (p *players) save(ctx context.Context, plr *model.Player) {
 			log.Warn(ctx, "Could not save player", "id", plr.ID, "client", plr.Client, "username", userName(ctx), "type", plr.UserAgent, err)
 		}
 	})
-}
-
-func (p *players) transcoding(ctx context.Context, plr *model.Player) (*model.Transcoding, error) {
 	if plr.TranscodingId == "" {
-		return nil, nil
+		return plr, nil, nil
 	}
-	return p.ds.Transcoding(ctx).Get(plr.TranscodingId)
+	trc, err := p.ds.Transcoding(ctx).Get(plr.TranscodingId)
+	return plr, trc, err
 }
 
 func (p *players) Get(ctx context.Context, playerId string) (*model.Player, error) {

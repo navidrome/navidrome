@@ -169,26 +169,14 @@ func (r *playerRepository) GenerateAPIKey(playerID string) (string, error) {
 	key := consts.APIKeyPrefix + id.NewRandom()
 	upd := Update(r.tableName).Set("api_key_hash", hashAPIKey(key)).
 		Where(Eq{"id": playerID, "user_id": loggedUser(r.ctx).ID})
-	count, err := r.executeSQL(upd)
-	if err != nil {
+	if err := r.execOwned(playerID, upd); err != nil {
 		return "", err
-	}
-	if count == 0 {
-		return "", r.classifyOwnedWriteMiss(playerID)
 	}
 	return key, nil
 }
 
 func (r *playerRepository) RevokeAPIKey(playerID string) error {
-	upd := Update(r.tableName).Set("api_key_hash", nil).Where(r.addRestriction(Eq{"id": playerID}))
-	count, err := r.executeSQL(upd)
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return r.classifyOwnedWriteMiss(playerID)
-	}
-	return nil
+	return r.execOwned(playerID, Update(r.tableName).Set("api_key_hash", nil).Where(r.addRestriction(Eq{"id": playerID})))
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)

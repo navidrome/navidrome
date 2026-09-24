@@ -494,15 +494,7 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 	}
 	updateValues := filterUpdateValues(values, id, colsToUpdate...)
 	delete(updateValues, "user_id") // ownership is immutable on update
-	update := Update(r.tableName).Where(r.addRestriction(Eq{"id": id})).SetMap(updateValues)
-	count, err := r.executeSQL(update)
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return r.classifyOwnedWriteMiss(id)
-	}
-	return nil
+	return r.execOwned(id, Update(r.tableName).Where(r.addRestriction(Eq{"id": id})).SetMap(updateValues))
 }
 
 // deleteOwned performs an atomic, ownership-restricted delete of the row identified by id, for
@@ -511,7 +503,12 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 // does not match and is left untouched. The failure path mirrors updateOwned (see
 // classifyOwnedWriteMiss), so there is no TOCTOU on the delete.
 func (r sqlRepository) deleteOwned(id string) error {
-	count, err := r.executeSQL(Delete(r.tableName).Where(r.addRestriction(Eq{"id": id})))
+	return r.execOwned(id, Delete(r.tableName).Where(r.addRestriction(Eq{"id": id})))
+}
+
+// execOwned runs an ownership-filtered write on the row identified by id, classifying a miss.
+func (r sqlRepository) execOwned(id string, q Sqlizer) error {
+	count, err := r.executeSQL(q)
 	if err != nil {
 		return err
 	}
