@@ -17,6 +17,7 @@ import (
 type Players interface {
 	Get(ctx context.Context, playerId string) (*model.Player, error)
 	Register(ctx context.Context, id, client, userAgent, ip string) (*model.Player, *model.Transcoding, error)
+	Touch(ctx context.Context, plr model.Player, client, userAgent, ip string) (*model.Player, *model.Transcoding, error)
 }
 
 func NewPlayers(ds model.DataStore) Players {
@@ -58,23 +59,46 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 			log.Info(ctx, "Registering new player", "id", plr.ID, "client", client, "username", username, "type", userAgent)
 		}
 	}
-	plr.Name = fmt.Sprintf("%s [%s]", client, userAgent)
+	if !plr.HasAPIKey {
+		plr.Name = fmt.Sprintf("%s [%s]", client, userAgent)
+	}
 	plr.UserAgent = userAgent
 	plr.IP = ip
 	plr.LastSeen = time.Now()
+	p.save(ctx, plr)
+	trc, err = p.transcoding(ctx, plr)
+	return plr, trc, err
+}
+
+// Touch refreshes a player that the request already identified (by API key), without guessing or renaming it.
+func (p *players) Touch(ctx context.Context, plr model.Player, client, userAgent, ip string) (*model.Player, *model.Transcoding, error) {
+	if plr.Client == "" {
+		plr.Client = client
+	}
+	plr.UserAgent = userAgent
+	plr.IP = ip
+	plr.LastSeen = time.Now()
+	p.save(ctx, &plr)
+	trc, err := p.transcoding(ctx, &plr)
+	return &plr, trc, err
+}
+
+func (p *players) save(ctx context.Context, plr *model.Player) {
 	p.limiter.Do(plr.ID, func() {
 		ctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
 
-		err = p.ds.Player(ctx).Put(plr)
-		if err != nil {
-			log.Warn(ctx, "Could not save player", "id", plr.ID, "client", client, "username", username, "type", userAgent, err)
+		if err := p.ds.Player(ctx).Put(plr); err != nil {
+			log.Warn(ctx, "Could not save player", "id", plr.ID, "client", plr.Client, "username", userName(ctx), "type", plr.UserAgent, err)
 		}
 	})
-	if plr.TranscodingId != "" {
-		trc, err = p.ds.Transcoding(ctx).Get(plr.TranscodingId)
+}
+
+func (p *players) transcoding(ctx context.Context, plr *model.Player) (*model.Transcoding, error) {
+	if plr.TranscodingId == "" {
+		return nil, nil
 	}
-	return plr, trc, err
+	return p.ds.Transcoding(ctx).Get(plr.TranscodingId)
 }
 
 func (p *players) Get(ctx context.Context, playerId string) (*model.Player, error) {
