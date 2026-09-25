@@ -156,9 +156,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 				if err == nil {
 					err = validateCredentials(usr, pass, token, salt, jwt)
 					if errors.Is(err, model.ErrInvalidAuth) && pass != "" && jwt == "" {
-						if keyPlayer = playerFromPasswordKey(ctx, ds, usr, pass); keyPlayer != nil {
-							err = nil
-						}
+						keyPlayer, err = playerFromPasswordKey(ctx, ds, usr, pass)
 					}
 				}
 				invalidLogin := errors.Is(err, model.ErrNotFound) || errors.Is(err, model.ErrInvalidAuth)
@@ -229,22 +227,17 @@ func authenticateAPIKey(ctx context.Context, ds model.DataStore, limiter *authLi
 }
 
 // playerFromPasswordKey lets clients that only have a password field log in with an API key.
-func playerFromPasswordKey(ctx context.Context, ds model.DataStore, usr *model.User, pass string) *model.Player {
+// It returns ErrInvalidAuth when pass is not a key of usr, so only real failures skip the limiter count.
+func playerFromPasswordKey(ctx context.Context, ds model.DataStore, usr *model.User, pass string) (*model.Player, error) {
 	key := decodePassword(pass)
 	if !strings.HasPrefix(key, consts.APIKeyPrefix) {
-		return nil
+		return nil, model.ErrInvalidAuth
 	}
 	plr, err := ds.Player(ctx).FindByAPIKey(key)
-	if err != nil {
-		if !errors.Is(err, model.ErrNotFound) {
-			log.Error(ctx, "API: Error looking up API key sent as password", "username", usr.UserName, err)
-		}
-		return nil
+	if errors.Is(err, model.ErrNotFound) || (err == nil && plr.UserId != usr.ID) {
+		return nil, model.ErrInvalidAuth
 	}
-	if plr.UserId != usr.ID {
-		return nil
-	}
-	return plr
+	return plr, err
 }
 
 func decodePassword(pass string) string {

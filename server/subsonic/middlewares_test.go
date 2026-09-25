@@ -478,6 +478,21 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeTrue())
 			})
 
+			It("does not count server errors when a key is sent as the password", func() {
+				usr, _ := ds.User(context.TODO()).FindByUsername("admin")
+				playerRepo := ds.Player(context.TODO()).(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(&model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				key := "nav_0123456789abcdefghijkl"
+				Expect(playerRepo.SetAPIKey("player-1", key)).To(Succeed())
+
+				playerRepo.Error = errors.New("db down")
+				failTimes(5, "u=admin", "p="+key)
+				playerRepo.Error = nil
+
+				serve(newGetRequest("u=admin", "p="+key))
+				Expect(next.called).To(BeTrue())
+			})
+
 			It("does not block other usernames from the same IP", func() {
 				_ = ds.User(context.TODO()).Put(&model.User{UserName: "other", NewPassword: "otherpass"})
 				failTimes(3, "u=admin", "p=WRONG")
