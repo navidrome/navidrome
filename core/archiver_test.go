@@ -93,139 +93,139 @@ var _ = Describe("Archiver", func() {
 			Expect(zr.File[0].Name).To(Equal("Album 1/01 - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("Album 1/02 - track2.mp3"))
 		})
-	})
 
-	Context("ZipArtist with albums that share a name", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
+		When("albums that share a name", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+			})
 
-		// zipArtistEntries zips the given tracks as artist "1" and returns the entry names in zip order.
-		zipArtistEntries := func(mfs model.MediaFiles) []string {
-			mfRepo := &mockMediaFileRepository{}
-			mfRepo.On("GetAll", mock.Anything).Return(mfs, nil)
-			ds.On("MediaFile", mock.Anything).Return(mfRepo)
-			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
+			// zipArtistEntries zips the given tracks as artist "1" and returns the entry names in zip order.
+			zipArtistEntries := func(mfs model.MediaFiles) []string {
+				mfRepo := &mockMediaFileRepository{}
+				mfRepo.On("GetAll", mock.Anything).Return(mfs, nil)
+				ds.On("MediaFile", mock.Anything).Return(mfRepo)
+				ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
 
-			out := new(bytes.Buffer)
-			Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
-			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
-			Expect(err).To(BeNil())
-			names := make([]string, len(zr.File))
-			for i, f := range zr.File {
-				names[i] = f.Name
+				out := new(bytes.Buffer)
+				Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+				zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+				Expect(err).To(BeNil())
+				names := make([]string, len(zr.File))
+				for i, f := range zr.File {
+					names[i] = f.Name
+				}
+				return names
 			}
-			return names
-		}
 
-		It("keeps the albums in query order", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Album C"},
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A"},
-				{Path: "a/02.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A"},
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Album B"},
+			It("keeps the albums in query order", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Album C"},
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A"},
+					{Path: "a/02.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album A"},
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Album B"},
+				})
+				Expect(names).To(Equal([]string{"Album C/01.mp3", "Album A/01.mp3", "Album A/02.mp3", "Album B/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Album C/01.mp3", "Album A/01.mp3", "Album A/02.mp3", "Album B/01.mp3"}))
-		})
 
-		It("suffixes the year when it tells the albums apart", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01 - Intro.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
-				{Path: "b/01 - Intro.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005},
+			It("suffixes the year when it tells the albums apart", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01 - Intro.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
+					{Path: "b/01 - Intro.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits [2001]/01 - Intro.mp3", "Greatest Hits [2005]/01 - Intro.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits [2001]/01 - Intro.mp3", "Greatest Hits [2005]/01 - Intro.mp3"}))
-		})
 
-		It("prefers the release year, so reissues of the same original are told apart", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 1996, ReleaseYear: 2001},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 1996, ReleaseYear: 2011},
-				{Path: "c/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Greatest Hits", Year: 1996},
+			It("prefers the release year, so reissues of the same original are told apart", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 1996, ReleaseYear: 2001},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 1996, ReleaseYear: 2011},
+					{Path: "c/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Greatest Hits", Year: 1996},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits [2001]/01.mp3", "Greatest Hits [2011]/01.mp3", "Greatest Hits [1996]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits [2001]/01.mp3", "Greatest Hits [2011]/01.mp3", "Greatest Hits [1996]/01.mp3"}))
-		})
 
-		It("names the folder after the full album name", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001,
-					Tags: model.Tags{model.TagAlbumVersion: {"Original"}}},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
-					Tags: model.Tags{model.TagAlbumVersion: {"CD/Digital"}}},
+			It("names the folder after the full album name", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001,
+						Tags: model.Tags{model.TagAlbumVersion: {"Original"}}},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
+						Tags: model.Tags{model.TagAlbumVersion: {"CD/Digital"}}},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits (Original)/01.mp3", "Greatest Hits (CD_Digital)/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits (Original)/01.mp3", "Greatest Hits (CD_Digital)/01.mp3"}))
-		})
 
-		It("prefers the album version over the year when it is not part of the name", func() {
-			conf.Server.Subsonic.AppendAlbumVersion = false
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001,
-					Tags: model.Tags{model.TagAlbumVersion: {"Original"}}},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
-					Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
+			It("prefers the album version over the year when it is not part of the name", func() {
+				conf.Server.Subsonic.AppendAlbumVersion = false
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001,
+						Tags: model.Tags{model.TagAlbumVersion: {"Original"}}},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
+						Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits [Original]/01.mp3", "Greatest Hits [Deluxe Edition]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits [Original]/01.mp3", "Greatest Hits [Deluxe Edition]/01.mp3"}))
-		})
 
-		It("leaves the one album without the field unsuffixed", func() {
-			conf.Server.Subsonic.AppendAlbumVersion = false
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
-					Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
+			It("leaves the one album without the field unsuffixed", func() {
+				conf.Server.Subsonic.AppendAlbumVersion = false
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
+						Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits/01.mp3", "Greatest Hits [Deluxe Edition]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits/01.mp3", "Greatest Hits [Deluxe Edition]/01.mp3"}))
-		})
 
-		It("skips a field that is empty on more than one album", func() {
-			conf.Server.Subsonic.AppendAlbumVersion = false
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005},
-				{Path: "c/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Greatest Hits", Year: 2010,
-					Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
+			It("skips a field that is empty on more than one album", func() {
+				conf.Server.Subsonic.AppendAlbumVersion = false
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005},
+					{Path: "c/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Greatest Hits", Year: 2010,
+						Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits [2001]/01.mp3", "Greatest Hits [2005]/01.mp3", "Greatest Hits [2010]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits [2001]/01.mp3", "Greatest Hits [2005]/01.mp3", "Greatest Hits [2010]/01.mp3"}))
-		})
 
-		It("skips a field that is the same on every album", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Live", Year: 2001, MbzAlbumType: "album", CatalogNum: "CAT-1"},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Live", Year: 2001, MbzAlbumType: "album", CatalogNum: "CAT-2"},
+			It("skips a field that is the same on every album", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Live", Year: 2001, MbzAlbumType: "album", CatalogNum: "CAT-1"},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Live", Year: 2001, MbzAlbumType: "album", CatalogNum: "CAT-2"},
+				})
+				Expect(names).To(Equal([]string{"Live [CAT-1]/01.mp3", "Live [CAT-2]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Live [CAT-1]/01.mp3", "Live [CAT-2]/01.mp3"}))
-		})
 
-		It("falls back to the album id when nothing differs", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "0123456789abcdef", Album: "Greatest Hits", Year: 2001},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "fedcba9876543210", Album: "Greatest Hits", Year: 2001},
+			It("falls back to the album id when nothing differs", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "0123456789abcdef", Album: "Greatest Hits", Year: 2001},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "fedcba9876543210", Album: "Greatest Hits", Year: 2001},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits [012345]/01.mp3", "Greatest Hits [fedcba]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits [012345]/01.mp3", "Greatest Hits [fedcba]/01.mp3"}))
-		})
 
-		It("treats names that sanitize to the same folder as a clash", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "A/B", Year: 2001},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: `A\B`, Year: 2005},
+			It("treats names that sanitize to the same folder as a clash", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "A/B", Year: 2001},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: `A\B`, Year: 2005},
+				})
+				Expect(names).To(Equal([]string{"A_B [2001]/01.mp3", "A_B [2005]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"A_B [2001]/01.mp3", "A_B [2005]/01.mp3"}))
-		})
 
-		It("sanitizes the suffix", func() {
-			conf.Server.Subsonic.AppendAlbumVersion = false
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"Vinyl"}}},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"CD/Digital"}}},
+			It("sanitizes the suffix", func() {
+				conf.Server.Subsonic.AppendAlbumVersion = false
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"Vinyl"}}},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"CD/Digital"}}},
+				})
+				Expect(names).To(Equal([]string{"Hits [Vinyl]/01.mp3", "Hits [CD_Digital]/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Hits [Vinyl]/01.mp3", "Hits [CD_Digital]/01.mp3"}))
-		})
 
-		It("leaves the folder name alone when only one album has it", func() {
-			names := zipArtistEntries(model.MediaFiles{
-				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
-				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Other", Year: 2005},
+			It("leaves the folder name alone when only one album has it", func() {
+				names := zipArtistEntries(model.MediaFiles{
+					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
+					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Other", Year: 2005},
+				})
+				Expect(names).To(Equal([]string{"Greatest Hits/01.mp3", "Other/01.mp3"}))
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits/01.mp3", "Other/01.mp3"}))
 		})
 	})
 
