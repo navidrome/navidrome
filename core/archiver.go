@@ -98,7 +98,8 @@ func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 	return z
 }
 
-// Tried in order; the first one with a distinct, non-empty value for every clashing album wins.
+// Tried in order; the first one whose values are distinct across the clashing albums wins.
+// One album may have an empty value: it keeps the plain name, which the others can't clash with.
 var albumDisambiguators = []func(model.MediaFile) string{
 	func(mf model.MediaFile) string { return mf.Tags.First(model.TagAlbumVersion) },
 	func(mf model.MediaFile) string {
@@ -134,13 +135,16 @@ func albumFolders(albums [][]model.MediaFile) map[string]string {
 			ids := make(map[string]string, len(group)) // suffix -> album id
 			for _, mf := range group {
 				s := str.SanitizeFilename(field(mf))
-				if _, dup := ids[s]; s == "" || dup {
+				if _, dup := ids[s]; dup {
 					continue fields
 				}
 				ids[s] = mf.AlbumID
 			}
 			for s, id := range ids {
-				folders[id] = fmt.Sprintf("%s [%s]", name, s)
+				folders[id] = name
+				if s != "" {
+					folders[id] = fmt.Sprintf("%s [%s]", name, s)
+				}
 			}
 			break
 		}

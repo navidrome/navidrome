@@ -166,14 +166,25 @@ var _ = Describe("Archiver", func() {
 			Expect(names).To(Equal([]string{"Greatest Hits [Original]/01.mp3", "Greatest Hits [Deluxe Edition]/01.mp3"}))
 		})
 
-		It("skips a field that is empty on one of the albums", func() {
+		It("leaves the one album without the field unsuffixed", func() {
 			conf.Server.Subsonic.AppendAlbumVersion = false
 			names := zipArtistEntries(model.MediaFiles{
 				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
 				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
 					Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
 			})
-			Expect(names).To(Equal([]string{"Greatest Hits [2001]/01.mp3", "Greatest Hits [2005]/01.mp3"}))
+			Expect(names).To(Equal([]string{"Greatest Hits/01.mp3", "Greatest Hits [Deluxe Edition]/01.mp3"}))
+		})
+
+		It("skips a field that is empty on more than one album", func() {
+			conf.Server.Subsonic.AppendAlbumVersion = false
+			names := zipArtistEntries(model.MediaFiles{
+				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
+				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005},
+				{Path: "c/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Greatest Hits", Year: 2010,
+					Tags: model.Tags{model.TagAlbumVersion: {"Deluxe Edition"}}},
+			})
+			Expect(names).To(Equal([]string{"Greatest Hits [2001]/01.mp3", "Greatest Hits [2005]/01.mp3", "Greatest Hits [2010]/01.mp3"}))
 		})
 
 		It("skips a field that is the same on every album", func() {
