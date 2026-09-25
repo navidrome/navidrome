@@ -95,8 +95,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
-	coverArtReader := artwork.NewCoverArtReader(artworkArtwork)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share, coverArtReader)
+	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
 	players := core.NewPlayers(dataStore)
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
@@ -153,8 +152,7 @@ func CreatePublicRouter() *public.Router {
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
-	coverArtReader := artwork.NewCoverArtReader(artworkArtwork)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share, coverArtReader)
+	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
 	router := public.New(dataStore, artworkArtwork, mediaStreamer, share, archiver)
 	return router
 }
@@ -261,7 +259,7 @@ func getPluginManager() *plugins.Manager {
 
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, jellyfin.New, jellyfin.NewDiscovery, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, sonic.New, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.Engine), new(*sonic.Sonic)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)), wire.Bind(new(playlists.ImageUploadService), new(artwork.Uploader)), wire.Bind(new(core.CoverArtReader), new(*artwork.CoverArtReader)))
+var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, jellyfin.New, jellyfin.NewDiscovery, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.GetInstance, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, sonic.New, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.PluginLoader), new(*plugins.Manager)), wire.Bind(new(sonic.Engine), new(*sonic.Sonic)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)), wire.Bind(new(playlists.ImageUploadService), new(artwork.Uploader)))
 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()

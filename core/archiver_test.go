@@ -10,6 +10,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/persistence"
@@ -331,23 +332,24 @@ type coverRequest struct {
 	square bool
 }
 
-// mockCoverArt serves images by artwork id string; ids without an image resolve to ErrNotFound.
+// mockCoverArt serves images by artwork id string; ids without an image are unavailable.
 type mockCoverArt struct {
+	artwork.Artwork
 	images   map[string][]byte
 	err      error
 	requests []coverRequest
 }
 
-func (m *mockCoverArt) Read(_ context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, error) {
+func (m *mockCoverArt) Get(_ context.Context, artID model.ArtworkID, size int, square bool) (*artwork.Image, error) {
 	m.requests = append(m.requests, coverRequest{id: artID.String(), size: size, square: square})
 	if m.err != nil {
 		return nil, m.err
 	}
 	data, ok := m.images[artID.String()]
 	if !ok {
-		return nil, model.ErrNotFound
+		return nil, artwork.ErrUnavailable
 	}
-	return io.NopCloser(bytes.NewReader(data)), nil
+	return &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader(data))}, nil
 }
 
 type mockDataStore struct {

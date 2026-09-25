@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -32,23 +33,15 @@ type Archiver interface {
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 }
 
-// CoverArtReader is a local interface satisfied by artwork.CoverArtReader.
-// Defined here to avoid an import cycle between core/artwork and core.
-type CoverArtReader interface {
-	// Read returns the image getCoverArt serves for artID, or model.ErrNotFound when the
-	// item has no artwork (placeholders are never returned).
-	Read(ctx context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, error)
-}
-
-func NewArchiver(ms stream.MediaStreamer, ds model.DataStore, shares Share, coverArt CoverArtReader) Archiver {
-	return &archiver{ds: ds, ms: ms, shares: shares, coverArt: coverArt}
+func NewArchiver(ms stream.MediaStreamer, ds model.DataStore, shares Share, artwork artwork.Artwork) Archiver {
+	return &archiver{ds: ds, ms: ms, shares: shares, artwork: artwork}
 }
 
 type archiver struct {
-	ds       model.DataStore
-	ms       stream.MediaStreamer
-	shares   Share
-	coverArt CoverArtReader
+	ds      model.DataStore
+	ms      stream.MediaStreamer
+	shares  Share
+	artwork artwork.Artwork
 }
 
 func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
@@ -75,7 +68,6 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 	}
 
 	z := createZipWriter(out, format, bitrate)
-	a.addCoverArtToZip(ctx, z, rootArt, "")
 	albums := slice.Group(mfs, func(mf model.MediaFile) string {
 		return mf.AlbumID
 	})
@@ -84,7 +76,6 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 		isMultiDisc := len(discs) > 1
 		log.Debug(ctx, "Zipping album", "name", album[0].Album, "artist", album[0].AlbumArtist,
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
-		a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), albumFolder(album[0]))
 		for _, mf := range album {
 			file := a.albumFilename(mf, format, isMultiDisc)
 			if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
@@ -97,7 +88,10 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 				return addErr
 			}
 		}
+		// Covers go after the tracks, so a slow artwork lookup does not delay the first bytes.
+		a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), albumFolder(album[0]))
 	}
+	a.addCoverArtToZip(ctx, z, rootArt, "")
 	err = z.Close()
 	if err != nil {
 		log.Error(ctx, "Error closing zip file", "id", id, err)
@@ -153,7 +147,6 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 
 func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, coverArt model.ArtworkID, addM3U bool) error {
 	z := createZipWriter(out, format, bitrate)
-	a.addCoverArtToZip(ctx, z, coverArt, "")
 
 	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
@@ -167,6 +160,7 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format st
 		mf.Path = file
 		zippedMfs[idx] = mf
 	}
+	a.addCoverArtToZip(ctx, z, coverArt, "")
 
 	// Add M3U file if requested
 	if addM3U && len(zippedMfs) > 0 {
@@ -253,7 +247,7 @@ func (a *archiver) addCoverArtToZip(ctx context.Context, z *zip.Writer, artID mo
 	}
 	// Read the whole image before writing the entry header, so a failure leaves no empty entry.
 	data, err := a.readCoverArt(ctx, artID)
-	if errors.Is(err, model.ErrNotFound) {
+	if errors.Is(err, artwork.ErrUnavailable) || errors.Is(err, model.ErrNotFound) {
 		log.Debug(ctx, "No cover art to add to zip", "artID", artID)
 		return
 	}
@@ -281,12 +275,12 @@ func (a *archiver) addCoverArtToZip(ctx context.Context, z *zip.Writer, artID mo
 }
 
 func (a *archiver) readCoverArt(ctx context.Context, artID model.ArtworkID) ([]byte, error) {
-	r, err := a.coverArt.Read(ctx, artID, archiveCoverArtSize, false)
+	img, err := a.artwork.Get(ctx, artID, archiveCoverArtSize, false)
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
-	return io.ReadAll(r)
+	defer img.Close()
+	return io.ReadAll(img)
 }
 
 // coverArtExtension names the image by its content: resizing can re-encode it (e.g. to WebP),

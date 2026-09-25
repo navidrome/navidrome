@@ -59,7 +59,6 @@ var allProviders = wire.NewSet(
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
 	wire.Bind(new(playlists.ImageUploadService), new(artwork.Uploader)),
-	wire.Bind(new(core.CoverArtReader), new(*artwork.CoverArtReader)),
 )
 
 func CreateDataStore() model.DataStore {
