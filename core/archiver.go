@@ -24,7 +24,6 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-// archiveCoverArtSize is the size of the folder image added to each archive folder.
 const archiveCoverArtSize = 500
 
 type Archiver interface {
@@ -59,8 +58,7 @@ func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitr
 	return a.zipAlbums(ctx, id, format, bitrate, out, filter, model.Artist{ID: id}.CoverArtID())
 }
 
-// zipAlbums puts each album in its own folder, with the album cover in it. rootArt, when set,
-// is added to the archive root.
+// rootArt, when set, is added to the archive root.
 func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer, rootArt model.ArtworkID) error {
 	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: filters, Sort: "album"})
 	if err != nil {
@@ -89,7 +87,7 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 				return addErr
 			}
 		}
-		// Covers go after the tracks, so a slow artwork lookup does not delay the first bytes.
+		// After the tracks, so a slow artwork lookup doesn't delay the first bytes.
 		a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), albumFolder(album[0]))
 	}
 	a.addCoverArtToZip(ctx, z, rootArt, "")
@@ -132,9 +130,8 @@ func (a *archiver) ZipShare(ctx context.Context, s *model.Share, out io.Writer) 
 		return model.ErrNotAuthorized
 	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
-	// Same as the public image handler: the share is the authorization, so the cover lookup must
-	// ask "is it still there", not "may this anonymous user see it" (that would hide a private
-	// playlist). Only the cover read is elevated; streaming keeps the anonymous context.
+	// The share is the authorization (as in the public image handler): an anonymous lookup would
+	// hide a private playlist. Only the cover read is elevated.
 	coverCtx := request.WithUser(ctx, model.User{IsAdmin: true})
 	return a.zipMediaFiles(ctx, s.ID, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, coverCtx, s.CoverArtID(), false)
 }
@@ -150,7 +147,6 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, ctx, pls.CoverArtID(), true)
 }
 
-// zipMediaFiles reads coverArt with coverCtx, which may be more privileged than ctx.
 func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, coverCtx context.Context, coverArt model.ArtworkID, addM3U bool) error {
 	z := createZipWriter(out, format, bitrate)
 
@@ -245,13 +241,12 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	return nil
 }
 
-// addCoverArtToZip writes the item's cover as folder.<ext> in dir, the image most players and
-// car stereos show for the files next to it. A missing or failing cover never fails the archive.
+// addCoverArtToZip adds the cover as dir/folder.<ext>. Errors are logged, never returned.
 func (a *archiver) addCoverArtToZip(ctx context.Context, z *zip.Writer, artID model.ArtworkID, dir string) {
 	if artID.ID == "" {
 		return
 	}
-	// Read the whole image before writing the entry header, so a failure leaves no empty entry.
+	// Buffered so a failed read leaves no empty entry.
 	data, err := a.readCoverArt(ctx, artID)
 	if errors.Is(err, artwork.ErrUnavailable) || errors.Is(err, model.ErrNotFound) {
 		log.Debug(ctx, "No cover art to add to zip", "artID", artID)
@@ -289,8 +284,7 @@ func (a *archiver) readCoverArt(ctx context.Context, artID model.ArtworkID) ([]b
 	return io.ReadAll(img)
 }
 
-// coverArtExtension names the image by its content: resizing can re-encode it (e.g. to WebP),
-// so the source file's extension is not reliable.
+// Resizing may re-encode the image, so the type comes from its bytes.
 func coverArtExtension(data []byte) string {
 	switch http.DetectContentType(data) {
 	case "image/jpeg":

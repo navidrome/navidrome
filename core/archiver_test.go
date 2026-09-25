@@ -294,8 +294,6 @@ var _ = Describe("Archiver", func() {
 			files := readZip(out)
 			Expect(files).To(HaveLen(2))
 			Expect(files).To(HaveKeyWithValue("folder.jpg", jpegData))
-			// Public downloads are anonymous: the cover must be read as admin, or a private
-			// shared playlist would be hidden from the lookup.
 			Expect(ca.requests).To(ConsistOf(coverRequest{id: "pl-10", size: 500, square: false, admin: true}))
 		})
 
@@ -337,7 +335,6 @@ type coverRequest struct {
 	admin  bool
 }
 
-// mockCoverArt serves images by artwork id string; ids without an image are unavailable.
 type mockCoverArt struct {
 	artwork.Artwork
 	images   map[string][]byte

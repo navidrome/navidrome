@@ -168,8 +168,7 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 		folderPath = filepath.Dir(folderPath)
 	}
 
-	// Cleaned like the album paths it is trimmed from. Join keeps an unknown library's path
-	// empty, where Clean would turn it into ".".
+	// Cleaned like the album paths; Join keeps an empty path empty, Clean would return ".".
 	libPath, _ := ds.Library(ctx).GetPath(libID)
 	libPath = filepath.Join(libPath)
 	folderID := model.FolderID(model.Library{ID: libID, Path: libPath}, folderPath)
