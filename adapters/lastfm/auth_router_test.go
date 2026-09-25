@@ -2,7 +2,6 @@ package lastfm
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -51,7 +50,7 @@ var _ = Describe("auth_router", func() {
 	})
 
 	storedSessionKey := func(userID string) string {
-		key, _ := userProps.Get(context.Background(), userID, sessionKeyProperty)
+		key, _ := userProps.Get(GinkgoT().Context(), userID, sessionKeyProperty)
 		return key
 	}
 

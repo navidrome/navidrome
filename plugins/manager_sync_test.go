@@ -54,10 +54,10 @@ var _ = Describe("syncPlugins", func() {
 
 var _ = Describe("removePluginFromDB", func() {
 	It("discards buffered scrobbles for the removed plugin", func() {
-		ctx := context.Background()
+		ctx := GinkgoT().Context()
 		buffer := tests.CreateMockedScrobbleBufferRepo()
-		Expect(buffer.Enqueue(context.Background(), "my-plugin", "user1", "track1", time.Now())).To(Succeed())
-		Expect(buffer.Enqueue(context.Background(), "other-plugin", "user1", "track2", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue(ctx, "my-plugin", "user1", "track1", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue(ctx, "other-plugin", "user1", "track2", time.Now())).To(Succeed())
 
 		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "my-plugin", Enabled: false}
@@ -73,19 +73,19 @@ var _ = Describe("removePluginFromDB", func() {
 		_, err := repo.Get(GinkgoT().Context(), "my-plugin")
 		Expect(err).To(MatchError(model.ErrNotFound))
 
-		remaining, err := buffer.Length(context.Background())
+		remaining, err := buffer.Length(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(remaining).To(Equal(int64(1)))
-		entry, err := buffer.Next(context.Background(), "other-plugin", "user1")
+		entry, err := buffer.Next(ctx, "other-plugin", "user1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(entry).ToNot(BeNil(), "entries of other services must be kept")
 	})
 
 	It("keeps buffered scrobbles of a builtin scrobbler sharing the removed plugin's name", func() {
-		ctx := context.Background()
+		ctx := GinkgoT().Context()
 		scrobbler.Register("builtin-svc", func(model.DataStore) scrobbler.Scrobbler { return nil })
 		buffer := tests.CreateMockedScrobbleBufferRepo()
-		Expect(buffer.Enqueue(context.Background(), "builtin-svc", "user1", "track1", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue(ctx, "builtin-svc", "user1", "track1", time.Now())).To(Succeed())
 
 		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "builtin-svc", Enabled: false}
@@ -96,7 +96,7 @@ var _ = Describe("removePluginFromDB", func() {
 		}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
-		remaining, err := buffer.Length(context.Background())
+		remaining, err := buffer.Length(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(remaining).To(Equal(int64(1)), "builtin scrobbler queue must not be wiped")
 	})

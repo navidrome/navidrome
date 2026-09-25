@@ -38,7 +38,7 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 	}
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "johndoe", IsAdmin: true})
 		db := GetDBXBuilder()
 		scrobble = NewScrobbleBufferRepository(db)
 

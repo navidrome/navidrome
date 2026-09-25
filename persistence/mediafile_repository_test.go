@@ -27,7 +27,7 @@ var _ = Describe("MediaRepository", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid"})
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid"})
 		mr = NewMediaFileRepository(GetDBXBuilder())
 	})
 
@@ -116,7 +116,7 @@ var _ = Describe("MediaRepository", func() {
 		var adminCtx context.Context
 
 		BeforeEach(func() {
-			adminCtx = request.WithUser(log.NewContext(context.TODO()), model.User{ID: "userid", IsAdmin: true})
+			adminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", IsAdmin: true})
 			adminRepo = NewMediaFileRepository(GetDBXBuilder())
 		})
 
@@ -987,7 +987,7 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("recomputes the average rating after merging another user's annotation", func() {
-			otherCtx := request.WithUser(log.NewContext(context.TODO()), model.User{ID: "2222"})
+			otherCtx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "2222"})
 			other := NewMediaFileRepository(GetDBXBuilder())
 			Expect(mr.SetRating(ctx, 5, next.ID)).To(Succeed())
 			Expect(other.SetRating(otherCtx, 3, prev.ID)).To(Succeed())

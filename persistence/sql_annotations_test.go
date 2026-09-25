@@ -19,7 +19,7 @@ var _ = Describe("Annotation Filters", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = request.WithUser(context.Background(), model.User{ID: "userid", UserName: "johndoe"})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
 		albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
 
 		// Create album without any annotation (no star, no rating)

@@ -55,7 +55,7 @@ var _ = Describe("BufferedScrobbler", func() {
 		track := model.MediaFile{ID: "123", Title: "Test Track"}
 		now := time.Now()
 		scrobble := Scrobble{MediaFile: track, TimeStamp: now}
-		Expect(buffer.Length(context.Background())).To(Equal(int64(0)))
+		Expect(buffer.Length(ctx)).To(Equal(int64(0)))
 		Expect(scr.ScrobbleCalled.Load()).To(BeFalse())
 
 		Expect(bs.Scrobble(ctx, "user1", scrobble)).To(Succeed())
@@ -147,7 +147,7 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		// First attempt fires immediately on the enqueue wake and is left buffered.
 		synctest.Wait()
 		g.Expect(flaky.count.Load()).To(Equal(int32(1)))
-		g.Expect(buffer.Length(context.Background())).To(Equal(int64(1)))
+		g.Expect(buffer.Length(t.Context())).To(Equal(int64(1)))
 
 		// Each subsequent retry waits exactly double the previous: 5s, 10s, 20s, 40s.
 		for i, gap := range []time.Duration{5 * time.Second, 10 * time.Second, 20 * time.Second, 40 * time.Second} {
@@ -165,10 +165,10 @@ func TestBufferedScrobblerBackoffSchedule(t *testing.T) {
 		flaky.succeed()
 		bs.sendWakeSignal()
 		synctest.Wait()
-		g.Expect(buffer.Length(context.Background())).To(Equal(int64(1)), "wake during backoff drained early")
+		g.Expect(buffer.Length(t.Context())).To(Equal(int64(1)), "wake during backoff drained early")
 		time.Sleep(80 * time.Second)
 		synctest.Wait()
-		g.Expect(buffer.Length(context.Background())).To(Equal(int64(0)))
+		g.Expect(buffer.Length(t.Context())).To(Equal(int64(0)))
 	})
 }
 
@@ -253,8 +253,8 @@ func TestBufferedScrobblerTakesTheLongestServerDelayAcrossUsers(t *testing.T) {
 		}}
 		// Both are buffered before the drain goroutine exists: it drains once on startup, and
 		// seeing only one user there would park it on that user's delay, ignoring the other.
-		_ = buffer.Enqueue(context.Background(), "test", "user1", "1", time.Now())
-		_ = buffer.Enqueue(context.Background(), "test", "user2", "2", time.Now())
+		_ = buffer.Enqueue(t.Context(), "test", "user1", "1", time.Now())
+		_ = buffer.Enqueue(t.Context(), "test", "user2", "2", time.Now())
 		bs := newBufferedScrobbler(ds, scr, "test")
 		defer bs.Stop()
 

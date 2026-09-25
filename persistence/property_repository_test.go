@@ -14,7 +14,7 @@ var _ = Describe("Property Repository", func() {
 	var pr model.PropertyRepository
 
 	BeforeEach(func() {
-		ctx = log.NewContext(context.TODO())
+		ctx = log.NewContext(GinkgoT().Context())
 		pr = NewPropertyRepository(GetDBXBuilder())
 	})
 

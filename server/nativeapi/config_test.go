@@ -2,7 +2,6 @@ package nativeapi
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -50,8 +49,8 @@ var _ = Describe("Config API", func() {
 		}
 
 		// Store in mock datastore
-		Expect(ds.User().Put(context.TODO(), &adminUser)).To(Succeed())
-		Expect(ds.User().Put(context.TODO(), &regularUser)).To(Succeed())
+		Expect(ds.User().Put(GinkgoT().Context(), &adminUser)).To(Succeed())
+		Expect(ds.User().Put(GinkgoT().Context(), &regularUser)).To(Succeed())
 	})
 
 	Describe("GET /api/config", func() {

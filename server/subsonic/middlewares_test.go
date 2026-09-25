@@ -148,7 +148,7 @@ var _ = Describe("Middlewares", func() {
 	Describe("Authenticate", func() {
 		BeforeEach(func() {
 			ur := ds.User()
-			_ = ur.Put(context.TODO(), &model.User{
+			_ = ur.Put(GinkgoT().Context(), &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
@@ -344,7 +344,7 @@ var _ = Describe("Middlewares", func() {
 
 			It("counts attempts against unknown usernames", func() {
 				failTimes(3, "u=newuser", "p=secret")
-				_ = ds.User().Put(context.TODO(), &model.User{UserName: "newuser", NewPassword: "secret"})
+				_ = ds.User().Put(GinkgoT().Context(), &model.User{UserName: "newuser", NewPassword: "secret"})
 
 				serve(newGetRequest("u=newuser", "p=secret"))
 				Expect(next.called).To(BeFalse())
@@ -375,7 +375,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not block other usernames from the same IP", func() {
-				_ = ds.User().Put(context.TODO(), &model.User{UserName: "other", NewPassword: "otherpass"})
+				_ = ds.User().Put(GinkgoT().Context(), &model.User{UserName: "other", NewPassword: "otherpass"})
 				failTimes(3, "u=admin", "p=WRONG")
 
 				serve(newGetRequest("u=other", "p=otherpass"))
@@ -584,13 +584,13 @@ var _ = Describe("Middlewares", func() {
 
 		BeforeEach(func() {
 			ur := ds.User()
-			_ = ur.Put(context.TODO(), &model.User{
+			_ = ur.Put(GinkgoT().Context(), &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
 
 			var err error
-			usr, err = ur.FindByUsernameWithPassword(context.TODO(), "admin")
+			usr, err = ur.FindByUsernameWithPassword(GinkgoT().Context(), "admin")
 			if err != nil {
 				panic(err)
 			}

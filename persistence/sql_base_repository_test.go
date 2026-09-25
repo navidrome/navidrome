@@ -15,7 +15,7 @@ var _ = Describe("sqlRepository", func() {
 	var r sqlRepository
 	var ctx context.Context
 	BeforeEach(func() {
-		ctx = request.WithUser(context.Background(), model.User{ID: "user-id"})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "user-id"})
 		r.tableName = "table"
 	})
 
@@ -299,7 +299,7 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Admin User", func() {
 			BeforeEach(func() {
-				ctx = request.WithUser(context.Background(), model.User{ID: "admin", IsAdmin: true})
+				ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin", IsAdmin: true})
 			})
 
 			It("should not apply library filter for admin users", func() {
@@ -313,7 +313,7 @@ var _ = Describe("sqlRepository", func() {
 		Context("Regular User with a subset of libraries", func() {
 			BeforeEach(func() {
 				// Strict subset: granted lib 1, DB has libs 1 and 2, so the filter must apply.
-				ctx = request.WithUser(context.Background(), model.User{
+				ctx = request.WithUser(GinkgoT().Context(), model.User{
 					ID: "user123", IsAdmin: false, Libraries: model.Libraries{{ID: 1}},
 				})
 			})
@@ -337,7 +337,7 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Regular User with no libraries", func() {
 			BeforeEach(func() {
-				ctx = request.WithUser(context.Background(), model.User{ID: "empty", IsAdmin: false})
+				ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "empty", IsAdmin: false})
 			})
 
 			It("should apply the library filter (never skip on empty)", func() {
@@ -360,7 +360,7 @@ var _ = Describe("sqlRepository", func() {
 				for _, id := range ids {
 					libs = append(libs, model.Library{ID: id})
 				}
-				ctx = request.WithUser(context.Background(), model.User{
+				ctx = request.WithUser(GinkgoT().Context(), model.User{
 					ID: "alllibs", IsAdmin: false, Libraries: libs,
 				})
 			})
@@ -382,7 +382,7 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Headless Process (No User Context)", func() {
 			BeforeEach(func() {
-				ctx = context.Background() // No user context
+				ctx = GinkgoT().Context() // No user context
 			})
 
 			It("should not apply library filter for headless processes", func() {

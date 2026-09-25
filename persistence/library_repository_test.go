@@ -284,7 +284,7 @@ var _ = Describe("LibraryRepository", func() {
 		}
 
 		BeforeEach(func() {
-			adminCtx = request.WithUser(log.NewContext(context.TODO()), adminUser)
+			adminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 			adminRepo = NewLibraryRepository(conn)
 			artistRepo = NewArtistRepository(conn)
 		})

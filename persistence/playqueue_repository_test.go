@@ -400,7 +400,7 @@ var _ = Describe("PlayQueueRepository", func() {
 
 func countPlayQueues(repo model.PlayQueueRepository, userId string) int {
 	r := repo.(*playQueueRepository)
-	c, err := r.count(context.Background(), squirrel.Select().Where(squirrel.Eq{"user_id": userId}))
+	c, err := r.count(GinkgoT().Context(), squirrel.Select().Where(squirrel.Eq{"user_id": userId}))
 	if err != nil {
 		panic(err)
 	}

@@ -321,7 +321,7 @@ var _ = Describe("FTS5 Integration Search", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		conn := GetDBXBuilder()
 		mr = NewMediaFileRepository(conn)
 		alr = NewAlbumRepository(conn)

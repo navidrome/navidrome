@@ -26,7 +26,7 @@ var _ = Describe("PlayerRepository", func() {
 	)
 
 	BeforeEach(func() {
-		ctx = request.WithUser(log.NewContext(context.TODO()), adminUser)
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 
 		database = GetDBXBuilder()
 		adminRepo = NewPlayerRepository(database).(*playerRepository)
@@ -87,7 +87,7 @@ var _ = Describe("PlayerRepository", func() {
 			if admin {
 				repo = adminRepo
 			} else {
-				repoCtx = request.WithUser(log.NewContext(context.TODO()), regularUser)
+				repoCtx = request.WithUser(log.NewContext(GinkgoT().Context()), regularUser)
 				repo = NewPlayerRepository(database).(*playerRepository)
 			}
 		})
@@ -256,7 +256,7 @@ var _ = Describe("PlayerRepository", func() {
 		var regularCtx context.Context
 
 		BeforeEach(func() {
-			regularCtx = request.WithUser(log.NewContext(context.TODO()), regularUser)
+			regularCtx = request.WithUser(log.NewContext(GinkgoT().Context()), regularUser)
 			regularRepo = NewPlayerRepository(database).(*playerRepository)
 		})
 

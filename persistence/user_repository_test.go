@@ -704,7 +704,7 @@ var _ = Describe("UserRepository", func() {
 		}
 
 		BeforeEach(func() {
-			ctx = log.NewContext(context.TODO())
+			ctx = log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
 			repo = NewUserRepository(GetDBXBuilder())
 			usr = newUser()

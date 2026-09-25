@@ -82,7 +82,7 @@ func BenchmarkScan(b *testing.B) {
 	})
 
 	lib := model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-	err := ds.Library().Put(context.Background(), &lib)
+	err := ds.Library().Put(b.Context(), &lib)
 	if err != nil {
 		b.Fatal(err)
 	}

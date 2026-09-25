@@ -702,7 +702,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			BeforeEach(func() {
 				// Set up headless repo (no user context)
-				headlessCtx = context.Background()
+				headlessCtx = GinkgoT().Context()
 				headlessRepo = NewArtistRepository(GetDBXBuilder())
 
 				// Create library for testing access restrictions

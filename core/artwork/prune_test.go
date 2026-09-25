@@ -61,7 +61,7 @@ var _ = Describe("Prune", func() {
 
 	It("purges dangling artwork_queue rows for gone entities", func() {
 		queueRepo := tests.CreateMockArtworkQueueRepo()
-		Expect(queueRepo.Enqueue(context.Background(),
+		Expect(queueRepo.Enqueue(GinkgoT().Context(),
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary},
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "live-album", ImageType: model.ImageTypePrimary},
 		)).To(Succeed())

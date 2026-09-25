@@ -49,7 +49,7 @@ var _ = Describe("Auth", func() {
 
 			It("creates an admin user with the specified password", func() {
 				usr := ds.User()
-				u, err := usr.FindByUsername(context.Background(), "johndoe")
+				u, err := usr.FindByUsername(GinkgoT().Context(), "johndoe")
 				Expect(err).To(BeNil())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
@@ -100,7 +100,7 @@ var _ = Describe("Auth", func() {
 
 			BeforeEach(func() {
 				usr := ds.User()
-				_ = usr.Put(context.Background(), &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				_ = usr.Put(GinkgoT().Context(), &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 				req = httptest.NewRequest("GET", "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
@@ -233,7 +233,7 @@ var _ = Describe("Auth", func() {
 
 			It("logs in successfully if user exists", func() {
 				usr := ds.User()
-				_ = usr.Put(context.Background(), &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				_ = usr.Put(GinkgoT().Context(), &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 
 				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusOK))
@@ -397,14 +397,14 @@ var _ = Describe("Auth", func() {
 			Expect(result["isAdmin"]).To(BeTrue())
 
 			// Verify user was created as admin
-			u, err := ds.User().FindByUsername(context.Background(), "firstuser")
+			u, err := ds.User().FindByUsername(GinkgoT().Context(), "firstuser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeTrue())
 		})
 
 		It("does not make subsequent users admins", func() {
 			// Create the first user
-			_ = ds.User().Put(context.Background(), &model.User{
+			_ = ds.User().Put(GinkgoT().Context(), &model.User{
 				ID:       "existing-user-id",
 				UserName: "existinguser",
 				Name:     "Existing User",
@@ -419,7 +419,7 @@ var _ = Describe("Auth", func() {
 			Expect(result["isAdmin"]).To(BeFalse())
 
 			// Verify user was created as non-admin
-			u, err := ds.User().FindByUsername(context.Background(), "seconduser")
+			u, err := ds.User().FindByUsername(GinkgoT().Context(), "seconduser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeFalse())
 		})

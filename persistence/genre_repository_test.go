@@ -262,7 +262,7 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should see all genres from all libraries when no user is in context", func() {
 				// Headless processes should see all genres regardless of library
-				genres, err := headlessRepo.GetAll(context.Background())
+				genres, err := headlessRepo.GetAll(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should see genres from all libraries
@@ -277,7 +277,7 @@ var _ = Describe("GenreRepository", func() {
 			})
 
 			It("should count all genres from all libraries when no user is in context", func() {
-				count, err := headlessRestRepo.Count(context.Background())
+				count, err := headlessRestRepo.Count(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should count all genres from all libraries
@@ -286,7 +286,7 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should allow headless processes to apply explicit library_id filters", func() {
 				// Filter by specific library
-				genreList, err := headlessRestRepo.ReadAll(context.Background(), rest.QueryOptions{
+				genreList, err := headlessRestRepo.ReadAll(GinkgoT().Context(), rest.QueryOptions{
 					Filters: map[string]any{"library_id": 2},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -298,12 +298,12 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should get individual genres when no user is in context", func() {
 				// Get all genres first to find an ID
-				genres, err := headlessRepo.GetAll(context.Background())
+				genres, err := headlessRepo.GetAll(GinkgoT().Context())
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genres).ToNot(BeEmpty())
 
 				// Headless process should be able to get the genre
-				genre, err := headlessRestRepo.Read(context.Background(), genres[0].ID)
+				genre, err := headlessRestRepo.Read(GinkgoT().Context(), genres[0].ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genre).ToNot(BeNil())
 			})
