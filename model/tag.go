@@ -80,6 +80,13 @@ func (t Tags) Values(name TagName) []string {
 	return t[name]
 }
 
+func (t Tags) First(name TagName) string {
+	if v := t[name]; len(v) > 0 {
+		return v[0]
+	}
+	return ""
+}
+
 func (t Tags) IDs() []string {
 	var ids []string
 	for name, tag := range t {
