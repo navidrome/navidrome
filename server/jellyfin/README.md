@@ -40,6 +40,7 @@ ND_JELLYFIN_SERVERNAME="My Music Server"
 ND_JELLYFIN_EXPOSEDPUBLICUSERS="alice,bob"
 ND_JELLYFIN_AUTODISCOVERY=true
 ND_JELLYFIN_QUICKCONNECT=false
+ND_JELLYFIN_MAXCONCURRENTSTREAMS=4
 ```
 
 Once enabled, the API is mounted at:
@@ -374,8 +375,9 @@ curl -s -X DELETE "${AUTH[@]}" "$BASE/Items/$PLAYLIST_ID"
 
 Handler-level unit tests live alongside each file (`*_test.go`). A full end-to-end suite in
 [`e2e/`](e2e) exercises every endpoint through the real router against a real SQLite database and
-real repositories (only artwork/streaming/ffmpeg are stubbed), with per-`Describe` snapshot
-isolation — mirroring the Subsonic `server/subsonic/e2e` suite. Run it with:
+real repositories (only artwork, streaming, ffmpeg, external metadata agents and sonic similarity
+are stubbed), with per-`Describe` snapshot isolation — mirroring the Subsonic `server/subsonic/e2e`
+suite. Run it with:
 
 ```bash
 make test PKG=./server/jellyfin/...
