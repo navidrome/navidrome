@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"time"
 
 	"github.com/deluan/rest"
@@ -65,6 +66,37 @@ var _ = Describe("Playlist Image Endpoints", func() {
 		Entry("disabled, admin passes guard", false, true, http.StatusNotFound),
 		Entry("disabled, regular user is forbidden", false, false, http.StatusForbidden),
 	)
+})
+
+var _ = Describe("Playlist Ordering Endpoint", func() {
+	It("persists the supplied playlist IDs", func() {
+		var received []string
+		handler := reorderPlaylists(&mockPlaylistsService{
+			reorderFn: func(_ context.Context, ids []string) error {
+				received = ids
+				return nil
+			},
+		})
+		req := httptest.NewRequest(http.MethodPut, "/playlist/order", strings.NewReader(`{"ids":["pl-2","pl-1"]}`))
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusNoContent))
+		Expect(received).To(Equal([]string{"pl-2", "pl-1"}))
+	})
+
+	It("rejects an invalid playlist order", func() {
+		handler := reorderPlaylists(&mockPlaylistsService{
+			reorderFn: func(context.Context, []string) error { return model.ErrInvalidPlaylistOrder },
+		})
+		req := httptest.NewRequest(http.MethodPut, "/playlist/order", strings.NewReader(`{"ids":["missing"]}`))
+		w := httptest.NewRecorder()
+
+		handler.ServeHTTP(w, req)
+
+		Expect(w.Code).To(Equal(http.StatusBadRequest))
+	})
 })
 
 var _ = Describe("Playlist Tracks Endpoint", func() {
@@ -265,7 +297,15 @@ type mockPlaylistsService struct {
 	tracksRepo    rest.Repository
 	playlist      *model.Playlist
 	removeImageFn func(ctx context.Context, id string) error
+	reorderFn     func(ctx context.Context, ids []string) error
 	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
+}
+
+func (m *mockPlaylistsService) Reorder(ctx context.Context, ids []string) error {
+	if m.reorderFn != nil {
+		return m.reorderFn(ctx, ids)
+	}
+	return nil
 }
 
 func (m *mockPlaylistsService) RemoveImage(ctx context.Context, id string) error {

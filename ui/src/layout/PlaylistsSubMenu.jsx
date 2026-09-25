@@ -97,7 +97,7 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
         page: 0,
         perPage: config.maxSidebarPlaylists,
       },
-      sort: { field: 'name' },
+      sort: { field: 'custom' },
       ...(showFavouritesOnly && {
         filter: { starred: true },
         starFingerprint,

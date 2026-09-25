@@ -17,7 +17,7 @@ import (
 
 func (api *Router) GetPlaylists(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	allPls, err := api.playlists.GetAll(ctx, model.QueryOptions{Sort: "name"})
+	allPls, err := api.playlists.GetAll(ctx, model.QueryOptions{Sort: "custom"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err

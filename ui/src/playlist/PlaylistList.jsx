@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import {
   Datagrid,
   DateField,
@@ -14,6 +14,8 @@ import {
   useNotify,
   useRecordContext,
   BulkDeleteButton,
+  useDataProvider,
+  useListContext,
   usePermissions,
 } from 'react-admin'
 import Switch from '@material-ui/core/Switch'
@@ -33,6 +35,7 @@ import FavoriteIcon from '@material-ui/icons/Favorite'
 import config from '../config'
 import PlaylistListActions from './PlaylistListActions'
 import ChangePublicStatusButton from './ChangePublicStatusButton'
+import ReactDragListView from 'react-drag-listview'
 
 const useStyles = makeStyles((theme) => ({
   button: {
@@ -156,6 +159,36 @@ export const PlaylistLove = ({ record, className }) => (
 )
 PlaylistLove.defaultProps = { source: 'starred', sortable: false }
 
+const ReorderablePlaylistGrid = ({ children }) => {
+  const { currentSort, filterValues, ids, refetch } = useListContext()
+  const dataProvider = useDataProvider()
+  const notify = useNotify()
+
+  const handleDragEnd = useCallback(
+    (from, to) => {
+      if (from === to) return
+      const orderedIDs = [...ids]
+      orderedIDs.splice(to, 0, orderedIDs.splice(from, 1)[0])
+      dataProvider
+        .reorderPlaylists(orderedIDs)
+        .then(refetch)
+        .catch(() => notify('ra.page.error', 'warning'))
+    },
+    [dataProvider, ids, notify, refetch],
+  )
+
+  const isFiltered = Object.values(filterValues || {}).some(
+    (value) => value !== undefined && value !== null && value !== '',
+  )
+  // Sorting and filtering are temporary views. Dragging is only meaningful
+  // while displaying the complete saved order.
+  if (currentSort?.field !== 'custom' || isFiltered) return children
+
+  return (
+    <ReactDragListView onDragEnd={handleDragEnd}>{children}</ReactDragListView>
+  )
+}
+
 const PlaylistList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
@@ -191,19 +224,25 @@ const PlaylistList = (props) => {
     <List
       {...props}
       exporter={false}
-      sort={{ field: 'name', order: 'ASC' }}
+      perPage={0}
+      sort={{ field: 'custom', order: 'ASC' }}
       filters={<PlaylistFilter />}
       actions={<PlaylistListActions />}
       bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
-      <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
-        <ArtworkAvatar source="id" variant="square" />
-        <TextField source="name" />
-        {columns}
-        <Writable>
-          <EditButton />
-        </Writable>
-      </Datagrid>
+      <ReorderablePlaylistGrid>
+        <Datagrid
+          rowClick="show"
+          isRowSelectable={(r) => isWritable(r?.ownerId)}
+        >
+          <ArtworkAvatar source="id" variant="square" />
+          <TextField source="name" />
+          {columns}
+          <Writable>
+            <EditButton />
+          </Writable>
+        </Datagrid>
+      </ReorderablePlaylistGrid>
     </List>
   )
 }

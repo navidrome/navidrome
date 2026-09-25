@@ -217,6 +217,7 @@ type PlaylistRepository interface {
 	GetCursor(options ...QueryOptions) (PlaylistCursor, error)
 	FindByPath(path string) (*Playlist, error)
 	Delete(id string) error
+	SetOrder(ids []string) error
 	Tracks(playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 	GetPlaylists(mediaFileId string) (Playlists, error)
 }
