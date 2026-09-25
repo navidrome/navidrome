@@ -2,6 +2,7 @@ package core
 
 import (
 	"archive/zip"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -67,18 +69,16 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 	}
 
 	z := createZipWriter(out, format, bitrate)
-	albums := slice.Group(mfs, func(mf model.MediaFile) string {
-		return mf.AlbumID
-	})
-	// Albums with the same name share a folder, which gets only one cover.
-	covered := map[string]bool{}
+	albums := slice.GroupOrdered(mfs, func(mf model.MediaFile) string { return mf.AlbumID })
+	folders := albumFolders(albums)
 	for _, album := range albums {
 		discs := slice.Group(album, func(mf model.MediaFile) int { return mf.DiscNumber })
 		isMultiDisc := len(discs) > 1
-		log.Debug(ctx, "Zipping album", "name", album[0].Album, "artist", album[0].AlbumArtist,
+		folder := folders[album[0].AlbumID]
+		log.Debug(ctx, "Zipping album", "name", album[0].Album, "artist", album[0].AlbumArtist, "folder", folder,
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
-			file := a.albumFilename(mf, format, isMultiDisc)
+			file := a.albumFilename(mf, format, isMultiDisc, folder)
 			if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
 				// Stop iterating: continuing would just rack up more
 				// rejections from the limiter. Close finalises whatever
@@ -90,10 +90,7 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 			}
 		}
 		// After the tracks, so a slow artwork lookup doesn't delay the first bytes.
-		if dir := albumFolder(album[0]); !covered[dir] {
-			covered[dir] = true
-			a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), dir)
-		}
+		a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), folder)
 	}
 	a.addCoverArtToZip(ctx, z, rootArt, "")
 	err = z.Close()
@@ -113,7 +110,61 @@ func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 	return z
 }
 
-func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc bool) string {
+// Tried in order; the first one whose values are distinct across the clashing albums wins.
+// One album may have an empty value: it keeps the plain name, which the others can't clash with.
+var albumDisambiguators = []func(model.MediaFile) string{
+	func(mf model.MediaFile) string { return mf.Tags.First(model.TagAlbumVersion) },
+	func(mf model.MediaFile) string {
+		// Reissues share Year (often the original's) but not ReleaseYear.
+		if y := cmp.Or(mf.ReleaseYear, mf.Year); y != 0 {
+			return strconv.Itoa(y)
+		}
+		return ""
+	},
+	func(mf model.MediaFile) string { return mf.MbzAlbumType },
+	func(mf model.MediaFile) string { return mf.Tags.First(model.TagRecordLabel) },
+	func(mf model.MediaFile) string { return mf.CatalogNum },
+	func(mf model.MediaFile) string { return mf.AlbumID[:min(6, len(mf.AlbumID))] },
+	func(mf model.MediaFile) string { return mf.AlbumID },
+}
+
+// albumFolders maps each album id to its zip folder. Albums whose names sanitize to the
+// same folder get a " [suffix]" from the first disambiguator that tells them all apart.
+func albumFolders(albums [][]model.MediaFile) map[string]string {
+	byName := map[string][]model.MediaFile{}
+	for _, album := range albums {
+		name := str.SanitizeFilename(album[0].FullAlbumName())
+		byName[name] = append(byName[name], album[0])
+	}
+	folders := make(map[string]string, len(albums))
+	for name, group := range byName {
+		if len(group) == 1 {
+			folders[group[0].AlbumID] = name
+			continue
+		}
+	fields:
+		for _, field := range albumDisambiguators {
+			ids := make(map[string]string, len(group)) // suffix -> album id
+			for _, mf := range group {
+				s := str.SanitizeFilename(field(mf))
+				if _, dup := ids[s]; dup {
+					continue fields
+				}
+				ids[s] = mf.AlbumID
+			}
+			for s, id := range ids {
+				folders[id] = name
+				if s != "" {
+					folders[id] = fmt.Sprintf("%s [%s]", name, s)
+				}
+			}
+			break
+		}
+	}
+	return folders
+}
+
+func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc bool, folder string) string {
 	_, file := filepath.Split(mf.Path)
 	if format != "raw" {
 		file = strings.TrimSuffix(file, mf.Suffix) + format
@@ -121,11 +172,7 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc 
 	if isMultiDisc {
 		file = fmt.Sprintf("Disc %02d/%s", mf.DiscNumber, file)
 	}
-	return fmt.Sprintf("%s/%s", albumFolder(mf), file)
-}
-
-func albumFolder(mf model.MediaFile) string {
-	return str.SanitizeFilename(mf.Album)
+	return fmt.Sprintf("%s/%s", folder, file)
 }
 
 // ZipShare takes an already-loaded share: Share.Load records a visit, so
