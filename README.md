@@ -35,8 +35,13 @@ See instructions on the [project's website](https://www.navidrome.org/docs/insta
 
 ## Cloud Hosting
 
-[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
-[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
+[Zenith Hosting](https://zenith.hosting) is an officially supported way to run Navidrome. Upload
+and manage music in your browser and use your own domain for Navidrome.
+
+[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/navidrome)
+
+[PikaPods](https://www.pikapods.com) has also partnered with us to offer an
+[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods).
 A share of the revenue helps fund the development of Navidrome at no additional cost for you.
 
 [![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
