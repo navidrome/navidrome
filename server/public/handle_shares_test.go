@@ -19,6 +19,7 @@ var _ = Describe("handleM3U", func() {
 	var pub *Router
 
 	BeforeEach(func() {
+		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
 		ds = &tests.MockDataStore{}
 		shareRepo = &tests.MockShareRepo{}
 		ds.MockedShare = shareRepo
