@@ -48,6 +48,56 @@ var _ = Describe("Items", func() {
 	})
 
 	Describe("getItems", func() {
+		// Symfonium syncs nothing unless the user root lists the libraries, as Jellyfin does.
+		Describe("at the user root", func() {
+			BeforeEach(func() {
+				ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Other"}})
+				ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			})
+
+			It("lists the user's libraries for an unfiltered, non-recursive query", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?UserId="+testID("u1"), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.TotalRecordCount).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(1)))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+				Expect(res.Items[0].CollectionType).To(Equal("music"))
+			})
+
+			It("treats an unknown IncludeItemTypes as absent", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=music", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+			})
+
+			DescribeTable("queries the library contents when the request is recursive or filtered",
+				func(query string) {
+					w := httptest.NewRecorder()
+					r := httptest.NewRequest("GET", "/Items?"+query, nil).WithContext(ctxUser())
+					invoke(api.getItems, w, r)
+					Expect(w.Code).To(Equal(http.StatusOK))
+					var res dto.QueryResult
+					Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
+				},
+				Entry("Recursive=true", "Recursive=true"),
+				Entry("IncludeItemTypes", "IncludeItemTypes=MusicAlbum"),
+				Entry("SearchTerm", "SearchTerm=one"),
+				Entry("Filters", "Filters=IsUnplayed"),
+				Entry("Years", "Years=2020"),
+			)
+		})
+
 		It("lists albums when IncludeItemTypes=MusicAlbum", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()

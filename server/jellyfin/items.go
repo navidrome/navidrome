@@ -302,6 +302,16 @@ type itemsQuery struct {
 	albumIds         []string
 	years            []int
 	studioIds        []string
+	// userRoot is an unfiltered, non-recursive query with no ParentId: Jellyfin answers it with the
+	// user's libraries, not their contents.
+	userRoot bool
+}
+
+// hasFilters mirrors Jellyfin's InternalItemsQuery.HasFilters for the params Navidrome understands.
+func (q itemsQuery) hasFilters() bool {
+	return q.rawTypes != "" || len(q.ids) > 0 || q.search != "" || q.artistId != "" ||
+		len(q.genreIds) > 0 || len(q.albumIds) > 0 || len(q.studioIds) > 0 || len(q.years) > 0 ||
+		q.filters.favorite != nil || q.filters.played != nil
 }
 
 // listParams reads the itemsQuery fields that come straight from query params.
@@ -366,6 +376,8 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	q.artistId = artistId
 	q.contributingOnly = albumArtistScope == "" && contributingScope != ""
 
+	q.userRoot = q.parentId == "" && !p.BoolOr("recursive", false) && !q.hasFilters()
+
 	q.types = parseTypes(q.rawTypes)
 	q.scopeIDs, q.isLibraryParent = resolveLibraryScope(ctx, q.parentId)
 
@@ -410,6 +422,13 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	// A ManualPlaylistsFolder query asks for the synthetic "playlists library" container, not real items.
 	case strings.Contains(strings.ToLower(q.rawTypes), "manualplaylistsfolder"):
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
+	// Symfonium's sync reads the libraries this way; answering with albums makes it sync nothing.
+	case q.userRoot:
+		views, err := api.userViews(ctx)
+		if err != nil {
+			return itemsResult{}, err
+		}
+		return materialized(result(views, len(views), 0)), nil
 	}
 	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
 		return api.playlistTrackPage(ctx, repo, q.fields, q.offset, q.limit)
