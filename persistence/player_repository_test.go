@@ -415,6 +415,21 @@ var _ = Describe("PlayerRepository", func() {
 		})
 
 		Describe("Update (edit)", func() {
+			It("rolls back the key change when the rest of the edit fails", func() {
+				_, err := database.NewQuery(`create trigger fail_player_rename before update of name on player
+					when new.name = 'boom' begin select raise(abort, 'boom'); end`).Execute()
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() {
+					_, _ = database.NewQuery("drop trigger if exists fail_player_rename").Execute()
+				})
+
+				plr := regularPlayer
+				plr.Name = "boom"
+				plr.APIKey = new(key)
+				Expect(ownerRepo.Update(plr.ID, &plr, "name", "apiKey")).ToNot(Succeed())
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+			})
+
 			It("keeps the key when apiKey is absent (a normal edit)", func() {
 				Expect(ownerRepo.SetAPIKey(regularPlayer.ID, key)).To(Succeed())
 

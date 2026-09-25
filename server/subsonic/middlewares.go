@@ -132,6 +132,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 					}
 					return
 				}
+				ctx = request.WithUsername(ctx, usr.UserName)
 			default:
 				username, _ := p.String("u")
 				pass, _ := p.String("p")
@@ -180,7 +181,6 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 
 			ctx = request.WithUser(ctx, *usr)
 			if keyPlayer != nil {
-				ctx = request.WithUsername(ctx, usr.UserName)
 				ctx = request.WithPlayer(ctx, *keyPlayer)
 			}
 			next.ServeHTTP(w, r.WithContext(ctx))

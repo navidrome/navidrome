@@ -124,6 +124,13 @@ func apiKeyValidationError(msg string) error {
 	return &rest.ValidationError{Errors: map[string]string{"apiKey": msg}}
 }
 
+func validateAPIKey(key string) error {
+	if !apiKeyFormat.MatchString(key) {
+		return apiKeyValidationError("resources.player.validation.apiKeyFormat")
+	}
+	return nil
+}
+
 func (r *playerRepository) Save(entity any) (string, error) {
 	t := entity.(*model.Player)
 	u := loggedUser(r.ctx)
@@ -137,8 +144,8 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	if t.APIKey == nil || *t.APIKey == "" {
 		return "", apiKeyValidationError("ra.validation.required")
 	}
-	if !apiKeyFormat.MatchString(*t.APIKey) {
-		return "", apiKeyValidationError("resources.player.validation.apiKeyFormat")
+	if err := validateAPIKey(*t.APIKey); err != nil {
+		return "", err
 	}
 	values, err := toSQLArgs(t)
 	if err != nil {
@@ -160,12 +167,26 @@ func (r *playerRepository) Save(entity any) (string, error) {
 func (r *playerRepository) Update(id string, entity any, cols ...string) error {
 	t := entity.(*model.Player)
 	t.ID = id
-	if t.APIKey != nil {
-		if err := r.SetAPIKey(id, *t.APIKey); err != nil {
+	if t.APIKey == nil {
+		return r.updateOwned(id, t, cols...)
+	}
+	// The key and the other columns are two writes; commit both or neither
+	return r.inTx(func(tx *playerRepository) error {
+		if err := tx.SetAPIKey(id, *t.APIKey); err != nil {
 			return err
 		}
+		return tx.updateOwned(id, t, cols...)
+	})
+}
+
+func (r *playerRepository) inTx(block func(tx *playerRepository) error) error {
+	conn, ok := r.db.(*dbx.DB)
+	if !ok {
+		return block(r) // already inside a transaction
 	}
-	return r.updateOwned(id, t, cols...)
+	return conn.Transactional(func(tx *dbx.Tx) error {
+		return block(NewPlayerRepository(r.ctx, tx).(*playerRepository))
+	})
 }
 
 func (r *playerRepository) Delete(id string) error {
@@ -179,9 +200,6 @@ func hashAPIKey(key string) string {
 }
 
 func (r *playerRepository) FindByAPIKey(key string) (*model.Player, error) {
-	if key == "" {
-		return nil, model.ErrNotFound
-	}
 	sel := r.selectPlayer().Where(Eq{"player.api_key_hash": hashAPIKey(key)})
 	var res model.Player
 	if err := r.queryOne(sel, &res); err != nil {
@@ -196,8 +214,8 @@ func (r *playerRepository) SetAPIKey(playerID, key string) error {
 	if key == "" {
 		return r.updateOwnedRow(playerID, ownerOrAdmin, map[string]any{"api_key_hash": nil})
 	}
-	if !apiKeyFormat.MatchString(key) {
-		return apiKeyValidationError("resources.player.validation.apiKeyFormat")
+	if err := validateAPIKey(key); err != nil {
+		return err
 	}
 	err := r.updateOwnedRow(playerID, ownerOnly, map[string]any{"api_key_hash": hashAPIKey(key)})
 	if isUniqueViolation(err) {
