@@ -29,7 +29,7 @@ import (
 // When creating a new repository using this base, you must:
 //
 //   - Embed this struct.
-//   - Set ctx and db fields. ctx should be the context passed to the constructor method, usually obtained from the request
+//   - Set the db field.
 //   - Call registerModel with the model instance and any possible filters.
 //   - If the model has a different table name than the default (lowercase of the model name), it should be set manually
 //     using the tableName field.
@@ -38,7 +38,6 @@ import (
 // All fields in filters and sortMappings must be in snake_case. Only sorts and filters based on real field names or
 // defined in the mappings will be allowed.
 type sqlRepository struct {
-	ctx       context.Context
 	tableName string
 	db        dbx.Builder
 
@@ -65,8 +64,8 @@ func loggedUser(ctx context.Context) *model.User {
 //
 // The predicate uses an unqualified user_id, so it only works on queries where that column is
 // unambiguous (no join introducing a second user_id).
-func (r sqlRepository) ownerFilter() Sqlizer {
-	if usr := loggedUser(r.ctx); !usr.IsAdmin && usr.ID != invalidUserId {
+func (r sqlRepository) ownerFilter(ctx context.Context) Sqlizer {
+	if usr := loggedUser(ctx); !usr.IsAdmin && usr.ID != invalidUserId {
 		return Eq{"user_id": usr.ID}
 	}
 	return nil
@@ -75,12 +74,12 @@ func (r sqlRepository) ownerFilter() Sqlizer {
 // addRestriction combines an optional caller predicate with the ownership filter, producing the
 // WHERE clause for owner-scoped reads. For admins and headless contexts ownerFilter() is nil and
 // only the caller's predicate (if any) remains.
-func (r sqlRepository) addRestriction(sql ...Sqlizer) Sqlizer {
+func (r sqlRepository) addRestriction(ctx context.Context, sql ...Sqlizer) Sqlizer {
 	s := And{}
 	if len(sql) > 0 {
 		s = append(s, sql[0])
 	}
-	if owner := r.ownerFilter(); owner != nil {
+	if owner := r.ownerFilter(ctx); owner != nil {
 		s = append(s, owner)
 	}
 	return s
@@ -121,10 +120,10 @@ func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ..
 	r.sortMappings = mappings
 }
 
-func (r sqlRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
+func (r sqlRepository) newSelect(ctx context.Context, options ...model.QueryOptions) SelectBuilder {
 	sq := Select().From(r.tableName)
 	if len(options) > 0 {
-		r.resetSeededRandom(options)
+		r.resetSeededRandom(ctx, options)
 		sq = r.applyOptions(sq, options...)
 		sq = r.applyFilters(sq, options...)
 	}
@@ -243,8 +242,8 @@ func libraryIdFilter(_ string, value any) Sqlizer {
 
 // applyLibraryFilter adds library filtering to queries for tables that have a library_id column
 // This ensures users only see content from libraries they have access to
-func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string) SelectBuilder {
-	user := loggedUser(r.ctx)
+func (r sqlRepository) applyLibraryFilter(ctx context.Context, sq SelectBuilder, tableName ...string) SelectBuilder {
+	user := loggedUser(ctx)
 
 	// If the user is an admin, or the user ID is invalid (e.g., when no user is logged in), skip the library filter
 	if user.IsAdmin || user.ID == invalidUserId {
@@ -253,7 +252,7 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 
 	// A non-admin granted every library sees everything the subquery would return, so applying it is
 	// pure overhead. Skip it in that case (same fast path admins get).
-	if visible, err := r.visibleLibraryIDs(); err == nil && r.userSeesAllLibraries(visible) {
+	if visible, err := r.visibleLibraryIDs(ctx); err == nil && r.userSeesAllLibraries(ctx, visible) {
 		return sq
 	}
 
@@ -270,65 +269,66 @@ func (r sqlRepository) applyLibraryFilter(sq SelectBuilder, tableName ...string)
 
 // userSeesAllLibraries reports whether the visible set already covers every library, so a
 // library filter would exclude nothing.
-func (r sqlRepository) userSeesAllLibraries(visible []int) bool {
-	user := loggedUser(r.ctx)
+func (r sqlRepository) userSeesAllLibraries(ctx context.Context, visible []int) bool {
+	user := loggedUser(ctx)
 	if user.IsAdmin || user.ID == invalidUserId {
 		return true // visible is the whole library table
 	}
-	total, err := NewLibraryRepository(r.ctx, r.db).CountAll()
-	if err != nil || total == 0 {
+	var res struct{ Count int64 }
+	err := r.queryOne(ctx, Select("count(*) as count").From("library"), &res)
+	if err != nil || res.Count == 0 {
 		return false
 	}
-	return int64(len(visible)) == total
+	return int64(len(visible)) == res.Count
 }
 
 // visibleLibraryIDs returns the libraries the current user can see: all libraries for admin and
 // headless processes, otherwise the user's granted libraries.
-func (r sqlRepository) visibleLibraryIDs() ([]int, error) {
-	user := loggedUser(r.ctx)
+func (r sqlRepository) visibleLibraryIDs(ctx context.Context) ([]int, error) {
+	user := loggedUser(ctx)
 	if user.IsAdmin || user.ID == invalidUserId {
 		var ids []int
-		err := r.queryAllSlice(Select("id").From("library"), &ids)
+		err := r.queryAllSlice(ctx, Select("id").From("library"), &ids)
 		return ids, err
 	}
 	return slice.Map(user.Libraries, func(lib model.Library) int { return lib.ID }), nil
 }
 
-func (r sqlRepository) seedKey() string {
+func (r sqlRepository) seedKey(ctx context.Context) string {
 	// Seed keys must be all lowercase, or else SQLite3 will encode it, making it not match the seed
 	// used in the query. Hashing the user ID and converting it to a hex string will do the trick
-	userIDHash := xxh3.Hash([]byte(loggedUser(r.ctx).ID))
+	userIDHash := xxh3.Hash([]byte(loggedUser(ctx).ID))
 	return fmt.Sprintf("%s|%016x", r.tableName, userIDHash)
 }
 
-func (r sqlRepository) resetSeededRandom(options []model.QueryOptions) {
+func (r sqlRepository) resetSeededRandom(ctx context.Context, options []model.QueryOptions) {
 	if len(options) == 0 || options[0].Sort != "random" {
 		return
 	}
 	// CAST: playlist_tracks.id is an INTEGER (unlike other tables' TEXT ids); passing it to
 	// SEEDEDRAND's string param uncast silently drops every row (go-sqlite3 binding gotcha).
-	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', CAST(%s.id AS TEXT))", r.seedKey(), r.tableName)
+	options[0].Sort = fmt.Sprintf("SEEDEDRAND('%s', CAST(%s.id AS TEXT))", r.seedKey(ctx), r.tableName)
 	if options[0].Seed != "" {
-		hasher.SetSeed(r.seedKey(), options[0].Seed)
+		hasher.SetSeed(r.seedKey(ctx), options[0].Seed)
 		return
 	}
 	if options[0].Offset == 0 {
-		hasher.Reseed(r.seedKey())
+		hasher.Reseed(r.seedKey(ctx))
 	}
 }
 
-func (r sqlRepository) executeSQL(sq Sqlizer) (int64, error) {
+func (r sqlRepository) executeSQL(ctx context.Context, sq Sqlizer) (int64, error) {
 	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return 0, err
 	}
 	start := time.Now()
 	var c int64
-	res, err := r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Execute()
+	res, err := r.db.NewQuery(query).Bind(args).WithContext(ctx).Execute()
 	if res != nil {
 		c, _ = res.RowsAffected()
 	}
-	r.logSQL(query, args, err, c, start)
+	r.logSQL(ctx, query, args, err, c, start)
 	if err != nil {
 		if err.Error() != "LastInsertId is not supported by this driver" {
 			return 0, err
@@ -356,18 +356,18 @@ func (r sqlRepository) toSQL(sq Sqlizer) (string, dbx.Params, error) {
 	return result, params, nil
 }
 
-func (r sqlRepository) queryOne(sq Sqlizer, response any) error {
+func (r sqlRepository) queryOne(ctx context.Context, sq Sqlizer, response any) error {
 	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
 	}
 	start := time.Now()
-	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).One(response)
+	err = r.db.NewQuery(query).Bind(args).WithContext(ctx).One(response)
 	if errors.Is(err, sql.ErrNoRows) {
-		r.logSQL(query, args, nil, 0, start)
+		r.logSQL(ctx, query, args, nil, 0, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, err, 1, start)
+	r.logSQL(ctx, query, args, err, 1, start)
 	return err
 }
 
@@ -392,7 +392,7 @@ func wrapCursor[D, T any](cursor iter.Seq2[D, error], toModel func(D) *T) iter.S
 
 // queryWithStableResults is a helper function to execute a query and return an iterator that will yield its results
 // from a cursor, guaranteeing that the results will be stable, even if the underlying data changes.
-func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {
+func queryWithStableResults[T any](ctx context.Context, r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {
 	if len(options) > 0 && options[0].Offset > 0 {
 		sq = r.optimizePagination(sq, options[0])
 	}
@@ -401,8 +401,8 @@ func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ..
 		return nil, err
 	}
 	start := time.Now()
-	rows, err := r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Rows()
-	r.logSQL(query, args, err, -1, start)
+	rows, err := r.db.NewQuery(query).Bind(args).WithContext(ctx).Rows()
+	r.logSQL(ctx, query, args, err, -1, start)
 	if err != nil {
 		return nil, err
 	}
@@ -422,7 +422,7 @@ func queryWithStableResults[T any](r sqlRepository, sq SelectBuilder, options ..
 	}, nil
 }
 
-func (r sqlRepository) queryAll(sq SelectBuilder, response any, options ...model.QueryOptions) error {
+func (r sqlRepository) queryAll(ctx context.Context, sq SelectBuilder, response any, options ...model.QueryOptions) error {
 	if len(options) > 0 && options[0].Offset > 0 {
 		sq = r.optimizePagination(sq, options[0])
 	}
@@ -431,28 +431,28 @@ func (r sqlRepository) queryAll(sq SelectBuilder, response any, options ...model
 		return err
 	}
 	start := time.Now()
-	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).All(response)
+	err = r.db.NewQuery(query).Bind(args).WithContext(ctx).All(response)
 	if errors.Is(err, sql.ErrNoRows) {
-		r.logSQL(query, args, nil, -1, start)
+		r.logSQL(ctx, query, args, nil, -1, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
+	r.logSQL(ctx, query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
 	return err
 }
 
 // queryAllSlice is a helper function to query a single column and return the result in a slice
-func (r sqlRepository) queryAllSlice(sq SelectBuilder, response any) error {
+func (r sqlRepository) queryAllSlice(ctx context.Context, sq SelectBuilder, response any) error {
 	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
 	}
 	start := time.Now()
-	err = r.db.NewQuery(query).Bind(args).WithContext(r.ctx).Column(response)
+	err = r.db.NewQuery(query).Bind(args).WithContext(ctx).Column(response)
 	if errors.Is(err, sql.ErrNoRows) {
-		r.logSQL(query, args, nil, -1, start)
+		r.logSQL(ctx, query, args, nil, -1, start)
 		return model.ErrNotFound
 	}
-	r.logSQL(query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
+	r.logSQL(ctx, query, args, err, int64(reflect.ValueOf(response).Elem().Len()), start)
 	return err
 }
 
@@ -469,10 +469,10 @@ func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryO
 	return sq
 }
 
-func (r sqlRepository) exists(cond Sqlizer) (bool, error) {
+func (r sqlRepository) exists(ctx context.Context, cond Sqlizer) (bool, error) {
 	existsQuery := Select("count(*) as exist").From(r.tableName).Where(cond)
 	var res struct{ Exist int64 }
-	err := r.queryOne(existsQuery, &res)
+	err := r.queryOne(ctx, existsQuery, &res)
 	return res.Exist > 0, err
 }
 
@@ -487,20 +487,20 @@ func (r sqlRepository) exists(cond Sqlizer) (bool, error) {
 // another user it returns rest.ErrPermissionDenied, otherwise rest.ErrNotFound. The write itself is
 // still atomic; the extra lookup happens only on the failure path (count == 0), where no write
 // occurred, so there is no TOCTOU on the update.
-func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) error {
+func (r sqlRepository) updateOwned(ctx context.Context, id string, m any, colsToUpdate ...string) error {
 	values, err := toSQLArgs(m)
 	if err != nil {
 		return fmt.Errorf("error preparing values to write to DB: %w", err)
 	}
 	updateValues := filterUpdateValues(values, id, colsToUpdate...)
 	delete(updateValues, "user_id") // ownership is immutable on update
-	update := Update(r.tableName).Where(r.addRestriction(Eq{"id": id})).SetMap(updateValues)
-	count, err := r.executeSQL(update)
+	update := Update(r.tableName).Where(r.addRestriction(ctx, Eq{"id": id})).SetMap(updateValues)
+	count, err := r.executeSQL(ctx, update)
 	if err != nil {
 		return err
 	}
 	if count == 0 {
-		return r.classifyOwnedWriteMiss(id)
+		return r.classifyOwnedWriteMiss(ctx, id)
 	}
 	return nil
 }
@@ -510,13 +510,22 @@ func (r sqlRepository) updateOwned(id string, m any, colsToUpdate ...string) err
 // ownership predicate is part of the DELETE's WHERE clause, so a row owned by another user simply
 // does not match and is left untouched. The failure path mirrors updateOwned (see
 // classifyOwnedWriteMiss), so there is no TOCTOU on the delete.
-func (r sqlRepository) deleteOwned(id string) error {
-	count, err := r.executeSQL(Delete(r.tableName).Where(r.addRestriction(Eq{"id": id})))
+func (r sqlRepository) deleteOwned(ctx context.Context, id string) error {
+	count, err := r.executeSQL(ctx, Delete(r.tableName).Where(r.addRestriction(ctx, Eq{"id": id})))
 	if err != nil {
 		return err
 	}
 	if count == 0 {
-		return r.classifyOwnedWriteMiss(id)
+		return r.classifyOwnedWriteMiss(ctx, id)
+	}
+	return nil
+}
+
+func (r sqlRepository) deleteOwnedAll(ctx context.Context, ids ...string) error {
+	for _, id := range ids {
+		if err := r.deleteOwned(ctx, id); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -524,8 +533,8 @@ func (r sqlRepository) deleteOwned(id string) error {
 // classifyOwnedWriteMiss explains why an ownership-filtered write (updateOwned/deleteOwned) matched
 // no row: rest.ErrPermissionDenied if the row exists but is owned by another user, otherwise
 // rest.ErrNotFound. It runs only on the failure path (count == 0), where no write occurred.
-func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
-	exists, err := r.exists(Eq{"id": id})
+func (r sqlRepository) classifyOwnedWriteMiss(ctx context.Context, id string) error {
+	exists, err := r.exists(ctx, Eq{"id": id})
 	if err != nil {
 		return err
 	}
@@ -535,7 +544,7 @@ func (r sqlRepository) classifyOwnedWriteMiss(id string) error {
 	return rest.ErrNotFound
 }
 
-func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
+func (r sqlRepository) count(ctx context.Context, countQuery SelectBuilder, options ...model.QueryOptions) (int64, error) {
 	countQuery = countQuery.
 		RemoveColumns().Columns("count(distinct " + r.tableName + ".id) as count").
 		RemoveOffset().RemoveLimit().
@@ -543,22 +552,22 @@ func (r sqlRepository) count(countQuery SelectBuilder, options ...model.QueryOpt
 		From(r.tableName)
 	countQuery = r.applyFilters(countQuery, options...)
 	var res struct{ Count int64 }
-	err := r.queryOne(countQuery, &res)
+	err := r.queryOne(ctx, countQuery, &res)
 	return res.Count, err
 }
 
-func (r sqlRepository) putByMatch(filter Sqlizer, id string, m any, colsToUpdate ...string) (string, error) {
+func (r sqlRepository) putByMatch(ctx context.Context, filter Sqlizer, id string, m any, colsToUpdate ...string) (string, error) {
 	if id != "" {
-		return r.put(id, m, colsToUpdate...)
+		return r.put(ctx, id, m, colsToUpdate...)
 	}
-	existsQuery := r.newSelect().Columns("id").From(r.tableName).Where(filter)
+	existsQuery := r.newSelect(ctx).Columns("id").From(r.tableName).Where(filter)
 
 	var res struct{ ID string }
-	err := r.queryOne(existsQuery, &res)
+	err := r.queryOne(ctx, existsQuery, &res)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return "", err
 	}
-	return r.put(res.ID, m, colsToUpdate...)
+	return r.put(ctx, res.ID, m, colsToUpdate...)
 }
 
 // selectUpdateColumns keeps only the requested colsToUpdate (or all columns when none are
@@ -588,7 +597,7 @@ func filterUpdateValues(values map[string]any, id string, colsToUpdate ...string
 	return updateValues
 }
 
-func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId string, err error) {
+func (r sqlRepository) put(ctx context.Context, id string, m any, colsToUpdate ...string) (newId string, err error) {
 	values, err := toSQLArgs(m)
 	if err != nil {
 		return "", fmt.Errorf("error preparing values to write to DB: %w", err)
@@ -596,7 +605,7 @@ func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId stri
 	// If there's an ID, try to update first
 	if id != "" {
 		update := Update(r.tableName).Where(Eq{"id": id}).SetMap(filterUpdateValues(values, id, colsToUpdate...))
-		count, err := r.executeSQL(update)
+		count, err := r.executeSQL(ctx, update)
 		if err != nil {
 			return "", err
 		}
@@ -610,18 +619,18 @@ func (r sqlRepository) put(id string, m any, colsToUpdate ...string) (newId stri
 		values["id"] = id
 	}
 	insert := Insert(r.tableName).SetMap(values)
-	_, err = r.executeSQL(insert)
+	_, err = r.executeSQL(ctx, insert)
 	return id, err
 }
 
-func (r sqlRepository) delete(cond Sqlizer) error {
-	_, err := r.executeSQL(Delete(r.tableName).Where(cond))
+func (r sqlRepository) delete(ctx context.Context, cond Sqlizer) error {
+	_, err := r.executeSQL(ctx, Delete(r.tableName).Where(cond))
 	return err
 }
 
 // deleteByID is for single-item deletes that must report a missing row; delete succeeds silently.
-func (r sqlRepository) deleteByID(id string) error {
-	count, err := r.executeSQL(Delete(r.tableName).Where(Eq{"id": id}))
+func (r sqlRepository) deleteByID(ctx context.Context, id string) error {
+	count, err := r.executeSQL(ctx, Delete(r.tableName).Where(Eq{"id": id}))
 	if err != nil {
 		return err
 	}
@@ -631,9 +640,9 @@ func (r sqlRepository) deleteByID(id string) error {
 	return nil
 }
 
-func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
+func (r sqlRepository) logSQL(ctx context.Context, sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
-	fields := []any{r.ctx, "SQL: `" + sql + "`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed}
+	fields := []any{ctx, "SQL: `" + sql + "`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed}
 	if err == nil || errors.Is(err, context.Canceled) {
 		log.Trace(append(fields, err)...)
 		return
@@ -643,7 +652,7 @@ func (r sqlRepository) logSQL(sql string, args dbx.Params, err error, rowsAffect
 	if code, extended, ok := db.ErrorCodes(err); ok {
 		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
 	}
-	if db.IsBusy(err) && hasBusyRetry(r.ctx) {
+	if db.IsBusy(err) && hasBusyRetry(ctx) {
 		log.Warn(append(fields, err)...)
 		return
 	}

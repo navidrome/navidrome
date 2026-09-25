@@ -15,14 +15,12 @@ import (
 )
 
 func (api *Router) addArtistRoute(r chi.Router) {
-	constructor := func(ctx context.Context) rest.Repository {
-		return api.ds.Resource(ctx, model.Artist{})
-	}
+	repo := api.ds.Artist()
 	r.Route("/artist", func(r chi.Router) {
-		r.Get("/", rest.GetAll(constructor))
+		r.Get("/", rest.GetAll(repo))
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(server.URLParamsMiddleware)
-			r.Get("/", rest.Get(constructor))
+			r.Get("/", rest.Get(repo))
 			r.Post("/image", api.uploadArtistImage())
 			r.Delete("/image", api.deleteArtistImage())
 		})
@@ -32,7 +30,7 @@ func (api *Router) addArtistRoute(r chi.Router) {
 func (api *Router) uploadArtistImage() http.HandlerFunc {
 	return handleImageUpload(func(ctx context.Context, reader io.Reader, ext string) error {
 		artistID := chi.URLParamFromCtx(ctx, "id")
-		ar, err := api.ds.Artist(ctx).Get(artistID)
+		ar, err := api.ds.Artist().Get(ctx, artistID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
 				return model.ErrNotFound
@@ -46,7 +44,7 @@ func (api *Router) uploadArtistImage() http.HandlerFunc {
 		}
 		ar.UploadedImage = filename
 		ar.UpdatedAt = new(time.Now())
-		if err := api.ds.Artist(ctx).Put(ar, "uploaded_image", "updated_at"); err != nil {
+		if err := api.ds.Artist().Put(ctx, ar, "uploaded_image", "updated_at"); err != nil {
 			return err
 		}
 		api.imgUpload.EnqueueArtwork(ctx, consts.EntityArtist, ar.ID)
@@ -57,7 +55,7 @@ func (api *Router) uploadArtistImage() http.HandlerFunc {
 func (api *Router) deleteArtistImage() http.HandlerFunc {
 	return handleImageDelete(func(ctx context.Context) error {
 		artistID := chi.URLParamFromCtx(ctx, "id")
-		ar, err := api.ds.Artist(ctx).Get(artistID)
+		ar, err := api.ds.Artist().Get(ctx, artistID)
 		if err != nil {
 			if errors.Is(err, model.ErrNotFound) {
 				return model.ErrNotFound
@@ -69,7 +67,7 @@ func (api *Router) deleteArtistImage() http.HandlerFunc {
 		}
 		ar.UploadedImage = ""
 		ar.UpdatedAt = new(time.Now())
-		if err := api.ds.Artist(ctx).Put(ar, "uploaded_image", "updated_at"); err != nil {
+		if err := api.ds.Artist().Put(ctx, ar, "uploaded_image", "updated_at"); err != nil {
 			return err
 		}
 		api.imgUpload.EnqueueArtwork(ctx, consts.EntityArtist, ar.ID)

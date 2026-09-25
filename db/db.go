@@ -184,7 +184,7 @@ func isSchemaEmpty(ctx context.Context, db *sql.DB) bool {
 }
 
 type logAdapter struct {
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // goose logger interface has no ctx
 	silent bool
 }
 

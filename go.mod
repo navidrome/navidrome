@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/andybalholm/cascadia v1.3.5
 	github.com/bmatcuk/doublestar/v4 v4.10.0
-	github.com/deluan/rest v0.0.0-20260913134927-47b21f30cc12
+	github.com/deluan/rest v1.0.1
 	github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55
 	github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36
 	github.com/djherbis/atime v1.1.0

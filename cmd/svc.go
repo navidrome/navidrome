@@ -44,7 +44,7 @@ var svcCmd = &cobra.Command{
 }
 
 type svcControl struct {
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // service lifecycle ctx, cancelled by Stop
 	cancel context.CancelFunc
 	done   chan struct{}
 }

@@ -100,14 +100,14 @@ var _ = Describe("Sonic Similarity Endpoints", func() {
 		)
 
 		BeforeEach(func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Come Together"},
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			comeTogether = songs[0]
 
-			songs, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err = ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Something"},
 			})
 			Expect(err).ToNot(HaveOccurred())

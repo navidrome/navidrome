@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"reflect"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/db"
@@ -15,128 +15,144 @@ import (
 )
 
 type SQLStore struct {
-	db dbx.Builder
+	db           dbx.Builder
+	library      func() model.LibraryRepository
+	folder       func() model.FolderRepository
+	album        func() model.AlbumRepository
+	artist       func() model.ArtistRepository
+	mediaFile    func() model.MediaFileRepository
+	genre        func() model.GenreRepository
+	tag          func() model.TagRepository
+	playlist     func() model.PlaylistRepository
+	playQueue    func() model.PlayQueueRepository
+	transcoding  func() model.TranscodingRepository
+	player       func() model.PlayerRepository
+	radio        func() model.RadioRepository
+	share        func() model.ShareRepository
+	property     func() model.PropertyRepository
+	user         func() model.UserRepository
+	userProps    func() model.UserPropsRepository
+	scrobbleBuf  func() model.ScrobbleBufferRepository
+	scrobble     func() model.ScrobbleRepository
+	plugin       func() model.PluginRepository
+	artwork      func() model.ArtworkRepository
+	artworkQueue func() model.ArtworkQueueRepository
+}
+
+// Repositories are built on first use, so a transaction store only pays for the ones its block touches.
+func newSQLStore(db dbx.Builder) *SQLStore {
+	return &SQLStore{
+		db:           db,
+		library:      sync.OnceValue(func() model.LibraryRepository { return NewLibraryRepository(db) }),
+		folder:       sync.OnceValue(func() model.FolderRepository { return newFolderRepository(db) }),
+		album:        sync.OnceValue(func() model.AlbumRepository { return NewAlbumRepository(db) }),
+		artist:       sync.OnceValue(func() model.ArtistRepository { return NewArtistRepository(db) }),
+		mediaFile:    sync.OnceValue(func() model.MediaFileRepository { return NewMediaFileRepository(db) }),
+		genre:        sync.OnceValue(func() model.GenreRepository { return NewGenreRepository(db) }),
+		tag:          sync.OnceValue(func() model.TagRepository { return NewTagRepository(db) }),
+		playlist:     sync.OnceValue(func() model.PlaylistRepository { return NewPlaylistRepository(db) }),
+		playQueue:    sync.OnceValue(func() model.PlayQueueRepository { return NewPlayQueueRepository(db) }),
+		transcoding:  sync.OnceValue(func() model.TranscodingRepository { return NewTranscodingRepository(db) }),
+		player:       sync.OnceValue(func() model.PlayerRepository { return NewPlayerRepository(db) }),
+		radio:        sync.OnceValue(func() model.RadioRepository { return NewRadioRepository(db) }),
+		share:        sync.OnceValue(func() model.ShareRepository { return NewShareRepository(db) }),
+		property:     sync.OnceValue(func() model.PropertyRepository { return NewPropertyRepository(db) }),
+		user:         sync.OnceValue(func() model.UserRepository { return NewUserRepository(db) }),
+		userProps:    sync.OnceValue(func() model.UserPropsRepository { return NewUserPropsRepository(db) }),
+		scrobbleBuf:  sync.OnceValue(func() model.ScrobbleBufferRepository { return NewScrobbleBufferRepository(db) }),
+		scrobble:     sync.OnceValue(func() model.ScrobbleRepository { return NewScrobbleRepository(db) }),
+		plugin:       sync.OnceValue(func() model.PluginRepository { return NewPluginRepository(db) }),
+		artwork:      sync.OnceValue(func() model.ArtworkRepository { return NewArtworkRepository(db) }),
+		artworkQueue: sync.OnceValue(func() model.ArtworkQueueRepository { return NewArtworkQueueRepository(db) }),
+	}
 }
 
 func New(conn *sql.DB) model.DataStore {
-	return &SQLStore{db: dbx.NewFromDB(conn, db.Driver)}
+	return newSQLStore(dbx.NewFromDB(conn, db.Driver))
 }
 
-func (s *SQLStore) Album(ctx context.Context) model.AlbumRepository {
-	return NewAlbumRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Album() model.AlbumRepository {
+	return s.album()
 }
 
-func (s *SQLStore) Artist(ctx context.Context) model.ArtistRepository {
-	return NewArtistRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Artist() model.ArtistRepository {
+	return s.artist()
 }
 
-func (s *SQLStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	return NewMediaFileRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) MediaFile() model.MediaFileRepository {
+	return s.mediaFile()
 }
 
-func (s *SQLStore) Library(ctx context.Context) model.LibraryRepository {
-	return NewLibraryRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Library() model.LibraryRepository {
+	return s.library()
 }
 
-func (s *SQLStore) Folder(ctx context.Context) model.FolderRepository {
-	return newFolderRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Folder() model.FolderRepository {
+	return s.folder()
 }
 
-func (s *SQLStore) Genre(ctx context.Context) model.GenreRepository {
-	return NewGenreRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Genre() model.GenreRepository {
+	return s.genre()
 }
 
-func (s *SQLStore) Tag(ctx context.Context) model.TagRepository {
-	return NewTagRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Tag() model.TagRepository {
+	return s.tag()
 }
 
-func (s *SQLStore) PlayQueue(ctx context.Context) model.PlayQueueRepository {
-	return NewPlayQueueRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) PlayQueue() model.PlayQueueRepository {
+	return s.playQueue()
 }
 
-func (s *SQLStore) Playlist(ctx context.Context) model.PlaylistRepository {
-	return NewPlaylistRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Playlist() model.PlaylistRepository {
+	return s.playlist()
 }
 
-func (s *SQLStore) Property(ctx context.Context) model.PropertyRepository {
-	return NewPropertyRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Property() model.PropertyRepository {
+	return s.property()
 }
 
-func (s *SQLStore) Radio(ctx context.Context) model.RadioRepository {
-	return NewRadioRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Radio() model.RadioRepository {
+	return s.radio()
 }
 
-func (s *SQLStore) UserProps(ctx context.Context) model.UserPropsRepository {
-	return NewUserPropsRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) UserProps() model.UserPropsRepository {
+	return s.userProps()
 }
 
-func (s *SQLStore) Share(ctx context.Context) model.ShareRepository {
-	return NewShareRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Share() model.ShareRepository {
+	return s.share()
 }
 
-func (s *SQLStore) User(ctx context.Context) model.UserRepository {
-	return NewUserRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) User() model.UserRepository {
+	return s.user()
 }
 
-func (s *SQLStore) Transcoding(ctx context.Context) model.TranscodingRepository {
-	return NewTranscodingRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Transcoding() model.TranscodingRepository {
+	return s.transcoding()
 }
 
-func (s *SQLStore) Player(ctx context.Context) model.PlayerRepository {
-	return NewPlayerRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Player() model.PlayerRepository {
+	return s.player()
 }
 
-func (s *SQLStore) ScrobbleBuffer(ctx context.Context) model.ScrobbleBufferRepository {
-	return NewScrobbleBufferRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) ScrobbleBuffer() model.ScrobbleBufferRepository {
+	return s.scrobbleBuf()
 }
 
-func (s *SQLStore) Scrobble(ctx context.Context) model.ScrobbleRepository {
-	return NewScrobbleRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Scrobble() model.ScrobbleRepository {
+	return s.scrobble()
 }
 
-func (s *SQLStore) Plugin(ctx context.Context) model.PluginRepository {
-	return NewPluginRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Plugin() model.PluginRepository {
+	return s.plugin()
 }
 
-func (s *SQLStore) Artwork(ctx context.Context) model.ArtworkRepository {
-	return NewArtworkRepository(ctx, s.getDBXBuilder())
+func (s *SQLStore) Artwork() model.ArtworkRepository {
+	return s.artwork()
 }
 
-func (s *SQLStore) ArtworkQueue(ctx context.Context) model.ArtworkQueueRepository {
-	return NewArtworkQueueRepository(ctx, s.getDBXBuilder())
-}
-
-func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
-	switch m.(type) {
-	case model.User:
-		return s.User(ctx).(model.ResourceRepository)
-	case model.Transcoding:
-		return s.Transcoding(ctx).(model.ResourceRepository)
-	case model.Player:
-		return s.Player(ctx).(model.ResourceRepository)
-	case model.Artist:
-		return s.Artist(ctx).(model.ResourceRepository)
-	case model.Album:
-		return s.Album(ctx).(model.ResourceRepository)
-	case model.MediaFile:
-		return s.MediaFile(ctx).(model.ResourceRepository)
-	case model.Genre:
-		return s.Genre(ctx).(model.ResourceRepository)
-	case model.Playlist:
-		return s.Playlist(ctx).(model.ResourceRepository)
-	case model.Radio:
-		return s.Radio(ctx).(model.ResourceRepository)
-	case model.Share:
-		return s.Share(ctx).(model.ResourceRepository)
-	case model.Tag:
-		return s.Tag(ctx).(model.ResourceRepository)
-	case model.Plugin:
-		return s.Plugin(ctx).(model.ResourceRepository)
-	case model.Scrobble:
-		return s.Scrobble(ctx).(model.ResourceRepository)
-	}
-	log.Error("Resource not implemented", "model", reflect.TypeOf(m).Name())
-	return nil
+func (s *SQLStore) ArtworkQueue() model.ArtworkQueueRepository {
+	return s.artworkQueue()
 }
 
 func scopeLabel(scope []string) string {
@@ -157,7 +173,7 @@ func (s *SQLStore) WithTx(block func(tx model.DataStore) error, scope ...string)
 		log.Trace("Transaction started", "scope", msg)
 	}
 	return conn.Transactional(func(tx *dbx.Tx) error {
-		newDb := &SQLStore{db: tx}
+		newDb := newSQLStore(tx)
 		err := block(newDb)
 		if !inTx {
 			log.Trace("Nested Transaction finished", "scope", msg, "elapsed", time.Since(start), err)
@@ -173,9 +189,9 @@ func (s *SQLStore) WithTxImmediate(block func(tx model.DataStore) error, scope .
 	return s.WithTx(func(tx model.DataStore) error {
 		// Workaround to force the transaction to be upgraded to immediate mode to avoid deadlocks
 		// See https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/
-		_ = tx.Property(ctx).Put("tmp_lock_flag", "")
+		_ = tx.Property().Put(ctx, "tmp_lock_flag", "")
 		defer func() {
-			_ = tx.Property(ctx).Delete("tmp_lock_flag")
+			_ = tx.Property().Delete(ctx, "tmp_lock_flag")
 		}()
 
 		return block(tx)
@@ -244,27 +260,20 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 	}
 
 	err := run.Sequentially(
-		trace(ctx, "purge empty albums", func() error { return s.Album(ctx).(*albumRepository).purgeEmpty(libraryIDs...) }),
-		trace(ctx, "purge empty artists", func() error { return s.Artist(ctx).(*artistRepository).purgeEmpty() }),
-		trace(ctx, "mark missing artists", func() error { return s.Artist(ctx).(*artistRepository).markMissing() }),
-		trace(ctx, "purge empty folders", func() error { return s.Folder(ctx).(*folderRepository).purgeEmpty(libraryIDs...) }),
-		trace(ctx, "clean album annotations", func() error { return s.Album(ctx).(*albumRepository).cleanAnnotations() }),
-		trace(ctx, "clean artist annotations", func() error { return s.Artist(ctx).(*artistRepository).cleanAnnotations() }),
-		trace(ctx, "clean media file annotations", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanAnnotations() }),
-		trace(ctx, "clean playlist annotations", func() error { return s.Playlist(ctx).(*playlistRepository).cleanAnnotations() }),
-		trace(ctx, "clean media file bookmarks", func() error { return s.MediaFile(ctx).(*mediaFileRepository).cleanBookmarks() }),
-		trace(ctx, "purge non used tags", func() error { return s.Tag(ctx).(*tagRepository).purgeUnused() }),
-		trace(ctx, "remove orphan playlist tracks", func() error { return s.Playlist(ctx).(*playlistRepository).removeOrphans() }),
+		trace(ctx, "purge empty albums", func() error { return s.album().(*albumRepository).purgeEmpty(ctx, libraryIDs...) }),
+		trace(ctx, "purge empty artists", func() error { return s.artist().(*artistRepository).purgeEmpty(ctx) }),
+		trace(ctx, "mark missing artists", func() error { return s.artist().(*artistRepository).markMissing(ctx) }),
+		trace(ctx, "purge empty folders", func() error { return s.folder().(*folderRepository).purgeEmpty(ctx, libraryIDs...) }),
+		trace(ctx, "clean album annotations", func() error { return s.album().(*albumRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean artist annotations", func() error { return s.artist().(*artistRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean media file annotations", func() error { return s.mediaFile().(*mediaFileRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean playlist annotations", func() error { return s.playlist().(*playlistRepository).cleanAnnotations(ctx) }),
+		trace(ctx, "clean media file bookmarks", func() error { return s.mediaFile().(*mediaFileRepository).cleanBookmarks(ctx) }),
+		trace(ctx, "purge non used tags", func() error { return s.tag().(*tagRepository).purgeUnused(ctx) }),
+		trace(ctx, "remove orphan playlist tracks", func() error { return s.playlist().(*playlistRepository).removeOrphans(ctx) }),
 	)
 	if err != nil {
 		return fmt.Errorf("tidying up database: %w", err)
 	}
 	return nil
-}
-
-func (s *SQLStore) getDBXBuilder() dbx.Builder {
-	if s.db == nil {
-		return dbx.NewFromDB(db.Db(), db.Driver)
-	}
-	return s.db
 }

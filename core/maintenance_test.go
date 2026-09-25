@@ -262,12 +262,12 @@ var _ = Describe("Maintenance", func() {
 
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
-			got, err := mfRepo.Get("m1")
+			got, err := mfRepo.Get(ctx, "m1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Path).To(Equal("new/song.mp3")) // moved to target's location
 			Expect(got.Missing).To(BeFalse())
 			Expect(got.CreatedAt).To(BeTemporally("==", created)) // created_at preserved
-			exists, _ := mfRepo.Exists("t1")
+			exists, _ := mfRepo.Exists(ctx, "t1")
 			Expect(exists).To(BeFalse()) // discarded row removed
 			Expect(ds.GCCalled).To(BeTrue())
 		})
@@ -369,14 +369,14 @@ var _ = Describe("Maintenance", func() {
 			Expect(artistRepo.IsRefreshStatsCalled()).To(BeTrue(), "Artist stats should be refreshed")
 
 			// The old album lost the remapped track, so its stats are recalculated from the remaining one
-			oldAlbum, err := albumRepo.Get("album1")
+			oldAlbum, err := albumRepo.Get(ctx, "album1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(oldAlbum.SongCount).To(Equal(1))
 			Expect(oldAlbum.Size).To(Equal(int64(1000)))
 			Expect(oldAlbum.Duration).To(BeNumerically("==", 100))
 
 			// The target album keeps the track, now under the missing file's ID
-			newAlbum, err := albumRepo.Get("album2")
+			newAlbum, err := albumRepo.Get(ctx, "album2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(newAlbum.SongCount).To(Equal(1))
 			Expect(newAlbum.Size).To(Equal(int64(2000)))
@@ -407,7 +407,7 @@ var _ = Describe("Maintenance", func() {
 			Expect(service.RemapMissingFile(ctx, "m1", "t1")).To(Succeed())
 
 			// The surviving row is the missing file's ID, holding the target's data
-			got, err := mfRepo.GetWithParticipants("m1")
+			got, err := mfRepo.GetWithParticipants(ctx, "m1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Participants).To(HaveKeyWithValue(model.RoleArtist, model.ParticipantList{participant}))
 		})
@@ -447,7 +447,7 @@ type extendedMediaFileRepo struct {
 	deleteMissingError  error
 }
 
-func (m *extendedMediaFileRepo) DeleteMissing(ids []string) error {
+func (m *extendedMediaFileRepo) DeleteMissing(ctx context.Context, ids []string) error {
 	m.deleteMissingCalled = true
 	m.deletedIDs = ids
 	if m.deleteMissingError != nil {
@@ -470,7 +470,7 @@ type extendedAlbumRepo struct {
 	failOnce     bool
 }
 
-func (m *extendedAlbumRepo) Put(album *model.Album) error {
+func (m *extendedAlbumRepo) Put(ctx context.Context, album *model.Album) error {
 	m.mu.Lock()
 	m.putCallCount++
 	m.lastPutData = album
@@ -490,7 +490,7 @@ func (m *extendedAlbumRepo) Put(album *model.Album) error {
 	}
 	m.mu.Unlock()
 
-	return m.MockAlbumRepo.Put(album)
+	return m.MockAlbumRepo.Put(ctx, album)
 }
 
 func (m *extendedAlbumRepo) GetPutCallCount() int {
@@ -507,7 +507,7 @@ type extendedArtistRepo struct {
 	refreshStatsError  error
 }
 
-func (m *extendedArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+func (m *extendedArtistRepo) RefreshStats(ctx context.Context, allArtists bool) (int64, error) {
 	m.mu.Lock()
 	m.refreshStatsCalled = true
 	err := m.refreshStatsError
@@ -516,7 +516,7 @@ func (m *extendedArtistRepo) RefreshStats(allArtists bool) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return m.MockArtistRepo.RefreshStats(allArtists)
+	return m.MockArtistRepo.RefreshStats(ctx, allArtists)
 }
 
 func (m *extendedArtistRepo) IsRefreshStatsCalled() bool {

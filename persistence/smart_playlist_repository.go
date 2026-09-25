@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"slices"
 	"time"
 
@@ -18,76 +19,76 @@ import (
 // configured refresh delay.
 
 // refreshSmartPlaylist evaluates the criteria of a smart playlist and updates its tracks accordingly.
-func (r *playlistRepository) refreshSmartPlaylist(pls *model.Playlist) bool {
-	return r.refreshSmartPlaylistTree(pls, map[string]struct{}{})
+func (r *playlistRepository) refreshSmartPlaylist(ctx context.Context, pls *model.Playlist) bool {
+	return r.refreshSmartPlaylistTree(ctx, pls, map[string]struct{}{})
 }
 
 // The visited set stops playlists that reference each other from recursing forever.
-func (r *playlistRepository) refreshSmartPlaylistTree(pls *model.Playlist, visited map[string]struct{}) bool {
+func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *model.Playlist, visited map[string]struct{}) bool {
 	if _, seen := visited[pls.ID]; seen {
-		log.Trace(r.ctx, "Skipping already visited smart playlist", "playlist", pls.Name, "id", pls.ID)
+		log.Trace(ctx, "Skipping already visited smart playlist", "playlist", pls.Name, "id", pls.ID)
 		return false
 	}
 	visited[pls.ID] = struct{}{}
 
-	usr := loggedUser(r.ctx)
-	if !r.shouldRefreshSmartPlaylist(pls, usr) {
+	usr := loggedUser(ctx)
+	if !r.shouldRefreshSmartPlaylist(ctx, pls, usr) {
 		return false
 	}
 
-	log.Debug(r.ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
+	log.Debug(ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
 	start := time.Now()
 
 	del := Delete("playlist_tracks").Where(Eq{"playlist_id": pls.ID})
-	if _, err := r.executeSQL(del); err != nil {
-		log.Error(r.ctx, "Error deleting old smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
+	if _, err := r.executeSQL(ctx, del); err != nil {
+		log.Error(ctx, "Error deleting old smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
 	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(), withSmartPlaylistOwner(*usr))
 
-	if !r.refreshChildPlaylists(pls, rulesSQL, visited) {
+	if !r.refreshChildPlaylists(ctx, pls, rulesSQL, visited) {
 		return false
 	}
 
-	if err := r.resolvePercentageLimit(pls, &rulesSQL, usr.ID); err != nil {
+	if err := r.resolvePercentageLimit(ctx, pls, &rulesSQL, usr.ID); err != nil {
 		return false
 	}
 
-	sq := r.buildSmartPlaylistQuery(pls, rulesSQL, usr.ID)
+	sq := r.buildSmartPlaylistQuery(ctx, pls, rulesSQL, usr.ID)
 	sq, err := r.addCriteria(sq, rulesSQL)
 	if err != nil {
-		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
+		log.Error(ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
-	if _, err = r.executeSQL(insSql); err != nil {
-		log.Error(r.ctx, "Error refreshing smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
+	if _, err = r.executeSQL(ctx, insSql); err != nil {
+		log.Error(ctx, "Error refreshing smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
-	if err = r.refreshCounters(pls); err != nil {
-		log.Error(r.ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
+	if err = r.refreshCounters(ctx, pls); err != nil {
+		log.Error(ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
 	// Reuse the stamp refreshCounters just wrote, so evaluated_at and updated_at agree
 	now := pls.UpdatedAt
 	updSql := Update(r.tableName).Set("evaluated_at", now).Where(Eq{"id": pls.ID})
-	if _, err = r.executeSQL(updSql); err != nil {
-		log.Error(r.ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
+	if _, err = r.executeSQL(ctx, updSql); err != nil {
+		log.Error(ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 	pls.EvaluatedAt = &now
 
-	log.Debug(r.ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
+	log.Debug(ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
 	return true
 }
 
 // shouldRefreshSmartPlaylist determines if a smart playlist needs to be refreshed based on its type, last evaluated
 // time, and ownership.
-func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr *model.User) bool {
+func (r *playlistRepository) shouldRefreshSmartPlaylist(ctx context.Context, pls *model.Playlist, usr *model.User) bool {
 	if !pls.IsSmartPlaylist() {
 		return false
 	}
@@ -95,7 +96,7 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 		return false
 	}
 	if pls.OwnerID != usr.ID {
-		log.Trace(r.ctx, "Not refreshing smart playlist from other user", "playlist", pls.Name, "id", pls.ID)
+		log.Trace(ctx, "Not refreshing smart playlist from other user", "playlist", pls.Name, "id", pls.ID)
 		return false
 	}
 	return true
@@ -103,7 +104,7 @@ func (r *playlistRepository) shouldRefreshSmartPlaylist(pls *model.Playlist, usr
 
 // refreshChildPlaylists handles refreshing any child playlists that are referenced in the smart playlist criteria.
 // Returns false if child playlists could not be loaded (DB error), signaling the parent refresh should abort.
-func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL smartPlaylistCriteria, visited map[string]struct{}) bool {
+func (r *playlistRepository) refreshChildPlaylists(ctx context.Context, pls *model.Playlist, rulesSQL smartPlaylistCriteria, visited map[string]struct{}) bool {
 	childPlaylistIds := rulesSQL.ChildPlaylistIds()
 	childPlaylistPaths := rulesSQL.ChildPlaylistPaths()
 	if len(childPlaylistIds) == 0 && len(childPlaylistPaths) == 0 {
@@ -119,9 +120,9 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 		conditions = append(conditions, Eq{"playlist.path": lookupPaths})
 	}
 
-	childPlaylists, err := r.GetAll(model.QueryOptions{Filters: conditions})
+	childPlaylists, err := r.GetAll(ctx, model.QueryOptions{Filters: conditions})
 	if err != nil {
-		log.Error(r.ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, "childPaths", childPlaylistPaths, err)
+		log.Error(ctx, "Error loading child playlists for smart playlist refresh", "playlist", pls.Name, "id", pls.ID, "childIds", childPlaylistIds, "childPaths", childPlaylistPaths, err)
 		return false
 	}
 
@@ -131,58 +132,58 @@ func (r *playlistRepository) refreshChildPlaylists(pls *model.Playlist, rulesSQL
 		if childPlaylists[i].Path != "" {
 			found[norm.NFC.String(childPlaylists[i].Path)] = struct{}{}
 		}
-		r.refreshSmartPlaylistTree(&childPlaylists[i], visited)
+		r.refreshSmartPlaylistTree(ctx, &childPlaylists[i], visited)
 	}
 	for _, id := range childPlaylistIds {
 		if _, ok := found[id]; !ok {
-			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "childId", id, "ownerId", pls.OwnerID)
+			log.Warn(ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "childId", id, "ownerId", pls.OwnerID)
 		}
 	}
 
 	for _, path := range childPlaylistPaths {
 		if _, ok := found[norm.NFC.String(path)]; !ok {
-			log.Warn(r.ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "path", path, "ownerId", pls.OwnerID)
+			log.Warn(ctx, "Referenced playlist is not accessible to smart playlist owner", "playlist", pls.Name, "id", pls.ID, "path", path, "ownerId", pls.OwnerID)
 		}
 	}
 	return true
 }
 
 // resolvePercentageLimit calculates the actual limit for a smart playlist criteria that uses a percentage-based limit.
-func (r *playlistRepository) resolvePercentageLimit(pls *model.Playlist, rulesSQL *smartPlaylistCriteria, userID string) error {
+func (r *playlistRepository) resolvePercentageLimit(ctx context.Context, pls *model.Playlist, rulesSQL *smartPlaylistCriteria, userID string) error {
 	if !rulesSQL.IsPercentageLimit() {
 		return nil
 	}
 
 	countSq := Select("count(*) as count").From("media_file")
 	countSq = rulesSQL.applyExpressionJoins(countSq, userID)
-	countSq = r.applyLibraryFilter(countSq, "media_file")
+	countSq = r.applyLibraryFilter(ctx, countSq, "media_file")
 
 	cond, err := rulesSQL.where()
 	if err != nil {
-		log.Error(r.ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
+		log.Error(ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
 		return err
 	}
 	countSq = countSq.Where(cond)
 
 	var res struct{ Count int64 }
-	if err = r.queryOne(countSq, &res); err != nil {
-		log.Error(r.ctx, "Error counting matching tracks for percentage limit", "playlist", pls.Name, "id", pls.ID, err)
+	if err = r.queryOne(ctx, countSq, &res); err != nil {
+		log.Error(ctx, "Error counting matching tracks for percentage limit", "playlist", pls.Name, "id", pls.ID, err)
 		return err
 	}
 
 	rulesSQL.ResolveLimit(res.Count)
-	log.Debug(r.ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rulesSQL.LimitPercent, "totalMatching", res.Count, "resolvedLimit", rulesSQL.Limit)
+	log.Debug(ctx, "Resolved percentage limit", "playlist", pls.Name, "percent", rulesSQL.LimitPercent, "totalMatching", res.Count, "resolvedLimit", rulesSQL.Limit)
 	return nil
 }
 
 // buildSmartPlaylistQuery constructs the SQL query to select media files matching the smart playlist criteria,
 // including the joins its fields require and library filtering.
-func (r *playlistRepository) buildSmartPlaylistQuery(pls *model.Playlist, rulesSQL smartPlaylistCriteria, userID string) SelectBuilder {
+func (r *playlistRepository) buildSmartPlaylistQuery(ctx context.Context, pls *model.Playlist, rulesSQL smartPlaylistCriteria, userID string) SelectBuilder {
 	orderBy := rulesSQL.orderBy()
 	sq := Select("row_number() over (order by "+orderBy+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
 		From("media_file")
 	sq = rulesSQL.applyRequiredJoins(sq, userID)
-	sq = r.applyLibraryFilter(sq, "media_file")
+	sq = r.applyLibraryFilter(ctx, sq, "media_file")
 	return sq
 }
 

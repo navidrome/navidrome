@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -270,7 +271,7 @@ func (s *ftsSearch) ToSql() (string, []any, error) {
 // execute runs a two-phase FTS5 search (see executeTwoPhase): Phase 1 here contributes the
 // FTS MATCH join and BM25 rank ordering. Complex ORDER BY (function calls, aggregations) are
 // dropped from Phase 1.
-func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
+func (s *ftsSearch) execute(ctx context.Context, r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
 	qualifiedOrderBys := []string{s.rankExpr}
 	for _, ob := range cfg.OrderBy {
 		if qualified := qualifyOrderBy(s.tableName, ob); qualified != "" {
@@ -282,7 +283,7 @@ func (s *ftsSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg sea
 		From(s.tableName).
 		Join(s.ftsTable+" ON "+s.ftsTable+".rowid = "+s.tableName+".rowid AND "+s.ftsTable+" MATCH ?", s.matchExpr).
 		OrderBy(qualifiedOrderBys...)
-	return r.executeTwoPhase(sq, dest, rowidCore, cfg, options)
+	return r.executeTwoPhase(ctx, sq, dest, rowidCore, cfg, options)
 }
 
 // qualifyOrderBy prepends tableName to a simple column name. Returns empty string for

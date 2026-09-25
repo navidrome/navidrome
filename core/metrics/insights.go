@@ -47,11 +47,11 @@ type insightsCollector struct {
 
 func GetInstance(ds model.DataStore) Insights {
 	return singleton.GetInstance(func() *insightsCollector {
-		id, err := ds.Property(context.TODO()).Get(consts.InsightsIDKey)
+		id, err := ds.Property().Get(context.TODO(), consts.InsightsIDKey)
 		if err != nil {
 			log.Trace("Could not get Insights ID from DB. Creating one", err)
 			id = uuid.NewString()
-			err = ds.Property(context.TODO()).Put(consts.InsightsIDKey, id)
+			err = ds.Property().Put(context.TODO(), consts.InsightsIDKey, id)
 			if err != nil {
 				log.Trace("Could not save Insights ID to DB", err)
 			}
@@ -87,7 +87,7 @@ func (c *insightsCollector) LastRun(context.Context) (timestamp time.Time, succe
 }
 
 func (c *insightsCollector) sendInsights(ctx context.Context) {
-	count, err := c.ds.User(ctx).CountAll(model.QueryOptions{})
+	count, err := c.ds.User().CountAll(ctx, model.QueryOptions{})
 	if err != nil {
 		log.Trace(ctx, "Could not check user count", err)
 		return
@@ -245,41 +245,41 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 	// Library info
 	var err error
-	data.Library.Tracks, err = c.ds.MediaFile(ctx).CountAll()
+	data.Library.Tracks, err = c.ds.MediaFile().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading tracks count", err)
 	}
-	data.Library.Albums, err = c.ds.Album(ctx).CountAll()
+	data.Library.Albums, err = c.ds.Album().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading albums count", err)
 	}
-	data.Library.Artists, err = c.ds.Artist(ctx).CountAll()
+	data.Library.Artists, err = c.ds.Artist().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading artists count", err)
 	}
-	data.Library.Playlists, err = c.ds.Playlist(ctx).CountAll()
+	data.Library.Playlists, err = c.ds.Playlist().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading playlists count", err)
 	}
-	data.Library.Shares, err = c.ds.Share(ctx).CountAll()
+	data.Library.Shares, err = c.ds.Share().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading shares count", err)
 	}
-	data.Library.Radios, err = c.ds.Radio(ctx).Count()
+	data.Library.Radios, err = c.ds.Radio().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading radios count", err)
 	}
-	data.Library.Libraries, err = c.ds.Library(ctx).CountAll()
+	data.Library.Libraries, err = c.ds.Library().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading libraries count", err)
 	}
-	data.Library.ActiveUsers, err = c.ds.User(ctx).CountAll(model.QueryOptions{
+	data.Library.ActiveUsers, err = c.ds.User().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
 	if err != nil {
 		log.Trace(ctx, "Error reading active users count", err)
 	}
-	data.Library.FileSuffixes, err = c.ds.MediaFile(ctx).CountBySuffix()
+	data.Library.FileSuffixes, err = c.ds.MediaFile().CountBySuffix(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading file suffixes count", err)
 	}
@@ -297,7 +297,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 	// Collect active players if permitted
 	if conf.Server.DevEnablePlayerInsights {
-		data.Library.ActivePlayers, err = c.ds.Player(ctx).CountByClient(model.QueryOptions{
+		data.Library.ActivePlayers, err = c.ds.Player().CountByClient(ctx, model.QueryOptions{
 			Filters: squirrel.Gt{"last_seen": time.Now().Add(-7 * 24 * time.Hour)},
 		})
 		if err != nil {
@@ -324,7 +324,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 // hasSmartPlaylists checks if there are any smart playlists (playlists with rules)
 func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error) {
-	count, err := c.ds.Playlist(ctx).CountAll(model.QueryOptions{
+	count, err := c.ds.Playlist().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.And{squirrel.NotEq{"rules": ""}, squirrel.NotEq{"rules": nil}},
 	})
 	return count > 0, err
