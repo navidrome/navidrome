@@ -136,6 +136,15 @@ var _ = Describe("Archiver", func() {
 			Expect(names).To(Equal([]string{"Greatest Hits [2001]/01 - Intro.mp3", "Greatest Hits [2005]/01 - Intro.mp3"}))
 		})
 
+		It("prefers the release year, so reissues of the same original are told apart", func() {
+			names := zipArtistEntries(model.MediaFiles{
+				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 1996, ReleaseYear: 2001},
+				{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 1996, ReleaseYear: 2011},
+				{Path: "c/01.mp3", Suffix: "mp3", AlbumID: "3", Album: "Greatest Hits", Year: 1996},
+			})
+			Expect(names).To(Equal([]string{"Greatest Hits [2001]/01.mp3", "Greatest Hits [2011]/01.mp3", "Greatest Hits [1996]/01.mp3"}))
+		})
+
 		It("names the folder after the full album name", func() {
 			names := zipArtistEntries(model.MediaFiles{
 				{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001,

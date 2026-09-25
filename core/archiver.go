@@ -2,6 +2,7 @@ package core
 
 import (
 	"archive/zip"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -101,10 +102,11 @@ func createZipWriter(out io.Writer, format string, bitrate int) *zip.Writer {
 var albumDisambiguators = []func(model.MediaFile) string{
 	func(mf model.MediaFile) string { return mf.Tags.First(model.TagAlbumVersion) },
 	func(mf model.MediaFile) string {
-		if mf.Year == 0 {
-			return ""
+		// Reissues share Year (often the original's) but not ReleaseYear.
+		if y := cmp.Or(mf.ReleaseYear, mf.Year); y != 0 {
+			return strconv.Itoa(y)
 		}
-		return strconv.Itoa(mf.Year)
+		return ""
 	},
 	func(mf model.MediaFile) string { return mf.MbzAlbumType },
 	func(mf model.MediaFile) string { return mf.Tags.First(model.TagRecordLabel) },
