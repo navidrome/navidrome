@@ -35,6 +35,14 @@ func (r *pluginRepository) ClearErrors() error {
 	if !r.isPermitted() {
 		return rest.ErrPermissionDenied
 	}
+	// An UPDATE takes the write lock even when nothing matches, so only run it when there is an error to clear
+	var hasErrors bool
+	if err := r.db.NewQuery("SELECT EXISTS (SELECT 1 FROM plugin WHERE last_error != '')").Row(&hasErrors); err != nil {
+		return err
+	}
+	if !hasErrors {
+		return nil
+	}
 	_, err := r.db.NewQuery("UPDATE plugin SET last_error = '' WHERE last_error != ''").Execute()
 	return err
 }
