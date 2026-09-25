@@ -23,37 +23,37 @@ var _ = Describe("SQLStore", func() {
 		Context("When block returns nil", func() {
 			It("commits changes to the DB", func() {
 				err := ds.WithTx(func(tx model.DataStore) error {
-					pl := tx.Player(ctx)
-					err := pl.Put(&model.Player{ID: "666", UserId: "userid"})
+					pl := tx.Player()
+					err := pl.Put(ctx, &model.Player{ID: "666", UserId: "userid"})
 					Expect(err).ToNot(HaveOccurred())
 
-					pr := tx.Property(ctx)
-					err = pr.Put("777", "value")
+					pr := tx.Property()
+					err = pr.Put(ctx, "777", "value")
 					Expect(err).ToNot(HaveOccurred())
 					return nil
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(ds.Player(ctx).Get("666")).To(Equal(&model.Player{ID: "666", UserId: "userid", Username: "userid"}))
-				Expect(ds.Property(ctx).Get("777")).To(Equal("value"))
+				Expect(ds.Player().Get(ctx, "666")).To(Equal(&model.Player{ID: "666", UserId: "userid", Username: "userid"}))
+				Expect(ds.Property().Get(ctx, "777")).To(Equal("value"))
 			})
 		})
 		Context("When block returns an error", func() {
 			It("rollbacks changes to the DB", func() {
 				err := ds.WithTx(func(tx model.DataStore) error {
-					pr := tx.Property(ctx)
-					err := pr.Put("999", "value")
+					pr := tx.Property()
+					err := pr.Put(ctx, "999", "value")
 					Expect(err).ToNot(HaveOccurred())
 
 					// Will fail as it is missing the UserName
-					pl := tx.Player(ctx)
-					err = pl.Put(&model.Player{ID: "888"})
+					pl := tx.Player()
+					err = pl.Put(ctx, &model.Player{ID: "888"})
 					Expect(err).To(HaveOccurred())
 					return err
 				})
 				Expect(err).To(HaveOccurred())
-				_, err = ds.Property(ctx).Get("999")
+				_, err = ds.Property().Get(ctx, "999")
 				Expect(err).To(MatchError(model.ErrNotFound))
-				_, err = ds.Player(ctx).Get("888")
+				_, err = ds.Player().Get(ctx, "888")
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
@@ -70,7 +70,7 @@ var _ = Describe("SQLStore", func() {
 			var attempts []bool
 			err := ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
 				attempts = append(attempts, hasBusyRetry(ctx))
-				Expect(tx.Property(ctx).Put("retry-key", "attempt")).To(Succeed())
+				Expect(tx.Property().Put(ctx, "retry-key", "attempt")).To(Succeed())
 				if len(attempts) < 3 {
 					return busy
 				}
@@ -78,7 +78,7 @@ var _ = Describe("SQLStore", func() {
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(attempts).To(Equal([]bool{true, true, true}))
-			Expect(ds.Property(ctx).Get("retry-key")).To(Equal("attempt"))
+			Expect(ds.Property().Get(ctx, "retry-key")).To(Equal("attempt"))
 		})
 
 		It("gives up after the last retry, which is not marked as retried", func() {
@@ -116,15 +116,15 @@ var _ = Describe("SQLStore", func() {
 		It("joins the enclosing transaction instead of opening another", func() {
 			rollback := errors.New("rollback")
 			err := ds.WithTx(func(tx model.DataStore) error {
-				Expect(tx.Property(ctx).Put("outer-key", "v")).To(Succeed())
+				Expect(tx.Property().Put(ctx, "outer-key", "v")).To(Succeed())
 				Expect(tx.WithTxRetry(ctx, func(ctx context.Context, inner model.DataStore) error {
-					Expect(inner.Property(ctx).Get("outer-key")).To(Equal("v"))
-					return inner.Property(ctx).Put("inner-key", "v")
+					Expect(inner.Property().Get(ctx, "outer-key")).To(Equal("v"))
+					return inner.Property().Put(ctx, "inner-key", "v")
 				})).To(Succeed())
 				return rollback
 			})
 			Expect(err).To(MatchError(rollback))
-			_, err = ds.Property(ctx).Get("inner-key")
+			_, err = ds.Property().Get(ctx, "inner-key")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})

@@ -19,9 +19,8 @@ type playerRepository struct {
 	sqlRepository
 }
 
-func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerRepository {
+func NewPlayerRepository(db dbx.Builder) model.PlayerRepository {
 	r := &playerRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.registerModel(&model.Player{}, map[string]filterFunc{
 		"name": containsFilter("player.name"),
@@ -32,43 +31,43 @@ func NewPlayerRepository(ctx context.Context, db dbx.Builder) model.PlayerReposi
 	return r
 }
 
-func (r *playerRepository) Put(p *model.Player) error {
-	_, err := r.put(p.ID, p)
+func (r *playerRepository) Put(ctx context.Context, p *model.Player) error {
+	_, err := r.put(ctx, p.ID, p)
 	return err
 }
 
-func (r *playerRepository) selectPlayer(options ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(options...).
+func (r *playerRepository) selectPlayer(ctx context.Context, options ...model.QueryOptions) SelectBuilder {
+	return r.newSelect(ctx, options...).
 		Columns("player.*", "player.api_key_hash is not null as has_api_key").
 		Join("user ON player.user_id = user.id").
 		Columns("user.user_name username")
 }
 
-func (r *playerRepository) Get(id string) (*model.Player, error) {
-	sel := r.selectPlayer().Where(Eq{"player.id": id})
+func (r *playerRepository) Get(ctx context.Context, id string) (*model.Player, error) {
+	sel := r.selectPlayer(ctx).Where(Eq{"player.id": id})
 	var res model.Player
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-func (r *playerRepository) FindMatch(userId, client, userAgent string) (*model.Player, error) {
-	sel := r.selectPlayer().Where(And{
+func (r *playerRepository) FindMatch(ctx context.Context, userId, client, userAgent string) (*model.Player, error) {
+	sel := r.selectPlayer(ctx).Where(And{
 		Eq{"client": client},
 		Eq{"user_agent": userAgent},
 		Eq{"user_id": userId},
 	})
 	var res model.Player
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-func (r *playerRepository) newRestSelect(options ...model.QueryOptions) SelectBuilder {
-	s := r.selectPlayer(options...)
-	return s.Where(r.addRestriction())
+func (r *playerRepository) newRestSelect(ctx context.Context, options ...model.QueryOptions) SelectBuilder {
+	s := r.selectPlayer(ctx, options...)
+	return s.Where(r.addRestriction(ctx))
 }
 
-func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[string]int64, error) {
-	sel := r.newSelect(options...).
+func (r *playerRepository) CountByClient(ctx context.Context, options ...model.QueryOptions) (map[string]int64, error) {
+	sel := r.newSelect(ctx, options...).
 		Columns(
 			"case when client = 'NavidromeUI' then name else client end as player",
 			"count(*) as count",
@@ -77,7 +76,7 @@ func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[str
 		Player string
 		Count  int64
 	}
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -88,34 +87,26 @@ func (r *playerRepository) CountByClient(options ...model.QueryOptions) (map[str
 	return counts, nil
 }
 
-func (r *playerRepository) CountAll(options ...model.QueryOptions) (int64, error) {
-	return r.count(r.newRestSelect(), options...)
+func (r *playerRepository) CountAll(ctx context.Context, options ...model.QueryOptions) (int64, error) {
+	return r.count(ctx, r.newRestSelect(ctx), options...)
 }
 
-func (r *playerRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+func (r *playerRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
-func (r *playerRepository) Read(id string) (any, error) {
-	sel := r.newRestSelect().Where(Eq{"player.id": id})
+func (r *playerRepository) Read(ctx context.Context, id string) (*model.Player, error) {
+	sel := r.newRestSelect(ctx).Where(Eq{"player.id": id})
 	var res model.Player
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-func (r *playerRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	sel := r.newRestSelect(r.parseRestOptions(r.ctx, options...))
+func (r *playerRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Player, error) {
+	sel := r.newRestSelect(ctx, r.parseRestOptions(ctx, options...))
 	res := model.Players{}
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	return res, err
-}
-
-func (r *playerRepository) EntityName() string {
-	return "player"
-}
-
-func (r *playerRepository) NewInstance() any {
-	return &model.Player{}
 }
 
 var apiKeyFormat = regexp.MustCompile(`^` + consts.APIKeyPrefix + `[0-9A-Za-z]{22}$`)
@@ -131,9 +122,8 @@ func validateAPIKey(key string) error {
 	return nil
 }
 
-func (r *playerRepository) Save(entity any) (string, error) {
-	t := entity.(*model.Player)
-	u := loggedUser(r.ctx)
+func (r *playerRepository) Save(ctx context.Context, t *model.Player) (string, error) {
+	u := loggedUser(ctx)
 	if t.UserId == "" && u.ID != invalidUserId {
 		t.UserId = u.ID
 	}
@@ -154,7 +144,7 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	// Save only creates, so the key hash goes in the same INSERT and the unique index settles races
 	values["id"] = id.NewRandom()
 	values["api_key_hash"] = hashAPIKey(*t.APIKey)
-	_, err = r.executeSQL(Insert(r.tableName).SetMap(values))
+	_, err = r.executeSQL(ctx, Insert(r.tableName).SetMap(values))
 	if isUniqueViolation(err) {
 		return "", apiKeyValidationError("ra.validation.unique")
 	}
@@ -164,18 +154,18 @@ func (r *playerRepository) Save(entity any) (string, error) {
 	return values["id"].(string), nil
 }
 
-func (r *playerRepository) Update(id string, entity any, cols ...string) error {
-	t := entity.(*model.Player)
+func (r *playerRepository) Update(ctx context.Context, id string, entity model.Player, cols ...string) error {
+	t := &entity
 	t.ID = id
 	if t.APIKey == nil {
-		return r.updateOwned(id, t, cols...)
+		return r.updateOwned(ctx, id, t, cols...)
 	}
 	// The key and the other columns are two writes; commit both or neither
 	return r.inTx(func(tx *playerRepository) error {
-		if err := tx.SetAPIKey(id, *t.APIKey); err != nil {
+		if err := tx.SetAPIKey(ctx, id, *t.APIKey); err != nil {
 			return err
 		}
-		return tx.updateOwned(id, t, cols...)
+		return tx.updateOwned(ctx, id, t, cols...)
 	})
 }
 
@@ -185,12 +175,12 @@ func (r *playerRepository) inTx(block func(tx *playerRepository) error) error {
 		return block(r) // already inside a transaction
 	}
 	return conn.Transactional(func(tx *dbx.Tx) error {
-		return block(NewPlayerRepository(r.ctx, tx).(*playerRepository))
+		return block(NewPlayerRepository(tx).(*playerRepository))
 	})
 }
 
-func (r *playerRepository) Delete(id string) error {
-	return r.deleteOwned(id)
+func (r *playerRepository) Delete(ctx context.Context, ids ...string) error {
+	return r.deleteOwnedAll(ctx, ids...)
 }
 
 // Keys are long random strings, not user-chosen passwords, so a fast unsalted hash is enough and keeps lookups indexed.
@@ -199,10 +189,10 @@ func hashAPIKey(key string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func (r *playerRepository) FindByAPIKey(key string) (*model.Player, error) {
-	sel := r.selectPlayer().Where(Eq{"player.api_key_hash": hashAPIKey(key)})
+func (r *playerRepository) FindByAPIKey(ctx context.Context, key string) (*model.Player, error) {
+	sel := r.selectPlayer(ctx).Where(Eq{"player.api_key_hash": hashAPIKey(key)})
 	var res model.Player
-	if err := r.queryOne(sel, &res); err != nil {
+	if err := r.queryOne(ctx, sel, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -210,14 +200,14 @@ func (r *playerRepository) FindByAPIKey(key string) (*model.Player, error) {
 
 // SetAPIKey stores the key's hash, or revokes it when key is empty. Setting is owner-only, even for
 // admins, so nobody can mint a login for someone else.
-func (r *playerRepository) SetAPIKey(playerID, key string) error {
+func (r *playerRepository) SetAPIKey(ctx context.Context, playerID, key string) error {
 	if key == "" {
-		return r.updateOwnedRow(playerID, ownerOrAdmin, map[string]any{"api_key_hash": nil})
+		return r.updateOwnedRow(ctx, playerID, ownerOrAdmin, map[string]any{"api_key_hash": nil})
 	}
 	if err := validateAPIKey(key); err != nil {
 		return err
 	}
-	err := r.updateOwnedRow(playerID, ownerOnly, map[string]any{"api_key_hash": hashAPIKey(key)})
+	err := r.updateOwnedRow(ctx, playerID, ownerOnly, map[string]any{"api_key_hash": hashAPIKey(key)})
 	if isUniqueViolation(err) {
 		return apiKeyValidationError("ra.validation.unique")
 	}
@@ -229,5 +219,5 @@ func isUniqueViolation(err error) bool {
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)
-var _ rest.Repository = (*playerRepository)(nil)
-var _ rest.Persistable = (*playerRepository)(nil)
+var _ rest.Repository[model.Player] = (*playerRepository)(nil)
+var _ rest.Persistable[model.Player] = (*playerRepository)(nil)

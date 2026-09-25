@@ -27,7 +27,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	format, _ := p.String("format")
 	timeOffset := p.IntOr("timeOffset", 0)
 
-	mf, err := api.ds.MediaFile(ctx).Get(id)
+	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}

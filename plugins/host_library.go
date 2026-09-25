@@ -37,7 +37,7 @@ func (s *libraryServiceImpl) GetLibrary(ctx context.Context, id int32) (*host.Li
 		return nil, fmt.Errorf("library not accessible: library ID %d is not in the allowed list", id)
 	}
 
-	lib, err := s.ds.Library(ctx).Get(int(id))
+	lib, err := s.ds.Library().Get(ctx, int(id))
 	if err != nil {
 		return nil, fmt.Errorf("library not found: %w", err)
 	}
@@ -55,7 +55,7 @@ func (s *libraryServiceImpl) isLibraryAccessible(id int) bool {
 }
 
 func (s *libraryServiceImpl) GetAllLibraries(ctx context.Context) ([]host.Library, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get libraries: %w", err)
 	}

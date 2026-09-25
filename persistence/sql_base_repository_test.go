@@ -13,16 +13,17 @@ import (
 
 var _ = Describe("sqlRepository", func() {
 	var r sqlRepository
+	var ctx context.Context
 	BeforeEach(func() {
-		r.ctx = request.WithUser(context.Background(), model.User{ID: "user-id"})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "user-id"})
 		r.tableName = "table"
 	})
 
 	Describe("ownedRow", func() {
 		DescribeTable("matches the row, limited to what the logged-in user may write",
 			func(user model.User, access writeAccess, expectedSQL string, expectedArgs ...any) {
-				r.ctx = request.WithUser(context.Background(), user)
-				sql, args, err := r.ownedRow("row-1", access).ToSql()
+				userCtx := request.WithUser(GinkgoT().Context(), user)
+				sql, args, err := r.ownedRow(userCtx, "row-1", access).ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal(expectedSQL))
 				Expect(args).To(Equal(expectedArgs))
@@ -108,19 +109,19 @@ var _ = Describe("sqlRepository", func() {
 
 		When("sanitizing sort", func() {
 			It("returns empty if the sort key is not found in the model nor in the mappings", func() {
-				sort, _ := r.sanitizeSort("unknown", "")
+				sort, _ := r.sanitizeSort(ctx, "unknown", "")
 				Expect(sort).To(BeEmpty())
 			})
 
 			// Validation only: buildSortOrder resolves the mapping, so mapping here too would hand
 			// sortMapping its own output and re-map values whose parts are themselves keys.
 			It("accepts a known sort key without resolving it", func() {
-				sort, _ := r.sanitizeSort("sort1", "")
+				sort, _ := r.sanitizeSort(ctx, "sort1", "")
 				Expect(sort).To(Equal("sort1"))
 			})
 
 			It("is case insensitive", func() {
-				sort, _ := r.sanitizeSort("Sort1", "")
+				sort, _ := r.sanitizeSort(ctx, "Sort1", "")
 				Expect(sort).To(Equal("sort1"))
 			})
 
@@ -132,38 +133,38 @@ var _ = Describe("sqlRepository", func() {
 			// must survive the round trip through sanitizeSort and buildSortOrder unduplicated.
 			It("does not re-map a value whose parts are also keys", func() {
 				r.sortMappings = map[string]string{"rating": "rating", "rated_at": "rating, rated_at"}
-				sort, _ := r.sanitizeSort("rated_at", "")
+				sort, _ := r.sanitizeSort(ctx, "rated_at", "")
 				Expect(r.buildSortOrder(sort, "asc")).To(Equal("rating asc, rated_at asc"))
 			})
 
 			It("returns the field if it is a valid field", func() {
-				sort, _ := r.sanitizeSort("field", "")
+				sort, _ := r.sanitizeSort(ctx, "field", "")
 				Expect(sort).To(Equal("field"))
 			})
 
 			It("is case insensitive for fields", func() {
-				sort, _ := r.sanitizeSort("FIELD", "")
+				sort, _ := r.sanitizeSort(ctx, "FIELD", "")
 				Expect(sort).To(Equal("field"))
 			})
 		})
 		When("sanitizing order", func() {
 			It("returns 'asc' if order is empty", func() {
-				_, order := r.sanitizeSort("", "")
+				_, order := r.sanitizeSort(ctx, "", "")
 				Expect(order).To(Equal(""))
 			})
 
 			It("returns 'asc' if order is 'asc'", func() {
-				_, order := r.sanitizeSort("", "ASC")
+				_, order := r.sanitizeSort(ctx, "", "ASC")
 				Expect(order).To(Equal("asc"))
 			})
 
 			It("returns 'desc' if order is 'desc'", func() {
-				_, order := r.sanitizeSort("", "desc")
+				_, order := r.sanitizeSort(ctx, "", "desc")
 				Expect(order).To(Equal("desc"))
 			})
 
 			It("returns 'asc' if order is unknown", func() {
-				_, order := r.sanitizeSort("", "something")
+				_, order := r.sanitizeSort(ctx, "", "something")
 				Expect(order).To(Equal("asc"))
 			})
 		})
@@ -268,31 +269,31 @@ var _ = Describe("sqlRepository", func() {
 	Describe("resetSeededRandom", func() {
 		var id string
 		BeforeEach(func() {
-			id = r.seedKey()
+			id = r.seedKey(ctx)
 			hasher.SetSeed(id, "")
 		})
 		It("does not reset seed if sort is not random", func() {
 			var options []model.QueryOptions
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(BeEmpty())
 		})
 		It("resets seed if sort is random", func() {
 			options := []model.QueryOptions{{Sort: "random"}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).NotTo(BeEmpty())
 		})
 		It("resets seed if sort is random and seed is provided", func() {
 			options := []model.QueryOptions{{Sort: "random", Seed: "seed"}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 		})
 		It("keeps seed when paginating", func() {
 			options := []model.QueryOptions{{Sort: "random", Seed: "seed", Offset: 0}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 
 			options = []model.QueryOptions{{Sort: "random", Offset: 1}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 		})
 	})
@@ -318,11 +319,11 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Admin User", func() {
 			BeforeEach(func() {
-				r.ctx = request.WithUser(context.Background(), model.User{ID: "admin", IsAdmin: true})
+				ctx = request.WithUser(ctx, model.User{ID: "admin", IsAdmin: true})
 			})
 
 			It("should not apply library filter for admin users", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
@@ -332,13 +333,13 @@ var _ = Describe("sqlRepository", func() {
 		Context("Regular User with a subset of libraries", func() {
 			BeforeEach(func() {
 				// Strict subset: granted lib 1, DB has libs 1 and 2, so the filter must apply.
-				r.ctx = request.WithUser(context.Background(), model.User{
+				ctx = request.WithUser(ctx, model.User{
 					ID: "user123", IsAdmin: false, Libraries: model.Libraries{{ID: 1}},
 				})
 			})
 
 			It("should apply library filter for regular users", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
@@ -346,7 +347,7 @@ var _ = Describe("sqlRepository", func() {
 			})
 
 			It("should use custom table name when provided", func() {
-				result := r.applyLibraryFilter(sq, "custom_table")
+				result := r.applyLibraryFilter(ctx, sq, "custom_table")
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("custom_table.library_id IN"))
@@ -356,11 +357,11 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Regular User with no libraries", func() {
 			BeforeEach(func() {
-				r.ctx = request.WithUser(context.Background(), model.User{ID: "empty", IsAdmin: false})
+				ctx = request.WithUser(ctx, model.User{ID: "empty", IsAdmin: false})
 			})
 
 			It("should apply the library filter (never skip on empty)", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
@@ -379,20 +380,20 @@ var _ = Describe("sqlRepository", func() {
 				for _, id := range ids {
 					libs = append(libs, model.Library{ID: id})
 				}
-				r.ctx = request.WithUser(context.Background(), model.User{
+				ctx = request.WithUser(ctx, model.User{
 					ID: "alllibs", IsAdmin: false, Libraries: libs,
 				})
 			})
 
 			It("should not apply the library filter (subquery would filter nothing)", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 
 			It("should not apply the filter even with a custom table name", func() {
-				result := r.applyLibraryFilter(sq, "custom_table")
+				result := r.applyLibraryFilter(ctx, sq, "custom_table")
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
@@ -401,18 +402,18 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Headless Process (No User Context)", func() {
 			BeforeEach(func() {
-				r.ctx = context.Background() // No user context
+				ctx = GinkgoT().Context() // No user context
 			})
 
 			It("should not apply library filter for headless processes", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 
 			It("should not apply library filter even with custom table name", func() {
-				result := r.applyLibraryFilter(sq, "custom_table")
+				result := r.applyLibraryFilter(ctx, sq, "custom_table")
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))

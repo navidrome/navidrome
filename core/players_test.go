@@ -182,14 +182,14 @@ func (m *mockPlayerRepository) add(p *model.Player) {
 	m.data[p.ID] = *p
 }
 
-func (m *mockPlayerRepository) Get(id string) (*model.Player, error) {
+func (m *mockPlayerRepository) Get(_ context.Context, id string) (*model.Player, error) {
 	if p, ok := m.data[id]; ok {
 		return &p, nil
 	}
 	return nil, model.ErrNotFound
 }
 
-func (m *mockPlayerRepository) FindMatch(userId, client, userAgent string) (*model.Player, error) {
+func (m *mockPlayerRepository) FindMatch(_ context.Context, userId, client, userAgent string) (*model.Player, error) {
 	for _, p := range m.data {
 		if p.Client == client && p.UserId == userId && p.UserAgent == userAgent {
 			return &p, nil
@@ -198,7 +198,7 @@ func (m *mockPlayerRepository) FindMatch(userId, client, userAgent string) (*mod
 	return nil, model.ErrNotFound
 }
 
-func (m *mockPlayerRepository) Put(p *model.Player) error {
+func (m *mockPlayerRepository) Put(_ context.Context, p *model.Player) error {
 	m.lastSaved = p
 	return nil
 }

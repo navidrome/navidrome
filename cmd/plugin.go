@@ -243,7 +243,7 @@ func runPluginInfo(ctx context.Context, arg string) {
 	}
 	requirePluginsEnabled(ctx)
 	ds, ctx := getAdminContext(ctx)
-	p, err := ds.Plugin(ctx).Get(arg)
+	p, err := ds.Plugin().Get(ctx, arg)
 	if err != nil {
 		log.Fatal(ctx, "Plugin not found", "id", arg, err)
 	}
@@ -264,7 +264,7 @@ func runPluginValidate(ctx context.Context, arg string) {
 	}
 	requirePluginsEnabled(ctx)
 	ds, ctx := getAdminContext(ctx)
-	p, err := ds.Plugin(ctx).Get(arg)
+	p, err := ds.Plugin().Get(ctx, arg)
 	if err != nil {
 		log.Fatal(ctx, "Plugin not found", "id", arg, err)
 	}
@@ -329,7 +329,7 @@ func formatPluginList(list model.Plugins, format string) (string, error) {
 func runPluginList(ctx context.Context) {
 	requirePluginsEnabled(ctx)
 	ds, ctx := getAdminContext(ctx)
-	list, err := ds.Plugin(ctx).GetAll()
+	list, err := ds.Plugin().GetAll(ctx)
 	if err != nil {
 		log.Fatal(ctx, "Failed to list plugins", err)
 	}
@@ -372,7 +372,7 @@ var pluginEditCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		requirePluginsEnabled(cmd.Context())
 		ds, ctx := getAdminContext(cmd.Context())
-		cur, err := ds.Plugin(ctx).Get(args[0])
+		cur, err := ds.Plugin().Get(ctx, args[0])
 		if err != nil {
 			log.Fatal(ctx, "Plugin not found", "id", args[0], err)
 		}

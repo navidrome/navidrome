@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/deluan/rest"
+)
 
 type Plugin struct {
 	ID               string    `structs:"id"                 json:"id"`
@@ -22,11 +27,11 @@ type Plugin struct {
 type Plugins []Plugin
 
 type PluginRepository interface {
-	ResourceRepository
-	ClearErrors() error
-	CountAll(options ...QueryOptions) (int64, error)
-	Delete(id string) error
-	Get(id string) (*Plugin, error)
-	GetAll(options ...QueryOptions) (Plugins, error)
-	Put(p *Plugin) error
+	rest.Repository[Plugin]
+	ClearErrors(ctx context.Context) error
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Delete(ctx context.Context, id string) error
+	Get(ctx context.Context, id string) (*Plugin, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Plugins, error)
+	Put(ctx context.Context, p *Plugin) error
 }

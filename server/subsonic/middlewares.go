@@ -114,7 +114,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 			switch {
 			case username != "":
 				authType := If(isInternalAuth, "internal", "reverse-proxy")
-				usr, err = ds.User(ctx).FindByUsername(username)
+				usr, err = ds.User().FindByUsername(ctx, username)
 				if errors.Is(err, context.Canceled) {
 					log.Debug(ctx, "API: Request canceled when authenticating", "auth", authType, "username", username, "remoteAddr", r.RemoteAddr, err)
 					return
@@ -152,7 +152,7 @@ func authenticate(ds model.DataStore) func(next http.Handler) http.Handler {
 					return
 				}
 
-				usr, err = ds.User(ctx).FindByUsernameWithPassword(username)
+				usr, err = ds.User().FindByUsernameWithPassword(ctx, username)
 				if err == nil {
 					err = validateCredentials(usr, pass, token, salt, jwt)
 					if errors.Is(err, model.ErrInvalidAuth) && pass != "" && jwt == "" {
@@ -207,10 +207,10 @@ func authenticateAPIKey(ctx context.Context, ds model.DataStore, limiter *authLi
 		return nil, nil, newError(responses.ErrorInvalidAPIKey)
 	}
 
-	player, err := ds.Player(ctx).FindByAPIKey(key)
+	player, err := ds.Player().FindByAPIKey(ctx, key)
 	var usr *model.User
 	if err == nil {
-		usr, err = ds.User(ctx).Get(player.UserId)
+		usr, err = ds.User().Get(ctx, player.UserId)
 	}
 	slot.release(errors.Is(err, model.ErrNotFound))
 	switch {
@@ -233,7 +233,7 @@ func playerFromPasswordKey(ctx context.Context, ds model.DataStore, usr *model.U
 	if !strings.HasPrefix(key, consts.APIKeyPrefix) {
 		return nil, model.ErrInvalidAuth
 	}
-	plr, err := ds.Player(ctx).FindByAPIKey(key)
+	plr, err := ds.Player().FindByAPIKey(ctx, key)
 	if errors.Is(err, model.ErrNotFound) || (err == nil && plr.UserId != usr.ID) {
 		return nil, model.ErrInvalidAuth
 	}

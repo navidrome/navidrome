@@ -43,11 +43,13 @@ func newPostRequest(queryParam string, formFields ...string) *http.Request {
 }
 
 var _ = Describe("Middlewares", func() {
+	var ctx context.Context
 	var next *mockHandler
 	var w *httptest.ResponseRecorder
 	var ds model.DataStore
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		next = &mockHandler{}
 		w = httptest.NewRecorder()
 		ds = &tests.MockDataStore{}
@@ -156,8 +158,8 @@ var _ = Describe("Middlewares", func() {
 
 	Describe("Authenticate", func() {
 		BeforeEach(func() {
-			ur := ds.User(context.TODO())
-			_ = ur.Put(&model.User{
+			ur := ds.User()
+			_ = ur.Put(ctx, &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
@@ -325,11 +327,11 @@ var _ = Describe("Middlewares", func() {
 			}
 
 			BeforeEach(func() {
-				usr, err := ds.User(context.TODO()).FindByUsername("admin")
+				usr, err := ds.User().FindByUsername(ctx, "admin")
 				Expect(err).ToNot(HaveOccurred())
-				Expect(ds.Player(context.TODO()).Put(&model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
 				key = "nav_0123456789abcdefghijkl"
-				Expect(ds.Player(context.TODO()).SetAPIKey("player-1", key)).To(Succeed())
+				Expect(ds.Player().SetAPIKey(ctx, "player-1", key)).To(Succeed())
 			})
 
 			It("authenticates the owner and binds the key's player", func() {
@@ -395,7 +397,7 @@ var _ = Describe("Middlewares", func() {
 				})
 
 				It("still accepts a real password that starts with the key prefix", func() {
-					Expect(ds.User(context.TODO()).Put(&model.User{UserName: "prefixed", NewPassword: "nav_secret"})).To(Succeed())
+					Expect(ds.User().Put(ctx, &model.User{UserName: "prefixed", NewPassword: "nav_secret"})).To(Succeed())
 					serve("u=prefixed", "p=nav_secret")
 
 					Expect(next.called).To(BeTrue())
@@ -404,7 +406,7 @@ var _ = Describe("Middlewares", func() {
 				})
 
 				It("rejects another user's key with error 40", func() {
-					Expect(ds.User(context.TODO()).Put(&model.User{UserName: "other", NewPassword: "pw"})).To(Succeed())
+					Expect(ds.User().Put(ctx, &model.User{UserName: "other", NewPassword: "pw"})).To(Succeed())
 					serve("u=other", "p="+key)
 
 					Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
@@ -448,7 +450,7 @@ var _ = Describe("Middlewares", func() {
 
 			It("counts attempts against unknown usernames", func() {
 				failTimes(3, "u=newuser", "p=secret")
-				_ = ds.User(context.TODO()).Put(&model.User{UserName: "newuser", NewPassword: "secret"})
+				_ = ds.User().Put(ctx, &model.User{UserName: "newuser", NewPassword: "secret"})
 
 				serve(newGetRequest("u=newuser", "p=secret"))
 				Expect(next.called).To(BeFalse())
@@ -469,7 +471,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not count server errors", func() {
-				userRepo := ds.User(context.TODO()).(*tests.MockedUserRepo)
+				userRepo := ds.User().(*tests.MockedUserRepo)
 				userRepo.Error = errors.New("db down")
 				failTimes(5, "u=admin", "p=wordpass")
 				userRepo.Error = nil
@@ -479,11 +481,11 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not count server errors when a key is sent as the password", func() {
-				usr, _ := ds.User(context.TODO()).FindByUsername("admin")
-				playerRepo := ds.Player(context.TODO()).(*tests.MockPlayerRepo)
-				Expect(playerRepo.Put(&model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				usr, _ := ds.User().FindByUsername(ctx, "admin")
+				playerRepo := ds.Player().(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
 				key := "nav_0123456789abcdefghijkl"
-				Expect(playerRepo.SetAPIKey("player-1", key)).To(Succeed())
+				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
 
 				playerRepo.Error = errors.New("db down")
 				failTimes(5, "u=admin", "p="+key)
@@ -494,7 +496,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not block other usernames from the same IP", func() {
-				_ = ds.User(context.TODO()).Put(&model.User{UserName: "other", NewPassword: "otherpass"})
+				_ = ds.User().Put(ctx, &model.User{UserName: "other", NewPassword: "otherpass"})
 				failTimes(3, "u=admin", "p=WRONG")
 
 				serve(newGetRequest("u=other", "p=otherpass"))
@@ -523,11 +525,11 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("throttles a repeated bad key without locking out valid keys from the same IP", func() {
-				usr, _ := ds.User(context.TODO()).FindByUsername("admin")
-				playerRepo := ds.Player(context.TODO()).(*tests.MockPlayerRepo)
-				Expect(playerRepo.Put(&model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				usr, _ := ds.User().FindByUsername(ctx, "admin")
+				playerRepo := ds.Player().(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
 				key := "nav_0123456789abcdefghijkl"
-				Expect(playerRepo.SetAPIKey("player-1", key)).To(Succeed())
+				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
 
 				for range 3 {
 					Expect(serve(newGetRequest("apiKey=nav_bad")).Body.String()).To(ContainSubstring(`code="44"`))
@@ -560,7 +562,7 @@ var _ = Describe("Middlewares", func() {
 				conf.Server.AuthRequestLimit = 5
 				conf.Server.AuthWindowLength = time.Minute
 				gate = &gatedUserRepo{
-					UserRepository: ds.User(context.TODO()),
+					UserRepository: ds.User(),
 					entered:        make(chan struct{}, 64),
 					proceed:        make(chan struct{}),
 				}
@@ -739,14 +741,14 @@ var _ = Describe("Middlewares", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			ur := ds.User(context.TODO())
-			_ = ur.Put(&model.User{
+			ur := ds.User()
+			_ = ur.Put(ctx, &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
 
 			var err error
-			usr, err = ur.FindByUsernameWithPassword("admin")
+			usr, err = ur.FindByUsernameWithPassword(ctx, "admin")
 			if err != nil {
 				panic(err)
 			}
@@ -890,7 +892,7 @@ type gatedDataStore struct {
 	users model.UserRepository
 }
 
-func (g *gatedDataStore) User(context.Context) model.UserRepository { return g.users }
+func (g *gatedDataStore) User() model.UserRepository { return g.users }
 
 type gatedUserRepo struct {
 	model.UserRepository
@@ -899,11 +901,11 @@ type gatedUserRepo struct {
 	lookups atomic.Int32
 }
 
-func (g *gatedUserRepo) FindByUsernameWithPassword(username string) (*model.User, error) {
+func (g *gatedUserRepo) FindByUsernameWithPassword(ctx context.Context, username string) (*model.User, error) {
 	g.lookups.Add(1)
 	g.entered <- struct{}{}
 	<-g.proceed
-	return g.UserRepository.FindByUsernameWithPassword(username)
+	return g.UserRepository.FindByUsernameWithPassword(ctx, username)
 }
 
 type countingHandler struct{ calls atomic.Int32 }

@@ -184,11 +184,11 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 }
 
 func pidHashChanged(ds model.DataStore) (bool, error) {
-	pidAlbum, err := ds.Property(context.Background()).DefaultGet(consts.PIDAlbumKey, "")
+	pidAlbum, err := ds.Property().DefaultGet(context.Background(), consts.PIDAlbumKey, "")
 	if err != nil {
 		return false, err
 	}
-	pidTrack, err := ds.Property(context.Background()).DefaultGet(consts.PIDTrackKey, "")
+	pidTrack, err := ds.Property().DefaultGet(context.Background(), consts.PIDTrackKey, "")
 	if err != nil {
 		return false, err
 	}
@@ -199,11 +199,11 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
-		fullScanRequired, err := ds.Property(ctx).DefaultGet(consts.FullScanAfterMigrationFlagKey, "0")
+		fullScanRequired, err := ds.Property().DefaultGet(ctx, consts.FullScanAfterMigrationFlagKey, "0")
 		if err != nil {
 			return err
 		}
-		inProgress, err := ds.Library(ctx).ScanInProgress()
+		inProgress, err := ds.Library().ScanInProgress(ctx)
 		if err != nil {
 			return err
 		}
@@ -219,7 +219,7 @@ func runInitialScan(ctx context.Context) func() error {
 			switch {
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
-				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
+				_ = ds.Property().Delete(ctx, consts.FullScanAfterMigrationFlagKey)
 			case pidHasChanged:
 				log.Warn(ctx, "PID config changed, performing full scan")
 				fullScanRequired = "1"

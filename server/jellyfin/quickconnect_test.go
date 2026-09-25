@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -42,9 +41,9 @@ var _ = Describe("QuickConnect", func() {
 		conf.Server.Jellyfin.QuickConnect = true
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
+		ur := ds.User().(*tests.MockedUserRepo)
 		for _, u := range []model.User{alice, bob, admin} {
-			Expect(ur.Put(&u)).To(Succeed())
+			Expect(ur.Put(GinkgoT().Context(), &u)).To(Succeed())
 		}
 		qc = quickconnect.New()
 		api = &Router{ds: ds, quickConnect: qc}
@@ -294,7 +293,7 @@ var _ = Describe("QuickConnect", func() {
 		It("returns 500 when the user lookup fails", func() {
 			req := initiate()
 			_, _ = qc.Authorize(req.Code, alice.ID)
-			ds.User(context.Background()).(*tests.MockedUserRepo).Error = errors.New("db down")
+			ds.User().(*tests.MockedUserRepo).Error = errors.New("db down")
 			Expect(redeemSecret(req.Secret).Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

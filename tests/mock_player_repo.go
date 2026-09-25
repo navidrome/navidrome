@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"maps"
 	"slices"
 
@@ -20,7 +21,7 @@ type MockPlayerRepo struct {
 	APIKeys map[string]string
 }
 
-func (m *MockPlayerRepo) Get(id string) (*model.Player, error) {
+func (m *MockPlayerRepo) Get(_ context.Context, id string) (*model.Player, error) {
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -33,7 +34,7 @@ func (m *MockPlayerRepo) Get(id string) (*model.Player, error) {
 	return &cp, nil
 }
 
-func (m *MockPlayerRepo) Put(p *model.Player) error {
+func (m *MockPlayerRepo) Put(_ context.Context, p *model.Player) error {
 	if m.Error != nil {
 		return m.Error
 	}
@@ -45,17 +46,17 @@ func (m *MockPlayerRepo) Put(p *model.Player) error {
 	return nil
 }
 
-func (m *MockPlayerRepo) FindByAPIKey(key string) (*model.Player, error) {
+func (m *MockPlayerRepo) FindByAPIKey(ctx context.Context, key string) (*model.Player, error) {
 	if m.Error != nil {
 		return nil, m.Error
 	}
 	if playerID, ok := m.APIKeys[key]; ok {
-		return m.Get(playerID)
+		return m.Get(ctx, playerID)
 	}
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPlayerRepo) SetAPIKey(playerID, key string) error {
+func (m *MockPlayerRepo) SetAPIKey(_ context.Context, playerID, key string) error {
 	if m.Error != nil {
 		return m.Error
 	}

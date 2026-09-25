@@ -142,13 +142,13 @@ var _ = Describe("Playlist artwork resolution", func() {
 			})
 			scan()
 
-			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
+			mfs, err := rds.MediaFile().GetAll(rctx, model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(2))
 
 			pl := model.Playlist{ID: "pl-7", Name: "Mix", OwnerID: "admin-1"}
 			pl.AddMediaFilesByID([]string{mfs[0].ID, mfs[1].ID})
-			Expect(rds.Playlist(rctx).Put(&pl)).To(Succeed())
+			Expect(rds.Playlist().Put(rctx, &pl)).To(Succeed())
 
 			ia := acquire(model.KindPlaylistArtwork, pl.ID)
 			Expect(ia.Source).To(Equal("generated"))
@@ -180,14 +180,14 @@ var _ = Describe("Playlist artwork resolution", func() {
 			setLayout(layout)
 			scan()
 
-			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
+			mfs, err := rds.MediaFile().GetAll(rctx, model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(4))
 			ids := slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 
 			pl := model.Playlist{ID: "pl-8", Name: "Four", OwnerID: "admin-1"}
 			pl.AddMediaFilesByID(ids)
-			Expect(rds.Playlist(rctx).Put(&pl)).To(Succeed())
+			Expect(rds.Playlist().Put(rctx, &pl)).To(Succeed())
 
 			ia := acquire(model.KindPlaylistArtwork, pl.ID)
 			Expect(ia.Source).To(Equal("generated"))
@@ -208,6 +208,6 @@ func putPlaylist(pl model.Playlist) model.Playlist {
 	if pl.OwnerID == "" {
 		pl.OwnerID = "admin-1"
 	}
-	Expect(rds.Playlist(rctx).Put(&pl)).To(Succeed())
+	Expect(rds.Playlist().Put(rctx, &pl)).To(Succeed())
 	return pl
 }

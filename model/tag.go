@@ -2,10 +2,12 @@ package model
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/zeebo/xxh3"
@@ -78,6 +80,13 @@ type Tags map[TagName][]string
 
 func (t Tags) Values(name TagName) []string {
 	return t[name]
+}
+
+func (t Tags) First(name TagName) string {
+	if v := t[name]; len(v) > 0 {
+		return v[0]
+	}
+	return ""
 }
 
 func (t Tags) IDs() []string {
@@ -155,9 +164,10 @@ func (t Tags) Add(name TagName, v string) {
 }
 
 type TagRepository interface {
-	Add(libraryID int, tags ...Tag) error
-	UpdateCounts() error
-	GetAll(name TagName, options ...QueryOptions) (TagList, error)
+	rest.Repository[Tag]
+	Add(ctx context.Context, libraryID int, tags ...Tag) error
+	UpdateCounts(ctx context.Context) error
+	GetAll(ctx context.Context, name TagName, options ...QueryOptions) (TagList, error)
 }
 
 type TagName string

@@ -37,14 +37,14 @@ func (p *players) Register(ctx context.Context, playerID, client, userAgent, ip 
 	var err error
 	user, _ := request.UserFrom(ctx)
 	if playerID != "" {
-		plr, err = p.ds.Player(ctx).Get(playerID)
+		plr, err = p.ds.Player().Get(ctx, playerID)
 		if err == nil && (plr.Client != client || plr.UserId != user.ID) {
 			playerID = ""
 		}
 	}
 	username := userName(ctx)
 	if err != nil || playerID == "" {
-		plr, err = p.ds.Player(ctx).FindMatch(user.ID, client, userAgent)
+		plr, err = p.ds.Player().FindMatch(ctx, user.ID, client, userAgent)
 		if err == nil {
 			log.Debug(ctx, "Found matching player", "id", plr.ID, "client", client, "username", username, "type", userAgent)
 		} else {
@@ -80,17 +80,17 @@ func (p *players) refresh(ctx context.Context, plr *model.Player, userAgent, ip 
 		ctx, cancel := context.WithTimeout(ctx, time.Second)
 		defer cancel()
 
-		if err := p.ds.Player(ctx).Put(plr); err != nil {
+		if err := p.ds.Player().Put(ctx, plr); err != nil {
 			log.Warn(ctx, "Could not save player", "id", plr.ID, "client", plr.Client, "username", userName(ctx), "type", plr.UserAgent, err)
 		}
 	})
 	if plr.TranscodingId == "" {
 		return plr, nil, nil
 	}
-	trc, err := p.ds.Transcoding(ctx).Get(plr.TranscodingId)
+	trc, err := p.ds.Transcoding().Get(ctx, plr.TranscodingId)
 	return plr, trc, err
 }
 
 func (p *players) Get(ctx context.Context, playerId string) (*model.Player, error) {
-	return p.ds.Player(ctx).Get(playerId)
+	return p.ds.Player().Get(ctx, playerId)
 }

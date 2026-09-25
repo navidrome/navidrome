@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -47,11 +46,11 @@ var _ = Describe("loadArtistFolder", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		DeferCleanup(stubCoreAbsolutePath())
-
 		updatedAt = time.Now().Truncate(time.Second).Add(5 * time.Minute)
 		repo = &fakeFolderRepo{result: []model.Folder{{ImagesUpdatedAt: updatedAt}}}
-		ds = &tests.MockDataStore{MockedFolder: repo}
+		libRepo := &tests.MockLibraryRepo{}
+		libRepo.SetData(model.Libraries{{ID: 1, Path: filepath.FromSlash("/music")}})
+		ds = &tests.MockDataStore{MockedFolder: repo, MockedLibrary: libRepo}
 		albums = model.Albums{{LibraryID: 1, ID: "album1", Name: "Album 1"}}
 	})
 
@@ -107,11 +106,3 @@ var _ = Describe("loadArtistFolder", func() {
 		Expect(upd).To(BeZero())
 	})
 })
-
-func stubCoreAbsolutePath() func() {
-	original := core.AbsolutePath
-	core.AbsolutePath = func(context.Context, model.DataStore, int, string) string {
-		return filepath.FromSlash("/music")
-	}
-	return func() { core.AbsolutePath = original }
-}
