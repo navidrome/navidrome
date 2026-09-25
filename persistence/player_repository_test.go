@@ -87,7 +87,7 @@ var _ = Describe("PlayerRepository", func() {
 			if admin {
 				repo = adminRepo
 			} else {
-				repoCtx = request.WithUser(log.NewContext(GinkgoT().Context()), regularUser)
+				repoCtx = request.WithUser(ctx, regularUser)
 				repo = NewPlayerRepository(database).(*playerRepository)
 			}
 		})
@@ -256,7 +256,7 @@ var _ = Describe("PlayerRepository", func() {
 		var regularCtx context.Context
 
 		BeforeEach(func() {
-			regularCtx = request.WithUser(log.NewContext(GinkgoT().Context()), regularUser)
+			regularCtx = request.WithUser(ctx, regularUser)
 			regularRepo = NewPlayerRepository(database).(*playerRepository)
 		})
 

@@ -88,7 +88,7 @@ var _ = Describe("sqlBookmarks", func() {
 			})).To(Succeed())
 			DeferCleanup(func() { _ = adminMr.Delete(adminCtx, "bmk-otherlib-track") })
 
-			userCtx = request.WithUser(log.NewContext(GinkgoT().Context()), restrictedUser)
+			userCtx = request.WithUser(ctx, restrictedUser)
 			userMr = NewMediaFileRepository(GetDBXBuilder())
 		})
 

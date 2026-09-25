@@ -15,9 +15,12 @@ var _ = Describe("PluginRepository", func() {
 	var repo model.PluginRepository
 	var ctx context.Context
 
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("Admin User", func() {
 		BeforeEach(func() {
-			ctx = GinkgoT().Context()
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 			repo = NewPluginRepository(GetDBXBuilder())
 
@@ -219,7 +222,6 @@ var _ = Describe("PluginRepository", func() {
 
 	Describe("Regular User", func() {
 		BeforeEach(func() {
-			ctx = GinkgoT().Context()
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: false})
 			repo = NewPluginRepository(GetDBXBuilder())
 		})

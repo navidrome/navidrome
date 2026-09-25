@@ -30,10 +30,12 @@ func (noopPluginUnloader) UnloadDisabledPlugins(context.Context) {}
 
 // Pins that the token-epoch handoff survives a real request through the real middleware chain.
 var _ = Describe("PUT /user/{id}: token refresh on self password change", func() {
+	var ctx context.Context
 	var ds model.DataStore
 	var router http.Handler
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		// db.Db() is a process-wide singleton that this DeferCleanup closes for the whole binary; keep this the only real-DB spec in this package.
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableUserEditing = true
@@ -52,7 +54,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 
 	It("carries the bumped epoch in the refreshed token, not the epoch the token was minted with", func() {
 		usr := model.User{UserName: "selfchanger", Name: "Self Changer", NewPassword: "old-password"}
-		Expect(ds.User().Put(GinkgoT().Context(), &usr)).To(Succeed())
+		Expect(ds.User().Put(ctx, &usr)).To(Succeed())
 
 		token, err := auth.CreateToken(&usr)
 		Expect(err).ToNot(HaveOccurred())
@@ -73,7 +75,7 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 		claims, err := auth.Validate(refreshed)
 		Expect(err).ToNot(HaveOccurred())
 
-		reloaded, err := ds.User().Get(GinkgoT().Context(), usr.ID)
+		reloaded, err := ds.User().Get(ctx, usr.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reloaded.TokenEpoch).To(Equal(1))
 		Expect(claims.Epoch).To(Equal(reloaded.TokenEpoch))

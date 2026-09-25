@@ -116,7 +116,7 @@ var _ = Describe("MediaRepository", func() {
 		var adminCtx context.Context
 
 		BeforeEach(func() {
-			adminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", IsAdmin: true})
+			adminCtx = request.WithUser(ctx, model.User{ID: "userid", IsAdmin: true})
 			adminRepo = NewMediaFileRepository(GetDBXBuilder())
 		})
 
@@ -937,10 +937,10 @@ var _ = Describe("MediaRepository", func() {
 			_ = pr.Delete(ctx, pls.ID)
 			_ = mr.Delete(ctx, prev.ID)
 			_ = mr.Delete(ctx, next.ID)
-			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
-			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("bookmark").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
-			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("scrobbles").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
-			_, _ = mr.(*mediaFileRepository).executeSQL(GinkgoT().Context(), squirrel.Delete("scrobble_buffer").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(ctx, squirrel.Delete("bookmark").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(ctx, squirrel.Delete("scrobbles").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
+			_, _ = mr.(*mediaFileRepository).executeSQL(ctx, squirrel.Delete("scrobble_buffer").Where(squirrel.Eq{"media_file_id": []string{prev.ID, next.ID}}))
 		})
 
 		It("moves annotations, bookmarks and playlist entries onto the new id", func() {
@@ -987,7 +987,7 @@ var _ = Describe("MediaRepository", func() {
 		})
 
 		It("recomputes the average rating after merging another user's annotation", func() {
-			otherCtx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "2222"})
+			otherCtx := request.WithUser(ctx, model.User{ID: "2222"})
 			other := NewMediaFileRepository(GetDBXBuilder())
 			Expect(mr.SetRating(ctx, 5, next.ID)).To(Succeed())
 			Expect(other.SetRating(otherCtx, 3, prev.ID)).To(Succeed())
@@ -1161,7 +1161,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("does not resolve paths in libraries the user cannot access", func() {
-				userCtx := request.WithUser(GinkgoT().Context(), restrictedUser)
+				userCtx := request.WithUser(ctx, restrictedUser)
 				userMr := NewMediaFileRepository(GetDBXBuilder())
 				qualified := fmt.Sprintf("%d:hidden/test.mp3", otherLib.ID)
 				results, err := userMr.FindByPaths(userCtx, []string{qualified})
@@ -1170,7 +1170,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("still resolves the path for an admin", func() {
-				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				adminCtx := request.WithUser(ctx, adminUser)
 				adminMr := NewMediaFileRepository(GetDBXBuilder())
 				qualified := fmt.Sprintf("%d:hidden/test.mp3", otherLib.ID)
 				results, err := adminMr.FindByPaths(adminCtx, []string{qualified})
@@ -1180,7 +1180,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("resolves paths from multiple libraries in a single call", func() {
-				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				adminCtx := request.WithUser(ctx, adminUser)
 				adminMr := NewMediaFileRepository(GetDBXBuilder())
 				results, err := adminMr.FindByPaths(adminCtx, []string{
 					"1:artist/Album/track.mp3",
@@ -1192,7 +1192,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("keeps each path scoped to its own library when several are queried", func() {
-				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				adminCtx := request.WithUser(ctx, adminUser)
 				adminMr := NewMediaFileRepository(GetDBXBuilder())
 				// Each path exists, but under the other library's ID, so neither must match.
 				results, err := adminMr.FindByPaths(adminCtx, []string{

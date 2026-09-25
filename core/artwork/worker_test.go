@@ -166,8 +166,8 @@ var _ = Describe("Worker", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = GinkgoT().Context()
+		DeferCleanup(configtest.SetupConfig())
 		var err error
 		repoRoot, err = os.Getwd()
 		Expect(err).ToNot(HaveOccurred())

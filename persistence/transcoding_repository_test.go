@@ -17,7 +17,7 @@ var _ = Describe("TranscodingRepository", func() {
 
 	BeforeEach(func() {
 		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), regularUser)
-		adminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+		adminCtx = request.WithUser(ctx, adminUser)
 		repo = NewTranscodingRepository(GetDBXBuilder())
 	})
 

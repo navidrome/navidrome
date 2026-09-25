@@ -22,6 +22,7 @@ import (
 )
 
 var _ = Describe("Plugin API", func() {
+	var ctx context.Context
 	var ds *tests.MockDataStore
 	var mockManager *tests.MockPluginManager
 	var router http.Handler
@@ -29,6 +30,7 @@ var _ = Describe("Plugin API", func() {
 	var testPlugin1, testPlugin2 model.Plugin
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableSharing = false
 		conf.Server.Plugins.Enabled = true
@@ -72,8 +74,8 @@ var _ = Describe("Plugin API", func() {
 		}
 
 		// Store users in mock datastore
-		Expect(ds.User().Put(GinkgoT().Context(), &adminUser)).To(Succeed())
-		Expect(ds.User().Put(GinkgoT().Context(), &regularUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
 	})
 
 	Context("when plugins are disabled", func() {
@@ -105,7 +107,6 @@ var _ = Describe("Plugin API", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Store test plugins as admin
-				ctx := GinkgoT().Context()
 				adminCtx := request.WithUser(ctx, adminUser)
 				Expect(ds.Plugin().Put(adminCtx, &testPlugin1)).To(Succeed())
 				Expect(ds.Plugin().Put(adminCtx, &testPlugin2)).To(Succeed())

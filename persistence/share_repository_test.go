@@ -37,6 +37,12 @@ var _ = Describe("ShareRepository", func() {
 
 	Describe("Headless Access", func() {
 		Context("Repository creation and basic operations", func() {
+			var headlessCtx context.Context
+
+			BeforeEach(func() {
+				headlessCtx = GinkgoT().Context()
+			})
+
 			It("should create repository successfully with no user context", func() {
 				// Create repository with no user context (headless)
 				headlessRepo := NewShareRepository(GetDBXBuilder())
@@ -62,7 +68,7 @@ var _ = Describe("ShareRepository", func() {
 
 				// Headless process should see all shares
 				headlessRepo := NewShareRepository(GetDBXBuilder())
-				shares, err := headlessRepo.GetAll(GinkgoT().Context())
+				shares, err := headlessRepo.GetAll(headlessCtx)
 				Expect(err).ToNot(HaveOccurred())
 
 				found := false
@@ -94,7 +100,7 @@ var _ = Describe("ShareRepository", func() {
 
 				// Headless process should be able to get the share
 				headlessRepo := NewShareRepository(GetDBXBuilder())
-				share, err := headlessRepo.Get(GinkgoT().Context(), shareID)
+				share, err := headlessRepo.Get(headlessCtx, shareID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(share.ID).To(Equal(shareID))
 				Expect(share.Description).To(Equal("Headless Get Share"))
@@ -190,7 +196,7 @@ var _ = Describe("ShareRepository", func() {
 		It("excludes tracks the owner cannot access from the shared playlist", func() {
 			// Read the share as admin (mimics the public-share render path, which uses
 			// the share repository's own context). loadMedia must scope to the owner.
-			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			adminCtx := request.WithUser(ctx, adminUser)
 			adminRepo := NewShareRepository(GetDBXBuilder())
 			share, err := adminRepo.Get(adminCtx, "share-scope")
 			Expect(err).ToNot(HaveOccurred())
@@ -302,7 +308,7 @@ var _ = Describe("ShareRepository", func() {
 		It("includes co-album-artist tracks the owner can access and excludes those they cannot", func() {
 			// Read as admin (mimics the public-share render path); loadMedia must still
 			// scope to the owner's libraries.
-			adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+			adminCtx := request.WithUser(ctx, adminUser)
 			adminRepo := NewShareRepository(GetDBXBuilder())
 			share, err := adminRepo.Get(adminCtx, "art-share")
 			Expect(err).ToNot(HaveOccurred())
@@ -389,9 +395,8 @@ var _ = Describe("ShareRepository", func() {
 
 			It("allows headless context (no user) to delete a share", func() {
 				insertShare("headless-del-share", ownerUser.ID)
-				headlessCtx := GinkgoT().Context()
 				repo := NewShareRepository(GetDBXBuilder())
-				err := repo.Delete(headlessCtx, "headless-del-share")
+				err := repo.Delete(GinkgoT().Context(), "headless-del-share")
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -411,7 +416,7 @@ var _ = Describe("ShareRepository", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				adminCtx := request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+				adminCtx := request.WithUser(ctx, adminUser)
 				adminRepo := NewShareRepository(GetDBXBuilder())
 				got, err := adminRepo.Get(adminCtx, id)
 				Expect(err).ToNot(HaveOccurred())
@@ -446,9 +451,8 @@ var _ = Describe("ShareRepository", func() {
 
 			It("allows headless context (no user) to update a share", func() {
 				insertShare("headless-upd-share", ownerUser.ID)
-				headlessCtx := GinkgoT().Context()
 				repo := NewShareRepository(GetDBXBuilder())
-				err := repo.Update(headlessCtx, "headless-upd-share", model.Share{Description: "Headless"}, "description")
+				err := repo.Update(GinkgoT().Context(), "headless-upd-share", model.Share{Description: "Headless"}, "description")
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -507,7 +511,7 @@ var _ = Describe("ShareRepository", func() {
 				var nonAdminCtx context.Context
 
 				BeforeEach(func() {
-					nonAdminCtx = request.WithUser(log.NewContext(GinkgoT().Context()), ownerUser)
+					nonAdminCtx = request.WithUser(ctx, ownerUser)
 					nonAdminRepo = NewShareRepository(GetDBXBuilder())
 				})
 
@@ -595,23 +599,29 @@ var _ = Describe("ShareRepository", func() {
 			})
 
 			Context("headless context (public share route)", func() {
+				var headlessCtx context.Context
+
+				BeforeEach(func() {
+					headlessCtx = GinkgoT().Context()
+				})
+
 				It("GetAll returns all shares", func() {
 					headlessRepo := NewShareRepository(GetDBXBuilder())
-					shares, err := headlessRepo.GetAll(GinkgoT().Context())
+					shares, err := headlessRepo.GetAll(headlessCtx)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(shares).To(HaveLen(3))
 				})
 
 				It("Get returns another user's share", func() {
 					headlessRepo := NewShareRepository(GetDBXBuilder())
-					s, err := headlessRepo.Get(GinkgoT().Context(), "share-other-1")
+					s, err := headlessRepo.Get(headlessCtx, "share-other-1")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(s.ID).To(Equal("share-other-1"))
 				})
 
 				It("Exists returns true for any share", func() {
 					headlessRepo := NewShareRepository(GetDBXBuilder())
-					exists, err := headlessRepo.Exists(GinkgoT().Context(), "share-other-1")
+					exists, err := headlessRepo.Exists(headlessCtx, "share-other-1")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(exists).To(BeTrue())
 				})

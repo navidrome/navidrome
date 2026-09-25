@@ -39,6 +39,7 @@ func (f *fakeProvider) calls() []string {
 }
 
 var _ = Describe("Metadata API", func() {
+	var ctx context.Context
 	var ds *tests.MockDataStore
 	var artRepo *tests.MockArtworkRepo
 	var queueRepo *tests.MockArtworkQueueRepo
@@ -48,6 +49,7 @@ var _ = Describe("Metadata API", func() {
 	var adminToken, userToken string
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableSharing = false
 		artRepo = tests.CreateMockArtworkRepo()
@@ -55,9 +57,9 @@ var _ = Describe("Metadata API", func() {
 		albumRepo = tests.CreateMockAlbumRepo()
 		artistRepo := tests.CreateMockArtistRepo()
 		playlistRepo := tests.CreateMockPlaylistRepo()
-		Expect(albumRepo.Put(GinkgoT().Context(), &model.Album{ID: "al-1", Name: "Kid A"})).To(Succeed())
-		Expect(artistRepo.Put(GinkgoT().Context(), &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
-		Expect(playlistRepo.Put(GinkgoT().Context(), &model.Playlist{ID: "pl-1", Name: "My Playlist"})).To(Succeed())
+		Expect(albumRepo.Put(ctx, &model.Album{ID: "al-1", Name: "Kid A"})).To(Succeed())
+		Expect(artistRepo.Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		Expect(playlistRepo.Put(ctx, &model.Playlist{ID: "pl-1", Name: "My Playlist"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedArtwork:      artRepo,
 			MockedArtworkQueue: queueRepo,
@@ -72,8 +74,8 @@ var _ = Describe("Metadata API", func() {
 
 		adminUser := model.User{ID: "admin-1", UserName: "admin", IsAdmin: true, NewPassword: "adminpass"}
 		regularUser := model.User{ID: "user-1", UserName: "regular", IsAdmin: false, NewPassword: "userpass"}
-		Expect(ds.User().Put(GinkgoT().Context(), &adminUser)).To(Succeed())
-		Expect(ds.User().Put(GinkgoT().Context(), &regularUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
 
 		var err error
 		adminToken, err = auth.CreateToken(&adminUser)
@@ -84,7 +86,7 @@ var _ = Describe("Metadata API", func() {
 
 	Describe("POST /api/metadata/{kind}/{id}/refresh", func() {
 		It("clears state and enqueues a Bump for admins", func() {
-			Expect(artRepo.PutItemArtwork(GinkgoT().Context(), &model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al-1", Hash: "oldhash", Source: "external",
 			})).To(Succeed())
 
@@ -94,10 +96,10 @@ var _ = Describe("Metadata API", func() {
 
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 
-			_, err := artRepo.GetItemArtwork(GinkgoT().Context(), model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
+			_, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 
-			queued, err := queueRepo.DequeueBatch(GinkgoT().Context(), 1000)
+			queued, err := queueRepo.DequeueBatch(ctx, 1000)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(queued).To(ContainElement(SatisfyAll(
 				HaveField("ItemKind", "al"),

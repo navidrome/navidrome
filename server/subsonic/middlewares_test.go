@@ -42,11 +42,13 @@ func newPostRequest(queryParam string, formFields ...string) *http.Request {
 }
 
 var _ = Describe("Middlewares", func() {
+	var ctx context.Context
 	var next *mockHandler
 	var w *httptest.ResponseRecorder
 	var ds model.DataStore
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		next = &mockHandler{}
 		w = httptest.NewRecorder()
 		ds = &tests.MockDataStore{}
@@ -148,7 +150,7 @@ var _ = Describe("Middlewares", func() {
 	Describe("Authenticate", func() {
 		BeforeEach(func() {
 			ur := ds.User()
-			_ = ur.Put(GinkgoT().Context(), &model.User{
+			_ = ur.Put(ctx, &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
@@ -344,7 +346,7 @@ var _ = Describe("Middlewares", func() {
 
 			It("counts attempts against unknown usernames", func() {
 				failTimes(3, "u=newuser", "p=secret")
-				_ = ds.User().Put(GinkgoT().Context(), &model.User{UserName: "newuser", NewPassword: "secret"})
+				_ = ds.User().Put(ctx, &model.User{UserName: "newuser", NewPassword: "secret"})
 
 				serve(newGetRequest("u=newuser", "p=secret"))
 				Expect(next.called).To(BeFalse())
@@ -375,7 +377,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not block other usernames from the same IP", func() {
-				_ = ds.User().Put(GinkgoT().Context(), &model.User{UserName: "other", NewPassword: "otherpass"})
+				_ = ds.User().Put(ctx, &model.User{UserName: "other", NewPassword: "otherpass"})
 				failTimes(3, "u=admin", "p=WRONG")
 
 				serve(newGetRequest("u=other", "p=otherpass"))
@@ -584,13 +586,13 @@ var _ = Describe("Middlewares", func() {
 
 		BeforeEach(func() {
 			ur := ds.User()
-			_ = ur.Put(GinkgoT().Context(), &model.User{
+			_ = ur.Put(ctx, &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
 
 			var err error
-			usr, err = ur.FindByUsernameWithPassword(GinkgoT().Context(), "admin")
+			usr, err = ur.FindByUsernameWithPassword(ctx, "admin")
 			if err != nil {
 				panic(err)
 			}

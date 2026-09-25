@@ -13,11 +13,13 @@ import (
 )
 
 var _ = Describe("syncPlugins", func() {
+	var ctx context.Context
 	var m *Manager
 	var repo *tests.MockPluginRepo
 	var folder string
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		folder = GinkgoT().TempDir()
 		repo = tests.CreateMockPluginRepo()
 		repo.SetData(model.Plugins{})
@@ -36,7 +38,7 @@ var _ = Describe("syncPlugins", func() {
 
 		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
 
-		_, err := repo.Get(GinkgoT().Context(), "my-plugin")
+		_, err := repo.Get(ctx, "my-plugin")
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -46,15 +48,20 @@ var _ = Describe("syncPlugins", func() {
 
 		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
 
-		all, err := repo.GetAll(GinkgoT().Context())
+		all, err := repo.GetAll(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(all).To(BeEmpty())
 	})
 })
 
 var _ = Describe("removePluginFromDB", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("discards buffered scrobbles for the removed plugin", func() {
-		ctx := GinkgoT().Context()
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		Expect(buffer.Enqueue(ctx, "my-plugin", "user1", "track1", time.Now())).To(Succeed())
 		Expect(buffer.Enqueue(ctx, "other-plugin", "user1", "track2", time.Now())).To(Succeed())
@@ -70,7 +77,7 @@ var _ = Describe("removePluginFromDB", func() {
 		}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
-		_, err := repo.Get(GinkgoT().Context(), "my-plugin")
+		_, err := repo.Get(ctx, "my-plugin")
 		Expect(err).To(MatchError(model.ErrNotFound))
 
 		remaining, err := buffer.Length(ctx)
@@ -82,7 +89,6 @@ var _ = Describe("removePluginFromDB", func() {
 	})
 
 	It("keeps buffered scrobbles of a builtin scrobbler sharing the removed plugin's name", func() {
-		ctx := GinkgoT().Context()
 		scrobbler.Register("builtin-svc", func(model.DataStore) scrobbler.Scrobbler { return nil })
 		buffer := tests.CreateMockedScrobbleBufferRepo()
 		Expect(buffer.Enqueue(ctx, "builtin-svc", "user1", "track1", time.Now())).To(Succeed())

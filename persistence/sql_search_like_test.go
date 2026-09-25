@@ -105,10 +105,10 @@ var _ = Describe("Legacy Integration Search", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Search.Backend = "legacy"
 
-		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		conn := GetDBXBuilder()
 		mr = NewMediaFileRepository(conn)
 	})

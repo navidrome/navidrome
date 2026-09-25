@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -22,6 +23,7 @@ import (
 
 var _ = Describe("Song Endpoints", func() {
 	var (
+		ctx       context.Context
 		router    http.Handler
 		ds        *tests.MockDataStore
 		mfRepo    *tests.MockMediaFileRepo
@@ -32,6 +34,7 @@ var _ = Describe("Song Endpoints", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableSharing = false
 		conf.Server.SessionTimeout = time.Minute
@@ -57,7 +60,7 @@ var _ = Describe("Song Endpoints", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(GinkgoT().Context(), &testUser)
+		err := userRepo.Put(ctx, &testUser)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Create test songs
@@ -370,7 +373,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     true,
 					NewPassword: "adminpass",
 				}
-				err := userRepo.Put(GinkgoT().Context(), &adminUser)
+				err := userRepo.Put(ctx, &adminUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create JWT token for admin user
@@ -393,7 +396,7 @@ var _ = Describe("Song Endpoints", func() {
 					IsAdmin:     false,
 					NewPassword: "userpass",
 				}
-				err := userRepo.Put(GinkgoT().Context(), &regularUser)
+				err := userRepo.Put(ctx, &regularUser)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create JWT token for regular user

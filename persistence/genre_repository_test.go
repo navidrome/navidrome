@@ -239,8 +239,10 @@ var _ = Describe("GenreRepository", func() {
 		Context("Headless Processes (No User Context)", func() {
 			var headlessRepo model.GenreRepository
 			var headlessRestRepo rest.Repository[model.Genre]
+			var headlessCtx context.Context
 
 			BeforeEach(func() {
+				headlessCtx = GinkgoT().Context()
 				// Create a repository with no user context (headless)
 				headlessGenreRepo := NewGenreRepository(GetDBXBuilder())
 				headlessRepo = headlessGenreRepo
@@ -262,7 +264,7 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should see all genres from all libraries when no user is in context", func() {
 				// Headless processes should see all genres regardless of library
-				genres, err := headlessRepo.GetAll(GinkgoT().Context())
+				genres, err := headlessRepo.GetAll(headlessCtx)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should see genres from all libraries
@@ -277,7 +279,7 @@ var _ = Describe("GenreRepository", func() {
 			})
 
 			It("should count all genres from all libraries when no user is in context", func() {
-				count, err := headlessRestRepo.Count(GinkgoT().Context())
+				count, err := headlessRestRepo.Count(headlessCtx)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Should count all genres from all libraries
@@ -286,7 +288,7 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should allow headless processes to apply explicit library_id filters", func() {
 				// Filter by specific library
-				genreList, err := headlessRestRepo.ReadAll(GinkgoT().Context(), rest.QueryOptions{
+				genreList, err := headlessRestRepo.ReadAll(headlessCtx, rest.QueryOptions{
 					Filters: map[string]any{"library_id": 2},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -298,12 +300,12 @@ var _ = Describe("GenreRepository", func() {
 
 			It("should get individual genres when no user is in context", func() {
 				// Get all genres first to find an ID
-				genres, err := headlessRepo.GetAll(GinkgoT().Context())
+				genres, err := headlessRepo.GetAll(headlessCtx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genres).ToNot(BeEmpty())
 
 				// Headless process should be able to get the genre
-				genre, err := headlessRestRepo.Read(GinkgoT().Context(), genres[0].ID)
+				genre, err := headlessRestRepo.Read(headlessCtx, genres[0].ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(genre).ToNot(BeNil())
 			})

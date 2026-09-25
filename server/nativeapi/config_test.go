@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -19,11 +20,13 @@ import (
 )
 
 var _ = Describe("Config API", func() {
+	var ctx context.Context
 	var ds model.DataStore
 	var router http.Handler
 	var adminUser, regularUser model.User
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableSharing = false
 		conf.Server.DevUIShowConfig = true // Enable config endpoint for tests
@@ -49,8 +52,8 @@ var _ = Describe("Config API", func() {
 		}
 
 		// Store in mock datastore
-		Expect(ds.User().Put(GinkgoT().Context(), &adminUser)).To(Succeed())
-		Expect(ds.User().Put(GinkgoT().Context(), &regularUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
 	})
 
 	Describe("GET /api/config", func() {

@@ -2,6 +2,7 @@ package nativeapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -21,12 +22,14 @@ import (
 )
 
 var _ = Describe("Library API", func() {
+	var ctx context.Context
 	var ds model.DataStore
 	var router http.Handler
 	var adminUser, regularUser model.User
 	var library1, library2 model.Library
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableSharing = false
 		ds = &tests.MockDataStore{}
@@ -63,10 +66,10 @@ var _ = Describe("Library API", func() {
 		}
 
 		// Store in mock datastore
-		Expect(ds.User().Put(GinkgoT().Context(), &adminUser)).To(Succeed())
-		Expect(ds.User().Put(GinkgoT().Context(), &regularUser)).To(Succeed())
-		Expect(ds.Library().Put(GinkgoT().Context(), &library1)).To(Succeed())
-		Expect(ds.Library().Put(GinkgoT().Context(), &library2)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &library1)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &library2)).To(Succeed())
 	})
 
 	Describe("Library CRUD Operations", func() {
@@ -293,7 +296,7 @@ var _ = Describe("Library API", func() {
 			Describe("GET /api/user/{id}/library", func() {
 				It("returns user's libraries", func() {
 					// Set up user libraries
-					err := ds.User().SetUserLibraries(GinkgoT().Context(), regularUser.ID, []int{1, 2})
+					err := ds.User().SetUserLibraries(ctx, regularUser.ID, []int{1, 2})
 					Expect(err).ToNot(HaveOccurred())
 
 					req := createAuthenticatedRequest("GET", fmt.Sprintf("/user/%s/library", regularUser.ID), nil, adminToken)

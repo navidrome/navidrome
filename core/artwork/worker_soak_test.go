@@ -21,6 +21,12 @@ import (
 const soakCycles = 2200
 
 var _ = Describe("Worker soak", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("does not leak goroutines, heap, or fds over many acquisition cycles", func() {
 		if testing.Short() {
 			Skip("skipping soak test in short mode")
@@ -100,9 +106,9 @@ var _ = Describe("Worker soak", func() {
 			// Read-back exercises the surfaces a caller would use after acquisition.
 			if out == outcomeFound {
 				kind, _ := model.ParseKind(it.ItemKind)
-				ia, err := artRepo.GetItemArtwork(GinkgoT().Context(), kind, it.ItemID, model.ImageTypePrimary)
+				ia, err := artRepo.GetItemArtwork(ctx, kind, it.ItemID, model.ImageTypePrimary)
 				Expect(err).ToNot(HaveOccurred(), "cycle %d: GetItemArtwork", i)
-				art, err := artRepo.GetImage(GinkgoT().Context(), ia.Hash)
+				art, err := artRepo.GetImage(ctx, ia.Hash)
 				Expect(err).ToNot(HaveOccurred(), "cycle %d: GetImage", i)
 				rc, err := store.Open(ia.Hash, art.Mime)
 				switch {

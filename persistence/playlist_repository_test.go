@@ -261,7 +261,7 @@ var _ = Describe("PlaylistRepository", func() {
 			Expect(repo.Delete(ctx, plsID)).To(Succeed())
 			Expect(countAnnotations()).To(Equal(1))
 
-			Expect(repo.(*playlistRepository).cleanAnnotations(GinkgoT().Context())).To(Succeed())
+			Expect(repo.(*playlistRepository).cleanAnnotations(ctx)).To(Succeed())
 			Expect(countAnnotations()).To(Equal(0))
 		})
 	})

@@ -715,7 +715,7 @@ var _ = Describe("AlbumRepository", func() {
 		var artistCtx context.Context
 
 		BeforeEach(func() {
-			artistCtx = request.WithUser(GinkgoT().Context(), adminUser)
+			artistCtx = request.WithUser(ctx, adminUser)
 			artistRepo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)
 		})
 
@@ -1207,13 +1207,13 @@ var _ = Describe("AlbumRepository", func() {
 		})
 
 		It("keeps per-user library visibility separate on a shared repository", func() {
-			adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+			adminCtx := request.WithUser(ctx, adminUser)
 			adminCount, err := albumRepo.CountAll(adminCtx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(adminCount).To(BeNumerically(">", 0))
 
 			// A user with no library grants, so its visibility can't drift with other specs
-			restrictedCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "shared-repo-restricted"})
+			restrictedCtx := request.WithUser(ctx, model.User{ID: "shared-repo-restricted"})
 			restrictedCount, err := albumRepo.CountAll(restrictedCtx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(restrictedCount).To(BeZero())

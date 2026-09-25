@@ -50,6 +50,11 @@ func createUserWithLibraries(userID string, libraryIDs []int) model.User {
 }
 
 var _ = Describe("ArtistRepository", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
 
 	Context("Core Functionality", func() {
 		Describe("GetIndexKey", func() {
@@ -225,7 +230,7 @@ var _ = Describe("ArtistRepository", func() {
 				// A restricted user (strictly fewer libs than exist) with no musicFolderId is still
 				// confined to their granted libs. Build the user with total-1 libraries derived from
 				// the real DB total, so the "sees all" fast-path can't kick in regardless of count.
-				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(GinkgoT().Context())
+				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(total).To(BeNumerically(">", 0))
 				libs := make(model.Libraries, 0, total-1)
@@ -242,7 +247,7 @@ var _ = Describe("ArtistRepository", func() {
 				// it from the DB rather than assuming a count.
 				var allLibs []int
 				Expect(NewLibraryRepository(GetDBXBuilder()).(*libraryRepository).
-					queryAllSlice(GinkgoT().Context(), squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
+					queryAllSlice(ctx, squirrel.Select("id").From("library"), &allLibs)).To(Succeed())
 				admin := model.User{ID: "a", IsAdmin: true}
 				Expect(scope(admin, squirrel.Eq{"library_id": allLibs})).To(BeNil())
 				Expect(scope(admin, nil)).To(BeNil())
@@ -348,10 +353,9 @@ var _ = Describe("ArtistRepository", func() {
 
 	Context("Admin User Operations", func() {
 		var repo model.ArtistRepository
-		var ctx context.Context
 
 		BeforeEach(func() {
-			ctx = request.WithUser(GinkgoT().Context(), adminUser)
+			ctx = request.WithUser(ctx, adminUser)
 			repo = NewArtistRepository(GetDBXBuilder())
 		})
 
@@ -707,7 +711,7 @@ var _ = Describe("ArtistRepository", func() {
 
 				// Create library for testing access restrictions
 				lib2 = model.Library{ID: 0, Name: "Artist Test Library", Path: "/artist/test/lib"}
-				lrCtx = request.WithUser(GinkgoT().Context(), adminUser)
+				lrCtx = request.WithUser(ctx, adminUser)
 				lr = NewLibraryRepository(GetDBXBuilder())
 				err := lr.Put(lrCtx, &lib2)
 				Expect(err).ToNot(HaveOccurred())
@@ -716,7 +720,7 @@ var _ = Describe("ArtistRepository", func() {
 				restrictedUser = createUserWithLibraries("search_user", []int{1})
 
 				// Create repository context for the restricted user
-				restrictedCtx = request.WithUser(GinkgoT().Context(), restrictedUser)
+				restrictedCtx = request.WithUser(ctx, restrictedUser)
 				restrictedRepo = NewArtistRepository(GetDBXBuilder())
 
 				// Ensure both test artists are associated with library 1
@@ -726,7 +730,7 @@ var _ = Describe("ArtistRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Create the restricted user in the database
-				urCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				urCtx := request.WithUser(ctx, adminUser)
 				ur := NewUserRepository(GetDBXBuilder())
 				err = ur.Put(urCtx, &restrictedUser)
 				Expect(err).ToNot(HaveOccurred())
@@ -737,7 +741,7 @@ var _ = Describe("ArtistRepository", func() {
 			AfterEach(func() {
 				// Clean up library 2
 				lr := NewLibraryRepository(GetDBXBuilder())
-				_ = lr.(*libraryRepository).delete(GinkgoT().Context(), squirrel.Eq{"id": lib2.ID})
+				_ = lr.(*libraryRepository).delete(ctx, squirrel.Eq{"id": lib2.ID})
 			})
 
 			DescribeTable("MBID search behavior across different user types",
@@ -1034,7 +1038,7 @@ var _ = Describe("ArtistRepository", func() {
 			unauthorizedUser = model.User{ID: "restricted_user", UserName: "restricted", Name: "Restricted User", Email: "restricted@test.com", IsAdmin: false}
 
 			// Create repository context for the unauthorized user
-			restrictedCtx = request.WithUser(GinkgoT().Context(), unauthorizedUser)
+			restrictedCtx = request.WithUser(ctx, unauthorizedUser)
 			restrictedRepo = NewArtistRepository(GetDBXBuilder())
 		})
 
@@ -1089,7 +1093,6 @@ var _ = Describe("ArtistRepository", func() {
 
 		Context("when user gains library access", func() {
 			BeforeEach(func() {
-				ctx := GinkgoT().Context()
 				// Give the user access to library 1
 				urCtx := request.WithUser(ctx, adminUser)
 				ur := NewUserRepository(GetDBXBuilder())
@@ -1108,13 +1111,13 @@ var _ = Describe("ArtistRepository", func() {
 				unauthorizedUser.Libraries = libraries
 
 				// Recreate repository context with updated user
-				restrictedCtx = request.WithUser(GinkgoT().Context(), unauthorizedUser)
+				restrictedCtx = request.WithUser(ctx, unauthorizedUser)
 				restrictedRepo = NewArtistRepository(GetDBXBuilder())
 			})
 
 			AfterEach(func() {
 				// Clean up: remove the user's library access
-				urCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				urCtx := request.WithUser(ctx, adminUser)
 				ur := NewUserRepository(GetDBXBuilder())
 				_ = ur.SetUserLibraries(urCtx, unauthorizedUser.ID, []int{})
 			})
@@ -1162,7 +1165,7 @@ var _ = Describe("ArtistRepository", func() {
 			It("takes the unfiltered fast-path when the user can access every library", func() {
 				// The fixture DB has a single library and the user was granted it, so it has access
 				// to all libraries: search results must match what an admin sees.
-				adminCtx := request.WithUser(GinkgoT().Context(), adminUser)
+				adminCtx := request.WithUser(ctx, adminUser)
 				adminRepo := NewArtistRepository(GetDBXBuilder())
 				adminAll, err := adminRepo.Search(adminCtx, "", model.QueryOptions{Max: 1000})
 				Expect(err).ToNot(HaveOccurred())
@@ -1186,7 +1189,7 @@ var _ = Describe("ArtistRepository", func() {
 				// visible-library count reaches the DB total. Derive the total from the DB so the
 				// assertion doesn't depend on how many libraries other specs left behind.
 				raw := restrictedRepo.(*artistRepository) // context carries a non-admin user
-				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(GinkgoT().Context())
+				total, err := NewLibraryRepository(GetDBXBuilder()).CountAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(total).To(BeNumerically(">", 0))
 
@@ -1203,7 +1206,6 @@ var _ = Describe("ArtistRepository", func() {
 
 	Describe("purgeEmpty", func() {
 		var repo *artistRepository
-		var ctx context.Context
 		var tmpDir string
 
 		BeforeEach(func() {
@@ -1211,7 +1213,7 @@ var _ = Describe("ArtistRepository", func() {
 			tmpDir = GinkgoT().TempDir()
 			conf.Server.DataFolder = conf.NewDir(tmpDir)
 
-			ctx = request.WithUser(GinkgoT().Context(), adminUser)
+			ctx = request.WithUser(ctx, adminUser)
 			repo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)
 		})
 
@@ -1287,7 +1289,6 @@ var _ = Describe("ArtistRepository", func() {
 
 	Describe("RefreshStats", func() {
 		var repo *artistRepository
-		var ctx context.Context
 
 		missing := func(id string) bool {
 			var vals []bool
@@ -1297,7 +1298,7 @@ var _ = Describe("ArtistRepository", func() {
 		}
 
 		BeforeEach(func() {
-			ctx = request.WithUser(GinkgoT().Context(), adminUser)
+			ctx = request.WithUser(ctx, adminUser)
 			repo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)
 		})
 
@@ -1357,5 +1358,5 @@ func createArtistWithLibrary(ctx context.Context, repo model.ArtistRepository, a
 
 	// Add the artist to the specified library
 	lr := NewLibraryRepository(GetDBXBuilder())
-	return lr.AddArtist(request.WithUser(GinkgoT().Context(), adminUser), libraryID, artist.ID)
+	return lr.AddArtist(request.WithUser(ctx, adminUser), libraryID, artist.ID)
 }
