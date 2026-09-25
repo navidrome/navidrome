@@ -18,6 +18,7 @@ import (
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/str"
@@ -131,7 +132,11 @@ func (a *archiver) ZipShare(ctx context.Context, s *model.Share, out io.Writer) 
 		return model.ErrNotAuthorized
 	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
-	return a.zipMediaFiles(ctx, s.ID, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, s.CoverArtID(), false)
+	// Same as the public image handler: the share is the authorization, so the cover lookup must
+	// ask "is it still there", not "may this anonymous user see it" (that would hide a private
+	// playlist). Only the cover read is elevated; streaming keeps the anonymous context.
+	coverCtx := request.WithUser(ctx, model.User{IsAdmin: true})
+	return a.zipMediaFiles(ctx, s.ID, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, coverCtx, s.CoverArtID(), false)
 }
 
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
@@ -142,10 +147,11 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 	}
 	mfs := pls.MediaFiles()
 	log.Debug(ctx, "Zipping playlist", "name", pls.Name, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
-	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, pls.CoverArtID(), true)
+	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, ctx, pls.CoverArtID(), true)
 }
 
-func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, coverArt model.ArtworkID, addM3U bool) error {
+// zipMediaFiles reads coverArt with coverCtx, which may be more privileged than ctx.
+func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, coverCtx context.Context, coverArt model.ArtworkID, addM3U bool) error {
 	z := createZipWriter(out, format, bitrate)
 
 	zippedMfs := make(model.MediaFiles, len(mfs))
@@ -160,7 +166,7 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format st
 		mf.Path = file
 		zippedMfs[idx] = mf
 	}
-	a.addCoverArtToZip(ctx, z, coverArt, "")
+	a.addCoverArtToZip(coverCtx, z, coverArt, "")
 
 	// Add M3U file if requested
 	if addM3U && len(zippedMfs) > 0 {

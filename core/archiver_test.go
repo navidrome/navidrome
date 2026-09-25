@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -272,15 +273,15 @@ var _ = Describe("Archiver", func() {
 			Expect(files).To(HaveKey("Test Playlist.m3u"))
 		})
 
-		It("adds the shared item's cover to the root", func() {
-			ca.images["al-10"] = jpegData
+		It("adds the shared item's cover to the root, even for a private playlist", func() {
+			ca.images["pl-10"] = jpegData
 			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
 			share := &model.Share{
 				ID:           "1",
 				Downloadable: true,
 				Format:       "mp3",
 				MaxBitRate:   128,
-				ResourceType: "album",
+				ResourceType: "playlist",
 				ResourceIDs:  "10",
 				Tracks: model.MediaFiles{
 					{ID: "1", Path: "test_data/01 - track1.mp3", Suffix: "mp3", Artist: "Artist 1", Title: "track1"},
@@ -293,6 +294,9 @@ var _ = Describe("Archiver", func() {
 			files := readZip(out)
 			Expect(files).To(HaveLen(2))
 			Expect(files).To(HaveKeyWithValue("folder.jpg", jpegData))
+			// Public downloads are anonymous: the cover must be read as admin, or a private
+			// shared playlist would be hidden from the lookup.
+			Expect(ca.requests).To(ConsistOf(coverRequest{id: "pl-10", size: 500, square: false, admin: true}))
 		})
 
 		It("still builds the archive when the cover cannot be read", func() {
@@ -330,6 +334,7 @@ type coverRequest struct {
 	id     string
 	size   int
 	square bool
+	admin  bool
 }
 
 // mockCoverArt serves images by artwork id string; ids without an image are unavailable.
@@ -340,8 +345,9 @@ type mockCoverArt struct {
 	requests []coverRequest
 }
 
-func (m *mockCoverArt) Get(_ context.Context, artID model.ArtworkID, size int, square bool) (*artwork.Image, error) {
-	m.requests = append(m.requests, coverRequest{id: artID.String(), size: size, square: square})
+func (m *mockCoverArt) Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (*artwork.Image, error) {
+	user, _ := request.UserFrom(ctx)
+	m.requests = append(m.requests, coverRequest{id: artID.String(), size: size, square: square, admin: user.IsAdmin})
 	if m.err != nil {
 		return nil, m.err
 	}
