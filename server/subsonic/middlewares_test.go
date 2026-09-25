@@ -374,6 +374,8 @@ var _ = Describe("Middlewares", func() {
 				Entry("t", "t=abc"),
 				Entry("s", "s=abc"),
 				Entry("jwt", "jwt=abc"),
+				Entry("empty u", "u="),
+				Entry("empty p", "p="),
 			)
 
 			Context("key sent as the password", func() {
