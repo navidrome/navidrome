@@ -168,6 +168,18 @@ var _ = Describe("Browsing", func() {
 			Expect(resp.AlbumInfo.SmallImageUrl).ToNot(BeEmpty())
 			Expect(resp.AlbumInfo.LargeImageUrl).ToNot(BeEmpty())
 		})
+		It("only reports Last.fm pages as lastFmUrl", func() {
+			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ExternalUrl: "https://www.last.fm/music/Radiohead/OK+Computer"}}
+			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
+			resp, err := api.GetAlbumInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumInfo.LastFmUrl).To(Equal("https://www.last.fm/music/Radiohead/OK+Computer"))
+
+			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ExternalUrl: "https://www.deezer.com/album/12345"}}
+			resp, err = api.GetAlbumInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.AlbumInfo.LastFmUrl).To(BeEmpty())
+		})
 		It("omits image URLs when the album artwork is known absent", func() {
 			api.provider = &fakeInfoProvider{album: &model.Album{ID: "al-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
 			r := httptest.NewRequest("GET", "/rest/getAlbumInfo?id=al-1", nil)
@@ -186,6 +198,18 @@ var _ = Describe("Browsing", func() {
 			resp, err := api.GetArtistInfo(r)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(resp.ArtistInfo.SmallImageUrl).ToNot(BeEmpty())
+		})
+		It("only reports Last.fm pages as lastFmUrl", func() {
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ExternalUrl: "https://www.last.fm/music/Radiohead"}}
+			r := httptest.NewRequest("GET", "/rest/getArtistInfo?id=ar-1", nil)
+			resp, err := api.GetArtistInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.ArtistInfo.LastFmUrl).To(Equal("https://www.last.fm/music/Radiohead"))
+
+			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ExternalUrl: "https://www.radiohead.com/"}}
+			resp, err = api.GetArtistInfo(r)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(resp.ArtistInfo.LastFmUrl).To(BeEmpty())
 		})
 		It("omits image URLs when the artist artwork is known absent", func() {
 			api.provider = &fakeInfoProvider{artist: &model.Artist{ID: "ar-1", ItemImage: model.ItemImage{ImageAbsent: true}}}
