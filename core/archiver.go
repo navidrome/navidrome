@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core/stream"
@@ -19,6 +22,9 @@ import (
 	"github.com/navidrome/navidrome/utils/str"
 )
 
+// archiveCoverArtSize is the size of the folder image added to each archive folder.
+const archiveCoverArtSize = 500
+
 type Archiver interface {
 	ZipAlbum(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipArtist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
@@ -26,18 +32,27 @@ type Archiver interface {
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 }
 
-func NewArchiver(ms stream.MediaStreamer, ds model.DataStore, shares Share) Archiver {
-	return &archiver{ds: ds, ms: ms, shares: shares}
+// CoverArtReader is a local interface satisfied by artwork.CoverArtReader.
+// Defined here to avoid an import cycle between core/artwork and core.
+type CoverArtReader interface {
+	// Read returns the image getCoverArt serves for artID, or model.ErrNotFound when the
+	// item has no artwork (placeholders are never returned).
+	Read(ctx context.Context, artID model.ArtworkID, size int, square bool) (io.ReadCloser, error)
+}
+
+func NewArchiver(ms stream.MediaStreamer, ds model.DataStore, shares Share, coverArt CoverArtReader) Archiver {
+	return &archiver{ds: ds, ms: ms, shares: shares, coverArt: coverArt}
 }
 
 type archiver struct {
-	ds     model.DataStore
-	ms     stream.MediaStreamer
-	shares Share
+	ds       model.DataStore
+	ms       stream.MediaStreamer
+	shares   Share
+	coverArt CoverArtReader
 }
 
 func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_id": id})
+	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_id": id}, model.ArtworkID{})
 }
 
 func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
@@ -47,10 +62,12 @@ func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitr
 		persistence.ParticipantIDFilter("media_file", id, model.RoleAlbumArtist),
 		squirrel.Eq{"missing": false},
 	}
-	return a.zipAlbums(ctx, id, format, bitrate, out, filter)
+	return a.zipAlbums(ctx, id, format, bitrate, out, filter, model.Artist{ID: id}.CoverArtID())
 }
 
-func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer) error {
+// zipAlbums puts each album in its own folder, with the album cover in it. rootArt, when set,
+// is added to the archive root.
+func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer, rootArt model.ArtworkID) error {
 	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: filters, Sort: "album"})
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from artist", "id", id, err)
@@ -58,6 +75,7 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 	}
 
 	z := createZipWriter(out, format, bitrate)
+	a.addCoverArtToZip(ctx, z, rootArt, "")
 	albums := slice.Group(mfs, func(mf model.MediaFile) string {
 		return mf.AlbumID
 	})
@@ -66,6 +84,7 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 		isMultiDisc := len(discs) > 1
 		log.Debug(ctx, "Zipping album", "name", album[0].Album, "artist", album[0].AlbumArtist,
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
+		a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), albumFolder(album[0]))
 		for _, mf := range album {
 			file := a.albumFilename(mf, format, isMultiDisc)
 			if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
@@ -104,7 +123,11 @@ func (a *archiver) albumFilename(mf model.MediaFile, format string, isMultiDisc 
 	if isMultiDisc {
 		file = fmt.Sprintf("Disc %02d/%s", mf.DiscNumber, file)
 	}
-	return fmt.Sprintf("%s/%s", str.SanitizeFilename(mf.Album), file)
+	return fmt.Sprintf("%s/%s", albumFolder(mf), file)
+}
+
+func albumFolder(mf model.MediaFile) string {
+	return str.SanitizeFilename(mf.Album)
 }
 
 // ZipShare takes an already-loaded share: Share.Load records a visit, so
@@ -114,7 +137,7 @@ func (a *archiver) ZipShare(ctx context.Context, s *model.Share, out io.Writer) 
 		return model.ErrNotAuthorized
 	}
 	log.Debug(ctx, "Zipping share", "name", s.ID, "format", s.Format, "bitrate", s.MaxBitRate, "numTracks", len(s.Tracks))
-	return a.zipMediaFiles(ctx, s.ID, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, false)
+	return a.zipMediaFiles(ctx, s.ID, s.ID, s.Format, s.MaxBitRate, out, s.Tracks, s.CoverArtID(), false)
 }
 
 func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
@@ -125,11 +148,12 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 	}
 	mfs := pls.MediaFiles()
 	log.Debug(ctx, "Zipping playlist", "name", pls.Name, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
-	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, true)
+	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, pls.CoverArtID(), true)
 }
 
-func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, addM3U bool) error {
+func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, coverArt model.ArtworkID, addM3U bool) error {
 	z := createZipWriter(out, format, bitrate)
+	a.addCoverArtToZip(ctx, z, coverArt, "")
 
 	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
@@ -219,4 +243,64 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	}
 
 	return nil
+}
+
+// addCoverArtToZip writes the item's cover as folder.<ext> in dir, the image most players and
+// car stereos show for the files next to it. A missing or failing cover never fails the archive.
+func (a *archiver) addCoverArtToZip(ctx context.Context, z *zip.Writer, artID model.ArtworkID, dir string) {
+	if artID.ID == "" {
+		return
+	}
+	// Read the whole image before writing the entry header, so a failure leaves no empty entry.
+	data, err := a.readCoverArt(ctx, artID)
+	if errors.Is(err, model.ErrNotFound) {
+		log.Debug(ctx, "No cover art to add to zip", "artID", artID)
+		return
+	}
+	if err != nil {
+		log.Warn(ctx, "Error reading cover art for zipping", "artID", artID, err)
+		return
+	}
+	ext := coverArtExtension(data)
+	if ext == "" {
+		log.Warn(ctx, "Unknown cover art image type, not adding it to zip", "artID", artID)
+		return
+	}
+	w, err := z.CreateHeader(&zip.FileHeader{
+		Name:     path.Join(dir, "folder."+ext),
+		Modified: time.Now(),
+		Method:   zip.Store,
+	})
+	if err != nil {
+		log.Warn(ctx, "Error creating cover art zip entry", "artID", artID, err)
+		return
+	}
+	if _, err = w.Write(data); err != nil {
+		log.Warn(ctx, "Error zipping cover art", "artID", artID, err)
+	}
+}
+
+func (a *archiver) readCoverArt(ctx context.Context, artID model.ArtworkID) ([]byte, error) {
+	r, err := a.coverArt.Read(ctx, artID, archiveCoverArtSize, false)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return io.ReadAll(r)
+}
+
+// coverArtExtension names the image by its content: resizing can re-encode it (e.g. to WebP),
+// so the source file's extension is not reliable.
+func coverArtExtension(data []byte) string {
+	switch http.DetectContentType(data) {
+	case "image/jpeg":
+		return "jpg"
+	case "image/png":
+		return "png"
+	case "image/webp":
+		return "webp"
+	case "image/gif":
+		return "gif"
+	}
+	return ""
 }

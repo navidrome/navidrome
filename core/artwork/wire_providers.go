@@ -10,4 +10,5 @@ var Set = wire.NewSet(
 	NewWorker,
 	GetImageStore,
 	NewUploader,
+	NewCoverArtReader,
 )
