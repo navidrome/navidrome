@@ -1,7 +1,10 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
@@ -197,6 +200,18 @@ var _ = Describe("PluginRepository", func() {
 
 				err := repo.ClearErrors()
 				Expect(err).To(BeNil())
+			})
+
+			It("does not need the write lock when no plugins have errors", func() {
+				_ = repo.Put(&model.Plugin{ID: "clean-plugin", Path: "/plugins/c.wasm", Manifest: "{}", SHA256: "h1"})
+				conn, err := db.Db().Conn(GinkgoT().Context())
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(conn.Close)
+				_, err = conn.ExecContext(GinkgoT().Context(), "BEGIN IMMEDIATE")
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() { _, _ = conn.ExecContext(context.Background(), "ROLLBACK") })
+
+				Expect(repo.ClearErrors()).To(Succeed())
 			})
 		})
 	})
