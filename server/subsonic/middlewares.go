@@ -323,17 +323,19 @@ func getPlayer(players core.Players) func(next http.Handler) http.Handler {
 				r = r.WithContext(ctx)
 
 				// A key already identifies the player, so the cookie would only add a second, weaker signal
-				if !boundByKey {
-					cookie := &http.Cookie{ //nolint:gosec // Secure omitted: Navidrome may run over plain HTTP
-						Name:     playerIDCookieName(userName),
-						Value:    player.ID,
-						MaxAge:   consts.CookieExpiry,
-						HttpOnly: true,
-						SameSite: http.SameSiteStrictMode,
-						Path:     cmp.Or(conf.Server.BasePath, "/"),
-					}
-					http.SetCookie(w, cookie)
+				if boundByKey {
+					next.ServeHTTP(w, r)
+					return
 				}
+				cookie := &http.Cookie{ //nolint:gosec // Secure omitted: Navidrome may run over plain HTTP
+					Name:     playerIDCookieName(userName),
+					Value:    player.ID,
+					MaxAge:   consts.CookieExpiry,
+					HttpOnly: true,
+					SameSite: http.SameSiteStrictMode,
+					Path:     cmp.Or(conf.Server.BasePath, "/"),
+				}
+				http.SetCookie(w, cookie)
 			}
 
 			next.ServeHTTP(w, r)
