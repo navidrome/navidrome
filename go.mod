@@ -16,7 +16,7 @@ require (
 	github.com/djherbis/fscache v0.10.2-0.20260829235704-6d85d5878c22
 	github.com/djherbis/stream v1.5.1
 	github.com/djherbis/times v1.6.0
-	github.com/dustin/go-humanize v1.0.1
+	github.com/dustin/go-humanize v1.1.0
 	github.com/extism/go-sdk v1.7.1
 	github.com/fatih/structs v1.1.0
 	github.com/gen2brain/webp v0.6.4
