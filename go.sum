@@ -31,8 +31,8 @@ github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 h1:5RVFMOWjMyRy8cARdy79nAmgYw3h
 github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1/go.mod h1:ZXNYxsqcloTdSy/rNShjYzMhyjf0LaoftYK0p+A3h40=
 github.com/deluan/go-taglib v0.0.0-20260913142955-d55e0c9353cb h1:CGVY6RtDsqaleUFogGP03m3a/9OKi3ZMDr5nhm51Emk=
 github.com/deluan/go-taglib v0.0.0-20260913142955-d55e0c9353cb/go.mod h1:QGxQ4Z1IWyY9w56xNEFjYAaWE8uSxA/gneQ7RPcFJrY=
-github.com/deluan/rest v0.0.0-20260914015223-3159926acdfb h1:Ceu2Y2Rrgqv6jgjiwRi8doNMYbT4SDftjynIfTfBcgE=
-github.com/deluan/rest v0.0.0-20260914015223-3159926acdfb/go.mod h1:r0yO0VgBWOb5Xb7aCPIedtcOuwmA2Oe5lGailC5pvc4=
+github.com/deluan/rest v1.0.1 h1:Enuzzfd88C1/lG6Jqr2NgRreJoClaFuWcOuspeKWHZ8=
+github.com/deluan/rest v1.0.1/go.mod h1:r0yO0VgBWOb5Xb7aCPIedtcOuwmA2Oe5lGailC5pvc4=
 github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55 h1:wSCnggTs2f2ji6nFwQmfwgINcmSMj0xF0oHnoyRSPe4=
 github.com/deluan/sanitize v0.0.0-20241120162836-fdfd8fdfaa55/go.mod h1:ZNCLJfehvEf34B7BbLKjgpsL9lyW7q938w/GY1XgV4E=
 github.com/dexterlb/mpvipc v0.0.0-20260722094525-0cf47d745b36 h1:KtPfdSST6e0vJbMzMmVqPa5mO1u8vMBlybRCW2ieXpA=
