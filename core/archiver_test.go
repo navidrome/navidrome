@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"strings"
 
@@ -11,8 +12,10 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -25,13 +28,15 @@ var _ = Describe("Archiver", func() {
 		ms   *mockMediaStreamer
 		ds   *mockDataStore
 		sh   *mockShare
+		ca   *mockCoverArt
 	)
 
 	BeforeEach(func() {
 		ms = &mockMediaStreamer{}
 		sh = &mockShare{}
 		ds = &mockDataStore{}
-		arch = core.NewArchiver(ms, ds, sh)
+		ca = &mockCoverArt{images: map[string][]byte{}}
+		arch = core.NewArchiver(ms, ds, sh, ca)
 	})
 
 	Context("ZipAlbum", func() {
@@ -332,7 +337,178 @@ var _ = Describe("Archiver", func() {
 			Expect(string(m3uContent)).To(Equal(expectedM3U))
 		})
 	})
+	Context("cover art", func() {
+		var (
+			jpegData = []byte("\xff\xd8\xff\xe0 fake jpeg")
+			pngData  = []byte("\x89PNG\x0d\x0a\x1a\x0a fake png")
+		)
+
+		mockAlbumTracks := func(filter squirrel.Sqlizer, mfs model.MediaFiles) {
+			mfRepo := &mockMediaFileRepository{}
+			mfRepo.On("GetAll", []model.QueryOptions{{Filters: filter, Sort: "album"}}).Return(mfs, nil)
+			ds.On("MediaFile", mock.Anything).Return(mfRepo)
+			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
+		}
+
+		It("adds the album cover to the album folder", func() {
+			ca.images["al-1"] = jpegData
+			mockAlbumTracks(squirrel.Eq{"album_id": "1"}, model.MediaFiles{
+				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album/Promo", DiscNumber: 1},
+			})
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+
+			files := readZip(out)
+			Expect(files).To(HaveLen(2))
+			Expect(files).To(HaveKeyWithValue("Album_Promo/folder.jpg", jpegData))
+			Expect(ca.requests).To(ConsistOf(coverRequest{id: "al-1", size: 500, square: false}))
+		})
+
+		It("adds the artist image to the root and each album cover to its folder", func() {
+			ca.images["ar-1"] = pngData
+			ca.images["al-1"] = jpegData
+			ca.images["al-2"] = jpegData
+			mockAlbumTracks(squirrel.And{
+				persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
+				squirrel.Eq{"missing": false},
+			}, model.MediaFiles{
+				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1},
+				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "2", Album: "Album 2", DiscNumber: 1},
+			})
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+
+			files := readZip(out)
+			Expect(files).To(HaveLen(5))
+			Expect(files).To(HaveKeyWithValue("folder.png", pngData))
+			Expect(files).To(HaveKeyWithValue("Album 1/folder.jpg", jpegData))
+			Expect(files).To(HaveKeyWithValue("Album 2/folder.jpg", jpegData))
+		})
+
+		It("puts each same-named album's cover in that album's own folder", func() {
+			ca.images["al-1"] = jpegData
+			ca.images["al-2"] = pngData
+			mockAlbumTracks(squirrel.And{
+				persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
+				squirrel.Eq{"missing": false},
+			}, model.MediaFiles{
+				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001, DiscNumber: 1},
+				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005, DiscNumber: 1},
+			})
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+
+			files := readZip(out)
+			Expect(files).To(HaveKeyWithValue("Greatest Hits [2001]/folder.jpg", jpegData))
+			Expect(files).To(HaveKeyWithValue("Greatest Hits [2005]/folder.png", pngData))
+		})
+
+		It("adds the playlist cover to the root", func() {
+			ca.images["pl-1"] = jpegData
+			plRepo := &mockPlaylistRepository{}
+			plRepo.On("GetWithTracks", "1", true, false).Return(&model.Playlist{
+				ID:   "1",
+				Name: "Test Playlist",
+				Tracks: []model.PlaylistTrack{
+					{MediaFile: model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Artist: "Artist 1", Title: "track1"}},
+				},
+			}, nil)
+			ds.On("Playlist", mock.Anything).Return(plRepo)
+			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipPlaylist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+
+			files := readZip(out)
+			Expect(files).To(HaveLen(3))
+			Expect(files).To(HaveKeyWithValue("folder.jpg", jpegData))
+			Expect(files).To(HaveKey("Test Playlist.m3u"))
+		})
+
+		It("adds the shared item's cover to the root, even for a private playlist", func() {
+			ca.images["pl-10"] = jpegData
+			ms.On("NewStream", mock.Anything, mock.Anything, mock.Anything).Return(io.NopCloser(strings.NewReader("test")), nil)
+			share := &model.Share{
+				ID:           "1",
+				Downloadable: true,
+				Format:       "mp3",
+				MaxBitRate:   128,
+				ResourceType: "playlist",
+				ResourceIDs:  "10",
+				Tracks: model.MediaFiles{
+					{ID: "1", Path: "test_data/01 - track1.mp3", Suffix: "mp3", Artist: "Artist 1", Title: "track1"},
+				},
+			}
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipShare(context.Background(), share, out)).To(Succeed())
+
+			files := readZip(out)
+			Expect(files).To(HaveLen(2))
+			Expect(files).To(HaveKeyWithValue("folder.jpg", jpegData))
+			Expect(ca.requests).To(ConsistOf(coverRequest{id: "pl-10", size: 500, square: false, admin: true}))
+		})
+
+		It("still builds the archive when the cover cannot be read", func() {
+			ca.err = errors.New("boom")
+			mockAlbumTracks(squirrel.Eq{"album_id": "1"}, model.MediaFiles{
+				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album", DiscNumber: 1},
+			})
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipAlbum(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+
+			files := readZip(out)
+			Expect(files).To(HaveLen(1))
+			Expect(files).To(HaveKey("Album/01 - track1.mp3"))
+		})
+	})
 })
+
+func readZip(out *bytes.Buffer) map[string][]byte {
+	zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+	Expect(err).ToNot(HaveOccurred())
+	files := make(map[string][]byte, len(zr.File))
+	for _, f := range zr.File {
+		r, err := f.Open()
+		Expect(err).ToNot(HaveOccurred())
+		data, err := io.ReadAll(r)
+		Expect(err).ToNot(HaveOccurred())
+		_ = r.Close()
+		files[f.Name] = data
+	}
+	return files
+}
+
+type coverRequest struct {
+	id     string
+	size   int
+	square bool
+	admin  bool
+}
+
+type mockCoverArt struct {
+	artwork.Artwork
+	images   map[string][]byte
+	err      error
+	requests []coverRequest
+}
+
+func (m *mockCoverArt) Get(ctx context.Context, artID model.ArtworkID, size int, square bool) (*artwork.Image, error) {
+	user, _ := request.UserFrom(ctx)
+	m.requests = append(m.requests, coverRequest{id: artID.String(), size: size, square: square, admin: user.IsAdmin})
+	if m.err != nil {
+		return nil, m.err
+	}
+	data, ok := m.images[artID.String()]
+	if !ok {
+		return nil, artwork.ErrUnavailable
+	}
+	return &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader(data))}, nil
+}
 
 type mockDataStore struct {
 	mock.Mock
