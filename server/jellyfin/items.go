@@ -893,8 +893,7 @@ func (api *Router) resolveItemByID(ctx context.Context, id string, fields dto.Fi
 		return dto.AlbumToBaseItem(*al, fields), true
 	}
 	if ar, err := api.ds.Artist(ctx).Get(id); err == nil {
-		// TODO: an artist spans multiple libraries (library_artist), so there's no single
-		// LibraryID to gate here; artist access relies on list-time scoping and persistence.
+		// Artist.Get already scopes to the user's libraries via library_artist.
 		return dto.ArtistToBaseItem(*ar, fields), true
 	}
 	if mf, err := api.ds.MediaFile(ctx).Get(id); err == nil {
