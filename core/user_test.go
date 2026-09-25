@@ -68,11 +68,19 @@ var _ = Describe("User Service", func() {
 			Expect(pluginManager.unloadCalls).To(Equal(1))
 		})
 
-		It("does not call UnloadDisabledPlugins when deletion fails", func() {
-			// Try to delete non-existent user
+		It("still calls UnloadDisabledPlugins when deletion fails", func() {
 			err := repo.Delete(ctx, "non-existent")
-			Expect(err).To(HaveOccurred())
-			Expect(pluginManager.unloadCalls).To(Equal(0))
+			Expect(err).To(MatchError(model.ErrNotFound))
+			Expect(pluginManager.unloadCalls).To(Equal(1))
+		})
+
+		It("unloads plugins when a bulk delete fails after removing earlier users", func() {
+			err := repo.Delete(ctx, "user-123", "non-existent")
+			Expect(err).To(MatchError(model.ErrNotFound))
+
+			_, err = userRepo.Get(ctx, "user-123")
+			Expect(err).To(Equal(model.ErrNotFound))
+			Expect(pluginManager.unloadCalls).To(Equal(1))
 		})
 
 		It("returns error when repository fails", func() {
@@ -80,7 +88,7 @@ var _ = Describe("User Service", func() {
 			err := repo.Delete(ctx, "user-123")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("database error"))
-			Expect(pluginManager.unloadCalls).To(Equal(0))
+			Expect(pluginManager.unloadCalls).To(Equal(1))
 		})
 	})
 })

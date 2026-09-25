@@ -45,11 +45,10 @@ type userRepositoryWrapper struct {
 
 var _ rest.Persistable[model.User] = (*userRepositoryWrapper)(nil)
 
-// Delete coordinates plugin unloading after the repository cleans up the database.
+// Delete unloads plugins even on error: a bulk delete can fail after earlier users were removed
+// and their plugins auto-disabled.
 func (r *userRepositoryWrapper) Delete(ctx context.Context, ids ...string) error {
-	if err := r.UserRepository.Delete(ctx, ids...); err != nil {
-		return err
-	}
+	err := r.UserRepository.Delete(ctx, ids...)
 	r.pluginManager.UnloadDisabledPlugins(ctx)
-	return nil
+	return err
 }
