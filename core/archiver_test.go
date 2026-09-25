@@ -251,6 +251,31 @@ var _ = Describe("Archiver", func() {
 			Expect(files).To(HaveKeyWithValue("Album 2/folder.jpg", jpegData))
 		})
 
+		It("adds one cover when different albums share a folder name", func() {
+			ca.images["al-1"] = jpegData
+			ca.images["al-2"] = pngData
+			mockAlbumTracks(squirrel.And{
+				persistence.ParticipantIDFilter("media_file", "1", model.RoleAlbumArtist),
+				squirrel.Eq{"missing": false},
+			}, model.MediaFiles{
+				{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", DiscNumber: 1},
+				{Path: "test_data/02 - track2.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", DiscNumber: 1},
+			})
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipArtist(context.Background(), "1", "mp3", 128, out)).To(Succeed())
+
+			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+			Expect(err).ToNot(HaveOccurred())
+			var covers []string
+			for _, f := range zr.File {
+				if strings.HasPrefix(f.Name, "Greatest Hits/folder.") {
+					covers = append(covers, f.Name)
+				}
+			}
+			Expect(covers).To(HaveLen(1))
+		})
+
 		It("adds the playlist cover to the root", func() {
 			ca.images["pl-1"] = jpegData
 			plRepo := &mockPlaylistRepository{}

@@ -70,6 +70,8 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 	albums := slice.Group(mfs, func(mf model.MediaFile) string {
 		return mf.AlbumID
 	})
+	// Albums with the same name share a folder, which gets only one cover.
+	covered := map[string]bool{}
 	for _, album := range albums {
 		discs := slice.Group(album, func(mf model.MediaFile) int { return mf.DiscNumber })
 		isMultiDisc := len(discs) > 1
@@ -88,7 +90,10 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 			}
 		}
 		// After the tracks, so a slow artwork lookup doesn't delay the first bytes.
-		a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), albumFolder(album[0]))
+		if dir := albumFolder(album[0]); !covered[dir] {
+			covered[dir] = true
+			a.addCoverArtToZip(ctx, z, album[0].AlbumCoverArtID(), dir)
+		}
 	}
 	a.addCoverArtToZip(ctx, z, rootArt, "")
 	err = z.Close()
