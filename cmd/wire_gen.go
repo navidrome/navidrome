@@ -95,7 +95,7 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
+	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
 	players := core.NewPlayers(dataStore)
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
@@ -152,7 +152,7 @@ func CreatePublicRouter() *public.Router {
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	share := core.NewShare(dataStore)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share)
+	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
 	router := public.New(dataStore, artworkArtwork, mediaStreamer, share, archiver)
 	return router
 }
