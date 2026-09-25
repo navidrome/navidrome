@@ -3,10 +3,8 @@ package subsonic
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/stream"
@@ -15,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -94,9 +93,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	}
 
 	setHeaders := func(name string) {
-		name = strings.ReplaceAll(name, ",", "_")
-		disposition := fmt.Sprintf("attachment; filename=\"%s.zip\"", name)
-		w.Header().Set("Content-Disposition", disposition)
+		w.Header().Set("Content-Disposition", str.ContentDispositionAttachment(name+".zip"))
 		w.Header().Set("Content-Type", "application/zip")
 	}
 
@@ -115,8 +112,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 			}
 		}()
 
-		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
-		w.Header().Set("Content-Disposition", disposition)
+		w.Header().Set("Content-Disposition", str.ContentDispositionAttachment(stream.Name()))
 
 		_, err = stream.Serve(ctx, w, r)
 		return nil, err

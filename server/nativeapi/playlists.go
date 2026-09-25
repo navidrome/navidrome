@@ -16,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 // writePlaylistError maps a playlist service error to an HTTP status, or defaultStatus if unknown.
@@ -99,8 +100,7 @@ func handleExportPlaylist(pls playlists.Playlists) http.HandlerFunc {
 
 		log.Debug(ctx, "Exporting playlist as M3U", "playlistId", plsId, "name", playlist.Name)
 		w.Header().Set("Content-Type", "audio/x-mpegurl")
-		disposition := fmt.Sprintf("attachment; filename=\"%s.m3u\"", playlist.Name)
-		w.Header().Set("Content-Disposition", disposition)
+		w.Header().Set("Content-Disposition", str.ContentDispositionAttachment(playlist.Name+".m3u"))
 
 		_, err = w.Write([]byte(playlist.ToM3U8())) //nolint:gosec
 		if err != nil {

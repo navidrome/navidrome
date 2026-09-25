@@ -329,6 +329,10 @@ func (db *MockDataStore) WithTxImmediate(block func(tx model.DataStore) error, l
 	return block(db)
 }
 
+func (db *MockDataStore) WithTxRetry(ctx context.Context, block func(ctx context.Context, tx model.DataStore) error, label ...string) error {
+	return block(ctx, db)
+}
+
 func (db *MockDataStore) GC(context.Context, ...int) error {
 	db.GCCalled = true
 	if db.GCError != nil {

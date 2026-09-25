@@ -273,66 +273,68 @@ func (p *phaseMissingTracks) findCrossLibraryMatch(missing model.MediaFile) (mod
 }
 
 func (p *phaseMissingTracks) moveMatched(target, missing model.MediaFile) error {
-	return p.ds.WithTx(func(tx model.DataStore) error {
-		discardedID := target.ID
-		oldAlbumID := missing.AlbumID
-		newAlbumID := target.AlbumID
+	oldAlbumID := missing.AlbumID
+	newAlbumID := target.AlbumID
+	// Use newAlbumID as key since we only care about avoiding duplicate reassignments to the same target.
+	// Claimed before the transaction so a concurrent move skips it, and released if the move fails.
+	reassignAlbum := oldAlbumID != newAlbumID
+	if reassignAlbum {
+		p.annotationMutex.Lock()
+		reassignAlbum = !p.processedAlbumAnnotations[newAlbumID]
+		p.processedAlbumAnnotations[newAlbumID] = true
+		p.annotationMutex.Unlock()
+		if !reassignAlbum {
+			log.Trace(p.ctx, "Scanner: Skipping album annotation reassignment", "from", oldAlbumID, "to", newAlbumID)
+		}
+	}
 
+	err := p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
+		// A rerun must start from the original target, not the one the rolled-back attempt changed
+		moved := target
 		// Preserve the original created_at from the missing file, so moved tracks
 		// don't appear in "Recently Added"
-		target.CreatedAt = missing.CreatedAt
+		moved.CreatedAt = missing.CreatedAt
 
 		// Update the target media file with the missing file's ID. This effectively "moves" the track
 		// to the new location while keeping its annotations and references intact.
-		target.ID = missing.ID
-		err := tx.MediaFile().Put(p.ctx, &target)
-		if err != nil {
+		moved.ID = missing.ID
+		if err := tx.MediaFile().Put(ctx, &moved); err != nil {
 			return fmt.Errorf("update matched track: %w", err)
 		}
 
 		// Discard the new mediafile row (the one that was moved to)
-		err = tx.MediaFile().Delete(p.ctx, discardedID)
-		if err != nil {
+		if err := tx.MediaFile().Delete(ctx, target.ID); err != nil {
 			return fmt.Errorf("delete discarded track: %w", err)
 		}
 
-		// Handle album annotation reassignment if AlbumID changed
-		if oldAlbumID != newAlbumID {
-			// Use newAlbumID as key since we only care about avoiding duplicate reassignments to the same target
-			p.annotationMutex.RLock()
-			alreadyProcessed := p.processedAlbumAnnotations[newAlbumID]
-			p.annotationMutex.RUnlock()
-
-			if !alreadyProcessed {
-				p.annotationMutex.Lock()
-				// Double-check pattern to avoid race conditions
-				if !p.processedAlbumAnnotations[newAlbumID] {
-					// Reassign direct album annotations (starred, rating)
-					log.Debug(p.ctx, "Scanner: Reassigning album annotations", "from", oldAlbumID, "to", newAlbumID)
-					if err := tx.Album().ReassignAnnotation(p.ctx, oldAlbumID, newAlbumID); err != nil {
-						log.Warn(p.ctx, "Scanner: Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
-					}
-
-					// Keep created_at field from previous instance of the album, so moved albums
-					// don't appear in "Recently Added"
-					if err := tx.Album().CopyAttributes(p.ctx, oldAlbumID, newAlbumID, "created_at"); err != nil {
-						if !errors.Is(err, model.ErrNotFound) {
-							log.Warn(p.ctx, "Scanner: Could not copy album created_at", "from", oldAlbumID, "to", newAlbumID, err)
-						}
-					}
-
-					// Note: RefreshPlayCounts will be called in later phases, so we don't need to call it here
-					p.processedAlbumAnnotations[newAlbumID] = true
-				}
-				p.annotationMutex.Unlock()
-			} else {
-				log.Trace(p.ctx, "Scanner: Skipping album annotation reassignment", "from", oldAlbumID, "to", newAlbumID)
+		if reassignAlbum {
+			// Reassign direct album annotations (starred, rating)
+			log.Debug(ctx, "Scanner: Reassigning album annotations", "from", oldAlbumID, "to", newAlbumID)
+			if err := tx.Album().ReassignAnnotation(ctx, oldAlbumID, newAlbumID); err != nil {
+				log.Warn(ctx, "Scanner: Could not reassign album annotations", "from", oldAlbumID, "to", newAlbumID, err)
 			}
-		}
 
-		p.state.changesDetected.Store(true)
+			// Keep created_at field from previous instance of the album, so moved albums
+			// don't appear in "Recently Added"
+			if err := tx.Album().CopyAttributes(ctx, oldAlbumID, newAlbumID, "created_at"); err != nil {
+				if !errors.Is(err, model.ErrNotFound) {
+					log.Warn(ctx, "Scanner: Could not copy album created_at", "from", oldAlbumID, "to", newAlbumID, err)
+				}
+			}
+			// Note: RefreshPlayCounts will be called in later phases, so we don't need to call it here
+		}
 		return nil
-	})
+	}, "scanner: move matched track")
+	if err != nil {
+		if reassignAlbum {
+			p.annotationMutex.Lock()
+			delete(p.processedAlbumAnnotations, newAlbumID)
+			p.annotationMutex.Unlock()
+		}
+		return err
+	}
+	p.state.changesDetected.Store(true)
+	return nil
 }
 
 func (p *phaseMissingTracks) finalize(err error) error {
@@ -355,7 +357,12 @@ func (p *phaseMissingTracks) finalize(err error) error {
 }
 
 func (p *phaseMissingTracks) purgeMissing() error {
-	deletedCount, err := p.ds.MediaFile().DeleteAllMissing(p.ctx)
+	var deletedCount int64
+	err := p.ds.WithTxRetry(p.ctx, func(ctx context.Context, tx model.DataStore) error {
+		var err error
+		deletedCount, err = tx.MediaFile().DeleteAllMissing(ctx)
+		return err
+	}, "scanner: purge missing")
 	if err != nil {
 		return fmt.Errorf("error deleting missing files: %w", err)
 	}

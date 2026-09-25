@@ -48,6 +48,7 @@ type createPlaylistRequest struct {
 	Name      string   `json:"Name"`
 	Ids       []string `json:"Ids"`
 	MediaType string   `json:"MediaType"`
+	IsPublic  *bool    `json:"IsPublic"`
 }
 
 // createPlaylist always creates a new playlist (playlistId "" tells core/playlists.Create not to
@@ -68,6 +69,13 @@ func (api *Router) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		api.internalError(w, r, err)
 		return
+	}
+	// Create takes no visibility, so a requested one costs a second write.
+	if body.IsPublic != nil {
+		if err := api.playlists.Update(r.Context(), id, nil, nil, body.IsPublic, nil, nil); err != nil {
+			api.playlistError(w, r, err)
+			return
+		}
 	}
 	api.ok(w, r, map[string]string{"Id": dto.EncodeID(id)})
 }

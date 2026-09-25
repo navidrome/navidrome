@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -134,14 +135,63 @@ func optimizeAt(ctx context.Context, db *sql.DB, now time.Time) error {
 		return recordAnalyzeError(ctx, db, now, fmt.Errorf("marking ANALYZE pending: %w", err))
 	}
 	log.Debug(ctx, "Refreshing query planner statistics")
-	_, err := db.ExecContext(ctx, "ANALYZE")
-	if err != nil {
+	if err := analyzeInSteps(ctx, db); err != nil {
 		return recordAnalyzeError(ctx, db, now, fmt.Errorf("running ANALYZE: %w", err))
 	}
-	if err = recordAnalyzeSuccess(ctx, db, now); err != nil {
+	if err := recordAnalyzeSuccess(ctx, db, now); err != nil {
 		return recordAnalyzeError(ctx, db, now, err)
 	}
 	return nil
+}
+
+// One ANALYZE per index (whole table if WITHOUT ROWID or lacking a non-partial index) yields the
+// same sqlite_stat1 rows as a full ANALYZE, but frees the write lock between steps.
+const analyzeTargetsSQL = `
+SELECT i.name FROM sqlite_schema i JOIN pragma_table_list t ON t.schema = 'main' AND t.name = i.tbl_name
+WHERE i.type = 'index' AND t.wr = 0 AND EXISTS (SELECT 1 FROM pragma_index_list(t.name) l WHERE l.partial = 0)
+UNION ALL
+SELECT t.name FROM pragma_table_list t
+WHERE t.schema = 'main' AND t.type IN ('table', 'shadow') AND t.name NOT LIKE 'sqlite_%'
+  AND (t.wr = 1 OR NOT EXISTS (SELECT 1 FROM pragma_index_list(t.name) l WHERE l.partial = 0))`
+
+// analyzeMaxYield is just above SQLite's longest busy-handler sleep, so every waiting writer
+// retries during the pause.
+const analyzeMaxYield = 150 * time.Millisecond
+
+func analyzeInSteps(ctx context.Context, db *sql.DB) error {
+	targets, err := analyzeTargets(ctx, db)
+	if err != nil {
+		return err
+	}
+	for _, target := range targets {
+		start := time.Now()
+		if _, err := db.ExecContext(ctx, `ANALYZE "`+strings.ReplaceAll(target, `"`, `""`)+`"`); err != nil {
+			return fmt.Errorf("analyzing %s: %w", target, err)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(min(time.Since(start), analyzeMaxYield)):
+		}
+	}
+	return nil
+}
+
+func analyzeTargets(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, analyzeTargetsSQL)
+	if err != nil {
+		return nil, fmt.Errorf("listing ANALYZE targets: %w", err)
+	}
+	defer rows.Close()
+	var targets []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("listing ANALYZE targets: %w", err)
+		}
+		targets = append(targets, name)
+	}
+	return targets, rows.Err()
 }
 
 func recordAnalyzeSuccess(ctx context.Context, db *sql.DB, now time.Time) error {

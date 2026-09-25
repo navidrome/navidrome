@@ -133,6 +133,12 @@ func ErrorCodes(err error) (code, extended int, ok bool) {
 	return int(se.Code), int(se.ExtendedCode), true
 }
 
+// IsBusy reports whether err is SQLITE_BUSY, including BUSY_SNAPSHOT, which only a new transaction clears.
+func IsBusy(err error) bool {
+	code, _, ok := ErrorCodes(err)
+	return ok && code == int(sqlite3.ErrBusy)
+}
+
 type statusLogger struct{ numPending int }
 
 func (*statusLogger) Fatalf(format string, v ...any) { log.Fatal(fmt.Sprintf(format, v...)) }

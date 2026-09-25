@@ -106,7 +106,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 	})
 
 	Describe("Download", func() {
-		var trackID string
+		var trackID, trackTitle string
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
@@ -114,6 +114,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID
+			trackTitle = songs[0].Title
 		})
 
 		It("returns error when id parameter is missing", func() {
@@ -143,6 +144,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
 			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
+			Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="` + trackTitle + `.opus"`))
 		})
 
 		It("returns error when downloads are disabled", func() {

@@ -222,8 +222,14 @@ func createPlaylistAs(user model.User, name string, encodedIds ...string) string
 	}
 	body, err := json.Marshal(map[string]any{"Name": name, "Ids": encodedIds})
 	Expect(err).ToNot(HaveOccurred())
+	return createPlaylistBodyAs(user, string(body))
+}
+
+// createPlaylistBodyAs posts a raw create body, for tests that need fields the helpers above don't
+// build, and returns the new playlist's decoded id.
+func createPlaylistBodyAs(user model.User, body string) string {
 	var res map[string]string
-	parseInto(postAs(user, "/Playlists", string(body)), &res)
+	parseInto(postAs(user, "/Playlists", body), &res)
 	Expect(res["Id"]).ToNot(BeEmpty())
 	id, ok := dto.DecodeID(res["Id"])
 	Expect(ok).To(BeTrue())

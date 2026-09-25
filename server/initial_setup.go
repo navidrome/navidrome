@@ -16,7 +16,7 @@ import (
 
 func initialSetup(ds model.DataStore) {
 	ctx := context.TODO()
-	_ = ds.WithTx(func(tx model.DataStore) error {
+	err := ds.WithTx(func(tx model.DataStore) error {
 		if err := tx.Library().StoreMusicFolder(ctx); err != nil {
 			return err
 		}
@@ -36,6 +36,9 @@ func initialSetup(ds model.DataStore) {
 		err = properties.Put(ctx, consts.InitialSetupFlagKey, time.Now().String())
 		return err
 	}, "initial setup")
+	if err != nil {
+		log.Fatal("Error running initial setup", err)
+	}
 }
 
 // If the Dev Admin user is not present, create it
@@ -43,7 +46,7 @@ func createInitialAdminUser(ctx context.Context, ds model.DataStore, initialPass
 	users := ds.User()
 	c, err := users.CountAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"user_name": consts.DevInitialUserName}})
 	if err != nil {
-		panic(fmt.Sprintf("Could not access User table: %s", err))
+		return fmt.Errorf("could not access User table: %w", err)
 	}
 	if c == 0 {
 		newID := id.NewRandom()
@@ -57,12 +60,11 @@ func createInitialAdminUser(ctx context.Context, ds model.DataStore, initialPass
 			NewPassword: initialPassword,
 			IsAdmin:     true,
 		}
-		err := users.Put(ctx, &initialUser)
-		if err != nil {
-			log.Error("Could not create initial admin user", "user", initialUser, err)
+		if err := users.Put(ctx, &initialUser); err != nil {
+			return fmt.Errorf("could not create initial admin user: %w", err)
 		}
 	}
-	return err
+	return nil
 }
 
 func checkFFmpegInstallation() {

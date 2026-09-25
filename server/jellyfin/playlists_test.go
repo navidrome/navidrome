@@ -55,6 +55,16 @@ type fakePlaylists struct {
 
 	deletePlaylistID string
 	deleteErr        error
+
+	updatePlaylistID string
+	updatePublic     *bool
+	updateErr        error
+}
+
+func (f *fakePlaylists) Update(_ context.Context, playlistID string, _ *string, _ *string, public *bool, _ []string, _ []int) error {
+	f.updatePlaylistID = playlistID
+	f.updatePublic = public
+	return f.updateErr
 }
 
 func (f *fakePlaylists) Delete(_ context.Context, id string) error {
@@ -182,6 +192,31 @@ var _ = Describe("Playlists", func() {
 			r := httptest.NewRequest("POST", "/Playlists", strings.NewReader(`{"Name":"Mix"}`)).
 				WithContext(context.Background())
 			invoke(api.createPlaylist, w, r)
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
+
+		createReq := func(body string) *http.Request {
+			return httptest.NewRequest("POST", "/Playlists", strings.NewReader(body)).
+				WithContext(GinkgoT().Context())
+		}
+
+		DescribeTable("visibility",
+			func(body string, wantPublic *bool, wantUpdatedID string) {
+				w := httptest.NewRecorder()
+				invoke(api.createPlaylist, w, createReq(body))
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(fp.updatePublic).To(Equal(wantPublic))
+				Expect(fp.updatePlaylistID).To(Equal(wantUpdatedID))
+			},
+			Entry("applies IsPublic true", `{"Name":"Mix","IsPublic":true}`, new(true), testID("pl-new")),
+			Entry("applies an explicit IsPublic false", `{"Name":"Mix","IsPublic":false}`, new(false), testID("pl-new")),
+			Entry("leaves visibility alone when IsPublic is omitted", `{"Name":"Mix"}`, nil, ""),
+		)
+
+		It("returns 500 when the visibility update fails", func() {
+			fp.updateErr = errors.New("boom")
+			w := httptest.NewRecorder()
+			invoke(api.createPlaylist, w, createReq(`{"Name":"Mix","IsPublic":true}`))
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

@@ -652,5 +652,9 @@ func (r sqlRepository) logSQL(ctx context.Context, sql string, args dbx.Params, 
 	if code, extended, ok := db.ErrorCodes(err); ok {
 		fields = append(fields, "sqliteCode", code, "sqliteExtended", extended)
 	}
+	if db.IsBusy(err) && hasBusyRetry(ctx) {
+		log.Warn(append(fields, err)...)
+		return
+	}
 	log.Error(append(fields, err)...)
 }
