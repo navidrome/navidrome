@@ -133,6 +133,18 @@ var _ = Describe("Service: sessions", func() {
 			Expect(err).To(MatchError(model.ErrInvalidAuth))
 		})
 
+		It("grants no scopes to a signed token claiming all", func() {
+			u := createUser(ctx, "pw", true)
+			_, p, _ := login(u)
+			sg, err := svc.signer()
+			Expect(err).ToNot(HaveOccurred())
+			tok, err := sg.sign(claims{UserID: u.ID, GrantID: p.GrantID, Scopes: []string{ScopeAll, "unknown"}, IssuedAt: now, ExpiresAt: now.Add(TokenTTL)})
+			Expect(err).ToNot(HaveOccurred())
+			got, err := svc.Authenticate(ctx, tok, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.Scopes).To(BeEmpty())
+		})
+
 		It("rejects a token whose grant belongs to another user, even across an epoch change", func() {
 			alice := createUser(ctx, "pw", false)
 			bob := createUser(ctx, "pw", false)

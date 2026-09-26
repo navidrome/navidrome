@@ -39,6 +39,16 @@ var _ = Describe("scopes", func() {
 		})
 	})
 
+	Describe("Allowed", func() {
+		It("never widens all", func() {
+			Expect(Allowed([]string{ScopeAll}, true)).To(BeEmpty())
+		})
+		It("keeps known scopes, and admin only for admins", func() {
+			Expect(Allowed([]string{"read", "retired", "admin"}, false)).To(Equal([]string{"read"}))
+			Expect(Allowed([]string{"read", "admin"}, true)).To(Equal([]string{"admin", "read"}))
+		})
+	})
+
 	Describe("Attenuate", func() {
 		available := []string{"playlists:write", "read"}
 		It("returns everything when no subset is asked", func() {

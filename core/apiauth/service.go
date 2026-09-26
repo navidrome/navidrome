@@ -271,7 +271,7 @@ func (s *Service) Authenticate(ctx context.Context, token, ip string) (*Principa
 		lastUsed = &entry.lastUsedAt
 	}
 	s.touch(ctx, c.GrantID, ip, lastUsed)
-	return &Principal{User: *u, GrantID: c.GrantID, Scopes: Expand(c.Scopes, u.IsAdmin)}, nil
+	return &Principal{User: *u, GrantID: c.GrantID, Scopes: Allowed(c.Scopes, u.IsAdmin)}, nil
 }
 
 // liveGrant trusts the cache only while its epoch matches; a mismatch is settled from one consistent read.
