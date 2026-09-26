@@ -7,26 +7,54 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/api"
+	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
+const maxBodyBytes = 1 << 20
+
 type Router struct {
 	http.Handler
-	ds model.DataStore
+	ds   model.DataStore
+	auth *apiauth.Service
 }
 
 func New(ds model.DataStore) *Router {
-	rt := &Router{ds: ds}
+	rt := &Router{ds: ds, auth: apiauth.New(ds)}
 	rt.Handler = rt.routes()
 	return rt
 }
 
+var gateRulesV1 = gateRules{
+	limited:  map[string]bool{"login": true, "setupFirstAdmin": true, "changePassword": true},
+	noScope:  map[string]bool{"getCapabilities": true},
+	grantOps: map[string]bool{"createAccessToken": true},
+}
+
+func limitBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (rt *Router) routes() http.Handler {
 	r := chi.NewRouter()
-	r.Use(problemRecoverer, headAsGet(r))
+	doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
+	if err != nil {
+		log.Fatal("API v1: cannot load the embedded OpenAPI spec", err)
+	}
+	g, err := newGate(doc, r, rt.auth, gateRulesV1)
+	if err != nil {
+		log.Fatal("API v1: the embedded OpenAPI spec breaks the security rules", err)
+	}
+	r.Use(referenceIDMiddleware, problemRecoverer, headAsGet(r), limitBody, g.handler)
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		writeProblemStatus(w, req, http.StatusNotFound, ProblemCodeNotFound, "no such endpoint")
 	})
@@ -40,11 +68,19 @@ func (rt *Router) routes() http.Handler {
 
 	strict := NewStrictHandlerWithOptions(rt, nil, StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, req *http.Request, err error) {
-			writeProblemStatus(w, req, http.StatusBadRequest, "validation", err.Error())
+			var tooLarge *http.MaxBytesError
+			if errors.As(err, &tooLarge) {
+				writeProblemStatus(w, req, http.StatusRequestEntityTooLarge, ProblemCodePayloadTooLarge, "request body too large")
+				return
+			}
+			writeProblemStatus(w, req, http.StatusBadRequest, ProblemCodeValidation, "request body is not valid JSON")
 		},
 		ResponseErrorHandlerFunc: writeProblem,
 	})
 	HandlerWithOptions(strict, ChiServerOptions{BaseRouter: r, ErrorHandlerFunc: bindingErrorHandler})
+	if err := g.checkRoutes(); err != nil {
+		log.Fatal("API v1: routes and the embedded OpenAPI spec disagree", err)
+	}
 	return r
 }
 

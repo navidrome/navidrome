@@ -67,6 +67,19 @@ var _ = Describe("Router", func() {
 		Expect(p.Detail).To(BeNil())
 	})
 
+	It("tags internal errors with a referenceId that is also on the request's log lines", func() {
+		logs := captureLogs()
+		w := httptest.NewRecorder()
+		h := referenceIDMiddleware(problemRecoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic("kaboom")
+		})))
+		h.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/boom", nil))
+		p := decodeProblem(w)
+		Expect(p.ReferenceId).ToNot(BeNil())
+		Expect(*p.ReferenceId).To(MatchRegexp(`^[0-9A-Za-z]{22}$`))
+		Expect(logs.String()).To(ContainSubstring(*p.ReferenceId))
+	})
+
 	It("re-panics http.ErrAbortHandler so the server can drop the connection", func() {
 		Expect(func() {
 			panicking(http.ErrAbortHandler).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/abort", nil))

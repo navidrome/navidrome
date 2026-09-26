@@ -3,6 +3,7 @@ get:
   x-module: core
   x-stability-level: alpha
   tags: [server]
+  security: []
   summary: Describe the server
   description: |
     Returns the public server description. No authentication required.

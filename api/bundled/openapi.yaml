@@ -30,6 +30,7 @@ paths:
       x-module: core
       x-stability-level: alpha
       tags: [server]
+      security: []
       summary: Describe the server
       description: |
         Returns the public server description. No authentication required.
@@ -50,6 +51,7 @@ paths:
       x-module: core
       x-stability-level: alpha
       tags: [server]
+      security: []
       summary: Get the OpenAPI document (JSON)
       description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
       responses:
@@ -71,6 +73,7 @@ paths:
       x-module: core
       x-stability-level: alpha
       tags: [server]
+      security: []
       summary: Get the OpenAPI document (YAML)
       description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
       responses:
@@ -152,11 +155,20 @@ components:
           enum:
             - validation
             - unauthorized
+            - token_expired
             - forbidden
+            - insufficient_scope
             - not_found
             - method_not_allowed
+            - setup_complete
+            - password_managed_externally
+            - payload_too_large
+            - rate_limited
             - unavailable
             - internal
+        referenceId:
+          type: string
+          description: Present on internal errors. Quote it when reporting a problem; it tags the server's log lines for this request.
         errors:
           type: array
           description: Per-field failures. Present only when `code` is `validation`.

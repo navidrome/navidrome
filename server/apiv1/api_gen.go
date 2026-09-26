@@ -15,13 +15,19 @@ import (
 
 // Defines values for ProblemCode.
 const (
-	ProblemCodeForbidden        ProblemCode = "forbidden"
-	ProblemCodeInternal         ProblemCode = "internal"
-	ProblemCodeMethodNotAllowed ProblemCode = "method_not_allowed"
-	ProblemCodeNotFound         ProblemCode = "not_found"
-	ProblemCodeUnauthorized     ProblemCode = "unauthorized"
-	ProblemCodeUnavailable      ProblemCode = "unavailable"
-	ProblemCodeValidation       ProblemCode = "validation"
+	ProblemCodeForbidden                 ProblemCode = "forbidden"
+	ProblemCodeInsufficientScope         ProblemCode = "insufficient_scope"
+	ProblemCodeInternal                  ProblemCode = "internal"
+	ProblemCodeMethodNotAllowed          ProblemCode = "method_not_allowed"
+	ProblemCodeNotFound                  ProblemCode = "not_found"
+	ProblemCodePasswordManagedExternally ProblemCode = "password_managed_externally"
+	ProblemCodePayloadTooLarge           ProblemCode = "payload_too_large"
+	ProblemCodeRateLimited               ProblemCode = "rate_limited"
+	ProblemCodeSetupComplete             ProblemCode = "setup_complete"
+	ProblemCodeTokenExpired              ProblemCode = "token_expired"
+	ProblemCodeUnauthorized              ProblemCode = "unauthorized"
+	ProblemCodeUnavailable               ProblemCode = "unavailable"
+	ProblemCodeValidation                ProblemCode = "validation"
 )
 
 // Valid indicates whether the value is a known member of the ProblemCode enum.
@@ -29,11 +35,23 @@ func (e ProblemCode) Valid() bool {
 	switch e {
 	case ProblemCodeForbidden:
 		return true
+	case ProblemCodeInsufficientScope:
+		return true
 	case ProblemCodeInternal:
 		return true
 	case ProblemCodeMethodNotAllowed:
 		return true
 	case ProblemCodeNotFound:
+		return true
+	case ProblemCodePasswordManagedExternally:
+		return true
+	case ProblemCodePayloadTooLarge:
+		return true
+	case ProblemCodeRateLimited:
+		return true
+	case ProblemCodeSetupComplete:
+		return true
+	case ProblemCodeTokenExpired:
 		return true
 	case ProblemCodeUnauthorized:
 		return true
@@ -71,6 +89,9 @@ type Problem struct {
 
 	// Errors Per-field failures. Present only when `code` is `validation`.
 	Errors *[]ValidationError `json:"errors,omitempty"`
+
+	// ReferenceId Present on internal errors. Quote it when reporting a problem; it tags the server's log lines for this request.
+	ReferenceId *string `json:"referenceId,omitempty"`
 
 	// Status HTTP status code of this response.
 	Status int `json:"status"`
