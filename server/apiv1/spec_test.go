@@ -1,13 +1,19 @@
 package apiv1
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/api"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"gopkg.in/yaml.v3"
 )
 
 var _ = Describe("OpenAPI document routes", func() {
@@ -69,4 +75,62 @@ var _ = Describe("OpenAPI document routes", func() {
 		y := get("/api/v1/openapi.yaml", nil)
 		Expect(j.Header().Get("ETag")).ToNot(Equal(y.Header().Get("ETag")))
 	})
+
+	Describe("with a base path", func() {
+		decode := func(format string, body []byte) map[string]any {
+			var doc map[string]any
+			if format == "json" {
+				ExpectWithOffset(1, json.Unmarshal(body, &doc)).To(Succeed())
+			} else {
+				ExpectWithOffset(1, yaml.Unmarshal(body, &doc)).To(Succeed())
+			}
+			return doc
+		}
+		serverURL := func(doc map[string]any) any {
+			return doc["servers"].([]any)[0].(map[string]any)["url"]
+		}
+		var plainETag string
+
+		BeforeEach(func() {
+			plainETag = get("/api/v1/openapi.json", nil).Header().Get("ETag")
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.BasePath = "/music"
+			router = New(&tests.MockDataStore{})
+		})
+
+		DescribeTable("advertises the server under the base path and changes nothing else",
+			func(path, format string, bundle []byte) {
+				w := get(path, nil)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				served, original := decode(format, w.Body.Bytes()), decode(format, bundle)
+				Expect(serverURL(served)).To(Equal("/music/api/v1"))
+				delete(served, "servers")
+				delete(original, "servers")
+				Expect(served).To(Equal(original))
+			},
+			Entry("JSON", "/api/v1/openapi.json", "json", api.SpecJSON()),
+			Entry("YAML", "/api/v1/openapi.yaml", "yaml", api.SpecYAML()),
+		)
+
+		It("uses its own ETag, and still revalidates", func() {
+			etag := get("/api/v1/openapi.json", nil).Header().Get("ETag")
+			Expect(etag).ToNot(Equal(plainETag))
+			Expect(get("/api/v1/openapi.json", map[string]string{"If-None-Match": etag}).Code).To(Equal(http.StatusNotModified))
+		})
+
+		It("escapes base paths that need quoting", func() {
+			conf.Server.BasePath = "/my music: \"live\""
+			router = New(&tests.MockDataStore{})
+			Expect(serverURL(decode("json", get("/api/v1/openapi.json", nil).Body.Bytes()))).To(Equal("/my music: \"live\"/api/v1"))
+			Expect(serverURL(decode("yaml", get("/api/v1/openapi.yaml", nil).Body.Bytes()))).To(Equal("/my music: \"live\"/api/v1"))
+		})
+	})
+
+	DescribeTable("the bundle advertises the API path exactly once, which the base-path rewrite relies on",
+		func(bundle []byte) {
+			Expect(bytes.Count(bundle, []byte(consts.URLPathAPIv1))).To(Equal(1))
+		},
+		Entry("JSON", api.SpecJSON()),
+		Entry("YAML", api.SpecYAML()),
+	)
 })

@@ -35,8 +35,8 @@ func (rt *Router) routes() http.Handler {
 		writeProblemStatus(w, req, http.StatusMethodNotAllowed, ProblemCodeMethodNotAllowed, "")
 	})
 
-	r.Get("/openapi.json", specHandler(api.SpecJSON(), "application/json"))
-	r.Get("/openapi.yaml", specHandler(api.SpecYAML(), "application/yaml"))
+	r.Get("/openapi.json", specHandler(withBasePath(api.SpecJSON(), `"url": `, true), "application/json"))
+	r.Get("/openapi.yaml", specHandler(withBasePath(api.SpecYAML(), "url: ", false), "application/yaml"))
 
 	strict := NewStrictHandlerWithOptions(rt, nil, StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, req *http.Request, err error) {
