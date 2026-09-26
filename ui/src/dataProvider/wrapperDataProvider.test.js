@@ -90,7 +90,7 @@ describe('wrapperDataProvider', () => {
 
   describe('create player', () => {
     it('returns the server record, never the plaintext API key', async () => {
-      const data = { name: 'Phone', apiKey: 'nav_0123456789abcdefghijkl' }
+      const data = { name: 'Phone', apiKey: 'nds_0123456789abcdefghijkl' }
       const saved = { id: 'p1', name: 'Phone', hasApiKey: true, userId: 'u1' }
       mockProvider.create.mockResolvedValue({ data: { ...data, id: 'p1' } })
       mockProvider.getOne.mockResolvedValue({ data: saved })

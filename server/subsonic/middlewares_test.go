@@ -121,7 +121,7 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("does not require u when apiKey is present", func() {
-			r := newGetRequest("apiKey=nav_abc", "v=1.15", "c=test")
+			r := newGetRequest("apiKey=nds_abc", "v=1.15", "c=test")
 			cp := checkRequiredParameters(next)
 			cp.ServeHTTP(w, r)
 
@@ -330,7 +330,7 @@ var _ = Describe("Middlewares", func() {
 				usr, err := ds.User().FindByUsername(ctx, "admin")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
-				key = "nav_0123456789abcdefghijkl"
+				key = "nds_0123456789abcdefghijkl"
 				Expect(ds.Player().SetAPIKey(ctx, "player-1", key)).To(Succeed())
 			})
 
@@ -358,7 +358,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("rejects an unknown key with error 44", func() {
-				serve("apiKey=nav_unknown")
+				serve("apiKey=nds_unknown")
 
 				Expect(w.Body.String()).To(ContainSubstring(`code="44"`))
 				Expect(next.called).To(BeFalse())
@@ -397,8 +397,8 @@ var _ = Describe("Middlewares", func() {
 				})
 
 				It("still accepts a real password that starts with the key prefix", func() {
-					Expect(ds.User().Put(ctx, &model.User{UserName: "prefixed", NewPassword: "nav_secret"})).To(Succeed())
-					serve("u=prefixed", "p=nav_secret")
+					Expect(ds.User().Put(ctx, &model.User{UserName: "prefixed", NewPassword: "nds_secret"})).To(Succeed())
+					serve("u=prefixed", "p=nds_secret")
 
 					Expect(next.called).To(BeTrue())
 					_, ok := request.PlayerFrom(next.req.Context())
@@ -484,7 +484,7 @@ var _ = Describe("Middlewares", func() {
 				usr, _ := ds.User().FindByUsername(ctx, "admin")
 				playerRepo := ds.Player().(*tests.MockPlayerRepo)
 				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
-				key := "nav_0123456789abcdefghijkl"
+				key := "nds_0123456789abcdefghijkl"
 				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
 
 				playerRepo.Error = errors.New("db down")
@@ -528,14 +528,14 @@ var _ = Describe("Middlewares", func() {
 				usr, _ := ds.User().FindByUsername(ctx, "admin")
 				playerRepo := ds.Player().(*tests.MockPlayerRepo)
 				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
-				key := "nav_0123456789abcdefghijkl"
+				key := "nds_0123456789abcdefghijkl"
 				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
 
 				for range 3 {
-					Expect(serve(newGetRequest("apiKey=nav_bad")).Body.String()).To(ContainSubstring(`code="44"`))
+					Expect(serve(newGetRequest("apiKey=nds_bad")).Body.String()).To(ContainSubstring(`code="44"`))
 				}
-				playerRepo.APIKeys["nav_bad"] = "player-1"
-				rec := serve(newGetRequest("apiKey=nav_bad"))
+				playerRepo.APIKeys["nds_bad"] = "player-1"
+				rec := serve(newGetRequest("apiKey=nds_bad"))
 				Expect(next.called).To(BeFalse())
 				Expect(rec.Body.String()).To(ContainSubstring(`code="44"`))
 

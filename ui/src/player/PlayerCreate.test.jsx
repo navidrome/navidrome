@@ -29,7 +29,7 @@ describe('PlayerCreate', () => {
 
     const [first, second] = hooks.forms.map((f) => f.initialValues)
     expect(hooks.forms).toHaveLength(2)
-    expect(first.apiKey).toMatch(/^nav_[0-9A-Za-z]{22}$/)
+    expect(first.apiKey).toMatch(/^nds_[0-9A-Za-z]{22}$/)
     expect(second).toBe(first)
   })
 
@@ -42,6 +42,6 @@ describe('PlayerCreate', () => {
     expect(input.props.source).toBe('apiKey')
     expect(input.props.isCreate).toBe(true)
     expect(input.props.validate('')).toBeTruthy()
-    expect(input.props.validate('nav_0123456789abcdefghijkl')).toBeUndefined()
+    expect(input.props.validate('nds_0123456789abcdefghijkl')).toBeUndefined()
   })
 })

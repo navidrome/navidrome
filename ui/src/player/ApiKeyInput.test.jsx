@@ -5,8 +5,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ApiKeyInput from './ApiKeyInput'
 
 const hooks = vi.hoisted(() => ({ notify: vi.fn() }))
-const KEY = 'nav_0123456789abcdefghijkl'
-const KEY_FORMAT = /^nav_[0-9A-Za-z]{22}$/
+const KEY = 'nds_0123456789abcdefghijkl'
+const KEY_FORMAT = /^nds_[0-9A-Za-z]{22}$/
 
 vi.mock('react-admin', async () => {
   const actual = await vi.importActual('react-admin')
@@ -81,7 +81,7 @@ describe('ApiKeyInput', () => {
     const { values } = renderInput({
       record: { id: 'p1', userId: 'owner', hasApiKey: true },
     })
-    expect(screen.queryByDisplayValue(/^nav_/)).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue(/^nds_/)).not.toBeInTheDocument()
     expect(text('resources.player.message.apiKeyActive')).toBeInTheDocument()
     expect(
       text('resources.player.actions.regenerateApiKey'),

@@ -19,7 +19,7 @@ var _ = Describe("API key authentication", func() {
 		userCtx := request.WithUser(ctx, regularUser)
 		player := &model.Player{ID: "apikey-player", Name: "Phone", UserId: regularUser.ID, Client: "test-client"}
 		Expect(ds.Player().Put(userCtx, player)).To(Succeed())
-		key = "nav_0123456789abcdefghijkl"
+		key = "nds_0123456789abcdefghijkl"
 		Expect(ds.Player().SetAPIKey(userCtx, player.ID, key)).To(Succeed())
 	})
 
@@ -45,7 +45,7 @@ var _ = Describe("API key authentication", func() {
 	})
 
 	It("rejects an unknown key with error 44", func() {
-		resp := doKeyReq("ping", "nav_unknown")
+		resp := doKeyReq("ping", "nds_unknown")
 
 		Expect(resp.Status).To(Equal(responses.StatusFailed))
 		Expect(resp.Error).ToNot(BeNil())

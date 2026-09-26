@@ -1,4 +1,4 @@
-const API_KEY_PREFIX = 'nav_'
+const API_KEY_PREFIX = 'nds_'
 const ALPHABET =
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 const KEY_LENGTH = 22

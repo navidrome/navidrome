@@ -13,7 +13,7 @@ import (
 	"github.com/pocketbase/dbx"
 )
 
-const testAPIKey = "nav_0123456789abcdefghijkl"
+const testAPIKey = "nds_0123456789abcdefghijkl"
 
 func expectAPIKeyError(err error, msg string) {
 	var verr *rest.ValidationError
@@ -264,7 +264,7 @@ var _ = Describe("PlayerRepository", func() {
 
 	Describe("API keys", func() {
 		const key = testAPIKey
-		const otherKey = "nav_ABCDEFGHIJKLMNOPQRSTUV"
+		const otherKey = "nds_ABCDEFGHIJKLMNOPQRSTUV"
 		var ownerCtx, otherCtx context.Context
 
 		BeforeEach(func() {
@@ -310,9 +310,9 @@ var _ = Describe("PlayerRepository", func() {
 					Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
 				},
 				Entry("no prefix", "0123456789abcdefghijklmn"),
-				Entry("too short", "nav_short"),
+				Entry("too short", "nds_short"),
 				Entry("too long", key+"x"),
-				Entry("bad chars", "nav_0123456789abcdefghij-!"),
+				Entry("bad chars", "nds_0123456789abcdefghij-!"),
 			)
 
 			It("revokes with an empty key, by the owner or an admin", func() {
@@ -384,7 +384,7 @@ var _ = Describe("PlayerRepository", func() {
 
 			It("rejects a malformed key without creating the player", func() {
 				count, _ := adminRepo.CountAll(ctx)
-				_, err := adminRepo.Save(ownerCtx, &model.Player{Name: "Bad", APIKey: new("nav_bad")})
+				_, err := adminRepo.Save(ownerCtx, &model.Player{Name: "Bad", APIKey: new("nds_bad")})
 				expectAPIKeyError(err, "resources.player.validation.apiKeyFormat")
 				Expect(adminRepo.CountAll(ctx)).To(Equal(count))
 			})
