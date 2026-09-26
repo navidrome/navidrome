@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sync"
 	"time"
@@ -33,17 +34,8 @@ var _ = Describe("CreateFirstAdmin", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	createWith := func(name string, wrap func(model.DataStore) model.DataStore) (*model.User, error) {
-		var u *model.User
-		err := ds.WithTxImmediate(func(tx model.DataStore) error {
-			var err error
-			u, err = auth.CreateFirstAdmin(ctx, wrap(tx), name, "secret")
-			return err
-		})
-		return u, err
-	}
 	create := func(name string) (*model.User, error) {
-		return createWith(name, func(tx model.DataStore) model.DataStore { return tx })
+		return auth.CreateFirstAdmin(ctx, ds, name, "secret", nil)
 	}
 
 	It("creates an admin with a title-cased name and returns it with its id", func() {
@@ -65,6 +57,19 @@ var _ = Describe("CreateFirstAdmin", Ordered, func() {
 		Expect(err).To(MatchError(auth.ErrSetupComplete))
 	})
 
+	It("runs then in the same transaction, rolling the user back when it fails", func() {
+		boom := errors.New("boom")
+		var seen string
+		_, err := auth.CreateFirstAdmin(ctx, ds, "john", "secret", func(tx model.DataStore, u *model.User) error {
+			seen = u.ID
+			Expect(tx.User().CountAll(ctx)).To(Equal(int64(1)))
+			return boom
+		})
+		Expect(err).To(MatchError(boom))
+		Expect(seen).ToNot(BeEmpty())
+		Expect(ds.User().CountAll(ctx)).To(BeZero())
+	})
+
 	It("lets exactly one of two concurrent setups win", func() {
 		var wg sync.WaitGroup
 		errs := make([]error, 2)
@@ -73,7 +78,7 @@ var _ = Describe("CreateFirstAdmin", Ordered, func() {
 			go func() {
 				defer GinkgoRecover()
 				defer wg.Done()
-				_, errs[i] = createWith(name, func(tx model.DataStore) model.DataStore { return slowCountDS{tx} })
+				_, errs[i] = auth.CreateFirstAdmin(ctx, slowCountDS{ds}, name, "secret", nil)
 			}()
 		}
 		wg.Wait()
@@ -86,6 +91,10 @@ var _ = Describe("CreateFirstAdmin", Ordered, func() {
 type slowCountDS struct{ model.DataStore }
 
 func (d slowCountDS) User() model.UserRepository { return slowCountUsers{d.DataStore.User()} }
+
+func (d slowCountDS) WithTxImmediate(block func(tx model.DataStore) error, scope ...string) error {
+	return d.DataStore.WithTxImmediate(func(tx model.DataStore) error { return block(slowCountDS{tx}) }, scope...)
+}
 
 type slowCountUsers struct{ model.UserRepository }
 

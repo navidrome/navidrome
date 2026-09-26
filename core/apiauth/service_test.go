@@ -30,12 +30,12 @@ type flakyProps struct {
 	ds *flakyPropsDS
 }
 
-func (p *flakyProps) PutIfAbsent(ctx context.Context, id, value string) error {
+func (p *flakyProps) Get(ctx context.Context, id string) (string, error) {
 	if p.ds.failures > 0 {
 		p.ds.failures--
-		return errFlakyProps
+		return "", errFlakyProps
 	}
-	return p.PropertyRepository.PutIfAbsent(ctx, id, value)
+	return p.PropertyRepository.Get(ctx, id)
 }
 
 var meta = ClientMeta{Name: "Living room", Client: "TestApp", ClientVersion: "1.0"}

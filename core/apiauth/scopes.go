@@ -19,6 +19,10 @@ func known(s string) bool {
 	return slices.Contains(KnownScopes, s)
 }
 
+func grantable(s string, isAdmin bool) bool {
+	return known(s) && (s != ScopeAdmin || isAdmin)
+}
+
 func normalize(in []string) []string {
 	out := slices.Clone(in)
 	slices.Sort(out)
@@ -32,9 +36,7 @@ func Entitled(requested []string, isAdmin bool) []string {
 	}
 	var out []string
 	for _, s := range requested {
-		switch {
-		case s == ScopeAdmin && !isAdmin:
-		case s == ScopeAll || known(s):
+		if s == ScopeAll || grantable(s, isAdmin) {
 			out = append(out, s)
 		}
 	}
@@ -56,9 +58,7 @@ func Expand(granted []string, isAdmin bool) []string {
 
 // Allowed keeps the concrete scopes the user may hold now; unlike Expand it never widens `all`.
 func Allowed(scopes []string, isAdmin bool) []string {
-	out := slices.DeleteFunc(slices.Clone(scopes), func(s string) bool {
-		return !known(s) || (s == ScopeAdmin && !isAdmin)
-	})
+	out := slices.DeleteFunc(slices.Clone(scopes), func(s string) bool { return !grantable(s, isAdmin) })
 	return normalize(out)
 }
 

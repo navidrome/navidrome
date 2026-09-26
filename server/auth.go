@@ -124,10 +124,7 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		err = ds.WithTxImmediate(func(tx model.DataStore) error {
-			_, err := auth.CreateFirstAdmin(r.Context(), tx, username, password)
-			return err
-		})
+		_, err = auth.CreateFirstAdmin(r.Context(), ds, username, password, nil)
 		if errors.Is(err, auth.ErrSetupComplete) {
 			_ = rest.RespondWithError(w, http.StatusForbidden, "Cannot create another first admin")
 			return

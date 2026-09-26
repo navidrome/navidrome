@@ -55,6 +55,13 @@ func (c *livenessCache) put(id string, e livenessEntry, now time.Time, started u
 	if len(c.entries) >= maxLivenessEntries {
 		maps.DeleteFunc(c.entries, func(_ string, v livenessEntry) bool { return !now.Before(v.expires) })
 	}
+	if _, refresh := c.entries[id]; !refresh && len(c.entries) >= maxLivenessEntries {
+		// Dropping an arbitrary live entry only costs that grant one extra DB read.
+		for k := range c.entries {
+			delete(c.entries, k)
+			break
+		}
+	}
 	if len(c.evicted) >= maxLivenessEntries {
 		clear(c.evicted)
 		c.floor = c.gen

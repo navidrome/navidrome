@@ -77,10 +77,7 @@ var _ = Describe("Auth", func() {
 		Describe("CreateFirstAdmin", func() {
 			It("returns the error when the user cannot be saved", func() {
 				failing := dsWithFailingPut(errors.New("db is down"))
-				err := failing.WithTxImmediate(func(tx model.DataStore) error {
-					_, err := auth.CreateFirstAdmin(ctx, tx, "johndoe", "secret")
-					return err
-				})
+				_, err := auth.CreateFirstAdmin(ctx, failing, "johndoe", "secret", nil)
 				Expect(err).To(MatchError(ContainSubstring("db is down")))
 			})
 		})

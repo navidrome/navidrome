@@ -58,14 +58,10 @@ func loadSigner(ctx context.Context, ds model.DataStore, now func() time.Time) (
 }
 
 func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
-	enc, err := utils.Encrypt(ctx, auth.EncryptionKey(), newKey())
-	if err != nil {
-		return "", fmt.Errorf("encrypting API v1 key: %w", err)
-	}
-	if err := ds.Property().PutIfAbsent(ctx, consts.JWTAPIv1SecretKey, enc); err != nil {
-		return "", fmt.Errorf("storing API v1 key: %w", err)
-	}
 	stored, err := ds.Property().Get(ctx, consts.JWTAPIv1SecretKey)
+	if errors.Is(err, model.ErrNotFound) {
+		stored, err = createKey(ctx, ds)
+	}
 	if err != nil {
 		return "", fmt.Errorf("reading API v1 key: %w", err)
 	}
@@ -85,16 +81,40 @@ func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
 			return nil
 		}
 		log.Warn(ctx, "Could not decrypt API v1 key, replacing it")
+		k, enc, err := newEncryptedKey(ctx)
+		if err != nil {
+			return err
+		}
 		if err := tx.Property().Put(ctx, consts.JWTAPIv1SecretKey, enc); err != nil {
 			return err
 		}
-		key, err = utils.Decrypt(ctx, auth.EncryptionKey(), enc)
-		return err
+		key = k
+		return nil
 	})
 	if err != nil {
 		return "", fmt.Errorf("replacing API v1 key: %w", err)
 	}
 	return key, nil
+}
+
+// createKey re-reads after the insert-if-absent, so nodes racing to create the key agree on the winner.
+func createKey(ctx context.Context, ds model.DataStore) (string, error) {
+	_, enc, err := newEncryptedKey(ctx)
+	if err != nil {
+		return "", err
+	}
+	if err := ds.Property().PutIfAbsent(ctx, consts.JWTAPIv1SecretKey, enc); err != nil {
+		return "", fmt.Errorf("storing API v1 key: %w", err)
+	}
+	return ds.Property().Get(ctx, consts.JWTAPIv1SecretKey)
+}
+
+func newEncryptedKey(ctx context.Context) (key, enc string, err error) {
+	key = newKey()
+	if enc, err = utils.Encrypt(ctx, auth.EncryptionKey(), key); err != nil {
+		return "", "", fmt.Errorf("encrypting API v1 key: %w", err)
+	}
+	return key, enc, nil
 }
 
 // newKey returns 256 random bits, the minimum RFC 7518 asks of an HS256 key.

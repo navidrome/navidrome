@@ -81,4 +81,17 @@ var _ = Describe("livenessCache", func() {
 		c.put("fresh", livenessEntry{}, t0.Add(time.Minute), c.begin())
 		Expect(c.len()).To(Equal(1))
 	})
+
+	It("never grows past its cap, even when every entry is live", func() {
+		for i := range maxLivenessEntries {
+			c.put(fmt.Sprint(i), livenessEntry{}, t0, c.begin())
+		}
+		c.put("fresh", livenessEntry{}, t0, c.begin())
+		Expect(c.len()).To(Equal(maxLivenessEntries))
+		_, ok := c.get("fresh", t0)
+		Expect(ok).To(BeTrue())
+
+		c.put("fresh", livenessEntry{userID: "u1"}, t0, c.begin())
+		Expect(c.len()).To(Equal(maxLivenessEntries))
+	})
 })

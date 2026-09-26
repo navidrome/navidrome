@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -60,7 +61,7 @@ type Service struct {
 	cache    *livenessCache
 	now      func() time.Time
 	signerMu sync.Mutex
-	sg       *signer
+	sg       atomic.Pointer[signer]
 }
 
 func New(ds model.DataStore) *Service {
@@ -77,16 +78,19 @@ func New(ds model.DataStore) *Service {
 
 // signer loads the key on first use, so building the router never touches the database; only a success is kept.
 func (s *Service) signer() (*signer, error) {
+	if sg := s.sg.Load(); sg != nil {
+		return sg, nil
+	}
 	s.signerMu.Lock()
 	defer s.signerMu.Unlock()
-	if s.sg != nil {
-		return s.sg, nil
+	if sg := s.sg.Load(); sg != nil {
+		return sg, nil
 	}
 	sg, err := loadSigner(context.Background(), s.ds, func() time.Time { return s.now() })
 	if err != nil {
 		return nil, err
 	}
-	s.sg = sg
+	s.sg.Store(sg)
 	return sg, nil
 }
 
@@ -111,15 +115,15 @@ func (s *Service) Login(ctx context.Context, username, password string, meta Cli
 
 func (s *Service) Setup(ctx context.Context, username, password string, meta ClientMeta, scopes []string) (*Issued, error) {
 	var issued *Issued
-	err := s.ds.WithTxImmediate(func(tx model.DataStore) error {
-		u, err := auth.CreateFirstAdmin(ctx, tx, username, password)
-		if err != nil {
-			return err
-		}
+	_, err := auth.CreateFirstAdmin(ctx, s.ds, username, password, func(tx model.DataStore, u *model.User) error {
+		var err error
 		issued, err = s.issue(ctx, tx, *u, "setup", meta, scopes)
 		return err
 	})
-	return issued, err
+	if err != nil {
+		return nil, err
+	}
+	return issued, nil
 }
 
 // issue stores a grant bound to the epoch read with the user, so a racing password change leaves it dead.

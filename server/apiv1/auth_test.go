@@ -13,7 +13,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -82,10 +81,7 @@ var _ = Describe("auth endpoints", func() {
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
-			v0Err = realDS.WithTxImmediate(func(tx model.DataStore) error { // what v0 /auth/createAdmin runs
-				_, err := auth.CreateFirstAdmin(ctx, tx, "v0admin", "pw")
-				return err
-			})
+			_, v0Err = auth.CreateFirstAdmin(ctx, realDS, "v0admin", "pw", nil) // what v0 /auth/createAdmin runs
 		}()
 		wg.Wait()
 		Expect(realDS.User().CountAll(ctx)).To(Equal(int64(1)))
