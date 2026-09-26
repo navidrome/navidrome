@@ -90,6 +90,8 @@ var _ = Describe("Annotation Filters", func() {
 			Entry("starred=false", "starred", "false", "COALESCE(starred, 0) = 0", []any(nil)),
 			Entry("starred=True (case insensitive)", "starred", "True", "COALESCE(starred, 0) > 0", []any(nil)),
 			Entry("rating=true", "rating", "true", "COALESCE(rating, 0) > 0", []any(nil)),
+			Entry("play_count=true", "play_count", "true", "COALESCE(play_count, 0) > 0", []any(nil)),
+			Entry("play_count=false", "play_count", "false", "COALESCE(play_count, 0) = 0", []any(nil)),
 		)
 
 		It("returns nil if value is not a string", func() {
