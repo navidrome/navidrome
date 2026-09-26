@@ -29,6 +29,7 @@ types:
   .wvp: audio/x-wavpack 
   .tak: audio/tak 
   .mka: audio/x-matroska 
+  .webm: audio/webm
 
 # Image
   .gif: image/gif
