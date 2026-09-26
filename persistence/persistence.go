@@ -37,6 +37,7 @@ type SQLStore struct {
 	plugin       func() model.PluginRepository
 	artwork      func() model.ArtworkRepository
 	artworkQueue func() model.ArtworkQueueRepository
+	grant        func() model.GrantRepository
 }
 
 // Repositories are built on first use, so a transaction store only pays for the ones its block touches.
@@ -64,6 +65,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 		plugin:       sync.OnceValue(func() model.PluginRepository { return NewPluginRepository(db) }),
 		artwork:      sync.OnceValue(func() model.ArtworkRepository { return NewArtworkRepository(db) }),
 		artworkQueue: sync.OnceValue(func() model.ArtworkQueueRepository { return NewArtworkQueueRepository(db) }),
+		grant:        sync.OnceValue(func() model.GrantRepository { return NewGrantRepository(db) }),
 	}
 }
 
@@ -153,6 +155,10 @@ func (s *SQLStore) Artwork() model.ArtworkRepository {
 
 func (s *SQLStore) ArtworkQueue() model.ArtworkQueueRepository {
 	return s.artworkQueue()
+}
+
+func (s *SQLStore) Grant() model.GrantRepository {
+	return s.grant()
 }
 
 func scopeLabel(scope []string) string {
@@ -271,6 +277,10 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "clean media file bookmarks", func() error { return s.mediaFile().(*mediaFileRepository).cleanBookmarks(ctx) }),
 		trace(ctx, "purge non used tags", func() error { return s.tag().(*tagRepository).purgeUnused(ctx) }),
 		trace(ctx, "remove orphan playlist tracks", func() error { return s.playlist().(*playlistRepository).removeOrphans(ctx) }),
+		trace(ctx, "purge idle API grants", func() error {
+			_, err := s.grant().DeleteIdle(ctx, time.Now().Add(-90*24*time.Hour))
+			return err
+		}),
 	)
 	if err != nil {
 		return fmt.Errorf("tidying up database: %w", err)
