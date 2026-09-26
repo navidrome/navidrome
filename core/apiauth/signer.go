@@ -3,7 +3,9 @@ package apiauth
 import (
 	"cmp"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -15,7 +17,6 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils"
 )
 
@@ -59,7 +60,7 @@ func loadSigner(ctx context.Context, ds model.DataStore, now func() time.Time) (
 }
 
 func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
-	enc, err := utils.Encrypt(ctx, encryptionKey(), id.NewRandom())
+	enc, err := utils.Encrypt(ctx, encryptionKey(), newKey())
 	if err != nil {
 		return "", fmt.Errorf("encrypting API v1 key: %w", err)
 	}
@@ -96,6 +97,13 @@ func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
 		return "", fmt.Errorf("replacing API v1 key: %w", err)
 	}
 	return key, nil
+}
+
+// newKey returns 256 random bits, the minimum RFC 7518 asks of an HS256 key.
+func newKey() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b) // never fails since Go 1.24
+	return hex.EncodeToString(b)
 }
 
 func encryptionKey() []byte {

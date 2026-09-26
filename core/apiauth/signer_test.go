@@ -2,12 +2,14 @@ package apiauth
 
 import (
 	"context"
+	"encoding/hex"
 	"sync"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -21,6 +23,21 @@ var _ = Describe("signer", func() {
 		ctx = GinkgoT().Context()
 		now = time.Now().UTC().Truncate(time.Second)
 		Expect(realDS.Property().Delete(ctx, consts.JWTAPIv1SecretKey)).To(Or(Succeed(), MatchError(model.ErrNotFound)))
+	})
+
+	It("creates a 256-bit key", func() {
+		key, err := loadKey(ctx, realDS)
+		Expect(err).ToNot(HaveOccurred())
+		raw, err := hex.DecodeString(key)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(raw).To(HaveLen(32))
+	})
+
+	It("keeps using a stored key created in the older format", func() {
+		enc, err := utils.Encrypt(ctx, encryptionKey(), "legacy22charskeyABCDEF")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(realDS.Property().Put(ctx, consts.JWTAPIv1SecretKey, enc)).To(Succeed())
+		Expect(loadKey(ctx, realDS)).To(Equal("legacy22charskeyABCDEF"))
 	})
 
 	It("round-trips claims", func() {
