@@ -209,6 +209,26 @@ var _ = Describe("spec gate", func() {
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInsufficientScope))
 	})
 
+	It("names the operation's scope when Authenticate reports an insufficient scope", func() {
+		fa.err = apiauth.ErrInsufficientScope
+		w := do(http.MethodGet, "/things/1", "Bearer x", "")
+		Expect(w.Code).To(Equal(http.StatusForbidden))
+		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="insufficient_scope", scope="read"`))
+	})
+
+	It("looks routes up on the raw path, as chi dispatches them", func() {
+		w := do(http.MethodGet, "/things/a%2Fb", "", "")
+		Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		Expect(reached).To(BeEmpty())
+
+		root := chi.NewRouter()
+		root.Mount("/music/api/v1", mux)
+		w = httptest.NewRecorder()
+		root.ServeHTTP(w, httptest.NewRequestWithContext(ctx, http.MethodGet, "/music/api/v1/things/a%2Fb", nil))
+		Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		Expect(reached).To(BeEmpty())
+	})
+
 	It("works when mounted under a base path", func() {
 		root := chi.NewRouter()
 		root.Mount("/music/api/v1", mux)

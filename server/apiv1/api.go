@@ -1,6 +1,7 @@
 package apiv1
 
 import (
+	"cmp"
 	"errors"
 	"net/http"
 	"runtime/debug"
@@ -126,9 +127,10 @@ func headAsGet(mux chi.Routes) func(http.Handler) http.Handler {
 	}
 }
 
+// routePath must pick the same path chi's routeHTTP dispatches on, or the gate could vet a different route.
 func routePath(req *http.Request) string {
 	if rctx := chi.RouteContext(req.Context()); rctx != nil && rctx.RoutePath != "" {
 		return rctx.RoutePath
 	}
-	return req.URL.Path
+	return cmp.Or(req.URL.RawPath, req.URL.Path, "/")
 }

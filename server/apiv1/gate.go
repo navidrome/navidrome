@@ -218,20 +218,27 @@ func (g *gate) authorize(w http.ResponseWriter, r *http.Request, op *gateOp) (*h
 		writeProblem(w, r, err)
 		return r, false
 	case errors.Is(err, apiauth.ErrInsufficientScope):
-		w.Header().Set("WWW-Authenticate", `Bearer error="insufficient_scope"`)
-		writeProblem(w, r, err)
+		insufficientScope(w, r, op, err)
 		return r, false
 	case err != nil:
 		writeProblem(w, r, err)
 		return r, false
 	}
 	if op.scope != "" && !apiauth.Satisfies(p.Scopes, op.scope) {
-		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer error="insufficient_scope", scope=%q`, op.scope))
-		writeProblem(w, r, apiauth.ErrInsufficientScope)
+		insufficientScope(w, r, op, apiauth.ErrInsufficientScope)
 		return r, false
 	}
 	ctx := apiauth.WithPrincipal(request.WithUser(r.Context(), p.User), p)
 	return r.WithContext(ctx), true
+}
+
+func insufficientScope(w http.ResponseWriter, r *http.Request, op *gateOp, err error) {
+	challenge := `Bearer error="insufficient_scope"`
+	if op.scope != "" {
+		challenge += fmt.Sprintf(`, scope=%q`, op.scope)
+	}
+	w.Header().Set("WWW-Authenticate", challenge)
+	writeProblem(w, r, err)
 }
 
 func bearerToken(r *http.Request) (string, bool) {
