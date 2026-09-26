@@ -15,6 +15,10 @@ info:
 
     `HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods
     in its `Allow` header.
+
+    Operations that need an access token declare `security: [{bearerAuth: []}]` and the scope they need in
+    `x-scope` (OpenAPI 3.0 does not allow scopes on bearer schemes). A revoked grant, and every token minted
+    from it, stops working within one access-token lifetime at most.
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
@@ -23,6 +27,8 @@ servers:
 tags:
   - name: server
     description: Server discovery and the published OpenAPI document.
+  - name: auth
+    description: Grants, access tokens, and login methods.
 paths:
   /server:
     $ref: ./paths/server.yaml
@@ -30,10 +36,27 @@ paths:
     $ref: ./paths/openapi.yaml#/json
   /openapi.yaml:
     $ref: ./paths/openapi.yaml#/yaml
+  /auth/token:
+    $ref: ./paths/auth.yaml#/token
+  /auth/grants:
+    $ref: ./paths/auth.yaml#/grants
+  /auth/grants/{id}:
+    $ref: ./paths/auth.yaml#/grant
+  /auth/logout:
+    $ref: ./paths/auth.yaml#/logout
+  /auth/login:
+    $ref: ./paths/auth.yaml#/login
+  /auth/setup:
+    $ref: ./paths/auth.yaml#/setup
+  /auth/password:
+    $ref: ./paths/auth.yaml#/password
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
-      description: Short-lived access token minted from a device grant. Not yet applied to any operation.
+      description: "Short-lived access token from `POST /auth/token`. Opaque. The required scope is in each operation's `x-scope`."
+    grantAuth:
+      type: http
+      scheme: bearer
+      description: "Long-lived grant secret. Accepted only by `POST /auth/token`."

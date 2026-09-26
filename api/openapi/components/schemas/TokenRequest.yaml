@@ -1,0 +1,9 @@
+type: object
+description: Optional narrowing of a new access token.
+properties:
+  scopes:
+    type: array
+    maxItems: 32
+    description: "Subset of the grant's scopes. Omit for all of them; an empty list asks for none."
+    items:
+      $ref: ./ScopeRequest.yaml

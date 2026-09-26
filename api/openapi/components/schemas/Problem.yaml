@@ -16,7 +16,7 @@ properties:
     description: HTTP status code of this response.
   detail:
     type: string
-    description: Human-readable explanation specific to this occurrence. Omitted for internal errors.
+    description: Human-readable explanation specific to this occurrence. Omitted unless the server marked the text as safe to show clients.
   code:
     type: string
     description: Machine-readable error code, and the value clients switch on. New codes may be added.

@@ -3,7 +3,7 @@
   "info": {
     "title": "Navidrome API",
     "version": "1.0.0",
-    "description": "Navidrome API v1. Spec-first, additive within v1. Clients discover implemented\ncapability modules through `GET /server` and never sniff versions.\n\nEnums are open: new values may be added to any enum within v1. Clients must\naccept values they do not recognise instead of failing.\n\nEvery operation declares `x-stability-level`: `alpha` operations may change or\ndisappear without notice, `beta` and `stable` operations only change additively.\nA level is only ever raised, never lowered.\n\n`HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods\nin its `Allow` header.\n",
+    "description": "Navidrome API v1. Spec-first, additive within v1. Clients discover implemented\ncapability modules through `GET /server` and never sniff versions.\n\nEnums are open: new values may be added to any enum within v1. Clients must\naccept values they do not recognise instead of failing.\n\nEvery operation declares `x-stability-level`: `alpha` operations may change or\ndisappear without notice, `beta` and `stable` operations only change additively.\nA level is only ever raised, never lowered.\n\n`HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods\nin its `Allow` header.\n\nOperations that need an access token declare `security: [{bearerAuth: []}]` and the scope they need in\n`x-scope` (OpenAPI 3.0 does not allow scopes on bearer schemes). A revoked grant, and every token minted\nfrom it, stops working within one access-token lifetime at most.\n",
     "license": {
       "name": "GPL-3.0",
       "url": "https://www.gnu.org/licenses/gpl-3.0.html"
@@ -18,6 +18,10 @@
     {
       "name": "server",
       "description": "Server discovery and the published OpenAPI document."
+    },
+    {
+      "name": "auth",
+      "description": "Grants, access tokens, and login methods."
     }
   ],
   "paths": {
@@ -83,6 +87,58 @@
         }
       }
     },
+    "/auth/token": {
+      "post": {
+        "operationId": "createAccessToken",
+        "x-module": "core",
+        "x-stability-level": "alpha",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Mint an access token",
+        "description": "Turns a grant into a short-lived access token, optionally narrowed to a subset of the grant's scopes. Send the grant secret as the Bearer credential.",
+        "security": [
+          {
+            "grantAuth": []
+          }
+        ],
+        "requestBody": {
+          "description": "Scopes to narrow the token to. Optional.",
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The new access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessToken"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
     "/openapi.yaml": {
       "get": {
         "operationId": "getOpenAPISpecYAML",
@@ -116,6 +172,302 @@
           }
         }
       }
+    },
+    "/auth/grants": {
+      "get": {
+        "operationId": "listGrants",
+        "x-module": "core",
+        "x-scope": "read",
+        "x-stability-level": "alpha",
+        "tags": [
+          "auth"
+        ],
+        "summary": "List my grants",
+        "description": "The caller's grants, most recently used first. Grants idle long enough to have expired are not listed.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/offset"
+          },
+          {
+            "$ref": "#/components/parameters/limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of grants.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantList"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/auth/grants/{id}": {
+      "delete": {
+        "operationId": "revokeGrant",
+        "x-module": "core",
+        "x-scope": "read",
+        "x-stability-level": "alpha",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Revoke one of my grants",
+        "description": "Revokes the grant and every token minted from it. Another user's grant id answers 404.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Grant id.",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Revoked."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "x-module": "core",
+        "x-scope": "read",
+        "x-stability-level": "alpha",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Log out",
+        "description": "Revokes the grant that made this request.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "x-module": "password",
+        "x-stability-level": "alpha",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Log in with a password",
+        "description": "Checks the username and password and returns a new grant. Unknown user and wrong password fail the same way.",
+        "security": [],
+        "requestBody": {
+          "description": "The credentials and a description of the client.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The new grant.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/auth/setup": {
+      "post": {
+        "operationId": "setupFirstAdmin",
+        "x-module": "password",
+        "x-stability-level": "alpha",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create the first admin",
+        "description": "Creates the first administrator while `setupRequired` is true and returns a grant for it. Answers 409 `setup_complete` once any user exists. A server with no setup step always answers 409.",
+        "security": [],
+        "requestBody": {
+          "description": "The credentials and a description of the client.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The admin was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantCreated"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/auth/password": {
+      "post": {
+        "operationId": "changePassword",
+        "x-module": "password",
+        "x-scope": "password",
+        "x-stability-level": "alpha",
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change my password",
+        "description": "Changes the caller's password. By default every other grant of the user is revoked; the calling grant survives. Answers 409 `password_managed_externally` when the password is not stored by this server.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "description": "The current and the new password.",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Password changed."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -123,8 +475,12 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Short-lived access token minted from a device grant. Not yet applied to any operation."
+        "description": "Short-lived access token from `POST /auth/token`. Opaque. The required scope is in each operation's `x-scope`."
+      },
+      "grantAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Long-lived grant secret. Accepted only by `POST /auth/token`."
       }
     },
     "schemas": {
@@ -190,7 +546,7 @@
           },
           "detail": {
             "type": "string",
-            "description": "Human-readable explanation specific to this occurrence. Omitted for internal errors."
+            "description": "Human-readable explanation specific to this occurrence. Omitted unless the server marked the text as safe to show clients."
           },
           "code": {
             "type": "string",
@@ -241,6 +597,320 @@
             "description": "Why the value was rejected."
           }
         }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "description": "Optional narrowing of a new access token.",
+        "properties": {
+          "scopes": {
+            "type": "array",
+            "maxItems": 32,
+            "description": "Subset of the grant's scopes. Omit for all of them; an empty list asks for none.",
+            "items": {
+              "$ref": "#/components/schemas/ScopeRequest"
+            }
+          }
+        }
+      },
+      "AccessToken": {
+        "type": "object",
+        "description": "A short-lived access token. Opaque; clients must not decode it.",
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresIn",
+          "scopes"
+        ],
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "The token. Send it as `Authorization: Bearer \u003ctoken\u003e`."
+          },
+          "tokenType": {
+            "type": "string",
+            "enum": [
+              "Bearer"
+            ],
+            "description": "Always `Bearer`."
+          },
+          "expiresIn": {
+            "type": "integer",
+            "description": "Seconds until the token expires."
+          },
+          "scopes": {
+            "type": "array",
+            "description": "Scopes the token actually carries, which may be fewer than requested.",
+            "items": {
+              "$ref": "#/components/schemas/Scope"
+            }
+          }
+        }
+      },
+      "GrantList": {
+        "type": "object",
+        "description": "A page of the caller's grants.",
+        "required": [
+          "items",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Grants on this page, by last use, most recent first; never-used grants last.",
+            "items": {
+              "$ref": "#/components/schemas/Grant"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "description": "Total number of grants."
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Zero-based index of the first returned item."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of items in this page."
+          }
+        }
+      },
+      "LogoutResponse": {
+        "type": "object",
+        "description": "Result of a logout.",
+        "required": [
+          "logoutUrl"
+        ],
+        "properties": {
+          "logoutUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Where to send the browser to finish logging out of an external provider. Null when there is nothing more to do."
+          }
+        }
+      },
+      "CredentialsRequest": {
+        "type": "object",
+        "description": "Username, password and client description for a login or first-admin setup.",
+        "required": [
+          "username",
+          "password",
+          "client"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Login name."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "description": "Password."
+          },
+          "client": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Name of the client app."
+          },
+          "clientVersion": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "Version of the client app."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Label for this grant. Defaults to `client`."
+          },
+          "scopes": {
+            "type": "array",
+            "maxItems": 32,
+            "description": "Scopes the grant may hold. Omit for `all`.",
+            "items": {
+              "$ref": "#/components/schemas/ScopeRequest"
+            }
+          }
+        }
+      },
+      "GrantCreated": {
+        "type": "object",
+        "description": "Returned by every login method. The secret is shown only here; store it and never parse it.",
+        "required": [
+          "secret",
+          "grant",
+          "user"
+        ],
+        "properties": {
+          "secret": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "Opaque grant secret. Send it as a Bearer credential to `POST /auth/token`."
+          },
+          "grant": {
+            "description": "The new grant.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Grant"
+              }
+            ]
+          },
+          "user": {
+            "description": "The user the grant belongs to.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AuthUser"
+              }
+            ]
+          }
+        }
+      },
+      "PasswordChangeRequest": {
+        "type": "object",
+        "description": "Change the caller's own password.",
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "description": "The current password."
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "description": "The new password."
+          },
+          "revokeOtherGrants": {
+            "type": "boolean",
+            "default": true,
+            "description": "Revoke every other grant of the user. The calling grant always survives. Default true."
+          }
+        }
+      },
+      "ScopeRequest": {
+        "type": "string",
+        "description": "A requested scope. Scopes the server does not know are dropped, not rejected, so newer clients keep working.",
+        "pattern": "^[a-z][a-z-]*(:write)?$",
+        "maxLength": 64
+      },
+      "Scope": {
+        "type": "string",
+        "description": "A permission scope. Scopes mirror capability modules; `x:write` includes `x`. `all` appears only on\ngrants and means every scope the user is entitled to, now and in future releases. New scopes may be added.\n",
+        "enum": [
+          "all",
+          "read",
+          "password"
+        ]
+      },
+      "Grant": {
+        "type": "object",
+        "description": "A long-lived grant held by one client of one user.",
+        "required": [
+          "id",
+          "name",
+          "client",
+          "clientVersion",
+          "scopes",
+          "provider",
+          "createdAt",
+          "lastUsedAt",
+          "lastUsedIp",
+          "current"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Grant id."
+          },
+          "name": {
+            "type": "string",
+            "description": "Label shown to the user."
+          },
+          "client": {
+            "type": "string",
+            "description": "Name of the client app that holds the grant."
+          },
+          "clientVersion": {
+            "type": "string",
+            "nullable": true,
+            "description": "Version of the client app, when it sent one."
+          },
+          "scopes": {
+            "type": "array",
+            "description": "Scopes this grant may mint tokens for.",
+            "items": {
+              "$ref": "#/components/schemas/Scope"
+            }
+          },
+          "provider": {
+            "type": "string",
+            "description": "How the grant was created, for example `password` or `setup`. Free-form; new values may appear."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the grant was created."
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the grant was last used, at a coarse granularity. Null until first use."
+          },
+          "lastUsedIp": {
+            "type": "string",
+            "nullable": true,
+            "description": "Client IP of the last use. Null until first use."
+          },
+          "current": {
+            "type": "boolean",
+            "description": "True for the grant that made this request."
+          }
+        }
+      },
+      "AuthUser": {
+        "type": "object",
+        "description": "The user a grant belongs to.",
+        "required": [
+          "id",
+          "userName",
+          "name",
+          "isAdmin",
+          "passwordChangeable"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "User id."
+          },
+          "userName": {
+            "type": "string",
+            "description": "Login name."
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name."
+          },
+          "isAdmin": {
+            "type": "boolean",
+            "description": "Whether the user is an administrator."
+          },
+          "passwordChangeable": {
+            "type": "boolean",
+            "description": "Whether `POST /auth/password` can change this user's password. Clients hide \"change password\" when false."
+          }
+        }
       }
     },
     "responses": {
@@ -261,11 +931,130 @@
             "$ref": "#/components/headers/ETag"
           }
         }
+      },
+      "BadRequest": {
+        "description": "The request is malformed or fails validation.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing, invalid, or expired credentials.",
+        "headers": {
+          "WWW-Authenticate": {
+            "$ref": "#/components/headers/WWWAuthenticate"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "The request body is too large (`payload_too_large`).",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "The caller is authenticated but not allowed to do this.",
+        "headers": {
+          "WWW-Authenticate": {
+            "$ref": "#/components/headers/WWWAuthenticate"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "No such resource or endpoint.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limited (`rate_limited`). Retry after the `Retry-After` seconds.",
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds to wait before retrying.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "The request conflicts with the server's state, for example `setup_complete` or `password_managed_externally`.",
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/Problem"
+            }
+          }
+        }
+      }
+    },
+    "parameters": {
+      "offset": {
+        "name": "offset",
+        "in": "query",
+        "description": "Zero-based index of the first item to return.",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      },
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Maximum number of items to return.",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000,
+          "default": 100
+        }
       }
     },
     "headers": {
       "ETag": {
         "description": "Entity tag for `If-None-Match` revalidation.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "WWWAuthenticate": {
+        "description": "RFC 6750 Bearer challenge, for example `Bearer error=\"insufficient_scope\", scope=\"read\"`.",
         "schema": {
           "type": "string"
         }

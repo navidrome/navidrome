@@ -36,6 +36,22 @@ rules:
           - sharing
           - radio
           - admin
+          - password
+  nd-operation-security-required:
+    description: Every operation declares security explicitly (use [] for public operations).
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: security
+      function: defined
+  nd-operation-x-scope:
+    description: An operation's x-scope is a known scope. Cross-checks with x-module and security run in Go (server/apiv1 newGate).
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]['x-scope']
+    then:
+      function: enumeration
+      functionOptions:
+        values: [read, password]
   nd-operation-stability-level-required:
     description: Every operation declares its stability level, which the breaking-change gate relies on.
     severity: error

@@ -1,0 +1,16 @@
+type: object
+description: "Returned by every login method. The secret is shown only here; store it and never parse it."
+required: [secret, grant, user]
+properties:
+  secret:
+    type: string
+    maxLength: 512
+    description: "Opaque grant secret. Send it as a Bearer credential to `POST /auth/token`."
+  grant:
+    description: The new grant.
+    allOf:
+      - $ref: ./Grant.yaml
+  user:
+    description: The user the grant belongs to.
+    allOf:
+      - $ref: ./AuthUser.yaml
