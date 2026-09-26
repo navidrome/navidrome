@@ -157,3 +157,14 @@ func TestEntryMessage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "Secret Password: [REDACTED]", logEntry.Message)
 }
+
+type namedString string
+
+func TestFireRedactsNamedStringTypes(t *testing.T) {
+	hook := &Hook{RedactionList: []string{"(secret=)[^&]+"}}
+	e := &logrus.Entry{Data: logrus.Fields{"code": namedString("not_found"), "url": namedString("/x?secret=abc")}}
+
+	assert.NotPanics(t, func() { _ = hook.Fire(e) })
+	assert.Equal(t, "not_found", e.Data["code"])
+	assert.Equal(t, "/x?secret=[REDACTED]", e.Data["url"])
+}

@@ -77,6 +77,13 @@ var _ = Describe("problem", func() {
 			Expect(*p.Errors).To(ConsistOf(ValidationError{Field: "currentPassword", Message: "is incorrect"}))
 		})
 
+		It("writes and logs a problem with debug logging on", func() {
+			logs := captureLogs()
+			writeProblem(w, r, model.ErrNotFound)
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+			Expect(logs.String()).To(ContainSubstring("code=not_found"))
+		})
+
 		It("adds a Bearer challenge to every 401 unless one is already set", func() {
 			writeProblem(w, r, model.ErrInvalidAuth)
 			Expect(w.Header().Get("WWW-Authenticate")).To(Equal("Bearer"))
