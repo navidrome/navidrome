@@ -176,7 +176,8 @@ func createNewSecret(ctx context.Context, ds model.DataStore, key string) string
 		log.Error(ctx, "Could not encrypt JWT secret", err)
 		return secret
 	}
-	if err := ds.Property().Put(log.WithSecrets(ctx, encSecret), key, encSecret); err != nil {
+	ctx = log.WithSecrets(ctx, encSecret)
+	if err := ds.Property().Put(ctx, key, encSecret); err != nil {
 		log.Error(ctx, "Could not save JWT secret in DB", err)
 	}
 	return secret

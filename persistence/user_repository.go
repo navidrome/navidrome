@@ -400,6 +400,7 @@ func (r *userRepository) initPasswordEncryptionKey(ctx context.Context) error {
 
 	key := keyTo32Bytes(conf.Server.PasswordEncryptionKey)
 	keySum := fmt.Sprintf("%x", sha256.Sum256(key))
+	ctx = log.WithSecrets(ctx, keySum)
 
 	props := NewPropertyRepository(r.db)
 	savedKeySum, err := props.Get(ctx, consts.PasswordsEncryptedKey)
@@ -433,7 +434,8 @@ func (r *userRepository) initPasswordEncryptionKey(ctx context.Context) error {
 		u.NewPassword = u.Password
 		if err := r.encryptPassword(ctx, &u); err == nil {
 			upd := Update(r.tableName).Set("password", u.NewPassword).Where(Eq{"id": u.ID})
-			_, err = r.executeSQL(log.WithSecrets(ctx, u.NewPassword), upd)
+			userCtx := log.WithSecrets(ctx, u.NewPassword)
+			_, err = r.executeSQL(userCtx, upd)
 			if err != nil {
 				log.Error("Password NOT encrypted! This may cause problems!", "user", u.UserName, "id", u.ID, err)
 			} else {

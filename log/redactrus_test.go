@@ -171,15 +171,15 @@ func TestFireRedactsNamedStringTypes(t *testing.T) {
 }
 
 func TestFireRedactsContextSecrets(t *testing.T) {
-	ctx := WithSecrets(t.Context(), "s3cr3t")
+	ctx := WithSecrets(t.Context(), "s3cr3t-value")
 	ctx = WithSecrets(ctx, "", "other-secret")
 	e := &logrus.Entry{
 		Context: ctx,
-		Message: "value s3cr3t in message",
+		Message: "value s3cr3t-value in message",
 		Data: logrus.Fields{
-			"str":   "has s3cr3t",
+			"str":   "has s3cr3t-value",
 			"named": namedString("named other-secret"),
-			"args":  map[string]any{"p0": "s3cr3t", "p1": "plain"},
+			"args":  map[string]any{"p0": "s3cr3t-value", "p1": "plain"},
 			"error": errors.New("failed with other-secret"),
 			"num":   42,
 			"clean": namedString("untouched"),
@@ -206,8 +206,17 @@ func TestFireWithoutContextSecretsLeavesEntryUnchanged(t *testing.T) {
 }
 
 func TestFireRedactsLongerSecretsFirst(t *testing.T) {
-	e := &logrus.Entry{Context: WithSecrets(t.Context(), "abc", "abcdef"), Message: "abcdef"}
+	ctx := WithSecrets(t.Context(), "abcdefgh", "abcdefghijkl")
+	e := &logrus.Entry{Context: ctx, Message: "abcdefghijkl"}
 
 	assert.Nil(t, (&Hook{}).Fire(e))
 	assert.Equal(t, "[REDACTED]", e.Message)
+}
+
+func TestFireIgnoresShortSecrets(t *testing.T) {
+	ctx := WithSecrets(t.Context(), "abc")
+	e := &logrus.Entry{Context: ctx, Message: "abc in UPDATE ... abc"}
+
+	assert.Nil(t, (&Hook{}).Fire(e))
+	assert.Equal(t, "abc in UPDATE ... abc", e.Message)
 }

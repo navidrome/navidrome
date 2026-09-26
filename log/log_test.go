@@ -112,7 +112,7 @@ var _ = Describe("Logger", func() {
 		})
 
 		It("passes the call's context to hooks", func() {
-			ctx := WithSecrets(GinkgoT().Context(), "s3cr3t")
+			ctx := WithSecrets(GinkgoT().Context(), "s3cr3t-value")
 			Error(ctx, "Simple Message")
 			Expect(hook.LastEntry().Context).To(Equal(ctx))
 
@@ -122,12 +122,12 @@ var _ = Describe("Logger", func() {
 
 		It("redacts the context's secrets when redacting is on", func() {
 			l.AddHook(redacted)
-			ctx := WithSecrets(NewContext(GinkgoT().Context(), "user", "admin"), "s3cr3t")
+			ctx := WithSecrets(NewContext(GinkgoT().Context(), "user", "admin"), "s3cr3t-value")
 
 			var buf bytes.Buffer
 			l.SetOutput(&buf)
-			Error(ctx, "Saving s3cr3t", "args", map[string]any{"value": "s3cr3t"})
-			Expect(buf.String()).ToNot(ContainSubstring("s3cr3t"))
+			Error(ctx, "Saving s3cr3t-value", "args", map[string]any{"value": "s3cr3t-value"})
+			Expect(buf.String()).ToNot(ContainSubstring("s3cr3t-value"))
 			Expect(buf.String()).To(ContainSubstring("user=admin"))
 		})
 	})

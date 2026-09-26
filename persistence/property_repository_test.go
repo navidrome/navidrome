@@ -42,9 +42,12 @@ var _ = Describe("Property Repository", func() {
 
 	It("hides values marked as secrets from the SQL log, but still logs the property id", func() {
 		logs := captureTraceLogs()
-		Expect(pr.Put(log.WithSecrets(ctx, "inserted-secret"), "secret-prop", "inserted-secret")).To(Succeed())
-		Expect(pr.Put(log.WithSecrets(ctx, "updated-secret"), "secret-prop", "updated-secret")).To(Succeed())
-		Expect(pr.PutIfAbsent(log.WithSecrets(ctx, "absent-secret"), "secret-prop-2", "absent-secret")).To(Succeed())
+		insertCtx := log.WithSecrets(ctx, "inserted-secret")
+		Expect(pr.Put(insertCtx, "secret-prop", "inserted-secret")).To(Succeed())
+		updateCtx := log.WithSecrets(ctx, "updated-secret")
+		Expect(pr.Put(updateCtx, "secret-prop", "updated-secret")).To(Succeed())
+		absentCtx := log.WithSecrets(ctx, "absent-secret")
+		Expect(pr.PutIfAbsent(absentCtx, "secret-prop-2", "absent-secret")).To(Succeed())
 
 		Expect(logs.String()).To(ContainSubstring("INSERT INTO property"))
 		Expect(logs.String()).To(ContainSubstring("UPDATE property"))

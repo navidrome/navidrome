@@ -191,15 +191,18 @@ func NewContext(ctx context.Context, keyValuePairs ...any) context.Context {
 	return ctx
 }
 
+// Shorter values could match unrelated log text, or the [REDACTED] marker itself.
+const minSecretLen = 8
+
 // WithSecrets returns a context whose log entries have every occurrence of values replaced by
-// [REDACTED], when redacting is enabled.
+// [REDACTED], when redacting is enabled. Values shorter than minSecretLen are ignored.
 func WithSecrets(ctx context.Context, values ...string) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	secrets := slices.Clone(secretsFrom(ctx))
 	for _, v := range values {
-		if v != "" {
+		if len(v) >= minSecretLen {
 			secrets = append(secrets, v)
 		}
 	}
