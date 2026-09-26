@@ -57,12 +57,6 @@ func (ff *MockFFmpeg) ConvertAnimatedImage(_ context.Context, reader io.Reader, 
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
 
-func (ff *MockFFmpeg) Probe(context.Context, []string) (string, error) {
-	if ff.Error != nil {
-		return "", ff.Error
-	}
-	return "", nil
-}
 func (ff *MockFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
 	if ff.Error != nil {
 		return nil, ff.Error

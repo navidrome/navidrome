@@ -515,6 +515,11 @@ func Load(noConfigDump bool) {
 		Server.UICoverArtSize = newValue
 	}
 
+	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
+		log.Warn("Invalid Scanner.Extractor, using default", "value", Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		Server.Scanner.Extractor = consts.DefaultScannerExtractor
+	}
+
 	// Floor MaxImageSize at MaxImageUploadSize so accepted uploads can always be read back.
 	imgSize, _ := humanize.ParseBytes(Server.MaxImageSize)
 	uploadSize, _ := humanize.ParseBytes(Server.MaxImageUploadSize)
