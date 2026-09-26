@@ -16,7 +16,7 @@ import { SimpleList, List } from '../common'
 const PlayerFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput id="search" source="name" alwaysOn />
-    <NullableBooleanInput source="hasApiKey" />
+    <NullableBooleanInput source="hasApiKey" alwaysOn />
   </Filter>
 )
 
