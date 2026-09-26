@@ -2,7 +2,6 @@ import React from 'react'
 import {
   Datagrid,
   TextField,
-  DateField,
   FunctionField,
   ReferenceField,
   Filter,
@@ -11,7 +10,7 @@ import {
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { FaKey } from 'react-icons/fa'
-import { SimpleList, List } from '../common'
+import { SimpleList, List, DateField } from '../common'
 
 const PlayerFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
