@@ -171,6 +171,17 @@ var _ = Describe("auth endpoints", func() {
 		Expect(call(http.MethodPost, "/api/v1/auth/token", gc.Secret, nil).Code).To(Equal(http.StatusUnauthorized))
 	})
 
+	It("logs out with 200 when another node already revoked the grant", func() {
+		gc := setup()
+		at := mint(gc.Secret, nil)
+		Expect(call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
+		Expect(realDS.Grant().Delete(ctx, gc.Grant.Id)).To(Succeed())
+
+		w := call(http.MethodPost, "/api/v1/auth/logout", at.AccessToken, nil)
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		Expect(w.Body.String()).To(ContainSubstring(`"logoutUrl":null`))
+	})
+
 	It("answers 404 for a grant id the caller does not own, and 400 for an over-long id", func() {
 		gc := setup()
 		tok := mint(gc.Secret, nil).AccessToken

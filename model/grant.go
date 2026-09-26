@@ -50,8 +50,8 @@ type GrantRepository interface {
 	Put(ctx context.Context, g *Grant) error
 	Get(ctx context.Context, id string) (*Grant, error)
 	FindBySecretHash(ctx context.Context, hash string) (*Grant, error)
-	GetAllForUser(ctx context.Context, userID string, idleSince time.Time, offset, limit int) (Grants, error)
-	CountForUser(ctx context.Context, userID string, idleSince time.Time) (int64, error)
+	GetAllForUser(ctx context.Context, userID string, epoch int, idleSince time.Time, offset, limit int) (Grants, error)
+	CountForUser(ctx context.Context, userID string, epoch int, idleSince time.Time) (int64, error)
 	Delete(ctx context.Context, id string) error
 	DeleteForUser(ctx context.Context, userID, id string) error
 	DeleteOtherEpochs(ctx context.Context, userID string, epoch int) error

@@ -54,7 +54,7 @@ var _ = Describe("GrantRepository", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
-	It("lists and counts only the user's non-idle grants by lastUsedAt, never-used ones last", func() {
+	It("lists and counts only the user's non-idle grants on the given epoch by lastUsedAt, never-used ones last", func() {
 		old := newGrant(adminUser.ID, "h-old")
 		old.CreatedAt = now.Add(-100 * 24 * time.Hour)
 		usedEarly := newGrant(adminUser.ID, "h-used-early")
@@ -67,18 +67,21 @@ var _ = Describe("GrantRepository", func() {
 		usedLate.LastUsedAt = &lateUse
 		freshNeverUsed := newGrant(adminUser.ID, "h-fresh") // newer than both uses, but never used
 		other := newGrant(regularUser.ID, "h-other")
-		for _, g := range []*model.Grant{old, usedEarly, usedLate, freshNeverUsed, other} {
+		staleEpoch := newGrant(adminUser.ID, "h-stale-epoch")
+		staleEpoch.UserEpoch = 1
+		for _, g := range []*model.Grant{old, usedEarly, usedLate, freshNeverUsed, other, staleEpoch} {
 			Expect(repo.Put(ctx, g)).To(Succeed())
 		}
 		idleSince := now.Add(-90 * 24 * time.Hour)
 
-		list, err := repo.GetAllForUser(ctx, adminUser.ID, idleSince, 0, 10)
+		list, err := repo.GetAllForUser(ctx, adminUser.ID, 0, idleSince, 0, 10)
 		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(3))
 		Expect([]string{list[0].ID, list[1].ID, list[2].ID}).To(Equal([]string{usedLate.ID, usedEarly.ID, freshNeverUsed.ID}))
 
-		Expect(repo.CountForUser(ctx, adminUser.ID, idleSince)).To(Equal(int64(3)))
+		Expect(repo.CountForUser(ctx, adminUser.ID, 0, idleSince)).To(Equal(int64(3)))
 
-		page, err := repo.GetAllForUser(ctx, adminUser.ID, idleSince, 1, 1)
+		page, err := repo.GetAllForUser(ctx, adminUser.ID, 0, idleSince, 1, 1)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(page).To(HaveLen(1))
 		Expect(page[0].ID).To(Equal(usedEarly.ID))

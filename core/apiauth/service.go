@@ -192,11 +192,12 @@ func (s *Service) loadUser(ctx context.Context, userID string) (*model.User, err
 	return u, err
 }
 
+// dropGrant evicts after deleting, so a concurrent fill cannot re-cache the dead grant.
 func (s *Service) dropGrant(ctx context.Context, id string) {
-	s.cache.evict(id)
 	if err := s.ds.Grant().Delete(ctx, id); err != nil {
 		log.Warn(ctx, "API v1: could not delete dead grant", "grant", id, err)
 	}
+	s.cache.evict(id)
 }
 
 // settleEpoch re-reads grant and user in one read transaction: separate reads can straddle a password
@@ -303,11 +304,11 @@ func (s *Service) liveGrant(ctx context.Context, id string, u *model.User) (live
 
 func (s *Service) ListGrants(ctx context.Context, p *Principal, offset, limit int) (model.Grants, int64, error) {
 	idleSince := s.now().Add(-IdleExpiry)
-	grants, err := s.ds.Grant().GetAllForUser(ctx, p.User.ID, idleSince, offset, limit)
+	grants, err := s.ds.Grant().GetAllForUser(ctx, p.User.ID, p.User.TokenEpoch, idleSince, offset, limit)
 	if err != nil {
 		return nil, 0, err
 	}
-	total, err := s.ds.Grant().CountForUser(ctx, p.User.ID, idleSince)
+	total, err := s.ds.Grant().CountForUser(ctx, p.User.ID, p.User.TokenEpoch, idleSince)
 	return grants, total, err
 }
 
@@ -319,8 +320,14 @@ func (s *Service) RevokeGrant(ctx context.Context, p *Principal, grantID string)
 	return nil
 }
 
+// Logout succeeds when the grant is already gone, e.g. revoked by another node or a concurrent logout.
 func (s *Service) Logout(ctx context.Context, p *Principal) error {
-	return s.RevokeGrant(ctx, p, p.GrantID)
+	err := s.RevokeGrant(ctx, p, p.GrantID)
+	if errors.Is(err, model.ErrNotFound) {
+		s.cache.evict(p.GrantID)
+		return nil
+	}
+	return err
 }
 
 // ChangePassword does every check inside the locked transaction, so a reset that lands first is never overwritten.

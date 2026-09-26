@@ -199,6 +199,35 @@ var _ = Describe("Service: sessions", func() {
 			Expect([]string{grants[0].ID, grants[1].ID}).To(ContainElements(first.Grant.ID, p.GrantID))
 		})
 
+		It("lists only grants on the user's current epoch", func() {
+			u := createUser(ctx, "pw", false)
+			login(u)
+			u.NewPassword = "reset-by-admin" // old-UI reset leaves the old grant on the previous epoch
+			Expect(realDS.User().Put(ctx, &u)).To(Succeed())
+			issued, err := svc.Login(ctx, u.UserName, "reset-by-admin", meta, nil)
+			Expect(err).ToNot(HaveOccurred())
+			p, err := svc.ResolveGrant(ctx, issued.Secret, "")
+			Expect(err).ToNot(HaveOccurred())
+
+			grants, total, err := svc.ListGrants(ctx, p, 0, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(total).To(Equal(int64(1)))
+			Expect(grants).To(HaveLen(1))
+			Expect(grants[0].ID).To(Equal(issued.Grant.ID))
+		})
+
+		It("logs out successfully when the grant is already gone", func() {
+			u := createUser(ctx, "pw", false)
+			_, p, tok := login(u)
+			_, err := svc.Authenticate(ctx, tok.Token, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(realDS.Grant().Delete(ctx, p.GrantID)).To(Succeed()) // another node
+
+			Expect(svc.Logout(ctx, p)).To(Succeed())
+			_, err = svc.Authenticate(ctx, tok.Token, "")
+			Expect(err).To(MatchError(model.ErrInvalidAuth))
+		})
+
 		It("refuses to revoke another user's grant", func() {
 			alice := createUser(ctx, "pw", false)
 			bob := createUser(ctx, "pw", false)
