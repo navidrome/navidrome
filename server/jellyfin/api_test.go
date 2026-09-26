@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,6 +19,12 @@ import (
 )
 
 var _ = Describe("Router", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("serves the public handshake through the mounted handler", func() {
 		ds := &tests.MockDataStore{}
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
@@ -49,8 +56,8 @@ var _ = Describe("Router", func() {
 	It("registers a player on a general authenticated request, not just playback reports", func() {
 		ds := &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(GinkgoT().Context()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		ur := ds.User().(*tests.MockedUserRepo)
+		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		token, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 		Expect(err).ToNot(HaveOccurred())
 
@@ -95,7 +102,7 @@ var _ = Describe("Router", func() {
 		ds := &tests.MockDataStore{}
 		auth.Init(ds)
 		usr := model.User{ID: testID("alice"), UserName: "alice"}
-		Expect(ds.User(GinkgoT().Context()).Put(&usr)).To(Succeed())
+		Expect(ds.User().Put(ctx, &usr)).To(Succeed())
 		token, err := auth.CreateAPIToken(&usr, auth.AudienceJellyfin)
 		Expect(err).ToNot(HaveOccurred())
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, quickconnect.New())

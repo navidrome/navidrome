@@ -138,7 +138,7 @@ func (s *subsonicAPIServiceImpl) checkPermissions(ctx context.Context, username 
 	}
 
 	// Look up the user by username to get their ID
-	usr, err := s.ds.User(ctx).FindByUsername(username)
+	usr, err := s.ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return fmt.Errorf("username %s not found", username)

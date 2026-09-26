@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/rest"
 )
 
 type QueryOptions struct {
@@ -16,36 +15,33 @@ type QueryOptions struct {
 	Seed    string // for random sorting
 }
 
-type ResourceRepository interface {
-	rest.Repository
-}
-
 type DataStore interface {
-	Library(ctx context.Context) LibraryRepository
-	Folder(ctx context.Context) FolderRepository
-	Album(ctx context.Context) AlbumRepository
-	Artist(ctx context.Context) ArtistRepository
-	MediaFile(ctx context.Context) MediaFileRepository
-	Genre(ctx context.Context) GenreRepository
-	Tag(ctx context.Context) TagRepository
-	Playlist(ctx context.Context) PlaylistRepository
-	PlayQueue(ctx context.Context) PlayQueueRepository
-	Transcoding(ctx context.Context) TranscodingRepository
-	Player(ctx context.Context) PlayerRepository
-	Radio(ctx context.Context) RadioRepository
-	Share(ctx context.Context) ShareRepository
-	Property(ctx context.Context) PropertyRepository
-	User(ctx context.Context) UserRepository
-	UserProps(ctx context.Context) UserPropsRepository
-	ScrobbleBuffer(ctx context.Context) ScrobbleBufferRepository
-	Scrobble(ctx context.Context) ScrobbleRepository
-	Plugin(ctx context.Context) PluginRepository
-	Artwork(ctx context.Context) ArtworkRepository
-	ArtworkQueue(ctx context.Context) ArtworkQueueRepository
-
-	Resource(ctx context.Context, model any) ResourceRepository
+	Library() LibraryRepository
+	Folder() FolderRepository
+	Album() AlbumRepository
+	Artist() ArtistRepository
+	MediaFile() MediaFileRepository
+	Genre() GenreRepository
+	Tag() TagRepository
+	Playlist() PlaylistRepository
+	PlayQueue() PlayQueueRepository
+	Transcoding() TranscodingRepository
+	Player() PlayerRepository
+	Radio() RadioRepository
+	Share() ShareRepository
+	Property() PropertyRepository
+	User() UserRepository
+	UserProps() UserPropsRepository
+	ScrobbleBuffer() ScrobbleBufferRepository
+	Scrobble() ScrobbleRepository
+	Plugin() PluginRepository
+	Artwork() ArtworkRepository
+	ArtworkQueue() ArtworkQueueRepository
 
 	WithTx(block func(tx DataStore) error, scope ...string) error
 	WithTxImmediate(block func(tx DataStore) error, scope ...string) error
+	// WithTxRetry runs block in a transaction, rerunning it while SQLite reports the database busy.
+	// For background work only (it can take minutes), and block must be safe to rerun after a rollback.
+	WithTxRetry(ctx context.Context, block func(ctx context.Context, tx DataStore) error, scope ...string) error
 	GC(ctx context.Context, libraryIDs ...int) error
 }

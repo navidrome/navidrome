@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"maps"
 	"sync"
 	"time"
@@ -26,7 +27,7 @@ func CreateMockArtworkRepo() *MockArtworkRepo {
 
 func iaKey(kind, id, imageType string) string { return kind + "|" + id + "|" + imageType }
 
-func (m *MockArtworkRepo) GetImage(hash string) (*model.Artwork, error) {
+func (m *MockArtworkRepo) GetImage(_ context.Context, hash string) (*model.Artwork, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -38,7 +39,7 @@ func (m *MockArtworkRepo) GetImage(hash string) (*model.Artwork, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
+func (m *MockArtworkRepo) PutImage(_ context.Context, a *model.Artwork) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -50,7 +51,7 @@ func (m *MockArtworkRepo) PutImage(a *model.Artwork) error {
 	return nil
 }
 
-func (m *MockArtworkRepo) GetMimeByHash() (map[string]string, error) {
+func (m *MockArtworkRepo) GetMimeByHash(context.Context) (map[string]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -63,7 +64,7 @@ func (m *MockArtworkRepo) GetMimeByHash() (map[string]string, error) {
 	return mimes, nil
 }
 
-func (m *MockArtworkRepo) PurgeDanglingItems() (int64, error) {
+func (m *MockArtworkRepo) PurgeDanglingItems(context.Context) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -84,7 +85,7 @@ func (m *MockArtworkRepo) PurgeDanglingItems() (int64, error) {
 	return purged, nil
 }
 
-func (m *MockArtworkRepo) PurgeOrphans(createdBefore time.Time) (int64, error) {
+func (m *MockArtworkRepo) PurgeOrphans(_ context.Context, createdBefore time.Time) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -110,7 +111,7 @@ func (m *MockArtworkRepo) referenced(hash string) bool {
 	return false
 }
 
-func (m *MockArtworkRepo) GetItemArtwork(kind model.Kind, id, imageType string) (*model.ItemArtwork, error) {
+func (m *MockArtworkRepo) GetItemArtwork(_ context.Context, kind model.Kind, id, imageType string) (*model.ItemArtwork, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -122,7 +123,7 @@ func (m *MockArtworkRepo) GetItemArtwork(kind model.Kind, id, imageType string) 
 	return nil, model.ErrNotFound
 }
 
-func (m *MockArtworkRepo) PutLastFailure(kind model.Kind, id, imageType, trace string) error {
+func (m *MockArtworkRepo) PutLastFailure(_ context.Context, kind model.Kind, id, imageType, trace string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -136,7 +137,7 @@ func (m *MockArtworkRepo) PutLastFailure(kind model.Kind, id, imageType, trace s
 	return nil
 }
 
-func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
+func (m *MockArtworkRepo) PutItemArtwork(_ context.Context, ia *model.ItemArtwork) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -153,7 +154,7 @@ func (m *MockArtworkRepo) PutItemArtwork(ia *model.ItemArtwork) error {
 	return nil
 }
 
-func (m *MockArtworkRepo) DeleteForItems(kind model.Kind, ids []string) error {
+func (m *MockArtworkRepo) DeleteForItems(_ context.Context, kind model.Kind, ids []string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -167,7 +168,7 @@ func (m *MockArtworkRepo) DeleteForItems(kind model.Kind, ids []string) error {
 	return nil
 }
 
-func (m *MockArtworkRepo) GetInfoForItems(kind model.Kind, ids []string) (map[string]model.ItemArtworkInfo, error) {
+func (m *MockArtworkRepo) GetInfoForItems(_ context.Context, kind model.Kind, ids []string) (map[string]model.ItemArtworkInfo, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {

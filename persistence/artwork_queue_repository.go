@@ -25,17 +25,16 @@ type artworkQueueRepository struct {
 	sqlRepository
 }
 
-func NewArtworkQueueRepository(ctx context.Context, db dbx.Builder) model.ArtworkQueueRepository {
+func NewArtworkQueueRepository(db dbx.Builder) model.ArtworkQueueRepository {
 	r := &artworkQueueRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "artwork_queue"
 	return r
 }
 
-func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
+func (r *artworkQueueRepository) Get(ctx context.Context, kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
 	var res model.ArtworkQueueItem
-	err := r.queryOne(Select("*").From(r.tableName).
+	err := r.queryOne(ctx, Select("*").From(r.tableName).
 		Where(Eq{"item_kind": kind.Prefix(), "item_id": id, "image_type": imageType}), &res)
 	if err != nil {
 		return nil, err
@@ -45,30 +44,30 @@ func (r *artworkQueueRepository) Get(kind model.Kind, id, imageType string) (*mo
 
 // Enqueue starts a fresh lifecycle: it resets enqueued_at (so a fresh request does not inherit an old
 // row's spent retry budget) and clears trace (so explain does not show a prior failure at attempts 0).
-func (r *artworkQueueRepository) Enqueue(items ...model.ArtworkQueueItem) error {
-	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
+func (r *artworkQueueRepository) Enqueue(ctx context.Context, items ...model.ArtworkQueueItem) error {
+	return r.enqueue(ctx, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority), retry_at = excluded.retry_at,
 		attempts = 0, enqueued_at = excluded.enqueued_at, trace = '[]'`, items)
 }
 
-func (r *artworkQueueRepository) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
-	return r.enqueue(`ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
+func (r *artworkQueueRepository) EnqueuePreservingBackoff(ctx context.Context, items ...model.ArtworkQueueItem) error {
+	return r.enqueue(ctx, `ON CONFLICT (item_kind, item_id, image_type) DO UPDATE SET
 		priority = MAX(priority, excluded.priority)`, items)
 }
 
-func (r *artworkQueueRepository) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
+func (r *artworkQueueRepository) EnqueueAllMissing(ctx context.Context, kind model.Kind, priority int) (int64, error) {
 	entityTable, ok := artworkOwnerTables[kind]
 	if !ok {
 		return 0, fmt.Errorf("artwork queue: no entity table for kind %q", kind.Prefix())
 	}
 	now := time.Now()
-	return r.insertIfNotQueued("", `SELECT ?, id, ?, ?, 0, ?, ?
+	return r.insertIfNotQueued(ctx, "", `SELECT ?, id, ?, ?, 0, ?, ?
 		FROM `+entityTable+`
 		WHERE id NOT IN (SELECT item_id FROM `+itemArtworkTable+` WHERE item_kind = ?)`,
 		kind.Prefix(), model.ImageTypePrimary, priority, now, now, kind.Prefix())
 }
 
-func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueItem) error {
+func (r *artworkQueueRepository) EnqueueIfMissing(ctx context.Context, items ...model.ArtworkQueueItem) error {
 	now := time.Now()
 	for chunk := range slices.Chunk(items, enqueueChunkSize) {
 		rows := make([]string, 0, len(chunk))
@@ -78,7 +77,7 @@ func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueIte
 			args = append(args, it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority)
 		}
 		args = append(args, now, now)
-		_, err := r.insertIfNotQueued(
+		_, err := r.insertIfNotQueued(ctx,
 			`WITH new_items(item_kind, item_id, image_type, priority) AS (VALUES `+strings.Join(rows, ",")+`) `,
 			`SELECT n.item_kind, n.item_id, n.image_type, n.priority, 0, ?, ?
 			FROM new_items n
@@ -97,8 +96,8 @@ func (r *artworkQueueRepository) EnqueueIfMissing(items ...model.ArtworkQueueIte
 const skipIfQueued = ` ON CONFLICT (item_kind, item_id, image_type) DO NOTHING`
 
 // insertIfNotQueued inserts the rows selected by the given SQL, optionally prefixed by a CTE.
-func (r *artworkQueueRepository) insertIfNotQueued(with, sql string, args ...any) (int64, error) {
-	return r.executeSQL(Expr(with+`INSERT INTO `+r.tableName+
+func (r *artworkQueueRepository) insertIfNotQueued(ctx context.Context, with, sql string, args ...any) (int64, error) {
+	return r.executeSQL(ctx, Expr(with+`INSERT INTO `+r.tableName+
 		` (`+strings.Join(enqueueColumns, ", ")+`) `+sql+skipIfQueued, args...))
 }
 
@@ -121,16 +120,16 @@ func artworkSourceFilter(kind model.Kind, sources []string) Sqlizer {
 	return append(f, match)
 }
 
-func (r *artworkQueueRepository) CountBySource(kind model.Kind, sources []string) (int64, error) {
+func (r *artworkQueueRepository) CountBySource(ctx context.Context, kind model.Kind, sources []string) (int64, error) {
 	var res struct{ Count int64 }
-	err := r.queryOne(Select("count(*) as count").From(itemArtworkTable).
+	err := r.queryOne(ctx, Select("count(*) as count").From(itemArtworkTable).
 		Where(artworkSourceFilter(kind, sources)), &res)
 	return res.Count, err
 }
 
-func (r *artworkQueueRepository) SourcesInUse(kind model.Kind) ([]string, error) {
+func (r *artworkQueueRepository) SourcesInUse(ctx context.Context, kind model.Kind) ([]string, error) {
 	var res []struct{ Source string }
-	err := r.queryAll(Select("distinct source").From(itemArtworkTable).
+	err := r.queryAll(ctx, Select("distinct source").From(itemArtworkTable).
 		Where(Eq{"item_kind": kind.Prefix()}), &res)
 	if err != nil {
 		return nil, err
@@ -140,15 +139,15 @@ func (r *artworkQueueRepository) SourcesInUse(kind model.Kind) ([]string, error)
 
 // EnqueueBySource deliberately leaves item_artwork alone: clearing state in bulk would blank the
 // library's artwork until every item is resolved again.
-func (r *artworkQueueRepository) EnqueueBySource(kind model.Kind, sources []string, priority int) (int64, error) {
+func (r *artworkQueueRepository) EnqueueBySource(ctx context.Context, kind model.Kind, sources []string, priority int) (int64, error) {
 	now := time.Now()
 	sel := Select("item_kind", "item_id", "image_type").
 		Column(Expr("?", priority)).Column("0").Column(Expr("?", now)).Column(Expr("?", now)).
 		From(itemArtworkTable).Where(artworkSourceFilter(kind, sources))
-	return r.executeSQL(Insert(r.tableName).Columns(enqueueColumns...).Select(sel).Suffix(skipIfQueued))
+	return r.executeSQL(ctx, Insert(r.tableName).Columns(enqueueColumns...).Select(sel).Suffix(skipIfQueued))
 }
 
-func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQueueItem) error {
+func (r *artworkQueueRepository) enqueue(ctx context.Context, conflict string, items []model.ArtworkQueueItem) error {
 	now := time.Now()
 	for chunk := range slices.Chunk(items, enqueueChunkSize) {
 		ins := Insert(r.tableName).Columns(enqueueColumns...)
@@ -156,14 +155,14 @@ func (r *artworkQueueRepository) enqueue(conflict string, items []model.ArtworkQ
 			ins = ins.Values(it.ItemKind, it.ItemID, cmp.Or(it.ImageType, model.ImageTypePrimary), it.Priority, 0, now, now)
 		}
 		ins = ins.Suffix(conflict)
-		if _, err := r.executeSQL(ins); err != nil {
+		if _, err := r.executeSQL(ctx, ins); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
+func (r *artworkQueueRepository) DequeueBatch(ctx context.Context, n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
 	sel := Select(enqueueColumns...).From(r.tableName).
 		Where(LtOrEq{"retry_at": time.Now()}).
 		OrderBy("priority DESC", "enqueued_at ASC").
@@ -172,26 +171,26 @@ func (r *artworkQueueRepository) DequeueBatch(n int, kinds ...string) ([]model.A
 		sel = sel.Where(Eq{"item_kind": kinds})
 	}
 	var res []model.ArtworkQueueItem
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	return res, err
 }
 
-func (r *artworkQueueRepository) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
+func (r *artworkQueueRepository) MarkFailedIfUnchanged(ctx context.Context, kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	upd := Update(r.tableName).
 		Set("attempts", Expr("attempts + 1")).
 		Set("retry_at", retryAt).
 		Set("trace", trace).
 		Where(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": seenRetryAt})
-	_, err := r.executeSQL(upd)
+	_, err := r.executeSQL(ctx, upd)
 	return err
 }
 
-func (r *artworkQueueRepository) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
-	return r.delete(Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": retryAt})
+func (r *artworkQueueRepository) DeleteIfUnchanged(ctx context.Context, kind, id, imageType string, retryAt time.Time) error {
+	return r.delete(ctx, Eq{"item_kind": kind, "item_id": id, "image_type": imageType, "retry_at": retryAt})
 }
 
-func (r *artworkQueueRepository) PurgeDangling() (int64, error) {
-	return purgeDangling(r.sqlRepository)
+func (r *artworkQueueRepository) PurgeDangling(ctx context.Context) (int64, error) {
+	return purgeDangling(ctx, r.sqlRepository)
 }
 
 // artworkQueueFilter returns no conditions for an empty filter, so an unfiltered DELETE keeps
@@ -208,28 +207,28 @@ func artworkQueueFilter(kinds []model.Kind, priorities []int) And {
 }
 
 // CountQueued shares its filter with PurgeQueued, so a preview cannot count rows the delete misses.
-func (r *artworkQueueRepository) CountQueued(kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
+func (r *artworkQueueRepository) CountQueued(ctx context.Context, kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
 	sel := Select("item_kind", "priority", "count(*) as count").From(r.tableName).
 		GroupBy("item_kind", "priority").OrderBy("item_kind", "priority desc")
 	if f := artworkQueueFilter(kinds, priorities); len(f) > 0 {
 		sel = sel.Where(f)
 	}
 	var res []model.ArtworkQueueStat
-	err := r.queryAll(sel, &res)
+	err := r.queryAll(ctx, sel, &res)
 	return res, err
 }
 
-func (r *artworkQueueRepository) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+func (r *artworkQueueRepository) PurgeQueued(ctx context.Context, kinds []model.Kind, priorities []int) (int64, error) {
 	del := Delete(r.tableName)
 	if f := artworkQueueFilter(kinds, priorities); len(f) > 0 {
 		del = del.Where(f)
 	}
-	return r.executeSQL(del)
+	return r.executeSQL(ctx, del)
 }
 
-func (r *artworkQueueRepository) Count() (int64, error) {
+func (r *artworkQueueRepository) Count(ctx context.Context) (int64, error) {
 	var res struct{ Count int64 }
-	err := r.queryOne(Select("count(*) as count").From(r.tableName), &res)
+	err := r.queryOne(ctx, Select("count(*) as count").From(r.tableName), &res)
 	return res.Count, err
 }
 

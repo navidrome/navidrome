@@ -18,18 +18,20 @@ type flakyGetArtworkRepo struct {
 	*tests.MockArtworkRepo
 }
 
-func (f *flakyGetArtworkRepo) GetMimeByHash() (map[string]string, error) {
+func (f *flakyGetArtworkRepo) GetMimeByHash(context.Context) (map[string]string, error) {
 	return nil, errors.New("db locked")
 }
 
 var _ = Describe("Prune", func() {
+	var ctx context.Context
 	var ds *tests.MockDataStore
 	var store *ImageStore
 	var awRepo *tests.MockArtworkRepo
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
-		awRepo = ds.Artwork(context.Background()).(*tests.MockArtworkRepo)
+		awRepo = ds.Artwork().(*tests.MockArtworkRepo)
 		store = NewImageStore(GinkgoT().TempDir())
 	})
 
@@ -41,9 +43,9 @@ var _ = Describe("Prune", func() {
 	}
 
 	It("purges dangling item_artwork state for gone entities, summed across kinds", func() {
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary})).To(Succeed())
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "gone-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "live-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "gone-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
+		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "live-artist", ImageType: model.ImageTypePrimary})).To(Succeed())
 		awRepo.ExistingIDs = map[string]map[string]bool{
 			"al": {},
 			"ar": {"live-artist": true},
@@ -51,17 +53,17 @@ var _ = Describe("Prune", func() {
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err := awRepo.GetItemArtwork(model.KindAlbumArtwork, "gone-album", model.ImageTypePrimary)
+		_, err := awRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "gone-album", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
-		_, err = awRepo.GetItemArtwork(model.KindArtistArtwork, "gone-artist", model.ImageTypePrimary)
+		_, err = awRepo.GetItemArtwork(ctx, model.KindArtistArtwork, "gone-artist", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
-		_, err = awRepo.GetItemArtwork(model.KindArtistArtwork, "live-artist", model.ImageTypePrimary)
+		_, err = awRepo.GetItemArtwork(ctx, model.KindArtistArtwork, "live-artist", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("purges dangling artwork_queue rows for gone entities", func() {
 		queueRepo := tests.CreateMockArtworkQueueRepo()
-		Expect(queueRepo.Enqueue(
+		Expect(queueRepo.Enqueue(ctx,
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "gone-album", ImageType: model.ImageTypePrimary},
 			model.ArtworkQueueItem{ItemKind: "al", ItemID: "live-album", ImageType: model.ImageTypePrimary},
 		)).To(Succeed())
@@ -80,17 +82,17 @@ var _ = Describe("Prune", func() {
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		old := time.Now().Add(-2 * time.Hour)
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, old)
 
 		kept := []byte("kept-bytes")
 		hk, _ := hashImage(bytes.NewReader(kept))
 		Expect(store.Write(hk, "image/jpeg", bytes.NewReader(kept))).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: hk, Mime: "image/jpeg"})).To(Succeed())
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err := awRepo.GetImage(h)
+		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).To(MatchError(model.ErrNotFound))
 		_, err = store.Open(h, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
@@ -103,14 +105,14 @@ var _ = Describe("Prune", func() {
 		data := []byte("reacquired-bytes")
 		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
-		Expect(awRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "al", ItemID: "a1",
+		Expect(awRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: "a1",
 			ImageType: model.ImageTypePrimary, Hash: h, Source: "folder"})).To(Succeed())
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err := awRepo.GetImage(h)
+		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).ToNot(HaveOccurred())
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())
@@ -122,11 +124,11 @@ var _ = Describe("Prune", func() {
 		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
 		// Reacquisition refreshed created_at, so the row is unreferenced but too young to drop.
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err := awRepo.GetImage(h)
+		_, err := awRepo.GetImage(ctx, h)
 		Expect(err).ToNot(HaveOccurred())
 		rc, err := store.Open(h, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())
@@ -137,7 +139,7 @@ var _ = Describe("Prune", func() {
 		data := []byte("racing-bytes")
 		h, _ := hashImage(bytes.NewReader(data))
 		Expect(store.Write(h, "image/jpeg", bytes.NewReader(data))).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(h, time.Now().Add(-2*time.Hour))
 		// The row is orphaned, but a concurrent acquisition just touched the file's mtime.
 
@@ -170,7 +172,7 @@ var _ = Describe("Prune", func() {
 		Expect(os.Chtimes(store.path(h, "image/png"), old, old)).To(Succeed())
 		Expect(os.Chtimes(store.path(h, "image/jpeg"), old, old)).To(Succeed())
 		// The row records the current mime; the .png file is a superseded variant.
-		Expect(awRepo.PutImage(&model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: h, Mime: "image/jpeg"})).To(Succeed())
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
@@ -192,14 +194,14 @@ var _ = Describe("Prune", func() {
 		hb, _ := hashImage(bytes.NewReader(blocked))
 		Expect(store.Write(hb, "image/jpeg", bytes.NewReader(blocked))).To(Succeed())
 		Expect(os.Chtimes(store.path(hb, "image/jpeg"), old, old)).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: hb, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: hb, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(hb, old)
 
 		good := []byte("good-bytes")
 		hg, _ := hashImage(bytes.NewReader(good))
 		Expect(store.Write(hg, "image/jpeg", bytes.NewReader(good))).To(Succeed())
 		Expect(os.Chtimes(store.path(hg, "image/jpeg"), old, old)).To(Succeed())
-		Expect(awRepo.PutImage(&model.Artwork{Hash: hg, Mime: "image/jpeg"})).To(Succeed())
+		Expect(awRepo.PutImage(ctx, &model.Artwork{Hash: hg, Mime: "image/jpeg"})).To(Succeed())
 		ageArtwork(hg, old)
 
 		// A read-only shard directory makes os.Remove fail (EACCES) for hb's file only.
@@ -210,13 +212,13 @@ var _ = Describe("Prune", func() {
 
 		Expect(prune(context.Background(), ds, store)).To(Succeed())
 
-		_, err := awRepo.GetImage(hg)
+		_, err := awRepo.GetImage(ctx, hg)
 		Expect(err).To(MatchError(model.ErrNotFound))
 		_, err = store.Open(hg, "image/jpeg")
 		Expect(os.IsNotExist(err)).To(BeTrue())
 
 		// The row purge does not depend on file removal, so only the file survives.
-		_, err = awRepo.GetImage(hb)
+		_, err = awRepo.GetImage(ctx, hb)
 		Expect(err).To(MatchError(model.ErrNotFound))
 		rc, err := store.Open(hb, "image/jpeg")
 		Expect(err).ToNot(HaveOccurred())

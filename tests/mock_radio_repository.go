@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -23,29 +24,27 @@ func (m *MockedRadioRepo) SetError(err bool) {
 	m.Err = err
 }
 
-func (m *MockedRadioRepo) CountAll(options ...model.QueryOptions) (int64, error) {
+func (m *MockedRadioRepo) CountAll(_ context.Context, options ...model.QueryOptions) (int64, error) {
 	if m.Err {
 		return 0, errors.New("error")
 	}
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockedRadioRepo) Delete(id string) error {
+func (m *MockedRadioRepo) Delete(_ context.Context, ids ...string) error {
 	if m.Err {
 		return errors.New("Error!")
 	}
-
-	_, found := m.Data[id]
-
-	if !found {
-		return errors.New("not found")
+	for _, id := range ids {
+		if _, found := m.Data[id]; !found {
+			return errors.New("not found")
+		}
+		delete(m.Data, id)
 	}
-
-	delete(m.Data, id)
 	return nil
 }
 
-func (m *MockedRadioRepo) Exists(id string) (bool, error) {
+func (m *MockedRadioRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Err {
 		return false, errors.New("Error!")
 	}
@@ -53,7 +52,7 @@ func (m *MockedRadioRepo) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockedRadioRepo) Get(id string) (*model.Radio, error) {
+func (m *MockedRadioRepo) Get(_ context.Context, id string) (*model.Radio, error) {
 	if m.Err {
 		return nil, errors.New("Error!")
 	}
@@ -63,7 +62,7 @@ func (m *MockedRadioRepo) Get(id string) (*model.Radio, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockedRadioRepo) GetAll(qo ...model.QueryOptions) (model.Radios, error) {
+func (m *MockedRadioRepo) GetAll(_ context.Context, qo ...model.QueryOptions) (model.Radios, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
 	}
@@ -73,7 +72,7 @@ func (m *MockedRadioRepo) GetAll(qo ...model.QueryOptions) (model.Radios, error)
 	return m.All, nil
 }
 
-func (m *MockedRadioRepo) Put(radio *model.Radio, _ ...string) error {
+func (m *MockedRadioRepo) Put(_ context.Context, radio *model.Radio, _ ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}

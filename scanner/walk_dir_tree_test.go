@@ -564,6 +564,7 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("dir starting with ellipsis", "...unhidden_folder", false),
 				Entry("recycle bin", "$Recycle.Bin", true),
 				Entry("snapshot dir", "#snapshot", true),
+				Entry("synology metadata dir", "@eaDir", true),
 			)
 		})
 

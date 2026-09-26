@@ -28,6 +28,12 @@ import (
 )
 
 var _ = Describe("Auth", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("User login", func() {
 		var ds model.DataStore
 		var req *http.Request
@@ -48,8 +54,8 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("creates an admin user with the specified password", func() {
-				usr := ds.User(context.Background())
-				u, err := usr.FindByUsername("johndoe")
+				usr := ds.User()
+				u, err := usr.FindByUsername(ctx, "johndoe")
 				Expect(err).To(BeNil())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
@@ -76,6 +82,18 @@ var _ = Describe("Auth", func() {
 			})
 		})
 
+		Describe("createAdmin when the user cannot be stored", func() {
+			It("responds 500 rather than falling through to login", func() {
+				failing := dsWithFailingPut(errors.New("db is down"))
+				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"johndoe", "password":"secret"}`))
+				resp = httptest.NewRecorder()
+
+				createAdmin(failing)(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusInternalServerError))
+			})
+		})
+
 		Describe("Login from HTTP headers", func() {
 			const (
 				trustedIpv4   = "192.168.0.42"
@@ -87,8 +105,8 @@ var _ = Describe("Auth", func() {
 			fs := os.DirFS("tests/fixtures")
 
 			BeforeEach(func() {
-				usr := ds.User(context.Background())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				usr := ds.User()
+				_ = usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 				req = httptest.NewRequest("GET", "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
@@ -220,8 +238,8 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("logs in successfully if user exists", func() {
-				usr := ds.User(context.Background())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				usr := ds.User()
+				_ = usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 
 				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusOK))
@@ -385,14 +403,14 @@ var _ = Describe("Auth", func() {
 			Expect(result["isAdmin"]).To(BeTrue())
 
 			// Verify user was created as admin
-			u, err := ds.User(context.Background()).FindByUsername("firstuser")
+			u, err := ds.User().FindByUsername(ctx, "firstuser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeTrue())
 		})
 
 		It("does not make subsequent users admins", func() {
 			// Create the first user
-			_ = ds.User(context.Background()).Put(&model.User{
+			_ = ds.User().Put(ctx, &model.User{
 				ID:       "existing-user-id",
 				UserName: "existinguser",
 				Name:     "Existing User",
@@ -407,7 +425,7 @@ var _ = Describe("Auth", func() {
 			Expect(result["isAdmin"]).To(BeFalse())
 
 			// Verify user was created as non-admin
-			u, err := ds.User(context.Background()).FindByUsername("seconduser")
+			u, err := ds.User().FindByUsername(ctx, "seconduser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeFalse())
 		})
@@ -422,9 +440,9 @@ var _ = Describe("Auth", func() {
 			conf.Server.SessionTimeout = time.Hour
 			ds = &tests.MockDataStore{}
 			auth.Init(ds)
-			ur := ds.User(context.TODO()).(*tests.MockedUserRepo)
+			ur := ds.User().(*tests.MockedUserRepo)
 			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
-			Expect(ur.Put(usr)).To(Succeed())
+			Expect(ur.Put(ctx, usr)).To(Succeed())
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {

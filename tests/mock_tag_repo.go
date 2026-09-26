@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -13,7 +15,7 @@ type MockTagRepo struct {
 	Err     error
 }
 
-func (r *MockTagRepo) GetAll(_ model.TagName, options ...model.QueryOptions) (model.TagList, error) {
+func (r *MockTagRepo) GetAll(_ context.Context, _ model.TagName, options ...model.QueryOptions) (model.TagList, error) {
 	if len(options) > 0 {
 		r.Options = options[0]
 	}

@@ -33,7 +33,7 @@ func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error)
 func (api *Router) getArtist(r *http.Request, libIds []int, ifModifiedSince time.Time) (model.ArtistIndexes, int64, error) {
 	ctx := r.Context()
 
-	lastScanStr, err := api.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+	lastScanStr, err := api.ds.Property().DefaultGet(ctx, consts.LastScanStartTimeKey, "")
 	if err != nil {
 		log.Error(ctx, "Error retrieving last scan start time", err)
 		return nil, 0, err
@@ -45,7 +45,7 @@ func (api *Router) getArtist(r *http.Request, libIds []int, ifModifiedSince time
 
 	var indexes model.ArtistIndexes
 	if lastScan.After(ifModifiedSince) {
-		indexes, err = api.ds.Artist(ctx).GetIndex(false, libIds, model.RoleAlbumArtist)
+		indexes, err = api.ds.Artist().GetIndex(ctx, false, libIds, model.RoleAlbumArtist)
 		if err != nil {
 			log.Error(ctx, "Error retrieving Indexes", err)
 			return nil, 0, err
@@ -167,7 +167,7 @@ func (api *Router) GetArtist(r *http.Request) (*responses.Subsonic, error) {
 	id, _ := p.String("id")
 	ctx := r.Context()
 
-	artist, err := api.ds.Artist(ctx).Get(id)
+	artist, err := api.ds.Artist().Get(ctx, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Requested ArtistID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Artist not found")
@@ -191,7 +191,7 @@ func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 
 	ctx := r.Context()
 
-	album, err := api.ds.Album(ctx).Get(id)
+	album, err := api.ds.Album().Get(ctx, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Requested AlbumID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Album not found")
@@ -201,7 +201,7 @@ func (api *Router) GetAlbum(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(id))
+	mfs, err := api.ds.MediaFile().GetAll(ctx, filter.SongsByAlbum(id))
 	if err != nil {
 		log.Error(ctx, "Error retrieving tracks from album", "id", id, "name", album.Name, err)
 		return nil, err
@@ -247,7 +247,7 @@ func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 	id, _ := p.String("id")
 	ctx := r.Context()
 
-	mf, err := api.ds.MediaFile(ctx).Get(id)
+	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Error(r, "Requested MediaFileID not found ", "id", id)
 		return nil, newError(responses.ErrorDataNotFound, "Song not found")
@@ -264,7 +264,7 @@ func (api *Router) GetSong(r *http.Request) (*responses.Subsonic, error) {
 
 func (api *Router) GetGenres(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	genres, err := api.ds.Genre(ctx).GetAll(model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
+	genres, err := api.ds.Genre().GetAll(ctx, model.QueryOptions{Sort: "song_count, album_count, name desc", Order: "desc"})
 	if err != nil {
 		log.Error(r, err)
 		return nil, err
@@ -421,7 +421,7 @@ func (api *Router) buildArtistDirectory(ctx context.Context, artist *model.Artis
 		dir.Starred = artist.StarredAt
 	}
 
-	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album().GetAll(ctx, filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +435,7 @@ func (api *Router) buildArtist(r *http.Request, artist *model.Artist) (*response
 	a := &responses.ArtistWithAlbumsID3{}
 	a.ArtistID3 = toArtistID3(r, *artist)
 
-	albums, err := api.ds.Album(ctx).GetAll(filter.AlbumsByArtistID(artist.ID))
+	albums, err := api.ds.Album().GetAll(ctx, filter.AlbumsByArtistID(artist.ID))
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +463,7 @@ func (api *Router) buildAlbumDirectory(ctx context.Context, album *model.Album) 
 		dir.Starred = album.StarredAt
 	}
 
-	mfs, err := api.ds.MediaFile(ctx).GetAll(filter.SongsByAlbum(album.ID))
+	mfs, err := api.ds.MediaFile().GetAll(ctx, filter.SongsByAlbum(album.ID))
 	if err != nil {
 		return nil, err
 	}

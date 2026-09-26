@@ -162,7 +162,7 @@ func (api *Router) userFromToken(r *http.Request) (model.User, bool) {
 	if err != nil || claims.Subject == "" {
 		return model.User{}, false
 	}
-	usr, err := api.ds.User(r.Context()).FindByUsername(claims.Subject)
+	usr, err := api.ds.User().FindByUsername(r.Context(), claims.Subject)
 	if err != nil {
 		log.Warn(r.Context(), "Jellyfin API: token subject not found", "user", claims.Subject, err)
 		return model.User{}, false

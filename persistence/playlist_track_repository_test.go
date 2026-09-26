@@ -17,30 +17,31 @@ const sqliteMaxVariables = 32766
 
 var _ = Describe("PlaylistTrackRepository", func() {
 	var repo model.PlaylistTrackRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(GinkgoT().Context())
+		ctx = log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, GetDBXBuilder()).Tracks(plsBest.ID, true)
+		repo = NewPlaylistRepository(GetDBXBuilder()).Tracks(ctx, plsBest.ID, true)
 	})
 
 	Describe("GetCursor", func() {
 		It("yields the same tracks as GetAll", func() {
 			opts := model.QueryOptions{Sort: "id"}
-			want, err := repo.GetAll(opts)
+			want, err := repo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).To(HaveLen(2))
 
-			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.PlaylistTrack(want)))
+			Expect(collectCursor(repo.GetCursor(ctx, opts))).To(Equal([]model.PlaylistTrack(want)))
 		})
 
 		It("honors Max and Offset", func() {
 			opts := model.QueryOptions{Sort: "id", Max: 1, Offset: 1}
-			want, err := repo.GetAll(opts)
+			want, err := repo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).To(HaveLen(1))
 
-			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.PlaylistTrack(want)))
+			Expect(collectCursor(repo.GetCursor(ctx, opts))).To(Equal([]model.PlaylistTrack(want)))
 		})
 	})
 
@@ -48,11 +49,11 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		It("returns every row under a random sort, despite the integer id", func() {
 			// playlist_tracks.id is an INTEGER, so SEEDEDRAND drops every row unless it is cast to
 			// TEXT, and it fails silently: no error, just no rows.
-			all, err := repo.GetAll(model.QueryOptions{Sort: "random"})
+			all, err := repo.GetAll(ctx, model.QueryOptions{Sort: "random"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(all).To(HaveLen(2), "a random sort must not silently drop rows")
 
-			got, err := repo.GetAll(model.QueryOptions{Sort: "random", Max: 1})
+			got, err := repo.GetAll(ctx, model.QueryOptions{Sort: "random", Max: 1})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got).To(HaveLen(1))
 		})
@@ -60,22 +61,22 @@ var _ = Describe("PlaylistTrackRepository", func() {
 
 	Describe("CountAll", func() {
 		It("returns the number of tracks in the playlist", func() {
-			Expect(repo.CountAll()).To(Equal(int64(2)))
+			Expect(repo.CountAll(ctx)).To(Equal(int64(2)))
 		})
 
 		It("ignores Max and Offset", func() {
-			Expect(repo.CountAll(model.QueryOptions{Max: 1, Offset: 1})).To(Equal(int64(2)))
+			Expect(repo.CountAll(ctx, model.QueryOptions{Max: 1, Offset: 1})).To(Equal(int64(2)))
 		})
 	})
 
 	Describe("GetMediaFileIDs", func() {
 		It("returns the song ids in playlist order", func() {
-			Expect(repo.GetMediaFileIDs(model.QueryOptions{Sort: "id"})).
+			Expect(repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})).
 				To(Equal([]string{songDayInALife.ID, songRadioactivity.ID}))
 		})
 
 		It("honors Max and Offset", func() {
-			Expect(repo.GetMediaFileIDs(model.QueryOptions{Sort: "id", Max: 1, Offset: 1})).
+			Expect(repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id", Max: 1, Offset: 1})).
 				To(Equal([]string{songRadioactivity.ID}))
 		})
 	})
@@ -84,28 +85,26 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		var tracks model.PlaylistTrackRepository
 
 		BeforeEach(func() {
-			ctx := log.NewContext(GinkgoT().Context())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			plsRepo := NewPlaylistRepository(ctx, GetDBXBuilder())
+			plsRepo := NewPlaylistRepository(GetDBXBuilder())
 			pls := model.Playlist{Name: "Insert", OwnerID: "userid", OwnerName: "userid"}
-			Expect(plsRepo.Put(&pls)).To(Succeed())
-			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+			Expect(plsRepo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { Expect(plsRepo.Delete(ctx, pls.ID)).To(Succeed()) })
 
-			tracks = plsRepo.Tracks(pls.ID, false)
-			Expect(tracks.Add([]string{songDayInALife.ID, songRadioactivity.ID})).To(Equal(2))
+			tracks = plsRepo.Tracks(ctx, pls.ID, false)
+			Expect(tracks.Add(ctx, []string{songDayInALife.ID, songRadioactivity.ID})).To(Equal(2))
 		})
 
 		order := func() []string {
-			ids, err := tracks.GetMediaFileIDs(model.QueryOptions{Sort: "id"})
+			ids, err := tracks.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id"})
 			Expect(err).ToNot(HaveOccurred())
 			return ids
 		}
 
 		DescribeTable("inserts before a 1-based position, keeping the new tracks' order",
 			func(pos int, want func() []string) {
-				Expect(tracks.Insert([]string{songComeTogether.ID, songAntenna.ID}, pos)).To(Equal(2))
+				Expect(tracks.Insert(ctx, []string{songComeTogether.ID, songAntenna.ID}, pos)).To(Equal(2))
 				Expect(order()).To(Equal(want()))
-				Expect(tracks.CountAll()).To(Equal(int64(4)))
+				Expect(tracks.CountAll(ctx)).To(Equal(int64(4)))
 			},
 			Entry("in the middle", 2, func() []string {
 				return []string{songDayInALife.ID, songComeTogether.ID, songAntenna.ID, songRadioactivity.ID}
@@ -119,8 +118,8 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		)
 
 		It("renumbers positions contiguously", func() {
-			Expect(tracks.Insert([]string{songComeTogether.ID}, 1)).To(Equal(1))
-			all, err := tracks.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(tracks.Insert(ctx, []string{songComeTogether.ID}, 1)).To(Equal(1))
+			all, err := tracks.GetAll(ctx, model.QueryOptions{Sort: "id"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect([]string{all[0].ID, all[1].ID, all[2].ID}).To(Equal([]string{"1", "2", "3"}))
 		})
@@ -130,19 +129,17 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		var tracks model.PlaylistTrackRepository
 
 		BeforeEach(func() {
-			ctx := log.NewContext(GinkgoT().Context())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			plsRepo := NewPlaylistRepository(ctx, GetDBXBuilder())
+			plsRepo := NewPlaylistRepository(GetDBXBuilder())
 			pls := model.Playlist{Name: "Reorder", OwnerID: "userid", OwnerName: "userid"}
-			Expect(plsRepo.Put(&pls)).To(Succeed())
-			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+			Expect(plsRepo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { Expect(plsRepo.Delete(ctx, pls.ID)).To(Succeed()) })
 
-			tracks = plsRepo.Tracks(pls.ID, false)
-			Expect(tracks.Add([]string{songDayInALife.ID, songRadioactivity.ID, songComeTogether.ID})).To(Equal(3))
+			tracks = plsRepo.Tracks(ctx, pls.ID, false)
+			Expect(tracks.Add(ctx, []string{songDayInALife.ID, songRadioactivity.ID, songComeTogether.ID})).To(Equal(3))
 		})
 
 		rows := func() ([]string, []string) {
-			all, err := tracks.GetAll(model.QueryOptions{Sort: "id"})
+			all, err := tracks.GetAll(ctx, model.QueryOptions{Sort: "id"})
 			Expect(err).ToNot(HaveOccurred())
 			var ids, songs []string
 			for _, t := range all {
@@ -154,7 +151,7 @@ var _ = Describe("PlaylistTrackRepository", func() {
 
 		DescribeTable("clamps the destination to the playlist",
 			func(newPos int, want func() []string) {
-				Expect(tracks.Reorder(1, newPos)).To(Succeed())
+				Expect(tracks.Reorder(ctx, 1, newPos)).To(Succeed())
 				ids, songs := rows()
 				Expect(ids).To(Equal([]string{"1", "2", "3"}))
 				Expect(songs).To(Equal(want()))
@@ -169,7 +166,7 @@ var _ = Describe("PlaylistTrackRepository", func() {
 
 		DescribeTable("rejects a source position outside the playlist, leaving rows untouched",
 			func(pos int) {
-				Expect(tracks.Reorder(pos, 1)).To(MatchError(model.ErrNotFound))
+				Expect(tracks.Reorder(ctx, pos, 1)).To(MatchError(model.ErrNotFound))
 				ids, songs := rows()
 				Expect(ids).To(Equal([]string{"1", "2", "3"}))
 				Expect(songs).To(Equal([]string{songDayInALife.ID, songRadioactivity.ID, songComeTogether.ID}))
@@ -192,35 +189,33 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		}
 
 		BeforeEach(func() {
-			ctx := log.NewContext(GinkgoT().Context())
-			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			plsRepo := NewPlaylistRepository(ctx, GetDBXBuilder())
+			plsRepo := NewPlaylistRepository(GetDBXBuilder())
 
 			pls := model.Playlist{Name: "Chunked Delete", OwnerID: "userid", OwnerName: "userid"}
-			Expect(plsRepo.Put(&pls)).To(Succeed())
-			DeferCleanup(func() { Expect(plsRepo.Delete(pls.ID)).To(Succeed()) })
+			Expect(plsRepo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { Expect(plsRepo.Delete(ctx, pls.ID)).To(Succeed()) })
 
-			tracks = plsRepo.Tracks(pls.ID, false)
+			tracks = plsRepo.Tracks(ctx, pls.ID, false)
 			songIds := make([]string, numTracks)
 			for i := range songIds {
 				songIds[i] = songDayInALife.ID
 			}
-			Expect(tracks.Add(songIds)).To(Equal(numTracks))
+			Expect(tracks.Add(ctx, songIds)).To(Equal(numTracks))
 		})
 
 		It("removes positions spanning several chunks, and renumbers what is left", func() {
-			Expect(tracks.Delete(positionsUpTo(numTracks - 1)...)).To(Succeed())
+			Expect(tracks.Delete(ctx, positionsUpTo(numTracks-1)...)).To(Succeed())
 
-			Expect(tracks.CountAll()).To(Equal(int64(1)))
-			remaining, err := tracks.GetAll(model.QueryOptions{Sort: "id"})
+			Expect(tracks.CountAll(ctx)).To(Equal(int64(1)))
+			remaining, err := tracks.GetAll(ctx, model.QueryOptions{Sort: "id"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(remaining[0].ID).To(Equal("1"), "the surviving track must be renumbered to position 1")
 		})
 
 		It("accepts more ids than SQLite allows as bind variables", func() {
-			Expect(tracks.Delete(positionsUpTo(sqliteMaxVariables + 100)...)).To(Succeed())
+			Expect(tracks.Delete(ctx, positionsUpTo(sqliteMaxVariables+100)...)).To(Succeed())
 
-			Expect(tracks.CountAll()).To(BeZero())
+			Expect(tracks.CountAll(ctx)).To(BeZero())
 		})
 	})
 
@@ -236,69 +231,69 @@ var _ = Describe("PlaylistTrackRepository", func() {
 			userCtx = request.WithUser(log.NewContext(GinkgoT().Context()), restrictedUser)
 			db := GetDBXBuilder()
 
-			adminMr := NewMediaFileRepository(adminCtx, db)
-			Expect(adminMr.Put(&model.MediaFile{
+			adminMr := NewMediaFileRepository(db)
+			Expect(adminMr.Put(adminCtx, &model.MediaFile{
 				ID: "pls-otherlib-track", LibraryID: otherLib.ID, AlbumID: "pls-hidden-album",
 				Path: "hidden/in-playlist.mp3", Title: "Hidden In Playlist",
 			})).To(Succeed())
-			DeferCleanup(func() { _ = adminMr.Delete("pls-otherlib-track") })
+			DeferCleanup(func() { _ = adminMr.Delete(adminCtx, "pls-otherlib-track") })
 
-			adminPls := NewPlaylistRepository(adminCtx, db)
+			adminPls := NewPlaylistRepository(db)
 			pls := model.Playlist{Name: "Public Mixed", OwnerID: adminUser.ID, OwnerName: adminUser.UserName, Public: true}
-			Expect(adminPls.Put(&pls)).To(Succeed())
+			Expect(adminPls.Put(adminCtx, &pls)).To(Succeed())
 			plsID = pls.ID
-			DeferCleanup(func() { _ = adminPls.Delete(plsID) })
-			Expect(adminPls.Tracks(plsID, false).Add([]string{songDayInALife.ID, "pls-otherlib-track"})).To(Equal(2))
+			DeferCleanup(func() { _ = adminPls.Delete(adminCtx, plsID) })
+			Expect(adminPls.Tracks(adminCtx, plsID, false).Add(adminCtx, []string{songDayInALife.ID, "pls-otherlib-track"})).To(Equal(2))
 
-			userTracks = NewPlaylistRepository(userCtx, db).Tracks(plsID, false)
+			userTracks = NewPlaylistRepository(db).Tracks(userCtx, plsID, false)
 		})
 
 		It("Read does not return a track outside the user's libraries", func() {
-			_, err := userTracks.Read("2")
+			_, err := userTracks.Read(userCtx, "2")
 			Expect(err).To(MatchError(model.ErrNotFound), "position 2 holds a track the user cannot access")
 		})
 
 		It("Read still returns a track inside the user's libraries", func() {
-			trk, err := userTracks.Read("1")
+			trk, err := userTracks.Read(userCtx, "1")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(trk.(*model.PlaylistTrack).MediaFile.ID).To(Equal(songDayInALife.ID))
+			Expect(trk.MediaFile.ID).To(Equal(songDayInALife.ID))
 		})
 
 		It("Count excludes tracks outside the user's libraries", func() {
-			Expect(userTracks.Count()).To(Equal(int64(1)), "Count must agree with the filtered listing")
+			Expect(userTracks.Count(userCtx)).To(Equal(int64(1)), "Count must agree with the filtered listing")
 		})
 
 		It("GetAlbumIDs excludes albums outside the user's libraries", func() {
-			Expect(userTracks.GetAlbumIDs()).ToNot(ContainElement("pls-hidden-album"))
+			Expect(userTracks.GetAlbumIDs(userCtx)).ToNot(ContainElement("pls-hidden-album"))
 		})
 
 		Describe("Add", func() {
 			var ownTracks model.PlaylistTrackRepository
 
 			BeforeEach(func() {
-				userPls := NewPlaylistRepository(userCtx, GetDBXBuilder())
+				userPls := NewPlaylistRepository(GetDBXBuilder())
 				own := model.Playlist{Name: "Own Playlist", OwnerID: restrictedUser.ID, OwnerName: restrictedUser.UserName}
-				Expect(userPls.Put(&own)).To(Succeed())
-				DeferCleanup(func() { _ = NewPlaylistRepository(adminCtx, GetDBXBuilder()).Delete(own.ID) })
-				ownTracks = userPls.Tracks(own.ID, false)
+				Expect(userPls.Put(userCtx, &own)).To(Succeed())
+				DeferCleanup(func() { _ = NewPlaylistRepository(GetDBXBuilder()).Delete(adminCtx, own.ID) })
+				ownTracks = userPls.Tracks(userCtx, own.ID, false)
 			})
 
 			It("drops ids outside the user's libraries", func() {
-				Expect(ownTracks.Add([]string{songDayInALife.ID, "pls-otherlib-track"})).To(Equal(1))
-				Expect(ownTracks.GetMediaFileIDs()).To(ConsistOf(songDayInALife.ID))
+				Expect(ownTracks.Add(userCtx, []string{songDayInALife.ID, "pls-otherlib-track"})).To(Equal(1))
+				Expect(ownTracks.GetMediaFileIDs(userCtx)).To(ConsistOf(songDayInALife.ID))
 			})
 
 			It("drops them when reached through AddAlbums", func() {
-				Expect(ownTracks.AddAlbums([]string{"pls-hidden-album"})).To(BeZero())
+				Expect(ownTracks.AddAlbums(userCtx, []string{"pls-hidden-album"})).To(BeZero())
 			})
 
 			It("drops them when reached through Insert", func() {
-				Expect(ownTracks.Add([]string{songDayInALife.ID})).To(Equal(1))
+				Expect(ownTracks.Add(userCtx, []string{songDayInALife.ID})).To(Equal(1))
 
-				Expect(ownTracks.Insert([]string{"pls-otherlib-track", songComeTogether.ID}, 1)).To(Equal(1))
+				Expect(ownTracks.Insert(userCtx, []string{"pls-otherlib-track", songComeTogether.ID}, 1)).To(Equal(1))
 
-				Expect(ownTracks.GetMediaFileIDs()).To(Equal([]string{songComeTogether.ID, songDayInALife.ID}))
-				trks, err := ownTracks.GetAll(model.QueryOptions{Sort: "id"})
+				Expect(ownTracks.GetMediaFileIDs(userCtx)).To(Equal([]string{songComeTogether.ID, songDayInALife.ID}))
+				trks, err := ownTracks.GetAll(userCtx, model.QueryOptions{Sort: "id"})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(slice.Map(trks, func(t model.PlaylistTrack) string { return t.ID })).To(Equal([]string{"1", "2"}),
 					"positions must stay contiguous when an id is dropped")
@@ -307,7 +302,7 @@ var _ = Describe("PlaylistTrackRepository", func() {
 
 		Describe("Put", func() {
 			storedIDs := func(id string) []string {
-				ids, err := NewPlaylistRepository(adminCtx, GetDBXBuilder()).Tracks(id, false).GetMediaFileIDs()
+				ids, err := NewPlaylistRepository(GetDBXBuilder()).Tracks(adminCtx, id, false).GetMediaFileIDs(adminCtx)
 				Expect(err).ToNot(HaveOccurred())
 				return ids
 			}
@@ -315,8 +310,8 @@ var _ = Describe("PlaylistTrackRepository", func() {
 				pls.OwnerID = owner.ID
 				pls.Tracks = nil
 				pls.AddMediaFilesByID(ids)
-				Expect(NewPlaylistRepository(ctx, GetDBXBuilder()).Put(pls)).To(Succeed())
-				DeferCleanup(func() { _ = NewPlaylistRepository(adminCtx, GetDBXBuilder()).Delete(pls.ID) })
+				Expect(NewPlaylistRepository(GetDBXBuilder()).Put(ctx, pls)).To(Succeed())
+				DeferCleanup(func() { _ = NewPlaylistRepository(GetDBXBuilder()).Delete(adminCtx, pls.ID) })
 				return pls.ID
 			}
 
@@ -339,10 +334,10 @@ var _ = Describe("PlaylistTrackRepository", func() {
 				hidden := put(userCtx, restrictedUser, &model.Playlist{Name: "Hidden"}, songDayInALife.ID, "pls-otherlib-track")
 				unknown := put(userCtx, restrictedUser, &model.Playlist{Name: "Unknown"}, songDayInALife.ID, "no-such-track")
 
-				userPls := NewPlaylistRepository(userCtx, GetDBXBuilder())
-				h, err := userPls.Get(hidden)
+				userPls := NewPlaylistRepository(GetDBXBuilder())
+				h, err := userPls.Get(userCtx, hidden)
 				Expect(err).ToNot(HaveOccurred())
-				u, err := userPls.Get(unknown)
+				u, err := userPls.Get(userCtx, unknown)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(h.SongCount).To(Equal(u.SongCount))
 				Expect(h.Duration).To(Equal(u.Duration))
@@ -364,9 +359,9 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		})
 
 		It("still shows everything to an admin", func() {
-			adminTracks := NewPlaylistRepository(adminCtx, GetDBXBuilder()).Tracks(plsID, false)
-			Expect(adminTracks.Count()).To(Equal(int64(2)))
-			_, err := adminTracks.Read("2")
+			adminTracks := NewPlaylistRepository(GetDBXBuilder()).Tracks(adminCtx, plsID, false)
+			Expect(adminTracks.Count(adminCtx)).To(Equal(int64(2)))
+			_, err := adminTracks.Read(adminCtx, "2")
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

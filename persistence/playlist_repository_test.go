@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"slices"
 
 	"github.com/Masterminds/squirrel"
@@ -19,11 +20,11 @@ import (
 
 var _ = Describe("PlaylistRepository", func() {
 	var repo model.PlaylistRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := log.NewContext(GinkgoT().Context())
-		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-		repo = NewPlaylistRepository(ctx, GetDBXBuilder())
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
+		repo = NewPlaylistRepository(GetDBXBuilder())
 	})
 
 	Describe("natural sorting", func() {
@@ -34,23 +35,23 @@ var _ = Describe("PlaylistRepository", func() {
 			conf.Server.EnableNaturalSorting = true
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
-			repo = NewPlaylistRepository(ctx, GetDBXBuilder())
+			repo = NewPlaylistRepository(GetDBXBuilder())
 
 			ids = nil
 			for _, n := range []string{"mix 1", "mix 10", "mix 2"} {
 				pls := model.Playlist{Name: n, OwnerID: "userid"}
-				Expect(repo.Put(&pls)).To(Succeed())
+				Expect(repo.Put(ctx, &pls)).To(Succeed())
 				ids = append(ids, pls.ID)
 			}
 			DeferCleanup(func() {
 				for _, id := range ids {
-					_ = repo.Delete(id)
+					_ = repo.Delete(ctx, id)
 				}
 			})
 		})
 
 		It("sorts playlist names by number value", func() {
-			all, err := repo.GetAll(model.QueryOptions{
+			all, err := repo.GetAll(ctx, model.QueryOptions{
 				Sort: "name", Filters: squirrel.Eq{"playlist.id": ids},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -61,25 +62,25 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("Count", func() {
 		It("returns the number of playlists in the DB", func() {
-			Expect(repo.CountAll()).To(Equal(int64(2)))
+			Expect(repo.CountAll(ctx)).To(Equal(int64(2)))
 		})
 	})
 
 	Describe("GetCursor", func() {
 		It("yields the same playlists as GetAll", func() {
 			opts := model.QueryOptions{Sort: "name"}
-			want, err := repo.GetAll(opts)
+			want, err := repo.GetAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(collectCursor(repo.GetCursor(opts))).To(Equal([]model.Playlist(want)))
+			Expect(collectCursor(repo.GetCursor(ctx, opts))).To(Equal([]model.Playlist(want)))
 		})
 	})
 
 	Describe("getAllIDs", func() {
 		It("returns the same id set as GetAll", func() {
-			want, err := repo.GetAll()
+			want, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(want).ToNot(BeEmpty())
-			ids, err := repo.(*playlistRepository).getAllIDs()
+			ids, err := repo.(*playlistRepository).getAllIDs(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ids).To(ConsistOf(slice.Map(want, func(p model.Playlist) string { return p.ID })))
 		})
@@ -87,16 +88,16 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("Exists", func() {
 		It("returns true for an existing playlist", func() {
-			Expect(repo.Exists(plsCool.ID)).To(BeTrue())
+			Expect(repo.Exists(ctx, plsCool.ID)).To(BeTrue())
 		})
 		It("returns false for a non-existing playlist", func() {
-			Expect(repo.Exists("666")).To(BeFalse())
+			Expect(repo.Exists(ctx, "666")).To(BeFalse())
 		})
 	})
 
 	Describe("Get", func() {
 		It("returns an existing playlist", func() {
-			p, err := repo.Get(plsBest.ID)
+			p, err := repo.Get(ctx, plsBest.ID)
 			Expect(err).To(BeNil())
 			// Compare all but Tracks and timestamps
 			p2 := *p
@@ -110,11 +111,11 @@ var _ = Describe("PlaylistRepository", func() {
 			}
 		})
 		It("returns ErrNotFound for a non-existing playlist", func() {
-			_, err := repo.Get("666")
+			_, err := repo.Get(ctx, "666")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 		It("returns all tracks", func() {
-			pls, err := repo.GetWithTracks(plsBest.ID, true, false)
+			pls, err := repo.GetWithTracks(ctx, plsBest.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.Name).To(Equal(plsBest.Name))
 			Expect(pls.Tracks).To(HaveLen(2))
@@ -138,7 +139,7 @@ var _ = Describe("PlaylistRepository", func() {
 
 		BeforeEach(func() {
 			pls := model.Playlist{Name: "Annotated", OwnerID: "userid"}
-			Expect(repo.Put(&pls)).To(Succeed())
+			Expect(repo.Put(ctx, &pls)).To(Succeed())
 			plsID = pls.ID
 		})
 
@@ -151,18 +152,18 @@ var _ = Describe("PlaylistRepository", func() {
 		}
 
 		It("stores and reads back starred", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
-			p, err := repo.Get(plsID)
+			p, err := repo.Get(ctx, plsID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.Starred).To(BeTrue())
 			Expect(p.StarredAt).ToNot(BeNil())
 		})
 
 		It("stores and reads back rating and average_rating", func() {
-			Expect(repo.SetRating(4, plsID)).To(Succeed())
+			Expect(repo.SetRating(ctx, 4, plsID)).To(Succeed())
 
-			p, err := repo.Get(plsID)
+			p, err := repo.Get(ctx, plsID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.Rating).To(Equal(4))
 			Expect(p.RatedAt).ToNot(BeNil())
@@ -170,21 +171,21 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("keeps annotations isolated per user", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			otherCtx := request.WithUser(log.NewContext(GinkgoT().Context()),
 				model.User{ID: "otheruser", UserName: "otheruser", IsAdmin: true})
-			otherRepo := NewPlaylistRepository(otherCtx, GetDBXBuilder())
+			otherRepo := NewPlaylistRepository(GetDBXBuilder())
 
-			p, err := otherRepo.Get(plsID)
+			p, err := otherRepo.Get(otherCtx, plsID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.Starred).To(BeFalse())
 		})
 
 		It("reads starred back through GetAll", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			idx := slices.IndexFunc(all, func(p model.Playlist) bool { return p.ID == plsID })
 			Expect(idx).To(BeNumerically(">=", 0))
@@ -192,44 +193,43 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("counts playlists using annotation filters", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
 			options := model.QueryOptions{Filters: squirrel.Eq{"starred": true}}
-			starred, err := repo.GetAll(options)
+			starred, err := repo.GetAll(ctx, options)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(starred).To(ContainElement(HaveField("ID", plsID)))
 
-			count, err := repo.CountAll(options)
+			count, err := repo.CountAll(ctx, options)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(count).To(Equal(int64(len(starred))))
 		})
 
 		It("filters starred playlists through the registered REST filter", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
-			res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+			res, err := repo.ReadAll(ctx, rest.QueryOptions{
 				Filters: map[string]any{"starred": "true"},
 			})
 			Expect(err).ToNot(HaveOccurred())
-			starred := res.(model.Playlists)
-			Expect(starred).To(ContainElement(HaveField("ID", plsID)))
-			for _, p := range starred {
+			Expect(res).To(ContainElement(HaveField("ID", plsID)))
+			for _, p := range res {
 				Expect(p.Starred).To(BeTrue())
 			}
 
-			res, err = repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+			res, err = repo.ReadAll(ctx, rest.QueryOptions{
 				Filters: map[string]any{"starred": "false"},
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.(model.Playlists)).ToNot(ContainElement(HaveField("ID", plsID)))
+			Expect(res).ToNot(ContainElement(HaveField("ID", plsID)))
 		})
 
 		It("reads a playlist by id through the REST id filter without ambiguity", func() {
-			res, err := repo.(model.ResourceRepository).ReadAll(rest.QueryOptions{
+			res, err := repo.ReadAll(ctx, rest.QueryOptions{
 				Filters: map[string]any{"id": plsID},
 			})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(res.(model.Playlists)).To(ContainElement(HaveField("ID", plsID)))
+			Expect(res).To(ContainElement(HaveField("ID", plsID)))
 		})
 
 		It("does not leak an annotation row of another item_type sharing the playlist id", func() {
@@ -240,11 +240,11 @@ var _ = Describe("PlaylistRepository", func() {
 				Bind(dbx.Params{"uid": "userid", "id": plsID}).Execute()
 			Expect(err).ToNot(HaveOccurred())
 
-			p, err := repo.Get(plsID)
+			p, err := repo.Get(ctx, plsID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(p.Starred).To(BeFalse())
 
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			matches := 0
 			for _, pl := range all {
@@ -256,12 +256,12 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 
 		It("relies on the annotation sweep, not Delete, to clean up annotations", func() {
-			Expect(repo.SetStar(true, plsID)).To(Succeed())
+			Expect(repo.SetStar(ctx, true, plsID)).To(Succeed())
 
-			Expect(repo.Delete(plsID)).To(Succeed())
+			Expect(repo.Delete(ctx, plsID)).To(Succeed())
 			Expect(countAnnotations()).To(Equal(1))
 
-			Expect(repo.(*playlistRepository).cleanAnnotations()).To(Succeed())
+			Expect(repo.(*playlistRepository).cleanAnnotations(ctx)).To(Succeed())
 			Expect(countAnnotations()).To(Equal(0))
 		})
 	})
@@ -271,8 +271,8 @@ var _ = Describe("PlaylistRepository", func() {
 			pls := model.Playlist{Name: "Smart Counters", OwnerID: "userid", Rules: &criteria.Criteria{
 				Expression: criteria.All{criteria.Contains{"title": "love"}},
 			}}
-			Expect(repo.Put(&pls)).To(Succeed())
-			DeferCleanup(func() { Expect(repo.Delete(pls.ID)).To(Succeed()) })
+			Expect(repo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { Expect(repo.Delete(ctx, pls.ID)).To(Succeed()) })
 
 			// Simulate a previous evaluation having stored the counters
 			_, err := GetDBXBuilder().NewQuery("update playlist set song_count = 42, duration = 123, size = 456 where id = {:id}").
@@ -282,9 +282,9 @@ var _ = Describe("PlaylistRepository", func() {
 			pls.SongCount = 0
 			pls.Duration = 0
 			pls.Size = 0
-			Expect(repo.Put(&pls)).To(Succeed())
+			Expect(repo.Put(ctx, &pls)).To(Succeed())
 
-			saved, err := repo.Get(pls.ID)
+			saved, err := repo.Get(ctx, pls.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(saved.SongCount).To(Equal(42))
 			Expect(saved.Duration).To(Equal(float32(123)))
@@ -298,35 +298,35 @@ var _ = Describe("PlaylistRepository", func() {
 		newPls.AddMediaFilesByID([]string{"1004", "1003"})
 
 		By("saves the playlist to the DB")
-		Expect(repo.Put(&newPls)).To(BeNil())
+		Expect(repo.Put(ctx, &newPls)).To(BeNil())
 
 		By("adds repeated songs to a playlist and keeps the order")
 		newPls.AddMediaFilesByID([]string{"1004"})
-		Expect(repo.Put(&newPls)).To(BeNil())
-		saved, _ := repo.GetWithTracks(newPls.ID, true, false)
+		Expect(repo.Put(ctx, &newPls)).To(BeNil())
+		saved, _ := repo.GetWithTracks(ctx, newPls.ID, true, false)
 		Expect(saved.Tracks).To(HaveLen(3))
 		Expect(saved.Tracks[0].MediaFileID).To(Equal("1004"))
 		Expect(saved.Tracks[1].MediaFileID).To(Equal("1003"))
 		Expect(saved.Tracks[2].MediaFileID).To(Equal("1004"))
 
 		By("returns the newly created playlist")
-		Expect(repo.Exists(newPls.ID)).To(BeTrue())
+		Expect(repo.Exists(ctx, newPls.ID)).To(BeTrue())
 
 		By("returns deletes the playlist")
-		Expect(repo.Delete(newPls.ID)).To(BeNil())
+		Expect(repo.Delete(ctx, newPls.ID)).To(BeNil())
 
 		By("returns error if tries to retrieve the deleted playlist")
-		Expect(repo.Exists(newPls.ID)).To(BeFalse())
+		Expect(repo.Exists(ctx, newPls.ID)).To(BeFalse())
 	})
 
 	It("enqueues a new empty playlist's artwork under its generated id, not an empty id", func() {
 		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		newPls := model.Playlist{Name: "Empty PL", OwnerID: "userid"} // no tracks → refreshCounters path
-		Expect(repo.Put(&newPls)).To(Succeed())
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
 		Expect(newPls.ID).ToNot(BeEmpty())
-		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
-		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		queued, err := NewArtworkQueueRepository(GetDBXBuilder()).DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued).To(ContainElement(SatisfyAll(HaveField("ItemKind", "pl"), HaveField("ItemID", newPls.ID))))
 		Expect(queued).ToNot(ContainElement(HaveField("ItemID", "")), "must not enqueue an empty playlist id")
@@ -336,23 +336,23 @@ var _ = Describe("PlaylistRepository", func() {
 	It("does not enqueue artwork when only metadata changes", func() {
 		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		newPls := model.Playlist{Name: "Rename Me", OwnerID: "userid"}
-		Expect(repo.Put(&newPls)).To(Succeed())
-		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 		// Clear the row creation just enqueued, so anything present afterwards came from the update.
-		queueRepo := NewArtworkQueueRepository(ctx, GetDBXBuilder())
-		queued, err := queueRepo.DequeueBatch(1000)
+		queueRepo := NewArtworkQueueRepository(GetDBXBuilder())
+		queued, err := queueRepo.DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		for _, q := range queued {
 			if q.ItemID == newPls.ID {
-				Expect(queueRepo.DeleteIfUnchanged(q.ItemKind, q.ItemID, q.ImageType, q.RetryAt)).To(Succeed())
+				Expect(queueRepo.DeleteIfUnchanged(ctx, q.ItemKind, q.ItemID, q.ImageType, q.RetryAt)).To(Succeed())
 			}
 		}
 
 		newPls.Name = "Renamed"
 		newPls.Comment = "edited"
-		Expect(repo.Put(&newPls)).To(Succeed())
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
 
-		queued, err = queueRepo.DequeueBatch(1000)
+		queued, err = queueRepo.DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued).ToNot(ContainElement(HaveField("ItemID", newPls.ID)))
 	})
@@ -361,10 +361,10 @@ var _ = Describe("PlaylistRepository", func() {
 		ctx := request.WithUser(log.NewContext(GinkgoT().Context()), model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		newPls := model.Playlist{Name: "Grid PL", OwnerID: "userid"}
 		newPls.AddMediaFilesByID([]string{"1001", "1002"})
-		Expect(repo.Put(&newPls)).To(Succeed())
-		DeferCleanup(func() { _ = repo.Delete(newPls.ID) })
+		Expect(repo.Put(ctx, &newPls)).To(Succeed())
+		DeferCleanup(func() { _ = repo.Delete(ctx, newPls.ID) })
 
-		queued, err := NewArtworkQueueRepository(ctx, GetDBXBuilder()).DequeueBatch(1000)
+		queued, err := NewArtworkQueueRepository(GetDBXBuilder()).DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(queued).To(ContainElement(SatisfyAll(
 			HaveField("ItemKind", "pl"),
@@ -374,7 +374,7 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("GetAll", func() {
 		It("returns all playlists from DB", func() {
-			all, err := repo.GetAll()
+			all, err := repo.GetAll(ctx)
 			Expect(err).To(BeNil())
 			Expect(all[0].ID).To(Equal(plsBest.ID))
 			Expect(all[1].ID).To(Equal(plsCool.ID))
@@ -383,14 +383,14 @@ var _ = Describe("PlaylistRepository", func() {
 
 	Describe("GetPlaylists", func() {
 		It("returns playlists for a track", func() {
-			pls, err := repo.GetPlaylists(songRadioactivity.ID)
+			pls, err := repo.GetPlaylists(ctx, songRadioactivity.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls).To(HaveLen(1))
 			Expect(pls[0].ID).To(Equal(plsBest.ID))
 		})
 
 		It("returns empty when none", func() {
-			pls, err := repo.GetPlaylists("9999")
+			pls, err := repo.GetPlaylists(ctx, "9999")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls).To(HaveLen(0))
 		})
@@ -401,14 +401,14 @@ var _ = Describe("PlaylistRepository", func() {
 
 		AfterEach(func() {
 			if testPlaylistID != "" {
-				Expect(repo.Delete(testPlaylistID)).To(BeNil())
+				Expect(repo.Delete(ctx, testPlaylistID)).To(BeNil())
 				testPlaylistID = ""
 			}
 		})
 
 		// helper to get track positions and media file IDs
 		getTrackInfo := func(playlistID string) (ids []string, mediaFileIDs []string) {
-			pls, err := repo.GetWithTracks(playlistID, false, false)
+			pls, err := repo.GetWithTracks(ctx, playlistID, false, false)
 			Expect(err).ToNot(HaveOccurred())
 			for _, t := range pls.Tracks {
 				ids = append(ids, t.ID)
@@ -421,12 +421,12 @@ var _ = Describe("PlaylistRepository", func() {
 			By("creating a playlist with 4 tracks")
 			newPls := model.Playlist{Name: "Renumber Test Middle", OwnerID: "userid"}
 			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003", "1004"})
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			By("deleting the second track (position 2)")
-			tracksRepo := repo.Tracks(newPls.ID, false)
-			Expect(tracksRepo.Delete("2")).To(Succeed())
+			tracksRepo := repo.Tracks(ctx, newPls.ID, false)
+			Expect(tracksRepo.Delete(ctx, "2")).To(Succeed())
 
 			By("verifying remaining tracks are renumbered sequentially")
 			ids, mediaFileIDs := getTrackInfo(newPls.ID)
@@ -438,12 +438,12 @@ var _ = Describe("PlaylistRepository", func() {
 			By("creating a playlist with 3 tracks")
 			newPls := model.Playlist{Name: "Renumber Test First", OwnerID: "userid"}
 			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			By("deleting the first track (position 1)")
-			tracksRepo := repo.Tracks(newPls.ID, false)
-			Expect(tracksRepo.Delete("1")).To(Succeed())
+			tracksRepo := repo.Tracks(ctx, newPls.ID, false)
+			Expect(tracksRepo.Delete(ctx, "1")).To(Succeed())
 
 			By("verifying remaining tracks are renumbered sequentially")
 			ids, mediaFileIDs := getTrackInfo(newPls.ID)
@@ -455,12 +455,12 @@ var _ = Describe("PlaylistRepository", func() {
 			By("creating a playlist with 3 tracks")
 			newPls := model.Playlist{Name: "Renumber Test Last", OwnerID: "userid"}
 			newPls.AddMediaFilesByID([]string{"1001", "1002", "1003"})
-			Expect(repo.Put(&newPls)).To(Succeed())
+			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
 			By("deleting the last track (position 3)")
-			tracksRepo := repo.Tracks(newPls.ID, false)
-			Expect(tracksRepo.Delete("3")).To(Succeed())
+			tracksRepo := repo.Tracks(ctx, newPls.ID, false)
+			Expect(tracksRepo.Delete(ctx, "3")).To(Succeed())
 
 			By("verifying remaining tracks are renumbered sequentially")
 			ids, mediaFileIDs := getTrackInfo(newPls.ID)
@@ -476,18 +476,18 @@ var _ = Describe("PlaylistRepository", func() {
 			// "userid" is the fixture user; playlist.owner_id has a FK to user(id).
 			owner := model.User{ID: "userid", UserName: "userid"}
 			octx := request.WithUser(GinkgoT().Context(), owner)
-			ownerRepo := NewPlaylistRepository(octx, GetDBXBuilder())
+			ownerRepo := NewPlaylistRepository(GetDBXBuilder())
 			pls := model.Playlist{Name: "Private One", OwnerID: owner.ID, Public: false}
-			Expect(ownerRepo.Put(&pls)).To(Succeed())
-			DeferCleanup(func() { _ = ownerRepo.Delete(pls.ID) })
+			Expect(ownerRepo.Put(octx, &pls)).To(Succeed())
+			DeferCleanup(func() { _ = ownerRepo.Delete(octx, pls.ID) })
 
-			Expect(ownerRepo.Exists(pls.ID)).To(BeTrue(), "the owner sees it")
+			Expect(ownerRepo.Exists(octx, pls.ID)).To(BeTrue(), "the owner sees it")
 
-			anon := NewPlaylistRepository(GinkgoT().Context(), GetDBXBuilder())
-			Expect(anon.Exists(pls.ID)).To(BeFalse(), "no user: userFilter hides it")
+			anon := NewPlaylistRepository(GetDBXBuilder())
+			Expect(anon.Exists(GinkgoT().Context(), pls.ID)).To(BeFalse(), "no user: userFilter hides it")
 
 			admin := request.WithUser(GinkgoT().Context(), model.User{ID: "userid", IsAdmin: true})
-			Expect(NewPlaylistRepository(admin, GetDBXBuilder()).Exists(pls.ID)).To(BeTrue(),
+			Expect(NewPlaylistRepository(GetDBXBuilder()).Exists(admin, pls.ID)).To(BeTrue(),
 				"elevating is what the public image route relies on")
 		})
 	})

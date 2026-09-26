@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type ScrobbleEntry struct {
 	ID          string
@@ -15,10 +18,10 @@ type ScrobbleEntry struct {
 type ScrobbleEntries []ScrobbleEntry
 
 type ScrobbleBufferRepository interface {
-	UserIDs(service string) ([]string, error)
-	Enqueue(service, userId, mediaFileId string, playTime time.Time) error
-	Next(service string, userId string) (*ScrobbleEntry, error)
-	Dequeue(entry *ScrobbleEntry) error
-	Length() (int64, error)
-	Discard(service string) error
+	UserIDs(ctx context.Context, service string) ([]string, error)
+	Enqueue(ctx context.Context, service, userId, mediaFileId string, playTime time.Time) error
+	Next(ctx context.Context, service string, userId string) (*ScrobbleEntry, error)
+	Dequeue(ctx context.Context, entry *ScrobbleEntry) error
+	Length(ctx context.Context) (int64, error)
+	Discard(ctx context.Context, service string) error
 }

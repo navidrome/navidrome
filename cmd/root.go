@@ -184,11 +184,11 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 }
 
 func pidHashChanged(ds model.DataStore) (bool, error) {
-	pidAlbum, err := ds.Property(context.Background()).DefaultGet(consts.PIDAlbumKey, "")
+	pidAlbum, err := ds.Property().DefaultGet(context.Background(), consts.PIDAlbumKey, "")
 	if err != nil {
 		return false, err
 	}
-	pidTrack, err := ds.Property(context.Background()).DefaultGet(consts.PIDTrackKey, "")
+	pidTrack, err := ds.Property().DefaultGet(context.Background(), consts.PIDTrackKey, "")
 	if err != nil {
 		return false, err
 	}
@@ -199,11 +199,11 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
-		fullScanRequired, err := ds.Property(ctx).DefaultGet(consts.FullScanAfterMigrationFlagKey, "0")
+		fullScanRequired, err := ds.Property().DefaultGet(ctx, consts.FullScanAfterMigrationFlagKey, "0")
 		if err != nil {
 			return err
 		}
-		inProgress, err := ds.Library(ctx).ScanInProgress()
+		inProgress, err := ds.Library().ScanInProgress(ctx)
 		if err != nil {
 			return err
 		}
@@ -219,7 +219,7 @@ func runInitialScan(ctx context.Context) func() error {
 			switch {
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
-				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
+				_ = ds.Property().Delete(ctx, consts.FullScanAfterMigrationFlagKey)
 			case pidHasChanged:
 				log.Warn(ctx, "PID config changed, performing full scan")
 				fullScanRequired = "1"
@@ -375,7 +375,23 @@ func startPlaybackServer(ctx context.Context) func() error {
 func startArtworkWorker(ctx context.Context, worker *artwork.Worker) func() error {
 	return func() error {
 		log.Info(ctx, "Starting artwork worker")
+		// The scanner writes to the DB for its whole run; competing for the write lock makes both fail.
+		worker.PauseWhile(scanner.IsScanning)
 		return worker.Run(ctx)
+	}
+}
+
+// outsideScan runs a DB maintenance job unless a scan is running, and keeps a scan from starting
+// until it ends; both write to the DB, and competing for the lock can make either fail.
+func outsideScan(ctx context.Context, job string, run func(context.Context) error) {
+	release, ok := scanner.LockForMaintenance()
+	if !ok {
+		log.Debug(ctx, "Skipping "+job+" because a scan is in progress")
+		return
+	}
+	defer release()
+	if err := run(ctx); err != nil {
+		log.Error(ctx, "Error running "+job, err)
 	}
 }
 
@@ -386,26 +402,20 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 		schedulerInstance := scheduler.GetInstance()
 
 		if _, err := schedulerInstance.Add(consts.ArtworkEnqueueMissingSchedule, func() {
-			if err := worker.EnqueueMissingAll(ctx); err != nil {
-				log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
-			}
+			outsideScan(ctx, "artwork missing-state recheck", worker.EnqueueMissingAll)
 		}); err != nil {
 			log.Error(ctx, "Error scheduling artwork missing-state recheck", err)
 		}
 
 		if _, err := schedulerInstance.Add(consts.ArtworkPruneSchedule, func() {
-			if err := worker.RunPrune(ctx); err != nil {
-				log.Error(ctx, "Error running artwork prune", err)
-			}
+			outsideScan(ctx, "artwork prune", worker.RunPrune)
 		}); err != nil {
 			log.Error(ctx, "Error scheduling artwork prune", err)
 		}
 
 		// Also run the missing-row recheck once at startup so a never-scanned entity is picked up
 		// immediately, not only on the next hourly tick (e.g. after enabling the feature).
-		if err := worker.EnqueueMissingAll(ctx); err != nil {
-			log.Error(ctx, "Error enqueueing missing artwork rechecks", err)
-		}
+		outsideScan(ctx, "artwork missing-state recheck", worker.EnqueueMissingAll)
 
 		if err := worker.ReconcileConfig(ctx); err != nil {
 			log.Error(ctx, "Error checking the artwork config fingerprint", err)

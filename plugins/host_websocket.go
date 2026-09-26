@@ -56,7 +56,7 @@ type wsConnection struct {
 // webSocketServiceImpl implements host.WebSocketService.
 // It provides plugins with WebSocket communication capabilities.
 type webSocketServiceImpl struct {
-	baseCtx       context.Context // bounds the read loops, which outlive the Connect() call
+	baseCtx       context.Context //nolint:containedctx // bounds the read loops, which outlive the Connect() call
 	pluginName    string
 	manager       *Manager
 	requiredHosts []string
@@ -114,7 +114,7 @@ func (s *webSocketServiceImpl) Connect(ctx context.Context, urlStr string, heade
 	// Establish WebSocket connection
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 30 * time.Second,
-		NetDialContext:   (&net.Dialer{Control: s.dialControl}).DialContext,
+		NetDialContext:   (&net.Dialer{Control: s.dialControl, Resolver: dialResolver}).DialContext,
 	}
 
 	conn, resp, err := dialer.DialContext(ctx, urlStr, httpHeaders)

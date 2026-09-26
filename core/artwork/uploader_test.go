@@ -16,12 +16,14 @@ import (
 )
 
 var _ = Describe("Uploader", func() {
+	var ctx context.Context
 	var svc Uploader
 	var tmpDir string
 	var artRepo *tests.MockArtworkRepo
 	var queueRepo *tests.MockArtworkQueueRepo
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		tmpDir = GinkgoT().TempDir()
 		conf.Server.DataFolder = conf.NewDir(tmpDir)
@@ -33,7 +35,6 @@ var _ = Describe("Uploader", func() {
 
 	Describe("SetImage", func() {
 		It("creates directory and saves image file", func() {
-			ctx := context.Background()
 			reader := strings.NewReader("fake image data")
 			filename, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "Pink Floyd", "", reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
@@ -46,7 +47,6 @@ var _ = Describe("Uploader", func() {
 		})
 
 		It("falls back to ID-only filename when name cleans to empty", func() {
-			ctx := context.Background()
 			reader := strings.NewReader("data")
 			filename, err := svc.SetImage(ctx, consts.EntityPlaylist, "pl-1", "!!!", "", reader, ".png")
 			Expect(err).ToNot(HaveOccurred())
@@ -54,7 +54,6 @@ var _ = Describe("Uploader", func() {
 		})
 
 		It("removes old image when replacing", func() {
-			ctx := context.Background()
 			oldDir := filepath.Join(tmpDir, "artwork", "artist")
 			Expect(os.MkdirAll(oldDir, 0755)).To(Succeed())
 			oldFile := filepath.Join(oldDir, "ar-1_old.png")
@@ -70,15 +69,13 @@ var _ = Describe("Uploader", func() {
 		})
 
 		It("ignores missing old file without error", func() {
-			ctx := context.Background()
 			reader := strings.NewReader("data")
 			_, err := svc.SetImage(ctx, consts.EntityArtist, "ar-1", "Name", "/nonexistent/path.jpg", reader, ".jpg")
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("does not touch artwork state or the queue (that is EnqueueArtwork's job, post-Put)", func() {
-			ctx := context.Background()
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "ar", ItemID: "ar-1", Hash: "oldhash", Source: "external",
 			})).To(Succeed())
 
@@ -87,25 +84,24 @@ var _ = Describe("Uploader", func() {
 
 			// SetImage only writes the file; the state row survives and nothing is queued until
 			// the caller has persisted the new filename and called EnqueueArtwork.
-			_, err = artRepo.GetItemArtwork(model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(ctx, model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(queueRepo.DequeueBatch(1000)).To(BeEmpty())
+			Expect(queueRepo.DequeueBatch(ctx, 1000)).To(BeEmpty())
 		})
 	})
 
 	Describe("EnqueueArtwork", func() {
 		It("clears artwork state and enqueues a Bump", func() {
-			ctx := context.Background()
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "ar", ItemID: "ar-1", Hash: "oldhash", Source: "external",
 			})).To(Succeed())
 
 			svc.EnqueueArtwork(ctx, consts.EntityArtist, "ar-1")
 
-			_, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
+			_, err := artRepo.GetItemArtwork(ctx, model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 
-			queued, err := queueRepo.DequeueBatch(1000)
+			queued, err := queueRepo.DequeueBatch(ctx, 1000)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(queued).To(ContainElement(SatisfyAll(
 				HaveField("ItemKind", "ar"),
@@ -116,13 +112,12 @@ var _ = Describe("Uploader", func() {
 
 		It("is a no-op for an unknown entity type", func() {
 			svc.EnqueueArtwork(context.Background(), "unknown", "x-1")
-			Expect(queueRepo.DequeueBatch(1000)).To(BeEmpty())
+			Expect(queueRepo.DequeueBatch(ctx, 1000)).To(BeEmpty())
 		})
 	})
 
 	Describe("RemoveImage", func() {
 		It("removes the file at the given path", func() {
-			ctx := context.Background()
 			dir := filepath.Join(tmpDir, "artwork", "artist")
 			Expect(os.MkdirAll(dir, 0755)).To(Succeed())
 			path := filepath.Join(dir, "ar-1_test.jpg")
@@ -134,13 +129,11 @@ var _ = Describe("Uploader", func() {
 		})
 
 		It("succeeds when file does not exist", func() {
-			ctx := context.Background()
 			err := svc.RemoveImage(ctx, "/nonexistent/file.jpg")
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("succeeds with empty path", func() {
-			ctx := context.Background()
 			err := svc.RemoveImage(ctx, "")
 			Expect(err).ToNot(HaveOccurred())
 		})
