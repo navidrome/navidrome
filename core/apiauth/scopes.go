@@ -1,0 +1,77 @@
+package apiauth
+
+import (
+	"slices"
+	"strings"
+)
+
+const (
+	ScopeAll      = "all"
+	ScopeRead     = "read"
+	ScopePassword = "password"
+	ScopeAdmin    = "admin"
+)
+
+// KnownScopes lists the scopes of modules this server implements; `all` expands to these.
+var KnownScopes = []string{ScopeRead, ScopePassword}
+
+func known(s string) bool {
+	return slices.Contains(KnownScopes, s)
+}
+
+func normalize(in []string) []string {
+	out := slices.Clone(in)
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+// Entitled returns the scopes a new grant stores.
+func Entitled(requested []string, isAdmin bool) []string {
+	if requested == nil {
+		return []string{ScopeAll}
+	}
+	var out []string
+	for _, s := range requested {
+		switch {
+		case s == ScopeAdmin && !isAdmin:
+		case s == ScopeAll || known(s):
+			out = append(out, s)
+		}
+	}
+	return normalize(out)
+}
+
+// Expand turns a grant's stored scopes into the concrete scopes a token may carry right now.
+func Expand(granted []string, isAdmin bool) []string {
+	var out []string
+	for _, s := range granted {
+		if s == ScopeAll {
+			out = append(out, KnownScopes...)
+			continue
+		}
+		out = append(out, s)
+	}
+	out = slices.DeleteFunc(out, func(s string) bool {
+		return !known(s) || (s == ScopeAdmin && !isAdmin)
+	})
+	return normalize(out)
+}
+
+// Attenuate returns the requested subset of available; a nil request means "everything available".
+func Attenuate(available, requested []string) []string {
+	if requested == nil {
+		return normalize(available)
+	}
+	out := []string{}
+	for _, s := range requested {
+		if Satisfies(available, s) {
+			out = append(out, s)
+		}
+	}
+	return normalize(out)
+}
+
+func Satisfies(scopes []string, required string) bool {
+	return slices.Contains(scopes, required) ||
+		(!strings.HasSuffix(required, ":write") && slices.Contains(scopes, required+":write"))
+}
