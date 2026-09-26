@@ -21,6 +21,7 @@ import RosePineMoonTheme from './rosePineMoon'
 import AmusicTheme from './amusic'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
+import ShelvTheme from './shelv'
 import MoonbaseAlphaTheme from './moonbaseAlpha'
 import MoonbaseBravoTheme from './moonbaseBravo'
 import TokyoNightLightTheme from './tokyoNightLight'
@@ -53,6 +54,7 @@ export default {
   RosePineDawnTheme,
   RosePineMoonTheme,
   RosePineTheme,
+  ShelvTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
   TokyoNightLightTheme,
