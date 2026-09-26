@@ -93,7 +93,8 @@
         "addToPlaylist": "Lisa esitusloendisse",
         "download": "Laadi alla",
         "info": "Albumi teave",
-        "share": "Jaga"
+        "share": "Jaga",
+        "refresh": "Uuenda metateavet"
       },
       "lists": {
         "all": "Kõik",
@@ -155,11 +156,13 @@
         "newPassword": "Uus salasõna",
         "token": "Tunnusluba",
         "lastAccessAt": "Viimati avatud",
-        "libraries": "Kogumikud"
+        "libraries": "Kogumikud",
+        "scrobbleFilter": "Kraasimise filter"
       },
       "helperTexts": {
         "name": "Sinu nime muudatused on näha järgmisel sisselogimisel",
-        "libraries": "Vali selle kasutaja jaoks konkreetsed kogumikud või jäta vaikimisi väärtuse kasutamiseks tühjaks"
+        "libraries": "Vali selle kasutaja jaoks konkreetsed kogumikud või jäta vaikimisi väärtuse kasutamiseks tühjaks",
+        "scrobbleFilter": "Lood, mis vastavad nendele nutika esitusloendi reeglitele, jäävad edastamata Last.fm-i, ListenBrainzi ja muudele kraasimise lisamoodulitele. Kasutab sama JSON-i põhist süntaksit ja käitumist, nagu nutikad esitusloendid. Näiteks: {\"all\":[{\"lt\":{\"rating\":4}}]}. Kui jätad tühjaks, siis kraasitakse kõik lood. See ei mõjuta kohalikus seadmes meelespeetud esituskordi."
       },
       "notifications": {
         "created": "Kasutaja on lisatud",
@@ -173,7 +176,8 @@
         "adminAutoLibraries": "Peakasutajatel on automaatselt ligipääs kõikidele kogumikele"
       },
       "validation": {
-        "librariesRequired": "Vähemalt üks kogumik peab olema valitud muude, kui peakasutajate jaoks"
+        "librariesRequired": "Vähemalt üks kogumik peab olema valitud muude, kui peakasutajate jaoks",
+        "invalidScrobbleFilter": "Peavad olema kehtivad nutika esitusloendi reeglid. Piirangud, nihe ja viivitus uuendamisel pole toetatud."
       }
     },
     "player": {
@@ -196,6 +200,9 @@
         "targetFormat": "Sihtvorming",
         "defaultBitRate": "Vaikimisi bitikiirus",
         "command": "Käsk"
+      },
+      "choices": {
+        "noDefaultBitRate": "Mitte ükski"
       }
     },
     "playlist": {
@@ -210,7 +217,8 @@
         "songCount": "Lood",
         "comment": "Kommentaar",
         "sync": "Automaatne import",
-        "path": "Impordi siit"
+        "path": "Impordi siit",
+        "starred": "Lemmik"
       },
       "actions": {
         "selectPlaylist": "Valo esitusloend:",
@@ -403,7 +411,8 @@
         "requiredHosts": "Nõutavad hostid",
         "configValidationError": "Seadistuse õigsuse kontrollimine ei õnnestunud:",
         "schemaRenderError": "Seadistuste vormi lugemine ja töötlemine ei õnnestunud. Lisamooduli ülesehitus/skeem võib olla vigane.",
-        "allowWriteAccessHelp": "Kui valik on kasutusel, siis lisamoodul võib muuta vaid faile kogumike kaustades. Vaikimisi on lisamoodulitel vaid lugemisõigus."
+        "allowWriteAccessHelp": "Kui valik on kasutusel, siis lisamoodul võib muuta vaid faile kogumike kaustades. Vaikimisi on lisamoodulitel vaid lugemisõigus.",
+        "idHelp": "Lisamooduli tunnus, mis on tuletatud failinimest. Kasuta seda seadistustes antud lisamoodulile viitamiseks, näiteks Agentide vaates."
       },
       "placeholders": {
         "configKey": "võti",
@@ -599,7 +608,11 @@
     "coverUploaded": "Kaanepilt on uuendatud",
     "coverRemoved": "Kaanepilt on eemaldatud",
     "coverUploadError": "Viga kaanepildi üleslaadimisel",
-    "coverRemoveError": "Viga kaanepildi eemaldamisel"
+    "coverRemoveError": "Viga kaanepildi eemaldamisel",
+    "metadataRefreshStarted": "Metateave on taustal uuendamisel",
+    "quickConnectApproved": "%{app} rakendus %{device} seadmes on nüüd loginud sisse",
+    "quickConnectInvalidCode": "Vigane või aegunud kood",
+    "quickConnectError": "Koodi kinnitamine ei õnnestunud"
   },
   "menu": {
     "library": "Kogumik",
@@ -634,6 +647,15 @@
       "multipleLibraries": "%{selected} / %{total} kogumikest",
       "selectLibraries": "Vali kogumikud",
       "none": "Puudub"
+    },
+    "onlyFavourites": "Näita vaid lemmikuid",
+    "quickConnect": {
+      "name": "Kiirühendus",
+      "code": "Kood",
+      "help": "Logimaks sisse oma kasutajakontoga sisesta Jellyfini rakenduses kuvatav kood",
+      "confirm": "Kas logid %{device} seadme %{app} %{version} rakenduses sisse oma kasutajakontoga?",
+      "continue": "Jätka",
+      "approve": "Nõustu"
     }
   },
   "player": {
