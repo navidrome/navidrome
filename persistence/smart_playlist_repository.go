@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -17,6 +18,23 @@ import (
 // tracks accordingly. It also handles refreshing dependent playlists when a smart playlist references other playlists
 // in its criteria. To optimize performance, it only refreshes when necessary based on the last evaluated time and
 // configured refresh delay.
+
+func (r *playlistRepository) Evaluate(ctx context.Context, id string) error {
+	var res dbPlaylist
+	if err := r.queryOne(ctx, r.selectPlaylist(ctx).Where(Eq{"playlist.id": id}), &res); err != nil {
+		return err
+	}
+	pls := res.Playlist
+	ownerCtx, err := r.ownerContext(ctx, pls.OwnerID)
+	if err != nil {
+		return err
+	}
+	pls.EvaluatedAt = nil
+	if !r.refreshSmartPlaylist(ownerCtx, &pls) {
+		return fmt.Errorf("evaluating smart playlist %s", id)
+	}
+	return nil
+}
 
 // refreshSmartPlaylist evaluates the criteria of a smart playlist and updates its tracks accordingly.
 func (r *playlistRepository) refreshSmartPlaylist(ctx context.Context, pls *model.Playlist) bool {

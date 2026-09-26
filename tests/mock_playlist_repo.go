@@ -30,6 +30,7 @@ type MockPlaylistRepo struct {
 	Err             bool
 	TracksRepo      model.PlaylistTrackRepository
 	TracksRefreshed bool
+	Evaluated       []string
 }
 
 func (m *MockPlaylistRepo) SetError(err bool) {
@@ -184,6 +185,14 @@ func (m *MockPlaylistRepo) CountAll(_ context.Context, _ ...model.QueryOptions) 
 		return 0, errors.New("error")
 	}
 	return int64(len(m.Data)), nil
+}
+
+func (m *MockPlaylistRepo) Evaluate(_ context.Context, id string) error {
+	if m.Err {
+		return errors.New("error")
+	}
+	m.Evaluated = append(m.Evaluated, id)
+	return nil
 }
 
 var _ model.PlaylistRepository = (*MockPlaylistRepo)(nil)

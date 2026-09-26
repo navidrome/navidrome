@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/criteria"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -211,6 +213,27 @@ var _ = Describe("phasePlaylists", func() {
 				HaveField("ItemID", "pl1"),
 				HaveField("Priority", model.ArtworkPriorityScan),
 			)))
+		})
+
+		It("queues only smart playlists that were never evaluated", func() {
+			libPath := GinkgoT().TempDir()
+			folder := &model.Folder{LibraryPath: libPath, Path: "path/to", Name: "folder"}
+			_ = os.MkdirAll(folder.AbsolutePath(), 0755)
+			for _, name := range []string{"new.nsp", "evaluated.nsp", "regular.m3u"} {
+				_ = os.WriteFile(filepath.Join(folder.AbsolutePath(), name), []byte{}, 0600)
+			}
+
+			rules := &criteria.Criteria{Expression: criteria.All{criteria.Contains{"title": "Day"}}}
+			pls.On("ImportFromFolder", mock.Anything, folder, "new.nsp").
+				Return(&model.Playlist{ID: "new", Rules: rules}, nil)
+			pls.On("ImportFromFolder", mock.Anything, folder, "evaluated.nsp").
+				Return(&model.Playlist{ID: "evaluated", Rules: rules, EvaluatedAt: new(time.Now())}, nil)
+			pls.On("ImportFromFolder", mock.Anything, folder, "regular.m3u").
+				Return(&model.Playlist{ID: "regular"}, nil)
+
+			_, err := phase.processPlaylistsInFolder(folder)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(state.smartPlaylistsToEvaluate()).To(ConsistOf("new"))
 		})
 
 		It("reports an error if there is an error reading files", func() {

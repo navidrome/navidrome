@@ -58,6 +58,18 @@ func loggedUser(ctx context.Context) *model.User {
 	}
 }
 
+// ownerContext scopes ctx to the given user, so queries apply that user's library access and annotations.
+func (r sqlRepository) ownerContext(ctx context.Context, userID string) (context.Context, error) {
+	owner, err := NewUserRepository(r.db).Get(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("loading owner %q: %w", userID, err)
+	}
+	if owner == nil {
+		return nil, fmt.Errorf("owner %q not found", userID)
+	}
+	return request.WithUser(ctx, *owner), nil
+}
+
 // ownerFilter returns the predicate restricting access to rows owned by the logged-in user, for
 // tables with a user_id column. It returns nil for admins and for headless/system contexts (invalid
 // user), meaning "no ownership restriction". Callers should skip the WHERE clause when it is nil.

@@ -10,7 +10,6 @@ import (
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/pocketbase/dbx"
 )
 
@@ -78,7 +77,7 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 		return And{cond, Eq{"missing": false}}
 	}
 	// Load as the share owner so their library access is applied, whoever renders the share.
-	ownerCtx, err := r.ownerContext(ctx, share)
+	ownerCtx, err := r.ownerContext(ctx, share.UserID)
 	if err != nil {
 		return err
 	}
@@ -126,19 +125,6 @@ func (r *shareRepository) loadMedia(ctx context.Context, share *model.Share) err
 	}
 	log.Warn(ctx, "Unsupported Share ResourceType", "share", share.ID, "resourceType", share.ResourceType)
 	return nil
-}
-
-// ownerContext returns a context scoped to the share owner, so repository
-// queries apply the owner's library access when a public share is rendered.
-func (r *shareRepository) ownerContext(ctx context.Context, share *model.Share) (context.Context, error) {
-	owner, err := NewUserRepository(r.db).Get(ctx, share.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("loading share owner %q: %w", share.UserID, err)
-	}
-	if owner == nil {
-		return nil, fmt.Errorf("share owner %q not found", share.UserID)
-	}
-	return request.WithUser(ctx, *owner), nil
 }
 
 func sortByIdPosition(mfs model.MediaFiles, ids []string) model.MediaFiles {
