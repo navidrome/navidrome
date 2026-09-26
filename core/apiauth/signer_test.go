@@ -50,9 +50,23 @@ var _ = Describe("signer", func() {
 	It("reports expiry distinctly", func() {
 		s, _ := loadSigner(ctx, realDS, clock)
 		tok, _ := s.sign(claims{UserID: "u1", GrantID: "g1", IssuedAt: now, ExpiresAt: now.Add(time.Hour)})
-		now = now.Add(time.Hour + time.Second)
+		now = now.Add(time.Hour + clockSkew + time.Second)
 		_, err := s.parse(tok)
 		Expect(err).To(MatchError(ErrTokenExpired))
+	})
+
+	It("accepts a token issued slightly ahead of the verifier's clock", func() {
+		s, _ := loadSigner(ctx, realDS, clock)
+		tok, _ := s.sign(claims{UserID: "u1", GrantID: "g1", IssuedAt: now.Add(5 * time.Second), ExpiresAt: now.Add(time.Hour)})
+		_, err := s.parse(tok)
+		Expect(err).ToNot(HaveOccurred())
+	})
+
+	It("rejects a token issued further ahead than the allowed skew", func() {
+		s, _ := loadSigner(ctx, realDS, clock)
+		tok, _ := s.sign(claims{UserID: "u1", GrantID: "g1", IssuedAt: now.Add(clockSkew + time.Second), ExpiresAt: now.Add(time.Hour)})
+		_, err := s.parse(tok)
+		Expect(err).To(MatchError(model.ErrInvalidAuth))
 	})
 
 	It("rejects garbage and tokens signed with another key", func() {

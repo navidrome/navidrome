@@ -21,6 +21,9 @@ import (
 
 const Audience = "navidrome-api-v1"
 
+// Tokens minted on one node are verified on others, whose clocks may differ slightly.
+const clockSkew = 30 * time.Second
+
 var ErrTokenExpired = errors.New("access token expired")
 
 type claims struct {
@@ -39,6 +42,7 @@ func newJWTAuth(key []byte, now func() time.Time) *jwtauth.JWTAuth {
 	return jwtauth.New("HS256", key, nil,
 		jwt.WithAudience(Audience),
 		jwt.WithClock(jwt.ClockFunc(now)),
+		jwt.WithAcceptableSkew(clockSkew),
 		// jwx accepts a token with no exp at all unless the claim is required.
 		jwt.WithRequiredClaim(jwt.ExpirationKey),
 		jwt.WithRequiredClaim(jwt.SubjectKey),
