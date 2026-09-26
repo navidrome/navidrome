@@ -97,7 +97,11 @@ func writeProblemStatus(w http.ResponseWriter, r *http.Request, status int, code
 	}
 	// Every 401 carries a Bearer challenge; callers may set a more specific one first.
 	if status == http.StatusUnauthorized && w.Header().Get("WWW-Authenticate") == "" {
-		w.Header().Set("WWW-Authenticate", "Bearer")
+		challenge := "Bearer"
+		if _, sent := bearerToken(r); sent {
+			challenge = `Bearer error="invalid_token"`
+		}
+		w.Header().Set("WWW-Authenticate", challenge)
 	}
 	w.Header().Set("Content-Type", problemContentType)
 	w.WriteHeader(status)

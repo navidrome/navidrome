@@ -89,6 +89,7 @@ var _ = Describe("auth endpoints", func() {
 		}()
 		wg.Wait()
 		Expect(realDS.User().CountAll(ctx)).To(Equal(int64(1)))
+		Expect(v1Code).To(Or(Equal(http.StatusCreated), Equal(http.StatusConflict)))
 		Expect(v1Code == http.StatusCreated).ToNot(Equal(v0Err == nil), "exactly one must win")
 	})
 
@@ -180,6 +181,33 @@ var _ = Describe("auth endpoints", func() {
 		w := call(http.MethodPost, "/api/v1/auth/logout", at.AccessToken, nil)
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
 		Expect(w.Body.String()).To(ContainSubstring(`"logoutUrl":null`))
+	})
+
+	It("challenges with invalid_token when the grant is revoked while a password change runs", func() {
+		gc := setup()
+		at := mint(gc.Secret, nil)
+		Expect(call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
+		Expect(realDS.Grant().Delete(ctx, gc.Grant.Id)).To(Succeed())
+
+		w := call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
+		Expect(w.Code).To(Equal(http.StatusUnauthorized), w.Body.String())
+		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
+	})
+
+	It("marks grant and token responses no-store", func() {
+		w := call(http.MethodPost, "/api/v1/auth/setup", "", creds("admin", "pw"))
+		Expect(w.Code).To(Equal(http.StatusCreated))
+		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
+		var gc GrantCreated
+		decode(w, &gc)
+
+		w = call(http.MethodPost, "/api/v1/auth/login", "", creds("admin", "pw"))
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
+
+		w = call(http.MethodPost, "/api/v1/auth/token", gc.Secret, nil)
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 	})
 
 	It("answers 404 for a grant id the caller does not own, and 400 for an over-long id", func() {

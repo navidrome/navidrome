@@ -41,6 +41,7 @@ type gateOp struct {
 	kind    authKind
 	scope   string
 	limited bool
+	noStore bool
 }
 
 type gate struct {
@@ -63,6 +64,7 @@ type gateRules struct {
 	limited  map[string]bool // login-type operations, throttled per client IP
 	noScope  map[string]bool // the only token operations allowed without x-scope
 	grantOps map[string]bool // the only operations allowed to use grantAuth
+	noStore  map[string]bool // operations whose responses carry a secret or token
 }
 
 func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRules) (*gate, error) {
@@ -74,6 +76,7 @@ func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRule
 				return nil, err
 			}
 			gop.limited = rules.limited[op.OperationID]
+			gop.noStore = rules.noStore[op.OperationID]
 			g.ops[method+" "+path] = gop
 		}
 	}
@@ -176,6 +179,9 @@ func (g *gate) handler(next http.Handler) http.Handler {
 			writeProblemStatus(w, r, http.StatusInternalServerError, ProblemCodeInternal, "")
 			return
 		}
+		if op.noStore {
+			w.Header().Set("Cache-Control", "no-store")
+		}
 		serve := func(w http.ResponseWriter, r *http.Request) {
 			r, ok := g.authorize(w, r, op)
 			if !ok {
@@ -204,7 +210,7 @@ func (g *gate) authorize(w http.ResponseWriter, r *http.Request, op *gateOp) (*h
 		writeProblemStatus(w, r, http.StatusUnauthorized, ProblemCodeUnauthorized, "")
 		return r, false
 	}
-	ip := server.ClientIP(r)
+	ip := server.ClientAddr(r)
 	var p *apiauth.Principal
 	var err error
 	if op.kind == authGrant {

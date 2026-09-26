@@ -65,15 +65,16 @@ type fakeAuth struct {
 	err       error
 	gotToken  string
 	gotSecret string
+	gotIP     string
 }
 
-func (f *fakeAuth) Authenticate(_ context.Context, token, _ string) (*apiauth.Principal, error) {
-	f.gotToken = token
+func (f *fakeAuth) Authenticate(_ context.Context, token, ip string) (*apiauth.Principal, error) {
+	f.gotToken, f.gotIP = token, ip
 	return f.principal, f.err
 }
 
-func (f *fakeAuth) ResolveGrant(_ context.Context, secret, _ string) (*apiauth.Principal, error) {
-	f.gotSecret = secret
+func (f *fakeAuth) ResolveGrant(_ context.Context, secret, ip string) (*apiauth.Principal, error) {
+	f.gotSecret, f.gotIP = secret, ip
 	return f.principal, f.err
 }
 
@@ -81,6 +82,7 @@ var testGateRules = gateRules{
 	limited:  map[string]bool{"limited": true},
 	noScope:  map[string]bool{"caps": true},
 	grantOps: map[string]bool{"mint": true},
+	noStore:  map[string]bool{"mint": true},
 }
 
 var _ = Describe("spec gate", func() {
@@ -188,6 +190,28 @@ var _ = Describe("spec gate", func() {
 	It("lets any valid token through an operation with no x-scope", func() {
 		fa.principal.Scopes = nil
 		Expect(do(http.MethodGet, "/caps", "Bearer x", "").Code).To(Equal(http.StatusOK))
+	})
+
+	DescribeTable("passes the full client address to the authenticator, not the rate-limit /64",
+		func(method, path string) {
+			req := httptest.NewRequestWithContext(ctx, method, path, nil)
+			req.RemoteAddr = "[2001:db8:1:2:3:4:5:6]:4321"
+			req.Header.Set("Authorization", "Bearer x")
+			w := httptest.NewRecorder()
+			mux.ServeHTTP(w, req)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(fa.gotIP).To(Equal("2001:db8:1:2:3:4:5:6"))
+		},
+		Entry("access token", http.MethodGet, "/things/1"),
+		Entry("grant", http.MethodPost, "/mint"),
+	)
+
+	It("marks only the listed operations' responses no-store, errors included", func() {
+		Expect(do(http.MethodPost, "/mint", "Bearer ndg_secret", "").Header().Get("Cache-Control")).To(Equal("no-store"))
+		fa.err = model.ErrInvalidAuth
+		Expect(do(http.MethodPost, "/mint", "Bearer ndg_secret", "").Header().Get("Cache-Control")).To(Equal("no-store"))
+		fa.err = nil
+		Expect(do(http.MethodGet, "/things/1", "Bearer x", "").Header().Get("Cache-Control")).To(BeEmpty())
 	})
 
 	It("uses ResolveGrant for grantAuth operations", func() {

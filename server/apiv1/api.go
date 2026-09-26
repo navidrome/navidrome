@@ -34,6 +34,7 @@ var gateRulesV1 = gateRules{
 	limited:  map[string]bool{"login": true, "setupFirstAdmin": true, "changePassword": true},
 	noScope:  map[string]bool{"getCapabilities": true},
 	grantOps: map[string]bool{"createAccessToken": true},
+	noStore:  map[string]bool{"login": true, "setupFirstAdmin": true, "createAccessToken": true},
 }
 
 func limitBody(next http.Handler) http.Handler {

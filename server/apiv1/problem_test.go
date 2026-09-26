@@ -1,6 +1,7 @@
 package apiv1
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,12 +22,14 @@ func decodeProblem(w *httptest.ResponseRecorder) Problem {
 }
 
 var _ = Describe("problem", func() {
+	var ctx context.Context
 	var w *httptest.ResponseRecorder
 	var r *http.Request
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		w = httptest.NewRecorder()
-		r = httptest.NewRequest(http.MethodGet, "/api/v1/server", nil)
+		r = httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/v1/server", nil)
 	})
 
 	Describe("writeProblem", func() {
@@ -82,6 +85,17 @@ var _ = Describe("problem", func() {
 			w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
 			writeProblem(w, r, model.ErrInvalidAuth)
 			Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
+		})
+
+		It("challenges a 401 with invalid_token when the request carried a bearer token", func() {
+			r.Header.Set("Authorization", "Bearer tok")
+			writeProblem(w, r, model.ErrInvalidAuth)
+			Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
+
+			w = httptest.NewRecorder()
+			r.Header.Set("Authorization", "Basic dXNlcjpwdw==")
+			writeProblem(w, r, model.ErrInvalidAuth)
+			Expect(w.Header().Get("WWW-Authenticate")).To(Equal("Bearer"))
 		})
 
 		It("adds the request's referenceId to internal errors only", func() {
