@@ -33,4 +33,10 @@ var _ = Describe("Property Repository", func() {
 	It("returns a default value if property does not exist", func() {
 		Expect(pr.DefaultGet(ctx, "2", "default")).To(Equal("default"))
 	})
+
+	It("PutIfAbsent inserts once and never overwrites", func() {
+		Expect(pr.PutIfAbsent(ctx, "pia", "first")).To(Succeed())
+		Expect(pr.PutIfAbsent(ctx, "pia", "second")).To(Succeed())
+		Expect(pr.Get(ctx, "pia")).To(Equal("first"))
+	})
 })
