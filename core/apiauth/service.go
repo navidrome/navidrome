@@ -232,7 +232,7 @@ func (s *Service) settleEpoch(ctx context.Context, grantID string) (*model.Grant
 	return g, u, nil
 }
 
-// touch writes last_used at most every touchInterval (a zero lastUsed means never); the SQL condition keeps that true across nodes.
+// touch writes last_used at most every touchInterval (zero lastUsed: never used); the SQL condition holds that across nodes.
 func (s *Service) touch(ctx context.Context, id, ip string, lastUsed time.Time) {
 	now := s.now()
 	if !lastUsed.IsZero() && now.Before(lastUsed.Add(touchInterval)) {
