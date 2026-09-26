@@ -24,7 +24,6 @@ var _ = BeforeSuite(func() {
 	realDS = persistence.New(db.Db())
 })
 
-//nolint:unused
 func createUser(ctx context.Context, password string, admin bool) model.User {
 	name := "user-" + id.NewRandom()
 	u := model.User{UserName: name, Name: name, NewPassword: password, IsAdmin: admin}
