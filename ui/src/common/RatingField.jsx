@@ -29,6 +29,7 @@ export const RatingField = ({
   className,
   size,
   color,
+  alwaysVisible,
   ...rest
 }) => {
   const record = useRecordContext(rest) || {}
@@ -62,7 +63,7 @@ export const RatingField = ({
         className={clsx(
           className,
           classes.rating,
-          rating > 0 ? classes.show : classes.hide,
+          rating > 0 || alwaysVisible ? classes.show : classes.hide,
         )}
         value={rating}
         size={size}
@@ -78,10 +79,15 @@ RatingField.propTypes = {
   record: PropTypes.object,
   visible: PropTypes.bool,
   size: PropTypes.string,
+  // When true, the empty stars are always shown (not just on hover / when
+  // already rated). Used by the player toolbar so the current track can be
+  // rated directly.
+  alwaysVisible: PropTypes.bool,
 }
 
 RatingField.defaultProps = {
   visible: true,
   size: 'small',
   color: 'inherit',
+  alwaysVisible: false,
 }
