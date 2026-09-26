@@ -402,6 +402,27 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("Scanner.Extractor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("falls back to taglib for an unknown extractor", func() {
+			viper.SetDefault("scanner.extractor", "ffmpeg")
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
+		})
+
+		It("keeps taglib", func() {
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
+		})
+	})
+
 	Describe("EnforceNonRootUser", func() {
 		It("defaults to false", func() {
 			conf.Load(true)

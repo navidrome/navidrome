@@ -176,8 +176,6 @@ func (NoopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
 	return nil, errors.New("noop ffmpeg: extract image not supported")
 }
 
-func (NoopFFmpeg) Probe(context.Context, []string) (string, error) { return "", nil }
-
 func (NoopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
 	return nil, errors.New("noop ffmpeg: probe not supported")
 }
