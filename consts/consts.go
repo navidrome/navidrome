@@ -32,6 +32,7 @@ const (
 	UIClientUniqueIDHeader = "X-ND-Client-Unique-Id"
 	JWTSecretKey           = "JWTSecret"
 	JWTPublicSecretKey     = "JWTPublicSecret"
+	JWTAPIv1SecretKey      = "JWTAPIv1Secret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
 	DefaultSmartRefresh    = 5 * time.Second
