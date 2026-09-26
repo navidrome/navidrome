@@ -8,6 +8,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
@@ -34,7 +35,7 @@ var _ = Describe("signer", func() {
 	})
 
 	It("keeps using a stored key created in the older format", func() {
-		enc, err := utils.Encrypt(ctx, encryptionKey(), "legacy22charskeyABCDEF")
+		enc, err := utils.Encrypt(ctx, auth.EncryptionKey(), "legacy22charskeyABCDEF")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(realDS.Property().Put(ctx, consts.JWTAPIv1SecretKey, enc)).To(Succeed())
 		Expect(loadKey(ctx, realDS)).To(Equal("legacy22charskeyABCDEF"))

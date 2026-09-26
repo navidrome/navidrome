@@ -10,6 +10,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/log"
@@ -37,15 +38,6 @@ var gateRulesV1 = gateRules{
 	noStore:  map[string]bool{"login": true, "setupFirstAdmin": true, "createAccessToken": true},
 }
 
-func limitBody(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Body != nil {
-			r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func (rt *Router) routes() http.Handler {
 	r := chi.NewRouter()
 	doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
@@ -56,7 +48,7 @@ func (rt *Router) routes() http.Handler {
 	if err != nil {
 		log.Fatal("API v1: the embedded OpenAPI spec breaks the security rules", err)
 	}
-	r.Use(referenceIDMiddleware, problemRecoverer, headAsGet(r), limitBody, g.handler)
+	r.Use(referenceIDMiddleware, problemRecoverer, headAsGet(r), middleware.RequestSize(maxBodyBytes), g.handler)
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
 		writeProblemStatus(w, req, http.StatusNotFound, ProblemCodeNotFound, "no such endpoint")
 	})

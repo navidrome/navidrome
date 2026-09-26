@@ -10,14 +10,16 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 const (
 	TokenTTL      = time.Hour
-	IdleExpiry    = 90 * 24 * time.Hour
+	IdleExpiry    = consts.APIv1GrantIdleExpiry
 	cacheTTL      = 30 * time.Second
 	touchInterval = 5 * time.Minute
 )
@@ -149,11 +151,7 @@ func (s *Service) ResolveGrant(ctx context.Context, secret, ip string) (*Princip
 	if err != nil {
 		return nil, err
 	}
-	lastActivity := g.CreatedAt
-	if g.LastUsedAt != nil {
-		lastActivity = *g.LastUsedAt
-	}
-	if !s.now().Before(lastActivity.Add(IdleExpiry)) {
+	if !s.now().Before(g.LastActivity().Add(IdleExpiry)) {
 		s.dropGrant(ctx, g.ID)
 		return nil, model.ErrInvalidAuth
 	}
@@ -166,7 +164,7 @@ func (s *Service) ResolveGrant(ctx context.Context, secret, ip string) (*Princip
 			return nil, err
 		}
 	}
-	s.touch(ctx, g.ID, ip, g.LastUsedAt)
+	s.touch(ctx, g.ID, ip, gg.V(g.LastUsedAt))
 	return &Principal{User: *u, GrantID: g.ID, Scopes: Expand(g.Scopes, u.IsAdmin)}, nil
 }
 
@@ -230,10 +228,10 @@ func (s *Service) settleEpoch(ctx context.Context, grantID string) (*model.Grant
 	return g, u, nil
 }
 
-// touch writes last_used at most every touchInterval; the SQL condition keeps that true across nodes.
-func (s *Service) touch(ctx context.Context, id, ip string, lastUsed *time.Time) {
+// touch writes last_used at most every touchInterval (a zero lastUsed means never); the SQL condition keeps that true across nodes.
+func (s *Service) touch(ctx context.Context, id, ip string, lastUsed time.Time) {
 	now := s.now()
-	if lastUsed != nil && now.Before(lastUsed.Add(touchInterval)) {
+	if !lastUsed.IsZero() && now.Before(lastUsed.Add(touchInterval)) {
 		return
 	}
 	if err := s.ds.Grant().Touch(ctx, id, ip, now, now.Add(-touchInterval)); err != nil {
@@ -266,11 +264,7 @@ func (s *Service) Authenticate(ctx context.Context, token, ip string) (*Principa
 	if slices.Contains(c.Scopes, ScopeAdmin) && !u.IsAdmin {
 		return nil, ErrInsufficientScope
 	}
-	var lastUsed *time.Time
-	if !entry.lastUsedAt.IsZero() {
-		lastUsed = &entry.lastUsedAt
-	}
-	s.touch(ctx, c.GrantID, ip, lastUsed)
+	s.touch(ctx, c.GrantID, ip, entry.lastUsedAt)
 	return &Principal{User: *u, GrantID: c.GrantID, Scopes: Allowed(c.Scopes, u.IsAdmin)}, nil
 }
 
@@ -294,10 +288,7 @@ func (s *Service) liveGrant(ctx context.Context, id string, u *model.User) (live
 			return livenessEntry{}, nil, err
 		}
 	}
-	e := livenessEntry{userID: g.UserID, epoch: g.UserEpoch}
-	if g.LastUsedAt != nil {
-		e.lastUsedAt = *g.LastUsedAt
-	}
+	e := livenessEntry{userID: g.UserID, epoch: g.UserEpoch, lastUsedAt: gg.V(g.LastUsedAt)}
 	s.cache.put(id, e, now, started)
 	return e, u, nil
 }

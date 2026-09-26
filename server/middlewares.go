@@ -234,10 +234,10 @@ func trustedProxyPrefixes(list string) []string {
 
 // ClientIPRateLimiter returns a rate limiter keyed by ClientIP, so spoofed forwarding headers
 // cannot be rotated for a fresh bucket.
-func ClientIPRateLimiter(requestLimit int, windowLength time.Duration) func(http.Handler) http.Handler {
+func ClientIPRateLimiter(requestLimit int, windowLength time.Duration, opts ...httprate.Option) func(http.Handler) http.Handler {
 	return httprate.LimitBy(requestLimit, windowLength, func(r *http.Request) (string, error) {
 		return ClientIP(r), nil
-	})
+	}, opts...)
 }
 
 // ClientIP returns the canonical client IP resolved by realIPMiddleware, for keying rate limits. The

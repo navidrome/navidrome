@@ -35,6 +35,7 @@ const (
 	JWTAPIv1SecretKey      = "JWTAPIv1Secret"
 	JWTIssuer              = "ND"
 	DefaultSessionTimeout  = 48 * time.Hour
+	APIv1GrantIdleExpiry   = 90 * 24 * time.Hour
 	DefaultSmartRefresh    = 5 * time.Second
 	DefaultShareExpiration = 8760 * time.Hour
 	CookieExpiry           = 365 * 24 * 3600 // One year

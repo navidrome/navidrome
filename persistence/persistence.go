@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -278,7 +279,7 @@ func (s *SQLStore) GC(ctx context.Context, libraryIDs ...int) error {
 		trace(ctx, "purge non used tags", func() error { return s.tag().(*tagRepository).purgeUnused(ctx) }),
 		trace(ctx, "remove orphan playlist tracks", func() error { return s.playlist().(*playlistRepository).removeOrphans(ctx) }),
 		trace(ctx, "purge idle API grants", func() error {
-			_, err := s.grant().DeleteIdle(ctx, time.Now().Add(-90*24*time.Hour))
+			_, err := s.grant().DeleteIdle(ctx, time.Now().Add(-consts.APIv1GrantIdleExpiry))
 			return err
 		}),
 	)

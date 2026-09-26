@@ -61,12 +61,12 @@ func (r *grantRepository) findOne(ctx context.Context, cond Sqlizer) (*model.Gra
 }
 
 // activeForUser skips grants left on an older epoch: they are dead but only deleted when presented.
-func (r *grantRepository) activeForUser(userID string, epoch int, idleSince time.Time) Sqlizer {
+func activeForUser(userID string, epoch int, idleSince time.Time) Sqlizer {
 	return And{Eq{"user_id": userID, "user_epoch": epoch}, Expr(grantLastActivity+" >= ?", idleSince.UTC())}
 }
 
 func (r *grantRepository) GetAllForUser(ctx context.Context, userID string, epoch int, idleSince time.Time, offset, limit int) (model.Grants, error) {
-	sel := r.newSelect(ctx).Columns("*").Where(r.activeForUser(userID, epoch, idleSince)).
+	sel := r.newSelect(ctx).Columns("*").Where(activeForUser(userID, epoch, idleSince)).
 		OrderBy("last_used_at IS NULL", "last_used_at desc", "created_at desc", "id").
 		Offset(uint64(offset)).Limit(uint64(limit))
 	var res model.Grants
@@ -75,7 +75,7 @@ func (r *grantRepository) GetAllForUser(ctx context.Context, userID string, epoc
 }
 
 func (r *grantRepository) CountForUser(ctx context.Context, userID string, epoch int, idleSince time.Time) (int64, error) {
-	return r.count(ctx, Select().Where(r.activeForUser(userID, epoch, idleSince)))
+	return r.count(ctx, Select().Where(activeForUser(userID, epoch, idleSince)))
 }
 
 func (r *grantRepository) Delete(ctx context.Context, id string) error {
@@ -94,8 +94,7 @@ func (r *grantRepository) DeleteForUser(ctx context.Context, userID, id string) 
 }
 
 func (r *grantRepository) DeleteOtherEpochs(ctx context.Context, userID string, epoch int) error {
-	_, err := r.executeSQL(ctx, Delete(r.tableName).Where(And{Eq{"user_id": userID}, NotEq{"user_epoch": epoch}}))
-	return err
+	return r.delete(ctx, And{Eq{"user_id": userID}, NotEq{"user_epoch": epoch}})
 }
 
 // SetEpoch only moves grants still on fromEpoch, so grants killed by an earlier change never come back.

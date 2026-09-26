@@ -23,6 +23,13 @@ type Grant struct {
 	LastUsedIP    string     `structs:"last_used_ip" json:"lastUsedIp"`
 }
 
+func (g Grant) LastActivity() time.Time {
+	if g.LastUsedAt != nil {
+		return *g.LastUsedAt
+	}
+	return g.CreatedAt
+}
+
 type Grants []Grant
 
 // Scopes is stored as a single space-separated column.

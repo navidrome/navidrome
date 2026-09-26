@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/core/apiauth"
+	"github.com/navidrome/navidrome/utils/gg"
 )
 
 const defaultPageSize = 100
@@ -35,8 +36,8 @@ func (rt *Router) ListGrants(ctx context.Context, req ListGrantsRequestObject) (
 	if err != nil {
 		return nil, err
 	}
-	offset := deref(req.Params.OffsetParam)
-	limit := cmp.Or(deref(req.Params.LimitParam), defaultPageSize)
+	offset := gg.V(req.Params.OffsetParam)
+	limit := cmp.Or(gg.V(req.Params.LimitParam), defaultPageSize)
 	grants, total, err := rt.auth.ListGrants(ctx, p, offset, limit)
 	if err != nil {
 		return nil, err

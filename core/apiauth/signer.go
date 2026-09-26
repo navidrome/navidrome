@@ -1,10 +1,8 @@
 package apiauth
 
 import (
-	"cmp"
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -13,8 +11,8 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/lestrrat-go/jwx/v3/jwt"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -60,7 +58,7 @@ func loadSigner(ctx context.Context, ds model.DataStore, now func() time.Time) (
 }
 
 func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
-	enc, err := utils.Encrypt(ctx, encryptionKey(), newKey())
+	enc, err := utils.Encrypt(ctx, auth.EncryptionKey(), newKey())
 	if err != nil {
 		return "", fmt.Errorf("encrypting API v1 key: %w", err)
 	}
@@ -71,7 +69,7 @@ func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("reading API v1 key: %w", err)
 	}
-	if key, err := utils.Decrypt(ctx, encryptionKey(), stored); err == nil {
+	if key, err := utils.Decrypt(ctx, auth.EncryptionKey(), stored); err == nil {
 		return key, nil
 	}
 	// A changed PasswordEncryptionKey makes the old key unreadable; replacing it only ends current access tokens.
@@ -82,7 +80,7 @@ func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
 		if err != nil {
 			return err
 		}
-		if k, err := utils.Decrypt(ctx, encryptionKey(), current); err == nil {
+		if k, err := utils.Decrypt(ctx, auth.EncryptionKey(), current); err == nil {
 			key = k
 			return nil
 		}
@@ -90,7 +88,7 @@ func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
 		if err := tx.Property().Put(ctx, consts.JWTAPIv1SecretKey, enc); err != nil {
 			return err
 		}
-		key, err = utils.Decrypt(ctx, encryptionKey(), enc)
+		key, err = utils.Decrypt(ctx, auth.EncryptionKey(), enc)
 		return err
 	})
 	if err != nil {
@@ -104,11 +102,6 @@ func newKey() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b) // never fails since Go 1.24
 	return hex.EncodeToString(b)
-}
-
-func encryptionKey() []byte {
-	sum := sha256.Sum256([]byte(cmp.Or(conf.Server.PasswordEncryptionKey, consts.DefaultEncryptionKey)))
-	return sum[:]
 }
 
 func (s *signer) sign(c claims) (string, error) {

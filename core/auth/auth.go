@@ -53,7 +53,7 @@ func loadOrCreateSecret(ctx context.Context, ds model.DataStore, key string) str
 		log.Info(ctx, "Creating new JWT secret", "key", key)
 		return createNewSecret(ctx, ds, key)
 	}
-	if secret, err = utils.Decrypt(ctx, getEncKey(), secret); err != nil {
+	if secret, err = utils.Decrypt(ctx, EncryptionKey(), secret); err != nil {
 		log.Error(ctx, "Could not decrypt JWT secret, creating a new one", "key", key, err)
 		return createNewSecret(ctx, ds, key)
 	}
@@ -171,7 +171,7 @@ func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
 
 func createNewSecret(ctx context.Context, ds model.DataStore, key string) string {
 	secret := id.NewRandom()
-	encSecret, err := utils.Encrypt(ctx, getEncKey(), secret)
+	encSecret, err := utils.Encrypt(ctx, EncryptionKey(), secret)
 	if err != nil {
 		log.Error(ctx, "Could not encrypt JWT secret", err)
 		return secret
@@ -195,7 +195,7 @@ func DecodeAndVerifyToken(tokenStr string) (jwt.Token, error) {
 	return jwtauth.VerifyToken(TokenAuth, tokenStr)
 }
 
-func getEncKey() []byte {
+func EncryptionKey() []byte {
 	key := cmp.Or(
 		conf.Server.PasswordEncryptionKey,
 		consts.DefaultEncryptionKey,

@@ -81,8 +81,7 @@ func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRule
 		}
 	}
 	if conf.Server.AuthRequestLimit > 0 {
-		g.limiter = httprate.LimitBy(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength,
-			func(r *http.Request) (string, error) { return server.ClientIP(r), nil },
+		g.limiter = server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength,
 			httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {
 				writeProblemStatus(w, r, http.StatusTooManyRequests, ProblemCodeRateLimited, "too many requests")
 			}))

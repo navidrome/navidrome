@@ -3,14 +3,12 @@ package apiv1
 import (
 	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func toScopes(in []string) []Scope {
-	out := make([]Scope, len(in))
-	for i, s := range in {
-		out[i] = Scope(s)
-	}
-	return out
+	return slice.Map(in, func(s string) Scope { return Scope(s) })
 }
 
 // fromScopeRequests keeps nil (all scopes) apart from an empty list (no scopes).
@@ -58,7 +56,7 @@ func toGrantCreated(i *apiauth.Issued) GrantCreated {
 }
 
 func clientMeta(c CredentialsRequest) apiauth.ClientMeta {
-	return apiauth.ClientMeta{Client: c.Client, Name: deref(c.Name), ClientVersion: deref(c.ClientVersion)}
+	return apiauth.ClientMeta{Client: c.Client, Name: gg.V(c.Name), ClientVersion: gg.V(c.ClientVersion)}
 }
 
 // principal fails closed if the gate did not attach a principal to the context.
@@ -67,12 +65,4 @@ func principal(p *apiauth.Principal, ok bool) (*apiauth.Principal, error) {
 		return nil, model.ErrInvalidAuth
 	}
 	return p, nil
-}
-
-func deref[T any](p *T) T {
-	var zero T
-	if p == nil {
-		return zero
-	}
-	return *p
 }
