@@ -13,7 +13,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/jwtauth/v5"
@@ -26,8 +25,6 @@ import (
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/gravatar"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 var (
@@ -127,42 +124,20 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		c, err := ds.User().CountAll(r.Context())
-		if err != nil {
-			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		if c > 0 {
+		err = ds.WithTxImmediate(func(tx model.DataStore) error {
+			_, err := auth.CreateFirstAdmin(r.Context(), tx, username, password)
+			return err
+		})
+		if errors.Is(err, auth.ErrSetupComplete) {
 			_ = rest.RespondWithError(w, http.StatusForbidden, "Cannot create another first admin")
 			return
 		}
-		err = createAdminUser(r.Context(), ds, username, password)
 		if err != nil {
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		doLogin(ds, username, password, w, r)
 	}
-}
-
-func createAdminUser(ctx context.Context, ds model.DataStore, username, password string) error {
-	log.Warn(ctx, "Creating initial user", "user", username)
-	caser := cases.Title(language.Und)
-	initialUser := model.User{
-		ID:          id.NewRandom(),
-		UserName:    username,
-		Name:        caser.String(username),
-		Email:       "",
-		NewPassword: password,
-		IsAdmin:     true,
-		LastLoginAt: new(time.Now()),
-	}
-	err := ds.User().Put(ctx, &initialUser)
-	if err != nil {
-		log.Error(ctx, "Could not create initial user", "user", initialUser.UserName, err)
-		return fmt.Errorf("creating initial user: %w", err)
-	}
-	return nil
 }
 
 func validateLogin(ctx context.Context, userRepo model.UserRepository, userName, password string) (*model.User, error) {

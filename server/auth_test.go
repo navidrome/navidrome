@@ -74,11 +74,27 @@ var _ = Describe("Auth", func() {
 			})
 		})
 
-		Describe("createAdminUser", func() {
+		Describe("CreateFirstAdmin", func() {
 			It("returns the error when the user cannot be saved", func() {
-				ds = &tests.MockDataStore{MockedUser: &tests.MockedUserRepo{Error: errors.New("db is down")}}
-				err := createAdminUser(context.Background(), ds, "johndoe", "secret")
+				failing := dsWithFailingPut(errors.New("db is down"))
+				err := failing.WithTxImmediate(func(tx model.DataStore) error {
+					_, err := auth.CreateFirstAdmin(ctx, tx, "johndoe", "secret")
+					return err
+				})
 				Expect(err).To(MatchError(ContainSubstring("db is down")))
+			})
+		})
+
+		Describe("createAdmin when a user already exists", func() {
+			It("responds 403", func() {
+				req = httptest.NewRequest("POST", "/createAdmin", strings.NewReader(`{"username":"another", "password":"secret"}`))
+				resp = httptest.NewRecorder()
+				Expect(ds.User().Put(ctx, &model.User{UserName: "johndoe", NewPassword: "secret"})).To(Succeed())
+
+				createAdmin(ds)(resp, req)
+
+				Expect(resp.Code).To(Equal(http.StatusForbidden))
+				Expect(resp.Body.String()).To(ContainSubstring("Cannot create another first admin"))
 			})
 		})
 
