@@ -132,7 +132,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"recently_played": recentlyPlayedFilter,
 		"starred":         annotationBoolFilter("starred"),
 		"has_rating":      annotationBoolFilter("rating"),
-		"unplayed":        unplayedFilter,
+		"played":          annotationBoolFilter("play_count"),
 		"missing":         booleanFilter,
 		"genre_id":        genreFilter(AlbumGenres),
 		"role_total_id":   allRolesFilter,
@@ -158,13 +158,6 @@ func recentlyAddedSort() string {
 }
 
 func recentlyPlayedFilter(string, any) Sqlizer {
-	return Gt{"play_count": 0}
-}
-
-func unplayedFilter(_ string, value any) Sqlizer {
-	if value == "true" {
-		return Or{Eq{"play_count": 0}, Eq{"play_count": nil}}
-	}
 	return Gt{"play_count": 0}
 }
 

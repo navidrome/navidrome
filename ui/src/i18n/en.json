@@ -84,7 +84,7 @@
         "media": "Media",
         "mood": "Mood",
         "missing": "Missing",
-        "unplayed": "Unplayed"
+        "played": "Played"
       },
       "actions": {
         "playAll": "Play",
