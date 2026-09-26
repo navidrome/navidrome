@@ -163,6 +163,7 @@ const AlbumFilter = (props) => {
         />
       </ReferenceInput>
       <NullableBooleanInput source="compilation" />
+      <NullableBooleanInput source="played" defaultValue={false} />
       <NumberInput source="year" />
       {config.enableFavourites && (
         <NullableBooleanInput
