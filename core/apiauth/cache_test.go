@@ -65,6 +65,22 @@ var _ = Describe("livenessCache", func() {
 		Expect(ok).To(BeFalse())
 	})
 
+	It("stays bounded under eviction-only traffic and still drops a fill started before the trim", func() {
+		started := c.begin()
+		c.evict("g1")
+		for i := range 3 * maxLivenessEntries {
+			c.evict(fmt.Sprint("other", i))
+		}
+		Expect(len(c.evicted)).To(BeNumerically("<=", maxLivenessEntries))
+
+		c.put("g1", livenessEntry{userID: "u1"}, t0, started)
+		_, ok := c.get("g1", t0)
+		Expect(ok).To(BeFalse())
+		c.put("g1", livenessEntry{userID: "u1"}, t0, c.begin())
+		_, ok = c.get("g1", t0)
+		Expect(ok).To(BeTrue())
+	})
+
 	It("records the last use without extending the TTL", func() {
 		c.put("g1", livenessEntry{userID: "u1"}, t0, c.begin())
 		c.markUsed("g1", t0.Add(10*time.Second))

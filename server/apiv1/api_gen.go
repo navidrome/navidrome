@@ -1046,15 +1046,25 @@ type LoginResponseObject interface {
 	VisitLoginResponse(w http.ResponseWriter) error
 }
 
-type Login200JSONResponse GrantCreated
+type Login200ResponseHeaders struct {
+	CacheControl *string
+}
+
+type Login200JSONResponse struct {
+	Body    GrantCreated
+	Headers Login200ResponseHeaders
+}
 
 func (response Login200JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.CacheControl != nil {
+		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
+	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err
@@ -1366,15 +1376,25 @@ type SetupFirstAdminResponseObject interface {
 	VisitSetupFirstAdminResponse(w http.ResponseWriter) error
 }
 
-type SetupFirstAdmin201JSONResponse GrantCreated
+type SetupFirstAdmin201ResponseHeaders struct {
+	CacheControl *string
+}
+
+type SetupFirstAdmin201JSONResponse struct {
+	Body    GrantCreated
+	Headers SetupFirstAdmin201ResponseHeaders
+}
 
 func (response SetupFirstAdmin201JSONResponse) VisitSetupFirstAdminResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.CacheControl != nil {
+		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
+	}
 	w.WriteHeader(201)
 	_, err := buf.WriteTo(w)
 	return err
@@ -1471,15 +1491,25 @@ type CreateAccessTokenResponseObject interface {
 	VisitCreateAccessTokenResponse(w http.ResponseWriter) error
 }
 
-type CreateAccessToken200JSONResponse AccessToken
+type CreateAccessToken200ResponseHeaders struct {
+	CacheControl *string
+}
+
+type CreateAccessToken200JSONResponse struct {
+	Body    AccessToken
+	Headers CreateAccessToken200ResponseHeaders
+}
 
 func (response CreateAccessToken200JSONResponse) VisitCreateAccessTokenResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.CacheControl != nil {
+		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
+	}
 	w.WriteHeader(200)
 	_, err := buf.WriteTo(w)
 	return err

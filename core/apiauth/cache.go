@@ -62,10 +62,6 @@ func (c *livenessCache) put(id string, e livenessEntry, now time.Time, started u
 			break
 		}
 	}
-	if len(c.evicted) >= maxLivenessEntries {
-		clear(c.evicted)
-		c.floor = c.gen
-	}
 	e.expires = now.Add(c.ttl)
 	c.entries[id] = e
 }
@@ -73,6 +69,10 @@ func (c *livenessCache) put(id string, e livenessEntry, now time.Time, started u
 func (c *livenessCache) evict(id string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if len(c.evicted) >= maxLivenessEntries {
+		clear(c.evicted)
+		c.floor = c.gen
+	}
 	c.gen++
 	c.evicted[id] = c.gen
 	delete(c.entries, id)

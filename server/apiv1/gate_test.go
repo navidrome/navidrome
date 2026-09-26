@@ -47,7 +47,9 @@ paths:
             schema:
               type: object
               required: [name]
-              properties: {name: {type: string, maxLength: 5}}
+              properties:
+                name: {type: string, maxLength: 5}
+                tags: {type: array, items: {type: object, properties: {label: {type: string, maxLength: 5}}}}
       responses: {'200': {description: ok}}
   /caps:
     get: {operationId: caps, x-module: core, security: [{bearerAuth: []}], responses: {'200': {description: ok}}}
@@ -285,6 +287,64 @@ var _ = Describe("spec gate", func() {
 		fa.principal.Scopes = []string{"password"}
 		w := do(http.MethodPost, "/things", "Bearer x", `{}`)
 		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "name", Message: "is required"}))
+	})
+
+	DescribeTable("rejects a case variant of a declared body field, which Go would decode into it",
+		func(body, field string) {
+			fa.principal.Scopes = []string{"password"}
+			w := do(http.MethodPost, "/things", "Bearer x", body)
+			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
+			p := decodeProblem(w)
+			Expect(p.Code).To(Equal(ProblemCodeValidation))
+			Expect(*p.Errors).To(ConsistOf(ValidationError{Field: field, Message: "must match the field name exactly"}))
+			Expect(reached).To(BeEmpty())
+		},
+		Entry("top level", `{"name":"ok","NAME":"much-too-long"}`, "NAME"),
+		Entry("inside array items", `{"name":"ok","tags":[{"label":"a"},{"label":"b","Label":"much-too-long"}]}`, "tags.1.Label"),
+		Entry("Unicode case folding", "{\"name\":\"ok\",\"tag\u017f\":null}", "tag\u017f"),
+	)
+
+	DescribeTable("rejects data after the first JSON value, which Go's decoder would ignore",
+		func(body string) {
+			fa.principal.Scopes = []string{"password"}
+			w := do(http.MethodPost, "/things", "Bearer x", body)
+			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
+			p := decodeProblem(w)
+			Expect(p.Code).To(Equal(ProblemCodeValidation))
+			Expect(*p.Errors).To(ConsistOf(ValidationError{Field: "", Message: "must be a single JSON value"}))
+			Expect(reached).To(BeEmpty())
+		},
+		Entry("garbage", `{"name":"ok","NAME":"much-too-long"}x`),
+		Entry("a second value", `{"name":"ok"} {"NAME":"much-too-long"}`),
+		Entry("a stray bracket", `{"name":"ok"}]`),
+	)
+
+	DescribeTable("checks the body whatever parameters the Content-Type carries",
+		func(contentType string) {
+			fa.principal.Scopes = []string{"password"}
+			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/things", strings.NewReader(`{"name":"ok","NAME":"much-too-long"}`))
+			req.Header.Set("Content-Type", contentType)
+			req.Header.Set("Authorization", "Bearer x")
+			w := httptest.NewRecorder()
+			mux.ServeHTTP(w, req)
+			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
+			Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "NAME", Message: "must match the field name exactly"}))
+			Expect(reached).To(BeEmpty())
+		},
+		Entry("repeated parameter", "application/json; a=1; a=2"),
+		Entry("repeated charset", "application/json; charset=utf-8; CHARSET=latin1"),
+	)
+
+	It("accepts trailing whitespace after the JSON value", func() {
+		fa.principal.Scopes = []string{"password"}
+		Expect(do(http.MethodPost, "/things", "Bearer x", "{\"name\":\"ok\"}\n \t").Code).To(Equal(http.StatusOK))
+	})
+
+	It("allows unknown body fields that do not collide with a declared one", func() {
+		fa.principal.Scopes = []string{"password"}
+		w := do(http.MethodPost, "/things", "Bearer x", `{"name":"ok","extra":{"Name":"x"},"tags":[{"label":"a","other":1}]}`)
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		Expect(reached).To(Equal("createThing"))
 	})
 
 	It("validates path parameters", func() {

@@ -17,6 +17,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("UserRepository", func() {
@@ -73,6 +74,27 @@ var _ = Describe("UserRepository", func() {
 			actual, err := repo.FindByUsernameWithPassword(ctx, "admin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
+		})
+		It("never logs the stored password, on insert or update, but still logs the SQL", func() {
+			logs := captureTraceLogs()
+			storedPassword := func(id string) string {
+				var enc string
+				Expect(GetDBXBuilder().NewQuery("select password from user where id = {:id}").
+					Bind(dbx.Params{"id": id}).Row(&enc)).To(Succeed())
+				return enc
+			}
+			u := model.User{ID: "u-logged", UserName: "u-logged", NewPassword: "first-secret"}
+			Expect(repo.Put(ctx, &u)).To(Succeed())
+			inserted := storedPassword(u.ID)
+			u.NewPassword = "second-secret"
+			Expect(repo.Put(ctx, &u)).To(Succeed())
+			updated := storedPassword(u.ID)
+
+			Expect(logs.String()).To(ContainSubstring("INSERT INTO user"))
+			Expect(logs.String()).To(ContainSubstring("UPDATE user"))
+			for _, secret := range []string{inserted, updated, "first-secret", "second-secret"} {
+				Expect(logs.String()).ToNot(ContainSubstring(secret))
+			}
 		})
 		It("persists and reads back the scrobble filter", func() {
 			usr := model.User{ID: "u-filter", UserName: "u-filter", Name: "Filter User",

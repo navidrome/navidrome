@@ -39,4 +39,17 @@ var _ = Describe("Property Repository", func() {
 		Expect(pr.PutIfAbsent(ctx, "pia", "second")).To(Succeed())
 		Expect(pr.Get(ctx, "pia")).To(Equal("first"))
 	})
+
+	It("never logs the values it writes, but still logs the SQL", func() {
+		logs := captureTraceLogs()
+		Expect(pr.Put(ctx, "secret-prop", "inserted-secret")).To(Succeed())
+		Expect(pr.Put(ctx, "secret-prop", "updated-secret")).To(Succeed())
+		Expect(pr.PutIfAbsent(ctx, "secret-prop-2", "absent-secret")).To(Succeed())
+
+		Expect(logs.String()).To(ContainSubstring("INSERT INTO property"))
+		Expect(logs.String()).To(ContainSubstring("UPDATE property"))
+		Expect(logs.String()).ToNot(ContainSubstring("inserted-secret"))
+		Expect(logs.String()).ToNot(ContainSubstring("updated-secret"))
+		Expect(logs.String()).ToNot(ContainSubstring("absent-secret"))
+	})
 })

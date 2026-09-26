@@ -96,20 +96,18 @@ var _ = Describe("GrantRepository", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
-	It("moves epochs forward and deletes grants left on other epochs", func() {
+	It("moves epochs forward", func() {
 		keep := newGrant(adminUser.ID, "h-keep")
-		drop := newGrant(adminUser.ID, "h-drop")
+		stay := newGrant(adminUser.ID, "h-stay")
 		Expect(repo.Put(ctx, keep)).To(Succeed())
-		Expect(repo.Put(ctx, drop)).To(Succeed())
+		Expect(repo.Put(ctx, stay)).To(Succeed())
 
 		Expect(repo.SetEpoch(ctx, adminUser.ID, 0, 3, keep.ID)).To(Succeed())
-		Expect(repo.DeleteOtherEpochs(ctx, adminUser.ID, 3)).To(Succeed())
-
 		kept, err := repo.Get(ctx, keep.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(kept.UserEpoch).To(Equal(3))
-		_, err = repo.Get(ctx, drop.ID)
-		Expect(err).To(MatchError(model.ErrNotFound))
+		stayed, _ := repo.Get(ctx, stay.ID)
+		Expect(stayed.UserEpoch).To(Equal(0))
 
 		Expect(repo.SetEpoch(ctx, adminUser.ID, 3, 4, "")).To(Succeed())
 		kept, _ = repo.Get(ctx, keep.ID)
@@ -131,16 +129,29 @@ var _ = Describe("GrantRepository", func() {
 		Expect(got.UserEpoch).To(Equal(3))
 	})
 
-	It("deletes by epoch only while the row is still on it", func() {
-		g := newGrant(adminUser.ID, "h-cond")
-		g.UserEpoch = 5
-		Expect(repo.Put(ctx, g)).To(Succeed())
-		Expect(repo.DeleteIfEpoch(ctx, g.ID, 4)).To(Succeed())
-		_, err := repo.Get(ctx, g.ID)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(repo.DeleteIfEpoch(ctx, g.ID, 5)).To(Succeed())
-		_, err = repo.Get(ctx, g.ID)
-		Expect(err).To(MatchError(model.ErrNotFound))
+	It("deletes only the user's grants on an epoch before the current one", func() {
+		older := newGrant(adminUser.ID, "h-older")
+		older.UserEpoch = 1
+		previous := newGrant(adminUser.ID, "h-previous")
+		previous.UserEpoch = 4
+		current := newGrant(adminUser.ID, "h-current")
+		current.UserEpoch = 5
+		otherUser := newGrant(regularUser.ID, "h-other-user")
+		otherUser.UserEpoch = 1
+		for _, g := range []*model.Grant{older, previous, current, otherUser} {
+			Expect(repo.Put(ctx, g)).To(Succeed())
+		}
+
+		Expect(repo.DeleteStaleEpochs(ctx, adminUser.ID, 5)).To(Succeed())
+
+		for _, g := range []*model.Grant{older, previous} {
+			_, err := repo.Get(ctx, g.ID)
+			Expect(err).To(MatchError(model.ErrNotFound))
+		}
+		for _, g := range []*model.Grant{current, otherUser} {
+			_, err := repo.Get(ctx, g.ID)
+			Expect(err).ToNot(HaveOccurred())
+		}
 	})
 
 	It("touches a never-used grant, then throttles until notSince passes", func() {

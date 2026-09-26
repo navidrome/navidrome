@@ -1,13 +1,18 @@
 package apiv1
 
 import (
+	"bytes"
 	"cmp"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"maps"
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -265,17 +270,86 @@ func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx
 	err := openapi3filter.ValidateRequest(r.Context(), &openapi3filter.RequestValidationInput{
 		Request: r, PathParams: params, Route: op.route, Options: validationOptions,
 	})
-	if err == nil {
-		return true
-	}
 	if tooLarge(err) {
 		writeProblem(w, r, ClientError(err, tooLargeDetail))
 		return false
 	}
-	fields := sanitizeValidation(err)
+	var fields []ValidationError
+	if err != nil {
+		fields = sanitizeValidation(err)
+	} else if fields = jsonBodyFields(r, op.route.Operation); len(fields) == 0 {
+		return true
+	}
 	log.Debug(r.Context(), "API v1: request failed validation", "operation", op.id(), "errors", fields)
 	writeProblemStatus(w, r, http.StatusBadRequest, ProblemCodeValidation, "the request does not match the API schema", fields...)
 	return false
+}
+
+// jsonBodyFields checks what kin-openapi misses in a JSON body: data after the first value, which Go's decoder
+// ignores, and keys that only case-fold to a declared property, which encoding/json decodes into that property.
+func jsonBodyFields(r *http.Request, op *openapi3.Operation) []ValidationError {
+	if op.RequestBody == nil || op.RequestBody.Value == nil || r.Body == nil {
+		return nil
+	}
+	// Keyed on the spec, not the request's Content-Type: the handlers decode JSON whatever the header says.
+	media := op.RequestBody.Value.Content.Get("application/json")
+	if media == nil || media.Schema == nil {
+		return nil
+	}
+	data, err := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewReader(data))
+	if err != nil || len(bytes.TrimSpace(data)) == 0 {
+		return nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	var body any
+	if err := dec.Decode(&body); err != nil {
+		return []ValidationError{{Field: "", Message: "must be a single JSON value"}}
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return []ValidationError{{Field: "", Message: "must be a single JSON value"}}
+	}
+	var out []ValidationError
+	collectCaseAliases(body, media.Schema.Value, "", &out)
+	return out
+}
+
+func collectCaseAliases(v any, schema *openapi3.Schema, path string, out *[]ValidationError) {
+	if schema == nil {
+		return
+	}
+	switch v := v.(type) {
+	case map[string]any:
+		for _, key := range slices.Sorted(maps.Keys(v)) {
+			field := joinField(path, key)
+			if prop, ok := schema.Properties[key]; ok {
+				if prop != nil {
+					collectCaseAliases(v[key], prop.Value, field, out)
+				}
+				continue
+			}
+			for name := range schema.Properties {
+				if strings.EqualFold(key, name) {
+					*out = append(*out, ValidationError{Field: field, Message: "must match the field name exactly"})
+					break
+				}
+			}
+		}
+	case []any:
+		if schema.Items == nil {
+			return
+		}
+		for i, item := range v {
+			collectCaseAliases(item, schema.Items.Value, joinField(path, strconv.Itoa(i)), out)
+		}
+	}
+}
+
+func joinField(path, name string) string {
+	if path == "" {
+		return name
+	}
+	return path + "." + name
 }
 
 var missingProperty = regexp.MustCompile(`property "([^"]+)" is missing`)

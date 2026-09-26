@@ -155,8 +155,8 @@ func (s *Service) ResolveGrant(ctx context.Context, secret, ip string) (*Princip
 	if err != nil {
 		return nil, err
 	}
-	if !s.now().Before(g.LastActivity().Add(IdleExpiry)) {
-		s.dropGrant(ctx, g.ID)
+	if idleSince := s.now().Add(-IdleExpiry); g.LastActivity().Before(idleSince) {
+		s.dropIdle(ctx, g.ID, idleSince)
 		return nil, model.ErrInvalidAuth
 	}
 	u, err := s.loadUser(ctx, g.UserID)
@@ -194,16 +194,17 @@ func (s *Service) loadUser(ctx context.Context, userID string) (*model.User, err
 	return u, err
 }
 
-// dropGrant evicts after deleting, so a concurrent fill cannot re-cache the dead grant.
-func (s *Service) dropGrant(ctx context.Context, id string) {
-	if err := s.ds.Grant().Delete(ctx, id); err != nil {
-		log.Warn(ctx, "API v1: could not delete dead grant", "grant", id, err)
+// dropIdle deletes only still-idle grants, sparing one renewed meanwhile, and evicts after deleting so a
+// concurrent fill cannot re-cache the dead grant.
+func (s *Service) dropIdle(ctx context.Context, id string, idleSince time.Time) {
+	if _, err := s.ds.Grant().DeleteIdle(ctx, idleSince); err != nil {
+		log.Warn(ctx, "API v1: could not delete idle grants", "grant", id, err)
 	}
 	s.cache.evict(id)
 }
 
-// settleEpoch re-reads grant and user in one read transaction: separate reads can straddle a password
-// change and make a kept grant look dead. The delete only fires while the grant is on the epoch seen here.
+// settleEpoch re-reads grant and user in one read transaction: separate reads can straddle a password change
+// and make a kept grant look dead. Deleting below the snapshot's epoch is safe: a later change only moves kept grants up.
 func (s *Service) settleEpoch(ctx context.Context, grantID string) (*model.Grant, *model.User, error) {
 	var g *model.Grant
 	var u *model.User
@@ -224,8 +225,8 @@ func (s *Service) settleEpoch(ctx context.Context, grantID string) (*model.Grant
 	}
 	if g.UserEpoch != u.TokenEpoch {
 		s.cache.evict(grantID)
-		if err := s.ds.Grant().DeleteIfEpoch(ctx, grantID, g.UserEpoch); err != nil {
-			log.Warn(ctx, "API v1: could not delete dead grant", "grant", grantID, err)
+		if err := s.ds.Grant().DeleteStaleEpochs(ctx, u.ID, u.TokenEpoch); err != nil {
+			log.Warn(ctx, "API v1: could not delete the user's grants from older epochs", "user", u.ID, "grant", grantID, err)
 		}
 		return nil, nil, model.ErrInvalidAuth
 	}
@@ -297,6 +298,7 @@ func (s *Service) liveGrant(ctx context.Context, id string, u *model.User) (live
 	return e, u, nil
 }
 
+// ListGrants shows only the current epoch: grants left on an older one are dead but only deleted when presented.
 func (s *Service) ListGrants(ctx context.Context, p *Principal, offset, limit int) (model.Grants, int64, error) {
 	idleSince := s.now().Add(-IdleExpiry)
 	grants, err := s.ds.Grant().GetAllForUser(ctx, p.User.ID, p.User.TokenEpoch, idleSince, offset, limit)
@@ -374,6 +376,6 @@ func (s *Service) ChangePassword(ctx context.Context, p *Principal, current, new
 		if err := tx.Grant().SetEpoch(ctx, u.ID, oldEpoch, updated.TokenEpoch, keep); err != nil {
 			return err
 		}
-		return tx.Grant().DeleteOtherEpochs(ctx, u.ID, updated.TokenEpoch)
+		return tx.Grant().DeleteStaleEpochs(ctx, u.ID, updated.TokenEpoch)
 	})
 }

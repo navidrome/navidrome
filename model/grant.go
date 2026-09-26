@@ -59,11 +59,9 @@ type GrantRepository interface {
 	FindBySecretHash(ctx context.Context, hash string) (*Grant, error)
 	GetAllForUser(ctx context.Context, userID string, epoch int, idleSince time.Time, offset, limit int) (Grants, error)
 	CountForUser(ctx context.Context, userID string, epoch int, idleSince time.Time) (int64, error)
-	Delete(ctx context.Context, id string) error
 	DeleteForUser(ctx context.Context, userID, id string) error
-	DeleteOtherEpochs(ctx context.Context, userID string, epoch int) error
+	DeleteStaleEpochs(ctx context.Context, userID string, currentEpoch int) error
 	SetEpoch(ctx context.Context, userID string, fromEpoch, toEpoch int, onlyID string) error
-	DeleteIfEpoch(ctx context.Context, id string, epoch int) error
 	Touch(ctx context.Context, id, ip string, at, notSince time.Time) error
 	DeleteIdle(ctx context.Context, idleSince time.Time) (int64, error)
 }

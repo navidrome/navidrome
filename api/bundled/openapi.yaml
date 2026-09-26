@@ -108,6 +108,9 @@ paths:
       responses:
         '200':
           description: The new access token.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
           content:
             application/json:
               schema:
@@ -243,6 +246,9 @@ paths:
       responses:
         '200':
           description: The new grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
           content:
             application/json:
               schema:
@@ -276,6 +282,9 @@ paths:
       responses:
         '201':
           description: The admin was created.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
           content:
             application/json:
               schema:
@@ -793,3 +802,9 @@ components:
       description: Entity tag for `If-None-Match` revalidation.
       schema:
         type: string
+    CacheControlNoStore:
+      description: Always `no-store`, because the response carries a secret or a token.
+      schema:
+        type: string
+        enum:
+          - no-store

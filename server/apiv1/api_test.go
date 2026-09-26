@@ -3,6 +3,7 @@ package apiv1
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
@@ -28,6 +29,29 @@ var _ = Describe("Router", func() {
 				Expect(mux.Find(chi.NewRouteContext(), method, path)).To(Equal(path), method+" "+path)
 			}
 		}
+	})
+
+	It("declares Cache-Control no-store on the success responses of every no-store operation", func() {
+		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
+		Expect(err).ToNot(HaveOccurred())
+		checked := map[string]bool{}
+		for _, item := range doc.Paths.Map() {
+			for _, op := range item.Operations() {
+				if !gateRulesV1.noStore[op.OperationID] {
+					continue
+				}
+				for code, resp := range op.Responses.Map() {
+					if !strings.HasPrefix(code, "2") {
+						continue
+					}
+					h := resp.Value.Headers["Cache-Control"]
+					Expect(h).ToNot(BeNil(), op.OperationID+" "+code)
+					Expect(h.Value.Schema.Value.Enum).To(ConsistOf("no-store"), op.OperationID+" "+code)
+					checked[op.OperationID] = true
+				}
+			}
+		}
+		Expect(checked).To(HaveLen(len(gateRulesV1.noStore)))
 	})
 
 	It("returns a 404 problem for unknown paths", func() {

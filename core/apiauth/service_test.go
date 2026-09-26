@@ -38,6 +38,26 @@ func (p *flakyProps) Get(ctx context.Context, id string) (string, error) {
 	return p.PropertyRepository.Get(ctx, id)
 }
 
+// renewingDS runs renew right before DeleteIdle, as a node resolving the grant meanwhile would.
+type renewingDS struct {
+	model.DataStore
+	renew func()
+}
+
+func (d renewingDS) Grant() model.GrantRepository {
+	return renewingGrants{GrantRepository: d.DataStore.Grant(), renew: d.renew}
+}
+
+type renewingGrants struct {
+	model.GrantRepository
+	renew func()
+}
+
+func (g renewingGrants) DeleteIdle(ctx context.Context, idleSince time.Time) (int64, error) {
+	g.renew()
+	return g.GrantRepository.DeleteIdle(ctx, idleSince)
+}
+
 var meta = ClientMeta{Name: "Living room", Client: "TestApp", ClientVersion: "1.0"}
 
 var _ = Describe("Service: grants and tokens", func() {
@@ -174,13 +194,32 @@ var _ = Describe("Service: grants and tokens", func() {
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
-		It("rejects a grant whose epoch is behind the user's", func() {
+		It("keeps an idle grant that another node renewed before the delete ran", func() {
+			u := createUser(ctx, "pw", false)
+			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
+			renewedAt := now.Add(IdleExpiry - time.Minute)
+			racing := New(renewingDS{DataStore: realDS, renew: func() {
+				Expect(realDS.Grant().Touch(ctx, issued.Grant.ID, "10.0.0.2", renewedAt, renewedAt)).To(Succeed())
+			}})
+			now = now.Add(IdleExpiry + time.Second)
+			racing.SetClock(func() time.Time { return now })
+
+			_, err := racing.ResolveGrant(ctx, issued.Secret, "")
+			Expect(err).To(MatchError(model.ErrInvalidAuth))
+			g, err := realDS.Grant().Get(ctx, issued.Grant.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(g.LastUsedIP).To(Equal("10.0.0.2"))
+		})
+
+		It("rejects and deletes a grant whose epoch is behind the user's", func() {
 			u := createUser(ctx, "pw", false)
 			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
 			u.NewPassword = "changed-elsewhere"
 			Expect(realDS.User().Put(ctx, &u)).To(Succeed())
 			_, err := svc.ResolveGrant(ctx, issued.Secret, "")
 			Expect(err).To(MatchError(model.ErrInvalidAuth))
+			_, err = realDS.Grant().Get(ctx, issued.Grant.ID)
+			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 

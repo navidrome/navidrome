@@ -22,12 +22,12 @@ func (rt *Router) CreateAccessToken(ctx context.Context, req CreateAccessTokenRe
 	if err != nil {
 		return nil, err
 	}
-	return CreateAccessToken200JSONResponse{
+	return CreateAccessToken200JSONResponse{Body: AccessToken{
 		AccessToken: tok.Token,
 		TokenType:   AccessTokenTokenTypeBearer,
 		ExpiresIn:   int(tok.ExpiresIn.Seconds()),
 		Scopes:      toScopes(tok.Scopes),
-	}, nil
+	}}, nil
 }
 
 func (rt *Router) ListGrants(ctx context.Context, req ListGrantsRequestObject) (ListGrantsResponseObject, error) {

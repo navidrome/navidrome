@@ -131,7 +131,7 @@ var _ = Describe("auth endpoints", func() {
 		gc := api.setup()
 		at := api.mint(gc.Secret, nil)
 		Expect(api.call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
-		Expect(realDS.Grant().Delete(ctx, gc.Grant.Id)).To(Succeed())
+		Expect(realDS.Grant().DeleteForUser(ctx, gc.User.Id, gc.Grant.Id)).To(Succeed())
 
 		w := api.call(http.MethodPost, "/api/v1/auth/logout", at.AccessToken, nil)
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
@@ -142,11 +142,55 @@ var _ = Describe("auth endpoints", func() {
 		gc := api.setup()
 		at := api.mint(gc.Secret, nil)
 		Expect(api.call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
-		Expect(realDS.Grant().Delete(ctx, gc.Grant.Id)).To(Succeed())
+		Expect(realDS.Grant().DeleteForUser(ctx, gc.User.Id, gc.Grant.Id)).To(Succeed())
 
 		w := api.call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
 		Expect(w.Code).To(Equal(http.StatusUnauthorized), w.Body.String())
 		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
+	})
+
+	It("rejects a case-variant scopes key that would widen an explicit empty subset", func() {
+		gc := api.setup()
+		w := api.callRaw(http.MethodPost, "/api/v1/auth/token", gc.Secret, `{"scopes":[],"Scopes":null}`)
+		Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
+		p := decodeProblem(w)
+		Expect(p.Code).To(Equal(ProblemCodeValidation))
+		Expect(*p.Errors).To(ConsistOf(ValidationError{Field: "Scopes", Message: "must match the field name exactly"}))
+	})
+
+	It("rejects a case-variant client key that would skip its length limit", func() {
+		api.setup()
+		body := `{"username":"admin","password":"pw","client":"ok","Client":"` + strings.Repeat("x", 60_000) + `"}`
+		w := api.callRaw(http.MethodPost, "/api/v1/auth/login", "", body)
+		Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
+		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "Client", Message: "must match the field name exactly"}))
+	})
+
+	DescribeTable("rejects a body with data after its JSON value, without echoing it",
+		func(path string, needsSecret bool, body string) {
+			secret := ""
+			if gc := api.setup(); needsSecret {
+				secret = gc.Secret
+			}
+			w := api.callRaw(http.MethodPost, path, secret, body)
+			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
+			p := decodeProblem(w)
+			Expect(p.Code).To(Equal(ProblemCodeValidation))
+			Expect(*p.Errors).To(ConsistOf(ValidationError{Field: "", Message: "must be a single JSON value"}))
+			Expect(w.Body.String()).ToNot(ContainSubstring("hunter2"))
+		},
+		Entry("token with a trailing byte", "/api/v1/auth/token", true, `{"scopes":[],"Scopes":null}x`),
+		Entry("login with a second value", "/api/v1/auth/login", false, `{"username":"a","password":"hunter2","client":"c"} {}`),
+	)
+
+	It("checks the token body even when Content-Type has a repeated parameter", func() {
+		gc := api.setup()
+		req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/auth/token", strings.NewReader(`{"scopes":[],"Scopes":null}`))
+		req.Header.Set("Content-Type", "application/json; a=1; a=2")
+		req.Header.Set("Authorization", "Bearer "+gc.Secret)
+		w := serve(api.router, req)
+		Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
+		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "Scopes", Message: "must match the field name exactly"}))
 	})
 
 	It("marks grant and token responses no-store", func() {

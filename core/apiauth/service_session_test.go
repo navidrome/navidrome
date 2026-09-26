@@ -63,7 +63,7 @@ var _ = Describe("Service: sessions", func() {
 			_, err := svc.Authenticate(ctx, tok.Token, "")
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(realDS.Grant().Delete(ctx, issued.Grant.ID)).To(Succeed()) // another node
+			Expect(realDS.Grant().DeleteForUser(ctx, u.ID, issued.Grant.ID)).To(Succeed()) // another node
 			_, err = svc.Authenticate(ctx, tok.Token, "")
 			Expect(err).ToNot(HaveOccurred()) // still cached
 			now = now.Add(cacheTTL)
@@ -223,7 +223,7 @@ var _ = Describe("Service: sessions", func() {
 			_, p, tok := login(ctx, svc, u)
 			_, err := svc.Authenticate(ctx, tok.Token, "")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(realDS.Grant().Delete(ctx, p.GrantID)).To(Succeed()) // another node
+			Expect(realDS.Grant().DeleteForUser(ctx, u.ID, p.GrantID)).To(Succeed()) // another node
 
 			Expect(svc.Logout(ctx, p)).To(Succeed())
 			_, err = svc.Authenticate(ctx, tok.Token, "")
@@ -302,7 +302,7 @@ var _ = Describe("Service: sessions", func() {
 		It("rejects a caller whose grant was revoked before the change ran", func() {
 			u := createUser(ctx, "pw", false)
 			_, p, _ := login(ctx, svc, u)
-			Expect(realDS.Grant().Delete(ctx, p.GrantID)).To(Succeed())
+			Expect(realDS.Grant().DeleteForUser(ctx, u.ID, p.GrantID)).To(Succeed())
 			err := svc.ChangePassword(request.WithUser(ctx, p.User), p, "pw", "pw2", true)
 			Expect(err).To(MatchError(model.ErrInvalidAuth))
 			_, err = svc.Login(ctx, u.UserName, "pw", meta, nil)

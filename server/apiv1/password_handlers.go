@@ -14,7 +14,7 @@ func (rt *Router) Login(ctx context.Context, req LoginRequestObject) (LoginRespo
 	if err != nil {
 		return nil, err
 	}
-	return Login200JSONResponse(toGrantCreated(issued)), nil
+	return Login200JSONResponse{Body: toGrantCreated(issued)}, nil
 }
 
 func (rt *Router) SetupFirstAdmin(ctx context.Context, req SetupFirstAdminRequestObject) (SetupFirstAdminResponseObject, error) {
@@ -23,7 +23,7 @@ func (rt *Router) SetupFirstAdmin(ctx context.Context, req SetupFirstAdminReques
 	if err != nil {
 		return nil, err
 	}
-	return SetupFirstAdmin201JSONResponse(toGrantCreated(issued)), nil
+	return SetupFirstAdmin201JSONResponse{Body: toGrantCreated(issued)}, nil
 }
 
 func (rt *Router) ChangePassword(ctx context.Context, req ChangePasswordRequestObject) (ChangePasswordResponseObject, error) {

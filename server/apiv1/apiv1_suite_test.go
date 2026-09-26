@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -66,10 +67,18 @@ type testClient struct {
 }
 
 func (c testClient) call(method, path, bearer string, body any) *httptest.ResponseRecorder {
+	if body == nil {
+		return c.callRaw(method, path, bearer, "")
+	}
+	b, _ := json.Marshal(body)
+	return c.callRaw(method, path, bearer, string(b))
+}
+
+// callRaw sends body verbatim, for JSON a map cannot express, like keys differing only in case.
+func (c testClient) callRaw(method, path, bearer, body string) *httptest.ResponseRecorder {
 	var req *http.Request
-	if body != nil {
-		b, _ := json.Marshal(body)
-		req = httptest.NewRequestWithContext(c.ctx, method, path, bytes.NewReader(b))
+	if body != "" {
+		req = httptest.NewRequestWithContext(c.ctx, method, path, strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 	} else {
 		req = httptest.NewRequestWithContext(c.ctx, method, path, nil)
