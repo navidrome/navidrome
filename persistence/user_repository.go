@@ -118,8 +118,8 @@ func (r *userRepository) Put(ctx context.Context, u *model.User) error {
 	}
 	u.UpdatedAt = time.Now()
 	if u.NewPassword != "" {
-		ctx = withSecretArgs(ctx)
 		_ = r.encryptPassword(ctx, u)
+		ctx = log.WithSecrets(ctx, u.NewPassword)
 	}
 	values, err := toSQLArgs(*u)
 	if err != nil {
@@ -433,7 +433,7 @@ func (r *userRepository) initPasswordEncryptionKey(ctx context.Context) error {
 		u.NewPassword = u.Password
 		if err := r.encryptPassword(ctx, &u); err == nil {
 			upd := Update(r.tableName).Set("password", u.NewPassword).Where(Eq{"id": u.ID})
-			_, err = r.executeSQL(withSecretArgs(ctx), upd)
+			_, err = r.executeSQL(log.WithSecrets(ctx, u.NewPassword), upd)
 			if err != nil {
 				log.Error("Password NOT encrypted! This may cause problems!", "user", u.UserName, "id", u.ID, err)
 			} else {

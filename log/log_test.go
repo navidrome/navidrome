@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -108,6 +109,26 @@ var _ = Describe("Logger", func() {
 			var t *time.Time
 			Error("Simple Message", "key1", t)
 			Expect(hook.LastEntry().Data["key1"]).To(Equal("nil"))
+		})
+
+		It("passes the call's context to hooks", func() {
+			ctx := WithSecrets(GinkgoT().Context(), "s3cr3t")
+			Error(ctx, "Simple Message")
+			Expect(hook.LastEntry().Context).To(Equal(ctx))
+
+			Error(httptest.NewRequest("get", "/", nil).WithContext(ctx), "Simple Message")
+			Expect(hook.LastEntry().Context).To(Equal(ctx))
+		})
+
+		It("redacts the context's secrets when redacting is on", func() {
+			l.AddHook(redacted)
+			ctx := WithSecrets(NewContext(GinkgoT().Context(), "user", "admin"), "s3cr3t")
+
+			var buf bytes.Buffer
+			l.SetOutput(&buf)
+			Error(ctx, "Saving s3cr3t", "args", map[string]any{"value": "s3cr3t"})
+			Expect(buf.String()).ToNot(ContainSubstring("s3cr3t"))
+			Expect(buf.String()).To(ContainSubstring("user=admin"))
 		})
 	})
 

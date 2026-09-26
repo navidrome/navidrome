@@ -85,7 +85,7 @@ func loadKey(ctx context.Context, ds model.DataStore) (string, error) {
 		if err != nil {
 			return err
 		}
-		if err := tx.Property().Put(ctx, consts.JWTAPIv1SecretKey, enc); err != nil {
+		if err := tx.Property().Put(log.WithSecrets(ctx, enc), consts.JWTAPIv1SecretKey, enc); err != nil {
 			return err
 		}
 		key = k
@@ -103,7 +103,7 @@ func createKey(ctx context.Context, ds model.DataStore) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := ds.Property().PutIfAbsent(ctx, consts.JWTAPIv1SecretKey, enc); err != nil {
+	if err := ds.Property().PutIfAbsent(log.WithSecrets(ctx, enc), consts.JWTAPIv1SecretKey, enc); err != nil {
 		return "", fmt.Errorf("storing API v1 key: %w", err)
 	}
 	return ds.Property().Get(ctx, consts.JWTAPIv1SecretKey)

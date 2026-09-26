@@ -21,7 +21,6 @@ func NewPropertyRepository(db dbx.Builder) model.PropertyRepository {
 }
 
 func (r propertyRepository) Put(ctx context.Context, id string, value string) error {
-	ctx = withSecretArgs(ctx)
 	update := Update(r.tableName).Set("value", value).Where(Eq{"id": id})
 	count, err := r.executeSQL(ctx, update)
 	if err != nil {
@@ -36,7 +35,6 @@ func (r propertyRepository) Put(ctx context.Context, id string, value string) er
 }
 
 func (r propertyRepository) PutIfAbsent(ctx context.Context, id string, value string) error {
-	ctx = withSecretArgs(ctx)
 	insert := Insert(r.tableName).Columns("id", "value").Values(id, value).Options("OR IGNORE")
 	_, err := r.executeSQL(ctx, insert)
 	return err

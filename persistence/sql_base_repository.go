@@ -658,28 +658,9 @@ func (r sqlRepository) deleteByID(ctx context.Context, id string) error {
 	return nil
 }
 
-type secretArgsKey struct{}
-
-// withSecretArgs hides a statement's args from the SQL log: stored secrets are encrypted with a key that may be the public default.
-func withSecretArgs(ctx context.Context) context.Context {
-	return context.WithValue(ctx, secretArgsKey{}, true)
-}
-
-func hasSecretArgs(ctx context.Context) bool {
-	if ctx == nil {
-		return false
-	}
-	secret, _ := ctx.Value(secretArgsKey{}).(bool)
-	return secret
-}
-
 func (r sqlRepository) logSQL(ctx context.Context, sql string, args dbx.Params, err error, rowsAffected int64, start time.Time) {
 	elapsed := time.Since(start)
-	var logArgs any = args
-	if hasSecretArgs(ctx) {
-		logArgs = "[REDACTED]"
-	}
-	fields := []any{ctx, "SQL: `" + sql + "`", "args", logArgs, "rowsAffected", rowsAffected, "elapsedTime", elapsed}
+	fields := []any{ctx, "SQL: `" + sql + "`", "args", args, "rowsAffected", rowsAffected, "elapsedTime", elapsed}
 	if err == nil || errors.Is(err, context.Canceled) {
 		log.Trace(append(fields, err)...)
 		return

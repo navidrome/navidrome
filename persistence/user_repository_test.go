@@ -75,7 +75,7 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
 		})
-		It("never logs the stored password, on insert or update, but still logs the SQL", func() {
+		It("never logs the stored password, on insert or update, but still logs the user name", func() {
 			logs := captureTraceLogs()
 			storedPassword := func(id string) string {
 				var enc string
@@ -83,7 +83,7 @@ var _ = Describe("UserRepository", func() {
 					Bind(dbx.Params{"id": id}).Row(&enc)).To(Succeed())
 				return enc
 			}
-			u := model.User{ID: "u-logged", UserName: "u-logged", NewPassword: "first-secret"}
+			u := model.User{ID: "u-logged", UserName: "logged-user-name", NewPassword: "first-secret"}
 			Expect(repo.Put(ctx, &u)).To(Succeed())
 			inserted := storedPassword(u.ID)
 			u.NewPassword = "second-secret"
@@ -92,6 +92,7 @@ var _ = Describe("UserRepository", func() {
 
 			Expect(logs.String()).To(ContainSubstring("INSERT INTO user"))
 			Expect(logs.String()).To(ContainSubstring("UPDATE user"))
+			Expect(logs.String()).To(ContainSubstring("logged-user-name"))
 			for _, secret := range []string{inserted, updated, "first-secret", "second-secret"} {
 				Expect(logs.String()).ToNot(ContainSubstring(secret))
 			}

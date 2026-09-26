@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 )
@@ -35,6 +36,7 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 	if err := h.initRedaction(); err != nil {
 		return err
 	}
+	redactSecrets(e)
 	for _, re := range h.redactionKeys {
 		// Redact based on key matching in Data fields
 		for k, v := range e.Data {
@@ -62,6 +64,42 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 	}
 
 	return nil
+}
+
+// redactSecrets hides the values marked with WithSecrets in the context the entry was logged with.
+func redactSecrets(e *logrus.Entry) {
+	secrets := secretsFrom(e.Context)
+	if len(secrets) == 0 {
+		return
+	}
+	hide := func(s string) string {
+		for _, secret := range secrets {
+			s = strings.ReplaceAll(s, secret, "[REDACTED]")
+		}
+		return s
+	}
+	e.Message = hide(e.Message)
+	for k, v := range e.Data {
+		if v == nil {
+			continue
+		}
+		var s string
+		if err, ok := v.(error); ok {
+			s = err.Error()
+		} else {
+			switch reflect.TypeOf(v).Kind() {
+			case reflect.String:
+				s = reflect.ValueOf(v).String()
+			case reflect.Map:
+				s = fmt.Sprintf("%+v", v)
+			default:
+				continue
+			}
+		}
+		if hidden := hide(s); hidden != s {
+			e.Data[k] = hidden
+		}
+	}
 }
 
 func (h *Hook) initRedaction() error {

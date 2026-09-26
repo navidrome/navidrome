@@ -1,6 +1,7 @@
 package log
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -167,4 +168,46 @@ func TestFireRedactsNamedStringTypes(t *testing.T) {
 	assert.NotPanics(t, func() { _ = hook.Fire(e) })
 	assert.Equal(t, "not_found", e.Data["code"])
 	assert.Equal(t, "/x?secret=[REDACTED]", e.Data["url"])
+}
+
+func TestFireRedactsContextSecrets(t *testing.T) {
+	ctx := WithSecrets(t.Context(), "s3cr3t")
+	ctx = WithSecrets(ctx, "", "other-secret")
+	e := &logrus.Entry{
+		Context: ctx,
+		Message: "value s3cr3t in message",
+		Data: logrus.Fields{
+			"str":   "has s3cr3t",
+			"named": namedString("named other-secret"),
+			"args":  map[string]any{"p0": "s3cr3t", "p1": "plain"},
+			"error": errors.New("failed with other-secret"),
+			"num":   42,
+			"clean": namedString("untouched"),
+		},
+	}
+
+	assert.Nil(t, (&Hook{}).Fire(e))
+	assert.Equal(t, "value [REDACTED] in message", e.Message)
+	assert.Equal(t, "has [REDACTED]", e.Data["str"])
+	assert.Equal(t, "named [REDACTED]", e.Data["named"])
+	assert.Equal(t, "map[p0:[REDACTED] p1:plain]", e.Data["args"])
+	assert.Equal(t, "failed with [REDACTED]", e.Data["error"])
+	assert.Equal(t, 42, e.Data["num"])
+	assert.Equal(t, namedString("untouched"), e.Data["clean"])
+}
+
+func TestFireWithoutContextSecretsLeavesEntryUnchanged(t *testing.T) {
+	args := map[string]any{"p0": "value"}
+	e := &logrus.Entry{Context: t.Context(), Message: "value", Data: logrus.Fields{"str": "value", "args": args}}
+
+	assert.Nil(t, (&Hook{}).Fire(e))
+	assert.Equal(t, "value", e.Message)
+	assert.Equal(t, logrus.Fields{"str": "value", "args": args}, e.Data)
+}
+
+func TestFireRedactsLongerSecretsFirst(t *testing.T) {
+	e := &logrus.Entry{Context: WithSecrets(t.Context(), "abc", "abcdef"), Message: "abcdef"}
+
+	assert.Nil(t, (&Hook{}).Fire(e))
+	assert.Equal(t, "[REDACTED]", e.Message)
 }
