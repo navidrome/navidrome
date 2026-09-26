@@ -370,10 +370,13 @@ var _ = Describe("spec gate", func() {
 		var err error
 		mux, err = build(gateSpec)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(do(http.MethodPost, "/limited", "", "").Code).To(Equal(http.StatusOK))
 		w := do(http.MethodPost, "/limited", "", "")
+		Expect(w.Code).To(Equal(http.StatusOK))
+		expectNoXRateLimitHeaders(w)
+		w = do(http.MethodPost, "/limited", "", "")
 		Expect(w.Code).To(Equal(http.StatusTooManyRequests))
 		Expect(w.Header().Get("Retry-After")).ToNot(BeEmpty())
+		expectNoXRateLimitHeaders(w)
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeRateLimited))
 	})
 
@@ -435,4 +438,11 @@ func captureLogs() *bytes.Buffer {
 		log.SetLevel(log.LevelFatal)
 	})
 	return buf
+}
+
+func expectNoXRateLimitHeaders(w *httptest.ResponseRecorder) {
+	GinkgoHelper()
+	for _, h := range []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Increment", "X-RateLimit-Reset"} {
+		Expect(w.Header().Values(h)).To(BeEmpty(), h)
+	}
 }

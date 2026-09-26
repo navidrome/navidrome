@@ -549,6 +549,12 @@ var _ = Describe("middlewares", func() {
 			Entry("True-Client-IP", "True-Client-IP"),
 		)
 
+		It("sends the X-RateLimit headers by default", func() {
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), "POST", "/auth/login", nil))
+			Expect(w.Header().Get("X-RateLimit-Limit")).To(Equal("2"))
+		})
+
 		Context("behind a trusted proxy", func() {
 			BeforeEach(func() {
 				conf.Server.ExtAuth.TrustedSources = "10.0.0.0/8"
