@@ -185,7 +185,7 @@ password:
     x-stability-level: alpha
     tags: [auth]
     summary: Change my password
-    description: "Changes the caller's password. By default every other grant of the user is revoked; the calling grant survives. Answers 409 `password_managed_externally` when the password is not stored by this server."
+    description: "Changes the caller's password. By default every other grant of the user is revoked; the calling grant survives. On Navidrome the change also ends the user's sessions on its other APIs, regardless of `revokeOtherGrants`, which only covers API v1 grants. Answers 409 `password_managed_externally` when the password is not stored by this server."
     security: [{bearerAuth: []}]
     requestBody:
       description: The current and the new password.
