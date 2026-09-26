@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -254,5 +255,123 @@ func (s *Service) Authenticate(ctx context.Context, token, ip string) (*Principa
 	if err != nil {
 		return nil, err
 	}
-	return &Principal{User: *u, GrantID: c.GrantID, Scopes: c.Scopes}, nil
+	entry, u, err := s.liveGrant(ctx, c.GrantID, u)
+	if err != nil {
+		return nil, err
+	}
+	if entry.userID != c.UserID {
+		return nil, model.ErrInvalidAuth
+	}
+	if slices.Contains(c.Scopes, ScopeAdmin) && !u.IsAdmin {
+		return nil, ErrInsufficientScope
+	}
+	var lastUsed *time.Time
+	if !entry.lastUsedAt.IsZero() {
+		lastUsed = &entry.lastUsedAt
+	}
+	s.touch(ctx, c.GrantID, ip, lastUsed)
+	return &Principal{User: *u, GrantID: c.GrantID, Scopes: Expand(c.Scopes, u.IsAdmin)}, nil
+}
+
+// liveGrant trusts the cache only while its epoch matches; a mismatch is settled from one consistent read.
+func (s *Service) liveGrant(ctx context.Context, id string, u *model.User) (livenessEntry, *model.User, error) {
+	now := s.now()
+	if e, ok := s.cache.get(id, now); ok && e.epoch == u.TokenEpoch {
+		return e, u, nil
+	}
+	started := s.cache.begin()
+	g, err := s.ds.Grant().Get(ctx, id)
+	if errors.Is(err, model.ErrNotFound) {
+		s.cache.evict(id)
+		return livenessEntry{}, nil, model.ErrInvalidAuth
+	}
+	if err != nil {
+		return livenessEntry{}, nil, err
+	}
+	if g.UserEpoch != u.TokenEpoch {
+		if g, u, err = s.settleEpoch(ctx, id); err != nil {
+			return livenessEntry{}, nil, err
+		}
+	}
+	e := livenessEntry{userID: g.UserID, epoch: g.UserEpoch}
+	if g.LastUsedAt != nil {
+		e.lastUsedAt = *g.LastUsedAt
+	}
+	s.cache.put(id, e, now, started)
+	return e, u, nil
+}
+
+func (s *Service) ListGrants(ctx context.Context, p *Principal, offset, limit int) (model.Grants, int64, error) {
+	idleSince := s.now().Add(-IdleExpiry)
+	grants, err := s.ds.Grant().GetAllForUser(ctx, p.User.ID, idleSince, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.ds.Grant().CountForUser(ctx, p.User.ID, idleSince)
+	return grants, total, err
+}
+
+func (s *Service) RevokeGrant(ctx context.Context, p *Principal, grantID string) error {
+	if err := s.ds.Grant().DeleteForUser(ctx, p.User.ID, grantID); err != nil {
+		return err
+	}
+	s.cache.evict(grantID)
+	return nil
+}
+
+func (s *Service) Logout(ctx context.Context, p *Principal) error {
+	return s.RevokeGrant(ctx, p, p.GrantID)
+}
+
+// ChangePassword does every check inside the locked transaction, so a reset that lands first is never overwritten.
+func (s *Service) ChangePassword(ctx context.Context, p *Principal, current, newPassword string, revokeOthers bool) error {
+	return s.ds.WithTxImmediate(func(tx model.DataStore) error {
+		u, err := tx.User().Get(ctx, p.User.ID)
+		if errors.Is(err, model.ErrNotFound) {
+			return model.ErrInvalidAuth
+		}
+		if err != nil {
+			return err
+		}
+		g, err := tx.Grant().Get(ctx, p.GrantID)
+		if errors.Is(err, model.ErrNotFound) {
+			return model.ErrInvalidAuth
+		}
+		if err != nil {
+			return err
+		}
+		if g.UserID != u.ID || g.UserEpoch != u.TokenEpoch {
+			return model.ErrInvalidAuth
+		}
+		if !PasswordChangeable(*u) {
+			return model.ErrNotAuthorized
+		}
+		res, err := checkCredentials(ctx, s.checkers(tx), u.UserName, current)
+		if errors.Is(err, model.ErrInvalidAuth) {
+			return ErrCurrentPasswordMismatch
+		}
+		if err != nil {
+			return err
+		}
+		if !res.PasswordLocal {
+			return ErrPasswordManagedExternally
+		}
+		oldEpoch := u.TokenEpoch
+		u.NewPassword = newPassword
+		if err := tx.User().Put(ctx, u); err != nil {
+			return err
+		}
+		updated, err := tx.User().Get(ctx, u.ID)
+		if err != nil {
+			return err
+		}
+		keep := ""
+		if revokeOthers {
+			keep = p.GrantID
+		}
+		if err := tx.Grant().SetEpoch(ctx, u.ID, oldEpoch, updated.TokenEpoch, keep); err != nil {
+			return err
+		}
+		return tx.Grant().DeleteOtherEpochs(ctx, u.ID, updated.TokenEpoch)
+	})
 }
