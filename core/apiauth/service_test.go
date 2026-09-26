@@ -2,6 +2,7 @@ package apiauth
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -12,6 +13,30 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var errFlakyProps = errors.New("database is locked")
+
+type flakyPropsDS struct {
+	model.DataStore
+	failures int
+}
+
+func (d *flakyPropsDS) Property() model.PropertyRepository {
+	return &flakyProps{PropertyRepository: d.DataStore.Property(), ds: d}
+}
+
+type flakyProps struct {
+	model.PropertyRepository
+	ds *flakyPropsDS
+}
+
+func (p *flakyProps) PutIfAbsent(ctx context.Context, id, value string) error {
+	if p.ds.failures > 0 {
+		p.ds.failures--
+		return errFlakyProps
+	}
+	return p.PropertyRepository.PutIfAbsent(ctx, id, value)
+}
 
 var meta = ClientMeta{Name: "Living room", Client: "TestApp", ClientVersion: "1.0"}
 
@@ -35,6 +60,7 @@ var _ = Describe("Service: grants and tokens", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(issued.Secret).To(HavePrefix("ndg_"))
 			Expect(issued.User.ID).To(Equal(u.ID))
+			Expect(issued.User.Password).To(BeEmpty())
 			Expect(issued.Grant.Scopes).To(Equal(model.Scopes{ScopeAll}))
 			Expect(issued.Grant.Provider).To(Equal("password"))
 			Expect(issued.Grant.Name).To(Equal("Living room"))
@@ -100,6 +126,23 @@ var _ = Describe("Service: grants and tokens", func() {
 			principal, err := svc.Authenticate(ctx, tok.Token, "10.0.0.9")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(principal.User.ID).To(Equal(u.ID))
+		})
+
+		It("retries loading the signing key after a failed load", func() {
+			flaky := &flakyPropsDS{DataStore: realDS, failures: 1}
+			svc = New(flaky)
+			svc.SetClock(func() time.Time { return now })
+			u := createUser(ctx, "pw", false)
+			issued, err := svc.Login(ctx, u.UserName, "pw", meta, nil)
+			Expect(err).ToNot(HaveOccurred())
+			p, err := svc.ResolveGrant(ctx, issued.Secret, "")
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = svc.Mint(ctx, p, nil)
+			Expect(err).To(MatchError(errFlakyProps))
+			tok, err := svc.Mint(ctx, p, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(tok.Token).ToNot(BeEmpty())
 		})
 
 		It("attenuates to the requested subset", func() {

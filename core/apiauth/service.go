@@ -56,7 +56,8 @@ type Service struct {
 	checkers func(ds model.DataStore) []CredentialChecker // per datastore, so password change can check inside its transaction
 	cache    *livenessCache
 	now      func() time.Time
-	signer   func() (*signer, error)
+	signerMu sync.Mutex
+	sg       *signer
 }
 
 func New(ds model.DataStore) *Service {
@@ -68,11 +69,22 @@ func New(ds model.DataStore) *Service {
 		cache: newLivenessCache(cacheTTL),
 		now:   time.Now,
 	}
-	// Loaded on first use so building the router never touches the database.
-	s.signer = sync.OnceValues(func() (*signer, error) {
-		return loadSigner(context.Background(), ds, func() time.Time { return s.now() })
-	})
 	return s
+}
+
+// signer loads the key on first use, so building the router never touches the database; only a success is kept.
+func (s *Service) signer() (*signer, error) {
+	s.signerMu.Lock()
+	defer s.signerMu.Unlock()
+	if s.sg != nil {
+		return s.sg, nil
+	}
+	sg, err := loadSigner(context.Background(), s.ds, func() time.Time { return s.now() })
+	if err != nil {
+		return nil, err
+	}
+	s.sg = sg
+	return sg, nil
 }
 
 func PasswordChangeable(u model.User) bool {
@@ -109,6 +121,7 @@ func (s *Service) Setup(ctx context.Context, username, password string, meta Cli
 
 // issue stores a grant bound to the epoch read with the user, so a racing password change leaves it dead.
 func (s *Service) issue(ctx context.Context, ds model.DataStore, u model.User, provider string, meta ClientMeta, scopes []string) (*Issued, error) {
+	u.Password = ""
 	secret, hash := newSecret()
 	g := model.Grant{
 		UserID:        u.ID,
