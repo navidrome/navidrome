@@ -32,3 +32,20 @@ func createUser(ctx context.Context, password string, admin bool) model.User {
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	return *stored
 }
+
+// login runs the full client flow for a user whose password is "pw": grant, resolve, then mint.
+func login(ctx context.Context, svc *Service, u model.User) (*Issued, *Principal, *AccessToken) {
+	issued, err := svc.Login(ctx, u.UserName, "pw", meta, nil)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	p, err := svc.ResolveGrant(ctx, issued.Secret, "")
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	tok, err := svc.Mint(ctx, p, nil)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	return issued, p, tok
+}
+
+func mustMint(ctx context.Context, svc *Service, p *Principal) string {
+	tok, err := svc.Mint(ctx, p, nil)
+	ExpectWithOffset(1, err).ToNot(HaveOccurred())
+	return tok.Token
+}

@@ -111,15 +111,9 @@ var _ = Describe("Service: grants and tokens", func() {
 	Describe("ResolveGrant and Mint", func() {
 		It("mints a token with the grant's expanded scopes and a 1h lifetime", func() {
 			u := createUser(ctx, "pw", false)
-			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
-
-			p, err := svc.ResolveGrant(ctx, issued.Secret, "10.0.0.9")
-			Expect(err).ToNot(HaveOccurred())
+			issued, p, tok := login(ctx, svc, u)
 			Expect(p.GrantID).To(Equal(issued.Grant.ID))
 			Expect(p.Scopes).To(Equal([]string{ScopePassword, ScopeRead}))
-
-			tok, err := svc.Mint(ctx, p, nil)
-			Expect(err).ToNot(HaveOccurred())
 			Expect(tok.ExpiresIn).To(Equal(time.Hour))
 			Expect(tok.Scopes).To(Equal([]string{ScopePassword, ScopeRead}))
 

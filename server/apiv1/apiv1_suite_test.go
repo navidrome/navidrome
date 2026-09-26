@@ -2,6 +2,8 @@ package apiv1
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -55,6 +57,51 @@ func serve(h http.Handler, req *http.Request) *httptest.ResponseRecorder {
 	root.ServeHTTP(w, req)
 	validateAgainstSpec(req, w)
 	return w
+}
+
+// testClient drives a router end to end through serve, so every response is also checked against the spec.
+type testClient struct {
+	ctx    context.Context
+	router http.Handler
+}
+
+func (c testClient) call(method, path, bearer string, body any) *httptest.ResponseRecorder {
+	var req *http.Request
+	if body != nil {
+		b, _ := json.Marshal(body)
+		req = httptest.NewRequestWithContext(c.ctx, method, path, bytes.NewReader(b))
+		req.Header.Set("Content-Type", "application/json")
+	} else {
+		req = httptest.NewRequestWithContext(c.ctx, method, path, nil)
+	}
+	if bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+bearer)
+	}
+	return serve(c.router, req)
+}
+
+func (c testClient) setup() GrantCreated {
+	w := c.call(http.MethodPost, "/api/v1/auth/setup", "", creds("admin", "pw"))
+	ExpectWithOffset(1, w.Code).To(Equal(http.StatusCreated), w.Body.String())
+	var gc GrantCreated
+	decodeJSON(w, &gc)
+	return gc
+}
+
+func (c testClient) mint(secret string, body any) AccessToken {
+	w := c.call(http.MethodPost, "/api/v1/auth/token", secret, body)
+	ExpectWithOffset(1, w.Code).To(Equal(http.StatusOK), w.Body.String())
+	var at AccessToken
+	decodeJSON(w, &at)
+	return at
+}
+
+func creds(user, pw string) map[string]any {
+	return map[string]any{"username": user, "password": pw, "client": "TestApp", "clientVersion": "1.0"}
+}
+
+func decodeJSON(w *httptest.ResponseRecorder, v any) {
+	ExpectWithOffset(1, json.Unmarshal(w.Body.Bytes(), v)).To(Succeed(), w.Body.String())
 }
 
 func validateAgainstSpec(req *http.Request, w *httptest.ResponseRecorder) {

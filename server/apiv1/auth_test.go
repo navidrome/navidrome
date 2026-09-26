@@ -1,9 +1,7 @@
 package apiv1
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,53 +17,14 @@ import (
 
 var _ = Describe("auth endpoints", func() {
 	var ctx context.Context
-	var router *Router
-
-	call := func(method, path, bearer string, body any) *httptest.ResponseRecorder {
-		var req *http.Request
-		if body != nil {
-			b, _ := json.Marshal(body)
-			req = httptest.NewRequestWithContext(ctx, method, path, bytes.NewReader(b))
-			req.Header.Set("Content-Type", "application/json")
-		} else {
-			req = httptest.NewRequestWithContext(ctx, method, path, nil)
-		}
-		if bearer != "" {
-			req.Header.Set("Authorization", "Bearer "+bearer)
-		}
-		return serve(router, req)
-	}
-
-	creds := func(user, pw string) map[string]any {
-		return map[string]any{"username": user, "password": pw, "client": "TestApp", "clientVersion": "1.0"}
-	}
-
-	decode := func(w *httptest.ResponseRecorder, v any) {
-		ExpectWithOffset(1, json.Unmarshal(w.Body.Bytes(), v)).To(Succeed(), w.Body.String())
-	}
-
-	setup := func() GrantCreated {
-		w := call(http.MethodPost, "/api/v1/auth/setup", "", creds("admin", "pw"))
-		ExpectWithOffset(1, w.Code).To(Equal(http.StatusCreated), w.Body.String())
-		var gc GrantCreated
-		decode(w, &gc)
-		return gc
-	}
-
-	mint := func(secret string, body any) AccessToken {
-		w := call(http.MethodPost, "/api/v1/auth/token", secret, body)
-		ExpectWithOffset(1, w.Code).To(Equal(http.StatusOK), w.Body.String())
-		var at AccessToken
-		decode(w, &at)
-		return at
-	}
+	var api testClient
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.AuthRequestLimit = 0
 		resetDB()
-		router = New(realDS)
+		api = testClient{ctx: ctx, router: New(realDS)}
 	})
 
 	It("lets exactly one of a v1 setup and a v0 first-admin creation win", func() {
@@ -76,7 +35,7 @@ var _ = Describe("auth endpoints", func() {
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
-			v1Code = call(http.MethodPost, "/api/v1/auth/setup", "", creds("v1admin", "pw")).Code
+			v1Code = api.call(http.MethodPost, "/api/v1/auth/setup", "", creds("v1admin", "pw")).Code
 		}()
 		go func() {
 			defer GinkgoRecover()
@@ -90,149 +49,149 @@ var _ = Describe("auth endpoints", func() {
 	})
 
 	It("sets up the first admin once, then answers 409 setup_complete", func() {
-		gc := setup()
+		gc := api.setup()
 		Expect(gc.Secret).To(HavePrefix("ndg_"))
 		Expect(gc.User.IsAdmin).To(BeTrue())
 		Expect(gc.Grant.Provider).To(Equal("setup"))
 		Expect(gc.Grant.Current).To(BeTrue())
 
-		w := call(http.MethodPost, "/api/v1/auth/setup", "", creds("second", "pw"))
+		w := api.call(http.MethodPost, "/api/v1/auth/setup", "", creds("second", "pw"))
 		Expect(w.Code).To(Equal(http.StatusConflict))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeSetupComplete))
 	})
 
 	It("logs in, mints a token, and uses it on a scoped endpoint", func() {
-		setup()
-		w := call(http.MethodPost, "/api/v1/auth/login", "", creds("ADMIN", "pw"))
+		api.setup()
+		w := api.call(http.MethodPost, "/api/v1/auth/login", "", creds("ADMIN", "pw"))
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
 		var gc GrantCreated
-		decode(w, &gc)
+		decodeJSON(w, &gc)
 		Expect(gc.User.PasswordChangeable).To(BeTrue())
 
-		at := mint(gc.Secret, nil)
+		at := api.mint(gc.Secret, nil)
 		Expect(at.TokenType).To(Equal(AccessTokenTokenTypeBearer))
 		Expect(at.ExpiresIn).To(Equal(3600))
 
-		w = call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil)
+		w = api.call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil)
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
 		var list GrantList
-		decode(w, &list)
+		decodeJSON(w, &list)
 		Expect(list.Total).To(Equal(2))
 		Expect(list.Limit).To(Equal(100))
 	})
 
 	It("fails login the same way for an unknown user and a wrong password, with a Bearer challenge", func() {
-		setup()
-		a := call(http.MethodPost, "/api/v1/auth/login", "", creds("admin", "wrong"))
-		b := call(http.MethodPost, "/api/v1/auth/login", "", creds("ghost", "pw"))
+		api.setup()
+		a := api.call(http.MethodPost, "/api/v1/auth/login", "", creds("admin", "wrong"))
+		b := api.call(http.MethodPost, "/api/v1/auth/login", "", creds("ghost", "pw"))
 		Expect(a.Code).To(Equal(http.StatusUnauthorized))
 		Expect(a.Header().Get("WWW-Authenticate")).To(Equal("Bearer"))
 		Expect(a.Body.String()).To(Equal(b.Body.String()))
 	})
 
 	It("treats no body and {} as all scopes, and [] as no scopes", func() {
-		gc := setup()
-		all := mint(gc.Secret, nil)
+		gc := api.setup()
+		all := api.mint(gc.Secret, nil)
 		Expect(all.Scopes).To(ConsistOf(ScopeRead, ScopePassword))
-		Expect(mint(gc.Secret, map[string]any{}).Scopes).To(ConsistOf(ScopeRead, ScopePassword))
+		Expect(api.mint(gc.Secret, map[string]any{}).Scopes).To(ConsistOf(ScopeRead, ScopePassword))
 
-		none := mint(gc.Secret, map[string]any{"scopes": []string{}})
+		none := api.mint(gc.Secret, map[string]any{"scopes": []string{}})
 		Expect(none.Scopes).To(BeEmpty())
-		w := call(http.MethodGet, "/api/v1/auth/grants", none.AccessToken, nil)
+		w := api.call(http.MethodGet, "/api/v1/auth/grants", none.AccessToken, nil)
 		Expect(w.Code).To(Equal(http.StatusForbidden))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInsufficientScope))
 	})
 
 	It("drops unknown requested scopes instead of rejecting them", func() {
-		gc := setup()
-		at := mint(gc.Secret, map[string]any{"scopes": []string{"read", "playlists:write"}})
+		gc := api.setup()
+		at := api.mint(gc.Secret, map[string]any{"scopes": []string{"read", "playlists:write"}})
 		Expect(at.Scopes).To(ConsistOf(ScopeRead))
 	})
 
 	It("does not let a token without read log out or revoke grants", func() {
-		gc := setup()
-		narrow := mint(gc.Secret, map[string]any{"scopes": []string{"password"}})
-		Expect(call(http.MethodPost, "/api/v1/auth/logout", narrow.AccessToken, nil).Code).To(Equal(http.StatusForbidden))
-		Expect(call(http.MethodDelete, "/api/v1/auth/grants/"+gc.Grant.Id, narrow.AccessToken, nil).Code).To(Equal(http.StatusForbidden))
+		gc := api.setup()
+		narrow := api.mint(gc.Secret, map[string]any{"scopes": []string{"password"}})
+		Expect(api.call(http.MethodPost, "/api/v1/auth/logout", narrow.AccessToken, nil).Code).To(Equal(http.StatusForbidden))
+		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/"+gc.Grant.Id, narrow.AccessToken, nil).Code).To(Equal(http.StatusForbidden))
 	})
 
 	It("logs out: the token stops at once and logoutUrl is null", func() {
-		gc := setup()
-		at := mint(gc.Secret, nil)
-		w := call(http.MethodPost, "/api/v1/auth/logout", at.AccessToken, nil)
+		gc := api.setup()
+		at := api.mint(gc.Secret, nil)
+		w := api.call(http.MethodPost, "/api/v1/auth/logout", at.AccessToken, nil)
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Body.String()).To(ContainSubstring(`"logoutUrl":null`))
 
-		w = call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil)
+		w = api.call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
-		Expect(call(http.MethodPost, "/api/v1/auth/token", gc.Secret, nil).Code).To(Equal(http.StatusUnauthorized))
+		Expect(api.call(http.MethodPost, "/api/v1/auth/token", gc.Secret, nil).Code).To(Equal(http.StatusUnauthorized))
 	})
 
 	It("logs out with 200 when another node already revoked the grant", func() {
-		gc := setup()
-		at := mint(gc.Secret, nil)
-		Expect(call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
+		gc := api.setup()
+		at := api.mint(gc.Secret, nil)
+		Expect(api.call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
 		Expect(realDS.Grant().Delete(ctx, gc.Grant.Id)).To(Succeed())
 
-		w := call(http.MethodPost, "/api/v1/auth/logout", at.AccessToken, nil)
+		w := api.call(http.MethodPost, "/api/v1/auth/logout", at.AccessToken, nil)
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
 		Expect(w.Body.String()).To(ContainSubstring(`"logoutUrl":null`))
 	})
 
 	It("challenges with invalid_token when the grant is revoked while a password change runs", func() {
-		gc := setup()
-		at := mint(gc.Secret, nil)
-		Expect(call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
+		gc := api.setup()
+		at := api.mint(gc.Secret, nil)
+		Expect(api.call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK)) // caches the grant
 		Expect(realDS.Grant().Delete(ctx, gc.Grant.Id)).To(Succeed())
 
-		w := call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
+		w := api.call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
 		Expect(w.Code).To(Equal(http.StatusUnauthorized), w.Body.String())
 		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
 	})
 
 	It("marks grant and token responses no-store", func() {
-		w := call(http.MethodPost, "/api/v1/auth/setup", "", creds("admin", "pw"))
+		w := api.call(http.MethodPost, "/api/v1/auth/setup", "", creds("admin", "pw"))
 		Expect(w.Code).To(Equal(http.StatusCreated))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 		var gc GrantCreated
-		decode(w, &gc)
+		decodeJSON(w, &gc)
 
-		w = call(http.MethodPost, "/api/v1/auth/login", "", creds("admin", "pw"))
+		w = api.call(http.MethodPost, "/api/v1/auth/login", "", creds("admin", "pw"))
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 
-		w = call(http.MethodPost, "/api/v1/auth/token", gc.Secret, nil)
+		w = api.call(http.MethodPost, "/api/v1/auth/token", gc.Secret, nil)
 		Expect(w.Code).To(Equal(http.StatusOK))
 		Expect(w.Header().Get("Cache-Control")).To(Equal("no-store"))
 	})
 
 	It("answers 404 for a grant id the caller does not own, and 400 for an over-long id", func() {
-		gc := setup()
-		tok := mint(gc.Secret, nil).AccessToken
-		Expect(call(http.MethodDelete, "/api/v1/auth/grants/does-not-exist", tok, nil).Code).To(Equal(http.StatusNotFound))
-		w := call(http.MethodDelete, "/api/v1/auth/grants/"+strings.Repeat("x", 65), tok, nil)
+		gc := api.setup()
+		tok := api.mint(gc.Secret, nil).AccessToken
+		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/does-not-exist", tok, nil).Code).To(Equal(http.StatusNotFound))
+		w := api.call(http.MethodDelete, "/api/v1/auth/grants/"+strings.Repeat("x", 65), tok, nil)
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 		Expect(*decodeProblem(w).Errors).To(ConsistOf(ValidationError{Field: "id", Message: "is too long"}))
 	})
 
 	It("changes the password, keeping the caller and revoking the rest", func() {
-		gc := setup()
-		otherLogin := call(http.MethodPost, "/api/v1/auth/login", "", creds("admin", "pw"))
+		gc := api.setup()
+		otherLogin := api.call(http.MethodPost, "/api/v1/auth/login", "", creds("admin", "pw"))
 		var other GrantCreated
-		decode(otherLogin, &other)
-		at := mint(gc.Secret, nil)
+		decodeJSON(otherLogin, &other)
+		at := api.mint(gc.Secret, nil)
 
-		w := call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
+		w := api.call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
 		Expect(w.Code).To(Equal(http.StatusNoContent), w.Body.String())
 
-		Expect(call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK))
-		Expect(call(http.MethodPost, "/api/v1/auth/token", other.Secret, nil).Code).To(Equal(http.StatusUnauthorized))
+		Expect(api.call(http.MethodGet, "/api/v1/auth/grants", at.AccessToken, nil).Code).To(Equal(http.StatusOK))
+		Expect(api.call(http.MethodPost, "/api/v1/auth/token", other.Secret, nil).Code).To(Equal(http.StatusUnauthorized))
 	})
 
 	It("reports a wrong current password as a field error", func() {
-		gc := setup()
-		at := mint(gc.Secret, nil)
-		w := call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "nope", "newPassword": "pw2"})
+		gc := api.setup()
+		at := api.mint(gc.Secret, nil)
+		w := api.call(http.MethodPost, "/api/v1/auth/password", at.AccessToken, map[string]any{"currentPassword": "nope", "newPassword": "pw2"})
 		Expect(w.Code).To(Equal(http.StatusBadRequest))
 		p := decodeProblem(w)
 		Expect(*p.Errors).To(ConsistOf(ValidationError{Field: "currentPassword", Message: "is incorrect"}))
@@ -240,7 +199,7 @@ var _ = Describe("auth endpoints", func() {
 
 	DescribeTable("rejects bad credential bodies with a field error and no echo",
 		func(body map[string]any, field string) {
-			w := call(http.MethodPost, "/api/v1/auth/setup", "", body)
+			w := api.call(http.MethodPost, "/api/v1/auth/setup", "", body)
 			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
 			p := decodeProblem(w)
 			Expect(p.Code).To(Equal(ProblemCodeValidation))
@@ -258,7 +217,7 @@ var _ = Describe("auth endpoints", func() {
 			big := `{"username":"a","password":"` + strings.Repeat("a", maxBodyBytes) + `","client":"c"}`
 			req := httptest.NewRequestWithContext(ctx, http.MethodPost, "/api/v1/auth/login", body(big))
 			req.Header.Set("Content-Type", "application/json")
-			w := serve(router, req)
+			w := serve(api.router, req)
 			Expect(w.Code).To(Equal(http.StatusRequestEntityTooLarge))
 			Expect(decodeProblem(w).Code).To(Equal(ProblemCodePayloadTooLarge))
 		},
