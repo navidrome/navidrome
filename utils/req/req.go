@@ -178,3 +178,21 @@ func (r *Values) Float64Or(param string, def float64) float64 {
 	}
 	return f
 }
+
+// IfNoneMatch reports whether the request's If-None-Match asserts etag (unquoted), using RFC 9110 weak comparison.
+func IfNoneMatch(r *http.Request, etag string) bool {
+	header := strings.TrimSpace(r.Header.Get("If-None-Match"))
+	if header == "" {
+		return false
+	}
+	if header == "*" {
+		return true
+	}
+	for tag := range strings.SplitSeq(header, ",") {
+		tag = strings.TrimPrefix(strings.TrimSpace(tag), "W/")
+		if strings.Trim(tag, `"`) == etag {
+			return true
+		}
+	}
+	return false
+}

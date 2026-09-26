@@ -1,0 +1,194 @@
+openapi: 3.0.3
+info:
+  title: Navidrome API
+  version: 1.0.0
+  description: |
+    Navidrome API v1. Spec-first, additive within v1. Clients discover implemented
+    capability modules through `GET /server` and never sniff versions.
+
+    Enums are open: new values may be added to any enum within v1. Clients must
+    accept values they do not recognise instead of failing.
+
+    Every operation declares `x-stability-level`: `alpha` operations may change or
+    disappear without notice, `beta` and `stable` operations only change additively.
+    A level is only ever raised, never lowered.
+
+    `HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods
+    in its `Allow` header.
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+servers:
+  - url: /api/v1
+tags:
+  - name: server
+    description: Server discovery and the published OpenAPI document.
+paths:
+  /server:
+    get:
+      operationId: getServerInfo
+      x-module: core
+      x-stability-level: alpha
+      tags: [server]
+      summary: Describe the server
+      description: |
+        Returns the public server description. No authentication required.
+        Authenticated requests will additionally receive the implemented capability modules
+        once authentication is available.
+      responses:
+        '200':
+          description: Server description.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerInfo'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /openapi.json:
+    get:
+      operationId: getOpenAPISpecJSON
+      x-module: core
+      x-stability-level: alpha
+      tags: [server]
+      summary: Get the OpenAPI document (JSON)
+      description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
+      responses:
+        '200':
+          description: The OpenAPI document.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                type: object
+                description: OpenAPI 3.0 document.
+        '304':
+          $ref: '#/components/responses/NotModified'
+  /openapi.yaml:
+    get:
+      operationId: getOpenAPISpecYAML
+      x-module: core
+      x-stability-level: alpha
+      tags: [server]
+      summary: Get the OpenAPI document (YAML)
+      description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
+      responses:
+        '200':
+          description: The OpenAPI document.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/yaml:
+              schema:
+                type: object
+                description: OpenAPI 3.0 document.
+        '304':
+          $ref: '#/components/responses/NotModified'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived access token minted from a device grant. Not yet applied to any operation.
+  schemas:
+    ServerInfo:
+      type: object
+      description: Public server description. Everything an add-server screen needs before login.
+      required:
+        - name
+        - serverVersion
+        - specVersion
+        - setupRequired
+        - loginMethods
+      properties:
+        name:
+          type: string
+          description: Human-readable server product name.
+        serverVersion:
+          type: string
+          description: Version of the running server build.
+        specVersion:
+          type: string
+          description: Version of the OpenAPI document this server implements.
+        setupRequired:
+          type: boolean
+          description: True until the first admin user has been created.
+        loginMethods:
+          type: array
+          description: Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
+          items:
+            type: string
+            enum:
+              - password
+    Problem:
+      type: object
+      description: RFC 9457 problem details, returned for every 4xx and 5xx response.
+      required:
+        - title
+        - status
+        - code
+      properties:
+        type:
+          type: string
+          description: |
+            URI reference identifying the problem type. Omitted while the problem carries no semantics
+            beyond its HTTP status code, which RFC 9457 defines as `about:blank`. Problems with their
+            own semantics get their own URI; switch on `code` instead.
+        title:
+          type: string
+          description: Short human-readable summary, the same for all occurrences of this problem type.
+        status:
+          type: integer
+          description: HTTP status code of this response.
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence. Omitted for internal errors.
+        code:
+          type: string
+          description: Machine-readable error code, and the value clients switch on. New codes may be added.
+          enum:
+            - validation
+            - unauthorized
+            - forbidden
+            - not_found
+            - method_not_allowed
+            - unavailable
+            - internal
+        errors:
+          type: array
+          description: Per-field failures. Present only when `code` is `validation`.
+          items:
+            $ref: '#/components/schemas/ValidationError'
+    ValidationError:
+      type: object
+      description: One field-level validation failure.
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          description: Name of the offending query parameter, path parameter, or body field (dotted for nested).
+        message:
+          type: string
+          description: Why the value was rejected.
+  responses:
+    InternalError:
+      description: Unexpected server failure. Details are in the server log.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotModified:
+      description: Not modified.
+      headers:
+        ETag:
+          $ref: '#/components/headers/ETag'
+  headers:
+    ETag:
+      description: Entity tag for `If-None-Match` revalidation.
+      schema:
+        type: string

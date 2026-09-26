@@ -161,6 +161,7 @@ type configOptions struct {
 	DevExternalArtistFetchMultiplier  float64
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
+	DevAPIv1                          bool
 }
 
 type scannerOptions struct {
@@ -1124,6 +1125,7 @@ func setViperDefaults() {
 	viper.SetDefault("devshowartistpage", true)
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
+	viper.SetDefault("devapiv1", false)
 	viper.SetDefault("devoffsetoptimize", 50000)
 	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
 	// scrobbles and the UI. See MaxOpenConns.

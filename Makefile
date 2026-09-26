@@ -21,6 +21,10 @@ PLATFORMS ?= $(SUPPORTED_PLATFORMS)
 DOCKER_TAG ?= deluan/navidrome:develop
 
 GOLANGCI_LINT_VERSION ?= v2.14.0
+VACUUM_VERSION ?= v0.30.6
+OAPI_CODEGEN_VERSION ?= v2.8.0
+OASDIFF_VERSION ?= v1.32.1
+API_DIFF_BASE ?= origin/master
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
 
@@ -92,6 +96,45 @@ install-golangci-lint: ##@Development Install golangci-lint if not present
 	fi
 .PHONY: install-golangci-lint
 
+install-api-tools: ##@Development Install OpenAPI tools (vacuum, oapi-codegen, oasdiff) into ./bin
+	@STAMP=bin/.api-tools-$(VACUUM_VERSION)-$(OAPI_CODEGEN_VERSION)-$(OASDIFF_VERSION); \
+	if [ ! -f $$STAMP ] || [ ! -x bin/vacuum ] || [ ! -x bin/oapi-codegen ] || [ ! -x bin/oasdiff ]; then \
+		echo "Installing OpenAPI tools..."; \
+		GOBIN=$(CURDIR)/bin go install github.com/daveshanley/vacuum@$(VACUUM_VERSION) && \
+		GOBIN=$(CURDIR)/bin go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) && \
+		GOBIN=$(CURDIR)/bin go install github.com/oasdiff/oasdiff@$(OASDIFF_VERSION) && \
+		rm -f bin/.api-tools-* && touch $$STAMP; \
+	fi
+.PHONY: install-api-tools
+
+api-lint: install-api-tools ##@Development Lint the OpenAPI spec
+	./bin/vacuum lint -r api/.vacuum.yaml -d -q -b --fail-severity error api/openapi/openapi.yaml
+.PHONY: api-lint
+
+api-bundle: install-api-tools ##@Development Bundle the multi-file OpenAPI spec into api/bundled
+	./bin/vacuum bundle -q --composed -p api/openapi api/openapi/openapi.yaml api/bundled/openapi.yaml
+	./bin/vacuum bundle -q --composed --format json -p api/openapi api/openapi/openapi.yaml api/bundled/openapi.json
+.PHONY: api-bundle
+
+api-gen: api-bundle ##@Development Generate the API v1 server code from the bundled spec
+	./bin/oapi-codegen -config server/apiv1/oapi-codegen.yaml api/bundled/openapi.json
+.PHONY: api-gen
+
+api-diff: api-bundle ##@Development Fail on breaking OpenAPI changes against the merge-base with $(API_DIFF_BASE)
+	@git rev-parse --verify --quiet $(API_DIFF_BASE)^{commit} >/dev/null || { echo "Base ref $(API_DIFF_BASE) not found; set API_DIFF_BASE"; exit 1; }; \
+	BASE="$$(git merge-base HEAD $(API_DIFF_BASE) 2>/dev/null)"; \
+	if [ -z "$$BASE" ]; then \
+		echo "No merge-base with $(API_DIFF_BASE); falling back to its tip"; \
+		BASE=$(API_DIFF_BASE); \
+	fi; \
+	if git cat-file -e $$BASE:api/bundled/openapi.json 2>/dev/null; then \
+		git show $$BASE:api/bundled/openapi.json > $(CURDIR)/bin/api-base.json && \
+		./bin/oasdiff breaking $(CURDIR)/bin/api-base.json api/bundled/openapi.json --fail-on ERR --severity-levels api/.oasdiff-levels.txt; \
+	else \
+		echo "No bundled spec at $$BASE; skipping breaking-change check"; \
+	fi
+.PHONY: api-diff
+
 lint: install-golangci-lint ##@Development Lint Go code
 	PATH=./bin:$$PATH golangci-lint run --timeout 5m
 .PHONY: lint
@@ -111,7 +154,7 @@ wire: check_go_env ##@Development Update Dependency Injection
 	go tool wire gen -tags="$$(echo '$(GO_BUILD_TAGS)' | tr ',' ' ')" ./...
 .PHONY: wire
 
-gen: check_go_env ##@Development Run go generate for code generation
+gen: check_go_env api-gen ##@Development Run go generate for code generation
 	go generate ./...
 	cd plugins/cmd/ndpgen && go run . -shared-types -input=../../types -output=../../pdk -go -rust
 	cd plugins/cmd/ndpgen && go run . -host-wrappers -input=../../host -package=host -shared=../../types
