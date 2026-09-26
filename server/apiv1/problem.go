@@ -3,6 +3,7 @@ package apiv1
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/navidrome/navidrome/core/apiauth"
@@ -26,6 +27,20 @@ func ClientError(err error, detail string) error {
 	return &clientError{err: err, detail: detail}
 }
 
+// scopeError names the scope an operation requires, for the insufficient_scope challenge.
+type scopeError struct {
+	scope string
+}
+
+func (e *scopeError) Error() string { return apiauth.ErrInsufficientScope.Error() }
+func (e *scopeError) Unwrap() error { return apiauth.ErrInsufficientScope }
+
+const tooLargeDetail = "request body too large"
+
+func tooLarge(err error) bool {
+	return errors.As(err, new(*http.MaxBytesError))
+}
+
 type fieldErrors struct {
 	fields []ValidationError
 }
@@ -45,6 +60,9 @@ func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	log.Debug(r.Context(), "API v1: request failed", "path", r.URL.Path, "status", status, "code", code, err)
+	if code == ProblemCodeInsufficientScope {
+		w.Header().Set("WWW-Authenticate", scopeChallenge(err))
+	}
 	var detail string
 	var ce *clientError
 	if errors.As(err, &ce) {
@@ -58,8 +76,19 @@ func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
 	writeProblemStatus(w, r, status, code, detail)
 }
 
+func scopeChallenge(err error) string {
+	challenge := `Bearer error="insufficient_scope"`
+	var se *scopeError
+	if errors.As(err, &se) && se.scope != "" {
+		challenge += fmt.Sprintf(`, scope=%q`, se.scope)
+	}
+	return challenge
+}
+
 func classifyError(err error) (int, ProblemCode) {
 	switch {
+	case tooLarge(err):
+		return http.StatusRequestEntityTooLarge, ProblemCodePayloadTooLarge
 	case errors.Is(err, apiauth.ErrTokenExpired):
 		return http.StatusUnauthorized, ProblemCodeTokenExpired
 	case errors.Is(err, apiauth.ErrInsufficientScope):

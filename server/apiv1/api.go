@@ -62,9 +62,8 @@ func (rt *Router) routes() http.Handler {
 
 	strict := NewStrictHandlerWithOptions(rt, nil, StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, req *http.Request, err error) {
-			var tooLarge *http.MaxBytesError
-			if errors.As(err, &tooLarge) {
-				writeProblemStatus(w, req, http.StatusRequestEntityTooLarge, ProblemCodePayloadTooLarge, "request body too large")
+			if tooLarge(err) {
+				writeProblem(w, req, ClientError(err, tooLargeDetail))
 				return
 			}
 			writeProblemStatus(w, req, http.StatusBadRequest, ProblemCodeValidation, "request body is not valid JSON")
@@ -118,6 +117,14 @@ func headAsGet(mux chi.Routes) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, req)
 		})
 	}
+}
+
+// routeMethod is the method chi dispatches on, which headAsGet sets to GET for a HEAD only GET serves.
+func routeMethod(req *http.Request) string {
+	if rctx := chi.RouteContext(req.Context()); rctx != nil && rctx.RouteMethod != "" {
+		return rctx.RouteMethod
+	}
+	return req.Method
 }
 
 // routePath must pick the same path chi's routeHTTP dispatches on, or the gate could vet a different route.

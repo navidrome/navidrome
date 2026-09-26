@@ -27,7 +27,7 @@ func (rt *Router) SetupFirstAdmin(ctx context.Context, req SetupFirstAdminReques
 }
 
 func (rt *Router) ChangePassword(ctx context.Context, req ChangePasswordRequestObject) (ChangePasswordResponseObject, error) {
-	p, err := principal(apiauth.PrincipalFrom(ctx))
+	p, err := principalFrom(ctx)
 	if err != nil {
 		return nil, err
 	}

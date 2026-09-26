@@ -4,14 +4,13 @@ import (
 	"cmp"
 	"context"
 
-	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/utils/gg"
 )
 
 const defaultPageSize = 100
 
 func (rt *Router) CreateAccessToken(ctx context.Context, req CreateAccessTokenRequestObject) (CreateAccessTokenResponseObject, error) {
-	p, err := principal(apiauth.PrincipalFrom(ctx))
+	p, err := principalFrom(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +31,7 @@ func (rt *Router) CreateAccessToken(ctx context.Context, req CreateAccessTokenRe
 }
 
 func (rt *Router) ListGrants(ctx context.Context, req ListGrantsRequestObject) (ListGrantsResponseObject, error) {
-	p, err := principal(apiauth.PrincipalFrom(ctx))
+	p, err := principalFrom(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +49,7 @@ func (rt *Router) ListGrants(ctx context.Context, req ListGrantsRequestObject) (
 }
 
 func (rt *Router) RevokeGrant(ctx context.Context, req RevokeGrantRequestObject) (RevokeGrantResponseObject, error) {
-	p, err := principal(apiauth.PrincipalFrom(ctx))
+	p, err := principalFrom(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +60,7 @@ func (rt *Router) RevokeGrant(ctx context.Context, req RevokeGrantRequestObject)
 }
 
 func (rt *Router) Logout(ctx context.Context, _ LogoutRequestObject) (LogoutResponseObject, error) {
-	p, err := principal(apiauth.PrincipalFrom(ctx))
+	p, err := principalFrom(ctx)
 	if err != nil {
 		return nil, err
 	}

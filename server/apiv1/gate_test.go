@@ -3,6 +3,7 @@ package apiv1
 import (
 	"bytes"
 	"context"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -329,6 +330,24 @@ var _ = Describe("spec gate", func() {
 		Entry("non-empty scope list on a bearer scheme", strings.Replace(gateSpec, "operationId: caps, x-module: core, security: [{bearerAuth: []}]", "operationId: caps, x-module: core, security: [{bearerAuth: [read]}]", 1)),
 		Entry("x-scope on a public operation", strings.Replace(gateSpec, "operationId: open, x-module: core, security: [],", "operationId: open, x-module: core, x-scope: read, security: [],", 1)),
 		Entry("x-scope that is not a string", strings.Replace(gateSpec, "x-scope: read", "x-scope: [read]", 1)),
+		Entry("x-scope not in KnownScopes", strings.Replace(gateSpec, "x-module: password\n      x-scope: password", "x-module: admin\n      x-scope: admin", 1)),
+	)
+
+	DescribeTable("refuses rules that name an operation missing from the spec",
+		func(set func(*gateRules) *map[string]bool) {
+			doc, err := openapi3.NewLoader().LoadFromData([]byte(gateSpec))
+			Expect(err).ToNot(HaveOccurred())
+			rules := testGateRules
+			m := set(&rules)
+			*m = maps.Clone(*m)
+			(*m)["typo"] = true
+			_, err = newGate(doc, chi.NewRouter(), fa, rules)
+			Expect(err).To(MatchError(ContainSubstring("typo")))
+		},
+		Entry("limited", func(r *gateRules) *map[string]bool { return &r.limited }),
+		Entry("noScope", func(r *gateRules) *map[string]bool { return &r.noScope }),
+		Entry("grantOps", func(r *gateRules) *map[string]bool { return &r.grantOps }),
+		Entry("noStore", func(r *gateRules) *map[string]bool { return &r.noStore }),
 	)
 
 	It("checks routes against the spec in both directions", func() {

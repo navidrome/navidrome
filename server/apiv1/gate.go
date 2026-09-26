@@ -1,6 +1,7 @@
 package apiv1
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server"
 )
@@ -36,7 +36,6 @@ const (
 )
 
 type gateOp struct {
-	id      string
 	route   *routers.Route
 	kind    authKind
 	scope   string
@@ -44,9 +43,13 @@ type gateOp struct {
 	noStore bool
 }
 
+func (o *gateOp) id() string { return o.route.Operation.OperationID }
+
+type opKey struct{ method, path string }
+
 type gate struct {
 	mux     chi.Routes
-	ops     map[string]*gateOp
+	ops     map[opKey]*gateOp
 	auth    authenticator
 	limiter func(http.Handler) http.Handler
 }
@@ -68,17 +71,20 @@ type gateRules struct {
 }
 
 func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRules) (*gate, error) {
-	g := &gate{mux: mux, ops: map[string]*gateOp{}, auth: auth}
+	g := &gate{mux: mux, ops: map[opKey]*gateOp{}, auth: auth}
+	ids := map[string]bool{}
 	for path, item := range doc.Paths.Map() {
 		for method, op := range item.Operations() {
 			gop, err := buildGateOp(doc, path, item, method, op, rules)
 			if err != nil {
 				return nil, err
 			}
-			gop.limited = rules.limited[op.OperationID]
-			gop.noStore = rules.noStore[op.OperationID]
-			g.ops[method+" "+path] = gop
+			g.ops[opKey{method, path}] = gop
+			ids[op.OperationID] = true
 		}
+	}
+	if err := rules.check(ids); err != nil {
+		return nil, err
 	}
 	if conf.Server.AuthRequestLimit > 0 {
 		g.limiter = server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength,
@@ -89,10 +95,27 @@ func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRule
 	return g, nil
 }
 
+// check fails on a rule naming an operation the spec lacks, so a typo cannot silently disable the rule.
+func (rules gateRules) check(ids map[string]bool) error {
+	sets := map[string]map[string]bool{"limited": rules.limited, "noScope": rules.noScope, "grantOps": rules.grantOps, "noStore": rules.noStore}
+	for name, set := range sets {
+		for id := range set {
+			if !ids[id] {
+				return fmt.Errorf("gate rule %s names unknown operation %s", name, id)
+			}
+		}
+	}
+	return nil
+}
+
 // buildGateOp enforces the allowed security forms, so a spec edit cannot silently drop a requirement.
 func buildGateOp(doc *openapi3.T, path string, item *openapi3.PathItem, method string, op *openapi3.Operation, rules gateRules) (*gateOp, error) {
 	id := op.OperationID
-	gop := &gateOp{id: id, route: &routers.Route{Spec: doc, Path: path, PathItem: item, Method: method, Operation: op}}
+	gop := &gateOp{
+		route:   &routers.Route{Spec: doc, Path: path, PathItem: item, Method: method, Operation: op},
+		limited: rules.limited[id],
+		noStore: rules.noStore[id],
+	}
 	if op.Security == nil {
 		return nil, fmt.Errorf("operation %s must declare security explicitly", id)
 	}
@@ -119,15 +142,12 @@ func buildGateOp(doc *openapi3.T, path string, item *openapi3.PathItem, method s
 		if gop.kind != authToken {
 			return nil, fmt.Errorf("operation %s: x-scope needs bearerAuth", id)
 		}
-		base := module
-		if s, ok := moduleScope[module]; ok {
-			base = s
-		}
+		base := cmp.Or(moduleScope[module], module)
 		if scope != base && scope != base+":write" {
-			return nil, fmt.Errorf("operation %s: x-scope %q does not match module %q", op.OperationID, scope, module)
+			return nil, fmt.Errorf("operation %s: x-scope %q does not match module %q", id, scope, module)
 		}
-		if !slices.Contains(apiauth.KnownScopes, scope) && scope != apiauth.ScopeAdmin {
-			return nil, fmt.Errorf("operation %s: unknown x-scope %q", op.OperationID, scope)
+		if !slices.Contains(apiauth.KnownScopes, scope) {
+			return nil, fmt.Errorf("operation %s: unknown x-scope %q", id, scope)
 		}
 	}
 	gop.scope = scope
@@ -143,7 +163,7 @@ func isScheme(req openapi3.SecurityRequirement, name string) bool {
 // checkRoutes fails when a routed pattern has no spec operation or a spec operation has no route.
 func (g *gate) checkRoutes() error {
 	err := chi.Walk(g.mux, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
-		if _, ok := g.ops[method+" "+route]; !ok {
+		if _, ok := g.ops[opKey{method, route}]; !ok {
 			return fmt.Errorf("route %s %s is not in the spec", method, route)
 		}
 		return nil
@@ -153,7 +173,7 @@ func (g *gate) checkRoutes() error {
 	}
 	for _, op := range g.ops {
 		if g.mux.Find(chi.NewRouteContext(), op.route.Method, op.route.Path) != op.route.Path {
-			return fmt.Errorf("spec operation %s (%s %s) has no route", op.id, op.route.Method, op.route.Path)
+			return fmt.Errorf("spec operation %s (%s %s) has no route", op.id(), op.route.Method, op.route.Path)
 		}
 	}
 	return nil
@@ -161,18 +181,14 @@ func (g *gate) checkRoutes() error {
 
 func (g *gate) handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		path := routePath(r)
-		method := r.Method
-		if method == http.MethodHead && !g.mux.Match(chi.NewRouteContext(), http.MethodHead, path) {
-			method = http.MethodGet
-		}
+		method := routeMethod(r)
 		rctx := chi.NewRouteContext()
-		pattern := g.mux.Find(rctx, method, path)
+		pattern := g.mux.Find(rctx, method, routePath(r))
 		if pattern == "" {
 			next.ServeHTTP(w, r)
 			return
 		}
-		op, ok := g.ops[method+" "+pattern]
+		op, ok := g.ops[opKey{method, pattern}]
 		if !ok {
 			log.Error(r.Context(), "API v1: routed pattern missing from the spec", "method", method, "pattern", pattern)
 			writeProblemStatus(w, r, http.StatusInternalServerError, ProblemCodeInternal, "")
@@ -205,7 +221,6 @@ func (g *gate) authorize(w http.ResponseWriter, r *http.Request, op *gateOp) (*h
 	}
 	token, ok := bearerToken(r)
 	if !ok {
-		w.Header().Set("WWW-Authenticate", "Bearer")
 		writeProblemStatus(w, r, http.StatusUnauthorized, ProblemCodeUnauthorized, "")
 		return r, false
 	}
@@ -217,33 +232,18 @@ func (g *gate) authorize(w http.ResponseWriter, r *http.Request, op *gateOp) (*h
 	} else {
 		p, err = g.auth.Authenticate(r.Context(), token, ip)
 	}
-	switch {
-	case errors.Is(err, apiauth.ErrTokenExpired), errors.Is(err, model.ErrInvalidAuth):
-		w.Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
-		writeProblem(w, r, err)
-		return r, false
-	case errors.Is(err, apiauth.ErrInsufficientScope):
-		insufficientScope(w, r, op, err)
-		return r, false
-	case err != nil:
-		writeProblem(w, r, err)
-		return r, false
+	if err == nil && op.scope != "" && !apiauth.Satisfies(p.Scopes, op.scope) {
+		err = apiauth.ErrInsufficientScope
 	}
-	if op.scope != "" && !apiauth.Satisfies(p.Scopes, op.scope) {
-		insufficientScope(w, r, op, apiauth.ErrInsufficientScope)
+	if errors.Is(err, apiauth.ErrInsufficientScope) {
+		err = &scopeError{scope: op.scope}
+	}
+	if err != nil {
+		writeProblem(w, r, err)
 		return r, false
 	}
 	ctx := apiauth.WithPrincipal(request.WithUser(r.Context(), p.User), p)
 	return r.WithContext(ctx), true
-}
-
-func insufficientScope(w http.ResponseWriter, r *http.Request, op *gateOp, err error) {
-	challenge := `Bearer error="insufficient_scope"`
-	if op.scope != "" {
-		challenge += fmt.Sprintf(`, scope=%q`, op.scope)
-	}
-	w.Header().Set("WWW-Authenticate", challenge)
-	writeProblem(w, r, err)
 }
 
 func bearerToken(r *http.Request) (string, bool) {
@@ -255,25 +255,25 @@ func bearerToken(r *http.Request) (string, bool) {
 	return token, true
 }
 
+var validationOptions = &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc, MultiError: true}
+
 func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx *chi.Context) bool {
-	params := map[string]string{}
+	params := make(map[string]string, len(rctx.URLParams.Keys))
 	for i, k := range rctx.URLParams.Keys {
 		params[k] = rctx.URLParams.Values[i]
 	}
 	err := openapi3filter.ValidateRequest(r.Context(), &openapi3filter.RequestValidationInput{
-		Request: r, PathParams: params, Route: op.route,
-		Options: &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc, MultiError: true},
+		Request: r, PathParams: params, Route: op.route, Options: validationOptions,
 	})
 	if err == nil {
 		return true
 	}
-	var tooLarge *http.MaxBytesError
-	if errors.As(err, &tooLarge) {
-		writeProblemStatus(w, r, http.StatusRequestEntityTooLarge, ProblemCodePayloadTooLarge, "request body too large")
+	if tooLarge(err) {
+		writeProblem(w, r, ClientError(err, tooLargeDetail))
 		return false
 	}
 	fields := sanitizeValidation(err)
-	log.Debug(r.Context(), "API v1: request failed validation", "operation", op.id, "errors", fields)
+	log.Debug(r.Context(), "API v1: request failed validation", "operation", op.id(), "errors", fields)
 	writeProblemStatus(w, r, http.StatusBadRequest, ProblemCodeValidation, "the request does not match the API schema", fields...)
 	return false
 }

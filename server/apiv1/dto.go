@@ -1,6 +1,8 @@
 package apiv1
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/gg"
@@ -59,8 +61,9 @@ func clientMeta(c CredentialsRequest) apiauth.ClientMeta {
 	return apiauth.ClientMeta{Client: c.Client, Name: gg.V(c.Name), ClientVersion: gg.V(c.ClientVersion)}
 }
 
-// principal fails closed if the gate did not attach a principal to the context.
-func principal(p *apiauth.Principal, ok bool) (*apiauth.Principal, error) {
+// principalFrom fails closed if the gate did not attach a principal to the context.
+func principalFrom(ctx context.Context) (*apiauth.Principal, error) {
+	p, ok := apiauth.PrincipalFrom(ctx)
 	if !ok || p == nil {
 		return nil, model.ErrInvalidAuth
 	}
