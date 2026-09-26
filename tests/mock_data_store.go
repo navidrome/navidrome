@@ -228,7 +228,7 @@ func (db *MockDataStore) Player() model.PlayerRepository {
 	if db.RealDS != nil {
 		return db.RealDS.Player()
 	}
-	db.MockedPlayer = struct{ model.PlayerRepository }{}
+	db.MockedPlayer = CreateMockPlayerRepo()
 	return db.MockedPlayer
 }
 

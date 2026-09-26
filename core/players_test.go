@@ -114,6 +114,15 @@ var _ = Describe("Players", func() {
 			Expect(trc.ID).To(Equal("1"))
 		})
 
+		It("does not rename a player that has an API key", func() {
+			plr := &model.Player{ID: "123", Name: "My Phone", Client: "client", UserId: "userid", HasAPIKey: true}
+			repo.add(plr)
+			p, _, err := players.Register(ctx, "123", "client", "chrome", "1.2.3.4")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.ID).To(Equal("123"))
+			Expect(p.Name).To(Equal("My Phone"))
+		})
+
 		Context("bad username casing", func() {
 			ctx := log.NewContext(context.TODO())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "Johndoe"})
@@ -128,6 +137,34 @@ var _ = Describe("Players", func() {
 				Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
 				Expect(repo.lastSaved).To(Equal(p))
 			})
+		})
+	})
+
+	Describe("Touch", func() {
+		It("records usage but keeps the name and client", func() {
+			plr := model.Player{ID: "123", Name: "My Phone", Client: "Symfonium", UserId: "userid", HasAPIKey: true}
+			p, trc, err := players.Touch(ctx, plr, "OtherClient", "android", "1.2.3.4")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Name).To(Equal("My Phone"))
+			Expect(p.Client).To(Equal("Symfonium"))
+			Expect(p.UserAgent).To(Equal("android"))
+			Expect(p.IP).To(Equal("1.2.3.4"))
+			Expect(p.LastSeen).To(BeTemporally(">=", beforeRegister))
+			Expect(repo.lastSaved).To(Equal(p))
+			Expect(trc).To(BeNil())
+		})
+
+		It("fills in the client on first use", func() {
+			p, _, err := players.Touch(ctx, model.Player{ID: "123", Name: "Manual", UserId: "userid"}, "Symfonium", "android", "1.2.3.4")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Client).To(Equal("Symfonium"))
+		})
+
+		It("returns the player's transcoding", func() {
+			p, trc, err := players.Touch(ctx, model.Player{ID: "123", UserId: "userid", TranscodingId: "1"}, "c", "ua", "1.2.3.4")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.ID).To(Equal("123"))
+			Expect(trc.ID).To(Equal("1"))
 		})
 	})
 })

@@ -2,10 +2,16 @@ package persistence
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"regexp"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/pocketbase/dbx"
 )
 
@@ -32,7 +38,7 @@ func (r *playerRepository) Put(ctx context.Context, p *model.Player) error {
 
 func (r *playerRepository) selectPlayer(ctx context.Context, options ...model.QueryOptions) SelectBuilder {
 	return r.newSelect(ctx, options...).
-		Columns("player.*").
+		Columns("player.*", "player.api_key_hash is not null as has_api_key").
 		Join("user ON player.user_id = user.id").
 		Columns("user.user_name username")
 }
@@ -103,30 +109,113 @@ func (r *playerRepository) ReadAll(ctx context.Context, options ...rest.QueryOpt
 	return res, err
 }
 
-// isPermitted authorizes creating a new record, based on the owner declared in the request body.
-// This is only safe for inserts: there is no stored row yet, and a non-admin may only create a
-// player they own. Updates must not use this (the body owner is attacker-controlled); they go
-// through updateOwned, which authorizes against the persisted user_id in the WHERE clause.
-func (r *playerRepository) isPermitted(ctx context.Context, p *model.Player) bool {
-	u := loggedUser(ctx)
-	return u.IsAdmin || p.UserId == u.ID
+var apiKeyFormat = regexp.MustCompile(`^` + consts.APIKeyPrefix + `[0-9A-Za-z]{22}$`)
+
+func apiKeyValidationError(msg string) error {
+	return &rest.ValidationError{Errors: map[string]string{"apiKey": msg}}
+}
+
+func validateAPIKey(key string) error {
+	if !apiKeyFormat.MatchString(key) {
+		return apiKeyValidationError("resources.player.validation.apiKeyFormat")
+	}
+	return nil
 }
 
 func (r *playerRepository) Save(ctx context.Context, t *model.Player) (string, error) {
-	if !r.isPermitted(ctx, t) {
+	u := loggedUser(ctx)
+	if t.UserId == "" && u.ID != invalidUserId {
+		t.UserId = u.ID
+	}
+	if t.UserId != u.ID {
 		return "", rest.ErrPermissionDenied
 	}
-	return r.put(ctx, "", t) // Save only creates; edits go through the owner-scoped Update
+	// Hand-made players are only reachable through a key, so one is required
+	if t.APIKey == nil || *t.APIKey == "" {
+		return "", apiKeyValidationError("ra.validation.required")
+	}
+	if err := validateAPIKey(*t.APIKey); err != nil {
+		return "", err
+	}
+	values, err := toSQLArgs(t)
+	if err != nil {
+		return "", err
+	}
+	// Save only creates, so the key hash goes in the same INSERT and the unique index settles races
+	values["id"] = id.NewRandom()
+	values["api_key_hash"] = hashAPIKey(*t.APIKey)
+	_, err = r.executeSQL(ctx, Insert(r.tableName).SetMap(values))
+	if isUniqueViolation(err) {
+		return "", apiKeyValidationError("ra.validation.unique")
+	}
+	if err != nil {
+		return "", err
+	}
+	return values["id"].(string), nil
 }
 
 func (r *playerRepository) Update(ctx context.Context, id string, entity model.Player, cols ...string) error {
 	t := &entity
 	t.ID = id
-	return r.updateOwned(ctx, id, t, cols...)
+	if t.APIKey == nil {
+		return r.updateOwned(ctx, id, t, cols...)
+	}
+	// The key and the other columns are two writes; commit both or neither
+	return r.inTx(func(tx *playerRepository) error {
+		if err := tx.SetAPIKey(ctx, id, *t.APIKey); err != nil {
+			return err
+		}
+		return tx.updateOwned(ctx, id, t, cols...)
+	})
+}
+
+func (r *playerRepository) inTx(block func(tx *playerRepository) error) error {
+	conn, ok := r.db.(*dbx.DB)
+	if !ok {
+		return block(r) // already inside a transaction
+	}
+	return conn.Transactional(func(tx *dbx.Tx) error {
+		return block(NewPlayerRepository(tx).(*playerRepository))
+	})
 }
 
 func (r *playerRepository) Delete(ctx context.Context, ids ...string) error {
 	return r.deleteOwnedAll(ctx, ids...)
+}
+
+// Keys are long random strings, not user-chosen passwords, so a fast unsalted hash is enough and keeps lookups indexed.
+func hashAPIKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+func (r *playerRepository) FindByAPIKey(ctx context.Context, key string) (*model.Player, error) {
+	sel := r.selectPlayer(ctx).Where(Eq{"player.api_key_hash": hashAPIKey(key)})
+	var res model.Player
+	if err := r.queryOne(ctx, sel, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// SetAPIKey stores the key's hash, or revokes it when key is empty. Setting is owner-only, even for
+// admins, so nobody can mint a login for someone else.
+func (r *playerRepository) SetAPIKey(ctx context.Context, playerID, key string) error {
+	if key == "" {
+		return r.updateOwnedRow(ctx, playerID, ownerOrAdmin, map[string]any{"api_key_hash": nil})
+	}
+	if err := validateAPIKey(key); err != nil {
+		return err
+	}
+	err := r.updateOwnedRow(ctx, playerID, ownerOnly, map[string]any{"api_key_hash": hashAPIKey(key)})
+	if isUniqueViolation(err) {
+		return apiKeyValidationError("ra.validation.unique")
+	}
+	return err
+}
+
+func isUniqueViolation(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
 }
 
 var _ model.PlayerRepository = (*playerRepository)(nil)

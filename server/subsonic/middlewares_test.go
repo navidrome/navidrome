@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -115,6 +116,14 @@ var _ = Describe("Middlewares", func() {
 			Expect(version).To(Equal("1.15"))
 			client, _ := request.ClientFrom(next.req.Context())
 			Expect(client).To(Equal("test"))
+
+			Expect(next.called).To(BeTrue())
+		})
+
+		It("does not require u when apiKey is present", func() {
+			r := newGetRequest("apiKey=nds_abc", "v=1.15", "c=test")
+			cp := checkRequiredParameters(next)
+			cp.ServeHTTP(w, r)
 
 			Expect(next.called).To(BeTrue())
 		})
@@ -311,6 +320,101 @@ var _ = Describe("Middlewares", func() {
 			})
 		})
 
+		When("using API key authentication", func() {
+			var key string
+			serve := func(params ...string) {
+				authenticate(ds)(next).ServeHTTP(w, newGetRequest(params...))
+			}
+
+			BeforeEach(func() {
+				usr, err := ds.User().FindByUsername(ctx, "admin")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
+				key = "nds_0123456789abcdefghijkl"
+				Expect(ds.Player().SetAPIKey(ctx, "player-1", key)).To(Succeed())
+			})
+
+			It("authenticates the owner and binds the key's player", func() {
+				serve("apiKey=" + key)
+
+				Expect(next.called).To(BeTrue())
+				user, _ := request.UserFrom(next.req.Context())
+				Expect(user.UserName).To(Equal("admin"))
+				username, _ := request.UsernameFrom(next.req.Context())
+				Expect(username).To(Equal("admin"))
+				player, ok := request.PlayerFrom(next.req.Context())
+				Expect(ok).To(BeTrue())
+				Expect(player.ID).To(Equal("player-1"))
+			})
+
+			It("accepts the key in a POST form body", func() {
+				r := newPostRequest("", "apiKey="+key)
+				cp := postFormToQueryParams(authenticate(ds)(next))
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				player, _ := request.PlayerFrom(next.req.Context())
+				Expect(player.ID).To(Equal("player-1"))
+			})
+
+			It("rejects an unknown key with error 44", func() {
+				serve("apiKey=nds_unknown")
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="44"`))
+				Expect(next.called).To(BeFalse())
+			})
+
+			DescribeTable("rejects apiKey mixed with other credentials with error 43",
+				func(extra string) {
+					serve("apiKey="+key, extra)
+
+					Expect(w.Body.String()).To(ContainSubstring(`code="43"`))
+					Expect(next.called).To(BeFalse())
+				},
+				Entry("u", "u=admin"),
+				Entry("p", "p=wordpass"),
+				Entry("t", "t=abc"),
+				Entry("s", "s=abc"),
+				Entry("jwt", "jwt=abc"),
+				Entry("empty u", "u="),
+				Entry("empty p", "p="),
+			)
+
+			Context("key sent as the password", func() {
+				It("authenticates and binds the key's player", func() {
+					serve("u=admin", "p="+key)
+
+					Expect(next.called).To(BeTrue())
+					player, ok := request.PlayerFrom(next.req.Context())
+					Expect(ok).To(BeTrue())
+					Expect(player.ID).To(Equal("player-1"))
+				})
+
+				It("accepts the hex-encoded form", func() {
+					serve("u=admin", "p=enc:"+hex.EncodeToString([]byte(key)))
+
+					Expect(next.called).To(BeTrue())
+				})
+
+				It("still accepts a real password that starts with the key prefix", func() {
+					Expect(ds.User().Put(ctx, &model.User{UserName: "prefixed", NewPassword: "nds_secret"})).To(Succeed())
+					serve("u=prefixed", "p=nds_secret")
+
+					Expect(next.called).To(BeTrue())
+					_, ok := request.PlayerFrom(next.req.Context())
+					Expect(ok).To(BeFalse())
+				})
+
+				It("rejects another user's key with error 40", func() {
+					Expect(ds.User().Put(ctx, &model.User{UserName: "other", NewPassword: "pw"})).To(Succeed())
+					serve("u=other", "p="+key)
+
+					Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+					Expect(next.called).To(BeFalse())
+				})
+			})
+		})
+
 		When("failed attempts reach AuthRequestLimit", func() {
 			var cp http.Handler
 
@@ -376,6 +480,21 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeTrue())
 			})
 
+			It("does not count server errors when a key is sent as the password", func() {
+				usr, _ := ds.User().FindByUsername(ctx, "admin")
+				playerRepo := ds.Player().(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				key := "nds_0123456789abcdefghijkl"
+				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+
+				playerRepo.Error = errors.New("db down")
+				failTimes(5, "u=admin", "p="+key)
+				playerRepo.Error = nil
+
+				serve(newGetRequest("u=admin", "p="+key))
+				Expect(next.called).To(BeTrue())
+			})
+
 			It("does not block other usernames from the same IP", func() {
 				_ = ds.User().Put(ctx, &model.User{UserName: "other", NewPassword: "otherpass"})
 				failTimes(3, "u=admin", "p=WRONG")
@@ -402,6 +521,25 @@ var _ = Describe("Middlewares", func() {
 				r.Header.Add("Remote-User", "admin")
 				r = r.WithContext(request.WithReverseProxyIp(r.Context(), "192.168.1.1"))
 				serve(r)
+				Expect(next.called).To(BeTrue())
+			})
+
+			It("throttles a repeated bad key without locking out valid keys from the same IP", func() {
+				usr, _ := ds.User().FindByUsername(ctx, "admin")
+				playerRepo := ds.Player().(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				key := "nds_0123456789abcdefghijkl"
+				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+
+				for range 3 {
+					Expect(serve(newGetRequest("apiKey=nds_bad")).Body.String()).To(ContainSubstring(`code="44"`))
+				}
+				playerRepo.APIKeys["nds_bad"] = "player-1"
+				rec := serve(newGetRequest("apiKey=nds_bad"))
+				Expect(next.called).To(BeFalse())
+				Expect(rec.Body.String()).To(ContainSubstring(`code="44"`))
+
+				serve(newGetRequest("apiKey=" + key))
 				Expect(next.called).To(BeTrue())
 			})
 
@@ -530,6 +668,24 @@ var _ = Describe("Middlewares", func() {
 
 			cookieStr := w.Header().Get("Set-Cookie")
 			Expect(cookieStr).To(BeEmpty())
+		})
+
+		Context("player bound by an API key", func() {
+			BeforeEach(func() {
+				r = r.WithContext(request.WithPlayer(r.Context(), model.Player{ID: "keyed"}))
+				gp := getPlayer(mockedPlayers)(next)
+				gp.ServeHTTP(w, r)
+			})
+
+			It("uses the key's player", func() {
+				Expect(mockedPlayers.touched).To(BeTrue())
+				player, _ := request.PlayerFrom(next.req.Context())
+				Expect(player.ID).To(Equal("keyed"))
+			})
+
+			It("does not set the player cookie", func() {
+				Expect(w.Header().Get("Set-Cookie")).To(BeEmpty())
+			})
 		})
 
 		Context("PlayerId specified in Cookies", func() {
@@ -712,6 +868,12 @@ func (mh *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type mockPlayers struct {
 	core.Players
 	transcoding *model.Transcoding
+	touched     bool
+}
+
+func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, _ string) (*model.Player, *model.Transcoding, error) {
+	mp.touched = true
+	return &plr, mp.transcoding, nil
 }
 
 func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player, error) {

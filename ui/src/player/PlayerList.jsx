@@ -9,6 +9,7 @@ import {
   SearchInput,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
+import { FaKey } from 'react-icons/fa'
 import { SimpleList, List } from '../common'
 
 const PlayerFilter = (props) => (
@@ -42,6 +43,11 @@ const PlayerList = ({ permissions, ...props }) => {
           <FunctionField
             source="maxBitRate"
             render={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
+          />
+          <FunctionField
+            source="hasApiKey"
+            sortable={false}
+            render={(r) => (r.hasApiKey ? <FaKey /> : null)}
           />
           <DateField source="lastSeen" showTime sortByOrder={'DESC'} />
         </Datagrid>

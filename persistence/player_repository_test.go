@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
@@ -11,6 +12,14 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
 )
+
+const testAPIKey = "nds_0123456789abcdefghijkl"
+
+func expectAPIKeyError(err error, msg string) {
+	var verr *rest.ValidationError
+	ExpectWithOffset(1, errors.As(err, &verr)).To(BeTrue())
+	ExpectWithOffset(1, verr.Errors).To(HaveKeyWithValue("apiKey", msg))
+}
 
 var _ = Describe("PlayerRepository", func() {
 	var adminRepo *playerRepository
@@ -178,11 +187,12 @@ var _ = Describe("PlayerRepository", func() {
 				clone := player
 				clone.ID = ""
 				clone.IP = "192.168.1.1"
+				clone.APIKey = new(testAPIKey)
 				id, err := repo.Save(repoCtx, &clone)
 
 				if clone.UserId == "" {
 					Expect(err).To(HaveOccurred())
-				} else if !admin && player.Username == adminPlayer1.Username {
+				} else if player.UserId != userPlayer.UserId {
 					Expect(err).To(Equal(rest.ErrPermissionDenied))
 					clone.UserId = ""
 				} else {
@@ -202,12 +212,13 @@ var _ = Describe("PlayerRepository", func() {
 				} else {
 					Expect(count).To(Equal(baseCount + 1))
 					Expect(err).To(BeNil())
+					clone.APIKey = nil
+					clone.HasAPIKey = true
 					Expect(*newItem).To(Equal(clone))
 				}
 			},
 				Entry("same user", userPlayer),
 				Entry("other item", otherPlayer),
-				Entry("fake item", model.Player{}),
 			)
 		})
 
@@ -251,6 +262,232 @@ var _ = Describe("PlayerRepository", func() {
 		Entry("regular context", false, model.Players{regularPlayer}, regularPlayer, adminPlayer1),
 	)
 
+	Describe("API keys", func() {
+		const key = testAPIKey
+		const otherKey = "nds_ABCDEFGHIJKLMNOPQRSTUV"
+		var ownerCtx, otherCtx context.Context
+
+		BeforeEach(func() {
+			ownerCtx = request.WithUser(log.NewContext(GinkgoT().Context()), regularUser)
+			otherCtx = request.WithUser(log.NewContext(GinkgoT().Context()), thirdUser)
+		})
+
+		storedHash := func(id string) string {
+			var row struct {
+				Hash string `db:"api_key_hash"`
+			}
+			Expect(database.NewQuery("select coalesce(api_key_hash, '') as api_key_hash from player where id = {:id}").
+				Bind(dbx.Params{"id": id}).One(&row)).To(Succeed())
+			return row.Hash
+		}
+
+		Describe("SetAPIKey", func() {
+			It("stores only the hash and finds the player by the key", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+
+				Expect(storedHash(regularPlayer.ID)).To(Equal(hashAPIKey(key)))
+				plr, err := adminRepo.FindByAPIKey(ctx, key)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(plr.ID).To(Equal(regularPlayer.ID))
+				Expect(plr.HasAPIKey).To(BeTrue())
+				Expect(plr.APIKey).To(BeNil())
+			})
+
+			It("replaces the previous key", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, otherKey)).To(Succeed())
+
+				_, err := adminRepo.FindByAPIKey(ctx, key)
+				Expect(err).To(MatchError(model.ErrNotFound))
+				_, err = adminRepo.FindByAPIKey(ctx, otherKey)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			DescribeTable("rejects malformed keys",
+				func(bad string) {
+					err := adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, bad)
+					expectAPIKeyError(err, "resources.player.validation.apiKeyFormat")
+					Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+				},
+				Entry("no prefix", "0123456789abcdefghijklmn"),
+				Entry("too short", "nds_short"),
+				Entry("too long", key+"x"),
+				Entry("bad chars", "nds_0123456789abcdefghij-!"),
+			)
+
+			It("revokes with an empty key, by the owner or an admin", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, "")).To(Succeed())
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+				Expect(adminRepo.SetAPIKey(ctx, regularPlayer.ID, "")).To(Succeed())
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+			})
+
+			It("accepts revoking a player that has no key", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, "")).To(Succeed())
+			})
+
+			It("does not let an admin set a key on another user's player", func() {
+				Expect(adminRepo.SetAPIKey(ctx, regularPlayer.ID, key)).To(MatchError(rest.ErrPermissionDenied))
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+			})
+
+			It("does not let another user set or revoke", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+				Expect(adminRepo.SetAPIKey(otherCtx, regularPlayer.ID, otherKey)).To(MatchError(rest.ErrPermissionDenied))
+				Expect(adminRepo.SetAPIKey(otherCtx, regularPlayer.ID, "")).To(MatchError(rest.ErrPermissionDenied))
+				Expect(storedHash(regularPlayer.ID)).To(Equal(hashAPIKey(key)))
+			})
+
+			It("returns not found for a missing player", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, "missing", key)).To(MatchError(rest.ErrNotFound))
+				Expect(adminRepo.SetAPIKey(ownerCtx, "missing", "")).To(MatchError(rest.ErrNotFound))
+			})
+
+			It("does not find unknown or empty keys", func() {
+				_, err := adminRepo.FindByAPIKey(ctx, otherKey)
+				Expect(err).To(MatchError(model.ErrNotFound))
+				_, err = adminRepo.FindByAPIKey(ctx, "")
+				Expect(err).To(MatchError(model.ErrNotFound))
+			})
+
+			It("drops the key with the player", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+				Expect(adminRepo.Delete(ownerCtx, regularPlayer.ID)).To(Succeed())
+				_, err := adminRepo.FindByAPIKey(ctx, key)
+				Expect(err).To(MatchError(model.ErrNotFound))
+			})
+		})
+
+		Describe("Save (create)", func() {
+			It("creates the player with the key, owned by the logged-in user", func() {
+				id, err := adminRepo.Save(ownerCtx, &model.Player{Name: "Manual player", APIKey: new(key)})
+				Expect(err).ToNot(HaveOccurred())
+
+				plr, err := adminRepo.FindByAPIKey(ctx, key)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(plr.ID).To(Equal(id))
+				Expect(plr.UserId).To(Equal(regularUser.ID))
+			})
+
+			It("requires a key", func() {
+				count, _ := adminRepo.CountAll(ctx)
+				_, err := adminRepo.Save(ownerCtx, &model.Player{Name: "No key"})
+				expectAPIKeyError(err, "ra.validation.required")
+
+				_, err = adminRepo.Save(ownerCtx, &model.Player{Name: "Empty key", APIKey: new("")})
+				expectAPIKeyError(err, "ra.validation.required")
+				Expect(adminRepo.CountAll(ctx)).To(Equal(count))
+			})
+
+			It("rejects a malformed key without creating the player", func() {
+				count, _ := adminRepo.CountAll(ctx)
+				_, err := adminRepo.Save(ownerCtx, &model.Player{Name: "Bad", APIKey: new("nds_bad")})
+				expectAPIKeyError(err, "resources.player.validation.apiKeyFormat")
+				Expect(adminRepo.CountAll(ctx)).To(Equal(count))
+			})
+
+			It("does not let an admin create a keyed player for another user", func() {
+				count, _ := adminRepo.CountAll(ctx)
+				_, err := adminRepo.Save(ctx, &model.Player{Name: "For someone", UserId: regularUser.ID, APIKey: new(key)})
+				Expect(err).To(MatchError(rest.ErrPermissionDenied))
+				_, err = adminRepo.Save(ctx, &model.Player{Name: "For someone", UserId: regularUser.ID})
+				Expect(err).To(MatchError(rest.ErrPermissionDenied))
+				Expect(adminRepo.CountAll(ctx)).To(Equal(count))
+			})
+
+			It("rejects a key already used by another player without creating the player", func() {
+				Expect(adminRepo.SetAPIKey(ctx, adminPlayer1.ID, key)).To(Succeed())
+				count, _ := adminRepo.CountAll(ctx)
+				_, err := adminRepo.Save(ownerCtx, &model.Player{Name: "Duplicate", APIKey: new(key)})
+				expectAPIKeyError(err, "ra.validation.unique")
+				Expect(adminRepo.CountAll(ctx)).To(Equal(count))
+			})
+		})
+
+		Describe("Update (edit)", func() {
+			It("rolls back the key change when the rest of the edit fails", func() {
+				_, err := database.NewQuery(`create trigger fail_player_rename before update of name on player
+					when new.name = 'boom' begin select raise(abort, 'boom'); end`).Execute()
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() {
+					_, _ = database.NewQuery("drop trigger if exists fail_player_rename").Execute()
+				})
+
+				plr := regularPlayer
+				plr.Name = "boom"
+				plr.APIKey = new(key)
+				Expect(adminRepo.Update(ownerCtx, plr.ID, plr, "name", "apiKey")).ToNot(Succeed())
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+			})
+
+			It("keeps the key when apiKey is absent (a normal edit)", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+
+				plr := regularPlayer
+				plr.Name = "Renamed"
+				Expect(adminRepo.Update(ownerCtx, plr.ID, plr, "name", "hasApiKey")).To(Succeed())
+				Expect(adminRepo.Update(ownerCtx, plr.ID, plr)).To(Succeed())
+
+				found, err := adminRepo.FindByAPIKey(ctx, key)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(found.Name).To(Equal("Renamed"))
+			})
+
+			It("sets a new key when apiKey has a value", func() {
+				plr := regularPlayer
+				plr.APIKey = new(key)
+				Expect(adminRepo.Update(ownerCtx, plr.ID, plr, "name", "apiKey")).To(Succeed())
+				Expect(storedHash(regularPlayer.ID)).To(Equal(hashAPIKey(key)))
+			})
+
+			It("revokes the key when apiKey is empty", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+				plr := regularPlayer
+				plr.APIKey = new("")
+				Expect(adminRepo.Update(ownerCtx, plr.ID, plr, "apiKey")).To(Succeed())
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+			})
+
+			It("lets an admin edit another user's keyed player without touching the key", func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+				plr := regularPlayer
+				plr.MaxBitRate = 192
+				Expect(adminRepo.Update(ctx, plr.ID, plr, "maxBitRate", "hasApiKey")).To(Succeed())
+				Expect(storedHash(regularPlayer.ID)).To(Equal(hashAPIKey(key)))
+			})
+
+			It("refuses an admin setting a key on another user's player and leaves other columns alone", func() {
+				plr := regularPlayer
+				plr.Name = "Hijacked"
+				plr.APIKey = new(key)
+				Expect(adminRepo.Update(ctx, plr.ID, plr, "name", "apiKey")).To(MatchError(rest.ErrPermissionDenied))
+
+				got, err := adminRepo.Get(ctx, regularPlayer.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(got.Name).To(Equal(regularPlayer.Name))
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+			})
+
+			It("refuses a key already used by another player and leaves other columns alone", func() {
+				Expect(adminRepo.SetAPIKey(ctx, adminPlayer1.ID, key)).To(Succeed())
+				plr := regularPlayer
+				plr.Name = "Renamed"
+				plr.APIKey = new(key)
+				err := adminRepo.Update(ownerCtx, plr.ID, plr, "name", "apiKey")
+				expectAPIKeyError(err, "ra.validation.unique")
+
+				got, err := adminRepo.Get(ctx, regularPlayer.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(got.Name).To(Equal(regularPlayer.Name))
+				Expect(storedHash(regularPlayer.ID)).To(BeEmpty())
+				Expect(storedHash(adminPlayer1.ID)).To(Equal(hashAPIKey(key)))
+			})
+		})
+	})
+
 	Describe("Ownership enforcement (cross-tenant write protection)", func() {
 		var regularRepo *playerRepository
 		var regularCtx context.Context
@@ -287,6 +524,7 @@ var _ = Describe("PlayerRepository", func() {
 				Name:           "HIJACKED",
 				UserId:         regularUser.ID,
 				ReportRealPath: true,
+				APIKey:         new(testAPIKey),
 			}
 
 			id, err := regularRepo.Save(regularCtx, &spoofed)

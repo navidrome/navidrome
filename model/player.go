@@ -21,6 +21,8 @@ type Player struct {
 	MaxBitRate      int       `structs:"max_bit_rate" json:"maxBitRate"`
 	ReportRealPath  bool      `structs:"report_real_path" json:"reportRealPath"`
 	ScrobbleEnabled bool      `structs:"scrobble_enabled" json:"scrobbleEnabled"`
+	HasAPIKey       bool      `structs:"-" db:"has_api_key" json:"hasApiKey"`
+	APIKey          *string   `structs:"-" json:"apiKey,omitempty"`
 }
 
 type Players []Player
@@ -33,4 +35,6 @@ type PlayerRepository interface {
 	Put(ctx context.Context, p *Player) error
 	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
 	CountByClient(ctx context.Context, options ...QueryOptions) (map[string]int64, error)
+	FindByAPIKey(ctx context.Context, key string) (*Player, error)
+	SetAPIKey(ctx context.Context, playerID, key string) error
 }

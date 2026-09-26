@@ -85,6 +85,22 @@ func (r sqlRepository) addRestriction(ctx context.Context, sql ...Sqlizer) Sqliz
 	return s
 }
 
+// writeAccess says who may change a row in a table with a user_id column.
+type writeAccess int
+
+const (
+	ownerOrAdmin writeAccess = iota // admins may write any row
+	ownerOnly                       // even admins may only write their own rows
+)
+
+// ownedRow matches the row rowID only if the logged-in user may write it under access.
+func (r sqlRepository) ownedRow(ctx context.Context, rowID string, access writeAccess) Sqlizer {
+	if access == ownerOnly {
+		return And{Eq{"id": rowID}, Eq{"user_id": loggedUser(ctx).ID}}
+	}
+	return r.addRestriction(ctx, Eq{"id": rowID})
+}
+
 func (r *sqlRepository) registerModel(instance any, filters map[string]filterFunc) {
 	if r.tableName == "" {
 		r.tableName = strings.TrimPrefix(reflect.TypeOf(instance).String(), "*model.")
@@ -494,15 +510,12 @@ func (r sqlRepository) updateOwned(ctx context.Context, id string, m any, colsTo
 	}
 	updateValues := filterUpdateValues(values, id, colsToUpdate...)
 	delete(updateValues, "user_id") // ownership is immutable on update
-	update := Update(r.tableName).Where(r.addRestriction(ctx, Eq{"id": id})).SetMap(updateValues)
-	count, err := r.executeSQL(ctx, update)
-	if err != nil {
-		return err
-	}
-	if count == 0 {
-		return r.classifyOwnedWriteMiss(ctx, id)
-	}
-	return nil
+	return r.updateOwnedRow(ctx, id, ownerOrAdmin, updateValues)
+}
+
+// updateOwnedRow sets values on the row rowID if the logged-in user may write it under access.
+func (r sqlRepository) updateOwnedRow(ctx context.Context, rowID string, access writeAccess, values map[string]any) error {
+	return r.runRowWrite(ctx, rowID, Update(r.tableName).SetMap(values).Where(r.ownedRow(ctx, rowID, access)))
 }
 
 // deleteOwned performs an atomic, ownership-restricted delete of the row identified by id, for
@@ -511,12 +524,17 @@ func (r sqlRepository) updateOwned(ctx context.Context, id string, m any, colsTo
 // does not match and is left untouched. The failure path mirrors updateOwned (see
 // classifyOwnedWriteMiss), so there is no TOCTOU on the delete.
 func (r sqlRepository) deleteOwned(ctx context.Context, id string) error {
-	count, err := r.executeSQL(ctx, Delete(r.tableName).Where(r.addRestriction(ctx, Eq{"id": id})))
+	return r.runRowWrite(ctx, id, Delete(r.tableName).Where(r.ownedRow(ctx, id, ownerOrAdmin)))
+}
+
+// runRowWrite executes q, a write already filtered by ownedRow(rowID, …), and classifies a miss.
+func (r sqlRepository) runRowWrite(ctx context.Context, rowID string, q Sqlizer) error {
+	count, err := r.executeSQL(ctx, q)
 	if err != nil {
 		return err
 	}
 	if count == 0 {
-		return r.classifyOwnedWriteMiss(ctx, id)
+		return r.classifyOwnedWriteMiss(ctx, rowID)
 	}
 	return nil
 }
