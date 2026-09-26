@@ -23,12 +23,20 @@ func NewPlayerRepository(db dbx.Builder) model.PlayerRepository {
 	r := &playerRepository{}
 	r.db = db
 	r.registerModel(&model.Player{}, map[string]filterFunc{
-		"name": containsFilter("player.name"),
+		"name":      containsFilter("player.name"),
+		"hasapikey": hasAPIKeyFilter,
 	})
 	r.setSortMappings(map[string]string{
 		"user_name": "username", //TODO rename all user_name and userName to username
 	})
 	return r
+}
+
+func hasAPIKeyFilter(_ string, value any) Sqlizer {
+	if v, _ := value.(string); strings.EqualFold(v, "true") {
+		return NotEq{"player.api_key_hash": nil}
+	}
+	return Eq{"player.api_key_hash": nil}
 }
 
 func (r *playerRepository) Put(ctx context.Context, p *model.Player) error {

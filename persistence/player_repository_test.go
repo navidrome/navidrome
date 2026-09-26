@@ -361,6 +361,33 @@ var _ = Describe("PlayerRepository", func() {
 			})
 		})
 
+		Describe("hasApiKey filter", func() {
+			BeforeEach(func() {
+				Expect(adminRepo.SetAPIKey(ownerCtx, regularPlayer.ID, key)).To(Succeed())
+			})
+
+			filtered := func(value string) []string {
+				res, err := adminRepo.ReadAll(ctx, rest.QueryOptions{Filters: map[string]any{"hasApiKey": value}})
+				Expect(err).ToNot(HaveOccurred())
+				var ids []string
+				for _, p := range res {
+					ids = append(ids, p.ID)
+				}
+				return ids
+			}
+
+			It("lists only players with a key", func() {
+				Expect(filtered("true")).To(ConsistOf(regularPlayer.ID))
+				count, err := adminRepo.Count(ctx, rest.QueryOptions{Filters: map[string]any{"hasApiKey": "true"}})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(count).To(Equal(int64(1)))
+			})
+
+			It("lists only players without a key", func() {
+				Expect(filtered("false")).To(ConsistOf(adminPlayer1.ID, adminPlayer2.ID))
+			})
+		})
+
 		Describe("Save (create)", func() {
 			It("creates the player with the key, owned by the logged-in user", func() {
 				id, err := adminRepo.Save(ownerCtx, &model.Player{Name: "Manual player", APIKey: new(key)})

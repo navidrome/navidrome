@@ -182,6 +182,7 @@
     },
     "player": {
       "name": "Player |||| Players",
+      "menuName": "Players & API keys",
       "fields": {
         "name": "Name",
         "transcodingId": "Transcoding",
