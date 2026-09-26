@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Navidrome API v1. Spec-first, additive within v1. Clients discover implemented
-    capability modules through `GET /server` and never sniff versions.
+    capability modules through `GET /capabilities` and never sniff versions.
 
     Enums are open: new values may be added to any enum within v1. Clients must
     accept values they do not recognise instead of failing.
@@ -40,8 +40,7 @@ paths:
       summary: Describe the server
       description: |
         Returns the public server description. No authentication required.
-        Authenticated requests will additionally receive the implemented capability modules
-        once authentication is available.
+        Capability modules are listed by `GET /capabilities`.
       responses:
         '200':
           description: Server description.
@@ -51,6 +50,23 @@ paths:
                 $ref: '#/components/schemas/ServerInfo'
         '500':
           $ref: '#/components/responses/InternalError'
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      x-module: core
+      x-stability-level: alpha
+      tags: [server]
+      summary: List implemented capability modules
+      description: The capability modules this server implements. Any valid access token may read it, whatever its scopes.
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Implemented modules.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Capabilities'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /openapi.json:
     get:
       operationId: getOpenAPISpecJSON
@@ -342,12 +358,19 @@ components:
           type: boolean
           description: True until the first admin user has been created.
         loginMethods:
-          type: array
-          description: Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
-          items:
-            type: string
-            enum:
-              - password
+          $ref: '#/components/schemas/LoginMethods'
+    LoginMethods:
+      type: object
+      description: |
+        Login methods this server accepts, keyed by method. A missing key means the method is not offered.
+        Keys are optional on purpose: discovery is read by clients of any version against servers of any
+        version, so new methods are added as new optional keys. Clients ignore keys they do not know.
+      properties:
+        password:
+          $ref: '#/components/schemas/PasswordLoginMethod'
+    PasswordLoginMethod:
+      type: object
+      description: Username and password login (`POST /auth/login`). No settings yet.
     Problem:
       type: object
       description: RFC 9457 problem details, returned for every 4xx and 5xx response.
@@ -409,6 +432,35 @@ components:
         message:
           type: string
           description: Why the value was rejected.
+    Capabilities:
+      type: object
+      description: |
+        Capability modules this server implements, keyed by module. Keys are optional; a missing key means the
+        module is not implemented. New modules are added as new optional keys. These are server facts, not what
+        the calling token may use.
+      properties:
+        core:
+          $ref: '#/components/schemas/CoreCapability'
+        password:
+          $ref: '#/components/schemas/PasswordCapability'
+    CoreCapability:
+      type: object
+      description: The mandatory core module.
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          description: Module version. Bumped only on semantic change.
+    PasswordCapability:
+      type: object
+      description: The password login module (login, first-admin setup, password change).
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          description: Module version. Bumped only on semantic change.
     TokenRequest:
       type: object
       description: Optional narrowing of a new access token.
@@ -654,6 +706,15 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Missing, invalid, or expired credentials.
+      headers:
+        WWW-Authenticate:
+          $ref: '#/components/headers/WWWAuthenticate'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
     NotModified:
       description: Not modified.
       headers:
@@ -661,15 +722,6 @@ components:
           $ref: '#/components/headers/ETag'
     BadRequest:
       description: The request is malformed or fails validation.
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-    Unauthorized:
-      description: Missing, invalid, or expired credentials.
-      headers:
-        WWW-Authenticate:
-          $ref: '#/components/headers/WWWAuthenticate'
       content:
         application/problem+json:
           schema:
@@ -733,11 +785,11 @@ components:
         maximum: 2000
         default: 100
   headers:
-    ETag:
-      description: Entity tag for `If-None-Match` revalidation.
-      schema:
-        type: string
     WWWAuthenticate:
       description: 'RFC 6750 Bearer challenge, for example `Bearer error="insufficient_scope", scope="read"`.'
+      schema:
+        type: string
+    ETag:
+      description: Entity tag for `If-None-Match` revalidation.
       schema:
         type: string

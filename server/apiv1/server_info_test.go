@@ -43,7 +43,8 @@ var _ = Describe("GET /server", func() {
 		Expect(info.ServerVersion).To(Equal(consts.Version))
 		Expect(info.SpecVersion).To(Equal(api.SpecVersion()))
 		Expect(info.SetupRequired).To(BeTrue())
-		Expect(info.LoginMethods).To(ConsistOf(ServerInfoLoginMethodsPassword))
+		Expect(info.LoginMethods.Password).ToNot(BeNil())
+		Expect(w.Body.String()).To(ContainSubstring(`"loginMethods":{"password":{}}`))
 	})
 
 	It("reports setupRequired=false once a user exists", func() {

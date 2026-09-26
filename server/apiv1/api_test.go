@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,6 +17,17 @@ var _ = Describe("Router", func() {
 
 	BeforeEach(func() {
 		router = New(&tests.MockDataStore{})
+	})
+
+	It("routes every operation in the embedded spec", func() {
+		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
+		Expect(err).ToNot(HaveOccurred())
+		mux := New(&tests.MockDataStore{}).Handler.(chi.Routes)
+		for path, item := range doc.Paths.Map() {
+			for method := range item.Operations() {
+				Expect(mux.Find(chi.NewRouteContext(), method, path)).To(Equal(path), method+" "+path)
+			}
+		}
 	})
 
 	It("returns a 404 problem for unknown paths", func() {

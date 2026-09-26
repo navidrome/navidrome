@@ -104,21 +104,6 @@ func (e Scope) Valid() bool {
 	}
 }
 
-// Defines values for ServerInfoLoginMethods.
-const (
-	ServerInfoLoginMethodsPassword ServerInfoLoginMethods = "password"
-)
-
-// Valid indicates whether the value is a known member of the ServerInfoLoginMethods enum.
-func (e ServerInfoLoginMethods) Valid() bool {
-	switch e {
-	case ServerInfoLoginMethodsPassword:
-		return true
-	default:
-		return false
-	}
-}
-
 // AccessToken A short-lived access token. Opaque; clients must not decode it.
 type AccessToken struct {
 	// AccessToken The token. Send it as `Authorization: Bearer <token>`.
@@ -153,6 +138,23 @@ type AuthUser struct {
 
 	// UserName Login name.
 	UserName string `json:"userName"`
+}
+
+// Capabilities Capability modules this server implements, keyed by module. Keys are optional; a missing key means the
+// module is not implemented. New modules are added as new optional keys. These are server facts, not what
+// the calling token may use.
+type Capabilities struct {
+	// Core The mandatory core module.
+	Core *CoreCapability `json:"core,omitempty"`
+
+	// Password The password login module (login, first-admin setup, password change).
+	Password *PasswordCapability `json:"password,omitempty"`
+}
+
+// CoreCapability The mandatory core module.
+type CoreCapability struct {
+	// Version Module version. Bumped only on semantic change.
+	Version int `json:"version"`
 }
 
 // CredentialsRequest Username, password and client description for a login or first-admin setup.
@@ -236,10 +238,24 @@ type GrantList struct {
 	Total int `json:"total"`
 }
 
+// LoginMethods Login methods this server accepts, keyed by method. A missing key means the method is not offered.
+// Keys are optional on purpose: discovery is read by clients of any version against servers of any
+// version, so new methods are added as new optional keys. Clients ignore keys they do not know.
+type LoginMethods struct {
+	// Password Username and password login (`POST /auth/login`). No settings yet.
+	Password *PasswordLoginMethod `json:"password,omitempty"`
+}
+
 // LogoutResponse Result of a logout.
 type LogoutResponse struct {
 	// LogoutUrl Where to send the browser to finish logging out of an external provider. Null when there is nothing more to do.
 	LogoutUrl *string `json:"logoutUrl"`
+}
+
+// PasswordCapability The password login module (login, first-admin setup, password change).
+type PasswordCapability struct {
+	// Version Module version. Bumped only on semantic change.
+	Version int `json:"version"`
 }
 
 // PasswordChangeRequest Change the caller's own password.
@@ -253,6 +269,9 @@ type PasswordChangeRequest struct {
 	// RevokeOtherGrants Revoke every other grant of the user. The calling grant always survives. Default true.
 	RevokeOtherGrants *bool `json:"revokeOtherGrants,omitempty"`
 }
+
+// PasswordLoginMethod Username and password login (`POST /auth/login`). No settings yet.
+type PasswordLoginMethod = map[string]interface{}
 
 // Problem RFC 9457 problem details, returned for every 4xx and 5xx response.
 type Problem struct {
@@ -292,8 +311,10 @@ type ScopeRequest = string
 
 // ServerInfo Public server description. Everything an add-server screen needs before login.
 type ServerInfo struct {
-	// LoginMethods Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
-	LoginMethods []ServerInfoLoginMethods `json:"loginMethods"`
+	// LoginMethods Login methods this server accepts, keyed by method. A missing key means the method is not offered.
+	// Keys are optional on purpose: discovery is read by clients of any version against servers of any
+	// version, so new methods are added as new optional keys. Clients ignore keys they do not know.
+	LoginMethods LoginMethods `json:"loginMethods"`
 
 	// Name Human-readable server product name.
 	Name string `json:"name"`
@@ -307,9 +328,6 @@ type ServerInfo struct {
 	// SpecVersion Version of the OpenAPI document this server implements.
 	SpecVersion string `json:"specVersion"`
 }
-
-// ServerInfoLoginMethods defines model for ServerInfo.LoginMethods.
-type ServerInfoLoginMethods string
 
 // TokenRequest Optional narrowing of a new access token.
 type TokenRequest struct {
@@ -400,6 +418,9 @@ type ServerInterface interface {
 	// CreateAccessToken Mint an access token
 	// (POST /auth/token)
 	CreateAccessToken(w http.ResponseWriter, r *http.Request)
+	// GetCapabilities List implemented capability modules
+	// (GET /capabilities)
+	GetCapabilities(w http.ResponseWriter, r *http.Request)
 	// GetServerInfo Describe the server
 	// (GET /server)
 	GetServerInfo(w http.ResponseWriter, r *http.Request)
@@ -448,6 +469,12 @@ func (_ Unimplemented) SetupFirstAdmin(w http.ResponseWriter, r *http.Request) {
 // CreateAccessToken Mint an access token
 // (POST /auth/token)
 func (_ Unimplemented) CreateAccessToken(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCapabilities List implemented capability modules
+// (GET /capabilities)
+func (_ Unimplemented) GetCapabilities(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -608,6 +635,20 @@ func (siw *ServerInterfaceWrapper) CreateAccessToken(w http.ResponseWriter, r *h
 	handler.ServeHTTP(w, r)
 }
 
+// GetCapabilities operation middleware
+func (siw *ServerInterfaceWrapper) GetCapabilities(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCapabilities(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetServerInfo operation middleware
 func (siw *ServerInterfaceWrapper) GetServerInfo(w http.ResponseWriter, r *http.Request) {
 
@@ -755,6 +796,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/auth/token", wrapper.CreateAccessToken)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/capabilities", wrapper.GetCapabilities)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/server", wrapper.GetServerInfo)
@@ -1508,6 +1552,62 @@ func (response CreateAccessToken500ApplicationProblemPlusJSONResponse) VisitCrea
 	return err
 }
 
+type GetCapabilitiesRequestObject struct {
+}
+
+type GetCapabilitiesResponseObject interface {
+	VisitGetCapabilitiesResponse(w http.ResponseWriter) error
+}
+
+type GetCapabilities200JSONResponse Capabilities
+
+func (response GetCapabilities200JSONResponse) VisitGetCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapabilities401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response GetCapabilities401ApplicationProblemPlusJSONResponse) VisitGetCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapabilities500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response GetCapabilities500ApplicationProblemPlusJSONResponse) VisitGetCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetServerInfoRequestObject struct {
 }
 
@@ -1568,6 +1668,9 @@ type StrictServerInterface interface {
 	// CreateAccessToken Mint an access token
 	// (POST /auth/token)
 	CreateAccessToken(ctx context.Context, request CreateAccessTokenRequestObject) (CreateAccessTokenResponseObject, error)
+	// GetCapabilities List implemented capability modules
+	// (GET /capabilities)
+	GetCapabilities(ctx context.Context, request GetCapabilitiesRequestObject) (GetCapabilitiesResponseObject, error)
 	// GetServerInfo Describe the server
 	// (GET /server)
 	GetServerInfo(ctx context.Context, request GetServerInfoRequestObject) (GetServerInfoResponseObject, error)
@@ -1808,6 +1911,30 @@ func (sh *strictHandler) CreateAccessToken(w http.ResponseWriter, r *http.Reques
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CreateAccessTokenResponseObject); ok {
 		if err := validResponse.VisitCreateAccessTokenResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCapabilities operation middleware
+func (sh *strictHandler) GetCapabilities(w http.ResponseWriter, r *http.Request) {
+	var request GetCapabilitiesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCapabilities(ctx, request.(GetCapabilitiesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCapabilities")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCapabilitiesResponseObject); ok {
+		if err := validResponse.VisitGetCapabilitiesResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
