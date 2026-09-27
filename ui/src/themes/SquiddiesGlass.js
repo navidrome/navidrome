@@ -1,3 +1,4 @@
+import config from '../config'
 import stylesheet from './SquiddiesGlass.css.js'
 
 /**
@@ -377,7 +378,9 @@ export default {
           width: '100%',
           height: '100%',
           borderRadius: '50%',
-          animation: 'pulse 1.5s ease-in-out infinite alternate',
+          animation: config.enableCoverAnimation
+            ? 'pulse 1.5s ease-in-out infinite alternate'
+            : 'none',
           zIndex: -1,
         },
         '&::after': {
@@ -391,7 +394,9 @@ export default {
           filter: 'contrast(999) sepia(1)',
           boxShadow:
             'inset 0 0 25px rgba(255,255,255,0.05), inset 0 0 95px rgba(0,0,0,0.9)',
-          animation: 'spin 6s linear infinite',
+          animation: config.enableCoverAnimation
+            ? 'spin 6s linear infinite'
+            : 'none',
         },
       },
       details: {
