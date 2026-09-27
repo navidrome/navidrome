@@ -30,6 +30,8 @@ const (
 	giveUpAfter = 12 * time.Hour
 	// itemTimeout must outlast a slow but healthy item: each image agent's call plus its download, in turn.
 	itemTimeout = 3 * time.Minute
+	// shutdownGrace lets cancelled work unwind before Run returns and the DB closes, without waiting on a stuck item.
+	shutdownGrace = 5 * time.Second
 )
 
 // drainPool drains one class of work with its own slot budget, so a blocking kind cannot
@@ -287,6 +289,10 @@ func (w *Worker) acquireWithTimeout(ctx context.Context, item model.ArtworkQueue
 	case r := <-done:
 		return r.out, r.got, r.retryIn
 	case <-ctx.Done():
+		select {
+		case <-done:
+		case <-time.After(shutdownGrace):
+		}
 		return outcomeFailed, nil, 0
 	case <-time.After(itemTimeout):
 		log.Error(ctx, "Artwork: Item timed out, moving on", "kind", item.ItemKind, "id", item.ItemID, "timeout", itemTimeout)

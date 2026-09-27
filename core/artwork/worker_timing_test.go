@@ -177,8 +177,32 @@ func TestArtworkDrainMovesOnFromAStuckItem(t *testing.T) {
 	})
 }
 
-// Shutdown must not wait on a stuck item, and must leave its row for the next run.
-func TestArtworkDrainStopsAtOnceOnShutdown(t *testing.T) {
+// Shutdown joins cancelled work that unwinds, so nothing touches the DB after Run returns.
+func TestArtworkDrainShutdownWaitsForWorkToUnwind(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		g := NewWithT(t)
+		w, queue, _, block := newStuckItemWorker(t)
+		before := *findQueued(queue, "ar", "ar1")
+		ctx, cancel := context.WithCancel(t.Context())
+		go func() {
+			time.Sleep(time.Second)
+			cancel()
+			time.Sleep(100 * time.Millisecond)
+			close(block)
+		}()
+
+		start := time.Now()
+		_, err := w.drain(ctx, 1)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(time.Since(start)).To(Equal(time.Second+100*time.Millisecond), "the drain waits for the cancelled item to return")
+		_, running := w.busy.Load(itemKey{"ar", "ar1", model.ImageTypePrimary})
+		g.Expect(running).To(BeFalse())
+		g.Expect(*findQueued(queue, "ar", "ar1")).To(Equal(before), "the row is left for the next run")
+	})
+}
+
+// Shutdown must not wait on a stuck item for longer than the grace period.
+func TestArtworkDrainShutdownDoesNotWaitOnAStuckItem(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		g := NewWithT(t)
 		w, queue, _, block := newStuckItemWorker(t)
@@ -192,8 +216,8 @@ func TestArtworkDrainStopsAtOnceOnShutdown(t *testing.T) {
 		start := time.Now()
 		_, err := w.drain(ctx, 1)
 		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(time.Since(start)).To(Equal(time.Second), "the drain returns as soon as the context is cancelled")
-		g.Expect(*findQueued(queue, "ar", "ar1")).To(Equal(before), "the row is left as it was")
+		g.Expect(time.Since(start)).To(Equal(time.Second+shutdownGrace), "the drain gives up on the stuck item after the grace period")
+		g.Expect(*findQueued(queue, "ar", "ar1")).To(Equal(before), "the row is left for the next run")
 
 		close(block)
 		synctest.Wait()
