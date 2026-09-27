@@ -838,6 +838,11 @@ var _ = Describe("Worker", func() {
 				cancel()
 				close(block) // unpark the blocked lookups so the pools can unwind
 				<-done
+				// Run returns without waiting on the lookups, so wait for them before config restores.
+				Eventually(func() (n int) {
+					w.busy.Range(func(_, _ any) bool { n++; return true })
+					return n
+				}).Should(BeZero())
 			})
 
 			Eventually(func() bool {

@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"context"
 	"errors"
 	"io"
 	"testing"
@@ -117,24 +118,32 @@ func TestArtworkGatePerAgentBreakerIsolation(t *testing.T) {
 	})
 }
 
+// newStuckItemWorker queues one artist whose agent blocks until the returned channel is closed.
+func newStuckItemWorker(t *testing.T) (*Worker, *tests.MockArtworkQueueRepo, *fakeImageAgent, chan struct{}) {
+	t.Cleanup(configtest.SetupConfig())
+	conf.Server.ArtistArtPriority = "external"
+	conf.Server.DevArtworkExternalMaxRPS = 1000
+
+	block := make(chan struct{})
+	agent := &fakeImageAgent{name: "stuckAgent", block: block}
+	ag := imageAgents(agent)
+	artists := tests.CreateMockArtistRepo()
+	artists.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
+	queue := tests.CreateMockArtworkQueueRepo()
+	ds := &tests.MockDataStore{MockedArtist: artists, MockedFolder: &fakeFolderRepo{}, MockedArtwork: tests.CreateMockArtworkRepo(), MockedArtworkQueue: queue}
+	w := NewWorker(ds, NewImageStore(t.TempDir()), ag, tests.NewMockFFmpeg(""), &fakeEventBroker{}, nil)
+	if err := queue.Enqueue(t.Context(), model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"}); err != nil {
+		t.Fatal(err)
+	}
+	return w, queue, agent, block
+}
+
 // Go can't stop a stuck item, so the drain must stop waiting for it, or the whole pool stalls.
 func TestArtworkDrainMovesOnFromAStuckItem(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		g := NewWithT(t)
-		defer configtest.SetupConfig()()
-		conf.Server.ArtistArtPriority = "external"
-		conf.Server.DevArtworkExternalMaxRPS = 1000
-
-		block := make(chan struct{})
-		agent := &fakeImageAgent{name: "stuckAgent", block: block}
-		ag := imageAgents(agent)
-		artists := tests.CreateMockArtistRepo()
-		artists.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
-		queue := tests.CreateMockArtworkQueueRepo()
-		ds := &tests.MockDataStore{MockedArtist: artists, MockedFolder: &fakeFolderRepo{}, MockedArtwork: tests.CreateMockArtworkRepo(), MockedArtworkQueue: queue}
-		w := NewWorker(ds, NewImageStore(t.TempDir()), ag, tests.NewMockFFmpeg(""), &fakeEventBroker{}, nil)
+		w, queue, agent, block := newStuckItemWorker(t)
 		ctx := t.Context()
-		g.Expect(queue.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"})).To(Succeed())
 
 		start := time.Now()
 		n, err := w.drain(ctx, 1)
@@ -165,5 +174,28 @@ func TestArtworkDrainMovesOnFromAStuckItem(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(findQueued(queue, "ar", "ar1")).To(BeNil())
 		g.Expect(agent.artistCalls).To(Equal(2), "one stuck call and one retry, never two at once")
+	})
+}
+
+// Shutdown must not wait on a stuck item, and must leave its row for the next run.
+func TestArtworkDrainStopsAtOnceOnShutdown(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		g := NewWithT(t)
+		w, queue, _, block := newStuckItemWorker(t)
+		before := *findQueued(queue, "ar", "ar1")
+		ctx, cancel := context.WithCancel(t.Context())
+		go func() {
+			time.Sleep(time.Second)
+			cancel()
+		}()
+
+		start := time.Now()
+		_, err := w.drain(ctx, 1)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(time.Since(start)).To(Equal(time.Second), "the drain returns as soon as the context is cancelled")
+		g.Expect(*findQueued(queue, "ar", "ar1")).To(Equal(before), "the row is left as it was")
+
+		close(block)
+		synctest.Wait()
 	})
 }

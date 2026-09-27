@@ -28,8 +28,8 @@ const (
 	// giveUpAfter bounds the retry budget from enqueue; past it the item settles and only an
 	// explicit reprocess retries it.
 	giveUpAfter = 12 * time.Hour
-	// itemTimeout is how long a drain waits on one item before rescheduling it.
-	itemTimeout = 5 * time.Minute
+	// itemTimeout must outlast a slow but healthy item: each image agent's call plus its download, in turn.
+	itemTimeout = 3 * time.Minute
 )
 
 // drainPool drains one class of work with its own slot budget, so a blocking kind cannot
@@ -253,6 +253,9 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
 	ctx = withTrace(ctx, &ChainTrace{})
 	out, got, retryIn := w.acquireWithTimeout(ctx, item)
+	if ctx.Err() != nil {
+		return outcomeFailed, nil // shutting down: leave the row for the next run
+	}
 	w.settle(ctx, item, out, retryIn)
 	return out, got
 }
@@ -283,6 +286,8 @@ func (w *Worker) acquireWithTimeout(ctx context.Context, item model.ArtworkQueue
 	select {
 	case r := <-done:
 		return r.out, r.got, r.retryIn
+	case <-ctx.Done():
+		return outcomeFailed, nil, 0
 	case <-time.After(itemTimeout):
 		log.Error(ctx, "Artwork: Item timed out, moving on", "kind", item.ItemKind, "id", item.ItemID, "timeout", itemTimeout)
 		traceStage(ctx, "worker", fmt.Errorf("timed out after %s", itemTimeout))
