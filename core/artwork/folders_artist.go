@@ -30,7 +30,7 @@ func fromArtistFolder(ctx context.Context, libFS fs.FS, libPath, artistFolder, p
 		if libFS == nil {
 			return nil, "", fmt.Errorf("artist folder lookup unavailable")
 		}
-		rel, err := filepath.Rel(libPath, artistFolder)
+		rel, err := utils.RelPath(libPath, artistFolder)
 		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			return nil, "", fmt.Errorf(`artist folder '%s' is outside library '%s'`, artistFolder, libPath)
 		}

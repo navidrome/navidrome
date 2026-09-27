@@ -12,6 +12,7 @@ import (
 	"github.com/djherbis/fscache"
 	"github.com/djherbis/stream"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/utils"
 )
 
 const completeMarkerSuffix = ".complete"
@@ -97,7 +98,7 @@ func (sfs *spreadFS) walkDataFiles(visit func(absoluteFilePath string)) error {
 			log.Error("Error loading cache", "dir", sfs.root, err)
 			return nil
 		}
-		path, err := filepath.Rel(sfs.root, absoluteFilePath)
+		path, err := utils.RelPath(sfs.root, absoluteFilePath)
 		if err != nil {
 			return nil //nolint:nilerr
 		}

@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/slice"
 	"golang.org/x/text/unicode/norm"
 )
@@ -148,7 +149,7 @@ func (r pathResolution) ToQualifiedString() (string, error) {
 	if !r.valid {
 		return "", fmt.Errorf("invalid path resolution")
 	}
-	relativePath, err := filepath.Rel(r.libraryPath, r.absolutePath)
+	relativePath, err := utils.RelPath(r.libraryPath, r.absolutePath)
 	if err != nil {
 		return "", err
 	}
