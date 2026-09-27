@@ -26,6 +26,8 @@ const (
 	// giveUpAfter bounds the retry budget from enqueue; past it the item settles and only an
 	// explicit reprocess retries it.
 	giveUpAfter = 12 * time.Hour
+	// itemTimeout is how long a drain waits on one item before rescheduling it.
+	itemTimeout = 5 * time.Minute
 )
 
 // drainPool drains one class of work with its own slot budget, so a blocking kind cannot
@@ -50,7 +52,13 @@ type Worker struct {
 
 	gatesMu sync.Mutex
 	gates   map[string]*extGate
+
+	// busy holds the items still being acquired, including ones a drain stopped waiting for.
+	busyMu sync.Mutex
+	busy   map[itemKey]struct{}
 }
+
+type itemKey struct{ kind, id, imageType string }
 
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
@@ -62,6 +70,7 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 		runCtx: context.Background(),
 		paused: func() bool { return false },
 		gates:  map[string]*extGate{},
+		busy:   map[itemKey]struct{}{},
 	}
 	w.proc.resolver = newResolver(ds, ag, ffmpeg, w.gate)
 	w.proc.pruneLock = w.pruneMu.RLocker()
@@ -244,8 +253,61 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
 	trace := &ChainTrace{}
 	ctx = withTrace(ctx, trace)
-	out, got, retryIn := w.proc.acquire(ctx, item)
+	out, got, retryIn := w.acquireWithTimeout(ctx, item)
+	w.settle(ctx, item, out, retryIn, trace)
+	return out, got
+}
 
+// acquireWithTimeout stops waiting on a stuck item, which Go can't stop, and never runs one item twice at once.
+func (w *Worker) acquireWithTimeout(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired, time.Duration) {
+	key := itemKey{item.ItemKind, item.ItemID, item.ImageType}
+	if !w.markBusy(key) {
+		log.Debug(ctx, "Artwork: Item still running from an earlier drain", "kind", item.ItemKind, "id", item.ItemID)
+		traceFrom(ctx).add(TraceStep{Candidate: "worker", Outcome: OutcomeError, Detail: "previous attempt still running"})
+		return outcomeFailed, nil, 0
+	}
+	type result struct {
+		out     outcome
+		got     *acquired
+		retryIn time.Duration
+	}
+	done := make(chan result, 1)
+	go func() {
+		out, got, retryIn := w.proc.acquire(ctx, item)
+		// Cleared before the send, so the next drain never sees a finished item as busy.
+		w.clearBusy(key)
+		done <- result{out, got, retryIn}
+	}()
+	timer := time.NewTimer(itemTimeout)
+	defer timer.Stop()
+	select {
+	case r := <-done:
+		return r.out, r.got, r.retryIn
+	case <-timer.C:
+		log.Error(ctx, "Artwork: Item timed out, moving on", "kind", item.ItemKind, "id", item.ItemID, "timeout", itemTimeout)
+		traceFrom(ctx).add(TraceStep{Candidate: "worker", Outcome: OutcomeError, Detail: "timed out after " + itemTimeout.String()})
+		return outcomeFailed, nil, 0
+	}
+}
+
+func (w *Worker) markBusy(key itemKey) bool {
+	w.busyMu.Lock()
+	defer w.busyMu.Unlock()
+	if _, ok := w.busy[key]; ok {
+		return false
+	}
+	w.busy[key] = struct{}{}
+	return true
+}
+
+func (w *Worker) clearBusy(key itemKey) {
+	w.busyMu.Lock()
+	defer w.busyMu.Unlock()
+	delete(w.busy, key)
+}
+
+// settle deletes or reschedules the queue row for an acquire outcome.
+func (w *Worker) settle(ctx context.Context, item model.ArtworkQueueItem, out outcome, retryIn time.Duration, trace *ChainTrace) {
 	queue := w.proc.ds.ArtworkQueue()
 	switch out {
 	case outcomeFound, outcomeAbsent:
@@ -283,7 +345,6 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			log.Warn(ctx, "Artwork: Could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	}
-	return out, got
 }
 
 // recordGiveUp keeps the last failure on the state row after the queue row is deleted. An item

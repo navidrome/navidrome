@@ -7,7 +7,10 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/gomega"
 )
@@ -111,5 +114,56 @@ func TestArtworkGatePerAgentBreakerIsolation(t *testing.T) {
 		_, _, err = w.gate("A", aFail)
 		g.Expect(err).To(MatchError(errBreakerOpen), "the probe failed, so A stays open")
 		g.Expect(aCalls).To(Equal(1))
+	})
+}
+
+// Go can't stop a stuck item, so the drain must stop waiting for it, or the whole pool stalls.
+func TestArtworkDrainMovesOnFromAStuckItem(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		g := NewWithT(t)
+		defer configtest.SetupConfig()()
+		conf.Server.ArtistArtPriority = "external"
+		conf.Server.DevArtworkExternalMaxRPS = 1000
+
+		block := make(chan struct{})
+		agent := &fakeImageAgent{name: "stuckAgent", block: block}
+		ag := imageAgents(agent)
+		artists := tests.CreateMockArtistRepo()
+		artists.SetData(model.Artists{{ID: "ar1", Name: "Artist"}})
+		queue := tests.CreateMockArtworkQueueRepo()
+		ds := &tests.MockDataStore{MockedArtist: artists, MockedFolder: &fakeFolderRepo{}, MockedArtwork: tests.CreateMockArtworkRepo(), MockedArtworkQueue: queue}
+		w := NewWorker(ds, NewImageStore(t.TempDir()), ag, tests.NewMockFFmpeg(""), &fakeEventBroker{}, nil)
+		ctx := t.Context()
+		g.Expect(queue.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "ar", ItemID: "ar1"})).To(Succeed())
+
+		start := time.Now()
+		n, err := w.drain(ctx, 1)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(n).To(Equal(1))
+		g.Expect(time.Since(start)).To(Equal(itemTimeout), "the drain stops waiting once the item times out")
+		row := findQueued(queue, "ar", "ar1")
+		g.Expect(row).ToNot(BeNil(), "a timed-out item is rescheduled, not dropped")
+		g.Expect(row.Attempts).To(Equal(1))
+		g.Expect(row.RetryAt).To(BeTemporally(">", time.Now()))
+		g.Expect(row.Trace).To(ContainSubstring("timed out"))
+
+		// Due again while the first run is still stuck: it must not start a second one.
+		time.Sleep(time.Until(row.RetryAt))
+		start = time.Now()
+		_, err = w.drain(ctx, 1)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(time.Since(start)).To(BeZero(), "a still-running item is rescheduled without waiting")
+		row = findQueued(queue, "ar", "ar1")
+		g.Expect(row.Attempts).To(Equal(2))
+		g.Expect(row.Trace).To(ContainSubstring("still running"))
+
+		// Once the stuck run returns, the next attempt runs normally and settles the row.
+		close(block)
+		synctest.Wait()
+		time.Sleep(time.Until(row.RetryAt))
+		_, err = w.drain(ctx, 1)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(findQueued(queue, "ar", "ar1")).To(BeNil())
+		g.Expect(agent.artistCalls).To(Equal(2), "one stuck call and one retry, never two at once")
 	})
 }
