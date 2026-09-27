@@ -356,10 +356,7 @@ func (s *scannerImpl) runEvaluateSmartPlaylists(ctx context.Context, state *scan
 	return func() error {
 		for _, id := range state.smartPlaylistsToEvaluate() {
 			start := time.Now()
-			err := s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
-				return tx.Playlist().Evaluate(ctx, id)
-			}, "scanner: evaluate smart playlist")
-			if err != nil {
+			if err := s.ds.Playlist().Evaluate(ctx, id); err != nil {
 				log.Warn(ctx, "Scanner: Could not evaluate smart playlist", "id", id, err)
 				continue
 			}

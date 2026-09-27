@@ -260,6 +260,17 @@ func (r *playlistRepository) selectPlaylist(ctx context.Context, options ...mode
 	return r.withAnnotation(ctx, sel, r.tableName+".id")
 }
 
+// inTx runs fn in a transaction, joining the caller's if one is already open.
+func (r *playlistRepository) inTx(fn func(tx *playlistRepository) error) error {
+	conn, ok := r.db.(*dbx.DB)
+	if !ok {
+		return fn(r)
+	}
+	return conn.Transactional(func(tx *dbx.Tx) error {
+		return fn(NewPlaylistRepository(tx).(*playlistRepository))
+	})
+}
+
 func (r *playlistRepository) updateTracks(ctx context.Context, id string, tracks model.MediaFiles) error {
 	ids := make([]string, len(tracks))
 	for i := range tracks {
