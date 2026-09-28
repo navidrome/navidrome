@@ -49,6 +49,7 @@ const (
 	DefaultEncryptionKey  = "just for obfuscation"
 	PasswordsEncryptedKey = "PasswordsEncryptedKey"
 	PasswordAutogenPrefix = "__NAVIDROME_AUTOGEN__" //nolint:gosec
+	APIKeyPrefix          = "nds_"
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
