@@ -8,7 +8,7 @@ import {
   Toolbar,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import { ReadOnlyField, Title } from '../common'
+import { ReadOnlyTextField, Title } from '../common'
 import ApiKeyInput from './ApiKeyInput'
 import { playerInputs } from './playerInputs'
 
@@ -44,8 +44,8 @@ const PlayerEdit = (props) => (
   <Edit title={<PlayerTitle />} mutationMode="pessimistic" {...props}>
     <SimpleForm variant={'outlined'} toolbar={<PlayerEditToolbar />}>
       {playerInputs()}
-      <ReadOnlyField source="client" />
-      <ReadOnlyField source="userName" />
+      <ReadOnlyTextField source="client" />
+      <ReadOnlyTextField source="userName" />
       <ApiKeyInput source="apiKey" />
     </SimpleForm>
   </Edit>

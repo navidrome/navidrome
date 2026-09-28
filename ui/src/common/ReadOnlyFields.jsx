@@ -5,6 +5,14 @@ import clsx from 'clsx'
 import { FieldTitle, useRecordContext } from 'react-admin'
 import { TextField } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
+import { useDateLocale } from '../i18n/useDateLocale'
+import {
+  formatBytes,
+  formatDateTime,
+  formatDuration2,
+  formatNumber,
+} from '../utils/formatters'
+import { isDateSet } from '../utils/validations'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -21,8 +29,10 @@ const useStyles = makeStyles(
   { name: 'NDReadOnlyField' },
 )
 
+const identity = (v) => v
+
 // Renders a record value as a dimmed, non-editable input, so it lines up with the inputs in a form
-export const ReadOnlyField = ({
+export const ReadOnlyTextField = ({
   id,
   source,
   label,
@@ -30,6 +40,7 @@ export const ReadOnlyField = ({
   className,
   fullWidth,
   margin = 'dense',
+  format = identity,
   ...props
 }) => {
   const classes = useStyles(props)
@@ -41,7 +52,7 @@ export const ReadOnlyField = ({
       id={id || source}
       className={clsx(classes.root, className)}
       label={<FieldTitle label={label} source={source} resource={resource} />}
-      value={value ?? ''}
+      value={value == null ? '' : format(value)}
       variant="outlined"
       margin={margin}
       fullWidth={fullWidth}
@@ -52,7 +63,7 @@ export const ReadOnlyField = ({
   )
 }
 
-ReadOnlyField.propTypes = {
+ReadOnlyTextField.propTypes = {
   id: PropTypes.string,
   source: PropTypes.string.isRequired,
   label: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
@@ -62,4 +73,26 @@ ReadOnlyField.propTypes = {
   classes: PropTypes.object,
   fullWidth: PropTypes.bool,
   margin: PropTypes.oneOf(['none', 'dense', 'normal']),
+  format: PropTypes.func,
 }
+
+export const ReadOnlyDateField = (props) => {
+  const locale = useDateLocale()
+  const format = (v) => (isDateSet(v) ? formatDateTime(v, locale) : '')
+  return <ReadOnlyTextField format={format} {...props} />
+}
+
+export const ReadOnlyNumberField = (props) => {
+  const locale = useDateLocale()
+  return (
+    <ReadOnlyTextField format={(v) => formatNumber(v, locale)} {...props} />
+  )
+}
+
+export const ReadOnlySizeField = (props) => (
+  <ReadOnlyTextField format={formatBytes} {...props} />
+)
+
+export const ReadOnlyDurationField = (props) => (
+  <ReadOnlyTextField format={formatDuration2} {...props} />
+)
