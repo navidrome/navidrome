@@ -1,7 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import get from 'lodash/get'
-import clsx from 'clsx'
 import { FieldTitle, useRecordContext } from 'react-admin'
 import { TextField } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
@@ -16,14 +15,13 @@ import { isDateSet } from '../utils/validations'
 
 const useStyles = makeStyles(
   (theme) => ({
-    root: {
-      '& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline': {
+    inputRoot: {
+      '&:hover $notchedOutline': {
         borderColor: theme.palette.divider,
-        borderWidth: 1,
       },
-      '& .MuiInputLabel-root.Mui-focused': {
-        color: theme.palette.text.secondary,
-      },
+    },
+    notchedOutline: {
+      borderColor: theme.palette.divider,
     },
   }),
   { name: 'NDReadOnlyField' },
@@ -33,13 +31,11 @@ const identity = (v) => v
 
 // Renders a record value as a dimmed, non-editable input, so it lines up with the inputs in a form
 export const ReadOnlyTextField = ({
-  id,
   source,
   label,
   resource,
   className,
   fullWidth,
-  margin = 'dense',
   format = identity,
   ...props
 }) => {
@@ -49,22 +45,28 @@ export const ReadOnlyTextField = ({
 
   return (
     <TextField
-      id={id || source}
-      className={clsx(classes.root, className)}
+      id={source}
+      className={className}
       label={<FieldTitle label={label} source={source} resource={resource} />}
       value={value == null ? '' : format(value)}
       variant="outlined"
-      margin={margin}
+      margin="dense"
       fullWidth={fullWidth}
+      focused={false}
       helperText=" "
-      InputProps={{ readOnly: true }}
+      InputProps={{
+        readOnly: true,
+        classes: {
+          root: classes.inputRoot,
+          notchedOutline: classes.notchedOutline,
+        },
+      }}
       inputProps={{ tabIndex: -1 }}
     />
   )
 }
 
 ReadOnlyTextField.propTypes = {
-  id: PropTypes.string,
   source: PropTypes.string.isRequired,
   label: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
   record: PropTypes.object,
@@ -72,7 +74,6 @@ ReadOnlyTextField.propTypes = {
   className: PropTypes.string,
   classes: PropTypes.object,
   fullWidth: PropTypes.bool,
-  margin: PropTypes.oneOf(['none', 'dense', 'normal']),
   format: PropTypes.func,
 }
 

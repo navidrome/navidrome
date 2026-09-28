@@ -131,62 +131,40 @@ const LibraryEdit = (props) => {
                     {translate('resources.library.sections.statistics')}
                   </Typography>
 
-                  <Box display="flex">
-                    <Box flex={1} mr="0.5em">
-                      <ReadOnlyNumberField
-                        source="totalSongs"
-                        {...readOnlyProps}
-                      />
-                    </Box>
-                    <Box flex={1} ml="0.5em">
-                      <ReadOnlyNumberField
-                        source="totalAlbums"
-                        {...readOnlyProps}
-                      />
-                    </Box>
-                  </Box>
-                  <Box display="flex">
-                    <Box flex={1} mr="0.5em">
-                      <ReadOnlyNumberField
-                        source="totalArtists"
-                        {...readOnlyProps}
-                      />
-                    </Box>
-                    <Box flex={1} ml="0.5em">
-                      <ReadOnlySizeField
-                        source="totalSize"
-                        {...readOnlyProps}
-                      />
-                    </Box>
-                  </Box>
-                  <Box display="flex">
-                    <Box flex={1} mr="0.5em">
-                      <ReadOnlyDurationField
-                        source="totalDuration"
-                        {...readOnlyProps}
-                      />
-                    </Box>
-                    <Box flex={1} ml="0.5em">
-                      <ReadOnlyNumberField
-                        source="totalMissingFiles"
-                        {...readOnlyProps}
-                      />
-                    </Box>
-                  </Box>
-                  <ReadOnlyDateField source="lastScanAt" {...readOnlyProps} />
-                  <Box display="flex">
-                    <Box flex={1} mr="0.5em">
+                  <Box
+                    display="grid"
+                    gridTemplateColumns="1fr 1fr"
+                    gridColumnGap="1em"
+                  >
+                    <ReadOnlyNumberField
+                      source="totalSongs"
+                      {...readOnlyProps}
+                    />
+                    <ReadOnlyNumberField
+                      source="totalAlbums"
+                      {...readOnlyProps}
+                    />
+                    <ReadOnlyNumberField
+                      source="totalArtists"
+                      {...readOnlyProps}
+                    />
+                    <ReadOnlySizeField source="totalSize" {...readOnlyProps} />
+                    <ReadOnlyDurationField
+                      source="totalDuration"
+                      {...readOnlyProps}
+                    />
+                    <ReadOnlyNumberField
+                      source="totalMissingFiles"
+                      {...readOnlyProps}
+                    />
+                    <Box gridColumn="1 / -1">
                       <ReadOnlyDateField
-                        source="updatedAt"
+                        source="lastScanAt"
                         {...readOnlyProps}
                       />
                     </Box>
-                    <Box flex={1} ml="0.5em">
-                      <ReadOnlyDateField
-                        source="createdAt"
-                        {...readOnlyProps}
-                      />
-                    </Box>
+                    <ReadOnlyDateField source="updatedAt" {...readOnlyProps} />
+                    <ReadOnlyDateField source="createdAt" {...readOnlyProps} />
                   </Box>
                 </Box>
               </Box>

@@ -68,11 +68,16 @@ describe('ReadOnlyFields', () => {
       expect(screen.getByRole('textbox')).toHaveValue('NAVIDROMEUI')
     })
 
-    it('exposes a theme-overridable class name', () => {
+    it('exposes theme-overridable class names', () => {
       const { container } = renderField(ReadOnlyTextField, {
         source: 'client',
       })
-      expect(container.firstChild.className).toMatch(/NDReadOnlyField-root/)
+      expect(
+        container.querySelector('[class*="NDReadOnlyField-inputRoot"]'),
+      ).toBeInTheDocument()
+      expect(
+        container.querySelector('[class*="NDReadOnlyField-notchedOutline"]'),
+      ).toBeInTheDocument()
     })
   })
 
