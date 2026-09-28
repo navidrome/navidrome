@@ -18,10 +18,11 @@ import (
 )
 
 var _ = Describe("Users", func() {
+	var ctx context.Context
 	var api *Router
 	// The repo holds the full rows; the user carries the id/name-only copy its projection returns.
 	authedWithLibraries := func(r *http.Request, libs model.Libraries) *http.Request {
-		api.ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(libs)
+		api.ds.Library().(*tests.MockLibraryRepo).SetData(libs)
 		stripped := make(model.Libraries, len(libs))
 		for i, lib := range libs {
 			stripped[i] = model.Library{ID: lib.ID, Name: lib.Name}
@@ -29,7 +30,10 @@ var _ = Describe("Users", func() {
 		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped})
 		return r.WithContext(ctx)
 	}
-	BeforeEach(func() { api = &Router{ds: &tests.MockDataStore{}} })
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		api = &Router{ds: &tests.MockDataStore{}}
+	})
 
 	Describe("getUserViews", func() {
 		It("returns one view per accessible library", func() {
@@ -117,9 +121,9 @@ var _ = Describe("Users", func() {
 
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			ur = api.ds.User(context.Background()).(*tests.MockedUserRepo)
-			Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
-			Expect(ur.Put(&model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
+			ur = api.ds.User().(*tests.MockedUserRepo)
+			Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
+			Expect(ur.Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
 		})
 
 		It("returns an empty list when the config is unset", func() {

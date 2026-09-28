@@ -15,19 +15,20 @@ var _ = Describe("Annotation Filters", func() {
 	var (
 		albumRepo              *albumRepository
 		albumWithoutAnnotation model.Album
+		ctx                    context.Context
 	)
 
 	BeforeEach(func() {
-		ctx := request.WithUser(context.Background(), model.User{ID: "userid", UserName: "johndoe"})
-		albumRepo = NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository)
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "userid", UserName: "johndoe"})
+		albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
 
 		// Create album without any annotation (no star, no rating)
 		albumWithoutAnnotation = model.Album{ID: "no-annotation-album", Name: "No Annotation", LibraryID: 1}
-		Expect(albumRepo.Put(&albumWithoutAnnotation)).To(Succeed())
+		Expect(albumRepo.Put(ctx, &albumWithoutAnnotation)).To(Succeed())
 	})
 
 	AfterEach(func() {
-		_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
+		_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": albumWithoutAnnotation.ID}))
 	})
 
 	Describe("ReassignAnnotation", func() {
@@ -36,42 +37,42 @@ var _ = Describe("Annotation Filters", func() {
 		BeforeEach(func() {
 			prev = model.Album{ID: "reassign-prev", Name: "Prev", LibraryID: 1}
 			next = model.Album{ID: "reassign-next", Name: "Next", LibraryID: 1}
-			Expect(albumRepo.Put(&prev)).To(Succeed())
-			Expect(albumRepo.Put(&next)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &prev)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &next)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
-			_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": []string{prev.ID, next.ID}}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": []string{prev.ID, next.ID}}))
+			_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": []string{prev.ID, next.ID}}))
 		})
 
 		It("moves the annotation when the new item has none", func() {
-			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, prev.ID)).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+			Expect(albumRepo.ReassignAnnotation(ctx, prev.ID, next.ID)).To(Succeed())
 
-			got, err := albumRepo.Get(next.ID)
+			got, err := albumRepo.Get(ctx, next.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Rating).To(Equal(4))
 		})
 
 		It("recomputes the new item's cached average rating", func() {
-			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, prev.ID)).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+			Expect(albumRepo.ReassignAnnotation(ctx, prev.ID, next.ID)).To(Succeed())
 
-			got, err := albumRepo.Get(next.ID)
+			got, err := albumRepo.Get(ctx, next.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.AverageRating).To(Equal(4.0))
 		})
 
 		It("keeps the new item's annotation when both exist", func() {
-			Expect(albumRepo.SetRating(4, prev.ID)).To(Succeed())
-			Expect(albumRepo.SetRating(2, next.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 4, prev.ID)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 2, next.ID)).To(Succeed())
 
-			Expect(albumRepo.ReassignAnnotation(prev.ID, next.ID)).To(Succeed())
+			Expect(albumRepo.ReassignAnnotation(ctx, prev.ID, next.ID)).To(Succeed())
 
-			got, err := albumRepo.Get(next.ID)
+			got, err := albumRepo.Get(ctx, next.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(got.Rating).To(Equal(2))
 		})
@@ -100,7 +101,7 @@ var _ = Describe("Annotation Filters", func() {
 
 	Describe("starredFilter", func() {
 		It("false includes items without annotations", func() {
-			albums, err := albumRepo.GetAll(model.QueryOptions{
+			albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 				Filters: annotationBoolFilter("starred")("starred", "false"),
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -116,7 +117,7 @@ var _ = Describe("Annotation Filters", func() {
 		})
 
 		It("true excludes items without annotations", func() {
-			albums, err := albumRepo.GetAll(model.QueryOptions{
+			albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 				Filters: annotationBoolFilter("starred")("starred", "true"),
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -129,7 +130,7 @@ var _ = Describe("Annotation Filters", func() {
 
 	Describe("hasRatingFilter", func() {
 		It("false includes items without annotations", func() {
-			albums, err := albumRepo.GetAll(model.QueryOptions{
+			albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 				Filters: annotationBoolFilter("rating")("rating", "false"),
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -145,7 +146,7 @@ var _ = Describe("Annotation Filters", func() {
 		})
 
 		It("true excludes items without annotations", func() {
-			albums, err := albumRepo.GetAll(model.QueryOptions{
+			albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 				Filters: annotationBoolFilter("rating")("rating", "true"),
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -158,14 +159,14 @@ var _ = Describe("Annotation Filters", func() {
 		It("true includes items with rating > 0", func() {
 			// Create album with rating 1
 			ratedAlbum := model.Album{ID: "rated-album", Name: "Rated Album", LibraryID: 1}
-			Expect(albumRepo.Put(&ratedAlbum)).To(Succeed())
-			Expect(albumRepo.SetRating(1, ratedAlbum.ID)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &ratedAlbum)).To(Succeed())
+			Expect(albumRepo.SetRating(ctx, 1, ratedAlbum.ID)).To(Succeed())
 			defer func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": ratedAlbum.ID}))
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": ratedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": ratedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": ratedAlbum.ID}))
 			}()
 
-			albums, err := albumRepo.GetAll(model.QueryOptions{
+			albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 				Filters: annotationBoolFilter("rating")("rating", "true"),
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -182,11 +183,11 @@ var _ = Describe("Annotation Filters", func() {
 	})
 
 	It("ignores invalid filter values (not strings)", func() {
-		res, err := albumRepo.ReadAll(rest.QueryOptions{
+		res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 			Filters: map[string]any{"starred": 123},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		albums := res.(model.Albums)
+		albums := res
 
 		var found bool
 		for _, a := range albums {
@@ -254,11 +255,11 @@ var _ = Describe("Annotation Filters", func() {
 
 	Describe("CountAll annotation-join gating", func() {
 		It("counts all items unfiltered (join dropped)", func() {
-			total, err := albumRepo.CountAll()
+			total, err := albumRepo.CountAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(total).To(BeNumerically(">=", int64(1)))
 
-			filtered, err := albumRepo.CountAll(model.QueryOptions{
+			filtered, err := albumRepo.CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.id": albumWithoutAnnotation.ID},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -267,16 +268,16 @@ var _ = Describe("Annotation Filters", func() {
 
 		It("counts starred items correctly (named annotation filter keeps the join)", func() {
 			starredAlbum := model.Album{ID: "counted-starred-album", Name: "Counted Starred", LibraryID: 1}
-			Expect(albumRepo.Put(&starredAlbum)).To(Succeed())
-			Expect(albumRepo.SetStar(true, starredAlbum.ID)).To(Succeed())
+			Expect(albumRepo.Put(ctx, &starredAlbum)).To(Succeed())
+			Expect(albumRepo.SetStar(ctx, true, starredAlbum.ID)).To(Succeed())
 			defer func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": starredAlbum.ID}))
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": starredAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": starredAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": starredAlbum.ID}))
 			}()
 
 			// Exactly two albums are starred for this user: the one created above and
 			// albumRadioactivity (id 103) from the seed data.
-			count, err := albumRepo.CountAll(model.QueryOptions{
+			count, err := albumRepo.CountAll(ctx, model.QueryOptions{
 				Filters: annotationBoolFilter("starred")("starred", "true"),
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -284,7 +285,7 @@ var _ = Describe("Annotation Filters", func() {
 		})
 
 		It("counts via a raw annotation filter without a 'no such column' error", func() {
-			count, err := albumRepo.CountAll(model.QueryOptions{
+			count, err := albumRepo.CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Expr("COALESCE(rating, 0) > 0"),
 			})
 			Expect(err).ToNot(HaveOccurred())

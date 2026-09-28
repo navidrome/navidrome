@@ -21,7 +21,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID
@@ -110,7 +110,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID

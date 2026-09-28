@@ -1,17 +1,17 @@
 import {
-  TextInput,
-  BooleanInput,
   TextField,
   Edit,
-  required,
   SimpleForm,
-  SelectInput,
-  ReferenceInput,
   useTranslate,
+  DeleteButton,
+  DeleteWithConfirmButton,
+  SaveButton,
+  Toolbar,
 } from 'react-admin'
+import { makeStyles } from '@material-ui/core/styles'
 import { Title } from '../common'
-import config from '../config'
-import { BITRATE_CHOICES } from '../consts'
+import ApiKeyInput from './ApiKeyInput'
+import { playerInputs } from './playerInputs'
 
 const PlayerTitle = ({ record }) => {
   const translate = useTranslate()
@@ -19,24 +19,35 @@ const PlayerTitle = ({ record }) => {
   return <Title subTitle={`${resourceName} ${record ? record.name : ''}`} />
 }
 
+const useToolbarStyles = makeStyles({
+  toolbar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+  },
+})
+
+const PlayerEditToolbar = (props) => (
+  <Toolbar {...props} classes={useToolbarStyles()}>
+    <SaveButton />
+    {props.record?.hasApiKey ? (
+      <DeleteWithConfirmButton
+        mutationMode="pessimistic"
+        confirmTitle="resources.player.message.deleteWithKeyTitle"
+        confirmContent="resources.player.message.deleteWithKeyContent"
+      />
+    ) : (
+      <DeleteButton />
+    )}
+  </Toolbar>
+)
+
 const PlayerEdit = (props) => (
-  <Edit title={<PlayerTitle />} {...props}>
-    <SimpleForm variant={'outlined'}>
-      <TextInput source="name" validate={[required()]} />
-      <ReferenceInput
-        source="transcodingId"
-        reference="transcoding"
-        sort={{ field: 'name', order: 'ASC' }}
-      >
-        <SelectInput source="name" resettable />
-      </ReferenceInput>
-      <SelectInput source="maxBitRate" resettable choices={BITRATE_CHOICES} />
-      <BooleanInput source="reportRealPath" fullWidth />
-      {(config.lastFMEnabled || config.listenBrainzEnabled) && (
-        <BooleanInput source="scrobbleEnabled" fullWidth />
-      )}
+  <Edit title={<PlayerTitle />} mutationMode="pessimistic" {...props}>
+    <SimpleForm variant={'outlined'} toolbar={<PlayerEditToolbar />}>
+      {playerInputs()}
       <TextField source="client" />
       <TextField source="userName" />
+      <ApiKeyInput source="apiKey" />
     </SimpleForm>
   </Edit>
 )

@@ -357,7 +357,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		var track *model.MediaFile
 		BeforeEach(func() {
-			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
+			_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
 			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)

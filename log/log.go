@@ -27,14 +27,16 @@ var redacted = &Hook{
 	AcceptedLevels: logrus.AllLevels,
 	RedactionList: []string{
 		// Keys from the config
-		"(ApiKey:\")[\\w]*",
-		"(Secret:\")[\\w]*",
+		"(ApiKey:[\\s]*\")[\\w]*",
+		"(Secret:[\\s]*\")[\\w]*",
 		"(PasswordEncryptionKey:[\\s]*\")[^\"]*",
 		"(UserHeader:[\\s]*\")[^\"]*",
 		"(TrustedSources:[\\s]*\")[^\"]*",
 		"(MetricsPath:[\\s]*\")[^\"]*",
 		"(DevAutoCreateAdminPassword:[\\s]*\")[^\"]*",
 		"(DevAutoLoginUsername:[\\s]*\")[^\"]*",
+		// Prometheus.Password. Any character is allowed, so skip escaped quotes in the value
+		`(Password:[\s]*")(?:[^"\\]|\\.)*`,
 
 		// UI appConfig
 		"(subsonicToken:)[\\w]+(\\s)",

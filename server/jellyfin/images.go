@@ -82,16 +82,16 @@ func hashFromTag(r *http.Request) string {
 // resolveArtworkID maps a Jellyfin item id to a Navidrome ArtworkID, probing
 // album -> artist -> media file -> playlist.
 func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
-	if al, err := api.ds.Album(ctx).Get(itemId); err == nil {
+	if al, err := api.ds.Album().Get(ctx, itemId); err == nil {
 		return al.CoverArtID().String()
 	}
-	if ar, err := api.ds.Artist(ctx).Get(itemId); err == nil {
+	if ar, err := api.ds.Artist().Get(ctx, itemId); err == nil {
 		return ar.CoverArtID().String()
 	}
-	if mf, err := api.ds.MediaFile(ctx).Get(itemId); err == nil {
+	if mf, err := api.ds.MediaFile().Get(ctx, itemId); err == nil {
 		return mf.CoverArtID().String()
 	}
-	if pl, err := api.ds.Playlist(ctx).Get(itemId); err == nil {
+	if pl, err := api.ds.Playlist().Get(ctx, itemId); err == nil {
 		return pl.CoverArtID().String()
 	}
 	return (model.ArtworkID{}).String()

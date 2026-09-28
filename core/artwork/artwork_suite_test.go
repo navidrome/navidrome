@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"context"
 	"io/fs"
 	"net/netip"
 	"net/url"
@@ -108,15 +109,15 @@ type fakeFolderRepo struct {
 	otherAudioErr error
 }
 
-func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
+func (f *fakeFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
 	return f.result, f.err
 }
 
-func (f *fakeFolderRepo) HasAudioOutsideFolders(model.Folder, []string) (bool, error) {
+func (f *fakeFolderRepo) HasAudioOutsideFolders(context.Context, model.Folder, []string) (bool, error) {
 	return f.hasOtherAudio, f.otherAudioErr
 }
 
-func (f *fakeFolderRepo) Get(string) (*model.Folder, error) {
+func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
 	f.getCallCount++
 	if f.getErr != nil {
 		return nil, f.getErr

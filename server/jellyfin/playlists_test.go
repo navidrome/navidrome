@@ -299,27 +299,27 @@ var _ = Describe("Playlists", func() {
 		}
 
 		It("passes a bare song id through unchanged", func() {
-			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}})
 			createWith(testID("s1"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s1")}))
 		})
 
 		It("expands an album id into its songs, filtered by album", func() {
-			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("al1")}})
-			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("al1")}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), AlbumID: testID("al1")}, {ID: testID("s2"), AlbumID: testID("al1")},
 			})
 			createWith(testID("al1"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s1"), testID("s2")}))
-			Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByAlbum(testID("al1")).Filters))
+			Expect(ds.MediaFile().(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByAlbum(testID("al1")).Filters))
 		})
 
 		It("expands an artist id into its songs", func() {
-			ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
-			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}, {ID: testID("s2")}})
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}, {ID: testID("s2")}})
 			createWith(testID("ar1"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s1"), testID("s2")}))
-			Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByArtistID(testID("ar1")).Filters))
+			Expect(ds.MediaFile().(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByArtistID(testID("ar1")).Filters))
 		})
 
 		It("expands a playlist id into its tracks' media file ids", func() {

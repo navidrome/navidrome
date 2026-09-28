@@ -107,12 +107,14 @@ var _ = Describe("encodeMediafileShare", func() {
 })
 
 var _ = Describe("handleStream", func() {
+	var ctx context.Context
 	var ds *tests.MockDataStore
 	var shareRepo *tests.MockShareRepo
 	var streamer *mockStreamer
 	var pub *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
 		ds = &tests.MockDataStore{}
 		shareRepo = &tests.MockShareRepo{}
@@ -132,7 +134,7 @@ var _ = Describe("handleStream", func() {
 		shareRepo.ID = "share123"
 		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID, Tracks: model.MediaFiles{mf}}
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&owner)).To(Succeed())
+		Expect(userRepo.Put(ctx, &owner)).To(Succeed())
 		ds.MockedUser = userRepo
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{mf})
@@ -171,7 +173,7 @@ var _ = Describe("handleStream", func() {
 	It("returns 404 when the track is not a member of the share", func() {
 		owner := model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&owner)).To(Succeed())
+		Expect(userRepo.Put(ctx, &owner)).To(Succeed())
 		ds.MockedUser = userRepo
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{{ID: "mf-shared"}, {ID: "mf-other"}})

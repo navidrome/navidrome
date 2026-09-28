@@ -42,7 +42,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("getPlaybackInfo", func() {
 		It("returns a media source for an accessible track", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			})
 			w := httptest.NewRecorder()
@@ -61,7 +61,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			})
 			w := httptest.NewRecorder()
@@ -102,7 +102,7 @@ var _ = Describe("Stream", func() {
 		}
 
 		It("advertises a Lyric stream for plugin/sidecar-sourced lyrics not embedded in the file", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			})
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
@@ -113,7 +113,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("advertises no Lyric stream when the pipeline finds nothing", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			})
 
@@ -121,7 +121,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("advertises no Lyric stream when the lyrics endpoint would 404 (main lyric has no lines)", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			})
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
@@ -132,7 +132,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("doesn't duplicate the Lyric stream when lyrics are already embedded", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1, Lyrics: `[{"lang":"xxx","line":[]}]`},
 			})
 			api.lyrics = &fakeLyricsService{lyrics: map[string]model.LyricList{
@@ -145,7 +145,7 @@ var _ = Describe("Stream", func() {
 		It("still returns 200 with a valid MediaSource and no Lyric stream when the lyrics pipeline errors", func() {
 			// Own ID: an erroring loader isn't cached, but a shared ID could still pick up
 			// another test's cached (non-error) result and mask this assertion.
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s-err"), Title: "Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
 			})
 			api.lyrics = &fakeLyricsService{err: errors.New("boom")}
@@ -166,7 +166,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamAudio", func() {
 		It("invokes the transcode decider and streamer for an accessible track", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			})
 			streamer.content = "audio-bytes"
@@ -182,7 +182,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			})
 			w := httptest.NewRecorder()
@@ -207,7 +207,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("converts the bps audioBitRate param to kbps", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			})
 			w := httptest.NewRecorder()
@@ -219,7 +219,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("uses the audioCodec param as target format when no container is given", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			})
 			w := httptest.NewRecorder()
@@ -231,7 +231,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 500 and logs when the streamer fails", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			})
 			streamer.err = errors.New("boom")
@@ -246,7 +246,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("HEAD requests", func() {
 		head := func(query string) *httptest.ResponseRecorder {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "flac", LibraryID: 1},
 			})
 			streamer.content = "audio-bytes"
@@ -276,7 +276,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamUniversal", func() {
 		universal := func(query string) {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Suffix: "mp3", LibraryID: 1},
 			})
 			w := httptest.NewRecorder()
@@ -315,7 +315,7 @@ var _ = Describe("Stream", func() {
 
 	Describe("streamHls", func() {
 		BeforeEach(func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "dsf", Duration: 100.5, LibraryID: 1},
 			})
 		})
@@ -370,21 +370,21 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "dsf", LibraryID: 2},
 			})
 			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
 		})
 
 		It("returns 404 when the id doesn't match any media file", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{})
 			Expect(hls("", ctxUser()).Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
 	Describe("streamFile", func() {
 		It("invokes the decider with a raw/direct-play request and the streamer for an accessible track", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 1},
 			})
 			streamer.content = "audio-bytes"
@@ -401,7 +401,7 @@ var _ = Describe("Stream", func() {
 		})
 
 		It("returns 404 for a track in a library the user can't access, without invoking the streamer or decider", func() {
-			ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), Title: "Song", Suffix: "mp3", LibraryID: 2},
 			})
 			w := httptest.NewRecorder()

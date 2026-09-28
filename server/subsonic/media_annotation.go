@@ -48,19 +48,19 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	}
 	switch entity.(type) {
 	case *model.Artist:
-		repo = api.ds.Artist(ctx)
+		repo = api.ds.Artist()
 		resource = "artist"
 	case *model.Album:
-		repo = api.ds.Album(ctx)
+		repo = api.ds.Album()
 		resource = "album"
 	case *model.Playlist:
-		repo = api.ds.Playlist(ctx)
+		repo = api.ds.Playlist()
 		resource = "playlist"
 	default:
-		repo = api.ds.MediaFile(ctx)
+		repo = api.ds.MediaFile()
 		resource = "song"
 	}
-	err = repo.SetRating(rating, id)
+	err = repo.SetRating(ctx, rating, id)
 	if err != nil {
 		return err
 	}
@@ -129,19 +129,19 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 			}
 			switch entity.(type) {
 			case *model.Artist:
-				repo = tx.Artist(ctx)
+				repo = tx.Artist()
 				resource = "artist"
 			case *model.Album:
-				repo = tx.Album(ctx)
+				repo = tx.Album()
 				resource = "album"
 			case *model.Playlist:
-				repo = tx.Playlist(ctx)
+				repo = tx.Playlist()
 				resource = "playlist"
 			default:
-				repo = tx.MediaFile(ctx)
+				repo = tx.MediaFile()
 				resource = "song"
 			}
-			if err := repo.SetStar(star, id); err != nil {
+			if err := repo.SetStar(ctx, star, id); err != nil {
 				return err
 			}
 			event = event.With(resource, id)
@@ -210,7 +210,7 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 }
 
 func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int) error {
-	mf, err := api.ds.MediaFile(ctx).Get(trackId)
+	mf, err := api.ds.MediaFile().Get(ctx, trackId)
 	if err != nil {
 		return err
 	}

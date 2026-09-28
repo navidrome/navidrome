@@ -176,17 +176,17 @@ func restrictedFixture(name string) (context.Context, model.Library, model.User)
 	db := GetDBXBuilder()
 
 	lib := model.Library{Name: name + " Library", Path: "/" + name}
-	lr := NewLibraryRepository(adminCtx, db)
-	Expect(lr.Put(&lib)).To(Succeed())
+	lr := NewLibraryRepository(db)
+	Expect(lr.Put(adminCtx, &lib)).To(Succeed())
 
 	user := createUserWithLibraries(name+"-restricted", []int{1})
-	ur := NewUserRepository(adminCtx, db)
-	Expect(ur.Put(&user)).To(Succeed())
-	Expect(ur.SetUserLibraries(user.ID, []int{1})).To(Succeed())
+	ur := NewUserRepository(db)
+	Expect(ur.Put(adminCtx, &user)).To(Succeed())
+	Expect(ur.SetUserLibraries(adminCtx, user.ID, []int{1})).To(Succeed())
 
 	DeferCleanup(func() {
-		_ = NewUserRepository(adminCtx, db).Delete(user.ID)
-		_ = NewLibraryRepository(adminCtx, db).(*libraryRepository).delete(squirrel.Eq{"id": lib.ID})
+		_ = NewUserRepository(db).Delete(adminCtx, user.ID)
+		_ = NewLibraryRepository(db).(*libraryRepository).delete(adminCtx, squirrel.Eq{"id": lib.ID})
 	})
 	return adminCtx, lib, user
 }
@@ -196,9 +196,9 @@ var _ = BeforeSuite(func() {
 	ctx := log.NewContext(context.TODO())
 	ctx = request.WithUser(ctx, adminUser)
 
-	ur := NewUserRepository(ctx, conn)
+	ur := NewUserRepository(conn)
 	for i := range testUsers {
-		err := ur.Put(&testUsers[i])
+		err := ur.Put(ctx, &testUsers[i])
 		if err != nil {
 			panic(err)
 		}
@@ -206,32 +206,32 @@ var _ = BeforeSuite(func() {
 
 	// Associate users with library 1 (default test library)
 	for i := range testUsers {
-		err := ur.SetUserLibraries(testUsers[i].ID, []int{1})
+		err := ur.SetUserLibraries(ctx, testUsers[i].ID, []int{1})
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	alr := NewAlbumRepository(ctx, conn).(*albumRepository)
+	alr := NewAlbumRepository(conn).(*albumRepository)
 	for i := range testAlbums {
-		err := alr.Put(new(testAlbums[i]))
+		err := alr.Put(ctx, new(testAlbums[i]))
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	arr := NewArtistRepository(ctx, conn)
+	arr := NewArtistRepository(conn)
 	for i := range testArtists {
-		err := arr.Put(new(testArtists[i]))
+		err := arr.Put(ctx, new(testArtists[i]))
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	// Associate artists with library 1 (default test library)
-	lr := NewLibraryRepository(ctx, conn)
+	lr := NewLibraryRepository(conn)
 	for i := range testArtists {
-		err := lr.AddArtist(1, testArtists[i].ID)
+		err := lr.AddArtist(ctx, 1, testArtists[i].ID)
 		if err != nil {
 			panic(err)
 		}
@@ -247,7 +247,7 @@ var _ = BeforeSuite(func() {
 		if a.AlbumArtistID == "" || !artistIDs[a.AlbumArtistID] {
 			continue
 		}
-		_, err := alr.executeSQL(squirrel.Insert("album_artists").SetMap(map[string]any{
+		_, err := alr.executeSQL(ctx, squirrel.Insert("album_artists").SetMap(map[string]any{
 			"album_id":  a.ID,
 			"artist_id": a.AlbumArtistID,
 			"role":      "artist",
@@ -258,17 +258,17 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	mr := NewMediaFileRepository(ctx, conn)
+	mr := NewMediaFileRepository(conn)
 	for i := range testSongs {
-		err := mr.Put(&testSongs[i])
+		err := mr.Put(ctx, &testSongs[i])
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	rar := NewRadioRepository(ctx, conn)
+	rar := NewRadioRepository(conn)
 	for i := range testRadios {
-		err := rar.Put(new(testRadios[i]))
+		err := rar.Put(ctx, new(testRadios[i]))
 		if err != nil {
 			panic(err)
 		}
@@ -287,19 +287,19 @@ var _ = BeforeSuite(func() {
 	plsCool.AddMediaFilesByID([]string{"1004"})
 	testPlaylists = []*model.Playlist{&plsBest, &plsCool}
 
-	pr := NewPlaylistRepository(ctx, conn)
+	pr := NewPlaylistRepository(conn)
 	for i := range testPlaylists {
-		err := pr.Put(testPlaylists[i])
+		err := pr.Put(ctx, testPlaylists[i])
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	// Prepare annotations
-	if err := arr.SetStar(true, artistBeatles.ID); err != nil {
+	if err := arr.SetStar(ctx, true, artistBeatles.ID); err != nil {
 		panic(err)
 	}
-	ar, err := arr.Get(artistBeatles.ID)
+	ar, err := arr.Get(ctx, artistBeatles.ID)
 	if err != nil {
 		panic(err)
 	}
@@ -310,10 +310,10 @@ var _ = BeforeSuite(func() {
 	artistBeatles.StarredAt = ar.StarredAt
 	testArtists[1] = artistBeatles
 
-	if err := alr.SetStar(true, albumRadioactivity.ID); err != nil {
+	if err := alr.SetStar(ctx, true, albumRadioactivity.ID); err != nil {
 		panic(err)
 	}
-	al, err := alr.Get(albumRadioactivity.ID)
+	al, err := alr.Get(ctx, albumRadioactivity.ID)
 	if err != nil {
 		panic(err)
 	}
@@ -324,10 +324,10 @@ var _ = BeforeSuite(func() {
 	albumRadioactivity.StarredAt = al.StarredAt
 	testAlbums[2] = albumRadioactivity
 
-	if err := mr.SetStar(true, songComeTogether.ID); err != nil {
+	if err := mr.SetStar(ctx, true, songComeTogether.ID); err != nil {
 		panic(err)
 	}
-	mf, err := mr.Get(songComeTogether.ID)
+	mf, err := mr.Get(ctx, songComeTogether.ID)
 	if err != nil {
 		panic(err)
 	}
@@ -335,9 +335,9 @@ var _ = BeforeSuite(func() {
 	songComeTogether.StarredAt = mf.StarredAt
 	testSongs[1] = songComeTogether
 
-	scrobbleRepo := NewScrobbleRepository(ctx, conn).(*scrobbleRepository)
+	scrobbleRepo := NewScrobbleRepository(conn).(*scrobbleRepository)
 	for _, s := range scrobbles {
-		_, err := scrobbleRepo.executeSQL(squirrel.Insert("scrobbles").SetMap(map[string]any{
+		_, err := scrobbleRepo.executeSQL(ctx, squirrel.Insert("scrobbles").SetMap(map[string]any{
 			"media_file_id":   s.MediaFileID,
 			"user_id":         s.UserID,
 			"submission_time": s.SubmissionTime,

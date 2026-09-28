@@ -198,7 +198,7 @@ func (r *resolver) fetchExternalArtist(ctx context.Context, ar model.Artist) (io
 
 // resolveAlbum walks conf.Server.CoverArtPriority over the folder, embedded and external sources.
 func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution, error) {
-	al, err := r.ds.Album(ctx).Get(albumID)
+	al, err := r.ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -243,7 +243,7 @@ func (r *resolver) resolveAlbum(ctx context.Context, albumID string) (resolution
 
 // resolveArtist tries the uploaded image first, then walks conf.Server.ArtistArtPriority.
 func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resolution, error) {
-	ar, err := r.ds.Artist(ctx).Get(artistID)
+	ar, err := r.ds.Artist().Get(ctx, artistID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -259,7 +259,7 @@ func (r *resolver) resolveArtist(ctx context.Context, artistID string) (resoluti
 	}
 
 	// Only consider albums where the artist is the sole album artist.
-	als, err := r.ds.Album(ctx).GetAll(model.QueryOptions{Filters: persistence.SoleAlbumArtistFilter(artistID)})
+	als, err := r.ds.Album().GetAll(ctx, model.QueryOptions{Filters: persistence.SoleAlbumArtistFilter(artistID)})
 	if err != nil {
 		return resolution{}, err
 	}
@@ -328,7 +328,7 @@ const PlaylistGridSamples = 4
 
 // resolvePlaylist tries the uploaded image, the sidecar and ExternalImageURL, then a generated grid.
 func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (resolution, error) {
-	pl, err := r.ds.Playlist(ctx).Get(playlistID)
+	pl, err := r.ds.Playlist().Get(ctx, playlistID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -374,8 +374,8 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		}
 	}
 
-	albumIDs, err := r.ds.Playlist(ctx).Tracks(pl.ID, false).
-		GetAlbumIDs(model.QueryOptions{Max: PlaylistGridSamples, Sort: "random()"})
+	albumIDs, err := r.ds.Playlist().Tracks(ctx, pl.ID, false).
+		GetAlbumIDs(ctx, model.QueryOptions{Max: PlaylistGridSamples, Sort: "random()"})
 	if err != nil {
 		return resolution{}, err
 	}
@@ -428,7 +428,7 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 
 // resolveRadio serves only an uploaded image; there is no fallback.
 func (r *resolver) resolveRadio(ctx context.Context, radioID string) (resolution, error) {
-	radio, err := r.ds.Radio(ctx).Get(radioID)
+	radio, err := r.ds.Radio().Get(ctx, radioID)
 	if err != nil {
 		return resolution{}, err
 	}
@@ -439,7 +439,7 @@ func (r *resolver) resolveRadio(ctx context.Context, radioID string) (resolution
 // resolveMediaFile resolves a track's own embedded art only, so disabled or missing cover art
 // is a definitive absent.
 func (r *resolver) resolveMediaFile(ctx context.Context, id string) (resolution, error) {
-	mf, err := r.ds.MediaFile(ctx).Get(id)
+	mf, err := r.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return resolution{}, err
 	}

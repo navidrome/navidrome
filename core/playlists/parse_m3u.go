@@ -20,7 +20,7 @@ import (
 )
 
 func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *model.Folder, reader io.Reader) error {
-	mediaFileRepository := s.ds.MediaFile(ctx)
+	mediaFileRepository := s.ds.MediaFile()
 	resolver, err := newPathResolver(ctx, s.ds)
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			}
 		}
 
-		found, err := mediaFileRepository.FindByPaths(lookupCandidates)
+		found, err := mediaFileRepository.FindByPaths(ctx, lookupCandidates)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
@@ -215,7 +215,7 @@ type pathResolver struct {
 
 // newPathResolver creates a pathResolver with libraries loaded from the datastore.
 func newPathResolver(ctx context.Context, ds model.DataStore) (*pathResolver, error) {
-	libs, err := ds.Library(ctx).GetAll()
+	libs, err := ds.Library().GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
