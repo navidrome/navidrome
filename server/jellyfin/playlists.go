@@ -146,14 +146,14 @@ func (api *Router) clearPlaylist(ctx context.Context, id string) error {
 // playlistTrackPage streams one page of a playlist's tracks. Streams because a playlist can be the
 // whole library (a smart playlist matching everything) and clients may omit Limit. Excludes missing
 // tracks, and counts the same set, like GetWithTracks.
-func (api *Router) playlistTrackPage(repo model.PlaylistTrackRepository, fields dto.Fields, offset, limit int) (itemsResult, error) {
-	total, err := repo.CountAll(model.QueryOptions{Filters: notMissing})
+func (api *Router) playlistTrackPage(ctx context.Context, repo model.PlaylistTrackRepository, fields dto.Fields, offset, limit int) (itemsResult, error) {
+	total, err := repo.CountAll(ctx, model.QueryOptions{Filters: notMissing})
 	if err != nil {
 		return itemsResult{}, err
 	}
 	opts := model.QueryOptions{Sort: "id", Offset: offset, Max: limit, Filters: notMissing}
 	open := streamCursor(func() (func(func(model.PlaylistTrack, error) bool), error) {
-		return repo.GetCursor(opts)
+		return repo.GetCursor(ctx, opts)
 	}, func(t model.PlaylistTrack) dto.BaseItemDto { return trackToBaseItem(t, fields) })
 	return streamed(open, int(total), offset), nil
 }
@@ -188,7 +188,7 @@ func (api *Router) getPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// PlaylistInfo carries every track id, so this can't be paged — but it needs no track data.
-	trackIDs, err := repo.GetMediaFileIDs(model.QueryOptions{Sort: "id", Filters: notMissing})
+	trackIDs, err := repo.GetMediaFileIDs(ctx, model.QueryOptions{Sort: "id", Filters: notMissing})
 	if err != nil {
 		api.internalError(w, r, err)
 		return
@@ -216,7 +216,7 @@ func (api *Router) getPlaylistItems(w http.ResponseWriter, r *http.Request) {
 	}
 	p := req.Params(r)
 	fields := dto.ParseFields(p.Strings("fields")...)
-	res, err := api.playlistTrackPage(repo, fields, p.IntOr("startindex", 0), p.IntOr("limit", 0))
+	res, err := api.playlistTrackPage(ctx, repo, fields, p.IntOr("startindex", 0), p.IntOr("limit", 0))
 	if err != nil {
 		api.internalError(w, r, err)
 		return
@@ -249,9 +249,9 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []strin
 	for _, id := range ids {
 		if _, ok := songs[id]; ok {
 			out = append(out, id) // already a song
-		} else if _, err := api.ds.Album(ctx).Get(id); err == nil {
+		} else if _, err := api.ds.Album().Get(ctx, id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByAlbum(id))...)
-		} else if _, err := api.ds.Artist(ctx).Get(id); err == nil {
+		} else if _, err := api.ds.Artist().Get(ctx, id); err == nil {
 			out = append(out, api.songIDs(ctx, filter.SongsByArtistID(id))...)
 		} else if pl, err := api.playlists.GetWithTracks(ctx, id); err == nil {
 			out = append(out, slice.Map(pl.Tracks, func(t model.PlaylistTrack) string { return t.MediaFileID })...)
@@ -263,7 +263,7 @@ func (api *Router) expandContainerIDs(ctx context.Context, ids []string) []strin
 }
 
 func (api *Router) songIDs(ctx context.Context, opts model.QueryOptions) []string {
-	mfs, err := api.ds.MediaFile(ctx).GetAll(opts)
+	mfs, err := api.ds.MediaFile().GetAll(ctx, opts)
 	if err != nil {
 		log.Error(ctx, "Jellyfin: error expanding container to tracks", err)
 		return nil

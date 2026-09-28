@@ -45,8 +45,8 @@ var _ = Describe("Artwork", func() {
 		hash, err := hashImage(bytes.NewReader(imgBytes))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(store.Write(hash, "image/jpeg", bytes.NewReader(imgBytes))).To(Succeed())
-		Expect(artRepo.PutImage(&model.Artwork{Hash: hash, Mime: "image/jpeg"})).To(Succeed())
-		Expect(artRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: kind, ItemID: id, Hash: hash, Source: "external"})).To(Succeed())
+		Expect(artRepo.PutImage(ctx, &model.Artwork{Hash: hash, Mime: "image/jpeg"})).To(Succeed())
+		Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: kind, ItemID: id, Hash: hash, Source: "external"})).To(Succeed())
 		seedEntity(kind, id)
 		return hash
 	}
@@ -56,9 +56,9 @@ var _ = Describe("Artwork", func() {
 		GinkgoHelper()
 		switch kind {
 		case "al":
-			Expect(albumRepo.Put(&model.Album{ID: id, Name: "Album"})).To(Succeed())
+			Expect(albumRepo.Put(ctx, &model.Album{ID: id, Name: "Album"})).To(Succeed())
 		case "mf":
-			Expect(mfRepo.Put(&model.MediaFile{ID: id})).To(Succeed())
+			Expect(mfRepo.Put(ctx, &model.MediaFile{ID: id})).To(Succeed())
 		}
 	}
 
@@ -147,9 +147,9 @@ var _ = Describe("Artwork", func() {
 			imgPath := filepath.Join(dir, "cover.jpg")
 			Expect(os.WriteFile(imgPath, coverBytes, 0600)).To(Succeed())
 			mtime := fileMtime(imgPath)
-			Expect(artRepo.PutImage(&model.Artwork{Hash: "aaaaaaaaaaaaaaaa", Mime: "image/jpeg"})).To(Succeed())
+			Expect(artRepo.PutImage(ctx, &model.Artwork{Hash: "aaaaaaaaaaaaaaaa", Mime: "image/jpeg"})).To(Succeed())
 			seedEntity("al", "al2")
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al2", Hash: "aaaaaaaaaaaaaaaa",
 				Source: "folder", SourcePath: imgPath, RefMtime: mtime,
 			})).To(Succeed())
@@ -163,9 +163,9 @@ var _ = Describe("Artwork", func() {
 			dir := GinkgoT().TempDir()
 			secretPath := filepath.Join(dir, "config.ini")
 			Expect(os.WriteFile(secretPath, []byte("password=secret"), 0600)).To(Succeed())
-			Expect(artRepo.PutImage(&model.Artwork{Hash: "dddddddddddddddd", Mime: "image/jpeg"})).To(Succeed())
+			Expect(artRepo.PutImage(ctx, &model.Artwork{Hash: "dddddddddddddddd", Mime: "image/jpeg"})).To(Succeed())
 			seedEntity("al", "alni")
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "alni", Hash: "dddddddddddddddd",
 				Source: "folder", SourcePath: secretPath, RefMtime: fileMtime(secretPath),
 			})).To(Succeed())
@@ -180,9 +180,9 @@ var _ = Describe("Artwork", func() {
 			dir := GinkgoT().TempDir()
 			secretPath := filepath.Join(dir, "config.ini")
 			Expect(os.WriteFile(secretPath, secret, 0600)).To(Succeed())
-			Expect(artRepo.PutImage(&model.Artwork{Hash: "eeeeeeeeeeeeeeee", Mime: "image/jpeg"})).To(Succeed())
+			Expect(artRepo.PutImage(ctx, &model.Artwork{Hash: "eeeeeeeeeeeeeeee", Mime: "image/jpeg"})).To(Succeed())
 			seedEntity("al", "alnic")
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "alnic", Hash: "eeeeeeeeeeeeeeee",
 				Source: "folder", SourcePath: secretPath, RefMtime: fileMtime(secretPath),
 			})).To(Succeed())
@@ -210,9 +210,9 @@ var _ = Describe("Artwork", func() {
 			dir := GinkgoT().TempDir()
 			imgPath := filepath.Join(dir, "cover.jpg")
 			Expect(os.WriteFile(imgPath, coverBytes, 0600)).To(Succeed())
-			Expect(artRepo.PutImage(&model.Artwork{Hash: "bbbbbbbbbbbbbbbb", Mime: "image/jpeg"})).To(Succeed())
+			Expect(artRepo.PutImage(ctx, &model.Artwork{Hash: "bbbbbbbbbbbbbbbb", Mime: "image/jpeg"})).To(Succeed())
 			seedEntity("al", "al3")
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al3", Hash: "bbbbbbbbbbbbbbbb",
 				Source: "folder", SourcePath: imgPath, RefMtime: fileMtime(imgPath) + 999,
 			})).To(Succeed())
@@ -220,7 +220,7 @@ var _ = Describe("Artwork", func() {
 			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al3"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al3")].Priority).To(Equal(model.ArtworkPriorityScan))
-			ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ia.Hash).To(Equal("bbbbbbbbbbbbbbbb"))
 		})
@@ -229,9 +229,9 @@ var _ = Describe("Artwork", func() {
 			dir := GinkgoT().TempDir()
 			imgPath := filepath.Join(dir, "cover.jpg")
 			Expect(os.WriteFile(imgPath, coverBytes, 0600)).To(Succeed())
-			Expect(artRepo.PutImage(&model.Artwork{Hash: "cccccccccccccccc", Mime: "image/jpeg"})).To(Succeed())
+			Expect(artRepo.PutImage(ctx, &model.Artwork{Hash: "cccccccccccccccc", Mime: "image/jpeg"})).To(Succeed())
 			seedEntity("al", "al3b")
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al3b", Hash: "cccccccccccccccc",
 				Source: "folder", SourcePath: imgPath, RefMtime: fileMtime(imgPath) + 999,
 			})).To(Succeed())
@@ -252,7 +252,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("never re-enqueues an absent state on view, however old", func() {
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al4", AttemptedAt: time.Now().Add(-365 * 24 * time.Hour),
 			})).To(Succeed())
 
@@ -272,7 +272,7 @@ var _ = Describe("Artwork", func() {
 			Expect(readAll(img)).To(Equal(coverBytes))
 
 			Expect(queueRepo.Data[primaryKey("al", "al5")].Priority).To(Equal(model.ArtworkPriorityBump))
-			_, err = artRepo.GetItemArtwork(model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
@@ -283,7 +283,7 @@ var _ = Describe("Artwork", func() {
 			_, err := svc.Get(ctx, model.MustParseArtworkID("al-al6"), 0, false)
 			Expect(err).To(MatchError(ErrUnavailable))
 			Expect(queueRepo.Data[primaryKey("al", "al6")].Priority).To(Equal(model.ArtworkPriorityBump))
-			_, err = artRepo.GetItemArtwork(model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
@@ -310,7 +310,7 @@ var _ = Describe("Artwork", func() {
 
 		It("delegates to the album when the track's state is absent", func() {
 			seedFoundStore("al", "albm", coverBytes)
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "mf", ItemID: "mf2"})).To(Succeed())
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "mf", ItemID: "mf2"})).To(Succeed())
 			mfRepo.SetData(model.MediaFiles{{ID: "mf2", AlbumID: "albm"}})
 
 			img, err := svc.Get(ctx, model.MustParseArtworkID("mf-mf2"), 0, false)
@@ -343,7 +343,7 @@ var _ = Describe("Artwork", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(readAll(img))).To(BeNumerically(">", 0))
 			Expect(queueRepo.Data[primaryKey("mf", "mf4")].Priority).To(Equal(model.ArtworkPriorityBump))
-			_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf4", model.ImageTypePrimary)
+			_, err = artRepo.GetItemArtwork(ctx, model.KindMediaFileArtwork, "mf4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
@@ -494,7 +494,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("falls back to the artist placeholder for an absent artist", func() {
-			Expect(artRepo.PutItemArtwork(&model.ItemArtwork{ItemKind: "ar", ItemID: "arph"})).To(Succeed())
+			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "ar", ItemID: "arph"})).To(Succeed())
 
 			img, err := svc.GetOrPlaceholder(ctx, "ar-arph", 300, false)
 			Expect(err).ToNot(HaveOccurred())
@@ -535,7 +535,7 @@ var _ = Describe("EntityExists", func() {
 		artistRepo := tests.CreateMockArtistRepo()
 		artistRepo.SetData(model.Artists{{ID: "ar1"}})
 		radioRepo := tests.CreateMockedRadioRepo()
-		Expect(radioRepo.Put(&model.Radio{ID: "ra1", Name: "R"})).To(Succeed())
+		Expect(radioRepo.Put(ctx, &model.Radio{ID: "ra1", Name: "R"})).To(Succeed())
 		ds = &tests.MockDataStore{MockedAlbum: albumRepo, MockedArtist: artistRepo, MockedRadio: radioRepo}
 	})
 

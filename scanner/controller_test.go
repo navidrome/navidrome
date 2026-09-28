@@ -35,7 +35,7 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("includes last scan error", func() {
-			Expect(ds.Property(ctx).Put(consts.LastScanErrorKey, "boom")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastScanErrorKey, "boom")).To(Succeed())
 			status, err := ctrl.Status(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(status.LastError).To(Equal("boom"))
@@ -43,8 +43,8 @@ var _ = Describe("Controller", func() {
 
 		It("includes scan type and error in status", func() {
 			// Set up test data in property repo
-			Expect(ds.Property(ctx).Put(consts.LastScanErrorKey, "test error")).To(Succeed())
-			Expect(ds.Property(ctx).Put(consts.LastScanTypeKey, "full")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastScanErrorKey, "test error")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastScanTypeKey, "full")).To(Succeed())
 
 			// Get status and verify basic info
 			status, err := ctrl.Status(ctx)

@@ -59,21 +59,21 @@ func entityExists(ctx context.Context, ds model.DataStore, artID model.ArtworkID
 	var err error
 	switch artID.Kind {
 	case model.KindArtistArtwork:
-		found, err = ds.Artist(ctx).Exists(artID.ID)
+		found, err = ds.Artist().Exists(ctx, artID.ID)
 	case model.KindAlbumArtwork:
-		found, err = ds.Album(ctx).Exists(artID.ID)
+		found, err = ds.Album().Exists(ctx, artID.ID)
 	case model.KindMediaFileArtwork:
-		found, err = ds.MediaFile(ctx).Exists(artID.ID)
+		found, err = ds.MediaFile().Exists(ctx, artID.ID)
 	case model.KindPlaylistArtwork:
-		found, err = ds.Playlist(ctx).Exists(artID.ID)
+		found, err = ds.Playlist().Exists(ctx, artID.ID)
 	case model.KindRadioArtwork:
-		found, err = ds.Radio(ctx).Exists(artID.ID)
+		found, err = ds.Radio().Exists(ctx, artID.ID)
 	case model.KindDiscArtwork:
 		albumID, _, perr := model.ParseDiscArtworkID(artID.ID)
 		if perr != nil {
 			return false
 		}
-		found, err = ds.Album(ctx).Exists(albumID)
+		found, err = ds.Album().Exists(ctx, albumID)
 	default:
 		return false
 	}
@@ -119,7 +119,7 @@ func (s *service) Get(ctx context.Context, artID model.ArtworkID, size int, squa
 }
 
 func (s *service) serveEntity(ctx context.Context, artID model.ArtworkID, size int, square bool) (*Image, error) {
-	ia, err := s.ds.Artwork(ctx).GetItemArtwork(artID.Kind, artID.ID, model.ImageTypePrimary)
+	ia, err := s.ds.Artwork().GetItemArtwork(ctx, artID.Kind, artID.ID, model.ImageTypePrimary)
 	switch {
 	case errors.Is(err, model.ErrNotFound):
 		return s.provisional(ctx, artID, size, square)
@@ -173,7 +173,7 @@ func (s *service) serveHash(ctx context.Context, artID model.ArtworkID, ia *mode
 		log.Warn(ctx, "Artwork: Stored source is not an image file, re-resolving", "artID", artID, "path", ia.SourcePath)
 		return s.dangling(ctx, artID)
 	}
-	art, err := s.ds.Artwork(ctx).GetImage(ia.Hash)
+	art, err := s.ds.Artwork().GetImage(ctx, ia.Hash)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return s.dangling(ctx, artID)
@@ -264,13 +264,13 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 	// The setting is not in the config fingerprint, so honor it at serve time: a direct mf- URL
 	// must fall back to disc/album instead of serving stale persisted embedded art.
 	if !conf.Server.EnableMediaFileCoverArt {
-		mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
+		mf, err := s.ds.MediaFile().Get(ctx, artID.ID)
 		if err != nil {
 			return nil, err
 		}
 		return s.Get(ctx, mf.DiscCoverArtID(), size, square)
 	}
-	ia, err := s.ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, artID.ID, model.ImageTypePrimary)
+	ia, err := s.ds.Artwork().GetItemArtwork(ctx, model.KindMediaFileArtwork, artID.ID, model.ImageTypePrimary)
 	switch {
 	case err == nil && ia.Hash != "":
 		return s.serveHash(ctx, artID, ia, size, square)
@@ -283,7 +283,7 @@ func (s *service) serveMediaFile(ctx context.Context, artID model.ArtworkID, siz
 	}
 	noRow := errors.Is(err, model.ErrNotFound)
 
-	mf, err := s.ds.MediaFile(ctx).Get(artID.ID)
+	mf, err := s.ds.MediaFile().Get(ctx, artID.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (s *service) dangling(ctx context.Context, artID model.ArtworkID) (*Image, 
 }
 
 func (s *service) enqueue(ctx context.Context, artID model.ArtworkID, priority int) {
-	err := s.ds.ArtworkQueue(ctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
+	err := s.ds.ArtworkQueue().EnqueuePreservingBackoff(ctx, model.ArtworkQueueItem{
 		ItemKind:  artID.Kind.Prefix(),
 		ItemID:    artID.ID,
 		ImageType: model.ImageTypePrimary,

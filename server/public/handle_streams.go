@@ -26,7 +26,7 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	share, err := pub.ds.Share(ctx).Get(info.shareID)
+	share, err := pub.ds.Share().Get(ctx, info.shareID)
 	if err != nil {
 		checkShareError(ctx, w, err, info.shareID)
 		return
@@ -35,14 +35,14 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		checkShareError(ctx, w, model.ErrExpired, info.shareID)
 		return
 	}
-	shareOwner, err := pub.ds.User(ctx).Get(share.UserID)
+	shareOwner, err := pub.ds.User().Get(ctx, share.UserID)
 	if err != nil {
 		log.Error(ctx, "Error retrieving share owner for shared stream", "share", info.shareID, "owner", share.UserID, err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
-	mf, err := pub.ds.MediaFile(ctx).Get(info.id)
+	mf, err := pub.ds.MediaFile().Get(ctx, info.id)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)

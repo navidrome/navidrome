@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/public"
@@ -16,8 +15,8 @@ import (
 )
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {
-	repo := api.share.NewRepository(r.Context()).(model.ShareRepository)
-	shares, err := repo.GetAll(model.QueryOptions{Sort: "created_at desc"})
+	repo := api.share.Repository()
+	shares, err := repo.GetAll(r.Context(), model.QueryOptions{Sort: "created_at desc"})
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,7 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	description, _ := p.String("description")
-	repo := api.share.NewRepository(r.Context())
+	repo := api.share.Repository()
 	share := &model.Share{
 		Description:  description,
 		Downloadable: p.BoolOr("downloadable", conf.Server.DefaultDownloadableShare && conf.Server.EnableDownloads),
@@ -68,12 +67,12 @@ func (api *Router) CreateShare(r *http.Request) (*responses.Subsonic, error) {
 		ResourceIDs:  strings.Join(ids, ","),
 	}
 
-	id, err := repo.(rest.Persistable).Save(share)
+	id, err := repo.Save(r.Context(), share)
 	if err != nil {
 		return nil, err
 	}
 
-	share, err = repo.(model.ShareRepository).Get(id)
+	share, err = repo.Get(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -90,18 +89,17 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	repo := api.share.NewRepository(r.Context())
+	repo := api.share.Repository()
 
 	// The update always writes description and downloadable, so read back the
 	// stored value for whichever one the client omitted.
 	description := p.StringPtr("description")
 	downloadable := p.BoolPtr("downloadable")
 	if description == nil || downloadable == nil {
-		current, err := repo.Read(id)
+		cur, err := repo.Read(r.Context(), id)
 		if err != nil {
 			return nil, err
 		}
-		cur := current.(*model.Share)
 		description = cmp.Or(description, &cur.Description)
 		downloadable = cmp.Or(downloadable, &cur.Downloadable)
 	}
@@ -113,7 +111,7 @@ func (api *Router) UpdateShare(r *http.Request) (*responses.Subsonic, error) {
 		ExpiresAt:    new(p.TimeOr("expires", time.Time{})),
 	}
 
-	err = repo.(rest.Persistable).Update(id, share)
+	err = repo.Update(r.Context(), id, *share)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +126,8 @@ func (api *Router) DeleteShare(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
-	repo := api.share.NewRepository(r.Context())
-	err = repo.(rest.Persistable).Delete(id)
+	repo := api.share.Repository()
+	err = repo.Delete(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
