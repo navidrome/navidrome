@@ -6,7 +6,6 @@ import {
   BooleanInput,
   required,
   SaveButton,
-  DateField,
   useTranslate,
   useMutation,
   useNotify,
@@ -16,8 +15,13 @@ import {
 import { Typography, Box } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import DeleteLibraryButton from './DeleteLibraryButton'
-import { Title } from '../common'
-import { formatBytes, formatDuration2, formatNumber } from '../utils/index.js'
+import {
+  ReadOnlyDateField,
+  ReadOnlyDurationField,
+  ReadOnlyNumberField,
+  ReadOnlySizeField,
+  Title,
+} from '../common'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -25,6 +29,8 @@ const useStyles = makeStyles({
     justifyContent: 'space-between',
   },
 })
+
+const readOnlyProps = { resource: 'library', fullWidth: true }
 
 const LibraryTitle = ({ record }) => {
   const translate = useTranslate()
@@ -127,130 +133,60 @@ const LibraryEdit = (props) => {
 
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
-                      <TextInput
-                        InputProps={{ readOnly: true }}
-                        resource={'library'}
-                        source={'totalSongs'}
-                        label={translate('resources.library.fields.totalSongs')}
-                        fullWidth
-                        variant="outlined"
+                      <ReadOnlyNumberField
+                        source="totalSongs"
+                        {...readOnlyProps}
                       />
                     </Box>
                     <Box flex={1} ml="0.5em">
-                      <TextInput
-                        InputProps={{ readOnly: true }}
-                        resource={'library'}
-                        source={'totalAlbums'}
-                        label={translate(
-                          'resources.library.fields.totalAlbums',
-                        )}
-                        fullWidth
-                        variant="outlined"
+                      <ReadOnlyNumberField
+                        source="totalAlbums"
+                        {...readOnlyProps}
                       />
                     </Box>
                   </Box>
-
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
-                      <TextInput
-                        InputProps={{ readOnly: true }}
-                        resource={'library'}
-                        source={'totalArtists'}
-                        label={translate(
-                          'resources.library.fields.totalArtists',
-                        )}
-                        fullWidth
-                        variant="outlined"
+                      <ReadOnlyNumberField
+                        source="totalArtists"
+                        {...readOnlyProps}
                       />
                     </Box>
                     <Box flex={1} ml="0.5em">
-                      <TextInput
-                        InputProps={{ readOnly: true }}
-                        resource={'library'}
-                        source={'totalSize'}
-                        label={translate('resources.library.fields.totalSize')}
-                        format={(v) => formatBytes(v, 2)}
-                        fullWidth
-                        variant="outlined"
+                      <ReadOnlySizeField
+                        source="totalSize"
+                        {...readOnlyProps}
                       />
                     </Box>
                   </Box>
-
                   <Box display="flex">
                     <Box flex={1} mr="0.5em">
-                      <TextInput
-                        InputProps={{ readOnly: true }}
-                        resource={'library'}
-                        source={'totalDuration'}
-                        label={translate(
-                          'resources.library.fields.totalDuration',
-                        )}
-                        format={formatDuration2}
-                        fullWidth
-                        variant="outlined"
+                      <ReadOnlyDurationField
+                        source="totalDuration"
+                        {...readOnlyProps}
                       />
                     </Box>
                     <Box flex={1} ml="0.5em">
-                      <TextInput
-                        InputProps={{ readOnly: true }}
-                        resource={'library'}
-                        source={'totalMissingFiles'}
-                        label={translate(
-                          'resources.library.fields.totalMissingFiles',
-                        )}
-                        fullWidth
-                        variant="outlined"
+                      <ReadOnlyNumberField
+                        source="totalMissingFiles"
+                        {...readOnlyProps}
                       />
                     </Box>
                   </Box>
-
-                  {/* Timestamps Section */}
-                  <Box mb="1em">
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      gutterBottom
-                    >
-                      {translate('resources.library.fields.lastScanAt')}
-                    </Typography>
-                    <DateField
-                      variant="body1"
-                      source="lastScanAt"
-                      showTime
-                      record={formProps.record}
-                    />
-                  </Box>
-
-                  <Box mb="1em">
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      gutterBottom
-                    >
-                      {translate('resources.library.fields.updatedAt')}
-                    </Typography>
-                    <DateField
-                      variant="body1"
-                      source="updatedAt"
-                      showTime
-                      record={formProps.record}
-                    />
-                  </Box>
-
-                  <Box mb="2em">
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      gutterBottom
-                    >
-                      {translate('resources.library.fields.createdAt')}
-                    </Typography>
-                    <DateField
-                      variant="body1"
-                      source="createdAt"
-                      showTime
-                      record={formProps.record}
-                    />
+                  <ReadOnlyDateField source="lastScanAt" {...readOnlyProps} />
+                  <Box display="flex">
+                    <Box flex={1} mr="0.5em">
+                      <ReadOnlyDateField
+                        source="updatedAt"
+                        {...readOnlyProps}
+                      />
+                    </Box>
+                    <Box flex={1} ml="0.5em">
+                      <ReadOnlyDateField
+                        source="createdAt"
+                        {...readOnlyProps}
+                      />
+                    </Box>
                   </Box>
                 </Box>
               </Box>

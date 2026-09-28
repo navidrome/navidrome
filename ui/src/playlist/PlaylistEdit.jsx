@@ -3,7 +3,6 @@ import {
   FormDataConsumer,
   SimpleForm,
   TextInput,
-  TextField,
   BooleanInput,
   required,
   useTranslate,
@@ -11,13 +10,13 @@ import {
   ReferenceInput,
   SelectInput,
 } from 'react-admin'
-import { isWritable, Title } from '../common'
+import { isWritable, ReadOnlyTextField, Title } from '../common'
 
-const SyncFragment = ({ formData, variant, ...rest }) => {
+const SyncFragment = ({ formData, variant, className, ...rest }) => {
   return (
     <>
       {formData.path && <BooleanInput source="sync" {...rest} />}
-      {formData.path && <TextField source="path" {...rest} />}
+      {formData.path && <ReadOnlyTextField source="path" fullWidth {...rest} />}
     </>
   )
 }
@@ -56,7 +55,7 @@ const PlaylistEditForm = (props) => {
           />
         </ReferenceInput>
       ) : (
-        <TextField source="ownerName" />
+        <ReadOnlyTextField source="ownerName" />
       )}
       <BooleanInput source="public" disabled={!isWritable(record.ownerId)} />
       <FormDataConsumer>
