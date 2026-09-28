@@ -234,7 +234,9 @@ func (r *playlistTrackRepository) AddAlbums(ctx context.Context, albumIds []stri
 }
 
 func (r *playlistTrackRepository) AddArtists(ctx context.Context, artistIds []string) (int, error) {
-	return r.addMediaFileIds(ctx, Eq{"album_artist_id": artistIds})
+	// Match by album-artist participation, not the deprecated album_artist_id
+	// column, which only holds the first album artist.
+	return r.addMediaFileIds(ctx, ParticipantIDFilter("media_file", artistIds, model.RoleAlbumArtist))
 }
 
 func (r *playlistTrackRepository) AddDiscs(ctx context.Context, discs []model.DiscID) (int, error) {
