@@ -219,6 +219,30 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		})
 	})
 
+	Describe("AddArtists", func() {
+		It("adds tracks where the artist is not the first album artist", func() {
+			mfRepo := NewMediaFileRepository(GetDBXBuilder())
+			joint := mf(model.MediaFile{ID: "pls-coartist-track", Title: "Joint Track", ArtistID: artistKraftwerk.ID,
+				Artist: artistKraftwerk.Name, AlbumID: "pls-coartist-album", Album: "Joint Album",
+				AlbumArtistID: artistKraftwerk.ID, AlbumArtist: artistKraftwerk.Name, Path: p("joint/track.mp3")})
+			joint.Participants[model.RoleAlbumArtist] = model.ParticipantList{
+				{Artist: artistKraftwerk},
+				{Artist: artistBeatles},
+			}
+			Expect(mfRepo.Put(ctx, &joint)).To(Succeed())
+			DeferCleanup(func() { _ = mfRepo.Delete(ctx, joint.ID) })
+
+			plsRepo := NewPlaylistRepository(GetDBXBuilder())
+			pls := model.Playlist{Name: "Co-album-artist", OwnerID: adminUser.ID, OwnerName: adminUser.UserName}
+			Expect(plsRepo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { _ = plsRepo.Delete(ctx, pls.ID) })
+			tracks := plsRepo.Tracks(ctx, pls.ID, false)
+
+			Expect(tracks.AddArtists(ctx, []string{artistBeatles.ID})).To(Equal(1))
+			Expect(tracks.GetMediaFileIDs(ctx)).To(ConsistOf(joint.ID))
+		})
+	})
+
 	Describe("library access", func() {
 		var otherLib model.Library
 		var restrictedUser model.User
