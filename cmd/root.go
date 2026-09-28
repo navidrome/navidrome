@@ -44,7 +44,9 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 			preRun()
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			runNavidrome(cmd.Context())
+			if err := runNavidrome(cmd.Context()); err != nil {
+				log.Fatal("Fatal error in Navidrome. Aborting", err)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			postRun()
@@ -76,12 +78,12 @@ func postRun() {
 }
 
 // runNavidrome is the main entry point for the Navidrome server. It starts all the services and blocks.
-// If any of the services returns an error, it will log it and exit. If the process receives a signal to exit,
-// it will cancel the context and exit gracefully.
-func runNavidrome(ctx context.Context) {
-	defer db.Init(ctx)()
+// If any of the services returns an error, it stops the others and returns that error, so the caller can
+// exit with a non-zero code. If the context is cancelled (a signal or a service stop), it returns nil.
+func runNavidrome(parentCtx context.Context) error {
+	defer db.Init(parentCtx)()
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, ctx := errgroup.WithContext(parentCtx)
 	g.Go(startServer(ctx))
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
@@ -102,9 +104,11 @@ func runNavidrome(ctx context.Context) {
 		log.Warn(ctx, "Automatic Scanning is DISABLED")
 	}
 
-	if err := g.Wait(); err != nil {
-		log.Error("Fatal error in Navidrome. Aborting", err)
+	// Errors caused by a normal shutdown are not failures
+	if err := g.Wait(); err != nil && parentCtx.Err() == nil {
+		return err
 	}
+	return nil
 }
 
 // mainContext returns a context that is cancelled when the process receives a signal to exit.
@@ -132,6 +136,9 @@ func startServer(ctx context.Context) func() error {
 		}
 		if conf.Server.Jellyfin.Enabled {
 			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
+		}
+		if conf.Server.DevAPIv1 {
+			a.MountRouter("API v1", consts.URLPathAPIv1, CreateAPIv1Router(ctx))
 		}
 		if conf.Server.Prometheus.Enabled {
 			p := CreatePrometheus()
