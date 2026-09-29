@@ -16,9 +16,9 @@ info:
     `HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods
     in its `Allow` header.
 
-    Operations that need an access token declare `security: [{bearerAuth: []}]` and the scope they need in
-    `x-scope` (OpenAPI 3.0 does not allow scopes on bearer schemes). A revoked grant, and every token minted
-    from it, stops working within one access-token lifetime at most.
+    Operations that need a grant declare `security: [{bearerAuth: []}]` and the scope they need in
+    `x-scope` (OpenAPI 3.0 does not allow scopes on bearer schemes). Clients send the grant secret as
+    `Authorization: Bearer <secret>`. A revoked grant stops working within one minute at most.
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
@@ -28,7 +28,7 @@ tags:
   - name: server
     description: Server discovery and the published OpenAPI document.
   - name: auth
-    description: Grants, access tokens, and login methods.
+    description: Grants and login methods.
 paths:
   /server:
     $ref: ./paths/server.yaml
@@ -38,8 +38,6 @@ paths:
     $ref: ./paths/openapi.yaml#/json
   /openapi.yaml:
     $ref: ./paths/openapi.yaml#/yaml
-  /auth/token:
-    $ref: ./paths/auth.yaml#/token
   /auth/grants:
     $ref: ./paths/auth.yaml#/grants
   /auth/grants/{id}:
@@ -57,8 +55,4 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: "Short-lived access token from `POST /auth/token`. Opaque. The required scope is in each operation's `x-scope`."
-    grantAuth:
-      type: http
-      scheme: bearer
-      description: "Long-lived grant secret. Accepted only by `POST /auth/token`."
+      description: "Grant secret from a login method (`POST /auth/login`, `POST /auth/setup`). Opaque. The required scope is in each operation's `x-scope`."

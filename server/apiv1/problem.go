@@ -89,8 +89,6 @@ func classifyError(err error) (int, ProblemCode) {
 	switch {
 	case tooLarge(err):
 		return http.StatusRequestEntityTooLarge, ProblemCodePayloadTooLarge
-	case errors.Is(err, apiauth.ErrTokenExpired):
-		return http.StatusUnauthorized, ProblemCodeTokenExpired
 	case errors.Is(err, apiauth.ErrInsufficientScope):
 		return http.StatusForbidden, ProblemCodeInsufficientScope
 	case errors.Is(err, auth.ErrSetupComplete):

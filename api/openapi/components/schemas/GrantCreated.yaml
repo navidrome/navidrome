@@ -5,7 +5,7 @@ properties:
   secret:
     type: string
     maxLength: 512
-    description: "Opaque grant secret. Send it as a Bearer credential to `POST /auth/token`."
+    description: "Opaque grant secret. Send it as `Authorization: Bearer <secret>`."
   grant:
     description: The new grant.
     allOf:

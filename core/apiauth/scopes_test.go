@@ -49,22 +49,6 @@ var _ = Describe("scopes", func() {
 		})
 	})
 
-	Describe("Attenuate", func() {
-		available := []string{"playlists:write", "read"}
-		It("returns everything when no subset is asked", func() {
-			Expect(Attenuate(available, nil)).To(Equal([]string{"playlists:write", "read"}))
-		})
-		It("returns nothing for an explicit empty request", func() {
-			Expect(Attenuate(available, []string{})).To(BeEmpty())
-		})
-		It("returns the overlap and drops unknown scopes", func() {
-			Expect(Attenuate(available, []string{"read", "sync"})).To(Equal([]string{"read"}))
-		})
-		It("grants the base scope when only its :write form is available", func() {
-			Expect(Attenuate(available, []string{"playlists"})).To(Equal([]string{"playlists"}))
-		})
-	})
-
 	Describe("Satisfies", func() {
 		It("accepts the exact scope or its :write form", func() {
 			Expect(Satisfies([]string{"read"}, "read")).To(BeTrue())

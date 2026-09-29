@@ -2,7 +2,7 @@ type: object
 description: |
   Capability modules this server implements, keyed by module. Keys are optional; a missing key means the
   module is not implemented. New modules are added as new optional keys. These are server facts, not what
-  the calling token may use.
+  the calling grant may use.
 properties:
   core:
     $ref: ./CoreCapability.yaml

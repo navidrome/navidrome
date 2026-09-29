@@ -27,17 +27,6 @@ func (p *MockedPropertyRepo) Put(_ context.Context, id string, value string) err
 	return nil
 }
 
-func (p *MockedPropertyRepo) PutIfAbsent(_ context.Context, id string, value string) error {
-	if p.Error != nil {
-		return p.Error
-	}
-	p.init()
-	if _, ok := p.Data[id]; !ok {
-		p.Data[id] = value
-	}
-	return nil
-}
-
 func (p *MockedPropertyRepo) Get(_ context.Context, id string) (string, error) {
 	if p.Error != nil {
 		return "", p.Error

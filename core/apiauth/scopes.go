@@ -43,7 +43,7 @@ func Entitled(requested []string, isAdmin bool) []string {
 	return normalize(out)
 }
 
-// Expand turns a grant's stored scopes into the concrete scopes a token may carry right now.
+// Expand turns a grant's stored scopes into the concrete scopes it carries right now.
 func Expand(granted []string, isAdmin bool) []string {
 	var out []string
 	for _, s := range granted {
@@ -59,20 +59,6 @@ func Expand(granted []string, isAdmin bool) []string {
 // Allowed keeps the concrete scopes the user may hold now; unlike Expand it never widens `all`.
 func Allowed(scopes []string, isAdmin bool) []string {
 	out := slices.DeleteFunc(slices.Clone(scopes), func(s string) bool { return !grantable(s, isAdmin) })
-	return normalize(out)
-}
-
-// Attenuate returns the requested subset of available; a nil request means "everything available".
-func Attenuate(available, requested []string) []string {
-	if requested == nil {
-		return normalize(available)
-	}
-	out := []string{}
-	for _, s := range requested {
-		if Satisfies(available, s) {
-			out = append(out, s)
-		}
-	}
 	return normalize(out)
 }
 

@@ -9,28 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
 )
-
-// Defines values for AccessTokenTokenType.
-const (
-	AccessTokenTokenTypeBearer AccessTokenTokenType = "Bearer"
-)
-
-// Valid indicates whether the value is a known member of the AccessTokenTokenType enum.
-func (e AccessTokenTokenType) Valid() bool {
-	switch e {
-	case AccessTokenTokenTypeBearer:
-		return true
-	default:
-		return false
-	}
-}
 
 // Defines values for ProblemCode.
 const (
@@ -43,7 +27,6 @@ const (
 	ProblemCodePayloadTooLarge           ProblemCode = "payload_too_large"
 	ProblemCodeRateLimited               ProblemCode = "rate_limited"
 	ProblemCodeSetupComplete             ProblemCode = "setup_complete"
-	ProblemCodeTokenExpired              ProblemCode = "token_expired"
 	ProblemCodeUnauthorized              ProblemCode = "unauthorized"
 	ProblemCodeUnavailable               ProblemCode = "unavailable"
 	ProblemCodeValidation                ProblemCode = "validation"
@@ -69,8 +52,6 @@ func (e ProblemCode) Valid() bool {
 	case ProblemCodeRateLimited:
 		return true
 	case ProblemCodeSetupComplete:
-		return true
-	case ProblemCodeTokenExpired:
 		return true
 	case ProblemCodeUnauthorized:
 		return true
@@ -104,24 +85,6 @@ func (e Scope) Valid() bool {
 	}
 }
 
-// AccessToken A short-lived access token. Opaque; clients must not decode it.
-type AccessToken struct {
-	// AccessToken The token. Send it as `Authorization: Bearer <token>`.
-	AccessToken string `json:"accessToken"`
-
-	// ExpiresIn Seconds until the token expires.
-	ExpiresIn int `json:"expiresIn"`
-
-	// Scopes Scopes the token actually carries, which may be fewer than requested.
-	Scopes []Scope `json:"scopes"`
-
-	// TokenType Always `Bearer`.
-	TokenType AccessTokenTokenType `json:"tokenType"`
-}
-
-// AccessTokenTokenType Always `Bearer`.
-type AccessTokenTokenType string
-
 // AuthUser The user a grant belongs to.
 type AuthUser struct {
 	// Id User id.
@@ -142,7 +105,7 @@ type AuthUser struct {
 
 // Capabilities Capability modules this server implements, keyed by module. Keys are optional; a missing key means the
 // module is not implemented. New modules are added as new optional keys. These are server facts, not what
-// the calling token may use.
+// the calling grant may use.
 type Capabilities struct {
 	// Core The mandatory core module.
 	Core *CoreCapability `json:"core,omitempty"`
@@ -207,7 +170,7 @@ type Grant struct {
 	// Provider How the grant was created, for example `password` or `setup`. Free-form; new values may appear.
 	Provider string `json:"provider"`
 
-	// Scopes Scopes this grant may mint tokens for.
+	// Scopes Scopes this grant carries.
 	Scopes []Scope `json:"scopes"`
 }
 
@@ -216,7 +179,7 @@ type GrantCreated struct {
 	// Grant The new grant.
 	Grant Grant `json:"grant"`
 
-	// Secret Opaque grant secret. Send it as a Bearer credential to `POST /auth/token`.
+	// Secret Opaque grant secret. Send it as `Authorization: Bearer <secret>`.
 	Secret string `json:"secret"`
 
 	// User The user the grant belongs to.
@@ -329,12 +292,6 @@ type ServerInfo struct {
 	SpecVersion string `json:"specVersion"`
 }
 
-// TokenRequest Optional narrowing of a new access token.
-type TokenRequest struct {
-	// Scopes Subset of the grant's scopes. Omit for all of them; an empty list asks for none.
-	Scopes *[]ScopeRequest `json:"scopes,omitempty"`
-}
-
 // ValidationError One field-level validation failure.
 type ValidationError struct {
 	// Field Name of the offending query parameter, path parameter, or body field (dotted for nested).
@@ -392,9 +349,6 @@ type ChangePasswordJSONRequestBody = PasswordChangeRequest
 // SetupFirstAdminJSONRequestBody defines body for SetupFirstAdmin for application/json ContentType.
 type SetupFirstAdminJSONRequestBody = CredentialsRequest
 
-// CreateAccessTokenJSONRequestBody defines body for CreateAccessToken for application/json ContentType.
-type CreateAccessTokenJSONRequestBody = TokenRequest
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// ListGrants List my grants
@@ -415,9 +369,6 @@ type ServerInterface interface {
 	// SetupFirstAdmin Create the first admin
 	// (POST /auth/setup)
 	SetupFirstAdmin(w http.ResponseWriter, r *http.Request)
-	// CreateAccessToken Mint an access token
-	// (POST /auth/token)
-	CreateAccessToken(w http.ResponseWriter, r *http.Request)
 	// GetCapabilities List implemented capability modules
 	// (GET /capabilities)
 	GetCapabilities(w http.ResponseWriter, r *http.Request)
@@ -463,12 +414,6 @@ func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request) {
 // SetupFirstAdmin Create the first admin
 // (POST /auth/setup)
 func (_ Unimplemented) SetupFirstAdmin(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-}
-
-// CreateAccessToken Mint an access token
-// (POST /auth/token)
-func (_ Unimplemented) CreateAccessToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -612,20 +557,6 @@ func (siw *ServerInterfaceWrapper) SetupFirstAdmin(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SetupFirstAdmin(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CreateAccessToken operation middleware
-func (siw *ServerInterfaceWrapper) CreateAccessToken(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateAccessToken(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -793,9 +724,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/auth/setup", wrapper.SetupFirstAdmin)
-	})
-	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/auth/token", wrapper.CreateAccessToken)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/capabilities", wrapper.GetCapabilities)
@@ -1483,105 +1411,6 @@ func (response SetupFirstAdmin500ApplicationProblemPlusJSONResponse) VisitSetupF
 	return err
 }
 
-type CreateAccessTokenRequestObject struct {
-	Body *CreateAccessTokenJSONRequestBody
-}
-
-type CreateAccessTokenResponseObject interface {
-	VisitCreateAccessTokenResponse(w http.ResponseWriter) error
-}
-
-type CreateAccessToken200ResponseHeaders struct {
-	CacheControl *string
-}
-
-type CreateAccessToken200JSONResponse struct {
-	Body    AccessToken
-	Headers CreateAccessToken200ResponseHeaders
-}
-
-func (response CreateAccessToken200JSONResponse) VisitCreateAccessTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	if response.Headers.CacheControl != nil {
-		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
-	}
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateAccessToken400ApplicationProblemPlusJSONResponse struct {
-	BadRequestApplicationProblemPlusJSONResponse
-}
-
-func (response CreateAccessToken400ApplicationProblemPlusJSONResponse) VisitCreateAccessTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateAccessToken401ApplicationProblemPlusJSONResponse struct {
-	UnauthorizedApplicationProblemPlusJSONResponse
-}
-
-func (response CreateAccessToken401ApplicationProblemPlusJSONResponse) VisitCreateAccessTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	if response.Headers.WWWAuthenticate != nil {
-		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
-	}
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateAccessToken413ApplicationProblemPlusJSONResponse struct {
-	PayloadTooLargeApplicationProblemPlusJSONResponse
-}
-
-func (response CreateAccessToken413ApplicationProblemPlusJSONResponse) VisitCreateAccessTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(413)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type CreateAccessToken500ApplicationProblemPlusJSONResponse struct {
-	InternalErrorApplicationProblemPlusJSONResponse
-}
-
-func (response CreateAccessToken500ApplicationProblemPlusJSONResponse) VisitCreateAccessTokenResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(500)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type GetCapabilitiesRequestObject struct {
 }
 
@@ -1695,9 +1524,6 @@ type StrictServerInterface interface {
 	// SetupFirstAdmin Create the first admin
 	// (POST /auth/setup)
 	SetupFirstAdmin(ctx context.Context, request SetupFirstAdminRequestObject) (SetupFirstAdminResponseObject, error)
-	// CreateAccessToken Mint an access token
-	// (POST /auth/token)
-	CreateAccessToken(ctx context.Context, request CreateAccessTokenRequestObject) (CreateAccessTokenResponseObject, error)
 	// GetCapabilities List implemented capability modules
 	// (GET /capabilities)
 	GetCapabilities(ctx context.Context, request GetCapabilitiesRequestObject) (GetCapabilitiesResponseObject, error)
@@ -1907,40 +1733,6 @@ func (sh *strictHandler) SetupFirstAdmin(w http.ResponseWriter, r *http.Request)
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(SetupFirstAdminResponseObject); ok {
 		if err := validResponse.VisitSetupFirstAdminResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateAccessToken operation middleware
-func (sh *strictHandler) CreateAccessToken(w http.ResponseWriter, r *http.Request) {
-	var request CreateAccessTokenRequestObject
-
-	var body CreateAccessTokenJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		if !errors.Is(err, io.EOF) {
-			sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-			return
-		}
-	} else {
-		request.Body = &body
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateAccessToken(ctx, request.(CreateAccessTokenRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateAccessToken")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateAccessTokenResponseObject); ok {
-		if err := validResponse.VisitCreateAccessTokenResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

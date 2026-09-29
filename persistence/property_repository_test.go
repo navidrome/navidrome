@@ -34,27 +34,18 @@ var _ = Describe("Property Repository", func() {
 		Expect(pr.DefaultGet(ctx, "2", "default")).To(Equal("default"))
 	})
 
-	It("PutIfAbsent inserts once and never overwrites", func() {
-		Expect(pr.PutIfAbsent(ctx, "pia", "first")).To(Succeed())
-		Expect(pr.PutIfAbsent(ctx, "pia", "second")).To(Succeed())
-		Expect(pr.Get(ctx, "pia")).To(Equal("first"))
-	})
-
 	It("hides values marked as secrets from the SQL log, but still logs the property id", func() {
 		logs := captureTraceLogs()
 		insertCtx := log.WithSecrets(ctx, "inserted-secret")
 		Expect(pr.Put(insertCtx, "secret-prop", "inserted-secret")).To(Succeed())
 		updateCtx := log.WithSecrets(ctx, "updated-secret")
 		Expect(pr.Put(updateCtx, "secret-prop", "updated-secret")).To(Succeed())
-		absentCtx := log.WithSecrets(ctx, "absent-secret")
-		Expect(pr.PutIfAbsent(absentCtx, "secret-prop-2", "absent-secret")).To(Succeed())
 
 		Expect(logs.String()).To(ContainSubstring("INSERT INTO property"))
 		Expect(logs.String()).To(ContainSubstring("UPDATE property"))
-		Expect(logs.String()).To(ContainSubstring("secret-prop-2"))
+		Expect(logs.String()).To(ContainSubstring("secret-prop"))
 		Expect(logs.String()).ToNot(ContainSubstring("inserted-secret"))
 		Expect(logs.String()).ToNot(ContainSubstring("updated-secret"))
-		Expect(logs.String()).ToNot(ContainSubstring("absent-secret"))
 	})
 
 	It("logs the values of unmarked property writes", func() {

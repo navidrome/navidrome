@@ -28,16 +28,14 @@ import (
 )
 
 type authenticator interface {
-	Authenticate(ctx context.Context, token, ip string) (*apiauth.Principal, error)
-	ResolveGrant(ctx context.Context, secret, ip string) (*apiauth.Principal, error)
+	Authenticate(ctx context.Context, secret, ip string) (*apiauth.Principal, error)
 }
 
 type authKind int
 
 const (
 	authPublic authKind = iota
-	authToken
-	authGrant
+	authBearer
 )
 
 type gateOp struct {
@@ -69,10 +67,9 @@ var moduleScope = map[string]string{
 }
 
 type gateRules struct {
-	limited  map[string]bool // login-type operations, throttled per client IP
-	noScope  map[string]bool // the only token operations allowed without x-scope
-	grantOps map[string]bool // the only operations allowed to use grantAuth
-	noStore  map[string]bool // operations whose responses carry a secret or token
+	limited map[string]bool // login-type operations, throttled per client IP
+	noScope map[string]bool // the only bearerAuth operations allowed without x-scope
+	noStore map[string]bool // operations whose responses carry a secret
 }
 
 func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRules) (*gate, error) {
@@ -104,7 +101,7 @@ func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRule
 
 // check fails on a rule naming an operation the spec lacks, so a typo cannot silently disable the rule.
 func (rules gateRules) check(ids map[string]bool) error {
-	sets := map[string]map[string]bool{"limited": rules.limited, "noScope": rules.noScope, "grantOps": rules.grantOps, "noStore": rules.noStore}
+	sets := map[string]map[string]bool{"limited": rules.limited, "noScope": rules.noScope, "noStore": rules.noStore}
 	for name, set := range sets {
 		for id := range set {
 			if !ids[id] {
@@ -136,17 +133,15 @@ func buildGateOp(doc *openapi3.T, path string, item *openapi3.PathItem, method s
 	case len(reqs) == 0:
 		gop.kind = authPublic
 	case len(reqs) == 1 && isScheme(reqs[0], "bearerAuth"):
-		gop.kind = authToken
-	case len(reqs) == 1 && isScheme(reqs[0], "grantAuth") && rules.grantOps[id]:
-		gop.kind = authGrant
+		gop.kind = authBearer
 	default:
 		return nil, fmt.Errorf("operation %s has a security requirement outside the allowed forms", id)
 	}
-	if gop.kind == authToken && scope == "" && !rules.noScope[id] {
+	if gop.kind == authBearer && scope == "" && !rules.noScope[id] {
 		return nil, fmt.Errorf("operation %s: bearerAuth needs x-scope", id)
 	}
 	if scope != "" {
-		if gop.kind != authToken {
+		if gop.kind != authBearer {
 			return nil, fmt.Errorf("operation %s: x-scope needs bearerAuth", id)
 		}
 		base := cmp.Or(moduleScope[module], module)
@@ -226,23 +221,13 @@ func (g *gate) authorize(w http.ResponseWriter, r *http.Request, op *gateOp) (*h
 	if op.kind == authPublic {
 		return r, true
 	}
-	token, ok := bearerToken(r)
+	secret, ok := bearerToken(r)
 	if !ok {
 		writeProblemStatus(w, r, http.StatusUnauthorized, ProblemCodeUnauthorized, "")
 		return r, false
 	}
-	ip := server.ClientAddr(r)
-	var p *apiauth.Principal
-	var err error
-	if op.kind == authGrant {
-		p, err = g.auth.ResolveGrant(r.Context(), token, ip)
-	} else {
-		p, err = g.auth.Authenticate(r.Context(), token, ip)
-	}
+	p, err := g.auth.Authenticate(r.Context(), secret, server.ClientAddr(r))
 	if err == nil && op.scope != "" && !apiauth.Satisfies(p.Scopes, op.scope) {
-		err = apiauth.ErrInsufficientScope
-	}
-	if errors.Is(err, apiauth.ErrInsufficientScope) {
 		err = &scopeError{scope: op.scope}
 	}
 	if err != nil {

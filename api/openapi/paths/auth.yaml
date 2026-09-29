@@ -1,37 +1,3 @@
-token:
-  post:
-    operationId: createAccessToken
-    x-module: core
-    x-stability-level: alpha
-    tags: [auth]
-    summary: Mint an access token
-    description: "Turns a grant into a short-lived access token, optionally narrowed to a subset of the grant's scopes. Send the grant secret as the Bearer credential."
-    security: [{grantAuth: []}]
-    requestBody:
-      description: Scopes to narrow the token to. Optional.
-      required: false
-      content:
-        application/json:
-          schema:
-            $ref: ../components/schemas/TokenRequest.yaml
-    responses:
-      '200':
-        description: The new access token.
-        headers:
-          Cache-Control:
-            $ref: ../components/headers/CacheControlNoStore.yaml
-        content:
-          application/json:
-            schema:
-              $ref: ../components/schemas/AccessToken.yaml
-      '400':
-        $ref: ../components/responses/BadRequest.yaml
-      '401':
-        $ref: ../components/responses/Unauthorized.yaml
-      '413':
-        $ref: ../components/responses/PayloadTooLarge.yaml
-      '500':
-        $ref: ../components/responses/InternalError.yaml
 grants:
   get:
     operationId: listGrants
@@ -68,7 +34,7 @@ grant:
     x-stability-level: alpha
     tags: [auth]
     summary: Revoke one of my grants
-    description: "Revokes the grant and every token minted from it. Another user's grant id answers 404."
+    description: "Revokes the grant; requests with its secret fail from then on. Another user's grant id answers 404."
     security: [{bearerAuth: []}]
     parameters:
       - name: id

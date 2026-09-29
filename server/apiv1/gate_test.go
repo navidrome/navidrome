@@ -53,39 +53,29 @@ paths:
       responses: {'200': {description: ok}}
   /caps:
     get: {operationId: caps, x-module: core, security: [{bearerAuth: []}], responses: {'200': {description: ok}}}
-  /mint:
-    post: {operationId: mint, x-module: core, security: [{grantAuth: []}], responses: {'200': {description: ok}}}
   /limited:
     post: {operationId: limited, x-module: core, security: [], responses: {'200': {description: ok}}}
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer}
-    grantAuth: {type: http, scheme: bearer}
 `
 
 type fakeAuth struct {
 	principal *apiauth.Principal
 	err       error
-	gotToken  string
 	gotSecret string
 	gotIP     string
 }
 
-func (f *fakeAuth) Authenticate(_ context.Context, token, ip string) (*apiauth.Principal, error) {
-	f.gotToken, f.gotIP = token, ip
-	return f.principal, f.err
-}
-
-func (f *fakeAuth) ResolveGrant(_ context.Context, secret, ip string) (*apiauth.Principal, error) {
+func (f *fakeAuth) Authenticate(_ context.Context, secret, ip string) (*apiauth.Principal, error) {
 	f.gotSecret, f.gotIP = secret, ip
 	return f.principal, f.err
 }
 
 var testGateRules = gateRules{
-	limited:  map[string]bool{"limited": true},
-	noScope:  map[string]bool{"caps": true},
-	grantOps: map[string]bool{"mint": true},
-	noStore:  map[string]bool{"mint": true},
+	limited: map[string]bool{"limited": true},
+	noScope: map[string]bool{"caps": true},
+	noStore: map[string]bool{"caps": true},
 }
 
 var _ = Describe("spec gate", func() {
@@ -117,7 +107,6 @@ var _ = Describe("spec gate", func() {
 		m.Get("/things/{id}", ok("getThing"))
 		m.Post("/things", ok("createThing"))
 		m.Get("/caps", ok("caps"))
-		m.Post("/mint", ok("mint"))
 		m.Post("/limited", ok("limited"))
 		return m, nil
 	}
@@ -147,12 +136,12 @@ var _ = Describe("spec gate", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("lets public operations through without a token", func() {
+	It("lets public operations through without a credential", func() {
 		Expect(do(http.MethodGet, "/open", "", "").Code).To(Equal(http.StatusOK))
 		Expect(reached).To(Equal("open"))
 	})
 
-	It("requires a token, with a Bearer challenge", func() {
+	It("requires a grant secret, with a Bearer challenge", func() {
 		w := do(http.MethodGet, "/things/1", "", "")
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 		Expect(w.Header().Get("WWW-Authenticate")).To(Equal("Bearer"))
@@ -161,21 +150,13 @@ var _ = Describe("spec gate", func() {
 	})
 
 	It("accepts the Bearer scheme in any case and trims spaces", func() {
-		w := do(http.MethodGet, "/things/1", "bearer   tok-1 ", "")
+		w := do(http.MethodGet, "/things/1", "bearer   ndg_secret ", "")
 		Expect(w.Code).To(Equal(http.StatusOK))
-		Expect(fa.gotToken).To(Equal("tok-1"))
+		Expect(fa.gotSecret).To(Equal("ndg_secret"))
 		Expect(w.Header().Get("X-User")).To(Equal("u1"))
 	})
 
-	It("maps an expired token to token_expired", func() {
-		fa.err = apiauth.ErrTokenExpired
-		w := do(http.MethodGet, "/things/1", "Bearer x", "")
-		Expect(w.Code).To(Equal(http.StatusUnauthorized))
-		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
-		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeTokenExpired))
-	})
-
-	It("maps other auth failures to unauthorized with invalid_token", func() {
+	It("maps auth failures to unauthorized with invalid_token", func() {
 		fa.err = model.ErrInvalidAuth
 		w := do(http.MethodGet, "/things/1", "Bearer x", "")
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -183,64 +164,39 @@ var _ = Describe("spec gate", func() {
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeUnauthorized))
 	})
 
-	It("rejects a token without the operation's scope", func() {
+	It("rejects a grant without the operation's scope", func() {
 		w := do(http.MethodPost, "/things", "Bearer x", `{"name":"a"}`)
 		Expect(w.Code).To(Equal(http.StatusForbidden))
 		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="insufficient_scope", scope="password"`))
 		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInsufficientScope))
 	})
 
-	It("lets any valid token through an operation with no x-scope", func() {
+	It("lets any valid grant through an operation with no x-scope", func() {
 		fa.principal.Scopes = nil
 		Expect(do(http.MethodGet, "/caps", "Bearer x", "").Code).To(Equal(http.StatusOK))
 	})
 
-	DescribeTable("passes the full client address to the authenticator, not the rate-limit /64",
-		func(method, path string) {
-			req := httptest.NewRequestWithContext(ctx, method, path, nil)
-			req.RemoteAddr = "[2001:db8:1:2:3:4:5:6]:4321"
-			req.Header.Set("Authorization", "Bearer x")
-			w := httptest.NewRecorder()
-			mux.ServeHTTP(w, req)
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(fa.gotIP).To(Equal("2001:db8:1:2:3:4:5:6"))
-		},
-		Entry("access token", http.MethodGet, "/things/1"),
-		Entry("grant", http.MethodPost, "/mint"),
-	)
-
-	It("marks only the listed operations' responses no-store, errors included", func() {
-		Expect(do(http.MethodPost, "/mint", "Bearer ndg_secret", "").Header().Get("Cache-Control")).To(Equal("no-store"))
-		fa.err = model.ErrInvalidAuth
-		Expect(do(http.MethodPost, "/mint", "Bearer ndg_secret", "").Header().Get("Cache-Control")).To(Equal("no-store"))
-		fa.err = nil
-		Expect(do(http.MethodGet, "/things/1", "Bearer x", "").Header().Get("Cache-Control")).To(BeEmpty())
+	It("passes the full client address to the authenticator, not the rate-limit /64", func() {
+		req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/things/1", nil)
+		req.RemoteAddr = "[2001:db8:1:2:3:4:5:6]:4321"
+		req.Header.Set("Authorization", "Bearer x")
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(fa.gotIP).To(Equal("2001:db8:1:2:3:4:5:6"))
 	})
 
-	It("uses ResolveGrant for grantAuth operations", func() {
-		Expect(do(http.MethodPost, "/mint", "Bearer ndg_secret", "").Code).To(Equal(http.StatusOK))
-		Expect(fa.gotSecret).To(Equal("ndg_secret"))
-		Expect(fa.gotToken).To(BeEmpty())
+	It("marks only the listed operations' responses no-store, errors included", func() {
+		Expect(do(http.MethodGet, "/caps", "Bearer ndg_secret", "").Header().Get("Cache-Control")).To(Equal("no-store"))
+		fa.err = model.ErrInvalidAuth
+		Expect(do(http.MethodGet, "/caps", "Bearer ndg_secret", "").Header().Get("Cache-Control")).To(Equal("no-store"))
+		fa.err = nil
+		Expect(do(http.MethodGet, "/things/1", "Bearer x", "").Header().Get("Cache-Control")).To(BeEmpty())
 	})
 
 	It("checks HEAD on a protected GET", func() {
 		w := do(http.MethodHead, "/things/1", "", "")
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
-	})
-
-	It("turns an insufficient-scope error from Authenticate into a 403 challenge", func() {
-		fa.err = apiauth.ErrInsufficientScope // e.g. a token carrying admin after demotion
-		w := do(http.MethodGet, "/caps", "Bearer x", "")
-		Expect(w.Code).To(Equal(http.StatusForbidden))
-		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="insufficient_scope"`))
-		Expect(decodeProblem(w).Code).To(Equal(ProblemCodeInsufficientScope))
-	})
-
-	It("names the operation's scope when Authenticate reports an insufficient scope", func() {
-		fa.err = apiauth.ErrInsufficientScope
-		w := do(http.MethodGet, "/things/1", "Bearer x", "")
-		Expect(w.Code).To(Equal(http.StatusForbidden))
-		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="insufficient_scope", scope="read"`))
 	})
 
 	It("looks routes up on the raw path, as chi dispatches them", func() {
@@ -389,7 +345,10 @@ var _ = Describe("spec gate", func() {
 		Entry("scope not matching module", strings.Replace(gateSpec, "x-scope: read", "x-scope: password", 1)),
 		Entry("unknown scope", strings.Replace(gateSpec, "x-scope: read", "x-scope: bogus", 1)),
 		Entry("bearer without x-scope outside the allowlist", strings.Replace(gateSpec, "      x-scope: read\n", "", 1)),
-		Entry("grantAuth outside the allowlist", strings.Replace(gateSpec, "operationId: limited, x-module: core, security: []", "operationId: limited, x-module: core, security: [{grantAuth: []}]", 1)),
+		Entry("a scheme other than bearerAuth", strings.Replace(
+			strings.Replace(gateSpec, "    bearerAuth: {type: http, scheme: bearer}\n", "    bearerAuth: {type: http, scheme: bearer}\n    grantAuth: {type: http, scheme: bearer}\n", 1),
+			"operationId: caps, x-module: core, security: [{bearerAuth: []}]", "operationId: caps, x-module: core, security: [{grantAuth: []}]", 1)),
+		Entry("an undeclared scheme", strings.Replace(gateSpec, "operationId: limited, x-module: core, security: []", "operationId: limited, x-module: core, security: [{grantAuth: []}]", 1)),
 		Entry("non-empty scope list on a bearer scheme", strings.Replace(gateSpec, "operationId: caps, x-module: core, security: [{bearerAuth: []}]", "operationId: caps, x-module: core, security: [{bearerAuth: [read]}]", 1)),
 		Entry("x-scope on a public operation", strings.Replace(gateSpec, "operationId: open, x-module: core, security: [],", "operationId: open, x-module: core, x-scope: read, security: [],", 1)),
 		Entry("x-scope that is not a string", strings.Replace(gateSpec, "x-scope: read", "x-scope: [read]", 1)),
@@ -409,7 +368,6 @@ var _ = Describe("spec gate", func() {
 		},
 		Entry("limited", func(r *gateRules) *map[string]bool { return &r.limited }),
 		Entry("noScope", func(r *gateRules) *map[string]bool { return &r.noScope }),
-		Entry("grantOps", func(r *gateRules) *map[string]bool { return &r.grantOps }),
 		Entry("noStore", func(r *gateRules) *map[string]bool { return &r.noStore }),
 	)
 

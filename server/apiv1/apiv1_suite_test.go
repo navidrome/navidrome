@@ -97,12 +97,17 @@ func (c testClient) setup() GrantCreated {
 	return gc
 }
 
-func (c testClient) mint(secret string, body any) AccessToken {
-	w := c.call(http.MethodPost, "/api/v1/auth/token", secret, body)
+// login signs in as the admin created by setup; nil scopes asks for all of them.
+func (c testClient) login(scopes []string) GrantCreated {
+	body := creds("admin", "pw")
+	if scopes != nil {
+		body["scopes"] = scopes
+	}
+	w := c.call(http.MethodPost, "/api/v1/auth/login", "", body)
 	ExpectWithOffset(1, w.Code).To(Equal(http.StatusOK), w.Body.String())
-	var at AccessToken
-	decodeJSON(w, &at)
-	return at
+	var gc GrantCreated
+	decodeJSON(w, &gc)
+	return gc
 }
 
 func creds(user, pw string) map[string]any {

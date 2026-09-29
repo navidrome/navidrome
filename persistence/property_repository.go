@@ -34,12 +34,6 @@ func (r propertyRepository) Put(ctx context.Context, id string, value string) er
 	return err
 }
 
-func (r propertyRepository) PutIfAbsent(ctx context.Context, id string, value string) error {
-	insert := Insert(r.tableName).Columns("id", "value").Values(id, value).Options("OR IGNORE")
-	_, err := r.executeSQL(ctx, insert)
-	return err
-}
-
 func (r propertyRepository) Get(ctx context.Context, id string) (string, error) {
 	sel := Select("value").From(r.tableName).Where(Eq{"id": id})
 	resp := struct {

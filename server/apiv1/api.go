@@ -32,10 +32,9 @@ func New(ds model.DataStore) *Router {
 }
 
 var gateRulesV1 = gateRules{
-	limited:  map[string]bool{"login": true, "setupFirstAdmin": true, "changePassword": true},
-	noScope:  map[string]bool{"getCapabilities": true},
-	grantOps: map[string]bool{"createAccessToken": true},
-	noStore:  map[string]bool{"login": true, "setupFirstAdmin": true, "createAccessToken": true},
+	limited: map[string]bool{"login": true, "setupFirstAdmin": true, "changePassword": true},
+	noScope: map[string]bool{"getCapabilities": true},
+	noStore: map[string]bool{"login": true, "setupFirstAdmin": true},
 }
 
 func (rt *Router) routes() http.Handler {

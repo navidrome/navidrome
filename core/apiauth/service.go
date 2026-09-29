@@ -5,9 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -19,9 +16,7 @@ import (
 )
 
 const (
-	TokenTTL      = time.Hour
 	IdleExpiry    = consts.APIv1GrantIdleExpiry
-	cacheTTL      = 30 * time.Second
 	touchInterval = 5 * time.Minute
 )
 
@@ -43,12 +38,6 @@ type Issued struct {
 	User   model.User
 }
 
-type AccessToken struct {
-	Token     string
-	ExpiresIn time.Duration
-	Scopes    []string
-}
-
 type Principal struct {
 	User    model.User
 	GrantID string
@@ -58,10 +47,7 @@ type Principal struct {
 type Service struct {
 	ds       model.DataStore
 	checkers func(ds model.DataStore) []CredentialChecker // per datastore, so password change can check inside its transaction
-	cache    *livenessCache
 	now      func() time.Time
-	signerMu sync.Mutex
-	sg       atomic.Pointer[signer]
 }
 
 func New(ds model.DataStore) *Service {
@@ -70,28 +56,9 @@ func New(ds model.DataStore) *Service {
 		checkers: func(ds model.DataStore) []CredentialChecker {
 			return []CredentialChecker{dbChecker{ds: ds}}
 		},
-		cache: newLivenessCache(cacheTTL),
-		now:   time.Now,
+		now: time.Now,
 	}
 	return s
-}
-
-// signer loads the key on first use, so building the router never touches the database; only a success is kept.
-func (s *Service) signer() (*signer, error) {
-	if sg := s.sg.Load(); sg != nil {
-		return sg, nil
-	}
-	s.signerMu.Lock()
-	defer s.signerMu.Unlock()
-	if sg := s.sg.Load(); sg != nil {
-		return sg, nil
-	}
-	sg, err := loadSigner(context.Background(), s.ds, func() time.Time { return s.now() })
-	if err != nil {
-		return nil, err
-	}
-	s.sg.Store(sg)
-	return sg, nil
 }
 
 func PasswordChangeable(u model.User) bool {
@@ -147,7 +114,7 @@ func (s *Service) issue(ctx context.Context, ds model.DataStore, u model.User, p
 	return &Issued{Secret: secret, Grant: g, User: u}, nil
 }
 
-func (s *Service) ResolveGrant(ctx context.Context, secret, ip string) (*Principal, error) {
+func (s *Service) Authenticate(ctx context.Context, secret, ip string) (*Principal, error) {
 	g, err := s.ds.Grant().FindBySecretHash(ctx, hashSecret(secret))
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, model.ErrInvalidAuth
@@ -172,20 +139,6 @@ func (s *Service) ResolveGrant(ctx context.Context, secret, ip string) (*Princip
 	return &Principal{User: *u, GrantID: g.ID, Scopes: Expand(g.Scopes, u.IsAdmin)}, nil
 }
 
-func (s *Service) Mint(ctx context.Context, p *Principal, requested []string) (*AccessToken, error) {
-	sg, err := s.signer()
-	if err != nil {
-		return nil, err
-	}
-	now := s.now()
-	scopes := Attenuate(p.Scopes, requested)
-	tok, err := sg.sign(claims{UserID: p.User.ID, GrantID: p.GrantID, Scopes: scopes, IssuedAt: now, ExpiresAt: now.Add(TokenTTL)})
-	if err != nil {
-		return nil, fmt.Errorf("signing access token: %w", err)
-	}
-	return &AccessToken{Token: tok, ExpiresIn: TokenTTL, Scopes: scopes}, nil
-}
-
 func (s *Service) loadUser(ctx context.Context, userID string) (*model.User, error) {
 	u, err := s.ds.User().Get(ctx, userID)
 	if errors.Is(err, model.ErrNotFound) {
@@ -194,13 +147,11 @@ func (s *Service) loadUser(ctx context.Context, userID string) (*model.User, err
 	return u, err
 }
 
-// dropIdle deletes only still-idle grants, sparing one renewed meanwhile, and evicts after deleting so a
-// concurrent fill cannot re-cache the dead grant.
+// dropIdle deletes only still-idle grants, sparing one renewed meanwhile.
 func (s *Service) dropIdle(ctx context.Context, id string, idleSince time.Time) {
 	if _, err := s.ds.Grant().DeleteIdle(ctx, idleSince); err != nil {
 		log.Warn(ctx, "API v1: could not delete idle grants", "grant", id, err)
 	}
-	s.cache.evict(id)
 }
 
 // settleEpoch re-reads grant and user in one read transaction: separate reads can straddle a password change
@@ -217,14 +168,12 @@ func (s *Service) settleEpoch(ctx context.Context, grantID string) (*model.Grant
 		return err
 	})
 	if errors.Is(err, model.ErrNotFound) {
-		s.cache.evict(grantID)
 		return nil, nil, model.ErrInvalidAuth
 	}
 	if err != nil {
 		return nil, nil, err
 	}
 	if g.UserEpoch != u.TokenEpoch {
-		s.cache.evict(grantID)
 		if err := s.ds.Grant().DeleteStaleEpochs(ctx, u.ID, u.TokenEpoch); err != nil {
 			log.Warn(ctx, "API v1: could not delete the user's grants from older epochs", "user", u.ID, "grant", grantID, err)
 		}
@@ -241,61 +190,7 @@ func (s *Service) touch(ctx context.Context, id, ip string, lastUsed time.Time) 
 	}
 	if err := s.ds.Grant().Touch(ctx, id, ip, now, now.Add(-touchInterval)); err != nil {
 		log.Warn(ctx, "API v1: could not record grant use", "grant", id, err)
-		return
 	}
-	s.cache.markUsed(id, now)
-}
-
-func (s *Service) Authenticate(ctx context.Context, token, ip string) (*Principal, error) {
-	sg, err := s.signer()
-	if err != nil {
-		return nil, err
-	}
-	c, err := sg.parse(token)
-	if err != nil {
-		return nil, err
-	}
-	u, err := s.loadUser(ctx, c.UserID)
-	if err != nil {
-		return nil, err
-	}
-	entry, u, err := s.liveGrant(ctx, c.GrantID, u)
-	if err != nil {
-		return nil, err
-	}
-	if entry.userID != c.UserID {
-		return nil, model.ErrInvalidAuth
-	}
-	if slices.Contains(c.Scopes, ScopeAdmin) && !u.IsAdmin {
-		return nil, ErrInsufficientScope
-	}
-	s.touch(ctx, c.GrantID, ip, entry.lastUsedAt)
-	return &Principal{User: *u, GrantID: c.GrantID, Scopes: Allowed(c.Scopes, u.IsAdmin)}, nil
-}
-
-// liveGrant trusts the cache only while its epoch matches; a mismatch is settled from one consistent read.
-func (s *Service) liveGrant(ctx context.Context, id string, u *model.User) (livenessEntry, *model.User, error) {
-	now := s.now()
-	if e, ok := s.cache.get(id, now); ok && e.epoch == u.TokenEpoch {
-		return e, u, nil
-	}
-	started := s.cache.begin()
-	g, err := s.ds.Grant().Get(ctx, id)
-	if errors.Is(err, model.ErrNotFound) {
-		s.cache.evict(id)
-		return livenessEntry{}, nil, model.ErrInvalidAuth
-	}
-	if err != nil {
-		return livenessEntry{}, nil, err
-	}
-	if g.UserEpoch != u.TokenEpoch {
-		if g, u, err = s.settleEpoch(ctx, id); err != nil {
-			return livenessEntry{}, nil, err
-		}
-	}
-	e := livenessEntry{userID: g.UserID, epoch: g.UserEpoch, lastUsedAt: gg.V(g.LastUsedAt)}
-	s.cache.put(id, e, now, started)
-	return e, u, nil
 }
 
 // ListGrants shows only the current epoch: grants left on an older one are dead but only deleted when presented.
@@ -310,18 +205,13 @@ func (s *Service) ListGrants(ctx context.Context, p *Principal, offset, limit in
 }
 
 func (s *Service) RevokeGrant(ctx context.Context, p *Principal, grantID string) error {
-	if err := s.ds.Grant().DeleteForUser(ctx, p.User.ID, grantID); err != nil {
-		return err
-	}
-	s.cache.evict(grantID)
-	return nil
+	return s.ds.Grant().DeleteForUser(ctx, p.User.ID, grantID)
 }
 
 // Logout succeeds when the grant is already gone, e.g. revoked by another node or a concurrent logout.
 func (s *Service) Logout(ctx context.Context, p *Principal) error {
 	err := s.RevokeGrant(ctx, p, p.GrantID)
 	if errors.Is(err, model.ErrNotFound) {
-		s.cache.evict(p.GrantID)
 		return nil
 	}
 	return err

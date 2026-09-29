@@ -9,27 +9,6 @@ import (
 
 const defaultPageSize = 100
 
-func (rt *Router) CreateAccessToken(ctx context.Context, req CreateAccessTokenRequestObject) (CreateAccessTokenResponseObject, error) {
-	p, err := principalFrom(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var requested []string
-	if req.Body != nil {
-		requested = fromScopeRequests(req.Body.Scopes)
-	}
-	tok, err := rt.auth.Mint(ctx, p, requested)
-	if err != nil {
-		return nil, err
-	}
-	return CreateAccessToken200JSONResponse{Body: AccessToken{
-		AccessToken: tok.Token,
-		TokenType:   AccessTokenTokenTypeBearer,
-		ExpiresIn:   int(tok.ExpiresIn.Seconds()),
-		Scopes:      toScopes(tok.Scopes),
-	}}, nil
-}
-
 func (rt *Router) ListGrants(ctx context.Context, req ListGrantsRequestObject) (ListGrantsResponseObject, error) {
 	p, err := principalFrom(ctx)
 	if err != nil {

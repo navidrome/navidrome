@@ -23,7 +23,6 @@ properties:
     enum:
       - validation
       - unauthorized
-      - token_expired
       - forbidden
       - insufficient_scope
       - not_found

@@ -4,7 +4,7 @@ get:
   x-stability-level: alpha
   tags: [server]
   summary: List implemented capability modules
-  description: The capability modules this server implements. Any valid access token may read it, whatever its scopes.
+  description: The capability modules this server implements. Any valid grant may read it, whatever its scopes.
   security: [{bearerAuth: []}]
   responses:
     '200':

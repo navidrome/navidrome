@@ -51,7 +51,6 @@ var _ = Describe("problem", func() {
 			Entry("expired", model.ErrExpired, http.StatusUnauthorized, ProblemCodeUnauthorized),
 			Entry("validation", model.ErrValidation, http.StatusBadRequest, ProblemCodeValidation),
 			Entry("not available", model.ErrNotAvailable, http.StatusServiceUnavailable, ProblemCodeUnavailable),
-			Entry("token expired", apiauth.ErrTokenExpired, http.StatusUnauthorized, ProblemCodeTokenExpired),
 			Entry("insufficient scope", apiauth.ErrInsufficientScope, http.StatusForbidden, ProblemCodeInsufficientScope),
 			Entry("setup complete", auth.ErrSetupComplete, http.StatusConflict, ProblemCodeSetupComplete),
 			Entry("password managed externally", apiauth.ErrPasswordManagedExternally, http.StatusConflict, ProblemCodePasswordManagedExternally),

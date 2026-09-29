@@ -16,9 +16,9 @@ info:
     `HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods
     in its `Allow` header.
 
-    Operations that need an access token declare `security: [{bearerAuth: []}]` and the scope they need in
-    `x-scope` (OpenAPI 3.0 does not allow scopes on bearer schemes). A revoked grant, and every token minted
-    from it, stops working within one access-token lifetime at most.
+    Operations that need a grant declare `security: [{bearerAuth: []}]` and the scope they need in
+    `x-scope` (OpenAPI 3.0 does not allow scopes on bearer schemes). Clients send the grant secret as
+    `Authorization: Bearer <secret>`. A revoked grant stops working within one minute at most.
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
@@ -28,7 +28,7 @@ tags:
   - name: server
     description: Server discovery and the published OpenAPI document.
   - name: auth
-    description: Grants, access tokens, and login methods.
+    description: Grants and login methods.
 paths:
   /server:
     get:
@@ -57,7 +57,7 @@ paths:
       x-stability-level: alpha
       tags: [server]
       summary: List implemented capability modules
-      description: The capability modules this server implements. Any valid access token may read it, whatever its scopes.
+      description: The capability modules this server implements. Any valid grant may read it, whatever its scopes.
       security: [{bearerAuth: []}]
       responses:
         '200':
@@ -84,62 +84,6 @@ paths:
               $ref: '#/components/headers/ETag'
           content:
             application/json:
-              schema:
-                type: object
-                description: OpenAPI 3.0 document.
-        '304':
-          $ref: '#/components/responses/NotModified'
-  /auth/token:
-    post:
-      operationId: createAccessToken
-      x-module: core
-      x-stability-level: alpha
-      tags: [auth]
-      summary: Mint an access token
-      description: "Turns a grant into a short-lived access token, optionally narrowed to a subset of the grant's scopes. Send the grant secret as the Bearer credential."
-      security: [{grantAuth: []}]
-      requestBody:
-        description: Scopes to narrow the token to. Optional.
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenRequest'
-      responses:
-        '200':
-          description: The new access token.
-          headers:
-            Cache-Control:
-              $ref: '#/components/headers/CacheControlNoStore'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AccessToken'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '413':
-          $ref: '#/components/responses/PayloadTooLarge'
-        '500':
-          $ref: '#/components/responses/InternalError'
-  /openapi.yaml:
-    get:
-      operationId: getOpenAPISpecYAML
-      x-module: core
-      x-stability-level: alpha
-      tags: [server]
-      security: []
-      summary: Get the OpenAPI document (YAML)
-      description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
-      responses:
-        '200':
-          description: The OpenAPI document.
-          headers:
-            ETag:
-              $ref: '#/components/headers/ETag'
-          content:
-            application/yaml:
               schema:
                 type: object
                 description: OpenAPI 3.0 document.
@@ -173,6 +117,28 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/InternalError'
+  /openapi.yaml:
+    get:
+      operationId: getOpenAPISpecYAML
+      x-module: core
+      x-stability-level: alpha
+      tags: [server]
+      security: []
+      summary: Get the OpenAPI document (YAML)
+      description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
+      responses:
+        '200':
+          description: The OpenAPI document.
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/yaml:
+              schema:
+                type: object
+                description: OpenAPI 3.0 document.
+        '304':
+          $ref: '#/components/responses/NotModified'
   /auth/grants/{id}:
     delete:
       operationId: revokeGrant
@@ -181,7 +147,7 @@ paths:
       x-stability-level: alpha
       tags: [auth]
       summary: Revoke one of my grants
-      description: "Revokes the grant and every token minted from it. Another user's grant id answers 404."
+      description: "Revokes the grant; requests with its secret fail from then on. Another user's grant id answers 404."
       security: [{bearerAuth: []}]
       parameters:
         - name: id
@@ -338,11 +304,7 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-      description: "Short-lived access token from `POST /auth/token`. Opaque. The required scope is in each operation's `x-scope`."
-    grantAuth:
-      type: http
-      scheme: bearer
-      description: "Long-lived grant secret. Accepted only by `POST /auth/token`."
+      description: "Grant secret from a login method (`POST /auth/login`, `POST /auth/setup`). Opaque. The required scope is in each operation's `x-scope`."
   schemas:
     ServerInfo:
       type: object
@@ -409,7 +371,6 @@ components:
           enum:
             - validation
             - unauthorized
-            - token_expired
             - forbidden
             - insufficient_scope
             - not_found
@@ -446,7 +407,7 @@ components:
       description: |
         Capability modules this server implements, keyed by module. Keys are optional; a missing key means the
         module is not implemented. New modules are added as new optional keys. These are server facts, not what
-        the calling token may use.
+        the calling grant may use.
       properties:
         core:
           $ref: '#/components/schemas/CoreCapability'
@@ -470,41 +431,6 @@ components:
         version:
           type: integer
           description: Module version. Bumped only on semantic change.
-    TokenRequest:
-      type: object
-      description: Optional narrowing of a new access token.
-      properties:
-        scopes:
-          type: array
-          maxItems: 32
-          description: "Subset of the grant's scopes. Omit for all of them; an empty list asks for none."
-          items:
-            $ref: '#/components/schemas/ScopeRequest'
-    AccessToken:
-      type: object
-      description: "A short-lived access token. Opaque; clients must not decode it."
-      required:
-        - accessToken
-        - tokenType
-        - expiresIn
-        - scopes
-      properties:
-        accessToken:
-          type: string
-          description: "The token. Send it as `Authorization: Bearer <token>`."
-        tokenType:
-          type: string
-          enum:
-            - Bearer
-          description: "Always `Bearer`."
-        expiresIn:
-          type: integer
-          description: Seconds until the token expires.
-        scopes:
-          type: array
-          description: "Scopes the token actually carries, which may be fewer than requested."
-          items:
-            $ref: '#/components/schemas/Scope'
     GrantList:
       type: object
       description: "A page of the caller's grants."
@@ -587,7 +513,7 @@ components:
         secret:
           type: string
           maxLength: 512
-          description: "Opaque grant secret. Send it as a Bearer credential to `POST /auth/token`."
+          description: "Opaque grant secret. Send it as `Authorization: Bearer <secret>`."
         grant:
           description: The new grant.
           allOf:
@@ -617,20 +543,6 @@ components:
           type: boolean
           default: true
           description: "Revoke every other grant of the user. The calling grant always survives. Default true."
-    ScopeRequest:
-      type: string
-      description: "A requested scope. Scopes the server does not know are dropped, not rejected, so newer clients keep working."
-      pattern: '^[a-z][a-z-]*(:write)?$'
-      maxLength: 64
-    Scope:
-      type: string
-      description: |
-        A permission scope. Scopes mirror capability modules; `x:write` includes `x`. `all` appears only on
-        grants and means every scope the user is entitled to, now and in future releases. New scopes may be added.
-      enum:
-        - all
-        - read
-        - password
     Grant:
       type: object
       description: A long-lived grant held by one client of one user.
@@ -661,7 +573,7 @@ components:
           description: "Version of the client app, when it sent one."
         scopes:
           type: array
-          description: Scopes this grant may mint tokens for.
+          description: Scopes this grant carries.
           items:
             $ref: '#/components/schemas/Scope'
         provider:
@@ -683,6 +595,20 @@ components:
         current:
           type: boolean
           description: True for the grant that made this request.
+    Scope:
+      type: string
+      description: |
+        A permission scope. Scopes mirror capability modules; `x:write` includes `x`. `all` appears only on
+        grants and means every scope the user is entitled to, now and in future releases. New scopes may be added.
+      enum:
+        - all
+        - read
+        - password
+    ScopeRequest:
+      type: string
+      description: "A requested scope. Scopes the server does not know are dropped, not rejected, so newer clients keep working."
+      pattern: '^[a-z][a-z-]*(:write)?$'
+      maxLength: 64
     AuthUser:
       type: object
       description: The user a grant belongs to.
@@ -735,12 +661,6 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-    PayloadTooLarge:
-      description: "The request body is too large (`payload_too_large`)."
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
     Forbidden:
       description: The caller is authenticated but not allowed to do this.
       headers:
@@ -752,6 +672,12 @@ components:
             $ref: '#/components/schemas/Problem'
     NotFound:
       description: No such resource or endpoint.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: "The request body is too large (`payload_too_large`)."
       content:
         application/problem+json:
           schema:
@@ -803,7 +729,7 @@ components:
       schema:
         type: string
     CacheControlNoStore:
-      description: Always `no-store`, because the response carries a secret or a token.
+      description: Always `no-store`, because the response carries a secret.
       schema:
         type: string
         enum:

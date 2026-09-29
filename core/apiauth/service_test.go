@@ -2,7 +2,6 @@ package apiauth
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"time"
 
@@ -13,30 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-var errFlakyProps = errors.New("database is locked")
-
-type flakyPropsDS struct {
-	model.DataStore
-	failures int
-}
-
-func (d *flakyPropsDS) Property() model.PropertyRepository {
-	return &flakyProps{PropertyRepository: d.DataStore.Property(), ds: d}
-}
-
-type flakyProps struct {
-	model.PropertyRepository
-	ds *flakyPropsDS
-}
-
-func (p *flakyProps) Get(ctx context.Context, id string) (string, error) {
-	if p.ds.failures > 0 {
-		p.ds.failures--
-		return "", errFlakyProps
-	}
-	return p.PropertyRepository.Get(ctx, id)
-}
 
 // renewingDS runs renew right before DeleteIdle, as a node resolving the grant meanwhile would.
 type renewingDS struct {
@@ -60,7 +35,7 @@ func (g renewingGrants) DeleteIdle(ctx context.Context, idleSince time.Time) (in
 
 var meta = ClientMeta{Name: "Living room", Client: "TestApp", ClientVersion: "1.0"}
 
-var _ = Describe("Service: grants and tokens", func() {
+var _ = Describe("Service: grants", func() {
 	var ctx context.Context
 	var svc *Service
 	var now time.Time
@@ -128,59 +103,59 @@ var _ = Describe("Service: grants and tokens", func() {
 		// The empty-database path is covered end to end in server/apiv1, which owns a fresh DB.
 	})
 
-	Describe("ResolveGrant and Mint", func() {
-		It("mints a token with the grant's expanded scopes and a 1h lifetime", func() {
-			u := createUser(ctx, "pw", false)
-			issued, p, tok := login(ctx, svc, u)
-			Expect(p.GrantID).To(Equal(issued.Grant.ID))
-			Expect(p.Scopes).To(Equal([]string{ScopePassword, ScopeRead}))
-			Expect(tok.ExpiresIn).To(Equal(time.Hour))
-			Expect(tok.Scopes).To(Equal([]string{ScopePassword, ScopeRead}))
-
-			principal, err := svc.Authenticate(ctx, tok.Token, "10.0.0.9")
-			Expect(err).ToNot(HaveOccurred())
-			Expect(principal.User.ID).To(Equal(u.ID))
-		})
-
-		It("retries loading the signing key after a failed load", func() {
-			flaky := &flakyPropsDS{DataStore: realDS, failures: 1}
-			svc = New(flaky)
-			svc.SetClock(func() time.Time { return now })
+	Describe("Authenticate", func() {
+		It("resolves the secret to its user and the grant's expanded scopes", func() {
 			u := createUser(ctx, "pw", false)
 			issued, err := svc.Login(ctx, u.UserName, "pw", meta, nil)
 			Expect(err).ToNot(HaveOccurred())
-			p, err := svc.ResolveGrant(ctx, issued.Secret, "")
+			p, err := svc.Authenticate(ctx, issued.Secret, "10.0.0.9")
 			Expect(err).ToNot(HaveOccurred())
-
-			_, err = svc.Mint(ctx, p, nil)
-			Expect(err).To(MatchError(errFlakyProps))
-			tok, err := svc.Mint(ctx, p, nil)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(tok.Token).ToNot(BeEmpty())
+			Expect(p.User.ID).To(Equal(u.ID))
+			Expect(p.GrantID).To(Equal(issued.Grant.ID))
+			Expect(p.Scopes).To(Equal([]string{ScopePassword, ScopeRead}))
 		})
 
-		It("attenuates to the requested subset", func() {
+		It("carries only the scopes stored on a narrow grant", func() {
 			u := createUser(ctx, "pw", false)
-			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
-			p, _ := svc.ResolveGrant(ctx, issued.Secret, "")
-			tok, err := svc.Mint(ctx, p, []string{"read", "sync"})
+			issued, err := svc.Login(ctx, u.UserName, "pw", meta, []string{ScopePassword})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(tok.Scopes).To(Equal([]string{ScopeRead}))
+			p, err := svc.Authenticate(ctx, issued.Secret, "")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(p.Scopes).To(Equal([]string{ScopePassword}))
 		})
 
-		It("counts minting as use", func() {
+		It("records the first use with the client IP", func() {
 			u := createUser(ctx, "pw", false)
 			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
-			p, _ := svc.ResolveGrant(ctx, issued.Secret, "10.0.0.9")
-			_, err := svc.Mint(ctx, p, nil)
+			_, err := svc.Authenticate(ctx, issued.Secret, "10.0.0.9")
 			Expect(err).ToNot(HaveOccurred())
 			g, _ := realDS.Grant().Get(ctx, issued.Grant.ID)
 			Expect(g.LastUsedAt).ToNot(BeNil())
 			Expect(g.LastUsedIP).To(Equal("10.0.0.9"))
 		})
 
+		It("records use again only after the touch interval", func() {
+			u := createUser(ctx, "pw", false)
+			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
+			_, err := svc.Authenticate(ctx, issued.Secret, "10.0.0.1")
+			Expect(err).ToNot(HaveOccurred())
+
+			now = now.Add(touchInterval - time.Second)
+			_, err = svc.Authenticate(ctx, issued.Secret, "10.0.0.2")
+			Expect(err).ToNot(HaveOccurred())
+			g, _ := realDS.Grant().Get(ctx, issued.Grant.ID)
+			Expect(g.LastUsedIP).To(Equal("10.0.0.1"))
+
+			now = now.Add(2 * time.Second)
+			_, err = svc.Authenticate(ctx, issued.Secret, "10.0.0.3")
+			Expect(err).ToNot(HaveOccurred())
+			g, _ = realDS.Grant().Get(ctx, issued.Grant.ID)
+			Expect(g.LastUsedIP).To(Equal("10.0.0.3"))
+			Expect(g.LastUsedAt.Equal(now)).To(BeTrue())
+		})
+
 		It("rejects unknown secrets", func() {
-			_, err := svc.ResolveGrant(ctx, "ndg_unknown", "")
+			_, err := svc.Authenticate(ctx, "ndg_unknown", "")
 			Expect(err).To(MatchError(model.ErrInvalidAuth))
 		})
 
@@ -188,7 +163,7 @@ var _ = Describe("Service: grants and tokens", func() {
 			u := createUser(ctx, "pw", false)
 			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
 			now = now.Add(IdleExpiry + time.Second)
-			_, err := svc.ResolveGrant(ctx, issued.Secret, "")
+			_, err := svc.Authenticate(ctx, issued.Secret, "")
 			Expect(err).To(MatchError(model.ErrInvalidAuth))
 			_, err = realDS.Grant().Get(ctx, issued.Grant.ID)
 			Expect(err).To(MatchError(model.ErrNotFound))
@@ -204,7 +179,7 @@ var _ = Describe("Service: grants and tokens", func() {
 			now = now.Add(IdleExpiry + time.Second)
 			racing.SetClock(func() time.Time { return now })
 
-			_, err := racing.ResolveGrant(ctx, issued.Secret, "")
+			_, err := racing.Authenticate(ctx, issued.Secret, "")
 			Expect(err).To(MatchError(model.ErrInvalidAuth))
 			g, err := realDS.Grant().Get(ctx, issued.Grant.ID)
 			Expect(err).ToNot(HaveOccurred())
@@ -216,7 +191,7 @@ var _ = Describe("Service: grants and tokens", func() {
 			issued, _ := svc.Login(ctx, u.UserName, "pw", meta, nil)
 			u.NewPassword = "changed-elsewhere"
 			Expect(realDS.User().Put(ctx, &u)).To(Succeed())
-			_, err := svc.ResolveGrant(ctx, issued.Secret, "")
+			_, err := svc.Authenticate(ctx, issued.Secret, "")
 			Expect(err).To(MatchError(model.ErrInvalidAuth))
 			_, err = realDS.Grant().Get(ctx, issued.Grant.ID)
 			Expect(err).To(MatchError(model.ErrNotFound))

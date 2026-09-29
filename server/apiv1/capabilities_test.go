@@ -20,16 +20,17 @@ var _ = Describe("GET /capabilities", func() {
 		api = testClient{ctx: ctx, router: New(realDS)}
 	})
 
-	It("needs a token", func() {
+	It("needs a grant", func() {
 		w := api.call(http.MethodGet, "/api/v1/capabilities", "", nil)
 		Expect(w.Code).To(Equal(http.StatusUnauthorized))
 	})
 
-	It("lists core and password for any valid token, even one with no scopes", func() {
-		gc := api.setup()
-		at := api.mint(gc.Secret, map[string]any{"scopes": []string{}})
+	It("lists core and password for any valid grant, even one with no scopes", func() {
+		api.setup()
+		gc := api.login([]string{})
+		Expect(gc.Grant.Scopes).To(BeEmpty())
 
-		w := api.call(http.MethodGet, "/api/v1/capabilities", at.AccessToken, nil)
+		w := api.call(http.MethodGet, "/api/v1/capabilities", gc.Secret, nil)
 		Expect(w.Code).To(Equal(http.StatusOK))
 		var caps Capabilities
 		decodeJSON(w, &caps)

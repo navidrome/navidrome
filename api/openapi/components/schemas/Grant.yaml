@@ -17,7 +17,7 @@ properties:
     description: "Version of the client app, when it sent one."
   scopes:
     type: array
-    description: Scopes this grant may mint tokens for.
+    description: Scopes this grant carries.
     items:
       $ref: ./Scope.yaml
   provider:
