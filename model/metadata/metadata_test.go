@@ -323,7 +323,7 @@ var _ = Describe("Metadata", func() {
 					tag: {tagValue},
 				}
 				md = metadata.New(filePath, props)
-				return md.ToMediaFile(0, "0")
+				return md.ToMediaFile(0, "0", model.Library{}.EffectivePID())
 			}
 
 			DescribeTable("Gain",

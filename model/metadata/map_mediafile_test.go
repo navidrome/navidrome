@@ -30,8 +30,22 @@ var _ = Describe("ToMediaFile", func() {
 	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile(1, "folderID")
+		return md.ToMediaFile(1, "folderID", model.Library{}.EffectivePID())
 	}
+
+	Describe("Persistent IDs", func() {
+		It("uses the given album spec for the album ID and for albumid in the track spec", func() {
+			props.Tags = model.RawTags{"ALBUM": {"Kind of Blue"}, "TITLE": {"So What"}}
+			md = metadata.New("Jazz/Loose/01.mp3", props)
+
+			byTags := md.ToMediaFile(1, "folderID", model.PIDConfig{Track: "albumid,title", Album: "album"})
+			byFolder := md.ToMediaFile(1, "folderID", model.PIDConfig{Track: "albumid,title", Album: "folder"})
+
+			Expect(byFolder.AlbumID).ToNot(Equal(byTags.AlbumID))
+			Expect(byFolder.AlbumID).To(Equal(md.AlbumID(byFolder, "folder")))
+			Expect(byFolder.PID).ToNot(Equal(byTags.PID))
+		})
+	})
 
 	Describe("Dates", func() {
 		It("should parse properly tagged dates ", func() {
