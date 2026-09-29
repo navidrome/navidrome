@@ -1,25 +1,14 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import {
-  PlaylistLove,
-  TogglePublicInput,
-  ToggleAutoImport,
-} from './PlaylistList'
+import { TestContext } from 'ra-test'
+import { PlaylistLove, ToggleField, ToggleAutoImport } from './PlaylistList'
 
 vi.mock('../config', () => ({
   default: { enableFavourites: true },
 }))
 
-vi.mock('react-admin', async (importOriginal) => ({
-  ...(await importOriginal()),
-  useRecordContext: () => undefined,
-  useUpdate: () => [vi.fn()],
-  useNotify: () => vi.fn(),
-}))
-
 vi.mock('../common', () => ({
-  isWritable: () => true,
   LoveButton: ({ record, resource }) => (
     <button data-testid="love" data-resource={resource}>
       {record?.starred ? 'starred' : 'not-starred'}
@@ -48,16 +37,20 @@ describe('<PlaylistLove />', () => {
 // react-admin evicts records older than 10 minutes while the list still holds
 // their ids, so rows can render with no record.
 describe('playlist toggles without a record', () => {
-  it('<TogglePublicInput /> renders nothing', () => {
+  it('<ToggleField /> renders nothing', () => {
     const { container } = render(
-      <TogglePublicInput resource="playlist" source="public" />,
+      <TestContext>
+        <ToggleField resource="playlist" source="public" />
+      </TestContext>,
     )
     expect(container.innerHTML).toBe('')
   })
 
   it('<ToggleAutoImport /> renders nothing', () => {
     const { container } = render(
-      <ToggleAutoImport resource="playlist" source="sync" />,
+      <TestContext>
+        <ToggleAutoImport resource="playlist" source="sync" />
+      </TestContext>,
     )
     expect(container.innerHTML).toBe('')
   })
