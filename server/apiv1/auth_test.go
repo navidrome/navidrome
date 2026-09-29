@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -112,7 +113,7 @@ var _ = Describe("auth endpoints", func() {
 		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/"+gc.Grant.Id, narrow.Secret, nil).Code).To(Equal(http.StatusForbidden))
 	})
 
-	It("logs out: the secret stops at once and logoutUrl is null", func() {
+	It("logs out: the secret stops working and logoutUrl is null", func() {
 		gc := api.setup()
 		w := api.call(http.MethodPost, "/api/v1/auth/logout", gc.Secret, nil)
 		Expect(w.Code).To(Equal(http.StatusOK))
@@ -123,7 +124,7 @@ var _ = Describe("auth endpoints", func() {
 		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
 	})
 
-	It("revokes another grant of the caller, whose secret then stops at once", func() {
+	It("revokes another grant of the caller, whose secret then stops working", func() {
 		gc := api.setup()
 		other := api.login(nil)
 		Expect(api.call(http.MethodDelete, "/api/v1/auth/grants/"+other.Grant.Id, gc.Secret, nil).Code).To(Equal(http.StatusNoContent))
@@ -133,11 +134,14 @@ var _ = Describe("auth endpoints", func() {
 
 	It("challenges with invalid_token when the grant is revoked while a password change runs", func() {
 		gc := api.setup()
-		Expect(realDS.Grant().DeleteForUser(ctx, gc.User.Id, gc.Grant.Id)).To(Succeed())
+		revoking := testClient{ctx: ctx, router: New(beforeTxDS{DataStore: realDS, before: func() {
+			Expect(realDS.Grant().DeleteForUser(ctx, gc.User.Id, gc.Grant.Id)).To(Succeed())
+		}})}
 
-		w := api.call(http.MethodPost, "/api/v1/auth/password", gc.Secret, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
+		w := revoking.call(http.MethodPost, "/api/v1/auth/password", gc.Secret, map[string]any{"currentPassword": "pw", "newPassword": "pw2"})
 		Expect(w.Code).To(Equal(http.StatusUnauthorized), w.Body.String())
 		Expect(w.Header().Get("WWW-Authenticate")).To(Equal(`Bearer error="invalid_token"`))
+		api.login(nil)
 	})
 
 	It("rejects a case-variant scopes key that would widen an explicit empty subset", func() {
@@ -270,3 +274,14 @@ var _ = Describe("auth endpoints", func() {
 		Entry("with no declared length", func(s string) io.Reader { return io.MultiReader(strings.NewReader(s)) }),
 	)
 })
+
+// beforeTxDS calls before as each immediate transaction starts; authentication opens none, so it lands after the gate.
+type beforeTxDS struct {
+	model.DataStore
+	before func()
+}
+
+func (d beforeTxDS) WithTxImmediate(block func(tx model.DataStore) error, scope ...string) error {
+	d.before()
+	return d.DataStore.WithTxImmediate(block, scope...)
+}

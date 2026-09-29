@@ -32,8 +32,7 @@ type scopeError struct {
 	scope string
 }
 
-func (e *scopeError) Error() string { return apiauth.ErrInsufficientScope.Error() }
-func (e *scopeError) Unwrap() error { return apiauth.ErrInsufficientScope }
+func (e *scopeError) Error() string { return "insufficient scope" }
 
 const tooLargeDetail = "request body too large"
 
@@ -60,8 +59,9 @@ func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	log.Debug(r.Context(), "API v1: request failed", "path", r.URL.Path, "status", status, "code", code, err)
-	if code == ProblemCodeInsufficientScope {
-		w.Header().Set("WWW-Authenticate", scopeChallenge(err))
+	var se *scopeError
+	if errors.As(err, &se) {
+		w.Header().Set("WWW-Authenticate", fmt.Sprintf(`Bearer error="insufficient_scope", scope=%q`, se.scope))
 	}
 	var detail string
 	var ce *clientError
@@ -76,20 +76,11 @@ func writeProblem(w http.ResponseWriter, r *http.Request, err error) {
 	writeProblemStatus(w, r, status, code, detail)
 }
 
-func scopeChallenge(err error) string {
-	challenge := `Bearer error="insufficient_scope"`
-	var se *scopeError
-	if errors.As(err, &se) && se.scope != "" {
-		challenge += fmt.Sprintf(`, scope=%q`, se.scope)
-	}
-	return challenge
-}
-
 func classifyError(err error) (int, ProblemCode) {
 	switch {
 	case tooLarge(err):
 		return http.StatusRequestEntityTooLarge, ProblemCodePayloadTooLarge
-	case errors.Is(err, apiauth.ErrInsufficientScope):
+	case errors.As(err, new(*scopeError)):
 		return http.StatusForbidden, ProblemCodeInsufficientScope
 	case errors.Is(err, auth.ErrSetupComplete):
 		return http.StatusConflict, ProblemCodeSetupComplete

@@ -33,9 +33,9 @@ func createUser(ctx context.Context, password string, admin bool) model.User {
 	return *stored
 }
 
-// login signs in a user whose password is "pw" and authenticates with the new grant secret.
-func login(ctx context.Context, svc *Service, u model.User) (*Issued, *Principal) {
-	issued, err := svc.Login(ctx, u.UserName, "pw", meta, nil)
+// login signs u in (nil scopes asks for all) and authenticates with the new grant secret.
+func login(ctx context.Context, svc *Service, u model.User, password string, scopes []string) (*Issued, *Principal) {
+	issued, err := svc.Login(ctx, u.UserName, password, meta, scopes)
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())
 	p, err := svc.Authenticate(ctx, issued.Secret, "")
 	ExpectWithOffset(1, err).ToNot(HaveOccurred())

@@ -4,7 +4,9 @@ import (
 	"cmp"
 	"context"
 
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/gg"
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 const defaultPageSize = 100
@@ -20,10 +22,7 @@ func (rt *Router) ListGrants(ctx context.Context, req ListGrantsRequestObject) (
 	if err != nil {
 		return nil, err
 	}
-	items := make([]Grant, len(grants))
-	for i, g := range grants {
-		items[i] = toGrant(g, p.GrantID)
-	}
+	items := slice.Map(grants, func(g model.Grant) Grant { return toGrant(g, p.GrantID) })
 	return ListGrants200JSONResponse{Items: items, Total: int(total), Offset: offset, Limit: limit}, nil
 }
 

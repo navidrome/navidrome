@@ -21,7 +21,6 @@ const (
 )
 
 var (
-	ErrInsufficientScope         = errors.New("insufficient scope")
 	ErrPasswordManagedExternally = errors.New("password is managed externally")
 	ErrCurrentPasswordMismatch   = errors.New("current password does not match")
 )
@@ -51,14 +50,13 @@ type Service struct {
 }
 
 func New(ds model.DataStore) *Service {
-	s := &Service{
+	return &Service{
 		ds: ds,
 		checkers: func(ds model.DataStore) []CredentialChecker {
 			return []CredentialChecker{dbChecker{ds: ds}}
 		},
 		now: time.Now,
 	}
-	return s
 }
 
 func PasswordChangeable(u model.User) bool {
@@ -126,7 +124,10 @@ func (s *Service) Authenticate(ctx context.Context, secret, ip string) (*Princip
 		s.dropIdle(ctx, g.ID, idleSince)
 		return nil, model.ErrInvalidAuth
 	}
-	u, err := s.loadUser(ctx, g.UserID)
+	u, err := s.ds.User().Get(ctx, g.UserID)
+	if errors.Is(err, model.ErrNotFound) {
+		return nil, model.ErrInvalidAuth
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -135,16 +136,8 @@ func (s *Service) Authenticate(ctx context.Context, secret, ip string) (*Princip
 			return nil, err
 		}
 	}
-	s.touch(ctx, g.ID, ip, gg.V(g.LastUsedAt))
+	s.touch(ctx, g, ip)
 	return &Principal{User: *u, GrantID: g.ID, Scopes: Expand(g.Scopes, u.IsAdmin)}, nil
-}
-
-func (s *Service) loadUser(ctx context.Context, userID string) (*model.User, error) {
-	u, err := s.ds.User().Get(ctx, userID)
-	if errors.Is(err, model.ErrNotFound) {
-		return nil, model.ErrInvalidAuth
-	}
-	return u, err
 }
 
 // dropIdle deletes only still-idle grants, sparing one renewed meanwhile.
@@ -183,13 +176,13 @@ func (s *Service) settleEpoch(ctx context.Context, grantID string) (*model.Grant
 }
 
 // touch writes last_used at most every touchInterval (zero lastUsed: never used); the SQL condition holds that across nodes.
-func (s *Service) touch(ctx context.Context, id, ip string, lastUsed time.Time) {
+func (s *Service) touch(ctx context.Context, g *model.Grant, ip string) {
 	now := s.now()
-	if !lastUsed.IsZero() && now.Before(lastUsed.Add(touchInterval)) {
+	if lastUsed := gg.V(g.LastUsedAt); !lastUsed.IsZero() && now.Before(lastUsed.Add(touchInterval)) {
 		return
 	}
-	if err := s.ds.Grant().Touch(ctx, id, ip, now, now.Add(-touchInterval)); err != nil {
-		log.Warn(ctx, "API v1: could not record grant use", "grant", id, err)
+	if err := s.ds.Grant().Touch(ctx, g.ID, ip, now, now.Add(-touchInterval)); err != nil {
+		log.Warn(ctx, "API v1: could not record grant use", "grant", g.ID, err)
 	}
 }
 

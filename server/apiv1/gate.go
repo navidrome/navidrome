@@ -31,16 +31,9 @@ type authenticator interface {
 	Authenticate(ctx context.Context, secret, ip string) (*apiauth.Principal, error)
 }
 
-type authKind int
-
-const (
-	authPublic authKind = iota
-	authBearer
-)
-
 type gateOp struct {
 	route   *routers.Route
-	kind    authKind
+	public  bool
 	scope   string
 	limited bool
 	noStore bool
@@ -131,17 +124,16 @@ func buildGateOp(doc *openapi3.T, path string, item *openapi3.PathItem, method s
 	module, _ := op.Extensions["x-module"].(string)
 	switch reqs := *op.Security; {
 	case len(reqs) == 0:
-		gop.kind = authPublic
+		gop.public = true
 	case len(reqs) == 1 && isScheme(reqs[0], "bearerAuth"):
-		gop.kind = authBearer
 	default:
 		return nil, fmt.Errorf("operation %s has a security requirement outside the allowed forms", id)
 	}
-	if gop.kind == authBearer && scope == "" && !rules.noScope[id] {
+	if !gop.public && scope == "" && !rules.noScope[id] {
 		return nil, fmt.Errorf("operation %s: bearerAuth needs x-scope", id)
 	}
 	if scope != "" {
-		if gop.kind != authBearer {
+		if gop.public {
 			return nil, fmt.Errorf("operation %s: x-scope needs bearerAuth", id)
 		}
 		base := cmp.Or(moduleScope[module], module)
@@ -218,7 +210,7 @@ func (g *gate) handler(next http.Handler) http.Handler {
 }
 
 func (g *gate) authorize(w http.ResponseWriter, r *http.Request, op *gateOp) (*http.Request, bool) {
-	if op.kind == authPublic {
+	if op.public {
 		return r, true
 	}
 	secret, ok := bearerToken(r)
@@ -227,11 +219,12 @@ func (g *gate) authorize(w http.ResponseWriter, r *http.Request, op *gateOp) (*h
 		return r, false
 	}
 	p, err := g.auth.Authenticate(r.Context(), secret, server.ClientAddr(r))
-	if err == nil && op.scope != "" && !apiauth.Satisfies(p.Scopes, op.scope) {
-		err = &scopeError{scope: op.scope}
-	}
 	if err != nil {
 		writeProblem(w, r, err)
+		return r, false
+	}
+	if op.scope != "" && !apiauth.Satisfies(p.Scopes, op.scope) {
+		writeProblem(w, r, &scopeError{scope: op.scope})
 		return r, false
 	}
 	ctx := apiauth.WithPrincipal(request.WithUser(r.Context(), p.User), p)
@@ -247,7 +240,7 @@ func bearerToken(r *http.Request) (string, bool) {
 	return token, true
 }
 
-// SkipSettingDefaults: filling defaults re-encodes the body, which hides trailing data from jsonBodyFields.
+// SkipSettingDefaults: the handlers apply defaults themselves, and the validator must not rewrite the body.
 var validationOptions = &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc, MultiError: true, SkipSettingDefaults: true}
 
 func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx *chi.Context) bool {
@@ -255,9 +248,15 @@ func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx
 	for i, k := range rctx.URLParams.Keys {
 		params[k] = rctx.URLParams.Values[i]
 	}
-	err := openapi3filter.ValidateRequest(r.Context(), &openapi3filter.RequestValidationInput{
-		Request: r, PathParams: params, Route: op.route, Options: validationOptions,
-	})
+	body, err := readBody(r, op.route.Operation)
+	if err == nil {
+		err = openapi3filter.ValidateRequest(r.Context(), &openapi3filter.RequestValidationInput{
+			Request: r, PathParams: params, Route: op.route, Options: validationOptions,
+		})
+		if body != nil {
+			r.Body = io.NopCloser(bytes.NewReader(body))
+		}
+	}
 	if tooLarge(err) {
 		writeProblem(w, r, ClientError(err, tooLargeDetail))
 		return false
@@ -265,7 +264,7 @@ func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx
 	var fields []ValidationError
 	if err != nil {
 		fields = sanitizeValidation(err)
-	} else if fields = jsonBodyFields(r, op.route.Operation); len(fields) == 0 {
+	} else if fields = jsonBodyFields(body, op.route.Operation); len(fields) == 0 {
 		return true
 	}
 	log.Debug(r.Context(), "API v1: request failed validation", "operation", op.id(), "errors", fields)
@@ -273,20 +272,28 @@ func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx
 	return false
 }
 
+// readBody reads a declared body once, so the validator, the JSON checks and the handler all see the same bytes.
+func readBody(r *http.Request, op *openapi3.Operation) ([]byte, error) {
+	if op.RequestBody == nil || r.Body == nil || r.Body == http.NoBody {
+		return nil, nil
+	}
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	r.Body = io.NopCloser(bytes.NewReader(data))
+	return data, nil
+}
+
 // jsonBodyFields checks what kin-openapi misses in a JSON body: data after the first value, which Go's decoder
 // ignores, and keys that only case-fold to a declared property, which encoding/json decodes into that property.
-func jsonBodyFields(r *http.Request, op *openapi3.Operation) []ValidationError {
-	if op.RequestBody == nil || op.RequestBody.Value == nil || r.Body == nil {
+func jsonBodyFields(data []byte, op *openapi3.Operation) []ValidationError {
+	if op.RequestBody == nil || op.RequestBody.Value == nil || len(bytes.TrimSpace(data)) == 0 {
 		return nil
 	}
 	// Keyed on the spec, not the request's Content-Type: the handlers decode JSON whatever the header says.
 	media := op.RequestBody.Value.Content.Get("application/json")
 	if media == nil || media.Schema == nil {
-		return nil
-	}
-	data, err := io.ReadAll(r.Body)
-	r.Body = io.NopCloser(bytes.NewReader(data))
-	if err != nil || len(bytes.TrimSpace(data)) == 0 {
 		return nil
 	}
 	dec := json.NewDecoder(bytes.NewReader(data))

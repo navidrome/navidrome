@@ -53,12 +53,7 @@ func Expand(granted []string, isAdmin bool) []string {
 		}
 		out = append(out, s)
 	}
-	return Allowed(out, isAdmin)
-}
-
-// Allowed keeps the concrete scopes the user may hold now; unlike Expand it never widens `all`.
-func Allowed(scopes []string, isAdmin bool) []string {
-	out := slices.DeleteFunc(slices.Clone(scopes), func(s string) bool { return !grantable(s, isAdmin) })
+	out = slices.DeleteFunc(out, func(s string) bool { return !grantable(s, isAdmin) })
 	return normalize(out)
 }
 
