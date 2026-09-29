@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"testing"
 	"time"
 
@@ -94,9 +96,9 @@ var _ = Describe("Logger", func() {
 
 		It("logs source file and line number, if requested", func() {
 			SetLogSourceLine(true)
+			_, _, line, _ := runtime.Caller(0)
 			Error("A crash happened")
-			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:97"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring(fmt.Sprintf("/log/log_test.go:%d", line+1)))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
