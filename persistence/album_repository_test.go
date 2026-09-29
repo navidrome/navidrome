@@ -423,21 +423,21 @@ var _ = Describe("AlbumRepository", func() {
 
 			BeforeEach(func() {
 				playedAlbum = model.Album{ID: "played-album", Name: "Played Album", LibraryID: 1, SongCount: 1}
-				Expect(albumRepo.Put(&playedAlbum)).To(Succeed())
-				Expect(albumRepo.IncPlayCount(playedAlbum.ID, time.Now())).To(Succeed())
+				Expect(albumRepo.Put(ctx, &playedAlbum)).To(Succeed())
+				Expect(albumRepo.IncPlayCount(ctx, playedAlbum.ID, time.Now())).To(Succeed())
 			})
 
 			AfterEach(func() {
-				_, _ = albumRepo.executeSQL(squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": playedAlbum.ID}))
-				_, _ = albumRepo.executeSQL(squirrel.Delete("album").Where(squirrel.Eq{"id": playedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": playedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": playedAlbum.ID}))
 			})
 
 			It("false includes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"played": "false"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				var found bool
 				for _, a := range albums {
@@ -450,11 +450,11 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("true excludes items without annotations", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"played": "true"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				for _, a := range albums {
 					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
@@ -462,11 +462,11 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("true includes items with play count", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"played": "true"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				var found bool
 				for _, a := range albums {
@@ -480,11 +480,11 @@ var _ = Describe("AlbumRepository", func() {
 			})
 
 			It("false excludes items with play count", func() {
-				res, err := albumRepo.ReadAll(rest.QueryOptions{
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
 					Filters: map[string]any{"played": "false"},
 				})
 				Expect(err).ToNot(HaveOccurred())
-				albums := res.(model.Albums)
+				albums := res
 
 				for _, a := range albums {
 					Expect(a.ID).ToNot(Equal(playedAlbum.ID))
