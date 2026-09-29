@@ -898,7 +898,6 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(ds.Album().SetStar(ctx, true, oldBlueTrain.AlbumID)).To(Succeed())
 			changeRockInDB()
 
-			// Switch the jazz library to folder grouping, then run a quick scan
 			lib2.PIDAlbum = "folder"
 			Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
 			Expect(runScanner(ctx, false)).To(Succeed())
@@ -907,7 +906,6 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(albumsOf(lib2.ID)).To(HaveLen(2))
 			Expect(trackByTitle(lib2.ID, "So What").AlbumID).To(Equal(trackByTitle(lib2.ID, "Giant Steps").AlbumID))
 
-			// The star moved to the new Blue Train album
 			newBlueTrain := trackByTitle(lib2.ID, "Blue Train")
 			Expect(newBlueTrain.AlbumID).ToNot(Equal(oldBlueTrain.AlbumID))
 			album, err := ds.Album().Get(ctx, newBlueTrain.AlbumID)
@@ -917,7 +915,6 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			// Rock only got a quick scan
 			Expect(rockTitles()).To(ConsistOf("Changed In DB"))
 
-			// Both libraries recorded the specs used by this scan
 			jazz, err := ds.Library().Get(ctx, lib2.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(jazz.ScannedPIDAlbum).To(Equal("folder"))

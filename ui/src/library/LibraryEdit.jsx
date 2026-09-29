@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import PropTypes from 'prop-types'
 import {
   Edit,
   FormWithRedirect,
@@ -182,6 +183,12 @@ export const LibraryEditForm = ({ formProps, canEditPath, canDelete }) => {
       />
     </form>
   )
+}
+
+LibraryEditForm.propTypes = {
+  formProps: PropTypes.object.isRequired,
+  canEditPath: PropTypes.bool,
+  canDelete: PropTypes.bool,
 }
 
 const LibraryEdit = (props) => {

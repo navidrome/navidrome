@@ -212,15 +212,12 @@ func (r *libraryRepositoryWrapper) Update(ctx context.Context, id string, entity
 		return r.mapError(err)
 	}
 
-	// Restart watcher if path was updated
 	if pathChanged && r.watcher != nil {
 		if err := r.watcher.Watch(ctx, lib); err != nil {
 			log.Warn(ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
 		}
 	}
 
-	// Trigger scan if path or PID config was updated. The scanner rescans a library with a changed
-	// PID config in full.
 	if (pathChanged || pidChanged) && r.scanner != nil {
 		go r.triggerScan(ctx, lib, "updated")
 	}

@@ -727,7 +727,6 @@ var _ = Describe("Library Service", func() {
 			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}})
 
 			// The REST layer decodes a missing pidAlbum as "". Only the sent fields count.
-			// (Persistence keeps unsent columns: see the Task 1 repository test.)
 			library := model.Library{ID: 1, Name: "Renamed", Path: tempDir}
 			Expect(repo.Update(ctx, "1", library, "name", "path")).To(Succeed())
 

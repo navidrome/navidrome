@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import PropTypes from 'prop-types'
 import { TextInput, required, useTranslate } from 'react-admin'
 import { useField } from 'react-final-form'
 import { Link, MenuItem, TextField, Typography } from '@material-ui/core'
@@ -75,4 +76,11 @@ export const PIDInput = ({ source, label, globalValue, allowFolder }) => {
       )}
     </>
   )
+}
+
+PIDInput.propTypes = {
+  source: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  globalValue: PropTypes.string,
+  allowFolder: PropTypes.bool,
 }

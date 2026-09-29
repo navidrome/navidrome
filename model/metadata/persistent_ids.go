@@ -80,9 +80,8 @@ func getPIDAttr(mf model.MediaFile, md Metadata, attr string, prependLibId bool,
 	return md.String(model.TagName(attr))
 }
 
-// ValidatePIDSpec checks a PID spec before it is stored. isAlbum selects the album rules: `albumid` is
-// not allowed there, because it would refer to itself. Tag aliases are accepted because the default
-// track spec uses them (discnumber, tracknumber).
+// ValidatePIDSpec checks a PID spec before it is stored. Album specs cannot use `albumid` (self-reference).
+// Tag aliases are accepted because the default track spec uses them (discnumber, tracknumber).
 func ValidatePIDSpec(spec string, isAlbum bool) error {
 	switch {
 	case isAlbum && spec == "album_legacy", !isAlbum && spec == "track_legacy":
