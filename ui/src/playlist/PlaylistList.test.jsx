@@ -1,7 +1,8 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
-import { PlaylistLove } from './PlaylistList'
+import { TestContext } from 'ra-test'
+import { PlaylistLove, ToggleField, ToggleAutoImport } from './PlaylistList'
 
 vi.mock('../config', () => ({
   default: { enableFavourites: true },
@@ -30,5 +31,27 @@ describe('<PlaylistLove />', () => {
       source: 'starred',
       sortable: false,
     })
+  })
+})
+
+// react-admin evicts records older than 10 minutes while the list still holds
+// their ids, so rows can render with no record.
+describe('playlist toggles without a record', () => {
+  it('<ToggleField /> renders nothing', () => {
+    const { container } = render(
+      <TestContext>
+        <ToggleField resource="playlist" source="public" />
+      </TestContext>,
+    )
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('<ToggleAutoImport /> renders nothing', () => {
+    const { container } = render(
+      <TestContext>
+        <ToggleAutoImport resource="playlist" source="sync" />
+      </TestContext>,
+    )
+    expect(container.innerHTML).toBe('')
   })
 })
