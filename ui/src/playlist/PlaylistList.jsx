@@ -67,15 +67,15 @@ const PlaylistFilter = (props) => {
   )
 }
 
-const TogglePublicInput = ({ resource, source }) => {
+export const TogglePublicInput = ({ resource, source }) => {
   const record = useRecordContext()
   const notify = useNotify()
   const [togglePublic] = useUpdate(
     resource,
-    record.id,
+    record?.id,
     {
       ...record,
-      public: !record.public,
+      public: !record?.public,
     },
     {
       undoable: false,
@@ -90,6 +90,8 @@ const TogglePublicInput = ({ resource, source }) => {
     e.stopPropagation()
   }
 
+  if (!record) return null
+
   return (
     <Switch
       checked={record[source]}
@@ -99,15 +101,15 @@ const TogglePublicInput = ({ resource, source }) => {
   )
 }
 
-const ToggleAutoImport = ({ resource, source }) => {
+export const ToggleAutoImport = ({ resource, source }) => {
   const record = useRecordContext()
   const notify = useNotify()
   const [ToggleAutoImport] = useUpdate(
     resource,
-    record.id,
+    record?.id,
     {
       ...record,
-      sync: !record.sync,
+      sync: !record?.sync,
     },
     {
       undoable: false,
@@ -121,7 +123,7 @@ const ToggleAutoImport = ({ resource, source }) => {
     e.stopPropagation()
   }
 
-  return record.path ? (
+  return record?.path ? (
     <Switch
       checked={record[source]}
       onClick={handleClick}
