@@ -2,6 +2,7 @@ package log
 
 import (
 	"errors"
+	"net/url"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -194,6 +195,26 @@ func TestFireRedactsContextSecrets(t *testing.T) {
 	assert.Equal(t, "failed with [REDACTED]", e.Data["error"])
 	assert.Equal(t, 42, e.Data["num"])
 	assert.Equal(t, namedString("untouched"), e.Data["clean"])
+}
+
+func TestFireRedactsContextSecretsInAnyValueType(t *testing.T) {
+	ctx := WithSecrets(t.Context(), "s3cr3t-value")
+	var nilErr *url.Error
+	e := &logrus.Entry{
+		Context: ctx,
+		Data: logrus.Fields{
+			"slice":  []any{"s3cr3t-value", 1},
+			"struct": struct{ A string }{"s3cr3t-value"},
+			"bytes":  []byte("has s3cr3t-value"),
+			"nilErr": nilErr,
+		},
+	}
+
+	assert.NotPanics(t, func() { _ = (&Hook{}).Fire(e) })
+	assert.Equal(t, "[[REDACTED] 1]", e.Data["slice"])
+	assert.Equal(t, "{[REDACTED]}", e.Data["struct"])
+	assert.Equal(t, "has [REDACTED]", e.Data["bytes"])
+	assert.Equal(t, nilErr, e.Data["nilErr"])
 }
 
 func TestFireWithoutContextSecretsLeavesEntryUnchanged(t *testing.T) {

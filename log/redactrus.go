@@ -83,18 +83,12 @@ func redactSecrets(e *logrus.Entry) {
 		if v == nil {
 			continue
 		}
+		// fmt.Sprint renders like the text formatter and survives typed-nil errors; []byte is written raw.
 		var s string
-		if err, ok := v.(error); ok {
-			s = err.Error()
+		if b, ok := v.([]byte); ok {
+			s = string(b)
 		} else {
-			switch reflect.TypeOf(v).Kind() {
-			case reflect.String:
-				s = reflect.ValueOf(v).String()
-			case reflect.Map:
-				s = fmt.Sprintf("%+v", v)
-			default:
-				continue
-			}
+			s = fmt.Sprint(v)
 		}
 		if hidden := hide(s); hidden != s {
 			e.Data[k] = hidden
