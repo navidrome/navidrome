@@ -158,17 +158,22 @@ var _ = Describe("auth endpoints", func() {
 	})
 
 	DescribeTable("rejects a body with data after its JSON value, without echoing it",
-		func(body string) {
-			api.setup()
-			w := api.callRaw(http.MethodPost, "/api/v1/auth/login", "", body)
+		func(path string, needsSecret bool, body string) {
+			secret := ""
+			if gc := api.setup(); needsSecret {
+				secret = gc.Secret
+			}
+			w := api.callRaw(http.MethodPost, path, secret, body)
 			Expect(w.Code).To(Equal(http.StatusBadRequest), w.Body.String())
 			p := decodeProblem(w)
 			Expect(p.Code).To(Equal(ProblemCodeValidation))
 			Expect(*p.Errors).To(ConsistOf(ValidationError{Field: "", Message: "must be a single JSON value"}))
 			Expect(w.Body.String()).ToNot(ContainSubstring("hunter2"))
 		},
-		Entry("a trailing byte", `{"username":"a","password":"hunter2","client":"c"}x`),
-		Entry("a second value", `{"username":"a","password":"hunter2","client":"c"} {}`),
+		Entry("login with a trailing byte", "/api/v1/auth/login", false, `{"username":"a","password":"hunter2","client":"c"}x`),
+		Entry("login with a second value", "/api/v1/auth/login", false, `{"username":"a","password":"hunter2","client":"c"} {}`),
+		// This schema has a default, which the validator must not fill in by rewriting the body.
+		Entry("password change with a trailing byte", "/api/v1/auth/password", true, `{"currentPassword":"hunter2","newPassword":"pw2"}x`),
 	)
 
 	It("checks the login body even when Content-Type has a repeated parameter", func() {

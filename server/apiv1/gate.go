@@ -247,7 +247,8 @@ func bearerToken(r *http.Request) (string, bool) {
 	return token, true
 }
 
-var validationOptions = &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc, MultiError: true}
+// SkipSettingDefaults: filling defaults re-encodes the body, which hides trailing data from jsonBodyFields.
+var validationOptions = &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc, MultiError: true, SkipSettingDefaults: true}
 
 func (g *gate) validate(w http.ResponseWriter, r *http.Request, op *gateOp, rctx *chi.Context) bool {
 	params := make(map[string]string, len(rctx.URLParams.Keys))
