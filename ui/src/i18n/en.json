@@ -83,7 +83,8 @@
         "grouping": "Grouping",
         "media": "Media",
         "mood": "Mood",
-        "missing": "Missing"
+        "missing": "Missing",
+        "played": "Played"
       },
       "actions": {
         "playAll": "Play",
