@@ -86,6 +86,13 @@ export default {
         },
       },
     },
+    NDNotification: {
+      undo: {
+        '& .MuiButton-label': {
+          color: 'inherit',
+        },
+      },
+    },
     MuiChip: {
       root: {
         backgroundColor: nukeCol['accent'],
