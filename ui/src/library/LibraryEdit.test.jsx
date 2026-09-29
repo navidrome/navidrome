@@ -53,13 +53,9 @@ const renderForm = (save) =>
     </TestContext>,
   )
 
-// The MUI select has no id, so its label is not linked to it. Find the select by its FormControl
 const chooseAlbumGrouping = (optionText) => {
-  const label = screen.getByText('resources.library.fields.pidAlbum', {
-    selector: 'label',
-  })
   fireEvent.mouseDown(
-    within(label.closest('.MuiFormControl-root')).getByRole('button'),
+    screen.getByLabelText('resources.library.fields.pidAlbum'),
   )
   fireEvent.click(within(screen.getByRole('listbox')).getByText(optionText))
 }

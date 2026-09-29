@@ -41,6 +41,7 @@ export const PIDInput = ({ source, label, globalValue, allowFolder }) => {
   return (
     <>
       <TextField
+        id={`${source}-mode`}
         select
         fullWidth
         variant="outlined"
