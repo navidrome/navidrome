@@ -15,6 +15,7 @@ import {
 } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { LibraryEditForm } from './LibraryEdit'
+import config from '../config'
 
 const record = {
   id: '2',
@@ -102,6 +103,14 @@ describe('LibraryEditForm', () => {
 
     await waitFor(() => expect(save).toHaveBeenCalled())
     expect(save.mock.calls[0][0]).toMatchObject({ pidAlbum: 'folder' })
+  })
+
+  it('pre-fills a Custom spec with the global spec', () => {
+    renderForm(vi.fn())
+    chooseAlbumGrouping('resources.library.pid.custom')
+    expect(screen.getByLabelText(/resources.library.pid.spec/)).toHaveValue(
+      config.pidAlbum,
+    )
   })
 
   it('asks before saving when the form is submitted with Enter', async () => {

@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react'
+import PropTypes from 'prop-types'
 import {
   Create,
   SimpleForm,
@@ -10,8 +11,34 @@ import {
   useNotify,
   useRedirect,
 } from 'react-admin'
+import { Typography } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import { Title } from '../common'
 import { PIDInputs } from './PIDInput'
+
+const useStyles = makeStyles((theme) => ({
+  spaced: { marginTop: theme.spacing(3) },
+}))
+
+// SimpleForm passes form props (variant, record, ...) to its children, so Typography can't be used directly
+const SectionTitle = ({ label, spaced }) => {
+  const translate = useTranslate()
+  const classes = useStyles()
+  return (
+    <Typography
+      variant="h6"
+      gutterBottom
+      className={spaced ? classes.spaced : undefined}
+    >
+      {translate(label)}
+    </Typography>
+  )
+}
+
+SectionTitle.propTypes = {
+  label: PropTypes.string.isRequired,
+  spaced: PropTypes.bool,
+}
 
 const LibraryCreate = (props) => {
   const translate = useTranslate()
@@ -74,9 +101,11 @@ const LibraryCreate = (props) => {
   return (
     <Create title={<Title subTitle={title} />} {...props}>
       <SimpleForm save={save} variant={'outlined'}>
+        <SectionTitle label="resources.library.sections.basic" />
         <TextInput source="name" validate={[required()]} />
         <TextInput source="path" validate={[required()]} fullWidth />
         <BooleanInput source="defaultNewUsers" />
+        <SectionTitle label="resources.library.sections.pid" spaced />
         <PIDInputs />
       </SimpleForm>
     </Create>

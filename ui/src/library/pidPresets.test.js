@@ -31,7 +31,7 @@ describe('pidValueForMode', () => {
   it('stores folder for the Folder preset', () => {
     expect(pidValueForMode(PID_FOLDER, '')).toBe('folder')
   })
-  it('keeps the current value for Custom', () => {
+  it('starts Custom from the global spec', () => {
     expect(pidValueForMode(PID_CUSTOM, 'album|title')).toBe('album|title')
     expect(pidValueForMode(PID_CUSTOM, undefined)).toBe('')
   })

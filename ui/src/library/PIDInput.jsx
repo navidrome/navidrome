@@ -44,7 +44,7 @@ export const PIDInput = ({ source, label, globalValue, allowFolder }) => {
   const handleModeChange = (event) => {
     const newMode = event.target.value
     setMode(newMode)
-    input.onChange(pidValueForMode(newMode, input.value))
+    input.onChange(pidValueForMode(newMode, globalValue))
   }
 
   return (

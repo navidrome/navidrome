@@ -9,15 +9,15 @@ export const pidModeFromValue = (value, allowFolder) => {
   return PID_CUSTOM
 }
 
-// Returns the value to store for a dropdown choice. Custom keeps the current value
-export const pidValueForMode = (mode, currentValue) => {
+// Returns the value to store for a dropdown choice. Custom starts from the global spec
+export const pidValueForMode = (mode, globalValue) => {
   switch (mode) {
     case PID_GLOBAL:
       return ''
     case PID_FOLDER:
       return PID_FOLDER
     default:
-      return currentValue || ''
+      return globalValue || ''
   }
 }
 
