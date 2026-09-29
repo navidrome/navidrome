@@ -39,20 +39,64 @@ describe('pidValueForMode', () => {
 
 describe('pidConfigChanged', () => {
   const record = { pidAlbum: 'folder', pidTrack: '' }
+  const globals = {
+    pidAlbum: 'musicbrainz_albumid|albumartistid,album',
+    pidTrack: 'musicbrainz_trackid|albumid,discnumber,tracknumber,title',
+  }
   it('is false when nothing changed', () => {
-    expect(pidConfigChanged({ pidAlbum: 'folder', pidTrack: '' }, record)).toBe(
+    expect(
+      pidConfigChanged({ pidAlbum: 'folder', pidTrack: '' }, record, globals),
+    ).toBe(false)
+  })
+  it('treats missing and empty values as the same', () => {
+    expect(pidConfigChanged({ pidAlbum: 'folder' }, record, globals)).toBe(
       false,
     )
   })
-  it('treats missing and empty values as the same', () => {
-    expect(pidConfigChanged({ pidAlbum: 'folder' }, record)).toBe(false)
-  })
   it('is true when the album PID changed', () => {
-    expect(pidConfigChanged({ pidAlbum: '', pidTrack: '' }, record)).toBe(true)
+    expect(
+      pidConfigChanged({ pidAlbum: '', pidTrack: '' }, record, globals),
+    ).toBe(true)
   })
   it('is true when the track PID changed', () => {
     expect(
-      pidConfigChanged({ pidAlbum: 'folder', pidTrack: 'title' }, record),
+      pidConfigChanged(
+        { pidAlbum: 'folder', pidTrack: 'title' },
+        record,
+        globals,
+      ),
+    ).toBe(true)
+  })
+  it('is false when Custom is set to the global value', () => {
+    expect(
+      pidConfigChanged(
+        { pidAlbum: 'folder', pidTrack: globals.pidTrack },
+        record,
+        globals,
+      ),
+    ).toBe(false)
+  })
+  it('ignores case-only changes', () => {
+    expect(
+      pidConfigChanged({ pidAlbum: 'FOLDER', pidTrack: '' }, record, globals),
+    ).toBe(false)
+  })
+  it('ignores whitespace-only changes', () => {
+    expect(
+      pidConfigChanged(
+        { pidAlbum: ' folder ', pidTrack: '  ' },
+        record,
+        globals,
+      ),
+    ).toBe(false)
+  })
+  it('is true when an empty value becomes a custom one that is not the global', () => {
+    expect(
+      pidConfigChanged(
+        { pidAlbum: 'folder', pidTrack: 'title' },
+        { pidAlbum: 'folder', pidTrack: '' },
+        globals,
+      ),
     ).toBe(true)
   })
 })

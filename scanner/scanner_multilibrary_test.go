@@ -963,6 +963,21 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(albumsOf(lib2.ID)).To(HaveLen(2))
 		})
 
+		It("does not turn an interrupted PID rescan into a full scan of every library", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			changeRockInDB()
+			lib2.PIDAlbum = "folder"
+			Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
+
+			// Simulate a PID full scan of jazz that was interrupted
+			Expect(ds.Library().ScanBegin(ctx, lib2.ID, true)).To(Succeed())
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			// Rock only got a quick scan, jazz was rescanned with the new config
+			Expect(rockTitles()).To(ConsistOf("Changed In DB"))
+			Expect(albumsOf(lib2.ID)).To(HaveLen(2))
+		})
+
 		It("does not record the PID config for a library that could not be scanned", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 			broken := model.Library{Name: "Broken", Path: "unregistered:///music", PIDAlbum: "folder"}

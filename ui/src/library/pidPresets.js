@@ -22,7 +22,13 @@ export const pidValueForMode = (mode, currentValue) => {
   }
 }
 
-// Reports whether the form values change a PID override of the saved record
-export const pidConfigChanged = (values, record) =>
-  (values.pidAlbum || '') !== (record?.pidAlbum || '') ||
-  (values.pidTrack || '') !== (record?.pidTrack || '')
+// Reports whether the form values change the effective PID spec of the saved record. Like the
+// server, it trims, treats empty as the global value and compares case-insensitively
+export const pidConfigChanged = (values, record, globals) => {
+  const effective = (value, field) =>
+    ((value || '').trim() || globals?.[field] || '').toLowerCase()
+  return ['pidAlbum', 'pidTrack'].some(
+    (field) =>
+      effective(values[field], field) !== effective(record?.[field], field),
+  )
+}

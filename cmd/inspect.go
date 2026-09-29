@@ -66,6 +66,7 @@ func runInspector(args []string) {
 			log.Warn("Not an audio file", "file", filePath)
 			continue
 		}
+		// The CLI has no DB, so it uses the global PID config: IDs can differ from the DB for libraries with an override
 		output, err := core.Inspect(filePath, 1, "", model.Library{}.EffectivePID())
 		if err != nil {
 			log.Warn("Unable to process file", "file", filePath, "error", err)

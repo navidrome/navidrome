@@ -63,7 +63,12 @@ export const LibraryEditForm = ({ formProps, canEditPath, canDelete }) => {
 
   // Every submit path (Save button and Enter key) goes through here, so a PID change always asks first
   const submit = () => {
-    if (pidConfigChanged(formProps.form.getState().values, formProps.record)) {
+    if (
+      pidConfigChanged(formProps.form.getState().values, formProps.record, {
+        pidAlbum: config.pidAlbum,
+        pidTrack: config.pidTrack,
+      })
+    ) {
       setConfirmOpen(true)
       return
     }
@@ -170,8 +175,8 @@ export const LibraryEditForm = ({ formProps, canEditPath, canDelete }) => {
       <Confirm
         isOpen={confirmOpen}
         loading={formProps.saving}
-        title={translate('resources.library.messages.pidChangeTitle')}
-        content={translate('resources.library.messages.pidChangeConfirm')}
+        title="resources.library.messages.pidChangeTitle"
+        content="resources.library.messages.pidChangeConfirm"
         onConfirm={handleConfirm}
         onClose={() => setConfirmOpen(false)}
       />

@@ -144,6 +144,10 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	// if there was a full scan in progress, force a full scan
 	if !state.fullScan {
 		for _, lib := range state.libraries {
+			// A pending PID rescan already restarts in full through its own job
+			if lib.NeedsPIDRescan() {
+				continue
+			}
 			if lib.FullScanInProgress {
 				log.Info(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
 				state.fullScan = true
