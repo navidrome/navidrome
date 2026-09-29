@@ -11,8 +11,10 @@ import {
   pidModeFromValue,
   pidValueForMode,
 } from './pidPresets'
+import config from '../config'
+import { docsUrl } from '../utils'
 
-const PID_DOCS_URL = 'https://www.navidrome.org/docs/usage/pids/'
+const PID_DOCS_URL = docsUrl('/docs/usage/pids/')
 
 const useStyles = makeStyles((theme) => ({
   help: { marginBottom: theme.spacing(1) },
@@ -90,4 +92,23 @@ PIDInput.propTypes = {
   label: PropTypes.string.isRequired,
   globalValue: PropTypes.string,
   allowFolder: PropTypes.bool,
+}
+
+export const PIDInputs = () => {
+  const translate = useTranslate()
+  return (
+    <>
+      <PIDInput
+        source="pidAlbum"
+        label={translate('resources.library.fields.pidAlbum')}
+        globalValue={config.pidAlbum}
+        allowFolder
+      />
+      <PIDInput
+        source="pidTrack"
+        label={translate('resources.library.fields.pidTrack')}
+        globalValue={config.pidTrack}
+      />
+    </>
+  )
 }

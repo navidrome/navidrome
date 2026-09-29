@@ -56,8 +56,7 @@ type scanJob struct {
 	fs               storage.MusicFS
 	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
 	targetFolders    []string                          // Specific folders to scan (including all descendants)
-	fullScan         bool                              // Re-import all files: a full scan was requested, or the library's PID config changed
-	prevAlbumPIDConf string                            // Album PID spec used by the last finished scan, to reassign annotations
+	prevAlbumPIDConf string                            // Album PID spec of the last finished scan, only when it differs from the current one
 	lock             sync.Mutex
 	numFolders       atomic.Int64
 }
@@ -80,11 +79,15 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 		return nil, fmt.Errorf("getting fs for library: %w", err)
 	}
 
+	pid := lib.EffectivePID()
 	if lib.NeedsPIDRescan() {
-		pid := lib.EffectivePID()
 		log.Info(ctx, "Scanner: PID config changed, rescanning library in full", "lib", lib.Name,
 			"album", pid.Album, "track", pid.Track, "scannedAlbum", lib.ScannedPIDAlbum, "scannedTrack", lib.ScannedPIDTrack)
 		fullScan = true
+	}
+	var prevAlbumPIDConf string
+	if lib.ScannedPIDAlbum != pid.Album {
+		prevAlbumPIDConf = lib.ScannedPIDAlbum
 	}
 
 	// Ensure FullScanInProgress reflects the current scan request.
@@ -97,8 +100,7 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 		fs:               fsys,
 		lastUpdates:      lastUpdates,
 		targetFolders:    targetFolders,
-		fullScan:         fullScan,
-		prevAlbumPIDConf: cmp.Or(lib.ScannedPIDAlbum, lib.EffectivePID().Album),
+		prevAlbumPIDConf: prevAlbumPIDConf,
 	}, nil
 }
 
@@ -178,7 +180,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 
 				// Check if folder is outdated
 				if folder.isOutdated() {
-					if !folder.job.fullScan {
+					if !folder.job.lib.FullScanInProgress {
 						// Ancestor folders need a row even with no files of their own: artwork
 						// resolution climbs them, and an image added later needs a state to diff.
 						if folder.isEmpty() && folder.isNew() {
@@ -244,7 +246,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
-		if !foundInDB || entry.job.fullScan {
+		if !foundInDB || entry.job.lib.FullScanInProgress {
 			filesToImport[fullPath] = dbTrack
 		} else {
 			info, err := af.Info()
@@ -301,10 +303,10 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 			}
 
 			// Keep track of any album ID changes, to reassign annotations later
-			prevAlbumID := ""
+			prevAlbumID := track.AlbumID
 			if prev := toImport[filePath]; prev != nil {
 				prevAlbumID = prev.AlbumID
-			} else {
+			} else if entry.job.prevAlbumPIDConf != "" {
 				prevAlbumID = md.AlbumID(track, entry.job.prevAlbumPIDConf)
 			}
 			_, ok := entry.albumIDMap[track.AlbumID]
@@ -458,7 +460,7 @@ func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, en
 	if len(queueItems) > 0 {
 		queue := tx.ArtworkQueue()
 		enqueue := queue.Enqueue
-		if entry.job.fullScan {
+		if entry.job.lib.FullScanInProgress {
 			enqueue = queue.EnqueueIfMissing
 		}
 		if err := enqueue(ctx, queueItems...); err != nil {

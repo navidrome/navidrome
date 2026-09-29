@@ -2,7 +2,6 @@ export const PID_GLOBAL = 'global'
 export const PID_FOLDER = 'folder'
 export const PID_CUSTOM = 'custom'
 
-// Maps a stored PID override to the dropdown choice
 export const pidModeFromValue = (value, allowFolder) => {
   const v = (value || '').trim()
   if (v === '') return PID_GLOBAL
@@ -26,9 +25,9 @@ export const pidValueForMode = (mode, currentValue) => {
 // server, it trims, treats empty as the global value and compares case-insensitively
 export const pidConfigChanged = (values, record, globals) => {
   const effective = (value, field) =>
-    ((value || '').trim() || globals?.[field] || '').toLowerCase()
+    ((value || '').trim() || globals[field] || '').toLowerCase()
   return ['pidAlbum', 'pidTrack'].some(
     (field) =>
-      effective(values[field], field) !== effective(record?.[field], field),
+      effective(values[field], field) !== effective(record[field], field),
   )
 }

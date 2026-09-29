@@ -311,6 +311,7 @@ var _ = Describe("ValidatePIDSpec", func() {
 		func(spec string, isAlbum bool) {
 			Expect(ValidatePIDSpec(spec, isAlbum)).To(Succeed())
 		},
+		Entry("empty, meaning the global config", "", true),
 		Entry("default album spec", consts.DefaultAlbumPID, true),
 		Entry("default track spec, which uses tag aliases", consts.DefaultTrackPID, false),
 		Entry("folder", "folder", true),

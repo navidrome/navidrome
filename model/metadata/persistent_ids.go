@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
@@ -80,19 +81,12 @@ func getPIDAttr(mf model.MediaFile, md Metadata, attr string, prependLibId bool,
 	return md.String(model.TagName(attr))
 }
 
-// ValidatePIDSpec checks a PID spec before it is stored. Album specs cannot use `albumid` (self-reference).
+// ValidatePIDSpec checks a PID override before it is stored; empty means "use the global config".
 // Tag aliases are accepted because the default track spec uses them (discnumber, tracknumber).
 func ValidatePIDSpec(spec string, isAlbum bool) error {
 	switch {
-	case isAlbum && spec == "album_legacy", !isAlbum && spec == "track_legacy":
+	case spec == "", isAlbum && spec == "album_legacy", !isAlbum && spec == "track_legacy":
 		return nil
-	}
-	known := map[string]bool{}
-	for name, tag := range model.TagMappings() {
-		known[string(name)] = true
-		for _, alias := range tag.Aliases {
-			known[strings.ToLower(alias)] = true
-		}
 	}
 	for field := range strings.SplitSeq(spec, "|") {
 		for attr := range strings.SplitSeq(field, ",") {
@@ -104,9 +98,9 @@ func ValidatePIDSpec(spec string, isAlbum bool) error {
 				if isAlbum {
 					return errors.New("albumid cannot be used in an album PID")
 				}
-			case "folder", "albumartistid", "title", "album":
+			case "folder", "albumartistid":
 			default:
-				if !known[attr] {
+				if !isTagName(attr) {
 					return fmt.Errorf("unknown attribute %q", attr)
 				}
 			}
@@ -121,6 +115,20 @@ func (md Metadata) trackPID(mf model.MediaFile, pid model.PIDConfig) string {
 
 func (md Metadata) albumID(mf model.MediaFile, pidConf string) string {
 	return computePID(mf, md, pidConf, pidConf, true, id.NewHash)
+}
+
+// isTagName reports whether name is a mapped tag or one of its aliases (both already lowercase).
+func isTagName(name string) bool {
+	mappings := model.TagMappings()
+	if _, ok := mappings[model.TagName(name)]; ok {
+		return true
+	}
+	for _, tag := range mappings {
+		if slices.Contains(tag.Aliases, name) {
+			return true
+		}
+	}
+	return false
 }
 
 // BFR Must be configurable?

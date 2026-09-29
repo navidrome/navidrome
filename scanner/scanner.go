@@ -228,10 +228,11 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 	for _, lib := range state.libraries {
 		// A library with a changed PID config restarts its scan: resuming would skip the folders that
 		// the interrupted scan already processed with the old config
-		if lib.LastScanStartedAt.IsZero() || lib.NeedsPIDRescan() {
+		pidRescan := lib.NeedsPIDRescan()
+		if lib.LastScanStartedAt.IsZero() || pidRescan {
 			// This is a new scan - mark it as started
 			err := s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
-				return tx.Library().ScanBegin(ctx, lib.ID, state.fullScan || lib.NeedsPIDRescan())
+				return tx.Library().ScanBegin(ctx, lib.ID, state.fullScan || pidRescan)
 			}, "scanner: begin library scan")
 			if err != nil {
 				log.Error(ctx, "Scanner: Error marking scan start", "lib", lib.Name, err)

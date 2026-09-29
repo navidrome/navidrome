@@ -19,7 +19,6 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -330,15 +329,11 @@ func (r *libraryRepositoryWrapper) validateLibrary(ctx context.Context, library 
 
 	library.PIDAlbum = strings.TrimSpace(library.PIDAlbum)
 	library.PIDTrack = strings.TrimSpace(library.PIDTrack)
-	if library.PIDAlbum != "" {
-		if err := metadata.ValidatePIDSpec(library.PIDAlbum, true); err != nil {
-			validationErrors["pidAlbum"] = err.Error()
-		}
+	if err := metadata.ValidatePIDSpec(library.PIDAlbum, true); err != nil {
+		validationErrors["pidAlbum"] = err.Error()
 	}
-	if library.PIDTrack != "" {
-		if err := metadata.ValidatePIDSpec(library.PIDTrack, false); err != nil {
-			validationErrors["pidTrack"] = err.Error()
-		}
+	if err := metadata.ValidatePIDSpec(library.PIDTrack, false); err != nil {
+		validationErrors["pidTrack"] = err.Error()
 	}
 
 	if len(validationErrors) > 0 {
@@ -420,7 +415,6 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 	return nil
 }
 
-// scanWaitInterval is how often triggerScan checks whether a running scan has finished
 var scanWaitInterval = time.Second
 
 func (r *libraryRepositoryWrapper) triggerScan(ctx context.Context, lib *model.Library, action string) {
@@ -439,7 +433,7 @@ func (r *libraryRepositoryWrapper) triggerScan(ctx context.Context, lib *model.L
 	log.Info(ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
 	start := time.Now()
 	warnings, err := r.scanner.ScanAll(ctx, false) // Quick scan: the scanner rescans libraries with a changed PID config in full
-	if errors.Is(err, scanner.ErrAlreadyScanning) {
+	if errors.Is(err, model.ErrAlreadyScanning) {
 		log.Debug(ctx, "Scan already running, it covers this change", "libraryID", lib.ID, "name", lib.Name)
 	} else if err != nil {
 		log.Error(ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)

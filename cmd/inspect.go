@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -92,8 +90,7 @@ func runInspector(ctx context.Context, args []string) {
 
 // loadLibraries reads the libraries, so each file gets its library's PID config. It never creates a DB.
 func loadLibraries(ctx context.Context) model.Libraries {
-	dbFile, _, _ := strings.Cut(conf.Server.DbPath, "?")
-	if _, err := os.Stat(dbFile); err != nil {
+	if dbFile, ok := existingDBFile(); !ok {
 		log.Warn(ctx, "No database found, using the global PID config", "path", dbFile)
 		return nil
 	}

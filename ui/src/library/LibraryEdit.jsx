@@ -25,7 +25,7 @@ import {
   Title,
 } from '../common'
 import config from '../config'
-import { PIDInput } from './PIDInput'
+import { PIDInputs } from './PIDInput'
 import { pidConfigChanged } from './pidPresets'
 
 const useStyles = makeStyles({
@@ -65,10 +65,11 @@ export const LibraryEditForm = ({ formProps, canEditPath, canDelete }) => {
   // Every submit path (Save button and Enter key) goes through here, so a PID change always asks first
   const submit = () => {
     if (
-      pidConfigChanged(formProps.form.getState().values, formProps.record, {
-        pidAlbum: config.pidAlbum,
-        pidTrack: config.pidTrack,
-      })
+      pidConfigChanged(
+        formProps.form.getState().values,
+        formProps.record,
+        config,
+      )
     ) {
       setConfirmOpen(true)
       return
@@ -120,17 +121,7 @@ export const LibraryEditForm = ({ formProps, canEditPath, canDelete }) => {
             <Typography variant="h6" gutterBottom>
               {translate('resources.library.sections.pid')}
             </Typography>
-            <PIDInput
-              source="pidAlbum"
-              label={translate('resources.library.fields.pidAlbum')}
-              globalValue={config.pidAlbum}
-              allowFolder
-            />
-            <PIDInput
-              source="pidTrack"
-              label={translate('resources.library.fields.pidTrack')}
-              globalValue={config.pidTrack}
-            />
+            <PIDInputs />
 
             <Box mt="2em" />
 
