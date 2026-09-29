@@ -11,6 +11,8 @@ import {
   useRedirect,
 } from 'react-admin'
 import { Title } from '../common'
+import config from '../config'
+import { PIDInput } from './PIDInput'
 
 const LibraryCreate = (props) => {
   const translate = useTranslate()
@@ -76,6 +78,17 @@ const LibraryCreate = (props) => {
         <TextInput source="name" validate={[required()]} />
         <TextInput source="path" validate={[required()]} fullWidth />
         <BooleanInput source="defaultNewUsers" />
+        <PIDInput
+          source="pidAlbum"
+          label={translate('resources.library.fields.pidAlbum')}
+          globalValue={config.pidAlbum}
+          allowFolder
+        />
+        <PIDInput
+          source="pidTrack"
+          label={translate('resources.library.fields.pidTrack')}
+          globalValue={config.pidTrack}
+        />
       </SimpleForm>
     </Create>
   )

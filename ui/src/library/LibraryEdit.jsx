@@ -1,9 +1,10 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import {
   Edit,
   FormWithRedirect,
   TextInput,
   BooleanInput,
+  Confirm,
   required,
   SaveButton,
   useTranslate,
@@ -22,6 +23,9 @@ import {
   ReadOnlySizeField,
   Title,
 } from '../common'
+import config from '../config'
+import { PIDInput } from './PIDInput'
+import { pidConfigChanged } from './pidPresets'
 
 const useStyles = makeStyles({
   toolbar: {
@@ -53,8 +57,129 @@ const CustomToolbar = ({ showDelete, ...props }) => (
   </Toolbar>
 )
 
-const LibraryEdit = (props) => {
+export const LibraryEditForm = ({ formProps, canEditPath, canDelete }) => {
   const translate = useTranslate()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+
+  // Every submit path (Save button and Enter key) goes through here, so a PID change always asks first
+  const submit = () => {
+    if (pidConfigChanged(formProps.form.getState().values, formProps.record)) {
+      setConfirmOpen(true)
+      return
+    }
+    formProps.handleSubmit()
+  }
+
+  const handleConfirm = () => {
+    setConfirmOpen(false)
+    formProps.handleSubmit()
+  }
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault()
+        submit()
+      }}
+    >
+      <Box p="1em" maxWidth="800px">
+        <Box display="flex">
+          <Box flex={1} mr="1em">
+            {/* Basic Information */}
+            <Typography variant="h6" gutterBottom>
+              {translate('resources.library.sections.basic')}
+            </Typography>
+
+            <TextInput
+              source="name"
+              label={translate('resources.library.fields.name')}
+              validate={[required()]}
+              variant="outlined"
+            />
+            <TextInput
+              source="path"
+              label={translate('resources.library.fields.path')}
+              validate={[required()]}
+              fullWidth
+              variant="outlined"
+              InputProps={{ readOnly: !canEditPath }} // Disable editing path for library 1
+            />
+            <BooleanInput
+              source="defaultNewUsers"
+              label={translate('resources.library.fields.defaultNewUsers')}
+              variant="outlined"
+            />
+
+            <Box mt="2em" />
+            <Typography variant="h6" gutterBottom>
+              {translate('resources.library.sections.pid')}
+            </Typography>
+            <PIDInput
+              source="pidAlbum"
+              label={translate('resources.library.fields.pidAlbum')}
+              globalValue={config.pidAlbum}
+              allowFolder
+            />
+            <PIDInput
+              source="pidTrack"
+              label={translate('resources.library.fields.pidTrack')}
+              globalValue={config.pidTrack}
+            />
+
+            <Box mt="2em" />
+
+            {/* Statistics - Two Column Layout */}
+            <Typography variant="h6" gutterBottom>
+              {translate('resources.library.sections.statistics')}
+            </Typography>
+
+            <Box
+              display="grid"
+              gridTemplateColumns="1fr 1fr"
+              gridColumnGap="1em"
+            >
+              <ReadOnlyNumberField source="totalSongs" {...readOnlyProps} />
+              <ReadOnlyNumberField source="totalAlbums" {...readOnlyProps} />
+              <ReadOnlyNumberField source="totalArtists" {...readOnlyProps} />
+              <ReadOnlySizeField source="totalSize" {...readOnlyProps} />
+              <ReadOnlyDurationField
+                source="totalDuration"
+                {...readOnlyProps}
+              />
+              <ReadOnlyNumberField
+                source="totalMissingFiles"
+                {...readOnlyProps}
+              />
+              <Box gridColumn="1 / -1">
+                <ReadOnlyDateField source="lastScanAt" {...readOnlyProps} />
+              </Box>
+              <ReadOnlyDateField source="updatedAt" {...readOnlyProps} />
+              <ReadOnlyDateField source="createdAt" {...readOnlyProps} />
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
+      <CustomToolbar
+        handleSubmitWithRedirect={submit}
+        pristine={formProps.pristine}
+        saving={formProps.saving}
+        record={formProps.record}
+        showDelete={canDelete}
+      />
+      <Confirm
+        isOpen={confirmOpen}
+        loading={formProps.saving}
+        title={translate('resources.library.messages.pidChangeTitle')}
+        content={translate('resources.library.messages.pidChangeConfirm')}
+        onConfirm={handleConfirm}
+        onClose={() => setConfirmOpen(false)}
+      />
+    </form>
+  )
+}
+
+const LibraryEdit = (props) => {
   const [mutate] = useMutation()
   const notify = useNotify()
   const redirect = useRedirect()
@@ -93,91 +218,11 @@ const LibraryEdit = (props) => {
         {...props}
         save={save}
         render={(formProps) => (
-          <form onSubmit={formProps.handleSubmit}>
-            <Box p="1em" maxWidth="800px">
-              <Box display="flex">
-                <Box flex={1} mr="1em">
-                  {/* Basic Information */}
-                  <Typography variant="h6" gutterBottom>
-                    {translate('resources.library.sections.basic')}
-                  </Typography>
-
-                  <TextInput
-                    source="name"
-                    label={translate('resources.library.fields.name')}
-                    validate={[required()]}
-                    variant="outlined"
-                  />
-                  <TextInput
-                    source="path"
-                    label={translate('resources.library.fields.path')}
-                    validate={[required()]}
-                    fullWidth
-                    variant="outlined"
-                    InputProps={{ readOnly: !canEditPath }} // Disable editing path for library 1
-                  />
-                  <BooleanInput
-                    source="defaultNewUsers"
-                    label={translate(
-                      'resources.library.fields.defaultNewUsers',
-                    )}
-                    variant="outlined"
-                  />
-
-                  <Box mt="2em" />
-
-                  {/* Statistics - Two Column Layout */}
-                  <Typography variant="h6" gutterBottom>
-                    {translate('resources.library.sections.statistics')}
-                  </Typography>
-
-                  <Box
-                    display="grid"
-                    gridTemplateColumns="1fr 1fr"
-                    gridColumnGap="1em"
-                  >
-                    <ReadOnlyNumberField
-                      source="totalSongs"
-                      {...readOnlyProps}
-                    />
-                    <ReadOnlyNumberField
-                      source="totalAlbums"
-                      {...readOnlyProps}
-                    />
-                    <ReadOnlyNumberField
-                      source="totalArtists"
-                      {...readOnlyProps}
-                    />
-                    <ReadOnlySizeField source="totalSize" {...readOnlyProps} />
-                    <ReadOnlyDurationField
-                      source="totalDuration"
-                      {...readOnlyProps}
-                    />
-                    <ReadOnlyNumberField
-                      source="totalMissingFiles"
-                      {...readOnlyProps}
-                    />
-                    <Box gridColumn="1 / -1">
-                      <ReadOnlyDateField
-                        source="lastScanAt"
-                        {...readOnlyProps}
-                      />
-                    </Box>
-                    <ReadOnlyDateField source="updatedAt" {...readOnlyProps} />
-                    <ReadOnlyDateField source="createdAt" {...readOnlyProps} />
-                  </Box>
-                </Box>
-              </Box>
-            </Box>
-
-            <CustomToolbar
-              handleSubmitWithRedirect={formProps.handleSubmitWithRedirect}
-              pristine={formProps.pristine}
-              saving={formProps.saving}
-              record={formProps.record}
-              showDelete={canDelete}
-            />
-          </form>
+          <LibraryEditForm
+            formProps={formProps}
+            canEditPath={canEditPath}
+            canDelete={canDelete}
+          />
         )}
       />
     </Edit>
