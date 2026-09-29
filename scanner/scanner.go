@@ -15,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/run"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -65,7 +66,7 @@ func libraryRelativePath(libPath, folderPath string) string {
 	if err != nil {
 		return folderPath
 	}
-	rel, err := filepath.Rel(absLib, folderPath)
+	rel, err := utils.RelPath(absLib, folderPath)
 	if err != nil || !filepath.IsLocal(rel) {
 		return folderPath
 	}

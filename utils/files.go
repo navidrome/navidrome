@@ -40,3 +40,16 @@ func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil || !os.IsNotExist(err)
 }
+
+// RelPath is filepath.Rel without the UNC share root hang (golang/go#79784). Remove it after moving to Go 1.28.
+func RelPath(basePath, targPath string) (string, error) {
+	return filepath.Rel(normalizeUNCRoot(basePath), normalizeUNCRoot(targPath))
+}
+
+func normalizeUNCRoot(p string) string {
+	vol := filepath.VolumeName(p)
+	if len(vol) > 2 && strings.Trim(p[len(vol):], `\/`) == "" {
+		return vol + string(filepath.Separator)
+	}
+	return p
+}

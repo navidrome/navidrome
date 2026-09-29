@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"math"
 	"math/rand/v2"
@@ -26,6 +28,10 @@ const (
 	// giveUpAfter bounds the retry budget from enqueue; past it the item settles and only an
 	// explicit reprocess retries it.
 	giveUpAfter = 12 * time.Hour
+	// itemTimeout must outlast a slow but healthy item: each image agent's call plus its download, in turn.
+	itemTimeout = 3 * time.Minute
+	// shutdownGrace lets cancelled work unwind before Run returns and the DB closes, without waiting on a stuck item.
+	shutdownGrace = 5 * time.Second
 )
 
 // drainPool drains one class of work with its own slot budget, so a blocking kind cannot
@@ -50,7 +56,12 @@ type Worker struct {
 
 	gatesMu sync.Mutex
 	gates   map[string]*extGate
+
+	// busy holds the itemKeys still being acquired, including ones a drain stopped waiting for.
+	busy sync.Map
 }
+
+type itemKey struct{ kind, id, imageType string }
 
 func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg ffmpeg.FFmpeg, broker events.Broker, imgCache cache.FileCache) *Worker {
 	w := &Worker{
@@ -242,10 +253,56 @@ func (w *Worker) broadcastRefresh(ctx context.Context, found []model.ArtworkQueu
 
 func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired) {
 	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
-	trace := &ChainTrace{}
-	ctx = withTrace(ctx, trace)
-	out, got, retryIn := w.proc.acquire(ctx, item)
+	ctx = withTrace(ctx, &ChainTrace{})
+	out, got, retryIn := w.acquireWithTimeout(ctx, item)
+	if ctx.Err() != nil {
+		return outcomeFailed, nil // shutting down: leave the row for the next run
+	}
+	w.settle(ctx, item, out, retryIn)
+	return out, got
+}
 
+// acquireWithTimeout stops waiting on a stuck item, which Go can't stop, and never runs one item twice at once.
+func (w *Worker) acquireWithTimeout(ctx context.Context, item model.ArtworkQueueItem) (outcome, *acquired, time.Duration) {
+	key := itemKey{item.ItemKind, item.ItemID, item.ImageType}
+	if _, running := w.busy.LoadOrStore(key, struct{}{}); running {
+		log.Debug(ctx, "Artwork: Item still running from an earlier drain", "kind", item.ItemKind, "id", item.ItemID)
+		traceStage(ctx, "worker", errors.New("previous attempt still running"))
+		return outcomeFailed, nil, 0
+	}
+	type result struct {
+		out     outcome
+		got     *acquired
+		retryIn time.Duration
+	}
+	done := make(chan result, 1)
+	go func() {
+		// The deadline stops work that honors ctx; the select below covers work that doesn't.
+		actx, cancel := context.WithTimeout(ctx, itemTimeout)
+		defer cancel()
+		out, got, retryIn := w.proc.acquire(actx, item)
+		// Cleared before the send, so the next drain never sees a finished item as busy.
+		w.busy.Delete(key)
+		done <- result{out, got, retryIn}
+	}()
+	select {
+	case r := <-done:
+		return r.out, r.got, r.retryIn
+	case <-ctx.Done():
+		select {
+		case <-done:
+		case <-time.After(shutdownGrace):
+		}
+		return outcomeFailed, nil, 0
+	case <-time.After(itemTimeout):
+		log.Error(ctx, "Artwork: Item timed out, moving on", "kind", item.ItemKind, "id", item.ItemID, "timeout", itemTimeout)
+		traceStage(ctx, "worker", fmt.Errorf("timed out after %s", itemTimeout))
+		return outcomeFailed, nil, 0
+	}
+}
+
+// settle deletes or reschedules the queue row for an acquire outcome.
+func (w *Worker) settle(ctx context.Context, item model.ArtworkQueueItem, out outcome, retryIn time.Duration) {
 	queue := w.proc.ds.ArtworkQueue()
 	switch out {
 	case outcomeFound, outcomeAbsent:
@@ -256,7 +313,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		}
 	case outcomeFoundStale, outcomeFailed:
 		retryAt := time.Now().Add(retryDelay(item.Attempts, retryIn))
-		encoded := trace.encode("")
+		encoded := traceFrom(ctx).encode("")
 		if retryAt.Before(item.EnqueuedAt.Add(giveUpAfter)) {
 			// A mid-flight re-enqueue reset retry_at; stale backoff must not stomp its
 			// fresh, immediate eligibility.
@@ -283,7 +340,6 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 			log.Warn(ctx, "Artwork: Could not remove exhausted queue item", "kind", item.ItemKind, "id", item.ItemID, err)
 		}
 	}
-	return out, got
 }
 
 // recordGiveUp keeps the last failure on the state row after the queue row is deleted. An item
