@@ -40,6 +40,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			state.sendError(err)
+			state.markFailed(lib.ID)
 			continue
 		}
 		jobs = append(jobs, job)
@@ -51,12 +52,14 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 }
 
 type scanJob struct {
-	lib           model.Library
-	fs            storage.MusicFS
-	lastUpdates   map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
-	targetFolders []string                          // Specific folders to scan (including all descendants)
-	lock          sync.Mutex
-	numFolders    atomic.Int64
+	lib              model.Library
+	fs               storage.MusicFS
+	lastUpdates      map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
+	targetFolders    []string                          // Specific folders to scan (including all descendants)
+	fullScan         bool                              // Re-import all files: a full scan was requested, or the library's PID config changed
+	prevAlbumPIDConf string                            // Album PID spec used by the last finished scan, to reassign annotations
+	lock             sync.Mutex
+	numFolders       atomic.Int64
 }
 
 func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
@@ -77,16 +80,25 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 		return nil, fmt.Errorf("getting fs for library: %w", err)
 	}
 
+	if lib.NeedsPIDRescan() {
+		pid := lib.EffectivePID()
+		log.Info(ctx, "Scanner: PID config changed, rescanning library in full", "lib", lib.Name,
+			"album", pid.Album, "track", pid.Track, "scannedAlbum", lib.ScannedPIDAlbum, "scannedTrack", lib.ScannedPIDTrack)
+		fullScan = true
+	}
+
 	// Ensure FullScanInProgress reflects the current scan request.
 	// This is important when resuming an interrupted quick scan as a full scan:
 	// the DB may have FullScanInProgress=false, but we need it true for isOutdated() to work correctly.
 	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 
 	return &scanJob{
-		lib:           lib,
-		fs:            fsys,
-		lastUpdates:   lastUpdates,
-		targetFolders: targetFolders,
+		lib:              lib,
+		fs:               fsys,
+		lastUpdates:      lastUpdates,
+		targetFolders:    targetFolders,
+		fullScan:         fullScan,
+		prevAlbumPIDConf: cmp.Or(lib.ScannedPIDAlbum, lib.EffectivePID().Album),
 	}, nil
 }
 
@@ -122,14 +134,13 @@ func (j *scanJob) createFolderEntry(path string) *folderEntry {
 // The phaseFolders struct implements the phase interface, providing methods to produce
 // folder entries, process folders, persist changes to the database, and log the results.
 type phaseFolders struct {
-	jobs             []*scanJob
-	ds               model.DataStore
-	ctx              context.Context //nolint:containedctx // phase runs under a single scan ctx
-	walkCtx          context.Context //nolint:containedctx // cancelled when a folder fails to persist, so the walk stops early
-	stopWalk         context.CancelCauseFunc
-	state            *scanState
-	prevAlbumPIDConf string
-	imageChanges     *imageChangeCollector
+	jobs         []*scanJob
+	ds           model.DataStore
+	ctx          context.Context //nolint:containedctx // phase runs under a single scan ctx
+	walkCtx      context.Context //nolint:containedctx // cancelled when a folder fails to persist, so the walk stops early
+	stopWalk     context.CancelCauseFunc
+	state        *scanState
+	imageChanges *imageChangeCollector
 }
 
 func (p *phaseFolders) description() string {
@@ -138,12 +149,6 @@ func (p *phaseFolders) description() string {
 
 func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 	return ppl.NewProducer(func(put func(entry *folderEntry)) error {
-		var err error
-		p.prevAlbumPIDConf, err = p.ds.Property().DefaultGet(p.ctx, consts.PIDAlbumKey, "")
-		if err != nil {
-			return fmt.Errorf("getting album PID conf: %w", err)
-		}
-
 		// TODO Parallelize multiple job when we have multiple libraries
 		var total int64
 		var totalChanged int64
@@ -173,7 +178,7 @@ func (p *phaseFolders) producer() ppl.Producer[*folderEntry] {
 
 				// Check if folder is outdated
 				if folder.isOutdated() {
-					if !p.state.fullScan {
+					if !folder.job.fullScan {
 						// Ancestor folders need a row even with no files of their own: artwork
 						// resolution climbs them, and an image added later needs a state to diff.
 						if folder.isEmpty() && folder.isNew() {
@@ -239,7 +244,7 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
-		if !foundInDB || p.state.fullScan {
+		if !foundInDB || entry.job.fullScan {
 			filesToImport[fullPath] = dbTrack
 		} else {
 			info, err := af.Info()
@@ -300,7 +305,7 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 			if prev := toImport[filePath]; prev != nil {
 				prevAlbumID = prev.AlbumID
 			} else {
-				prevAlbumID = md.AlbumID(track, p.prevAlbumPIDConf)
+				prevAlbumID = md.AlbumID(track, entry.job.prevAlbumPIDConf)
 			}
 			_, ok := entry.albumIDMap[track.AlbumID]
 			if prevAlbumID != track.AlbumID && !ok {
@@ -453,7 +458,7 @@ func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, en
 	if len(queueItems) > 0 {
 		queue := tx.ArtworkQueue()
 		enqueue := queue.Enqueue
-		if p.state.fullScan {
+		if entry.job.fullScan {
 			enqueue = queue.EnqueueIfMissing
 		}
 		if err := enqueue(ctx, queueItems...); err != nil {

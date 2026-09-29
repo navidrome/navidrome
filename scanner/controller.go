@@ -304,14 +304,14 @@ func LockForMaintenance() (func(), bool) {
 	return scanMaintenanceMux.Unlock, true
 }
 
-// EffectiveFullScan reports whether a scan was requested as full or will resume an interrupted
-// full scan in one of the included libraries.
+// EffectiveFullScan reports whether a scan was requested as full, will resume an interrupted full scan,
+// or will rescan a library in full because its PID config changed, in one of the included libraries.
 func EffectiveFullScan(ctx context.Context, ds model.DataStore, fullScan bool, targets []model.ScanTarget) bool {
 	if fullScan {
 		return true
 	}
 	return anyIncludedLibrary(ctx, ds, targets, func(library model.Library) bool {
-		return library.FullScanInProgress
+		return library.FullScanInProgress || library.NeedsPIDRescan()
 	})
 }
 

@@ -2,6 +2,7 @@ package scanner_test
 
 import (
 	"context"
+	"time"
 
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -70,12 +71,19 @@ var _ = Describe("EffectiveFullScan", func() {
 	var ds *tests.MockDataStore
 
 	BeforeEach(func() {
+		pid := model.Library{}.EffectivePID()
 		libraries := &tests.MockLibraryRepo{}
 		libraries.SetData(model.Libraries{
-			{ID: 1, FullScanInProgress: true},
-			{ID: 2},
+			{ID: 1, FullScanInProgress: true, ScannedPIDAlbum: pid.Album, ScannedPIDTrack: pid.Track},
+			{ID: 2, ScannedPIDAlbum: pid.Album, ScannedPIDTrack: pid.Track},
+			{ID: 3, LastScanAt: time.Now(), PIDAlbum: "folder", ScannedPIDAlbum: pid.Album, ScannedPIDTrack: pid.Track},
 		})
 		ds = &tests.MockDataStore{MockedLibrary: libraries}
+	})
+
+	It("detects a library that needs a full rescan for a PID change", func() {
+		targets := []model.ScanTarget{{LibraryID: 3, FolderPath: "."}}
+		Expect(scanner.EffectiveFullScan(GinkgoT().Context(), ds, false, targets)).To(BeTrue())
 	})
 
 	It("detects an interrupted full scan in a targeted library", func() {
