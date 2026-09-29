@@ -27,7 +27,7 @@ func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.Inspec
 		return nil, err
 	}
 
-	return core.Inspect(file.AbsolutePath(), file.LibraryID, file.FolderID, lib.EffectivePID())
+	return core.Inspect(file.AbsolutePath(), *lib, file.FolderID)
 }
 
 func inspect(ds model.DataStore) http.HandlerFunc {
