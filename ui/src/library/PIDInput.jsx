@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { TextInput, required, useTranslate } from 'react-admin'
 import { useField } from 'react-final-form'
-import { Link, MenuItem, TextField, Typography } from '@material-ui/core'
+import { FormHelperText, Link, MenuItem, TextField } from '@material-ui/core'
+import { makeStyles } from '@material-ui/core/styles'
 import {
   PID_CUSTOM,
   PID_FOLDER,
@@ -13,9 +14,14 @@ import {
 
 const PID_DOCS_URL = 'https://www.navidrome.org/docs/usage/pids/'
 
+const useStyles = makeStyles((theme) => ({
+  help: { marginBottom: theme.spacing(1) },
+}))
+
 // PIDInput edits a library PID override: use the global setting, a preset, or a custom spec
 export const PIDInput = ({ source, label, globalValue, allowFolder }) => {
   const translate = useTranslate()
+  const classes = useStyles()
   const { input } = useField(source)
   // Local state, so choosing Custom shows the text box before anything is typed
   const [mode, setMode] = useState(() =>
@@ -65,13 +71,14 @@ export const PIDInput = ({ source, label, globalValue, allowFolder }) => {
             validate={[required()]}
             fullWidth
             variant="outlined"
+            helperText={false}
           />
-          <Typography variant="caption" color="textSecondary" component="p">
+          <FormHelperText className={classes.help}>
             {translate('resources.library.pid.help')}{' '}
             <Link href={PID_DOCS_URL} target="_blank" rel="noopener noreferrer">
               {translate('resources.library.pid.docs')}
             </Link>
-          </Typography>
+          </FormHelperText>
         </>
       )}
     </>
