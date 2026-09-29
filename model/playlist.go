@@ -221,6 +221,8 @@ type PlaylistRepository interface {
 	FindByPath(ctx context.Context, path string) (*Playlist, error)
 	Tracks(ctx context.Context, playlistId string, refreshSmartPlaylist bool) PlaylistTrackRepository
 	GetPlaylists(ctx context.Context, mediaFileId string) (Playlists, error)
+	// Evaluate refreshes a smart playlist's tracks as its owner, ignoring visibility and the refresh delay.
+	Evaluate(ctx context.Context, id string) error
 }
 
 type PlaylistTrack struct {

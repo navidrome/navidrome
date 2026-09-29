@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
+	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -133,5 +134,34 @@ var _ = Describe("runPhase", func() {
 		err := runPhase(ctx, phaseNum, phase)()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(counter.Load()).To(Equal(int64(3)))
+	})
+})
+
+var _ = Describe("runEvaluateSmartPlaylists", func() {
+	var ctx context.Context
+	var plsRepo *tests.MockPlaylistRepo
+	var s *scannerImpl
+	var state *scanState
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		plsRepo = tests.CreateMockPlaylistRepo()
+		s = &scannerImpl{ds: &tests.MockDataStore{MockedPlaylist: plsRepo}}
+		state = &scanState{}
+	})
+
+	It("evaluates every queued smart playlist", func() {
+		state.queueSmartPlaylist("p1")
+		state.queueSmartPlaylist("p2")
+
+		Expect(s.runEvaluateSmartPlaylists(ctx, state)()).To(Succeed())
+		Expect(plsRepo.Evaluated).To(Equal([]string{"p1", "p2"}))
+	})
+
+	It("does not fail the scan when an evaluation fails", func() {
+		plsRepo.SetError(true)
+		state.queueSmartPlaylist("p1")
+
+		Expect(s.runEvaluateSmartPlaylists(ctx, state)()).To(Succeed())
 	})
 })

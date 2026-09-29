@@ -6,6 +6,7 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,6 +33,21 @@ type scanState struct {
 	libraries         model.Libraries  // Store libraries list for consistency across phases
 	targets           map[int][]string // Optional: map[libraryID][]folderPaths for selective scans
 	totalLibraryCount int              // Total number of libraries (unfiltered), for cross-library move detection
+
+	smartPlaylistsMu sync.Mutex
+	smartPlaylists   []string
+}
+
+func (s *scanState) queueSmartPlaylist(id string) {
+	s.smartPlaylistsMu.Lock()
+	defer s.smartPlaylistsMu.Unlock()
+	s.smartPlaylists = append(s.smartPlaylists, id)
+}
+
+func (s *scanState) smartPlaylistsToEvaluate() []string {
+	s.smartPlaylistsMu.Lock()
+	defer s.smartPlaylistsMu.Unlock()
+	return s.smartPlaylists
 }
 
 func (s *scanState) sendProgress(info *ProgressInfo) {
@@ -187,6 +203,9 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 
 		// Update last_scan_completed_at for all libraries
 		s.runUpdateLibraries(ctx, &state),
+
+		// Evaluate new/changed smart playlists last, so their rules see the final library state
+		s.runEvaluateSmartPlaylists(ctx, &state),
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
@@ -328,6 +347,21 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 			return fmt.Errorf("updating tag counts: %w", err)
 		}
 		log.Debug(ctx, "Scanner: Updated tag counts", "elapsed", time.Since(start))
+		return nil
+	}
+}
+
+// Failures are logged but never fail the scan: the playlist is still evaluated when it is next read.
+func (s *scannerImpl) runEvaluateSmartPlaylists(ctx context.Context, state *scanState) func() error {
+	return func() error {
+		for _, id := range state.smartPlaylistsToEvaluate() {
+			start := time.Now()
+			if err := s.ds.Playlist().Evaluate(ctx, id); err != nil {
+				log.Warn(ctx, "Scanner: Could not evaluate smart playlist", "id", id, err)
+				continue
+			}
+			log.Debug(ctx, "Scanner: Evaluated smart playlist", "id", id, "elapsed", time.Since(start))
+		}
 		return nil
 	}
 }

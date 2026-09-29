@@ -2,6 +2,9 @@ package persistence
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -17,6 +20,23 @@ import (
 // tracks accordingly. It also handles refreshing dependent playlists when a smart playlist references other playlists
 // in its criteria. To optimize performance, it only refreshes when necessary based on the last evaluated time and
 // configured refresh delay.
+
+func (r *playlistRepository) Evaluate(ctx context.Context, id string) error {
+	var res dbPlaylist
+	if err := r.queryOne(ctx, r.selectPlaylist(ctx).Where(Eq{"playlist.id": id}), &res); err != nil {
+		return err
+	}
+	pls := res.Playlist
+	ownerCtx, err := r.ownerContext(ctx, pls.OwnerID)
+	if err != nil {
+		return err
+	}
+	pls.EvaluatedAt = nil
+	if !r.refreshSmartPlaylist(ownerCtx, &pls) {
+		return fmt.Errorf("evaluating smart playlist %s", id)
+	}
+	return nil
+}
 
 // refreshSmartPlaylist evaluates the criteria of a smart playlist and updates its tracks accordingly.
 func (r *playlistRepository) refreshSmartPlaylist(ctx context.Context, pls *model.Playlist) bool {
@@ -39,12 +59,6 @@ func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *
 	log.Debug(ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
 	start := time.Now()
 
-	del := Delete("playlist_tracks").Where(Eq{"playlist_id": pls.ID})
-	if _, err := r.executeSQL(ctx, del); err != nil {
-		log.Error(ctx, "Error deleting old smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
-		return false
-	}
-
 	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(), withSmartPlaylistOwner(*usr))
 
 	if !r.refreshChildPlaylists(ctx, pls, rulesSQL, visited) {
@@ -55,35 +69,54 @@ func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *
 		return false
 	}
 
-	sq := r.buildSmartPlaylistQuery(ctx, pls, rulesSQL, usr.ID)
-	sq, err := r.addCriteria(sq, rulesSQL)
+	sq, err := r.addCriteria(r.buildSmartPlaylistQuery(ctx, rulesSQL, usr.ID), rulesSQL)
 	if err != nil {
 		log.Error(ctx, "Error building smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
-	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
-	if _, err = r.executeSQL(ctx, insSql); err != nil {
+	// Evaluate the criteria before writing, so the write lock is only held for the short replace below
+	var ids []string
+	if err = r.queryAllSlice(ctx, sq, &ids); err != nil && !errors.Is(err, model.ErrNotFound) {
+		log.Error(ctx, "Error evaluating smart playlist criteria", "playlist", pls.Name, "id", pls.ID, err)
+		return false
+	}
+
+	err = r.inTx(func(tx *playlistRepository) error { return tx.replaceSmartPlaylistTracks(ctx, pls, ids) })
+	if err != nil {
 		log.Error(ctx, "Error refreshing smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
 		return false
 	}
 
-	if err = r.refreshCounters(ctx, pls); err != nil {
-		log.Error(ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
-		return false
-	}
-
-	// Reuse the stamp refreshCounters just wrote, so evaluated_at and updated_at agree
-	now := pls.UpdatedAt
-	updSql := Update(r.tableName).Set("evaluated_at", now).Where(Eq{"id": pls.ID})
-	if _, err = r.executeSQL(ctx, updSql); err != nil {
-		log.Error(ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
-		return false
-	}
-	pls.EvaluatedAt = &now
-
 	log.Debug(ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
 	return true
+}
+
+func (r *playlistRepository) replaceSmartPlaylistTracks(ctx context.Context, pls *model.Playlist, ids []string) error {
+	if _, err := r.executeSQL(ctx, Delete("playlist_tracks").Where(Eq{"playlist_id": pls.ID})); err != nil {
+		return err
+	}
+	if len(ids) > 0 {
+		idsJSON, err := json.Marshal(ids)
+		if err != nil {
+			return err
+		}
+		ins := Expr("INSERT INTO playlist_tracks (id, playlist_id, media_file_id) SELECT key + 1, ?, value FROM json_each(?)",
+			pls.ID, string(idsJSON))
+		if _, err = r.executeSQL(ctx, ins); err != nil {
+			return err
+		}
+	}
+	if err := r.refreshCounters(ctx, pls); err != nil {
+		return err
+	}
+	// Reuse the stamp refreshCounters just wrote, so evaluated_at and updated_at agree
+	now := pls.UpdatedAt
+	if _, err := r.executeSQL(ctx, Update(r.tableName).Set("evaluated_at", now).Where(Eq{"id": pls.ID})); err != nil {
+		return err
+	}
+	pls.EvaluatedAt = &now
+	return nil
 }
 
 // shouldRefreshSmartPlaylist determines if a smart playlist needs to be refreshed based on its type, last evaluated
@@ -176,12 +209,10 @@ func (r *playlistRepository) resolvePercentageLimit(ctx context.Context, pls *mo
 	return nil
 }
 
-// buildSmartPlaylistQuery constructs the SQL query to select media files matching the smart playlist criteria,
-// including the joins its fields require and library filtering.
-func (r *playlistRepository) buildSmartPlaylistQuery(ctx context.Context, pls *model.Playlist, rulesSQL smartPlaylistCriteria, userID string) SelectBuilder {
-	orderBy := rulesSQL.orderBy()
-	sq := Select("row_number() over (order by "+orderBy+") as id", "'"+pls.ID+"' as playlist_id", "media_file.id as media_file_id").
-		From("media_file")
+// buildSmartPlaylistQuery constructs the SQL query to select the ids of media files matching the smart playlist
+// criteria, including the joins its fields require and library filtering.
+func (r *playlistRepository) buildSmartPlaylistQuery(ctx context.Context, rulesSQL smartPlaylistCriteria, userID string) SelectBuilder {
+	sq := Select("media_file.id").From("media_file")
 	sq = rulesSQL.applyRequiredJoins(sq, userID)
 	sq = r.applyLibraryFilter(ctx, sq, "media_file")
 	return sq

@@ -144,6 +144,10 @@ func (p *phasePlaylists) processPlaylistsInFolder(folder *model.Folder) (*model.
 			continue
 		}
 		if pls.IsSmartPlaylist() {
+			// A nil EvaluatedAt means the playlist is new or its file changed
+			if pls.ID != "" && pls.EvaluatedAt == nil {
+				p.scanState.queueSmartPlaylist(pls.ID)
+			}
 			log.Debug("Scanner: Imported smart playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "elapsed", time.Since(started))
 		} else {
 			log.Debug("Scanner: Imported playlist", "name", pls.Name, "lastUpdated", pls.UpdatedAt, "path", pls.Path, "numTracks", len(pls.Tracks), "elapsed", time.Since(started))

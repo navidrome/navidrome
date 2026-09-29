@@ -330,6 +330,47 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		})
 	})
 
+	Describe("Evaluate", func() {
+		dayRules := func() *criteria.Criteria {
+			return &criteria.Criteria{
+				Expression:   criteria.All{criteria.Contains{"title": "Day"}},
+				RefreshDelay: 24 * time.Hour,
+			}
+		}
+
+		It("evaluates even when the refresh delay has not elapsed", func() {
+			evaluatedAt := time.Now().Add(-1 * time.Hour)
+			pls := model.Playlist{Name: "Evaluate Delay", OwnerID: "userid", Rules: dayRules(), EvaluatedAt: &evaluatedAt}
+			Expect(repo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
+
+			Expect(repo.Evaluate(ctx, pls.ID)).To(Succeed())
+
+			got, err := repo.Get(ctx, pls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(*got.EvaluatedAt).To(BeTemporally("~", time.Now(), 2*time.Second))
+			Expect(got.SongCount).To(Equal(1))
+		})
+
+		It("evaluates as the owner, even when the caller cannot see the playlist", func() {
+			pls := model.Playlist{Name: "Evaluate Owner", OwnerID: regularUser.ID, Rules: dayRules()}
+			Expect(repo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
+			otherCtx := request.WithUser(log.NewContext(GinkgoT().Context()), thirdUser)
+
+			Expect(repo.Evaluate(otherCtx, pls.ID)).To(Succeed())
+
+			got, err := repo.Get(ctx, pls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.EvaluatedAt).ToNot(BeNil())
+			Expect(got.SongCount).To(Equal(1))
+		})
+
+		It("returns ErrNotFound for an unknown playlist", func() {
+			Expect(repo.Evaluate(ctx, "nonexistent-id")).To(MatchError(model.ErrNotFound))
+		})
+	})
+
 	Describe("Playlist Track Sorting", func() {
 		var testPlaylistID string
 
