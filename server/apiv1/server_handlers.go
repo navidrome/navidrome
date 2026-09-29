@@ -21,3 +21,10 @@ func (rt *Router) GetServerInfo(ctx context.Context, _ GetServerInfoRequestObjec
 		LoginMethods:  LoginMethods{Password: &PasswordLoginMethod{}},
 	}, nil
 }
+
+func (rt *Router) GetCapabilities(context.Context, GetCapabilitiesRequestObject) (GetCapabilitiesResponseObject, error) {
+	return GetCapabilities200JSONResponse{
+		Core:     &CoreCapability{Version: 1},
+		Password: &PasswordCapability{Version: 1},
+	}, nil
+}
