@@ -273,6 +273,16 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading libraries count", err)
 	}
+	libs, err := c.ds.Library().GetAll(ctx)
+	if err != nil {
+		log.Trace(ctx, "Error reading libraries", err)
+	}
+	for _, lib := range libs {
+		if lib.PIDAlbum != "" || lib.PIDTrack != "" {
+			data.Config.HasCustomPID = true
+			break
+		}
+	}
 	data.Library.ActiveUsers, err = c.ds.User().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
