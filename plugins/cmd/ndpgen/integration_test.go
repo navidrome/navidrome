@@ -335,6 +335,7 @@ type ArtistRef struct {
 			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noerror"))
 			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noparams"))
 			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_noparamsnoreturns"))
+			Expect(contentStr).To(ContainSubstring("//go:wasmimport extism:host/user comprehensive_open"))
 
 			// Should have response types for methods with complex returns (private types in client code)
 			Expect(contentStr).To(ContainSubstring("type comprehensiveSimpleParamsResponse struct"))
@@ -344,6 +345,7 @@ type ArtistRef struct {
 			Expect(contentStr).To(ContainSubstring("func ComprehensiveSimpleParams("))
 			Expect(contentStr).To(ContainSubstring("func ComprehensiveNoParams()"))
 			Expect(contentStr).To(ContainSubstring("func ComprehensiveNoParamsNoReturns()"))
+			Expect(contentStr).To(ContainSubstring("func ComprehensiveOpen(name string) (io.ReadCloser, error)"))
 
 			// Create a plugin directory with proper import structure
 			pluginDir := filepath.Join(outputDir, "plugin")
@@ -375,6 +377,9 @@ var _ = ndpdk.ComprehensiveNoParams
 `
 			Expect(os.WriteFile(filepath.Join(pluginDir, "main.go"), []byte(mainGo), 0600)).To(Succeed())
 
+			// The generated client imports the stream package, which ndpgen does not generate
+			copyGoSources(filepath.Join(mustGetWd(GinkgoT()), "..", "..", "pdk", "go", "stream"), filepath.Join(goDir, "stream"))
+
 			// Tidy dependencies for the generated go library
 			goTidyLibCmd := exec.Command("go", "mod", "tidy")
 			goTidyLibCmd.Dir = goDir
@@ -402,6 +407,22 @@ var _ = ndpdk.ComprehensiveNoParams
 })
 
 var testdataDir string
+
+func copyGoSources(src, dst string) {
+	GinkgoHelper()
+	Expect(os.MkdirAll(dst, 0750)).To(Succeed())
+	entries, err := os.ReadDir(src)
+	Expect(err).ToNot(HaveOccurred())
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(src, name))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(os.WriteFile(filepath.Join(dst, name), content, 0600)).To(Succeed())
+	}
+}
 
 func readTestdata(filename string) string {
 	content, err := os.ReadFile(filepath.Join(testdataDir, filename))

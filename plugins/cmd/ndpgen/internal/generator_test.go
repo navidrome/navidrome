@@ -651,6 +651,30 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring("github.com/navidrome/navidrome/plugins/pdk/go/pdk"))
 		})
 
+		It("converts stream params, results, and struct fields to handles", func() {
+			svc := parseTestdataService("stream_service.go.txt")
+
+			code, err := GenerateClientGo(svc, "ndhost")
+			Expect(err).NotTo(HaveOccurred())
+			actual, err := format.Source(code)
+			Expect(err).NotTo(HaveOccurred(), "generated code is not valid Go:\n%s", code)
+
+			expectedSrc, err := os.ReadFile(filepath.Join("..", "testdata", "stream_client_expected.go.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			expected, err := format.Source(expectedSrc)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(string(actual)).To(Equal(string(expected)))
+		})
+
+		It("does not import io or the stream package for services without streams", func() {
+			svc := parseTestdataService("users_service.go.txt")
+
+			code, err := GenerateClientGo(svc, "ndhost")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(code)).NotTo(ContainSubstring("plugins/pdk/go/stream"))
+			Expect(string(code)).NotTo(ContainSubstring(`"io"`))
+		})
 	})
 
 	Describe("GenerateClientGoStub", func() {
@@ -780,6 +804,25 @@ var _ = Describe("Generator", func() {
 
 			// Check error returns use args.Error(N)
 			Expect(codeStr).To(ContainSubstring("args.Error("))
+		})
+
+		It("keeps author-facing stream types and guards nil stream returns", func() {
+			svc := parseTestdataService("stream_service.go.txt")
+
+			code, err := GenerateClientGoStub(svc, "ndhost")
+			Expect(err).NotTo(HaveOccurred())
+			_, err = format.Source(code)
+			Expect(err).NotTo(HaveOccurred(), "generated code is not valid Go:\n%s", code)
+
+			codeStr := string(code)
+			Expect(codeStr).To(MatchRegexp(`import \([^)]*"io"`))
+			Expect(codeStr).NotTo(ContainSubstring("plugins/pdk/go/stream"))
+			Expect(codeStr).NotTo(ContainSubstring("wireUpload"))
+			Expect(codeStr).To(ContainSubstring("Body io.ReadCloser"))
+			Expect(codeStr).To(ContainSubstring("func (m *mockBlobService) Open(name string) (io.ReadCloser, error) {\n" +
+				"\targs := m.Called(name)\n" +
+				"\tvar r0 io.ReadCloser\n" +
+				"\tif v := args.Get(0); v != nil {"))
 		})
 	})
 
@@ -1748,6 +1791,14 @@ var _ = Describe("Rust Generation", func() {
 		It("treats stream types as nilable", func() {
 			Expect(isNilableType("io.ReadCloser")).To(BeTrue())
 			Expect(isNilableType("io.WriteCloser")).To(BeTrue())
+		})
+
+		It("names stream field handle locals so generated ToWire functions compile", func() {
+			Expect(fieldHandleVar(FieldDef{Name: "Body"})).To(Equal("body"))
+			Expect(fieldHandleVar(FieldDef{Name: "Type"})).To(Equal("typeHandle"))
+			Expect(fieldHandleVar(FieldDef{Name: "Stream"})).To(Equal("streamHandle"))
+			Expect(fieldHandleVar(FieldDef{Name: "Err"})).To(Equal("errHandle"))
+			Expect(fieldHandleVar(FieldDef{Name: "V"})).To(Equal("vHandle"))
 		})
 	})
 

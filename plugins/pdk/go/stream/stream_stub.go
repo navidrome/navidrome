@@ -21,6 +21,8 @@ func (s *Stream) Write([]byte) (int, error) { return 0, errNotWasm }
 
 func (s *Stream) Close() error { return errNotWasm }
 
+func (s *Stream) releaseBuffer() {}
+
 func Copy(dst, src *Stream) (int64, error) { return 0, errNotWasm }
 
 var _ io.ReadWriteCloser = (*Stream)(nil)

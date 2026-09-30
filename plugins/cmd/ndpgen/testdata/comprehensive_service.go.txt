@@ -1,6 +1,9 @@
 package testpkg
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 type User2 struct {
 	ID   string
@@ -33,4 +36,6 @@ type ComprehensiveService interface {
 	MultipleReturns(ctx context.Context, query string) (results []User2, total int32, err error)
 	//nd:hostfunc
 	ByteSlice(ctx context.Context, data []byte) ([]byte, error)
+	//nd:hostfunc
+	Open(ctx context.Context, name string) (io.ReadCloser, error)
 }
