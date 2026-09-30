@@ -10,21 +10,21 @@ import (
 // uses to reference the shared types package (e.g. types.Track).
 const sharedTypesPrefix = "types."
 
-// Stream types a host service may use; the generator maps them to stream handles.
-const (
-	streamReaderType = "io.ReadCloser"
-	streamWriterType = "io.WriteCloser"
-)
-
-// streamKind returns "reader" or "writer" for the stream types, "" for anything else.
+// streamKind returns "Reader" or "Writer" for the stream types, "" for anything else.
 func streamKind(goType string) string {
 	switch goType {
-	case streamReaderType:
-		return "reader"
-	case streamWriterType:
-		return "writer"
+	case "io.ReadCloser":
+		return "Reader"
+	case "io.WriteCloser":
+		return "Writer"
 	}
 	return ""
+}
+
+// isStreamStruct reports whether goType is a service struct with stream fields, by value or pointer.
+func isStreamStruct(goType string, svc Service) bool {
+	name := strings.TrimPrefix(goType, "*")
+	return slices.ContainsFunc(svc.Structs, func(st StructDef) bool { return st.Name == name && st.HasStreams() })
 }
 
 // Service represents a parsed host service interface.
@@ -271,12 +271,12 @@ func (s StructDef) HasStreams() bool {
 	return slices.ContainsFunc(s.Fields, func(f FieldDef) bool { return f.StreamKind() != "" })
 }
 
-// StreamKind returns "reader" or "writer" if the field is a stream, "" otherwise.
+// StreamKind returns "Reader" or "Writer" if the field is a stream, "" otherwise.
 func (f FieldDef) StreamKind() string {
 	return streamKind(f.Type)
 }
 
-// StreamStructs returns the service structs that have stream fields, sorted by name.
+// StreamStructs returns the service structs that have stream fields.
 func (s Service) StreamStructs() []StructDef {
 	var out []StructDef
 	for _, st := range s.Structs {
@@ -284,7 +284,6 @@ func (s Service) StreamStructs() []StructDef {
 			out = append(out, st)
 		}
 	}
-	slices.SortFunc(out, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
 	return out
 }
 
@@ -343,22 +342,12 @@ func (m Method) HasStreams(svc Service) bool {
 
 // HasStreamParams reports whether any parameter is a stream or a stream struct.
 func (m Method) HasStreamParams(svc Service) bool {
-	return hasStreamParam(m.Params, svc)
+	return slices.ContainsFunc(m.Params, func(p Param) bool { return p.IsStream(svc) })
 }
 
 // HasStreamReturns reports whether any result is a stream or a stream struct.
 func (m Method) HasStreamReturns(svc Service) bool {
-	return hasStreamParam(m.Returns, svc)
-}
-
-func hasStreamParam(params []Param, svc Service) bool {
-	return slices.ContainsFunc(params, func(p Param) bool {
-		if p.StreamKind() != "" {
-			return true
-		}
-		_, _, found := p.StreamStruct(svc)
-		return found
-	})
+	return slices.ContainsFunc(m.Returns, func(p Param) bool { return p.IsStream(svc) })
 }
 
 // FunctionName returns the Extism host function export name.
@@ -512,21 +501,14 @@ type Param struct {
 	JSONName string // JSON field name (camelCase)
 }
 
-// StreamKind returns "reader" or "writer" if the parameter is a stream, "" otherwise.
+// StreamKind returns "Reader" or "Writer" if the parameter is a stream, "" otherwise.
 func (p Param) StreamKind() string {
 	return streamKind(p.Type)
 }
 
-// StreamStruct returns the service struct with stream fields that this parameter
-// is (by value or pointer), whether it is a pointer, and whether one was found.
-func (p Param) StreamStruct(svc Service) (StructDef, bool, bool) {
-	name, isPtr := strings.CutPrefix(p.Type, "*")
-	for _, st := range svc.Structs {
-		if st.Name == name && st.HasStreams() {
-			return st, isPtr, true
-		}
-	}
-	return StructDef{}, false, false
+// IsStream reports whether the parameter is a stream or a stream struct.
+func (p Param) IsStream(svc Service) bool {
+	return p.StreamKind() != "" || isStreamStruct(p.Type, svc)
 }
 
 // IsByteSlice returns true if the parameter type is []byte.
@@ -855,9 +837,10 @@ func toRustType(goType string, knownStructs map[string]bool, shared map[string]s
 		return "bool"
 	case "interface{}", "any":
 		return "serde_json::Value"
-	case "io.ReadCloser", "io.WriteCloser":
-		return "Option<nd_pdk_types::stream::Stream>"
 	default:
+		if streamKind(goType) != "" {
+			return "Option<nd_pdk_types::stream::Stream>"
+		}
 		// Qualified reference to the shared types crate (e.g. types.Track ->
 		// nd_pdk_types::Track).
 		if rest, ok := strings.CutPrefix(goType, sharedTypesPrefix); ok {

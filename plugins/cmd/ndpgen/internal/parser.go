@@ -652,10 +652,7 @@ func validateServiceStreams(svc Service, aliases map[string]TypeAlias) error {
 	}
 	for _, m := range svc.Methods {
 		for _, p := range slices.Concat(m.Params, m.Returns) {
-			if p.StreamKind() != "" {
-				continue
-			}
-			if _, _, ok := p.StreamStruct(svc); ok {
+			if p.IsStream(svc) {
 				continue
 			}
 			if err := checkNested(p.Type); err != nil {

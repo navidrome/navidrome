@@ -20,7 +20,7 @@ import (
 // wire{{.Name}} is the wire form of {{.Name}}: streams travel as handles.
 type wire{{.Name}} struct {
 {{- range .Fields}}
-	{{.Name}} {{wireFieldType .}} `json:"{{.JSONTag}}{{if and .OmitEmpty (not .StreamKind)}},omitempty{{end}}"`
+	{{.Name}} {{wireType .Type}} `json:"{{.JSONTag}}{{if and .OmitEmpty (not .StreamKind)}},omitempty{{end}}"`
 {{- end}}
 }
 
@@ -64,7 +64,7 @@ func {{lowerFirst .Name}}PtrToWire(v *{{.Name}}, conv *streams.Conv) *wire{{.Nam
 // {{requestType .}} is the request type for {{$.Service.Name}}.{{.Name}}.
 type {{requestType .}} struct {
 {{- range .Params}}
-	{{title .Name}} {{wireType .}} `json:"{{.JSONName}}"`
+	{{title .Name}} {{wireType .Type}} `json:"{{.JSONName}}"`
 {{- end}}
 }
 {{- end}}
@@ -72,7 +72,7 @@ type {{requestType .}} struct {
 // {{responseType .}} is the response type for {{$.Service.Name}}.{{.Name}}.
 type {{responseType .}} struct {
 {{- range .Returns}}
-	{{title .Name}} {{wireType .}} `json:"{{.JSONName}},omitempty"`
+	{{title .Name}} {{wireType .Type}} `json:"{{.JSONName}},omitempty"`
 {{- end}}
 {{- if .HasError}}
 	Error string `json:"error,omitempty"`
