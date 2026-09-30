@@ -3,6 +3,7 @@ package internal
 import (
 	"go/format"
 	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -322,6 +323,31 @@ var _ = Describe("Generator", func() {
 			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(code)).NotTo(ContainSubstring(`"github.com/navidrome/navidrome/plugins/types"`))
+		})
+
+		It("converts stream params, results, and struct fields to handles", func() {
+			svc := parseTestdataService("stream_service.go.txt")
+
+			code, err := GenerateHost(svc, "testpkg")
+			Expect(err).NotTo(HaveOccurred())
+			actual, err := format.Source(code)
+			Expect(err).NotTo(HaveOccurred(), "generated code is not valid Go:\n%s", code)
+
+			expectedSrc, err := os.ReadFile(filepath.Join("..", "testdata", "stream_host_expected.go.txt"))
+			Expect(err).NotTo(HaveOccurred())
+			expected, err := format.Source(expectedSrc)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(string(actual)).To(Equal(string(expected)))
+		})
+
+		It("does not reference streams for services without them", func() {
+			svc := parseTestdataService("users_service.go.txt")
+
+			code, err := GenerateHost(svc, "testpkg")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(code)).NotTo(ContainSubstring("plugins/streams"))
+			Expect(string(code)).NotTo(ContainSubstring("conv"))
 		})
 	})
 
@@ -1846,4 +1872,16 @@ var _ = Describe("Rust Generation", func() {
 
 func writeFile(path, content string) error {
 	return os.WriteFile(path, []byte(content), 0600)
+}
+
+func parseTestdataService(name string) Service {
+	GinkgoHelper()
+	src, err := os.ReadFile(filepath.Join("..", "testdata", name))
+	Expect(err).NotTo(HaveOccurred())
+	dir := GinkgoT().TempDir()
+	Expect(writeFile(filepath.Join(dir, "service.go"), string(src))).To(Succeed())
+	services, err := ParseDirectory(dir)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(services).To(HaveLen(1))
+	return services[0]
 }

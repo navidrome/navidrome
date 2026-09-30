@@ -1,0 +1,28 @@
+package testpkg
+
+import (
+	"context"
+	"io"
+)
+
+type Upload struct {
+	Name string
+	Body io.ReadCloser
+}
+
+type Download struct {
+	Size int64
+	Body io.ReadCloser
+}
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Open(ctx context.Context, name string) (io.ReadCloser, error)
+	//nd:hostfunc
+	Create(ctx context.Context, name string) (io.WriteCloser, error)
+	//nd:hostfunc
+	Put(ctx context.Context, upload Upload) (*Download, error)
+	//nd:hostfunc
+	Copy(ctx context.Context, src io.ReadCloser, dst io.WriteCloser) (int64, error)
+}

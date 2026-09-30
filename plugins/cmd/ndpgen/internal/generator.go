@@ -15,12 +15,92 @@ var templatesFS embed.FS
 // hostFuncMap returns the template functions for host code generation.
 func hostFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
-		"lower":        strings.ToLower,
-		"title":        strings.Title,
-		"exportName":   func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":  func(m Method) string { return m.RequestTypeName(svc.Name) },
-		"responseType": func(m Method) string { return m.ResponseTypeName(svc.Name) },
+		"lower":            strings.ToLower,
+		"title":            strings.Title,
+		"exportName":       func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":      func(m Method) string { return m.RequestTypeName(svc.Name) },
+		"responseType":     func(m Method) string { return m.ResponseTypeName(svc.Name) },
+		"lowerFirst":       lowerFirst,
+		"hasStreams":       func(m Method) bool { return m.HasStreams(svc) },
+		"hasStreamParams":  func(m Method) bool { return m.HasStreamParams(svc) },
+		"hasStreamReturns": func(m Method) bool { return m.HasStreamReturns(svc) },
+		"isStreamParam":    func(p Param) bool { return isStreamParam(p, svc) },
+		"wireType":         func(p Param) string { return hostWireType(p, svc) },
+		"wireFieldType": func(f FieldDef) string {
+			if f.StreamKind() != "" {
+				return "uint32"
+			}
+			return f.Type
+		},
+		"fieldFromWire": func(f FieldDef) string { return streamFromWire(f.StreamKind(), "w."+f.Name) },
+		"fieldToWire":   func(f FieldDef) string { return streamToWire(f.StreamKind(), "v."+f.Name) },
+		"hostArg": func(p Param) string {
+			if isStreamParam(p, svc) {
+				return "arg" + strings.Title(p.Name)
+			}
+			return "req." + strings.Title(p.Name)
+		},
+		"hostParamExpr": func(p Param) string {
+			expr := "req." + strings.Title(p.Name)
+			if st, isPtr, ok := p.StreamStruct(svc); ok {
+				return wireConvFunc(st.Name, isPtr, "FromWire") + "(" + expr + ", conv)"
+			}
+			return streamFromWire(p.StreamKind(), expr)
+		},
+		"hostReturnExpr": func(p Param) string {
+			expr := strings.ToLower(p.Name)
+			if st, isPtr, ok := p.StreamStruct(svc); ok {
+				return wireConvFunc(st.Name, isPtr, "ToWire") + "(" + expr + ", conv)"
+			}
+			return streamToWire(p.StreamKind(), expr)
+		},
 	}
+}
+
+func isStreamParam(p Param, svc Service) bool {
+	_, _, isStruct := p.StreamStruct(svc)
+	return isStruct || p.StreamKind() != ""
+}
+
+// hostWireType is the type a parameter or result has in the host request/response structs.
+func hostWireType(p Param, svc Service) string {
+	if p.StreamKind() != "" {
+		return "uint32"
+	}
+	if st, isPtr, ok := p.StreamStruct(svc); ok {
+		if isPtr {
+			return "*wire" + st.Name
+		}
+		return "wire" + st.Name
+	}
+	return p.Type
+}
+
+func wireConvFunc(structName string, isPtr bool, suffix string) string {
+	if isPtr {
+		return lowerFirst(structName) + "Ptr" + suffix
+	}
+	return lowerFirst(structName) + suffix
+}
+
+func streamFromWire(kind, expr string) string {
+	switch kind {
+	case "reader":
+		return "conv.Reader(" + expr + ")"
+	case "writer":
+		return "conv.Writer(" + expr + ")"
+	}
+	return expr
+}
+
+func streamToWire(kind, expr string) string {
+	switch kind {
+	case "reader":
+		return "conv.ReaderHandle(" + expr + ")"
+	case "writer":
+		return "conv.WriterHandle(" + expr + ")"
+	}
+	return expr
 }
 
 // clientFuncMap returns the template functions for client code generation.
