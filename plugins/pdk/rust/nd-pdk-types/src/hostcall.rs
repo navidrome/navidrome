@@ -1,5 +1,4 @@
-//! Calls Navidrome host functions and frees both memory blocks, which `#[host_fn]` does not do for the
-//! response.
+//! Calls Navidrome host functions, freeing the request and response blocks so repeated calls do not leak memory.
 
 use extism_pdk::{Error, Memory};
 use serde::{de::DeserializeOwned, Serialize};
