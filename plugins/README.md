@@ -647,9 +647,9 @@ Some host functions return a **stream**: a handle to bytes that stay in Navidrom
 
 **Host functions and streams:**
 
-- A host function can return a stream (`io.ReadCloser`/`io.WriteCloser` in Go, `Option<Stream>` in Rust). It belongs to the current call like any other stream.
+- A host function can return a stream (`io.ReadCloser`/`io.WriteCloser` in Go, `Option<Stream>` in Rust). It belongs to the current call like any other stream. It can be `nil` in Go or `None` in Rust when there is no stream.
 - Passing a stream *to* a host function hands it over: Navidrome closes it when done, and the plugin can no longer use it.
-- Only streams that came from Navidrome can be passed. A reader the plugin made itself (for example `strings.NewReader`) is rejected.
+- Only streams that came from Navidrome can be passed. A reader the plugin made itself (for example `io.NopCloser(strings.NewReader(...))`) is rejected.
 
 **Go:**
 
