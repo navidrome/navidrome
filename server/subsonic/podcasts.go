@@ -225,25 +225,7 @@ func (api *Router) GetNewestPodcasts(r *http.Request) (*responses.Subsonic, erro
 	resp := newResponse()
 	resp.NewestPodcasts = &responses.NewestPodcasts{}
 	for _, ep := range eps {
-		child := responses.Child{
-			Id:          ep.ID,
-			Title:       ep.Title,
-			IsDir:       false,
-			Parent:      ep.ChannelID,
-			Duration:    int32(ep.Duration),
-			Size:        ep.Size,
-			BitRate:     int32(ep.BitRate),
-			Suffix:      ep.Suffix,
-			ContentType: ep.ContentType,
-			Type:        "podcast",
-			ChannelId:   ep.ChannelID,
-			Description: ep.Description,
-			Status:      string(ep.Status),
-		}
-		if !ep.PublishDate.IsZero() {
-			child.PublishDate = ep.PublishDate.UTC().Format(time.RFC3339)
-		}
-		resp.NewestPodcasts.Episode = append(resp.NewestPodcasts.Episode, child)
+		resp.NewestPodcasts.Episode = append(resp.NewestPodcasts.Episode, buildPodcastEpisode(ep))
 	}
 	return resp, nil
 }

@@ -267,6 +267,7 @@
         "downloadStarted": "다운로드 시작됨",
         "channelAdded": "채널 추가됨",
         "urlCopied": "피드 URL이 클립보드에 복사됨",
+        "urlCopyFailed": "피드 URL을 복사할 수 없습니다",
         "alreadyExists": "이미 등록된 채널입니다.",
         "channelDeleted": "채널 삭제됨",
         "episodeDeleted": "에피소드 삭제됨"

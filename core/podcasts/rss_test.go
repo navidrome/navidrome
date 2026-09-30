@@ -77,6 +77,15 @@ var _ = Describe("ParseRSSFeed", func() {
 			Expect(feed.Episodes).To(HaveLen(2))
 		})
 
+		It("falls back to the enclosure URL when <guid> is missing", func() {
+			feed, err := podcasts.ParseRSSFeed([]byte(`<?xml version="1.0"?><rss version="2.0"><channel><title>T</title>
+<item><title>No guid</title><enclosure url="https://example.com/noguid.mp3" length="1" type="audio/mpeg"/></item>
+</channel></rss>`))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(feed.Episodes).To(HaveLen(1))
+			Expect(feed.Episodes[0].GUID).To(Equal("https://example.com/noguid.mp3"))
+		})
+
 		It("parses episode fields correctly", func() {
 			feed, _ := podcasts.ParseRSSFeed([]byte(testRSSFeed))
 			ep := feed.Episodes[0]

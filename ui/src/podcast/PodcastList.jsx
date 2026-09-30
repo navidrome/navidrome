@@ -70,8 +70,10 @@ const FeedUrlField = ({ record }) => {
   if (!record?.url) return null
   const handleCopy = (e) => {
     e.stopPropagation()
-    navigator.clipboard.writeText(record.url)
-    notify('resources.podcast.notifications.urlCopied')
+    navigator.clipboard
+      .writeText(record.url)
+      .then(() => notify('resources.podcast.notifications.urlCopied'))
+      .catch(() => notify('resources.podcast.notifications.urlCopyFailed', 'warning'))
   }
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

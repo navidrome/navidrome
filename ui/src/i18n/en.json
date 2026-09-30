@@ -299,6 +299,7 @@
         "downloadStarted": "Download started",
         "channelAdded": "Channel added",
         "urlCopied": "Feed URL copied to clipboard",
+        "urlCopyFailed": "Could not copy the feed URL",
         "alreadyExists": "This channel is already registered.",
         "channelDeleted": "Channel deleted",
         "episodeDeleted": "Episode deleted"

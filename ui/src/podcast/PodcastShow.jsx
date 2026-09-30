@@ -124,10 +124,9 @@ const PodcastShow = (props) => {
 
   useEffect(loadEpisodes, [record?.id])
 
-  // Subscribe to SSE progress only while episodes are downloading
-  const hasDownloading = episodes.some((ep) => ep.status === 'downloading')
+  // Stay subscribed to SSE progress while the view is mounted: a download
+  // started from here may not be flagged 'downloading' yet when we refresh.
   useEffect(() => {
-    if (!hasDownloading) return
     const handler = (e) => {
       const { episodeId, downloadedBytes, size, duration, status } = e.detail
       if (status === 'completed' || status === 'error') {
@@ -145,7 +144,7 @@ const PodcastShow = (props) => {
     }
     window.addEventListener('podcastEpisodeProgress', handler)
     return () => window.removeEventListener('podcastEpisodeProgress', handler)
-  }, [hasDownloading])
+  }, [record?.id])
 
   if (!record) return null
 

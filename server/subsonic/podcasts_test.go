@@ -118,12 +118,12 @@ var _ = Describe("Podcasts", func() {
 		BeforeEach(func() {
 			now := time.Now()
 			episodeRepo.Data = map[string]*model.PodcastEpisode{
-				"ep-1": {ID: "ep-1", Title: "Ep1", ChannelID: "ch-1", PublishDate: now.Add(-time.Hour), Status: model.PodcastStatusCompleted},
-				"ep-2": {ID: "ep-2", Title: "Ep2", ChannelID: "ch-1", PublishDate: now, Status: model.PodcastStatusNew},
+				"ep-1": {ID: "ep-1", Title: "Ep1", ChannelID: "ch-1", StreamID: "stream-ep-1", PublishDate: now.Add(-time.Hour), Status: model.PodcastStatusCompleted},
+				"ep-2": {ID: "ep-2", Title: "Ep2", ChannelID: "ch-1", StreamID: "stream-ep-2", PublishDate: now, Status: model.PodcastStatusNew},
 			}
 		})
 
-		It("returns episodes in Child format", func() {
+		It("returns episodes in podcastEpisode format", func() {
 			r := httptest.NewRequest("GET", "/rest/getNewestPodcasts", nil)
 			r = r.WithContext(userCtx)
 
@@ -132,14 +132,14 @@ var _ = Describe("Podcasts", func() {
 			Expect(resp.NewestPodcasts.Episode).To(HaveLen(2))
 		})
 
-		It("sets type to podcast", func() {
+		It("includes streamId so clients can play the episode", func() {
 			r := httptest.NewRequest("GET", "/rest/getNewestPodcasts", nil)
 			r = r.WithContext(userCtx)
 
 			resp, err := api.GetNewestPodcasts(r)
 			Expect(err).ToNot(HaveOccurred())
 			for _, ep := range resp.NewestPodcasts.Episode {
-				Expect(ep.Type).To(Equal("podcast"))
+				Expect(ep.StreamId).To(Equal("stream-" + ep.ID))
 			}
 		})
 

@@ -169,12 +169,7 @@ type Child struct {
 	SongCount             int32      `xml:"songCount,attr,omitempty"                json:"songCount,omitempty"`
 	IsVideo               bool       `xml:"isVideo,attr,omitempty"                  json:"isVideo,omitempty"`
 	BookmarkPosition      int64      `xml:"bookmarkPosition,attr,omitempty"         json:"bookmarkPosition,omitempty"`
-	// Podcast-specific fields (used in getNewestPodcasts)
-	ChannelId   string `xml:"channelId,attr,omitempty"   json:"channelId,omitempty"`
-	Description string `xml:"description,attr,omitempty" json:"description,omitempty"`
-	Status      string `xml:"status,attr,omitempty"      json:"status,omitempty"`
-	PublishDate string `xml:"publishDate,attr,omitempty" json:"publishDate,omitempty"`
-	*OpenSubsonicChild `xml:",omitempty" json:",omitempty"`
+	*OpenSubsonicChild    `xml:",omitempty" json:",omitempty"`
 }
 
 type OpenSubsonicChild struct {
@@ -706,7 +701,7 @@ type Podcasts struct {
 }
 
 type NewestPodcasts struct {
-	Episode []Child `xml:"episode,omitempty" json:"episode,omitempty"`
+	Episode []PodcastEpisode `xml:"episode,omitempty" json:"episode,omitempty"`
 }
 
 type PodcastFundingResp struct {

@@ -236,15 +236,15 @@ type rssItem struct {
 	ItunesDur     string    `xml:"http://www.itunes.com/dtds/podcast-1.0.dtd duration"`
 
 	// Podcasting 2.0 episode tags
-	PodcastChapters    podcastChapters    `xml:"https://podcastindex.org/namespace/1.0 chapters"`
+	PodcastChapters    podcastChapters     `xml:"https://podcastindex.org/namespace/1.0 chapters"`
 	PodcastTranscripts []podcastTranscript `xml:"https://podcastindex.org/namespace/1.0 transcript"`
-	PodcastSeason      podcastSeason      `xml:"https://podcastindex.org/namespace/1.0 season"`
-	PodcastEpisodeNum  podcastEpisodeNum  `xml:"https://podcastindex.org/namespace/1.0 episode"`
-	PodcastSoundbite   podcastSoundbite   `xml:"https://podcastindex.org/namespace/1.0 soundbite"`
-	PodcastPersons     []podcastPerson    `xml:"https://podcastindex.org/namespace/1.0 person"`
-	PodcastLocation    podcastLocation    `xml:"https://podcastindex.org/namespace/1.0 location"`
-	PodcastLicense     podcastLicense     `xml:"https://podcastindex.org/namespace/1.0 license"`
-	PodcastImages      []podcastImageTag  `xml:"https://podcastindex.org/namespace/1.0 image"`
+	PodcastSeason      podcastSeason       `xml:"https://podcastindex.org/namespace/1.0 season"`
+	PodcastEpisodeNum  podcastEpisodeNum   `xml:"https://podcastindex.org/namespace/1.0 episode"`
+	PodcastSoundbite   podcastSoundbite    `xml:"https://podcastindex.org/namespace/1.0 soundbite"`
+	PodcastPersons     []podcastPerson     `xml:"https://podcastindex.org/namespace/1.0 person"`
+	PodcastLocation    podcastLocation     `xml:"https://podcastindex.org/namespace/1.0 location"`
+	PodcastLicense     podcastLicense      `xml:"https://podcastindex.org/namespace/1.0 license"`
+	PodcastImages      []podcastImageTag   `xml:"https://podcastindex.org/namespace/1.0 image"`
 }
 
 type enclosure struct {
@@ -413,8 +413,14 @@ func ParseRSSFeed(data []byte) (*rssFeed, error) {
 		pubDate, _ := parseRSSDate(item.PubDate)
 		suffix := suffixFromMIME(item.Enclosure.Type, item.Enclosure.URL)
 
+		// <guid> is optional in RSS 2.0; fall back to the enclosure URL so
+		// episodes keep a unique identity for de-duplication on refresh.
+		guid := strings.TrimSpace(item.GUID)
+		if guid == "" {
+			guid = item.Enclosure.URL
+		}
 		ep := model.PodcastEpisode{
-			GUID:         item.GUID,
+			GUID:         guid,
 			Title:        item.Title,
 			Description:  desc,
 			PublishDate:  pubDate,

@@ -316,8 +316,15 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 		s.setEpisodeError(ctx, ep, fmt.Errorf("invalid enclosure URL: %w", err))
 		return
 	}
-	httpClient := &http.Client{Timeout: 30 * time.Second, Transport: safeHTTPTransport}
-	resp, err := httpClient.Get(ep.EnclosureURL) //nolint:gosec
+	// No total Client.Timeout here: it would also cover reading the body and
+	// abort large episodes. Connection-phase limits live on safeHTTPTransport.
+	httpClient := &http.Client{Transport: safeHTTPTransport}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ep.EnclosureURL, nil)
+	if err != nil {
+		s.setEpisodeError(ctx, ep, err)
+		return
+	}
+	resp, err := httpClient.Do(req) //nolint:gosec
 	if err != nil {
 		s.setEpisodeError(ctx, ep, err)
 		return
@@ -337,6 +344,8 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 
 	size, err := io.Copy(&progressWriter{ep: ep, ds: s.ds, broker: s.broker, ctx: ctx, w: f}, resp.Body)
 	if err != nil {
+		f.Close()
+		_ = os.Remove(dest) // don't leave a partial file behind
 		s.setEpisodeError(ctx, ep, err)
 		return
 	}
@@ -499,7 +508,39 @@ func (s *podcastService) DeleteChannel(ctx context.Context, id string) error {
 			_ = os.Remove(ep.Path)
 		}
 	}
-	return s.ds.PodcastChannel().Delete(ctx, id)
+	// The channel-/episode-scoped detail tables have no FK cascade, and the
+	// registered MediaFiles are not FK-linked either, so clean them up here.
+	return s.ds.WithTx(func(tx model.DataStore) error {
+		for _, ep := range episodes {
+			if ep.StreamID != "" {
+				if err := tx.MediaFile().Delete(ctx, ep.StreamID); err != nil {
+					return err
+				}
+			}
+			if err := tx.PodcastPerson().SaveForEpisode(ctx, ep.ID, nil); err != nil {
+				return err
+			}
+			if err := tx.PodcastImage().SaveForEpisode(ctx, ep.ID, nil); err != nil {
+				return err
+			}
+		}
+		if err := tx.PodcastPerson().SaveForChannel(ctx, id, nil); err != nil {
+			return err
+		}
+		if err := tx.PodcastFunding().SaveForChannel(ctx, id, nil); err != nil {
+			return err
+		}
+		if err := tx.PodcastImage().SaveForChannel(ctx, id, nil); err != nil {
+			return err
+		}
+		if err := tx.PodcastPodroll().SaveForChannel(ctx, id, nil); err != nil {
+			return err
+		}
+		if err := tx.PodcastLiveItem().DeleteByChannel(ctx, id); err != nil {
+			return err
+		}
+		return tx.PodcastChannel().Delete(ctx, id)
+	})
 }
 
 // progressWriter wraps an io.Writer and periodically saves download progress to DB.
@@ -571,7 +612,36 @@ var isReservedIP = func(ip net.IP) bool {
 		ip.IsLinkLocalMulticast() ||
 		ip.IsInterfaceLocalMulticast() ||
 		ip.IsMulticast() ||
-		ip.IsUnspecified()
+		ip.IsUnspecified() ||
+		inReservedNets(ip)
+}
+
+// reservedNets are special-purpose ranges that net.IP's helpers don't cover.
+var reservedNets = func() []*net.IPNet {
+	var nets []*net.IPNet
+	for _, cidr := range []string{
+		"0.0.0.0/8",     // "this" network
+		"100.64.0.0/10", // carrier-grade NAT
+		"192.0.0.0/24",  // IETF protocol assignments
+		"198.18.0.0/15", // benchmarking
+		"64:ff9b::/96",  // NAT64
+	} {
+		_, n, err := net.ParseCIDR(cidr)
+		if err != nil {
+			panic(err)
+		}
+		nets = append(nets, n)
+	}
+	return nets
+}()
+
+func inReservedNets(ip net.IP) bool {
+	for _, n := range reservedNets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // AllowLoopbackHTTPForTests relaxes safeHTTPTransport's SSRF guard to permit
@@ -597,6 +667,8 @@ func AllowLoopbackHTTPForTests() {
 // check and the actual TCP connect (DNS rebinding) can't be used to reach
 // a reserved address that validateURL alone would have caught.
 var safeHTTPTransport = &http.Transport{
+	TLSHandshakeTimeout:   15 * time.Second,
+	ResponseHeaderTimeout: 30 * time.Second,
 	DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {
@@ -609,7 +681,7 @@ var safeHTTPTransport = &http.Transport{
 		if len(ips) == 0 {
 			return nil, fmt.Errorf("host %q did not resolve to any address", host)
 		}
-		var dialer net.Dialer
+		dialer := net.Dialer{Timeout: 15 * time.Second}
 		var lastErr error
 		for _, ip := range ips {
 			if isReservedIP(ip.IP) {
@@ -626,6 +698,8 @@ var safeHTTPTransport = &http.Transport{
 	},
 }
 
+const maxFeedSize = 32 << 20 // 32 MiB
+
 func fetchAndParse(rssURL string) (*rssFeed, error) {
 	if err := validateURL(rssURL); err != nil {
 		return nil, fmt.Errorf("invalid RSS feed URL: %w", err)
@@ -637,9 +711,14 @@ func fetchAndParse(rssURL string) (*rssFeed, error) {
 	}
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	// Read at most one byte past the limit so an oversized feed is detected
+	// without buffering it entirely in memory.
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxFeedSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("reading RSS feed: %w", err)
+	}
+	if len(data) > maxFeedSize {
+		return nil, fmt.Errorf("RSS feed exceeds %d bytes", maxFeedSize)
 	}
 
 	return ParseRSSFeed(data)
