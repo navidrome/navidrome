@@ -1820,14 +1820,6 @@ var _ = Describe("Rust Generation", func() {
 			Expect(toRustType("io.ReadCloser", nil, nil)).To(Equal("Option<nd_pdk_types::stream::Stream>"))
 			Expect(toRustType("io.WriteCloser", nil, nil)).To(Equal("Option<nd_pdk_types::stream::Stream>"))
 		})
-
-		It("names stream field handle locals so generated ToWire functions compile", func() {
-			Expect(fieldHandleVar(FieldDef{Name: "Body"})).To(Equal("body"))
-			Expect(fieldHandleVar(FieldDef{Name: "Type"})).To(Equal("typeHandle"))
-			Expect(fieldHandleVar(FieldDef{Name: "Stream"})).To(Equal("streamHandle"))
-			Expect(fieldHandleVar(FieldDef{Name: "Err"})).To(Equal("errHandle"))
-			Expect(fieldHandleVar(FieldDef{Name: "V"})).To(Equal("vHandle"))
-		})
 	})
 
 	Describe("nil-safe mock accessors", func() {

@@ -50,14 +50,13 @@ func downloadPtrFromWire(w *wireDownload) *Download {
 }
 
 func downloadToWire(v Download) (wireDownload, error) {
-	body, err := stream.HandleOf(v.Body)
-	if err != nil {
+	var w wireDownload
+	var err error
+	w.Size = v.Size
+	if w.Body, err = stream.HandleOf(v.Body); err != nil {
 		return wireDownload{}, err
 	}
-	return wireDownload{
-		Size: v.Size,
-		Body: body,
-	}, nil
+	return w, nil
 }
 
 func downloadPtrToWire(v *Download) (*wireDownload, error) {
@@ -93,14 +92,13 @@ func uploadPtrFromWire(w *wireUpload) *Upload {
 }
 
 func uploadToWire(v Upload) (wireUpload, error) {
-	body, err := stream.HandleOf(v.Body)
-	if err != nil {
+	var w wireUpload
+	var err error
+	w.Name = v.Name
+	if w.Body, err = stream.HandleOf(v.Body); err != nil {
 		return wireUpload{}, err
 	}
-	return wireUpload{
-		Name: v.Name,
-		Body: body,
-	}, nil
+	return w, nil
 }
 
 func uploadPtrToWire(v *Upload) (*wireUpload, error) {
@@ -243,14 +241,11 @@ func BlobCreate(name string) (io.WriteCloser, error) {
 
 // BlobPut calls the blob_put host function.
 func BlobPut(upload Upload) (*Download, error) {
-	uploadWire, err := uploadToWire(upload)
-	if err != nil {
-		return nil, err
-	}
-
 	// Marshal request to JSON
-	req := blobPutRequest{
-		Upload: uploadWire,
+	req := blobPutRequest{}
+	var err error
+	if req.Upload, err = uploadToWire(upload); err != nil {
+		return nil, err
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
@@ -283,19 +278,14 @@ func BlobPut(upload Upload) (*Download, error) {
 
 // BlobCopy calls the blob_copy host function.
 func BlobCopy(src io.ReadCloser, dst io.WriteCloser) (int64, error) {
-	srcWire, err := stream.HandleOf(src)
-	if err != nil {
-		return 0, err
-	}
-	dstWire, err := stream.HandleOf(dst)
-	if err != nil {
-		return 0, err
-	}
-
 	// Marshal request to JSON
-	req := blobCopyRequest{
-		Src: srcWire,
-		Dst: dstWire,
+	req := blobCopyRequest{}
+	var err error
+	if req.Src, err = stream.HandleOf(src); err != nil {
+		return 0, err
+	}
+	if req.Dst, err = stream.HandleOf(dst); err != nil {
+		return 0, err
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {

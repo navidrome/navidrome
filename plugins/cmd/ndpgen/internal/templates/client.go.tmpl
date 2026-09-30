@@ -75,19 +75,18 @@ func {{lowerFirst .Name}}PtrFromWire(w *wire{{.Name}}) *{{.Name}} {
 }
 
 func {{lowerFirst .Name}}ToWire(v {{.Name}}) (wire{{.Name}}, error) {
+	var w wire{{.Name}}
+	var err error
 {{- range .Fields}}
 {{- if .StreamKind}}
-	{{fieldHandleVar .}}, err := stream.HandleOf(v.{{.Name}})
-	if err != nil {
+	if w.{{.Name}}, err = stream.HandleOf(v.{{.Name}}); err != nil {
 		return wire{{$st.Name}}{}, err
 	}
+{{- else}}
+	w.{{.Name}} = v.{{.Name}}
 {{- end}}
 {{- end}}
-	return wire{{.Name}}{
-{{- range .Fields}}
-		{{.Name}}: {{if .StreamKind}}{{fieldHandleVar .}}{{else}}v.{{.Name}}{{end}},
-{{- end}}
-	}, nil
+	return w, nil
 }
 
 func {{lowerFirst .Name}}PtrToWire(v *{{.Name}}) (*wire{{.Name}}, error) {
@@ -143,23 +142,25 @@ type {{responseType .}} struct {
 {{- end}}
 func {{$.Service.Name}}{{.Name}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.Name}} {{$p.Type}}{{end}}) {{.ReturnSignature}} {
 {{- $m := .}}
-{{- range .Params}}
-{{- if isStreamParam .}}
-	{{.Name}}Wire, err := {{clientParamToWire .}}
-	if err != nil {
-		return {{if $m.HasReturns}}{{$m.ZeroValues}}, {{end}}err
-	}
-{{- end}}
-{{- end}}
-{{- if hasStreamParams .}}
-{{end}}
 {{- if .HasParams}}
 	// Marshal request to JSON
 	req := {{requestType .}}{
 {{- range .Params}}
-		{{title .Name}}: {{.Name}}{{if isStreamParam .}}Wire{{end}},
+{{- if not (isStreamParam .)}}
+		{{title .Name}}: {{.Name}},
+{{- end}}
 {{- end}}
 	}
+{{- if hasStreamParams .}}
+	var err error
+{{- range .Params}}
+{{- if isStreamParam .}}
+	if req.{{title .Name}}, err = {{clientParamToWire .}}; err != nil {
+		return {{if $m.HasReturns}}{{$m.ZeroValues}}, {{end}}err
+	}
+{{- end}}
+{{- end}}
+{{- end}}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return {{if .HasReturns}}{{.ZeroValues}}{{end}}{{if and .HasReturns .HasError}}, {{end}}{{if .HasError}}err{{end}}

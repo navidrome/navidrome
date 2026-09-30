@@ -51,14 +51,13 @@ func wrapRequestPtrFromWire(w *wireWrapRequest) *WrapRequest {
 }
 
 func wrapRequestToWire(v WrapRequest) (wireWrapRequest, error) {
-	body, err := stream.HandleOf(v.Body)
-	if err != nil {
+	var w wireWrapRequest
+	var err error
+	w.Prefix = v.Prefix
+	if w.Body, err = stream.HandleOf(v.Body); err != nil {
 		return wireWrapRequest{}, err
 	}
-	return wireWrapRequest{
-		Prefix: v.Prefix,
-		Body:   body,
-	}, nil
+	return w, nil
 }
 
 func wrapRequestPtrToWire(v *WrapRequest) (*wireWrapRequest, error) {
@@ -94,14 +93,13 @@ func wrapResponsePtrFromWire(w *wireWrapResponse) *WrapResponse {
 }
 
 func wrapResponseToWire(v WrapResponse) (wireWrapResponse, error) {
-	body, err := stream.HandleOf(v.Body)
-	if err != nil {
+	var w wireWrapResponse
+	var err error
+	w.Size = v.Size
+	if w.Body, err = stream.HandleOf(v.Body); err != nil {
 		return wireWrapResponse{}, err
 	}
-	return wireWrapResponse{
-		Size: v.Size,
-		Body: body,
-	}, nil
+	return w, nil
 }
 
 func wrapResponsePtrToWire(v *WrapResponse) (*wireWrapResponse, error) {
@@ -267,14 +265,11 @@ func StreamTestCreate(name string) (io.WriteCloser, error) {
 
 // StreamTestDrain calls the streamtest_drain host function.
 func StreamTestDrain(in io.ReadCloser) (string, error) {
-	inWire, err := stream.HandleOf(in)
-	if err != nil {
-		return "", err
-	}
-
 	// Marshal request to JSON
-	req := streamTestDrainRequest{
-		In: inWire,
+	req := streamTestDrainRequest{}
+	var err error
+	if req.In, err = stream.HandleOf(in); err != nil {
+		return "", err
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
@@ -307,14 +302,11 @@ func StreamTestDrain(in io.ReadCloser) (string, error) {
 
 // StreamTestWrap calls the streamtest_wrap host function.
 func StreamTestWrap(wrap WrapRequest) (*WrapResponse, error) {
-	wrapWire, err := wrapRequestToWire(wrap)
-	if err != nil {
-		return nil, err
-	}
-
 	// Marshal request to JSON
-	req := streamTestWrapRequest{
-		Wrap: wrapWire,
+	req := streamTestWrapRequest{}
+	var err error
+	if req.Wrap, err = wrapRequestToWire(wrap); err != nil {
+		return nil, err
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {

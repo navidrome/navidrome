@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"go/token"
 	"slices"
 	"strings"
 	"text/template"
@@ -100,7 +99,6 @@ func clientFuncMap(svc Service) template.FuncMap {
 		"fieldFromWire": func(f FieldDef) string {
 			return wireConv(f.Type, svc, "w."+f.Name, "FromWire", "", "stream."+f.StreamKind())
 		},
-		"fieldHandleVar": fieldHandleVar,
 		"clientParamToWire": func(p Param) string {
 			return wireConv(p.Type, svc, p.Name, "ToWire", "", "stream.HandleOf")
 		},
@@ -108,16 +106,6 @@ func clientFuncMap(svc Service) template.FuncMap {
 			return wireConv(p.Type, svc, "response."+strings.Title(p.Name), "FromWire", "", "stream."+p.StreamKind())
 		},
 	}
-}
-
-// fieldHandleVar names the local holding a stream field's handle in a generated ToWire function,
-// avoiding keywords and the names that function already uses.
-func fieldHandleVar(f FieldDef) string {
-	name := lowerFirst(f.Name)
-	if token.IsKeyword(name) || slices.Contains([]string{"v", "w", "err", "stream"}, name) {
-		return name + "Handle"
-	}
-	return name
 }
 
 // mockReturnBody generates the testify mock body lines that extract return values.
