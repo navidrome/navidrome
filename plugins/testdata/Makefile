@@ -27,7 +27,8 @@ PDK_SOURCES := $(shell find ../pdk/go -name '*.go' 2>/dev/null)
 
 # Build the wasm binary. -buildvcs=false keeps the bytes stable across commits, so
 # the test suite's wazero compilation cache still hits after a rebuild.
-%.wasm: %/*.go %/go.mod $(PDK_SOURCES)
+.SECONDEXPANSION:
+%.wasm: $$(shell find $$* -name '*.go') %/go.mod $(PDK_SOURCES)
 ifdef TINYGO
 	cd $* && tinygo build -target wasip1 -buildmode=c-shared -o ../$@ .
 else

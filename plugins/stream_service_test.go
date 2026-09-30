@@ -119,6 +119,7 @@ var _ = Describe("Generated stream host functions", Ordered, func() {
 		Expect(call("drain_nil", "").Data).To(Equal("<nil>"))
 	})
 
+	// Runs after "returns a host writer" (Ordered): its scope closes the shared svc.created writer.
 	It("checks the stream direction", func() {
 		Expect(call("drain_writer", "").Error).To(Equal("stream is not readable"))
 	})
