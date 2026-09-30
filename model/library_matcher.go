@@ -36,3 +36,21 @@ func (lm *LibraryMatcher) FindLibrary(absolutePath string) (Library, bool) {
 	}
 	return Library{}, false
 }
+
+// LibraryRelativePath rebases an absolute path onto the library root, as the scanner's io/fs sees it
+// (forward slashes). Relative paths, and absolute paths outside the library root, are returned unchanged.
+func LibraryRelativePath(libPath, path string) string {
+	if !filepath.IsAbs(path) {
+		return path
+	}
+	// The library root may be relative (e.g. the default "./music"); it resolves against the same cwd
+	absLib, err := filepath.Abs(libPath)
+	if err != nil {
+		return path
+	}
+	rel, err := filepath.Rel(absLib, path)
+	if err != nil || !filepath.IsLocal(rel) {
+		return path
+	}
+	return filepath.ToSlash(rel)
+}

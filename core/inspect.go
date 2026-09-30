@@ -39,7 +39,7 @@ func Inspect(filePath string, lib model.Library, folderId string) (*InspectOutpu
 		return nil, model.ErrNotFound
 	}
 
-	md := metadata.New(path, tag)
+	md := metadata.New(scannerPath(lib, filePath), tag)
 	result := &InspectOutput{
 		File:       filePath,
 		RawTags:    tags[file].Tags,
@@ -47,4 +47,14 @@ func Inspect(filePath string, lib model.Library, folderId string) (*InspectOutpu
 	}
 
 	return result, nil
+}
+
+// scannerPath returns the path the scanner uses for the file (relative to its library), so
+// folder-based PIDs match the DB. Files outside the library keep their absolute path.
+func scannerPath(lib model.Library, filePath string) string {
+	absPath, err := filepath.Abs(filePath)
+	if err != nil || lib.Path == "" {
+		return filePath
+	}
+	return model.LibraryRelativePath(lib.Path, absPath)
 }

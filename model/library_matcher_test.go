@@ -1,6 +1,9 @@
 package model_test
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -46,5 +49,42 @@ var _ = Describe("LibraryMatcher", func() {
 		libs := model.Libraries{{ID: 1, Path: "/a"}, {ID: 2, Path: "/abc"}}
 		model.NewLibraryMatcher(libs)
 		Expect(libs.IDs()).To(Equal([]int{1, 2}))
+	})
+})
+
+var _ = Describe("LibraryRelativePath", func() {
+	// Paths are built with filepath so the "absolute" cases stay absolute on every OS
+	// (a Unix-style "/foo" is not absolute on Windows).
+	libRoot, _ := filepath.Abs(filepath.Join("jukebox", "collection"))
+	outside, _ := filepath.Abs(filepath.Join("somewhere", "else"))
+
+	It("returns a relative path unchanged", func() {
+		Expect(model.LibraryRelativePath(libRoot, "_Collection")).To(Equal("_Collection"))
+	})
+
+	It("rebases an absolute target when the library root is relative", func() {
+		cwd, err := os.Getwd()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(model.LibraryRelativePath(filepath.Join("music", "library"), filepath.Join(cwd, "music", "library", "rock"))).To(Equal("rock"))
+	})
+
+	It("rebases an absolute path that equals the library root to '.'", func() {
+		Expect(model.LibraryRelativePath(libRoot, libRoot)).To(Equal("."))
+	})
+
+	It("rebases an absolute path under the library root", func() {
+		Expect(model.LibraryRelativePath(libRoot, filepath.Join(libRoot, "_Collection"))).To(Equal("_Collection"))
+	})
+
+	It("handles a trailing slash on the library path", func() {
+		Expect(model.LibraryRelativePath(libRoot+string(filepath.Separator), filepath.Join(libRoot, "_Collection"))).To(Equal("_Collection"))
+	})
+
+	It("leaves an absolute path outside the library root unchanged", func() {
+		Expect(model.LibraryRelativePath(libRoot, outside)).To(Equal(outside))
+	})
+
+	It("returns an empty path unchanged", func() {
+		Expect(model.LibraryRelativePath(libRoot, "")).To(Equal(""))
 	})
 })
