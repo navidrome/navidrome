@@ -1192,6 +1192,12 @@ var _ = Describe("Shared Types Generation", func() {
 		Expect(out).To(ContainSubstring(`#[serde(with = "base64_bytes")]`))
 	})
 
+	It("exposes the stream module in the Rust types crate", func() {
+		code, err := GenerateSharedTypesRust(nil)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(code)).To(ContainSubstring("pub mod stream;"))
+	})
+
 	It("exposes the hostcall module in the Rust types crate", func() {
 		code, err := GenerateSharedTypesRust(nil)
 		Expect(err).NotTo(HaveOccurred())
