@@ -331,6 +331,7 @@ var _ = Describe("ValidatePIDSpec", func() {
 		Entry("empty attribute", "album,,title", true, "empty attribute"),
 		Entry("trailing separator", "album|", true, "empty attribute"),
 		Entry("albumid in an album spec", "albumid,album", true, "albumid"),
+		Entry("tag alias in an album spec", "talb", true, `use the tag name "album" instead of its alias "talb"`),
 		Entry("track legacy in an album spec", "track_legacy", true, `unknown attribute "track_legacy"`),
 		Entry("album legacy in a track spec", "album_legacy", false, `unknown attribute "album_legacy"`),
 	)

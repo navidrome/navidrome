@@ -29,8 +29,9 @@ func NewLibraryMatcher(libs Libraries) *LibraryMatcher {
 // FindLibrary returns the library whose path contains absolutePath.
 func (lm *LibraryMatcher) FindLibrary(absolutePath string) (Library, bool) {
 	for i, libPath := range lm.cleanedPaths {
-		if strings.HasPrefix(absolutePath, libPath) &&
-			(len(absolutePath) == len(libPath) || absolutePath[len(libPath)] == filepath.Separator) {
+		// A cleaned path only ends with a separator when it is a filesystem root
+		if strings.HasPrefix(absolutePath, libPath) && (len(absolutePath) == len(libPath) ||
+			absolutePath[len(libPath)] == filepath.Separator || strings.HasSuffix(libPath, string(filepath.Separator))) {
 			return lm.libraries[i], true
 		}
 	}

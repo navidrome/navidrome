@@ -82,7 +82,7 @@ func getPIDAttr(mf model.MediaFile, md Metadata, attr string, prependLibId bool,
 }
 
 // ValidatePIDSpec checks a PID override before it is stored; empty means "use the global config".
-// Tag aliases are accepted because the default track spec uses them (discnumber, tracknumber).
+// Aliases resolve to empty at scan time: accepted only in track specs, because the default one uses them.
 func ValidatePIDSpec(spec string, isAlbum bool) error {
 	switch {
 	case spec == "", isAlbum && spec == "album_legacy", !isAlbum && spec == "track_legacy":
@@ -100,8 +100,12 @@ func ValidatePIDSpec(spec string, isAlbum bool) error {
 				}
 			case "folder", "albumartistid":
 			default:
-				if !isTagName(attr) {
+				name, ok := canonicalTagName(attr)
+				if !ok {
 					return fmt.Errorf("unknown attribute %q", attr)
+				}
+				if isAlbum && name != attr {
+					return fmt.Errorf("use the tag name %q instead of its alias %q", name, attr)
 				}
 			}
 		}
@@ -117,18 +121,18 @@ func (md Metadata) albumID(mf model.MediaFile, pidConf string) string {
 	return computePID(mf, md, pidConf, pidConf, true, id.NewHash)
 }
 
-// isTagName reports whether name is a mapped tag or one of its aliases (both already lowercase).
-func isTagName(name string) bool {
+// canonicalTagName returns the mapped tag that name is, or is an alias of (both already lowercase).
+func canonicalTagName(name string) (string, bool) {
 	mappings := model.TagMappings()
 	if _, ok := mappings[model.TagName(name)]; ok {
-		return true
+		return name, true
 	}
-	for _, tag := range mappings {
+	for tagName, tag := range mappings {
 		if slices.Contains(tag.Aliases, name) {
-			return true
+			return string(tagName), true
 		}
 	}
-	return false
+	return "", false
 }
 
 // BFR Must be configurable?

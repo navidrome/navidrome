@@ -35,6 +35,8 @@ var _ = Describe("LibraryMatcher", func() {
 		Entry("prefix that is not a path boundary", model.Libraries{{ID: 1, Path: "/a"}, {ID: 2, Path: "/ab"}, {ID: 3, Path: "/abc"}}, "/ab/file.mp3", 2),
 		Entry("special characters match literally", model.Libraries{{ID: 1, Path: "/music[test]"}, {ID: 2, Path: "/music(backup)"}}, "/music[test]/track.mp3", 1),
 		Entry("library path with a trailing slash", model.Libraries{{ID: 1, Path: "/music/"}}, "/music/track.mp3", 1),
+		Entry("library at the filesystem root", model.Libraries{{ID: 1, Path: "/"}}, "/music/track.mp3", 1),
+		Entry("nested library under a root library", model.Libraries{{ID: 1, Path: "/"}, {ID: 2, Path: "/music"}}, "/music/track.mp3", 2),
 	)
 
 	It("does not match a path outside every library", func() {
