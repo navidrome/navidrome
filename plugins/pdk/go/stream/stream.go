@@ -1,6 +1,7 @@
 //go:build wasip1
 
 // Package stream gives plugins io.Reader and io.Writer access to byte streams owned by Navidrome.
+// Use one Stream per handle; Close frees its buffer.
 package stream
 
 import (

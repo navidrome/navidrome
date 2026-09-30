@@ -368,7 +368,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		fsConfig = buildFSConfig(mounts)
 	}
 
-	// Build host functions based on permissions from manifest
+	// Stream functions are for every plugin; the rest depend on manifest permissions
 	hostFunctions := streamHostFunctions()
 	var closers []io.Closer
 	loaded := false

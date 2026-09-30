@@ -655,6 +655,8 @@ data, err := io.ReadAll(s)
 n, err := stream.Copy(dst, src) // bytes never enter plugin memory
 ```
 
+Use one `Stream` per handle; `Close` frees its buffer.
+
 **Rust:**
 
 ```rust
@@ -664,6 +666,7 @@ use std::io::Read;
 let mut s = Stream::from_handle(handle); // std::io::Read + Write
 let mut data = Vec::new();
 s.read_to_end(&mut data)?;
+let n = stream::copy(&dst, &src)?; // bytes never enter plugin memory
 ```
 
 **Raw functions** (for Python, JavaScript, and other languages). Namespace `extism:host/user`; all params and results are `i64`. `buf` is an Extism memory block the plugin allocated; `len` must be between 1 and the block length.
@@ -674,7 +677,9 @@ s.read_to_end(&mut data)?;
 | `stream_write` | handle, buf, len | bytes written; `-1` = error; less than `len` = error, see `stream_error` |
 | `stream_copy` | dst, src | bytes copied; then call `stream_error` to check for an error |
 | `stream_close` | handle | `0` = OK; `-1` = error |
-| `stream_error` | (none) | pointer to the error message of the last failed stream call (free it after reading); `0` = no error; `-1` = error without a message |
+| `stream_error` | (none) | pointer to the error message of the most recent stream call (free it after reading); `0` = that call succeeded; `-1` = it failed, but no message could be allocated |
+
+Call `stream_error` right after the call you are checking.
 
 `stream_read` returns at most 1 MiB per call.
 
