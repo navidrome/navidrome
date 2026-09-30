@@ -496,6 +496,14 @@ var _ = Describe("Generator", func() {
 		})
 	})
 
+	Describe("Rust names", func() {
+		It("escapes Rust keywords as raw identifiers", func() {
+			Expect(Param{Name: "in"}.RustName()).To(Equal("r#in"))
+			Expect(FieldDef{Name: "Type"}.RustName()).To(Equal("r#type"))
+			Expect(Param{Name: "input"}.RustName()).To(Equal("input"))
+		})
+	})
+
 	Describe("GenerateGoDoc", func() {
 		It("should generate valid doc.go content for multiple services", func() {
 			services := []Service{

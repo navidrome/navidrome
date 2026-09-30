@@ -746,7 +746,7 @@ func (p Param) RustParamTypeWithShared(knownStructs map[string]bool, shared map[
 
 // RustName returns the snake_case Rust name for this parameter.
 func (p Param) RustName() string {
-	return ToSnakeCase(p.Name)
+	return rustIdent(ToSnakeCase(p.Name))
 }
 
 // NeedsToOwned returns true if the parameter needs .to_owned() when used.
@@ -761,7 +761,25 @@ func (f FieldDef) RustType(knownStructs map[string]bool) string {
 
 // RustName returns the snake_case Rust name for this field.
 func (f FieldDef) RustName() string {
-	return ToSnakeCase(f.Name)
+	return rustIdent(ToSnakeCase(f.Name))
+}
+
+// self, Self, super and crate cannot be raw identifiers, so they are left out.
+var rustKeywords = map[string]bool{
+	"abstract": true, "as": true, "async": true, "await": true, "become": true, "box": true, "break": true,
+	"const": true, "continue": true, "do": true, "dyn": true, "else": true, "enum": true, "extern": true,
+	"false": true, "final": true, "fn": true, "for": true, "gen": true, "if": true, "impl": true, "in": true,
+	"let": true, "loop": true, "macro": true, "match": true, "mod": true, "move": true, "mut": true,
+	"override": true, "priv": true, "pub": true, "ref": true, "return": true, "static": true, "struct": true,
+	"trait": true, "true": true, "try": true, "type": true, "typeof": true, "unsafe": true, "unsized": true,
+	"use": true, "virtual": true, "where": true, "while": true, "yield": true,
+}
+
+func rustIdent(name string) string {
+	if rustKeywords[name] {
+		return "r#" + name
+	}
+	return name
 }
 
 // NeedsDefault returns true if the field needs #[serde(default)] attribute.
