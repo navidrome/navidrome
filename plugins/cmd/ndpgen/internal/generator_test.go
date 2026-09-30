@@ -1793,6 +1793,11 @@ var _ = Describe("Rust Generation", func() {
 			Expect(isNilableType("io.WriteCloser")).To(BeTrue())
 		})
 
+		It("maps stream types to an optional Rust Stream", func() {
+			Expect(toRustType("io.ReadCloser", nil, nil)).To(Equal("Option<nd_pdk_types::stream::Stream>"))
+			Expect(toRustType("io.WriteCloser", nil, nil)).To(Equal("Option<nd_pdk_types::stream::Stream>"))
+		})
+
 		It("names stream field handle locals so generated ToWire functions compile", func() {
 			Expect(fieldHandleVar(FieldDef{Name: "Body"})).To(Equal("body"))
 			Expect(fieldHandleVar(FieldDef{Name: "Type"})).To(Equal("typeHandle"))

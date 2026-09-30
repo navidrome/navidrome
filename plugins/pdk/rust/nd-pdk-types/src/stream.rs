@@ -108,6 +108,13 @@ impl io::Write for Stream {
     }
 }
 
+impl Clone for Stream {
+    // Copies share the handle and get their own buffer, so dropping one never frees the other's.
+    fn clone(&self) -> Self {
+        Stream::from_handle(self.handle)
+    }
+}
+
 impl Drop for Stream {
     fn drop(&mut self) {
         self.free_buffer();
@@ -123,6 +130,21 @@ impl Serialize for Stream {
 impl<'de> Deserialize<'de> for Stream {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         u32::deserialize(deserializer).map(Stream::from_handle)
+    }
+}
+
+/// Serde for `Option<Stream>` fields: handle 0 or null means no stream.
+pub mod optional {
+    use super::Stream;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(v: &Option<Stream>, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_u32(v.as_ref().map_or(0, Stream::handle))
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Stream>, D::Error> {
+        let h = Option::<u32>::deserialize(d)?.unwrap_or(0);
+        Ok((h != 0).then(|| Stream::from_handle(h)))
     }
 }
 

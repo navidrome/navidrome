@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct {{.Name}} {
 {{- range .Fields}}
-{{- if .NeedsDefault}}
+{{- if .StreamKind}}
+    #[serde(rename = "{{.JSONTag}}", default, with = "nd_pdk_types::stream::optional")]
+{{- else if .NeedsDefault}}
     #[serde(default)]
 {{- end}}
 {{- if .IsByteSlice}}
@@ -33,6 +35,9 @@ pub struct {{.Name}} {
 #[serde(rename_all = "camelCase")]
 struct {{requestType .}} {
 {{- range .Params}}
+{{- if .StreamKind}}
+    #[serde(rename = "{{.JSONName}}", default, with = "nd_pdk_types::stream::optional")]
+{{- end}}
 {{- if .IsByteSlice}}
     #[serde(with = "base64_bytes")]
 {{- end}}
@@ -45,7 +50,11 @@ struct {{requestType .}} {
 #[serde(rename_all = "camelCase")]
 struct {{responseType .}} {
 {{- range .Returns}}
+{{- if .StreamKind}}
+    #[serde(rename = "{{.JSONName}}", default, with = "nd_pdk_types::stream::optional")]
+{{- else}}
     #[serde(default)]
+{{- end}}
 {{- if .IsByteSlice}}
     #[serde(with = "base64_bytes")]
 {{- end}}

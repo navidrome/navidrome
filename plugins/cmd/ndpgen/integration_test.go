@@ -274,6 +274,9 @@ type ServiceB interface {
 
 			Entry("option pattern (value, exists bool)",
 				"config_service.go.txt", "config_client_expected.go.txt", "config_client_expected.rs"),
+
+			Entry("stream service",
+				"stream_service.go.txt", "stream_client_expected.go.txt", "stream_client_expected.rs"),
 		)
 
 		It("generates the shared Go types package with -shared-types", func() {

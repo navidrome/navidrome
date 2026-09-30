@@ -836,6 +836,8 @@ func toRustType(goType string, knownStructs map[string]bool, shared map[string]s
 		return "bool"
 	case "interface{}", "any":
 		return "serde_json::Value"
+	case "io.ReadCloser", "io.WriteCloser":
+		return "Option<nd_pdk_types::stream::Stream>"
 	default:
 		// Qualified reference to the shared types crate (e.g. types.Track ->
 		// nd_pdk_types::Track).
