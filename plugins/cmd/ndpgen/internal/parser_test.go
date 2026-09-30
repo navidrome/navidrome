@@ -363,6 +363,15 @@ type Upload struct {
 	Body io.ReadCloser
 }
 `
+		blobService := func(extraTypes, method string) string {
+			return extraTypes + `
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	` + method + `
+}
+`
+		}
 
 		It("accepts streams as direct params, results, and fields of param/result structs", func() {
 			services, err := parseService(header + upload + `
@@ -404,17 +413,11 @@ type BlobService interface {
 		})
 
 		It("reports no streams for a service without stream types", func() {
-			services, err := parseService(header + `
+			services, err := parseService(header + blobService(`
 type Item struct {
 	Name string
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Get(ctx context.Context, name string) (*Item, error)
-}
-`)
+`, `Get(ctx context.Context, name string) (*Item, error)`))
 			Expect(err).NotTo(HaveOccurred())
 			svc := services[0]
 			Expect(svc.HasStreams()).To(BeFalse())
@@ -429,97 +432,43 @@ type BlobService interface {
 				Expect(err).To(MatchError(ContainSubstring("streams must be io.ReadCloser or io.WriteCloser, got " + want)))
 				Expect(err).To(MatchError(ContainSubstring("parsing blob.go")))
 			},
-			Entry("as a param", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Read(ctx context.Context, r io.Reader) error
-}
-`, "io.Reader"),
-			Entry("as a struct field", `
+			Entry("as a param", blobService("", `Read(ctx context.Context, r io.Reader) error`), "io.Reader"),
+			Entry("as a struct field", blobService(`
 type Sink struct {
 	Out io.Writer
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Write(ctx context.Context, sink Sink) error
-}
-`, "io.Writer"),
-			Entry("io.ReadWriteCloser param", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Pipe(ctx context.Context, rw io.ReadWriteCloser) error
-}
-`, "io.ReadWriteCloser"),
-			Entry("io.Closer struct field", `
+`, `Write(ctx context.Context, sink Sink) error`), "io.Writer"),
+			Entry("io.ReadWriteCloser param", blobService("", `Pipe(ctx context.Context, rw io.ReadWriteCloser) error`), "io.ReadWriteCloser"),
+			Entry("io.Closer struct field", blobService(`
 type Handle struct {
 	C io.Closer
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Release(ctx context.Context, h Handle) error
-}
-`, "io.Closer"),
-			Entry("io.ReadSeekCloser result", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Open(ctx context.Context, name string) (io.ReadSeekCloser, error)
-}
-`, "io.ReadSeekCloser"),
-			Entry("defined type of a stream", `
+`, `Release(ctx context.Context, h Handle) error`), "io.Closer"),
+			Entry("io.ReadSeekCloser result", blobService("", `Open(ctx context.Context, name string) (io.ReadSeekCloser, error)`), "io.ReadSeekCloser"),
+			Entry("defined type of a stream", blobService(`
 type Body io.ReadCloser
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Open(ctx context.Context, name string) (Body, error)
-}
-`, "Body"),
-			Entry("alias of a stream in a struct field", `
+`, `Open(ctx context.Context, name string) (Body, error)`), "Body"),
+			Entry("alias of a stream in a struct field", blobService(`
 type Body = io.ReadCloser
 
 type Upload struct {
 	B Body
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, upload Upload) error
-}
-`, "Body"),
-			Entry("alias chain to a stream", `
+`, `Put(ctx context.Context, upload Upload) error`), "Body"),
+			Entry("alias chain to a stream", blobService(`
 type A = B
 
 type B io.ReadCloser
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Open(ctx context.Context, name string) (A, error)
-}
-`, "A"),
+`, `Open(ctx context.Context, name string) (A, error)`), "A"),
 		)
 
 		It("rejects an embedded io field in a param struct", func() {
-			_, err := parseService(header + `
+			_, err := parseService(header + blobService(`
 type Upload struct {
 	Name string
 	io.ReadCloser
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, upload Upload) error
-}
-`)
+`, `Put(ctx context.Context, upload Upload) error`))
 			Expect(err).To(MatchError(ContainSubstring("struct Upload embeds io.ReadCloser: streams cannot be embedded fields")))
 		})
 
@@ -528,52 +477,22 @@ type BlobService interface {
 				_, err := parseService(header + src)
 				Expect(err).To(MatchError(ContainSubstring("streams are only supported as direct parameters, results, or fields of a parameter or result struct")))
 			},
-			Entry("slice param", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, items []io.ReadCloser) error
-}
-`),
-			Entry("map field", `
+			Entry("slice param", blobService("", `Put(ctx context.Context, items []io.ReadCloser) error`)),
+			Entry("map field", blobService(`
 type Multi struct {
 	Parts map[string]io.ReadCloser
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, multi Multi) error
-}
-`),
-			Entry("nested struct", upload+`
+`, `Put(ctx context.Context, multi Multi) error`)),
+			Entry("nested struct", blobService(upload+`
 type Outer struct {
 	In Upload
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, outer Outer) error
-}
-`),
-			Entry("slice of stream structs", upload+`
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	List(ctx context.Context) ([]Upload, error)
-}
-`),
+`, `Put(ctx context.Context, outer Outer) error`)),
+			Entry("slice of stream structs", blobService(upload, `List(ctx context.Context) ([]Upload, error)`)),
 		)
 
 		It("rejects a stream method without an error result", func() {
-			_, err := parseService(header + `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Drain(ctx context.Context, in io.ReadCloser) string
-}
-`)
+			_, err := parseService(header + blobService("", `Drain(ctx context.Context, in io.ReadCloser) string`))
 			Expect(err).To(MatchError(ContainSubstring("host functions with streams must return an error")))
 		})
 
@@ -582,34 +501,10 @@ type BlobService interface {
 				_, err := parseService(header + src)
 				Expect(err).To(MatchError(ContainSubstring(`parameter name "` + name + `" is reserved by generated code`)))
 			},
-			Entry("stream struct param", upload+`
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, req Upload) error
-}
-`, "req"),
-			Entry("named stream result", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Open(ctx context.Context, name string) (conv io.ReadCloser, err error)
-}
-`, "conv"),
-			Entry("plain method", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Get(ctx context.Context, service string) (response string, err error)
-}
-`, "service"),
-			Entry("stream param shadowing the stream package", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Save(ctx context.Context, name string, stream io.ReadCloser) error
-}
-`, "stream"),
+			Entry("stream struct param", blobService(upload, `Put(ctx context.Context, req Upload) error`), "req"),
+			Entry("named stream result", blobService("", `Open(ctx context.Context, name string) (conv io.ReadCloser, err error)`), "conv"),
+			Entry("plain method", blobService("", `Get(ctx context.Context, service string) (response string, err error)`), "service"),
+			Entry("stream param shadowing the stream package", blobService("", `Save(ctx context.Context, name string, stream io.ReadCloser) error`), "stream"),
 		)
 
 		Describe("shared types", func() {
@@ -645,37 +540,19 @@ import (
 					_, err := ParseDirectoryWithShared(tmpDir, shared)
 					Expect(err).To(MatchError(ContainSubstring("streams are not supported in shared types")))
 				},
-				Entry("as a direct param", `
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, blob types.Blob) error
-}
-`),
-				Entry("through a local struct field", `
+				Entry("as a direct param", blobService("", `Put(ctx context.Context, blob types.Blob) error`)),
+				Entry("through a local struct field", blobService(`
 type Wrapper struct {
 	B types.Blob
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, w Wrapper) error
-}
-`),
-				Entry("through a shared alias in a local struct field", `
+`, `Put(ctx context.Context, w Wrapper) error`)),
+				Entry("through a shared alias in a local struct field", blobService(`
 type Blob = types.Blob
 
 type Wrapper struct {
 	B Blob
 }
-
-//nd:hostservice name=Blob permission=blob
-type BlobService interface {
-	//nd:hostfunc
-	Put(ctx context.Context, w Wrapper) error
-}
-`),
+`, `Put(ctx context.Context, w Wrapper) error`)),
 			)
 
 			It("rejects stream fields in shared types a capability reaches through a local struct", func() {

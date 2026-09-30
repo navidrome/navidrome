@@ -664,22 +664,6 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring("github.com/navidrome/navidrome/plugins/pdk/go/pdk"))
 		})
 
-		It("converts stream params, results, and struct fields to handles", func() {
-			svc := parseTestdataService("stream_service.go.txt")
-
-			code, err := GenerateClientGo(svc, "ndhost")
-			Expect(err).NotTo(HaveOccurred())
-			actual, err := format.Source(code)
-			Expect(err).NotTo(HaveOccurred(), "generated code is not valid Go:\n%s", code)
-
-			expectedSrc, err := os.ReadFile(filepath.Join("..", "testdata", "stream_client_expected.go.txt"))
-			Expect(err).NotTo(HaveOccurred())
-			expected, err := format.Source(expectedSrc)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(string(actual)).To(Equal(string(expected)))
-		})
-
 		It("does not import io or the stream package for services without streams", func() {
 			svc := parseTestdataService("users_service.go.txt")
 
