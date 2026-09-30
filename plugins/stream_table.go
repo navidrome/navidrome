@@ -86,27 +86,30 @@ func (s *callScope) checkOpenLocked() error {
 }
 
 func (s *callScope) register(b *streamBackend) (uint32, error) {
+	h, err := s.insert(b)
+	if err != nil {
+		_ = b.Close()
+	}
+	return h, err
+}
+
+func (s *callScope) insert(b *streamBackend) (uint32, error) {
 	t := s.table
 	t.mu.Lock()
-	err := s.checkOpenLocked()
-	switch {
-	case err != nil:
-	case t.open >= maxOpenStreams:
-		err = errTooManyStreams
-	case t.next >= math.MaxInt32:
-		err = errStreamHandlesExhausted
-	}
-	if err != nil {
-		t.mu.Unlock()
-		_ = b.Close()
+	defer t.mu.Unlock()
+	if err := s.checkOpenLocked(); err != nil {
 		return 0, err
 	}
+	if t.open >= maxOpenStreams {
+		return 0, errTooManyStreams
+	}
+	if t.next >= math.MaxInt32 {
+		return 0, errStreamHandlesExhausted
+	}
 	t.next++
-	h := t.next
-	s.entries[h] = b
+	s.entries[t.next] = b
 	t.open++
-	t.mu.Unlock()
-	return h, nil
+	return t.next, nil
 }
 
 func (s *callScope) lookup(h uint32, need streamRights) (*streamBackend, error) {

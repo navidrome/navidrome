@@ -100,9 +100,6 @@ func Copy(dst, src *Stream) (int64, error) {
 	if err := pendingError(); err != nil {
 		return max(n, 0), err
 	}
-	if n < 0 {
-		return 0, errStreamFailed
-	}
 	return n, nil
 }
 

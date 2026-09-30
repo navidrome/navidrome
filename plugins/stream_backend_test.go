@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"math"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -68,6 +69,15 @@ func (w *trackingWriter) bytes() []byte {
 	defer w.mu.Unlock()
 	return bytes.Clone(w.buf.Bytes())
 }
+
+// errWriter takes at most accept bytes of each Write and reports err with them.
+type errWriter struct {
+	accept int
+	err    error
+}
+
+func (w *errWriter) Write(p []byte) (int, error) { return min(len(p), w.accept), w.err }
+func (w *errWriter) Close() error                { return nil }
 
 var _ = Describe("streamBackend", func() {
 	Describe("Read", func() {
@@ -160,6 +170,16 @@ var _ = Describe("streamBackend", func() {
 			failing := newReadStream(failingCloseReader{strings.NewReader("")})
 			Expect(failing.Close()).To(MatchError("close failed"))
 			Expect(failing.Close()).To(MatchError("close failed"))
+		})
+
+		It("Close reports a retained write error", func() {
+			w := &errWriter{accept: math.MaxInt, err: errors.New("flush failed")}
+			b := newWriteStream(w)
+			n, err := b.Write([]byte("abcd"))
+			Expect(n).To(Equal(4))
+			Expect(err).To(MatchError("flush failed"))
+			Expect(b.Close()).To(MatchError("flush failed"))
+			Expect(b.Close()).To(MatchError("flush failed"))
 		})
 	})
 

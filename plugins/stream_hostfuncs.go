@@ -57,17 +57,13 @@ func streamHostFunctions() []extism.HostFunction {
 	}
 }
 
-// Outside a plugin call there is no scope: every function returns -1 and stream_error has no message.
+// streamHostFunction makes every stream function return -1 outside a plugin call, stream_error included.
 func streamHostFunction(name string, params []extism.ValueType, op func(*callScope, guestMemory, []uint64) uint64) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(name,
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
-			s := callScopeFrom(ctx)
-			switch {
-			case s != nil:
+			if s := callScopeFrom(ctx); s != nil {
 				stack[0] = op(s, extismMemory{p}, stack)
-			case name == "stream_error":
-				stack[0] = 0
-			default:
+			} else {
 				stack[0] = math.MaxUint64
 			}
 		},

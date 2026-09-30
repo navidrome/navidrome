@@ -24,7 +24,6 @@ var (
 // streamBackend is what a handle points to. It keeps an error that arrived together with data, so every later
 // consumer (plugin reads, stream_copy, host code after transfer) still sees it.
 type streamBackend struct {
-	value  any
 	r      io.Reader
 	w      io.Writer
 	c      io.Closer
@@ -32,21 +31,22 @@ type streamBackend struct {
 
 	mu       sync.Mutex
 	retained error
+	eof      bool
 
 	closeOnce sync.Once
 	closeErr  error
 }
 
 func newReadStream(rc io.ReadCloser) *streamBackend {
-	return &streamBackend{value: rc, r: rc, c: rc, rights: streamRead}
+	return &streamBackend{r: rc, c: rc, rights: streamRead}
 }
 
 func newWriteStream(wc io.WriteCloser) *streamBackend {
-	return &streamBackend{value: wc, w: wc, c: wc, rights: streamWrite}
+	return &streamBackend{w: wc, c: wc, rights: streamWrite}
 }
 
 func (b *streamBackend) Read(p []byte) (int, error) {
-	if err := b.retainedErr(); err != nil {
+	if err := b.readErr(); err != nil {
 		return 0, err
 	}
 	if b.r == nil {
@@ -57,6 +57,13 @@ func (b *streamBackend) Read(p []byte) (int, error) {
 	}
 	for range maxEmptyReads {
 		n, err := b.r.Read(p)
+		if errors.Is(err, io.EOF) {
+			b.setEOF()
+			if n > 0 {
+				return n, nil
+			}
+			return 0, io.EOF
+		}
 		if err != nil {
 			b.retain(err)
 			if n > 0 {
@@ -90,17 +97,23 @@ func (b *streamBackend) Write(p []byte) (int, error) {
 }
 
 func (b *streamBackend) Close() error {
-	b.closeOnce.Do(func() { b.closeErr = b.c.Close() })
+	b.closeOnce.Do(func() {
+		b.closeErr = b.c.Close()
+		// A writer may accept every byte and still fail; the caller saw a full count, so Close reports it.
+		if b.closeErr == nil && b.w != nil {
+			b.closeErr = b.retainedErr()
+		}
+	})
 	return b.closeErr
 }
 
 // transferValue is what host code gets when a plugin returns this stream: the original value keeps abilities
 // like io.Seeker, unless a retained error would be lost with it.
 func (b *streamBackend) transferValue() any {
-	if err := b.retainedErr(); err != nil && !errors.Is(err, io.EOF) {
+	if b.retainedErr() != nil {
 		return b
 	}
-	return b.value
+	return b.c
 }
 
 func (b *streamBackend) retain(err error) {
@@ -109,6 +122,21 @@ func (b *streamBackend) retain(err error) {
 	if b.retained == nil {
 		b.retained = err
 	}
+}
+
+func (b *streamBackend) setEOF() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.eof = true
+}
+
+func (b *streamBackend) readErr() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.eof {
+		return io.EOF
+	}
+	return b.retained
 }
 
 func (b *streamBackend) retainedErr() error {

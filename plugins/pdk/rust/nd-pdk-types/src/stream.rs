@@ -58,9 +58,6 @@ pub fn copy(dst: &Stream, src: &Stream) -> io::Result<u64> {
     if let Some(err) = pending_error() {
         return Err(err);
     }
-    if n < 0 {
-        return Err(io::Error::other("stream operation failed"));
-    }
     Ok(n as u64)
 }
 
@@ -153,18 +150,20 @@ fn pending_error() -> Option<io::Error> {
         return None;
     }
     if ptr < 0 {
-        return Some(io::Error::other("stream operation failed"));
+        return Some(failed());
     }
     let Some(mem) = extism_pdk::Memory::find(ptr as u64) else {
-        return Some(io::Error::other("stream operation failed"));
+        return Some(failed());
     };
-    let msg = mem
-        .to_string()
-        .unwrap_or_else(|_| "stream operation failed".to_string());
+    let err = mem.to_string().map_or_else(|_| failed(), io::Error::other);
     mem.free();
-    Some(io::Error::other(msg))
+    Some(err)
 }
 
 fn last_error() -> io::Error {
-    pending_error().unwrap_or_else(|| io::Error::other("stream operation failed"))
+    pending_error().unwrap_or_else(failed)
+}
+
+fn failed() -> io::Error {
+    io::Error::other("stream operation failed")
 }

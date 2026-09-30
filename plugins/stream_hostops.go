@@ -28,7 +28,7 @@ func bufferView(mem guestMemory, buf uint64, n int64) ([]byte, error) {
 	if n < 1 || n > math.MaxUint32 {
 		return nil, errBadBuffer
 	}
-	if size := mem.blockLength(buf); size == 0 || uint64(n) > size {
+	if uint64(n) > mem.blockLength(buf) {
 		return nil, errBadBuffer
 	}
 	view, ok := mem.view(buf, uint32(n))
@@ -71,10 +71,9 @@ func (s *callScope) hostRead(mem guestMemory, handle int64, buf uint64, n int64)
 	case errors.Is(err, io.EOF):
 		s.lastErr = nil
 		return 0
-	case err != nil:
+	default:
 		return s.fail(err)
 	}
-	return s.fail(io.ErrNoProgress)
 }
 
 func (s *callScope) hostWrite(mem guestMemory, handle int64, buf uint64, n int64) int64 {
@@ -90,9 +89,6 @@ func (s *callScope) hostWrite(mem guestMemory, handle int64, buf uint64, n int64
 	if written > 0 {
 		s.lastErr = err
 		return int64(written)
-	}
-	if err == nil {
-		err = io.ErrShortWrite
 	}
 	return s.fail(err)
 }
@@ -123,10 +119,6 @@ func (s *callScope) hostClose(handle int64) int64 {
 		return s.fail(err)
 	}
 	if err := b.Close(); err != nil {
-		return s.fail(err)
-	}
-	// A writer may accept every byte and still fail; the plugin saw a full count, so report the error here.
-	if err := b.retainedErr(); err != nil && !errors.Is(err, io.EOF) && b.rights&streamWrite != 0 {
 		return s.fail(err)
 	}
 	s.lastErr = nil
