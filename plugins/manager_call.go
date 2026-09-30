@@ -38,13 +38,32 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 
 // callPluginFunctionWithTimeout calls a plugin export, handling JSON and errors. The deadline is set on ctx,
 // not in the Extism manifest, so host functions and anything watching ctx see it.
-func callPluginFunctionWithTimeout[I any, O any](parentCtx context.Context, plugin *plugin, funcName string, timeout time.Duration, input I) (O, error) {
-	ctx, cancel := context.WithTimeout(parentCtx, timeout)
-	defer cancel()
+func callPluginFunctionWithTimeout[I any, O any](ctx context.Context, plugin *plugin, funcName string, timeout time.Duration, input I) (O, error) {
+	return callPluginFunctionScoped[I, O](ctx, plugin, funcName, timeout,
+		func(*callScope) (I, error) { return input, nil }, nil)
+}
 
+// callPluginFunctionScoped runs one call in its own stream scope. buildInput runs with the scope before the
+// call, to register input streams; onOutput runs after a successful decode, before the scope closes.
+func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *plugin, funcName string, timeout time.Duration,
+	buildInput func(*callScope) (I, error), onOutput func(*callScope, O) error) (O, error) {
 	start := time.Now()
 
 	var result O
+
+	ctx, cancel := context.WithTimeout(parentCtx, timeout)
+	defer cancel()
+
+	scope, err := plugin.streams.newScope(ctx, parentCtx)
+	if err != nil {
+		return result, err
+	}
+	stopClose := context.AfterFunc(ctx, scope.close)
+	defer func() {
+		stopClose()
+		scope.close()
+	}()
+	ctx = withCallScope(ctx, scope)
 
 	// Create plugin instance with context for cancellation support
 	p, err := plugin.instance(ctx)
@@ -58,6 +77,10 @@ func callPluginFunctionWithTimeout[I any, O any](parentCtx context.Context, plug
 		return result, fmt.Errorf("%w: %s", errFunctionNotFound, funcName)
 	}
 
+	input, err := buildInput(scope)
+	if err != nil {
+		return result, fmt.Errorf("preparing input: %w", err)
+	}
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return result, fmt.Errorf("failed to marshal input: %w", err)
@@ -95,6 +118,9 @@ func callPluginFunctionWithTimeout[I any, O any](parentCtx context.Context, plug
 		if err != nil {
 			log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
 		}
+	}
+	if err == nil && onOutput != nil {
+		err = onOutput(scope, result)
 	}
 
 	// Record metrics for successful calls (or JSON unmarshal failures)

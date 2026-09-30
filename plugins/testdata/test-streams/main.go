@@ -7,4 +7,9 @@ func spin() int32 {
 	}
 }
 
+//go:wasmexport noop
+func noop() int32 {
+	return 0
+}
+
 func main() {}

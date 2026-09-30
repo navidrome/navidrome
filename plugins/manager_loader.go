@@ -433,18 +433,20 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 		return fmt.Errorf("manifest validation: %w", err)
 	}
 
+	streams := newStreamTable()
 	loadedPlugin := &plugin{
 		name:         p.ID,
 		path:         p.Path,
 		manifest:     pkg.Manifest,
 		compiled:     compiled,
 		capabilities: capabilities,
-		closers:      closers,
+		closers:      append(closers, streams),
 		metrics:      m.metrics,
 		users:        users,
 		libraries:    libraries,
 		fsConfig:     fsConfig,
 		lyricsSem:    make(chan struct{}, maxConcurrentLyricsCalls),
+		streams:      streams,
 	}
 	m.mu.Lock()
 	m.plugins[p.ID] = loadedPlugin

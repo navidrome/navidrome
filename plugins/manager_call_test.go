@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -191,5 +192,87 @@ var _ = Describe("callPluginFunction time limits", Ordered, func() {
 	It("leaves the time limit out of the Extism manifest", func() {
 		m := buildExtismManifest(&ndpPackage{Manifest: &Manifest{}}, nil)
 		Expect(m.Timeout).To(BeZero())
+	})
+})
+
+var _ = Describe("callPluginFunctionScoped", Ordered, func() {
+	var (
+		ctx context.Context
+		p   *plugin
+	)
+
+	BeforeAll(func() {
+		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		p = loadedTestPlugin(manager, "test-streams")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	registerInput := func(r *trackingReader, h *uint32) func(*callScope) (struct{}, error) {
+		return func(s *callScope) (struct{}, error) {
+			var err error
+			*h, err = s.register(newReadStream(r))
+			return struct{}{}, err
+		}
+	}
+
+	It("closes streams left in the scope when the call returns", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		var h uint32
+		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout, registerInput(r, &h), nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(r.closed()).To(BeTrue())
+	})
+
+	It("runs onOutput before the scope closes", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		var h uint32
+		var got []any
+		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout, registerInput(r, &h),
+			func(s *callScope, _ struct{}) error {
+				var err error
+				got, err = s.transfer(h)
+				return err
+			})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(got).To(ConsistOf(BeIdenticalTo(r)))
+		Expect(r.closed()).To(BeFalse())
+	})
+
+	It("closes the scope when the time limit passes", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		var h uint32
+		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, registerInput(r, &h), nil)
+		Expect(err).To(MatchError(context.DeadlineExceeded))
+		Expect(r.closed()).To(BeTrue())
+	})
+
+	It("keeps the caller's ctx as the scope's base ctx", func() {
+		var scope *callScope
+		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout,
+			func(s *callScope) (struct{}, error) {
+				scope = s
+				return struct{}{}, nil
+			}, nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(scope.baseCtx).To(BeIdenticalTo(ctx))
+	})
+})
+
+var _ = Describe("Plugin unload", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	It("closes the plugin's stream table", func() {
+		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		p := loadedTestPlugin(manager, "test-streams")
+		Expect(manager.unloadPlugin("test-streams")).To(Succeed())
+		_, err := p.streams.newScope(ctx, ctx)
+		Expect(err).To(MatchError(errPluginUnloaded))
 	})
 })
