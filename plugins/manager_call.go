@@ -43,8 +43,8 @@ func callPluginFunctionWithTimeout[I any, O any](ctx context.Context, plugin *pl
 		func(*callScope) (I, error) { return input, nil }, nil)
 }
 
-// callPluginFunctionScoped runs one call in its own stream scope. buildInput runs with the scope before the
-// call, to register input streams; onOutput runs after a successful decode, before the scope closes.
+// callPluginFunctionScoped runs one call in its own stream scope. buildInput registers input streams, which the
+// scope owns from then on and closes on every exit; onOutput runs after a successful decode, before the scope closes.
 func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *plugin, funcName string, timeout time.Duration,
 	buildInput func(*callScope) (I, error), onOutput func(*callScope, O) error) (O, error) {
 	start := time.Now()
@@ -65,6 +65,11 @@ func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *p
 	}()
 	ctx = withCallScope(ctx, scope)
 
+	input, err := buildInput(scope)
+	if err != nil {
+		return result, fmt.Errorf("preparing input: %w", err)
+	}
+
 	// Create plugin instance with context for cancellation support
 	p, err := plugin.instance(ctx)
 	if err != nil {
@@ -77,10 +82,6 @@ func callPluginFunctionScoped[I any, O any](parentCtx context.Context, plugin *p
 		return result, fmt.Errorf("%w: %s", errFunctionNotFound, funcName)
 	}
 
-	input, err := buildInput(scope)
-	if err != nil {
-		return result, fmt.Errorf("preparing input: %w", err)
-	}
 	inputBytes, err := json.Marshal(input)
 	if err != nil {
 		return result, fmt.Errorf("failed to marshal input: %w", err)

@@ -226,6 +226,14 @@ var _ = Describe("callPluginFunctionScoped", Ordered, func() {
 		Expect(r.closed()).To(BeTrue())
 	})
 
+	It("closes input streams when the export does not exist", func() {
+		r := &trackingReader{Reader: strings.NewReader("x")}
+		var h uint32
+		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "missing", defaultTimeout, registerInput(r, &h), nil)
+		Expect(err).To(MatchError(errFunctionNotFound))
+		Expect(r.closed()).To(BeTrue())
+	})
+
 	It("runs onOutput before the scope closes", func() {
 		r := &trackingReader{Reader: strings.NewReader("x")}
 		var h uint32
