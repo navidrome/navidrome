@@ -37,9 +37,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn echo(message: &str) -> Result<String, Error> {
-    let response: EchoEchoResponse = nd_pdk_types::hostcall::call(echo_echo, &EchoEchoRequest {
+    let response: EchoEchoResponse = unsafe { nd_pdk_types::hostcall::call(echo_echo, &EchoEchoRequest {
         message: message.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

@@ -129,9 +129,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn open(text: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
-    let response: StreamTestOpenResponse = nd_pdk_types::hostcall::call(streamtest_open, &StreamTestOpenRequest {
+    let response: StreamTestOpenResponse = unsafe { nd_pdk_types::hostcall::call(streamtest_open, &StreamTestOpenRequest {
         text: text.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -151,9 +151,9 @@ pub fn open(text: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn create(name: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
-    let response: StreamTestCreateResponse = nd_pdk_types::hostcall::call(streamtest_create, &StreamTestCreateRequest {
+    let response: StreamTestCreateResponse = unsafe { nd_pdk_types::hostcall::call(streamtest_create, &StreamTestCreateRequest {
         name: name.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -173,9 +173,9 @@ pub fn create(name: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error>
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn drain(r#in: Option<nd_pdk_types::stream::Stream>) -> Result<String, Error> {
-    let response: StreamTestDrainResponse = nd_pdk_types::hostcall::call(streamtest_drain, &StreamTestDrainRequest {
+    let response: StreamTestDrainResponse = unsafe { nd_pdk_types::hostcall::call(streamtest_drain, &StreamTestDrainRequest {
         r#in: r#in,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -195,9 +195,9 @@ pub fn drain(r#in: Option<nd_pdk_types::stream::Stream>) -> Result<String, Error
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn wrap(wrap: WrapRequest) -> Result<Option<WrapResponse>, Error> {
-    let response: StreamTestWrapResponse = nd_pdk_types::hostcall::call(streamtest_wrap, &StreamTestWrapRequest {
+    let response: StreamTestWrapResponse = unsafe { nd_pdk_types::hostcall::call(streamtest_wrap, &StreamTestWrapRequest {
         wrap: wrap,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -214,7 +214,7 @@ pub fn wrap(wrap: WrapRequest) -> Result<Option<WrapResponse>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn block() -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
-    let response: StreamTestBlockResponse = nd_pdk_types::hostcall::call(streamtest_block, &serde_json::json!({}))?;
+    let response: StreamTestBlockResponse = unsafe { nd_pdk_types::hostcall::call(streamtest_block, &serde_json::json!({})) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -234,9 +234,9 @@ pub fn block() -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn echo(text: &str) -> Result<String, Error> {
-    let response: StreamTestEchoResponse = nd_pdk_types::hostcall::call(streamtest_echo, &StreamTestEchoRequest {
+    let response: StreamTestEchoResponse = unsafe { nd_pdk_types::hostcall::call(streamtest_echo, &StreamTestEchoRequest {
         text: text.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

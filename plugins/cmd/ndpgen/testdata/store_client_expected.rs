@@ -44,9 +44,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn save(item: Item) -> Result<String, Error> {
-    let response: StoreSaveResponse = nd_pdk_types::hostcall::call(store_save, &StoreSaveRequest {
+    let response: StoreSaveResponse = unsafe { nd_pdk_types::hostcall::call(store_save, &StoreSaveRequest {
         item: item,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

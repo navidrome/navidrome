@@ -70,9 +70,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(key: &str) -> Result<Option<String>, Error> {
-    let response: ConfigGetResponse = nd_pdk_types::hostcall::call(config_get, &ConfigGetRequest {
+    let response: ConfigGetResponse = unsafe { nd_pdk_types::hostcall::call(config_get, &ConfigGetRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -94,10 +94,10 @@ pub fn get(key: &str) -> Result<Option<String>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set(key: &str, value: &str) -> Result<(), Error> {
-    let response: ConfigSetResponse = nd_pdk_types::hostcall::call(config_set, &ConfigSetRequest {
+    let response: ConfigSetResponse = unsafe { nd_pdk_types::hostcall::call(config_set, &ConfigSetRequest {
         key: key.to_owned(),
         value: value.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -117,9 +117,9 @@ pub fn set(key: &str, value: &str) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn has(key: &str) -> Result<bool, Error> {
-    let response: ConfigHasResponse = nd_pdk_types::hostcall::call(config_has, &ConfigHasRequest {
+    let response: ConfigHasResponse = unsafe { nd_pdk_types::hostcall::call(config_has, &ConfigHasRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

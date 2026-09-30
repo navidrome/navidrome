@@ -96,9 +96,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn send(request: HTTPRequest) -> Result<Option<HTTPResponse>, Error> {
-    let response: HTTPSendResponse = nd_pdk_types::hostcall::call(http_send, &HTTPSendRequest {
+    let response: HTTPSendResponse = unsafe { nd_pdk_types::hostcall::call(http_send, &HTTPSendRequest {
         request: request,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

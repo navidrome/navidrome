@@ -51,9 +51,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(key: &str) -> Result<serde_json::Value, Error> {
-    let response: MetaGetResponse = nd_pdk_types::hostcall::call(meta_get, &MetaGetRequest {
+    let response: MetaGetResponse = unsafe { nd_pdk_types::hostcall::call(meta_get, &MetaGetRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -70,9 +70,9 @@ pub fn get(key: &str) -> Result<serde_json::Value, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set(data: std::collections::HashMap<String, serde_json::Value>) -> Result<(), Error> {
-    let response: MetaSetResponse = nd_pdk_types::hostcall::call(meta_set, &MetaSetRequest {
+    let response: MetaSetResponse = unsafe { nd_pdk_types::hostcall::call(meta_set, &MetaSetRequest {
         data: data,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

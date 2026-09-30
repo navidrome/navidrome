@@ -123,9 +123,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_first_timestamp(username: &str) -> Result<Option<i64>, Error> {
-    let response: ScrobbleRetrieverGetFirstTimestampResponse = nd_pdk_types::hostcall::call(scrobbleretriever_getfirsttimestamp, &ScrobbleRetrieverGetFirstTimestampRequest {
+    let response: ScrobbleRetrieverGetFirstTimestampResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getfirsttimestamp, &ScrobbleRetrieverGetFirstTimestampRequest {
         username: username.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -146,9 +146,9 @@ pub fn get_first_timestamp(username: &str) -> Result<Option<i64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
-    let response: ScrobbleRetrieverGetLastTimestampResponse = nd_pdk_types::hostcall::call(scrobbleretriever_getlasttimestamp, &ScrobbleRetrieverGetLastTimestampRequest {
+    let response: ScrobbleRetrieverGetLastTimestampResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getlasttimestamp, &ScrobbleRetrieverGetLastTimestampRequest {
         username: username.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -184,10 +184,10 @@ pub fn get_last_timestamp(username: &str) -> Result<Option<i64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<(Vec<ScrobbleRef>, Option<ScrobbleOptions>), Error> {
-    let response: ScrobbleRetrieverGetScrobblesResponse = nd_pdk_types::hostcall::call(scrobbleretriever_getscrobbles, &ScrobbleRetrieverGetScrobblesRequest {
+    let response: ScrobbleRetrieverGetScrobblesResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getscrobbles, &ScrobbleRetrieverGetScrobblesRequest {
         username: username.to_owned(),
         options: options,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -216,10 +216,10 @@ pub fn get_scrobbles(username: &str, options: ScrobbleOptions) -> Result<(Vec<Sc
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_scrobble_count(username: &str, options: ScrobbleCountOptions) -> Result<i64, Error> {
-    let response: ScrobbleRetrieverGetScrobbleCountResponse = nd_pdk_types::hostcall::call(scrobbleretriever_getscrobblecount, &ScrobbleRetrieverGetScrobbleCountRequest {
+    let response: ScrobbleRetrieverGetScrobbleCountResponse = unsafe { nd_pdk_types::hostcall::call(scrobbleretriever_getscrobblecount, &ScrobbleRetrieverGetScrobbleCountRequest {
         username: username.to_owned(),
         options: options,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

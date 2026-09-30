@@ -70,9 +70,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_library(id: i32) -> Result<Option<Library>, Error> {
-    let response: LibraryGetLibraryResponse = nd_pdk_types::hostcall::call(library_getlibrary, &LibraryGetLibraryRequest {
+    let response: LibraryGetLibraryResponse = unsafe { nd_pdk_types::hostcall::call(library_getlibrary, &LibraryGetLibraryRequest {
         id: id,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -91,7 +91,7 @@ pub fn get_library(id: i32) -> Result<Option<Library>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_all_libraries() -> Result<Vec<Library>, Error> {
-    let response: LibraryGetAllLibrariesResponse = nd_pdk_types::hostcall::call(library_getalllibraries, &serde_json::json!({}))?;
+    let response: LibraryGetAllLibrariesResponse = unsafe { nd_pdk_types::hostcall::call(library_getalllibraries, &serde_json::json!({})) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

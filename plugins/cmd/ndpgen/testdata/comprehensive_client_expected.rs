@@ -207,10 +207,10 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn simple_params(name: &str, count: i32) -> Result<String, Error> {
-    let response: ComprehensiveSimpleParamsResponse = nd_pdk_types::hostcall::call(comprehensive_simpleparams, &ComprehensiveSimpleParamsRequest {
+    let response: ComprehensiveSimpleParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_simpleparams, &ComprehensiveSimpleParamsRequest {
         name: name.to_owned(),
         count: count,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -227,9 +227,9 @@ pub fn simple_params(name: &str, count: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn struct_param(user: User2) -> Result<(), Error> {
-    let response: ComprehensiveStructParamResponse = nd_pdk_types::hostcall::call(comprehensive_structparam, &ComprehensiveStructParamRequest {
+    let response: ComprehensiveStructParamResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_structparam, &ComprehensiveStructParamRequest {
         user: user,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -250,10 +250,10 @@ pub fn struct_param(user: User2) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn mixed_params(id: &str, filter: Filter2) -> Result<i32, Error> {
-    let response: ComprehensiveMixedParamsResponse = nd_pdk_types::hostcall::call(comprehensive_mixedparams, &ComprehensiveMixedParamsRequest {
+    let response: ComprehensiveMixedParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_mixedparams, &ComprehensiveMixedParamsRequest {
         id: id.to_owned(),
         filter: filter,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -273,9 +273,9 @@ pub fn mixed_params(id: &str, filter: Filter2) -> Result<i32, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn no_error(name: &str) -> Result<String, Error> {
-    let response: ComprehensiveNoErrorResponse = nd_pdk_types::hostcall::call(comprehensive_noerror, &ComprehensiveNoErrorRequest {
+    let response: ComprehensiveNoErrorResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_noerror, &ComprehensiveNoErrorRequest {
         name: name.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -289,7 +289,7 @@ pub fn no_error(name: &str) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn no_params() -> Result<(), Error> {
-    let response: ComprehensiveNoParamsResponse = nd_pdk_types::hostcall::call(comprehensive_noparams, &serde_json::json!({}))?;
+    let response: ComprehensiveNoParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_noparams, &serde_json::json!({})) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -303,7 +303,7 @@ pub fn no_params() -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn no_params_no_returns() -> Result<(), Error> {
-    let response: ComprehensiveNoParamsNoReturnsResponse = nd_pdk_types::hostcall::call(comprehensive_noparamsnoreturns, &serde_json::json!({}))?;
+    let response: ComprehensiveNoParamsNoReturnsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_noparamsnoreturns, &serde_json::json!({})) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -324,10 +324,10 @@ pub fn no_params_no_returns() -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn pointer_params(id: Option<String>, user: Option<User2>) -> Result<Option<User2>, Error> {
-    let response: ComprehensivePointerParamsResponse = nd_pdk_types::hostcall::call(comprehensive_pointerparams, &ComprehensivePointerParamsRequest {
+    let response: ComprehensivePointerParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_pointerparams, &ComprehensivePointerParamsRequest {
         id: id,
         user: user,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -347,9 +347,9 @@ pub fn pointer_params(id: Option<String>, user: Option<User2>) -> Result<Option<
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn map_params(data: std::collections::HashMap<String, serde_json::Value>) -> Result<serde_json::Value, Error> {
-    let response: ComprehensiveMapParamsResponse = nd_pdk_types::hostcall::call(comprehensive_mapparams, &ComprehensiveMapParamsRequest {
+    let response: ComprehensiveMapParamsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_mapparams, &ComprehensiveMapParamsRequest {
         data: data,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -369,9 +369,9 @@ pub fn map_params(data: std::collections::HashMap<String, serde_json::Value>) ->
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn multiple_returns(query: &str) -> Result<(Vec<User2>, i32), Error> {
-    let response: ComprehensiveMultipleReturnsResponse = nd_pdk_types::hostcall::call(comprehensive_multiplereturns, &ComprehensiveMultipleReturnsRequest {
+    let response: ComprehensiveMultipleReturnsResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_multiplereturns, &ComprehensiveMultipleReturnsRequest {
         query: query.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -391,9 +391,9 @@ pub fn multiple_returns(query: &str) -> Result<(Vec<User2>, i32), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn byte_slice(data: Vec<u8>) -> Result<Vec<u8>, Error> {
-    let response: ComprehensiveByteSliceResponse = nd_pdk_types::hostcall::call(comprehensive_byteslice, &ComprehensiveByteSliceRequest {
+    let response: ComprehensiveByteSliceResponse = unsafe { nd_pdk_types::hostcall::call(comprehensive_byteslice, &ComprehensiveByteSliceRequest {
         data: data,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

@@ -3,7 +3,10 @@
 use extism_pdk::{Error, Memory};
 use serde::{de::DeserializeOwned, Serialize};
 
-pub fn call<Req: Serialize, Resp: DeserializeOwned>(
+/// # Safety
+///
+/// `f` must be an Extism host function import that takes and returns a memory offset.
+pub unsafe fn call<Req: Serialize, Resp: DeserializeOwned>(
     f: unsafe extern "C" fn(u64) -> u64,
     req: &Req,
 ) -> Result<Resp, Error> {

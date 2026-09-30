@@ -122,11 +122,11 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn connect(url: &str, headers: std::collections::HashMap<String, String>, connection_id: &str) -> Result<String, Error> {
-    let response: WebSocketConnectResponse = nd_pdk_types::hostcall::call(websocket_connect, &WebSocketConnectRequest {
+    let response: WebSocketConnectResponse = unsafe { nd_pdk_types::hostcall::call(websocket_connect, &WebSocketConnectRequest {
         url: url.to_owned(),
         headers: headers,
         connection_id: connection_id.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -150,10 +150,10 @@ pub fn connect(url: &str, headers: std::collections::HashMap<String, String>, co
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn send_text(connection_id: &str, message: &str) -> Result<(), Error> {
-    let response: WebSocketSendTextResponse = nd_pdk_types::hostcall::call(websocket_sendtext, &WebSocketSendTextRequest {
+    let response: WebSocketSendTextResponse = unsafe { nd_pdk_types::hostcall::call(websocket_sendtext, &WebSocketSendTextRequest {
         connection_id: connection_id.to_owned(),
         message: message.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -177,10 +177,10 @@ pub fn send_text(connection_id: &str, message: &str) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn send_binary(connection_id: &str, data: Vec<u8>) -> Result<(), Error> {
-    let response: WebSocketSendBinaryResponse = nd_pdk_types::hostcall::call(websocket_sendbinary, &WebSocketSendBinaryRequest {
+    let response: WebSocketSendBinaryResponse = unsafe { nd_pdk_types::hostcall::call(websocket_sendbinary, &WebSocketSendBinaryRequest {
         connection_id: connection_id.to_owned(),
         data: data,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -206,11 +206,11 @@ pub fn send_binary(connection_id: &str, data: Vec<u8>) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn close_connection(connection_id: &str, code: i32, reason: &str) -> Result<(), Error> {
-    let response: WebSocketCloseConnectionResponse = nd_pdk_types::hostcall::call(websocket_closeconnection, &WebSocketCloseConnectionRequest {
+    let response: WebSocketCloseConnectionResponse = unsafe { nd_pdk_types::hostcall::call(websocket_closeconnection, &WebSocketCloseConnectionRequest {
         connection_id: connection_id.to_owned(),
         code: code,
         reason: reason.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

@@ -96,10 +96,10 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_artist_url(id: &str, size: i32) -> Result<String, Error> {
-    let response: ArtworkGetArtistUrlResponse = nd_pdk_types::hostcall::call(artwork_getartisturl, &ArtworkGetArtistUrlRequest {
+    let response: ArtworkGetArtistUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_getartisturl, &ArtworkGetArtistUrlRequest {
         id: id.to_owned(),
         size: size,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -126,10 +126,10 @@ pub fn get_artist_url(id: &str, size: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_album_url(id: &str, size: i32) -> Result<String, Error> {
-    let response: ArtworkGetAlbumUrlResponse = nd_pdk_types::hostcall::call(artwork_getalbumurl, &ArtworkGetAlbumUrlRequest {
+    let response: ArtworkGetAlbumUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_getalbumurl, &ArtworkGetAlbumUrlRequest {
         id: id.to_owned(),
         size: size,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -156,10 +156,10 @@ pub fn get_album_url(id: &str, size: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_track_url(id: &str, size: i32) -> Result<String, Error> {
-    let response: ArtworkGetTrackUrlResponse = nd_pdk_types::hostcall::call(artwork_gettrackurl, &ArtworkGetTrackUrlRequest {
+    let response: ArtworkGetTrackUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_gettrackurl, &ArtworkGetTrackUrlRequest {
         id: id.to_owned(),
         size: size,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -186,10 +186,10 @@ pub fn get_track_url(id: &str, size: i32) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_playlist_url(id: &str, size: i32) -> Result<String, Error> {
-    let response: ArtworkGetPlaylistUrlResponse = nd_pdk_types::hostcall::call(artwork_getplaylisturl, &ArtworkGetPlaylistUrlRequest {
+    let response: ArtworkGetPlaylistUrlResponse = unsafe { nd_pdk_types::hostcall::call(artwork_getplaylisturl, &ArtworkGetPlaylistUrlRequest {
         id: id.to_owned(),
         size: size,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

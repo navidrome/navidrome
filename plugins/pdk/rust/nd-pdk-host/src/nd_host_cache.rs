@@ -218,11 +218,11 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set_string(key: &str, value: &str, ttl_seconds: i64) -> Result<(), Error> {
-    let response: CacheSetStringResponse = nd_pdk_types::hostcall::call(cache_setstring, &CacheSetStringRequest {
+    let response: CacheSetStringResponse = unsafe { nd_pdk_types::hostcall::call(cache_setstring, &CacheSetStringRequest {
         key: key.to_owned(),
         value: value.to_owned(),
         ttl_seconds: ttl_seconds,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -248,9 +248,9 @@ pub fn set_string(key: &str, value: &str, ttl_seconds: i64) -> Result<(), Error>
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_string(key: &str) -> Result<Option<String>, Error> {
-    let response: CacheGetStringResponse = nd_pdk_types::hostcall::call(cache_getstring, &CacheGetStringRequest {
+    let response: CacheGetStringResponse = unsafe { nd_pdk_types::hostcall::call(cache_getstring, &CacheGetStringRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -280,11 +280,11 @@ pub fn get_string(key: &str) -> Result<Option<String>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set_int(key: &str, value: i64, ttl_seconds: i64) -> Result<(), Error> {
-    let response: CacheSetIntResponse = nd_pdk_types::hostcall::call(cache_setint, &CacheSetIntRequest {
+    let response: CacheSetIntResponse = unsafe { nd_pdk_types::hostcall::call(cache_setint, &CacheSetIntRequest {
         key: key.to_owned(),
         value: value,
         ttl_seconds: ttl_seconds,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -310,9 +310,9 @@ pub fn set_int(key: &str, value: i64, ttl_seconds: i64) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
-    let response: CacheGetIntResponse = nd_pdk_types::hostcall::call(cache_getint, &CacheGetIntRequest {
+    let response: CacheGetIntResponse = unsafe { nd_pdk_types::hostcall::call(cache_getint, &CacheGetIntRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -342,11 +342,11 @@ pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set_float(key: &str, value: f64, ttl_seconds: i64) -> Result<(), Error> {
-    let response: CacheSetFloatResponse = nd_pdk_types::hostcall::call(cache_setfloat, &CacheSetFloatRequest {
+    let response: CacheSetFloatResponse = unsafe { nd_pdk_types::hostcall::call(cache_setfloat, &CacheSetFloatRequest {
         key: key.to_owned(),
         value: value,
         ttl_seconds: ttl_seconds,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -372,9 +372,9 @@ pub fn set_float(key: &str, value: f64, ttl_seconds: i64) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_float(key: &str) -> Result<Option<f64>, Error> {
-    let response: CacheGetFloatResponse = nd_pdk_types::hostcall::call(cache_getfloat, &CacheGetFloatRequest {
+    let response: CacheGetFloatResponse = unsafe { nd_pdk_types::hostcall::call(cache_getfloat, &CacheGetFloatRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -404,11 +404,11 @@ pub fn get_float(key: &str) -> Result<Option<f64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn set_bytes(key: &str, value: Vec<u8>, ttl_seconds: i64) -> Result<(), Error> {
-    let response: CacheSetBytesResponse = nd_pdk_types::hostcall::call(cache_setbytes, &CacheSetBytesRequest {
+    let response: CacheSetBytesResponse = unsafe { nd_pdk_types::hostcall::call(cache_setbytes, &CacheSetBytesRequest {
         key: key.to_owned(),
         value: value,
         ttl_seconds: ttl_seconds,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -434,9 +434,9 @@ pub fn set_bytes(key: &str, value: Vec<u8>, ttl_seconds: i64) -> Result<(), Erro
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_bytes(key: &str) -> Result<Option<Vec<u8>>, Error> {
-    let response: CacheGetBytesResponse = nd_pdk_types::hostcall::call(cache_getbytes, &CacheGetBytesRequest {
+    let response: CacheGetBytesResponse = unsafe { nd_pdk_types::hostcall::call(cache_getbytes, &CacheGetBytesRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -465,9 +465,9 @@ pub fn get_bytes(key: &str) -> Result<Option<Vec<u8>>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn has(key: &str) -> Result<bool, Error> {
-    let response: CacheHasResponse = nd_pdk_types::hostcall::call(cache_has, &CacheHasRequest {
+    let response: CacheHasResponse = unsafe { nd_pdk_types::hostcall::call(cache_has, &CacheHasRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -489,9 +489,9 @@ pub fn has(key: &str) -> Result<bool, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn remove(key: &str) -> Result<(), Error> {
-    let response: CacheRemoveResponse = nd_pdk_types::hostcall::call(cache_remove, &CacheRemoveRequest {
+    let response: CacheRemoveResponse = unsafe { nd_pdk_types::hostcall::call(cache_remove, &CacheRemoveRequest {
         key: key.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

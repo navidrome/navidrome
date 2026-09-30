@@ -104,9 +104,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn open(name: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
-    let response: BlobOpenResponse = nd_pdk_types::hostcall::call(blob_open, &BlobOpenRequest {
+    let response: BlobOpenResponse = unsafe { nd_pdk_types::hostcall::call(blob_open, &BlobOpenRequest {
         name: name.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -126,9 +126,9 @@ pub fn open(name: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn create(name: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error> {
-    let response: BlobCreateResponse = nd_pdk_types::hostcall::call(blob_create, &BlobCreateRequest {
+    let response: BlobCreateResponse = unsafe { nd_pdk_types::hostcall::call(blob_create, &BlobCreateRequest {
         name: name.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -148,9 +148,9 @@ pub fn create(name: &str) -> Result<Option<nd_pdk_types::stream::Stream>, Error>
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn put(upload: Upload) -> Result<Option<Download>, Error> {
-    let response: BlobPutResponse = nd_pdk_types::hostcall::call(blob_put, &BlobPutRequest {
+    let response: BlobPutResponse = unsafe { nd_pdk_types::hostcall::call(blob_put, &BlobPutRequest {
         upload: upload,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -171,10 +171,10 @@ pub fn put(upload: Upload) -> Result<Option<Download>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn copy(src: Option<nd_pdk_types::stream::Stream>, dst: Option<nd_pdk_types::stream::Stream>) -> Result<i64, Error> {
-    let response: BlobCopyResponse = nd_pdk_types::hostcall::call(blob_copy, &BlobCopyRequest {
+    let response: BlobCopyResponse = unsafe { nd_pdk_types::hostcall::call(blob_copy, &BlobCopyRequest {
         src: src,
         dst: dst,
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

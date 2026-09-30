@@ -82,9 +82,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn call(uri: &str) -> Result<String, Error> {
-    let response: SubsonicAPICallResponse = nd_pdk_types::hostcall::call(subsonicapi_call, &SubsonicAPICallRequest {
+    let response: SubsonicAPICallResponse = unsafe { nd_pdk_types::hostcall::call(subsonicapi_call, &SubsonicAPICallRequest {
         uri: uri.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -106,9 +106,9 @@ pub fn call(uri: &str) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn call_raw(uri: &str) -> Result<(String, Vec<u8>), Error> {
-    let response: SubsonicAPICallRawResponse = nd_pdk_types::hostcall::call(subsonicapi_callraw, &SubsonicAPICallRawRequest {
+    let response: SubsonicAPICallRawResponse = unsafe { nd_pdk_types::hostcall::call(subsonicapi_callraw, &SubsonicAPICallRawRequest {
         uri: uri.to_owned(),
-    })?;
+    }) }?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
