@@ -40,6 +40,7 @@ var (
 	errStreamInCapability = errors.New("streams are not supported in capabilities")
 	errStreamInShared     = errors.New("streams are not supported in shared types")
 	errStreamNeedsError   = errors.New("host functions with streams must return an error")
+	errStreamEmbedded     = errors.New("streams cannot be embedded fields")
 )
 
 // parsedGoFile pairs a source path with its already-parsed AST.
@@ -600,7 +601,7 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 					service.Structs = append(service.Structs, s)
 				}
 			}
-			if err := validateServiceStreams(service); err != nil {
+			if err := validateServiceStreams(service, pkgAliasMap); err != nil {
 				return nil, fmt.Errorf("host service %s: %w", service.Interface, err)
 			}
 
@@ -615,14 +616,16 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 
 // validateServiceStreams checks that streams appear only as direct parameters or
 // results, or as fields of a struct that is itself a direct parameter or result.
-func validateServiceStreams(svc Service) error {
+func validateServiceStreams(svc Service, aliases map[string]TypeAlias) error {
 	streamStructs := map[string]bool{}
 	for _, st := range svc.StreamStructs() {
 		streamStructs[st.Name] = true
 	}
 	checkNested := func(goType string) error {
 		for _, t := range typeLeaves(goType) {
-			if t == "io.Reader" || t == "io.Writer" {
+			a, isLocal := aliases[t]
+			if (isIOType(t) && streamKind(t) == "") ||
+				(isLocal && slices.ContainsFunc(typeLeaves(a.Type), isIOType)) {
 				return fmt.Errorf("streams must be io.ReadCloser or io.WriteCloser, got %s", t)
 			}
 			if streamKind(t) != "" || streamStructs[t] {
@@ -633,6 +636,11 @@ func validateServiceStreams(svc Service) error {
 	}
 
 	for _, st := range svc.Structs {
+		for _, t := range st.Embedded {
+			if slices.ContainsFunc(typeLeaves(t), isIOType) {
+				return fmt.Errorf("struct %s embeds %s: %w", st.Name, t, errStreamEmbedded)
+			}
+		}
 		for _, f := range st.Fields {
 			if f.StreamKind() != "" {
 				continue
@@ -682,6 +690,10 @@ func validateCapabilityStreams(c Capability) error {
 // isStreamLike reports whether goType is a stream or a plain io.Reader/io.Writer.
 func isStreamLike(goType string) bool {
 	return streamKind(goType) != "" || goType == "io.Reader" || goType == "io.Writer"
+}
+
+func isIOType(goType string) bool {
+	return strings.HasPrefix(goType, "io.")
 }
 
 // typeLeaves returns the named types in a Go type expression, unwrapping
@@ -749,7 +761,8 @@ func parseStructs(f *ast.File) []StructDef {
 			// Parse struct fields
 			for _, field := range structType.Fields.List {
 				if len(field.Names) == 0 {
-					continue // Embedded field
+					s.Embedded = append(s.Embedded, typeToString(field.Type))
+					continue
 				}
 
 				fieldDef := parseStructField(field)

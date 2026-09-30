@@ -431,7 +431,7 @@ type BlobService interface {
 			Expect(svc.Methods[0].HasStreams(svc)).To(BeFalse())
 		})
 
-		DescribeTable("rejects plain io.Reader and io.Writer",
+		DescribeTable("rejects io types other than io.ReadCloser and io.WriteCloser",
 			func(src, want string) {
 				_, err := parseService(header + src)
 				Expect(err).To(MatchError(ContainSubstring("streams must be io.ReadCloser or io.WriteCloser, got " + want)))
@@ -455,7 +455,70 @@ type BlobService interface {
 	Write(ctx context.Context, sink Sink) error
 }
 `, "io.Writer"),
+			Entry("io.ReadWriteCloser param", `
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Pipe(ctx context.Context, rw io.ReadWriteCloser) error
+}
+`, "io.ReadWriteCloser"),
+			Entry("io.Closer struct field", `
+type Handle struct {
+	C io.Closer
+}
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Release(ctx context.Context, h Handle) error
+}
+`, "io.Closer"),
+			Entry("io.ReadSeekCloser result", `
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Open(ctx context.Context, name string) (io.ReadSeekCloser, error)
+}
+`, "io.ReadSeekCloser"),
+			Entry("defined type of a stream", `
+type Body io.ReadCloser
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Open(ctx context.Context, name string) (Body, error)
+}
+`, "Body"),
+			Entry("alias of a stream in a struct field", `
+type Body = io.ReadCloser
+
+type Upload struct {
+	B Body
+}
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Put(ctx context.Context, upload Upload) error
+}
+`, "Body"),
 		)
+
+		It("rejects an embedded io field in a param struct", func() {
+			_, err := parseService(header + `
+type Upload struct {
+	Name string
+	io.ReadCloser
+}
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Put(ctx context.Context, upload Upload) error
+}
+`)
+			Expect(err).To(MatchError(ContainSubstring("struct Upload embeds io.ReadCloser: streams cannot be embedded fields")))
+		})
 
 		DescribeTable("rejects streams in slices, maps, and nested structs",
 			func(src string) {

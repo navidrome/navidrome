@@ -251,9 +251,10 @@ func (e Export) IsPointerOutput() bool {
 
 // StructDef represents a Go struct type definition.
 type StructDef struct {
-	Name   string     // Go struct name (e.g., "Library")
-	Fields []FieldDef // Struct fields
-	Doc    string     // Documentation comment
+	Name     string     // Go struct name (e.g., "Library")
+	Fields   []FieldDef // Struct fields
+	Doc      string     // Documentation comment
+	Embedded []string   // Types of embedded fields, which are not generated
 }
 
 // FieldDef represents a field within a struct.
