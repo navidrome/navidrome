@@ -44,7 +44,7 @@ type callScope struct {
 	closed  bool
 	done    chan struct{} // closed once every stream of the scope is closed
 	entries map[uint32]*streamBackend
-	lastErr error //nolint:unused // only touched by the call's goroutine, through host functions
+	lastErr error // only touched by the call's goroutine, through host functions
 }
 
 func (t *streamTable) newScope(ctx, baseCtx context.Context) (*callScope, error) {
