@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -291,7 +292,7 @@ func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDe
 					capability.Structs = append(capability.Structs, s)
 				}
 			}
-			if err := validateCapabilityStreams(capability); err != nil {
+			if err := validateCapabilityStreams(capability, aliasMap, structMap); err != nil {
 				return nil, fmt.Errorf("capability %s: %w", capability.Interface, err)
 			}
 
@@ -390,7 +391,7 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 		}
 		used[canonical] = true
 		for _, f := range def.Fields {
-			if slices.ContainsFunc(typeLeaves(f.Type), isStreamLike) {
+			if len(streamUses(f.Type, nil, nil)) > 0 {
 				return nil, nil, fmt.Errorf("shared type %s field %s: %w", canonical, f.Name, errStreamInShared)
 			}
 			clear(fieldRefs)
@@ -601,7 +602,7 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 					service.Structs = append(service.Structs, s)
 				}
 			}
-			if err := validateServiceStreams(service, pkgAliasMap); err != nil {
+			if err := validateServiceStreams(service, pkgAliasMap, pkgStructMap); err != nil {
 				return nil, fmt.Errorf("host service %s: %w", service.Interface, err)
 			}
 
@@ -616,46 +617,25 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 
 // validateServiceStreams checks that streams appear only as direct parameters or
 // results, or as fields of a struct that is itself a direct parameter or result.
-func validateServiceStreams(svc Service, aliases map[string]TypeAlias) error {
-	streamStructs := map[string]bool{}
-	for _, st := range svc.StreamStructs() {
-		streamStructs[st.Name] = true
-	}
-	checkNested := func(goType string) error {
-		for _, t := range typeLeaves(goType) {
-			a, isLocal := aliases[t]
-			if (isIOType(t) && streamKind(t) == "") ||
-				(isLocal && slices.ContainsFunc(typeLeaves(a.Type), isIOType)) {
-				return fmt.Errorf("streams must be io.ReadCloser or io.WriteCloser, got %s", t)
-			}
-			if streamKind(t) != "" || streamStructs[t] {
-				return errStreamPosition
-			}
-		}
-		return nil
-	}
-
-	for _, st := range svc.Structs {
-		for _, t := range st.Embedded {
-			if slices.ContainsFunc(typeLeaves(t), isIOType) {
-				return fmt.Errorf("struct %s embeds %s: %w", st.Name, t, errStreamEmbedded)
-			}
-		}
-		for _, f := range st.Fields {
-			if f.StreamKind() != "" {
-				continue
-			}
-			if err := checkNested(f.Type); err != nil {
-				return fmt.Errorf("struct %s field %s: %w", st.Name, f.Name, err)
-			}
-		}
-	}
+func validateServiceStreams(svc Service, aliases map[string]TypeAlias, structs map[string]StructDef) error {
 	for _, m := range svc.Methods {
 		for _, p := range slices.Concat(m.Params, m.Returns) {
-			if p.IsStream(svc) {
-				continue
-			}
-			if err := checkNested(p.Type); err != nil {
+			for _, u := range streamUses(p.Type, aliases, structs) {
+				var err error
+				at := u.Holder
+				switch {
+				case u.Embedded != (fieldRef{}):
+					return fmt.Errorf("struct %s embeds %s: %w", u.Embedded.Struct, u.Embedded.Field, errStreamEmbedded)
+				case streamKind(u.Type) == "":
+					err = fmt.Errorf("streams must be io.ReadCloser or io.WriteCloser, got %s", u.Type)
+				case !u.Direct:
+					err, at = errStreamPosition, u.TopField
+				default:
+					continue
+				}
+				if at != (fieldRef{}) {
+					return fmt.Errorf("struct %s field %s: %w", at.Struct, at.Field, err)
+				}
 				return fmt.Errorf("method %s: %w", m.Name, err)
 			}
 		}
@@ -666,48 +646,93 @@ func validateServiceStreams(svc Service, aliases map[string]TypeAlias) error {
 	return nil
 }
 
-// validateCapabilityStreams rejects stream types anywhere in a capability's exports.
-func validateCapabilityStreams(c Capability) error {
+// validateCapabilityStreams rejects io types anywhere in a capability's exports.
+func validateCapabilityStreams(c Capability, aliases map[string]TypeAlias, structs map[string]StructDef) error {
 	for _, e := range c.Methods {
-		if slices.ContainsFunc(typeLeaves(e.Input.Type), isStreamLike) ||
-			slices.ContainsFunc(typeLeaves(e.Output.Type), isStreamLike) {
-			return fmt.Errorf("export %s: %w", e.Name, errStreamInCapability)
-		}
-	}
-	for _, st := range c.Structs {
-		for _, f := range st.Fields {
-			if slices.ContainsFunc(typeLeaves(f.Type), isStreamLike) {
-				return fmt.Errorf("struct %s field %s: %w", st.Name, f.Name, errStreamInCapability)
+		for _, t := range []string{e.Input.Type, e.Output.Type} {
+			for _, u := range streamUses(t, aliases, structs) {
+				switch {
+				case u.Embedded != (fieldRef{}):
+					return fmt.Errorf("struct %s embeds %s: %w", u.Embedded.Struct, u.Embedded.Field, errStreamInCapability)
+				case u.Holder != (fieldRef{}):
+					return fmt.Errorf("struct %s field %s: %w", u.Holder.Struct, u.Holder.Field, errStreamInCapability)
+				}
+				return fmt.Errorf("export %s: %w", e.Name, errStreamInCapability)
 			}
 		}
 	}
 	return nil
 }
 
-// isStreamLike reports whether goType is a stream or a plain io.Reader/io.Writer.
-func isStreamLike(goType string) bool {
-	return streamKind(goType) != "" || goType == "io.Reader" || goType == "io.Writer"
+// fieldRef names a struct field, or an embedded type of the struct.
+type fieldRef struct{ Struct, Field string }
+
+// streamUse is an io type reached from a parameter, result, or field type.
+type streamUse struct {
+	Type     string   // the io type, or the local alias or defined type that resolves to one
+	Direct   bool     // the walked type itself, or a field of the walked struct (by value or pointer)
+	Holder   fieldRef // innermost struct field holding it
+	TopField fieldRef // field of the walked struct the path goes through
+	Embedded fieldRef // first embedded field on the path
 }
 
-func isIOType(goType string) bool {
-	return strings.HasPrefix(goType, "io.")
-}
-
-// typeLeaves returns the named types in a Go type expression, unwrapping
-// pointers, slices, arrays, and map keys and values.
-func typeLeaves(goType string) []string {
-	switch {
-	case strings.HasPrefix(goType, "*"):
-		return typeLeaves(goType[1:])
-	case strings.HasPrefix(goType, "map["):
-		key, value := splitMapType(goType)
-		return append(typeLeaves(key), typeLeaves(value)...)
-	case strings.HasPrefix(goType, "["):
-		if _, elem, ok := strings.Cut(goType, "]"); ok {
-			return typeLeaves(elem)
+// streamUses returns every io type goType reaches through pointers, containers, local aliases, defined types,
+// and struct fields, embedded ones included.
+func streamUses(goType string, aliases map[string]TypeAlias, structs map[string]StructDef) []streamUse {
+	type visit struct {
+		name          string
+		fieldsDirect  bool
+		top, embedded fieldRef
+	}
+	var uses []streamUse
+	seen := map[visit]bool{}
+	// A struct is walked again when reached in a new position, so a recursive field is still checked as nested.
+	var walk func(t string, u streamUse, leafDirect, fieldsDirect bool, alias string)
+	walk = func(t string, u streamUse, leafDirect, fieldsDirect bool, alias string) {
+		a, isAlias := aliases[t]
+		st, isStruct := structs[t]
+		switch {
+		case strings.HasPrefix(t, "*"):
+			walk(t[1:], u, false, fieldsDirect, alias)
+		case strings.HasPrefix(t, "map["):
+			key, value := splitMapType(t)
+			walk(key, u, false, false, alias)
+			walk(value, u, false, false, alias)
+		case strings.HasPrefix(t, "["):
+			if _, elem, ok := strings.Cut(t, "]"); ok {
+				walk(elem, u, false, false, alias)
+			}
+		case strings.HasPrefix(t, "io."):
+			u.Type, u.Direct = cmp.Or(alias, t), leafDirect && alias == ""
+			uses = append(uses, u)
+		case isAlias:
+			walk(a.Type, u, false, false, cmp.Or(alias, t))
+		case isStruct:
+			v := visit{t, fieldsDirect, u.TopField, u.Embedded}
+			if seen[v] {
+				return
+			}
+			seen[v] = true
+			for _, f := range st.Fields {
+				fu := u
+				fu.Holder = fieldRef{t, f.Name}
+				if fieldsDirect {
+					fu.TopField = fu.Holder
+				}
+				walk(f.Type, fu, fieldsDirect, false, "")
+			}
+			for _, e := range st.Embedded {
+				eu := u
+				eu.Holder = fieldRef{t, e}
+				if eu.Embedded == (fieldRef{}) {
+					eu.Embedded = eu.Holder
+				}
+				walk(e, eu, false, false, "")
+			}
 		}
 	}
-	return []string{goType}
+	walk(goType, streamUse{}, true, true, "")
+	return uses
 }
 
 // splitMapType returns the key and value types of a map[K]V type string.

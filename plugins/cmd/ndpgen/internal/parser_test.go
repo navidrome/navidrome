@@ -494,6 +494,17 @@ type BlobService interface {
 	Put(ctx context.Context, upload Upload) error
 }
 `, "Body"),
+			Entry("alias chain to a stream", `
+type A = B
+
+type B io.ReadCloser
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Open(ctx context.Context, name string) (A, error)
+}
+`, "A"),
 		)
 
 		It("rejects an embedded io field in a param struct", func() {
@@ -1062,6 +1073,27 @@ type UploadOutput struct {
 
 			_, err := ParseCapabilities(tmpDir)
 			Expect(err).To(MatchError(ContainSubstring("streams are not supported in capabilities")))
+		})
+
+		It("rejects other io types in capability exports", func() {
+			src := `package capabilities
+
+import "io"
+
+//nd:capability name=upload
+type Uploader interface {
+	//nd:export name=nd_upload
+	Upload(UploadInput) error
+}
+
+type UploadInput struct {
+	Body io.ReadSeekCloser ` + "`json:\"body\"`" + `
+}
+`
+			Expect(os.WriteFile(filepath.Join(tmpDir, "upload.go"), []byte(src), 0600)).To(Succeed())
+
+			_, err := ParseCapabilities(tmpDir)
+			Expect(err).To(MatchError(ContainSubstring("struct UploadInput field Body: streams are not supported in capabilities")))
 		})
 	})
 
