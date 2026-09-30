@@ -57,16 +57,16 @@ var _ = Describe("Rust plugin streams", Ordered, func() {
 	})
 
 	It("reads a host stream with std::io::Read", func() {
-		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "read_all", defaultTimeout,
-			readInput(io.NopCloser(strings.NewReader("streamed to rust")), 0), nil)
+		out, err := callStreams(ctx, p, "read_all", defaultTimeout,
+			readInput(io.NopCloser(strings.NewReader("streamed to rust")), 0))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
 		Expect(out.Data).To(Equal("streamed to rust"))
 	})
 
 	It("reads into a slice that starts at an odd address", func() {
-		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "read_unaligned", defaultTimeout,
-			readInput(io.NopCloser(strings.NewReader("misaligned bytes here")), 0), nil)
+		out, err := callStreams(ctx, p, "read_unaligned", defaultTimeout,
+			readInput(io.NopCloser(strings.NewReader("misaligned bytes here")), 0))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
 		Expect(out.Data).To(Equal("misaligned bytes here"))
@@ -74,11 +74,7 @@ var _ = Describe("Rust plugin streams", Ordered, func() {
 
 	It("writes from a slice that starts at an odd address", func() {
 		w := &trackingWriter{}
-		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "write_unaligned", defaultTimeout,
-			func(s *callScope) (streamsInput, error) {
-				h, err := s.register(newWriteStream(w))
-				return streamsInput{Handle: h}, err
-			}, nil)
+		out, err := callStreams(ctx, p, "write_unaligned", defaultTimeout, writeInput(w, 0, 0))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
 		Expect(string(w.bytes())).To(Equal("unaligned write, 8+ bytes"))
@@ -86,11 +82,7 @@ var _ = Describe("Rust plugin streams", Ordered, func() {
 
 	It("writes a host stream with std::io::Write and closes it", func() {
 		w := &trackingWriter{}
-		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "write_greeting", defaultTimeout,
-			func(s *callScope) (streamsInput, error) {
-				h, err := s.register(newWriteStream(w))
-				return streamsInput{Handle: h}, err
-			}, nil)
+		out, err := callStreams(ctx, p, "write_greeting", defaultTimeout, writeInput(w, 0, 0))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
 		Expect(string(w.bytes())).To(Equal("hello from rust"))

@@ -171,16 +171,11 @@ var _ = Describe("callPluginFunction time limits", Ordered, func() {
 		recorder.reset()
 	})
 
-	It("stops a call when its time limit passes", func() {
+	It("stops a call when its time limit passes and records it as a failure", func() {
 		start := time.Now()
 		_, err := callPluginFunctionWithTimeout[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, struct{}{})
 		Expect(err).To(MatchError(context.DeadlineExceeded))
 		Expect(time.Since(start)).To(BeNumerically("<", 5*time.Second))
-	})
-
-	It("records a call that runs out of time as a failure", func() {
-		_, err := callPluginFunctionWithTimeout[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, struct{}{})
-		Expect(err).To(MatchError(context.DeadlineExceeded))
 
 		calls := recorder.getCalls()
 		Expect(calls).To(HaveLen(1))
@@ -210,26 +205,16 @@ var _ = Describe("callPluginFunctionScoped", Ordered, func() {
 		ctx = GinkgoT().Context()
 	})
 
-	registerInput := func(r *trackingReader, h *uint32) func(*callScope) (struct{}, error) {
-		return func(s *callScope) (struct{}, error) {
-			var err error
-			*h, err = s.register(newReadStream(r))
-			return struct{}{}, err
-		}
-	}
-
 	It("closes streams left in the scope when the call returns", func() {
 		r := &trackingReader{Reader: strings.NewReader("x")}
-		var h uint32
-		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout, registerInput(r, &h), nil)
+		_, err := callPluginFunctionScoped[streamsInput, struct{}](ctx, p, "noop", defaultTimeout, readInput(r, 0), nil)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(r.closed()).To(BeTrue())
 	})
 
 	It("closes input streams when the export does not exist", func() {
 		r := &trackingReader{Reader: strings.NewReader("x")}
-		var h uint32
-		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "missing", defaultTimeout, registerInput(r, &h), nil)
+		_, err := callPluginFunctionScoped[streamsInput, struct{}](ctx, p, "missing", defaultTimeout, readInput(r, 0), nil)
 		Expect(err).To(MatchError(errFunctionNotFound))
 		Expect(r.closed()).To(BeTrue())
 	})
@@ -238,7 +223,12 @@ var _ = Describe("callPluginFunctionScoped", Ordered, func() {
 		r := &trackingReader{Reader: strings.NewReader("x")}
 		var h uint32
 		var got []any
-		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout, registerInput(r, &h),
+		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "noop", defaultTimeout,
+			func(s *callScope) (struct{}, error) {
+				var err error
+				h, err = s.register(newReadStream(r))
+				return struct{}{}, err
+			},
 			func(s *callScope, _ struct{}) error {
 				var err error
 				got, err = s.transfer(h)
@@ -251,8 +241,7 @@ var _ = Describe("callPluginFunctionScoped", Ordered, func() {
 
 	It("closes the scope when the time limit passes", func() {
 		r := &trackingReader{Reader: strings.NewReader("x")}
-		var h uint32
-		_, err := callPluginFunctionScoped[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, registerInput(r, &h), nil)
+		_, err := callPluginFunctionScoped[streamsInput, struct{}](ctx, p, "spin", 200*time.Millisecond, readInput(r, 0), nil)
 		Expect(err).To(MatchError(context.DeadlineExceeded))
 		Expect(r.closed()).To(BeTrue())
 	})

@@ -53,12 +53,6 @@ func (m *fakeGuestMemory) writeBlock(data []byte) (uint64, error) {
 	return off, nil
 }
 
-// flushFailWriter accepts every byte but still reports an error.
-type flushFailWriter struct{}
-
-func (flushFailWriter) Write(p []byte) (int, error) { return len(p), errors.New("flush failed") }
-func (flushFailWriter) Close() error                { return nil }
-
 var _ = Describe("callScope host operations", func() {
 	var (
 		ctx   context.Context
@@ -260,7 +254,7 @@ var _ = Describe("callScope host operations", func() {
 		})
 
 		It("reports a write error that came with a full write", func() {
-			h := register(newWriteStream(&flushFailWriter{}))
+			h := register(newWriteStream(&errWriter{accept: math.MaxInt, err: errors.New("flush failed")}))
 			buf := mem.alloc(4)
 			Expect(scope.hostWrite(mem, h, buf, 4)).To(Equal(int64(4)))
 			Expect(scope.hostClose(h)).To(Equal(int64(-1)))
