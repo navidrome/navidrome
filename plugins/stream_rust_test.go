@@ -12,7 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// buildRustTestPlugin skips when the wasm32-wasip1 Rust toolchain is missing; CI has no Rust.
+// buildRustTestPlugin skips when the wasm32-wasip1 Rust target is missing; CI does not install it.
 func buildRustTestPlugin(dir string) string {
 	rustup, err := exec.LookPath("rustup")
 	if err != nil {

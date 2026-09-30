@@ -302,8 +302,8 @@ var _ = Describe("Plugin streams under a memory cap", Ordered, func() {
 	// Each memory (the plugin's and Extism's block memory) is capped below the bytes moved, so any per-chunk
 	// allocation that is not freed runs out of memory.
 	const (
-		memoryPages  = 1024     // 64 MiB
-		transferSize = 96 << 20 // more than the cap
+		memoryPages  = 1024 // 64 MiB
+		transferSize = 96 << 20
 	)
 
 	var (
