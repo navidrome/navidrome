@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/navidrome/navidrome/plugins/streams"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -319,6 +320,85 @@ var _ = Describe("streamTable", func() {
 		Expect(r.closed()).To(BeTrue())
 		_, err := table.newScope(ctx)
 		Expect(err).To(MatchError(errPluginUnloaded))
+	})
+
+	Describe("as streams.Streams", func() {
+		It("registers and takes readers and writers with rights checked", func() {
+			s := newScope()
+			r := &trackingReader{Reader: strings.NewReader("data")}
+			h, err := s.RegisterReader(r)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = s.TakeWriter(h)
+			Expect(err).To(MatchError(errStreamNotWritable))
+
+			got, err := s.TakeReader(h)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got).ToNot(BeNil())
+			_, err = s.TakeReader(h)
+			Expect(err).To(MatchError(errUnknownStream))
+		})
+
+		It("keeps a taken stream counted and closes it with the scope", func() {
+			s := newScope()
+			r := &trackingReader{Reader: strings.NewReader("data")}
+			h, _ := s.RegisterReader(r)
+			_, err := s.TakeReader(h)
+			Expect(err).ToNot(HaveOccurred())
+			for range maxOpenStreams - 1 {
+				_, backend := reader()
+				mustRegister(s, backend)
+			}
+			_, backend := reader()
+			_, err = s.register(backend)
+			Expect(err).To(MatchError(errTooManyStreams), "the taken stream still holds a slot")
+
+			s.close()
+			Expect(r.closes.Load()).To(Equal(int32(1)))
+		})
+
+		It("frees the slot when the new owner closes a taken stream", func() {
+			s := newScope()
+			r := &trackingReader{Reader: strings.NewReader("data")}
+			h, _ := s.RegisterReader(r)
+			got, _ := s.TakeReader(h)
+			for range maxOpenStreams - 1 {
+				_, backend := reader()
+				mustRegister(s, backend)
+			}
+			Expect(got.Close()).To(Succeed())
+			_, backend := reader()
+			mustRegister(s, backend)
+
+			s.close()
+			Expect(r.closes.Load()).To(Equal(int32(1)), "closed once, by its owner")
+		})
+
+		It("refuses to take from a closed scope", func() {
+			s := newScope()
+			h, _ := s.RegisterReader(&trackingReader{Reader: strings.NewReader("x")})
+			s.close()
+			_, err := s.TakeReader(h)
+			Expect(err).To(MatchError(errCallEnded))
+		})
+
+		It("releases a registered stream whose handle never reached the plugin", func() {
+			s := newScope()
+			r := &trackingReader{Reader: strings.NewReader("x")}
+			h, _ := s.RegisterReader(r)
+			s.Release(h)
+			Expect(r.closed()).To(BeTrue())
+			_, err := s.lookup(h, streamRead)
+			Expect(err).To(MatchError(errUnknownStream))
+		})
+
+		It("is found through the call ctx", func() {
+			s := newScope()
+			Expect(callScopeFrom(withCallScope(ctx, s))).To(BeIdenticalTo(s))
+			got, ok := streams.From(withCallScope(ctx, s))
+			Expect(ok).To(BeTrue())
+			Expect(got).To(BeIdenticalTo(s))
+		})
 	})
 })
 

@@ -9,6 +9,8 @@ import (
 	"math"
 	"slices"
 	"sync"
+
+	"github.com/navidrome/navidrome/plugins/streams"
 )
 
 const maxOpenStreams = 64
@@ -42,8 +44,9 @@ type callScope struct {
 	closed  bool
 	done    chan struct{} // closed once every stream of the scope is closed
 	entries map[uint32]*streamBackend
-	lastErr error        // only touched by the call's goroutine, through host functions
-	length  kernelLength // like lastErr
+	held    map[*streamBackend]struct{} // taken by host code, still closed with the scope
+	lastErr error                       // only touched by the call's goroutine, through host functions
+	length  kernelLength                // like lastErr
 }
 
 func (t *streamTable) newScope(ctx context.Context) (*callScope, error) {
@@ -52,7 +55,8 @@ func (t *streamTable) newScope(ctx context.Context) (*callScope, error) {
 	if t.closed {
 		return nil, errPluginUnloaded
 	}
-	s := &callScope{table: t, ctxErr: ctx.Err, done: make(chan struct{}), entries: map[uint32]*streamBackend{}}
+	s := &callScope{table: t, ctxErr: ctx.Err, done: make(chan struct{}), entries: map[uint32]*streamBackend{},
+		held: map[*streamBackend]struct{}{}}
 	t.scopes[s] = struct{}{}
 	return s, nil
 }
@@ -130,12 +134,16 @@ func (t *streamTable) liveLocked(h uint32) bool {
 
 func (s *callScope) lookup(h uint32, need streamRights) (*streamBackend, error) {
 	s.table.mu.Lock()
-	err := s.checkOpenLocked()
-	b, ok := s.entries[h]
-	s.table.mu.Unlock()
-	switch {
-	case err != nil:
+	defer s.table.mu.Unlock()
+	if err := s.checkOpenLocked(); err != nil {
 		return nil, err
+	}
+	return s.entryLocked(h, need)
+}
+
+func (s *callScope) entryLocked(h uint32, need streamRights) (*streamBackend, error) {
+	b, ok := s.entries[h]
+	switch {
 	case !ok:
 		return nil, errUnknownStream
 	case need&streamRead != 0 && b.rights&streamRead == 0:
@@ -144,6 +152,32 @@ func (s *callScope) lookup(h uint32, need streamRights) (*streamBackend, error) 
 		return nil, errStreamNotWritable
 	}
 	return b, nil
+}
+
+// take hands a stream to host code. It keeps its slot until its new owner closes it, or the scope closes.
+func (s *callScope) take(h uint32, need streamRights) (*streamBackend, error) {
+	s.table.mu.Lock()
+	defer s.table.mu.Unlock()
+	if err := s.checkOpenLocked(); err != nil {
+		return nil, err
+	}
+	b, err := s.entryLocked(h, need)
+	if err != nil {
+		return nil, err
+	}
+	delete(s.entries, h)
+	s.held[b] = struct{}{}
+	b.release = func() { s.releaseHeld(b) }
+	return b, nil
+}
+
+func (s *callScope) releaseHeld(b *streamBackend) {
+	s.table.mu.Lock()
+	defer s.table.mu.Unlock()
+	if _, ok := s.held[b]; ok {
+		delete(s.held, b)
+		s.table.open--
+	}
 }
 
 func (s *callScope) detach(h uint32) (*streamBackend, error) {
@@ -198,9 +232,9 @@ func (s *callScope) close() {
 		return
 	}
 	s.closed = true
-	backends := slices.Collect(maps.Values(s.entries))
+	backends := slices.AppendSeq(slices.Collect(maps.Values(s.entries)), maps.Keys(s.held))
 	t.open -= len(backends)
-	s.entries = nil
+	s.entries, s.held = nil, nil
 	t.mu.Unlock()
 
 	for _, b := range backends {
@@ -213,15 +247,44 @@ func (s *callScope) close() {
 	close(s.done)
 }
 
-type callScopeKey struct{}
-
 func withCallScope(ctx context.Context, s *callScope) context.Context {
-	return context.WithValue(ctx, callScopeKey{}, s)
+	return streams.WithStreams(ctx, s)
 }
 
 func callScopeFrom(ctx context.Context) *callScope {
-	s, _ := ctx.Value(callScopeKey{}).(*callScope)
-	return s
+	s, _ := streams.From(ctx)
+	cs, _ := s.(*callScope)
+	return cs
+}
+
+func (s *callScope) RegisterReader(rc io.ReadCloser) (uint32, error) {
+	return s.register(newReadStream(rc))
+}
+
+func (s *callScope) RegisterWriter(wc io.WriteCloser) (uint32, error) {
+	return s.register(newWriteStream(wc))
+}
+
+func (s *callScope) TakeReader(h uint32) (io.ReadCloser, error) {
+	b, err := s.take(h, streamRead)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func (s *callScope) TakeWriter(h uint32) (io.WriteCloser, error) {
+	b, err := s.take(h, streamWrite)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func (s *callScope) Release(h uint32) {
+	if b, err := s.detach(h); err == nil {
+		_ = b.Close()
+	}
 }
 
 type streamRights uint8
@@ -253,6 +316,7 @@ type streamBackend struct {
 
 	closeOnce sync.Once
 	closeErr  error
+	release   func() // set by the scope when host code takes the stream
 }
 
 func newReadStream(rc io.ReadCloser) *streamBackend {
@@ -320,6 +384,9 @@ func (b *streamBackend) Close() error {
 		// A writer may accept every byte and still fail; the caller saw a full count, so Close reports it.
 		if b.closeErr == nil && b.w != nil {
 			b.closeErr = b.retainedErr()
+		}
+		if b.release != nil {
+			b.release()
 		}
 	})
 	return b.closeErr
