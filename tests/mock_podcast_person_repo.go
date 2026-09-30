@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -17,7 +18,7 @@ func CreateMockPodcastPersonRepo() *MockPodcastPersonRepo {
 	return &MockPodcastPersonRepo{Data: map[string]*model.PodcastPerson{}}
 }
 
-func (m *MockPodcastPersonRepo) GetByChannel(channelID string) (model.PodcastPersons, error) {
+func (m *MockPodcastPersonRepo) GetByChannel(ctx context.Context, channelID string) (model.PodcastPersons, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -30,7 +31,7 @@ func (m *MockPodcastPersonRepo) GetByChannel(channelID string) (model.PodcastPer
 	return result, nil
 }
 
-func (m *MockPodcastPersonRepo) GetByEpisode(episodeID string) (model.PodcastPersons, error) {
+func (m *MockPodcastPersonRepo) GetByEpisode(ctx context.Context, episodeID string) (model.PodcastPersons, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -43,7 +44,7 @@ func (m *MockPodcastPersonRepo) GetByEpisode(episodeID string) (model.PodcastPer
 	return result, nil
 }
 
-func (m *MockPodcastPersonRepo) GetByEpisodes(episodeIDs []string) (model.PodcastPersons, error) {
+func (m *MockPodcastPersonRepo) GetByEpisodes(ctx context.Context, episodeIDs []string) (model.PodcastPersons, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -60,7 +61,7 @@ func (m *MockPodcastPersonRepo) GetByEpisodes(episodeIDs []string) (model.Podcas
 	return result, nil
 }
 
-func (m *MockPodcastPersonRepo) SaveForChannel(channelID string, persons []model.PodcastPerson) error {
+func (m *MockPodcastPersonRepo) SaveForChannel(ctx context.Context, channelID string, persons []model.PodcastPerson) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -78,7 +79,7 @@ func (m *MockPodcastPersonRepo) SaveForChannel(channelID string, persons []model
 	return nil
 }
 
-func (m *MockPodcastPersonRepo) SaveForEpisode(episodeID string, persons []model.PodcastPerson) error {
+func (m *MockPodcastPersonRepo) SaveForEpisode(ctx context.Context, episodeID string, persons []model.PodcastPerson) error {
 	if m.Err {
 		return errors.New("error")
 	}

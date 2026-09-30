@@ -148,7 +148,7 @@ const Admin = (props) => {
         <Resource
           name="player"
           {...player}
-          options={{ subMenu: 'settings' }}
+          options={{ subMenu: 'settings', label: 'resources.player.menuName' }}
         />,
         permissions === 'admin' ? (
           <Resource

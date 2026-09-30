@@ -44,7 +44,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		})
 
-		It("should return the base 17 OpenSubsonicExtensions without sonicSimilarity", func() {
+		It("should return the base 18 OpenSubsonicExtensions without sonicSimilarity", func() {
 			router.ServeHTTP(w, r)
 
 			// Make sure the endpoint is public, by not passing any authentication
@@ -55,7 +55,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(*response.Subsonic.OpenSubsonicExtensions).To(SatisfyAll(
-				HaveLen(17),
+				HaveLen(18),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcodeOffset", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "formPost", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1, 2}}),
@@ -63,6 +63,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcoding", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "playbackReport", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "topSongsByArtistId", Versions: []int32{1}}),
+				ContainElement(responses.OpenSubsonicExtension{Name: "apiKeyAuthentication", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "getPodcastEpisode", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "podcastChapters", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "podcastTranscripts", Versions: []int32{1}}),
@@ -86,7 +87,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, sonicService)
 		})
 
-		It("should return 18 extensions including all podcast 2.0 and sonicSimilarity", func() {
+		It("should return 19 extensions including all podcast 2.0 and sonicSimilarity", func() {
 			router.ServeHTTP(w, r)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
@@ -96,14 +97,16 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(*response.Subsonic.OpenSubsonicExtensions).To(SatisfyAll(
-				HaveLen(18),
+				HaveLen(19),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcodeOffset", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "formPost", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "songLyrics", Versions: []int32{1, 2}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "indexBasedQueue", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "transcoding", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "playbackReport", Versions: []int32{1}}),
+				ContainElement(responses.OpenSubsonicExtension{Name: "sonicSimilarity", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "topSongsByArtistId", Versions: []int32{1}}),
+				ContainElement(responses.OpenSubsonicExtension{Name: "apiKeyAuthentication", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "getPodcastEpisode", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "podcastChapters", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "podcastTranscripts", Versions: []int32{1}}),
@@ -114,7 +117,6 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 				ContainElement(responses.OpenSubsonicExtension{Name: "podcastPodroll", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "podcastLiveItem", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "podcastPodping", Versions: []int32{1}}),
-				ContainElement(responses.OpenSubsonicExtension{Name: "sonicSimilarity", Versions: []int32{1}}),
 			))
 		})
 	})

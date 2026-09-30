@@ -14,9 +14,8 @@ type podcastPodrollRepository struct {
 	sqlRepository
 }
 
-func NewPodcastPodrollRepository(ctx context.Context, db dbx.Builder) model.PodcastPodrollRepository {
+func NewPodcastPodrollRepository(db dbx.Builder) model.PodcastPodrollRepository {
 	r := &podcastPodrollRepository{}
-	r.ctx = ctx
 	r.db = db
 	// Must set tableName before registerModel to avoid auto-derived name mismatch.
 	r.tableName = "podcast_podroll"
@@ -24,23 +23,23 @@ func NewPodcastPodrollRepository(ctx context.Context, db dbx.Builder) model.Podc
 	return r
 }
 
-func (r *podcastPodrollRepository) GetByChannel(channelID string) (model.PodcastPodrollItems, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"channel_id": channelID}).OrderBy("sort_order")
+func (r *podcastPodrollRepository) GetByChannel(ctx context.Context, channelID string) (model.PodcastPodrollItems, error) {
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"channel_id": channelID}).OrderBy("sort_order")
 	var result model.PodcastPodrollItems
-	return result, r.queryAll(sel, &result)
+	return result, r.queryAll(ctx, sel, &result)
 }
 
-func (r *podcastPodrollRepository) GetByChannels(channelIDs []string) (model.PodcastPodrollItems, error) {
+func (r *podcastPodrollRepository) GetByChannels(ctx context.Context, channelIDs []string) (model.PodcastPodrollItems, error) {
 	if len(channelIDs) == 0 {
 		return nil, nil
 	}
-	sel := r.newSelect().Columns("*").Where(Eq{"channel_id": channelIDs}).OrderBy("channel_id, sort_order")
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"channel_id": channelIDs}).OrderBy("channel_id, sort_order")
 	var result model.PodcastPodrollItems
-	return result, r.queryAll(sel, &result)
+	return result, r.queryAll(ctx, sel, &result)
 }
 
-func (r *podcastPodrollRepository) SaveForChannel(channelID string, items []model.PodcastPodrollItem) error {
-	if err := r.delete(Eq{"channel_id": channelID}); err != nil {
+func (r *podcastPodrollRepository) SaveForChannel(ctx context.Context, channelID string, items []model.PodcastPodrollItem) error {
+	if err := r.delete(ctx, Eq{"channel_id": channelID}); err != nil {
 		return err
 	}
 	now := time.Now()
@@ -49,7 +48,7 @@ func (r *podcastPodrollRepository) SaveForChannel(channelID string, items []mode
 		items[i].ChannelID = channelID
 		items[i].SortOrder = i
 		items[i].CreatedAt = now
-		if _, err := r.put(items[i].ID, &items[i]); err != nil {
+		if _, err := r.put(ctx, items[i].ID, &items[i]); err != nil {
 			return err
 		}
 	}

@@ -85,7 +85,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		}
 		manager.SetSubsonicRouter(router)
 
-		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
+		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
 		mockPluginRepo.Permitted = true
 
 		// Setup config

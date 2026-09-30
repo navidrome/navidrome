@@ -14,34 +14,33 @@ type podcastFundingRepository struct {
 	sqlRepository
 }
 
-func NewPodcastFundingRepository(ctx context.Context, db dbx.Builder) model.PodcastFundingRepository {
+func NewPodcastFundingRepository(db dbx.Builder) model.PodcastFundingRepository {
 	r := &podcastFundingRepository{}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "podcast_funding"
 	r.registerModel(&model.PodcastFundingItem{}, nil)
 	return r
 }
 
-func (r *podcastFundingRepository) GetByChannel(channelID string) (model.PodcastFundingItems, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"channel_id": channelID})
+func (r *podcastFundingRepository) GetByChannel(ctx context.Context, channelID string) (model.PodcastFundingItems, error) {
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"channel_id": channelID})
 	var result model.PodcastFundingItems
-	err := r.queryAll(sel, &result)
+	err := r.queryAll(ctx, sel, &result)
 	return result, err
 }
 
-func (r *podcastFundingRepository) GetByChannels(channelIDs []string) (model.PodcastFundingItems, error) {
+func (r *podcastFundingRepository) GetByChannels(ctx context.Context, channelIDs []string) (model.PodcastFundingItems, error) {
 	if len(channelIDs) == 0 {
 		return nil, nil
 	}
-	sel := r.newSelect().Columns("*").Where(Eq{"channel_id": channelIDs})
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"channel_id": channelIDs})
 	var result model.PodcastFundingItems
-	err := r.queryAll(sel, &result)
+	err := r.queryAll(ctx, sel, &result)
 	return result, err
 }
 
-func (r *podcastFundingRepository) SaveForChannel(channelID string, items []model.PodcastFundingItem) error {
-	if err := r.delete(Eq{"channel_id": channelID}); err != nil {
+func (r *podcastFundingRepository) SaveForChannel(ctx context.Context, channelID string, items []model.PodcastFundingItem) error {
+	if err := r.delete(ctx, Eq{"channel_id": channelID}); err != nil {
 		return err
 	}
 	now := time.Now()
@@ -49,7 +48,7 @@ func (r *podcastFundingRepository) SaveForChannel(channelID string, items []mode
 		items[i].ID = id.NewRandom()
 		items[i].ChannelID = channelID
 		items[i].CreatedAt = now
-		if _, err := r.put(items[i].ID, &items[i]); err != nil {
+		if _, err := r.put(ctx, items[i].ID, &items[i]); err != nil {
 			return err
 		}
 	}

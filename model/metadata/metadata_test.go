@@ -226,6 +226,10 @@ var _ = Describe("Metadata", func() {
 			Entry(nil, "2/10", "", 2, 10),
 			Entry(nil, "", "", 0, 0),
 			Entry(nil, "A", "", 0, 0),
+			Entry("ignores values that do not fit in 32 bits", "4294967295", "4294967296", 0, 0),
+			Entry("ignores a total that does not fit in 32 bits", "2/4294967295", "", 2, 0),
+			Entry("keeps the largest 32-bit value", "2147483647", "", 2147483647, 0),
+			Entry("ignores negative values", "-1", "-2", 0, 0),
 		)
 
 		Describe("Performers", func() {

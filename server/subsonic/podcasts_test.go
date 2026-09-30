@@ -345,7 +345,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("includes funding items in response", func() {
 			fundingRepo := tests.CreateMockPodcastFundingRepo()
-			_ = fundingRepo.SaveForChannel("ch-p20", []model.PodcastFundingItem{
+			_ = fundingRepo.SaveForChannel(context.Background(), "ch-p20", []model.PodcastFundingItem{
 				{URL: "https://example.com/donate", Text: "Support us!"},
 			})
 			ds.MockedPodcastFunding = fundingRepo
@@ -369,7 +369,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("includes channel person list from PersonRepo", func() {
 			personRepo := tests.CreateMockPodcastPersonRepo()
-			_ = personRepo.SaveForChannel("ch-p20", []model.PodcastPerson{
+			_ = personRepo.SaveForChannel(context.Background(), "ch-p20", []model.PodcastPerson{
 				{Name: "Jane Host", Role: "host", Group: "cast"},
 			})
 			ds.MockedPodcastPerson = personRepo
@@ -439,7 +439,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("includes transcript array from TranscriptRepo in response", func() {
 			transcriptRepo := tests.CreateMockPodcastTranscriptRepo()
-			_ = transcriptRepo.Save([]model.PodcastTranscript{
+			_ = transcriptRepo.Save(context.Background(), []model.PodcastTranscript{
 				{EpisodeID: "ep-p20", URL: "https://example.com/t.vtt", MimeType: "text/vtt", Language: "en", Rel: "captions"},
 				{EpisodeID: "ep-p20", URL: "https://example.com/t.srt", MimeType: "application/x-subrip", Language: "en"},
 			})
@@ -467,7 +467,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("includes person array from PersonRepo in response", func() {
 			personRepo := tests.CreateMockPodcastPersonRepo()
-			_ = personRepo.SaveForEpisode("ep-p20", []model.PodcastPerson{
+			_ = personRepo.SaveForEpisode(context.Background(), "ep-p20", []model.PodcastPerson{
 				{Name: "Jane Host", Role: "host", Group: "cast"},
 			})
 			ds.MockedPodcastPerson = personRepo
@@ -503,7 +503,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("includes podroll items in channel response", func() {
 			podrollRepo := tests.CreateMockPodcastPodrollRepo()
-			_ = podrollRepo.SaveForChannel("ch-t3", []model.PodcastPodrollItem{
+			_ = podrollRepo.SaveForChannel(context.Background(), "ch-t3", []model.PodcastPodrollItem{
 				{FeedGUID: "guid-a", FeedURL: "https://a.example.com/feed.xml", Title: "Show A"},
 				{FeedGUID: "guid-b", FeedURL: "https://b.example.com/feed.xml"},
 			})
@@ -521,7 +521,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("includes podroll title and feedGuid", func() {
 			podrollRepo := tests.CreateMockPodcastPodrollRepo()
-			_ = podrollRepo.SaveForChannel("ch-t3", []model.PodcastPodrollItem{
+			_ = podrollRepo.SaveForChannel(context.Background(), "ch-t3", []model.PodcastPodrollItem{
 				{FeedGUID: "guid-a", FeedURL: "https://a.example.com/feed.xml", Title: "Show A"},
 			})
 			ds.MockedPodcastPodroll = podrollRepo
@@ -537,7 +537,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("includes liveItem in channel response", func() {
 			liveItemRepo := tests.CreateMockPodcastLiveItemRepo()
-			_ = liveItemRepo.Upsert(&model.PodcastLiveItem{
+			_ = liveItemRepo.Upsert(context.Background(), &model.PodcastLiveItem{
 				ChannelID:       "ch-t3",
 				GUID:            "live-guid-001",
 				Title:           "Live Show",
@@ -573,7 +573,7 @@ var _ = Describe("Podcasts", func() {
 
 		It("formats liveItem startTime and endTime as RFC3339", func() {
 			liveItemRepo := tests.CreateMockPodcastLiveItemRepo()
-			_ = liveItemRepo.Upsert(&model.PodcastLiveItem{
+			_ = liveItemRepo.Upsert(context.Background(), &model.PodcastLiveItem{
 				ChannelID: "ch-t3",
 				Status:    "live",
 				StartTime: time.Date(2024, 4, 27, 8, 0, 0, 0, time.UTC),

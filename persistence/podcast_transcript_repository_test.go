@@ -11,12 +11,13 @@ import (
 )
 
 var _ = Describe("PodcastTranscriptRepository", func() {
+	var ctx context.Context
 	var repo model.PodcastTranscriptRepository
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
+		ctx = log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, adminUser)
-		repo = NewPodcastTranscriptRepository(ctx, GetDBXBuilder())
+		repo = NewPodcastTranscriptRepository(GetDBXBuilder())
 	})
 
 	Describe("Save and GetByEpisode", func() {
@@ -24,9 +25,9 @@ var _ = Describe("PodcastTranscriptRepository", func() {
 			transcripts := []model.PodcastTranscript{
 				{EpisodeID: "pe-1", URL: "https://example.com/t.vtt", MimeType: "text/vtt", Language: "en", Rel: "captions"},
 			}
-			Expect(repo.Save(transcripts)).To(Succeed())
+			Expect(repo.Save(ctx, transcripts)).To(Succeed())
 
-			result, err := repo.GetByEpisode("pe-1")
+			result, err := repo.GetByEpisode(ctx, "pe-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(1))
 			Expect(result[0].URL).To(Equal("https://example.com/t.vtt"))
@@ -34,7 +35,7 @@ var _ = Describe("PodcastTranscriptRepository", func() {
 			Expect(result[0].Language).To(Equal("en"))
 			Expect(result[0].Rel).To(Equal("captions"))
 
-			Expect(repo.DeleteByEpisode("pe-1")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-1")).To(Succeed())
 		})
 
 		It("saves multiple transcripts for one episode", func() {
@@ -42,9 +43,9 @@ var _ = Describe("PodcastTranscriptRepository", func() {
 				{EpisodeID: "pe-1", URL: "https://example.com/t.vtt", MimeType: "text/vtt", Language: "en", Rel: "captions"},
 				{EpisodeID: "pe-1", URL: "https://example.com/t.srt", MimeType: "application/x-subrip", Language: "en"},
 			}
-			Expect(repo.Save(transcripts)).To(Succeed())
+			Expect(repo.Save(ctx, transcripts)).To(Succeed())
 
-			result, err := repo.GetByEpisode("pe-1")
+			result, err := repo.GetByEpisode(ctx, "pe-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(2))
 
@@ -54,24 +55,24 @@ var _ = Describe("PodcastTranscriptRepository", func() {
 			}
 			Expect(mimeTypes).To(ConsistOf("text/vtt", "application/x-subrip"))
 
-			Expect(repo.DeleteByEpisode("pe-1")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-1")).To(Succeed())
 		})
 
 		It("stores empty rel when rel attribute is omitted", func() {
 			transcripts := []model.PodcastTranscript{
 				{EpisodeID: "pe-1", URL: "https://example.com/t.txt", MimeType: "text/plain"},
 			}
-			Expect(repo.Save(transcripts)).To(Succeed())
+			Expect(repo.Save(ctx, transcripts)).To(Succeed())
 
-			result, err := repo.GetByEpisode("pe-1")
+			result, err := repo.GetByEpisode(ctx, "pe-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result[0].Rel).To(BeEmpty())
 
-			Expect(repo.DeleteByEpisode("pe-1")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-1")).To(Succeed())
 		})
 
 		It("returns empty list for unknown episode", func() {
-			result, err := repo.GetByEpisode("no-such-episode")
+			result, err := repo.GetByEpisode(ctx, "no-such-episode")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(BeEmpty())
 		})
@@ -83,21 +84,21 @@ var _ = Describe("PodcastTranscriptRepository", func() {
 				{EpisodeID: "pe-1", URL: "https://example.com/t1.vtt", MimeType: "text/vtt"},
 				{EpisodeID: "pe-2", URL: "https://example.com/t2.srt", MimeType: "application/x-subrip"},
 			}
-			Expect(repo.Save(transcripts)).To(Succeed())
+			Expect(repo.Save(ctx, transcripts)).To(Succeed())
 
-			result, err := repo.GetByEpisodes([]string{"pe-1", "pe-2"})
+			result, err := repo.GetByEpisodes(ctx, []string{"pe-1", "pe-2"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(HaveLen(2))
 
 			episodeIDs := []string{result[0].EpisodeID, result[1].EpisodeID}
 			Expect(episodeIDs).To(ConsistOf("pe-1", "pe-2"))
 
-			Expect(repo.DeleteByEpisode("pe-1")).To(Succeed())
-			Expect(repo.DeleteByEpisode("pe-2")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-1")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-2")).To(Succeed())
 		})
 
 		It("returns empty list for empty id slice", func() {
-			result, err := repo.GetByEpisodes([]string{})
+			result, err := repo.GetByEpisodes(ctx, []string{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(BeEmpty())
 		})
@@ -109,21 +110,21 @@ var _ = Describe("PodcastTranscriptRepository", func() {
 				{EpisodeID: "pe-1", URL: "https://example.com/t1.vtt", MimeType: "text/vtt"},
 				{EpisodeID: "pe-2", URL: "https://example.com/t2.vtt", MimeType: "text/vtt"},
 			}
-			Expect(repo.Save(transcripts)).To(Succeed())
+			Expect(repo.Save(ctx, transcripts)).To(Succeed())
 
-			Expect(repo.DeleteByEpisode("pe-1")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-1")).To(Succeed())
 
-			result1, _ := repo.GetByEpisode("pe-1")
+			result1, _ := repo.GetByEpisode(ctx, "pe-1")
 			Expect(result1).To(BeEmpty())
 
-			result2, _ := repo.GetByEpisode("pe-2")
+			result2, _ := repo.GetByEpisode(ctx, "pe-2")
 			Expect(result2).To(HaveLen(1))
 
-			Expect(repo.DeleteByEpisode("pe-2")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-2")).To(Succeed())
 		})
 
 		It("succeeds when deleting transcripts for a non-existent episode", func() {
-			Expect(repo.DeleteByEpisode("no-such-episode")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "no-such-episode")).To(Succeed())
 		})
 	})
 
@@ -132,13 +133,13 @@ var _ = Describe("PodcastTranscriptRepository", func() {
 			transcripts := []model.PodcastTranscript{
 				{EpisodeID: "pe-1", URL: "https://example.com/auto.vtt", MimeType: "text/vtt"},
 			}
-			Expect(repo.Save(transcripts)).To(Succeed())
+			Expect(repo.Save(ctx, transcripts)).To(Succeed())
 
-			result, err := repo.GetByEpisode("pe-1")
+			result, err := repo.GetByEpisode(ctx, "pe-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result[0].ID).ToNot(BeEmpty())
 
-			Expect(repo.DeleteByEpisode("pe-1")).To(Succeed())
+			Expect(repo.DeleteByEpisode(ctx, "pe-1")).To(Succeed())
 		})
 	})
 })

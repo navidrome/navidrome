@@ -67,6 +67,7 @@ type Subsonic struct {
 	PlayQueueByIndex       *PlayQueueByIndex       `xml:"playQueueByIndex,omitempty" json:"playQueueByIndex,omitempty"`
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
+	TokenInfo              *TokenInfo              `xml:"tokenInfo,omitempty"               json:"tokenInfo,omitempty"`
 }
 
 const (
@@ -604,6 +605,10 @@ type OpenSubsonicExtension struct {
 }
 
 type OpenSubsonicExtensions []OpenSubsonicExtension
+
+type TokenInfo struct {
+	Username string `xml:"username,attr" json:"username"`
+}
 
 type ItemGenre struct {
 	Name string `xml:"name,attr" json:"name"`

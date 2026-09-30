@@ -75,36 +75,36 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
 		conf.Server.Plugins.AutoReload = false
 
-		userRepo := dataStore.User(ctx)
+		userRepo := dataStore.User()
 		// Add test users
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(ctx, &model.User{
 			ID:       "user1",
 			UserName: "testuser",
 			IsAdmin:  false,
 		})
-		_ = userRepo.Put(&model.User{
+		_ = userRepo.Put(ctx, &model.User{
 			ID:       "admin1",
 			UserName: "adminuser",
 			IsAdmin:  true,
 		})
 
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "1", LibraryID: 1})
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "1", LibraryID: 1})
 		Expect(err).To(BeNil())
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "2", LibraryID: 1})
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "2", LibraryID: 1})
 		Expect(err).To(BeNil())
-		err = dataStore.MediaFile(ctx).Put(&model.MediaFile{ID: "3", LibraryID: 1})
+		err = dataStore.MediaFile().Put(ctx, &model.MediaFile{ID: "3", LibraryID: 1})
 		Expect(err).To(BeNil())
 
 		scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
 
-		scrobbleRepo := dataStore.Scrobble(scrobbleCtx)
-		err = scrobbleRepo.RecordScrobble("1", time.Unix(0, 0))
+		scrobbleRepo := dataStore.Scrobble()
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(0, 0))
 		Expect(err).To(BeNil())
-		err = scrobbleRepo.RecordScrobble("2", time.Unix(1, 0))
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "2", time.Unix(1, 0))
 		Expect(err).To(BeNil())
-		err = scrobbleRepo.RecordScrobble("3", time.Unix(2, 0))
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(2, 0))
 		Expect(err).To(BeNil())
-		err = scrobbleRepo.RecordScrobble("1", time.Unix(2, 0))
+		err = scrobbleRepo.RecordScrobble(scrobbleCtx, "1", time.Unix(2, 0))
 		Expect(err).To(BeNil())
 
 		// Create and configure manager
@@ -125,7 +125,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 		dataStore.MockedPlugin = tests.CreateMockPluginRepo()
 
-		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
+		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
 		mockPluginRepo.Permitted = true
 		enabledPlugin := model.Plugin{
 			ID:      "test-scrobble-retriever",
@@ -300,10 +300,10 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		BeforeAll(func() {
 			scrobbleCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "admin1", UserName: "adminuser"})
 
-			scrobbleRepo := dataStore.Scrobble(scrobbleCtx)
+			scrobbleRepo := dataStore.Scrobble()
 
 			for i := range 5 {
-				err := scrobbleRepo.RecordScrobble("3", time.Unix(100, 0))
+				err := scrobbleRepo.RecordScrobble(scrobbleCtx, "3", time.Unix(100, 0))
 				Expect(err).To(BeNil())
 
 				scrobble := host.ScrobbleRef{ID: 5 + int64(i), MediaFileID: "3", SubmissionTime: 100}

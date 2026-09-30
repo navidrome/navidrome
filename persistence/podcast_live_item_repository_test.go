@@ -12,31 +12,32 @@ import (
 )
 
 var _ = Describe("PodcastLiveItemRepository", func() {
+	var ctx context.Context
 	var repo model.PodcastLiveItemRepository
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
+		ctx = log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, adminUser)
-		repo = NewPodcastLiveItemRepository(ctx, GetDBXBuilder())
+		repo = NewPodcastLiveItemRepository(GetDBXBuilder())
 	})
 
 	Describe("Upsert and GetByChannel", func() {
 		It("creates a new live item when none exists", func() {
 			item := &model.PodcastLiveItem{
-				ChannelID:    "pc-1",
-				GUID:         "live-guid-001",
-				Title:        "Live Show",
-				Status:       "live",
-				StartTime:    time.Date(2024, 4, 27, 8, 0, 0, 0, time.UTC),
-				EndTime:      time.Date(2024, 4, 27, 9, 0, 0, 0, time.UTC),
-				EnclosureURL: "https://stream.example.com/live.m3u8",
-				EnclosureType: "application/x-mpegURL",
+				ChannelID:       "pc-1",
+				GUID:            "live-guid-001",
+				Title:           "Live Show",
+				Status:          "live",
+				StartTime:       time.Date(2024, 4, 27, 8, 0, 0, 0, time.UTC),
+				EndTime:         time.Date(2024, 4, 27, 9, 0, 0, 0, time.UTC),
+				EnclosureURL:    "https://stream.example.com/live.m3u8",
+				EnclosureType:   "application/x-mpegURL",
 				ContentLinkURL:  "https://youtube.com/live",
 				ContentLinkText: "Watch Live",
 			}
-			Expect(repo.Upsert(item)).To(Succeed())
+			Expect(repo.Upsert(ctx, item)).To(Succeed())
 
-			result, err := repo.GetByChannel("pc-1")
+			result, err := repo.GetByChannel(ctx, "pc-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).ToNot(BeNil())
 			Expect(result.ChannelID).To(Equal("pc-1"))
@@ -47,7 +48,7 @@ var _ = Describe("PodcastLiveItemRepository", func() {
 			Expect(result.ContentLinkURL).To(Equal("https://youtube.com/live"))
 			Expect(result.ContentLinkText).To(Equal("Watch Live"))
 
-			Expect(repo.DeleteByChannel("pc-1")).To(Succeed())
+			Expect(repo.DeleteByChannel(ctx, "pc-1")).To(Succeed())
 		})
 
 		It("assigns ID and timestamps automatically on create", func() {
@@ -55,15 +56,15 @@ var _ = Describe("PodcastLiveItemRepository", func() {
 				ChannelID: "pc-1",
 				Status:    "live",
 			}
-			Expect(repo.Upsert(item)).To(Succeed())
+			Expect(repo.Upsert(ctx, item)).To(Succeed())
 
-			result, err := repo.GetByChannel("pc-1")
+			result, err := repo.GetByChannel(ctx, "pc-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.ID).ToNot(BeEmpty())
 			Expect(result.CreatedAt.IsZero()).To(BeFalse())
 			Expect(result.UpdatedAt.IsZero()).To(BeFalse())
 
-			Expect(repo.DeleteByChannel("pc-1")).To(Succeed())
+			Expect(repo.DeleteByChannel(ctx, "pc-1")).To(Succeed())
 		})
 
 		It("updates existing live item (latest wins)", func() {
@@ -73,7 +74,7 @@ var _ = Describe("PodcastLiveItemRepository", func() {
 				Title:     "Original Title",
 				Status:    "pending",
 			}
-			Expect(repo.Upsert(first)).To(Succeed())
+			Expect(repo.Upsert(ctx, first)).To(Succeed())
 
 			second := &model.PodcastLiveItem{
 				ChannelID: "pc-1",
@@ -81,14 +82,14 @@ var _ = Describe("PodcastLiveItemRepository", func() {
 				Title:     "Updated Title",
 				Status:    "live",
 			}
-			Expect(repo.Upsert(second)).To(Succeed())
+			Expect(repo.Upsert(ctx, second)).To(Succeed())
 
-			result, err := repo.GetByChannel("pc-1")
+			result, err := repo.GetByChannel(ctx, "pc-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.Title).To(Equal("Updated Title"))
 			Expect(result.Status).To(Equal("live"))
 
-			Expect(repo.DeleteByChannel("pc-1")).To(Succeed())
+			Expect(repo.DeleteByChannel(ctx, "pc-1")).To(Succeed())
 		})
 
 		It("preserves created_at on update", func() {
@@ -96,26 +97,26 @@ var _ = Describe("PodcastLiveItemRepository", func() {
 				ChannelID: "pc-1",
 				Status:    "pending",
 			}
-			Expect(repo.Upsert(item)).To(Succeed())
+			Expect(repo.Upsert(ctx, item)).To(Succeed())
 
-			original, _ := repo.GetByChannel("pc-1")
+			original, _ := repo.GetByChannel(ctx, "pc-1")
 			originalCreatedAt := original.CreatedAt
 
 			item2 := &model.PodcastLiveItem{
 				ChannelID: "pc-1",
 				Status:    "live",
 			}
-			Expect(repo.Upsert(item2)).To(Succeed())
+			Expect(repo.Upsert(ctx, item2)).To(Succeed())
 
-			updated, _ := repo.GetByChannel("pc-1")
+			updated, _ := repo.GetByChannel(ctx, "pc-1")
 			Expect(updated.CreatedAt.UTC().Truncate(time.Second)).
 				To(Equal(originalCreatedAt.UTC().Truncate(time.Second)))
 
-			Expect(repo.DeleteByChannel("pc-1")).To(Succeed())
+			Expect(repo.DeleteByChannel(ctx, "pc-1")).To(Succeed())
 		})
 
 		It("returns ErrNotFound for unknown channel", func() {
-			_, err := repo.GetByChannel("no-such-channel")
+			_, err := repo.GetByChannel(ctx, "no-such-channel")
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 
@@ -124,27 +125,27 @@ var _ = Describe("PodcastLiveItemRepository", func() {
 				ChannelID: "pc-1",
 				Status:    "live",
 			}
-			Expect(repo.Upsert(item)).To(Succeed())
+			Expect(repo.Upsert(ctx, item)).To(Succeed())
 
-			result, err := repo.GetByChannel("pc-1")
+			result, err := repo.GetByChannel(ctx, "pc-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).ToNot(BeNil())
 
-			Expect(repo.DeleteByChannel("pc-1")).To(Succeed())
+			Expect(repo.DeleteByChannel(ctx, "pc-1")).To(Succeed())
 		})
 	})
 
 	Describe("DeleteByChannel", func() {
 		It("removes live item for the given channel", func() {
-			Expect(repo.Upsert(&model.PodcastLiveItem{ChannelID: "pc-1", Status: "live"})).To(Succeed())
-			Expect(repo.DeleteByChannel("pc-1")).To(Succeed())
+			Expect(repo.Upsert(ctx, &model.PodcastLiveItem{ChannelID: "pc-1", Status: "live"})).To(Succeed())
+			Expect(repo.DeleteByChannel(ctx, "pc-1")).To(Succeed())
 
-			_, err := repo.GetByChannel("pc-1")
+			_, err := repo.GetByChannel(ctx, "pc-1")
 			Expect(err).To(Equal(model.ErrNotFound))
 		})
 
 		It("does not error when no item exists", func() {
-			Expect(repo.DeleteByChannel("no-such-channel")).To(Succeed())
+			Expect(repo.DeleteByChannel(ctx, "no-such-channel")).To(Succeed())
 		})
 	})
 })

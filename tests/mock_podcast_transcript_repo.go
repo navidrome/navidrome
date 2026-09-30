@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -17,7 +18,7 @@ func CreateMockPodcastTranscriptRepo() *MockPodcastTranscriptRepo {
 	return &MockPodcastTranscriptRepo{Data: map[string]*model.PodcastTranscript{}}
 }
 
-func (m *MockPodcastTranscriptRepo) GetByEpisode(episodeID string) (model.PodcastTranscripts, error) {
+func (m *MockPodcastTranscriptRepo) GetByEpisode(ctx context.Context, episodeID string) (model.PodcastTranscripts, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -30,7 +31,7 @@ func (m *MockPodcastTranscriptRepo) GetByEpisode(episodeID string) (model.Podcas
 	return result, nil
 }
 
-func (m *MockPodcastTranscriptRepo) GetByEpisodes(episodeIDs []string) (model.PodcastTranscripts, error) {
+func (m *MockPodcastTranscriptRepo) GetByEpisodes(ctx context.Context, episodeIDs []string) (model.PodcastTranscripts, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -47,7 +48,7 @@ func (m *MockPodcastTranscriptRepo) GetByEpisodes(episodeIDs []string) (model.Po
 	return result, nil
 }
 
-func (m *MockPodcastTranscriptRepo) Save(transcripts []model.PodcastTranscript) error {
+func (m *MockPodcastTranscriptRepo) Save(ctx context.Context, transcripts []model.PodcastTranscript) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -61,7 +62,7 @@ func (m *MockPodcastTranscriptRepo) Save(transcripts []model.PodcastTranscript) 
 	return nil
 }
 
-func (m *MockPodcastTranscriptRepo) DeleteByEpisode(episodeID string) error {
+func (m *MockPodcastTranscriptRepo) DeleteByEpisode(ctx context.Context, episodeID string) error {
 	if m.Err {
 		return errors.New("error")
 	}

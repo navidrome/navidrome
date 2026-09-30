@@ -18,14 +18,14 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 		conf.Server.EnableSharing = true
 		setupTestDB()
 
-		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+		albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"album.name": "Abbey Road"},
 		})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(albums).ToNot(BeEmpty())
 		albumID = albums[0].ID
 
-		songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"title": "Come Together"},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -139,7 +139,7 @@ var _ = Describe("Sharing Cross-User Isolation", Ordered, func() {
 		userA = createUser("share-user-a", "share-user-a", "Share User A", false)
 		userB = createUser("share-user-b", "share-user-b", "Share User B", false)
 
-		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+		albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"album.name": "Abbey Road"},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -221,7 +221,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("createShare", append([]string{"id", albumID}, params...)...)
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 		Expect(resp.Shares.Share).To(HaveLen(1))
-		share, err := ds.Share(ctx).Get(resp.Shares.Share[0].ID)
+		share, err := ds.Share().Get(ctx, resp.Shares.Share[0].ID)
 		Expect(err).ToNot(HaveOccurred())
 		return share
 	}
@@ -248,7 +248,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("updateShare", "id", share.ID, "description", "Updated")
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
-		updated, err := ds.Share(ctx).Get(share.ID)
+		updated, err := ds.Share().Get(ctx, share.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updated.Description).To(Equal("Updated"))
 		Expect(updated.Downloadable).To(BeTrue())
@@ -261,7 +261,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("updateShare", "id", share.ID, "downloadable", "false")
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
-		updated, err := ds.Share(ctx).Get(share.ID)
+		updated, err := ds.Share().Get(ctx, share.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updated.Downloadable).To(BeFalse())
 		Expect(updated.Description).To(Equal("Keep me"))
@@ -273,7 +273,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 		resp := doReq("updateShare", "id", share.ID, "description", "")
 		Expect(resp.Status).To(Equal(responses.StatusOK))
 
-		updated, err := ds.Share(ctx).Get(share.ID)
+		updated, err := ds.Share().Get(ctx, share.ID)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(updated.Description).To(BeEmpty())
 	})

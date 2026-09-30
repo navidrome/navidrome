@@ -16,6 +16,7 @@ func (api *Router) GetOpenSubsonicExtensions(_ *http.Request) (*responses.Subson
 		{Name: "transcoding", Versions: []int32{1}},
 		{Name: "playbackReport", Versions: []int32{1}},
 		{Name: "topSongsByArtistId", Versions: []int32{1}},
+		{Name: "apiKeyAuthentication", Versions: []int32{1}},
 		{Name: "getPodcastEpisode", Versions: []int32{1}},
 		{Name: "podcastChapters", Versions: []int32{1}},
 		{Name: "podcastTranscripts", Versions: []int32{1}},

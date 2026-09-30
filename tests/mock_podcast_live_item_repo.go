@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -20,7 +21,7 @@ func CreateMockPodcastLiveItemRepo() *MockPodcastLiveItemRepo {
 	return &MockPodcastLiveItemRepo{Data: map[string]*model.PodcastLiveItem{}}
 }
 
-func (m *MockPodcastLiveItemRepo) GetByChannel(channelID string) (*model.PodcastLiveItem, error) {
+func (m *MockPodcastLiveItemRepo) GetByChannel(ctx context.Context, channelID string) (*model.PodcastLiveItem, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -30,7 +31,7 @@ func (m *MockPodcastLiveItemRepo) GetByChannel(channelID string) (*model.Podcast
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPodcastLiveItemRepo) Upsert(item *model.PodcastLiveItem) error {
+func (m *MockPodcastLiveItemRepo) Upsert(ctx context.Context, item *model.PodcastLiveItem) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -44,7 +45,7 @@ func (m *MockPodcastLiveItemRepo) Upsert(item *model.PodcastLiveItem) error {
 	return nil
 }
 
-func (m *MockPodcastLiveItemRepo) DeleteByChannel(channelID string) error {
+func (m *MockPodcastLiveItemRepo) DeleteByChannel(ctx context.Context, channelID string) error {
 	if m.Err {
 		return errors.New("error")
 	}

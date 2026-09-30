@@ -14,9 +14,8 @@ type podcastLiveItemRepository struct {
 	sqlRepository
 }
 
-func NewPodcastLiveItemRepository(ctx context.Context, db dbx.Builder) model.PodcastLiveItemRepository {
+func NewPodcastLiveItemRepository(db dbx.Builder) model.PodcastLiveItemRepository {
 	r := &podcastLiveItemRepository{}
-	r.ctx = ctx
 	r.db = db
 	// Must set tableName before registerModel to avoid auto-derived name mismatch.
 	r.tableName = "podcast_live_item"
@@ -24,22 +23,22 @@ func NewPodcastLiveItemRepository(ctx context.Context, db dbx.Builder) model.Pod
 	return r
 }
 
-func (r *podcastLiveItemRepository) GetByChannel(channelID string) (*model.PodcastLiveItem, error) {
-	sel := r.newSelect().Columns("*").Where(Eq{"channel_id": channelID})
+func (r *podcastLiveItemRepository) GetByChannel(ctx context.Context, channelID string) (*model.PodcastLiveItem, error) {
+	sel := r.newSelect(ctx).Columns("*").Where(Eq{"channel_id": channelID})
 	item := model.PodcastLiveItem{}
-	if err := r.queryOne(sel, &item); err != nil {
+	if err := r.queryOne(ctx, sel, &item); err != nil {
 		return nil, err
 	}
 	return &item, nil
 }
 
-func (r *podcastLiveItemRepository) Upsert(item *model.PodcastLiveItem) error {
-	existing, err := r.GetByChannel(item.ChannelID)
+func (r *podcastLiveItemRepository) Upsert(ctx context.Context, item *model.PodcastLiveItem) error {
+	existing, err := r.GetByChannel(ctx, item.ChannelID)
 	if err == model.ErrNotFound {
 		item.ID = id.NewRandom()
 		item.CreatedAt = time.Now()
 		item.UpdatedAt = time.Now()
-		_, err = r.put(item.ID, item)
+		_, err = r.put(ctx, item.ID, item)
 		return err
 	}
 	if err != nil {
@@ -48,12 +47,12 @@ func (r *podcastLiveItemRepository) Upsert(item *model.PodcastLiveItem) error {
 	item.ID = existing.ID
 	item.CreatedAt = existing.CreatedAt
 	item.UpdatedAt = time.Now()
-	_, err = r.put(item.ID, item)
+	_, err = r.put(ctx, item.ID, item)
 	return err
 }
 
-func (r *podcastLiveItemRepository) DeleteByChannel(channelID string) error {
-	return r.delete(Eq{"channel_id": channelID})
+func (r *podcastLiveItemRepository) DeleteByChannel(ctx context.Context, channelID string) error {
+	return r.delete(ctx, Eq{"channel_id": channelID})
 }
 
 var _ model.PodcastLiveItemRepository = (*podcastLiveItemRepository)(nil)

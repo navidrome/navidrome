@@ -16,26 +16,26 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 	includeEpisodes := p.BoolOr("includeEpisodes", true)
 
 	ctx := r.Context()
-	chRepo := api.ds.PodcastChannel(ctx)
+	chRepo := api.ds.PodcastChannel()
 
 	var channels model.PodcastChannels
 	var err error
 
 	if id != "" {
-		ch, e := chRepo.Get(id)
+		ch, e := chRepo.Get(ctx, id)
 		if e != nil {
 			return nil, e
 		}
 		channels = model.PodcastChannels{*ch}
 	} else {
-		channels, err = chRepo.GetAll(includeEpisodes)
+		channels, err = chRepo.GetAll(ctx, includeEpisodes)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if includeEpisodes && id != "" {
-		eps, e := api.ds.PodcastEpisode(ctx).GetByChannel(id)
+		eps, e := api.ds.PodcastEpisode().GetByChannel(ctx, id)
 		if e != nil {
 			return nil, e
 		}
@@ -49,43 +49,43 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	// Load channel persons
-	personRepo := api.ds.PodcastPerson(ctx)
+	personRepo := api.ds.PodcastPerson()
 	channelPersons := make(map[string]model.PodcastPersons)
 	for _, ch := range channels {
-		persons, err := personRepo.GetByChannel(ch.ID)
+		persons, err := personRepo.GetByChannel(ctx, ch.ID)
 		if err == nil {
 			channelPersons[ch.ID] = persons
 		}
 	}
 
 	// Bulk-load podcast:podroll items
-	podrollRepo := api.ds.PodcastPodroll(ctx)
-	allPodrolls, _ := podrollRepo.GetByChannels(channelIDs)
+	podrollRepo := api.ds.PodcastPodroll()
+	allPodrolls, _ := podrollRepo.GetByChannels(ctx, channelIDs)
 	podrollMap := make(map[string]model.PodcastPodrollItems)
 	for _, pr := range allPodrolls {
 		podrollMap[pr.ChannelID] = append(podrollMap[pr.ChannelID], pr)
 	}
 
 	// Load podcast:liveItem per channel
-	liveItemRepo := api.ds.PodcastLiveItem(ctx)
+	liveItemRepo := api.ds.PodcastLiveItem()
 	liveItemMap := make(map[string]*model.PodcastLiveItem)
 	for _, chID := range channelIDs {
-		if li, err := liveItemRepo.GetByChannel(chID); err == nil {
+		if li, err := liveItemRepo.GetByChannel(ctx, chID); err == nil {
 			liveItemMap[chID] = li
 		}
 	}
 
 	// Bulk-load podcast:funding items
-	fundingRepo := api.ds.PodcastFunding(ctx)
-	allFunding, _ := fundingRepo.GetByChannels(channelIDs)
+	fundingRepo := api.ds.PodcastFunding()
+	allFunding, _ := fundingRepo.GetByChannels(ctx, channelIDs)
 	fundingMap := make(map[string]model.PodcastFundingItems)
 	for _, f := range allFunding {
 		fundingMap[f.ChannelID] = append(fundingMap[f.ChannelID], f)
 	}
 
 	// Bulk-load podcast:image (channel level)
-	imageRepo := api.ds.PodcastImage(ctx)
-	allChannelImages, _ := imageRepo.GetByChannels(channelIDs)
+	imageRepo := api.ds.PodcastImage()
+	allChannelImages, _ := imageRepo.GetByChannels(ctx, channelIDs)
 	channelImageMap := make(map[string]model.PodcastImages)
 	for _, img := range allChannelImages {
 		channelImageMap[img.ChannelID] = append(channelImageMap[img.ChannelID], img)
@@ -103,22 +103,22 @@ func (api *Router) GetPodcasts(r *http.Request) (*responses.Subsonic, error) {
 			}
 		}
 		if len(epIDs) > 0 {
-			transcriptRepo := api.ds.PodcastTranscript(ctx)
-			allTranscripts, err := transcriptRepo.GetByEpisodes(epIDs)
+			transcriptRepo := api.ds.PodcastTranscript()
+			allTranscripts, err := transcriptRepo.GetByEpisodes(ctx, epIDs)
 			if err == nil {
 				epTranscripts = make(map[string]model.PodcastTranscripts)
 				for _, t := range allTranscripts {
 					epTranscripts[t.EpisodeID] = append(epTranscripts[t.EpisodeID], t)
 				}
 			}
-			allPersons, err := personRepo.GetByEpisodes(epIDs)
+			allPersons, err := personRepo.GetByEpisodes(ctx, epIDs)
 			if err == nil {
 				epPersons = make(map[string]model.PodcastPersons)
 				for _, p := range allPersons {
 					epPersons[p.EpisodeID] = append(epPersons[p.EpisodeID], p)
 				}
 			}
-			allEpImages, err := imageRepo.GetByEpisodes(epIDs)
+			allEpImages, err := imageRepo.GetByEpisodes(ctx, epIDs)
 			if err == nil {
 				epImages = make(map[string]model.PodcastImages)
 				for _, img := range allEpImages {
@@ -217,7 +217,7 @@ func (api *Router) GetNewestPodcasts(r *http.Request) (*responses.Subsonic, erro
 	p := req.Params(r)
 	count := p.IntOr("count", 20)
 
-	eps, err := api.ds.PodcastEpisode(r.Context()).GetNewest(count)
+	eps, err := api.ds.PodcastEpisode().GetNewest(r.Context(), count)
 	if err != nil {
 		return nil, err
 	}
@@ -325,14 +325,14 @@ func (api *Router) GetPodcastEpisode(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 	ctx := r.Context()
-	ep, err := api.ds.PodcastEpisode(ctx).Get(id)
+	ep, err := api.ds.PodcastEpisode().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	ep.Transcripts, _ = api.ds.PodcastTranscript(ctx).GetByEpisode(ep.ID)
-	ep.Persons, _ = api.ds.PodcastPerson(ctx).GetByEpisode(ep.ID)
-	ep.Images, _ = api.ds.PodcastImage(ctx).GetByEpisode(ep.ID)
+	ep.Transcripts, _ = api.ds.PodcastTranscript().GetByEpisode(ctx, ep.ID)
+	ep.Persons, _ = api.ds.PodcastPerson().GetByEpisode(ctx, ep.ID)
+	ep.Images, _ = api.ds.PodcastImage().GetByEpisode(ctx, ep.ID)
 
 	resp := newResponse()
 	re := buildPodcastEpisode(*ep)

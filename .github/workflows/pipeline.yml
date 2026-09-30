@@ -92,8 +92,23 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve OpenAPI tool versions
+        id: api-tools
+        run: echo "key=$(grep -E '^(VACUUM|OAPI_CODEGEN|OASDIFF)_VERSION' Makefile | tr -d ' \n')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OpenAPI tools
+        uses: actions/cache@v6
+        with:
+          path: bin
+          key: api-tools-${{ runner.os }}-${{ steps.api-tools.outputs.key }}
+
+      - name: Lint OpenAPI spec
+        run: make api-lint
+
       - name: Run go generate
-        run: go generate ./...
+        run: |
+          make api-gen
+          go generate ./...
       - name: Verify no changes from go generate
         run: |
           git status --porcelain
@@ -101,6 +116,12 @@ jobs:
             echo 'Generated code is out of date. Run "make gen" and commit the changes'
             exit 1
           fi
+
+      - name: Check for breaking OpenAPI changes
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.sha }}
+          make api-diff API_DIFF_BASE=${{ github.event.pull_request.base.sha }}
 
   validate-migrations:
     name: Validate DB migrations

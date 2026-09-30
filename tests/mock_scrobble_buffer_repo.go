@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -17,7 +18,7 @@ func CreateMockedScrobbleBufferRepo() *MockedScrobbleBufferRepo {
 	return &MockedScrobbleBufferRepo{}
 }
 
-func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
+func (m *MockedScrobbleBufferRepo) UserIDs(_ context.Context, service string) ([]string, error) {
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -36,7 +37,7 @@ func (m *MockedScrobbleBufferRepo) UserIDs(service string) ([]string, error) {
 	return result, nil
 }
 
-func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, playTime time.Time) error {
+func (m *MockedScrobbleBufferRepo) Enqueue(_ context.Context, service, userId, mediaFileId string, playTime time.Time) error {
 	if m.Error != nil {
 		return m.Error
 	}
@@ -52,7 +53,7 @@ func (m *MockedScrobbleBufferRepo) Enqueue(service, userId, mediaFileId string, 
 	return nil
 }
 
-func (m *MockedScrobbleBufferRepo) Next(service, userId string) (*model.ScrobbleEntry, error) {
+func (m *MockedScrobbleBufferRepo) Next(_ context.Context, service, userId string) (*model.ScrobbleEntry, error) {
 	if m.Error != nil {
 		return nil, m.Error
 	}
@@ -66,7 +67,7 @@ func (m *MockedScrobbleBufferRepo) Next(service, userId string) (*model.Scrobble
 	return nil, nil
 }
 
-func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
+func (m *MockedScrobbleBufferRepo) Dequeue(_ context.Context, entry *model.ScrobbleEntry) error {
 	if m.Error != nil {
 		return m.Error
 	}
@@ -83,7 +84,7 @@ func (m *MockedScrobbleBufferRepo) Dequeue(entry *model.ScrobbleEntry) error {
 	return nil
 }
 
-func (m *MockedScrobbleBufferRepo) Discard(service string) error {
+func (m *MockedScrobbleBufferRepo) Discard(_ context.Context, service string) error {
 	if m.Error != nil {
 		return m.Error
 	}
@@ -99,7 +100,7 @@ func (m *MockedScrobbleBufferRepo) Discard(service string) error {
 	return nil
 }
 
-func (m *MockedScrobbleBufferRepo) Length() (int64, error) {
+func (m *MockedScrobbleBufferRepo) Length(context.Context) (int64, error) {
 	if m.Error != nil {
 		return 0, m.Error
 	}
@@ -107,3 +108,5 @@ func (m *MockedScrobbleBufferRepo) Length() (int64, error) {
 	defer m.mu.RUnlock()
 	return int64(len(m.Data)), nil
 }
+
+var _ model.ScrobbleBufferRepository = (*MockedScrobbleBufferRepo)(nil)

@@ -1,0 +1,5 @@
+description: The caller is authenticated but not allowed to do this.
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

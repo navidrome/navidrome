@@ -9,7 +9,7 @@ import (
 
 // This file (and the 4 that follow it, add_podcast_downloaded_bytes/podcast20/podcast_tier3/
 // podcast_metadata) were originally timestamped 2026-04-27/28, matching when the podcast
-// feature was actually developed. They were renumbered to 2026-09-02 (after every migration
+// feature was actually developed. They were renumbered to 2026-09-30 (after every migration
 // already on master as of this PR) before merging: goose.UpContext (as navidrome calls it, with
 // no WithAllowMissing) hard-errors and refuses to start if it finds a pending migration whose
 // version is lower than the DB's already-applied max version - which every one of these files

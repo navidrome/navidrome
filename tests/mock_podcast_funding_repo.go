@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -17,7 +18,7 @@ func CreateMockPodcastFundingRepo() *MockPodcastFundingRepo {
 	return &MockPodcastFundingRepo{Data: map[string]*model.PodcastFundingItem{}}
 }
 
-func (m *MockPodcastFundingRepo) GetByChannel(channelID string) (model.PodcastFundingItems, error) {
+func (m *MockPodcastFundingRepo) GetByChannel(ctx context.Context, channelID string) (model.PodcastFundingItems, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -30,7 +31,7 @@ func (m *MockPodcastFundingRepo) GetByChannel(channelID string) (model.PodcastFu
 	return result, nil
 }
 
-func (m *MockPodcastFundingRepo) GetByChannels(channelIDs []string) (model.PodcastFundingItems, error) {
+func (m *MockPodcastFundingRepo) GetByChannels(ctx context.Context, channelIDs []string) (model.PodcastFundingItems, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -47,7 +48,7 @@ func (m *MockPodcastFundingRepo) GetByChannels(channelIDs []string) (model.Podca
 	return result, nil
 }
 
-func (m *MockPodcastFundingRepo) SaveForChannel(channelID string, items []model.PodcastFundingItem) error {
+func (m *MockPodcastFundingRepo) SaveForChannel(ctx context.Context, channelID string, items []model.PodcastFundingItem) error {
 	if m.Err {
 		return errors.New("error")
 	}

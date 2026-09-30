@@ -55,6 +55,16 @@ type fakePlaylists struct {
 
 	deletePlaylistID string
 	deleteErr        error
+
+	updatePlaylistID string
+	updatePublic     *bool
+	updateErr        error
+}
+
+func (f *fakePlaylists) Update(_ context.Context, playlistID string, _ *string, _ *string, public *bool, _ []string, _ []int) error {
+	f.updatePlaylistID = playlistID
+	f.updatePublic = public
+	return f.updateErr
 }
 
 func (f *fakePlaylists) Delete(_ context.Context, id string) error {
@@ -184,6 +194,31 @@ var _ = Describe("Playlists", func() {
 			invoke(api.createPlaylist, w, r)
 			Expect(w.Code).To(Equal(http.StatusInternalServerError))
 		})
+
+		createReq := func(body string) *http.Request {
+			return httptest.NewRequest("POST", "/Playlists", strings.NewReader(body)).
+				WithContext(GinkgoT().Context())
+		}
+
+		DescribeTable("visibility",
+			func(body string, wantPublic *bool, wantUpdatedID string) {
+				w := httptest.NewRecorder()
+				invoke(api.createPlaylist, w, createReq(body))
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(fp.updatePublic).To(Equal(wantPublic))
+				Expect(fp.updatePlaylistID).To(Equal(wantUpdatedID))
+			},
+			Entry("applies IsPublic true", `{"Name":"Mix","IsPublic":true}`, new(true), testID("pl-new")),
+			Entry("applies an explicit IsPublic false", `{"Name":"Mix","IsPublic":false}`, new(false), testID("pl-new")),
+			Entry("leaves visibility alone when IsPublic is omitted", `{"Name":"Mix"}`, nil, ""),
+		)
+
+		It("returns 500 when the visibility update fails", func() {
+			fp.updateErr = errors.New("boom")
+			w := httptest.NewRecorder()
+			invoke(api.createPlaylist, w, createReq(`{"Name":"Mix","IsPublic":true}`))
+			Expect(w.Code).To(Equal(http.StatusInternalServerError))
+		})
 	})
 
 	Describe("getPlaylistItems", func() {
@@ -264,27 +299,27 @@ var _ = Describe("Playlists", func() {
 		}
 
 		It("passes a bare song id through unchanged", func() {
-			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}})
 			createWith(testID("s1"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s1")}))
 		})
 
 		It("expands an album id into its songs, filtered by album", func() {
-			ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("al1")}})
-			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("al1")}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: testID("s1"), AlbumID: testID("al1")}, {ID: testID("s2"), AlbumID: testID("al1")},
 			})
 			createWith(testID("al1"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s1"), testID("s2")}))
-			Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByAlbum(testID("al1")).Filters))
+			Expect(ds.MediaFile().(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByAlbum(testID("al1")).Filters))
 		})
 
 		It("expands an artist id into its songs", func() {
-			ds.Artist(ctx).(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
-			ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}, {ID: testID("s2")}})
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1")}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1")}, {ID: testID("s2")}})
 			createWith(testID("ar1"))
 			Expect(fp.createdIds).To(Equal([]string{testID("s1"), testID("s2")}))
-			Expect(ds.MediaFile(ctx).(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByArtistID(testID("ar1")).Filters))
+			Expect(ds.MediaFile().(*tests.MockMediaFileRepo).Options.Filters).To(Equal(filter.SongsByArtistID(testID("ar1")).Filters))
 		})
 
 		It("expands a playlist id into its tracks' media file ids", func() {

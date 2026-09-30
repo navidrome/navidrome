@@ -12,34 +12,33 @@ import (
 )
 
 var _ = Describe("PodcastChannelRepository", func() {
-	var adminRepo model.PodcastChannelRepository
-	var userRepo model.PodcastChannelRepository
+	var repo model.PodcastChannelRepository
+	var adminCtx, userCtx context.Context
 
 	BeforeEach(func() {
 		ctx := log.NewContext(context.TODO())
-		adminCtx := request.WithUser(ctx, adminUser)
-		userCtx := request.WithUser(ctx, regularUser)
-		adminRepo = NewPodcastChannelRepository(adminCtx, GetDBXBuilder())
-		userRepo = NewPodcastChannelRepository(userCtx, GetDBXBuilder())
+		adminCtx = request.WithUser(ctx, adminUser)
+		userCtx = request.WithUser(ctx, regularUser)
+		repo = NewPodcastChannelRepository(GetDBXBuilder())
 	})
 
 	Describe("Get", func() {
 		It("returns an existing channel", func() {
-			ch, err := adminRepo.Get("pc-1")
+			ch, err := repo.Get(adminCtx, "pc-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ch.ID).To(Equal("pc-1"))
 			Expect(ch.Title).To(Equal("Test Podcast"))
 		})
 
 		It("returns ErrNotFound for unknown id", func() {
-			_, err := adminRepo.Get("no-such-id")
+			_, err := repo.Get(adminCtx, "no-such-id")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
 	Describe("GetAll", func() {
 		It("returns all channels without episodes", func() {
-			channels, err := adminRepo.GetAll(false)
+			channels, err := repo.GetAll(adminCtx, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(channels)).To(BeNumerically(">=", 2))
 			for _, ch := range channels {
@@ -48,7 +47,7 @@ var _ = Describe("PodcastChannelRepository", func() {
 		})
 
 		It("returns channels with episodes when withEpisodes=true", func() {
-			channels, err := adminRepo.GetAll(true)
+			channels, err := repo.GetAll(adminCtx, true)
 			Expect(err).ToNot(HaveOccurred())
 			var ch1 *model.PodcastChannel
 			for i := range channels {
@@ -69,20 +68,20 @@ var _ = Describe("PodcastChannelRepository", func() {
 				Title:  "New Podcast",
 				Status: model.PodcastStatusNew,
 			}
-			err := adminRepo.Create(ch)
+			err := repo.Create(adminCtx, ch)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ch.ID).ToNot(BeEmpty())
 
-			saved, err := adminRepo.Get(ch.ID)
+			saved, err := repo.Get(adminCtx, ch.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(saved.Title).To(Equal("New Podcast"))
 
 			// cleanup
-			_ = adminRepo.Delete(ch.ID)
+			_ = repo.Delete(adminCtx, ch.ID)
 		})
 
 		It("denies non-admin users", func() {
-			err := userRepo.Create(&model.PodcastChannel{URL: "https://x.com/feed.xml"})
+			err := repo.Create(userCtx, &model.PodcastChannel{URL: "https://x.com/feed.xml"})
 			Expect(err).To(MatchError(rest.ErrPermissionDenied))
 		})
 	})
@@ -94,41 +93,41 @@ var _ = Describe("PodcastChannelRepository", func() {
 				Title:  "Before Update",
 				Status: model.PodcastStatusNew,
 			}
-			_ = adminRepo.Create(ch)
+			_ = repo.Create(adminCtx, ch)
 
 			ch.Title = "After Update"
-			err := adminRepo.UpdateChannel(ch)
+			err := repo.UpdateChannel(adminCtx, ch)
 			Expect(err).ToNot(HaveOccurred())
 
-			saved, _ := adminRepo.Get(ch.ID)
+			saved, _ := repo.Get(adminCtx, ch.ID)
 			Expect(saved.Title).To(Equal("After Update"))
 
 			// cleanup
-			_ = adminRepo.Delete(ch.ID)
+			_ = repo.Delete(adminCtx, ch.ID)
 		})
 	})
 
 	Describe("Delete", func() {
 		It("deletes an existing channel", func() {
 			ch := &model.PodcastChannel{URL: "https://del.example.com/feed.xml", Status: model.PodcastStatusNew}
-			_ = adminRepo.Create(ch)
+			_ = repo.Create(adminCtx, ch)
 
-			err := adminRepo.Delete(ch.ID)
+			err := repo.Delete(adminCtx, ch.ID)
 			Expect(err).ToNot(HaveOccurred())
 
-			_, err = adminRepo.Get(ch.ID)
+			_, err = repo.Get(adminCtx, ch.ID)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
 		It("denies non-admin users", func() {
-			err := userRepo.Delete("pc-1")
+			err := repo.Delete(userCtx, "pc-1")
 			Expect(err).To(MatchError(rest.ErrPermissionDenied))
 		})
 	})
 
 	Describe("Regular user read access", func() {
 		It("allows regular users to read channels", func() {
-			channels, err := userRepo.GetAll(false)
+			channels, err := repo.GetAll(userCtx, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(channels).ToNot(BeEmpty())
 		})

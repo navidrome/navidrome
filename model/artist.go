@@ -1,11 +1,13 @@
 package model
 
 import (
+	"context"
 	"iter"
 	"maps"
 	"slices"
 	"time"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/consts"
 )
 
@@ -84,18 +86,19 @@ type ArtistIndexes []ArtistIndex
 type ArtistCursor iter.Seq2[Artist, error]
 
 type ArtistRepository interface {
-	CountAll(options ...QueryOptions) (int64, error)
-	Exists(id string) (bool, error)
-	Put(m *Artist, colsToUpdate ...string) error
-	UpdateExternalInfo(a *Artist) error
-	Get(id string) (*Artist, error)
-	GetAll(options ...QueryOptions) (Artists, error)
-	GetCursor(options ...QueryOptions) (ArtistCursor, error)
-	GetIndex(includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
+	rest.Repository[Artist]
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Exists(ctx context.Context, id string) (bool, error)
+	Put(ctx context.Context, m *Artist, colsToUpdate ...string) error
+	UpdateExternalInfo(ctx context.Context, a *Artist) error
+	Get(ctx context.Context, id string) (*Artist, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Artists, error)
+	GetCursor(ctx context.Context, options ...QueryOptions) (ArtistCursor, error)
+	GetIndex(ctx context.Context, includeMissing bool, libraryIds []int, roles ...Role) (ArtistIndexes, error)
 
 	// The following methods are used exclusively by the scanner:
-	RefreshPlayCounts() (int64, error)
-	RefreshStats(allArtists bool) (int64, error)
+	RefreshPlayCounts(ctx context.Context) (int64, error)
+	RefreshStats(ctx context.Context, allArtists bool) (int64, error)
 
 	AnnotatedRepository
 	SearchableRepository[Artists]

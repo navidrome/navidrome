@@ -1,6 +1,9 @@
 package tests
 
 import (
+	"context"
+
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -16,7 +19,7 @@ func (r *MockedGenreRepo) init() {
 	}
 }
 
-func (r *MockedGenreRepo) GetAll(options ...model.QueryOptions) (model.Genres, error) {
+func (r *MockedGenreRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Genres, error) {
 	if len(options) > 0 {
 		r.Options = options[0]
 	}
@@ -32,7 +35,7 @@ func (r *MockedGenreRepo) GetAll(options ...model.QueryOptions) (model.Genres, e
 	return all, nil
 }
 
-func (r *MockedGenreRepo) Get(id string) (*model.Genre, error) {
+func (r *MockedGenreRepo) Get(_ context.Context, id string) (*model.Genre, error) {
 	if r.Error != nil {
 		return nil, r.Error
 	}
@@ -51,3 +54,21 @@ func (r *MockedGenreRepo) Put(g *model.Genre) error {
 	r.Data[g.ID] = *g
 	return nil
 }
+
+func (r *MockedGenreRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
+	if r.Error != nil {
+		return 0, r.Error
+	}
+	r.init()
+	return int64(len(r.Data)), nil
+}
+
+func (r *MockedGenreRepo) Read(ctx context.Context, id string) (*model.Genre, error) {
+	return r.Get(ctx, id)
+}
+
+func (r *MockedGenreRepo) ReadAll(ctx context.Context, _ ...rest.QueryOptions) ([]model.Genre, error) {
+	return r.GetAll(ctx)
+}
+
+var _ model.GenreRepository = (*MockedGenreRepo)(nil)

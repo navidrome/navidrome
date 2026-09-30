@@ -12,38 +12,39 @@ import (
 )
 
 var _ = Describe("PodcastEpisodeRepository", func() {
+	var ctx context.Context
 	var repo model.PodcastEpisodeRepository
 
 	BeforeEach(func() {
-		ctx := log.NewContext(context.TODO())
+		ctx = log.NewContext(context.TODO())
 		ctx = request.WithUser(ctx, adminUser)
-		repo = NewPodcastEpisodeRepository(ctx, GetDBXBuilder())
+		repo = NewPodcastEpisodeRepository(GetDBXBuilder())
 	})
 
 	Describe("Get", func() {
 		It("returns an existing episode", func() {
-			ep, err := repo.Get("pe-1")
+			ep, err := repo.Get(ctx, "pe-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ep.Title).To(Equal("Episode 1"))
 			Expect(ep.ChannelID).To(Equal("pc-1"))
 		})
 
 		It("returns ErrNotFound for unknown id", func() {
-			_, err := repo.Get("no-such-id")
+			_, err := repo.Get(ctx, "no-such-id")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
 
 	Describe("GetNewest", func() {
 		It("returns episodes ordered by publish_date DESC", func() {
-			eps, err := repo.GetNewest(10)
+			eps, err := repo.GetNewest(ctx, 10)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(eps)).To(BeNumerically(">=", 2))
 			Expect(eps[0].PublishDate.After(eps[1].PublishDate)).To(BeTrue())
 		})
 
 		It("respects the count limit", func() {
-			eps, err := repo.GetNewest(1)
+			eps, err := repo.GetNewest(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(eps).To(HaveLen(1))
 		})
@@ -51,7 +52,7 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 
 	Describe("GetByChannel", func() {
 		It("returns only episodes belonging to the channel", func() {
-			eps, err := repo.GetByChannel("pc-1")
+			eps, err := repo.GetByChannel(ctx, "pc-1")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(eps).To(HaveLen(2))
 			for _, ep := range eps {
@@ -60,7 +61,7 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 		})
 
 		It("returns empty slice for channel with no episodes", func() {
-			eps, err := repo.GetByChannel("pc-2")
+			eps, err := repo.GetByChannel(ctx, "pc-2")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(eps).To(BeEmpty())
 		})
@@ -68,18 +69,18 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 
 	Describe("GetByGUID", func() {
 		It("returns the episode matching channel+guid", func() {
-			ep, err := repo.GetByGUID("pc-1", "guid-001")
+			ep, err := repo.GetByGUID(ctx, "pc-1", "guid-001")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ep.Title).To(Equal("Episode 1"))
 		})
 
 		It("returns ErrNotFound for unknown guid", func() {
-			_, err := repo.GetByGUID("pc-1", "no-such-guid")
+			_, err := repo.GetByGUID(ctx, "pc-1", "no-such-guid")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 
 		It("returns ErrNotFound when channel does not match", func() {
-			_, err := repo.GetByGUID("pc-2", "guid-001")
+			_, err := repo.GetByGUID(ctx, "pc-2", "guid-001")
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
@@ -93,14 +94,14 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 				Status:      model.PodcastStatusNew,
 				PublishDate: time.Now(),
 			}
-			err := repo.Create(ep)
+			err := repo.Create(ctx, ep)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ep.ID).ToNot(BeEmpty())
 
-			err = repo.Delete(ep.ID)
+			err = repo.Delete(ctx, ep.ID)
 			Expect(err).ToNot(HaveOccurred())
 
-			_, err = repo.Get(ep.ID)
+			_, err = repo.Get(ctx, ep.ID)
 			Expect(err).To(MatchError(model.ErrNotFound))
 		})
 	})
@@ -114,19 +115,19 @@ var _ = Describe("PodcastEpisodeRepository", func() {
 				Status:      model.PodcastStatusNew,
 				PublishDate: time.Now(),
 			}
-			_ = repo.Create(ep)
+			_ = repo.Create(ctx, ep)
 
 			ep.Status = model.PodcastStatusCompleted
 			ep.Path = "/podcasts/pc-1/ep.mp3"
-			err := repo.Update(ep)
+			err := repo.Update(ctx, ep)
 			Expect(err).ToNot(HaveOccurred())
 
-			saved, _ := repo.Get(ep.ID)
+			saved, _ := repo.Get(ctx, ep.ID)
 			Expect(saved.Status).To(Equal(model.PodcastStatusCompleted))
 			Expect(saved.Path).To(Equal("/podcasts/pc-1/ep.mp3"))
 
 			// cleanup
-			_ = repo.Delete(ep.ID)
+			_ = repo.Delete(ctx, ep.ID)
 		})
 	})
 })

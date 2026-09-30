@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // Artwork is one unique image, identified by the XXH3-64 hash of its bytes.
 type Artwork struct {
@@ -116,60 +119,60 @@ const (
 
 // Delete* takes the rows to remove; Purge* finds them itself and reports how many went.
 type ArtworkRepository interface {
-	GetImage(hash string) (*Artwork, error)
-	PutImage(a *Artwork) error
+	GetImage(ctx context.Context, hash string) (*Artwork, error)
+	PutImage(ctx context.Context, a *Artwork) error
 	// PurgeOrphans deletes rows referenced by no item_artwork row and older than cutoff.
-	PurgeOrphans(createdBefore time.Time) (int64, error)
-	GetItemArtwork(kind Kind, id, imageType string) (*ItemArtwork, error)
-	PutItemArtwork(ia *ItemArtwork) error
+	PurgeOrphans(ctx context.Context, createdBefore time.Time) (int64, error)
+	GetItemArtwork(ctx context.Context, kind Kind, id, imageType string) (*ItemArtwork, error)
+	PutItemArtwork(ctx context.Context, ia *ItemArtwork) error
 	// PutLastFailure records the trace of the attempt that exhausted the retry budget.
-	PutLastFailure(kind Kind, id, imageType, trace string) error
-	DeleteForItems(kind Kind, ids []string) error
+	PutLastFailure(ctx context.Context, kind Kind, id, imageType, trace string) error
+	DeleteForItems(ctx context.Context, kind Kind, ids []string) error
 	// GetInfoForItems hydrates a page in one batched query.
-	GetInfoForItems(kind Kind, ids []string) (map[string]ItemArtworkInfo, error)
+	GetInfoForItems(ctx context.Context, kind Kind, ids []string) (map[string]ItemArtworkInfo, error)
 	// GetMimeByHash returns hash -> current mime for every stored artwork.
-	GetMimeByHash() (map[string]string, error)
+	GetMimeByHash(ctx context.Context) (map[string]string, error)
 	// PurgeDanglingItems removes state rows whose entity no longer exists.
-	PurgeDanglingItems() (int64, error)
+	PurgeDanglingItems(ctx context.Context) (int64, error)
 }
 
 type ArtworkQueueRepository interface {
 	// Get returns the pending row for an item, or ErrNotFound when it is not queued.
-	Get(kind Kind, id, imageType string) (*ArtworkQueueItem, error)
+	Get(ctx context.Context, kind Kind, id, imageType string) (*ArtworkQueueItem, error)
 	// Enqueue upserts; an existing row keeps the higher priority and has its retry_at reset.
-	Enqueue(items ...ArtworkQueueItem) error
+	Enqueue(ctx context.Context, items ...ArtworkQueueItem) error
 	// EnqueuePreservingBackoff upserts like Enqueue but preserves an existing row's retry_at, so a
 	// request-triggered read-through never resets a failed resolution's backoff.
-	EnqueuePreservingBackoff(items ...ArtworkQueueItem) error
+	EnqueuePreservingBackoff(ctx context.Context, items ...ArtworkQueueItem) error
 	// EnqueueAllMissing inserts queue rows for all entities with no item_artwork row, at the given priority.
-	EnqueueAllMissing(kind Kind, priority int) (int64, error)
+	EnqueueAllMissing(ctx context.Context, kind Kind, priority int) (int64, error)
 	// EnqueueIfMissing inserts only for items with no item_artwork row yet.
-	EnqueueIfMissing(items ...ArtworkQueueItem) error
+	EnqueueIfMissing(ctx context.Context, items ...ArtworkQueueItem) error
 	// CountBySource reports how many items of a kind currently resolve from the given sources.
 	// An empty sources slice means every source; "" matches absent state, and the pseudo-source
 	// ArtworkSourceFailed matches the absent states that gave up.
-	CountBySource(kind Kind, sources []string) (int64, error)
+	CountBySource(ctx context.Context, kind Kind, sources []string) (int64, error)
 	// SourcesInUse lists the distinct sources items of a kind currently resolve from, "" included.
-	SourcesInUse(kind Kind) ([]string, error)
+	SourcesInUse(ctx context.Context, kind Kind) ([]string, error)
 	// EnqueueBySource inserts queue rows for items of a kind whose current source matches.
 	// It does not clear existing artwork state: the current image stays until it is replaced.
-	EnqueueBySource(kind Kind, sources []string, priority int) (int64, error)
+	EnqueueBySource(ctx context.Context, kind Kind, sources []string, priority int) (int64, error)
 	// DequeueBatch returns up to n items with retry_at <= now, priority desc, enqueued_at asc.
 	// Restricted to the given kinds when any are passed, so one kind cannot block another's drain.
-	DequeueBatch(n int, kinds ...string) ([]ArtworkQueueItem, error)
+	DequeueBatch(ctx context.Context, n int, kinds ...string) ([]ArtworkQueueItem, error)
 	// MarkFailedIfUnchanged applies the failure backoff only while retry_at still matches
 	// seenRetryAt, so a concurrent re-enqueue keeps its fresh eligibility.
-	MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error
+	MarkFailedIfUnchanged(ctx context.Context, kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error
 	// DeleteIfUnchanged deletes only while retry_at still matches, sparing a concurrent re-enqueue.
-	DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error
-	Count() (int64, error)
+	DeleteIfUnchanged(ctx context.Context, kind, id, imageType string, retryAt time.Time) error
+	Count(ctx context.Context) (int64, error)
 	// CountQueued reports the pending rows matching the kinds and priorities, grouped by both;
 	// an empty filter means every one.
-	CountQueued(kinds []Kind, priorities []int) ([]ArtworkQueueStat, error)
+	CountQueued(ctx context.Context, kinds []Kind, priorities []int) ([]ArtworkQueueStat, error)
 	// PurgeDangling removes queue rows whose entity no longer exists.
-	PurgeDangling() (int64, error)
+	PurgeDangling(ctx context.Context) (int64, error)
 	// PurgeQueued removes pending rows matching the kinds and priorities; an empty filter means every one.
-	PurgeQueued(kinds []Kind, priorities []int) (int64, error)
+	PurgeQueued(ctx context.Context, kinds []Kind, priorities []int) (int64, error)
 }
 
 type ArtworkQueueStat struct {

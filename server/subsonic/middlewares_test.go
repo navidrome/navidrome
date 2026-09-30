@@ -3,6 +3,7 @@ package subsonic
 import (
 	"context"
 	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -42,11 +43,13 @@ func newPostRequest(queryParam string, formFields ...string) *http.Request {
 }
 
 var _ = Describe("Middlewares", func() {
+	var ctx context.Context
 	var next *mockHandler
 	var w *httptest.ResponseRecorder
 	var ds model.DataStore
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		next = &mockHandler{}
 		w = httptest.NewRecorder()
 		ds = &tests.MockDataStore{}
@@ -117,6 +120,14 @@ var _ = Describe("Middlewares", func() {
 			Expect(next.called).To(BeTrue())
 		})
 
+		It("does not require u when apiKey is present", func() {
+			r := newGetRequest("apiKey=nds_abc", "v=1.15", "c=test")
+			cp := checkRequiredParameters(next)
+			cp.ServeHTTP(w, r)
+
+			Expect(next.called).To(BeTrue())
+		})
+
 		It("fails when user is missing", func() {
 			r := newGetRequest("v=1.15", "c=test")
 			cp := checkRequiredParameters(next)
@@ -147,8 +158,8 @@ var _ = Describe("Middlewares", func() {
 
 	Describe("Authenticate", func() {
 		BeforeEach(func() {
-			ur := ds.User(context.TODO())
-			_ = ur.Put(&model.User{
+			ur := ds.User()
+			_ = ur.Put(ctx, &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
@@ -309,6 +320,101 @@ var _ = Describe("Middlewares", func() {
 			})
 		})
 
+		When("using API key authentication", func() {
+			var key string
+			serve := func(params ...string) {
+				authenticate(ds)(next).ServeHTTP(w, newGetRequest(params...))
+			}
+
+			BeforeEach(func() {
+				usr, err := ds.User().FindByUsername(ctx, "admin")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ds.Player().Put(ctx, &model.Player{ID: "player-1", Name: "My Phone", UserId: usr.ID, Client: "Symfonium"})).To(Succeed())
+				key = "nds_0123456789abcdefghijkl"
+				Expect(ds.Player().SetAPIKey(ctx, "player-1", key)).To(Succeed())
+			})
+
+			It("authenticates the owner and binds the key's player", func() {
+				serve("apiKey=" + key)
+
+				Expect(next.called).To(BeTrue())
+				user, _ := request.UserFrom(next.req.Context())
+				Expect(user.UserName).To(Equal("admin"))
+				username, _ := request.UsernameFrom(next.req.Context())
+				Expect(username).To(Equal("admin"))
+				player, ok := request.PlayerFrom(next.req.Context())
+				Expect(ok).To(BeTrue())
+				Expect(player.ID).To(Equal("player-1"))
+			})
+
+			It("accepts the key in a POST form body", func() {
+				r := newPostRequest("", "apiKey="+key)
+				cp := postFormToQueryParams(authenticate(ds)(next))
+				cp.ServeHTTP(w, r)
+
+				Expect(next.called).To(BeTrue())
+				player, _ := request.PlayerFrom(next.req.Context())
+				Expect(player.ID).To(Equal("player-1"))
+			})
+
+			It("rejects an unknown key with error 44", func() {
+				serve("apiKey=nds_unknown")
+
+				Expect(w.Body.String()).To(ContainSubstring(`code="44"`))
+				Expect(next.called).To(BeFalse())
+			})
+
+			DescribeTable("rejects apiKey mixed with other credentials with error 43",
+				func(extra string) {
+					serve("apiKey="+key, extra)
+
+					Expect(w.Body.String()).To(ContainSubstring(`code="43"`))
+					Expect(next.called).To(BeFalse())
+				},
+				Entry("u", "u=admin"),
+				Entry("p", "p=wordpass"),
+				Entry("t", "t=abc"),
+				Entry("s", "s=abc"),
+				Entry("jwt", "jwt=abc"),
+				Entry("empty u", "u="),
+				Entry("empty p", "p="),
+			)
+
+			Context("key sent as the password", func() {
+				It("authenticates and binds the key's player", func() {
+					serve("u=admin", "p="+key)
+
+					Expect(next.called).To(BeTrue())
+					player, ok := request.PlayerFrom(next.req.Context())
+					Expect(ok).To(BeTrue())
+					Expect(player.ID).To(Equal("player-1"))
+				})
+
+				It("accepts the hex-encoded form", func() {
+					serve("u=admin", "p=enc:"+hex.EncodeToString([]byte(key)))
+
+					Expect(next.called).To(BeTrue())
+				})
+
+				It("still accepts a real password that starts with the key prefix", func() {
+					Expect(ds.User().Put(ctx, &model.User{UserName: "prefixed", NewPassword: "nds_secret"})).To(Succeed())
+					serve("u=prefixed", "p=nds_secret")
+
+					Expect(next.called).To(BeTrue())
+					_, ok := request.PlayerFrom(next.req.Context())
+					Expect(ok).To(BeFalse())
+				})
+
+				It("rejects another user's key with error 40", func() {
+					Expect(ds.User().Put(ctx, &model.User{UserName: "other", NewPassword: "pw"})).To(Succeed())
+					serve("u=other", "p="+key)
+
+					Expect(w.Body.String()).To(ContainSubstring(`code="40"`))
+					Expect(next.called).To(BeFalse())
+				})
+			})
+		})
+
 		When("failed attempts reach AuthRequestLimit", func() {
 			var cp http.Handler
 
@@ -344,7 +450,7 @@ var _ = Describe("Middlewares", func() {
 
 			It("counts attempts against unknown usernames", func() {
 				failTimes(3, "u=newuser", "p=secret")
-				_ = ds.User(context.TODO()).Put(&model.User{UserName: "newuser", NewPassword: "secret"})
+				_ = ds.User().Put(ctx, &model.User{UserName: "newuser", NewPassword: "secret"})
 
 				serve(newGetRequest("u=newuser", "p=secret"))
 				Expect(next.called).To(BeFalse())
@@ -365,7 +471,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not count server errors", func() {
-				userRepo := ds.User(context.TODO()).(*tests.MockedUserRepo)
+				userRepo := ds.User().(*tests.MockedUserRepo)
 				userRepo.Error = errors.New("db down")
 				failTimes(5, "u=admin", "p=wordpass")
 				userRepo.Error = nil
@@ -374,8 +480,23 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeTrue())
 			})
 
+			It("does not count server errors when a key is sent as the password", func() {
+				usr, _ := ds.User().FindByUsername(ctx, "admin")
+				playerRepo := ds.Player().(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				key := "nds_0123456789abcdefghijkl"
+				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+
+				playerRepo.Error = errors.New("db down")
+				failTimes(5, "u=admin", "p="+key)
+				playerRepo.Error = nil
+
+				serve(newGetRequest("u=admin", "p="+key))
+				Expect(next.called).To(BeTrue())
+			})
+
 			It("does not block other usernames from the same IP", func() {
-				_ = ds.User(context.TODO()).Put(&model.User{UserName: "other", NewPassword: "otherpass"})
+				_ = ds.User().Put(ctx, &model.User{UserName: "other", NewPassword: "otherpass"})
 				failTimes(3, "u=admin", "p=WRONG")
 
 				serve(newGetRequest("u=other", "p=otherpass"))
@@ -403,6 +524,25 @@ var _ = Describe("Middlewares", func() {
 				Expect(next.called).To(BeTrue())
 			})
 
+			It("throttles a repeated bad key without locking out valid keys from the same IP", func() {
+				usr, _ := ds.User().FindByUsername(ctx, "admin")
+				playerRepo := ds.Player().(*tests.MockPlayerRepo)
+				Expect(playerRepo.Put(ctx, &model.Player{ID: "player-1", UserId: usr.ID})).To(Succeed())
+				key := "nds_0123456789abcdefghijkl"
+				Expect(playerRepo.SetAPIKey(ctx, "player-1", key)).To(Succeed())
+
+				for range 3 {
+					Expect(serve(newGetRequest("apiKey=nds_bad")).Body.String()).To(ContainSubstring(`code="44"`))
+				}
+				playerRepo.APIKeys["nds_bad"] = "player-1"
+				rec := serve(newGetRequest("apiKey=nds_bad"))
+				Expect(next.called).To(BeFalse())
+				Expect(rec.Body.String()).To(ContainSubstring(`code="44"`))
+
+				serve(newGetRequest("apiKey=" + key))
+				Expect(next.called).To(BeTrue())
+			})
+
 			It("is disabled when AuthRequestLimit is 0", func() {
 				conf.Server.AuthRequestLimit = 0
 				cp = authenticate(ds)(next)
@@ -422,7 +562,7 @@ var _ = Describe("Middlewares", func() {
 				conf.Server.AuthRequestLimit = 5
 				conf.Server.AuthWindowLength = time.Minute
 				gate = &gatedUserRepo{
-					UserRepository: ds.User(context.TODO()),
+					UserRepository: ds.User(),
 					entered:        make(chan struct{}, 64),
 					proceed:        make(chan struct{}),
 				}
@@ -530,6 +670,24 @@ var _ = Describe("Middlewares", func() {
 			Expect(cookieStr).To(BeEmpty())
 		})
 
+		Context("player bound by an API key", func() {
+			BeforeEach(func() {
+				r = r.WithContext(request.WithPlayer(r.Context(), model.Player{ID: "keyed"}))
+				gp := getPlayer(mockedPlayers)(next)
+				gp.ServeHTTP(w, r)
+			})
+
+			It("uses the key's player", func() {
+				Expect(mockedPlayers.touched).To(BeTrue())
+				player, _ := request.PlayerFrom(next.req.Context())
+				Expect(player.ID).To(Equal("keyed"))
+			})
+
+			It("does not set the player cookie", func() {
+				Expect(w.Header().Get("Set-Cookie")).To(BeEmpty())
+			})
+		})
+
 		Context("PlayerId specified in Cookies", func() {
 			BeforeEach(func() {
 				cookie := &http.Cookie{
@@ -583,14 +741,14 @@ var _ = Describe("Middlewares", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			ur := ds.User(context.TODO())
-			_ = ur.Put(&model.User{
+			ur := ds.User()
+			_ = ur.Put(ctx, &model.User{
 				UserName:    "admin",
 				NewPassword: "wordpass",
 			})
 
 			var err error
-			usr, err = ur.FindByUsernameWithPassword("admin")
+			usr, err = ur.FindByUsernameWithPassword(ctx, "admin")
 			if err != nil {
 				panic(err)
 			}
@@ -710,6 +868,12 @@ func (mh *mockHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type mockPlayers struct {
 	core.Players
 	transcoding *model.Transcoding
+	touched     bool
+}
+
+func (mp *mockPlayers) Touch(_ context.Context, plr model.Player, _, _, _ string) (*model.Player, *model.Transcoding, error) {
+	mp.touched = true
+	return &plr, mp.transcoding, nil
 }
 
 func (mp *mockPlayers) Get(ctx context.Context, playerId string) (*model.Player, error) {
@@ -728,7 +892,7 @@ type gatedDataStore struct {
 	users model.UserRepository
 }
 
-func (g *gatedDataStore) User(context.Context) model.UserRepository { return g.users }
+func (g *gatedDataStore) User() model.UserRepository { return g.users }
 
 type gatedUserRepo struct {
 	model.UserRepository
@@ -737,11 +901,11 @@ type gatedUserRepo struct {
 	lookups atomic.Int32
 }
 
-func (g *gatedUserRepo) FindByUsernameWithPassword(username string) (*model.User, error) {
+func (g *gatedUserRepo) FindByUsernameWithPassword(ctx context.Context, username string) (*model.User, error) {
 	g.lookups.Add(1)
 	g.entered <- struct{}{}
 	<-g.proceed
-	return g.UserRepository.FindByUsernameWithPassword(username)
+	return g.UserRepository.FindByUsernameWithPassword(ctx, username)
 }
 
 type countingHandler struct{ calls atomic.Int32 }

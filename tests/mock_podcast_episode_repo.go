@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"sort"
 
@@ -18,7 +19,7 @@ func CreateMockPodcastEpisodeRepo() *MockPodcastEpisodeRepo {
 	return &MockPodcastEpisodeRepo{Data: map[string]*model.PodcastEpisode{}}
 }
 
-func (m *MockPodcastEpisodeRepo) Get(epID string) (*model.PodcastEpisode, error) {
+func (m *MockPodcastEpisodeRepo) Get(ctx context.Context, epID string) (*model.PodcastEpisode, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -28,7 +29,7 @@ func (m *MockPodcastEpisodeRepo) Get(epID string) (*model.PodcastEpisode, error)
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPodcastEpisodeRepo) GetNewest(count int) (model.PodcastEpisodes, error) {
+func (m *MockPodcastEpisodeRepo) GetNewest(ctx context.Context, count int) (model.PodcastEpisodes, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -45,7 +46,7 @@ func (m *MockPodcastEpisodeRepo) GetNewest(count int) (model.PodcastEpisodes, er
 	return all, nil
 }
 
-func (m *MockPodcastEpisodeRepo) GetByChannels(channelIDs []string) (model.PodcastEpisodes, error) {
+func (m *MockPodcastEpisodeRepo) GetByChannels(ctx context.Context, channelIDs []string) (model.PodcastEpisodes, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -62,7 +63,7 @@ func (m *MockPodcastEpisodeRepo) GetByChannels(channelIDs []string) (model.Podca
 	return result, nil
 }
 
-func (m *MockPodcastEpisodeRepo) GetByChannel(channelID string) (model.PodcastEpisodes, error) {
+func (m *MockPodcastEpisodeRepo) GetByChannel(ctx context.Context, channelID string) (model.PodcastEpisodes, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -75,7 +76,7 @@ func (m *MockPodcastEpisodeRepo) GetByChannel(channelID string) (model.PodcastEp
 	return result, nil
 }
 
-func (m *MockPodcastEpisodeRepo) GetByGUID(channelID, guid string) (*model.PodcastEpisode, error) {
+func (m *MockPodcastEpisodeRepo) GetByGUID(ctx context.Context, channelID, guid string) (*model.PodcastEpisode, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -87,7 +88,7 @@ func (m *MockPodcastEpisodeRepo) GetByGUID(channelID, guid string) (*model.Podca
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPodcastEpisodeRepo) Create(ep *model.PodcastEpisode) error {
+func (m *MockPodcastEpisodeRepo) Create(ctx context.Context, ep *model.PodcastEpisode) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -98,7 +99,7 @@ func (m *MockPodcastEpisodeRepo) Create(ep *model.PodcastEpisode) error {
 	return nil
 }
 
-func (m *MockPodcastEpisodeRepo) Update(ep *model.PodcastEpisode) error {
+func (m *MockPodcastEpisodeRepo) Update(ctx context.Context, ep *model.PodcastEpisode) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -106,7 +107,7 @@ func (m *MockPodcastEpisodeRepo) Update(ep *model.PodcastEpisode) error {
 	return nil
 }
 
-func (m *MockPodcastEpisodeRepo) Delete(epID string) error {
+func (m *MockPodcastEpisodeRepo) Delete(ctx context.Context, epID string) error {
 	if m.Err {
 		return errors.New("error")
 	}

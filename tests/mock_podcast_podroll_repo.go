@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -19,7 +20,7 @@ func CreateMockPodcastPodrollRepo() *MockPodcastPodrollRepo {
 	return &MockPodcastPodrollRepo{Data: map[string]*model.PodcastPodrollItem{}}
 }
 
-func (m *MockPodcastPodrollRepo) GetByChannel(channelID string) (model.PodcastPodrollItems, error) {
+func (m *MockPodcastPodrollRepo) GetByChannel(ctx context.Context, channelID string) (model.PodcastPodrollItems, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -32,7 +33,7 @@ func (m *MockPodcastPodrollRepo) GetByChannel(channelID string) (model.PodcastPo
 	return result, nil
 }
 
-func (m *MockPodcastPodrollRepo) GetByChannels(channelIDs []string) (model.PodcastPodrollItems, error) {
+func (m *MockPodcastPodrollRepo) GetByChannels(ctx context.Context, channelIDs []string) (model.PodcastPodrollItems, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -49,7 +50,7 @@ func (m *MockPodcastPodrollRepo) GetByChannels(channelIDs []string) (model.Podca
 	return result, nil
 }
 
-func (m *MockPodcastPodrollRepo) SaveForChannel(channelID string, items []model.PodcastPodrollItem) error {
+func (m *MockPodcastPodrollRepo) SaveForChannel(ctx context.Context, channelID string, items []model.PodcastPodrollItem) error {
 	if m.Err {
 		return errors.New("error")
 	}

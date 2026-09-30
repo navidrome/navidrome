@@ -49,6 +49,7 @@ const (
 	DefaultEncryptionKey  = "just for obfuscation"
 	PasswordsEncryptedKey = "PasswordsEncryptedKey"
 	PasswordAutogenPrefix = "__NAVIDROME_AUTOGEN__" //nolint:gosec
+	APIKeyPrefix          = "nds_"
 
 	DevInitialUserName = "admin"
 	DevInitialName     = "Dev Admin"
@@ -59,6 +60,7 @@ const (
 	URLPathPublic       = "/share"
 	URLPathPublicImages = URLPathPublic + "/img"
 	URLPathJellyfinAPI  = "/jellyfin"
+	URLPathAPIv1        = "/api/v1"
 
 	// JellyfinServerIDKey is the Property key for the stable, persisted server Id reported by the
 	// Jellyfin API. Jellyfin clients cache this value, so it must survive process restarts.

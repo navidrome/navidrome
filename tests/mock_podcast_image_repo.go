@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -17,7 +18,7 @@ func CreateMockPodcastImageRepo() *MockPodcastImageRepo {
 	return &MockPodcastImageRepo{Data: map[string]*model.PodcastImage{}}
 }
 
-func (m *MockPodcastImageRepo) GetByChannel(channelID string) (model.PodcastImages, error) {
+func (m *MockPodcastImageRepo) GetByChannel(ctx context.Context, channelID string) (model.PodcastImages, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -30,7 +31,7 @@ func (m *MockPodcastImageRepo) GetByChannel(channelID string) (model.PodcastImag
 	return result, nil
 }
 
-func (m *MockPodcastImageRepo) GetByChannels(channelIDs []string) (model.PodcastImages, error) {
+func (m *MockPodcastImageRepo) GetByChannels(ctx context.Context, channelIDs []string) (model.PodcastImages, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -47,7 +48,7 @@ func (m *MockPodcastImageRepo) GetByChannels(channelIDs []string) (model.Podcast
 	return result, nil
 }
 
-func (m *MockPodcastImageRepo) GetByEpisode(episodeID string) (model.PodcastImages, error) {
+func (m *MockPodcastImageRepo) GetByEpisode(ctx context.Context, episodeID string) (model.PodcastImages, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -60,7 +61,7 @@ func (m *MockPodcastImageRepo) GetByEpisode(episodeID string) (model.PodcastImag
 	return result, nil
 }
 
-func (m *MockPodcastImageRepo) GetByEpisodes(episodeIDs []string) (model.PodcastImages, error) {
+func (m *MockPodcastImageRepo) GetByEpisodes(ctx context.Context, episodeIDs []string) (model.PodcastImages, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -77,7 +78,7 @@ func (m *MockPodcastImageRepo) GetByEpisodes(episodeIDs []string) (model.Podcast
 	return result, nil
 }
 
-func (m *MockPodcastImageRepo) SaveForChannel(channelID string, images []model.PodcastImage) error {
+func (m *MockPodcastImageRepo) SaveForChannel(ctx context.Context, channelID string, images []model.PodcastImage) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -95,7 +96,7 @@ func (m *MockPodcastImageRepo) SaveForChannel(channelID string, images []model.P
 	return nil
 }
 
-func (m *MockPodcastImageRepo) SaveForEpisode(episodeID string, images []model.PodcastImage) error {
+func (m *MockPodcastImageRepo) SaveForEpisode(ctx context.Context, episodeID string, images []model.PodcastImage) error {
 	if m.Err {
 		return errors.New("error")
 	}

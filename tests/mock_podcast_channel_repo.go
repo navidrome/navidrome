@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -17,7 +18,7 @@ func CreateMockPodcastChannelRepo() *MockPodcastChannelRepo {
 	return &MockPodcastChannelRepo{Data: map[string]*model.PodcastChannel{}}
 }
 
-func (m *MockPodcastChannelRepo) Get(chanID string) (*model.PodcastChannel, error) {
+func (m *MockPodcastChannelRepo) Get(ctx context.Context, chanID string) (*model.PodcastChannel, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -27,7 +28,7 @@ func (m *MockPodcastChannelRepo) Get(chanID string) (*model.PodcastChannel, erro
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPodcastChannelRepo) GetAll(withEpisodes bool) (model.PodcastChannels, error) {
+func (m *MockPodcastChannelRepo) GetAll(ctx context.Context, withEpisodes bool) (model.PodcastChannels, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -38,7 +39,7 @@ func (m *MockPodcastChannelRepo) GetAll(withEpisodes bool) (model.PodcastChannel
 	return result, nil
 }
 
-func (m *MockPodcastChannelRepo) Create(channel *model.PodcastChannel) error {
+func (m *MockPodcastChannelRepo) Create(ctx context.Context, channel *model.PodcastChannel) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -49,7 +50,7 @@ func (m *MockPodcastChannelRepo) Create(channel *model.PodcastChannel) error {
 	return nil
 }
 
-func (m *MockPodcastChannelRepo) UpdateChannel(channel *model.PodcastChannel) error {
+func (m *MockPodcastChannelRepo) UpdateChannel(ctx context.Context, channel *model.PodcastChannel) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -57,7 +58,7 @@ func (m *MockPodcastChannelRepo) UpdateChannel(channel *model.PodcastChannel) er
 	return nil
 }
 
-func (m *MockPodcastChannelRepo) ExistsByURL(url string) (bool, error) {
+func (m *MockPodcastChannelRepo) ExistsByURL(ctx context.Context, url string) (bool, error) {
 	if m.Err {
 		return false, errors.New("error")
 	}
@@ -69,13 +70,15 @@ func (m *MockPodcastChannelRepo) ExistsByURL(url string) (bool, error) {
 	return false, nil
 }
 
-func (m *MockPodcastChannelRepo) Delete(chanID string) error {
+func (m *MockPodcastChannelRepo) Delete(ctx context.Context, ids ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
-	if _, ok := m.Data[chanID]; !ok {
-		return model.ErrNotFound
+	for _, chanID := range ids {
+		if _, ok := m.Data[chanID]; !ok {
+			return model.ErrNotFound
+		}
+		delete(m.Data, chanID)
 	}
-	delete(m.Data, chanID)
 	return nil
 }

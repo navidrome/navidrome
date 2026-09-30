@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/deluan/rest"
+)
 
 // PodcastPodrollItem represents one entry in a podcast:podroll recommendation list.
 type PodcastPodrollItem struct {
@@ -35,16 +40,16 @@ type PodcastPodrollItems []PodcastPodrollItem
 
 // PodcastPodrollRepository manages podcast:podroll entries for channels.
 type PodcastPodrollRepository interface {
-	GetByChannel(channelID string) (PodcastPodrollItems, error)
-	GetByChannels(channelIDs []string) (PodcastPodrollItems, error)
-	SaveForChannel(channelID string, items []PodcastPodrollItem) error
+	GetByChannel(ctx context.Context, channelID string) (PodcastPodrollItems, error)
+	GetByChannels(ctx context.Context, channelIDs []string) (PodcastPodrollItems, error)
+	SaveForChannel(ctx context.Context, channelID string, items []PodcastPodrollItem) error
 }
 
 // PodcastLiveItemRepository manages podcast:liveItem entries (one per channel).
 type PodcastLiveItemRepository interface {
-	GetByChannel(channelID string) (*PodcastLiveItem, error)
-	Upsert(item *PodcastLiveItem) error
-	DeleteByChannel(channelID string) error
+	GetByChannel(ctx context.Context, channelID string) (*PodcastLiveItem, error)
+	Upsert(ctx context.Context, item *PodcastLiveItem) error
+	DeleteByChannel(ctx context.Context, channelID string) error
 }
 
 type PodcastStatus string
@@ -59,15 +64,15 @@ const (
 )
 
 type PodcastChannel struct {
-	ID           string          `structs:"id"             json:"id"`
-	URL          string          `structs:"url"            json:"url"`
-	Title        string          `structs:"title"          json:"title"`
-	Description  string          `structs:"description"    json:"description"`
-	ImageURL     string          `structs:"image_url"      json:"imageUrl"`
-	Status       PodcastStatus   `structs:"status"         json:"status"`
-	ErrorMessage string          `structs:"error_message"  json:"errorMessage"`
-	CreatedAt    time.Time       `structs:"created_at"     json:"createdAt"`
-	UpdatedAt    time.Time       `structs:"updated_at"     json:"updatedAt"`
+	ID           string        `structs:"id"             json:"id"`
+	URL          string        `structs:"url"            json:"url"`
+	Title        string        `structs:"title"          json:"title"`
+	Description  string        `structs:"description"    json:"description"`
+	ImageURL     string        `structs:"image_url"      json:"imageUrl"`
+	Status       PodcastStatus `structs:"status"         json:"status"`
+	ErrorMessage string        `structs:"error_message"  json:"errorMessage"`
+	CreatedAt    time.Time     `structs:"created_at"     json:"createdAt"`
+	UpdatedAt    time.Time     `structs:"updated_at"     json:"updatedAt"`
 
 	// Podcasting 2.0 — Tier 1
 	PodcastGUID string `structs:"podcast_guid" json:"podcastGuid,omitempty"`
@@ -89,7 +94,7 @@ type PodcastChannel struct {
 	PublisherURL    string `structs:"publisher_url"    json:"publisherUrl,omitempty"`
 
 	// Podcasting 2.0 — Tier 3
-	UsesPodping bool               `structs:"uses_podping" json:"usesPodping,omitempty"`
+	UsesPodping bool                `structs:"uses_podping" json:"usesPodping,omitempty"`
 	Podroll     PodcastPodrollItems `structs:"-"            json:"podroll,omitempty"`
 	LiveItem    *PodcastLiveItem    `structs:"-"            json:"liveItem,omitempty"`
 
@@ -184,59 +189,61 @@ type PodcastImage struct {
 	CreatedAt time.Time `structs:"created_at" json:"createdAt"`
 }
 
-type PodcastChannels    []PodcastChannel
-type PodcastEpisodes    []PodcastEpisode
+type PodcastChannels []PodcastChannel
+type PodcastEpisodes []PodcastEpisode
 type PodcastTranscripts []PodcastTranscript
-type PodcastPersons     []PodcastPerson
+type PodcastPersons []PodcastPerson
 type PodcastFundingItems []PodcastFundingItem
-type PodcastImages       []PodcastImage
+type PodcastImages []PodcastImage
 
 type PodcastChannelRepository interface {
-	Get(id string) (*PodcastChannel, error)
-	GetAll(withEpisodes bool) (PodcastChannels, error)
-	ExistsByURL(url string) (bool, error)
-	Create(channel *PodcastChannel) error
-	UpdateChannel(channel *PodcastChannel) error
-	Delete(id string) error
+	rest.Repository[PodcastChannel]
+	rest.Persistable[PodcastChannel]
+	Get(ctx context.Context, id string) (*PodcastChannel, error)
+	GetAll(ctx context.Context, withEpisodes bool) (PodcastChannels, error)
+	ExistsByURL(ctx context.Context, url string) (bool, error)
+	Create(ctx context.Context, channel *PodcastChannel) error
+	UpdateChannel(ctx context.Context, channel *PodcastChannel) error
+	Delete(ctx context.Context, ids ...string) error
 }
 
 type PodcastEpisodeRepository interface {
-	Get(id string) (*PodcastEpisode, error)
-	GetNewest(count int) (PodcastEpisodes, error)
-	GetByChannel(channelID string) (PodcastEpisodes, error)
-	GetByChannels(channelIDs []string) (PodcastEpisodes, error)
-	GetByGUID(channelID, guid string) (*PodcastEpisode, error)
-	Create(ep *PodcastEpisode) error
-	Update(ep *PodcastEpisode) error
-	Delete(id string) error
+	Get(ctx context.Context, id string) (*PodcastEpisode, error)
+	GetNewest(ctx context.Context, count int) (PodcastEpisodes, error)
+	GetByChannel(ctx context.Context, channelID string) (PodcastEpisodes, error)
+	GetByChannels(ctx context.Context, channelIDs []string) (PodcastEpisodes, error)
+	GetByGUID(ctx context.Context, channelID, guid string) (*PodcastEpisode, error)
+	Create(ctx context.Context, ep *PodcastEpisode) error
+	Update(ctx context.Context, ep *PodcastEpisode) error
+	Delete(ctx context.Context, id string) error
 }
 
 type PodcastTranscriptRepository interface {
-	GetByEpisode(episodeID string) (PodcastTranscripts, error)
-	GetByEpisodes(episodeIDs []string) (PodcastTranscripts, error)
-	Save(transcripts []PodcastTranscript) error
-	DeleteByEpisode(episodeID string) error
+	GetByEpisode(ctx context.Context, episodeID string) (PodcastTranscripts, error)
+	GetByEpisodes(ctx context.Context, episodeIDs []string) (PodcastTranscripts, error)
+	Save(ctx context.Context, transcripts []PodcastTranscript) error
+	DeleteByEpisode(ctx context.Context, episodeID string) error
 }
 
 type PodcastPersonRepository interface {
-	GetByChannel(channelID string) (PodcastPersons, error)
-	GetByEpisode(episodeID string) (PodcastPersons, error)
-	GetByEpisodes(episodeIDs []string) (PodcastPersons, error)
-	SaveForChannel(channelID string, persons []PodcastPerson) error
-	SaveForEpisode(episodeID string, persons []PodcastPerson) error
+	GetByChannel(ctx context.Context, channelID string) (PodcastPersons, error)
+	GetByEpisode(ctx context.Context, episodeID string) (PodcastPersons, error)
+	GetByEpisodes(ctx context.Context, episodeIDs []string) (PodcastPersons, error)
+	SaveForChannel(ctx context.Context, channelID string, persons []PodcastPerson) error
+	SaveForEpisode(ctx context.Context, episodeID string, persons []PodcastPerson) error
 }
 
 type PodcastFundingRepository interface {
-	GetByChannel(channelID string) (PodcastFundingItems, error)
-	GetByChannels(channelIDs []string) (PodcastFundingItems, error)
-	SaveForChannel(channelID string, items []PodcastFundingItem) error
+	GetByChannel(ctx context.Context, channelID string) (PodcastFundingItems, error)
+	GetByChannels(ctx context.Context, channelIDs []string) (PodcastFundingItems, error)
+	SaveForChannel(ctx context.Context, channelID string, items []PodcastFundingItem) error
 }
 
 type PodcastImageRepository interface {
-	GetByChannel(channelID string) (PodcastImages, error)
-	GetByChannels(channelIDs []string) (PodcastImages, error)
-	GetByEpisode(episodeID string) (PodcastImages, error)
-	GetByEpisodes(episodeIDs []string) (PodcastImages, error)
-	SaveForChannel(channelID string, images []PodcastImage) error
-	SaveForEpisode(episodeID string, images []PodcastImage) error
+	GetByChannel(ctx context.Context, channelID string) (PodcastImages, error)
+	GetByChannels(ctx context.Context, channelIDs []string) (PodcastImages, error)
+	GetByEpisode(ctx context.Context, episodeID string) (PodcastImages, error)
+	GetByEpisodes(ctx context.Context, episodeIDs []string) (PodcastImages, error)
+	SaveForChannel(ctx context.Context, channelID string, images []PodcastImage) error
+	SaveForEpisode(ctx context.Context, episodeID string, images []PodcastImage) error
 }

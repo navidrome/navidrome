@@ -94,7 +94,7 @@ type scanner interface {
 }
 
 type controller struct {
-	rootCtx            context.Context
+	rootCtx            context.Context //nolint:containedctx // scanner lifecycle ctx
 	ds                 model.DataStore
 	broker             events.Broker
 	metrics            metrics.Metrics
@@ -108,7 +108,7 @@ type controller struct {
 
 // getLastScanTime returns the most recent scan time across all libraries
 func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
-	libs, err := s.ds.Library(ctx).GetAll(model.QueryOptions{
+	libs, err := s.ds.Library().GetAll(ctx, model.QueryOptions{
 		Sort:  "last_scan_at",
 		Order: "desc",
 		Max:   1,
@@ -126,9 +126,9 @@ func (s *controller) getLastScanTime(ctx context.Context) (time.Time, error) {
 
 // getScanInfo retrieves scan status from the database
 func (s *controller) getScanInfo(ctx context.Context) (scanType string, elapsed time.Duration, lastErr string) {
-	lastErr, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanErrorKey, "")
-	scanType, _ = s.ds.Property(ctx).DefaultGet(consts.LastScanTypeKey, "")
-	startTimeStr, _ := s.ds.Property(ctx).DefaultGet(consts.LastScanStartTimeKey, "")
+	lastErr, _ = s.ds.Property().DefaultGet(ctx, consts.LastScanErrorKey, "")
+	scanType, _ = s.ds.Property().DefaultGet(ctx, consts.LastScanTypeKey, "")
+	startTimeStr, _ := s.ds.Property().DefaultGet(ctx, consts.LastScanStartTimeKey, "")
 
 	if startTimeStr != "" {
 		startTime, err := time.Parse(time.RFC3339, startTimeStr)
@@ -185,7 +185,7 @@ func (s *controller) Status(ctx context.Context) (*model.ScannerStatus, error) {
 }
 
 func (s *controller) getCounters(ctx context.Context) (int64, int64, error) {
-	libs, err := s.ds.Library(ctx).GetAll()
+	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("library count: %w", err)
 	}
@@ -238,7 +238,7 @@ func (s *controller) ScanFolders(requestCtx context.Context, fullScan bool, targ
 	}
 	// Store scan error in database so it can be displayed in the UI
 	if scanError != nil {
-		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, scanError.Error())
+		_ = s.ds.Property().Put(ctx, consts.LastScanErrorKey, scanError.Error())
 	}
 	// Refresh the query-planner statistics after a successful full scan. This must run in the
 	// server process: with the external scanner, an ANALYZE in the subprocess is invisible to the
@@ -324,7 +324,7 @@ func (s *controller) includesUnscannedLibrary(ctx context.Context, targets []mod
 // anyIncludedLibrary reports whether any library included in the scan (all of them when targets is
 // empty) matches pred.
 func anyIncludedLibrary(ctx context.Context, ds model.DataStore, targets []model.ScanTarget, pred func(model.Library) bool) bool {
-	libraries, err := ds.Library(ctx).GetAll()
+	libraries, err := ds.Library().GetAll(ctx)
 	if err != nil {
 		return false
 	}
