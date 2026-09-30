@@ -3,20 +3,34 @@ import { shouldUseSimpleMobile } from './simpleMobile'
 const DEFAULT_LABELS = {
   play: 'Play',
   pause: 'Pause',
+  prev: 'Previous track',
+  next: 'Next track',
   shuffle: 'Play random songs',
   full: 'Open full version',
   hint: 'Nothing playing',
   shuffleHint: 'Shuffle to start',
 }
 
+const queueIndex = (playerState) => {
+  const queue = playerState?.queue || []
+  const current = playerState?.current || {}
+  if (current?.uuid) {
+    const found = queue.findIndex((item) => item.uuid === current.uuid)
+    if (found >= 0) {
+      return found
+    }
+  }
+  const saved = playerState?.savedPlayIndex
+  if (Number.isInteger(saved) && saved >= 0) {
+    return saved
+  }
+  return 0
+}
+
 export const playerSnapshot = (playerState, audio) => {
   const queue = playerState?.queue || []
   const current = playerState?.current || {}
-  const idx =
-    Number.isInteger(playerState?.savedPlayIndex) &&
-    playerState.savedPlayIndex >= 0
-      ? playerState.savedPlayIndex
-      : 0
+  const idx = queueIndex(playerState)
   const queued = queue[idx] || queue[0] || {}
   const song = current.song || queued.song || {}
   const title = song.title || current.name || queued.name || ''
@@ -24,7 +38,9 @@ export const playerSnapshot = (playerState, audio) => {
   const cover = current.cover || queued.cover || ''
   const hasTrack = queue.length > 0 || Boolean(title)
   const playing = !!(audio && audio.paused === false)
-  return { title, artist, cover, hasTrack, playing }
+  const canPrev = hasTrack && idx > 0
+  const canNext = hasTrack && idx < queue.length - 1
+  return { title, artist, cover, hasTrack, playing, canPrev, canNext }
 }
 
 export const paintSimpleShell = (state, doc = document) => {
@@ -42,6 +58,8 @@ export const paintSimpleShell = (state, doc = document) => {
     cover = '',
     hasTrack = false,
     playing = false,
+    canPrev = false,
+    canNext = false,
     labels = {},
   } = state || {}
   const text = { ...DEFAULT_LABELS, ...labels }
@@ -53,6 +71,8 @@ export const paintSimpleShell = (state, doc = document) => {
   const artistEl = doc.getElementById('nd-static-artist')
   const coverEl = doc.getElementById('nd-static-cover')
   const playBtn = doc.getElementById('nd-static-play')
+  const prevBtn = doc.getElementById('nd-static-prev')
+  const nextBtn = doc.getElementById('nd-static-next')
   const shuffleBtn = doc.getElementById('nd-static-shuffle')
   const fullBtn = doc.getElementById('nd-static-full')
   const hintEl = doc.getElementById('nd-static-hint')
@@ -85,6 +105,14 @@ export const paintSimpleShell = (state, doc = document) => {
     playBtn.setAttribute('aria-pressed', playing ? 'true' : 'false')
     playBtn.disabled = !hasTrack
   }
+  if (prevBtn) {
+    prevBtn.setAttribute('aria-label', text.prev)
+    prevBtn.disabled = !canPrev
+  }
+  if (nextBtn) {
+    nextBtn.setAttribute('aria-label', text.next)
+    nextBtn.disabled = !canNext
+  }
 
   if (shuffleBtn) {
     shuffleBtn.textContent = text.shuffle
@@ -111,17 +139,21 @@ export const callPlayRandom = () => {
   return false
 }
 
-export const callPlayerToggle = () => {
+const callPlayerMethod = (name) => {
   if (
     typeof window !== 'undefined' &&
     window.__ndPlayer &&
-    typeof window.__ndPlayer.toggle === 'function'
+    typeof window.__ndPlayer[name] === 'function'
   ) {
-    window.__ndPlayer.toggle()
+    window.__ndPlayer[name]()
     return true
   }
   return false
 }
+
+export const callPlayerToggle = () => callPlayerMethod('toggle')
+export const callPlayerPrev = () => callPlayerMethod('prev')
+export const callPlayerNext = () => callPlayerMethod('next')
 
 export const bindSimpleMobilePlayer = (audio) => {
   if (typeof window === 'undefined') {
@@ -155,6 +187,16 @@ export const bindSimpleMobilePlayer = (audio) => {
         audio.play()
       } else {
         audio.pause()
+      }
+    },
+    prev: () => {
+      if (audio && typeof audio.playPrev === 'function') {
+        audio.playPrev()
+      }
+    },
+    next: () => {
+      if (audio && typeof audio.playNext === 'function') {
+        audio.playNext()
       }
     },
   }

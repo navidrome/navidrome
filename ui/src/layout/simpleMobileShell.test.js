@@ -6,6 +6,8 @@ import {
   bindSimpleMobilePlayer,
   unbindSimpleMobilePlayer,
   callPlayerToggle,
+  callPlayerPrev,
+  callPlayerNext,
   callPlayRandom,
   syncSimpleMobilePlayer,
 } from './simpleMobileShell'
@@ -19,7 +21,9 @@ const mountShell = () => {
       <div id="nd-static-artist"></div>
       <p id="nd-static-hint">Nothing playing</p>
       <p id="nd-static-hint-sub">Shuffle to start</p>
+      <button type="button" id="nd-static-prev" aria-label="Previous track"></button>
       <button type="button" id="nd-static-play" aria-label="Play"></button>
+      <button type="button" id="nd-static-next" aria-label="Next track"></button>
       <button type="button" id="nd-static-shuffle">Play random songs</button>
     </div>
   `
@@ -60,6 +64,8 @@ describe('simpleMobileShell', () => {
       cover: 'https://example/cover.jpg',
       hasTrack: true,
       playing: true,
+      canPrev: false,
+      canNext: false,
     })
   })
 
@@ -87,7 +93,35 @@ describe('simpleMobileShell', () => {
       cover: '/b.jpg',
       hasTrack: true,
       playing: false,
+      canPrev: true,
+      canNext: false,
     })
+  })
+
+  it('enables prev/next from the current queue position', () => {
+    const queue = [
+      { uuid: 'a', name: 'First' },
+      { uuid: 'b', name: 'Second' },
+      { uuid: 'c', name: 'Third' },
+    ]
+    expect(
+      playerSnapshot(
+        { current: { uuid: 'b' }, queue, savedPlayIndex: 1 },
+        { paused: true },
+      ),
+    ).toMatchObject({ canPrev: true, canNext: true })
+    expect(
+      playerSnapshot(
+        { current: { uuid: 'a' }, queue, savedPlayIndex: 0 },
+        { paused: true },
+      ),
+    ).toMatchObject({ canPrev: false, canNext: true })
+    expect(
+      playerSnapshot(
+        { current: { uuid: 'c' }, queue, savedPlayIndex: 2 },
+        { paused: true },
+      ),
+    ).toMatchObject({ canPrev: true, canNext: false })
   })
 
   it('is empty when the queue and current track are missing', () => {
@@ -97,6 +131,8 @@ describe('simpleMobileShell', () => {
       cover: '',
       hasTrack: false,
       playing: false,
+      canPrev: false,
+      canNext: false,
     })
   })
 
@@ -127,6 +163,25 @@ describe('simpleMobileShell', () => {
     expect(play.getAttribute('aria-label')).toBe('Pause')
     expect(play.getAttribute('aria-pressed')).toBe('true')
     expect(play.disabled).toBe(false)
+    const prev = document.getElementById('nd-static-prev')
+    const next = document.getElementById('nd-static-next')
+    expect(prev.disabled).toBe(true)
+    expect(next.disabled).toBe(true)
+
+    paintSimpleShell({
+      title: 'Helplessness Blues',
+      artist: 'Fleet Foxes',
+      cover: 'https://example/cover.jpg',
+      hasTrack: true,
+      playing: true,
+      canPrev: true,
+      canNext: true,
+      labels: { prev: 'Previous track', next: 'Next track' },
+    })
+    expect(prev.disabled).toBe(false)
+    expect(next.disabled).toBe(false)
+    expect(prev.getAttribute('aria-label')).toBe('Previous track')
+    expect(next.getAttribute('aria-label')).toBe('Next track')
 
     paintSimpleShell({
       title: 'Helplessness Blues',
@@ -156,6 +211,8 @@ describe('simpleMobileShell', () => {
     expect(shell.dataset.hasTrack).toBe('0')
     expect(document.getElementById('nd-static-cover').hidden).toBe(true)
     expect(document.getElementById('nd-static-play').disabled).toBe(true)
+    expect(document.getElementById('nd-static-prev').disabled).toBe(true)
+    expect(document.getElementById('nd-static-next').disabled).toBe(true)
     expect(document.getElementById('nd-static-hint').textContent).toBe(
       'Nothing playing',
     )
@@ -181,6 +238,23 @@ describe('simpleMobileShell', () => {
     audio.paused = false
     expect(callPlayerToggle()).toBe(true)
     expect(audio.pause).toHaveBeenCalled()
+  })
+
+  it('skips tracks through the bound audio instance', () => {
+    const audio = {
+      paused: false,
+      playPrev: vi.fn(),
+      playNext: vi.fn(),
+    }
+    bindSimpleMobilePlayer(audio)
+    expect(callPlayerPrev()).toBe(true)
+    expect(audio.playPrev).toHaveBeenCalledTimes(1)
+    expect(callPlayerNext()).toBe(true)
+    expect(audio.playNext).toHaveBeenCalledTimes(1)
+    audio.playPrev = undefined
+    audio.playNext = undefined
+    expect(callPlayerPrev()).toBe(true)
+    expect(callPlayerNext()).toBe(true)
   })
 
   it('callPlayRandom hits the shuffle bridge when present', () => {

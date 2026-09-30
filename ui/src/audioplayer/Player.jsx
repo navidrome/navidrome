@@ -433,6 +433,8 @@ const Player = () => {
       labels: {
         play: translate('menu.play', { _: 'Play' }),
         pause: translate('menu.pause', { _: 'Pause' }),
+        prev: translate('player.previousTrackText', { _: 'Previous track' }),
+        next: translate('player.nextTrackText', { _: 'Next track' }),
         shuffle: translate('menu.playRandom', { _: 'Play random songs' }),
         full: translate('menu.openFullVersion', { _: 'Open full version' }),
         hint: translate('menu.nothingPlaying', { _: 'Nothing playing' }),

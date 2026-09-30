@@ -158,6 +158,13 @@
         margin: 0 auto;
         padding-bottom: 8px;
       }
+      #nd-static-transport {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        width: 100%;
+      }
       #nd-static-play {
         width: 96px;
         height: 96px;
@@ -170,8 +177,23 @@
         justify-content: center;
         flex-shrink: 0;
       }
-      #nd-static-play:disabled { opacity: 0.35; }
+      #nd-static-prev, #nd-static-next {
+        width: 72px;
+        height: 72px;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      #nd-static-play:disabled,
+      #nd-static-prev:disabled,
+      #nd-static-next:disabled { opacity: 0.35; }
       #nd-static-play svg { width: 44px; height: 44px; fill: currentColor; }
+      #nd-static-prev svg, #nd-static-next svg { width: 40px; height: 40px; fill: currentColor; }
       #nd-static-play .nd-icon-play { margin-left: 4px; }
       #nd-static-simple[data-playing='1'] .nd-icon-play,
       #nd-static-simple:not([data-playing='1']) .nd-icon-pause { display: none; }
@@ -187,7 +209,7 @@
       }
       #nd-static-simple[data-has-track='1'] #nd-static-empty { display: none; }
       #nd-static-simple[data-has-track='0'] #nd-static-nowplaying { display: none; }
-      #nd-static-simple[data-has-track='0'] #nd-static-play { display: none; }
+      #nd-static-simple[data-has-track='0'] #nd-static-transport { display: none; }
       #nd-static-simple[data-has-track='0'] #nd-static-shuffle {
         min-height: 72px;
         font-size: 20px;
@@ -219,10 +241,18 @@
         </div>
       </div>
       <div id="nd-static-controls">
-        <button type="button" id="nd-static-play" aria-label="Play" aria-pressed="false" disabled>
-          <svg class="nd-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-          <svg class="nd-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
-        </button>
+        <div id="nd-static-transport">
+          <button type="button" id="nd-static-prev" aria-label="Previous track" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+          </button>
+          <button type="button" id="nd-static-play" aria-label="Play" aria-pressed="false" disabled>
+            <svg class="nd-icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="nd-icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+          </button>
+          <button type="button" id="nd-static-next" aria-label="Next track" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6z"/></svg>
+          </button>
+        </div>
         <button type="button" id="nd-static-shuffle">Play random songs</button>
       </div>
     </div>
@@ -237,6 +267,8 @@
         var full = document.getElementById('nd-static-full');
         var shuffle = document.getElementById('nd-static-shuffle');
         var play = document.getElementById('nd-static-play');
+        var prev = document.getElementById('nd-static-prev');
+        var next = document.getElementById('nd-static-next');
         function waitFor(getFn, done) {
           if (typeof getFn() === 'function') {
             try { getFn()(); } catch (e) {}
@@ -278,6 +310,20 @@
           play.onclick = function () {
             waitFor(function () {
               return window.__ndPlayer && window.__ndPlayer.toggle;
+            }, function () {});
+          };
+        }
+        if (prev) {
+          prev.onclick = function () {
+            waitFor(function () {
+              return window.__ndPlayer && window.__ndPlayer.prev;
+            }, function () {});
+          };
+        }
+        if (next) {
+          next.onclick = function () {
+            waitFor(function () {
+              return window.__ndPlayer && window.__ndPlayer.next;
             }, function () {});
           };
         }
