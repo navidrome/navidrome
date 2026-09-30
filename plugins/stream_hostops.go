@@ -125,6 +125,10 @@ func (s *callScope) hostClose(handle int64) int64 {
 	if err := b.Close(); err != nil {
 		return s.fail(err)
 	}
+	// A writer may accept every byte and still fail; the plugin saw a full count, so report the error here.
+	if err := b.retainedErr(); err != nil && !errors.Is(err, io.EOF) && b.rights&streamWrite != 0 {
+		return s.fail(err)
+	}
 	s.lastErr = nil
 	return 0
 }
