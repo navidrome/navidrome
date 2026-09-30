@@ -689,7 +689,7 @@ func RustDefaultValue(goType string) string {
 // RustFunctionName returns the Rust function name for a method (snake_case).
 // Uses just the method name without service prefix since the module provides namespacing.
 func (m Method) RustFunctionName(_ string) string {
-	return ToSnakeCase(m.Name)
+	return rustIdent(ToSnakeCase(m.Name))
 }
 
 // RustDocComment returns a properly formatted Rust doc comment.

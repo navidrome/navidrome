@@ -1653,6 +1653,21 @@ var _ = Describe("Rust Generation", func() {
 			Expect(codeStr).To(ContainSubstring("Ok(None)"))
 		})
 
+		It("escapes a method name that is a Rust keyword", func() {
+			svc := Service{
+				Name:       "Matcher",
+				Permission: "matcher",
+				Interface:  "MatcherService",
+				Methods: []Method{
+					{Name: "Match", HasError: true, Params: []Param{{Name: "name", Type: "string", JSONName: "name"}}},
+				},
+			}
+
+			code, err := GenerateClientRust(svc)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(code)).To(ContainSubstring("pub fn r#match(name: &str)"))
+		})
+
 		It("should generate tuple for non-option multi-return", func() {
 			svc := Service{
 				Name:       "Test",
