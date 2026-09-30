@@ -502,6 +502,11 @@ var _ = Describe("Generator", func() {
 			Expect(FieldDef{Name: "Type"}.RustName()).To(Equal("r#type"))
 			Expect(Param{Name: "input"}.RustName()).To(Equal("input"))
 		})
+
+		It("escapes keyword capability packages in macro paths but not in macro names", func() {
+			Expect(rustMethodType("Input", "Type", nil)).To(Equal("$crate::r#type::Input"))
+			Expect(registerMacroName("Type", "GetInfo")).To(Equal("register_type_info"))
+		})
 	})
 
 	Describe("GenerateGoDoc", func() {

@@ -518,8 +518,8 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustTypeAlias":       rustTypeAlias,
 		"rustConstType":       rustConstType,
 		"rustConstName":       rustConstName,
-		"rustFieldName":       func(name string) string { return ToSnakeCase(name) },
-		"rustMethodName":      func(name string) string { return ToSnakeCase(name) },
+		"rustFieldName":       rustSnakeIdent,
+		"rustMethodName":      rustSnakeIdent,
 		"fieldRustType":       func(f FieldDef) string { return ToRustTypeWithShared(f.Type, knownStructs, shared) },
 		"rustOutputType":      func(goType string) string { return rustTraitType(goType, shared) },
 		"rustMethodType":      func(goType string) string { return rustMethodType(goType, cap.Name, shared) },
@@ -537,8 +537,9 @@ func rustCapabilityFuncMap(cap Capability) template.FuncMap {
 		"rustSharedNote": func(target string) string {
 			return "nd_pdk::types::" + strings.TrimPrefix(target, sharedTypesPrefix)
 		},
-		"snakeCase": ToSnakeCase,
-		"indent":    indentSpaces,
+		"snakeCase":   ToSnakeCase,
+		"rustModName": rustSnakeIdent,
+		"indent":      indentSpaces,
 	}
 }
 
@@ -601,7 +602,7 @@ func rustMethodType(goType, pkg string, shared map[string]string) string {
 	if t, ok := shared[goType]; ok {
 		return "$crate::types::" + strings.TrimPrefix(t, "nd_pdk_types::")
 	}
-	return "$crate::" + ToSnakeCase(pkg) + "::" + goType
+	return "$crate::" + rustSnakeIdent(pkg) + "::" + goType
 }
 
 // rustTraitType returns the Rust type for a capability trait method signature.
@@ -796,7 +797,7 @@ func GenerateCapabilityRustLib(capabilities []Capability) ([]byte, error) {
 
 	// Module declarations
 	for _, cap := range capabilities {
-		moduleName := ToSnakeCase(cap.Name)
+		moduleName := rustSnakeIdent(cap.Name)
 		buf.WriteString(fmt.Sprintf("pub mod %s;\n", moduleName))
 	}
 
@@ -1041,7 +1042,7 @@ func GenerateSharedTypesRust(structs []StructDef) ([]byte, error) {
 	}
 	tmpl, err := template.New("types_rs").Funcs(template.FuncMap{
 		"rustDocComment":      RustDocComment,
-		"rustFieldName":       func(n string) string { return ToSnakeCase(n) },
+		"rustFieldName":       rustSnakeIdent,
 		"fieldRustType":       func(f FieldDef) string { return f.RustType(known) },
 		"skipSerializingFunc": skipSerializingFunc,
 		"indent":              indentSpaces,

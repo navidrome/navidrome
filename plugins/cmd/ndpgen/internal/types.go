@@ -671,7 +671,7 @@ func RustDefaultValue(goType string) string {
 // RustFunctionName returns the Rust function name for a method (snake_case).
 // Uses just the method name without service prefix since the module provides namespacing.
 func (m Method) RustFunctionName(_ string) string {
-	return rustIdent(ToSnakeCase(m.Name))
+	return rustSnakeIdent(m.Name)
 }
 
 // RustDocComment returns a properly formatted Rust doc comment.
@@ -729,7 +729,7 @@ func (p Param) RustParamTypeWithShared(knownStructs map[string]bool, shared map[
 
 // RustName returns the snake_case Rust name for this parameter.
 func (p Param) RustName() string {
-	return rustIdent(ToSnakeCase(p.Name))
+	return rustSnakeIdent(p.Name)
 }
 
 // NeedsToOwned returns true if the parameter needs .to_owned() when used.
@@ -744,7 +744,7 @@ func (f FieldDef) RustType(knownStructs map[string]bool) string {
 
 // RustName returns the snake_case Rust name for this field.
 func (f FieldDef) RustName() string {
-	return rustIdent(ToSnakeCase(f.Name))
+	return rustSnakeIdent(f.Name)
 }
 
 // self, Self, super and crate cannot be raw identifiers, so they are left out.
@@ -763,6 +763,11 @@ func rustIdent(name string) string {
 		return "r#" + name
 	}
 	return name
+}
+
+// rustSnakeIdent converts a Go name to a snake_case Rust identifier.
+func rustSnakeIdent(name string) string {
+	return rustIdent(ToSnakeCase(name))
 }
 
 // NeedsDefault returns true if the field needs #[serde(default)] attribute.
