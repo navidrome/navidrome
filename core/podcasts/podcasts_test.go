@@ -159,6 +159,26 @@ var _ = Describe("PodcastService", func() {
 			}, "3s").Should(Equal(model.PodcastStatusCompleted))
 		})
 
+		It("creates a podcast library rooted at DataFolder/podcasts that the scanner ignores", func() {
+			_ = svc.DownloadEpisode(ctx, "ep-1")
+			root := filepath.Join(conf.Server.DataFolder.String(), "podcasts")
+			Eventually(func() bool {
+				_, err := os.Stat(filepath.Join(root, ".ndignore"))
+				return err == nil
+			}, "3s").Should(BeTrue())
+			libs, err := ds.Library().GetAll(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			var found bool
+			for _, l := range libs {
+				if l.Name == "Podcasts" {
+					found = true
+					Expect(l.Path).To(Equal(root))
+					Expect(l.DefaultNewUsers).To(BeTrue())
+				}
+			}
+			Expect(found).To(BeTrue())
+		})
+
 		It("records the file path after download", func() {
 			_ = svc.DownloadEpisode(ctx, "ep-1")
 			expectedPath := filepath.Join(conf.Server.DataFolder.String(), "podcasts", "ch-1", "ep-1.mp3")
@@ -495,7 +515,7 @@ var _ = Describe("PodcastService", func() {
 		})
 	})
 
-	Describe("RefreshChannels — Tier 3 podping skip", func() {
+	Describe("RefreshChannels — Tier 3 podping", func() {
 		var podrollRepo *tests.MockPodcastPodrollRepo
 		var liveItemRepo *tests.MockPodcastLiveItemRepo
 
@@ -506,8 +526,7 @@ var _ = Describe("PodcastService", func() {
 			ds.MockedPodcastLiveItem = liveItemRepo
 		})
 
-		It("skips channels with UsesPodping=true during refresh", func() {
-			// UsesPodping channel points to a server that would add episodes.
+		It("still refreshes channels with UsesPodping=true (no Podping listener exists)", func() {
 			channelRepo.Data["ch-podping"] = &model.PodcastChannel{
 				ID:          "ch-podping",
 				URL:         mockServer.URL + "/feed.xml",
@@ -516,8 +535,9 @@ var _ = Describe("PodcastService", func() {
 			initialEpisodeCount := len(episodeRepo.Data)
 
 			Expect(svc.RefreshChannels(ctx)).To(Succeed())
-			// No new episodes should be added because the only channel uses podping.
-			Expect(episodeRepo.Data).To(HaveLen(initialEpisodeCount))
+			// Podping is only a hint; nothing else refreshes these feeds, so
+			// new episodes must still be picked up.
+			Expect(len(episodeRepo.Data)).To(BeNumerically(">", initialEpisodeCount))
 		})
 
 		It("still refreshes channels with UsesPodping=false", func() {

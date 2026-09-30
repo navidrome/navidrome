@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -43,9 +44,19 @@ func NewPodcastService(rootCtx context.Context, ds model.DataStore, ff ffmpeg.FF
 	return &podcastService{rootCtx: rootCtx, ds: ds, ff: ff, broker: broker}
 }
 
-// podcastLibraryID returns the ID of the podcast virtual library,
-// creating it if it doesn't exist. The library root is DataFolder so that
-// MediaFile paths stored as "podcasts/{ch}/{ep}.mp3" resolve correctly via AbsolutePath().
+// podcastsDir is where downloaded episodes live and the root of the podcast
+// virtual library.
+func podcastsDir() string {
+	return filepath.Join(conf.Server.DataFolder.String(), "podcasts")
+}
+
+// podcastLibraryID returns the ID of the podcast virtual library, creating it
+// if it doesn't exist. The library root is DataFolder/podcasts so that MediaFile
+// paths stored as "{ch}/{ep}.mp3" resolve correctly via AbsolutePath().
+//
+// Episodes are registered as MediaFiles by the podcast service itself, so the
+// library must not be picked up by the regular scanner: an empty .ndignore in
+// the root makes the scanner skip everything below it.
 func (s *podcastService) podcastLibraryID(ctx context.Context) (int, error) {
 	libs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
@@ -56,14 +67,49 @@ func (s *podcastService) podcastLibraryID(ctx context.Context) (int, error) {
 			return lib.ID, nil
 		}
 	}
+	root := podcastsDir()
+	if err := os.MkdirAll(root, 0755); err != nil {
+		return 0, fmt.Errorf("creating podcasts dir: %w", err)
+	}
+	ignoreFile := filepath.Join(root, consts.ScanIgnoreFile)
+	if _, statErr := os.Stat(ignoreFile); os.IsNotExist(statErr) {
+		if err := os.WriteFile(ignoreFile, nil, 0644); err != nil {
+			return 0, fmt.Errorf("creating %s: %w", consts.ScanIgnoreFile, err)
+		}
+	}
 	lib := &model.Library{
-		Name: podcastLibraryName,
-		Path: conf.Server.DataFolder.String(),
+		Name:            podcastLibraryName,
+		Path:            root,
+		DefaultNewUsers: true, // users created later get access automatically
 	}
 	if err := s.ds.Library().Put(ctx, lib); err != nil {
 		return 0, err
 	}
+	// Put only auto-assigns admins; give existing regular users access too.
+	s.assignLibraryToExistingUsers(ctx, lib.ID)
 	return lib.ID, nil
+}
+
+func (s *podcastService) assignLibraryToExistingUsers(ctx context.Context, libID int) {
+	users, err := s.ds.User().GetAll(ctx)
+	if err != nil {
+		log.Warn(ctx, "Failed to list users to assign podcast library", err)
+		return
+	}
+	for _, u := range users {
+		if u.IsAdmin {
+			continue
+		}
+		ids := []int{libID}
+		for _, l := range u.Libraries {
+			if l.ID != libID {
+				ids = append(ids, l.ID)
+			}
+		}
+		if err := s.ds.User().SetUserLibraries(ctx, u.ID, ids); err != nil {
+			log.Warn(ctx, "Failed to assign podcast library to user", "user", u.UserName, err)
+		}
+	}
 }
 
 func (s *podcastService) AddChannel(ctx context.Context, rssURL string) error {
@@ -191,9 +237,6 @@ func (s *podcastService) RefreshChannels(ctx context.Context) error {
 	}
 
 	for _, ch := range channels {
-		if ch.UsesPodping {
-			continue // skip — this channel uses Podping for updates
-		}
 		if err := s.refreshChannel(ctx, ch); err != nil {
 			log.Warn(ctx, "Failed to refresh podcast channel", "channel", ch.Title, err)
 		}
@@ -298,7 +341,7 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	if suffix == "" {
 		suffix = "mp3"
 	}
-	dir := filepath.Join(conf.Server.DataFolder.String(), "podcasts", ep.ChannelID)
+	dir := filepath.Join(podcastsDir(), ep.ChannelID)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		s.setEpisodeError(ctx, ep, err)
 		return
@@ -355,12 +398,12 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	s.writeID3Tags(ctx, dest, suffix, ep.Title, ch.Title)
 
 	// Register as a MediaFile so /rest/stream works with the standard media file path.
-	// Use a podcast virtual library whose root is DataFolder; store relative path.
+	// Use the podcast virtual library (rooted at DataFolder/podcasts); store relative path.
 	libID, libErr := s.podcastLibraryID(ctx)
 	if libErr != nil {
 		log.Warn(ctx, "Failed to get podcast library, streaming may not work", "episode", ep.ID, libErr)
 	} else {
-		relPath := strings.TrimPrefix(dest, conf.Server.DataFolder.String()+string(filepath.Separator))
+		relPath := strings.TrimPrefix(dest, podcastsDir()+string(filepath.Separator))
 		now := time.Now()
 		tags := model.Tags{}
 		tags.Add("genre", "Podcast")
