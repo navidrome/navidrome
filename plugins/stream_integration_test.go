@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -180,5 +181,165 @@ var _ = Describe("Plugin streams", Ordered, func() {
 		var out streamsOutput
 		Expect(json.Unmarshal(raw, &out)).To(Succeed())
 		Expect(out.Error).To(Equal("stream operation failed"))
+	})
+})
+
+// enteredReader signals when its first Read starts, so tests act only once the host is blocked in I/O.
+type enteredReader struct {
+	*io.PipeReader
+	entered chan struct{}
+	once    sync.Once
+}
+
+func (r *enteredReader) Read(p []byte) (int, error) {
+	r.once.Do(func() { close(r.entered) })
+	return r.PipeReader.Read(p)
+}
+
+var _ = Describe("Plugin stream lifecycle", Ordered, func() {
+	var (
+		ctx context.Context
+		p   *plugin
+	)
+
+	BeforeAll(func() {
+		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		p = loadedTestPlugin(manager, "test-streams")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	It("closes a handle the plugin never closed", func() {
+		r := &trackingReader{Reader: strings.NewReader("xyz")}
+		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "leak", defaultTimeout, readInput(r, 1), nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out.Count).To(Equal(int64(1)))
+		Expect(r.closed()).To(BeTrue())
+	})
+
+	type callResult struct {
+		out streamsOutput
+		err error
+	}
+
+	// startRead runs read_all on r in the background; every wait on it below is bounded.
+	startRead := func(callCtx context.Context, timeout time.Duration, prepare func(*callScope) (streamsInput, error)) chan callResult {
+		results := make(chan callResult, 1)
+		go func() {
+			out, err := callPluginFunctionScoped[streamsInput, streamsOutput](callCtx, p, "read_all", timeout, prepare, nil)
+			results <- callResult{out: out, err: err}
+		}()
+		return results
+	}
+
+	newEnteredPipe := func() (*enteredReader, *io.PipeWriter) {
+		pr, pw := io.Pipe()
+		DeferCleanup(func() {
+			_ = pw.Close()
+			_ = pr.Close()
+		})
+		return &enteredReader{PipeReader: pr, entered: make(chan struct{})}, pw
+	}
+
+	It("does not let one call use another call's handle", func() {
+		r, pw := newEnteredPipe()
+		handles := make(chan uint32, 1)
+		results := startRead(ctx, defaultTimeout, func(s *callScope) (streamsInput, error) {
+			h, err := s.register(newReadStream(r))
+			handles <- h
+			return streamsInput{Handle: h, Chunk: 16}, err
+		})
+		var h uint32
+		Eventually(handles).WithTimeout(10 * time.Second).Should(Receive(&h))
+		Eventually(r.entered).WithTimeout(10 * time.Second).Should(BeClosed())
+
+		other, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "read_all", defaultTimeout,
+			func(*callScope) (streamsInput, error) { return streamsInput{Handle: h, Chunk: 16}, nil }, nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(other.Error).To(Equal("unknown stream handle"))
+
+		_, err = pw.Write([]byte("mine"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(pw.Close()).To(Succeed())
+		var res callResult
+		Eventually(results).WithTimeout(10 * time.Second).Should(Receive(&res))
+		Expect(res.err).ToNot(HaveOccurred())
+		Expect(res.out.Data).To(Equal("mine"))
+	})
+
+	It("unblocks a read when the call is cancelled", func() {
+		r, pw := newEnteredPipe()
+		callCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		results := startRead(callCtx, defaultTimeout, readInput(r, 16))
+		Eventually(r.entered).WithTimeout(10 * time.Second).Should(BeClosed())
+
+		cancel()
+		var res callResult
+		Eventually(results).WithTimeout(5 * time.Second).Should(Receive(&res))
+		// The plugin may finish its export before wazero sees the cancel, so a clean return is also valid.
+		Expect(res.err).To(Or(Not(HaveOccurred()), MatchError(context.Canceled)))
+		_, err := pw.Write([]byte("x"))
+		Expect(err).To(MatchError(io.ErrClosedPipe))
+	})
+
+	It("unblocks a read when the time limit passes", func() {
+		r, pw := newEnteredPipe()
+		results := startRead(ctx, 2*time.Second, readInput(r, 16))
+		Eventually(r.entered).WithTimeout(10 * time.Second).Should(BeClosed())
+
+		var res callResult
+		Eventually(results).WithTimeout(5 * time.Second).Should(Receive(&res))
+		Expect(res.err).To(Or(Not(HaveOccurred()), MatchError(context.DeadlineExceeded)))
+		_, err := pw.Write([]byte("x"))
+		Expect(err).To(MatchError(io.ErrClosedPipe))
+	})
+})
+
+var _ = Describe("Plugin streams under a memory cap", Ordered, func() {
+	// Each memory (the plugin's and Extism's block memory) is capped below the bytes moved, so any per-chunk
+	// allocation that is not freed runs out of memory.
+	const (
+		memoryPages  = 1024     // 64 MiB
+		transferSize = 96 << 20 // more than the cap
+	)
+
+	var (
+		ctx context.Context
+		p   *plugin
+	)
+
+	BeforeAll(func() {
+		extismMaxMemoryPages = memoryPages
+		DeferCleanup(func() { extismMaxMemoryPages = 0 })
+		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		p = loadedTestPlugin(manager, "test-streams")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	It("reads more than the cap through stream_read", func() {
+		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "read_all", 2*time.Minute,
+			readInput(io.NopCloser(&patternReader{size: transferSize}), 64<<10), nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out.Error).To(BeEmpty())
+		Expect(out.Count).To(Equal(int64(transferSize)))
+		Expect(out.SHA).To(Equal(patternSHA(transferSize)))
+	})
+
+	It("writes more than the cap through stream_write", func() {
+		w := newHashWriter()
+		out, err := callPluginFunctionScoped[streamsInput, streamsOutput](ctx, p, "write_pattern", 2*time.Minute,
+			func(s *callScope) (streamsInput, error) {
+				h, err := s.register(newWriteStream(w))
+				return streamsInput{Handle: h, Size: transferSize, Chunk: 64 << 10}, err
+			}, nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out.Error).To(BeEmpty())
+		Expect(w.sum()).To(Equal(patternSHA(transferSize)))
 	})
 })

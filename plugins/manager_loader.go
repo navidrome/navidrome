@@ -498,11 +498,18 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 	return pluginConfig, nil
 }
 
+// extismMaxMemoryPages caps each plugin memory in 64 KiB pages; 0 means no cap. Tests lower it.
+var extismMaxMemoryPages uint32
+
 // buildExtismManifest describes the plugin to extism. It must never set AllowedPaths (extism would replace our
 // jailed FSConfig) nor AllowedHosts (extism's http_request has no SSRF guard; plugins must use host.HTTPSend).
 func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
-	return extism.Manifest{
+	m := extism.Manifest{
 		Wasm:   []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
 		Config: pluginConfig,
 	}
+	if extismMaxMemoryPages > 0 {
+		m.Memory = &extism.ManifestMemory{MaxPages: extismMaxMemoryPages}
+	}
+	return m
 }
