@@ -47,57 +47,38 @@ func NewConv(ctx context.Context) *Conv {
 	return &Conv{s: s}
 }
 
-func (c *Conv) Reader(h uint32) io.ReadCloser {
+func (c *Conv) Reader(h uint32) io.ReadCloser { return take(c, h, Streams.TakeReader) }
+
+func (c *Conv) Writer(h uint32) io.WriteCloser { return take(c, h, Streams.TakeWriter) }
+
+func (c *Conv) ReaderHandle(rc io.ReadCloser) uint32 { return register(c, rc, Streams.RegisterReader) }
+
+func (c *Conv) WriterHandle(wc io.WriteCloser) uint32 { return register(c, wc, Streams.RegisterWriter) }
+
+// take and register get method expressions, not method values: c.s is nil when there is no call.
+func take[T io.Closer](c *Conv, h uint32, f func(Streams, uint32) (T, error)) T {
+	var zero T
 	if h == 0 || c.err != nil {
-		return nil
+		return zero
 	}
-	rc, err := c.s.TakeReader(h)
+	v, err := f(c.s, h)
 	if err != nil {
 		c.err = err
-		return nil
+		return zero
 	}
-	c.taken = append(c.taken, rc)
-	return rc
+	c.taken = append(c.taken, v)
+	return v
 }
 
-func (c *Conv) Writer(h uint32) io.WriteCloser {
-	if h == 0 || c.err != nil {
-		return nil
-	}
-	wc, err := c.s.TakeWriter(h)
-	if err != nil {
-		c.err = err
-		return nil
-	}
-	c.taken = append(c.taken, wc)
-	return wc
-}
-
-func (c *Conv) ReaderHandle(rc io.ReadCloser) uint32 {
-	if rc == nil {
+func register[T io.Closer](c *Conv, v T, f func(Streams, T) (uint32, error)) uint32 {
+	if any(v) == nil {
 		return 0
 	}
 	if c.err != nil {
-		_ = rc.Close()
+		_ = v.Close()
 		return 0
 	}
-	h, err := c.s.RegisterReader(rc)
-	return c.registeredHandle(h, err)
-}
-
-func (c *Conv) WriterHandle(wc io.WriteCloser) uint32 {
-	if wc == nil {
-		return 0
-	}
-	if c.err != nil {
-		_ = wc.Close()
-		return 0
-	}
-	h, err := c.s.RegisterWriter(wc)
-	return c.registeredHandle(h, err)
-}
-
-func (c *Conv) registeredHandle(h uint32, err error) uint32 {
+	h, err := f(c.s, v)
 	if err != nil {
 		c.err = err
 		return 0
