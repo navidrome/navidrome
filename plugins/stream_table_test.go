@@ -355,6 +355,7 @@ var _ = Describe("streamTable", func() {
 
 			s.close()
 			Expect(r.closes.Load()).To(Equal(int32(1)))
+			Expect(table.open).To(BeZero())
 		})
 
 		It("frees the slot when the new owner closes a taken stream", func() {
@@ -372,6 +373,21 @@ var _ = Describe("streamTable", func() {
 
 			s.close()
 			Expect(r.closes.Load()).To(Equal(int32(1)), "closed once, by its owner")
+			Expect(table.open).To(BeZero())
+		})
+
+		It("frees the slot once when the owner closes a taken stream after the scope", func() {
+			s := newScope()
+			r := &trackingReader{Reader: strings.NewReader("data")}
+			h, _ := s.RegisterReader(r)
+			got, err := s.TakeReader(h)
+			Expect(err).ToNot(HaveOccurred())
+
+			s.close()
+			Expect(table.open).To(BeZero())
+			Expect(got.Close()).To(Succeed())
+			Expect(table.open).To(BeZero())
+			Expect(r.closes.Load()).To(Equal(int32(1)))
 		})
 
 		It("refuses to take from a closed scope", func() {
