@@ -154,17 +154,20 @@ func loadedTestPlugin(m *Manager, id string) *plugin {
 
 var _ = Describe("callPluginFunction time limits", Ordered, func() {
 	var (
-		ctx context.Context
-		p   *plugin
+		ctx      context.Context
+		p        *plugin
+		recorder *mockMetricsRecorder
 	)
 
 	BeforeAll(func() {
-		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		recorder = &mockMetricsRecorder{}
+		manager, _ := createTestManagerWithPluginsAndMetrics(nil, recorder, "test-streams"+PackageExtension)
 		p = loadedTestPlugin(manager, "test-streams")
 	})
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
+		recorder.reset()
 	})
 
 	It("stops a call when its time limit passes", func() {
@@ -172,6 +175,17 @@ var _ = Describe("callPluginFunction time limits", Ordered, func() {
 		_, err := callPluginFunctionWithTimeout[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, struct{}{})
 		Expect(err).To(MatchError(context.DeadlineExceeded))
 		Expect(time.Since(start)).To(BeNumerically("<", 5*time.Second))
+	})
+
+	It("records a call that runs out of time as a failure", func() {
+		_, err := callPluginFunctionWithTimeout[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, struct{}{})
+		Expect(err).To(MatchError(context.DeadlineExceeded))
+
+		calls := recorder.getCalls()
+		Expect(calls).To(HaveLen(1))
+		Expect(calls[0].plugin).To(Equal("test-streams"))
+		Expect(calls[0].method).To(Equal("spin"))
+		Expect(calls[0].ok).To(BeFalse())
 	})
 
 	It("leaves the time limit out of the Extism manifest", func() {

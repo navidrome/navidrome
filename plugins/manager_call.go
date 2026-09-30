@@ -38,8 +38,8 @@ func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcN
 
 // callPluginFunctionWithTimeout calls a plugin export, handling JSON and errors. The deadline is set on ctx,
 // not in the Extism manifest, so host functions and anything watching ctx see it.
-func callPluginFunctionWithTimeout[I any, O any](ctx context.Context, plugin *plugin, funcName string, timeout time.Duration, input I) (O, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+func callPluginFunctionWithTimeout[I any, O any](parentCtx context.Context, plugin *plugin, funcName string, timeout time.Duration, input I) (O, error) {
+	ctx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
 	start := time.Now()
@@ -67,13 +67,16 @@ func callPluginFunctionWithTimeout[I any, O any](ctx context.Context, plugin *pl
 	exit, output, err := p.CallWithContext(ctx, funcName, inputBytes)
 	elapsed := time.Since(startCall)
 	if err != nil {
-		// If context was cancelled, return that error instead of the plugin error
-		if ctx.Err() != nil {
+		// Only the caller's cancellation is not the plugin's fault; running out of our time limit is.
+		if parentCtx.Err() != nil {
 			log.Debug(ctx, "Plugin call cancelled", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed)
-			return result, ctx.Err()
+			return result, parentCtx.Err()
 		}
 		plugin.metrics.RecordPluginRequest(ctx, plugin.name, funcName, false, elapsed.Milliseconds())
 		log.Trace(ctx, "Plugin call failed", "plugin", plugin.name, "function", funcName, "pluginDuration", elapsed, "navidromeDuration", startCall.Sub(start), err)
+		if ctx.Err() != nil {
+			return result, ctx.Err()
+		}
 		return result, fmt.Errorf("plugin call failed: %w", err)
 	}
 	if exit != 0 {
