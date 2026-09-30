@@ -1,0 +1,6 @@
+{
+  "name": "Test Stream Service Rust",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "Test plugin for generated Rust host functions that take and return streams"
+}

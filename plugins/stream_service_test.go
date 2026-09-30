@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -166,6 +167,65 @@ var _ = Describe("Generated stream host functions under a memory cap", Ordered, 
 
 	It("frees a stream's buffer when the plugin hands it over", func() {
 		out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_loop", time.Minute, map[string]string{"text": "abc"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(out.Error).To(BeEmpty())
+		Expect(out.Size).To(Equal(int64(2000)))
+	})
+})
+
+var _ = Describe("Generated stream host functions from Rust", Ordered, func() {
+	var (
+		ctx context.Context
+		p   *plugin
+	)
+
+	BeforeAll(func() {
+		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-stream-service-rs"))
+		withStreamTestService(&testStreamService{created: &trackingWriter{}})
+		manager, _ := createTestManagerWithPlugins(nil, pkg)
+		p = loadedTestPlugin(manager, "test-stream-service-rs")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	call := func(fn, text string) serviceOutput {
+		out, err := callPluginFunction[map[string]string, serviceOutput](ctx, p, fn, map[string]string{"text": text})
+		Expect(err).ToNot(HaveOccurred())
+		return out
+	}
+
+	It("reads a host stream returned by a generated client", func() {
+		Expect(call("open_read", "from rust")).To(Equal(serviceOutput{Data: "from rust"}))
+	})
+
+	It("sends and receives stream fields in structs", func() {
+		Expect(call("wrap", "abc")).To(Equal(serviceOutput{Data: "p:abc", Size: 5}))
+	})
+})
+
+var _ = Describe("Generated Rust host calls under a memory cap", Ordered, func() {
+	var (
+		ctx context.Context
+		p   *plugin
+	)
+
+	BeforeAll(func() {
+		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-stream-service-rs"))
+		extismMaxMemoryPages = 1024 // 64 MiB; 2000 leaked 64 KiB responses would not fit
+		DeferCleanup(func() { extismMaxMemoryPages = 0 })
+		withStreamTestService(&testStreamService{created: &trackingWriter{}})
+		manager, _ := createTestManagerWithPlugins(nil, pkg)
+		p = loadedTestPlugin(manager, "test-stream-service-rs")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	It("frees every host response", func() {
+		out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "echo_loop", time.Minute, map[string]string{})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
 		Expect(out.Size).To(Equal(int64(2000)))
