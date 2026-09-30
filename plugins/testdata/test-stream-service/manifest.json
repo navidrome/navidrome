@@ -1,0 +1,6 @@
+{
+  "name": "Test Stream Service",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "Test plugin for host functions that take and return streams"
+}
