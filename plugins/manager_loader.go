@@ -369,7 +369,7 @@ func (m *Manager) loadPluginWithConfig(p *model.Plugin) error {
 	}
 
 	// Build host functions based on permissions from manifest
-	var hostFunctions []extism.HostFunction
+	hostFunctions := streamHostFunctions()
 	var closers []io.Closer
 	loaded := false
 	// On success the closers are owned by the registered plugin; on any
