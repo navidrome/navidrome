@@ -645,6 +645,12 @@ Some host functions return a **stream**: a handle to bytes that stay in Navidrom
 - A plugin can have at most 64 open streams at a time, across all its running calls.
 - A stream handle from one call does not work in another call.
 
+**Host functions and streams:**
+
+- A host function can return a stream (`io.ReadCloser`/`io.WriteCloser` in Go, `Option<Stream>` in Rust). It belongs to the current call like any other stream.
+- Passing a stream *to* a host function hands it over: Navidrome closes it when done, and the plugin can no longer use it.
+- Only streams that came from Navidrome can be passed. A reader the plugin made itself (for example `strings.NewReader`) is rejected.
+
 **Go:**
 
 ```go
