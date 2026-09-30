@@ -72,6 +72,7 @@ func ConfigGet(key string) (string, bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response configGetResponse
@@ -107,6 +108,7 @@ func ConfigSet(key string, value string) error {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse error-only response
 	var response struct {
@@ -140,6 +142,7 @@ func ConfigHas(key string) (bool, error) {
 	// Read the response from memory
 	responseMem := pdk.FindMemory(responsePtr)
 	responseBytes := responseMem.ReadBytes()
+	responseMem.Free()
 
 	// Parse the response
 	var response configHasResponse
