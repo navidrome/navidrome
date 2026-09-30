@@ -129,13 +129,18 @@ func (s *callScope) hostClose(handle int64) int64 {
 	return 0
 }
 
-// hostError returns -1 when the message cannot be allocated, so the plugin never mistakes a failure for success.
+// hostError returns -1 when the message cannot be allocated (Extism signals that with offset 0, not an error),
+// so the plugin never mistakes a failure for success.
 func (s *callScope) hostError(mem guestMemory) int64 {
 	if s.lastErr == nil {
 		return 0
 	}
-	off, err := mem.writeBlock([]byte(s.lastErr.Error()))
-	if err != nil || off > math.MaxInt64 {
+	msg := s.lastErr.Error()
+	if msg == "" {
+		msg = "stream operation failed"
+	}
+	off, err := mem.writeBlock([]byte(msg))
+	if err != nil || off == 0 || off > math.MaxInt64 {
 		return -1
 	}
 	return int64(off)

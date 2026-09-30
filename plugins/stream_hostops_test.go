@@ -14,9 +14,10 @@ import (
 
 // fakeGuestMemory models Extism blocks: an offset is valid only at the start of a block.
 type fakeGuestMemory struct {
-	blocks     map[uint64][]byte
-	next       uint64
-	failWrites bool
+	blocks      map[uint64][]byte
+	next        uint64
+	failWrites  bool
+	zeroOffsets bool
 }
 
 func newFakeGuestMemory() *fakeGuestMemory {
@@ -43,6 +44,9 @@ func (m *fakeGuestMemory) view(offset uint64, n uint32) ([]byte, bool) {
 func (m *fakeGuestMemory) writeBlock(data []byte) (uint64, error) {
 	if m.failWrites {
 		return 0, errors.New("out of memory")
+	}
+	if m.zeroOffsets {
+		return 0, nil
 	}
 	off := m.alloc(len(data))
 	copy(m.blocks[off], data)
@@ -208,6 +212,20 @@ var _ = Describe("callScope host operations", func() {
 			Expect(scope.hostClose(99)).To(Equal(int64(-1)))
 			mem.failWrites = true
 			Expect(scope.hostError(mem)).To(Equal(int64(-1)))
+		})
+
+		It("returns -1 when the message lands at offset 0", func() {
+			Expect(scope.hostClose(99)).To(Equal(int64(-1)))
+			mem.zeroOffsets = true
+			Expect(scope.hostError(mem)).To(Equal(int64(-1)))
+		})
+
+		It("never hands out an empty message", func() {
+			h := register(newReadStream(io.NopCloser(&dataErrReader{err: errors.New("")})))
+			Expect(scope.hostRead(mem, h, mem.alloc(4), 4)).To(Equal(int64(-1)))
+			off := scope.hostError(mem)
+			Expect(off).To(BeNumerically(">", 0))
+			Expect(string(mem.blocks[uint64(off)])).To(Equal("stream operation failed"))
 		})
 
 		It("returns 0 after a successful operation", func() {
