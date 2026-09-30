@@ -81,7 +81,11 @@ func newScanJob(ctx context.Context, ds model.DataStore, lib model.Library, full
 
 	pid := lib.EffectivePID()
 	if lib.NeedsPIDRescan() {
-		log.Info(ctx, "Scanner: PID config changed, rescanning library in full", "lib", lib.Name,
+		msg := "Scanner: PID config changed, rescanning library in full"
+		if len(targetFolders) > 0 {
+			msg = "Scanner: PID config changed, rescanning target folders in full"
+		}
+		log.Info(ctx, msg, "lib", lib.Name, "targetFolders", targetFolders,
 			"album", pid.Album, "track", pid.Track, "scannedAlbum", lib.ScannedPIDAlbum, "scannedTrack", lib.ScannedPIDTrack)
 		fullScan = true
 	}
