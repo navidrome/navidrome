@@ -1713,6 +1713,18 @@ var _ = Describe("Rust Generation", func() {
 		})
 	})
 
+	Describe("stream types", func() {
+		It("uses nil as the zero value of stream types", func() {
+			Expect(zeroValue("io.ReadCloser")).To(Equal("nil"))
+			Expect(zeroValue("io.WriteCloser")).To(Equal("nil"))
+		})
+
+		It("treats stream types as nilable", func() {
+			Expect(isNilableType("io.ReadCloser")).To(BeTrue())
+			Expect(isNilableType("io.WriteCloser")).To(BeTrue())
+		})
+	})
+
 	Describe("nil-safe mock accessors", func() {
 		Describe("GenerateClientGoStub", func() {
 			It("guards pointer, slice and map returns so Return(nil, ...) does not panic", func() {

@@ -66,7 +66,8 @@ func mockReturnBody(m Method) string {
 // type, rather than a malformed test expectation.
 func isNilableType(typ string) bool {
 	return strings.HasPrefix(typ, "*") || strings.HasPrefix(typ, "[]") ||
-		strings.HasPrefix(typ, "map[") || typ == "any" || typ == "interface{}"
+		strings.HasPrefix(typ, "map[") || typ == "any" || typ == "interface{}" ||
+		streamKind(typ) != ""
 }
 
 // mockAccessor returns the testify mock accessor call for a given type and index.

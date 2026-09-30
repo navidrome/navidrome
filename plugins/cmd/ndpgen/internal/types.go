@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 )
@@ -8,6 +9,23 @@ import (
 // sharedTypesPrefix is the package selector a capability or host-service source
 // uses to reference the shared types package (e.g. types.Track).
 const sharedTypesPrefix = "types."
+
+// Stream types a host service may use; the generator maps them to stream handles.
+const (
+	streamReaderType = "io.ReadCloser"
+	streamWriterType = "io.WriteCloser"
+)
+
+// streamKind returns "reader" or "writer" for the stream types, "" for anything else.
+func streamKind(goType string) string {
+	switch goType {
+	case streamReaderType:
+		return "reader"
+	case streamWriterType:
+		return "writer"
+	}
+	return ""
+}
 
 // Service represents a parsed host service interface.
 type Service struct {
@@ -247,6 +265,33 @@ type FieldDef struct {
 	Doc       string // Field documentation
 }
 
+// HasStreams reports whether the struct has stream fields.
+func (s StructDef) HasStreams() bool {
+	return slices.ContainsFunc(s.Fields, func(f FieldDef) bool { return f.StreamKind() != "" })
+}
+
+// StreamKind returns "reader" or "writer" if the field is a stream, "" otherwise.
+func (f FieldDef) StreamKind() string {
+	return streamKind(f.Type)
+}
+
+// StreamStructs returns the service structs that have stream fields, sorted by name.
+func (s Service) StreamStructs() []StructDef {
+	var out []StructDef
+	for _, st := range s.Structs {
+		if st.HasStreams() {
+			out = append(out, st)
+		}
+	}
+	slices.SortFunc(out, func(a, b StructDef) int { return strings.Compare(a.Name, b.Name) })
+	return out
+}
+
+// HasStreams reports whether any method of the service takes or returns streams.
+func (s Service) HasStreams() bool {
+	return slices.ContainsFunc(s.Methods, func(m Method) bool { return m.HasStreams(s) })
+}
+
 // OutputFileName returns the generated file name for this service.
 func (s Service) OutputFileName() string {
 	return strings.ToLower(s.Name) + "_gen.go"
@@ -288,6 +333,31 @@ type Method struct {
 	Returns    []Param // Return values (excluding error)
 	HasError   bool    // Whether the method returns an error
 	Doc        string  // Documentation comment for the method
+}
+
+// HasStreams reports whether the method takes or returns streams, directly or via a stream struct.
+func (m Method) HasStreams(svc Service) bool {
+	return m.HasStreamParams(svc) || m.HasStreamReturns(svc)
+}
+
+// HasStreamParams reports whether any parameter is a stream or a stream struct.
+func (m Method) HasStreamParams(svc Service) bool {
+	return hasStreamParam(m.Params, svc)
+}
+
+// HasStreamReturns reports whether any result is a stream or a stream struct.
+func (m Method) HasStreamReturns(svc Service) bool {
+	return hasStreamParam(m.Returns, svc)
+}
+
+func hasStreamParam(params []Param, svc Service) bool {
+	return slices.ContainsFunc(params, func(p Param) bool {
+		if p.StreamKind() != "" {
+			return true
+		}
+		_, _, found := p.StreamStruct(svc)
+		return found
+	})
 }
 
 // FunctionName returns the Extism host function export name.
@@ -426,6 +496,8 @@ func zeroValue(typ string) string {
 		return "nil"
 	case typ == "any", typ == "interface{}":
 		return "nil"
+	case streamKind(typ) != "":
+		return "nil"
 	default:
 		// For custom struct types, return empty struct
 		return typ + "{}"
@@ -437,6 +509,23 @@ type Param struct {
 	Name     string // Parameter name
 	Type     string // Go type (e.g., "string", "int32", "[]byte")
 	JSONName string // JSON field name (camelCase)
+}
+
+// StreamKind returns "reader" or "writer" if the parameter is a stream, "" otherwise.
+func (p Param) StreamKind() string {
+	return streamKind(p.Type)
+}
+
+// StreamStruct returns the service struct with stream fields that this parameter
+// is (by value or pointer), whether it is a pointer, and whether one was found.
+func (p Param) StreamStruct(svc Service) (StructDef, bool, bool) {
+	name, isPtr := strings.CutPrefix(p.Type, "*")
+	for _, st := range svc.Structs {
+		if st.Name == name && st.HasStreams() {
+			return st, isPtr, true
+		}
+	}
+	return StructDef{}, false, false
 }
 
 // IsByteSlice returns true if the parameter type is []byte.

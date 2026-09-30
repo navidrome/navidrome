@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -25,6 +26,20 @@ var (
 	exportPattern = regexp.MustCompile(`//nd:export\s+(.*)`)
 	// key=value pairs
 	keyValuePattern = regexp.MustCompile(`(\w+)=(\S+)`)
+)
+
+// reservedParamNames are identifiers the generated host and client code declares
+// in the same scope as a host function's parameters and named results.
+var reservedParamNames = []string{
+	"ctx", "p", "stack", "service", "req", "reqBytes", "reqMem", "resp", "response",
+	"responsePtr", "responseMem", "responseBytes", "err", "svcErr", "conv",
+}
+
+var (
+	errStreamPosition     = errors.New("streams are only supported as direct parameters, results, or fields of a parameter or result struct")
+	errStreamInCapability = errors.New("streams are not supported in capabilities")
+	errStreamInShared     = errors.New("streams are not supported in shared types")
+	errStreamNeedsError   = errors.New("host functions with streams must return an error")
 )
 
 // parsedGoFile pairs a source path with its already-parsed AST.
@@ -275,6 +290,9 @@ func parseCapabilityFile(path string, f *ast.File, structMap map[string]StructDe
 					capability.Structs = append(capability.Structs, s)
 				}
 			}
+			if err := validateCapabilityStreams(capability); err != nil {
+				return nil, fmt.Errorf("capability %s: %w", capability.Interface, err)
+			}
 
 			// Attach referenced type aliases (skip those already in SharedAliases)
 			for _, typeName := range sortedTypeNames {
@@ -371,6 +389,9 @@ func resolveSharedAliases(referenced map[string]bool, aliasMap map[string]TypeAl
 		}
 		used[canonical] = true
 		for _, f := range def.Fields {
+			if slices.ContainsFunc(typeLeaves(f.Type), isStreamLike) {
+				return nil, nil, fmt.Errorf("shared type %s field %s: %w", canonical, f.Name, errStreamInShared)
+			}
 			clear(fieldRefs)
 			collectReferencedTypes(f.Type, fieldRefs)
 			for t := range fieldRefs {
@@ -579,6 +600,9 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 					service.Structs = append(service.Structs, s)
 				}
 			}
+			if err := validateServiceStreams(service); err != nil {
+				return nil, fmt.Errorf("host service %s: %w", service.Interface, err)
+			}
 
 			if len(service.Methods) > 0 {
 				services = append(services, service)
@@ -587,6 +611,112 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 	}
 
 	return services, nil
+}
+
+// validateServiceStreams checks that streams appear only as direct parameters or
+// results, or as fields of a struct that is itself a direct parameter or result.
+func validateServiceStreams(svc Service) error {
+	streamStructs := map[string]bool{}
+	for _, st := range svc.StreamStructs() {
+		streamStructs[st.Name] = true
+	}
+	checkNested := func(goType string) error {
+		for _, t := range typeLeaves(goType) {
+			if t == "io.Reader" || t == "io.Writer" {
+				return fmt.Errorf("streams must be io.ReadCloser or io.WriteCloser, got %s", t)
+			}
+			if streamKind(t) != "" || streamStructs[t] {
+				return errStreamPosition
+			}
+		}
+		return nil
+	}
+
+	for _, st := range svc.Structs {
+		for _, f := range st.Fields {
+			if f.StreamKind() != "" {
+				continue
+			}
+			if err := checkNested(f.Type); err != nil {
+				return fmt.Errorf("struct %s field %s: %w", st.Name, f.Name, err)
+			}
+		}
+	}
+	for _, m := range svc.Methods {
+		for _, p := range slices.Concat(m.Params, m.Returns) {
+			if p.StreamKind() != "" {
+				continue
+			}
+			if _, _, ok := p.StreamStruct(svc); ok {
+				continue
+			}
+			if err := checkNested(p.Type); err != nil {
+				return fmt.Errorf("method %s: %w", m.Name, err)
+			}
+		}
+		if m.HasStreams(svc) && !m.HasError {
+			return fmt.Errorf("method %s: %w", m.Name, errStreamNeedsError)
+		}
+	}
+	return nil
+}
+
+// validateCapabilityStreams rejects stream types anywhere in a capability's exports.
+func validateCapabilityStreams(c Capability) error {
+	for _, e := range c.Methods {
+		if slices.ContainsFunc(typeLeaves(e.Input.Type), isStreamLike) ||
+			slices.ContainsFunc(typeLeaves(e.Output.Type), isStreamLike) {
+			return fmt.Errorf("export %s: %w", e.Name, errStreamInCapability)
+		}
+	}
+	for _, st := range c.Structs {
+		for _, f := range st.Fields {
+			if slices.ContainsFunc(typeLeaves(f.Type), isStreamLike) {
+				return fmt.Errorf("struct %s field %s: %w", st.Name, f.Name, errStreamInCapability)
+			}
+		}
+	}
+	return nil
+}
+
+// isStreamLike reports whether goType is a stream or a plain io.Reader/io.Writer.
+func isStreamLike(goType string) bool {
+	return streamKind(goType) != "" || goType == "io.Reader" || goType == "io.Writer"
+}
+
+// typeLeaves returns the named types in a Go type expression, unwrapping
+// pointers, slices, arrays, and map keys and values.
+func typeLeaves(goType string) []string {
+	switch {
+	case strings.HasPrefix(goType, "*"):
+		return typeLeaves(goType[1:])
+	case strings.HasPrefix(goType, "map["):
+		key, value := splitMapType(goType)
+		return append(typeLeaves(key), typeLeaves(value)...)
+	case strings.HasPrefix(goType, "["):
+		if _, elem, ok := strings.Cut(goType, "]"); ok {
+			return typeLeaves(elem)
+		}
+	}
+	return []string{goType}
+}
+
+// splitMapType returns the key and value types of a map[K]V type string.
+func splitMapType(goType string) (key, value string) {
+	rest := goType[len("map["):]
+	depth := 1
+	for i, r := range rest {
+		switch r {
+		case '[':
+			depth++
+		case ']':
+			depth--
+			if depth == 0 {
+				return rest[:i], rest[i+1:]
+			}
+		}
+	}
+	return rest, ""
 }
 
 // parseStructs extracts all struct type definitions from a parsed Go file.
@@ -811,22 +941,7 @@ func collectReferencedTypes(goType string, refs map[string]bool) {
 	}
 	// Handle map
 	if strings.HasPrefix(goType, "map[") {
-		rest := goType[4:] // Remove "map["
-		depth := 1
-		keyEnd := 0
-		for i, r := range rest {
-			if r == '[' {
-				depth++
-			} else if r == ']' {
-				depth--
-				if depth == 0 {
-					keyEnd = i
-					break
-				}
-			}
-		}
-		keyType := rest[:keyEnd]
-		valueType := rest[keyEnd+1:]
+		keyType, valueType := splitMapType(goType)
 		collectReferencedTypes(keyType, refs)
 		collectReferencedTypes(valueType, refs)
 		return
@@ -996,6 +1111,12 @@ func parseMethod(name string, funcType *ast.FuncType, annotation map[string]stri
 					m.Returns = append(m.Returns, NewParam(name.Name, typeName))
 				}
 			}
+		}
+	}
+
+	for _, p := range slices.Concat(m.Params, m.Returns) {
+		if slices.Contains(reservedParamNames, p.Name) {
+			return Method{}, fmt.Errorf("parameter name %q is reserved by generated code", p.Name)
 		}
 	}
 
