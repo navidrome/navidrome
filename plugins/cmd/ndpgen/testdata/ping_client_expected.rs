@@ -23,7 +23,7 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn ping() -> Result<(), Error> {
-    let response: PingPingResponse = unsafe { nd_pdk_types::hostcall::call(ping_ping, &serde_json::json!({})) }?;
+    let response: PingPingResponse = nd_pdk_types::hostcall::call(ping_ping, &serde_json::json!({}))?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

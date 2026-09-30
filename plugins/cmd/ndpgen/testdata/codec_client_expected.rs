@@ -62,9 +62,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn encode(data: Vec<u8>) -> Result<Vec<u8>, Error> {
-    let response: CodecEncodeResponse = unsafe { nd_pdk_types::hostcall::call(codec_encode, &CodecEncodeRequest {
+    let response: CodecEncodeResponse = nd_pdk_types::hostcall::call(codec_encode, &CodecEncodeRequest {
         data: data,
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

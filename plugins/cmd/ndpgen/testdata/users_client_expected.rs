@@ -46,10 +46,10 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(id: Option<String>, filter: Option<User>) -> Result<Option<User>, Error> {
-    let response: UsersGetResponse = unsafe { nd_pdk_types::hostcall::call(users_get, &UsersGetRequest {
+    let response: UsersGetResponse = nd_pdk_types::hostcall::call(users_get, &UsersGetRequest {
         id: id,
         filter: filter,
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

@@ -45,9 +45,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn find(query: &str) -> Result<(Vec<Result>, i32), Error> {
-    let response: SearchFindResponse = unsafe { nd_pdk_types::hostcall::call(search_find, &SearchFindRequest {
+    let response: SearchFindResponse = nd_pdk_types::hostcall::call(search_find, &SearchFindRequest {
         query: query.to_owned(),
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

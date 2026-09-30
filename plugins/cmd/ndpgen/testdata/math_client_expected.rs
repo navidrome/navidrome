@@ -39,10 +39,10 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn add(a: i32, b: i32) -> Result<i32, Error> {
-    let response: MathAddResponse = unsafe { nd_pdk_types::hostcall::call(math_add, &MathAddRequest {
+    let response: MathAddResponse = nd_pdk_types::hostcall::call(math_add, &MathAddRequest {
         a: a,
         b: b,
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

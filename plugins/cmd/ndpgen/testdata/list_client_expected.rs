@@ -45,10 +45,10 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn items(name: &str, filter: Filter) -> Result<i32, Error> {
-    let response: ListItemsResponse = unsafe { nd_pdk_types::hostcall::call(list_items, &ListItemsRequest {
+    let response: ListItemsResponse = nd_pdk_types::hostcall::call(list_items, &ListItemsRequest {
         name: name.to_owned(),
         filter: filter,
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

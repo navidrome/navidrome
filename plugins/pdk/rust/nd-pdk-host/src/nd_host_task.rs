@@ -144,10 +144,10 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn create_queue(name: &str, config: QueueConfig) -> Result<(), Error> {
-    let response: TaskCreateQueueResponse = unsafe { nd_pdk_types::hostcall::call(task_createqueue, &TaskCreateQueueRequest {
+    let response: TaskCreateQueueResponse = nd_pdk_types::hostcall::call(task_createqueue, &TaskCreateQueueRequest {
         name: name.to_owned(),
         config: config,
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -169,10 +169,10 @@ pub fn create_queue(name: &str, config: QueueConfig) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn enqueue(queue_name: &str, payload: Vec<u8>) -> Result<String, Error> {
-    let response: TaskEnqueueResponse = unsafe { nd_pdk_types::hostcall::call(task_enqueue, &TaskEnqueueRequest {
+    let response: TaskEnqueueResponse = nd_pdk_types::hostcall::call(task_enqueue, &TaskEnqueueRequest {
         queue_name: queue_name.to_owned(),
         payload: payload,
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -193,9 +193,9 @@ pub fn enqueue(queue_name: &str, payload: Vec<u8>) -> Result<String, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(task_id: &str) -> Result<Option<TaskInfo>, Error> {
-    let response: TaskGetResponse = unsafe { nd_pdk_types::hostcall::call(task_get, &TaskGetRequest {
+    let response: TaskGetResponse = nd_pdk_types::hostcall::call(task_get, &TaskGetRequest {
         task_id: task_id.to_owned(),
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -213,9 +213,9 @@ pub fn get(task_id: &str) -> Result<Option<TaskInfo>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn cancel(task_id: &str) -> Result<(), Error> {
-    let response: TaskCancelResponse = unsafe { nd_pdk_types::hostcall::call(task_cancel, &TaskCancelRequest {
+    let response: TaskCancelResponse = nd_pdk_types::hostcall::call(task_cancel, &TaskCancelRequest {
         task_id: task_id.to_owned(),
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -236,9 +236,9 @@ pub fn cancel(task_id: &str) -> Result<(), Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn clear_queue(queue_name: &str) -> Result<i64, Error> {
-    let response: TaskClearQueueResponse = unsafe { nd_pdk_types::hostcall::call(task_clearqueue, &TaskClearQueueRequest {
+    let response: TaskClearQueueResponse = nd_pdk_types::hostcall::call(task_clearqueue, &TaskClearQueueRequest {
         queue_name: queue_name.to_owned(),
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

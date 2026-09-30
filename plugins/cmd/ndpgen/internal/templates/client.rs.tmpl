@@ -93,13 +93,13 @@ extern "C" {
 {{- if .IsOptionPattern}}
 pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<Option<{{rustType (index .Returns 0)}}>, Error> {
 {{- if .HasParams}}
-    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &{{requestType .}} {
+    let response: {{responseType .}} = nd_pdk_types::hostcall::call({{exportName .}}, &{{requestType .}} {
 {{- range .Params}}
         {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
 {{- end}}
-    }) }?;
+    })?;
 {{- else}}
-    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &serde_json::json!({})) }?;
+    let response: {{responseType .}} = nd_pdk_types::hostcall::call({{exportName .}}, &serde_json::json!({}))?;
 {{- end}}
 {{if .HasError}}
     if let Some(err) = response.error {
@@ -115,13 +115,13 @@ pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName
 {{- else}}
 pub fn {{rustFunc .}}({{range $i, $p := .Params}}{{if $i}}, {{end}}{{$p.RustName}}: {{rustParamType $p}}{{end}}) -> Result<{{if eq (len .Returns) 0}}(){{else if eq (len .Returns) 1}}{{rustType (index .Returns 0)}}{{else}}({{range $i, $r := .Returns}}{{if $i}}, {{end}}{{rustType $r}}{{end}}){{end}}, Error> {
 {{- if .HasParams}}
-    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &{{requestType .}} {
+    let response: {{responseType .}} = nd_pdk_types::hostcall::call({{exportName .}}, &{{requestType .}} {
 {{- range .Params}}
         {{.RustName}}: {{.RustName}}{{if .NeedsToOwned}}.to_owned(){{end}},
 {{- end}}
-    }) }?;
+    })?;
 {{- else}}
-    let response: {{responseType .}} = unsafe { nd_pdk_types::hostcall::call({{exportName .}}, &serde_json::json!({})) }?;
+    let response: {{responseType .}} = nd_pdk_types::hostcall::call({{exportName .}}, &serde_json::json!({}))?;
 {{- end}}
 {{if .HasError}}
     if let Some(err) = response.error {

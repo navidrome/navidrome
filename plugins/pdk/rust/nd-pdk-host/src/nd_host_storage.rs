@@ -26,7 +26,7 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_storage_path() -> Result<String, Error> {
-    let response: StorageGetStoragePathResponse = unsafe { nd_pdk_types::hostcall::call(storage_getstoragepath, &serde_json::json!({})) }?;
+    let response: StorageGetStoragePathResponse = nd_pdk_types::hostcall::call(storage_getstoragepath, &serde_json::json!({}))?;
 
     Ok(response.result)
 }

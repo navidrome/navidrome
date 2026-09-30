@@ -1,12 +1,10 @@
-//! Calls Navidrome host functions, freeing the request and response blocks so repeated calls do not leak memory.
+//! Calls Navidrome host functions and frees both memory blocks, which `#[host_fn]` does not do for the
+//! response.
 
 use extism_pdk::{Error, Memory};
 use serde::{de::DeserializeOwned, Serialize};
 
-/// # Safety
-///
-/// `f` must be an Extism host function import that takes and returns a memory offset.
-pub unsafe fn call<Req: Serialize, Resp: DeserializeOwned>(
+pub fn call<Req: Serialize, Resp: DeserializeOwned>(
     f: unsafe extern "C" fn(u64) -> u64,
     req: &Req,
 ) -> Result<Resp, Error> {

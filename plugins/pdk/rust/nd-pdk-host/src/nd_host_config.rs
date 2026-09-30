@@ -72,9 +72,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get(key: &str) -> Result<Option<String>, Error> {
-    let response: ConfigGetResponse = unsafe { nd_pdk_types::hostcall::call(config_get, &ConfigGetRequest {
+    let response: ConfigGetResponse = nd_pdk_types::hostcall::call(config_get, &ConfigGetRequest {
         key: key.to_owned(),
-    }) }?;
+    })?;
 
     if response.exists {
         Ok(Some(response.value))
@@ -100,9 +100,9 @@ pub fn get(key: &str) -> Result<Option<String>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
-    let response: ConfigGetIntResponse = unsafe { nd_pdk_types::hostcall::call(config_getint, &ConfigGetIntRequest {
+    let response: ConfigGetIntResponse = nd_pdk_types::hostcall::call(config_getint, &ConfigGetIntRequest {
         key: key.to_owned(),
-    }) }?;
+    })?;
 
     if response.exists {
         Ok(Some(response.value))
@@ -127,9 +127,9 @@ pub fn get_int(key: &str) -> Result<Option<i64>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn keys(prefix: &str) -> Result<Vec<String>, Error> {
-    let response: ConfigKeysResponse = unsafe { nd_pdk_types::hostcall::call(config_keys, &ConfigKeysRequest {
+    let response: ConfigKeysResponse = nd_pdk_types::hostcall::call(config_keys, &ConfigKeysRequest {
         prefix: prefix.to_owned(),
-    }) }?;
+    })?;
 
     Ok(response.keys)
 }

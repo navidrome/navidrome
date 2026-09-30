@@ -35,9 +35,9 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn count(name: &str) -> Result<i32, Error> {
-    let response: CounterCountResponse = unsafe { nd_pdk_types::hostcall::call(counter_count, &CounterCountRequest {
+    let response: CounterCountResponse = nd_pdk_types::hostcall::call(counter_count, &CounterCountRequest {
         name: name.to_owned(),
-    }) }?;
+    })?;
 
     Ok(response.value)
 }

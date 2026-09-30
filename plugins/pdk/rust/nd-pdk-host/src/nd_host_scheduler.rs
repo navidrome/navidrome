@@ -81,11 +81,11 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn schedule_one_time(delay_seconds: i32, payload: &str, schedule_id: &str) -> Result<String, Error> {
-    let response: SchedulerScheduleOneTimeResponse = unsafe { nd_pdk_types::hostcall::call(scheduler_scheduleonetime, &SchedulerScheduleOneTimeRequest {
+    let response: SchedulerScheduleOneTimeResponse = nd_pdk_types::hostcall::call(scheduler_scheduleonetime, &SchedulerScheduleOneTimeRequest {
         delay_seconds: delay_seconds,
         payload: payload.to_owned(),
         schedule_id: schedule_id.to_owned(),
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -115,11 +115,11 @@ pub fn schedule_one_time(delay_seconds: i32, payload: &str, schedule_id: &str) -
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn schedule_recurring(cron_expression: &str, payload: &str, schedule_id: &str) -> Result<String, Error> {
-    let response: SchedulerScheduleRecurringResponse = unsafe { nd_pdk_types::hostcall::call(scheduler_schedulerecurring, &SchedulerScheduleRecurringRequest {
+    let response: SchedulerScheduleRecurringResponse = nd_pdk_types::hostcall::call(scheduler_schedulerecurring, &SchedulerScheduleRecurringRequest {
         cron_expression: cron_expression.to_owned(),
         payload: payload.to_owned(),
         schedule_id: schedule_id.to_owned(),
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -141,9 +141,9 @@ pub fn schedule_recurring(cron_expression: &str, payload: &str, schedule_id: &st
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn cancel_schedule(schedule_id: &str) -> Result<(), Error> {
-    let response: SchedulerCancelScheduleResponse = unsafe { nd_pdk_types::hostcall::call(scheduler_cancelschedule, &SchedulerCancelScheduleRequest {
+    let response: SchedulerCancelScheduleResponse = nd_pdk_types::hostcall::call(scheduler_cancelschedule, &SchedulerCancelScheduleRequest {
         schedule_id: schedule_id.to_owned(),
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

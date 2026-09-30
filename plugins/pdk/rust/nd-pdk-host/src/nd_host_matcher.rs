@@ -50,10 +50,10 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn match_songs(songs: Vec<nd_pdk_types::SongRef>, opts: MatchOptions) -> Result<Vec<Option<nd_pdk_types::Track>>, Error> {
-    let response: MatcherMatchSongsResponse = unsafe { nd_pdk_types::hostcall::call(matcher_matchsongs, &MatcherMatchSongsRequest {
+    let response: MatcherMatchSongsResponse = nd_pdk_types::hostcall::call(matcher_matchsongs, &MatcherMatchSongsRequest {
         songs: songs,
         opts: opts,
-    }) }?;
+    })?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));

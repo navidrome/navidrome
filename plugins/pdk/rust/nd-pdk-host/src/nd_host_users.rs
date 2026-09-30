@@ -52,7 +52,7 @@ extern "C" {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_users() -> Result<Vec<User>, Error> {
-    let response: UsersGetUsersResponse = unsafe { nd_pdk_types::hostcall::call(users_getusers, &serde_json::json!({})) }?;
+    let response: UsersGetUsersResponse = nd_pdk_types::hostcall::call(users_getusers, &serde_json::json!({}))?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
@@ -72,7 +72,7 @@ pub fn get_users() -> Result<Vec<User>, Error> {
 /// # Errors
 /// Returns an error if the host function call fails.
 pub fn get_admins() -> Result<Vec<User>, Error> {
-    let response: UsersGetAdminsResponse = unsafe { nd_pdk_types::hostcall::call(users_getadmins, &serde_json::json!({})) }?;
+    let response: UsersGetAdminsResponse = nd_pdk_types::hostcall::call(users_getadmins, &serde_json::json!({}))?;
 
     if let Some(err) = response.error {
         return Err(Error::msg(err));
