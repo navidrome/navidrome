@@ -5,17 +5,42 @@ import (
 	"math"
 
 	extism "github.com/extism/go-sdk"
+	"github.com/tetratelabs/wazero/api"
 )
 
+// kernelLength is the Extism kernel's length export, looked up once per call: CurrentPlugin.Length looks it
+// up on every use, and wazero builds a new function each time.
+type kernelLength struct {
+	fn    api.Function
+	stack [1]uint64
+}
+
 // extismMemory adapts the calling plugin's Extism memory to guestMemory.
-type extismMemory struct{ p *extism.CurrentPlugin }
+type extismMemory struct {
+	ctx    context.Context //nolint:containedctx // lives for one host function call
+	p      *extism.CurrentPlugin
+	length *kernelLength
+}
 
 func (m extismMemory) blockLength(offset uint64) uint64 {
-	n, err := m.p.Length(offset)
-	if err != nil {
+	k := m.length
+	if k.fn == nil {
+		if kernel, ok := m.ctx.Value(extism.PluginCtxKey("extism")).(api.Module); ok {
+			k.fn = kernel.ExportedFunction("length")
+		}
+	}
+	if k.fn == nil {
+		n, err := m.p.Length(offset)
+		if err != nil {
+			return 0
+		}
+		return n
+	}
+	k.stack[0] = offset
+	if err := k.fn.CallWithStack(m.ctx, k.stack[:]); err != nil {
 		return 0
 	}
-	return n
+	return k.stack[0]
 }
 
 func (m extismMemory) view(offset uint64, n uint32) ([]byte, bool) {
@@ -62,7 +87,7 @@ func streamHostFunction(name string, params []extism.ValueType, op func(*callSco
 	return extism.NewHostFunctionWithStack(name,
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
 			if s := callScopeFrom(ctx); s != nil {
-				stack[0] = op(s, extismMemory{p}, stack)
+				stack[0] = op(s, extismMemory{ctx: ctx, p: p, length: &s.length}, stack)
 			} else {
 				stack[0] = math.MaxUint64
 			}
