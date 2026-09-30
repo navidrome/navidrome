@@ -83,7 +83,7 @@ import "context"
 type SubsonicAPIService interface {
     // Call executes a Subsonic API request and returns the response.
     //nd:hostfunc
-    Call(ctx context.Context, uri string) (response string, err error)
+    Call(ctx context.Context, uri string) (responseJSON string, err error)
 }
 ```
 
