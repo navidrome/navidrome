@@ -169,6 +169,14 @@ var _ = Describe("streamBackend", func() {
 			Expect(newReadStream(r).transferValue()).To(BeIdenticalTo(r))
 		})
 
+		It("hands back the registered value after a read to the end", func() {
+			r := &trackingReader{Reader: strings.NewReader("x")}
+			b := newReadStream(r)
+			_, err := io.ReadAll(b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b.transferValue()).To(BeIdenticalTo(r))
+		})
+
 		It("hands back the backend when an error is retained", func() {
 			b := newReadStream(io.NopCloser(&dataErrReader{data: []byte("a"), err: errors.New("boom")}))
 			_, _ = b.Read(make([]byte, 4))

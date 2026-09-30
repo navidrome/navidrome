@@ -97,7 +97,7 @@ func (b *streamBackend) Close() error {
 // transferValue is what host code gets when a plugin returns this stream: the original value keeps abilities
 // like io.Seeker, unless a retained error would be lost with it.
 func (b *streamBackend) transferValue() any {
-	if b.retainedErr() != nil {
+	if err := b.retainedErr(); err != nil && !errors.Is(err, io.EOF) {
 		return b
 	}
 	return b.value
