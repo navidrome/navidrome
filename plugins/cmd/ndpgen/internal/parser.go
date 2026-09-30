@@ -581,6 +581,10 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 				}
 			}
 
+			// Recursively collect all struct dependencies so types referenced only
+			// transitively (e.g. a field type of a referenced struct) are attached.
+			collectAllStructDependencies(referencedTypes, pkgStructMap)
+
 			// Resolve shared-type aliases against the registry. Host-service schemas
 			// are not generated (the -schemas pass is capability-only), so the resolved
 			// shared shapes are not needed here.
@@ -589,10 +593,6 @@ func parseServiceFile(f *ast.File, pkgStructMap map[string]StructDef, pkgAliasMa
 				return nil, err
 			}
 			service.SharedAliases = sharedAliases
-
-			// Recursively collect all struct dependencies so types referenced only
-			// transitively (e.g. a field type of a referenced struct) are attached.
-			collectAllStructDependencies(referencedTypes, pkgStructMap)
 
 			// Attach referenced structs to the service (sorted for stable output)
 			for _, typeName := range slices.Sorted(maps.Keys(referencedTypes)) {

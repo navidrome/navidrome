@@ -539,10 +539,13 @@ type BlobService interface {
 `, "service"),
 		)
 
-		It("rejects stream fields in shared types", func() {
-			sharedDir := filepath.Join(tmpDir, "types")
-			Expect(os.Mkdir(sharedDir, 0700)).To(Succeed())
-			Expect(os.WriteFile(filepath.Join(sharedDir, "blob.go"), []byte(`package types
+		Describe("shared types", func() {
+			var shared map[string]StructDef
+
+			BeforeEach(func() {
+				sharedDir := filepath.Join(tmpDir, "types")
+				Expect(os.Mkdir(sharedDir, 0700)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(sharedDir, "blob.go"), []byte(`package types
 
 import "io"
 
@@ -550,26 +553,77 @@ type Blob struct {
 	Body io.ReadCloser
 }
 `), 0600)).To(Succeed())
-			shared, err := LoadSharedTypes(sharedDir)
-			Expect(err).NotTo(HaveOccurred())
+				var err error
+				shared, err = LoadSharedTypes(sharedDir)
+				Expect(err).NotTo(HaveOccurred())
+			})
 
-			Expect(os.WriteFile(filepath.Join(tmpDir, "blob.go"), []byte(`package host
+			DescribeTable("rejects stream fields in shared types used by a host service",
+				func(src string) {
+					Expect(os.WriteFile(filepath.Join(tmpDir, "blob.go"), []byte(`package host
 
 import (
 	"context"
 
 	"github.com/navidrome/navidrome/plugins/types"
 )
+`+src), 0600)).To(Succeed())
 
+					_, err := ParseDirectoryWithShared(tmpDir, shared)
+					Expect(err).To(MatchError(ContainSubstring("streams are not supported in shared types")))
+				},
+				Entry("as a direct param", `
 //nd:hostservice name=Blob permission=blob
 type BlobService interface {
 	//nd:hostfunc
 	Put(ctx context.Context, blob types.Blob) error
 }
+`),
+				Entry("through a local struct field", `
+type Wrapper struct {
+	B types.Blob
+}
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Put(ctx context.Context, w Wrapper) error
+}
+`),
+				Entry("through a shared alias in a local struct field", `
+type Blob = types.Blob
+
+type Wrapper struct {
+	B Blob
+}
+
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Put(ctx context.Context, w Wrapper) error
+}
+`),
+			)
+
+			It("rejects stream fields in shared types a capability reaches through a local struct", func() {
+				Expect(os.WriteFile(filepath.Join(tmpDir, "upload.go"), []byte(`package capabilities
+
+import "github.com/navidrome/navidrome/plugins/types"
+
+//nd:capability name=upload
+type Uploader interface {
+	//nd:export name=nd_upload
+	Upload(UploadInput) error
+}
+
+type UploadInput struct {
+	Blob types.Blob `+"`json:\"blob\"`"+`
+}
 `), 0600)).To(Succeed())
 
-			_, err = ParseDirectoryWithShared(tmpDir, shared)
-			Expect(err).To(MatchError(ContainSubstring("streams are not supported in shared types")))
+				_, err := ParseCapabilitiesWithShared(tmpDir, shared)
+				Expect(err).To(MatchError(ContainSubstring("streams are not supported in shared types")))
+			})
 		})
 	})
 
