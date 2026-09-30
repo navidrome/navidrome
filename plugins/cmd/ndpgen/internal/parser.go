@@ -32,7 +32,7 @@ var (
 // in the same scope as a host function's parameters and named results.
 var reservedParamNames = []string{
 	"ctx", "p", "stack", "service", "req", "reqBytes", "reqMem", "resp", "response",
-	"responsePtr", "responseMem", "responseBytes", "err", "svcErr", "conv",
+	"responsePtr", "responseMem", "responseBytes", "err", "svcErr", "conv", "stream",
 }
 
 var (

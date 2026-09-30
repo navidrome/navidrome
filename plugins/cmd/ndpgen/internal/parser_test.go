@@ -537,6 +537,13 @@ type BlobService interface {
 	Get(ctx context.Context, service string) (response string, err error)
 }
 `, "service"),
+			Entry("stream param shadowing the stream package", `
+//nd:hostservice name=Blob permission=blob
+type BlobService interface {
+	//nd:hostfunc
+	Save(ctx context.Context, name string, stream io.ReadCloser) error
+}
+`, "stream"),
 		)
 
 		Describe("shared types", func() {
