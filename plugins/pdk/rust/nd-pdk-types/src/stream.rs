@@ -155,7 +155,9 @@ fn pending_error() -> Option<io::Error> {
     if ptr < 0 {
         return Some(io::Error::other("stream operation failed"));
     }
-    let mem = extism_pdk::Memory::find(ptr as u64)?;
+    let Some(mem) = extism_pdk::Memory::find(ptr as u64) else {
+        return Some(io::Error::other("stream operation failed"));
+    };
     let msg = mem
         .to_string()
         .unwrap_or_else(|_| "stream operation failed".to_string());
