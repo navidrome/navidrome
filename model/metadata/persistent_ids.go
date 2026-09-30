@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
@@ -100,11 +99,11 @@ func ValidatePIDSpec(spec string, isAlbum bool) error {
 				}
 			case "folder", "albumartistid":
 			default:
-				name, ok := canonicalTagName(attr)
+				name, ok := model.CanonicalTagName(attr)
 				if !ok {
 					return fmt.Errorf("unknown attribute %q", attr)
 				}
-				if isAlbum && name != attr {
+				if isAlbum && string(name) != attr {
 					return fmt.Errorf("use the tag name %q instead of its alias %q", name, attr)
 				}
 			}
@@ -119,20 +118,6 @@ func (md Metadata) trackPID(mf model.MediaFile, pid model.PIDConfig) string {
 
 func (md Metadata) albumID(mf model.MediaFile, pidConf string) string {
 	return computePID(mf, md, pidConf, pidConf, true, id.NewHash)
-}
-
-// canonicalTagName returns the mapped tag that name is, or is an alias of (both already lowercase).
-func canonicalTagName(name string) (string, bool) {
-	mappings := model.TagMappings()
-	if _, ok := mappings[model.TagName(name)]; ok {
-		return name, true
-	}
-	for tagName, tag := range mappings {
-		if slices.Contains(tag.Aliases, name) {
-			return string(tagName), true
-		}
-	}
-	return "", false
 }
 
 // BFR Must be configurable?
