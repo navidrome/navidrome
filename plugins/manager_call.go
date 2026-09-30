@@ -31,11 +31,17 @@ func callPluginFunctionNoOutput[I any](ctx context.Context, plugin *plugin, func
 	return err
 }
 
-// callPluginFunction is a helper to call a plugin function with input and output types.
-// It handles JSON marshalling/unmarshalling and error checking.
-// The context is used for cancellation - if cancelled during the call, the plugin
-// instance will be terminated and context.Canceled or context.DeadlineExceeded will be returned.
+// callPluginFunction calls a plugin export with the default time limit.
 func callPluginFunction[I any, O any](ctx context.Context, plugin *plugin, funcName string, input I) (O, error) {
+	return callPluginFunctionWithTimeout[I, O](ctx, plugin, funcName, defaultTimeout, input)
+}
+
+// callPluginFunctionWithTimeout calls a plugin export, handling JSON and errors. The deadline is set on ctx,
+// not in the Extism manifest, so host functions and anything watching ctx see it.
+func callPluginFunctionWithTimeout[I any, O any](ctx context.Context, plugin *plugin, funcName string, timeout time.Duration, input I) (O, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
 	start := time.Now()
 
 	var result O

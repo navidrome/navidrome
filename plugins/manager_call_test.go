@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/navidrome/navidrome/core/agents"
 	. "github.com/onsi/ginkgo/v2"
@@ -140,5 +141,41 @@ var _ = Describe("callPluginFunction metrics", Ordered, func() {
 			calls := partialRecorder.getCalls()
 			Expect(calls).To(BeEmpty())
 		})
+	})
+})
+
+func loadedTestPlugin(m *Manager, id string) *plugin {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	p := m.plugins[id]
+	Expect(p).ToNot(BeNil(), "plugin %s is not loaded", id)
+	return p
+}
+
+var _ = Describe("callPluginFunction time limits", Ordered, func() {
+	var (
+		ctx context.Context
+		p   *plugin
+	)
+
+	BeforeAll(func() {
+		manager, _ := createTestManagerWithPlugins(nil, "test-streams"+PackageExtension)
+		p = loadedTestPlugin(manager, "test-streams")
+	})
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
+	It("stops a call when its time limit passes", func() {
+		start := time.Now()
+		_, err := callPluginFunctionWithTimeout[struct{}, struct{}](ctx, p, "spin", 200*time.Millisecond, struct{}{})
+		Expect(err).To(MatchError(context.DeadlineExceeded))
+		Expect(time.Since(start)).To(BeNumerically("<", 5*time.Second))
+	})
+
+	It("leaves the time limit out of the Extism manifest", func() {
+		m := buildExtismManifest(&ndpPackage{Manifest: &Manifest{}}, nil)
+		Expect(m.Timeout).To(BeZero())
 	})
 })

@@ -500,8 +500,7 @@ func parsePluginConfig(configJSON string) (map[string]string, error) {
 // jailed FSConfig) nor AllowedHosts (extism's http_request has no SSRF guard; plugins must use host.HTTPSend).
 func buildExtismManifest(pkg *ndpPackage, pluginConfig map[string]string) extism.Manifest {
 	return extism.Manifest{
-		Wasm:    []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
-		Config:  pluginConfig,
-		Timeout: uint64(defaultTimeout.Milliseconds()),
+		Wasm:   []extism.Wasm{extism.WasmData{Data: pkg.WasmBytes, Name: "main"}},
+		Config: pluginConfig,
 	}
 }
