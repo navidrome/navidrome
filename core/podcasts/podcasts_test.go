@@ -179,6 +179,21 @@ var _ = Describe("PodcastService", func() {
 			Expect(found).To(BeTrue())
 		})
 
+		It("reuses the existing StreamID's MediaFile on re-download", func() {
+			_ = svc.DownloadEpisode(ctx, "ep-1")
+			Eventually(func() model.PodcastStatus {
+				return episodeRepo.Data["ep-1"].Status
+			}, "3s").Should(Equal(model.PodcastStatusCompleted))
+			first := episodeRepo.Data["ep-1"].StreamID
+			Expect(first).ToNot(BeEmpty())
+
+			_ = svc.DownloadEpisode(ctx, "ep-1")
+			Eventually(func() model.PodcastStatus {
+				return episodeRepo.Data["ep-1"].Status
+			}, "3s").Should(Equal(model.PodcastStatusCompleted))
+			Expect(episodeRepo.Data["ep-1"].StreamID).To(Equal(first))
+		})
+
 		It("records the file path after download", func() {
 			_ = svc.DownloadEpisode(ctx, "ep-1")
 			expectedPath := filepath.Join(conf.Server.DataFolder.String(), "podcasts", "ch-1", "ep-1.mp3")
@@ -235,6 +250,22 @@ var _ = Describe("PodcastService", func() {
 	Describe("DownloadEpisode error handling", func() {
 		BeforeEach(func() {
 			channelRepo.Data["ch-1"] = &model.PodcastChannel{ID: "ch-1", Title: "Test Channel"}
+		})
+		It("does not leave an empty file behind when the request fails", func() {
+			episodeRepo.Data["ep-bad"] = &model.PodcastEpisode{
+				ID:           "ep-bad",
+				ChannelID:    "ch-1",
+				EnclosureURL: "http://localhost:0/no-such.mp3",
+				Suffix:       "mp3",
+				Status:       model.PodcastStatusNew,
+			}
+			_ = svc.DownloadEpisode(ctx, "ep-bad")
+			Eventually(func() model.PodcastStatus {
+				return episodeRepo.Data["ep-bad"].Status
+			}, "3s").Should(Equal(model.PodcastStatusError))
+			dest := filepath.Join(conf.Server.DataFolder.String(), "podcasts", "ch-1", "ep-bad.mp3")
+			_, err := os.Stat(dest)
+			Expect(os.IsNotExist(err)).To(BeTrue())
 		})
 		It("sets status to error when download fails", func() {
 			episodeRepo.Data["ep-bad"] = &model.PodcastEpisode{

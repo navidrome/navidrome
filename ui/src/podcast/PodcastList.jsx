@@ -179,6 +179,7 @@ const PodcastList = ({ permissions, ...props }) => {
     >
       {isXsmall ? (
         <SimpleList
+          linkType="show"
           leftAvatar={(r) => <CoverArtField record={r} />}
           primaryText={(r) => r.title}
           secondaryText={(r) => r.url}

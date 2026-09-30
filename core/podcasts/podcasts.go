@@ -348,13 +348,6 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	}
 
 	dest := filepath.Join(dir, ep.ID+"."+suffix)
-	f, err := os.Create(dest)
-	if err != nil {
-		s.setEpisodeError(ctx, ep, err)
-		return
-	}
-	defer f.Close()
-
 	if err := validateURL(ep.EnclosureURL); err != nil {
 		s.setEpisodeError(ctx, ep, fmt.Errorf("invalid enclosure URL: %w", err))
 		return
@@ -379,6 +372,15 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 		s.setEpisodeError(ctx, ep, err)
 		return
 	}
+
+	// Create the file only once we have a 200 response, so failed requests
+	// don't leave empty files behind.
+	f, err := os.Create(dest)
+	if err != nil {
+		s.setEpisodeError(ctx, ep, err)
+		return
+	}
+	defer f.Close()
 
 	// Use Content-Length as total size when RSS feed didn't provide it
 	if resp.ContentLength > 0 && ep.Size == 0 {
@@ -407,8 +409,14 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 		now := time.Now()
 		tags := model.Tags{}
 		tags.Add("genre", "Podcast")
+		// Reuse the existing MediaFile on re-download so Put updates it instead of
+		// leaving a duplicate track behind.
+		mfID := ep.StreamID
+		if mfID == "" {
+			mfID = id.NewRandom()
+		}
 		mf := &model.MediaFile{
-			ID:          id.NewRandom(),
+			ID:          mfID,
 			LibraryID:   libID,
 			Path:        relPath,
 			Title:       ep.Title,

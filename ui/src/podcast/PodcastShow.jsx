@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   Card,
   CardContent,
@@ -110,11 +110,17 @@ const PodcastShow = (props) => {
   const { record } = useShowController(props)
   const [episodes, setEpisodes] = useState([])
 
+  // Incremented on every load and on channel change; responses from a
+  // superseded request are ignored so they can't overwrite the current channel.
+  const requestGen = useRef(0)
+
   const loadEpisodes = () => {
     if (!record?.id) return
+    const gen = ++requestGen.current
     subsonic
       .getPodcasts(record.id, true)
       .then((res) => {
+        if (gen !== requestGen.current) return
         const channels = res?.json?.['subsonic-response']?.podcasts?.channel || []
         const ch = channels.find((c) => c.id === record.id)
         setEpisodes(ch?.episode || [])
@@ -122,7 +128,13 @@ const PodcastShow = (props) => {
       .catch(() => {})
   }
 
-  useEffect(loadEpisodes, [record?.id])
+  useEffect(() => {
+    setEpisodes([]) // don't show the previous channel's episodes
+    loadEpisodes()
+    return () => {
+      requestGen.current++
+    }
+  }, [record?.id])
 
   // Stay subscribed to SSE progress while the view is mounted: a download
   // started from here may not be flagged 'downloading' yet when we refresh.
