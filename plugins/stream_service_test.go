@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -56,7 +57,7 @@ func (s *testStreamService) Echo(_ context.Context, text string) (string, error)
 // withStreamTestService registers the test host service for plugins loaded by this spec container.
 func withStreamTestService(svc streamtest.StreamTestService) {
 	saved := hostServices
-	hostServices = append(append([]hostServiceEntry{}, saved...), hostServiceEntry{
+	hostServices = append(slices.Clone(saved), hostServiceEntry{
 		name:          "StreamTest",
 		hasPermission: func(*Permissions) bool { return true },
 		create: func(*serviceContext) ([]extism.HostFunction, io.Closer, error) {
@@ -64,6 +65,35 @@ func withStreamTestService(svc streamtest.StreamTestService) {
 		},
 	})
 	DeferCleanup(func() { hostServices = saved })
+}
+
+func loadStreamTestPlugin(svc *testStreamService, pkg string, memPages uint32) *plugin {
+	if memPages > 0 {
+		saved := extismMaxMemoryPages
+		extismMaxMemoryPages = memPages
+		DeferCleanup(func() { extismMaxMemoryPages = saved })
+	}
+	withStreamTestService(svc)
+	manager, _ := createTestManagerWithPlugins(nil, pkg)
+	return loadedTestPlugin(manager, strings.TrimSuffix(pkg, PackageExtension))
+}
+
+func callText(ctx context.Context, p *plugin, fn, text string) serviceOutput {
+	GinkgoHelper()
+	out, err := callPluginFunction[map[string]string, serviceOutput](ctx, p, fn, map[string]string{"text": text})
+	Expect(err).ToNot(HaveOccurred())
+	return out
+}
+
+// generatedClientSpecs are the specs the Go and the Rust generated clients share.
+func generatedClientSpecs(call func(fn, text string) serviceOutput) {
+	It("returns a host reader to the plugin", func() {
+		Expect(call("open_read", "hello")).To(Equal(serviceOutput{Data: "hello"}))
+	})
+
+	It("converts stream fields of request and response structs", func() {
+		Expect(call("wrap", "abc")).To(Equal(serviceOutput{Data: "p:abc", Size: 5}))
+	})
 }
 
 type serviceOutput struct {
@@ -81,24 +111,16 @@ var _ = Describe("Generated stream host functions", Ordered, func() {
 
 	BeforeAll(func() {
 		svc = &testStreamService{created: &trackingWriter{}}
-		withStreamTestService(svc)
-		manager, _ := createTestManagerWithPlugins(nil, "test-stream-service"+PackageExtension)
-		p = loadedTestPlugin(manager, "test-stream-service")
+		p = loadStreamTestPlugin(svc, "test-stream-service"+PackageExtension, 0)
 	})
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 	})
 
-	call := func(fn, text string) serviceOutput {
-		out, err := callPluginFunction[map[string]string, serviceOutput](ctx, p, fn, map[string]string{"text": text})
-		Expect(err).ToNot(HaveOccurred())
-		return out
-	}
+	call := func(fn, text string) serviceOutput { return callText(ctx, p, fn, text) }
 
-	It("returns a host reader to the plugin", func() {
-		Expect(call("open_read", "hello")).To(Equal(serviceOutput{Data: "hello"}))
-	})
+	generatedClientSpecs(call)
 
 	It("returns a host writer to the plugin", func() {
 		Expect(call("create_write", "written by plugin").Error).To(BeEmpty())
@@ -125,10 +147,6 @@ var _ = Describe("Generated stream host functions", Ordered, func() {
 		Expect(call("drain_writer", "").Error).To(Equal("stream is not readable"))
 	})
 
-	It("converts stream fields of request and response structs", func() {
-		Expect(call("wrap", "abc")).To(Equal(serviceOutput{Data: "p:abc", Size: 5}))
-	})
-
 	It("treats a JSON null handle as no stream", func() {
 		Expect(call("drain_null_raw", "").Data).To(MatchJSON(`{"result":"<nil>"}`))
 	})
@@ -136,7 +154,7 @@ var _ = Describe("Generated stream host functions", Ordered, func() {
 	It("closes a handed-over stream when the call times out, unblocking the service", func() {
 		done := make(chan error, 1)
 		go func() {
-			_, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_blocked", time.Second, map[string]string{})
+			_, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_blocked", 250*time.Millisecond, map[string]string{})
 			done <- err
 		}()
 		var err error
@@ -154,11 +172,8 @@ var _ = Describe("Generated stream host functions under a memory cap", Ordered, 
 	)
 
 	BeforeAll(func() {
-		extismMaxMemoryPages = 1024 // 64 MiB; drain_loop would keep 2000 x 64 KiB buffers if hand-over leaked them
-		DeferCleanup(func() { extismMaxMemoryPages = 0 })
-		withStreamTestService(&testStreamService{created: &trackingWriter{}})
-		manager, _ := createTestManagerWithPlugins(nil, "test-stream-service"+PackageExtension)
-		p = loadedTestPlugin(manager, "test-stream-service")
+		// 24 MiB; drain_loop would keep 800 x 64 KiB buffers if hand-over leaked them
+		p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, "test-stream-service"+PackageExtension, 384)
 	})
 
 	BeforeEach(func() {
@@ -169,7 +184,7 @@ var _ = Describe("Generated stream host functions under a memory cap", Ordered, 
 		out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "drain_loop", time.Minute, map[string]string{"text": "abc"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
-		Expect(out.Size).To(Equal(int64(2000)))
+		Expect(out.Size).To(Equal(int64(800)))
 	})
 })
 
@@ -181,28 +196,14 @@ var _ = Describe("Generated stream host functions from Rust", Ordered, func() {
 
 	BeforeAll(func() {
 		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-stream-service-rs"))
-		withStreamTestService(&testStreamService{created: &trackingWriter{}})
-		manager, _ := createTestManagerWithPlugins(nil, pkg)
-		p = loadedTestPlugin(manager, "test-stream-service-rs")
+		p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 0)
 	})
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 	})
 
-	call := func(fn, text string) serviceOutput {
-		out, err := callPluginFunction[map[string]string, serviceOutput](ctx, p, fn, map[string]string{"text": text})
-		Expect(err).ToNot(HaveOccurred())
-		return out
-	}
-
-	It("reads a host stream returned by a generated client", func() {
-		Expect(call("open_read", "from rust")).To(Equal(serviceOutput{Data: "from rust"}))
-	})
-
-	It("sends and receives stream fields in structs", func() {
-		Expect(call("wrap", "abc")).To(Equal(serviceOutput{Data: "p:abc", Size: 5}))
-	})
+	generatedClientSpecs(func(fn, text string) serviceOutput { return callText(ctx, p, fn, text) })
 })
 
 var _ = Describe("Generated Rust host calls under a memory cap", Ordered, func() {
@@ -213,11 +214,8 @@ var _ = Describe("Generated Rust host calls under a memory cap", Ordered, func()
 
 	BeforeAll(func() {
 		pkg := buildRustTestPlugin(filepath.Join(testdataDir, "test-stream-service-rs"))
-		extismMaxMemoryPages = 1024 // 64 MiB; 2000 leaked 64 KiB responses would not fit
-		DeferCleanup(func() { extismMaxMemoryPages = 0 })
-		withStreamTestService(&testStreamService{created: &trackingWriter{}})
-		manager, _ := createTestManagerWithPlugins(nil, pkg)
-		p = loadedTestPlugin(manager, "test-stream-service-rs")
+		// 16 MiB; 500 leaked 64 KiB responses would not fit
+		p = loadStreamTestPlugin(&testStreamService{created: &trackingWriter{}}, pkg, 256)
 	})
 
 	BeforeEach(func() {
@@ -228,6 +226,6 @@ var _ = Describe("Generated Rust host calls under a memory cap", Ordered, func()
 		out, err := callPluginFunctionWithTimeout[map[string]string, serviceOutput](ctx, p, "echo_loop", time.Minute, map[string]string{})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(out.Error).To(BeEmpty())
-		Expect(out.Size).To(Equal(int64(2000)))
+		Expect(out.Size).To(Equal(int64(500)))
 	})
 })

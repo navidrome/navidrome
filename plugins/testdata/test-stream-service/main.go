@@ -33,7 +33,18 @@ func run(fn func(in input) output) int32 {
 	return 0
 }
 
-func fail(err error) output { return output{Error: err.Error()} }
+func fail(err error) output {
+	if err == nil {
+		return output{Error: "expected an error, got nil"}
+	}
+	return output{Error: err.Error()}
+}
+
+func readAll(rc io.ReadCloser) (string, error) {
+	defer rc.Close()
+	data, err := io.ReadAll(rc)
+	return string(data), err
+}
 
 //go:wasmexport open_read
 func openRead() int32 {
@@ -42,12 +53,11 @@ func openRead() int32 {
 		if err != nil {
 			return fail(err)
 		}
-		defer rc.Close()
-		data, err := io.ReadAll(rc)
+		data, err := readAll(rc)
 		if err != nil {
 			return fail(err)
 		}
-		return output{Data: string(data)}
+		return output{Data: data}
 	})
 }
 
@@ -82,7 +92,9 @@ func drainOwn() int32 {
 			return fail(err)
 		}
 		_, readErr := rc.Read(make([]byte, 1))
-		return output{Data: data, Error: readErr.Error()}
+		out := fail(readErr)
+		out.Data = data
+		return out
 	})
 }
 
@@ -128,12 +140,11 @@ func wrap() int32 {
 		if err != nil {
 			return fail(err)
 		}
-		defer resp.Body.Close()
-		data, err := io.ReadAll(resp.Body)
+		data, err := readAll(resp.Body)
 		if err != nil {
 			return fail(err)
 		}
-		return output{Data: string(data), Size: resp.Size}
+		return output{Data: data, Size: resp.Size}
 	})
 }
 
@@ -174,7 +185,7 @@ func drainBlocked() int32 {
 //go:wasmexport drain_loop
 func drainLoop() int32 {
 	return run(func(in input) output {
-		for i := range 2000 {
+		for i := range 800 {
 			rc, err := host.StreamTestOpen(in.Text)
 			if err != nil {
 				return fail(err)
@@ -186,7 +197,7 @@ func drainLoop() int32 {
 				return output{Error: err.Error(), Size: int64(i)}
 			}
 		}
-		return output{Size: 2000}
+		return output{Size: 800}
 	})
 }
 

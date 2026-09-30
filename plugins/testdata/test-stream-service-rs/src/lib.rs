@@ -39,7 +39,7 @@ pub fn open_read(Json(input): Json<Input>) -> FnResult<Json<Output>> {
 pub fn echo_loop(Json(_input): Json<Input>) -> FnResult<Json<Output>> {
     let text = "x".repeat(64 * 1024);
     let mut out = Output::default();
-    for i in 0..2000 {
+    for i in 0..500 {
         match streamtest::echo(&text) {
             Ok(echoed) if echoed.len() == text.len() => out.size = i + 1,
             Ok(_) => {
