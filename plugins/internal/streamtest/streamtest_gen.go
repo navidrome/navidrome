@@ -160,6 +160,8 @@ func newStreamTestOpenHostFunction(service StreamTestService) extism.HostFunctio
 	return extism.NewHostFunctionWithStack(
 		"streamtest_open",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -171,7 +173,6 @@ func newStreamTestOpenHostFunction(service StreamTestService) extism.HostFunctio
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 
 			// Call the service method
 			result, svcErr := service.Open(ctx, req.Text)
@@ -198,6 +199,8 @@ func newStreamTestCreateHostFunction(service StreamTestService) extism.HostFunct
 	return extism.NewHostFunctionWithStack(
 		"streamtest_create",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -209,7 +212,6 @@ func newStreamTestCreateHostFunction(service StreamTestService) extism.HostFunct
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 
 			// Call the service method
 			result, svcErr := service.Create(ctx, req.Name)
@@ -236,6 +238,8 @@ func newStreamTestDrainHostFunction(service StreamTestService) extism.HostFuncti
 	return extism.NewHostFunctionWithStack(
 		"streamtest_drain",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -247,7 +251,6 @@ func newStreamTestDrainHostFunction(service StreamTestService) extism.HostFuncti
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 			argIn := conv.Reader(req.In)
 			if err := conv.Err(); err != nil {
 				streamtestWriteError(p, stack, err)
@@ -257,13 +260,16 @@ func newStreamTestDrainHostFunction(service StreamTestService) extism.HostFuncti
 			// Call the service method
 			result, svcErr := service.Drain(ctx, argIn)
 			if svcErr != nil {
-				streamtestWriteError(p, stack, svcErr)
-				return
+				conv.Fail(svcErr)
 			}
 
 			// Write JSON response to plugin memory
 			resp := StreamTestDrainResponse{
 				Result: result,
+			}
+			if err := conv.Err(); err != nil {
+				streamtestWriteError(p, stack, err)
+				return
 			}
 			streamtestWriteResponse(p, stack, resp)
 		},
@@ -276,6 +282,8 @@ func newStreamTestWrapHostFunction(service StreamTestService) extism.HostFunctio
 	return extism.NewHostFunctionWithStack(
 		"streamtest_wrap",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -287,7 +295,6 @@ func newStreamTestWrapHostFunction(service StreamTestService) extism.HostFunctio
 				streamtestWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 			argWrap := wrapRequestFromWire(req.Wrap, conv)
 			if err := conv.Err(); err != nil {
 				streamtestWriteError(p, stack, err)
@@ -319,9 +326,9 @@ func newStreamTestBlockHostFunction(service StreamTestService) extism.HostFuncti
 	return extism.NewHostFunctionWithStack(
 		"streamtest_block",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
 
 			// Call the service method
-			conv := streams.NewConv(ctx)
 			result, svcErr := service.Block(ctx)
 			if svcErr != nil {
 				conv.Fail(svcErr)

@@ -16,17 +16,16 @@ var templatesFS embed.FS
 // hostFuncMap returns the template functions for host code generation.
 func hostFuncMap(svc Service) template.FuncMap {
 	return template.FuncMap{
-		"lower":            strings.ToLower,
-		"title":            strings.Title,
-		"exportName":       func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
-		"requestType":      func(m Method) string { return m.RequestTypeName(svc.Name) },
-		"responseType":     func(m Method) string { return m.ResponseTypeName(svc.Name) },
-		"lowerFirst":       lowerFirst,
-		"hasStreams":       func(m Method) bool { return m.HasStreams(svc) },
-		"hasStreamParams":  func(m Method) bool { return m.HasStreamParams(svc) },
-		"hasStreamReturns": func(m Method) bool { return m.HasStreamReturns(svc) },
-		"isStreamParam":    func(p Param) bool { return p.IsStream(svc) },
-		"wireType":         func(goType string) string { return wireType(goType, svc) },
+		"lower":           strings.ToLower,
+		"title":           strings.Title,
+		"exportName":      func(m Method) string { return m.FunctionName(svc.ExportPrefix()) },
+		"requestType":     func(m Method) string { return m.RequestTypeName(svc.Name) },
+		"responseType":    func(m Method) string { return m.ResponseTypeName(svc.Name) },
+		"lowerFirst":      lowerFirst,
+		"hasStreams":      func(m Method) bool { return m.HasStreams(svc) },
+		"hasStreamParams": func(m Method) bool { return m.HasStreamParams(svc) },
+		"isStreamParam":   func(p Param) bool { return p.IsStream(svc) },
+		"wireType":        func(goType string) string { return wireType(goType, svc) },
 		"fieldFromWire": func(f FieldDef) string {
 			return wireConv(f.Type, svc, "w."+f.Name, "FromWire", "conv", "conv."+f.StreamKind())
 		},

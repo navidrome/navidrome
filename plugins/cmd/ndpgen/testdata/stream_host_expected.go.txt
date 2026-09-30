@@ -142,6 +142,8 @@ func newBlobOpenHostFunction(service BlobService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"blob_open",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -153,7 +155,6 @@ func newBlobOpenHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 
 			// Call the service method
 			result, svcErr := service.Open(ctx, req.Name)
@@ -180,6 +181,8 @@ func newBlobCreateHostFunction(service BlobService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"blob_create",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -191,7 +194,6 @@ func newBlobCreateHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 
 			// Call the service method
 			result, svcErr := service.Create(ctx, req.Name)
@@ -218,6 +220,8 @@ func newBlobPutHostFunction(service BlobService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"blob_put",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -229,7 +233,6 @@ func newBlobPutHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 			argUpload := uploadFromWire(req.Upload, conv)
 			if err := conv.Err(); err != nil {
 				blobWriteError(p, stack, err)
@@ -261,6 +264,8 @@ func newBlobCopyHostFunction(service BlobService) extism.HostFunction {
 	return extism.NewHostFunctionWithStack(
 		"blob_copy",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+			conv := streams.NewConv(ctx)
+
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
 			if err != nil {
@@ -272,7 +277,6 @@ func newBlobCopyHostFunction(service BlobService) extism.HostFunction {
 				blobWriteError(p, stack, err)
 				return
 			}
-			conv := streams.NewConv(ctx)
 			argSrc := conv.Reader(req.Src)
 			argDst := conv.Writer(req.Dst)
 			if err := conv.Err(); err != nil {
@@ -283,13 +287,16 @@ func newBlobCopyHostFunction(service BlobService) extism.HostFunction {
 			// Call the service method
 			result, svcErr := service.Copy(ctx, argSrc, argDst)
 			if svcErr != nil {
-				blobWriteError(p, stack, svcErr)
-				return
+				conv.Fail(svcErr)
 			}
 
 			// Write JSON response to plugin memory
 			resp := BlobCopyResponse{
 				Result: result,
+			}
+			if err := conv.Err(); err != nil {
+				blobWriteError(p, stack, err)
+				return
 			}
 			blobWriteResponse(p, stack, resp)
 		},

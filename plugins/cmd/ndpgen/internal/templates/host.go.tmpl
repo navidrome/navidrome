@@ -95,6 +95,11 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 	return extism.NewHostFunctionWithStack(
 		"{{exportName .}}",
 		func(ctx context.Context, p *extism.CurrentPlugin, stack []uint64) {
+{{- if hasStreams .}}
+			conv := streams.NewConv(ctx)
+{{- if .HasParams}}
+{{end}}
+{{- end}}
 {{- if .HasParams}}
 			// Read JSON request from plugin memory
 			reqBytes, err := p.ReadBytes(stack[0])
@@ -107,12 +112,9 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
 				return
 			}
-{{- if hasStreams .}}
-			conv := streams.NewConv(ctx)
-{{- end}}
 {{- range .Params}}
 {{- if isStreamParam .}}
-			arg{{title .Name}} := {{hostParamExpr .}}
+			{{hostArg .}} := {{hostParamExpr .}}
 {{- end}}
 {{- end}}
 {{- if hasStreamParams .}}
@@ -124,13 +126,10 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 {{- end}}
 
 			// Call the service method
-{{- if and (not .HasParams) (hasStreams .)}}
-			conv := streams.NewConv(ctx)
-{{- end}}
 {{- if .HasReturns}}
 {{- if .HasError}}
 			{{range $i, $r := .Returns}}{{if $i}}, {{end}}{{lower $r.Name}}{{end}}, svcErr := service.{{.Name}}(ctx{{range .Params}}, {{hostArg .}}{{end}})
-{{- if hasStreamReturns .}}
+{{- if hasStreams .}}
 			if svcErr != nil {
 				conv.Fail(svcErr)
 			}
@@ -150,7 +149,7 @@ func new{{$.Service.Name}}{{.Name}}HostFunction(service {{$.Service.Interface}})
 				{{title .Name}}: {{hostReturnExpr .}},
 {{- end}}
 			}
-{{- if hasStreamReturns .}}
+{{- if hasStreams .}}
 			if err := conv.Err(); err != nil {
 				{{$.Service.Name | lower}}WriteError(p, stack, err)
 				return
