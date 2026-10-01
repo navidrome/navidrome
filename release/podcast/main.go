@@ -22,17 +22,16 @@ var promptFiles embed.FS
 const repository = "navidrome/navidrome"
 
 type options struct {
-	tags, from, to, mode, textModel, ttsModel, voice, output, githubStage string
-	allowPaid, dryRun, includePrereleases, force                          bool
+	from, to, mode, textModel, ttsModel, voice, output, githubStage string
+	allowPaid, dryRun, includePrereleases, force                    bool
 }
 
 func parseOptions(args []string, stderr io.Writer) (options, error) {
 	var o options
 	f := flag.NewFlagSet("release-podcast", flag.ContinueOnError)
 	f.SetOutput(stderr)
-	f.StringVar(&o.tags, "tags", "", "One to three comma-separated versions (v prefix optional)")
-	f.StringVar(&o.from, "from", "", "Inclusive first published version in a range")
-	f.StringVar(&o.to, "to", "", "Inclusive last published version in a range")
+	f.StringVar(&o.from, "from", "", "Published version to select, or inclusive first version of a range (v prefix optional)")
+	f.StringVar(&o.to, "to", "", "Optional inclusive last published version of a range")
 	f.StringVar(&o.mode, "mode", "validate", "validate (free), script, or audio")
 	f.StringVar(&o.textModel, "text-model", os.Getenv("AUDIO_TEXT_MODEL"), "Reviewed script model; no default")
 	f.StringVar(&o.ttsModel, "tts-model", os.Getenv("AUDIO_TTS_MODEL"), "Reviewed speech model; no default")
@@ -55,7 +54,7 @@ func parseOptions(args []string, stderr io.Writer) (options, error) {
 	if o.mode != "validate" && o.mode != "script" && o.mode != "audio" {
 		return o, errors.New("mode must be validate, script, or audio")
 	}
-	if o.githubStage != "" && (o.tags != "" || o.from != "" || o.to != "" || o.allowPaid || o.dryRun || o.force || o.includePrereleases) {
+	if o.githubStage != "" && (o.from != "" || o.to != "" || o.allowPaid || o.dryRun || o.force || o.includePrereleases) {
 		return o, errors.New("Actions stages use trusted event/environment configuration, not local selection flags")
 	}
 	return o, nil

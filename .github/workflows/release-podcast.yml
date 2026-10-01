@@ -5,10 +5,15 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
-      tags:
-        description: Published release tags (at most three, comma separated)
-        default: v0.64.0,v0.64.1,v0.64.2
+      from:
+        description: Published version, or inclusive first version of a range
+        default: v0.64.0
         required: true
+        type: string
+      to:
+        description: Optional inclusive last version (at most three releases)
+        default: v0.64.2
+        required: false
         type: string
       mode:
         description: Validate is free; script and audio use OpenAI

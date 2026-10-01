@@ -125,27 +125,6 @@ func comparePrerelease(a, b string) int {
 	return len(ai) - len(bi)
 }
 
-func parseTags(raw string) ([]string, error) {
-	parts := strings.Split(raw, ",")
-	if len(parts) > 3 {
-		return nil, errors.New("select at most three distinct published releases")
-	}
-	seen := map[string]bool{}
-	for i, item := range parts {
-		tag, err := normalizeTag(item)
-		if err != nil {
-			return nil, err
-		}
-		if seen[tag] {
-			return nil, errors.New("duplicate release versions")
-		}
-		seen[tag] = true
-		parts[i] = tag
-	}
-	sort.Slice(parts, func(i, j int) bool { return compareVersion(parts[i], parts[j]) < 0 })
-	return parts, nil
-}
-
 func normalizeRelease(r releaseRecord, allowPrerelease bool) (source, error) {
 	if _, err := version(r.Tag); err != nil {
 		return source{}, err
@@ -231,30 +210,26 @@ func (e *engine) fetchTag(ctx context.Context, tag string, allow bool) (source, 
 }
 
 func (e *engine) resolveLocal(ctx context.Context, o options) ([]source, error) {
-	if o.tags != "" {
-		if o.from != "" || o.to != "" {
-			return nil, errors.New("use either --tags or --from/--to")
-		}
-		tags, err := parseTags(o.tags)
+	if o.from == "" {
+		return nil, errors.New("--from is required; add --to for an inclusive range")
+	}
+	if o.to == "" {
+		tag, err := normalizeTag(o.from)
 		if err != nil {
 			return nil, err
 		}
-		var sources []source
-		for _, tag := range tags {
-			s, err := e.fetchTag(ctx, tag, o.includePrereleases)
-			if err != nil {
-				return nil, err
-			}
-			sources = append(sources, s)
+		s, err := e.fetchTag(ctx, tag, o.includePrereleases)
+		if err != nil {
+			return nil, err
 		}
-		return sources, nil
+		return []source{s}, nil
 	}
 	return e.resolveRange(ctx, o)
 }
 
 func (e *engine) resolveRange(ctx context.Context, o options) ([]source, error) {
 	if o.from == "" || o.to == "" {
-		return nil, errors.New("select --tags or both --from and --to")
+		return nil, errors.New("range requires both --from and --to")
 	}
 	from, err := normalizeTag(o.from)
 	if err != nil {
@@ -265,7 +240,7 @@ func (e *engine) resolveRange(ctx context.Context, o options) ([]source, error) 
 		return nil, err
 	}
 	if strings.Contains(from, "-") || strings.Contains(to, "-") || compareVersion(from, to) > 0 {
-		return nil, errors.New("range endpoints must be ordered stable versions; use --tags for prereleases")
+		return nil, errors.New("range endpoints must be ordered stable versions; select a prerelease with --from alone")
 	}
 	var selected []source
 	complete := false
@@ -295,7 +270,7 @@ func (e *engine) resolveRange(ctx context.Context, o options) ([]source, error) 
 			}
 			selected = append(selected, s)
 			if len(selected) > 3 {
-				return nil, errors.New("range selects more than three releases; narrow it or use --tags")
+				return nil, errors.New("range selects more than three releases; narrow the range")
 			}
 		}
 		if len(records) < 100 {
@@ -304,7 +279,7 @@ func (e *engine) resolveRange(ctx context.Context, o options) ([]source, error) 
 		}
 	}
 	if !complete {
-		return nil, errors.New("release listing exceeds 1000-record limit; use --tags")
+		return nil, errors.New("release listing exceeds 1000-record limit; select a single release with --from")
 	}
 	seenFrom, seenTo := false, false
 	for _, s := range selected {

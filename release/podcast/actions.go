@@ -16,7 +16,8 @@ type event struct {
 		DefaultBranch string `json:"default_branch"`
 	} `json:"repository"`
 	Inputs struct {
-		Tags               string `json:"tags"`
+		From               string `json:"from"`
+		To                 string `json:"to"`
 		Mode               string `json:"mode"`
 		IncludePrereleases string `json:"include_prereleases"`
 		Force              string `json:"force_regenerate"`
@@ -131,7 +132,7 @@ func (e *engine) prepareGitHub(ctx context.Context, ev event) error {
 	}
 	var sources []source
 	if manual {
-		sources, err = e.resolveLocal(ctx, options{tags: ev.Inputs.Tags, includePrereleases: allow})
+		sources, err = e.resolveLocal(ctx, options{from: ev.Inputs.From, to: ev.Inputs.To, includePrereleases: allow})
 	} else {
 		var record releaseRecord
 		err = e.github(ctx, fmt.Sprintf("/releases/%d", ev.Release.ID), &record)

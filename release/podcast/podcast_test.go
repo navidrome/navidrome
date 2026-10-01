@@ -146,20 +146,51 @@ func testEngine(t *testing.T) (*engine, []releaseRecord, []source) {
 }
 
 func audioOptions() options {
-	return options{tags: "v0.64.0,v0.64.1,v0.64.2", mode: "audio", textModel: "gpt-6-luna", ttsModel: "gpt-4o-mini-tts-2025-12-15", voice: "onyx", allowPaid: true}
+	return options{from: "v0.64.0", to: "v0.64.2", mode: "audio", textModel: "gpt-6-luna", ttsModel: "gpt-4o-mini-tts-2025-12-15", voice: "onyx", allowPaid: true}
 }
 
-func TestTagSelection(t *testing.T) {
+func TestVersionSelection(t *testing.T) {
 	for _, raw := range []string{"", "v0.64.0,", "v0.64.0,0.64.0", "v1.0.0,v2.0.0,v3.0.0,v4.0.0", "$(touch secret)", "../../foo", "v1.0.0\nmalicious", "v01.2.3", "v1.2.3١", "v99999999999.0.0"} {
 		t.Run(raw, func(t *testing.T) {
-			if _, err := parseTags(raw); err == nil {
+			if _, err := normalizeTag(raw); err == nil {
 				t.Fatal("unsafe tags accepted")
 			}
 		})
 	}
-	tags, err := parseTags("0.64.2, v0.64.0,v0.64.1")
-	if err != nil || strings.Join(tags, ",") != "v0.64.0,v0.64.1,v0.64.2" {
-		t.Fatal(tags, err)
+	tag, err := normalizeTag("0.64.2")
+	if err != nil || tag != "v0.64.2" {
+		t.Fatal(tag, err)
+	}
+}
+
+func TestSingleReleaseSelection(t *testing.T) {
+	e, records, _ := testEngine(t)
+	original := e.client.Transport
+	e.client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path != "/repos/"+repository+"/releases/tags/v0.64.2" {
+			t.Fatal("single release must use its exact tag endpoint", req.URL)
+		}
+		return original.RoundTrip(req)
+	})
+	for _, from := range []string{"0.64.2", "v0.64.2"} {
+		sources, err := e.resolveLocal(t.Context(), options{from: from})
+		if err != nil || len(sources) != 1 || sources[0].Tag != "v0.64.2" {
+			t.Fatal(sources, err)
+		}
+	}
+	if _, err := parseOptions([]string{"--tags", "v0.64.0,v0.64.1"}, io.Discard); err == nil {
+		t.Fatal("removed --tags flag remains accepted")
+	}
+	r := records[0]
+	r.Tag += "-rc.1"
+	r.Prerelease = true
+	data, _ := json.Marshal(r)
+	e.client.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) { return response(200, "application/json", data), nil })
+	if _, err := e.resolveLocal(t.Context(), options{from: r.Tag}); err == nil {
+		t.Fatal("single prerelease accepted without opt-in")
+	}
+	if sources, err := e.resolveLocal(t.Context(), options{from: r.Tag, includePrereleases: true}); err != nil || len(sources) != 1 {
+		t.Fatal(sources, err)
 	}
 }
 
@@ -189,7 +220,7 @@ func TestInclusiveRangeSelection(t *testing.T) {
 	if err != nil || len(sources) != 3 || sources[0].Tag != "v0.64.0" || sources[2].Tag != "v0.64.2" {
 		t.Fatal(sources, err)
 	}
-	for _, o := range []options{{from: "v0.64.2", to: "v0.64.0"}, {from: "v0.63.0", to: "v0.64.2"}, {from: "v0.64.0"}, {tags: "v0.64.0", from: "v0.64.0", to: "v0.64.2"}, {from: "v0.64.0-rc.1", to: "v0.64.2"}} {
+	for _, o := range []options{{from: "v0.64.2", to: "v0.64.0"}, {from: "v0.63.0", to: "v0.64.2"}, {}, {to: "v0.64.2"}, {from: "v0.64.0,v0.64.1"}, {from: "v0.64.0-rc.1", to: "v0.64.2"}} {
 		if _, err := e.resolveLocal(t.Context(), o); err == nil {
 			t.Fatal("invalid range accepted", o)
 		}
@@ -218,10 +249,6 @@ func TestSemVerPrereleasePrecedence(t *testing.T) {
 		if _, err := normalizeTag(tag); err == nil {
 			t.Fatal("invalid SemVer prerelease accepted", tag)
 		}
-	}
-	tags, err := parseTags("v1.0.0,v1.0.0-rc.10,v1.0.0-rc.2")
-	if err != nil || strings.Join(tags, ",") != "v1.0.0-rc.2,v1.0.0-rc.10,v1.0.0" {
-		t.Fatal(tags, err)
 	}
 }
 
@@ -315,7 +342,7 @@ func TestConfigurationAndCostLimits(t *testing.T) {
 
 func TestCLIDryRunAndPaidGuards(t *testing.T) {
 	t.Setenv("AUDIO_TEXT_MODEL", "gpt-6-luna")
-	o, err := parseOptions([]string{"--tags", "0.64.2", "--text-model", "gpt-4.1-mini-2025-04-14", "--mode", "audio", "--dry-run", "--output", "out"}, io.Discard)
+	o, err := parseOptions([]string{"--from", "0.64.2", "--text-model", "gpt-4.1-mini-2025-04-14", "--mode", "audio", "--dry-run", "--output", "out"}, io.Discard)
 	if err != nil || o.mode != "validate" || o.textModel != "gpt-4.1-mini-2025-04-14" || o.output != "out" {
 		t.Fatal(o, err)
 	}
@@ -494,7 +521,7 @@ func TestChangedSourcesAndCheckpointsStopPaidStages(t *testing.T) {
 		t.Fatal(m, err)
 	}
 	e, _, _ = testEngine(t)
-	if err := e.runLocal(t.Context(), options{tags: audioOptions().tags, mode: "script", textModel: "gpt-6-luna", allowPaid: true}, io.Discard); err != nil {
+	if err := e.runLocal(t.Context(), options{from: audioOptions().from, to: audioOptions().to, mode: "script", textModel: "gpt-6-luna", allowPaid: true}, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.generateScript(t.Context()); err == nil {
@@ -575,7 +602,7 @@ func actionsEnvironment(t *testing.T, record releaseRecord, manual bool) {
 	if manual {
 		t.Setenv("GITHUB_EVENT_NAME", "workflow_dispatch")
 		t.Setenv("GITHUB_REF", "refs/heads/master")
-		ev["inputs"] = map[string]string{"tags": "v0.64.0,v0.64.1,v0.64.2", "mode": "audio"}
+		ev["inputs"] = map[string]string{"from": "v0.64.0", "to": "v0.64.2", "mode": "audio"}
 	} else {
 		t.Setenv("GITHUB_EVENT_NAME", "release")
 		t.Setenv("GITHUB_REF", "refs/tags/"+record.Tag)
@@ -616,7 +643,7 @@ func TestActionsEventIdentityAndTrustGuards(t *testing.T) {
 	if err := e.runGitHub(t.Context(), "prepare"); err == nil {
 		t.Fatal("non-default branch accepted")
 	}
-	if err := run(t.Context(), []string{"--tags", "v0.64.0", "--mode", "audio", "--allow-paid"}, io.Discard, io.Discard); err == nil {
+	if err := run(t.Context(), []string{"--from", "v0.64.0", "--mode", "audio", "--allow-paid"}, io.Discard, io.Discard); err == nil {
 		t.Fatal("Actions used local entrypoint")
 	}
 }

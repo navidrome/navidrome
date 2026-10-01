@@ -19,18 +19,20 @@ This resolves the inclusive range of published releases, writes exact sources
 and a manifest, and makes **zero OpenAI requests**. It needs GitHub network
 access; `GH_TOKEN` is optional for public notes and increases the rate limit.
 It needs neither an OpenAI key nor repository variables, and does not spoof
-GitHub context. Explicit versions are also supported:
+GitHub context. To select one published release, use `--from` alone:
 
 ```sh
-go run ./release/podcast --tags v0.64.0,v0.64.1,v0.64.2 \
+go run ./release/podcast --from v0.64.2 \
   --mode validate --output /tmp/navidrome-podcast-validation
 ```
 
-Select at most three distinct releases. Versions may omit the `v` prefix.
+Select one release or an inclusive range of at most three releases. Versions
+may omit the `v` prefix. There is no comma-separated tag-list option.
 Ranges require ordered stable-version endpoints that both exist as published
 releases. Listing is bounded to 1,000 release records; larger listings require
-explicit `--tags`. Published prereleases require `--include-prereleases` and
-explicit tags if they are range endpoints. Drafts are discarded.
+single-release selection with `--from` alone. Published prereleases require
+`--include-prereleases`; select a prerelease endpoint with `--from` alone.
+Drafts are discarded.
 Prereleases use SemVer precedence, including numeric identifiers: `rc.2`
 precedes `rc.10`, and both precede the corresponding stable release. Thus a
 stable lower range bound excludes its own RCs; a stable upper bound includes
@@ -105,7 +107,8 @@ rename is required:
 3. Set `RELEASE_AUDIO_ENABLED` to literal `true` only when paid workflow runs
    are authorized. Blank variables are fine for offline tests/manual validation.
 4. After merge, dispatch **Release podcast** from `master`, starting with
-   `validate` and `v0.64.0,v0.64.1,v0.64.2`. Models and voice come from repository
+   `validate`, `from=v0.64.0` and `to=v0.64.2`. Clear `to` to select only `from`.
+   Models and voice come from repository
    variables, not manual inputs. No named GitHub Environment is configured.
 
 The automatic trigger is **`release: published`**, stable releases only. It
