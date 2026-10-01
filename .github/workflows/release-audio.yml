@@ -1,0 +1,112 @@
+name: Release audio
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: Published release tags (at most three, comma separated)
+        default: v0.64.0,v0.64.1,v0.64.2
+        required: true
+        type: string
+      mode:
+        description: Validate is free; script and audio use OpenAI
+        default: validate
+        type: choice
+        options: [validate, script, audio]
+      include_prereleases:
+        description: Allow published prereleases (manual only)
+        default: false
+        type: boolean
+      force_regenerate:
+        description: Allow another paid attempt even if reserved before
+        default: false
+        type: boolean
+
+permissions: {}
+
+# Serialize the artifact lookup and reservation, including overlapping rollups.
+# GitHub may replace an older pending run; recover that run with manual dispatch.
+concurrency:
+  group: release-audio-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: >-
+      github.repository == 'navidrome/navidrome' &&
+      ((github.event_name == 'release' && !github.event.release.draft && !github.event.release.prerelease && vars.RELEASE_AUDIO_ENABLED == 'true') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    env:
+      AUDIO_MODE: ${{ github.event_name == 'release' && 'audio' || inputs.mode }}
+      AUDIO_ENABLED: ${{ vars.RELEASE_AUDIO_ENABLED }}
+      AUDIO_TEXT_MODEL: ${{ vars.RELEASE_AUDIO_TEXT_MODEL }}
+      AUDIO_TTS_MODEL: ${{ vars.RELEASE_AUDIO_TTS_MODEL }}
+      AUDIO_VOICE: ${{ vars.RELEASE_AUDIO_VOICE }}
+    steps:
+      # Always execute the reviewed default-branch helper, never release-note data.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Resolve sources and check limits and duplicate attempts
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUDIO_KEY_CONFIGURED: ${{ secrets.OPENAI_API_KEY != '' }}
+        run: python3 release/audio/release_audio.py prepare
+      - name: Reserve this paid attempt before contacting OpenAI
+        if: steps.prepare.outputs.generate == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ${{ steps.prepare.outputs.reservation }}
+          path: release-audio/manifest.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Generate and validate the grounded script
+        if: steps.prepare.outputs.generate == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release/audio/release_audio.py script
+      - name: Checkpoint the validated script
+        if: steps.prepare.outputs.generate == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-audio-script-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            release-audio/transcript.txt
+            release-audio/sources.json
+            release-audio/evidence.json
+            release-audio/manifest.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Synthesize and inspect the MP3
+        if: steps.prepare.outputs.generate == 'true' && env.AUDIO_MODE == 'audio'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 release/audio/release_audio.py speech
+      - name: Upload review artifacts
+        if: always() && steps.prepare.outputs.prepared == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-audio-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            release-audio/transcript.txt
+            release-audio/release-audio.mp3
+            release-audio/sources.json
+            release-audio/evidence.json
+            release-audio/manifest.json
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

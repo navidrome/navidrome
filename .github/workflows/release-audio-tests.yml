@@ -1,0 +1,25 @@
+name: Release audio offline tests
+on:
+  pull_request:
+    paths:
+      - release/audio/**
+      - .github/workflows/release-audio*.yml
+  push:
+    branches: [master]
+    paths:
+      - release/audio/**
+      - .github/workflows/release-audio*.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python3 -m unittest discover -s release/audio -p 'test_*.py' -v
