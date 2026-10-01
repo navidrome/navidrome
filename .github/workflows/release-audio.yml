@@ -58,6 +58,11 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
+      - name: Install MP3 inspection tools before generation
+        if: env.AUDIO_MODE == 'audio' && env.AUDIO_ENABLED == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Resolve sources and check limits and duplicate attempts
         id: prepare
         env:

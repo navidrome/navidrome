@@ -164,8 +164,9 @@ The suite blocks unmocked network access. Fixtures preserve the public bodies
 of v0.64.0/.1/.2 and test consequential omissions, unsafe tags/output, disabled
 generation, exact event identity, changing notes, duplicates/expiry/force,
 budget caps, error responses, and no retries. The separate PR test workflow
-never receives `OPENAI_API_KEY`. Generation uses only Python's standard library;
-the Ubuntu runner must have `ffprobe` and `ffmpeg` before speech is requested.
+never receives `OPENAI_API_KEY`. Generation uses only Python's standard library.
+Both workflows install `ffprobe` and `ffmpeg` in a credential-free step; audio
+generation installs them before source preparation or any OpenAI request.
 
 ## References
 
