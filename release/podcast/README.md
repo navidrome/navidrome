@@ -31,6 +31,10 @@ Ranges require ordered stable-version endpoints that both exist as published
 releases. Listing is bounded to 1,000 release records; larger listings require
 explicit `--tags`. Published prereleases require `--include-prereleases` and
 explicit tags if they are range endpoints. Drafts are discarded.
+Prereleases use SemVer precedence, including numeric identifiers: `rc.2`
+precedes `rc.10`, and both precede the corresponding stable release. Thus a
+stable lower range bound excludes its own RCs; a stable upper bound includes
+its RCs only with `--include-prereleases`.
 
 When you separately decide to incur API usage, make `OPENAI_API_KEY` available
 in your local process environment through your own secure setup. **Never put
@@ -180,12 +184,17 @@ Neither this PR nor an estimate authorizes a paid prototype run.
 
 ## Actions duplicate attempts and recovery
 
-Jobs serialize separately from the build pipeline. Before paid requests, a
-bounded lookup of up to 10,000 repository artifacts fails closed on errors or
-overflow. A reservation artifact is uploaded first, keyed by repository, sorted
-release IDs and mode. Matching attempts are skipped even after failure or
+Jobs serialize separately from the build pipeline. Before paid requests, the
+GitHub API's exact `name` filter looks up the deterministic reservation name;
+unrelated repository artifacts do not enter pagination. A bounded lookup of up
+to 10,000 matching reservations fails closed on errors or overflow. A reservation
+artifact is uploaded first, keyed by repository, sorted release IDs and mode.
+Matching attempts are skipped even after failure or
 source/model edits; explicit manual `force_regenerate=true` permits another
 paid attempt. Rollups and single releases are different source sets.
+Use a fresh manual dispatch for forced generation. Reservation names repeat
+across runs but are immutable within a run: a rerun of an already-reserved
+forced attempt fails at upload before any paid request, preserving the ledger.
 
 Reservations last 90 days, review outputs/script checkpoints 30 days, limited
 by repository policy. Deleted/expired artifacts permit another attempt, so
@@ -224,6 +233,8 @@ no Python implementation or additional Go module dependency is required.
 
 - [GitHub release events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release)
 - [GITHUB_TOKEN event suppression](https://docs.github.com/en/actions/how-tos/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow)
+- [GitHub exact-name artifact filter](https://docs.github.com/en/rest/actions/artifacts#list-artifacts-for-a-repository)
+- [SemVer prerelease precedence](https://semver.org/)
 - [GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna)
 - [GPT-4.1 mini](https://developers.openai.com/api/docs/models/gpt-4.1-mini)
 - [Mini TTS](https://developers.openai.com/api/docs/models/gpt-4o-mini-tts)

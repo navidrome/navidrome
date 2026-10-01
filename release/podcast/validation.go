@@ -34,10 +34,12 @@ var securityWord = regexp.MustCompile(`(?i)security`)
 var qualifierWord = regexp.MustCompile(`(?i)back.?up|re-?sync|experimental|opt-in|disabled|host networking`)
 var unsafeNarration = regexp.MustCompile("(?i)https?://|www\\.|[@`<>{}\\[\\]#]|\\$\\(|[\\x00-\\x08\\x0b-\\x1f]")
 
+func visibleNotes(body string) string { return htmlComments.ReplaceAllString(body, "") }
+
 func promptSources(sources []source) []map[string]string {
 	result := make([]map[string]string, 0, len(sources))
 	for _, s := range sources {
-		result = append(result, map[string]string{"source_id": s.SourceID, "tag": s.Tag, "body": htmlComments.ReplaceAllString(s.Body, "")})
+		result = append(result, map[string]string{"source_id": s.SourceID, "tag": s.Tag, "body": visibleNotes(s.Body)})
 	}
 	return result
 }
@@ -46,7 +48,7 @@ func cautions(sources []source) []caution {
 	result := []caution{}
 	for _, s := range sources {
 		migration, securityAdded := false, false
-		for _, line := range strings.Split(htmlComments.ReplaceAllString(s.Body, ""), "\n") {
+		for _, line := range strings.Split(visibleNotes(s.Body), "\n") {
 			if strings.HasPrefix(line, "## ") {
 				migration = migrationHeader.MatchString(line)
 			}
@@ -124,7 +126,7 @@ func validateNarration(result narration, sources []source) (string, error) {
 	texts := []string{}
 	for _, s := range result.Sentences {
 		original, ok := byID[s.SourceID]
-		if !ok || strings.TrimSpace(s.Text) == "" || len(s.Excerpt) < 12 || !strings.Contains(htmlComments.ReplaceAllString(original.Body, ""), s.Excerpt) {
+		if !ok || strings.TrimSpace(s.Text) == "" || len(s.Excerpt) < 12 || !strings.Contains(visibleNotes(original.Body), s.Excerpt) {
 			return "", errors.New("sentence evidence is absent from its published source")
 		}
 		texts = append(texts, strings.TrimSpace(s.Text))
@@ -194,7 +196,7 @@ func validateQualifiers(sentences []sentence, sources []source) error {
 	// These are lexical checks, not proof of semantic entailment. Human review
 	// remains necessary even when all evidence and safety checks pass.
 	for _, s := range sources {
-		body := strings.NewReplacer("*", "", "`", "").Replace(s.Body)
+		body := strings.NewReplacer("*", "", "`", "").Replace(visibleNotes(s.Body))
 		for _, rule := range qualifierRules {
 			if !regexp.MustCompile("(?is)" + rule.trigger).MatchString(body) {
 				continue

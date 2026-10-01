@@ -196,6 +196,57 @@ func TestInclusiveRangeSelection(t *testing.T) {
 	}
 }
 
+func TestSemVerPrereleasePrecedence(t *testing.T) {
+	ordered := []string{"v1.0.0-alpha", "v1.0.0-alpha.1", "v1.0.0-alpha.beta", "v1.0.0-beta", "v1.0.0-beta.2", "v1.0.0-beta.11", "v1.0.0-rc.1", "v1.0.0"}
+	for i, a := range ordered {
+		for j, b := range ordered {
+			order := compareVersion(a, b)
+			if (i < j && order >= 0) || (i == j && order != 0) || (i > j && order <= 0) {
+				t.Fatalf("incorrect precedence for %s and %s: %d", a, b, order)
+			}
+		}
+	}
+	for _, pair := range [][2]string{{"v1.0.0-rc.2", "v1.0.0-rc.10"}, {"v1.0.0-99999999999999999999", "v1.0.0-100000000000000000000"}, {"v1.0.0-9", "v1.0.0-alpha"}, {"v1.0.0-alpha.beta", "v1.0.0-alpha-beta"}, {"v1.0.0", "v1.0.1-alpha"}} {
+		if _, err := version(pair[0]); err != nil {
+			t.Fatal(err)
+		}
+		if compareVersion(pair[0], pair[1]) >= 0 {
+			t.Fatal("incorrect numeric/identifier precedence", pair)
+		}
+	}
+	for _, tag := range []string{"v1.0.0-01", "v1.0.0-rc.01", "v1.0.0-rc..1", "v1.0.0-"} {
+		if _, err := normalizeTag(tag); err == nil {
+			t.Fatal("invalid SemVer prerelease accepted", tag)
+		}
+	}
+	tags, err := parseTags("v1.0.0,v1.0.0-rc.10,v1.0.0-rc.2")
+	if err != nil || strings.Join(tags, ",") != "v1.0.0-rc.2,v1.0.0-rc.10,v1.0.0" {
+		t.Fatal(tags, err)
+	}
+}
+
+func TestRangePrereleaseBoundaries(t *testing.T) {
+	e, records, _ := testEngine(t)
+	selected := []releaseRecord{records[1], records[0]}
+	for i := range 2 {
+		r := records[i]
+		r.ID += 100
+		r.Tag += "-rc.1"
+		r.Prerelease = true
+		selected = append(selected, r)
+	}
+	data, _ := json.Marshal(selected)
+	e.client.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) { return response(200, "application/json", data), nil })
+	sources, err := e.resolveLocal(t.Context(), options{from: "v0.64.0", to: "v0.64.1", includePrereleases: true})
+	if err != nil || len(sources) != 3 || sources[0].Tag != "v0.64.0" || sources[1].Tag != "v0.64.1-rc.1" || sources[2].Tag != "v0.64.1" {
+		t.Fatal("prerelease at lower bound must be excluded, upper-bound RC included", sources, err)
+	}
+	sources, err = e.resolveLocal(t.Context(), options{from: "v0.64.0", to: "v0.64.1"})
+	if err != nil || len(sources) != 2 {
+		t.Fatal("prerelease opt-in was bypassed", sources, err)
+	}
+}
+
 func TestRangeDiscardsDraftsAndFailsClosedAtLimit(t *testing.T) {
 	e, records, _ := testEngine(t)
 	draft := records[0]
@@ -397,6 +448,31 @@ func TestUnsafeModelOutputAndSourceMarkup(t *testing.T) {
 	}
 }
 
+func TestQualifierChecksUseVisibleNotes(t *testing.T) {
+	warnings := []string{"back up your database before upgrading", "may need to re-sync", "experimental Jellyfin", "Plugin authors must migrate: Extism networking is disabled", "security release: Upgrade now", "opt-in LAN auto-discovery", "slow storage", "32-bit builds"}
+	for _, warning := range warnings {
+		t.Run(warning, func(t *testing.T) {
+			s := source{SourceID: "1", Tag: "v1.0.0", Body: "Visible improvements.\n<!--\n" + warning + "\n-->"}
+			sentences := []sentence{{SourceID: "1", Text: "Version 1.0.0 contains improvements."}}
+			if strings.Contains(promptSources([]source{s})[0]["body"], warning) || len(cautions([]source{s})) != 0 {
+				t.Fatal("hidden warnings entered model input or cautions")
+			}
+			if err := validateQualifiers(sentences, []source{s}); err != nil {
+				t.Fatal("hidden warning required unseen evidence", err)
+			}
+			s.Body = "Visible improvements.\n" + warning
+			if err := validateQualifiers(sentences, []source{s}); err == nil {
+				t.Fatal("visible warning no longer enforced")
+			}
+		})
+	}
+	_, sources := fixtures(t)
+	sources[2].Body += "\n<!-- back up your database before upgrading -->"
+	if _, err := validateNarration(exampleNarration(t, sources), sources); err != nil {
+		t.Fatal("full narration rejected because of an unseen comment", err)
+	}
+}
+
 func TestChangedSourcesAndCheckpointsStopPaidStages(t *testing.T) {
 	e, records, sources := testEngine(t)
 	cfg, _ := reviewedConfig("gpt-6-luna", "tts-1", "onyx", "audio")
@@ -587,7 +663,7 @@ func TestActionsEnablementAndConfigChanges(t *testing.T) {
 func TestArtifactDuplicatesExpiryAndLookupBounds(t *testing.T) {
 	e, _, _ := testEngine(t)
 	for _, expired := range []bool{false, true} {
-		body, _ := json.Marshal(map[string]any{"artifacts": []any{map[string]any{"name": "key-123-1", "expired": expired}}})
+		body, _ := json.Marshal(map[string]any{"artifacts": []any{map[string]any{"name": "key", "expired": expired}}})
 		e.client.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) { return response(200, "application/json", body), nil })
 		duplicate, err := e.duplicateArtifact(t.Context(), "key")
 		if err != nil || duplicate == expired {
@@ -596,7 +672,7 @@ func TestArtifactDuplicatesExpiryAndLookupBounds(t *testing.T) {
 	}
 	artifacts := make([]map[string]any, 100)
 	for i := range artifacts {
-		artifacts[i] = map[string]any{"name": "other", "expired": false}
+		artifacts[i] = map[string]any{"name": "key", "expired": true}
 	}
 	body, _ := json.Marshal(map[string]any{"artifacts": artifacts})
 	calls := 0
@@ -606,6 +682,76 @@ func TestArtifactDuplicatesExpiryAndLookupBounds(t *testing.T) {
 	})
 	if _, err := e.duplicateArtifact(t.Context(), "key"); err == nil || calls != 100 {
 		t.Fatal("ledger lookup not bounded", calls, err)
+	}
+}
+
+func TestArtifactLookupFiltersUnrelatedHistoryAndFailsClosed(t *testing.T) {
+	e, _, _ := testEngine(t)
+	calls := 0
+	e.client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		calls++
+		if req.URL.Query().Get("name") != "key" || req.URL.Query().Get("page") != "1" {
+			t.Fatal("lookup walked unrelated repository history", req.URL)
+		}
+		// A repository can have more than 10,000 unrelated artifacts. The API
+		// returns only this exact reservation name, so none enter pagination.
+		return response(200, "application/json", []byte(`{"total_count":0,"artifacts":[]}`)), nil
+	})
+	if duplicate, err := e.duplicateArtifact(t.Context(), "key"); err != nil || duplicate || calls != 1 {
+		t.Fatal(duplicate, calls, err)
+	}
+	e.client.Transport = roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return response(503, "application/json", nil), nil
+	})
+	if _, err := e.duplicateArtifact(t.Context(), "key"); err == nil {
+		t.Fatal("artifact API failure permitted generation")
+	}
+}
+
+func TestActionsDeterministicReservationAndForce(t *testing.T) {
+	e, records, _ := testEngine(t)
+	actionsEnvironment(t, records[0], true)
+	original := e.client.Transport
+	e.client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if strings.Contains(req.URL.Path, "/actions/artifacts") {
+			name := req.URL.Query().Get("name")
+			if name == "" {
+				t.Fatal("reservation lookup must use exact-name filtering")
+			}
+			body, _ := json.Marshal(map[string]any{"artifacts": []any{map[string]any{"name": name, "expired": false}}})
+			return response(200, "application/json", body), nil
+		}
+		return original.RoundTrip(req)
+	})
+	if err := e.runGitHub(t.Context(), "prepare"); err != nil {
+		t.Fatal(err)
+	}
+	var m manifest
+	if err := e.readJSON("manifest.json", &m); err != nil || m.Status != "duplicate" {
+		t.Fatal(m, err)
+	}
+	outputs, err := os.ReadFile(os.Getenv("GITHUB_OUTPUT"))
+	if err != nil || !strings.Contains(string(outputs), "reservation="+m.Reservation+"\n") || !strings.Contains(string(outputs), "generate=false\n") {
+		t.Fatal("reservation upload name or duplicate guard changed", string(outputs), err)
+	}
+	ev, err := githubEvent()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev.Inputs.Force = "true"
+	data, _ := json.Marshal(ev)
+	if err := os.WriteFile(os.Getenv("GITHUB_EVENT_PATH"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(os.Getenv("GITHUB_OUTPUT"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.runGitHub(t.Context(), "prepare"); err != nil {
+		t.Fatal(err)
+	}
+	outputs, err = os.ReadFile(os.Getenv("GITHUB_OUTPUT"))
+	if err != nil || !strings.Contains(string(outputs), "reservation="+m.Reservation+"\n") || !strings.Contains(string(outputs), "generate=true\n") {
+		t.Fatal("explicit force did not permit a new reserved attempt", string(outputs), err)
 	}
 }
 

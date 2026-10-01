@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
-	"strings"
 )
 
 type event struct {
@@ -58,11 +58,11 @@ func (e *engine) duplicateArtifact(ctx context.Context, reservation string) (boo
 				Expired bool   `json:"expired"`
 			} `json:"artifacts"`
 		}
-		if err := e.github(ctx, fmt.Sprintf("/actions/artifacts?per_page=100&page=%d", page), &response); err != nil {
+		if err := e.github(ctx, fmt.Sprintf("/actions/artifacts?name=%s&per_page=100&page=%d", url.QueryEscape(reservation), page), &response); err != nil {
 			return false, err
 		}
 		for _, a := range response.Artifacts {
-			if !a.Expired && (a.Name == reservation || strings.HasPrefix(a.Name, reservation+"-")) {
+			if !a.Expired && a.Name == reservation {
 				return true, nil
 			}
 		}
@@ -70,7 +70,7 @@ func (e *engine) duplicateArtifact(ctx context.Context, reservation string) (boo
 			return false, nil
 		}
 	}
-	return false, errors.New("artifact ledger exceeds lookup limit; manual review required")
+	return false, errors.New("matching reservation ledger exceeds lookup limit; manual review required")
 }
 
 func actionsOutput(key, value string) error {
@@ -166,7 +166,7 @@ func (e *engine) prepareGitHub(ctx context.Context, ev event) error {
 	if err := e.saveSources(sources, m); err != nil {
 		return err
 	}
-	if err := actionsOutput("reservation", m.Reservation+"-"+m.RunID+"-"+m.RunAttempt); err != nil {
+	if err := actionsOutput("reservation", m.Reservation); err != nil {
 		return err
 	}
 	if err := actionsOutput("prepared", "true"); err != nil {

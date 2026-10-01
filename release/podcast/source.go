@@ -17,7 +17,7 @@ import (
 
 const maxSourceBytes = 65536
 
-var tagPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*)?$`)
+var tagPattern = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*))?$`)
 
 type releaseRecord struct {
 	ID          int64  `json:"id"`
@@ -53,6 +53,13 @@ func version(tag string) ([3]uint64, error) {
 		}
 		v[i] = n
 	}
+	if matches[4] != "" {
+		for _, identifier := range strings.Split(matches[4], ".") {
+			if numericIdentifier(identifier) && len(identifier) > 1 && identifier[0] == '0' {
+				return v, errors.New("numeric prerelease identifiers must not have leading zeros")
+			}
+		}
+	}
 	return v, nil
 }
 
@@ -76,7 +83,46 @@ func compareVersion(a, b string) int {
 			return 1
 		}
 	}
+	_, pa, _ := strings.Cut(a, "-")
+	_, pb, _ := strings.Cut(b, "-")
+	return comparePrerelease(pa, pb)
+}
+
+func numericIdentifier(s string) bool { return strings.Trim(s, "0123456789") == "" }
+
+func compareIdentifiers(a, b string) int {
+	an, bn := numericIdentifier(a), numericIdentifier(b)
+	if an != bn {
+		if an {
+			return -1
+		}
+		return 1
+	}
+	// Numeric identifiers are valid without leading zeros; length then lexical
+	// comparison handles arbitrarily large identifiers without integer overflow.
+	if an && len(a) != len(b) {
+		return len(a) - len(b)
+	}
 	return strings.Compare(a, b)
+}
+
+func comparePrerelease(a, b string) int {
+	if a == b {
+		return 0
+	}
+	if a == "" {
+		return 1 // A stable release follows every prerelease of the same version.
+	}
+	if b == "" {
+		return -1
+	}
+	ai, bi := strings.Split(a, "."), strings.Split(b, ".")
+	for i := range min(len(ai), len(bi)) {
+		if order := compareIdentifiers(ai[i], bi[i]); order != 0 {
+			return order
+		}
+	}
+	return len(ai) - len(bi)
 }
 
 func parseTags(raw string) ([]string, error) {

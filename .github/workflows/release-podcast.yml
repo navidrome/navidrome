@@ -75,6 +75,8 @@ jobs:
         if: steps.prepare.outputs.generate == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
+          # Exact deterministic name supports API filtering across runs.
+          # Keep immutable within a run; force requires a fresh dispatch.
           name: ${{ steps.prepare.outputs.reservation }}
           path: release-podcast/manifest.json
           if-no-files-found: error
