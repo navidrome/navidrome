@@ -87,6 +87,9 @@ func response(status int, ct string, data []byte) *http.Response {
 
 func testEngine(t *testing.T) (*engine, []releaseRecord, []source) {
 	t.Helper()
+	// Local fixtures must not inherit the hosting CI runner's Actions context.
+	// Actions-specific tests establish their own context with actionsEnvironment.
+	t.Setenv("GITHUB_ACTIONS", "false")
 	t.Setenv("GH_TOKEN", "")
 	t.Setenv("OPENAI_API_KEY", "")
 	e, err := newEngine(t.TempDir())
