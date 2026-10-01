@@ -5,18 +5,17 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("LibraryMatcher", func() {
-	BeforeEach(func() {
-		tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-	})
-
+	// Paths are written Unix-style and converted, so they use the OS separator, as filepath.Abs output does
 	find := func(libs model.Libraries, path string) int {
-		lib, ok := model.NewLibraryMatcher(libs).FindLibrary(path)
+		for i := range libs {
+			libs[i].Path = filepath.FromSlash(libs[i].Path)
+		}
+		lib, ok := model.NewLibraryMatcher(libs).FindLibrary(filepath.FromSlash(path))
 		if !ok {
 			return 0
 		}
