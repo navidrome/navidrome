@@ -1,4 +1,4 @@
-name: Release audio
+name: Release podcast
 
 on:
   release:
@@ -29,7 +29,7 @@ permissions: {}
 # Serialize the artifact lookup and reservation, including overlapping rollups.
 # GitHub may replace an older pending run; recover that run with manual dispatch.
 concurrency:
-  group: release-audio-${{ github.repository }}
+  group: release-podcast-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
@@ -55,9 +55,11 @@ jobs:
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          python-version: '3.12'
+          go-version-file: go.mod
+      - name: Build the shared Go CLI before exposing credentials
+        run: go build -o "$RUNNER_TEMP/release-podcast" ./release/podcast
       - name: Install MP3 inspection tools before generation
         if: env.AUDIO_MODE == 'audio' && env.AUDIO_ENABLED == 'true'
         run: |
@@ -68,13 +70,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           AUDIO_KEY_CONFIGURED: ${{ secrets.OPENAI_API_KEY != '' }}
-        run: python3 release/audio/release_audio.py prepare
+        run: '"$RUNNER_TEMP/release-podcast" --github-stage prepare'
       - name: Reserve this paid attempt before contacting OpenAI
         if: steps.prepare.outputs.generate == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: ${{ steps.prepare.outputs.reservation }}
-          path: release-audio/manifest.json
+          path: release-podcast/manifest.json
           if-no-files-found: error
           retention-days: 90
       - name: Generate and validate the grounded script
@@ -82,17 +84,17 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GH_TOKEN: ${{ github.token }}
-        run: python3 release/audio/release_audio.py script
+        run: '"$RUNNER_TEMP/release-podcast" --github-stage script'
       - name: Checkpoint the validated script
         if: steps.prepare.outputs.generate == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: release-audio-script-${{ github.run_id }}-${{ github.run_attempt }}
+          name: release-podcast-script-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            release-audio/transcript.txt
-            release-audio/sources.json
-            release-audio/evidence.json
-            release-audio/manifest.json
+            release-podcast/transcript.txt
+            release-podcast/sources.json
+            release-podcast/evidence.json
+            release-podcast/manifest.json
           if-no-files-found: error
           retention-days: 30
       - name: Synthesize and inspect the MP3
@@ -100,18 +102,18 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GH_TOKEN: ${{ github.token }}
-        run: python3 release/audio/release_audio.py speech
+        run: '"$RUNNER_TEMP/release-podcast" --github-stage speech'
       - name: Upload review artifacts
         if: always() && steps.prepare.outputs.prepared == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: release-audio-${{ github.run_id }}-${{ github.run_attempt }}
+          name: release-podcast-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            release-audio/transcript.txt
-            release-audio/release-audio.mp3
-            release-audio/sources.json
-            release-audio/evidence.json
-            release-audio/manifest.json
+            release-podcast/transcript.txt
+            release-podcast/release-podcast.mp3
+            release-podcast/sources.json
+            release-podcast/evidence.json
+            release-podcast/manifest.json
           if-no-files-found: error
           retention-days: 30
           compression-level: 0
