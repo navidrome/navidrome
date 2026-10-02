@@ -79,8 +79,9 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 		log.Debug(ctx, "Zipping album", "name", album[0].Album, "artist", album[0].AlbumArtist, "folder", folder,
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
-			file := a.albumFilename(mf, format, isMultiDisc, folder)
-			if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+			req := a.resolveRequest(ctx, &mf, format, bitrate)
+			file := a.albumFilename(mf, req.Format, isMultiDisc, folder)
+			if addErr := a.addFileToZip(ctx, z, mf, req, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
 				// Stop iterating: continuing would just rack up more
 				// rejections from the limiter. Close finalises whatever
 				// tracks were already written; the rejected one is not
@@ -205,8 +206,9 @@ func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format st
 
 	zippedMfs := make(model.MediaFiles, len(mfs))
 	for idx, mf := range mfs {
-		file := a.playlistFilename(mf, format, idx)
-		if addErr := a.addFileToZip(ctx, z, mf, format, bitrate, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
+		req := a.resolveRequest(ctx, &mf, format, bitrate)
+		file := a.playlistFilename(mf, req.Format, idx)
+		if addErr := a.addFileToZip(ctx, z, mf, req, file); errors.Is(addErr, stream.ErrTooManyTranscodes) {
 			// Abort the whole archive: continuing would silently emit
 			// empty zip entries since the headers are already written.
 			_ = z.Close()
@@ -252,7 +254,14 @@ func (a *archiver) playlistFilename(mf model.MediaFile, format string, idx int) 
 	return fmt.Sprintf("%02d - %s - %s.%s", idx+1, str.SanitizeFilename(mf.Artist), str.SanitizeFilename(mf.Title), ext)
 }
 
-func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, format string, bitrate int, filename string) error {
+func (a *archiver) resolveRequest(ctx context.Context, mf *model.MediaFile, format string, bitrate int) stream.Request {
+	if format == "" || format == "raw" {
+		return stream.Request{Format: "raw"}
+	}
+	return a.decider.ResolveRequest(ctx, mf, format, bitrate, 0)
+}
+
+func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.MediaFile, req stream.Request, filename string) error {
 	path := mf.AbsolutePath()
 
 	// Open the source before writing the zip entry header so a rejection
@@ -260,13 +269,13 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	// archive.
 	var r io.ReadCloser
 	var err error
-	if format != "raw" && format != "" {
-		r, err = a.ms.NewStream(ctx, &mf, a.decider.ResolveRequest(ctx, &mf, format, bitrate, 0))
+	if req.Format != "raw" {
+		r, err = a.ms.NewStream(ctx, &mf, req)
 	} else {
 		r, err = os.Open(path)
 	}
 	if err != nil {
-		log.Error(ctx, "Error opening file for zipping", "file", path, "format", format, err)
+		log.Error(ctx, "Error opening file for zipping", "file", path, "format", req.Format, err)
 		return err
 	}
 	defer func() {

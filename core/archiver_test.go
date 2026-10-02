@@ -69,7 +69,7 @@ var _ = Describe("Archiver", func() {
 			Expect(zr.File[1].Name).To(Equal("Album_Promo/02 - track2.mp3"))
 		})
 
-		It("streams the request resolved by the transcode decider, so zips share cached transcodes", func() {
+		It("streams the request resolved by the transcode decider and names the entry after its format", func() {
 			mfRepo := &mockMediaFileRepository{}
 			mfRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{Path: "test_data/01 - track1.flac", Suffix: "flac", AlbumID: "1"}}, nil)
 			ds.On("MediaFile").Return(mfRepo)
@@ -77,8 +77,13 @@ var _ = Describe("Archiver", func() {
 			dc.resolved = &resolved
 			ms.On("NewStream", mock.Anything, mock.Anything, resolved).Return(io.NopCloser(strings.NewReader("test")), nil).Once()
 
-			Expect(arch.ZipAlbum(GinkgoT().Context(), "1", "opus", 128, new(bytes.Buffer))).To(Succeed())
+			out := new(bytes.Buffer)
+			Expect(arch.ZipAlbum(GinkgoT().Context(), "1", "mp3", 128, out)).To(Succeed())
 			ms.AssertExpectations(GinkgoT())
+
+			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(zr.File[0].Name).To(HaveSuffix("01 - track1.opus"))
 		})
 	})
 
@@ -310,6 +315,30 @@ var _ = Describe("Archiver", func() {
 	})
 
 	Context("ZipPlaylist", func() {
+		It("names the entries and the M3U lines after the resolved format", func() {
+			pls := &model.Playlist{ID: "1", Name: "Test Playlist", Tracks: []model.PlaylistTrack{
+				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.flac", Suffix: "flac", Artist: "Artist 1", Title: "track1"}},
+			}}
+			plRepo := &mockPlaylistRepository{}
+			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
+			ds.On("Playlist").Return(plRepo)
+			dc.resolved = &stream.Request{Format: "opus", BitRate: 128}
+			ms.On("NewStream", mock.Anything, mock.Anything, *dc.resolved).Return(io.NopCloser(strings.NewReader("test")), nil)
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipPlaylist(GinkgoT().Context(), "1", "mp3", 128, out)).To(Succeed())
+
+			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(zr.File[0].Name).To(Equal("01 - Artist 1 - track1.opus"))
+			m3u, err := zr.File[1].Open()
+			Expect(err).ToNot(HaveOccurred())
+			defer m3u.Close()
+			content, err := io.ReadAll(m3u)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("01 - Artist 1 - track1.opus"))
+		})
+
 		It("zips a playlist correctly", func() {
 			tracks := []model.PlaylistTrack{
 				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "AC/DC", Title: "track1"}},
