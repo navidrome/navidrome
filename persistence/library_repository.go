@@ -93,6 +93,8 @@ func (r *libraryRepository) Put(ctx context.Context, l *model.Library, colsToUpd
 			"path":              l.Path,
 			"remote_path":       l.RemotePath,
 			"default_new_users": l.DefaultNewUsers,
+			"pid_album":         l.PIDAlbum,
+			"pid_track":         l.PIDTrack,
 		}, colsToUpdate...)
 		cols["updated_at"] = l.UpdatedAt
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
@@ -171,6 +173,15 @@ func (r *libraryRepository) ScanEnd(ctx context.Context, id int) error {
 		Set("last_scan_at", time.Now()).
 		Set("full_scan_in_progress", false).
 		Set("last_scan_started_at", time.Time{}).
+		Where(Eq{"id": id})
+	_, err := r.executeSQL(ctx, sq)
+	return err
+}
+
+func (r *libraryRepository) SetScannedPID(ctx context.Context, id int, pid model.PIDConfig) error {
+	sq := Update(r.tableName).
+		Set("scanned_pid_album", pid.Album).
+		Set("scanned_pid_track", pid.Track).
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(ctx, sq)
 	return err
