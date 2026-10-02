@@ -35,13 +35,14 @@ type Archiver interface {
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 }
 
-func NewArchiver(ms stream.MediaStreamer, ds model.DataStore, shares Share, artwork artwork.Artwork) Archiver {
-	return &archiver{ds: ds, ms: ms, shares: shares, artwork: artwork}
+func NewArchiver(ms stream.MediaStreamer, decider stream.TranscodeDecider, ds model.DataStore, shares Share, artwork artwork.Artwork) Archiver {
+	return &archiver{ds: ds, ms: ms, decider: decider, shares: shares, artwork: artwork}
 }
 
 type archiver struct {
 	ds      model.DataStore
 	ms      stream.MediaStreamer
+	decider stream.TranscodeDecider
 	shares  Share
 	artwork artwork.Artwork
 }
@@ -260,7 +261,7 @@ func (a *archiver) addFileToZip(ctx context.Context, z *zip.Writer, mf model.Med
 	var r io.ReadCloser
 	var err error
 	if format != "raw" && format != "" {
-		r, err = a.ms.NewStream(ctx, &mf, stream.Request{Format: format, BitRate: bitrate})
+		r, err = a.ms.NewStream(ctx, &mf, a.decider.ResolveRequest(ctx, &mf, format, bitrate, 0))
 	} else {
 		r, err = os.Open(path)
 	}

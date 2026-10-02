@@ -26,6 +26,7 @@ var _ = Describe("Archiver", func() {
 	var (
 		arch core.Archiver
 		ms   *mockMediaStreamer
+		dc   *fakeDecider
 		ds   *mockDataStore
 		sh   *mockShare
 		ca   *mockCoverArt
@@ -33,10 +34,11 @@ var _ = Describe("Archiver", func() {
 
 	BeforeEach(func() {
 		ms = &mockMediaStreamer{}
+		dc = &fakeDecider{}
 		sh = &mockShare{}
 		ds = &mockDataStore{}
 		ca = &mockCoverArt{images: map[string][]byte{}}
-		arch = core.NewArchiver(ms, ds, sh, ca)
+		arch = core.NewArchiver(ms, dc, ds, sh, ca)
 	})
 
 	Context("ZipAlbum", func() {
@@ -65,6 +67,18 @@ var _ = Describe("Archiver", func() {
 			Expect(len(zr.File)).To(Equal(2))
 			Expect(zr.File[0].Name).To(Equal("Album_Promo/01 - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("Album_Promo/02 - track2.mp3"))
+		})
+
+		It("streams the request resolved by the transcode decider, so zips share cached transcodes", func() {
+			mfRepo := &mockMediaFileRepository{}
+			mfRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{Path: "test_data/01 - track1.flac", Suffix: "flac", AlbumID: "1"}}, nil)
+			ds.On("MediaFile").Return(mfRepo)
+			resolved := stream.Request{Format: "opus", BitRate: 128, SampleRate: 48000, Channels: 2}
+			dc.resolved = &resolved
+			ms.On("NewStream", mock.Anything, mock.Anything, resolved).Return(io.NopCloser(strings.NewReader("test")), nil).Once()
+
+			Expect(arch.ZipAlbum(GinkgoT().Context(), "1", "opus", 128, new(bytes.Buffer))).To(Succeed())
+			ms.AssertExpectations(GinkgoT())
 		})
 	})
 
@@ -569,6 +583,19 @@ func (m *mockMediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, 
 		return nil, args.Error(1)
 	}
 	return &stream.Stream{ReadCloser: args.Get(0).(io.ReadCloser)}, nil
+}
+
+// fakeDecider echoes the legacy format/bitrate unless a resolved request is set.
+type fakeDecider struct {
+	stream.TranscodeDecider
+	resolved *stream.Request
+}
+
+func (f *fakeDecider) ResolveRequest(_ context.Context, _ *model.MediaFile, format string, bitRate int, offset int) stream.Request {
+	if f.resolved != nil {
+		return *f.resolved
+	}
+	return stream.Request{Format: format, BitRate: bitRate, Offset: offset}
 }
 
 type mockShare struct {

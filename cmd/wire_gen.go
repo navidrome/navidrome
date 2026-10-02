@@ -95,8 +95,9 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, imageStore, fFmpeg)
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	share := core.NewShare(dataStore)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
+	archiver := core.NewArchiver(mediaStreamer, transcodeDecider, dataStore, share, artworkArtwork)
 	players := core.NewPlayers(dataStore)
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
@@ -110,7 +111,6 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
-	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
 	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics, transcodeDecider, sonicSonic)
 	return router
@@ -161,7 +161,7 @@ func CreatePublicRouter() *public.Router {
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
 	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	share := core.NewShare(dataStore)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
+	archiver := core.NewArchiver(mediaStreamer, transcodeDecider, dataStore, share, artworkArtwork)
 	router := public.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, share, archiver)
 	return router
 }
