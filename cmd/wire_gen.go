@@ -159,9 +159,10 @@ func CreatePublicRouter() *public.Router {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, imageStore, fFmpeg)
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	share := core.NewShare(dataStore)
 	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
-	router := public.New(dataStore, artworkArtwork, mediaStreamer, share, archiver)
+	router := public.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, share, archiver)
 	return router
 }
 
