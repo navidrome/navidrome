@@ -35,7 +35,7 @@ See instructions on the [project's website](https://www.navidrome.org/docs/insta
 
 ## Cloud Hosting
 
-Several cloud hosting providers have partners with us to offer [officially supported, cloud-hosted solutions](https://www.navidrome.org/docs/installation/managed). If you sign-up with any of these providers, a share of the revenue funds the development of Navidrome at no additional cost for you.
+Several cloud hosting providers partner with us to offer [officially supported, cloud-hosted solutions](https://www.navidrome.org/docs/installation/managed). If you sign up with any of these providers, a share of the revenue funds the development of Navidrome at no additional cost for you.
 
 [![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
 <br>
