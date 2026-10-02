@@ -20,10 +20,12 @@ import (
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
+	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/podcasts"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/core/stream"
@@ -430,6 +432,7 @@ func setupTestDB() {
 		metrics.NewNoopInstance(),
 		lyrics.NewLyrics(ds, nil),
 		decider,
+		podcasts.NewPodcastService(context.Background(), ds, ffmpeg.New(), events.NoopBroker()),
 		nil,
 	)
 }

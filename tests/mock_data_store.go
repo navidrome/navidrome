@@ -8,30 +8,38 @@ import (
 )
 
 type MockDataStore struct {
-	RealDS               model.DataStore
-	MockedLibrary        model.LibraryRepository
-	MockedFolder         model.FolderRepository
-	MockedGenre          model.GenreRepository
-	MockedAlbum          model.AlbumRepository
-	MockedArtist         model.ArtistRepository
-	MockedMediaFile      model.MediaFileRepository
-	MockedTag            model.TagRepository
-	MockedUser           model.UserRepository
-	MockedProperty       model.PropertyRepository
-	MockedPlayer         model.PlayerRepository
-	MockedPlaylist       model.PlaylistRepository
-	MockedPlayQueue      model.PlayQueueRepository
-	MockedShare          model.ShareRepository
-	MockedTranscoding    model.TranscodingRepository
-	MockedUserProps      model.UserPropsRepository
-	MockedScrobbleBuffer model.ScrobbleBufferRepository
-	MockedScrobble       model.ScrobbleRepository
-	MockedRadio          model.RadioRepository
-	MockedPlugin         model.PluginRepository
-	MockedArtwork        model.ArtworkRepository
-	MockedArtworkQueue   model.ArtworkQueueRepository
-	scrobbleBufferMu     sync.Mutex
-	repoMu               sync.Mutex
+	RealDS                  model.DataStore
+	MockedLibrary           model.LibraryRepository
+	MockedFolder            model.FolderRepository
+	MockedGenre             model.GenreRepository
+	MockedAlbum             model.AlbumRepository
+	MockedArtist            model.ArtistRepository
+	MockedMediaFile         model.MediaFileRepository
+	MockedTag               model.TagRepository
+	MockedUser              model.UserRepository
+	MockedProperty          model.PropertyRepository
+	MockedPlayer            model.PlayerRepository
+	MockedPlaylist          model.PlaylistRepository
+	MockedPlayQueue         model.PlayQueueRepository
+	MockedShare             model.ShareRepository
+	MockedTranscoding       model.TranscodingRepository
+	MockedUserProps         model.UserPropsRepository
+	MockedScrobbleBuffer    model.ScrobbleBufferRepository
+	MockedScrobble          model.ScrobbleRepository
+	MockedRadio             model.RadioRepository
+	MockedPlugin            model.PluginRepository
+	MockedArtwork           model.ArtworkRepository
+	MockedArtworkQueue      model.ArtworkQueueRepository
+	MockedPodcastChannel    model.PodcastChannelRepository
+	MockedPodcastEpisode    model.PodcastEpisodeRepository
+	MockedPodcastTranscript model.PodcastTranscriptRepository
+	MockedPodcastPerson     model.PodcastPersonRepository
+	MockedPodcastPodroll    model.PodcastPodrollRepository
+	MockedPodcastLiveItem   model.PodcastLiveItemRepository
+	MockedPodcastFunding    model.PodcastFundingRepository
+	MockedPodcastImage      model.PodcastImageRepository
+	scrobbleBufferMu        sync.Mutex
+	repoMu                  sync.Mutex
 
 	// GC tracking
 	GCCalled bool
@@ -319,6 +327,110 @@ func (db *MockDataStore) ArtworkQueue() model.ArtworkQueueRepository {
 	}
 	db.MockedArtworkQueue = q
 	return db.MockedArtworkQueue
+}
+
+func (db *MockDataStore) PodcastChannel() model.PodcastChannelRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastChannel != nil {
+		return db.MockedPodcastChannel
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastChannel()
+	}
+	db.MockedPodcastChannel = CreateMockPodcastChannelRepo()
+	return db.MockedPodcastChannel
+}
+
+func (db *MockDataStore) PodcastEpisode() model.PodcastEpisodeRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastEpisode != nil {
+		return db.MockedPodcastEpisode
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastEpisode()
+	}
+	db.MockedPodcastEpisode = CreateMockPodcastEpisodeRepo()
+	return db.MockedPodcastEpisode
+}
+
+func (db *MockDataStore) PodcastTranscript() model.PodcastTranscriptRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastTranscript != nil {
+		return db.MockedPodcastTranscript
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastTranscript()
+	}
+	db.MockedPodcastTranscript = CreateMockPodcastTranscriptRepo()
+	return db.MockedPodcastTranscript
+}
+
+func (db *MockDataStore) PodcastPerson() model.PodcastPersonRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastPerson != nil {
+		return db.MockedPodcastPerson
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastPerson()
+	}
+	db.MockedPodcastPerson = CreateMockPodcastPersonRepo()
+	return db.MockedPodcastPerson
+}
+
+func (db *MockDataStore) PodcastPodroll() model.PodcastPodrollRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastPodroll != nil {
+		return db.MockedPodcastPodroll
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastPodroll()
+	}
+	db.MockedPodcastPodroll = CreateMockPodcastPodrollRepo()
+	return db.MockedPodcastPodroll
+}
+
+func (db *MockDataStore) PodcastLiveItem() model.PodcastLiveItemRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastLiveItem != nil {
+		return db.MockedPodcastLiveItem
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastLiveItem()
+	}
+	db.MockedPodcastLiveItem = CreateMockPodcastLiveItemRepo()
+	return db.MockedPodcastLiveItem
+}
+
+func (db *MockDataStore) PodcastFunding() model.PodcastFundingRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastFunding != nil {
+		return db.MockedPodcastFunding
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastFunding()
+	}
+	db.MockedPodcastFunding = CreateMockPodcastFundingRepo()
+	return db.MockedPodcastFunding
+}
+
+func (db *MockDataStore) PodcastImage() model.PodcastImageRepository {
+	db.repoMu.Lock()
+	defer db.repoMu.Unlock()
+	if db.MockedPodcastImage != nil {
+		return db.MockedPodcastImage
+	}
+	if db.RealDS != nil {
+		return db.RealDS.PodcastImage()
+	}
+	db.MockedPodcastImage = CreateMockPodcastImageRepo()
+	return db.MockedPodcastImage
 }
 
 func (db *MockDataStore) WithTx(block func(tx model.DataStore) error, label ...string) error {
