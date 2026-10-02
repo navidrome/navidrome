@@ -71,7 +71,7 @@ type taskQueueServiceImpl struct {
 	manager        *Manager
 	maxConcurrency int32
 	db             *sql.DB
-	ctx            context.Context
+	ctx            context.Context //nolint:containedctx // service lifecycle ctx for the worker goroutines
 	cancel         context.CancelFunc
 	wg             sync.WaitGroup
 	mu             sync.Mutex

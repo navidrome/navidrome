@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"slices"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/cache"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -36,9 +36,7 @@ func deezerConstructor(dataStore model.DataStore) agents.Interface {
 		dataStore: dataStore,
 		languages: conf.Server.Deezer.Languages,
 	}
-	httpClient := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	httpClient := httpclient.New(consts.DefaultHttpClientTimeOut)
 	cachedHttpClient := cache.NewHTTPClient(httpClient, consts.DefaultHttpClientTimeOut)
 	agent.client = newClient(cachedHttpClient)
 	return agent
@@ -93,9 +91,6 @@ func isPlaceholderPicture(url string) bool {
 
 func (s *deezerAgent) searchArtist(ctx context.Context, name string) (*Artist, error) {
 	artists, err := s.client.searchArtists(ctx, name, deezerArtistSearchLimit)
-	if errors.Is(err, ErrNotFound) || len(artists) == 0 {
-		return nil, agents.ErrNotFound
-	}
 	if err != nil {
 		return nil, err
 	}

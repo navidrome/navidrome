@@ -36,7 +36,7 @@ RestrictNamespaces=yes
 RestrictRealtime=yes
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged @resources
-SystemCallFilter=setrlimit
+SystemCallFilter=setrlimit mbind
 SystemCallArchitectures=native
 UMask=0066
 

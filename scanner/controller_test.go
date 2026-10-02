@@ -35,7 +35,7 @@ var _ = Describe("Controller", func() {
 		})
 
 		It("includes last scan error", func() {
-			Expect(ds.Property(ctx).Put(consts.LastScanErrorKey, "boom")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastScanErrorKey, "boom")).To(Succeed())
 			status, err := ctrl.Status(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(status.LastError).To(Equal("boom"))
@@ -43,8 +43,8 @@ var _ = Describe("Controller", func() {
 
 		It("includes scan type and error in status", func() {
 			// Set up test data in property repo
-			Expect(ds.Property(ctx).Put(consts.LastScanErrorKey, "test error")).To(Succeed())
-			Expect(ds.Property(ctx).Put(consts.LastScanTypeKey, "full")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastScanErrorKey, "test error")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastScanTypeKey, "full")).To(Succeed())
 
 			// Get status and verify basic info
 			status, err := ctrl.Status(ctx)
@@ -90,5 +90,15 @@ var _ = Describe("EffectiveFullScan", func() {
 	It("ignores interrupted full scans in untargeted libraries", func() {
 		targets := []model.ScanTarget{{LibraryID: 2, FolderPath: "."}}
 		Expect(scanner.EffectiveFullScan(context.Background(), ds, false, targets)).To(BeFalse())
+	})
+})
+
+var _ = Describe("GetInstance", func() {
+	It("returns the same controller to every caller", func() {
+		ds := &tests.MockDataStore{}
+		pls := playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+		a := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		b := scanner.GetInstance(context.Background(), ds, events.NoopBroker(), pls, metrics.NewNoopInstance())
+		Expect(a).To(BeIdenticalTo(b))
 	})
 })

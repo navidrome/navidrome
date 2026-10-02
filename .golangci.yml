@@ -9,6 +9,7 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
+    - containedctx
     - copyloopvar
     - dogsled
     - durationcheck
@@ -27,6 +28,9 @@ linters:
   disable:
     - staticcheck
   settings:
+    errcheck:
+      exclude-functions:
+        - (*github.com/zeebo/xxh3.Hasher).Write
     gocritic:
       disable-all: true
       enabled-checks:
@@ -54,6 +58,9 @@ linters:
           - gosec
         path: _test\.go
         text: "G703"
+      - path: _test\.go
+        linters:
+          - containedctx
       - path-except: 'db/migrations/'
         linters:
           - forbidigo

@@ -34,7 +34,7 @@ type (
 		id        uint64
 		event     string
 		data      string
-		senderCtx context.Context
+		senderCtx context.Context //nolint:containedctx // queued message carries the sender ctx
 	}
 	messageChan chan message
 	clientsChan chan client

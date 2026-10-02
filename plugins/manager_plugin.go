@@ -126,7 +126,7 @@ func (a userAccess) resolve(ctx context.Context, ds model.DataStore, username st
 	if !a.allUsers && len(a.userIDSet) == 0 {
 		return nil, fmt.Errorf("plugin is not authorized to scope by user")
 	}
-	usr, err := ds.User(ctx).FindByUsername(username)
+	usr, err := ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return nil, fmt.Errorf("user %q not found", username)

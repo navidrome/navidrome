@@ -59,7 +59,11 @@ const useCurrentTheme = () => {
   return useMemo(
     () => ({
       ...theme,
-      props: { ...theme.props, MuiUseMediaQuery: { noSsr: true } },
+      props: {
+        ...theme.props,
+        MuiUseMediaQuery: { noSsr: true },
+        MuiPopover: { disableScrollLock: true },
+      },
     }),
     [theme],
   )

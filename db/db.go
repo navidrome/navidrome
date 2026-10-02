@@ -6,6 +6,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/mattn/go-sqlite3"
@@ -13,9 +14,14 @@ import (
 	_ "github.com/navidrome/navidrome/db/migrations"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/utils/hasher"
+	"github.com/navidrome/navidrome/utils/natural"
 	"github.com/navidrome/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
+
+// NaturalCollation sorts embedded numbers by value. It is registered on every
+// connection, but only referenced when conf.Server.EnableNaturalSorting is on.
+const NaturalCollation = "NATSORT"
 
 var (
 	Dialect = "sqlite3"
@@ -28,12 +34,21 @@ var embedMigrations embed.FS
 
 const migrationsFolder = "migrations"
 
+// sql.Register panics if called twice, so guard it: the singleton instance can be reset
+// (tests/benchmarks) and rebuilt, but the driver is process-global and registers only once.
+var registerDriverOnce sync.Once
+
 func Db() *sql.DB {
 	return singleton.GetInstance(func() *sql.DB {
-		sql.Register(Driver, &sqlite3.SQLiteDriver{
-			ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-				return conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false)
-			},
+		registerDriverOnce.Do(func() {
+			sql.Register(Driver, &sqlite3.SQLiteDriver{
+				ConnectHook: func(conn *sqlite3.SQLiteConn) error {
+					if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
+						return err
+					}
+					return conn.RegisterCollation(NaturalCollation, natural.CompareFold)
+				},
+			})
 		})
 		Path = conf.Server.DbPath
 		if Path == ":memory:" {
@@ -118,6 +133,12 @@ func ErrorCodes(err error) (code, extended int, ok bool) {
 	return int(se.Code), int(se.ExtendedCode), true
 }
 
+// IsBusy reports whether err is SQLITE_BUSY, including BUSY_SNAPSHOT, which only a new transaction clears.
+func IsBusy(err error) bool {
+	code, _, ok := ErrorCodes(err)
+	return ok && code == int(sqlite3.ErrBusy)
+}
+
 type statusLogger struct{ numPending int }
 
 func (*statusLogger) Fatalf(format string, v ...any) { log.Fatal(fmt.Sprintf(format, v...)) }
@@ -142,17 +163,28 @@ func hasPendingMigrations(ctx context.Context, db *sql.DB, folder string) bool {
 	return l.numPending > 0
 }
 
+// hasGooseTable reports whether goose's bookkeeping table exists, i.e. whether the
+// database has ever been migrated.
+func hasGooseTable(ctx context.Context, db *sql.DB) (bool, error) {
+	var name string
+	err := db.QueryRowContext(ctx,
+		"SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version'").Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func isSchemaEmpty(ctx context.Context, db *sql.DB) bool {
-	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
+	found, err := hasGooseTable(ctx, db)
 	if err != nil {
 		log.Fatal(ctx, "Database could not be opened!", err)
 	}
-	defer rows.Close()
-	return !rows.Next()
+	return !found
 }
 
 type logAdapter struct {
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // goose logger interface has no ctx
 	silent bool
 }
 

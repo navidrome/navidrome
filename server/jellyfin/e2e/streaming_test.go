@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -43,8 +44,21 @@ var _ = Describe("Streaming", func() {
 		})
 
 		It("returns 404 for an unknown track", func() {
-			Expect(get("/Audio/" + enc("nope") + "/stream").Code).To(Equal(http.StatusNotFound))
+			Expect(get("/Audio/" + enc(testID("nope")) + "/stream").Code).To(Equal(http.StatusNotFound))
 		})
+
+		DescribeTable("answers HEAD (Fintunes probes the type before playing or downloading)",
+			func(path string) {
+				w := jReq(adminUser, "HEAD", fmt.Sprintf(path, enc(songID("Help!"))), "")
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).ToNot(BeEmpty())
+			},
+			Entry("stream", "/Audio/%s/stream"),
+			Entry("stream.{container}", "/Audio/%s/stream.mp3"),
+			Entry("universal", "/Audio/%s/universal"),
+			Entry("File", "/Items/%s/File"),
+			Entry("Download", "/Items/%s/Download"),
+		)
 	})
 
 	Describe("GET /Audio/{id}/main.m3u8 (Finamp transcoding mode)", func() {
@@ -98,7 +112,7 @@ var _ = Describe("Streaming", func() {
 			parseInto(get("/Items/"+enc(id)+"/PlaybackInfo"), &info)
 			Expect(info.MediaSources).To(HaveLen(1))
 			Expect(info.MediaSources[0].Id).ToNot(BeEmpty())
-			Expect(info.PlaySessionId).ToNot(BeEmpty())
+			Expect(info.PlaySessionId).To(MatchRegexp("^[0-9a-f]{32}$"))
 		})
 
 		It("returns a MediaSource via POST", func() {
@@ -113,14 +127,12 @@ var _ = Describe("Streaming", func() {
 			var info dto.PlaybackInfoResponse
 			parseInto(get("/Items/"+enc(id)+"/PlaybackInfo"), &info)
 			streamURL := info.MediaSources[0].TranscodingUrl
-			// The URL includes the /jellyfin mount prefix so a client resolving it as an absolute
-			// host path hits the mounted router.
-			Expect(streamURL).To(HavePrefix(consts.URLPathJellyfinAPI + "/Audio/" + enc(id) + "/universal"))
+			// Server-relative: clients append it to a base URL already carrying /jellyfin.
+			Expect(streamURL).To(HavePrefix("/Audio/" + enc(id) + "/universal"))
+			Expect(streamURL).ToNot(HavePrefix(consts.URLPathJellyfinAPI))
 			Expect(streamURL).To(ContainSubstring("api_key="))
-			// The embedded api_key alone must authenticate the stream — no auth header sent. The e2e
-			// router is mounted at the root, so strip the /jellyfin prefix before replaying.
-			replayURL := strings.TrimPrefix(streamURL, consts.URLPathJellyfinAPI)
-			w := rawReq("GET", replayURL, "")
+			// The embedded api_key alone must authenticate the stream — no auth header sent.
+			w := rawReq("GET", streamURL, "")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(streamerSpy.LastMediaFile.ID).To(Equal(id))
 		})

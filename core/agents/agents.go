@@ -1,9 +1,13 @@
 package agents
 
 import (
+	"cmp"
 	"context"
+	"errors"
+	"maps"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -22,11 +26,43 @@ type PluginLoader interface {
 	LoadMediaAgent(name string) (Interface, bool)
 }
 
+// agentCooldown is the default cooldown duration for an agent that returns a RetryLaterError without a specific
+// RetryIn duration.
+const agentCooldown = time.Minute
+
+// errUnsupported marks an agent that does not implement the requested method: it never ran,
+// so it neither answered nor throttled.
+var errUnsupported = errors.New("agent does not support this method")
+
 // Agents is a meta-agent that aggregates multiple built-in and plugin agents. It tries each enabled agent in order
 // until one returns valid data.
 type Agents struct {
 	ds           model.DataStore
 	pluginLoader PluginLoader
+	cooldowns    cooldowns
+}
+
+// cooldowns remembers, across dispatches, which agents asked to be left alone and until when.
+type cooldowns struct {
+	mu    sync.RWMutex
+	until map[string]time.Time
+}
+
+func (c *cooldowns) active(name string) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return time.Now().Before(c.until[name])
+}
+
+// park keeps whichever deadline is later, so a call still in flight when a longer cooldown
+// starts cannot cut it short when it finally answers.
+func (c *cooldowns) park(name string, d time.Duration) {
+	until := time.Now().Add(d)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if until.After(c.until[name]) {
+		c.until[name] = until
+	}
 }
 
 // GetAgents returns the singleton instance of Agents
@@ -41,6 +77,7 @@ func createAgents(ds model.DataStore, pluginLoader PluginLoader) *Agents {
 	return &Agents{
 		ds:           ds,
 		pluginLoader: pluginLoader,
+		cooldowns:    cooldowns{until: map[string]time.Time{}},
 	}
 }
 
@@ -90,10 +127,17 @@ func (a *Agents) getEnabledAgentNames() []enabledAgent {
 		} else if isPlugin {
 			validAgents = append(validAgents, enabledAgent{name: name, isPlugin: true})
 		} else {
-			log.Debug("Unknown agent ignored", "name", name)
+			log.Debug("Unknown agent ignored", "name", name, "available", availableAgentNames(availablePlugins))
 		}
 	}
 	return validAgents
+}
+
+// availableAgentNames returns every name accepted by the Agents config option.
+func availableAgentNames(plugins []string) []string {
+	names := append(slices.Collect(maps.Keys(Map)), plugins...)
+	slices.Sort(names)
+	return names
 }
 
 func (a *Agents) getAgent(ea enabledAgent) Interface {
@@ -171,7 +215,7 @@ func (a *Agents) GetArtistMBID(ctx context.Context, id string, name string) (str
 	return callAgentMethod(ctx, a, "GetArtistMBID", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistMBIDRetriever)
 		if !ok {
-			return "", ErrNotFound
+			return "", errUnsupported
 		}
 		return retriever.GetArtistMBID(ctx, id, name)
 	})
@@ -188,7 +232,7 @@ func (a *Agents) GetArtistURL(ctx context.Context, id, name, mbid string) (strin
 	return callAgentMethod(ctx, a, "GetArtistURL", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistURLRetriever)
 		if !ok {
-			return "", ErrNotFound
+			return "", errUnsupported
 		}
 		return retriever.GetArtistURL(ctx, id, name, mbid)
 	})
@@ -205,7 +249,7 @@ func (a *Agents) GetArtistBiography(ctx context.Context, id, name, mbid string) 
 	return callAgentMethod(ctx, a, "GetArtistBiography", func(ag Interface) (string, error) {
 		retriever, ok := ag.(ArtistBiographyRetriever)
 		if !ok {
-			return "", ErrNotFound
+			return "", errUnsupported
 		}
 		return retriever.GetArtistBiography(ctx, id, name, mbid)
 	})
@@ -224,7 +268,11 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 	overLimit := int(float64(limit) * conf.Server.DevExternalArtistFetchMultiplier)
 
 	start := time.Now()
+	attempts := newAttempts(&a.cooldowns)
 	for _, enabledAgent := range a.getEnabledAgentNames() {
+		if attempts.skip(enabledAgent.name) {
+			continue
+		}
 		ag := a.getAgent(enabledAgent)
 		if ag == nil {
 			continue
@@ -237,6 +285,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			continue
 		}
 		similar, err := retriever.GetSimilarArtists(ctx, id, name, mbid, overLimit)
+		attempts.record(enabledAgent.name, err)
 		if len(similar) > 0 && err == nil {
 			if log.IsGreaterOrEqualTo(log.LevelTrace) {
 				log.Debug(ctx, "Got Similar Artists", "agent", ag.AgentName(), "artist", name, "similar", similar, "elapsed", time.Since(start))
@@ -246,7 +295,7 @@ func (a *Agents) GetSimilarArtists(ctx context.Context, id, name, mbid string, l
 			return similar, err
 		}
 	}
-	return nil, ErrNotFound
+	return nil, attempts.noResultErr()
 }
 
 func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]ExternalImage, error) {
@@ -260,7 +309,7 @@ func (a *Agents) GetArtistImages(ctx context.Context, id, name, mbid string) ([]
 	return callAgentSliceMethod(ctx, a, "GetArtistImages", func(ag Interface) ([]ExternalImage, error) {
 		retriever, ok := ag.(ArtistImageRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetArtistImages(ctx, id, name, mbid)
 	})
@@ -281,7 +330,7 @@ func (a *Agents) GetArtistTopSongs(ctx context.Context, id, artistName, mbid str
 	return callAgentSliceMethod(ctx, a, "GetArtistTopSongs", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(ArtistTopSongsRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetArtistTopSongs(ctx, id, artistName, mbid, overLimit)
 	})
@@ -295,7 +344,7 @@ func (a *Agents) GetAlbumInfo(ctx context.Context, name, artist, mbid string) (*
 	return callAgentMethod(ctx, a, "GetAlbumInfo", func(ag Interface) (*AlbumInfo, error) {
 		retriever, ok := ag.(AlbumInfoRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetAlbumInfo(ctx, name, artist, mbid)
 	})
@@ -309,7 +358,7 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 	return callAgentSliceMethod(ctx, a, "GetAlbumImages", func(ag Interface) ([]ExternalImage, error) {
 		retriever, ok := ag.(AlbumImageRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetAlbumImages(ctx, name, artist, mbid)
 	})
@@ -320,7 +369,7 @@ func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, m
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByTrack", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByTrackRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetSimilarSongsByTrack(ctx, id, name, artist, mbid, count)
 	})
@@ -331,7 +380,7 @@ func (a *Agents) GetSimilarSongsByAlbum(ctx context.Context, id, name, artist, m
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByAlbum", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByAlbumRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetSimilarSongsByAlbum(ctx, id, name, artist, mbid, count)
 	})
@@ -349,16 +398,61 @@ func (a *Agents) GetSimilarSongsByArtist(ctx context.Context, id, name, mbid str
 	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByArtist", func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByArtistRetriever)
 		if !ok {
-			return nil, ErrNotFound
+			return nil, errUnsupported
 		}
 		return retriever.GetSimilarSongsByArtist(ctx, id, name, mbid, count)
 	})
 }
 
-func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
+// agentAttempts tallies what the enabled agents did in one dispatch.
+type agentAttempts struct {
+	cooldowns *cooldowns
+	throttled bool
+	answered  bool
+}
+
+func newAttempts(c *cooldowns) agentAttempts {
+	return agentAttempts{cooldowns: c}
+}
+
+// skip reports whether name is still cooling down, counting it as throttled for this dispatch.
+func (t *agentAttempts) skip(name string) bool {
+	if !t.cooldowns.active(name) {
+		return false
+	}
+	t.throttled = true
+	return true
+}
+
+// record files one agent's outcome, parking it when it asked to be retried later.
+func (t *agentAttempts) record(name string, err error) {
+	switch retry, isRetryLater := errors.AsType[*RetryLaterError](err); {
+	case errors.Is(err, errUnsupported):
+	case isRetryLater:
+		t.cooldowns.park(name, cmp.Or(retry.RetryIn, agentCooldown))
+		t.throttled = true
+	default:
+		t.answered = true
+	}
+}
+
+// noResultErr tells a retryable empty dispatch (nobody answered) from a definitive miss.
+func (t *agentAttempts) noResultErr() error {
+	if t.throttled && !t.answered {
+		return ErrRetryLater
+	}
+	return ErrNotFound
+}
+
+// callAgent tries each enabled agent in order until found reports a usable result.
+func callAgent[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error), found func(T) bool) (T, error) {
 	var zero T
 	start := time.Now()
+	attempts := newAttempts(&agents.cooldowns)
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
+		if attempts.skip(enabledAgent.name) {
+			continue
+		}
 		ag := agents.getAgent(enabledAgent)
 		if ag == nil {
 			continue
@@ -367,41 +461,29 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 			break
 		}
 		result, err := fn(ag)
+		attempts.record(enabledAgent.name, err)
 		if err != nil {
 			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
 			continue
 		}
 
-		if result != zero {
+		if found(result) {
 			log.Debug(ctx, "Got result", "method", methodName, "agent", ag.AgentName(), "elapsed", time.Since(start))
 			return result, nil
 		}
 	}
-	return zero, ErrNotFound
+	return zero, attempts.noResultErr()
+}
+
+func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error)) (T, error) {
+	return callAgent(ctx, agents, methodName, fn, func(result T) bool {
+		var zero T
+		return result != zero
+	})
 }
 
 func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
-	start := time.Now()
-	for _, enabledAgent := range agents.getEnabledAgentNames() {
-		ag := agents.getAgent(enabledAgent)
-		if ag == nil {
-			continue
-		}
-		if utils.IsCtxDone(ctx) {
-			break
-		}
-		results, err := fn(ag)
-		if err != nil {
-			log.Trace(ctx, "Agent method call error", "method", methodName, "agent", ag.AgentName(), "error", err)
-			continue
-		}
-
-		if len(results) > 0 {
-			log.Debug(ctx, "Got results", "method", methodName, "agent", ag.AgentName(), "count", len(results), "elapsed", time.Since(start))
-			return results, nil
-		}
-	}
-	return nil, ErrNotFound
+	return callAgent(ctx, agents, methodName, fn, func(results []T) bool { return len(results) > 0 })
 }
 
 var _ Interface = (*Agents)(nil)

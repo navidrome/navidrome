@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -122,6 +123,43 @@ var _ = Describe("Metadata", func() {
 				Expect(pair[0].Value()).To(HaveLen(1048570))
 			})
 
+			It("should not split a multi-byte character when truncating", func() {
+				// 1024 is not a multiple of 3, so a byte-wise cut lands mid-rune.
+				props.Tags = model.RawTags{
+					"Title": {strings.Repeat("日", 2048)},
+				}
+				md = metadata.New(filePath, props)
+
+				title := md.String(model.TagTitle)
+				Expect(utf8.ValidString(title)).To(BeTrue(), "truncation produced invalid UTF-8")
+				Expect(len(title)).To(BeNumerically("<=", 1024))
+			})
+
+			It("should keep invalid bytes that are not at the truncation point", func() {
+				props.Tags = model.RawTags{
+					"Title": {"a\xffb" + strings.Repeat("c", 2048)},
+				}
+				md = metadata.New(filePath, props)
+
+				Expect(md.String(model.TagTitle)).To(HaveLen(1024))
+			})
+
+			DescribeTable("should normalize UUID tags to their canonical form",
+				func(raw, expected string) {
+					props.Tags = model.RawTags{"musicbrainz_artistid": {raw}}
+					md = metadata.New(filePath, props)
+
+					Expect(md.String(model.TagMusicBrainzArtistID)).To(Equal(expected))
+				},
+				Entry("canonical", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("uppercase", "F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("braced", "{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("urn prefix", "urn:uuid:f81d4fae-7dec-11d0-a765-00a0c91e6bf6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("quoted", `"f81d4fae-7dec-11d0-a765-00a0c91e6bf6"`, "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("no dashes", "f81d4fae7dec11d0a76500a0c91e6bf6", "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"),
+				Entry("not a uuid", "the beatles", ""),
+			)
+
 			It("should split multiple values", func() {
 				props.Tags = model.RawTags{
 					"Genre": {"Rock/Pop;;Punk"},
@@ -188,6 +226,10 @@ var _ = Describe("Metadata", func() {
 			Entry(nil, "2/10", "", 2, 10),
 			Entry(nil, "", "", 0, 0),
 			Entry(nil, "A", "", 0, 0),
+			Entry("ignores values that do not fit in 32 bits", "4294967295", "4294967296", 0, 0),
+			Entry("ignores a total that does not fit in 32 bits", "2/4294967295", "", 2, 0),
+			Entry("keeps the largest 32-bit value", "2147483647", "", 2147483647, 0),
+			Entry("ignores negative values", "-1", "-2", 0, 0),
 		)
 
 		Describe("Performers", func() {

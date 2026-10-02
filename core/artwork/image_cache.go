@@ -55,6 +55,10 @@ func (r *resizedItem) Reader(ctx context.Context) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	// An open() that reports "no image" as a nil reader would otherwise panic on the Close below.
+	if orig == nil {
+		return nil, ErrUnavailable
+	}
 	defer orig.Close()
 	data, err := readCapped(orig)
 	if err != nil {

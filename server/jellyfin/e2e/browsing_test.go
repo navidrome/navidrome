@@ -1,7 +1,9 @@
 package e2e
 
 import (
+	"encoding/json"
 	"net/http"
+	"slices"
 	"sort"
 	"time"
 
@@ -45,7 +47,7 @@ var _ = Describe("Browsing", func() {
 				Expect(it.Type).To(Equal("Audio"))
 				Expect(it.MediaType).To(Equal("Audio"))
 				Expect(it.LocationType).To(Equal("FileSystem"))
-				Expect(it.ServerId).ToNot(BeEmpty()) // real Jellyfin always sets it
+				Expect(it.ServerId).To(MatchRegexp("^[0-9a-f]{32}$")) // real Jellyfin always sets it, no-dash GUID form
 				Expect(it.AlbumId).ToNot(BeEmpty())
 			}
 		})
@@ -79,6 +81,24 @@ var _ = Describe("Browsing", func() {
 			Expect(names(q.Items)).To(ConsistOf("The Beatles", "Led Zeppelin", "Miles Davis", "Solo Artist"))
 		})
 
+		// Finamp's A-Z jump scans SortName client-side, so it must follow the response order.
+		It("returns artists' SortName matching the server sort order when Fields=SortName", func() {
+			plain := queryResult(get("/Artists/AlbumArtists?Recursive=true&SortBy=SortName"))
+			for _, it := range plain.Items {
+				Expect(it.SortName).To(BeEmpty())
+			}
+			q := queryResult(get("/Artists/AlbumArtists?Recursive=true&SortBy=SortName&Fields=SortName"))
+			Expect(q.Items).ToNot(BeEmpty())
+			sortNames := make([]string, 0, len(q.Items))
+			for _, it := range q.Items {
+				Expect(it.SortName).ToNot(BeEmpty())
+				sortNames = append(sortNames, it.SortName)
+			}
+			Expect(slices.IsSorted(sortNames)).To(BeTrue(), "SortName values must follow the response order: %v", sortNames)
+			// "The Beatles" must be filed under B, exposing the article-stripped key to clients.
+			Expect(sortNames).To(ContainElement("beatles"))
+		})
+
 		It("lists all genres", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicGenre&Recursive=true"))
 			Expect(q.TotalRecordCount).To(Equal(3))
@@ -91,10 +111,51 @@ var _ = Describe("Browsing", func() {
 			Expect(q.Items).To(BeEmpty())
 		})
 
-		It("defaults to albums when IncludeItemTypes is unrecognized", func() {
+		// Manet syncs collections as Boxset, and took albums coming back instead as a sync failure.
+		DescribeTable("returns nothing for a type it does not serve",
+			func(itemType string) {
+				q := queryResult(get("/Items?IncludeItemTypes=" + itemType + "&Recursive=true"))
+				Expect(q.TotalRecordCount).To(Equal(0))
+				Expect(q.Items).To(BeEmpty())
+			},
+			Entry("a Jellyfin kind Navidrome has none of", "Boxset"),
+		)
+
+		It("treats a name Jellyfin does not know as an absent IncludeItemTypes", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Nonsense&Recursive=true"))
-			Expect(q.TotalRecordCount).To(Equal(5))
+			Expect(q.TotalRecordCount).To(Equal(queryResult(get("/Items?Recursive=true")).TotalRecordCount))
+			Expect(q.TotalRecordCount).To(BeNumerically(">", 0))
 		})
+
+		// A strict client (Manet) fails its whole sync on the first item missing any of these.
+		DescribeTable("sends the keys Jellyfin puts on every item",
+			func(itemType string, fields string, nonNull ...string) {
+				var body struct{ Items []map[string]json.RawMessage }
+				res := get("/Items?IncludeItemTypes=" + itemType + "&Fields=" + fields + "&Recursive=true")
+				Expect(json.Unmarshal(res.Body.Bytes(), &body)).To(Succeed())
+				Expect(body.Items).ToNot(BeEmpty())
+				for _, it := range body.Items {
+					Expect(it).To(HaveKey("ChannelId"), "ChannelId is null, but always present")
+					for _, k := range nonNull {
+						Expect(it).To(HaveKey(k))
+						Expect(string(it[k])).ToNot(Equal("null"), k)
+					}
+				}
+			},
+			Entry("songs", "Audio", "Genres,Tags", "ImageTags", "HasLyrics", "Genres", "GenreItems", "Tags"),
+			Entry("albums", "MusicAlbum", "Genres", "ImageTags", "Genres", "GenreItems"),
+			Entry("artists", "MusicArtist", "Genres", "ImageTags", "Genres", "GenreItems"),
+		)
+
+		It("sends MediaType Unknown on items without one, as Jellyfin always emits it", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true"))
+			Expect(q.Items).ToNot(BeEmpty())
+			for _, it := range q.Items {
+				Expect(it.MediaType).To(Equal("Unknown"))
+			}
+			Expect(queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true")).Items[0].MediaType).To(Equal("Audio"))
+		})
+
 	})
 
 	Describe("ParentId browsing", func() {
@@ -132,7 +193,7 @@ var _ = Describe("Browsing", func() {
 	// Finamp's download sync asks a library for the tracks outside any album this way; answering
 	// with every track would stream the whole library.
 	Describe("Recursive=false", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("returns no songs for a library parent", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + lib1 + "&Recursive=false"))
@@ -154,7 +215,7 @@ var _ = Describe("Browsing", func() {
 	// Finamp's artist screen sends ParentId=<libraryId> (scoping) plus AlbumArtistIds/ArtistIds
 	// for the actual artist filter, not ParentId=<artistId>.
 	Describe("artist filtering (AlbumArtistIds / ArtistIds)", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("filters albums by AlbumArtistIds", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&AlbumArtistIds=" + enc(artistID("The Beatles"))))
@@ -190,6 +251,87 @@ var _ = Describe("Browsing", func() {
 		})
 	})
 
+	// A malformed id must 404, not silently drop the filter and widen the query to the whole
+	// library; a well-formed but unknown one must still fail closed to zero results.
+	Describe("stale and malformed id filtering", func() {
+		lib1 := dto.EncodeLibraryID(1)
+
+		It("404s a malformed ParentId instead of listing every song", func() {
+			w := get("/Items?IncludeItemTypes=Audio&ParentId=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero songs, not the whole library, for a well-formed but unknown ParentId", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&ParentId=" + enc(testID("no-such-album"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed AlbumArtistIds instead of listing every album", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&AlbumArtistIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero albums, not every album, for a well-formed but unknown AlbumArtistIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&AlbumArtistIds=" + enc(testID("no-such-artist"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed ArtistIds instead of listing every song", func() {
+			w := get("/Items?IncludeItemTypes=Audio&Recursive=true&ParentId=" + lib1 + "&ArtistIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero songs, not every song, for a well-formed but unknown ArtistIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&ParentId=" + lib1 + "&ArtistIds=" + enc(testID("no-such-artist"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed Ids entry instead of batch-fetching nothing", func() {
+			w := get("/Items?Ids=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s when only one of several Ids entries is malformed", func() {
+			w := get("/Items?Ids=" + enc(songID("Something")) + ",not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero items, not an error, for a well-formed but unknown Ids entry", func() {
+			q := queryResult(get("/Items?Ids=" + enc(testID("no-such-item"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+
+		It("404s a malformed GenreIds entry instead of listing every album", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s when only one of several GenreIds entries is malformed", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc(genreID("Jazz")) + ",not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s a malformed AlbumIds entry instead of listing every song", func() {
+			w := get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("404s a malformed StudioIds entry instead of listing every album", func() {
+			w := get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&StudioIds=not-a-valid-id")
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("returns zero albums, not every album, for a well-formed but unknown StudioIds", func() {
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&StudioIds=" + enc(testID("no-such-studio"))))
+			Expect(q.TotalRecordCount).To(BeZero())
+			Expect(q.Items).To(BeEmpty())
+		})
+	})
+
 	// Feishin fetches an album's tracks with AlbumIds=<albumId>&IncludeItemTypes=Audio&Recursive=true.
 	Describe("album filtering (AlbumIds)", func() {
 		It("filters songs by AlbumIds", func() {
@@ -205,7 +347,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns nothing for an unknown album id", func() {
-			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc("no-such-album")))
+			q := queryResult(get("/Items?IncludeItemTypes=Audio&Recursive=true&AlbumIds=" + enc(testID("no-such-album"))))
 			Expect(q.Items).To(BeEmpty())
 			Expect(q.TotalRecordCount).To(Equal(0))
 		})
@@ -242,16 +384,16 @@ var _ = Describe("Browsing", func() {
 
 		It("returns filter lists scoped to a ParentId library", func() {
 			var filters dto.QueryFiltersLegacy
-			parseInto(get("/Items/Filters?ParentId="+enc("1")+"&IncludeItemTypes=Audio&Recursive=true"), &filters)
+			parseInto(get("/Items/Filters?ParentId="+dto.EncodeLibraryID(1)+"&IncludeItemTypes=Audio&Recursive=true"), &filters)
 			Expect(filters.Years).To(ContainElements(1959, 1965))
-			studios := queryResult(get("/Studios?ParentId=" + enc("1")))
+			studios := queryResult(get("/Studios?ParentId=" + dto.EncodeLibraryID(1)))
 			Expect(names(studios.Items)).To(ContainElement("Columbia"))
 		})
 	})
 
 	// Finamp's genre screen sends ParentId=<libraryId> (scoping) plus GenreIds=<genreId>.
 	Describe("genre filtering (GenreIds)", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("filters albums by GenreIds", func() {
 			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&ParentId=" + lib1 + "&GenreIds=" + enc(genreID("Jazz"))))
@@ -276,7 +418,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns nothing for an unknown genre id", func() {
-			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc("no-such-genre")))
+			q := queryResult(get("/Items?IncludeItemTypes=MusicAlbum&Recursive=true&GenreIds=" + enc(testID("no-such-genre"))))
 			Expect(q.Items).To(BeEmpty())
 			Expect(q.TotalRecordCount).To(Equal(0))
 		})
@@ -298,7 +440,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns no artists for an unknown genre id", func() {
-			q := queryResult(get("/Artists/AlbumArtists?GenreIds=" + enc("no-such-genre")))
+			q := queryResult(get("/Artists/AlbumArtists?GenreIds=" + enc(testID("no-such-genre"))))
 			Expect(q.Items).To(BeEmpty())
 		})
 	})
@@ -308,7 +450,7 @@ var _ = Describe("Browsing", func() {
 	// binds them case-insensitively; these guard that our dispatcher does too, and that browsing an
 	// album with only parentId (no IncludeItemTypes, as Jellify does) returns its tracks.
 	Describe("camelCase query params (Jellify / JS SDK)", func() {
-		lib1 := enc("1")
+		lib1 := dto.EncodeLibraryID(1)
 
 		It("filters albums by camelCase albumArtistIds", func() {
 			q := queryResult(get("/Items?includeItemTypes=MusicAlbum&recursive=true&parentId=" + lib1 + "&albumArtistIds=" + enc(artistID("The Beatles"))))
@@ -343,35 +485,6 @@ var _ = Describe("Browsing", func() {
 			q := queryResult(get("/Items?ids=" + ids))
 			Expect(q.TotalRecordCount).To(Equal(2))
 			Expect(names(q.Items)).To(ConsistOf("Abbey Road", "IV"))
-		})
-
-		// Finamp restores its saved queue with ids truncated to 16 bytes (see README).
-		Describe("Finamp-truncated ids (saved queue restore)", func() {
-			It("resolves a truncated id by unique prefix and echoes the requested id", func() {
-				full := songID("Come Together")
-				truncated := full[:16]
-				q := queryResult(get("/Items?ids=" + enc(truncated)))
-				Expect(names(q.Items)).To(ConsistOf("Come Together"))
-				// Finamp matches restored items by its stored ids, so the requested id must be echoed.
-				Expect(q.Items[0].Id).To(Equal(enc(truncated)))
-			})
-
-			It("batch-resolves a mixed list of truncated and full ids, keeping order", func() {
-				ids := enc(songID("Come Together")[:16]) + "," + enc(songID("So What")) + "," + enc(songID("Help!")[:16])
-				q := queryResult(get("/Items?ids=" + ids))
-				Expect(names(q.Items)).To(Equal([]string{"Come Together", "So What", "Help!"}))
-			})
-
-			It("streams a track by its truncated id", func() {
-				full := songID("So What")
-				w := get("/Audio/" + enc(full[:16]) + "/stream")
-				Expect(w.Code).To(Equal(http.StatusOK))
-				Expect(streamerSpy.LastMediaFile.ID).To(Equal(full))
-			})
-
-			It("still 404s for a truncated id matching nothing", func() {
-				Expect(get("/Audio/" + enc("zzzzzzzzzzzzzzzz") + "/stream").Code).To(Equal(http.StatusNotFound))
-			})
 		})
 
 		It("applies Limit while reporting the full TotalRecordCount", func() {
@@ -477,7 +590,7 @@ var _ = Describe("Browsing", func() {
 		})
 
 		It("returns 404 for an unknown id", func() {
-			Expect(get("/Items/" + enc("does-not-exist")).Code).To(Equal(http.StatusNotFound))
+			Expect(get("/Items/" + enc(testID("does-not-exist"))).Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
@@ -489,6 +602,43 @@ var _ = Describe("Browsing", func() {
 			for _, it := range items {
 				Expect(it.Type).To(Equal("MusicAlbum"))
 			}
+		})
+	})
+
+	Describe("GET /Items/Latest", func() {
+		// Jellyfin marks the /Users/{userId} form obsolete and hides it from the OpenAPI spec, so
+		// SDK-generated clients (Jellify) only ever call this one.
+		It("serves the same response as the legacy /Users/{userId} route", func() {
+			Expect(get("/Items/Latest?Limit=3").Body.String()).
+				To(Equal(get("/Users/admin-1/Items/Latest?Limit=3").Body.String()))
+		})
+
+		It("scopes to ParentId when it names a library", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+dto.EncodeLibraryID(1)), &items)
+			Expect(names(items)).To(ConsistOf("Abbey Road", "Help!", "IV", "Kind of Blue", "Singles"))
+		})
+
+		It("scopes to ParentId when it names an artist", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+enc(artistID("The Beatles"))), &items)
+			Expect(names(items)).To(ConsistOf("Abbey Road", "Help!"))
+		})
+
+		It("returns nothing for a library the user cannot access", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+dto.EncodeLibraryID(99)), &items)
+			Expect(items).To(BeEmpty())
+		})
+
+		It("returns nothing for an id that is neither a library nor an artist", func() {
+			var items []dto.BaseItemDto
+			parseInto(get("/Items/Latest?ParentId="+enc(testID("does-not-exist"))), &items)
+			Expect(items).To(BeEmpty())
+		})
+
+		It("404s a malformed ParentId, like every other filtered endpoint", func() {
+			Expect(get("/Items/Latest?ParentId=not-a-valid-id").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 

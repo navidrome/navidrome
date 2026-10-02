@@ -12,4 +12,4 @@ export const isReadOnly = (ownerId) => {
 export const isSmartPlaylist = (pls) => !!pls.rules
 
 export const canChangeTracks = (pls) =>
-  isWritable(pls.ownerId) && !isSmartPlaylist(pls)
+  isWritable(pls.ownerId) && !isSmartPlaylist(pls) && !pls.sync

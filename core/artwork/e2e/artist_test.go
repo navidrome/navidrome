@@ -90,6 +90,28 @@ var _ = Describe("Artist artwork resolution", func() {
 		})
 	})
 
+	When("the artist's only album folder has no images of its own", func() {
+		// Artist/
+		// ├── backdrop1.jpg
+		// ├── folder.jpg               ← matched by folder.*
+		// ├── logo.png
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── 02 - Track.mp3
+		It("resolves the artist folder, not the library root", func() {
+			conf.Server.ArtistArtPriority = "folder.*, artist.*, album/artist.*"
+			setLayout(fstest.MapFS{
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album"}),
+				"Artist/Album/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album"}),
+				"Artist/backdrop1.jpg":        smallPNG("backdrop"),
+				"Artist/folder.jpg":           smallPNG("artist-folder"),
+				"Artist/logo.png":             smallPNG("logo"),
+			})
+			scan()
+			expectArtistFolder(soleArtist(), "Artist/folder.jpg")
+		})
+	})
+
 	When("the artist's only album has its tracks in disc subfolders", func() {
 		// Artist/
 		// ├── artist.jpg               ← wins (artist.* before album/artist.*)
@@ -179,7 +201,7 @@ var _ = Describe("Artist artwork resolution", func() {
 			uploaded := ar.ID + "_upload.jpg"
 			writeUploadedImage(consts.EntityArtist, uploaded, pngBytes("artist-uploaded"))
 			ar.UploadedImage = uploaded
-			Expect(rds.Artist(rctx).Put(&ar)).To(Succeed())
+			Expect(rds.Artist().Put(rctx, &ar)).To(Succeed())
 
 			ia := acquire(model.KindArtistArtwork, ar.ID)
 			Expect(ia.Source).To(Equal("upload"))
@@ -257,7 +279,7 @@ var _ = Describe("Artist artwork resolution", func() {
 
 func soleArtist() model.Artist {
 	GinkgoHelper()
-	artists, err := rds.Artist(rctx).GetAll(model.QueryOptions{
+	artists, err := rds.Artist().GetAll(rctx, model.QueryOptions{
 		Filters: squirrel.Eq{"artist.name": "Artist"},
 	})
 	Expect(err).ToNot(HaveOccurred())

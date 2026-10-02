@@ -21,7 +21,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID
@@ -106,14 +106,15 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 	})
 
 	Describe("Download", func() {
-		var trackID string
+		var trackID, trackTitle string
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID
+			trackTitle = songs[0].Title
 		})
 
 		It("returns error when id parameter is missing", func() {
@@ -143,6 +144,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
 			Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
+			Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="` + trackTitle + `.opus"`))
 		})
 
 		It("returns error when downloads are disabled", func() {

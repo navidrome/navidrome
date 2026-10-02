@@ -9,6 +9,8 @@ import {
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
 import { List, DateField } from '../common'
+import { useDateLocale } from '../i18n/useDateLocale'
+import { formatDateTime } from '../utils/formatters'
 
 const UserFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
@@ -18,6 +20,7 @@ const UserFilter = (props) => (
 
 const UserList = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
+  const locale = useDateLocale()
 
   return (
     <List
@@ -31,7 +34,7 @@ const UserList = (props) => {
         <SimpleList
           primaryText={(record) => record.userName}
           secondaryText={(record) =>
-            record.lastLoginAt && new Date(record.lastLoginAt).toLocaleString()
+            record.lastLoginAt && formatDateTime(record.lastLoginAt, locale)
           }
           tertiaryText={(record) => (record.isAdmin ? '[admin]️' : '')}
         />

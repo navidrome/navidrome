@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -43,20 +44,20 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 	itemFound := func(kind model.Kind, id string) func() bool {
 		return func() bool {
-			ia, err := artRepo.GetItemArtwork(kind, id, model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(ctx, kind, id, model.ImageTypePrimary)
 			return err == nil && ia.Hash != ""
 		}
 	}
 	itemAbsent := func(kind model.Kind, id string) func() bool {
 		return func() bool {
-			ia, err := artRepo.GetItemArtwork(kind, id, model.ImageTypePrimary)
+			ia, err := artRepo.GetItemArtwork(ctx, kind, id, model.ImageTypePrimary)
 			return err == nil && ia.Hash == ""
 		}
 	}
 	// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
 	bump := func(kind, id string) {
 		GinkgoHelper()
-		Expect(ds.ArtworkQueue(ctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
+		Expect(ds.ArtworkQueue().EnqueuePreservingBackoff(ctx, model.ArtworkQueueItem{
 			ItemKind: kind, ItemID: id, ImageType: model.ImageTypePrimary,
 			Priority: model.ArtworkPriorityBump,
 		})).To(Succeed())
@@ -105,7 +106,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 			func(context.Context, cache.Item) (io.Reader, error) {
 				return nil, errors.New("resize not exercised in e2e")
 			})
-		Eventually(func() bool { return imgCache.Available(ctx) }).Should(BeTrue())
+		Eventually(func() bool { return imgCache.Available(ctx) }, 10*time.Second).Should(BeTrue())
 
 		svc = artwork.NewArtwork(ds, imgCache, store, ffm)
 		worker = artwork.NewWorker(ds, store, agents.GetAgents(ds, nil), ffm, events.NoopBroker(), imgCache)
@@ -116,12 +117,31 @@ var _ = Describe("Acquisition → serve loop", func() {
 		albumRepo.SetData(model.Albums{{ID: albumID, Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0}})
 	}
 
+	It("acquires and serves a cover whose format has no registered decoder (#5950)", func() {
+		libDir := GinkgoT().TempDir()
+		Expect(os.MkdirAll(filepath.Join(libDir, "an-album"), 0755)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(libDir, "an-album", "cover.jxl"), jxlFixture, 0600)).To(Succeed())
+
+		conf.Server.CoverArtPriority = "cover.*"
+		libRepo.SetData(model.Libraries{{ID: 0, Path: libDir}})
+		folderRepo.result = []model.Folder{{Path: "an-album", ImageFiles: []string{"cover.jxl"}}}
+		albumRepo.SetData(model.Albums{{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0}})
+
+		bump("al", "al1")
+		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
+
+		img, err := svc.Get(ctx, model.MustParseArtworkID("al-al1"), 0, false)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(img.Placeholder).To(BeFalse())
+		Expect(readAll(img)).To(Equal(jxlFixture))
+	})
+
 	It("acquires album folder art and serves the exact bytes under its hash", func() {
 		seedFolderAlbum("al1")
 		bump("al", "al1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("folder"))
 
@@ -138,7 +158,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		bump("ar", "ar1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindArtistArtwork, "ar1"))
 
-		ia, err := artRepo.GetItemArtwork(model.KindArtistArtwork, "ar1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindArtistArtwork, "ar1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("upload"))
 
@@ -155,14 +175,14 @@ var _ = Describe("Acquisition → serve loop", func() {
 		bump("pl", "pl1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindPlaylistArtwork, "pl1"))
 
-		ia, err := artRepo.GetItemArtwork(model.KindPlaylistArtwork, "pl1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindPlaylistArtwork, "pl1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("generated"))
 
 		img, err := svc.Get(ctx, model.MustParseArtworkID("pl-pl1"), 0, false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(img.Hash).To(Equal(ia.Hash))
-		art, err := artRepo.GetImage(ia.Hash)
+		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.Mime).To(Equal("image/png"))
 		Expect(len(readAll(img))).To(BeNumerically(">", 0))
@@ -174,7 +194,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		bump("ra", "ra1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
 
-		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("upload"))
 
@@ -196,12 +216,12 @@ var _ = Describe("Acquisition → serve loop", func() {
 		provisionalBytes := readAll(provisional)
 		Expect(len(provisionalBytes)).To(BeNumerically(">", 0))
 
-		_, err = artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
+		_, err = artRepo.GetItemArtwork(ctx, model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "provisional serving must not write a state row")
 
 		// The provisional read enqueued a Bump; drain it.
 		runWorkerUntil(ctx, worker, itemFound(model.KindMediaFileArtwork, "mf1"))
-		ia, err := artRepo.GetItemArtwork(model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindMediaFileArtwork, "mf1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("embedded"))
 		Expect(ia.Hash).To(Equal(provisional.Hash))
@@ -217,9 +237,9 @@ var _ = Describe("Acquisition → serve loop", func() {
 		bump("al", "al1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindAlbumArtwork, "al1"))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
-		art, err := artRepo.GetImage(ia.Hash)
+		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.Mime).To(Equal("image/jpeg"))
 		Expect(art.Width).To(BeNumerically(">", 0))
@@ -239,9 +259,9 @@ var _ = Describe("Acquisition → serve loop", func() {
 		bump("ra", "ra1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
 
-		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
-		art, err := artRepo.GetImage(ia.Hash)
+		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.Mime).To(Equal("image/gif"))
 		Expect(art.Width).To(BeNumerically("==", 4))
@@ -259,9 +279,9 @@ var _ = Describe("Acquisition → serve loop", func() {
 			return itemFound(model.KindAlbumArtwork, "al1")() && itemFound(model.KindAlbumArtwork, "al2")()
 		})
 
-		ia1, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+		ia1, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
-		ia2, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al2", model.ImageTypePrimary)
+		ia2, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al2", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia1.Hash).To(Equal(ia2.Hash), "identical bytes must share one content hash")
 		Expect(readAll(mustGet(svc.Get(ctx, model.MustParseArtworkID("al-al2"), 0, false)))).To(Equal(coverBytes))
@@ -273,7 +293,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		bump("ra", "ra1")
 		runWorkerUntil(ctx, worker, itemFound(model.KindRadioArtwork, "ra1"))
 
-		ia, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		staleHash := ia.Hash
 
@@ -288,7 +308,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 
 		// That failed read enqueued a re-resolution.
 		runWorkerUntil(ctx, worker, func() bool {
-			cur, gerr := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+			cur, gerr := artRepo.GetItemArtwork(ctx, model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 			return gerr == nil && cur.Hash != "" && cur.Hash != staleHash
 		})
 		img, err := svc.Get(ctx, model.MustParseArtworkID("ra-ra1"), 0, false)
@@ -317,6 +337,9 @@ func mustGet(img *artwork.Image, err error) *artwork.Image {
 }
 
 // Raw bytes on purpose: encoding a GIF here would register image/gif in the test binary, masking
+// jxlFixture is a JPEG XL bare codestream header: a real image format, with no stdlib decoder.
+var jxlFixture = []byte{0xff, 0x0a, 0x00, 0x10, 0x00}
+
 // the production import the spec above guards.
 var gifFixture = []byte{
 	0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x04, 0x00, 0x04, 0x00, 0x80, 0x00,

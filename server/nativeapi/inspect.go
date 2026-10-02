@@ -13,7 +13,7 @@ import (
 )
 
 func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.InspectOutput, error) {
-	file, err := ds.MediaFile(ctx).Get(id)
+	file, err := ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package deezer
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,6 +79,22 @@ var _ = Describe("deezerAgent", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artist.ID).To(Equal(2))
+		})
+
+		// The artwork worker settles an artist as "no image" on agents.ErrNotFound, so a throttled
+		// lookup reaching that here would record a permanent absence.
+		It("surfaces an exhausted quota instead of reporting the artist as not found", func() {
+			httpClient.mock("https://api.deezer.com/search/artist", http.Response{
+				StatusCode: 200,
+				Body: io.NopCloser(bytes.NewBufferString(
+					`{"error":{"type":"Exception","message":"Quota limit exceeded","code":4}}`)),
+			})
+
+			_, err := agent.searchArtist(ctx, "Queen")
+
+			Expect(err).To(HaveOccurred())
+			Expect(err).ToNot(MatchError(agents.ErrNotFound))
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 		})
 
 		It("returns ErrNotFound when no result matches the name exactly", func() {

@@ -95,6 +95,9 @@ export const formatFullDate = (date, locale) => {
   return new Date(date).toLocaleDateString(locale, options)
 }
 
+export const formatDateTime = (value, locale) =>
+  new Date(value).toLocaleString(locale)
+
 export const formatNumber = (value, locale) => {
   if (value === null || value === undefined) return '0'
   return value.toLocaleString(locale)
