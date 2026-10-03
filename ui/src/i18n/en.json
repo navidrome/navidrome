@@ -677,6 +677,11 @@
       "options": {
         "theme": "Theme",
         "language": "Language",
+        "dateFormat": "Date Format",
+        "dateFormats": {
+          "language": "Match language",
+          "browser": "Match browser"
+        },
         "defaultView": "Default View",
         "desktop_notifications": "Desktop Notifications",
         "lastfmNotConfigured": "Last.fm API-Key is not configured",

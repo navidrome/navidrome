@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react'
 import {
   Datagrid,
-  DateField,
   EditButton,
   Filter,
   NullableBooleanInput,
@@ -20,6 +19,7 @@ import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
+  DateField,
   ArtworkAvatar,
   DurationField,
   List,
