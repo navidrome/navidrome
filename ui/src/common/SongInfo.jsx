@@ -6,7 +6,6 @@ import TableContainer from '@material-ui/core/TableContainer'
 import TableRow from '@material-ui/core/TableRow'
 import {
   BooleanField,
-  DateField,
   TextField,
   NumberField,
   FunctionField,
@@ -15,6 +14,7 @@ import {
 } from 'react-admin'
 import { humanize, underscore } from 'inflection'
 import {
+  DateField,
   ArtistLinkField,
   BitrateField,
   ParticipantsInfo,
