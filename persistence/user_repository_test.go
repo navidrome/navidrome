@@ -2,12 +2,16 @@ package persistence
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -17,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pocketbase/dbx"
 )
 
 var _ = Describe("UserRepository", func() {
@@ -74,6 +79,28 @@ var _ = Describe("UserRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(actual.Password).To(Equal("newpass"))
 		})
+		It("never logs the stored password, on insert or update, but still logs the user name", func() {
+			logs := captureTraceLogs()
+			storedPassword := func(id string) string {
+				var enc string
+				Expect(GetDBXBuilder().NewQuery("select password from user where id = {:id}").
+					Bind(dbx.Params{"id": id}).Row(&enc)).To(Succeed())
+				return enc
+			}
+			u := model.User{ID: "u-logged", UserName: "logged-user-name", NewPassword: "first-secret"}
+			Expect(repo.Put(ctx, &u)).To(Succeed())
+			inserted := storedPassword(u.ID)
+			u.NewPassword = "second-secret"
+			Expect(repo.Put(ctx, &u)).To(Succeed())
+			updated := storedPassword(u.ID)
+
+			Expect(logs.String()).To(ContainSubstring("INSERT INTO user"))
+			Expect(logs.String()).To(ContainSubstring("UPDATE user"))
+			Expect(logs.String()).To(ContainSubstring("logged-user-name"))
+			for _, secret := range []string{inserted, updated, "first-secret", "second-secret"} {
+				Expect(logs.String()).ToNot(ContainSubstring(secret))
+			}
+		})
 		It("persists and reads back the scrobble filter", func() {
 			usr := model.User{ID: "u-filter", UserName: "u-filter", Name: "Filter User",
 				ScrobbleFilter: `{"all":[{"contains":{"title":"????"}}]}`}
@@ -93,6 +120,33 @@ var _ = Describe("UserRepository", func() {
 			saved, err := repo.Get(ctx, "u-rawsql")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(saved.ScrobbleFilter).To(Equal(""))
+		})
+	})
+
+	Describe("initPasswordEncryptionKey", func() {
+		It("never logs the encryption key checksum, but still logs its property id", func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.PasswordEncryptionKey = "a-new-password-encryption-key"
+			keySum := fmt.Sprintf("%x", sha256.Sum256(keyTo32Bytes(conf.Server.PasswordEncryptionKey)))
+			previousKey := encKey
+			DeferCleanup(func() { encKey = previousKey })
+			tx, err := GetDBXBuilder().Begin()
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _ = tx.Rollback() })
+			_, err = tx.NewQuery("delete from user").Execute()
+			Expect(err).ToNot(HaveOccurred())
+			txRepo := NewUserRepository(tx).(*userRepository)
+			Expect(txRepo.Put(ctx, &model.User{ID: "u-rekey", UserName: "rekeyed-user", NewPassword: "rekeyed-password"})).To(Succeed())
+
+			logs := captureTraceLogs()
+			Expect(txRepo.initPasswordEncryptionKey(ctx)).To(Succeed())
+
+			Expect(logs.String()).To(ContainSubstring("UPDATE user"))
+			Expect(logs.String()).To(ContainSubstring(consts.PasswordsEncryptedKey))
+			Expect(logs.String()).ToNot(ContainSubstring(keySum))
+			var rekeyed string
+			Expect(tx.NewQuery("select password from user where id = 'u-rekey'").Row(&rekeyed)).To(Succeed())
+			Expect(logs.String()).ToNot(ContainSubstring(rekeyed))
 		})
 	})
 

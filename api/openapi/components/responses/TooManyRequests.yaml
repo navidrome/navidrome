@@ -1,0 +1,10 @@
+description: "Rate limited (`rate_limited`). Retry after the `Retry-After` seconds."
+headers:
+  Retry-After:
+    description: Seconds to wait before retrying.
+    schema:
+      type: integer
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

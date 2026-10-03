@@ -1,0 +1,8 @@
+type: object
+description: Result of a logout.
+required: [logoutUrl]
+properties:
+  logoutUrl:
+    type: string
+    nullable: true
+    description: "Where to send the browser to finish logging out of an external provider. Null when there is nothing more to do."

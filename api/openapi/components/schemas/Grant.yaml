@@ -1,0 +1,41 @@
+type: object
+description: A long-lived grant held by one client of one user.
+required: [id, name, client, clientVersion, scopes, provider, createdAt, lastUsedAt, lastUsedIp, current]
+properties:
+  id:
+    type: string
+    description: Grant id.
+  name:
+    type: string
+    description: Label shown to the user.
+  client:
+    type: string
+    description: Name of the client app that holds the grant.
+  clientVersion:
+    type: string
+    nullable: true
+    description: "Version of the client app, when it sent one."
+  scopes:
+    type: array
+    description: Scopes this grant carries.
+    items:
+      $ref: ./Scope.yaml
+  provider:
+    type: string
+    description: "How the grant was created, for example `password` or `setup`. Free-form; new values may appear."
+  createdAt:
+    type: string
+    format: date-time
+    description: When the grant was created.
+  lastUsedAt:
+    type: string
+    format: date-time
+    nullable: true
+    description: "When the grant was last used, at a coarse granularity. Null until first use."
+  lastUsedIp:
+    type: string
+    nullable: true
+    description: Client IP of the last use. Null until first use.
+  current:
+    type: boolean
+    description: True for the grant that made this request.
