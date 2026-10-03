@@ -9,6 +9,7 @@
     "serve": "vite preview",
     "test:watch": "vitest",
     "test": "vitest --watch=false",
+    "test:smoke": "sh tools/run-smoke.sh",
     "test:coverage": "vitest run --coverage --watch=false",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx,js,jsx --report-unused-disable-directives --max-warnings 0",

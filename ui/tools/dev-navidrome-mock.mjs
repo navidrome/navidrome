@@ -29,16 +29,84 @@ fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true })
 /* ------------------------------------------------------------------ */
 
 const GENRES = [
-  { name: 'Electronic', bpm: [118, 138], artists: ['Neon Circuit', 'Velvet Static', 'Aurora Signal', 'Pulse Meridian'] },
-  { name: 'Rock', bpm: [110, 150], artists: ['Granite Echo', 'The Hollow Pines', 'Scarlet Mile', 'Iron Orchard'] },
-  { name: 'Jazz', bpm: [90, 130], artists: ['Blue Note Collective', 'Mira Solano Trio', 'The Late Set'] },
-  { name: 'Ambient', bpm: [60, 85], artists: ['Still Water', 'North of Nowhere', 'Glass Horizon'] },
-  { name: 'Pop', bpm: [100, 125], artists: ['Cassette Youth', 'Lumen', 'Paper Satellites', 'June Ave'] },
-  { name: 'Hip-Hop', bpm: [85, 105], artists: ['MC Ledger', 'Night Shift Poets', 'Concrete Bloom'] },
+  {
+    name: 'Electronic',
+    bpm: [118, 138],
+    artists: [
+      'Neon Circuit',
+      'Velvet Static',
+      'Aurora Signal',
+      'Pulse Meridian',
+    ],
+  },
+  {
+    name: 'Rock',
+    bpm: [110, 150],
+    artists: [
+      'Granite Echo',
+      'The Hollow Pines',
+      'Scarlet Mile',
+      'Iron Orchard',
+    ],
+  },
+  {
+    name: 'Jazz',
+    bpm: [90, 130],
+    artists: ['Blue Note Collective', 'Mira Solano Trio', 'The Late Set'],
+  },
+  {
+    name: 'Ambient',
+    bpm: [60, 85],
+    artists: ['Still Water', 'North of Nowhere', 'Glass Horizon'],
+  },
+  {
+    name: 'Pop',
+    bpm: [100, 125],
+    artists: ['Cassette Youth', 'Lumen', 'Paper Satellites', 'June Ave'],
+  },
+  {
+    name: 'Hip-Hop',
+    bpm: [85, 105],
+    artists: ['MC Ledger', 'Night Shift Poets', 'Concrete Bloom'],
+  },
 ]
 
-const TITLES_A = ['Midnight', 'Golden', 'Silent', 'Electric', 'Fading', 'Neon', 'Slow', 'Distant', 'Burning', 'Quiet', 'Wild', 'Frozen', 'Velvet', 'Broken', 'Silver', 'Hidden']
-const TITLES_B = ['Drive', 'Horizon', 'Rain', 'Signal', 'Echoes', 'Skyline', 'Garden', 'Tides', 'Motion', 'Lights', 'Streets', 'Mirrors', 'Currents', 'Skies', 'Embers', 'Pulse']
+const TITLES_A = [
+  'Midnight',
+  'Golden',
+  'Silent',
+  'Electric',
+  'Fading',
+  'Neon',
+  'Slow',
+  'Distant',
+  'Burning',
+  'Quiet',
+  'Wild',
+  'Frozen',
+  'Velvet',
+  'Broken',
+  'Silver',
+  'Hidden',
+]
+const TITLES_B = [
+  'Drive',
+  'Horizon',
+  'Rain',
+  'Signal',
+  'Echoes',
+  'Skyline',
+  'Garden',
+  'Tides',
+  'Motion',
+  'Lights',
+  'Streets',
+  'Mirrors',
+  'Currents',
+  'Skies',
+  'Embers',
+  'Pulse',
+]
 
 // Deterministic pseudo-random so the demo library is stable between runs.
 let seed = 20260203
@@ -77,7 +145,9 @@ for (const genre of GENRES) {
     const trackCount = 4 + Math.floor(rnd() * 4)
     for (let t = 0; t < trackCount; t++) {
       const duration = Math.round(8 + rnd() * 12) // seconds (short demo audio)
-      const bpm = Math.round(genre.bpm[0] + rnd() * (genre.bpm[1] - genre.bpm[0]))
+      const bpm = Math.round(
+        genre.bpm[0] + rnd() * (genre.bpm[1] - genre.bpm[0]),
+      )
       const playCount = rnd() < 0.45 ? Math.floor(rnd() * 40) : 0
       const daysAgo = Math.floor(rnd() * 400)
       songs.push({
@@ -135,23 +205,27 @@ for (const s of songs) {
     s.playCount += 15
     s.starred = true
     s.rating = Math.max(s.rating, 4)
-    s.playDate = new Date(Date.now() - Math.floor(rnd() * 60) * 86400000).toISOString()
+    s.playDate = new Date(
+      Date.now() - Math.floor(rnd() * 60) * 86400000,
+    ).toISOString()
   }
 }
-const artists = [...new Map(GENRES.flatMap((g) => g.artists).map((a) => [a, a])).values()].map(
-  (name, i) => ({
-    id: `ar-${i}`,
-    name,
-    albumCount: albums.filter((al) => al.albumArtist === name).length,
-    songCount: songs.filter((s) => s.artist === name).length,
-    playCount: songs.filter((s) => s.artist === name).reduce((x, s) => x + s.playCount, 0),
-    rating: 0,
-    starred: false,
-    biography: '',
-    imageUrl: '',
-    fullText: name,
-  }),
-)
+const artists = [
+  ...new Map(GENRES.flatMap((g) => g.artists).map((a) => [a, a])).values(),
+].map((name, i) => ({
+  id: `ar-${i}`,
+  name,
+  albumCount: albums.filter((al) => al.albumArtist === name).length,
+  songCount: songs.filter((s) => s.artist === name).length,
+  playCount: songs
+    .filter((s) => s.artist === name)
+    .reduce((x, s) => x + s.playCount, 0),
+  rating: 0,
+  starred: false,
+  biography: '',
+  imageUrl: '',
+  fullText: name,
+}))
 const genreRecords = GENRES.map((g) => ({
   id: `g-${g.name}`,
   name: g.name,
@@ -170,7 +244,8 @@ const wavFor = (song) => {
     const sampleRate = 8000
     const frames = sampleRate * song.duration
     const data = Buffer.alloc(frames * 2)
-    const freq = 220 + (crypto.createHash('md5').update(song.id).digest()[0] % 8) * 55
+    const freq =
+      220 + (crypto.createHash('md5').update(song.id).digest()[0] % 8) * 55
     for (let i = 0; i < frames; i++) {
       const t = i / sampleRate
       const env = Math.min(1, t * 2, (song.duration - t) * 2)
@@ -203,7 +278,9 @@ const pngCache = new Map()
 const pngFor = (id) => {
   if (pngCache.has(id)) return pngCache.get(id)
   const hash = crypto.createHash('md5').update(id).digest()
-  const r = hash[0], g = hash[1], b = hash[2]
+  const r = hash[0],
+    g = hash[1],
+    b = hash[2]
   // Minimal 1x1 PNG, colour derived from the id.
   const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
   const chunk = (type, data) => {
@@ -270,7 +347,10 @@ const parseListParams = (searchParams) => {
     sort: searchParams.get('_sort') || 'id',
     order: (searchParams.get('_order') || 'ASC').toUpperCase(),
     start: parseInt(searchParams.get('_start') || '0', 10),
-    end: searchParams.get('_end') != null ? parseInt(searchParams.get('_end'), 10) : null,
+    end:
+      searchParams.get('_end') != null
+        ? parseInt(searchParams.get('_end'), 10)
+        : null,
     filters: {},
   }
   for (const key of searchParams.keys()) {
@@ -297,11 +377,19 @@ const applyListParams = (rows, params) => {
   for (const [key, values] of Object.entries(params.filters)) {
     if (!values.length) continue
     out = out.filter((row) => {
+      // genre_id matches any of the song's genre ids (mirrors Navidrome's
+      // persistence.genreFilter), e.g. genre_id=g-Rock
+      if (key === 'genre_id') {
+        const ids = (row.genres || []).map((g) => g.id)
+        return values.some((expected) => ids.includes(expected))
+      }
       const v = row[key]
       return values.some((expected) => {
         if (expected === 'true') return v === true || v === 'true'
-        if (expected === 'false') return v === false || v === 'false' || v == null
-        if (Array.isArray(v)) return v.some((x) => String(x.id || x) === expected)
+        if (expected === 'false')
+          return v === false || v === 'false' || v == null
+        if (Array.isArray(v))
+          return v.some((x) => String(x.id || x) === expected)
         return String(v) === expected
       })
     })
@@ -313,12 +401,20 @@ const applyListParams = (rows, params) => {
       ;[out[i], out[j]] = [out[j], out[i]]
     }
   } else {
-    out.sort((a, b) => cmpValues(a[params.sort], b[params.sort], desc) * (desc ? -1 : 1))
+    out.sort(
+      (a, b) =>
+        cmpValues(a[params.sort], b[params.sort], desc) * (desc ? -1 : 1),
+    )
   }
   const total = out.length
   const start = params.start
   const end = params.end == null ? out.length : Math.max(params.end, start)
-  return { rows: out.slice(start, end), total, start, end: Math.min(end, total) }
+  return {
+    rows: out.slice(start, end),
+    total,
+    start,
+    end: Math.min(end, total),
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -364,7 +460,9 @@ const server = http.createServer((req, res) => {
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
     })
-    res.write(`event: scanStatus\ndata: ${JSON.stringify({ scanning: false, folderCount: 1, count: songs.length })}\n\n`)
+    res.write(
+      `event: scanStatus\ndata: ${JSON.stringify({ scanning: false, folderCount: 1, count: songs.length })}\n\n`,
+    )
     sseClients.add(res)
     req.on('close', () => sseClients.delete(res))
     return
@@ -389,9 +487,19 @@ const server = http.createServer((req, res) => {
     if (p === '/api/share') return list([])
     if (p === '/api/radio') return list([])
     if (p === '/api/user')
-      return list([{ id: 'u-demo', userName: 'demo', name: 'Demo Listener', isAdmin: true, email: '' }])
+      return list([
+        {
+          id: 'u-demo',
+          userName: 'demo',
+          name: 'Demo Listener',
+          isAdmin: true,
+          email: '',
+        },
+      ])
     if (p === '/api/library')
-      return list([{ id: 1, name: 'Demo Music', path: '/music', songCount: songs.length }])
+      return list([
+        { id: 1, name: 'Demo Music', path: '/music', songCount: songs.length },
+      ])
     if (p === '/api/insights') return list([])
     if (p === '/api/transcoding') return list([])
     if (p === '/api/tag') return list([])
@@ -401,15 +509,21 @@ const server = http.createServer((req, res) => {
     let m
     if ((m = p.match(/^\/api\/song\/([^/]+)$/))) {
       const song = songs.find((s) => s.id === m[1])
-      return song ? json(res, 200, song) : json(res, 404, { error: 'not found' })
+      return song
+        ? json(res, 200, song)
+        : json(res, 404, { error: 'not found' })
     }
     if ((m = p.match(/^\/api\/album\/([^/]+)$/))) {
       const album = albums.find((a) => a.id === m[1])
-      return album ? json(res, 200, album) : json(res, 404, { error: 'not found' })
+      return album
+        ? json(res, 200, album)
+        : json(res, 404, { error: 'not found' })
     }
     if ((m = p.match(/^\/api\/artist\/([^/]+)$/))) {
       const artist = artists.find((a) => a.id === m[1] || a.name === m[1])
-      return artist ? json(res, 200, artist) : json(res, 404, { error: 'not found' })
+      return artist
+        ? json(res, 200, artist)
+        : json(res, 404, { error: 'not found' })
     }
     if (/^\/api\/keepalive\//.test(p)) return json(res, 200, { id: 'ok' })
     if (p === '/api/config/config')
@@ -419,7 +533,8 @@ const server = http.createServer((req, res) => {
         lastScan: new Date().toISOString(),
         count: songs.length,
       })
-    if (p === '/api/translation/en') return json(res, 200, { id: 'en', data: '{}' })
+    if (p === '/api/translation/en')
+      return json(res, 200, { id: 'en', data: '{}' })
 
     return json(res, 404, { error: `mock harness: no route for ${p}` })
   }
@@ -428,11 +543,20 @@ const server = http.createServer((req, res) => {
   if (p.startsWith('/rest/')) {
     const command = p.slice('/rest/'.length).replace('.view', '')
     const ok = (extra = {}) =>
-      json(res, 200, { 'subsonic-response': { status: 'ok', version: '1.16.1', type: 'navidrome-mock', ...extra } })
+      json(res, 200, {
+        'subsonic-response': {
+          status: 'ok',
+          version: '1.16.1',
+          type: 'navidrome-mock',
+          ...extra,
+        },
+      })
 
     if (command === 'ping') return ok()
     if (command === 'getScanStatus')
-      return ok({ scanStatus: { scanning: false, count: songs.length, folderCount: 1 } })
+      return ok({
+        scanStatus: { scanning: false, count: songs.length, folderCount: 1 },
+      })
     if (command === 'getNowPlaying') return ok({ nowPlaying: { entry: [] } })
     if (command === 'star' || command === 'unstar') {
       const id = u.searchParams.get('id')
@@ -469,7 +593,10 @@ const server = http.createServer((req, res) => {
         'subsonic-response': {
           status: 'failed',
           version: '1.16.1',
-          error: { code: 0, message: 'transcoding not available in dev harness' },
+          error: {
+            code: 0,
+            message: 'transcoding not available in dev harness',
+          },
         },
       })
     }
@@ -490,13 +617,22 @@ const server = http.createServer((req, res) => {
     }
     if (command === 'getCoverArt') {
       const png = pngFor(u.searchParams.get('id') || 'cover')
-      res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'max-age=600' })
+      res.writeHead(200, {
+        'Content-Type': 'image/png',
+        'Content-Length': png.length,
+        'Cache-Control': 'max-age=600',
+      })
       return res.end(png)
     }
     if (command === 'getArtistInfo' || command === 'getAlbumInfo')
-      return ok(command === 'getArtistInfo' ? { artistInfo: { similarArtist: [] } } : { albumInfo: {} })
+      return ok(
+        command === 'getArtistInfo'
+          ? { artistInfo: { similarArtist: [] } }
+          : { albumInfo: {} },
+      )
     if (command === 'getTopSongs') return ok({ topSongs: { song: [] } })
-    if (command === 'getSimilarSongs2') return ok({ similarSongs2: { song: [] } })
+    if (command === 'getSimilarSongs2')
+      return ok({ similarSongs2: { song: [] } })
 
     return ok()
   }
@@ -513,7 +649,9 @@ const server = http.createServer((req, res) => {
 const keepAliveTimer = setInterval(() => {
   for (const client of sseClients) {
     try {
-      client.write(`event: keepAlive\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`)
+      client.write(
+        `event: keepAlive\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`,
+      )
     } catch {
       sseClients.delete(client)
     }
@@ -523,5 +661,7 @@ server.on('close', () => clearInterval(keepAliveTimer))
 
 server.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`[dev-navidrome-mock] listening on :${PORT} (${songs.length} songs, ${albums.length} albums)`)
+  console.log(
+    `[dev-navidrome-mock] listening on :${PORT} (${songs.length} songs, ${albums.length} albums)`,
+  )
 })
