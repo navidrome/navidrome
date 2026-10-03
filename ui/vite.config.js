@@ -62,10 +62,10 @@ export default defineConfig({
 // PWA manifest
 function manifest() {
   return {
-    name: 'Navidrome',
-    short_name: 'Navidrome',
+    name: 'svofa',
+    short_name: 'svofa',
     description:
-      'Navidrome, an open source web-based music collection server and streamer',
+      'svofa, an open source web-based music collection server and streamer',
     categories: ['music', 'entertainment'],
     display: 'standalone',
     start_url: './',

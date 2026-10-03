@@ -266,7 +266,7 @@ const Player = () => {
 
   const onAudioProgress = useCallback((info) => {
     if (info.ended) {
-      document.title = 'Navidrome'
+      document.title = config.appName
     }
     if (!info.isRadio && info.currentTime != null) {
       lastPositionMsRef.current = Math.floor(info.currentTime * 1000)
@@ -288,7 +288,7 @@ const Player = () => {
       dispatch(currentPlaying(info))
       if (info.duration) {
         const song = info.song
-        document.title = `${song.title} - ${song.artist} - Navidrome`
+        document.title = `${song.title} - ${song.artist} - ${config.appName}`
         if (!info.isRadio) {
           const posMs = Math.floor(info.currentTime * 1000)
           lastPositionMsRef.current = posMs
@@ -419,7 +419,7 @@ const Player = () => {
   }, [dispatch, currentTrackId])
 
   if (!visible) {
-    document.title = 'Navidrome'
+    document.title = config.appName
   }
 
   const handlers = useMemo(

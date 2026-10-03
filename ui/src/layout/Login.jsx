@@ -127,12 +127,12 @@ const FormLogin = ({ loading, handleSubmit, validate }) => {
               </div>
               <div className={classes.systemName}>
                 <a
-                  href="https://www.navidrome.org"
+                  href="https://github.com/mArAKASSOff228/svofa"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={classes.systemNameLink}
                 >
-                  Navidrome
+                  {config.appName}
                 </a>
               </div>
               {config.welcomeMessage && (

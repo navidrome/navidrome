@@ -2,6 +2,9 @@
 // the __APP_CONFIG__ object is dynamically filled by the ServeIndex function,
 // in the /server/app/serve_index.go
 const defaultConfig = {
+  // Brand name shown in the app header, browser tab title and login screen.
+  // The server can override it through the injected __APP_CONFIG__ if needed.
+  appName: 'svofa',
   version: 'dev',
   firstTime: false,
   baseURL: '',

@@ -94,7 +94,7 @@ const errorCopy = (error, prefs) => {
       return {
         title: 'Unable to generate journey',
         message:
-          'Your library looks empty right now. Check that Navidrome is reachable and has finished scanning.',
+          'Your library looks empty right now. Check that your music server is reachable and has finished scanning.',
         hints: [],
       }
     case 'NOT_ENOUGH_TRACKS':

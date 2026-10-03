@@ -1,18 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-            name="description"
-            content="Navidrome Music Server - {{.Version}}"
+    <meta name="description" content="svofa Music Server - {{.Version}}" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/android-chrome-192x192.png"
     />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5b5fd5">
-    <meta name="msapplication-TileColor" content="#da532c">
-    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5b5fd5" />
+    <meta name="msapplication-TileColor" content="#da532c" />
+    <meta name="theme-color" content="#ffffff" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!--
@@ -20,16 +22,16 @@
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
     <link rel="manifest" href="./manifest.webmanifest" />
-    <meta property="og:site_name" content="Navidrome">
-    <meta property="og:url" content="{{ .ShareURL }}">
-    <meta property="og:title" content="{{ .ShareDescription }}">
-    <meta property="og:image" content="{{ .ShareImageURL }}">
-    <meta property="og:image:width" content="300">
-    <meta property="og:image:height" content="300">
-    <title>Navidrome</title>
+    <meta property="og:site_name" content="svofa" />
+    <meta property="og:url" content="{{ .ShareURL }}" />
+    <meta property="og:title" content="{{ .ShareDescription }}" />
+    <meta property="og:image" content="{{ .ShareImageURL }}" />
+    <meta property="og:image:width" content="300" />
+    <meta property="og:image:height" content="300" />
+    <title>svofa</title>
     <script>
       // Shim for libraries that check for Node.js process object
-      window.process = { env: {} };
+      window.process = { env: {} }
     </script>
     <script>
       window.__APP_CONFIG__ = {{ .AppConfig }}
