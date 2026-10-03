@@ -12,6 +12,8 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 )
 
+const ignoreAllPattern = "**/*"
+
 // IgnoreChecker manages .ndignore patterns using a stack-based approach.
 // Use Push() to add patterns when entering a folder, Pop() when leaving,
 // and ShouldIgnore() to check if a path should be ignored.
@@ -102,8 +104,13 @@ func (ic *IgnoreChecker) ShouldIgnore(ctx context.Context, relPath string) bool 
 
 // loadPatternsFromFolder reads the .ndignore file in the specified folder and returns the patterns.
 // If the file doesn't exist, returns an empty slice.
-// If the file exists but is empty, returns a pattern to ignore everything ("**/*").
+// If the file exists but is empty, or a .nomedia file exists, returns a pattern to ignore everything.
 func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder string) []string {
+	if _, err := fs.Stat(ic.fsys, path.Join(folder, consts.NoMediaFile)); err == nil {
+		log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
+		return []string{ignoreAllPattern}
+	}
+
 	ignoreFilePath := path.Join(folder, consts.ScanIgnoreFile)
 	var patterns []string
 
@@ -138,7 +145,7 @@ func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder stri
 	// If the .ndignore file is empty, ignore everything
 	if len(patterns) == 0 {
 		log.Trace(ctx, "Scanner: .ndignore file is empty, ignoring everything", "path", folder)
-		patterns = []string{"**/*"}
+		patterns = []string{ignoreAllPattern}
 	}
 
 	return patterns
