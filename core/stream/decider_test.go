@@ -266,8 +266,25 @@ var _ = Describe("Decider", func() {
 				)))
 			})
 
-			It("rejects lossy to lossless transcoding", func() {
+			It("skips lossy to lossless when a lossy transcoding profile is also available", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", Protocol: ProtocolHTTP},
+						{Container: "opus", AudioCodec: "opus", Protocol: ProtocolHTTP},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("opus"))
+			})
+
+			It("allows lossy to lossless when that is the only requested format", func() {
+				// Subsonic format=flac and a player-forced FLAC transcoder both
+				// produce a lossless-only profile list. AV receivers that cannot
+				// play the source (e.g. ogg) need this path. See #6247.
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", Codec: "Vorbis", BitRate: 192, Channels: 2, SampleRate: 44100})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
 						{Container: "flac", Protocol: ProtocolHTTP},
@@ -275,7 +292,8 @@ var _ = Describe("Decider", func() {
 				}
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(decision.CanTranscode).To(BeFalse())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetFormat).To(Equal("flac"))
 			})
 
 			It("uses default bitrate when client doesn't specify", func() {

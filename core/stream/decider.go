@@ -259,8 +259,12 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 
 	targetIsLossless := isLosslessFormat(targetFormat)
 
-	// Reject lossy to lossless conversion
-	if !src.IsLossless && targetIsLossless {
+	// Skip lossy→lossless when the client can transcode to a lossy format
+	// instead. An explicit lossless-only request (Subsonic format=flac, a
+	// player-forced FLAC transcoder, or a client that only accepts lossless)
+	// has no such alternative and must be honored — AV receivers often need
+	// that path. See #6247.
+	if !src.IsLossless && targetIsLossless && hasLossyTranscodingAlternative(clientInfo) {
 		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
 		return nil, ""
 	}
@@ -306,6 +310,21 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	}
 
 	return ts, targetFormat
+}
+
+// hasLossyTranscodingAlternative reports whether clientInfo lists any
+// transcoding profile whose target is lossy.
+func hasLossyTranscodingAlternative(clientInfo *ClientInfo) bool {
+	if clientInfo == nil {
+		return false
+	}
+	for i := range clientInfo.TranscodingProfiles {
+		_, format := resolveTargetFormat(&clientInfo.TranscodingProfiles[i])
+		if format != "" && !isLosslessFormat(format) {
+			return true
+		}
+	}
+	return false
 }
 
 // lookupDefaultBitrate returns the default bitrate for the given format.

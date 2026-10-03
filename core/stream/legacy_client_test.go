@@ -191,6 +191,18 @@ var _ = Describe("ResolveRequest", func() {
 		Expect(req.Format).To(Equal("opus"))
 	})
 
+	It("transcodes a lossy source to an explicitly requested lossless format", func() {
+		// stream?id=…&format=flac on an ogg file. Before the fix this fell
+		// through to raw / DefaultDownsamplingFormat because lossy→lossless
+		// was unconditionally rejected. See #6247.
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", Codec: "Vorbis", BitRate: 192, Channels: 2, SampleRate: 44100})
+
+		decider := svc.(*deciderService)
+		req := decider.ResolveRequest(ctx, mf, "flac", 0, 0)
+
+		Expect(req.Format).To(Equal("flac"))
+	})
+
 	It("transcodes to requested format with bitrate limit", func() {
 		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
 
@@ -234,6 +246,16 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	Context("Server-side player transcoding override", func() {
+		It("forces a lossless transcoder even when the source is lossy", func() {
+			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", Codec: "Vorbis", BitRate: 192, Channels: 2, SampleRate: 44100})
+			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "flac", DefaultBitRate: 0})
+
+			decider := svc.(*deciderService)
+			req := decider.ResolveRequest(overrideCtx, mf, "", 0, 0)
+
+			Expect(req.Format).To(Equal("flac"))
+		})
+
 		It("forces transcoding when override targets a different format", func() {
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100})
 			overrideCtx := request.WithTranscoding(ctx, model.Transcoding{TargetFormat: "mp3", DefaultBitRate: 192})
