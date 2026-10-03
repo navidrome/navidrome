@@ -83,7 +83,8 @@
         "mood": "Estado",
         "date": "Data de gravación",
         "missing": "Falta",
-        "libraryName": "Biblioteca"
+        "libraryName": "Biblioteca",
+        "played": "Reproducida"
       },
       "actions": {
         "playAll": "Reproducir",
@@ -190,7 +191,30 @@
         "userName": "Identificador",
         "lastSeen": "Último acceso",
         "reportRealPath": "Informar de Ruta Real",
-        "scrobbleEnabled": "Enviar Scrobbles a servizos externos"
+        "scrobbleEnabled": "Enviar Scrobbles a servizos externos",
+        "hasApiKey": "Clave da API"
+      },
+      "menuName": "Reprodutores e claves da API",
+      "actions": {
+        "generateApiKey": "Crear clave da API",
+        "regenerateApiKey": "Volver a crear",
+        "revokeApiKey": "Revogar",
+        "copyApiKey": "Copiar"
+      },
+      "message": {
+        "apiKeyActive": "Este reprodutor usa unha clave para a API. Utilízaa na túa aplicación como clave API, ou como contrasinal se a app non utilizar a autenticación con tokens.",
+        "apiKeyNone": "Sen clave API. Crea unha para conectar unha app a este reprodutor.",
+        "apiKeyNoneOther": "Sen clave API.",
+        "apiKeyPending": "Copia esta clave. Vaise gardar ao premer Gardar e non se volverá a mostrar.",
+        "apiKeyRevokePending": "Vaise eliminar a clave da API cando gardes.",
+        "deleteWithKeyTitle": "Eliminar reprodutor",
+        "deleteWithKeyContent": "Este reprodutor ten unha clave API. As app que o utilizan van deixar de funcionar."
+      },
+      "notifications": {
+        "apiKeyCopied": "Copiouse a clave API ao portapapeis"
+      },
+      "validation": {
+        "apiKeyFormat": "A clave API ten un formato non válido"
       }
     },
     "transcoding": {
@@ -202,7 +226,7 @@
         "command": "Orde"
       },
       "choices": {
-        "noDefaultBitRate": ""
+        "noDefaultBitRate": "Ningún"
       }
     },
     "playlist": {
@@ -305,11 +329,14 @@
         "totalDuration": "Duración",
         "defaultNewUsers": "Por defecto para novas usuarias",
         "createdAt": "Creada",
-        "updatedAt": "Actualizada"
+        "updatedAt": "Actualizada",
+        "pidAlbum": "Agrupamento do album",
+        "pidTrack": "Identidade da canción"
       },
       "sections": {
         "basic": "Información básica",
-        "statistics": "Estatísticas"
+        "statistics": "Estatísticas",
+        "pid": "IDs permanentes"
       },
       "actions": {
         "scan": "Escanear Biblioteca",
@@ -339,7 +366,17 @@
       "messages": {
         "deleteConfirm": "Tes certeza de querer eliminar esta biblioteca? Isto eliminará todos os datos asociados e accesos de usuarias.",
         "scanInProgress": "Escaneo en progreso…",
-        "noLibrariesAssigned": "Sen bibliotecas asignadas a esta usuaria"
+        "noLibrariesAssigned": "Sen bibliotecas asignadas a esta usuaria",
+        "pidChangeTitle": "Cambiar os IDs permanentes?",
+        "pidChangeConfirm": "Isto reagrupa os álbums e cancións na biblioteca. Vai comezar un novo escaneo completo da biblioteca. Consérvanse as estrelas das cancións, valoracións e número de reproducións. As estrelas e valoracións dos álbums móvense aos novos álbums cando o novo álbum concorde co antigo."
+      },
+      "pid": {
+        "global": "Usar axuste global (%{value})",
+        "folder": "Cartafol (un álbum por cartafol)",
+        "custom": "Persoal",
+        "spec": "PID spec",
+        "help": "As etiquetas e atributos que identifican a un elemento. Le a documentación para a sintaxe:",
+        "docs": "IDs permanentes"
       }
     },
     "plugin": {
@@ -609,7 +646,10 @@
     "coverRemoved": "Retirouse a capa",
     "coverUploadError": "Erro ao subir a capa",
     "coverRemoveError": "Erro ao retirar a capa",
-    "metadataRefreshStarted": "Actualizar en segundo plano os metadatos"
+    "metadataRefreshStarted": "Actualizar en segundo plano os metadatos",
+    "quickConnectApproved": "%{app} en %{device} accedeu correctamente",
+    "quickConnectInvalidCode": "O código non é válido ou caducou",
+    "quickConnectError": "Non se puido aprobar o código"
   },
   "menu": {
     "library": "Biblioteca",
@@ -645,7 +685,15 @@
       "selectLibraries": "Seleccionar Bibliotecas",
       "none": "Ningunha"
     },
-    "onlyFavourites": "Mostrar só as favoritas"
+    "onlyFavourites": "Mostrar só as favoritas",
+    "quickConnect": {
+      "name": "Conexión rápida",
+      "code": "Código",
+      "help": "Escribe o código que mostra Jellyfin para acceder usando a túa conta",
+      "confirm": "Acceder á túa conta con %{app} %{version} desde %{device}?",
+      "continue": "Continuar",
+      "approve": "Aprobar"
+    }
   },
   "player": {
     "playListsText": "Reproducir cola",
