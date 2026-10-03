@@ -4,6 +4,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
+  PLAYER_REBUILD_QUEUE,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -222,6 +223,57 @@ describe('playerReducer', () => {
       const action = { type: PLAYER_REFRESH_QUEUE, data: {} }
       const result = playerReducer(state, action)
       expect(result.playIndex).toBe(0)
+    })
+  })
+
+  describe('PLAYER_REBUILD_QUEUE (Music Journey live re-route)', () => {
+    const song = (id) => ({
+      id,
+      title: `Song ${id}`,
+      artist: 'Artist',
+      album: 'Album',
+      duration: 200,
+      updatedAt: '2026-01-01T00:00:00Z',
+    })
+
+    const stateWithJourney = {
+      queue: [
+        { trackId: 's1', uuid: 'u-1', name: 'Song 1' },
+        { trackId: 's2', uuid: 'u-2', name: 'Song 2' },
+        { trackId: 's3', uuid: 'u-3', name: 'Song 3' },
+      ],
+      current: { uuid: 'u-2', trackId: 's2' },
+      savedPlayIndex: 1,
+      clear: false,
+      volume: 1,
+    }
+
+    it('keeps the prefix up to the anchor (same uuids) and replaces the tail', () => {
+      const action = {
+        type: PLAYER_REBUILD_QUEUE,
+        data: {
+          anchorUuid: 'u-2',
+          songs: { s9: song('s9'), s10: song('s10') },
+        },
+      }
+      const result = playerReducer(stateWithJourney, action)
+      expect(result.queue).toHaveLength(4)
+      // played part untouched — same objects, so the current uuid survives
+      expect(result.queue[0]).toBe(stateWithJourney.queue[0])
+      expect(result.queue[1]).toBe(stateWithJourney.queue[1])
+      expect(result.queue[2].trackId).toBe('s9')
+      expect(result.queue[3].trackId).toBe('s10')
+      // clear routes the player through changeAudioLists (quiet swap)
+      expect(result.clear).toBe(true)
+    })
+
+    it('is a no-op when the anchor is not in the queue', () => {
+      const action = {
+        type: PLAYER_REBUILD_QUEUE,
+        data: { anchorUuid: 'nope', songs: { s9: song('s9') } },
+      }
+      const result = playerReducer(stateWithJourney, action)
+      expect(result).toBe(stateWithJourney)
     })
   })
 })

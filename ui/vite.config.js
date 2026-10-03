@@ -28,6 +28,9 @@ export default defineConfig({
   server: {
     host: true,
     port: frontendPort,
+    // Allow proxied/tunneled dev hosts (e.g. cloud workspaces); localhost is
+    // always allowed by Vite regardless of this setting.
+    allowedHosts: true,
     proxy: {
       '^/(auth|api|rest|backgrounds)/.*': 'http://localhost:' + backendPort,
     },

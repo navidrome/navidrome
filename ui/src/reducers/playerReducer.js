@@ -7,6 +7,7 @@ import {
   PLAYER_CURRENT,
   PLAYER_PLAY_NEXT,
   PLAYER_PLAY_TRACKS,
+  PLAYER_REBUILD_QUEUE,
   PLAYER_SET_TRACK,
   PLAYER_SET_VOLUME,
   PLAYER_SYNC_QUEUE,
@@ -156,6 +157,27 @@ const reducePlayNext = (state, { data }) => {
   }
 }
 
+const reduceRebuildQueue = (state, { data: { anchorUuid, songs } }) => {
+  // Keep the queue up to and including the anchored (current) track. The
+  // anchor keeps its uuid, so the music player's quietUpdate path swaps the
+  // list without restarting the current song.
+  const anchorIdx = state.queue.findIndex((item) => item.uuid === anchorUuid)
+  if (anchorIdx === -1) {
+    return state
+  }
+  const kept = state.queue.slice(0, anchorIdx + 1)
+  const tail = Object.keys(songs).map((id) => mapToAudioLists(songs[id]))
+  return {
+    ...state,
+    queue: [...kept, ...tail],
+    // clear=true routes the player through changeAudioLists, which preserves
+    // playback when the current track is still present in the new list.
+    clear: true,
+    // Drop any pending track selection: the anchor is the only selection now.
+    playIndex: undefined,
+  }
+}
+
 const reduceSetVolume = (state, { data: { volume } }) => {
   return {
     ...state,
@@ -219,6 +241,8 @@ export const playerReducer = (previousState = initialState, payload) => {
       return reduceSetTrack(previousState, payload)
     case PLAYER_ADD_TRACKS:
       return reduceAddTracks(previousState, payload)
+    case PLAYER_REBUILD_QUEUE:
+      return reduceRebuildQueue(previousState, payload)
     case PLAYER_PLAY_NEXT:
       return reducePlayNext(previousState, payload)
     case PLAYER_SET_VOLUME:

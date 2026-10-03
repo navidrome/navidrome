@@ -697,6 +697,12 @@
     "sharedPlaylists": "Shared Playlists",
     "about": "About"
   },
+  "journey": {
+    "menuName": "Music Journey",
+    "name": "Music Journey",
+    "tagline": "Your library, arranged as a journey — not a shuffle.",
+    "createTitle": "What kind of journey do you want?"
+  },
   "player": {
     "playListsText": "Play Queue",
     "openText": "Open",

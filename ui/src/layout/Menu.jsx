@@ -5,6 +5,7 @@ import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
 import AlbumIcon from '@material-ui/icons/Album'
+import ExploreIcon from '@material-ui/icons/Explore'
 import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
@@ -113,6 +114,15 @@ const Menu = ({ dense = false }) => {
       })}
     >
       {open && <LibrarySelector />}
+      <MenuItemLink
+        to="/"
+        exact
+        activeClassName={classes.active}
+        primaryText={translate('journey.menuName', { _: 'Music Journey' })}
+        leftIcon={<ExploreIcon />}
+        sidebarIsOpen={open}
+        dense={dense}
+      />
       <SubMenu
         handleToggle={() => handleToggle('menuAlbumList')}
         isOpen={state.menuAlbumList}

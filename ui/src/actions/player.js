@@ -1,4 +1,6 @@
 export const PLAYER_ADD_TRACKS = 'PLAYER_ADD_TRACKS'
+export const PLAYER_REBUILD_QUEUE = 'PLAYER_REBUILD_QUEUE'
+export const PLAYER_TRACK_ABANDONED = 'PLAYER_TRACK_ABANDONED'
 export const PLAYER_PLAY_NEXT = 'PLAYER_PLAY_NEXT'
 export const PLAYER_SET_TRACK = 'PLAYER_SET_TRACK'
 export const PLAYER_SYNC_QUEUE = 'PLAYER_SYNC_QUEUE'
@@ -113,4 +115,25 @@ export const setTranscodingProfile = (profile) => ({
 export const refreshQueue = (resolvedUrls) => ({
   type: PLAYER_REFRESH_QUEUE,
   data: resolvedUrls,
+})
+
+/**
+ * Replace everything in the queue after the anchored (currently playing)
+ * track, keeping the queue prefix — and the anchor's uuid — untouched so
+ * playback continues without interruption. Used by Music Journey to rebuild
+ * the remaining part of a journey while listening.
+ */
+export const rebuildQueueAfter = (anchorUuid, data, ids) => ({
+  type: PLAYER_REBUILD_QUEUE,
+  data: { anchorUuid, songs: filterSongs(data, ids) },
+})
+
+/**
+ * Dispatched when the player leaves a track before it ended naturally
+ * (next/previous/queue jump). Consumed by Music Journey skip intelligence;
+ * other features are free to listen too.
+ */
+export const playerTrackAbandoned = ({ trackId, positionMs }) => ({
+  type: PLAYER_TRACK_ABANDONED,
+  data: { trackId, positionMs, at: Date.now() },
 })

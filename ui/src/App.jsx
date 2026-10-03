@@ -40,6 +40,7 @@ import {
   shareDialogReducer,
   transcodingReducer,
 } from './reducers'
+import { JourneyHome, journeyReducer, useJourneyWatcher } from './musicJourney'
 import createAdminStore from './store/createAdminStore'
 import { i18nProvider, retrieveTranslation } from './i18n'
 import config, { shareInfo } from './config'
@@ -80,6 +81,7 @@ const adminStore = createAdminStore({
     settings: settingsReducer,
     replayGain: replayGainReducer,
     transcoding: transcodingReducer,
+    journey: journeyReducer,
   },
 })
 
@@ -92,6 +94,7 @@ const App = () => (
 const Admin = (props) => {
   const setLocale = useSetLocale()
   const refresh = useRefresh()
+  useJourneyWatcher()
   useEffect(() => {
     if (config.defaultLanguage !== '' && !localStorage.getItem('locale')) {
       retrieveTranslation(config.defaultLanguage)
@@ -117,6 +120,7 @@ const Admin = (props) => {
       authProvider={authProvider}
       i18nProvider={i18nProvider}
       customRoutes={customRoutes}
+      dashboard={JourneyHome}
       history={history}
       layout={Layout}
       loginPage={Login}

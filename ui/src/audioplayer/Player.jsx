@@ -20,6 +20,7 @@ import AudioTitle from './AudioTitle'
 import {
   clearQueue,
   currentPlaying,
+  playerTrackAbandoned,
   refreshQueue,
   setPlayMode,
   setTranscodingProfile,
@@ -330,10 +331,18 @@ const Player = () => {
         lastPositionMsRef.current,
         'stopped',
       )
+      // Let listeners (e.g. Music Journey skip intelligence) know the
+      // previous track was left early, and where it was left.
+      dispatch(
+        playerTrackAbandoned({
+          trackId: currentTrackId,
+          positionMs: lastPositionMsRef.current,
+        }),
+      )
     }
     setHeartbeatTrackId(null)
     setCurrentTrackId(null)
-  }, [currentTrackId])
+  }, [currentTrackId, dispatch])
 
   const onAudioPause = useCallback(
     (info) => {
