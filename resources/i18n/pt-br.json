@@ -660,6 +660,11 @@
       "options": {
         "theme": "Tema",
         "language": "Língua",
+        "dateFormat": "Formato de data",
+        "dateFormats": {
+          "language": "Igual à língua",
+          "browser": "Igual ao navegador"
+        },
         "defaultView": "Tela inicial",
         "desktop_notifications": "Notificações",
         "lastfmScrobbling": "Enviar scrobbles para Last.fm",
