@@ -5,7 +5,7 @@
  */
 import { useMemo } from 'react'
 import { useSelector } from 'react-redux'
-import { Button, IconButton, Typography } from '@material-ui/core'
+import { IconButton, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import StopIcon from '@material-ui/icons/Stop'
 import { Artwork } from '../../common/Artwork'
@@ -156,9 +156,9 @@ export const JourneyNowPlaying = ({ journey, onAdjust, onStop, adjusting }) => {
       </div>
 
       {journey.truncated && (
-        <Button disabled size="small" color="default">
+        <Typography variant="caption" color="textSecondary">
           Not enough matching tracks — the journey was shortened.
-        </Button>
+        </Typography>
       )}
     </div>
   )
