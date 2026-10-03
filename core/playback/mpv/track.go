@@ -16,6 +16,14 @@ import (
 	"github.com/navidrome/navidrome/model"
 )
 
+// ipcTimeout bounds how long we wait for a response to an mpv IPC command.
+// mpvipc.Connection.Call/Get/Set block on an unbuffered channel with no
+// timeout of their own, and a single dropped response (observed on Windows)
+// can wedge that channel forever, hanging the calling goroutine (and, in turn,
+// the HTTP request) permanently. Wrapping every call with a timeout turns
+// that permanent hang into a bounded failure. See #5710.
+const ipcTimeout = 10 * time.Second
+
 type MpvTrack struct {
 	MediaFile     model.MediaFile
 	PlaybackDone  chan bool
@@ -23,6 +31,67 @@ type MpvTrack struct {
 	IPCSocketName string
 	Exe           *Executor
 	CloseCalled   bool
+}
+
+// errIPCTimeout is returned when an mpv IPC call does not respond within
+// ipcTimeout. The underlying goroutine making the call is leaked (it may
+// still be blocked forever), but the caller is freed to fail fast instead of
+// hanging.
+var errIPCTimeout = fmt.Errorf("mpv IPC call timed out after %s", ipcTimeout)
+
+func (t *MpvTrack) getWithTimeout(property string) (interface{}, error) {
+	type result struct {
+		val interface{}
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		val, err := t.Conn.Get(property)
+		ch <- result{val, err}
+	}()
+	timer := time.NewTimer(ipcTimeout)
+	defer timer.Stop()
+	select {
+	case res := <-ch:
+		return res.val, res.err
+	case <-timer.C:
+		return nil, errIPCTimeout
+	}
+}
+
+func (t *MpvTrack) setWithTimeout(property string, value interface{}) error {
+	ch := make(chan error, 1)
+	go func() {
+		ch <- t.Conn.Set(property, value)
+	}()
+	timer := time.NewTimer(ipcTimeout)
+	defer timer.Stop()
+	select {
+	case err := <-ch:
+		return err
+	case <-timer.C:
+		return errIPCTimeout
+	}
+}
+
+func (t *MpvTrack) callWithTimeout(args ...interface{}) (interface{}, error) {
+	type result struct {
+		val interface{}
+		err error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		val, err := t.Conn.Call(args...)
+		ch <- result{val, err}
+	}()
+	timer := time.NewTimer(ipcTimeout)
+	defer timer.Stop()
+	select {
+	case res := <-ch:
+		return res.val, res.err
+	case <-timer.C:
+		return nil, errIPCTimeout
+	}
 }
 
 func NewTrack(ctx context.Context, playbackDoneChannel chan bool, deviceName string, mf model.MediaFile) (*MpvTrack, error) {
@@ -84,7 +153,7 @@ func (t *MpvTrack) SetVolume(value float32) {
 	log.Debug("Setting volume", "volume", value, "track", t)
 	vol := int(value * 100)
 
-	err := t.Conn.Set("volume", vol)
+	err := t.setWithTimeout("volume", vol)
 	if err != nil {
 		log.Error("Error setting volume", "volume", value, "track", t, err)
 	}
@@ -92,7 +161,7 @@ func (t *MpvTrack) SetVolume(value float32) {
 
 func (t *MpvTrack) Unpause() {
 	log.Debug("Unpausing track", "track", t)
-	err := t.Conn.Set("pause", false)
+	err := t.setWithTimeout("pause", false)
 	if err != nil {
 		log.Error("Error unpausing track", "track", t, err)
 	}
@@ -100,7 +169,7 @@ func (t *MpvTrack) Unpause() {
 
 func (t *MpvTrack) Pause() {
 	log.Debug("Pausing track", "track", t)
-	err := t.Conn.Set("pause", true)
+	err := t.setWithTimeout("pause", true)
 	if err != nil {
 		log.Error("Error pausing track", "track", t, err)
 	}
@@ -112,7 +181,7 @@ func (t *MpvTrack) Close() {
 	// trying to shutdown mpv process using socket
 	if t.isSocketFilePresent() {
 		log.Debug("sending shutdown command")
-		_, err := t.Conn.Call("quit")
+		_, err := t.callWithTimeout("quit")
 		if err != nil {
 			log.Warn("Error sending quit command to mpv-ipc socket", err)
 
@@ -146,7 +215,7 @@ func (t *MpvTrack) isSocketFilePresent() bool {
 func (t *MpvTrack) Position() int {
 	retryCount := 0
 	for {
-		position, err := t.Conn.Get("time-pos")
+		position, err := t.getWithTimeout("time-pos")
 		if err != nil && err.Error() == "mpv error: property unavailable" {
 			retryCount += 1
 			log.Debug("Got mpv error, retrying...", "retries", retryCount, err)
@@ -179,7 +248,7 @@ func (t *MpvTrack) SetPosition(offset int) error {
 		log.Debug("No position difference, skipping operation", "track", t)
 		return nil
 	}
-	err := t.Conn.Set("time-pos", float64(offset))
+	err := t.setWithTimeout("time-pos", float64(offset))
 	if err != nil {
 		log.Error("Could not set the position in track", "track", t, "offset", offset, err)
 		return err
@@ -189,7 +258,7 @@ func (t *MpvTrack) SetPosition(offset int) error {
 
 func (t *MpvTrack) IsPlaying() bool {
 	log.Debug("Checking if track is playing", "track", t)
-	pausing, err := t.Conn.Get("pause")
+	pausing, err := t.getWithTimeout("pause")
 	if err != nil {
 		log.Error("Problem getting paused status", "track", t, err)
 		return false
