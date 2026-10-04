@@ -2,7 +2,7 @@
   "languageName": "Español",
   "resources": {
     "song": {
-      "name": "Canción ||||  Canciones",
+      "name": "Canción |||| Canciones",
       "fields": {
         "albumArtist": "Artista del álbum",
         "duration": "Duración",
@@ -24,13 +24,13 @@
         "rating": "Calificación",
         "quality": "Calidad",
         "bpm": "BPM",
-        "playDate": "Últimas reproducciones",
+        "playDate": "Última reproducción",
         "channels": "Canales",
-        "createdAt": "Creado el",
+        "createdAt": "Agregado el",
         "grouping": "Agrupación",
         "mood": "Estado de ánimo",
-        "participants": "Participantes",
-        "tags": "Etiquetas",
+        "participants": "Participantes adicionales",
+        "tags": "Etiquetas adicionales",
         "mappedTags": "Etiquetas asignadas",
         "rawTags": "Etiquetas sin procesar",
         "bitDepth": "Profundidad de bits",
@@ -45,10 +45,10 @@
       "actions": {
         "addToQueue": "Reproducir después",
         "playNow": "Reproducir ahora",
-        "addToPlaylist": "Agregar a la playlist",
-        "shuffleAll": "Todas aleatorias",
-        "download": "Descarga",
-        "playNext": "Siguiente",
+        "addToPlaylist": "Agregar a la lista de reproducción",
+        "shuffleAll": "Reproducir todo aleatoriamente",
+        "download": "Descargar",
+        "playNext": "Reproducir a continuación",
         "info": "Obtener información",
         "showInPlaylist": "Mostrar en la lista de reproducción",
         "instantMix": "Mezcla instantánea"
@@ -69,8 +69,8 @@
         "updatedAt": "Actualizado el",
         "comment": "Comentario",
         "rating": "Calificación",
-        "createdAt": "Creado el",
-        "size": "Tamaño del archivo",
+        "createdAt": "Agregado el",
+        "size": "Tamaño",
         "originalDate": "Original",
         "releaseDate": "Publicado",
         "releases": "Lanzamiento |||| Lanzamientos",
@@ -87,19 +87,20 @@
       },
       "actions": {
         "playAll": "Reproducir",
-        "playNext": "Reproducir siguiente",
+        "playNext": "Reproducir a continuación",
         "addToQueue": "Reproducir después",
-        "shuffle": "Aleatorio",
-        "addToPlaylist": "Agregar a la lista",
+        "shuffle": "Reproducir aleatoriamente",
+        "addToPlaylist": "Agregar a la lista de reproducción",
         "download": "Descargar",
         "info": "Obtener información",
-        "share": "Compartir"
+        "share": "Compartir",
+        "refresh": "Actualizar metadatos"
       },
       "lists": {
         "all": "Todos",
         "random": "Aleatorio",
-        "recentlyAdded": "Recientes",
-        "recentlyPlayed": "Recientes",
+        "recentlyAdded": "Agregados recientemente",
+        "recentlyPlayed": "Reproducidos recientemente",
         "mostPlayed": "Más reproducidos",
         "starred": "Favoritos",
         "topRated": "Mejor calificados"
@@ -130,12 +131,12 @@
         "engineer": "Ingeniero de sonido |||| Ingenieros de sonido",
         "mixer": "Mezclador |||| Mezcladores",
         "remixer": "Remezclador |||| Remezcladores",
-        "djmixer": "DJ Mezclador |||| DJ Mezcladores",
+        "djmixer": "Mezclador de DJ |||| Mezcladores de DJ",
         "performer": "Intérprete |||| Intérpretes",
-        "maincredit": "Artista del álbum o Artista |||| Artistas del álbum o Artistas"
+        "maincredit": "Artista del álbum o artista |||| Artistas del álbum o artistas"
       },
       "actions": {
-        "shuffle": "Aleatorio",
+        "shuffle": "Reproducir aleatoriamente",
         "radio": "Radio",
         "topSongs": "Más destacadas"
       }
@@ -155,11 +156,13 @@
         "newPassword": "Nueva contraseña",
         "token": "Token",
         "lastAccessAt": "Último acceso",
-        "libraries": "Bibliotecas"
+        "libraries": "Bibliotecas",
+        "scrobbleFilter": "Filtro de scrobbling"
       },
       "helperTexts": {
         "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión",
-        "libraries": "Selecciona bibliotecas específicas para este usuario o déjalo vacío para usar las bibliotecas por defecto"
+        "libraries": "Selecciona bibliotecas específicas para este usuario o déjalo vacío para usar las bibliotecas por defecto",
+        "scrobbleFilter": "Las canciones que coincidan con estas reglas de listas de reproducción inteligentes no se enviarán a Last.fm, ListenBrainz ni a los plugins de scrobbling. Usa la misma sintaxis JSON y el mismo comportamiento que las listas de reproducción inteligentes. Ejemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Déjalo vacío para enviar todas las reproducciones. Los recuentos de reproducciones locales no se verán afectados."
       },
       "notifications": {
         "created": "Usuario creado",
@@ -168,12 +171,13 @@
       },
       "message": {
         "listenBrainzToken": "Escribe tu token de usuario de ListenBrainz",
-        "clickHereForToken": "Click aquí para obtener tu token",
+        "clickHereForToken": "Haz clic aquí para obtener tu token",
         "selectAllLibraries": "Seleccionar todas las bibliotecas",
         "adminAutoLibraries": "Los usuarios administradores tienen acceso a todas las bibliotecas automáticamente"
       },
       "validation": {
-        "librariesRequired": "Se debe seleccionar al menos una biblioteca para los usuarios que no sean administradores"
+        "librariesRequired": "Se debe seleccionar al menos una biblioteca para los usuarios que no sean administradores",
+        "invalidScrobbleFilter": "Deben ser reglas válidas de listas de reproducción inteligentes. No se admiten el límite, el desplazamiento ni el intervalo de actualización."
       }
     },
     "player": {
@@ -181,12 +185,12 @@
       "fields": {
         "name": "Nombre",
         "transcodingId": "Transcodificación",
-        "maxBitRate": "Tasa de bits Máx.",
+        "maxBitRate": "Tasa de bits máx.",
         "client": "Cliente",
         "userName": "Usuario",
         "lastSeen": "Última conexión",
-        "reportRealPath": "Reporta la ruta absoluta",
-        "scrobbleEnabled": "Envía los scrobbles a servicios externos"
+        "reportRealPath": "Informar de la ruta real",
+        "scrobbleEnabled": "Enviar scrobbles a servicios externos"
       }
     },
     "transcoding": {
@@ -196,10 +200,13 @@
         "targetFormat": "Formato de destino",
         "defaultBitRate": "Tasa de bits por defecto",
         "command": "Comando"
+      },
+      "choices": {
+        "noDefaultBitRate": "Ninguna"
       }
     },
     "playlist": {
-      "name": "Lista |||| Listas",
+      "name": "Lista de reproducción |||| Listas de reproducción",
       "fields": {
         "name": "Nombre",
         "duration": "Duración",
@@ -209,23 +216,24 @@
         "createdAt": "Creado el",
         "songCount": "Canciones",
         "comment": "Comentario",
-        "sync": "Auto-importados",
-        "path": "Importados de"
+        "sync": "Importación automática",
+        "path": "Importar desde",
+        "starred": "Favorita"
       },
       "actions": {
-        "selectPlaylist": "Seleccione una lista:",
-        "addNewPlaylist": "Creada \"%{name}\"",
+        "selectPlaylist": "Selecciona una lista de reproducción:",
+        "addNewPlaylist": "Crear \"%{name}\"",
         "export": "Exportar",
-        "makePublic": "Hazla pública",
-        "makePrivate": "Hazla privada",
-        "saveQueue": "Guardar la fila de reproducción en una playlist",
-        "searchOrCreate": "Buscar listas de reproducción o escribe para crear una nueva…",
+        "makePublic": "Hacer pública",
+        "makePrivate": "Hacer privada",
+        "saveQueue": "Guardar la cola de reproducción en una lista de reproducción",
+        "searchOrCreate": "Busca listas de reproducción o escribe para crear una nueva…",
         "pressEnterToCreate": "Pulsa Enter para crear una nueva lista de reproducción",
         "removeFromSelection": "Quitar de la selección"
       },
       "message": {
-        "duplicate_song": "Algunas de las canciones seleccionadas están presentes en la playlist",
-        "song_exist": "Se están agregando duplicados a la playlist. ¿Quieres agregar los duplicados o omitirlos?",
+        "duplicate_song": "Agregar canciones duplicadas",
+        "song_exist": "Se están agregando duplicados a la lista de reproducción. ¿Quieres agregarlos u omitirlos?",
         "noPlaylistsFound": "No se encontraron listas de reproducción",
         "noPlaylists": "No hay listas de reproducción disponibles"
       }
@@ -234,7 +242,7 @@
       "name": "Radio |||| Radios",
       "fields": {
         "name": "Nombre",
-        "streamUrl": "URL del stream",
+        "streamUrl": "URL de la transmisión",
         "homePageUrl": "URL de la página web",
         "updatedAt": "Actualizado el",
         "createdAt": "Creado el"
@@ -254,7 +262,7 @@
         "lastVisitedAt": "Visitado por última vez el",
         "visitCount": "Número de visitas",
         "format": "Formato",
-        "maxBitRate": "Tasa de bits Máx.",
+        "maxBitRate": "Tasa de bits máx.",
         "updatedAt": "Actualizado el",
         "createdAt": "Creado el",
         "downloadable": "¿Permitir descargas?"
@@ -265,7 +273,7 @@
       "fields": {
         "path": "Ruta",
         "size": "Tamaño",
-        "updatedAt": "Actualizado el",
+        "updatedAt": "Desapareció el",
         "libraryName": "Biblioteca"
       },
       "actions": {
@@ -273,7 +281,7 @@
         "remove_all": "Eliminar todo"
       },
       "notifications": {
-        "removed": "Eliminado"
+        "removed": "Archivos faltantes eliminados"
       },
       "empty": "No faltan archivos"
     },
@@ -305,7 +313,7 @@
       },
       "actions": {
         "scan": "Escanear biblioteca",
-        "manageUsers": "Gestionar el acceso de usarios",
+        "manageUsers": "Gestionar el acceso de usuarios",
         "viewDetails": "Ver detalles",
         "quickScan": "Escaneo rápido",
         "fullScan": "Escaneo completo"
@@ -316,8 +324,8 @@
         "deleted": "La biblioteca se eliminó correctamente",
         "scanStarted": "El escaneo de la biblioteca ha comenzado",
         "scanCompleted": "El escaneo de la biblioteca se completó",
-        "quickScanStarted": "Escaneo rápido ha comenzado",
-        "fullScanStarted": "Escaneo completo ha comenzado",
+        "quickScanStarted": "El escaneo rápido ha comenzado",
+        "fullScanStarted": "El escaneo completo ha comenzado",
         "scanError": "Error al iniciar el escaneo. Revisa los registros"
       },
       "validation": {
@@ -329,7 +337,7 @@
         "pathInvalid": "Ruta de la biblioteca no válida"
       },
       "messages": {
-        "deleteConfirm": "¿Estás seguro/a de que quieres eliminar esta biblioteca? Esto eliminará todos los datos asociados y el acceso de les usuaries.",
+        "deleteConfirm": "¿Seguro que quieres eliminar esta biblioteca? Esto eliminará todos los datos asociados y el acceso de los usuarios.",
         "scanInProgress": "Escaneo en curso...",
         "noLibrariesAssigned": "No hay bibliotecas asignadas a este usuario"
       }
@@ -361,7 +369,7 @@
       },
       "sections": {
         "status": "Estado",
-        "info": "Información del Plugin",
+        "info": "Información del plugin",
         "configuration": "Configuración",
         "manifest": "Manifiesto",
         "usersPermission": "Permiso del usuario",
@@ -369,7 +377,7 @@
       },
       "status": {
         "enabled": "Activado",
-        "disabled": "Deshabilitado"
+        "disabled": "Desactivado"
       },
       "actions": {
         "enable": "Activar",
@@ -382,7 +390,7 @@
       },
       "notifications": {
         "enabled": "Plugin activado",
-        "disabled": "Plugin deshabilitado",
+        "disabled": "Plugin desactivado",
         "updated": "Plugin actualizado",
         "error": "Error al actualizar el plugin"
       },
@@ -390,6 +398,7 @@
         "invalidJson": "La configuración debe ser un JSON válido"
       },
       "messages": {
+        "idHelp": "El ID del plugin se deriva de su nombre de archivo. Úsalo al hacer referencia al plugin en opciones de configuración como Agents.",
         "configHelp": "Configura el plugin utilizando pares de clave-valor. Déjalo en blanco si el plugin no requiere configuración.",
         "clickPermissions": "Haz clic en un permiso para ver los detalles",
         "noConfig": "No hay configuración establecida",
@@ -402,7 +411,7 @@
         "librariesRequired": "Este plugin requiere acceso a la información de las bibliotecas. Selecciona a qué bibliotecas puede acceder el plugin, o activa 'Permitir todas las bibliotecas'.",
         "requiredHosts": "Hosts requeridos",
         "configValidationError": "La validación de la configuración falló:",
-        "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del complemento no sea válido.",
+        "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del plugin no sea válido.",
         "allowWriteAccessHelp": "Cuando está activado, el plugin puede modificar archivos en los directorios de la biblioteca. Por defecto, los plugins tienen acceso de solo lectura."
       },
       "placeholders": {
@@ -467,7 +476,7 @@
       "close": "Cerrar",
       "open_menu": "Abrir menú",
       "close_menu": "Cerrar menú",
-      "unselect": "Deseleccionado",
+      "unselect": "Deseleccionar",
       "skip": "Omitir",
       "bulk_actions_mobile": "1 |||| %{smart_count}",
       "share": "Compartir",
@@ -495,8 +504,8 @@
         "upload_single": "Arrastre un archivo para subir o haga clic para seleccionarlo."
       },
       "image": {
-        "upload_several": "Arrastre algunas imagénes para subir o haga clic para seleccionar una.",
-        "upload_single": "Arrastre alguna imagen para subir o haga clic para seleccionarla."
+        "upload_several": "Arrastre algunas imágenes para subir o haga clic para seleccionar una.",
+        "upload_single": "Arrastre una imagen para subir o haga clic para seleccionarla."
       },
       "references": {
         "all_missing": "No se pueden encontrar datos de referencias.",
@@ -522,7 +531,7 @@
       "no": "No",
       "not_found": "O bien escribió una URL incorrecta o siguió un enlace incorrecto.",
       "yes": "Sí",
-      "unsaved_changes": "Algunos de sus cambios no se guardaron. ¿Está seguro que quiere ignorarlos?"
+      "unsaved_changes": "Algunos de sus cambios no se guardaron. ¿Está seguro de que quiere ignorarlos?"
     },
     "navigation": {
       "no_results": "No se han encontrado resultados",
@@ -534,7 +543,7 @@
       "page_rows_per_page": "Filas por página:",
       "next": "Siguiente",
       "prev": "Anterior",
-      "skip_nav": "Pasa al contenido"
+      "skip_nav": "Saltar al contenido"
     },
     "notification": {
       "updated": "Elemento actualizado |||| %{smart_count} elementos actualizados",
@@ -558,17 +567,17 @@
   },
   "message": {
     "note": "NOTA",
-    "transcodingDisabled": "Cambiar la configuración de la transcodificación a través de la interfaz web esta deshabilitado por motivos de seguridad. Si quieres cambiar (editar o agregar) opciones de transcodificación, reinicia el servidor con la %{config} opción de configuración.",
-    "transcodingEnabled": "Navidrom se esta ejecutando con %{config}, lo que hace posible ejecutar comandos de sistema desde el apartado de transcodificación en la interfaz web. Recomendamos deshabilitarlo por motivos de seguridad y solo habilitarlo cuando se este configurando opciones de transcodificación.",
-    "songsAddedToPlaylist": "1 canción agregada a la lista |||| %{smart_count} canciones agregadas a la lista",
+    "transcodingDisabled": "Cambiar la configuración de la transcodificación a través de la interfaz web está deshabilitado por motivos de seguridad. Si quieres cambiar (editar o agregar) opciones de transcodificación, reinicia el servidor con la opción de configuración %{config}.",
+    "transcodingEnabled": "Navidrome se está ejecutando con %{config}, lo que permite ejecutar comandos del sistema desde el apartado de transcodificación de la interfaz web. Recomendamos deshabilitar esta opción por motivos de seguridad y habilitarla solo al configurar las opciones de transcodificación.",
+    "songsAddedToPlaylist": "1 canción agregada a la lista de reproducción |||| %{smart_count} canciones agregadas a la lista de reproducción",
     "noPlaylistsAvailable": "Ninguna lista disponible",
     "delete_user_title": "Eliminar usuario '%{name}'",
-    "delete_user_content": "¿Esta seguro de eliminar a este usuario y todos sus datos (incluyendo listas y preferencias)?",
+    "delete_user_content": "¿Seguro que quieres eliminar a este usuario y todos sus datos (incluidas sus listas y preferencias)?",
     "notifications_blocked": "Las notificaciones de este sitio están bloqueadas en tu navegador",
-    "notifications_not_available": "Este navegador no soporta notificaciones o no ingresaste a Navidrome usando https",
-    "lastfmLinkSuccess": "Last.fm esta conectado y el scrobbling esta activado",
+    "notifications_not_available": "Este navegador no admite notificaciones de escritorio o no estás accediendo a Navidrome mediante HTTPS",
+    "lastfmLinkSuccess": "Last.fm está conectado y el scrobbling está activado",
     "lastfmLinkFailure": "No se pudo conectar con Last.fm",
-    "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivo",
+    "lastfmUnlinkSuccess": "Last.fm se ha desconectado y el scrobbling se desactivó",
     "lastfmUnlinkFailure": "No se pudo desconectar Last.fm",
     "openIn": {
       "lastfm": "Ver en Last.fm",
@@ -579,8 +588,8 @@
     "listenBrainzLinkFailure": "No se pudo conectar con ListenBrainz: %{error}",
     "listenBrainzUnlinkSuccess": "Se desconectó ListenBrainz y se desactivó el scrobbling",
     "listenBrainzUnlinkFailure": "No se pudo desconectar ListenBrainz",
-    "downloadOriginalFormat": "Descargar formato original",
-    "shareOriginalFormat": "Compartir formato original",
+    "downloadOriginalFormat": "Descargar en formato original",
+    "shareOriginalFormat": "Compartir en formato original",
     "shareDialogTitle": "Compartir %{resource} '%{name}'",
     "shareBatchDialogTitle": "Compartir 1 %{resource} |||| Compartir %{smart_count} %{resource}",
     "shareSuccess": "URL copiada al portapapeles: %{url}",
@@ -599,11 +608,23 @@
     "coverUploaded": "Portada actualizada",
     "coverRemoved": "Portada eliminada",
     "coverUploadError": "Error al subir la portada",
-    "coverRemoveError": "Error al eliminar la portada"
+    "coverRemoveError": "Error al eliminar la portada",
+    "metadataRefreshStarted": "Actualizando los metadatos en segundo plano",
+    "quickConnectApproved": "%{app} en %{device} ha iniciado sesión",
+    "quickConnectInvalidCode": "Código no válido o caducado",
+    "quickConnectError": "No se pudo aprobar el código"
   },
   "menu": {
     "library": "Biblioteca",
     "settings": "Ajustes",
+    "quickConnect": {
+      "name": "Conexión rápida",
+      "code": "Código",
+      "help": "Introduce el código que muestra una aplicación de Jellyfin para iniciar sesión en tu cuenta",
+      "confirm": "¿Quieres iniciar sesión en tu cuenta con %{app} %{version} desde %{device}?",
+      "continue": "Continuar",
+      "approve": "Aprobar"
+    },
     "version": "Versión",
     "theme": "Tema",
     "personal": {
@@ -613,8 +634,8 @@
         "language": "Idioma",
         "defaultView": "Vista por defecto",
         "desktop_notifications": "Notificaciones de escritorio",
-        "lastfmScrobbling": "Scrobble a Last.fm",
-        "listenBrainzScrobbling": "Scrobble a ListenBrainz",
+        "lastfmScrobbling": "Scrobbling en Last.fm",
+        "listenBrainzScrobbling": "Scrobbling en ListenBrainz",
         "replaygain": "Modo de ReplayGain",
         "preAmp": "ReplayGain PreAmp (dB)",
         "gain": {
@@ -627,17 +648,18 @@
     },
     "albumList": "Álbumes",
     "about": "Acerca de",
-    "playlists": "Playlists",
-    "sharedPlaylists": "Playlists Compartidas",
+    "playlists": "Listas de reproducción",
+    "onlyFavourites": "Mostrar solo favoritos",
+    "sharedPlaylists": "Listas de reproducción compartidas",
     "librarySelector": {
       "allLibraries": "Todas las bibliotecas (%{count})",
       "multipleLibraries": "%{selected} de %{total} bibliotecas",
       "selectLibraries": "Seleccionar bibliotecas",
-      "none": "Ninguno"
+      "none": "Ninguna"
     }
   },
   "player": {
-    "playListsText": "Fila de reproducción",
+    "playListsText": "Cola de reproducción",
     "openText": "Abrir",
     "closeText": "Cerrar",
     "notContentText": "Sin música",
@@ -645,9 +667,9 @@
     "clickToPauseText": "Clic para pausar",
     "nextTrackText": "Pista siguiente",
     "previousTrackText": "Pista anterior",
-    "reloadText": "Refrescar",
+    "reloadText": "Recargar",
     "volumeText": "Volumen",
-    "toggleLyricText": "Mostrar letras",
+    "toggleLyricText": "Mostrar/ocultar letras",
     "toggleMiniModeText": "Minimizar",
     "destroyText": "Destruir",
     "downloadText": "Descargar",
@@ -678,7 +700,7 @@
     },
     "config": {
       "configName": "Nombre de la configuración",
-      "environmentVariable": "Variables de entorno",
+      "environmentVariable": "Variable de entorno",
       "currentValue": "Valor actual",
       "configurationFile": "Archivo de configuración",
       "exportToml": "Exportar configuración (TOML)",
@@ -694,25 +716,25 @@
     "totalScanned": "Total de carpetas escaneadas",
     "quickScan": "Escaneo rápido",
     "fullScan": "Escaneo completo",
-    "serverUptime": "Uptime del servidor",
+    "serverUptime": "Tiempo de actividad del servidor",
     "serverDown": "DESCONECTADO",
-    "scanType": "Tipo",
+    "scanType": "Último escaneo",
     "status": "Error de escaneo",
     "elapsedTime": "Tiempo transcurrido",
-    "selectiveScan": "Selectivo"
+    "selectiveScan": "Escaneo selectivo"
   },
   "help": {
     "title": "Atajos de teclado de Navidrome",
     "hotkeys": {
-      "show_help": "Muestra esta ayuda",
-      "toggle_menu": "Activa/desactiva la barra lateral",
+      "show_help": "Mostrar esta ayuda",
+      "toggle_menu": "Mostrar/ocultar la barra lateral",
       "toggle_play": "Reproducir / Pausar",
       "prev_song": "Canción anterior",
       "next_song": "Siguiente canción",
       "vol_up": "Subir volumen",
       "vol_down": "Bajar volumen",
-      "toggle_love": "Marca esta canción como favorita",
-      "current_song": "Canción actual"
+      "toggle_love": "Agregar esta canción a favoritos",
+      "current_song": "Ir a la canción actual"
     }
   },
   "nowPlaying": {
