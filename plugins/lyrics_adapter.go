@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -26,13 +27,18 @@ func init() {
 }
 
 func newLyricsPlugin(p *plugin) *LyricsPlugin {
-	return &LyricsPlugin{name: p.name, plugin: p}
+	displayName := p.name
+	if p.manifest != nil && strings.TrimSpace(p.manifest.Name) != "" {
+		displayName = strings.TrimSpace(p.manifest.Name)
+	}
+	return &LyricsPlugin{name: p.name, displayName: displayName, plugin: p}
 }
 
 // LyricsPlugin adapts a WASM plugin with the Lyrics capability.
 type LyricsPlugin struct {
-	name   string
-	plugin *plugin
+	name        string
+	displayName string
+	plugin      *plugin
 }
 
 // GetLyrics calls the plugin to fetch lyrics, then content-sniffs each response
@@ -57,6 +63,14 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 	// The lyric text comes from the plugin, not the media file's own tags, so
 	// attribute logs to both the plugin and the track it was fetched for.
 	ctx = log.NewContext(ctx, "plugin", l.name, "file", mf.Path)
+	source := &model.LyricsSource{
+		Type: model.LyricsSourcePlugin,
+		Name: l.displayName,
+	}
+	if resp.Source != nil {
+		source.Provider = strings.TrimSpace(resp.Source.Provider)
+		source.Format = strings.ToLower(strings.TrimSpace(resp.Source.Format))
+	}
 
 	var result model.LyricList
 	for _, lt := range resp.Lyrics {
@@ -71,6 +85,7 @@ func (l *LyricsPlugin) GetLyrics(ctx context.Context, mf *model.MediaFile) (mode
 		}
 		for _, lyric := range parsed {
 			if !lyric.IsEmpty() {
+				lyric.Source = source
 				result = append(result, lyric)
 			}
 		}

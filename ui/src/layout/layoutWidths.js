@@ -1,0 +1,2 @@
+export const APP_SIDEBAR_OPEN_WIDTH = 240
+export const APP_SIDEBAR_CLOSED_WIDTH = 55

@@ -34,9 +34,21 @@ pub struct GetLyricsRequest {
 pub struct GetLyricsResponse {
     #[serde(default)]
     pub lyrics: Vec<LyricsText>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<LyricsSource>,
+}
+/// LyricsSource identifies the optional upstream provider and format selected
+/// by a plugin. Navidrome supplies the plugin name and source type itself.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LyricsSource {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub provider: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub format: String,
 }
 /// LyricsText represents a single set of lyrics in raw text format.
-/// Text can be plain text or LRC format — Navidrome will parse it.
+/// Navidrome content-sniffs and parses the returned text.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LyricsText {
