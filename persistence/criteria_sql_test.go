@@ -57,6 +57,7 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 		Entry("album column", criteria.Gt{"albumSongCount": 5}, "album.song_count > ?", 5),
 		Entry("album duration column", criteria.Lt{"albumDuration": 600}, "album.duration < ?", 600),
 		Entry("album size column", criteria.Gt{"albumSize": 1000}, "album.size > ?", 1000),
+		Entry("track date added column", criteria.Before{"dateAdded": time.Date(2099, 1, 1, 0, 0, 0, 0, time.Local)}, "media_file.birth_time < ?", time.Date(2099, 1, 1, 0, 0, 0, 0, time.Local)),
 		Entry("album date column", criteria.After{"albumDateAdded": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "album.created_at > ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
 		Entry("album modified column", criteria.Before{"albumDateModified": time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)}, "album.updated_at < ?", time.Date(2021, 10, 1, 0, 0, 0, 0, time.Local)),
 		// Annotation fields use a COALESCE default (0 for numeric, false for bool) so that tracks
@@ -291,6 +292,10 @@ var _ = Describe("Smart playlist criteria SQL", func() {
 	Describe("sort", func() {
 		It("sorts by regular fields", func() {
 			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "title"}).orderBy()).To(Equal("media_file.title asc"))
+		})
+
+		It("sorts by dateAdded using file birth_time", func() {
+			Expect(newSmartPlaylistCriteria(criteria.Criteria{Sort: "-dateAdded"}).orderBy()).To(Equal("media_file.birth_time desc"))
 		})
 
 		It("sorts by tag fields", func() {
