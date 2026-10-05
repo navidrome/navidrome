@@ -152,8 +152,44 @@ const callPlayerMethod = (name) => {
 }
 
 export const callPlayerToggle = () => callPlayerMethod('toggle')
+export const callPlayerPlay = () => callPlayerMethod('play')
+export const callPlayerPause = () => callPlayerMethod('pause')
 export const callPlayerPrev = () => callPlayerMethod('prev')
 export const callPlayerNext = () => callPlayerMethod('next')
+
+// Resume/pause the actual media element. jinke's togglePlay() goes through
+// loadAndPlayAudio(), which reloads from the player's playId and can start
+// a different queue item after pause (Redux playIndex is cleared on CURRENT).
+const mediaPlay = (audio) => {
+  if (!audio) {
+    return
+  }
+  if (
+    typeof HTMLMediaElement !== 'undefined' &&
+    audio instanceof HTMLMediaElement
+  ) {
+    return HTMLMediaElement.prototype.play.call(audio)
+  }
+  if (typeof audio.play === 'function') {
+    return audio.play()
+  }
+}
+
+const mediaPause = (audio) => {
+  if (!audio) {
+    return
+  }
+  if (
+    typeof HTMLMediaElement !== 'undefined' &&
+    audio instanceof HTMLMediaElement
+  ) {
+    HTMLMediaElement.prototype.pause.call(audio)
+    return
+  }
+  if (typeof audio.pause === 'function') {
+    audio.pause()
+  }
+}
 
 export const bindSimpleMobilePlayer = (audio) => {
   if (typeof window === 'undefined') {
@@ -163,31 +199,16 @@ export const bindSimpleMobilePlayer = (audio) => {
     getState: () => ({
       paused: !audio || audio.paused !== false,
     }),
-    play: () => {
-      if (!audio || typeof audio.play !== 'function') {
-        return
-      }
-      return audio.play()
-    },
-    pause: () => {
-      if (!audio || typeof audio.pause !== 'function') {
-        return
-      }
-      audio.pause()
-    },
+    play: () => mediaPlay(audio),
+    pause: () => mediaPause(audio),
     toggle: () => {
       if (!audio) {
         return
       }
-      if (typeof audio.togglePlay === 'function') {
-        audio.togglePlay()
-        return
-      }
       if (audio.paused) {
-        audio.play()
-      } else {
-        audio.pause()
+        return mediaPlay(audio)
       }
+      mediaPause(audio)
     },
     prev: () => {
       if (audio && typeof audio.playPrev === 'function') {
@@ -209,7 +230,12 @@ export const unbindSimpleMobilePlayer = () => {
   delete window.__ndPlayer
 }
 
-export const syncSimpleMobilePlayer = ({ playerState, audio, labels } = {}) => {
+export const syncSimpleMobilePlayer = ({
+  playerState,
+  audio,
+  labels,
+  unbindOnCleanup = true,
+} = {}) => {
   if (!shouldUseSimpleMobile()) {
     return () => {}
   }
@@ -219,7 +245,9 @@ export const syncSimpleMobilePlayer = ({ playerState, audio, labels } = {}) => {
   paint()
   if (!audio || typeof audio.addEventListener !== 'function') {
     return () => {
-      unbindSimpleMobilePlayer()
+      if (unbindOnCleanup) {
+        unbindSimpleMobilePlayer()
+      }
     }
   }
   audio.addEventListener('play', paint)
@@ -229,6 +257,8 @@ export const syncSimpleMobilePlayer = ({ playerState, audio, labels } = {}) => {
     audio.removeEventListener('play', paint)
     audio.removeEventListener('pause', paint)
     audio.removeEventListener('ended', paint)
-    unbindSimpleMobilePlayer()
+    if (unbindOnCleanup) {
+      unbindSimpleMobilePlayer()
+    }
   }
 }

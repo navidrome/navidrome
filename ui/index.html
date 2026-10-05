@@ -308,8 +308,14 @@
         }
         if (play) {
           play.onclick = function () {
+            // Resume/pause the current track only. Never fall through to
+            // __ndPlayRandom — that button is shuffle.
             waitFor(function () {
-              return window.__ndPlayer && window.__ndPlayer.toggle;
+              if (!window.__ndPlayer) return;
+              if (shell.getAttribute('data-playing') === '1') {
+                return window.__ndPlayer.pause;
+              }
+              return window.__ndPlayer.play;
             }, function () {});
           };
         }

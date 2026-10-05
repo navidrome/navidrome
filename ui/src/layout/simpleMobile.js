@@ -87,11 +87,12 @@ export const simpleMobilePlayerProps = () => {
     return {}
   }
   // Keep audio engine mounted; never show mobile fullscreen / mini chrome.
+  // Do not set `once`: jinke uses it to add {once:true} on the play listener,
+  // so later resume/play events never sync current track.
   return {
     responsive: false,
     toggleMode: false,
     mode: 'mini',
-    once: true,
     autoHiddenCover: true,
     showMiniModeCover: false,
     showDestroy: false,

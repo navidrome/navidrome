@@ -6,6 +6,8 @@ import {
   bindSimpleMobilePlayer,
   unbindSimpleMobilePlayer,
   callPlayerToggle,
+  callPlayerPlay,
+  callPlayerPause,
   callPlayerPrev,
   callPlayerNext,
   callPlayRandom,
@@ -230,14 +232,39 @@ describe('simpleMobileShell', () => {
     }
     bindSimpleMobilePlayer(audio)
     expect(callPlayerToggle()).toBe(true)
-    expect(audio.togglePlay).toHaveBeenCalledTimes(1)
-    audio.togglePlay = undefined
-    audio.paused = true
-    expect(callPlayerToggle()).toBe(true)
-    expect(audio.play).toHaveBeenCalled()
+    expect(audio.play).toHaveBeenCalledTimes(1)
+    expect(audio.togglePlay).not.toHaveBeenCalled()
     audio.paused = false
     expect(callPlayerToggle()).toBe(true)
     expect(audio.pause).toHaveBeenCalled()
+    expect(audio.togglePlay).not.toHaveBeenCalled()
+  })
+
+  it('resumes the paused track and never starts a new shuffle', () => {
+    const audio = {
+      paused: true,
+      currentSrc: 'https://example/stream/track-a',
+      play: vi.fn(),
+      pause: vi.fn(),
+      togglePlay: vi.fn(),
+    }
+    window.__ndPlayRandom = vi.fn()
+    bindSimpleMobilePlayer(audio)
+
+    expect(callPlayerPlay()).toBe(true)
+    expect(audio.play).toHaveBeenCalledTimes(1)
+    expect(audio.togglePlay).not.toHaveBeenCalled()
+    expect(window.__ndPlayRandom).not.toHaveBeenCalled()
+
+    audio.paused = false
+    expect(callPlayerPause()).toBe(true)
+    expect(audio.pause).toHaveBeenCalledTimes(1)
+    expect(window.__ndPlayRandom).not.toHaveBeenCalled()
+
+    audio.paused = true
+    expect(callPlayerToggle()).toBe(true)
+    expect(audio.play).toHaveBeenCalledTimes(2)
+    expect(window.__ndPlayRandom).not.toHaveBeenCalled()
   })
 
   it('skips tracks through the bound audio instance', () => {
@@ -304,5 +331,52 @@ describe('simpleMobileShell', () => {
     stop()
     expect(audio2.removeEventListener).toHaveBeenCalled()
     expect(window.__ndPlayer).toBeUndefined()
+  })
+
+  it('keeps the play bridge across a pause-state resync', () => {
+    mountShell()
+    localStorage.setItem(SIMPLE_MOBILE_KEY, '1')
+    const audio = {
+      paused: false,
+      play: vi.fn(),
+      pause: vi.fn(),
+      togglePlay: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }
+    const track = {
+      current: { song: { title: 'Helplessness Blues', artist: 'Fleet Foxes' } },
+      queue: [{ name: 'Helplessness Blues', uuid: 'a' }],
+      savedPlayIndex: 0,
+    }
+    const stopPlay = syncSimpleMobilePlayer({
+      playerState: track,
+      audio,
+      unbindOnCleanup: false,
+      labels: { pause: 'Pause', play: 'Play' },
+    })
+    const playerWhilePlaying = window.__ndPlayer
+    expect(playerWhilePlaying).toBeTruthy()
+
+    audio.paused = true
+    const stopPause = syncSimpleMobilePlayer({
+      playerState: track,
+      audio,
+      unbindOnCleanup: false,
+      labels: { pause: 'Pause', play: 'Play' },
+    })
+    expect(window.__ndPlayer).toBeTruthy()
+    expect(typeof window.__ndPlayer.play).toBe('function')
+
+    window.__ndPlayRandom = vi.fn()
+    expect(window.__ndPlayer.play()).toBeUndefined()
+    expect(audio.play).toHaveBeenCalled()
+    expect(audio.togglePlay).not.toHaveBeenCalled()
+    expect(window.__ndPlayRandom).not.toHaveBeenCalled()
+
+    stopPlay()
+    stopPause()
+    expect(window.__ndPlayer).toBeTruthy()
+    unbindSimpleMobilePlayer()
   })
 })

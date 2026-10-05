@@ -121,6 +121,7 @@ describe('simpleMobile detection', () => {
       toggleMode: false,
       mode: 'mini',
     })
+    expect(simpleMobilePlayerProps()).not.toHaveProperty('once')
   })
 
   it('does not change player chrome on desktop full UI', () => {
