@@ -58,6 +58,8 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"uiSearchDebounceMs":        conf.Server.UISearchDebounceMs,
 			"uiCoverArtSize":            conf.Server.UICoverArtSize,
 			"enableCoverAnimation":      conf.Server.EnableCoverAnimation,
+			"pidAlbum":                  conf.Server.PID.Album,
+			"pidTrack":                  conf.Server.PID.Track,
 			"enableNowPlaying":          conf.Server.EnableNowPlaying,
 			"playbackReportIntervalMs":  conf.Server.UIPlaybackReportInterval.Milliseconds(),
 			"gaTrackingId":              conf.Server.GATrackingID,

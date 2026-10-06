@@ -26,6 +26,7 @@ var _ = Describe("Archiver", func() {
 	var (
 		arch core.Archiver
 		ms   *mockMediaStreamer
+		dc   *fakeDecider
 		ds   *mockDataStore
 		sh   *mockShare
 		ca   *mockCoverArt
@@ -33,10 +34,11 @@ var _ = Describe("Archiver", func() {
 
 	BeforeEach(func() {
 		ms = &mockMediaStreamer{}
+		dc = &fakeDecider{}
 		sh = &mockShare{}
 		ds = &mockDataStore{}
 		ca = &mockCoverArt{images: map[string][]byte{}}
-		arch = core.NewArchiver(ms, ds, sh, ca)
+		arch = core.NewArchiver(ms, dc, ds, sh, ca)
 	})
 
 	Context("ZipAlbum", func() {
@@ -65,6 +67,23 @@ var _ = Describe("Archiver", func() {
 			Expect(len(zr.File)).To(Equal(2))
 			Expect(zr.File[0].Name).To(Equal("Album_Promo/01 - track1.mp3"))
 			Expect(zr.File[1].Name).To(Equal("Album_Promo/02 - track2.mp3"))
+		})
+
+		It("streams the request resolved by the transcode decider and names the entry after its format", func() {
+			mfRepo := &mockMediaFileRepository{}
+			mfRepo.On("GetAll", mock.Anything).Return(model.MediaFiles{{Path: "test_data/01 - track1.flac", Suffix: "flac", AlbumID: "1"}}, nil)
+			ds.On("MediaFile").Return(mfRepo)
+			resolved := stream.Request{Format: "opus", BitRate: 128, SampleRate: 48000, Channels: 2}
+			dc.resolved = &resolved
+			ms.On("NewStream", mock.Anything, mock.Anything, resolved).Return(io.NopCloser(strings.NewReader("test")), nil).Once()
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipAlbum(GinkgoT().Context(), "1", "mp3", 128, out)).To(Succeed())
+			ms.AssertExpectations(GinkgoT())
+
+			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(zr.File[0].Name).To(HaveSuffix("01 - track1.opus"))
 		})
 	})
 
@@ -296,6 +315,30 @@ var _ = Describe("Archiver", func() {
 	})
 
 	Context("ZipPlaylist", func() {
+		It("names the entries and the M3U lines after the resolved format", func() {
+			pls := &model.Playlist{ID: "1", Name: "Test Playlist", Tracks: []model.PlaylistTrack{
+				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.flac", Suffix: "flac", Artist: "Artist 1", Title: "track1"}},
+			}}
+			plRepo := &mockPlaylistRepository{}
+			plRepo.On("GetWithTracks", "1", true, false).Return(pls, nil)
+			ds.On("Playlist").Return(plRepo)
+			dc.resolved = &stream.Request{Format: "opus", BitRate: 128}
+			ms.On("NewStream", mock.Anything, mock.Anything, *dc.resolved).Return(io.NopCloser(strings.NewReader("test")), nil)
+
+			out := new(bytes.Buffer)
+			Expect(arch.ZipPlaylist(GinkgoT().Context(), "1", "mp3", 128, out)).To(Succeed())
+
+			zr, err := zip.NewReader(bytes.NewReader(out.Bytes()), int64(out.Len()))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(zr.File[0].Name).To(Equal("01 - Artist 1 - track1.opus"))
+			m3u, err := zr.File[1].Open()
+			Expect(err).ToNot(HaveOccurred())
+			defer m3u.Close()
+			content, err := io.ReadAll(m3u)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(content)).To(ContainSubstring("01 - Artist 1 - track1.opus"))
+		})
+
 		It("zips a playlist correctly", func() {
 			tracks := []model.PlaylistTrack{
 				{MediaFile: model.MediaFile{Path: "test_data/01 - track1.mp3", Suffix: "mp3", AlbumID: "1", Album: "Album 1", DiscNumber: 1, Artist: "AC/DC", Title: "track1"}},
@@ -569,6 +612,19 @@ func (m *mockMediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, 
 		return nil, args.Error(1)
 	}
 	return &stream.Stream{ReadCloser: args.Get(0).(io.ReadCloser)}, nil
+}
+
+// fakeDecider echoes the legacy format/bitrate unless a resolved request is set.
+type fakeDecider struct {
+	stream.TranscodeDecider
+	resolved *stream.Request
+}
+
+func (f *fakeDecider) ResolveRequest(_ context.Context, _ *model.MediaFile, format string, bitRate int, offset int) stream.Request {
+	if f.resolved != nil {
+		return *f.resolved
+	}
+	return stream.Request{Format: format, BitRate: bitRate, Offset: offset}
 }
 
 type mockShare struct {

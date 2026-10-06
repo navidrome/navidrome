@@ -20,8 +20,8 @@ import (
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
-	"github.com/navidrome/navidrome/core/podcasts"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/podcasts"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
@@ -96,8 +96,9 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, imageStore, fFmpeg)
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	share := core.NewShare(dataStore)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
+	archiver := core.NewArchiver(mediaStreamer, transcodeDecider, dataStore, share, artworkArtwork)
 	players := core.NewPlayers(dataStore)
 	broker := events.GetBroker()
 	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
@@ -111,10 +112,9 @@ func CreateSubsonicAPIRouter(ctx context.Context) *subsonic.Router {
 	playTracker := scrobbler.GetPlayTracker(dataStore, broker, manager)
 	playbackServer := playback.GetInstance(dataStore)
 	lyricsLyrics := lyrics.NewLyrics(dataStore, manager)
-	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
-	podcastService := podcasts.NewPodcastService(ctx, dataStore, fFmpeg, broker)
+	podcastsPodcasts := podcasts.NewPodcastService(ctx, dataStore, fFmpeg, broker)
 	sonicSonic := sonic.New(dataStore, manager, matcherMatcher)
-	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics, transcodeDecider, podcastService, sonicSonic)
+	router := subsonic.New(dataStore, artworkArtwork, mediaStreamer, archiver, players, provider, modelScanner, broker, playlistsPlaylists, playTracker, share, playbackServer, metricsMetrics, lyricsLyrics, transcodeDecider, podcastsPodcasts, sonicSonic)
 	return router
 }
 
@@ -161,9 +161,10 @@ func CreatePublicRouter() *public.Router {
 	artworkArtwork := artwork.NewArtwork(dataStore, fileCache, imageStore, fFmpeg)
 	transcodingCache := stream.GetTranscodingCache()
 	mediaStreamer := stream.NewMediaStreamer(dataStore, fFmpeg, transcodingCache)
+	transcodeDecider := stream.NewTranscodeDecider(dataStore, fFmpeg)
 	share := core.NewShare(dataStore)
-	archiver := core.NewArchiver(mediaStreamer, dataStore, share, artworkArtwork)
-	router := public.New(dataStore, artworkArtwork, mediaStreamer, share, archiver)
+	archiver := core.NewArchiver(mediaStreamer, transcodeDecider, dataStore, share, artworkArtwork)
+	router := public.New(dataStore, artworkArtwork, mediaStreamer, transcodeDecider, share, archiver)
 	return router
 }
 
