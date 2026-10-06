@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -269,9 +270,13 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 	if err != nil {
 		log.Trace(ctx, "Error reading radios count", err)
 	}
-	data.Library.Libraries, err = c.ds.Library().CountAll(ctx)
+	libs, err := c.ds.Library().GetAll(ctx)
 	if err != nil {
-		log.Trace(ctx, "Error reading libraries count", err)
+		log.Trace(ctx, "Error reading libraries", err)
+	}
+	data.Library.Libraries = int64(len(libs))
+	if slices.ContainsFunc(libs, func(lib model.Library) bool { return lib.PIDAlbum != "" || lib.PIDTrack != "" }) {
+		data.Config.HasCustomPID = true
 	}
 	data.Library.ActiveUsers, err = c.ds.User().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
