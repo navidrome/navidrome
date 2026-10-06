@@ -82,6 +82,25 @@ var _ = Describe("Items", func() {
 				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(2)))
 			})
 
+			DescribeTable("sorts the libraries before paging them",
+				func(query string, wantID int) {
+					ds.Library().(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}})
+					w := httptest.NewRecorder()
+					r := httptest.NewRequest("GET", "/Items?"+query, nil).
+						WithContext(ctxUserWithLibraries(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}}))
+					invoke(api.getItems, w, r)
+					var res dto.QueryResult
+					Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+					Expect(res.TotalRecordCount).To(Equal(2))
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(wantID)))
+				},
+				Entry("by name ascending", "SortBy=SortName&Limit=1", 2),
+				Entry("by name descending", "SortBy=SortName&SortOrder=Descending&Limit=1", 1),
+				Entry("descending, second page", "SortBy=Name&SortOrder=Descending&StartIndex=1&Limit=1", 2),
+				Entry("unknown key keeps the repository order", "SortBy=Bogus&Limit=1", 1),
+			)
+
 			It("treats an unknown IncludeItemTypes as absent", func() {
 				w := httptest.NewRecorder()
 				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=music", nil).WithContext(ctxUser())
