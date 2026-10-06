@@ -162,7 +162,7 @@
       "helperTexts": {
         "name": "Los cambios a tu nombre se verán en el próximo inicio de sesión",
         "libraries": "Selecciona bibliotecas específicas para este usuario o déjalo vacío para usar las bibliotecas por defecto",
-        "scrobbleFilter": "Las canciones que coincidan con estas reglas de listas de reproducción inteligentes no se enviarán a Last.fm, ListenBrainz ni a los plugins de scrobbling. Usa la misma sintaxis JSON y el mismo comportamiento que las listas de reproducción inteligentes. Ejemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Déjalo vacío para enviar todas las reproducciones. Los recuentos de reproducciones locales no se verán afectados."
+        "scrobbleFilter": "Las canciones que coincidan con estas reglas de listas de reproducción inteligentes no se enviarán a Last.fm, ListenBrainz ni a los complementos de scrobbling. Usa la misma sintaxis JSON y el mismo comportamiento que las listas de reproducción inteligentes. Ejemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Déjalo vacío para enviar todas las reproducciones. Los recuentos de reproducciones locales no se verán afectados."
       },
       "notifications": {
         "created": "Usuario creado",
@@ -343,7 +343,7 @@
       }
     },
     "plugin": {
-      "name": "Plugin |||| Plugins",
+      "name": "Complemento |||| Complementos",
       "fields": {
         "id": "ID",
         "name": "Nombre",
@@ -369,7 +369,7 @@
       },
       "sections": {
         "status": "Estado",
-        "info": "Información del plugin",
+        "info": "Información del complemento",
         "configuration": "Configuración",
         "manifest": "Manifiesto",
         "usersPermission": "Permiso del usuario",
@@ -389,30 +389,30 @@
         "rescan": "Reescanear"
       },
       "notifications": {
-        "enabled": "Plugin activado",
-        "disabled": "Plugin desactivado",
-        "updated": "Plugin actualizado",
-        "error": "Error al actualizar el plugin"
+        "enabled": "Complemento activado",
+        "disabled": "Complemento desactivado",
+        "updated": "Complemento actualizado",
+        "error": "Error al actualizar el complemento"
       },
       "validation": {
         "invalidJson": "La configuración debe ser un JSON válido"
       },
       "messages": {
-        "idHelp": "El ID del plugin se deriva de su nombre de archivo. Úsalo al hacer referencia al plugin en opciones de configuración como Agents.",
-        "configHelp": "Configura el plugin utilizando pares de clave-valor. Déjalo en blanco si el plugin no requiere configuración.",
+        "idHelp": "El ID del complemento se deriva de su nombre de archivo. Úsalo al hacer referencia al complemento en opciones de configuración como Agents.",
+        "configHelp": "Configura el complemento utilizando pares de clave-valor. Déjalo en blanco si el complemento no requiere configuración.",
         "clickPermissions": "Haz clic en un permiso para ver los detalles",
         "noConfig": "No hay configuración establecida",
-        "allUsersHelp": "Cuando se active, el plugin tendrá acceso a todos los usuarios, incluidos los que se creen en el futuro.",
+        "allUsersHelp": "Cuando se active, el complemento tendrá acceso a todos los usuarios, incluidos los que se creen en el futuro.",
         "noUsers": "Ningún usuario seleccionado",
         "permissionReason": "Razón",
-        "usersRequired": "Este plugin requiere acceso a la información de los usuarios. Selecciona a qué usuarios puede acceder el plugin, o activa 'Permitir todos los usuarios'.",
-        "allLibrariesHelp": "Cuando se active, el plugin tendrá acceso a todas las bibliotecas, incluidas las que se creen en el futuro.",
+        "usersRequired": "Este complemento requiere acceso a la información de los usuarios. Selecciona a qué usuarios puede acceder el complemento, o activa 'Permitir todos los usuarios'.",
+        "allLibrariesHelp": "Cuando se active, el complemento tendrá acceso a todas las bibliotecas, incluidas las que se creen en el futuro.",
         "noLibraries": "Ninguna biblioteca seleccionada",
-        "librariesRequired": "Este plugin requiere acceso a la información de las bibliotecas. Selecciona a qué bibliotecas puede acceder el plugin, o activa 'Permitir todas las bibliotecas'.",
+        "librariesRequired": "Este complemento requiere acceso a la información de las bibliotecas. Selecciona a qué bibliotecas puede acceder el complemento, o activa 'Permitir todas las bibliotecas'.",
         "requiredHosts": "Hosts requeridos",
         "configValidationError": "La validación de la configuración falló:",
-        "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del plugin no sea válido.",
-        "allowWriteAccessHelp": "Cuando está activado, el plugin puede modificar archivos en los directorios de la biblioteca. Por defecto, los plugins tienen acceso de solo lectura."
+        "schemaRenderError": "No se pudo renderizar el formulario de configuración. Es posible que el esquema del complemento no sea válido.",
+        "allowWriteAccessHelp": "Cuando está activado, el complemento puede modificar archivos en los directorios de la biblioteca. Por defecto, los complementos tienen acceso de solo lectura."
       },
       "placeholders": {
         "configKey": "clave",
