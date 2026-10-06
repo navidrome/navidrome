@@ -8,15 +8,14 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/str"
 )
 
-func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
+func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFile {
 	mf := model.MediaFile{
-		LibraryID: libID,
+		LibraryID: lib.ID,
 		FolderID:  folderID,
 		Tags:      maps.Clone(md.tags),
 	}
@@ -84,8 +83,9 @@ func (md Metadata) ToMediaFile(libID int, folderID string) model.MediaFile {
 	mf.AlbumArtist = md.mapDisplayAlbumArtist(mf)
 
 	// Persistent IDs
-	mf.PID = md.trackPID(mf)
-	mf.AlbumID = md.albumID(mf, conf.Server.PID.Album)
+	pid := lib.EffectivePID()
+	mf.PID = md.trackPID(mf, pid)
+	mf.AlbumID = md.albumID(mf, pid.Album)
 
 	// BFR These IDs will go away once the UI handle multiple participants.
 	// BFR For Legacy Subsonic compatibility, we will set them in the API handlers
