@@ -428,7 +428,8 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 		if err != nil {
 			return itemsResult{}, err
 		}
-		return materialized(result(views, len(views), 0)), nil
+		offset := max(q.offset, 0)
+		return materialized(result(paginate(views, offset, q.limit), len(views), offset)), nil
 	}
 	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
 		return api.playlistTrackPage(ctx, repo, q.fields, q.offset, q.limit)

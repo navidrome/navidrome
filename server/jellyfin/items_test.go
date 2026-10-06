@@ -69,6 +69,19 @@ var _ = Describe("Items", func() {
 				Expect(res.Items[0].CollectionType).To(Equal("music"))
 			})
 
+			It("pages the libraries by StartIndex and Limit", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?StartIndex=1&Limit=1", nil).
+					WithContext(ctxUserWithLibraries(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Other"}}))
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.TotalRecordCount).To(Equal(2))
+				Expect(res.StartIndex).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(2)))
+			})
+
 			It("treats an unknown IncludeItemTypes as absent", func() {
 				w := httptest.NewRecorder()
 				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=music", nil).WithContext(ctxUser())
