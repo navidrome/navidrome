@@ -51,9 +51,6 @@ vi.mock('react-admin', () => ({
   BooleanInput: ({ source }) => (
     <input type="checkbox" data-testid={`boolean-input-${source}`} />
   ),
-  DateField: ({ source }) => (
-    <div data-testid={`date-field-${source}`}>Date</div>
-  ),
   PasswordInput: ({ source }) => (
     <input type="password" data-testid={`password-input-${source}`} />
   ),
@@ -82,6 +79,9 @@ vi.mock('./DeleteUserButton', () => ({
 
 vi.mock('../common', () => ({
   Title: ({ subTitle }) => <div data-testid="title">{subTitle}</div>,
+  ReadOnlyDateField: ({ source }) => (
+    <div data-testid={`date-field-${source}`}>Date</div>
+  ),
 }))
 
 // Mock Material-UI

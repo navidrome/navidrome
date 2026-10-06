@@ -1,5 +1,4 @@
 import {
-  TextField,
   Edit,
   SimpleForm,
   useTranslate,
@@ -9,7 +8,7 @@ import {
   Toolbar,
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import { Title } from '../common'
+import { ReadOnlyTextField, Title } from '../common'
 import ApiKeyInput from './ApiKeyInput'
 import { playerInputs } from './playerInputs'
 
@@ -45,8 +44,8 @@ const PlayerEdit = (props) => (
   <Edit title={<PlayerTitle />} mutationMode="pessimistic" {...props}>
     <SimpleForm variant={'outlined'} toolbar={<PlayerEditToolbar />}>
       {playerInputs()}
-      <TextField source="client" />
-      <TextField source="userName" />
+      <ReadOnlyTextField source="client" />
+      <ReadOnlyTextField source="userName" />
       <ApiKeyInput source="apiKey" />
     </SimpleForm>
   </Edit>
