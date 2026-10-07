@@ -1,0 +1,65 @@
+# CI-only validation of the #6276 follow-ups to PR #6281 on a native Windows runner. Runs the full
+# conf, core/playlists and scanner packages, then checks every #6276 spec ran and passed.
+name: "Fix #6276: Windows PlaylistsPath"
+
+on:
+  push:
+    branches:
+      - t3code/fix-issue-6276-pr6281-followups
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc
+          update: false
+
+      - name: Add mingw64 to PATH
+        shell: bash
+        run: echo "C:/msys64/mingw64/bin" >> $GITHUB_PATH
+
+      - name: Build test binaries
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          go version
+          go test -count=1 -tags netgo,sqlite_fts5 -run '^$' ./conf/ ./core/playlists/ ./scanner/
+
+      - name: Test conf, core/playlists, scanner
+        id: test
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        # Some suites change to the repo root, so use absolute report paths. All packages always run.
+        run: |
+          rc=0
+          for pkg in conf:./conf/ playlists:./core/playlists/ scanner:./scanner/; do
+            go test -v -count=1 -timeout 15m -tags netgo,sqlite_fts5 "${pkg#*:}" -ginkgo.no-color \
+              -ginkgo.json-report="$GITHUB_WORKSPACE/report-${pkg%%:*}.json" || rc=1
+          done
+          exit $rc
+
+      - name: Check every #6276 spec ran and passed
+        if: always() && steps.test.outcome != 'skipped'
+        shell: pwsh
+        run: >
+          ./.github/fix-issue-6276/check-report.ps1 -TestOutcome ${{ steps.test.outcome }}
+          -Reports report-conf.json, report-playlists.json, report-scanner.json
