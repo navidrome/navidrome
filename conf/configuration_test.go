@@ -417,6 +417,40 @@ var _ = Describe("Configuration", func() {
 		)
 	})
 
+	Describe("PlaylistsPath validation", func() {
+		// A real TOML file with literal (single-quoted) strings, like Windows users write paths
+		loadConfig := func(pattern string) (err error) {
+			file := filepath.Join(GinkgoT().TempDir(), "navidrome.toml")
+			Expect(os.WriteFile(file, []byte("PlaylistsPath = '"+pattern+"'\n"), 0600)).To(Succeed())
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("%v", r)
+				}
+			}()
+			conf.LoadFromFile(file)
+			return nil
+		}
+
+		DescribeTable("accepts exactly the patterns InPath can use",
+			func(pattern string, accepted bool) {
+				err := loadConfig(pattern)
+				if accepted {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(conf.Server.PlaylistsPath).To(Equal(pattern))
+				} else {
+					Expect(err).To(MatchError(ContainSubstring("invalid PlaylistsPath")))
+				}
+			},
+			Entry("backslash path (issue #6276)", `Playlists\navidrome`, true),
+			Entry("escaped brackets", `\[Mix\]`, true),
+			Entry("backslash before a bracket range", `Playlists\[ab]`, true),
+			Entry("unterminated character class", `[Mix`, false),
+			Entry("unterminated brace alternatives", `{rock,jazz`, false),
+			Entry("backslash before brace alternatives", `Playlists\{rock,jazz}`, runtime.GOOS == "windows"),
+			Entry("backslash before an unterminated class", `Playlists\[Mix`, runtime.GOOS != "windows"),
+		)
+	})
+
 	Describe("MaxImageSize floor", func() {
 		BeforeEach(func() {
 			viper.Reset()

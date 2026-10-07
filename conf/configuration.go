@@ -861,10 +861,9 @@ func isEscape(c byte, rest string) bool {
 }
 
 func validatePlaylistsPath() error {
-	for path := range strings.SplitSeq(Server.PlaylistsPath, string(filepath.ListSeparator)) {
-		_, err := doublestar.Match(path, "")
-		if err != nil {
-			return fmt.Errorf("invalid PlaylistsPath %q: %w", path, err)
+	for _, pattern := range PlaylistsPathPatterns() {
+		if _, err := doublestar.Match(pattern, ""); err != nil {
+			return fmt.Errorf("invalid PlaylistsPath %q: %w", pattern, err)
 		}
 	}
 	return nil
