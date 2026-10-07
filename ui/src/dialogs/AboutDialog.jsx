@@ -80,11 +80,12 @@ const links = {
 }
 
 const LinkToVersion = ({ version }) => {
-  if (version === 'dev') {
+  const parts = version.split(' ')
+  // 'dev', or '' while the server version is still being fetched
+  if (parts.length < 2) {
     return <>{version}</>
   }
 
-  const parts = version.split(' ')
   const commitID = parts[1].replace(/[()]/g, '')
   const isSnapshot = version.includes('SNAPSHOT')
   const url = isSnapshot
@@ -104,7 +105,7 @@ const LinkToVersion = ({ version }) => {
 
 const ShowVersion = ({ uiVersion, serverVersion }) => {
   const translate = useTranslate()
-  const showRefresh = uiVersion !== serverVersion
+  const showRefresh = !!serverVersion && uiVersion !== serverVersion
 
   return (
     <>
