@@ -1,10 +1,39 @@
 import * as React from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
-import { LinkToVersion } from './AboutDialog'
+import { TestContext } from 'ra-test'
+import { DataProviderContext } from 'react-admin'
+import { describe, afterEach, it, expect, vi } from 'vitest'
+import { AboutDialog, LinkToVersion } from './AboutDialog'
+import subsonic from '../subsonic/index.js'
 import TableBody from '@material-ui/core/TableBody'
 import TableRow from '@material-ui/core/TableRow'
 import Table from '@material-ui/core/Table'
 import TableCell from '@material-ui/core/TableCell'
+
+describe('<AboutDialog />', () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  it('opens before the ping request completes', () => {
+    vi.spyOn(subsonic, 'ping').mockReturnValue(new Promise(() => {}))
+    const dataProvider = {
+      getOne: vi.fn().mockReturnValue(new Promise(() => {})),
+    }
+
+    render(
+      <DataProviderContext.Provider value={dataProvider}>
+        <TestContext enableReducers>
+          <AboutDialog open={true} onClose={vi.fn()} />
+        </TestContext>
+      </DataProviderContext.Provider>,
+    )
+
+    expect(screen.getByText('Navidrome Music Server')).toBeTruthy()
+    expect(screen.queryByText('ra.notification.new_version')).toBeNull()
+  })
+})
 
 const Wrapper = ({ version }) => (
   <Table>
@@ -25,6 +54,12 @@ describe('<LinkToVersion />', () => {
     const version = 'dev'
     render(<Wrapper version={version} />)
     expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('should render nothing while the server version is not known yet', () => {
+    render(<Wrapper version="" />)
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.queryByRole('cell').textContent).toBe('')
   })
 
   it('should render link to GH tag page for full releases', () => {
