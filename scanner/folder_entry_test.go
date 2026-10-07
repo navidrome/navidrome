@@ -231,6 +231,24 @@ var _ = Describe("folder_entry", func() {
 				Expect(hash1).To(Equal(hash2))
 			})
 
+			It("produces different hash when PlaylistsPath starts including the folder's playlists", func() {
+				entry.playlistFiles = map[string]fs.DirEntry{"list.nsp": &fakeDirEntry{name: "list.nsp"}}
+				conf.Server.PlaylistsPath = "other"
+				excluded := entry.hash()
+
+				conf.Server.PlaylistsPath = "test/folder"
+				Expect(entry.hash()).ToNot(Equal(excluded))
+			})
+
+			It("keeps the hash of a folder without playlists when PlaylistsPath changes", func() {
+				entry.audioFiles = map[string]fs.DirEntry{"song.mp3": &fakeDirEntry{name: "song.mp3"}}
+				conf.Server.PlaylistsPath = "other"
+				excluded := entry.hash()
+
+				conf.Server.PlaylistsPath = "test/folder"
+				Expect(entry.hash()).To(Equal(excluded))
+			})
+
 			It("produces different hash when audio files change", func() {
 				entry.audioFiles = map[string]fs.DirEntry{
 					"song1.mp3": &fakeDirEntry{name: "song1.mp3"},

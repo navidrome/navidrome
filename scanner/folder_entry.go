@@ -113,6 +113,10 @@ func (f *folderEntry) hash() string {
 		f.numSubFolders,
 		f.imagesUpdatedAt.UTC(),
 	)
+	// Lets a quick scan update num_playlists when PlaylistsPath starts or stops including the folder
+	if len(f.playlistFiles) > 0 {
+		_, _ = fmt.Fprintf(h, ":%t", playlists.InPath(*model.NewFolder(f.job.lib, f.path)))
+	}
 
 	// Sort the keys of audio, image and playlist files to ensure consistent hashing
 	audioKeys := slices.Collect(maps.Keys(f.audioFiles))

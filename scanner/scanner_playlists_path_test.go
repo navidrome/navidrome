@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -176,5 +177,107 @@ var _ = Describe("Scanner - PlaylistsPath", Ordered, ContinueOnFailure, func() {
 				onWindows("Playlists/[Mix]"), onWindows("NestedMix")),
 			Entry("brackets: escaped braces", `\{Mix\}`, []string{"{Mix}"}, []string{"Braces"}),
 		)
+	})
+
+	// Folders indexed while their playlists were ignored keep num_playlists = 0. GC purges a folder
+	// left with nothing else, but a cover image or a subfolder keeps its row.
+	Describe("recovering folders indexed while their playlists were ignored", func() {
+		indexIgnoringPlaylists := func() map[string]model.Folder {
+			GinkgoHelper()
+			conf.Server.PlaylistsPath = "Music/**"
+			scan(true)
+			expectResults(nil, nil)
+			folders, err := ds.Folder().GetAll(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			stored := map[string]model.Folder{}
+			for _, f := range folders {
+				Expect(f.NumPlaylists).To(BeZero())
+				stored[path.Join(f.Path, f.Name)] = f
+			}
+			return stored
+		}
+
+		It("recovery: playlist-only folder, unchanged quick scan", func() {
+			writeNSP("Playlists/navidrome/Rock.nsp", "Rock")
+			Expect(indexIgnoringPlaylists()).ToNot(HaveKey("Playlists/navidrome"), "GC purged the folder")
+
+			conf.Server.PlaylistsPath = "Playlists/navidrome"
+			scan(false)
+			expectResults([]string{"Playlists/navidrome"}, []string{"Rock"})
+		})
+
+		Describe("folder kept by a playlist cover image", func() {
+			var stored map[string]model.Folder
+
+			BeforeEach(func() {
+				writeNSP("Playlists/navidrome/Rock.nsp", "Rock")
+				Expect(os.WriteFile(filepath.Join(libPath, "Playlists", "navidrome", "Rock.jpg"), []byte("synthetic"), 0600)).To(Succeed())
+				Expect(os.MkdirAll(filepath.Join(libPath, "Art"), 0755)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(libPath, "Art", "cover.jpg"), []byte("synthetic"), 0600)).To(Succeed())
+				stored = indexIgnoringPlaylists()
+				Expect(stored).To(HaveKey("Playlists/navidrome"))
+				Expect(stored["Playlists/navidrome"].Path).To(Equal("Playlists"))
+				Expect(stored["Playlists/navidrome"].ImageFiles).To(ConsistOf("Rock.jpg"))
+				Expect(stored).To(HaveKey("Art"))
+			})
+
+			It("recovery: cover image folder, unchanged quick scan", func() {
+				conf.Server.PlaylistsPath = "Playlists/navidrome"
+				scan(false)
+				expectResults([]string{"Playlists/navidrome"}, []string{"Rock"})
+			})
+
+			It("recovery: cover image folder, full scan", func() {
+				conf.Server.PlaylistsPath = "Playlists/navidrome"
+				scan(true)
+				expectResults([]string{"Playlists/navidrome"}, []string{"Rock"})
+			})
+
+			It("recovery: cover image folder, quick scan after touching the playlist", func() {
+				conf.Server.PlaylistsPath = "Playlists/navidrome"
+				later := time.Now().Add(time.Minute)
+				Expect(os.Chtimes(filepath.Join(libPath, "Playlists", "navidrome", "Rock.nsp"), later, later)).To(Succeed())
+				scan(false)
+				expectResults([]string{"Playlists/navidrome"}, []string{"Rock"})
+			})
+
+			It("recovery: still-excluded folder stays ignored on a quick scan", func() {
+				conf.Server.PlaylistsPath = "Other/**"
+				scan(false)
+				expectResults(nil, nil)
+			})
+
+			It("recovery: folder without playlist files is not rescanned", func() {
+				conf.Server.PlaylistsPath = "Playlists/navidrome"
+				scan(false)
+				art, err := ds.Folder().Get(ctx, stored["Art"].ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(art.Hash).To(Equal(stored["Art"].Hash))
+				Expect(art.UpdateAt).To(BeTemporally("==", stored["Art"].UpdateAt))
+			})
+
+			It("recovery: quick scan stops counting playlists PlaylistsPath no longer includes", func() {
+				conf.Server.PlaylistsPath = "Playlists/navidrome"
+				scan(false)
+				expectResults([]string{"Playlists/navidrome"}, []string{"Rock"})
+
+				conf.Server.PlaylistsPath = "Other/**"
+				scan(false)
+				// Already imported playlists stay; only the folder count changes
+				expectResults(nil, []string{"Rock"})
+			})
+		})
+
+		It("recovery: parent folder with a subfolder, unchanged quick scan", func() {
+			writeNSP("Playlists/navidrome/Rock.nsp", "Rock")
+			writeNSP("Playlists/navidrome/Deep/Nested.nsp", "Nested")
+			stored := indexIgnoringPlaylists()
+			Expect(stored).To(HaveKey("Playlists/navidrome"), "kept as the parent of Deep")
+			Expect(stored).ToNot(HaveKey("Playlists/navidrome/Deep"), "GC purged the leaf")
+
+			conf.Server.PlaylistsPath = "Playlists/navidrome/**"
+			scan(false)
+			expectResults([]string{"Playlists/navidrome", "Playlists/navidrome/Deep"}, []string{"Rock", "Nested"})
+		})
 	})
 })
