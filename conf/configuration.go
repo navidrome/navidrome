@@ -816,6 +816,50 @@ func disableExternalServices() {
 	}
 }
 
+// PlaylistsPathPatterns returns the PlaylistsPath globs in the slash-separated form doublestar matches.
+func PlaylistsPathPatterns() []string {
+	var patterns []string
+	for pattern := range strings.SplitSeq(Server.PlaylistsPath, string(filepath.ListSeparator)) {
+		patterns = append(patterns, toGlobPattern(pattern, filepath.Separator == '\\'))
+	}
+	return patterns
+}
+
+// toGlobPattern turns Windows '\' separators into '/'. Windows names can contain brackets and
+// braces, so an escaped pair ('\[...\]', '\{...\}') and a lone '\]' or '\}' stay escapes.
+func toGlobPattern(pattern string, windows bool) string {
+	if !windows {
+		return pattern
+	}
+	var sb strings.Builder
+	for i := 0; i < len(pattern); i++ {
+		if pattern[i] != '\\' {
+			sb.WriteByte(pattern[i])
+			continue
+		}
+		if i+1 < len(pattern) && isEscape(pattern[i+1], pattern[i+2:]) {
+			sb.WriteString(pattern[i : i+2])
+			i++
+			continue
+		}
+		sb.WriteByte('/')
+	}
+	return sb.String()
+}
+
+// isEscape reports whether a '\' followed by c (and then rest) escapes c rather than separating.
+func isEscape(c byte, rest string) bool {
+	closer := map[byte]byte{'[': ']', '{': '}'}[c]
+	switch {
+	case c == ']' || c == '}':
+		return true
+	case closer == 0:
+		return false
+	}
+	next := strings.IndexByte(rest, '\\')
+	return next >= 0 && next+1 < len(rest) && rest[next+1] == closer
+}
+
 func validatePlaylistsPath() error {
 	for path := range strings.SplitSeq(Server.PlaylistsPath, string(filepath.ListSeparator)) {
 		_, err := doublestar.Match(path, "")

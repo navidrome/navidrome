@@ -379,6 +379,44 @@ var _ = Describe("Configuration", func() {
 		)
 	})
 
+	Describe("PlaylistsPathPatterns", func() {
+		It("splits the list with the OS list separator", func() {
+			conf.Server.PlaylistsPath = "." + string(filepath.ListSeparator) + "Playlists/**"
+			Expect(conf.PlaylistsPathPatterns()).To(Equal([]string{".", "Playlists/**"}))
+		})
+
+		DescribeTable("converts a Windows pattern to slash form",
+			func(pattern, expected string) {
+				Expect(conf.ToGlobPattern(pattern, true)).To(Equal(expected))
+			},
+			Entry("separator", `Playlists\navidrome`, "Playlists/navidrome"),
+			Entry("separator before **", `Playlists\**`, "Playlists/**"),
+			Entry("separator before braces", `Playlists\{rock,jazz}`, "Playlists/{rock,jazz}"),
+			Entry("trailing separator", `Playlists\`, "Playlists/"),
+			Entry("escaped brackets", `\[Mix\]`, `\[Mix\]`),
+			Entry("escaped brackets after a slash", `Playlists/\[Mix\]`, `Playlists/\[Mix\]`),
+			Entry("escaped brackets after a separator", `Playlists\\[Mix\]`, `Playlists/\[Mix\]`),
+			Entry("character class", `[[]Mix]`, `[[]Mix]`),
+			Entry("separator before a character class", `Playlists\[[]Mix]`, "Playlists/[[]Mix]"),
+			Entry("separator before a bracket range", `Playlists\[ab]`, "Playlists/[ab]"),
+			Entry("escaped braces", `\{Mix\}`, `\{Mix\}`),
+			Entry("escaped braces after a separator", `Playlists\\{Mix\}`, `Playlists/\{Mix\}`),
+			Entry("lone escaped closing bracket", `Mix\]`, `Mix\]`),
+			// Ambiguous: an escaped pair wins, so a separator right before it must be '/' or '\\'
+			Entry("escaped pair right after a name", `Playlists\[Mix\]`, `Playlists\[Mix\]`),
+			Entry("forward slashes", "Playlists/navidrome", "Playlists/navidrome"),
+		)
+
+		DescribeTable("keeps a non-Windows pattern as is",
+			func(pattern string) {
+				Expect(conf.ToGlobPattern(pattern, false)).To(Equal(pattern))
+			},
+			Entry("backslash escape", `Playlists\navidrome`),
+			Entry("escaped brackets", `\[Mix\]`),
+			Entry("escaped star", `\*`),
+		)
+	})
+
 	Describe("MaxImageSize floor", func() {
 		BeforeEach(func() {
 			viper.Reset()

@@ -4,9 +4,8 @@ import (
 	"context"
 	"io"
 	"os"
-	"path/filepath"
+	"path"
 	"strconv"
-	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/deluan/rest"
@@ -77,11 +76,10 @@ func InPath(folder model.Folder) bool {
 	if conf.Server.PlaylistsPath == "" {
 		return true
 	}
-	rel, _ := filepath.Rel(folder.LibraryPath, folder.AbsolutePath())
-	// doublestar splits only on / and treats \ as an escape, so normalize OS separators first.
-	rel = filepath.ToSlash(rel)
-	for path := range strings.SplitSeq(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
-		if match, _ := doublestar.Match(filepath.ToSlash(path), rel); match {
+	// Folder paths are already slash-separated and relative to the library, as doublestar expects
+	rel := path.Join(folder.Path, folder.Name)
+	for _, pattern := range conf.PlaylistsPathPatterns() {
+		if match, _ := doublestar.Match(pattern, rel); match {
 			return true
 		}
 	}

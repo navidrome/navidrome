@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -1199,6 +1200,43 @@ var _ = Describe("Playlists - Import", func() {
 
 			Expect(playlists.InPath(folder2)).To(BeTrue())
 		})
+
+		// Folders built like the scanner does (no LibraryPath), on the native OS
+		DescribeTable("matches scanner folders",
+			func(pattern, folderPath string, expected bool) {
+				conf.Server.PlaylistsPath = pattern
+				f := model.NewFolder(model.Library{ID: 1, Path: GinkgoT().TempDir()}, folderPath)
+				Expect(playlists.InPath(*f)).To(Equal(expected))
+			},
+			Entry("nested folder, exact pattern", "Playlists/navidrome", "Playlists/navidrome", true),
+			Entry("nested folder, ** pattern", "Playlists/**", "Playlists/navidrome/Deep", true),
+			Entry("nested folder, second item of a list", "."+string(filepath.ListSeparator)+"Playlists/navidrome", "Playlists/navidrome", true),
+			Entry("top-level folder", "Playlists", "Playlists", true),
+			Entry("root folder, '.' in a list", "."+string(filepath.ListSeparator)+"Playlists/navidrome", ".", true),
+			Entry("sibling folder is excluded", "Playlists/navidrome", "Playlists/other", false),
+			Entry("child folder is excluded by an exact pattern", "Playlists/navidrome", "Playlists/navidrome/Deep", false),
+			Entry("root folder is excluded by a nested pattern", "Playlists/navidrome", ".", false),
+			Entry("escaped brackets, top-level", `\[Mix\]`, "[Mix]", true),
+			Entry("escaped brackets, nested", `Playlists/\[Mix\]`, "Playlists/[Mix]", true),
+			Entry("escaped brackets exclude a plain folder", `\[Mix\]`, "Mix", false),
+			Entry("escaped brackets, nested, exclude a plain folder", `Playlists/\[Mix\]`, "Playlists/Mix", false),
+			Entry("character class literal, top-level", `[[]Mix]`, "[Mix]", true),
+			Entry("character class literal, nested", `Playlists/[[]Mix]`, "Playlists/[Mix]", true),
+			Entry("unescaped brackets are a character class", `[Mix]`, "[Mix]", false),
+			Entry("brace alternatives", "Playlists/{rock,jazz}", "Playlists/jazz", true),
+			Entry("brace alternatives exclude others", "Playlists/{rock,jazz}", "Playlists/pop", false),
+			// Backslash is a path separator on Windows (except in escaped brackets or braces), an escape elsewhere
+			Entry("backslash separator", `Playlists\navidrome`, "Playlists/navidrome", runtime.GOOS == "windows"),
+			Entry("backslash separator before **", `Playlists\**`, "Playlists/navidrome/Deep", runtime.GOOS == "windows"),
+			Entry("backslash separator before braces", `Playlists\{rock,jazz}`, "Playlists/rock", runtime.GOOS == "windows"),
+			Entry("backslash separator, sibling folder is excluded", `Playlists\navidrome`, "Playlists/other", false),
+			Entry("backslash before escaped brackets, nested", `Playlists\\[Mix\]`, "Playlists/[Mix]", runtime.GOOS == "windows"),
+			Entry("backslash separator before a character class", `Playlists\[[]Mix]`, "Playlists/[Mix]", runtime.GOOS == "windows"),
+			Entry("backslash separator before a bracket range", `Playlists\[ab]`, "Playlists/a", runtime.GOOS == "windows"),
+			Entry("backslash separator before a bracket range excludes others", `Playlists\[ab]`, "Playlists/c", false),
+			Entry("escaped braces", `\{Mix\}`, "{Mix}", true),
+			Entry("escaped braces exclude a plain folder", `\{Mix\}`, "Mix", false),
+		)
 	})
 })
 
