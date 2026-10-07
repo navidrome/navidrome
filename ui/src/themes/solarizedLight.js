@@ -7,8 +7,8 @@ const currentLine = '#e4ddc6' // base2, slightly darker for hover and headers
 const foreground = '#586e75' // base01
 const comment = '#657b83' // base00
 const blue = '#268bd2'
-const link = '#268bd2' // blue
-const accent = '#6c71c4' // violet
+const link = '#1c6599' // blue, darkened to keep text links above 4.5:1
+const accent = '#5d61a9' // violet, darkened to keep text above 4.5:1
 const red = '#dc322f'
 
 // For Album, Playlist play button
@@ -62,7 +62,7 @@ export default {
     },
     secondary: {
       main: accent,
-      contrastText: foreground,
+      contrastText: surface,
     },
     error: {
       main: red,
@@ -162,6 +162,10 @@ export default {
         transition: 'background-color .3s ease',
         '&:hover': {
           backgroundColor: `${currentLine} !important`,
+        },
+        // Cells have an opaque background, so the hover must be applied to them too
+        '&:hover > .MuiTableCell-root': {
+          background: `${currentLine} !important`,
         },
       },
     },
@@ -282,7 +286,7 @@ export default {
     },
     NDLogin: {
       systemNameLink: {
-        color: blue,
+        color: link,
       },
       welcome: {
         color: foreground,

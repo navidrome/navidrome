@@ -7,7 +7,7 @@ const currentLine = '#0d4251' // base02, slightly lighter for hover and headers
 const foreground = '#93a1a1' // base1
 const comment = '#839496' // base0
 const blue = '#268bd2'
-const link = '#2aa198' // cyan
+const link = '#57b5ae' // cyan, lightened to keep text links above 4.5:1
 const accent = '#2aa198' // cyan, since violet is too dark on base03
 const red = '#dc322f'
 
@@ -62,7 +62,7 @@ export default {
     },
     secondary: {
       main: accent,
-      contrastText: foreground,
+      contrastText: background,
     },
     error: {
       main: red,
@@ -162,6 +162,10 @@ export default {
         transition: 'background-color .3s ease',
         '&:hover': {
           backgroundColor: `${currentLine} !important`,
+        },
+        // Cells have an opaque background, so the hover must be applied to them too
+        '&:hover > .MuiTableCell-root': {
+          background: `${currentLine} !important`,
         },
       },
     },
@@ -282,7 +286,7 @@ export default {
     },
     NDLogin: {
       systemNameLink: {
-        color: blue,
+        color: link,
       },
       welcome: {
         color: foreground,
