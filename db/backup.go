@@ -59,6 +59,17 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	}
 	defer backupDb.Close()
 
+	// SQLite opens an empty file as an empty database, and restoring it would wipe the live one.
+	if !isBackup {
+		found, err := hasGooseTable(ctx, backupDb)
+		if err != nil {
+			return fmt.Errorf("reading backup file '%s': %w", path, err)
+		}
+		if !found {
+			return fmt.Errorf("backup file '%s' is not a Navidrome database", path)
+		}
+	}
+
 	backupConn, err := backupDb.Conn(ctx)
 	if err != nil {
 		return fmt.Errorf("getting backup connection: %w", err)
