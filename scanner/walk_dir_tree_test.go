@@ -266,7 +266,6 @@ var _ = Describe("walk_dir_tree", func() {
 			// #6292: a watcher event for a new folder symlink makes the link itself a scan target
 			Context("symlinked target folders (production local storage FS)", func() {
 				BeforeEach(func() {
-					tests.SkipOnWindows("symlink semantics")
 					libRoot := GinkgoT().TempDir()
 					Expect(os.MkdirAll(filepath.Join(libRoot, "Mozart", "Album1"), 0755)).To(Succeed())
 					Expect(os.WriteFile(filepath.Join(libRoot, "Mozart", "Album1", "track.mp3"), []byte("AUDIO"), 0600)).To(Succeed())
