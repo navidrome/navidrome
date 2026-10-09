@@ -527,13 +527,11 @@ func (mfs MediaFiles) ToM3U8(title string, absolutePaths bool) string {
 	buf.WriteString(fmt.Sprintf("#PLAYLIST:%s\n", title))
 	for _, t := range mfs {
 		buf.WriteString(fmt.Sprintf("#EXTINF:%.f,%s - %s\n", t.Duration, t.Artist, t.Title))
-		p := t.Path
 		if absolutePaths {
-			p = t.AbsolutePath()
+			buf.WriteString(t.AbsolutePath() + "\n")
+		} else {
+			buf.WriteString(t.Path + "\n")
 		}
-		// Emit forward slashes so the exported .m3u8 is consistent across OSes
-		// (AbsolutePath returns native separators on Windows).
-		buf.WriteString(filepath.ToSlash(p) + "\n")
 	}
 	return buf.String()
 }

@@ -44,7 +44,7 @@ var _ = Describe("Playlist", func() {
 #EXTINF:164,Legião Urbana - On the Way Home
 /music/library/Legião Urbana/Música p_ acampamentos/02-05 On the Way Home.mp3
 `
-			Expect(pls.ToM3U8()).To(Equal(expected))
+			Expect(pls.ToM3U8()).To(Equal(filepath.FromSlash(expected)))
 		})
 	})
 

@@ -67,7 +67,9 @@ var _ = Describe("Folder", func() {
 		When("the folder has multiple subdirs", func() {
 			It("should return the correct folder ID", func() {
 				folderPath := filepath.FromSlash("/music/rock/metal")
-				expectedID := id.NewHash("1:rock/metal")
+				// IDs are persisted and hashed with the OS separator, so changing
+				// this on Windows would need a migration.
+				expectedID := id.NewHash("1:" + filepath.FromSlash("rock/metal"))
 				Expect(model.FolderID(lib, folderPath)).To(Equal(expectedID))
 			})
 		})
@@ -75,7 +77,8 @@ var _ = Describe("Folder", func() {
 
 	Describe("NewFolder", func() {
 		It("should create a new SubFolder with the correct attributes", func() {
-			folderPath := filepath.FromSlash("rock/metal")
+			// The scanner walks an fs.FS, so folder paths always use forward slashes
+			folderPath := "rock/metal"
 			folder := model.NewFolder(lib, folderPath)
 
 			Expect(folder.LibraryID).To(Equal(lib.ID))

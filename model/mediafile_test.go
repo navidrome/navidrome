@@ -1,6 +1,7 @@
 package model_test
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -483,9 +484,10 @@ var _ = Describe("MediaFiles", func() {
 					false,
 					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\na/song1.mp3\n#EXTINF:241,Artist B - Song Two\nb/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\nspecial/file.mp3\n",
 				),
+				// AbsolutePath joins with the OS separator
 				Entry("absolute paths",
 					true,
-					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\n/music/a/song1.mp3\n#EXTINF:241,Artist B - Song Two\n/music/b/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\n/música/special/file.mp3\n",
+					filepath.FromSlash("#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\n/music/a/song1.mp3\n#EXTINF:241,Artist B - Song Two\n/music/b/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\n/música/special/file.mp3\n"),
 				),
 				Entry("special characters",
 					false,
@@ -506,8 +508,8 @@ var _ = Describe("MediaFiles", func() {
 				Expect(relativeResult).To(ContainSubstring("deep/nested/song.mp3\n"))
 
 				absoluteResult := mfs.ToM3U8("Test", true)
-				Expect(absoluteResult).To(ContainSubstring("/lib/song.mp3\n"))
-				Expect(absoluteResult).To(ContainSubstring("/lib/deep/nested/song.mp3\n"))
+				Expect(absoluteResult).To(ContainSubstring(filepath.FromSlash("/lib/song.mp3\n")))
+				Expect(absoluteResult).To(ContainSubstring(filepath.FromSlash("/lib/deep/nested/song.mp3\n")))
 			})
 		})
 	})
