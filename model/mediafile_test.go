@@ -484,7 +484,7 @@ var _ = Describe("MediaFiles", func() {
 					false,
 					"#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\na/song1.mp3\n#EXTINF:241,Artist B - Song Two\nb/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\nspecial/file.mp3\n",
 				),
-				// AbsolutePath joins with the OS separator
+				// AbsolutePath joins with the OS separator.
 				Entry("absolute paths",
 					true,
 					filepath.FromSlash("#EXTM3U\n#PLAYLIST:Multi Track\n#EXTINF:120,Artist A - Song One\n/music/a/song1.mp3\n#EXTINF:241,Artist B - Song Two\n/music/b/song2.mp3\n#EXTINF:90,Artist with Ümläuts - Song with \"quotes\" & ampersands\n/música/special/file.mp3\n"),
