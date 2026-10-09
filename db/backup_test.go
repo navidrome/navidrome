@@ -236,5 +236,39 @@ var _ = Describe("database backups", func() {
 			_, statErr := os.Stat(missingPath)
 			Expect(statErr).To(MatchError(os.ErrNotExist))
 		})
+
+		DescribeTable("fails to restore from a file that is not a Navidrome database, leaving the database intact",
+			func(createFile func(path string)) {
+				By("seeding user data in the current database")
+				_, err := Db().ExecContext(ctx, `INSERT OR REPLACE INTO user (id, user_name, name, email, password, is_admin, created_at, updated_at)
+					VALUES ('u-restore-3', 'stillhere', 'stillhere', 'stillhere@example.com', 'x', 1, datetime('now'), datetime('now'))`)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("attempting a restore from the invalid file")
+				invalidPath := filepath.Join(tempFolder, "invalid_backup.db")
+				_ = os.Remove(invalidPath)
+				createFile(invalidPath)
+				err = Restore(ctx, invalidPath)
+				Expect(err).To(HaveOccurred())
+
+				By("verifying the database was not wiped")
+				var userName string
+				Expect(Db().QueryRowContext(ctx, "SELECT user_name FROM user WHERE id = 'u-restore-3'").Scan(&userName)).To(Succeed())
+				Expect(userName).To(Equal("stillhere"))
+			},
+			Entry("empty file", func(path string) {
+				Expect(os.WriteFile(path, nil, 0600)).To(Succeed())
+			}),
+			Entry("file that is not a SQLite database", func(path string) {
+				Expect(os.WriteFile(path, []byte("this is not a database, just some text"), 0600)).To(Succeed())
+			}),
+			Entry("SQLite database without the Navidrome schema", func(path string) {
+				other, err := sql.Open(Driver, path)
+				Expect(err).ToNot(HaveOccurred())
+				defer other.Close()
+				_, err = other.Exec("CREATE TABLE something_else(x)")
+				Expect(err).ToNot(HaveOccurred())
+			}),
+		)
 	})
 })
