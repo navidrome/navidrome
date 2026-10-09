@@ -56,6 +56,17 @@ describe('calculateGain', () => {
     expect(result).toBe(1)
   })
 
+  it.each(['album', 'track'])(
+    'does not apply the pre-amp in %s mode to a song without gain tags',
+    (gainMode) => {
+      const result = calculateGain(
+        { gainMode, preAmp: 6 },
+        { ...nativeTrackOnlySong, rgTrackGain: null, rgTrackPeak: null },
+      )
+      expect(result).toBe(1)
+    },
+  )
+
   it('uses track gain in track mode', () => {
     const result = calculateGain({ gainMode: 'track', preAmp }, albumSong)
     expect(result).toBeCloseTo(10 ** (-3 / 20))
