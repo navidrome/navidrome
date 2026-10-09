@@ -205,7 +205,6 @@ var _ = Describe("Scanner", func() {
 			})
 
 			It("should re-enqueue the album artwork even though it already resolved", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				resolveQueuedArtwork()
@@ -1343,7 +1342,6 @@ var _ = Describe("Scanner", func() {
 		})
 
 		It("should update artist stats during quick scans when new albums are added", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 
 			By("Initial scan with one album")
 			Expect(runScanner(ctx, true)).To(Succeed())
