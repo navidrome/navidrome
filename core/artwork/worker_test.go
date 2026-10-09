@@ -142,6 +142,18 @@ func (v *visibilityPlaylistRepo) Get(ctx context.Context, id string) (*model.Pla
 	return v.MockPlaylistRepo.Get(ctx, id)
 }
 
+type panickingAlbumRepo struct {
+	*tests.MockAlbumRepo
+	panicID string
+}
+
+func (r *panickingAlbumRepo) Get(ctx context.Context, id string) (*model.Album, error) {
+	if id == r.panicID {
+		panic("boom")
+	}
+	return r.MockAlbumRepo.Get(ctx, id)
+}
+
 func adminUserRepo() *tests.MockedUserRepo {
 	repo := tests.CreateMockUserRepo()
 	Expect(repo.Put(GinkgoT().Context(), &model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
@@ -276,6 +288,36 @@ var _ = Describe("Worker", func() {
 
 			_, err = artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
+		})
+
+		It("fails an item that panics, without stopping the rest of the batch", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			albums := tests.CreateMockAlbumRepo()
+			albums.SetData(model.Albums{
+				{ID: "alboom", Name: "Album", FolderIDs: []string{"f1"}},
+				{ID: "alok", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			ds.MockedAlbum = &panickingAlbumRepo{MockAlbumRepo: albums, panicID: "alboom"}
+			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alboom"})).To(Succeed())
+			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alok"})).To(Succeed())
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(2))
+
+			it := findQueued(queueRepo, "al", "alboom")
+			Expect(it).ToNot(BeNil(), "a panicking item must be rescheduled, not dropped")
+			Expect(it.Attempts).To(Equal(1))
+			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
+			Expect(it.Trace).To(ContainSubstring("boom"))
+
+			Expect(findQueued(queueRepo, "al", "alok")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alok", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Source).To(Equal("folder"))
 		})
 
 		It("reschedules past the provider's requested delay when it exceeds the backoff", func() {

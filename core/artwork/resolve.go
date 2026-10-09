@@ -374,8 +374,11 @@ func (r *resolver) resolvePlaylist(ctx context.Context, playlistID string) (reso
 		}
 	}
 
-	albumIDs, err := r.ds.Playlist().Tracks(ctx, pl.ID, false).
-		GetAlbumIDs(ctx, model.QueryOptions{Max: PlaylistGridSamples, Sort: "random()"})
+	tracks := r.ds.Playlist().Tracks(ctx, pl.ID, false)
+	if tracks == nil {
+		return resolution{}, fmt.Errorf("resolvePlaylist: could not load tracks for playlist %s", pl.ID)
+	}
+	albumIDs, err := tracks.GetAlbumIDs(ctx, model.QueryOptions{Max: PlaylistGridSamples, Sort: "random()"})
 	if err != nil {
 		return resolution{}, err
 	}

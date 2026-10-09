@@ -388,6 +388,44 @@ var _ = Describe("walk_dir_tree", func() {
 				// Folders not in targets should remain in lastUpdates
 				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "OtherArtist/Album3")))
 			})
+
+			// #6292: a watcher event for a new folder symlink makes the link itself a scan target
+			Context("symlinked target folders (production local storage FS)", func() {
+				BeforeEach(func() {
+					libRoot := GinkgoT().TempDir()
+					Expect(os.MkdirAll(filepath.Join(libRoot, "Mozart", "Album1"), 0755)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(libRoot, "Mozart", "Album1", "track.mp3"), []byte("AUDIO"), 0600)).To(Succeed())
+					Expect(os.Symlink("Mozart", filepath.Join(libRoot, "Wolfgang Amadeus Mozart"))).To(Succeed())
+					job = &scanJob{fs: newLocalMusicFS(libRoot), lib: model.Library{Path: libRoot}}
+				})
+
+				walkTargets := func(targets ...string) map[string]*folderEntry {
+					results, err := walkDirTree(ctx, job, targets...)
+					Expect(err).ToNot(HaveOccurred())
+					folders := map[string]*folderEntry{}
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return folders
+				}
+
+				DescribeTable("with FollowSymlinks disabled",
+					func(target string, expected ...string) {
+						conf.Server.Scanner.FollowSymlinks = false
+						Expect(slices.Collect(maps.Keys(walkTargets(target)))).To(ConsistOf(expected))
+					},
+					Entry("skips a target that is a symlink", "Wolfgang Amadeus Mozart"),
+					Entry("skips a target under a symlinked folder", "Wolfgang Amadeus Mozart/Album1"),
+					Entry("walks a regular target", "Mozart", "Mozart", "Mozart/Album1"),
+				)
+
+				It("walks a symlinked target when FollowSymlinks is enabled", func() {
+					conf.Server.Scanner.FollowSymlinks = true
+					folders := walkTargets("Wolfgang Amadeus Mozart")
+					Expect(folders).To(HaveKey("Wolfgang Amadeus Mozart/Album1"))
+					Expect(folders["Wolfgang Amadeus Mozart/Album1"].audioFiles).To(HaveKey("track.mp3"))
+				})
+			})
 		})
 	})
 
@@ -561,8 +599,8 @@ var _ = Describe("walk_dir_tree", func() {
 			})
 
 			// Regression for #5752: the production localFS must resolve file symlinks.
-			// It wraps os.DirFS behind the fs.FS interface, so fs.ReadLink-based
-			// resolution is not available and full OS-level resolution is required.
+			// fs.ReadLink-based resolution can't follow targets outside the library
+			// root, so full OS-level resolution is required.
 			Context("production local storage FS", func() {
 				var libRoot string
 				var musicFS storage.MusicFS
@@ -588,12 +626,7 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(os.Symlink(filepath.Join(pool, "mid.wav"), filepath.Join(libRoot, "evil.wav"))).To(Succeed())
 					Expect(os.Symlink(filepath.Join(pool, "missing.mp3"), filepath.Join(libRoot, "broken.mp3"))).To(Succeed())
 
-					u, err := storage.LocalPathToURL(libRoot)
-					Expect(err).ToNot(HaveOccurred())
-					s, err := storage.For(u.String())
-					Expect(err).ToNot(HaveOccurred())
-					musicFS, err = s.FS()
-					Expect(err).ToNot(HaveOccurred())
+					musicFS = newLocalMusicFS(libRoot)
 				})
 
 				walkRoot := func() *folderEntry {
@@ -826,6 +859,17 @@ func getDirEntry(baseDir, name string) os.DirEntry {
 		}
 	}
 	panic(fmt.Sprintf("Could not find %s in %s", name, baseDir))
+}
+
+// newLocalMusicFS returns the production local storage MusicFS rooted at libRoot
+func newLocalMusicFS(libRoot string) storage.MusicFS {
+	u, err := storage.LocalPathToURL(libRoot)
+	Expect(err).ToNot(HaveOccurred())
+	s, err := storage.For(u.String())
+	Expect(err).ToNot(HaveOccurred())
+	musicFS, err := s.FS()
+	Expect(err).ToNot(HaveOccurred())
+	return musicFS
 }
 
 // mockMusicFS is a mock implementation of the MusicFS interface that supports symlinks
