@@ -226,7 +226,6 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 
 			It("should re-enqueue the album artwork even though it already resolved", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				resolveQueuedArtwork()
@@ -245,7 +244,6 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 
 			It("should update the album", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
@@ -533,7 +531,6 @@ var _ = Describe("Scanner", Ordered, func() {
 		var beatlesMBID = uuid.NewString()
 
 		BeforeEach(func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 			By("Having two MP3 albums")
 			beatles := _t{
 				"artist":               "The Beatles",
@@ -1201,7 +1198,6 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("should update artist stats during quick scans when new albums are added", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 			// Don't use the mocked artist repo for this test - we need the real one
 			ds.MockedArtist = nil
 
