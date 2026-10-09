@@ -400,6 +400,23 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	return child
 }
 
+func childFromFolder(ctx context.Context, f model.Folder, coverArt ...string) responses.Child {
+	child := responses.Child{}
+	child.Id = f.ID
+	child.Parent = f.ParentID
+	child.IsDir = true
+	child.Title = f.Name
+	child.Name = f.Name
+	child.Album = f.Name
+	if len(coverArt) > 0 && coverArt[0] != "" {
+		child.CoverArt = coverArt[0]
+	}
+	if !f.CreatedAt.IsZero() {
+		child.Created = &f.CreatedAt
+	}
+	return child
+}
+
 func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubsonicChild {
 	player, _ := request.PlayerFrom(ctx)
 	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
