@@ -2,6 +2,7 @@ package artwork
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -13,6 +14,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork/blurhash"
 	"github.com/navidrome/navidrome/core/artwork/dominant"
 	"github.com/navidrome/navidrome/core/artwork/thumbhash"
@@ -51,7 +55,9 @@ const thumbnailSize = 100
 
 // maxImageBytes caps a resolved image read: a user-editable ExternalImageURL could point at
 // an arbitrarily large endpoint.
-const maxImageBytes = 20 << 20
+func maxImageBytes() int64 {
+	return parseSize(conf.Server.MaxImageSize, consts.DefaultMaxImageSize)
+}
 
 // maxImagePixels guards against decompression bombs: a tiny file can declare a canvas that
 // image.Decode would expand into gigabytes.
@@ -75,8 +81,8 @@ type processor struct {
 
 // acquire resolves one queue item end to end: find an image, hash/decode/
 // blurhash it, place its bytes, and persist the resulting state.
-func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired) {
-	repo := p.ds.Artwork(ctx)
+func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired, retryIn time.Duration) {
+	repo := p.ds.Artwork()
 	start := time.Now()
 	defer func() {
 		log.Debug(ctx, "Artwork: Acquisition finished", "kind", item.ItemKind, "id", item.ItemID,
@@ -85,25 +91,38 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 
 	res, err := p.resolver.resolve(ctx, item)
 	if err != nil {
+		traceStage(ctx, "resolve", err)
 		log.Warn(ctx, "Artwork: Could not resolve item", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, 0
+	}
+	if retry, ok := errors.AsType[*agents.RetryLaterError](res.extErr); ok {
+		retryIn = retry.RetryIn
 	}
 	if res.reader == nil {
-		if res.extError || res.localError {
+		if res.extErr != nil || res.localError {
 			// A fault is not a definitive "no image": never settle absent, keep serving old state.
+			// A chainless resolver (playlist/radio) records no step, so leave a fallback or explain is blank.
+			if t := traceFrom(ctx); len(t.Steps()) == 0 {
+				outcome := OutcomeError
+				if res.localError {
+					outcome = OutcomeUnreadable
+				}
+				t.add(TraceStep{Candidate: cmp.Or(res.source, "source"), Outcome: outcome})
+			}
 			log.Debug(ctx, "Artwork: No image, but a source faulted; keeping previous state",
-				"kind", item.ItemKind, "id", item.ItemID, "extError", res.extError, "localError", res.localError)
-			return outcomeFailed, nil
+				"kind", item.ItemKind, "id", item.ItemID, "extErr", res.extErr, "localError", res.localError)
+			return outcomeFailed, nil, retryIn
 		}
-		return writeAbsent(ctx, repo, item), nil
+		return writeAbsent(ctx, repo, item), nil, 0
 	}
 	defer res.reader.Close()
 
 	readStart := time.Now()
 	data, err := readCapped(res.reader)
 	if err != nil {
+		traceStage(ctx, "read", err)
 		log.Warn(ctx, "Artwork: Failed to read resolved image", "kind", item.ItemKind, "id", item.ItemID, "source", res.source, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	log.Debug(ctx, "Artwork: Read resolved image", "kind", item.ItemKind, "id", item.ItemID,
 		"source", res.source, "bytes", len(data), "elapsed", time.Since(readStart))
@@ -111,49 +130,61 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	hashStart := time.Now()
 	hash, err := hashImage(bytes.NewReader(data))
 	if err != nil {
+		traceStage(ctx, "hash", err)
 		log.Warn(ctx, "Artwork: Failed to hash image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	log.Trace(ctx, "Artwork: Hashed image", "kind", item.ItemKind, "id", item.ItemID,
 		"hash", hash, "bytes", len(data), "elapsed", time.Since(hashStart))
 
-	art, err := repo.GetImage(hash)
+	art, err := repo.GetImage(ctx, hash)
 	switch {
-	case err == nil:
+	case err == nil && art.Width > 0:
 		log.Debug(ctx, "Artwork: Reusing a known image, skipping decode", "kind", item.ItemKind,
 			"id", item.ItemID, "hash", hash)
-	case errors.Is(err, model.ErrNotFound):
+	// A row with no dimensions was stored when no decoder matched; retry in case one exists now.
+	case err == nil, errors.Is(err, model.ErrNotFound):
 		decodeStart := time.Now()
 		art, err = decodeArtwork(ctx, hash, data)
+		// Extension-matched local bytes we cannot decode are most likely a codec we lack; an
+		// external body carries no such guarantee, and empty bytes are no image at all.
+		if errors.Is(err, image.ErrFormat) && len(data) > 0 && isLocalSource(res.source) {
+			log.Debug(ctx, "Artwork: No decoder for this image format, storing it without placeholders",
+				"kind", item.ItemKind, "id", item.ItemID, "source", res.source, "bytes", len(data))
+			art, err = undecodedArtwork(hash), nil
+		}
 		if err != nil {
+			traceStage(ctx, "decode", err)
 			log.Warn(ctx, "Artwork: Failed to decode resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
-			return outcomeFailed, nil
+			return outcomeFailed, nil, retryIn
 		}
 		log.Debug(ctx, "Artwork: Decoded new image", "kind", item.ItemKind, "id", item.ItemID, "hash", hash,
 			"width", art.Width, "height", art.Height, "mime", art.Mime, "elapsed", time.Since(decodeStart))
 	default:
+		traceStage(ctx, "lookup", err)
 		log.Warn(ctx, "Artwork: Failed to look up image hash", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	art.SizeBytes = int64(len(data))
 
-	ia, err := p.persist(repo, item, art, res, data)
+	ia, err := p.persist(ctx, repo, item, art, res, data)
 	if err != nil {
+		traceStage(ctx, "store", err)
 		log.Warn(ctx, "Artwork: Failed to persist resolved image", "kind", item.ItemKind, "id", item.ItemID, err)
-		return outcomeFailed, nil
+		return outcomeFailed, nil, retryIn
 	}
 	got = &acquired{ia: ia, mime: art.Mime, data: data}
-	if res.extError {
+	if res.extErr != nil {
 		log.Debug(ctx, "Artwork: Serving a lower-priority source after an external failure",
 			"kind", item.ItemKind, "id", item.ItemID, "source", res.source)
-		return outcomeFoundStale, got
+		return outcomeFoundStale, got, retryIn
 	}
-	return outcomeFound, got
+	return outcomeFound, got, retryIn
 }
 
 // persist places the bytes and commits the rows referencing them, excluding Prune for that
 // window only so a slow resolution can never hold it off.
-func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueueItem,
+func (p *processor) persist(ctx context.Context, repo model.ArtworkRepository, item model.ArtworkQueueItem,
 	art *model.Artwork, res resolution, data []byte,
 ) (*model.ItemArtwork, error) {
 	if p.pruneLock != nil {
@@ -164,7 +195,7 @@ func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueu
 	if err != nil {
 		return nil, fmt.Errorf("writing image store: %w", err)
 	}
-	if err := repo.PutImage(art); err != nil {
+	if err := repo.PutImage(ctx, art); err != nil {
 		return nil, fmt.Errorf("persisting artwork image: %w", err)
 	}
 	ia := &model.ItemArtwork{
@@ -176,9 +207,10 @@ func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueu
 		SourcePath:  sourcePath,
 		RefMtime:    refMtime,
 		AttemptedAt: time.Now(),
+		Trace:       traceFrom(ctx).encode(sourcePath),
 	}
 	// PutItemArtwork stamps UpdatedAt on ia, so the returned struct matches the persisted row.
-	if err := repo.PutItemArtwork(ia); err != nil {
+	if err := repo.PutItemArtwork(ctx, ia); err != nil {
 		return nil, fmt.Errorf("persisting item artwork state: %w", err)
 	}
 	return ia, nil
@@ -186,11 +218,12 @@ func (p *processor) persist(repo model.ArtworkRepository, item model.ArtworkQueu
 
 // writeAbsent records a known-absent state: every source answered definitively "no".
 func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.ArtworkQueueItem) outcome {
-	err := repo.PutItemArtwork(&model.ItemArtwork{
+	err := repo.PutItemArtwork(ctx, &model.ItemArtwork{
 		ItemKind:    item.ItemKind,
 		ItemID:      item.ItemID,
 		ImageType:   item.ImageType,
 		AttemptedAt: time.Now(),
+		Trace:       traceFrom(ctx).encode(""),
 	})
 	if err != nil {
 		log.Warn(ctx, "Artwork: Failed to persist absent state", "kind", item.ItemKind, "id", item.ItemID, err)
@@ -202,12 +235,13 @@ func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.A
 }
 
 func readCapped(r io.Reader) ([]byte, error) {
-	data, err := io.ReadAll(io.LimitReader(r, maxImageBytes+1))
+	limit := maxImageBytes()
+	data, err := io.ReadAll(io.LimitReader(r, limit+1))
 	if err != nil {
 		return nil, err
 	}
-	if len(data) > maxImageBytes {
-		return nil, fmt.Errorf("image exceeds size cap %d", maxImageBytes)
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("image exceeds size cap %d", limit)
 	}
 	return data, nil
 }
@@ -227,6 +261,12 @@ func decodeCapped(data []byte) (image.Image, string, error) {
 		return nil, "", fmt.Errorf("decode image: %w", err)
 	}
 	return img, format, nil
+}
+
+// undecodedArtwork is the row for bytes no decoder matched: servable, but with no dimensions
+// and none of the placeholders a decode would have produced.
+func undecodedArtwork(hash string) *model.Artwork {
+	return &model.Artwork{Hash: hash, Mime: mimeForFormat("")}
 }
 
 // decodeArtwork builds a new Artwork row from raw bytes: dimensions, mime and the two
@@ -281,6 +321,11 @@ func makeThumbnail(img image.Image, maxSize int) image.Image {
 // content-addressed store must not duplicate them.
 func isFileBacked(source string) bool {
 	return source == "folder" || source == "upload"
+}
+
+// isLocalSource reports whether the bytes came off disk rather than off the network.
+func isLocalSource(source string) bool {
+	return isFileBacked(source) || source == "embedded"
 }
 
 // placeBytes reports the item's backing-file provenance and writes the bytes into the store

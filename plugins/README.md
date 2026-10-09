@@ -174,6 +174,14 @@ Capabilities define what your plugin can do. They're automatically detected base
 
 Provides artist and album metadata. All methods are **optional** — implement only the ones your data source supports.
 
+> **Returning "not found".** When you have no data for an item, return an empty response and no
+> error. In the Go PDK that is `return nil, nil`. Navidrome reads it as a definitive "not found"
+> and stops asking.
+>
+> Return an error only when the plugin itself failed, such as an unreachable API or a broken host
+> call. Navidrome retries failed calls with backoff. A plugin that errors on "no data" makes
+> Navidrome retry every item it has no data for.
+
 | Function                          | Input                      | Output                           | Description              |
 |-----------------------------------|----------------------------|----------------------------------|--------------------------|
 | `nd_get_artist_mbid`              | `{id, name}`               | `{mbid}`                         | Get MusicBrainz ID       |
@@ -393,7 +401,7 @@ import "github.com/navidrome/navidrome/plugins/pdk/go/host"
 
 ### HTTP
 
-Make HTTP requests to external services. This is a dedicated host service (separate from Extism's built-in HTTP support) with additional features like timeouts and redirect control.
+Make HTTP requests to external services, with timeouts, redirect control, and protection against reaching private network addresses. This is the only supported way to make HTTP requests: Extism's built-in HTTP is disabled (`pdk.NewHTTPRequest` in Go, `http::request` in Rust, `extism.Http.request` in Python, `Http.request` in JS).
 
 **Manifest permission:**
 
@@ -407,6 +415,8 @@ Make HTTP requests to external services. This is a dedicated host service (separ
   }
 }
 ```
+
+**Private addresses:** the check runs on the resolved IP when connecting. A named host entry (`api.example.com`, `*.example.com`) never authorizes a loopback, private or link-local address on its own, even if its DNS points there. To reach a service on the local network, also list its IP or a CIDR (`192.168.1.10`, `10.0.0.0/8`), or use `"*"` when the user configures the address. Without `requiredHosts`, only public addresses are allowed.
 
 **Host functions:**
 
@@ -691,6 +701,8 @@ Establish persistent WebSocket connections to external services. Your plugin mus
   }
 }
 ```
+
+`requiredHosts` is mandatory here: leave it out and every connection is blocked. Unlike HTTP, there is no fallback to public addresses. Entries follow the same [private address rules](#http).
 
 **Host functions:**
 
@@ -1233,6 +1245,8 @@ extism-py plugin.wasm -o plugin.wasm *.py
 # Package as .ndp
 zip -j my-plugin.ndp manifest.json plugin.wasm
 ```
+
+There is no Python PDK, so call host services directly: import them from the `extism:host/user` namespace (e.g. `http_send`) with `@extism.import_fn`, and exchange JSON through Extism memory. Each function takes a JSON request and returns a JSON response with an `error` field on failure. For HTTP, send `{"request": {"method": "GET", "url": "..."}}` and read `result.statusCode` and `result.body` (base64). See [coverartarchive-py](examples/coverartarchive-py/) and [nowplaying-py](examples/nowplaying-py/).
 
 ### Using XTP CLI (Scaffolding)
 

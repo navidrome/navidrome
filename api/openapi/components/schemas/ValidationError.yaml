@@ -1,0 +1,10 @@
+type: object
+description: One field-level validation failure.
+required: [field, message]
+properties:
+  field:
+    type: string
+    description: Name of the offending query parameter, path parameter, or body field (dotted for nested).
+  message:
+    type: string
+    description: Why the value was rejected.

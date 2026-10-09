@@ -3,7 +3,7 @@
 This package implements a subset of the [Jellyfin](https://jellyfin.org/) REST API on top of
 Navidrome's existing library, users, playlists and scrobbling infrastructure. It lets
 Jellyfin-compatible clients (e.g. [Finamp](https://github.com/jmshrv/finamp),
-[jftui](https://github.com/dylanmtaylor/jftui)) browse and stream a Navidrome library without
+[jftui](https://github.com/Aanok/jftui)) browse and stream a Navidrome library without
 requiring a real Jellyfin server.
 
 It is **not** a full Jellyfin server implementation: only the endpoints needed to browse a music
@@ -22,6 +22,10 @@ Enabled = true
 ServerName = "My Music Server"
 # Optional: usernames to show in the client login user-picker (default: none). See "Public user list".
 ExposedPublicUsers = "alice, bob"
+# Optional: answer LAN auto-discovery broadcasts on UDP 7359 (default: false). See "Auto discovery".
+AutoDiscovery = true
+# Optional: let users sign in new devices with a 6-digit code (default: true). See "Quick Connect".
+QuickConnect = false
 # Optional: max collection responses streaming at once (default: half the DB connection pool,
 # min 2). Each streaming response holds a DB connection for its whole duration; excess requests
 # queue rather than fail.
@@ -34,6 +38,9 @@ or via environment variables:
 ND_JELLYFIN_ENABLED=true
 ND_JELLYFIN_SERVERNAME="My Music Server"
 ND_JELLYFIN_EXPOSEDPUBLICUSERS="alice,bob"
+ND_JELLYFIN_AUTODISCOVERY=true
+ND_JELLYFIN_QUICKCONNECT=false
+ND_JELLYFIN_MAXCONCURRENTSTREAMS=4
 ```
 
 Once enabled, the API is mounted at:
@@ -46,6 +53,26 @@ All the paths below are relative to that base URL (e.g. `System/Info/Public` mea
 `http://localhost:4533/jellyfin/System/Info/Public`). Routes are matched **case-insensitively**,
 since real Jellyfin clients (and `jellyfin-apiclient-python`) send mixed-case paths.
 
+## Auto discovery
+
+With `AutoDiscovery = true`, Navidrome answers the Jellyfin LAN discovery broadcast
+(`who is JellyfinServer?` on UDP port 7359), so clients list the server without a typed URL.
+It is off by default because a real Jellyfin server on the same host owns that port. If the port
+is taken, Navidrome logs a warning and keeps running without discovery.
+
+The advertised address is `BaseURL` when it includes a host. Otherwise it is the bind `Address`
+when that is a specific IP, or else the local IP that faces the requesting client, plus `Port`. With a
+unix socket `Address` there is no port to advertise, so discovery only starts when `BaseURL` has a host.
+
+Discovery answers on all IPv4 interfaces, but the advertised address follows `BaseURL`, `Address` and
+`Port`. If `Address` is a loopback or a single interface IP and `BaseURL` has no host, clients on other
+networks get an address they cannot reach. Set `BaseURL` to the address clients should use.
+
+Docker: use host networking (`network_mode: host` / `--network host`). On Linux, bridge mode does not
+deliver broadcasts to the container, even with `-p 7359:7359/udp`, so clients never find the server.
+With host networking the server sees the host's IP, so `BaseURL` is not needed for discovery. If host
+networking is not an option, leave discovery off. Keep UDP 7359 on the LAN: never forward it from the internet.
+
 ## Authentication
 
 Jellyfin clients authenticate with `POST /Users/AuthenticateByName` using the user's Navidrome
@@ -57,6 +84,29 @@ query param — all forms are accepted, matching what different clients do).
 `POST /Users/AuthenticateByName` is rate-limited per IP with the same limiter as the native
 `/auth/login` (`AuthRequestLimit`/`AuthWindowLength`), since it's an unauthenticated brute-force
 surface.
+
+Access tokens do not expire, matching real Jellyfin. They are revoked by a password change, which bumps the user's token epoch.
+
+### Quick Connect
+
+Quick Connect signs a new device in without typing a password. The client shows a 6-digit code,
+a signed-in user approves it, and the client gets its `AccessToken`. It is on by default
+(`Jellyfin.QuickConnect`); when off, `GET QuickConnect/Enabled` returns `false` and every other
+Quick Connect call returns 401.
+
+1. `POST QuickConnect/Initiate` (public; needs `Client`, `Device`, `DeviceId` and `Version` in the
+   auth header) returns the `Code` and a `Secret`.
+2. The user approves the code, either in the Navidrome web UI (user menu → **Quick Connect**, which
+   shows the app and device before approving) or from a signed-in Jellyfin client with
+   `POST QuickConnect/Authorize?Code=`. Admins may pass `UserId` to approve for another user.
+3. The client polls `GET QuickConnect/Connect?Secret=` until `Authenticated` is `true`.
+4. `POST Users/AuthenticateWithQuickConnect` with `{"Secret": "..."}` returns the same result as
+   `AuthenticateByName`.
+
+Pending codes live in memory and expire after 10 minutes (a server restart drops them). Unlike
+Jellyfin, a secret signs in only once. `Initiate`, `AuthenticateWithQuickConnect` and code approval
+(`Authorize` and the web UI) are rate-limited per IP like the login; `Connect` is not, since some
+clients poll it every second.
 
 ### Public user list (login picker)
 
@@ -85,23 +135,16 @@ player id is the device id from `X-Emby-Authorization` (`DeviceId="..."`); the p
 client/device info (e.g. the `GET socket` handshake, which authenticates via `?api_key=` only) is
 skipped, so it doesn't create a nameless player.
 
-## ID encoding
-
-Navidrome item ids are **hex-encoded at the API boundary** (`dto.EncodeID`/`DecodeID`): every id
-is hex-encoded on the way out and hex-decoded on the way in. This is required because some clients
-parse ids as radix-16 — Finamp's queue `packIds`, for instance, does `int.parse(chunk, radix:16)`,
-which chokes on Navidrome's base62 ids (e.g. `5QFKvMsJrd57QE2Le2dKKo`). Because a base62 id can
-itself be valid hex, correctness depends on every emit path encoding and every receive path
-decoding — see `dto/ids.go`.
-
 ## Multi-library behavior
 
 Jellyfin has no native concept of multiple music libraries the way Navidrome does, so each
 Navidrome library the current user can access is exposed as its own top-level Jellyfin
 "CollectionFolder" view (`GET /UserViews`), instead of merging every library into a single view.
 Browsing (`/Items`), artists, and the "Latest" list are all scoped to the libraries the
-authenticated user has access to; a library (or item within it) the user cannot access returns
-`404`, never `403`, so ids can't be used as an existence oracle.
+authenticated user has access to. Fetching an item the user cannot access returns `404`, never
+`403`, so ids can't be used as an existence oracle. An inaccessible library id sent as `ParentId`
+is not a `404`: it is simply not treated as a library, so none of that library's content is
+returned.
 
 ### Browsing filters
 
@@ -112,8 +155,12 @@ tracks — Finamp's artist screen sends these *alongside* `ParentId=<libraryId>`
 album's tracks — Feishin fetches them this way instead of `ParentId`); `GenreIds` (a
 genre's albums or tracks — Finamp's genre screen sends it the same way; `/Artists/AlbumArtists`
 and `MusicArtist` queries accept it too, matching artists credited on an album of that genre);
-`SearchTerm`;
-favorites-only (`Filters=IsFavorite` or the standalone `isFavorite=true`); `SortBy`/`SortOrder`;
+`Years`; `StudioIds` (record labels, as listed by `GET Studios`); `SearchTerm`;
+`Filters` (`IsFavorite`, `IsFavoriteOrLikes`, `IsPlayed`, `IsUnplayed`) and the standalone
+`isFavorite`/`isPlayed` booleans it can also be expressed as — `Filters` wins when both are sent, as
+in Jellyfin; `Likes`, `Dislikes`, `IsFolder`, `IsNotFolder` and `IsResumable` have no Navidrome
+equivalent and are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
+unrecognized keys are skipped, and `Random` always sorts alone);
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
 returns direct children only (no tracks — no track is a library's direct child).
 
@@ -121,18 +168,19 @@ returns direct children only (no tracks — no track is a library's direct child
 
 | Area | Endpoints |
 |---|---|
-| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET QuickConnect/Enabled` |
+| Handshake / system | `GET System/Info/Public`, `GET System/Info` (authenticated), `GET`/`POST System/Ping`, `GET System/Endpoint` (authenticated) |
+| Quick Connect | `GET QuickConnect/Enabled`, `POST QuickConnect/Initiate`, `GET QuickConnect/Connect`, `POST QuickConnect/Authorize` (authenticated), `POST Users/AuthenticateWithQuickConnect` |
 | Auth | `POST Users/AuthenticateByName`, `GET Users/Public` |
 | Users | `GET UserViews`, `GET Users/{userId}/Views`, `GET Users/Me`, `GET Users/{userId}` |
-| Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
-| Artists / genres | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres` |
-| Similar / mixes | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar`, `GET Items/{itemId}/InstantMix` |
+| Browsing | `GET Items`, `GET Users/{userId}/Items`, `GET Items/{itemId}`, `GET Users/{userId}/Items/{itemId}`, `GET Items/Latest`, `GET Users/{userId}/Items/Latest`, `DELETE Items/{itemId}` (playlists only) |
+| Artists / genres / labels | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres`, `GET Studios`, `GET Items/Filters` |
+| Similar / mixes | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar`, `GET Albums/{itemId}/Similar`, `GET {Items,Songs,Albums,Artists,Playlists}/{itemId}/InstantMix`, `GET Artists/InstantMix?id=`, `GET MusicGenres/InstantMix?id=` |
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
 | Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
-| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` |
+| Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` (`HEAD` too on stream, universal, File, Download and images; a transcode HEAD answers without starting it) |
 | Lyrics | `GET Audio/{itemId}/Lyrics` |
-| Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Capabilities[/Full]` |
-| Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items`, `GET Playlists/{playlistId}/Users[/{userId}]` |
+| Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Playing/Ping` (no-op), `POST Sessions/Capabilities[/Full]` |
+| Playlists | `POST Playlists`, `GET Playlists/{playlistId}`, `POST Playlists/{playlistId}` (rename / visibility / replace tracks), `GET Playlists/{playlistId}/Items`, `POST`/`DELETE Playlists/{playlistId}/Items` (`POST` honors `position`), `POST Playlists/{playlistId}/Items/{entryId}/Move/{newIndex}`, `GET Playlists/{playlistId}/Users[/{userId}]` |
 | Real-time | `GET socket` (WebSocket; keeps clients like Finamp from 404-loop-reconnecting) |
 | AudioMuse-AI (see below) | `GET AudioMuseAI/info`, `GET AudioMuseAI/health`, `GET AudioMuseAI/similar_tracks`, `GET AudioMuseAI/find_path` |
 
@@ -180,26 +228,25 @@ warmer uses — so user-scoped items like private playlists still resolve their 
 falling back to the placeholder. Album, artist, media-file and playlist ids are all resolved to
 their Navidrome `ArtworkID`.
 
-## Finamp saved-queue id truncation
+## Item ids are GUIDs
 
-Real Jellyfin item ids are GUIDs — 128-bit values, always 32 hex characters. Finamp relies on that
-when persisting its play queue across restarts: `packIds()` bit-packs every id into exactly 16
-bytes. Navidrome ids are 22-character base62 strings, not 32-hex GUIDs, which means Finamp silently
-stores only the first 16 characters of each id and asks for those **truncated ids** back when
-restoring the queue — item lookups, then streaming, images, favorites and playback reports for the
-restored tracks.
+Jellyfin item ids are GUIDs, serialized as 32 lowercase hex chars with no dashes
+(`Guid.ToString("N")`). Navidrome ids are canonical 22-char base62 encodings of a 128-bit value,
+so `dto.EncodeID`/`dto.DecodeID` map between the two via `model/id` — losslessly except for the
+~2⁻⁹⁶ chance an id's 128-bit value falls in the reserved space below (leading 12 bytes all zero).
 
-This API compensates server-side (`truncated_ids.go`): a 16-character id — a length no Navidrome
-id uses — is resolved to the full id by unique-prefix lookup (an indexed range scan;
-ambiguity is detected and fails safe). The `/Items?ids=` batch response echoes the id **as
-requested**, because Finamp matches restored items back to its stored ids, and the other item
-endpoints accept truncated ids transparently.
+Three emitted ids aren't 128-bit values: integer library ids, the synthetic playlists folder, and
+`PlaylistItemId` (a playlist *entry position* — `playlist_tracks.id` is an `integer` column).
+They use a reserved GUID space — 12 zero bytes, a non-zero kind tag, a 24-bit payload — so
+library `1` is `00000000000000000000000001000001`. The tag is never zero, because Jellyfin
+serializes the all-zero GUID as `null`.
 
-**Proper fix (upstream):** Finamp's `packIds()`/`_unpackIds()` (`lib/models/finamp_models.dart`)
-should handle ids that aren't 32-hex GUIDs — e.g. store variable-length ids when any id in the
-queue doesn't match the GUID shape. Jellyfin-compatible servers aren't guaranteed to use GUID ids,
-so this is worth a Finamp issue/PR; once a fixed release is widespread, this compatibility layer
-can be removed.
+`DecodeID` accepts dashed and uppercase GUIDs (Jellyfin's `Guid.Parse` does) and returns
+`ok=false` for anything malformed — including "" — which handlers surface as a 404.
+
+The wire format must stay GUID-shaped for this reason: Finamp's saved-queue persistence bit-packs
+each item id into exactly 16 bytes (`packIds()` in `lib/models/finamp_models.dart`), so a 32-hex
+GUID round-trips exactly, whereas a longer id would be silently truncated.
 
 ## Streaming and transcoding
 
@@ -223,6 +270,22 @@ The stream endpoints reuse the same transcode-decision pipeline as the Subsonic 
   Subsonic. `File`/`Download` stay raw. For HLS clients, force `aac` or `mp3`; other formats are
   advertised and served but packed-audio players won't decode them.
 
+## Lyrics
+
+`GET Audio/{id}/Lyrics` serves the main lyric track as a `LyricDto` (`Start` in 100ns ticks,
+word-level `Cues` when present), resolved through the full `core/lyrics` pipeline (embedded, `.lrc`
+sidecars, plugins per `LyricsPriority`). No lyrics returns `404`, never an empty `200`.
+
+Results, misses included, are cached for 5 minutes: Jellify fetches lyrics for every played track and
+Feishin on every song change, so lyric-less tracks are the hot path. Concurrent misses on the same
+track share one pipeline run. That run is detached from the request, so a cancelled request doesn't
+fail it for other waiters, and its context has a one-minute deadline.
+
+Finamp opens its lyrics view only when the track has a `Lyric` `MediaStream` (`HasLyrics` is just a
+list badge). Browse lists set both from embedded lyrics only. `PlaybackInfo` runs the full pipeline
+per track, so sidecar and plugin lyrics show up there. Feishin also requires server version ≥ 10.9
+(we advertise 12.1.0).
+
 ## AudioMuse-AI compatible endpoints
 
 Compatibility shim for Jellyfin front-ends that integrate [AudioMuse-AI](https://github.com/NeptuneHub/audiomuse-ai-plugin)
@@ -242,7 +305,7 @@ plugin being loaded, like the Subsonic `sonicSimilarity` OpenSubsonic extension.
   loaded; otherwise `{"path": [{author, item_id, title, tempo?}], "total_distance": <float>}` (200), or 400
   with `start_song_id and end_song_id are required.` when either id is missing.
 
-`item_id`/`start_song_id`/`end_song_id` are the hex-encoded ids Navidrome hands Jellyfin clients.
+`item_id`/`start_song_id`/`end_song_id` are the GUID-form ids Navidrome hands Jellyfin clients.
 `tempo` comes from the track's BPM when known; the richer AudioMuse per-track features
 (`energy`, `key`, `mood_vector`, `scale`, `other_features`) are not provided. In multi-library
 setups, `find_path`'s `path` and `total_distance` only reflect hops through tracks in libraries
@@ -312,8 +375,9 @@ curl -s -X DELETE "${AUTH[@]}" "$BASE/Items/$PLAYLIST_ID"
 
 Handler-level unit tests live alongside each file (`*_test.go`). A full end-to-end suite in
 [`e2e/`](e2e) exercises every endpoint through the real router against a real SQLite database and
-real repositories (only artwork/streaming/ffmpeg are stubbed), with per-`Describe` snapshot
-isolation — mirroring the Subsonic `server/subsonic/e2e` suite. Run it with:
+real repositories (only artwork, streaming, ffmpeg, external metadata agents and sonic similarity
+are stubbed), with per-`Describe` snapshot isolation — mirroring the Subsonic `server/subsonic/e2e`
+suite. Run it with:
 
 ```bash
 make test PKG=./server/jellyfin/...
@@ -321,42 +385,37 @@ make test PKG=./server/jellyfin/...
 
 ## Known limitations
 
-- **Genres are global.** `GET Genres`/`MusicGenres` is not scoped to the current user's
-  libraries (genre tags aren't per-library entities in Navidrome's model).
-- **Artist item-access relies on list-time scoping.** Unlike albums and songs (which each
-  belong to exactly one library and are checked against `user.HasLibraryAccess` on every
-  fetch), an artist can have content across multiple libraries via `library_artist`, so there's
-  no single library id to gate a direct `GET Items/{artistId}` or favorite/rating call against.
-  Access control for artists is enforced by scoping the `Artists`/`Items?IncludeItemTypes=MusicArtist`
-  *list* to the user's libraries, plus the persistence layer's own defense-in-depth; a client
-  that already has an artist id from elsewhere is not re-checked against library membership.
-- **Blurhashes are synthetic, not computed from the artwork (follow-up).** `ImageBlurHashes` is
-  populated by `dto/blurhash.go`, which derives a well-formed **1-component (solid color)**
-  blurhash by hashing the item id — it never looks at the actual image. Real Jellyfin computes a
-  multi-component blurhash from the cover's pixels (downscaled to 128×128) once at scan time and
-  stores it per image, so its placeholder approximates the art. Ours satisfies the protocol
-  (Finamp gets a valid value to use as a de-dup key and a placeholder, no missing-blurhash
-  warning) but renders as a flat color while art loads. A proper implementation would compute the
-  real blurhash in the `core/artwork` pipeline (where the image is already decoded), cache it
-  keyed like the artwork, and have the mappers read it — keeping the synthetic value as a fallback
-  for art that hasn't been rendered yet.
-- **The WebSocket only keep-alives; it pushes no events (follow-up).** `GET socket` sends a
-  `ForceKeepAlive` and answers `KeepAlive` pings so real-time clients (Finamp) settle into a
-  working session instead of 404-loop-reconnecting, but it never pushes anything. A follow-up
-  would broadcast real session/playstate and library-change events over it (via `server/events`),
-  mirroring Jellyfin's session messages.
-- **Lyrics.** `GET Audio/{id}/Lyrics` serves the main lyric track as a `LyricDto` (`Start` in
-  100ns ticks, word-level `Cues` when present), resolved through the full `core/lyrics` pipeline
-  (embedded, `.lrc` sidecars, plugins per `LyricsPriority`) behind a 5-minute TTL cache that also
-  caches misses — Jellify fetches for every played track, Feishin per song change, so lyric-less
-  tracks are the hot path. No lyrics → 404 (never an empty 200), which all three clients degrade
-  gracefully. Finamp gates its lyrics view on a `Lyric` `MediaStream` (not `HasLyrics`, which is
-  just a list badge): browse lists advertise it from embedded lyrics only (the `"[]"` sentinel
-  check — the column is never `""` post-scan), while `PlaybackInfo` runs the full pipeline per
-  track so sidecar/plugin lyrics also light up. Feishin additionally requires server version
-  ≥ 10.9 — the reason `jellyfinVersion` is 10.9.11.
-  Concurrent misses on the same track share one pipeline invocation (`SimpleCache.GetWithLoader`
-  is singleflighted), and the load runs detached from the request context with a one-minute bound,
-  so a cancelled request or hung plugin can't fail or pin the load for other waiters.
-  Follow-up: tracks whose only lyrics are sidecar/plugin-sourced show no `HasLyrics` badge in
-  lists (request-time sources can't be known at list time without per-row I/O).
+- **Genre lists ignore `ParentId`.** `GET Genres`/`MusicGenres` and
+  `Items?IncludeItemTypes=MusicGenre` list the genres of every library the user can access, never
+  only the `ParentId` library. `Items?IncludeItemTypes=MusicGenre` also ignores `SearchTerm`.
+  `GET Items/Filters` is the exception: its genres follow `ParentId`.
+- **Search skips some filters.** With `SearchTerm`, `Filters=IsFavorite`, `IsPlayed`, `IsUnplayed`
+  and `isFavorite`/`isPlayed` are skipped, so the response holds every search match. The full-text
+  search's first phase has no annotation join to filter on. Artist searches also skip the role (album
+  artist vs. artist) and `GenreIds`. Playlist lists ignore `SearchTerm`.
+- **Search pages are capped at 2,000 items.** A larger `Limit` is lowered to 2,000. Jellyfin has no
+  cap.
+- **One-character searches return nothing.** The shared search layer ignores terms shorter than two
+  characters, so album, artist and song searches for `a` come back empty. Real Jellyfin has no
+  minimum.
+- **Playlist entry ids are positions, not song ids.** `PlaylistItemId` encodes the entry's position
+  in the playlist, so ids change when entries are inserted or removed; re-read the list after an
+  edit. Real Jellyfin uses the song id. Clients that echo `PlaylistItemId` back (Finamp) work;
+  clients that send the song id as `EntryIds` or to `Move` (Jellify) get `404`.
+- **Rating uses the `rating` param.** `POST Users/{userId}/Items/{itemId}/Rating` reads a `rating`
+  (0-10) and stores it as 0-5 stars. Jellyfin's `likes` boolean is not read, so a client that sends
+  only `likes` clears the rating.
+- **Missing endpoints.** `UserPlayedItems` (mark played/unplayed), `Search/Hints` and the non-legacy
+  `UserItems/{itemId}/Rating` are not implemented. Play counts only change through playback
+  reporting.
+- **Some `Fields` are never emitted.** `ProviderIds`, `People`, `Etag` and `DateLastMediaAdded` are
+  accepted but never returned.
+- **Blurhashes can be missing.** `ImageBlurHashes` carries the real blurhash that the artwork
+  pipeline computes and stores. Until that happens for an item, the field is omitted: a fake value
+  would pin the wrong placeholder in clients that key their image cache on it.
+- **The WebSocket only keeps alive; it pushes no events.** `GET socket` sends `ForceKeepAlive` and
+  answers `KeepAlive` pings, so real-time clients (Finamp) keep a working session instead of
+  reconnecting in a loop. It never pushes session, playstate or library-change events.
+- **List lyric badges only see embedded lyrics.** Tracks with only sidecar or plugin lyrics show no
+  `HasLyrics` badge in lists, because those sources can't be known at list time without per-row I/O.
+  `PlaybackInfo` and `Audio/{id}/Lyrics` still find them (see "Lyrics").

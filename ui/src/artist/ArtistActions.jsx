@@ -13,9 +13,20 @@ import {
 } from 'react-admin'
 import ShuffleIcon from '@material-ui/icons/Shuffle'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
+import ShareIcon from '@material-ui/icons/Share'
+import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
 import { IoIosRadio } from 'react-icons/io'
 import { playShuffle, playTopSongs } from './actions.js'
 import { playSimilar } from '../common/playbackActions.js'
+import {
+  openShareMenu,
+  openDownloadMenu,
+  DOWNLOAD_MENU_ARTIST,
+} from '../actions'
+import config from '../config'
+import { formatBytes } from '../utils'
+import { artistDownloadSize } from '../common/artist'
+import { RefreshMetadataButton } from '../common/RefreshMetadataButton'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -23,6 +34,7 @@ const useStyles = makeStyles((theme) => ({
     padding: '0 !important',
     background: 'transparent',
     boxShadow: 'none',
+    alignItems: 'center',
     '& .MuiToolbar-root': {
       minHeight: 'auto',
       padding: '0 !important',
@@ -61,6 +73,9 @@ const ArtistActions = ({ className, record, ...rest }) => {
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const [loadingAction, setLoadingAction] = React.useState(null)
   const isLoading = !!loadingAction
+
+  const albumArtistSize = artistDownloadSize(record)
+  const hasAlbumArtistContent = Boolean(albumArtistSize)
 
   const handlePlay = React.useCallback(async () => {
     setLoadingAction('play')
@@ -101,6 +116,14 @@ const ArtistActions = ({ className, record, ...rest }) => {
     }
   }, [dispatch, notify, record])
 
+  const handleShare = React.useCallback(() => {
+    dispatch(openShareMenu([record.id], 'artist', record.name))
+  }, [dispatch, record])
+
+  const handleDownload = React.useCallback(() => {
+    dispatch(openDownloadMenu(record, DOWNLOAD_MENU_ARTIST))
+  }, [dispatch, record])
+
   return (
     <TopToolbar
       className={`${className} ${classes.toolbar}`}
@@ -132,6 +155,31 @@ const ArtistActions = ({ className, record, ...rest }) => {
         disabled={isLoading}
         loading={loadingAction === 'radio'}
         icon={<IoIosRadio className={classes.radioIcon} />}
+      />
+      {config.enableSharing && hasAlbumArtistContent && (
+        <LoadingButton
+          onClick={handleShare}
+          label={translate('ra.action.share')}
+          className={classes.button}
+          size={isMobile ? 'small' : 'medium'}
+          icon={<ShareIcon />}
+        />
+      )}
+      {config.enableDownloads && hasAlbumArtistContent && (
+        <LoadingButton
+          onClick={handleDownload}
+          label={`${translate('ra.action.download')} (${formatBytes(
+            albumArtistSize,
+          )})`}
+          className={classes.button}
+          size={isMobile ? 'small' : 'medium'}
+          icon={<CloudDownloadOutlinedIcon />}
+        />
+      )}
+      <RefreshMetadataButton
+        resource="artist"
+        record={record}
+        size={isMobile ? 'small' : 'medium'}
       />
     </TopToolbar>
   )

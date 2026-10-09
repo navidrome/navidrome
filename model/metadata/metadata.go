@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/consts"
@@ -147,15 +148,20 @@ func (md Metadata) tuple(key model.TagName) (int, int) {
 		return 0, 0
 	}
 	tuple := strings.Split(tag, "/")
-	t1, t2 := 0, 0
-	t1, _ = strconv.Atoi(tuple[0])
+	total := md.first(key + "total")
 	if len(tuple) > 1 {
-		t2, _ = strconv.Atoi(tuple[1])
-	} else {
-		t2tag := md.first(key + "total")
-		t2, _ = strconv.Atoi(t2tag)
+		total = tuple[1]
 	}
-	return t1, t2
+	return tagNumber(tuple[0]), tagNumber(total)
+}
+
+// tagNumber rejects negatives and values above int32, so the DB stays readable by 32-bit builds.
+func tagNumber(s string) int {
+	v, err := strconv.ParseInt(s, 10, 32)
+	if err != nil || v < 0 {
+		return 0
+	}
+	return int(v)
 }
 
 var dateRegex = regexp.MustCompile(`([12]\d\d\d)`)
@@ -366,6 +372,14 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 	if len(value) > maxLength {
 		log.Trace("Truncated tag value", "tag", tagName, "value", value, "length", len(value), "maxLength", maxLength)
 		value = value[:maxLength]
+		// Drop the partial rune the cut may have left: at most 3 trailing bytes,
+		// so a pre-existing invalid run elsewhere is never consumed.
+		for range 3 {
+			if r, size := utf8.DecodeLastRuneInString(value); r != utf8.RuneError || size != 1 {
+				break
+			}
+			value = value[:len(value)-1]
+		}
 	}
 
 	switch tag.Type {
@@ -387,11 +401,14 @@ func sanitize(filePath string, tagName model.TagName, tag model.TagConf, value s
 			return ""
 		}
 	case model.TagTypeUUID:
-		_, err := uuid.Parse(value)
+		u, err := uuid.Parse(value)
 		if err != nil {
 			log.Trace("Invalid UUID tag value", "tag", tagName, "value", value)
 			return ""
 		}
+		// Store the canonical form: uuid.Parse accepts braces, urn: prefixes and any
+		// two-byte wrapper, and a wrapped value would never match an exact-match query
+		value = u.String()
 	}
 	return value
 }

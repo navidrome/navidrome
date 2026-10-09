@@ -45,6 +45,10 @@ export const usePluginShowStyles = makeStyles(
       fontSize: '0.85rem',
       wordBreak: 'break-all',
     },
+    fieldHelp: {
+      marginTop: theme.spacing(0.5),
+      display: 'block',
+    },
     permissionsContainer: {
       display: 'flex',
       flexWrap: 'wrap',

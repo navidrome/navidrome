@@ -2,9 +2,7 @@ package public
 
 import (
 	"cmp"
-	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
@@ -31,9 +29,8 @@ func (pub *Router) handleDownloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	name := str.SanitizeFilename(cmp.Or(s.Description, s.ID))
-	name = strings.ReplaceAll(name, ",", "_")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name+".zip"))
+	name := cmp.Or(s.Description, s.ID)
+	w.Header().Set("Content-Disposition", str.ContentDispositionAttachment(name+".zip"))
 	w.Header().Set("Content-Type", "application/zip")
 
 	err = pub.archiver.ZipShare(ctx, s, w)

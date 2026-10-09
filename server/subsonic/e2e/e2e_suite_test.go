@@ -222,10 +222,10 @@ func createUser(id, username, name string, isAdmin bool) model.User {
 		IsAdmin:     isAdmin,
 		NewPassword: "password",
 	}
-	Expect(ds.User(ctx).Put(&user)).To(Succeed())
-	Expect(ds.User(ctx).SetUserLibraries(user.ID, []int{lib.ID})).To(Succeed())
+	Expect(ds.User().Put(ctx, &user)).To(Succeed())
+	Expect(ds.User().SetUserLibraries(ctx, user.ID, []int{lib.ID})).To(Succeed())
 
-	loadedUser, err := ds.User(ctx).FindByUsername(user.UserName)
+	loadedUser, err := ds.User().FindByUsername(ctx, user.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	user.Libraries = loadedUser.Libraries
 	return user
@@ -355,6 +355,10 @@ func (n noopProvider) SimilarSongs(context.Context, string, int) (model.MediaFil
 
 func (n noopProvider) TopSongs(context.Context, string, string, int) (model.MediaFiles, error) {
 	return nil, nil
+}
+
+func (n noopProvider) RefreshInfo(context.Context, model.Kind, string) error {
+	return nil
 }
 
 // Compile-time interface checks

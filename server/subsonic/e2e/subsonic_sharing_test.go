@@ -18,14 +18,14 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 		conf.Server.EnableSharing = true
 		setupTestDB()
 
-		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+		albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"album.name": "Abbey Road"},
 		})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(albums).ToNot(BeEmpty())
 		albumID = albums[0].ID
 
-		songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+		songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"title": "Come Together"},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -139,7 +139,7 @@ var _ = Describe("Sharing Cross-User Isolation", Ordered, func() {
 		userA = createUser("share-user-a", "share-user-a", "Share User A", false)
 		userB = createUser("share-user-b", "share-user-b", "Share User B", false)
 
-		albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+		albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"album.name": "Abbey Road"},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -203,5 +203,78 @@ var _ = Describe("Sharing Cross-User Isolation", Ordered, func() {
 		check := doReqWithUser(userA, "getShares")
 		Expect(check.Shares.Share).To(HaveLen(1))
 		Expect(check.Shares.Share[0].ID).To(Equal(shareID))
+	})
+})
+
+var _ = Describe("Sharing Downloadable Default", func() {
+	var albumID string
+
+	BeforeEach(func() {
+		conf.Server.EnableSharing = true
+		setupTestDB()
+		conf.Server.EnableDownloads = true
+		albumID = albumIDByName("Abbey Road")
+	})
+
+	createShare := func(params ...string) *model.Share {
+		GinkgoHelper()
+		resp := doReq("createShare", append([]string{"id", albumID}, params...)...)
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+		Expect(resp.Shares.Share).To(HaveLen(1))
+		share, err := ds.Share().Get(ctx, resp.Shares.Share[0].ID)
+		Expect(err).ToNot(HaveOccurred())
+		return share
+	}
+
+	DescribeTable("createShare resolves downloadable",
+		func(defaultDownloadable, enableDownloads bool, params []string, expected bool) {
+			conf.Server.DefaultDownloadableShare = defaultDownloadable
+			conf.Server.EnableDownloads = enableDownloads
+
+			Expect(createShare(params...).Downloadable).To(Equal(expected))
+		},
+		Entry("applies the default when the param is absent", true, true, nil, true),
+		Entry("stays off when the default is off", false, true, nil, false),
+		Entry("ignores the default when downloads are disabled", true, false, nil, false),
+		Entry("honors an explicit false over the default", true, true, []string{"downloadable", "false"}, false),
+		Entry("honors an explicit true over the default", false, true, []string{"downloadable", "true"}, true),
+	)
+
+	It("updateShare keeps the current downloadable when the param is absent", func() {
+		conf.Server.DefaultDownloadableShare = true
+		share := createShare()
+		Expect(share.Downloadable).To(BeTrue())
+
+		resp := doReq("updateShare", "id", share.ID, "description", "Updated")
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+
+		updated, err := ds.Share().Get(ctx, share.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updated.Description).To(Equal("Updated"))
+		Expect(updated.Downloadable).To(BeTrue())
+	})
+
+	It("updateShare applies an explicit downloadable and keeps the description", func() {
+		conf.Server.DefaultDownloadableShare = true
+		share := createShare("description", "Keep me")
+
+		resp := doReq("updateShare", "id", share.ID, "downloadable", "false")
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+
+		updated, err := ds.Share().Get(ctx, share.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updated.Downloadable).To(BeFalse())
+		Expect(updated.Description).To(Equal("Keep me"))
+	})
+
+	It("updateShare clears the description when it is sent empty", func() {
+		share := createShare("description", "Clear me")
+
+		resp := doReq("updateShare", "id", share.ID, "description", "")
+		Expect(resp.Status).To(Equal(responses.StatusOK))
+
+		updated, err := ds.Share().Get(ctx, share.ID)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(updated.Description).To(BeEmpty())
 	})
 })

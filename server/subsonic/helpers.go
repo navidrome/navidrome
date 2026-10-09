@@ -112,7 +112,7 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 		CoverArt:   coverArtOrEmpty(a.CoverArtID(), a.ImageAbsent),
 	}
 	if !a.ImageAbsent {
-		artist.ArtistImageUrl = publicurl.ImageURL(r, a.CoverArtID(), 600)
+		artist.ArtistImageUrl = publicurl.ImageURL(r.Context(), a.CoverArtID(), 600)
 	}
 	if conf.Server.Subsonic.EnableAverageRating {
 		artist.AverageRating = a.AverageRating
@@ -132,7 +132,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 		UserRating: int32(a.Rating),
 	}
 	if !a.ImageAbsent {
-		artist.ArtistImageUrl = publicurl.ImageURL(r, a.CoverArtID(), 600)
+		artist.ArtistImageUrl = publicurl.ImageURL(r.Context(), a.CoverArtID(), 600)
 	}
 	if conf.Server.Subsonic.EnableAverageRating {
 		artist.AverageRating = a.AverageRating
@@ -515,9 +515,7 @@ func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubs
 	dir.IsCompilation = album.Compilation
 	dir.DiscTitles = buildDiscSubtitles(album)
 	dir.ExplicitStatus = mapExplicitStatus(album.ExplicitStatus)
-	if len(album.Tags.Values(model.TagAlbumVersion)) > 0 {
-		dir.Version = album.Tags.Values(model.TagAlbumVersion)[0]
-	}
+	dir.Version = album.Tags.First(model.TagAlbumVersion)
 
 	return &dir
 }

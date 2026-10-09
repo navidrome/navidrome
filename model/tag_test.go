@@ -43,6 +43,10 @@ var _ = Describe("Tag", func() {
 			Expect(tags.Values("genre")).To(ConsistOf("Rock", "Pop"))
 			Expect(tags.Values("artist")).To(ConsistOf("The Beatles"))
 		})
+		It("should get the first value by name", func() {
+			Expect(tags.First("genre")).To(Equal("Rock"))
+			Expect(tags.First("missing")).To(BeEmpty())
+		})
 
 		Describe("Hash", func() {
 			It("should always return the same value for the same tags ", func() {
@@ -93,7 +97,7 @@ var _ = Describe("Tag", func() {
 				Expect(groupedTags).To(HaveKeyWithValue(TagName("artist"), []string{"The Beatles", "The Rolling Stones"}))
 			})
 
-			It("should sort tags by name when frequency is the same", func() {
+			It("should keep the order the values appeared in when frequency is the same", func() {
 				tagList := TagList{
 					NewTag("genre", "Jazz"),
 					NewTag("genre", "Rock"),
@@ -103,7 +107,7 @@ var _ = Describe("Tag", func() {
 
 				groupedTags := tagList.GroupByFrequency()
 
-				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), []string{"Alternative", "Jazz", "Pop", "Rock"}))
+				Expect(groupedTags).To(HaveKeyWithValue(TagName("genre"), []string{"Jazz", "Rock", "Alternative", "Pop"}))
 			})
 			It("should normalize casing", func() {
 				tagList := TagList{

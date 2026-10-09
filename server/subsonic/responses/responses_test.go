@@ -1015,6 +1015,20 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("TokenInfo", func() {
+		BeforeEach(func() {
+			response.OpenSubsonic = true
+			response.TokenInfo = &TokenInfo{Username: "deluan"}
+		})
+
+		It("should match .XML", func() {
+			Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+		It("should match .JSON", func() {
+			Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+	})
+
 	Describe("InternetRadioStations", func() {
 		BeforeEach(func() {
 			response.InternetRadioStations = &InternetRadioStations{}

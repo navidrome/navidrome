@@ -1,0 +1,60 @@
+name: Report coverage on PR
+on:
+  workflow_run:
+    workflows: ['Pipeline: Test, Lint, Build']
+    types: [completed]
+jobs:
+  comment:
+    name: Comment coverage report
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    env:
+      COVERAGE_COMMENT: 'true'
+    steps:
+      # Only the config, from the base branch: this job holds a write token, so
+      # it must never check out the fork.
+      - name: Check out the octocov config
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: .octocov.yml
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      # Into a subdirectory. A pull_request run executes the fork's own copy of
+      # pipeline.yml, so every file in here is attacker-controlled.
+      - uses: actions/download-artifact@v8
+        with:
+          name: octocov-pr
+          path: untrusted
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Verify the artifact and take the coverage profile
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          number=$(head -c 20 untrusted/pr_number | tr -d '[:space:]')
+          case "$number" in ''|*[!0-9]*)
+            echo "::error::artifact pr_number is not a number"; exit 1;;
+          esac
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$number" --jq .head.sha)
+          if [ "$sha" != "$HEAD_SHA" ]; then
+            echo "::error::artifact claims PR #$number, but its head $sha is not $HEAD_SHA"; exit 1
+          fi
+          cp untrusted/coverage.out coverage.out
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+      - uses: k1LoW/octocov-action@v1
+        env:
+          # A workflow_run job looks like a push to the default branch. Point
+          # octocov back at the pull request and at the run that produced it.
+          GITHUB_PULL_REQUEST_NUMBER: ${{ steps.pr.outputs.number }}
+          OCTOCOV_GITHUB_REF: refs/pull/${{ steps.pr.outputs.number }}/merge
+          OCTOCOV_GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+          OCTOCOV_GITHUB_RUN_ID: ${{ github.event.workflow_run.id }}

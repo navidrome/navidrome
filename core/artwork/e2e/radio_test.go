@@ -23,7 +23,7 @@ var _ = Describe("Radio artwork resolution", func() {
 		It("returns the uploaded image bytes", func() {
 			writeUploadedImage(consts.EntityRadio, "rd-1_logo.jpg", pngBytes("radio-logo"))
 			rd := model.Radio{ID: "rd-1", Name: "Test Radio", StreamUrl: "https://example.com/stream", UploadedImage: "rd-1_logo.jpg"}
-			Expect(rds.Radio(rctx).Put(&rd)).To(Succeed())
+			Expect(rds.Radio().Put(rctx, &rd)).To(Succeed())
 
 			ia := acquire(model.KindRadioArtwork, rd.ID)
 			Expect(ia.Source).To(Equal("upload"))
@@ -35,7 +35,7 @@ var _ = Describe("Radio artwork resolution", func() {
 		// (no files on disk — the resolver has no sources to fall back to)
 		It("settles absent", func() {
 			rd := model.Radio{ID: "rd-2", Name: "Bare Radio", StreamUrl: "https://example.com/stream"}
-			Expect(rds.Radio(rctx).Put(&rd)).To(Succeed())
+			Expect(rds.Radio().Put(rctx, &rd)).To(Succeed())
 
 			ia := acquire(model.KindRadioArtwork, rd.ID)
 			Expect(ia.Hash).To(BeEmpty())
