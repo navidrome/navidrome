@@ -2,11 +2,8 @@ package mpv
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -14,16 +11,12 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("MPV", func() {
-	var (
-		testScript string
-		tempDir    string
-	)
+	var mockMPV string
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
@@ -33,17 +26,13 @@ var _ = Describe("MPV", func() {
 		mpvPath = ""
 		mpvErr = nil
 
-		// Create temporary directory for test files
+		// The test binary echoes its arguments when run as mpv, see TestMain
 		var err error
-		tempDir, err = os.MkdirTemp("", "mpv_test_*")
+		mockMPV, err = os.Executable()
 		Expect(err).ToNot(HaveOccurred())
-		DeferCleanup(func() { os.RemoveAll(tempDir) })
-
-		// Create mock MPV script that outputs arguments to stdout
-		testScript = createMockMPVScript(tempDir)
 
 		// Configure test MPV path
-		conf.Server.MPVPath = testScript
+		conf.Server.MPVPath = mockMPV
 	})
 
 	Describe("createMPVCommand", func() {
@@ -55,7 +44,7 @@ var _ = Describe("MPV", func() {
 			It("creates correct command with simple paths", func() {
 				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
 				Expect(args).To(Equal([]string{
-					testScript,
+					mockMPV,
 					"--audio-device=auto",
 					"--no-audio-display",
 					"--pause",
@@ -67,7 +56,7 @@ var _ = Describe("MPV", func() {
 			It("handles paths with spaces", func() {
 				args := createMPVCommand("auto", "/music/My Album/01 - Song.mp3", "/tmp/socket")
 				Expect(args).To(Equal([]string{
-					testScript,
+					mockMPV,
 					"--audio-device=auto",
 					"--no-audio-display",
 					"--pause",
@@ -80,7 +69,7 @@ var _ = Describe("MPV", func() {
 				deviceName := "coreaudio/AppleUSBAudioEngine:Cambridge Audio :Cambridge Audio USB Audio 1.0:0000:1"
 				args := createMPVCommand(deviceName, "/music/test.mp3", "/tmp/socket")
 				Expect(args).To(Equal([]string{
-					testScript,
+					mockMPV,
 					"--audio-device=" + deviceName,
 					"--no-audio-display",
 					"--pause",
@@ -99,7 +88,7 @@ var _ = Describe("MPV", func() {
 			It("creates correct command for snapcast integration", func() {
 				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
 				Expect(args).To(Equal([]string{
-					testScript,
+					mockMPV,
 					"--no-audio-display",
 					"--pause",
 					"/music/test.mp3",
@@ -140,7 +129,7 @@ var _ = Describe("MPV", func() {
 			It("handles extra spaces correctly", func() {
 				args := createMPVCommand("auto", "/music/test.mp3", "/tmp/socket")
 				Expect(args).To(Equal([]string{
-					testScript,
+					mockMPV,
 					"--audio-device=auto",
 					"--no-audio-display",
 					"--pause",
@@ -160,7 +149,7 @@ var _ = Describe("MPV", func() {
 				// This test reveals the limitation of strings.Fields() - it will split on all spaces
 				// Expected behavior would be to keep the path as one argument
 				Expect(args).To(Equal([]string{
-					testScript,
+					mockMPV,
 					"--no-audio-display",
 					"--pause",
 					"/music/test.mp3",
@@ -200,7 +189,6 @@ var _ = Describe("MPV", func() {
 		})
 
 		It("executes MPV command and captures arguments correctly", func() {
-			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -219,7 +207,7 @@ var _ = Describe("MPV", func() {
 			// Parse the captured arguments
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 			Expect(lines).To(HaveLen(6))
-			Expect(lines[0]).To(Equal(testScript))
+			Expect(lines[0]).To(Equal(mockMPV))
 			Expect(lines[1]).To(Equal("--audio-device=auto"))
 			Expect(lines[2]).To(Equal("--no-audio-display"))
 			Expect(lines[3]).To(Equal("--pause"))
@@ -228,7 +216,6 @@ var _ = Describe("MPV", func() {
 		})
 
 		It("handles file paths with spaces", func() {
-			tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -256,7 +243,6 @@ var _ = Describe("MPV", func() {
 			})
 
 			It("passes all snapcast arguments correctly", func() {
-				tests.SkipOnWindows("mpv binary not available in CI (#TBD-mpv-windows)")
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
 
@@ -318,10 +304,10 @@ var _ = Describe("MPV", func() {
 		})
 
 		It("finds the configured MPV path", func() {
-			conf.Server.MPVPath = testScript
+			conf.Server.MPVPath = mockMPV
 			path, err := mpvCommand()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(path).To(Equal(testScript))
+			Expect(path).To(Equal(mockMPV))
 		})
 	})
 
@@ -330,7 +316,7 @@ var _ = Describe("MPV", func() {
 
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.MPVPath = testScript
+			conf.Server.MPVPath = mockMPV
 
 			// Create a test media file
 			testMediaFile = model.MediaFile{
@@ -357,38 +343,3 @@ var _ = Describe("MPV", func() {
 		})
 	})
 })
-
-// createMockMPVScript creates a mock script that outputs arguments to stdout
-func createMockMPVScript(tempDir string) string {
-	var scriptContent string
-	var scriptExt string
-
-	if runtime.GOOS == "windows" {
-		scriptExt = ".bat"
-		scriptContent = `@echo off
-echo %0
-:loop
-if "%~1"=="" goto end
-echo %~1
-shift
-goto loop
-:end
-`
-	} else {
-		scriptExt = ".sh"
-		scriptContent = `#!/bin/sh
-echo "$0"
-for arg in "$@"; do
-    echo "$arg"
-done
-`
-	}
-
-	scriptPath := filepath.Join(tempDir, "mock_mpv"+scriptExt)
-	err := os.WriteFile(scriptPath, []byte(scriptContent), 0755) // nolint:gosec
-	if err != nil {
-		panic(fmt.Sprintf("Failed to create mock script: %v", err))
-	}
-
-	return scriptPath
-}
