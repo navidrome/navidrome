@@ -2,8 +2,10 @@ package ioutils
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"testing"
+	"testing/iotest"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -79,6 +81,83 @@ var _ = Describe("UTF8Reader", func() {
 			output, err := io.ReadAll(reader)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(output)).To(Equal(""))
+		})
+	})
+
+	Context("when reading Windows-1252/Latin-1 encoded text (issue #6037)", func() {
+		It("decodes accented bytes instead of emitting U+FFFD", func() {
+			// "PokéMon" and "Và" with é (0xE9) and à (0xE0) as single Latin-1 bytes.
+			input := []byte{'P', 'o', 'k', 0xE9, 'M', 'o', 'n', ' ', 'V', 0xE0}
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("PokéMon Và"))
+		})
+
+		It("decodes Windows-1252 specific bytes in the 0x80-0x9F range", func() {
+			// 0x80 is the Euro sign and 0x93/0x94 are curly quotes in Windows-1252,
+			// none of which exist in plain Latin-1.
+			input := []byte{0x80, '5', ' ', 0x93, 'h', 'i', 0x94}
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("€5 “hi”"))
+		})
+
+		It("leaves valid multi-byte UTF-8 untouched", func() {
+			// A path that mixes CJK and accented Latin, already valid UTF-8, must
+			// pass through byte-for-byte so real UTF-8 files are never corrupted.
+			input := []byte("收藏/PokéMon Và White.mp3")
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output).To(Equal(input))
+		})
+
+		It("preserves a genuine U+FFFD present in valid UTF-8", func() {
+			input := []byte("a�b")
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output).To(Equal(input))
+		})
+
+		It("decodes a byte pair that is coincidentally valid UTF-8 as Windows-1252 when the whole file is not UTF-8", func() {
+			// The file is Windows-1252: "café/Â£.mp3" where é is 0xE9 and "Â£" is
+			// the bytes 0xC2 0xA3. That pair alone is valid UTF-8 for "£", but the
+			// standalone 0xE9 makes the file as a whole invalid UTF-8, so the whole
+			// input must be read as Windows-1252 and the pair must become "Â£".
+			input := []byte{'c', 'a', 'f', 0xE9, '/', 0xC2, 0xA3, '.', 'm', 'p', '3'}
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("café/Â£.mp3"))
+		})
+
+		It("keeps a C2 A3 pair as £ when the whole file is valid UTF-8", func() {
+			// The same byte pair, in a file that is valid UTF-8 throughout, is the
+			// pound sign and must be left alone.
+			input := []byte("cost/£.mp3")
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(output).To(Equal(input))
+		})
+	})
+
+	Context("when the underlying reader fails", func() {
+		It("surfaces the read error", func() {
+			boom := errors.New("boom")
+			reader := UTF8Reader(io.MultiReader(bytes.NewReader([]byte("abc")), iotest.ErrReader(boom)))
+
+			_, err := io.ReadAll(reader)
+			Expect(err).To(MatchError(boom))
 		})
 	})
 })
