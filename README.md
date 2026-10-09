@@ -33,6 +33,10 @@ please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or j
 
 See instructions on the [project's website](https://www.navidrome.org/docs/installation/)
 
+Set `InstanceName = "My Music"` (or `ND_INSTANCENAME="My Music"`) to name your
+server on the login screen, page header and browser tab. The default is
+`Navidrome`, including for blank values. Restart and reload after changing it.
+
 ## Cloud Hosting
 
 Several cloud hosting providers partner with us to offer [officially supported, cloud-hosted solutions](https://www.navidrome.org/docs/installation/managed). If you sign up with any of these providers, a share of the revenue funds the development of Navidrome at no additional cost for you.
