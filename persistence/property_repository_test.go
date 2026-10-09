@@ -33,4 +33,26 @@ var _ = Describe("Property Repository", func() {
 	It("returns a default value if property does not exist", func() {
 		Expect(pr.DefaultGet(ctx, "2", "default")).To(Equal("default"))
 	})
+
+	It("hides values marked as secrets from the SQL log, but still logs the property id", func() {
+		logs := captureTraceLogs()
+		insertCtx := log.WithSecrets(ctx, "inserted-secret")
+		Expect(pr.Put(insertCtx, "secret-prop", "inserted-secret")).To(Succeed())
+		updateCtx := log.WithSecrets(ctx, "updated-secret")
+		Expect(pr.Put(updateCtx, "secret-prop", "updated-secret")).To(Succeed())
+
+		Expect(logs.String()).To(ContainSubstring("INSERT INTO property"))
+		Expect(logs.String()).To(ContainSubstring("UPDATE property"))
+		Expect(logs.String()).To(ContainSubstring("secret-prop"))
+		Expect(logs.String()).ToNot(ContainSubstring("inserted-secret"))
+		Expect(logs.String()).ToNot(ContainSubstring("updated-secret"))
+	})
+
+	It("logs the values of unmarked property writes", func() {
+		logs := captureTraceLogs()
+		Expect(pr.Put(ctx, "plain-prop", "plain-value")).To(Succeed())
+
+		Expect(logs.String()).To(ContainSubstring("plain-prop"))
+		Expect(logs.String()).To(ContainSubstring("plain-value"))
+	})
 })
