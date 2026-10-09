@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"path"
+	"strings"
 
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
@@ -17,7 +18,8 @@ import (
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	if mf.Lyrics != "" {
 		log.Trace(ctx, "embedded lyrics found in file", "title", mf.Title)
-		return mf.StructuredLyrics()
+		list, err := mf.StructuredLyrics()
+		return withLyricsSource(list, model.LyricsSource{Type: model.LyricsSourceEmbedded}), err
 	}
 
 	log.Trace(ctx, "no embedded lyrics for file", "path", mf.Title)
@@ -65,7 +67,10 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	}
 
 	log.Trace(ctx, "retrieved lyrics from external file")
-	return list, nil
+	return withLyricsSource(list, model.LyricsSource{
+		Type:   model.LyricsSourceSidecar,
+		Format: strings.ToLower(strings.TrimPrefix(suffix, ".")),
+	}), nil
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name.
@@ -89,5 +94,39 @@ func (l *lyricsService) fromPlugin(ctx context.Context, mf *model.MediaFile, plu
 	if len(lyricsList) > 0 {
 		log.Trace(ctx, "Retrieved lyrics from plugin", "plugin", pluginName, "count", len(lyricsList))
 	}
-	return lyricsList, nil
+	return withLyricsSource(lyricsList, model.LyricsSource{
+		Type: model.LyricsSourcePlugin,
+		Name: pluginName,
+	}), nil
+}
+
+// withLyricsSource copies the lyric entries before adding defaults so resolver
+// metadata does not mutate cached embedded lyrics or a provider-owned result.
+func withLyricsSource(list model.LyricList, defaults model.LyricsSource) model.LyricList {
+	if len(list) == 0 {
+		return list
+	}
+
+	result := make(model.LyricList, len(list))
+	copy(result, list)
+	for i := range result {
+		source := defaults
+		if result[i].Source != nil {
+			source = *result[i].Source
+			if source.Type == "" {
+				source.Type = defaults.Type
+			}
+			if source.Name == "" {
+				source.Name = defaults.Name
+			}
+			if source.Provider == "" {
+				source.Provider = defaults.Provider
+			}
+			if source.Format == "" {
+				source.Format = defaults.Format
+			}
+		}
+		result[i].Source = &source
+	}
+	return result
 }

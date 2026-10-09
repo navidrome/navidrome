@@ -22,11 +22,19 @@ type GetLyricsRequest struct {
 
 // GetLyricsResponse contains the lyrics returned by the plugin.
 type GetLyricsResponse struct {
-	Lyrics []LyricsText `json:"lyrics"`
+	Lyrics []LyricsText  `json:"lyrics"`
+	Source *LyricsSource `json:"source,omitempty"`
+}
+
+// LyricsSource identifies the optional upstream provider and format selected
+// by a plugin. Navidrome supplies the plugin name and source type itself.
+type LyricsSource struct {
+	Provider string `json:"provider,omitempty"`
+	Format   string `json:"format,omitempty"`
 }
 
 // LyricsText represents a single set of lyrics in raw text format.
-// Text can be plain text or LRC format — Navidrome will parse it.
+// Navidrome content-sniffs and parses the returned text.
 type LyricsText struct {
 	Lang string `json:"lang,omitempty"`
 	Text string `json:"text"`
