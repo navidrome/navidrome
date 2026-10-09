@@ -87,6 +87,7 @@ func songsByArtistTitleWithLyricsFirst(artist, title string) model.QueryOptions 
 }
 
 func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles []*model.MediaFile) (model.LyricList, error) {
+	var pluginErr error
 	for pattern := range strings.SplitSeq(conf.Server.LyricsPriority, ",") {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" {
@@ -101,6 +102,9 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern)
 			if err != nil {
 				log.Error(ctx, "error getting lyrics", "source", pattern, err)
+				if pattern != "embedded" && !strings.HasPrefix(pattern, ".") {
+					pluginErr = err
+				}
 				continue
 			}
 
@@ -110,7 +114,7 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 		}
 	}
 
-	return nil, nil
+	return nil, pluginErr
 }
 
 func (l *lyricsService) getLyricsFromSource(ctx context.Context, mf *model.MediaFile, pattern string) (model.LyricList, error) {

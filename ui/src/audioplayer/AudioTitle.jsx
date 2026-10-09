@@ -7,11 +7,12 @@ import { decisionService } from '../transcode'
 import useStyle from './styles'
 import { useDrag } from 'react-dnd'
 import { DraggableTypes } from '../consts'
+import { PLAYER_DESKTOP_MEDIA_QUERY } from './playerBreakpoints'
 
 const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   const classes = useStyle()
   const className = classes.audioTitle
-  const isDesktop = useMediaQuery('(min-width:810px)')
+  const isDesktop = useMediaQuery(PLAYER_DESKTOP_MEDIA_QUERY)
 
   const song = audioInfo.song
   const [, dragSongRef] = useDrag(
