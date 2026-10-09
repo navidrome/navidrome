@@ -82,7 +82,7 @@ const links = {
 const LinkToVersion = ({ version }) => {
   // 'dev' builds and the server version before the ping answers ('') have no
   // "(commit)" part to link to.
-  const match = version.match(/^(\S+) \((\w+)\)$/)
+  const match = version.match(/^(\S+) \((\S+)\)$/)
   if (!match) {
     return <>{version}</>
   }
