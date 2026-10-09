@@ -226,7 +226,6 @@ var _ = Describe("Scanner", Ordered, func() {
 			})
 
 			It("should re-enqueue the album artwork even though it already resolved", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				resolveQueuedArtwork()
@@ -1199,7 +1198,6 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("should update artist stats during quick scans when new albums are added", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 			// Don't use the mocked artist repo for this test - we need the real one
 			ds.MockedArtist = nil
 
