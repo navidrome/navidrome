@@ -37,11 +37,11 @@ See instructions on the [project's website](https://www.navidrome.org/docs/insta
 
 Several cloud hosting providers partner with us to offer [officially supported, cloud-hosted solutions](https://www.navidrome.org/docs/installation/managed). If you sign up with any of these providers, a share of the revenue funds the development of Navidrome at no additional cost for you.
 
-[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
+<a href="https://www.pikapods.com/pods?run=navidrome"><img src="https://www.pikapods.com/static/run-button.svg" alt="Run on PikaPods" height="40"></a>
 <br>
-[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/navidrome?ref=navidrome)
+<a href="https://zenith.hosting/host/navidrome?ref=navidrome"><img src="https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg" alt="Deploy with Zenith" height="40"></a>
 <br>
-<a href="https://store.elfhosted.com/product/navidrome/" style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:#20232a;color:#fff;border-radius:6px;text-decoration:none;font-weight:600"><img src="https://docs.elfhosted.com/images/logo.svg" alt="" width="24"> Deploy on ElfHosted</a>
+<a href="https://store.elfhosted.com/product/navidrome/"><img src="resources/hosting/elfhosted.svg" alt="Deploy on ElfHosted" height="40"></a>
 
 
 
