@@ -50,6 +50,15 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				continue
 			}
 
+			// Likewise a full walk never enters a link back into the folders above it, so a target
+			// reached through one (e.g. a watcher event for playlists/music -> ..) is skipped.
+			dir := newDirRef(job.fs, folderPath)
+			ancestors, ok := ancestorsOf(job.fs, dir)
+			if !ok {
+				log.Debug(ctx, "Scanner: Skipping target folder reached through a symlink cycle", "path", folderPath)
+				continue
+			}
+
 			// Create checker and push patterns from root to this folder
 			checker := newIgnoreChecker(job.fs)
 			err = checker.PushAllParents(ctx, folderPath)
@@ -59,7 +68,7 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 			}
 
 			// Recursively walk this folder and all its children
-			err = walkFolder(ctx, job, newDirRef(job.fs, folderPath), checker, results, ancestorsOf(job.fs, folderPath))
+			err = walkFolder(ctx, job, dir, checker, results, ancestors)
 			if utils.IsCtxDone(ctx) {
 				return
 			}
@@ -272,15 +281,19 @@ func newDirRef(fsys fs.FS, dirPath string) dirRef {
 	return dir
 }
 
-// ancestorsOf returns the resolved paths of the folders above folderPath up to the library
-// root, so walking only folderPath catches links back into them as a full walk would.
-func ancestorsOf(fsys fs.FS, folderPath string) map[string]struct{} {
+// ancestorsOf returns the resolved paths of the folders above dir up to the library root, or
+// false if dir is only reachable through a link back into one of them.
+func ancestorsOf(fsys fs.FS, dir dirRef) (map[string]struct{}, bool) {
 	ancestors := map[string]struct{}{}
-	for p := path.Clean(folderPath); p != "." && p != "/"; {
+	for p := path.Clean(dir.path); p != "." && p != "/"; {
 		p = path.Dir(p)
-		ancestors[newDirRef(fsys, p).realPath] = struct{}{}
+		realPath := newDirRef(fsys, p).realPath
+		if _, seen := ancestors[realPath]; seen || realPath == dir.realPath {
+			return nil, false
+		}
+		ancestors[realPath] = struct{}{}
 	}
-	return ancestors
+	return ancestors, true
 }
 
 // newChildDirRef returns the reference for a subfolder of dir. Only symlinks need resolving,

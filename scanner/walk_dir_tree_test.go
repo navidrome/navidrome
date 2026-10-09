@@ -251,6 +251,15 @@ var _ = Describe("walk_dir_tree", func() {
 				Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf("playlists"))
 			})
 
+			It("skips a target folder that is a symlink back to the library root", func() {
+				folders := walk(fstest.MapFS{
+					"artist/album/track1.mp3": {},
+					"playlists/music":         {Mode: fs.ModeSymlink, Data: []byte("..")},
+				}, "playlists/music")
+
+				Expect(folders).To(BeEmpty())
+			})
+
 			// localFS resolves symlinks at the OS level instead of through fs.ReadLink
 			Context("production local storage FS", func() {
 				var musicFS storage.MusicFS
@@ -288,6 +297,10 @@ var _ = Describe("walk_dir_tree", func() {
 
 					Expect(slices.Collect(maps.Keys(folders))).To(ConsistOf("playlists"))
 					Expect(folders["playlists"].playlistFiles).To(HaveKey("best.m3u"))
+				})
+
+				It("skips target folders reached through the symlink", func() {
+					Expect(walkFS(musicFS, libRoot, "playlists/music", "playlists/music/artist")).To(BeEmpty())
 				})
 			})
 		})
