@@ -59,7 +59,7 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 			}
 
 			// Recursively walk this folder and all its children
-			err = walkFolder(ctx, job, newDirRef(job.fs, folderPath), checker, results, map[string]struct{}{})
+			err = walkFolder(ctx, job, newDirRef(job.fs, folderPath), checker, results, ancestorsOf(job.fs, folderPath))
 			if utils.IsCtxDone(ctx) {
 				return
 			}
@@ -73,10 +73,8 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 	return results, nil
 }
 
-// dirRef is a folder to be walked: its path in the library's filesystem and its resolved
-// path, with all symlinks followed. The resolved path is the folder's identity: two paths
-// that resolve to the same one are the same folder on disk, which is how symlink cycles
-// are detected while walking (see #5334).
+// dirRef is a folder to walk. realPath has all symlinks resolved and identifies the folder
+// on disk, so a link back into one of its ancestors can be recognized as a cycle.
 type dirRef struct {
 	path     string
 	realPath string
@@ -87,10 +85,8 @@ func walkFolder(ctx context.Context, job *scanJob, dir dirRef, checker *IgnoreCh
 	_ = checker.Push(ctx, dir.path)
 	defer checker.Pop() // Pop patterns when leaving this folder
 
-	// Keep track of the folders in the current branch, so any symlink pointing back into
-	// one of them is recognized as a cycle and skipped. Removed again on the way out, so
-	// two sibling folders linking to the same target are both walked - that is not a
-	// cycle, just the same folder reached twice.
+	// branch holds this folder and the ones above it. Only a link back into it is a cycle, two
+	// sibling links to the same folder are both walked.
 	branch[dir.realPath] = struct{}{}
 	defer delete(branch, dir.realPath)
 
@@ -135,8 +131,6 @@ func loadDir(ctx context.Context, job *scanJob, dir dirRef, checker *IgnoreCheck
 	folder = job.createFolderEntry(dirPath)
 	folder.modTime = dirInfo.ModTime()
 
-	// Named dirFile rather than dir: dir is now the folder reference this function
-	// received, and shadowing it here would silently walk the wrong path.
 	dirFile, err := job.fs.Open(dirPath)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error in Opening directory", "path", dirPath, err)
@@ -171,9 +165,6 @@ func loadDir(ctx context.Context, job *scanJob, dir dirRef, checker *IgnoreCheck
 		}
 		if isDir && isDirReadable(ctx, job.fs, entryPath) {
 			child := newChildDirRef(job.fs, dir, entry)
-			// A symlink whose target is already in the current branch points back into a
-			// folder being walked right now: following it would walk the same folders
-			// forever. Everything else is walked normally.
 			if _, isCycle := branch[child.realPath]; isCycle {
 				log.Debug(ctx, "Scanner: Skipping symlink pointing back into a folder being scanned",
 					"path", entryPath, "target", child.realPath)
@@ -274,17 +265,26 @@ func isSymlinkedPath(fsys fs.FS, folderPath string) bool {
 
 const maxSymlinkHops = 40
 
-// newDirRef returns the reference for the folder a walk starts at, resolving it in case
-// the folder itself is (or is reached through) a symlink.
+// newDirRef returns the reference for a folder a walk starts at, which may itself be a symlink.
 func newDirRef(fsys fs.FS, dirPath string) dirRef {
 	dir := dirRef{path: dirPath, realPath: path.Clean(dirPath)}
 	dir.realPath = resolveDirPath(fsys, dir)
 	return dir
 }
 
-// newChildDirRef returns the reference for a subfolder of dir. Only symlinks need to be
-// resolved: a real subfolder is always a new folder, it can never point back into one of
-// its own ancestors.
+// ancestorsOf returns the resolved paths of the folders above folderPath up to the library
+// root, so walking only folderPath catches links back into them as a full walk would.
+func ancestorsOf(fsys fs.FS, folderPath string) map[string]struct{} {
+	ancestors := map[string]struct{}{}
+	for p := path.Clean(folderPath); p != "." && p != "/"; {
+		p = path.Dir(p)
+		ancestors[newDirRef(fsys, p).realPath] = struct{}{}
+	}
+	return ancestors
+}
+
+// newChildDirRef returns the reference for a subfolder of dir. Only symlinks need resolving,
+// a real subfolder can never point back into its own ancestors.
 func newChildDirRef(fsys fs.FS, dir dirRef, entry fs.DirEntry) dirRef {
 	child := dirRef{
 		path:     path.Join(dir.path, entry.Name()),
@@ -296,12 +296,8 @@ func newChildDirRef(fsys fs.FS, dir dirRef, entry fs.DirEntry) dirRef {
 	return child
 }
 
-// resolveDirPath returns the path of the folder dir points to, with all symlinks
-// resolved. Storages backed by a real filesystem resolve the whole path at the OS level.
-// For any other filesystem the symlink chain is followed with fs.ReadLink, starting from
-// the parent's already resolved path, so the walk keeps comparing paths in the same
-// (FS-relative) space. If the path cannot be resolved it is returned as is, and the
-// folder is walked as any other.
+// resolveDirPath returns dir's path with all symlinks resolved, or dir.realPath if it can't be
+// resolved. Without OS-level resolution the chain is followed inside the FS from dir.realPath.
 func resolveDirPath(fsys fs.FS, dir dirRef) string {
 	if resolver, ok := fsys.(storage.SymlinkResolverFS); ok {
 		target, err := resolver.ResolveSymlink(dir.path)
@@ -317,10 +313,8 @@ func resolveDirPath(fsys fs.FS, dir dirRef) string {
 	return target
 }
 
-// followSymlinkChain follows the symlink chain starting at linkPath using fs.ReadLink,
-// and returns the last path it could reach, plus the number of hops it took to get there.
-// Zero hops means linkPath is not a symlink this filesystem can read; maxSymlinkHops means
-// the chain is too long to be resolved and is most likely a loop.
+// followSymlinkChain follows linkPath with fs.ReadLink and returns the last path reached and
+// the hops taken. maxSymlinkHops hops means the chain most likely loops.
 func followSymlinkChain(fsys fs.FS, linkPath string) (string, int) {
 	cur := linkPath
 	hop := 0
