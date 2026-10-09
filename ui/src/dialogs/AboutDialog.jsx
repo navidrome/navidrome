@@ -80,22 +80,24 @@ const links = {
 }
 
 const LinkToVersion = ({ version }) => {
-  if (version === 'dev') {
+  // 'dev' builds and the server version before the ping answers ('') have no
+  // "(commit)" part to link to.
+  const match = version.match(/^(\S+) \((\w+)\)$/)
+  if (!match) {
     return <>{version}</>
   }
 
-  const parts = version.split(' ')
-  const commitID = parts[1].replace(/[()]/g, '')
-  const isSnapshot = version.includes('SNAPSHOT')
+  const [, tag, commitID] = match
+  const isSnapshot = tag.includes('SNAPSHOT')
   const url = isSnapshot
     ? `https://github.com/navidrome/navidrome/compare/v${
-        parts[0].split('-')[0]
+        tag.split('-')[0]
       }...${commitID}`
-    : `https://github.com/navidrome/navidrome/releases/tag/v${parts[0]}`
+    : `https://github.com/navidrome/navidrome/releases/tag/v${tag}`
   return (
     <>
       <Link href={url} target="_blank" rel="noopener noreferrer">
-        {parts[0]}
+        {tag}
       </Link>
       {' (' + commitID + ')'}
     </>
@@ -104,7 +106,7 @@ const LinkToVersion = ({ version }) => {
 
 const ShowVersion = ({ uiVersion, serverVersion }) => {
   const translate = useTranslate()
-  const showRefresh = uiVersion !== serverVersion
+  const showRefresh = serverVersion !== '' && uiVersion !== serverVersion
 
   return (
     <>
