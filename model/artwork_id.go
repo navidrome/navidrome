@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/navidrome/navidrome/utils/slice"
 )
 
 type Kind struct {
@@ -38,6 +40,11 @@ var artworkKindMap = map[string]Kind{
 	KindPlaylistArtwork.prefix:  KindPlaylistArtwork,
 	KindDiscArtwork.prefix:      KindDiscArtwork,
 	KindRadioArtwork.prefix:     KindRadioArtwork,
+}
+
+// KindPrefixes leaves the typed Kind domain for the item_kind column, or for a help string.
+func KindPrefixes(kinds []Kind) []string {
+	return slice.Map(kinds, func(k Kind) string { return k.prefix })
 }
 
 // ParseKind resolves an item_kind prefix (e.g. "al") to its Kind, reporting whether it was known.

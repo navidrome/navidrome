@@ -13,11 +13,13 @@ import (
 )
 
 var _ = Describe("syncPlugins", func() {
+	var ctx context.Context
 	var m *Manager
 	var repo *tests.MockPluginRepo
 	var folder string
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		folder = GinkgoT().TempDir()
 		repo = tests.CreateMockPluginRepo()
 		repo.SetData(model.Plugins{})
@@ -36,7 +38,7 @@ var _ = Describe("syncPlugins", func() {
 
 		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
 
-		_, err := repo.Get("my-plugin")
+		_, err := repo.Get(ctx, "my-plugin")
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -46,18 +48,23 @@ var _ = Describe("syncPlugins", func() {
 
 		Expect(m.syncPlugins(context.Background(), folder)).To(Succeed())
 
-		all, err := repo.GetAll()
+		all, err := repo.GetAll(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(all).To(BeEmpty())
 	})
 })
 
 var _ = Describe("removePluginFromDB", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("discards buffered scrobbles for the removed plugin", func() {
-		ctx := context.Background()
 		buffer := tests.CreateMockedScrobbleBufferRepo()
-		Expect(buffer.Enqueue("my-plugin", "user1", "track1", time.Now())).To(Succeed())
-		Expect(buffer.Enqueue("other-plugin", "user1", "track2", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue(ctx, "my-plugin", "user1", "track1", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue(ctx, "other-plugin", "user1", "track2", time.Now())).To(Succeed())
 
 		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "my-plugin", Enabled: false}
@@ -70,22 +77,21 @@ var _ = Describe("removePluginFromDB", func() {
 		}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
-		_, err := repo.Get("my-plugin")
+		_, err := repo.Get(ctx, "my-plugin")
 		Expect(err).To(MatchError(model.ErrNotFound))
 
-		remaining, err := buffer.Length()
+		remaining, err := buffer.Length(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(remaining).To(Equal(int64(1)))
-		entry, err := buffer.Next("other-plugin", "user1")
+		entry, err := buffer.Next(ctx, "other-plugin", "user1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(entry).ToNot(BeNil(), "entries of other services must be kept")
 	})
 
 	It("keeps buffered scrobbles of a builtin scrobbler sharing the removed plugin's name", func() {
-		ctx := context.Background()
 		scrobbler.Register("builtin-svc", func(model.DataStore) scrobbler.Scrobbler { return nil })
 		buffer := tests.CreateMockedScrobbleBufferRepo()
-		Expect(buffer.Enqueue("builtin-svc", "user1", "track1", time.Now())).To(Succeed())
+		Expect(buffer.Enqueue(ctx, "builtin-svc", "user1", "track1", time.Now())).To(Succeed())
 
 		repo := tests.CreateMockPluginRepo()
 		plugin := model.Plugin{ID: "builtin-svc", Enabled: false}
@@ -96,7 +102,7 @@ var _ = Describe("removePluginFromDB", func() {
 		}
 		Expect(m.removePluginFromDB(ctx, repo, &plugin)).To(Succeed())
 
-		remaining, err := buffer.Length()
+		remaining, err := buffer.Length(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(remaining).To(Equal(int64(1)), "builtin scrobbler queue must not be wiped")
 	})

@@ -51,9 +51,6 @@ vi.mock('react-admin', () => ({
   BooleanInput: ({ source }) => (
     <input type="checkbox" data-testid={`boolean-input-${source}`} />
   ),
-  DateField: ({ source }) => (
-    <div data-testid={`date-field-${source}`}>Date</div>
-  ),
   PasswordInput: ({ source }) => (
     <input type="password" data-testid={`password-input-${source}`} />
   ),
@@ -82,6 +79,9 @@ vi.mock('./DeleteUserButton', () => ({
 
 vi.mock('../common', () => ({
   Title: ({ subTitle }) => <div data-testid="title">{subTitle}</div>,
+  ReadOnlyDateField: ({ source }) => (
+    <div data-testid={`date-field-${source}`}>Date</div>
+  ),
 }))
 
 // Mock Material-UI
@@ -125,6 +125,12 @@ describe('<UserEdit />', () => {
     expect(screen.getByTestId('date-field-lastAccessAt')).toBeInTheDocument()
     expect(screen.getByTestId('date-field-updatedAt')).toBeInTheDocument()
     expect(screen.getByTestId('date-field-createdAt')).toBeInTheDocument()
+  })
+
+  it('should render the scrobble filter input', () => {
+    render(<UserEdit id="user1" permissions="admin" />)
+
+    expect(screen.getByTestId('text-input-scrobbleFilter')).toBeInTheDocument()
   })
 
   it('should not render username input for non-admin users', () => {

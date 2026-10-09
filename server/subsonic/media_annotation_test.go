@@ -77,7 +77,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		Context("submission=false", func() {
 			var req *http.Request
 			BeforeEach(func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "12"})
+				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "12"})
 				ctx = request.WithPlayer(ctx, model.Player{ID: "player-1"})
 				req = newGetRequest("id=12", "submission=false")
 				req = req.WithContext(ctx)

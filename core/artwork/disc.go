@@ -45,7 +45,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 		return nil, fmt.Errorf("invalid disc artwork id '%s': %w", artID.ID, err)
 	}
 
-	al, err := ds.Album(ctx).Get(albumID)
+	al, err := ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	}
 
 	// Query mediafiles for this album + disc to find folder associations and first track
-	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Sort:    "track_number",
 		Order:   "ASC",
 		Filters: squirrel.Eq{"album_id": albumID, "disc_number": discNumber},
@@ -88,7 +88,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	// Resolve folder IDs to library-relative paths
 	discFoldersRel := make(map[string]bool)
 	if len(folderIDs) > 0 {
-		folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+		folders, err := ds.Folder().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"folder.id": folderIDs},
 		})
 		if err != nil {
@@ -113,27 +113,71 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	}, nil
 }
 
-func (d *discArtworkReader) fromDiscArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
-	var ff []sourceFunc
+// discCandidate is one DiscArtPriority entry. skip is set when the entry maps to no source at
+// all, so a chain walk can say why instead of leaving a configured entry unaccounted for.
+type discCandidate struct {
+	pattern string
+	resolve func() (resolution, bool)
+	skip    string
+}
+
+func (d *discArtworkReader) discCandidates(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []discCandidate {
+	folder := func(sf sourceFunc) func() (resolution, bool) {
+		return func() (resolution, bool) { return resolveFolderSource(d.lib, sf) }
+	}
+	var cc []discCandidate
 	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
+		c := discCandidate{pattern: pattern}
 		switch {
 		case pattern == "embedded":
-			ff = append(ff,
-				fromTag(ctx, d.lib.FS, d.firstTrackRel),
-				fromFFmpegTag(ctx, ffmpeg, d.lib.Abs(d.firstTrackRel)),
-			)
-		case pattern == "external":
-			// Not supported for disc art, silently ignore
-		case pattern == "discsubtitle":
-			if subtitle := strings.TrimSpace(d.album.Discs[d.discNumber]); subtitle != "" {
-				ff = append(ff, d.fromDiscSubtitle(ctx, subtitle))
+			c.resolve = func() (resolution, bool) {
+				return resolveEmbedded(ctx, d.lib, ffmpeg, d.firstTrackRel)
 			}
-		case len(d.imgFiles) > 0:
-			ff = append(ff, d.fromExternalFile(ctx, pattern))
+		case pattern == externalCandidate:
+			c.skip = "external sources are not supported for disc artwork"
+		case pattern == "discsubtitle":
+			subtitle := strings.TrimSpace(d.album.Discs[d.discNumber])
+			if subtitle == "" {
+				c.skip = "disc has no subtitle"
+			} else {
+				c.resolve = folder(d.fromDiscSubtitle(ctx, subtitle))
+			}
+		case len(d.imgFiles) == 0:
+			c.skip = "no images in album folder"
+		default:
+			c.resolve = folder(d.fromExternalFile(ctx, pattern))
+		}
+		cc = append(cc, c)
+	}
+	return cc
+}
+
+// selectImage walks the DiscArtPriority entries and returns the first that yields an image.
+// chain records the walk; the serving path passes an untraced one and pays nothing for it.
+func (d *discArtworkReader) selectImage(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string,
+	chain *chainState) (resolution, error) {
+	for _, c := range d.discCandidates(ctx, ffmpeg, priority) {
+		if err := ctx.Err(); err != nil {
+			return resolution{}, err
+		}
+		if c.skip != "" {
+			chain.record(c.pattern, OutcomeSkipped, c.skip)
+			continue
+		}
+		start := time.Now()
+		res, ok := c.resolve()
+		log.Trace(ctx, "Artwork: Tried a disc artwork candidate", "albumID", d.album.ID,
+			"disc", d.discNumber, "pattern", c.pattern, "hit", ok, "path", res.sourcePath,
+			"elapsed", time.Since(start))
+		if res, ok = chain.try(c.pattern, res, ok); ok {
+			return res, nil
 		}
 	}
-	return ff
+	return chain.exhausted(), nil
 }
 
 // fromDiscSubtitle returns a sourceFunc that matches image files whose stem

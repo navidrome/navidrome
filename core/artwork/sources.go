@@ -10,16 +10,15 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/httpclient"
+	"github.com/navidrome/navidrome/utils/netguard"
 	"go.senan.xyz/taglib"
 )
 
@@ -27,34 +26,7 @@ import (
 // to open it is not evidence the entity has no artwork, so callers must not settle on absent.
 var errSourceUnreadable = errors.New("artwork source unreadable")
 
-func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
-	for _, f := range extractFuncs {
-		if ctx.Err() != nil {
-			return nil, "", ctx.Err()
-		}
-		start := time.Now()
-		r, path, err := f()
-		if r != nil {
-			msg := fmt.Sprintf("Artwork: Found %s artwork", artID.Kind)
-			log.Debug(ctx, msg, "artID", artID, "path", path, "source", f, "elapsed", time.Since(start))
-			return r, path, nil
-		}
-		log.Trace(ctx, "Artwork: Failed trying to extract artwork", "artID", artID, "source", f, "elapsed", time.Since(start), err)
-	}
-	return nil, "", fmt.Errorf("could not get `%s` cover art for %s: %w", artID.Kind, artID, ErrUnavailable)
-}
-
 type sourceFunc func() (r io.ReadCloser, path string, err error)
-
-func (f sourceFunc) String() string {
-	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core/artwork.")
-	if _, after, found := strings.Cut(name, ")."); found {
-		name = after
-	}
-	name = strings.TrimSuffix(name, ".func1")
-	return name
-}
 
 func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
@@ -66,7 +38,7 @@ func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern 
 				log.Warn(ctx, "Artwork: Error matching cover art file to pattern", "pattern", pattern, "file", file)
 				continue
 			}
-			if !match {
+			if !match || !model.IsImageFile(name) {
 				continue
 			}
 			f, err := libFS.Open(file)
@@ -179,11 +151,18 @@ type readCloser struct {
 	io.Closer
 }
 
+// remoteImageClient fetches URLs from playlists and agents (plugins included), so it must not reach
+// internal hosts. Shared so fetches reuse connections.
+var remoteImageClient = httpclient.NewExternal(5 * time.Second)
+
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
-	hc := http.Client{Timeout: 5 * time.Second}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
-	req.Header.Set("User-Agent", consts.HTTPUserAgent)
-	resp, err := hc.Do(req) //nolint:gosec
+	resp, err := remoteImageClient.Do(req)
+	if errors.Is(err, netguard.ErrPrivateAddress) {
+		// Retrying cannot change where the URL points: settle absent instead of tripping the breaker.
+		log.Warn(ctx, "Artwork: Refused to fetch image from a private or loopback address", "url", imageUrl, err)
+		return nil, "", model.ErrNotFound
+	}
 	if err != nil {
 		return nil, "", err
 	}

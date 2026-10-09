@@ -1,12 +1,12 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"time"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/utils/slice"
 )
 
 func CreateMockArtistRepo() *MockArtistRepo {
@@ -33,7 +33,7 @@ func (m *MockArtistRepo) SetData(artists model.Artists) {
 	}
 }
 
-func (m *MockArtistRepo) Exists(id string) (bool, error) {
+func (m *MockArtistRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Err {
 		return false, errors.New("Error!")
 	}
@@ -41,7 +41,7 @@ func (m *MockArtistRepo) Exists(id string) (bool, error) {
 	return found, nil
 }
 
-func (m *MockArtistRepo) Get(id string) (*model.Artist, error) {
+func (m *MockArtistRepo) Get(_ context.Context, id string) (*model.Artist, error) {
 	if m.Err {
 		return nil, errors.New("Error!")
 	}
@@ -51,18 +51,21 @@ func (m *MockArtistRepo) Get(id string) (*model.Artist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockArtistRepo) Put(ar *model.Artist, columsToUpdate ...string) error {
+func (m *MockArtistRepo) Put(_ context.Context, ar *model.Artist, columsToUpdate ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
 	if ar.ID == "" {
 		ar.ID = id.NewRandom()
 	}
+	if m.Data == nil {
+		m.Data = make(map[string]*model.Artist)
+	}
 	m.Data[ar.ID] = ar
 	return nil
 }
 
-func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
+func (m *MockArtistRepo) IncPlayCount(_ context.Context, id string, timestamp time.Time) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -74,7 +77,7 @@ func (m *MockArtistRepo) IncPlayCount(id string, timestamp time.Time) error {
 	return model.ErrNotFound
 }
 
-func (m *MockArtistRepo) SetStar(starred bool, itemIDs ...string) error {
+func (m *MockArtistRepo) SetStar(_ context.Context, starred bool, itemIDs ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -86,7 +89,7 @@ func (m *MockArtistRepo) SetStar(starred bool, itemIDs ...string) error {
 	return nil
 }
 
-func (m *MockArtistRepo) SetRating(rating int, itemID string) error {
+func (m *MockArtistRepo) SetRating(_ context.Context, rating int, itemID string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -96,7 +99,7 @@ func (m *MockArtistRepo) SetRating(rating int, itemID string) error {
 	return nil
 }
 
-func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+func (m *MockArtistRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Artists, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
@@ -114,16 +117,8 @@ func (m *MockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, e
 	return allArtists, nil
 }
 
-func (m *MockArtistRepo) GetAllIDs(options ...model.QueryOptions) ([]string, error) {
-	all, err := m.GetAll(options...)
-	if err != nil {
-		return nil, err
-	}
-	return slice.Map(all, func(a model.Artist) string { return a.ID }), nil
-}
-
-func (m *MockArtistRepo) GetCursor(options ...model.QueryOptions) (model.ArtistCursor, error) {
-	res, err := m.GetAll(options...)
+func (m *MockArtistRepo) GetCursor(ctx context.Context, options ...model.QueryOptions) (model.ArtistCursor, error) {
+	res, err := m.GetAll(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -136,33 +131,30 @@ func (m *MockArtistRepo) GetCursor(options ...model.QueryOptions) (model.ArtistC
 	}, nil
 }
 
-func (m *MockArtistRepo) UpdateExternalInfo(artist *model.Artist) error {
-	if m.Err {
-		return errors.New("mock repo error")
-	}
-	return nil
+func (m *MockArtistRepo) UpdateExternalInfo(ctx context.Context, artist *model.Artist) error {
+	return m.Put(ctx, artist)
 }
 
-func (m *MockArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+func (m *MockArtistRepo) RefreshStats(_ context.Context, allArtists bool) (int64, error) {
 	if m.Err {
 		return 0, errors.New("mock repo error")
 	}
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtistRepo) RefreshPlayCounts() (int64, error) {
+func (m *MockArtistRepo) RefreshPlayCounts(_ context.Context) (int64, error) {
 	if m.Err {
 		return 0, errors.New("mock repo error")
 	}
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryIds []int, roles ...model.Role) (model.ArtistIndexes, error) {
+func (m *MockArtistRepo) GetIndex(ctx context.Context, includeMissing bool, libraryIds []int, roles ...model.Role) (model.ArtistIndexes, error) {
 	if m.Err {
 		return nil, errors.New("mock repo error")
 	}
 
-	artists, err := m.GetAll()
+	artists, err := m.GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -190,14 +182,14 @@ func (m *MockArtistRepo) GetIndex(includeMissing bool, libraryIds []int, roles .
 	return result, nil
 }
 
-func (m *MockArtistRepo) CountAll(...model.QueryOptions) (int64, error) {
+func (m *MockArtistRepo) CountAll(context.Context, ...model.QueryOptions) (int64, error) {
 	if m.Err {
 		return 0, errors.New("mock repo error")
 	}
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtistRepo) Search(q string, options ...model.QueryOptions) (model.Artists, error) {
+func (m *MockArtistRepo) Search(ctx context.Context, q string, options ...model.QueryOptions) (model.Artists, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
@@ -205,8 +197,7 @@ func (m *MockArtistRepo) Search(q string, options ...model.QueryOptions) (model.
 		return nil, errors.New("unexpected error")
 	}
 	// Simple mock implementation - just return all artists for testing
-	allArtists, err := m.GetAll()
-	return allArtists, err
+	return m.GetAll(ctx)
 }
 
 var _ model.ArtistRepository = (*MockArtistRepo)(nil)

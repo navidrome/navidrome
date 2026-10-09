@@ -1,0 +1,4 @@
+description: Not modified.
+headers:
+  ETag:
+    $ref: ../headers/ETag.yaml

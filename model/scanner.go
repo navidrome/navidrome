@@ -2,17 +2,20 @@ package model
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 )
 
+var ErrAlreadyScanning = errors.New("already scanning")
+
 // ScanTarget represents a specific folder within a library to be scanned.
 // NOTE: This struct is used as a map key, so it should only contain comparable types.
 type ScanTarget struct {
 	LibraryID  int
-	FolderPath string // Relative path within the library, or "" for entire library
+	FolderPath string // Path within the library (relative or absolute), or "" for entire library
 }
 
 func (st ScanTarget) String() string {

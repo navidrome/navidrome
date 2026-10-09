@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	. "github.com/onsi/ginkgo/v2"
@@ -11,28 +13,45 @@ var _ = Describe("Plugin Cleanup", func() {
 	var pluginRepo model.PluginRepository
 	var userRepo model.UserRepository
 	var libraryRepo model.LibraryRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx := GinkgoT().Context()
-		ctx = request.WithUser(ctx, model.User{ID: "admin", UserName: "admin", IsAdmin: true})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin", UserName: "admin", IsAdmin: true})
 		db := GetDBXBuilder()
-		pluginRepo = NewPluginRepository(ctx, db)
-		userRepo = NewUserRepository(ctx, db)
-		libraryRepo = NewLibraryRepository(ctx, db)
+		pluginRepo = NewPluginRepository(db)
+		userRepo = NewUserRepository(db)
+		libraryRepo = NewLibraryRepository(db)
 
 		// Clean up any existing plugins
-		all, _ := pluginRepo.GetAll()
+		all, _ := pluginRepo.GetAll(ctx)
 		for _, p := range all {
-			_ = pluginRepo.Delete(p.ID)
+			_ = pluginRepo.Delete(ctx, p.ID)
 		}
 	})
 
 	AfterEach(func() {
 		// Clean up after tests
-		all, _ := pluginRepo.GetAll()
+		all, _ := pluginRepo.GetAll(ctx)
 		for _, p := range all {
-			_ = pluginRepo.Delete(p.ID)
+			_ = pluginRepo.Delete(ctx, p.ID)
 		}
+	})
+
+	Describe("UserRepository.Delete", func() {
+		It("cleans up plugin references for users deleted before a later id fails", func() {
+			Expect(userRepo.Put(ctx, &model.User{ID: "bulk-1", UserName: "bulk-1", NewPassword: "x"})).To(Succeed())
+			DeferCleanup(func() { _ = userRepo.Delete(ctx, "bulk-1") })
+			Expect(pluginRepo.Put(ctx, &model.Plugin{
+				ID: "bulk-plugin", Path: "/plugins/bulk.wasm", Manifest: `{"name":"bulk"}`, SHA256: "def456",
+				Users: `["bulk-1","other"]`, Enabled: true,
+			})).To(Succeed())
+
+			Expect(userRepo.Delete(ctx, "bulk-1", "does-not-exist")).To(MatchError(model.ErrNotFound))
+
+			updated, err := pluginRepo.Get(ctx, "bulk-plugin")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(updated.Users).To(Equal(`["other"]`))
+		})
 	})
 
 	Describe("cleanupPluginUserReferences", func() {
@@ -46,14 +65,14 @@ var _ = Describe("Plugin Cleanup", func() {
 				Users:    `["user1","user2","user3"]`,
 				Enabled:  true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Clean up user2 reference
 			db := GetDBXBuilder()
 			Expect(cleanupPluginUserReferences(db, "user2")).To(Succeed())
 
 			// Verify user2 was removed
-			updated, err := pluginRepo.Get("test-plugin")
+			updated, err := pluginRepo.Get(ctx, "test-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Users).To(Equal(`["user1","user3"]`))
 			Expect(updated.Enabled).To(BeTrue()) // Still has users, should remain enabled
@@ -70,14 +89,14 @@ var _ = Describe("Plugin Cleanup", func() {
 				AllUsers: false,
 				Enabled:  true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Remove the only user
 			db := GetDBXBuilder()
 			Expect(cleanupPluginUserReferences(db, "only-user")).To(Succeed())
 
 			// Verify plugin was auto-disabled
-			updated, err := pluginRepo.Get("user-plugin")
+			updated, err := pluginRepo.Get(ctx, "user-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Users).To(Equal(`[]`))
 			Expect(updated.Enabled).To(BeFalse())
@@ -93,14 +112,14 @@ var _ = Describe("Plugin Cleanup", func() {
 				AllUsers: true,
 				Enabled:  true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Remove the user (but allUsers is true)
 			db := GetDBXBuilder()
 			Expect(cleanupPluginUserReferences(db, "user1")).To(Succeed())
 
 			// Plugin should still be enabled because allUsers is true
-			updated, err := pluginRepo.Get("all-users-plugin")
+			updated, err := pluginRepo.Get(ctx, "all-users-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Enabled).To(BeTrue())
 		})
@@ -114,14 +133,14 @@ var _ = Describe("Plugin Cleanup", func() {
 				Users:    `["user1"]`,
 				Enabled:  true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Remove the user
 			db := GetDBXBuilder()
 			Expect(cleanupPluginUserReferences(db, "user1")).To(Succeed())
 
 			// Plugin should still be enabled (no users permission requirement)
-			updated, err := pluginRepo.Get("no-users-perm")
+			updated, err := pluginRepo.Get(ctx, "no-users-perm")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Users).To(Equal(`[]`))
 			Expect(updated.Enabled).To(BeTrue())
@@ -139,14 +158,14 @@ var _ = Describe("Plugin Cleanup", func() {
 				Libraries: `[1,2,3]`,
 				Enabled:   true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Clean up library 2 reference
 			db := GetDBXBuilder()
 			Expect(cleanupPluginLibraryReferences(db, 2)).To(Succeed())
 
 			// Verify library 2 was removed
-			updated, err := pluginRepo.Get("lib-plugin")
+			updated, err := pluginRepo.Get(ctx, "lib-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Libraries).To(Equal(`[1,3]`))
 		})
@@ -162,14 +181,14 @@ var _ = Describe("Plugin Cleanup", func() {
 				AllLibraries: false,
 				Enabled:      true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Remove the only library
 			db := GetDBXBuilder()
 			Expect(cleanupPluginLibraryReferences(db, 99)).To(Succeed())
 
 			// Verify plugin was auto-disabled
-			updated, err := pluginRepo.Get("lib-only-plugin")
+			updated, err := pluginRepo.Get(ctx, "lib-only-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Libraries).To(Equal(`[]`))
 			Expect(updated.Enabled).To(BeFalse())
@@ -185,14 +204,14 @@ var _ = Describe("Plugin Cleanup", func() {
 				AllLibraries: true,
 				Enabled:      true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Remove the library (but allLibraries is true)
 			db := GetDBXBuilder()
 			Expect(cleanupPluginLibraryReferences(db, 1)).To(Succeed())
 
 			// Plugin should still be enabled
-			updated, err := pluginRepo.Get("all-libs-plugin")
+			updated, err := pluginRepo.Get(ctx, "all-libs-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Enabled).To(BeTrue())
 		})
@@ -207,7 +226,7 @@ var _ = Describe("Plugin Cleanup", func() {
 				IsAdmin:  false,
 			}
 			user.NewPassword = "password123"
-			Expect(userRepo.Put(user)).To(Succeed())
+			Expect(userRepo.Put(ctx, user)).To(Succeed())
 
 			// Create a plugin referencing this user
 			plugin := &model.Plugin{
@@ -218,13 +237,13 @@ var _ = Describe("Plugin Cleanup", func() {
 				Users:    `["test-delete-user","other-user"]`,
 				Enabled:  true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Delete the user
-			Expect(userRepo.Delete("test-delete-user")).To(Succeed())
+			Expect(userRepo.Delete(ctx, "test-delete-user")).To(Succeed())
 
 			// Verify user was removed from plugin
-			updated, err := pluginRepo.Get("user-ref-plugin")
+			updated, err := pluginRepo.Get(ctx, "user-ref-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Users).To(Equal(`["other-user"]`))
 		})
@@ -238,7 +257,7 @@ var _ = Describe("Plugin Cleanup", func() {
 				Name: "Test Library",
 				Path: "/tmp/test-lib",
 			}
-			Expect(libraryRepo.Put(library)).To(Succeed())
+			Expect(libraryRepo.Put(ctx, library)).To(Succeed())
 
 			// Create a plugin referencing this library
 			plugin := &model.Plugin{
@@ -249,13 +268,13 @@ var _ = Describe("Plugin Cleanup", func() {
 				Libraries: `[99,1]`,
 				Enabled:   true,
 			}
-			Expect(pluginRepo.Put(plugin)).To(Succeed())
+			Expect(pluginRepo.Put(ctx, plugin)).To(Succeed())
 
 			// Delete the library
-			Expect(libraryRepo.Delete(99)).To(Succeed())
+			Expect(libraryRepo.Delete(ctx, 99)).To(Succeed())
 
 			// Verify library was removed from plugin
-			updated, err := pluginRepo.Get("lib-ref-plugin")
+			updated, err := pluginRepo.Get(ctx, "lib-ref-plugin")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updated.Libraries).To(Equal(`[1]`))
 		})

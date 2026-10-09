@@ -30,8 +30,22 @@ var _ = Describe("ToMediaFile", func() {
 	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile(1, "folderID")
+		return md.ToMediaFile(model.Library{ID: 1}, "folderID")
 	}
+
+	Describe("Persistent IDs", func() {
+		It("uses the library PID config for the album ID and for albumid in the track spec", func() {
+			props.Tags = model.RawTags{"ALBUM": {"Kind of Blue"}, "TITLE": {"So What"}}
+			md = metadata.New("Jazz/Loose/01.mp3", props)
+
+			byTags := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "album", PIDTrack: "albumid,title"}, "folderID")
+			byFolder := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "folder", PIDTrack: "albumid,title"}, "folderID")
+
+			Expect(byFolder.AlbumID).ToNot(Equal(byTags.AlbumID))
+			Expect(byFolder.AlbumID).To(Equal(md.AlbumID(byFolder, "folder")))
+			Expect(byFolder.PID).ToNot(Equal(byTags.PID))
+		})
+	})
 
 	Describe("Dates", func() {
 		It("should parse properly tagged dates ", func() {
@@ -130,6 +144,15 @@ var _ = Describe("ToMediaFile", func() {
 		It("leaves BPM nil when the tag is zero or unparseable", func() {
 			Expect(toMediaFile(model.RawTags{"BPM": {"0"}}).BPM).To(BeNil())
 			Expect(toMediaFile(model.RawTags{"BPM": {"fast"}}).BPM).To(BeNil())
+		})
+		It("leaves BPM nil when the tag does not fit in 32 bits", func() {
+			Expect(toMediaFile(model.RawTags{"BPM": {"4294967295"}}).BPM).To(BeNil())
+		})
+		It("leaves BPM nil when the tag is negative", func() {
+			Expect(toMediaFile(model.RawTags{"BPM": {"-120"}}).BPM).To(BeNil())
+		})
+		It("keeps the largest 32-bit BPM value", func() {
+			Expect(toMediaFile(model.RawTags{"BPM": {"2147483647"}}).BPM).To(Equal(new(2147483647)))
 		})
 	})
 

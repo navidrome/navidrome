@@ -30,7 +30,7 @@ var _ = Describe("listenBrainzAgent", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		ctx = context.Background()
-		_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
+		_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
 		httpClient = &tests.FakeHttpClient{}
 		agent = listenBrainzConstructor(ds)
 		agent.client = newClient("http://localhost:8080", httpClient)
@@ -163,6 +163,19 @@ var _ = Describe("listenBrainzAgent", func() {
 
 			err := agent.Scrobble(ctx, "user-1", sc)
 			Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
+		})
+
+		It("keeps a 429 scrobble for retry and carries the delay", func() {
+			httpClient.Res = http.Response{
+				StatusCode: 429,
+				Header:     http.Header{"X-Ratelimit-Reset-In": []string{"7"}},
+				Body:       io.NopCloser(bytes.NewBufferString(`{"code":429,"error":"rate limited"}`)),
+			}
+			err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+			Expect(errors.Is(err, scrobbler.ErrRetryLater)).To(BeTrue())
+			retry, ok := errors.AsType[*agents.RetryLaterError](err)
+			Expect(ok).To(BeTrue())
+			Expect(retry.RetryIn).To(Equal(7 * time.Second))
 		})
 	})
 

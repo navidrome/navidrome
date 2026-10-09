@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -326,6 +330,21 @@ var _ = Describe("Configuration", func() {
 			}).To(PanicWith(ContainSubstring("Error creating log file directory")))
 		})
 
+		It("creates the log file readable only by the owner", func() {
+			if runtime.GOOS == "windows" {
+				Skip("file modes are not enforced on Windows")
+			}
+			logFile := filepath.Join(GinkgoT().TempDir(), "navidrome.log")
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("logfile", logFile)
+			DeferCleanup(log.SetOutput, os.Stderr)
+			conf.Load(true)
+
+			info, err := os.Stat(logFile)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Mode().Perm()).To(Equal(os.FileMode(0600)))
+		})
+
 		It("is called when BaseURL is invalid", func() {
 			viper.SetDefault("datafolder", GinkgoT().TempDir())
 			viper.SetDefault("baseurl", "://invalid")
@@ -336,19 +355,10 @@ var _ = Describe("Configuration", func() {
 
 	})
 
-	Describe("ValidateMaxImageUploadSize", func() {
-		BeforeEach(func() {
-			viper.Reset()
-			conf.SetViperDefaults()
-			viper.SetDefault("datafolder", GinkgoT().TempDir())
-			viper.SetDefault("loglevel", "error")
-			conf.ResetConf()
-		})
-
+	Describe("ValidateByteSize", func() {
 		DescribeTable("accepts valid size values",
 			func(input string) {
-				conf.Server.MaxImageUploadSize = input
-				Expect(conf.ValidateMaxImageUploadSize()).To(Succeed())
+				Expect(conf.ValidateByteSize("MaxImageSize", input)()).To(Succeed())
 			},
 			Entry("megabytes", "10MB"),
 			Entry("gigabytes", "1GB"),
@@ -359,12 +369,58 @@ var _ = Describe("Configuration", func() {
 
 		DescribeTable("rejects invalid size values",
 			func(input string) {
-				conf.Server.MaxImageUploadSize = input
-				Expect(conf.ValidateMaxImageUploadSize()).To(MatchError(ContainSubstring("invalid MaxImageUploadSize")))
+				Expect(conf.ValidateByteSize("MaxImageSize", input)()).To(MatchError(ContainSubstring("invalid MaxImageSize")))
 			},
 			Entry("garbage string", "not-a-size"),
 			Entry("negative-looking", "-10MB"),
+			Entry("zero", "0"),
+			Entry("zero with unit", "0MB"),
+			Entry("overflows int64", "9223372036854775808"),
 		)
+	})
+
+	Describe("MaxImageSize floor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("is raised to MaxImageUploadSize when configured lower", func() {
+			viper.SetDefault("maximagesize", "5MB")
+			viper.SetDefault("maximageuploadsize", "50MB")
+			conf.Load(true)
+			Expect(conf.Server.MaxImageSize).To(Equal("50MB"))
+		})
+
+		It("keeps a larger MaxImageSize unchanged", func() {
+			viper.SetDefault("maximagesize", "30MB")
+			conf.Load(true)
+			Expect(conf.Server.MaxImageSize).To(Equal("30MB"))
+		})
+	})
+
+	Describe("Scanner.Extractor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("falls back to taglib for an unknown extractor", func() {
+			viper.SetDefault("scanner.extractor", "ffmpeg")
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
+		})
+
+		It("keeps taglib", func() {
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
+		})
 	})
 
 	Describe("EnforceNonRootUser", func() {
@@ -436,4 +492,73 @@ var _ = Describe("Configuration", func() {
 		Entry("INI format", "ini"),
 		Entry("JSON format", "json"),
 	)
+
+	It("should use default values for negative duration fields", func() {
+		filename := filepath.Join("testdata", "invalid_duration.toml")
+		conf.InitConfig(filename, false)
+		conf.Load(true)
+
+		server := conf.Server
+		Expect(server.SessionTimeout).To(Equal(consts.DefaultSessionTimeout))
+		Expect(server.SmartPlaylistRefreshDelay).To(Equal(consts.DefaultSmartRefresh))
+		Expect(server.DefaultShareExpiration).To(Equal(consts.DefaultShareExpiration))
+		Expect(server.UIPlaybackReportInterval).To(Equal(consts.DefaultUIPlaybackReportInterval))
+		Expect(server.AuthWindowLength).To(Equal(consts.DefaultAuthWindowLength))
+		Expect(server.Scanner.WatcherWait).To(Equal(consts.DefaultWatcherWait))
+
+		Expect(server.DevActivityPanelUpdateRate).To(Equal(consts.DefaultActivityPanelUpdateRate))
+		Expect(server.DevArtworkThrottleBacklogTimeout).To(Equal(consts.RequestThrottleBacklogTimeout))
+		Expect(server.DevArtistInfoTimeToLive).To(Equal(consts.ArtistInfoTimeToLive))
+		Expect(server.DevAlbumInfoTimeToLive).To(Equal(consts.AlbumInfoTimeToLive))
+		Expect(server.DevInsightsInitialDelay).To(Equal(consts.InsightsInitialDelay))
+		Expect(server.DevPluginCompilationTimeout).To(Equal(consts.DefaultPluginCompilationTimeout))
+	})
+
+	It("should use parsed values for duration fields", func() {
+		conf.InitConfig(filepath.Join("testdata", "valid_duration.toml"), false)
+		conf.Load(true)
+
+		configured := 1 * time.Second
+
+		server := conf.Server
+		Expect(server.SessionTimeout).To(Equal(configured))
+		Expect(server.SmartPlaylistRefreshDelay).To(Equal(configured))
+		Expect(server.DefaultShareExpiration).To(Equal(configured))
+		Expect(server.UIPlaybackReportInterval).To(Equal(configured))
+		Expect(server.AuthWindowLength).To(Equal(configured))
+		Expect(server.Scanner.WatcherWait).To(Equal(configured))
+
+		Expect(server.DevActivityPanelUpdateRate).To(Equal(configured))
+		Expect(server.DevArtworkThrottleBacklogTimeout).To(Equal(configured))
+		Expect(server.DevArtistInfoTimeToLive).To(Equal(configured))
+		Expect(server.DevAlbumInfoTimeToLive).To(Equal(configured))
+		Expect(server.DevInsightsInitialDelay).To(Equal(configured))
+		Expect(server.DevPluginCompilationTimeout).To(Equal(configured))
+	})
+})
+
+var _ = Describe("TLSEnabled", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("is false when neither the certificate nor the key is set", func() {
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is true when both the certificate and the key are set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeTrue())
+	})
+
+	It("is false when only the certificate is set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is false when only the key is set", func() {
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
 })

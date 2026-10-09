@@ -51,14 +51,7 @@ zip -j coverartarchive-py.ndp manifest.json plugin.wasm
 
 ## Testing
 
-Extract the wasm file and test:
-
-```bash
-unzip -p coverartarchive-py.ndp plugin.wasm > coverartarchive-py.wasm
-extism call coverartarchive-py.wasm nd_get_album_images --wasi \
-  --input '{"name":"Dummy","artist":"Portishead","mbid":"76df3287-6cda-33eb-8e9a-044b5e15ffdd"}' \
-  --allow-host "coverartarchive.org" --allow-host "archive.org"
-```
+The plugin makes HTTP requests through Navidrome's `http_send` host function, so it only runs inside Navidrome (the `extism` CLI can't provide that function). Install the `.ndp` as described above, then open an album that has a MusicBrainz ID and check the Navidrome logs.
 
 ## How It Works
 
