@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"runtime"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -29,11 +30,18 @@ func newCacheService(pluginName string) *cacheServiceImpl {
 	// Start the janitor goroutine to clean up expired entries
 	go cache.Start()
 
-	return &cacheServiceImpl{
+	svc := &cacheServiceImpl{
 		pluginName: pluginName,
 		cache:      cache,
 		defaultTTL: defaultCacheTTL,
 	}
+
+	// Automatic cleanup to prevent goroutine leak when the service is garbage collected
+	runtime.AddCleanup(svc, func(ttlCache *ttlcache.Cache[string, any]) {
+		ttlCache.Stop()
+	}, cache)
+
+	return svc
 }
 
 // getTTL converts seconds to a duration, using default if 0 or negative

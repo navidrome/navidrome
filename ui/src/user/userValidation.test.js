@@ -67,4 +67,27 @@ describe('User Validation Utilities', () => {
       )
     })
   })
+
+  describe('scrobbleFilter validation', () => {
+    it('accepts an empty filter', () => {
+      const errors = validateUserForm({ isAdmin: true }, mockTranslate)
+      expect(errors.scrobbleFilter).toBeUndefined()
+    })
+    it('accepts valid JSON', () => {
+      const errors = validateUserForm(
+        { isAdmin: true, scrobbleFilter: '{"all":[{"lt":{"rating":4}}]}' },
+        mockTranslate,
+      )
+      expect(errors.scrobbleFilter).toBeUndefined()
+    })
+    it('rejects malformed JSON', () => {
+      const errors = validateUserForm(
+        { isAdmin: true, scrobbleFilter: '{broken' },
+        mockTranslate,
+      )
+      expect(errors.scrobbleFilter).toEqual(
+        'resources.user.validation.invalidScrobbleFilter',
+      )
+    })
+  })
 })

@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -61,23 +62,16 @@ var _ = Describe("ffmpeg", func() {
 		})
 	})
 
-	Describe("createProbeCommand", func() {
-		It("creates a valid command line", func() {
-			args := createProbeCommand(probeCmd, []string{"/music library/one.mp3", "/music library/two.mp3"})
-			Expect(args).To(Equal([]string{"ffmpeg", "-i", "/music library/one.mp3", "-i", "/music library/two.mp3", "-f", "ffmetadata"}))
-		})
-	})
-
 	When("ffmpegPath is set", func() {
 		It("returns the correct ffmpeg path", func() {
 			ffmpegPath = "/usr/bin/ffmpeg"
-			args := createProbeCommand(probeCmd, []string{"one.mp3"})
-			Expect(args).To(Equal([]string{"/usr/bin/ffmpeg", "-i", "one.mp3", "-f", "ffmetadata"}))
+			args := createFFmpegCommand("ffmpeg -i %s -f mp3 -", "one.mp3", 0, 0)
+			Expect(args).To(Equal([]string{"/usr/bin/ffmpeg", "-i", "one.mp3", "-f", "mp3", "-"}))
 		})
 		It("returns the correct ffmpeg path with spaces", func() {
 			ffmpegPath = "/usr/bin/with spaces/ffmpeg.exe"
-			args := createProbeCommand(probeCmd, []string{"one.mp3"})
-			Expect(args).To(Equal([]string{"/usr/bin/with spaces/ffmpeg.exe", "-i", "one.mp3", "-f", "ffmetadata"}))
+			args := createFFmpegCommand("ffmpeg -i %s -f mp3 -", "one.mp3", 0, 0)
+			Expect(args).To(Equal([]string{"/usr/bin/with spaces/ffmpeg.exe", "-i", "one.mp3", "-f", "mp3", "-"}))
 		})
 	})
 
@@ -683,6 +677,40 @@ var _ = Describe("ffmpeg", func() {
 					BitRate:  128,
 				})
 				Expect(err).To(MatchError(context.Canceled))
+			})
+
+			It("fills in total_samples on a piped FLAC transcode", func() {
+				stream, err := ff.Transcode(GinkgoT().Context(), TranscodeOptions{
+					Command:  "ffmpeg -i %s -map 0:a:0 -v 0 -c:a flac -f flac -",
+					Format:   "flac",
+					FilePath: "tests/fixtures/test.flac",
+					Duration: 1, // the fixture is exactly 1s at 44100Hz
+				})
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				out, err := io.ReadAll(stream)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(out[:4])).To(Equal("fLaC"))
+				Expect(readTotalSamples(out)).To(Equal(uint64(44100)))
+			})
+
+			It("patches the duration net of the requested offset", func() {
+				// The command has no %t, so ffmpeg still emits the whole fixture.
+				// What is under test is the header arithmetic, not the audio.
+				stream, err := ff.Transcode(GinkgoT().Context(), TranscodeOptions{
+					Command:  "ffmpeg -i %s -map 0:a:0 -v 0 -c:a flac -f flac -",
+					Format:   "flac",
+					FilePath: "tests/fixtures/test.flac",
+					Duration: 3,
+					Offset:   1,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				out, err := io.ReadAll(stream)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(readTotalSamples(out)).To(Equal(uint64(2 * 44100)))
 			})
 		})
 

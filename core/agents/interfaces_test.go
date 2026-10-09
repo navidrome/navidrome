@@ -1,27 +1,42 @@
-package agents
+package agents_test
 
 import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Song.Equals", func() {
-	base := Song{ID: "1", Name: "S", Artists: []Artist{{ID: "x", Name: "A"}}}
-	It("true for identical songs incl Artists", func() {
-		Expect(base.Equals(base)).To(BeTrue())
+var _ = Describe("RetryLaterError", func() {
+	It("matches the ErrRetryLater sentinel via errors.Is", func() {
+		err := &agents.RetryLaterError{RetryIn: 30 * time.Second}
+		Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 	})
-	It("false when Artists differ", func() {
-		other := base
-		other.Artists = []Artist{{ID: "y", Name: "B"}}
-		Expect(base.Equals(other)).To(BeFalse())
+
+	It("matches through errors.Join and wrapping", func() {
+		err := fmt.Errorf("calling LB: %w", errors.Join(errors.New("http 429"), &agents.RetryLaterError{}))
+		Expect(errors.Is(err, agents.ErrRetryLater)).To(BeTrue())
 	})
-	It("false when a scalar differs", func() {
-		other := base
-		other.Name = "T"
-		Expect(base.Equals(other)).To(BeFalse())
+
+	It("exposes the delay through the wrapped error", func() {
+		err := errors.Join(errors.New("http 429"), &agents.RetryLaterError{RetryIn: 42 * time.Second})
+		retry, ok := errors.AsType[*agents.RetryLaterError](err)
+		Expect(ok).To(BeTrue())
+		Expect(retry.RetryIn).To(Equal(42 * time.Second))
 	})
-	It("true when both have empty Artists and equal scalars", func() {
-		a := Song{ID: "1", Name: "S"}
-		Expect(a.Equals(a)).To(BeTrue())
+
+	It("matches the sentinel too, reporting no delay", func() {
+		retry, ok := errors.AsType[*agents.RetryLaterError](agents.ErrRetryLater)
+		Expect(ok).To(BeTrue())
+		Expect(retry.RetryIn).To(BeZero())
+	})
+
+	It("is the same sentinel as scrobbler.ErrRetryLater", func() {
+		Expect(errors.Is(scrobbler.ErrRetryLater, agents.ErrRetryLater)).To(BeTrue())
+		Expect(errors.Is(&agents.RetryLaterError{}, scrobbler.ErrRetryLater)).To(BeTrue())
 	})
 })

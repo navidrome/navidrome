@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"context"
 	"crypto/sha256"
+	"errors"
+	"slices"
 	"sync"
 	"time"
 
@@ -26,6 +28,13 @@ var (
 	PublicTokenAuth *jwtauth.JWTAuth
 )
 
+// Audiences a session token can be scoped to. A token with no audience is accepted anywhere.
+const (
+	AudienceJellyfin = "jellyfin"
+	AudienceSubsonic = "subsonic"
+	AudienceNative   = "native"
+)
+
 // Init creates the JWTAuth objects from the secrets stored in the DB.
 // Missing or undecryptable secrets are regenerated and stored.
 func Init(ds model.DataStore) {
@@ -39,7 +48,7 @@ func Init(ds model.DataStore) {
 }
 
 func loadOrCreateSecret(ctx context.Context, ds model.DataStore, key string) string {
-	secret, err := ds.Property(ctx).Get(key)
+	secret, err := ds.Property().Get(ctx, key)
 	if err != nil || secret == "" {
 		log.Info(ctx, "Creating new JWT secret", "key", key)
 		return createNewSecret(ctx, ds, key)
@@ -66,15 +75,20 @@ func CreateExpiringPublicToken(exp time.Time, claims Claims) (string, error) {
 	return token, err
 }
 
-func CreateToken(u *model.User) (string, error) {
-	claims := Claims{
+func userClaims(u *model.User, audience []string) Claims {
+	return Claims{
 		Issuer:   consts.JWTIssuer,
 		Subject:  u.UserName,
 		IssuedAt: time.Now(),
 		UserID:   u.ID,
 		IsAdmin:  u.IsAdmin,
+		Epoch:    u.TokenEpoch,
+		Audience: audience,
 	}
-	token, _, err := TokenAuth.Encode(claims.ToMap())
+}
+
+func CreateToken(u *model.User) (string, error) {
+	token, _, err := TokenAuth.Encode(userClaims(u, nil).ToMap())
 	if err != nil {
 		return "", err
 	}
@@ -82,10 +96,20 @@ func CreateToken(u *model.User) (string, error) {
 	return TouchToken(token)
 }
 
+// CreateAPIToken mints a non-expiring token scoped to one API, matching how Jellyfin
+// clients expect tokens to behave. Revocation is by token epoch, not expiry.
+func CreateAPIToken(u *model.User, audience string) (string, error) {
+	_, token, err := TokenAuth.Encode(userClaims(u, []string{audience}).ToMap())
+	return token, err
+}
+
 func TouchToken(token jwt.Token) (string, error) {
-	claims := ClaimsFromToken(token).
-		WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
-	_, newToken, err := TokenAuth.Encode(claims.ToMap())
+	return TouchClaims(ClaimsFromToken(token))
+}
+
+func TouchClaims(c Claims) (string, error) {
+	c = c.WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
+	_, newToken, err := TokenAuth.Encode(c.ToMap())
 	return newToken, err
 }
 
@@ -106,10 +130,33 @@ func ValidatePublic(tokenStr string) (Claims, error) {
 	return ClaimsFromToken(token), nil
 }
 
+var (
+	ErrTokenRevoked  = errors.New("token revoked")
+	ErrWrongAudience = errors.New("token not valid for this API")
+	ErrWrongUser     = errors.New("token issued for a different user")
+)
+
+// CheckClaims gates a session token against the user it names. Callers must have already
+// verified the signature; this adds revocation and API scoping on top.
+func CheckClaims(c Claims, usr model.User, audience string) error {
+	// Usernames can be reused: deleting a user and recreating the name yields a new random id
+	// at epoch 0, which an old token would otherwise match.
+	if c.UserID != "" && c.UserID != usr.ID {
+		return ErrWrongUser
+	}
+	if c.Epoch != usr.TokenEpoch {
+		return ErrTokenRevoked
+	}
+	if len(c.Audience) > 0 && !slices.Contains(c.Audience, audience) {
+		return ErrWrongAudience
+	}
+	return nil
+}
+
 func WithAdminUser(ctx context.Context, ds model.DataStore) context.Context {
-	u, err := ds.User(ctx).FindFirstAdmin()
+	u, err := ds.User().FindFirstAdmin(ctx)
 	if err != nil {
-		c, err := ds.User(ctx).CountAll()
+		c, err := ds.User().CountAll(ctx)
 		if c == 0 && err == nil {
 			log.Debug(ctx, "No admin user yet!", err)
 		} else {
@@ -129,7 +176,7 @@ func createNewSecret(ctx context.Context, ds model.DataStore, key string) string
 		log.Error(ctx, "Could not encrypt JWT secret", err)
 		return secret
 	}
-	if err := ds.Property(ctx).Put(key, encSecret); err != nil {
+	if err := ds.Property().Put(ctx, key, encSecret); err != nil {
 		log.Error(ctx, "Could not save JWT secret in DB", err)
 	}
 	return secret

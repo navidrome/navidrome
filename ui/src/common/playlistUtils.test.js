@@ -74,5 +74,11 @@ describe('playlistUtils', () => {
       const playlist = { ownerId: 'user1', rules: [] }
       expect(canChangeTracks(playlist)).toBe(false)
     })
+
+    it('returns false if playlist is synced', () => {
+      localStorage.setItem('userId', 'user1')
+      const playlist = { ownerId: 'user1', sync: true }
+      expect(canChangeTracks(playlist)).toBe(false)
+    })
   })
 })

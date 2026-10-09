@@ -66,18 +66,18 @@ var _ = Describe("Library Service", func() {
 	})
 
 	Describe("Library CRUD Operations", func() {
-		var repo rest.Persistable
+		var repo rest.Persistable[model.Library]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
-			repo = r.(rest.Persistable)
+			r := service.Repository()
+			repo = r.(rest.Persistable[model.Library])
 		})
 
 		Describe("Create", func() {
 			It("creates a new library successfully", func() {
 				library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
 
-				_, err := repo.Save(library)
+				_, err := repo.Save(ctx, library)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data[1].Name).To(Equal("New Library"))
@@ -87,7 +87,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library name is empty", func() {
 				library := &model.Library{Path: tempDir}
 
-				_, err := repo.Save(library)
+				_, err := repo.Save(ctx, library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("ra.validation.required"))
@@ -96,7 +96,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library path is empty", func() {
 				library := &model.Library{Name: "Test"}
 
-				_, err := repo.Save(library)
+				_, err := repo.Save(ctx, library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("ra.validation.required"))
@@ -105,7 +105,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library path is not absolute", func() {
 				library := &model.Library{Name: "Test", Path: "relative/path"}
 
-				_, err := repo.Save(library)
+				_, err := repo.Save(ctx, library)
 
 				Expect(err).To(HaveOccurred())
 				var validationErr *rest.ValidationError
@@ -140,7 +140,7 @@ var _ = Describe("Library Service", func() {
 						return errors.New("UNIQUE constraint failed: library.name")
 					}
 
-					_, err = repo.Save(library)
+					_, err = repo.Save(ctx, library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -157,7 +157,7 @@ var _ = Describe("Library Service", func() {
 						return errors.New("UNIQUE constraint failed: library.path")
 					}
 
-					_, err := repo.Save(library)
+					_, err := repo.Save(ctx, library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -181,11 +181,20 @@ var _ = Describe("Library Service", func() {
 
 				library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
 
-				err = repo.Update("1", library)
+				err = repo.Update(ctx, "1", *library)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data[1].Name).To(Equal("Updated Library"))
 				Expect(libraryRepo.Data[1].Path).To(Equal(newTempDir))
+			})
+
+			It("forwards the columns sent by the client to the repository", func() {
+				library := &model.Library{ID: 1, Name: "Updated Library", Path: tempDir}
+
+				err := repo.Update(ctx, "1", *library, "name", "path")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(libraryRepo.PutCols).To(Equal([]string{"name", "path"}))
 			})
 
 			It("fails when library doesn't exist", func() {
@@ -196,7 +205,7 @@ var _ = Describe("Library Service", func() {
 
 				library := &model.Library{ID: 999, Name: "Non-existent", Path: uniqueTempDir}
 
-				err = repo.Update("999", library)
+				err = repo.Update(ctx, "999", *library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(model.ErrNotFound))
@@ -205,7 +214,7 @@ var _ = Describe("Library Service", func() {
 			It("fails when library name is empty", func() {
 				library := &model.Library{ID: 1, Path: tempDir}
 
-				err := repo.Update("1", library)
+				err := repo.Update(ctx, "1", *library)
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("ra.validation.required"))
@@ -215,7 +224,7 @@ var _ = Describe("Library Service", func() {
 				unnormalizedPath := tempDir + "//../" + filepath.Base(tempDir)
 				library := &model.Library{ID: 1, Name: "Updated Library", Path: unnormalizedPath}
 
-				err := repo.Update("1", library)
+				err := repo.Update(ctx, "1", *library)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data[1].Path).To(Equal(filepath.Clean(unnormalizedPath)))
@@ -230,7 +239,7 @@ var _ = Describe("Library Service", func() {
 				// Update the library keeping the same name (should be allowed)
 				library := &model.Library{ID: 1, Name: "Test Library", Path: tempDir}
 
-				err := repo.Update("1", library)
+				err := repo.Update(ctx, "1", *library)
 
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -244,7 +253,7 @@ var _ = Describe("Library Service", func() {
 				// Update the library keeping the same path (should be allowed)
 				library := &model.Library{ID: 1, Name: "Test Library", Path: tempDir}
 
-				err := repo.Update("1", library)
+				err := repo.Update(ctx, "1", *library)
 
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -275,7 +284,7 @@ var _ = Describe("Library Service", func() {
 					// Try to update library 2 to have the same name as library 1
 					library := &model.Library{ID: 2, Name: "Library One", Path: otherTempDir}
 
-					err = repo.Update("2", library)
+					err = repo.Update(ctx, "2", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -303,7 +312,7 @@ var _ = Describe("Library Service", func() {
 					// Try to update library 2 to have the same path as library 1
 					library := &model.Library{ID: 2, Name: "Library Two", Path: tempDir}
 
-					err = repo.Update("2", library)
+					err = repo.Update(ctx, "2", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -313,12 +322,43 @@ var _ = Describe("Library Service", func() {
 			})
 		})
 
+		Describe("PID validation", func() {
+			pidError := func(err error, field string) string {
+				var validationErr *rest.ValidationError
+				Expect(errors.As(err, &validationErr)).To(BeTrue())
+				return validationErr.Errors[field]
+			}
+
+			It("rejects an unknown attribute in the album PID", func() {
+				_, err := repo.Save(ctx, &model.Library{Name: "Lib", Path: tempDir, PIDAlbum: "albmversion"})
+				Expect(pidError(err, "pidAlbum")).To(ContainSubstring(`unknown attribute "albmversion"`))
+			})
+
+			It("rejects albumid in the album PID", func() {
+				_, err := repo.Save(ctx, &model.Library{Name: "Lib", Path: tempDir, PIDAlbum: "albumid"})
+				Expect(pidError(err, "pidAlbum")).To(ContainSubstring("albumid"))
+			})
+
+			It("rejects an unknown attribute in the track PID", func() {
+				_, err := repo.Save(ctx, &model.Library{Name: "Lib", Path: tempDir, PIDTrack: "nosuchtag"})
+				Expect(pidError(err, "pidTrack")).To(ContainSubstring(`unknown attribute "nosuchtag"`))
+			})
+
+			It("trims spaces", func() {
+				library := &model.Library{Name: "Lib", Path: tempDir, PIDAlbum: " folder ", PIDTrack: "  "}
+				_, err := repo.Save(ctx, library)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(library.PIDAlbum).To(Equal("folder"))
+				Expect(library.PIDTrack).To(BeEmpty())
+			})
+		})
+
 		Describe("Path Validation", func() {
 			Context("Create operation", func() {
 				It("fails when path is not absolute", func() {
 					library := &model.Library{Name: "Test", Path: "relative/path"}
 
-					_, err := repo.Save(library)
+					_, err := repo.Save(ctx, library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -330,7 +370,7 @@ var _ = Describe("Library Service", func() {
 					nonExistentPath := filepath.Join(tempDir, "nonexistent")
 					library := &model.Library{Name: "Test", Path: nonExistentPath}
 
-					_, err := repo.Save(library)
+					_, err := repo.Save(ctx, library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -345,7 +385,7 @@ var _ = Describe("Library Service", func() {
 
 					library := &model.Library{Name: "Test", Path: testFile}
 
-					_, err = repo.Save(library)
+					_, err = repo.Save(ctx, library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -362,7 +402,7 @@ var _ = Describe("Library Service", func() {
 				It("handles multiple validation errors", func() {
 					library := &model.Library{Name: "", Path: "relative/path"}
 
-					_, err := repo.Save(library)
+					_, err := repo.Save(ctx, library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -384,7 +424,7 @@ var _ = Describe("Library Service", func() {
 				It("fails when updated path is not absolute", func() {
 					library := &model.Library{ID: 1, Name: "Test", Path: "relative/path"}
 
-					err := repo.Update("1", library)
+					err := repo.Update(ctx, "1", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -401,7 +441,7 @@ var _ = Describe("Library Service", func() {
 					// Update the library keeping the same name (should be allowed)
 					library := &model.Library{ID: 1, Name: "Test Library", Path: tempDir}
 
-					err := repo.Update("1", library)
+					err := repo.Update(ctx, "1", *library)
 
 					Expect(err).NotTo(HaveOccurred())
 				})
@@ -410,7 +450,7 @@ var _ = Describe("Library Service", func() {
 					nonExistentPath := filepath.Join(tempDir, "nonexistent")
 					library := &model.Library{ID: 1, Name: "Test", Path: nonExistentPath}
 
-					err := repo.Update("1", library)
+					err := repo.Update(ctx, "1", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -425,7 +465,7 @@ var _ = Describe("Library Service", func() {
 
 					library := &model.Library{ID: 1, Name: "Test", Path: testFile}
 
-					err = repo.Update("1", library)
+					err = repo.Update(ctx, "1", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -437,7 +477,7 @@ var _ = Describe("Library Service", func() {
 					// Try to update with empty name and invalid path
 					library := &model.Library{ID: 1, Name: "", Path: "relative/path"}
 
-					err := repo.Update("1", library)
+					err := repo.Update(ctx, "1", *library)
 
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
@@ -458,14 +498,14 @@ var _ = Describe("Library Service", func() {
 			})
 
 			It("deletes an existing library successfully", func() {
-				err := repo.Delete("1")
+				err := repo.Delete(ctx, "1")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(libraryRepo.Data).To(HaveLen(0))
 			})
 
 			It("fails when library doesn't exist", func() {
-				err := repo.Delete("999")
+				err := repo.Delete(ctx, "999")
 
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(Equal(model.ErrNotFound))
@@ -604,17 +644,17 @@ var _ = Describe("Library Service", func() {
 	})
 
 	Describe("Scan Triggering", func() {
-		var repo rest.Persistable
+		var repo rest.Persistable[model.Library]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
-			repo = r.(rest.Persistable)
+			r := service.Repository()
+			repo = r.(rest.Persistable[model.Library])
 		})
 
 		It("triggers scan when creating a new library", func() {
 			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
 
-			_, err := repo.Save(library)
+			_, err := repo.Save(ctx, library)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait briefly for the goroutine to complete
@@ -640,7 +680,7 @@ var _ = Describe("Library Service", func() {
 
 			// Update the library with a new path
 			library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
-			err = repo.Update("1", library)
+			err = repo.Update(ctx, "1", *library)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait briefly for the goroutine to complete
@@ -661,7 +701,7 @@ var _ = Describe("Library Service", func() {
 
 			// Update the library name only (same path)
 			library := &model.Library{ID: 1, Name: "Updated Name", Path: tempDir}
-			err := repo.Update("1", library)
+			err := repo.Update(ctx, "1", *library)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait a bit to ensure no scan was triggered
@@ -670,11 +710,53 @@ var _ = Describe("Library Service", func() {
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
+		It("triggers scan when updating the library PID config", func() {
+			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir}})
+
+			library := model.Library{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
+			Expect(repo.Update(ctx, "1", library)).To(Succeed())
+
+			Eventually(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "1s", "10ms").Should(Equal(1))
+			// A quick scan: the scanner itself rescans this library in full
+			Expect(scanner.GetScanAllCalls()[0].FullScan).To(BeFalse())
+		})
+
+		It("does not trigger scan when the PID fields were not sent", func() {
+			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}})
+
+			// The REST layer decodes a missing pidAlbum as "". Only the sent fields count.
+			library := model.Library{ID: 1, Name: "Renamed", Path: tempDir}
+			Expect(repo.Update(ctx, "1", library, "name", "path")).To(Succeed())
+
+			Consistently(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "100ms", "10ms").Should(Equal(0))
+		})
+
+		It("waits for a running scan before triggering a new one", func() {
+			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir}})
+			scanner.SetScanning(true)
+
+			library := model.Library{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
+			Expect(repo.Update(ctx, "1", library)).To(Succeed())
+
+			Consistently(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "200ms", "20ms").Should(Equal(0))
+
+			scanner.SetScanning(false)
+			Eventually(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "3s", "20ms").Should(Equal(1))
+		})
+
 		It("does not trigger scan when library creation fails", func() {
 			// Try to create library with invalid data (empty name)
 			library := &model.Library{Path: tempDir}
 
-			_, err := repo.Save(library)
+			_, err := repo.Save(ctx, library)
 			Expect(err).To(HaveOccurred())
 
 			// Ensure no scan was triggered since creation failed
@@ -691,7 +773,7 @@ var _ = Describe("Library Service", func() {
 
 			// Try to update with invalid data (empty name)
 			library := &model.Library{ID: 1, Name: "", Path: tempDir}
-			err := repo.Update("1", library)
+			err := repo.Update(ctx, "1", *library)
 			Expect(err).To(HaveOccurred())
 
 			// Ensure no scan was triggered since update failed
@@ -707,7 +789,7 @@ var _ = Describe("Library Service", func() {
 			})
 
 			// Delete the library
-			err := repo.Delete("1")
+			err := repo.Delete(ctx, "1")
 			Expect(err).NotTo(HaveOccurred())
 
 			// Wait briefly for the goroutine to complete
@@ -722,7 +804,7 @@ var _ = Describe("Library Service", func() {
 
 		It("does not trigger scan when library deletion fails", func() {
 			// Try to delete a non-existent library
-			err := repo.Delete("999")
+			err := repo.Delete(ctx, "999")
 			Expect(err).To(HaveOccurred())
 
 			// Ensure no scan was triggered since deletion failed
@@ -735,7 +817,7 @@ var _ = Describe("Library Service", func() {
 			It("starts watcher when creating a new library", func() {
 				library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
 
-				_, err := repo.Save(library)
+				_, err := repo.Save(ctx, library)
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify watcher was started
@@ -764,7 +846,7 @@ var _ = Describe("Library Service", func() {
 
 				// Update library with new path
 				library := &model.Library{ID: 1, Name: "Updated Library", Path: newTempDir}
-				err = repo.Update("1", library)
+				err = repo.Update(ctx, "1", *library)
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify watcher was restarted
@@ -784,7 +866,7 @@ var _ = Describe("Library Service", func() {
 
 				// Update library with same path but different name
 				library := &model.Library{ID: 1, Name: "Updated Name", Path: tempDir}
-				err := repo.Update("1", library)
+				err := repo.Update(ctx, "1", *library)
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify watcher was NOT restarted (since path didn't change)
@@ -799,7 +881,7 @@ var _ = Describe("Library Service", func() {
 					{ID: 1, Name: "Test Library", Path: tempDir},
 				})
 
-				err := repo.Delete("1")
+				err := repo.Delete(ctx, "1")
 				Expect(err).NotTo(HaveOccurred())
 
 				// Verify watcher was stopped
@@ -817,7 +899,7 @@ var _ = Describe("Library Service", func() {
 				})
 
 				// Mock deletion to fail by trying to delete non-existent library
-				err := repo.Delete("999")
+				err := repo.Delete(ctx, "999")
 				Expect(err).To(HaveOccurred())
 
 				// Verify watcher was NOT stopped since deletion failed
@@ -829,11 +911,11 @@ var _ = Describe("Library Service", func() {
 	})
 
 	Describe("Event Broadcasting", func() {
-		var repo rest.Persistable
+		var repo rest.Persistable[model.Library]
 
 		BeforeEach(func() {
-			r := service.NewRepository(ctx)
-			repo = r.(rest.Persistable)
+			r := service.Repository()
+			repo = r.(rest.Persistable[model.Library])
 			// Clear any events from broker
 			broker.Events = []events.Event{}
 		})
@@ -841,7 +923,7 @@ var _ = Describe("Library Service", func() {
 		It("sends refresh event when creating a library", func() {
 			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
 
-			_, err := repo.Save(library)
+			_, err := repo.Save(ctx, library)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(broker.Events).To(HaveLen(1))
@@ -854,7 +936,7 @@ var _ = Describe("Library Service", func() {
 			})
 
 			library := &model.Library{ID: 1, Name: "Updated Library", Path: tempDir}
-			err := repo.Update("1", library)
+			err := repo.Update(ctx, "1", *library)
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(broker.Events).To(HaveLen(1))
@@ -866,7 +948,7 @@ var _ = Describe("Library Service", func() {
 				{ID: 2, Name: "Library to Delete", Path: tempDir},
 			})
 
-			err := repo.Delete("2")
+			err := repo.Delete(ctx, "2")
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(broker.Events).To(HaveLen(1))
@@ -874,13 +956,13 @@ var _ = Describe("Library Service", func() {
 	})
 
 	Describe("Plugin Manager Integration", func() {
-		var repo rest.Persistable
+		var repo rest.Persistable[model.Library]
 
 		BeforeEach(func() {
 			// Reset the call count for each test
 			pluginManager.unloadCalls = 0
-			r := service.NewRepository(ctx)
-			repo = r.(rest.Persistable)
+			r := service.Repository()
+			repo = r.(rest.Persistable[model.Library])
 		})
 
 		It("calls UnloadDisabledPlugins after successful library deletion", func() {
@@ -888,14 +970,14 @@ var _ = Describe("Library Service", func() {
 				{ID: 2, Name: "Library to Delete", Path: tempDir},
 			})
 
-			err := repo.Delete("2")
+			err := repo.Delete(ctx, "2")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(pluginManager.unloadCalls).To(Equal(1))
 		})
 
 		It("does not call UnloadDisabledPlugins when library deletion fails", func() {
 			// Try to delete non-existent library
-			err := repo.Delete("999")
+			err := repo.Delete(ctx, "999")
 			Expect(err).To(HaveOccurred())
 			Expect(pluginManager.unloadCalls).To(Equal(0))
 		})

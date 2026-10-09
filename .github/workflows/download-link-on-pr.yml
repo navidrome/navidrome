@@ -34,16 +34,19 @@ jobs:
             }
 
             const {data: {artifacts}} = await github.rest.actions.listWorkflowRunArtifacts({owner, repo, run_id});
-            if (!artifacts.length) {
+            const downloadable = artifacts.filter((art) => !art.name.startsWith('octocov-'));
+            if (!downloadable.length) {
               return core.error(`No artifacts found`);
             }
-            let body = `Download the artifacts for this pull request:\n`;
-            for (const art of artifacts) {
+            const header = `Download the artifacts for this pull request:`;
+            let body = `${header}\n`;
+            for (const art of downloadable) {
               body += `\n* [${art.name}.zip](https://nightly.link/${owner}/${repo}/actions/artifacts/${art.id}.zip)`;
             }
 
             const {data: comments} = await github.rest.issues.listComments({repo, owner, issue_number});
-            const existing_comment = comments.find((c) => c.user.login === 'github-actions[bot]');
+            // Match on the body too: octocov also comments as github-actions[bot].
+            const existing_comment = comments.find((c) => c.user.login === 'github-actions[bot]' && c.body.startsWith(header));
             if (existing_comment) {
               core.info(`Updating comment ${existing_comment.id}`);
               await github.rest.issues.updateComment({repo, owner, comment_id: existing_comment.id, body});

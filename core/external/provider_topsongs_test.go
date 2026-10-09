@@ -45,7 +45,7 @@ var _ = Describe("Provider - TopSongs", func() {
 
 		ag = new(mockAgents)
 
-		p = NewProvider(ds, ag, matcher.New(ds))
+		p = NewProvider(ds, ag, matcher.New(ds), &fakeBroker{})
 	})
 
 	It("returns top songs for a known artist", func() {
@@ -229,6 +229,21 @@ var _ = Describe("Provider - TopSongs", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 		Expect(songs).To(BeNil())
 		artistRepo.AssertExpectations(GinkgoT())
+		ag.AssertExpectations(GinkgoT())
+	})
+
+	// This endpoint answered with an empty list before retry-later existed; it must keep doing so.
+	It("returns an empty list, not a client error, when the agents are throttled", func() {
+		artist1 := model.Artist{ID: "artist-1", Name: "Artist One", MbzArtistID: "mbid-artist-1"}
+		artistRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.Artists{artist1}, nil).Once()
+		ag.On("GetArtistTopSongs", ctx, "artist-1", "Artist One", "mbid-artist-1", 5).
+			Return(nil, agents.ErrRetryLater).Once()
+
+		songs, err := p.TopSongs(ctx, "Artist One", "", 5)
+
+		Expect(songs).To(BeEmpty())
+		Expect(err).To(MatchError(model.ErrNotFound), "the handler renders this as an empty 200")
+		Expect(err).ToNot(MatchError(agents.ErrRetryLater))
 		ag.AssertExpectations(GinkgoT())
 	})
 

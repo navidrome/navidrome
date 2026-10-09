@@ -5,7 +5,6 @@ import (
 	"math"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
@@ -29,16 +28,16 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 	switch e := entity.(type) {
 	case *model.Album:
 		if u.HasLibraryAccess(e.LibraryID) {
-			return api.ds.Album(ctx), "album"
+			return api.ds.Album(), "album"
 		}
 	case *model.Artist:
-		return api.ds.Artist(ctx), "artist"
+		return api.ds.Artist(), "artist"
 	case *model.MediaFile:
 		if u.HasLibraryAccess(e.LibraryID) {
-			return api.ds.MediaFile(ctx), "song"
+			return api.ds.MediaFile(), "song"
 		}
 	case *model.Playlist:
-		return api.ds.Playlist(ctx), "playlist"
+		return api.ds.Playlist(), "playlist"
 	}
 	// Unknown ids, inaccessible-library items and non-annotatable entities (radios) all read as absent.
 	http.Error(w, "Not Found", http.StatusNotFound)
@@ -49,7 +48,10 @@ func (api *Router) resolveAnnotated(w http.ResponseWriter, r *http.Request, id s
 // fetches this per item to render played/favourite indicators; resolveItemByID enforces the
 // library-access gate.
 func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	item, ok := api.resolveItemByID(r.Context(), id, nil)
 	if !ok {
 		http.Error(w, "Not Found", http.StatusNotFound)
@@ -64,12 +66,15 @@ func (api *Router) getUserItemData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) setFavorite(w http.ResponseWriter, r *http.Request, starred bool) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	repo, resource := api.resolveAnnotated(w, r, id)
 	if repo == nil {
 		return
 	}
-	if err := repo.SetStar(starred, id); err != nil {
+	if err := repo.SetStar(r.Context(), starred, id); err != nil {
 		api.internalError(w, r, err)
 		return
 	}
@@ -84,12 +89,15 @@ func (api *Router) unmarkFavorite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *Router) setItemRating(w http.ResponseWriter, r *http.Request, rating int) {
-	id := api.resolveItemID(r.Context(), dto.DecodeID(chi.URLParam(r, "itemId")))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 	repo, resource := api.resolveAnnotated(w, r, id)
 	if repo == nil {
 		return
 	}
-	if err := repo.SetRating(rating, id); err != nil {
+	if err := repo.SetRating(r.Context(), rating, id); err != nil {
 		api.internalError(w, r, err)
 		return
 	}

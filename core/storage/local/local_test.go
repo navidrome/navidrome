@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 
+	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -439,6 +441,37 @@ var _ = Describe("LocalStorage", func() {
 				Expect(birthTime).ToNot(BeZero())
 				// Should be around the current time (within last few minutes)
 				Expect(birthTime).To(BeTemporally("~", time.Now(), 5*time.Minute))
+			})
+
+			It("reads the birth time from the path, not the time of the call", func() {
+				// On Linux, birth time is only available via statx(2) on the path.
+				lfi := localFileInfo{FileInfo: fileInfo, path: testFile}
+				time.Sleep(300 * time.Millisecond)
+				Expect(lfi.BirthTime()).To(BeTemporally("<", time.Now().Add(-200*time.Millisecond)))
+			})
+
+			It("does not remember filesystems that do report a birth time", func() {
+				memo := &sync.Map{}
+				lfi := localFileInfo{FileInfo: fileInfo, path: testFile, noBirthTime: memo}
+				lfi.BirthTime()
+
+				count := 0
+				memo.Range(func(_, _ any) bool { count++; return true })
+				Expect(count).To(BeZero())
+			})
+
+			It("skips statx on filesystems already known to have none", func() {
+				if times.Get(fileInfo).HasBirthTime() {
+					Skip("this platform reports birth time from FileInfo, so statx is never called")
+				}
+				dev, ok := deviceID(fileInfo)
+				Expect(ok).To(BeTrue())
+
+				memo := &sync.Map{}
+				memo.Store(dev, struct{}{})
+				lfi := localFileInfo{FileInfo: fileInfo, path: testFile, noBirthTime: memo}
+				time.Sleep(300 * time.Millisecond)
+				Expect(lfi.BirthTime()).To(BeTemporally("~", time.Now(), 100*time.Millisecond))
 			})
 		})
 

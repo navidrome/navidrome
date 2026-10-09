@@ -98,6 +98,9 @@ func (s *ImageStore) Write(hash, mimeType string, r io.Reader) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
+	if err := os.Chmod(tmp.Name(), 0640); err != nil {
+		return err
+	}
 	return os.Rename(tmp.Name(), dst)
 }
 

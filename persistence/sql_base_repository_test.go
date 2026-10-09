@@ -13,9 +13,30 @@ import (
 
 var _ = Describe("sqlRepository", func() {
 	var r sqlRepository
+	var ctx context.Context
 	BeforeEach(func() {
-		r.ctx = request.WithUser(context.Background(), model.User{ID: "user-id"})
+		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "user-id"})
 		r.tableName = "table"
+	})
+
+	Describe("ownedRow", func() {
+		DescribeTable("matches the row, limited to what the logged-in user may write",
+			func(user model.User, access writeAccess, expectedSQL string, expectedArgs ...any) {
+				userCtx := request.WithUser(GinkgoT().Context(), user)
+				sql, args, err := r.ownedRow(userCtx, "row-1", access).ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(Equal(expectedSQL))
+				Expect(args).To(Equal(expectedArgs))
+			},
+			Entry("admin, ownerOrAdmin: any row", model.User{ID: "admin", IsAdmin: true}, ownerOrAdmin,
+				"(id = ?)", "row-1"),
+			Entry("regular, ownerOrAdmin: own rows", model.User{ID: "user"}, ownerOrAdmin,
+				"(id = ? AND user_id = ?)", "row-1", "user"),
+			Entry("admin, ownerOnly: own rows", model.User{ID: "admin", IsAdmin: true}, ownerOnly,
+				"(id = ? AND user_id = ?)", "row-1", "admin"),
+			Entry("regular, ownerOnly: own rows", model.User{ID: "user"}, ownerOnly,
+				"(id = ? AND user_id = ?)", "row-1", "user"),
+		)
 	})
 
 	Describe("applyOptions", func() {
@@ -88,50 +109,103 @@ var _ = Describe("sqlRepository", func() {
 
 		When("sanitizing sort", func() {
 			It("returns empty if the sort key is not found in the model nor in the mappings", func() {
-				sort, _ := r.sanitizeSort("unknown", "")
+				sort, _ := r.sanitizeSort(ctx, "unknown", "")
 				Expect(sort).To(BeEmpty())
 			})
 
-			It("returns the mapped value when sort key exists", func() {
-				sort, _ := r.sanitizeSort("sort1", "")
-				Expect(sort).To(Equal("mappedSort1"))
+			// Validation only: buildSortOrder resolves the mapping, so mapping here too would hand
+			// sortMapping its own output and re-map values whose parts are themselves keys.
+			It("accepts a known sort key without resolving it", func() {
+				sort, _ := r.sanitizeSort(ctx, "sort1", "")
+				Expect(sort).To(Equal("sort1"))
 			})
 
 			It("is case insensitive", func() {
-				sort, _ := r.sanitizeSort("Sort1", "")
-				Expect(sort).To(Equal("mappedSort1"))
+				sort, _ := r.sanitizeSort(ctx, "Sort1", "")
+				Expect(sort).To(Equal("sort1"))
+			})
+
+			It("still resolves the mapping by the time the SQL is built", func() {
+				Expect(r.buildSortOrder("sort1", "asc")).To(Equal("mappedSort1 asc"))
+			})
+
+			// A mapping whose parts are themselves keys (media_file rated_at = "rating, rated_at")
+			// must survive the round trip through sanitizeSort and buildSortOrder unduplicated.
+			It("does not re-map a value whose parts are also keys", func() {
+				r.sortMappings = map[string]string{"rating": "rating", "rated_at": "rating, rated_at"}
+				sort, _ := r.sanitizeSort(ctx, "rated_at", "")
+				Expect(r.buildSortOrder(sort, "asc")).To(Equal("rating asc, rated_at asc"))
 			})
 
 			It("returns the field if it is a valid field", func() {
-				sort, _ := r.sanitizeSort("field", "")
+				sort, _ := r.sanitizeSort(ctx, "field", "")
 				Expect(sort).To(Equal("field"))
 			})
 
 			It("is case insensitive for fields", func() {
-				sort, _ := r.sanitizeSort("FIELD", "")
+				sort, _ := r.sanitizeSort(ctx, "FIELD", "")
 				Expect(sort).To(Equal("field"))
 			})
 		})
 		When("sanitizing order", func() {
 			It("returns 'asc' if order is empty", func() {
-				_, order := r.sanitizeSort("", "")
+				_, order := r.sanitizeSort(ctx, "", "")
 				Expect(order).To(Equal(""))
 			})
 
 			It("returns 'asc' if order is 'asc'", func() {
-				_, order := r.sanitizeSort("", "ASC")
+				_, order := r.sanitizeSort(ctx, "", "ASC")
 				Expect(order).To(Equal("asc"))
 			})
 
 			It("returns 'desc' if order is 'desc'", func() {
-				_, order := r.sanitizeSort("", "desc")
+				_, order := r.sanitizeSort(ctx, "", "desc")
 				Expect(order).To(Equal("desc"))
 			})
 
 			It("returns 'asc' if order is unknown", func() {
-				_, order := r.sanitizeSort("", "something")
+				_, order := r.sanitizeSort(ctx, "", "something")
 				Expect(order).To(Equal("asc"))
 			})
+		})
+	})
+
+	Describe("sortMapping", func() {
+		BeforeEach(func() {
+			r.sortMappings = map[string]string{
+				"name":           "order_album_name, order_album_artist_name",
+				"recently_added": "album.created_at, album.id",
+			}
+		})
+		It("maps a single key", func() {
+			Expect(r.sortMapping("recently_added")).To(Equal("album.created_at, album.id"))
+		})
+		It("maps every part of a comma list when all of them are known keys", func() {
+			Expect(r.sortMapping("recently_added, name")).
+				To(Equal("album.created_at, album.id, order_album_name, order_album_artist_name"))
+		})
+		It("resolves the known parts of a mixed list and leaves the rest as columns", func() {
+			Expect(r.sortMapping("recently_added, play_count")).
+				To(Equal("album.created_at, album.id, play_count"))
+		})
+		// Jellyfin's MusicAlbum SortBy=Runtime,SortName arrives as "duration, name"; duration is a
+		// plain album column while name is mapped, and the mapping must survive the mix.
+		It("keeps a mapping when an earlier part is a plain column", func() {
+			Expect(r.sortMapping("duration, name")).
+				To(Equal("duration, order_album_name, order_album_artist_name"))
+		})
+		It("leaves a raw column list with directions untouched", func() {
+			Expect(r.sortMapping("starred desc, rating desc")).To(Equal("starred desc, rating desc"))
+		})
+		It("does not split an expression on a comma inside its parentheses", func() {
+			Expect(r.sortMapping("coalesce(name, ''), title")).To(Equal("coalesce(name, ''), title"))
+			Expect(r.sortMapping("coalesce(nullif(a,''), b) desc, c")).To(Equal("coalesce(nullif(a,''), b) desc, c"))
+		})
+		It("keeps a mapping whose value nests commas inside parentheses", func() {
+			r.sortMappings["max_year"] = "coalesce(nullif(original_date,''), cast(max_year as text)), release_date"
+			Expect(r.sortMapping("max_year, name")).To(Equal(
+				"coalesce(nullif(original_date,''), cast(max_year as text)), release_date, " +
+					"order_album_name, order_album_artist_name"))
 		})
 	})
 
@@ -195,31 +269,31 @@ var _ = Describe("sqlRepository", func() {
 	Describe("resetSeededRandom", func() {
 		var id string
 		BeforeEach(func() {
-			id = r.seedKey()
+			id = r.seedKey(ctx)
 			hasher.SetSeed(id, "")
 		})
 		It("does not reset seed if sort is not random", func() {
 			var options []model.QueryOptions
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(BeEmpty())
 		})
 		It("resets seed if sort is random", func() {
 			options := []model.QueryOptions{{Sort: "random"}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).NotTo(BeEmpty())
 		})
 		It("resets seed if sort is random and seed is provided", func() {
 			options := []model.QueryOptions{{Sort: "random", Seed: "seed"}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 		})
 		It("keeps seed when paginating", func() {
 			options := []model.QueryOptions{{Sort: "random", Seed: "seed", Offset: 0}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 
 			options = []model.QueryOptions{{Sort: "random", Offset: 1}}
-			r.resetSeededRandom(options)
+			r.resetSeededRandom(ctx, options)
 			Expect(hasher.CurrentSeed(id)).To(Equal("seed"))
 		})
 	})
@@ -245,11 +319,11 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Admin User", func() {
 			BeforeEach(func() {
-				r.ctx = request.WithUser(context.Background(), model.User{ID: "admin", IsAdmin: true})
+				ctx = request.WithUser(ctx, model.User{ID: "admin", IsAdmin: true})
 			})
 
 			It("should not apply library filter for admin users", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
@@ -259,13 +333,13 @@ var _ = Describe("sqlRepository", func() {
 		Context("Regular User with a subset of libraries", func() {
 			BeforeEach(func() {
 				// Strict subset: granted lib 1, DB has libs 1 and 2, so the filter must apply.
-				r.ctx = request.WithUser(context.Background(), model.User{
+				ctx = request.WithUser(ctx, model.User{
 					ID: "user123", IsAdmin: false, Libraries: model.Libraries{{ID: 1}},
 				})
 			})
 
 			It("should apply library filter for regular users", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
@@ -273,7 +347,7 @@ var _ = Describe("sqlRepository", func() {
 			})
 
 			It("should use custom table name when provided", func() {
-				result := r.applyLibraryFilter(sq, "custom_table")
+				result := r.applyLibraryFilter(ctx, sq, "custom_table")
 				sql, args, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("custom_table.library_id IN"))
@@ -283,11 +357,11 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Regular User with no libraries", func() {
 			BeforeEach(func() {
-				r.ctx = request.WithUser(context.Background(), model.User{ID: "empty", IsAdmin: false})
+				ctx = request.WithUser(ctx, model.User{ID: "empty", IsAdmin: false})
 			})
 
 			It("should apply the library filter (never skip on empty)", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(ContainSubstring("IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)"))
@@ -306,20 +380,20 @@ var _ = Describe("sqlRepository", func() {
 				for _, id := range ids {
 					libs = append(libs, model.Library{ID: id})
 				}
-				r.ctx = request.WithUser(context.Background(), model.User{
+				ctx = request.WithUser(ctx, model.User{
 					ID: "alllibs", IsAdmin: false, Libraries: libs,
 				})
 			})
 
 			It("should not apply the library filter (subquery would filter nothing)", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 
 			It("should not apply the filter even with a custom table name", func() {
-				result := r.applyLibraryFilter(sq, "custom_table")
+				result := r.applyLibraryFilter(ctx, sq, "custom_table")
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
@@ -328,18 +402,18 @@ var _ = Describe("sqlRepository", func() {
 
 		Context("Headless Process (No User Context)", func() {
 			BeforeEach(func() {
-				r.ctx = context.Background() // No user context
+				ctx = GinkgoT().Context() // No user context
 			})
 
 			It("should not apply library filter for headless processes", func() {
-				result := r.applyLibraryFilter(sq)
+				result := r.applyLibraryFilter(ctx, sq)
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
 
 			It("should not apply library filter even with custom table name", func() {
-				result := r.applyLibraryFilter(sq, "custom_table")
+				result := r.applyLibraryFilter(ctx, sq, "custom_table")
 				sql, _, err := result.ToSql()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))

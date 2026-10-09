@@ -24,7 +24,7 @@ var _ = Describe("loadLibraryView", Ordered, func() {
 	})
 
 	It("returns a view for a library backed by registered storage", func() {
-		Expect(ds.Library(ctx).Put(&model.Library{ID: 1, Path: "fake:///music"})).To(Succeed())
+		Expect(ds.Library().Put(ctx, &model.Library{ID: 1, Path: "fake:///music"})).To(Succeed())
 
 		lib, err := loadLibraryView(ctx, ds, 1)
 		Expect(err).ToNot(HaveOccurred())
@@ -45,7 +45,7 @@ var _ = Describe("loadLibraryView", Ordered, func() {
 	})
 
 	It("returns an error when the library path uses an unregistered scheme", func() {
-		Expect(ds.Library(ctx).Put(&model.Library{ID: 2, Path: "unsupported:///music"})).To(Succeed())
+		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Path: "unsupported:///music"})).To(Succeed())
 		_, err := loadLibraryView(ctx, ds, 2)
 		Expect(err).To(HaveOccurred())
 	})

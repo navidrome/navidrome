@@ -14,9 +14,9 @@ const pruneMinAge = time.Hour
 func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	start := time.Now()
 	defer func() { log.Debug(ctx, "Artwork: Prune finished", "elapsed", time.Since(start)) }()
-	repo := ds.Artwork(ctx)
+	repo := ds.Artwork()
 
-	purged, err := repo.PurgeDanglingItems()
+	purged, err := repo.PurgeDanglingItems(ctx)
 	if err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	}
 
 	// Queue rows for deleted entities would otherwise retry forever (Get -> not found -> failed).
-	queuePurged, err := ds.ArtworkQueue(ctx).PurgeDangling()
+	queuePurged, err := ds.ArtworkQueue().PurgeDangling(ctx)
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 
 	// Files younger than the grace window may belong to acquisitions whose rows aren't committed yet.
 	cutoff := time.Now().Add(-pruneMinAge)
-	orphans, err := repo.PurgeOrphans(cutoff)
+	orphans, err := repo.PurgeOrphans(ctx, cutoff)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func prune(ctx context.Context, ds model.DataStore, store *ImageStore) error {
 	}
 
 	// Read after the delete, so the sweep below reclaims the files of the rows just removed.
-	mimes, err := repo.GetMimeByHash()
+	mimes, err := repo.GetMimeByHash(ctx)
 	if err != nil {
 		return err
 	}
