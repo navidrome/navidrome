@@ -77,7 +77,7 @@ var _ = Describe("Folder", func() {
 
 	Describe("NewFolder", func() {
 		It("should create a new SubFolder with the correct attributes", func() {
-			// The scanner walks an fs.FS, so folder paths always use forward slashes
+			// The scanner passes fs.FS paths here, which use forward slashes on every OS.
 			folderPath := "rock/metal"
 			folder := model.NewFolder(lib, folderPath)
 
