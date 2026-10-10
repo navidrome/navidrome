@@ -281,7 +281,7 @@ func (r *playlistRepository) updatePlaylist(ctx context.Context, playlistId stri
 }
 
 // addTracks is the only path that writes playlist_tracks rows (smart playlists aside), so it owns
-// the library check: every caller, including a full replace through Put, goes through it.
+// the library and existence check: every caller, including a full replace through Put, goes through it.
 func (r *playlistRepository) addTracks(ctx context.Context, playlistId string, startingPos int, mediaFileIds []string) (int, error) {
 	mediaFileIds, err := r.keepAccessible(ctx, mediaFileIds)
 	if err != nil {

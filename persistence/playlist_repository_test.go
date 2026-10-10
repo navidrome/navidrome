@@ -472,17 +472,11 @@ var _ = Describe("PlaylistRepository", func() {
 	Describe("removeOrphans", func() {
 		It("deletes rows pointing to no track and renumbers the rest", func() {
 			pls := model.Playlist{Name: "Orphans", OwnerID: "userid"}
-			pls.AddMediaFilesByID([]string{"1001", "1002"})
 			Expect(repo.Put(ctx, &pls)).To(Succeed())
 			DeferCleanup(func() { Expect(repo.Delete(ctx, pls.ID)).To(Succeed()) })
-			// Rows an older version stored for unknown ids, interleaved with real tracks
-			for _, q := range []string{"-(id * 2)", "-id"} {
-				_, err := GetDBXBuilder().NewQuery(`UPDATE playlist_tracks SET id = ` + q + ` WHERE playlist_id = {:id}`).
-					Bind(dbx.Params{"id": pls.ID}).Execute()
-				Expect(err).ToNot(HaveOccurred())
-			}
+			// Rows as an older version stored them, with an unknown id between real tracks
 			_, err := GetDBXBuilder().NewQuery(`INSERT INTO playlist_tracks (playlist_id, media_file_id, id)
-				VALUES ({:id}, 'no-such-track', 1), ({:id}, '!!not-an-id!!', 3)`).
+				VALUES ({:id}, '1001', 1), ({:id}, 'no-such-track', 2), ({:id}, '1002', 3)`).
 				Bind(dbx.Params{"id": pls.ID}).Execute()
 			Expect(err).ToNot(HaveOccurred())
 

@@ -83,12 +83,14 @@ var _ = Describe("PlaylistTrackRepository", func() {
 
 	Describe("Insert", func() {
 		var tracks model.PlaylistTrackRepository
+		var plsID string
 
 		BeforeEach(func() {
 			plsRepo := NewPlaylistRepository(GetDBXBuilder())
 			pls := model.Playlist{Name: "Insert", OwnerID: "userid", OwnerName: "userid"}
 			Expect(plsRepo.Put(ctx, &pls)).To(Succeed())
 			DeferCleanup(func() { Expect(plsRepo.Delete(ctx, pls.ID)).To(Succeed()) })
+			plsID = pls.ID
 
 			tracks = plsRepo.Tracks(ctx, pls.ID, false)
 			Expect(tracks.Add(ctx, []string{songDayInALife.ID, songRadioactivity.ID})).To(Equal(2))
@@ -127,7 +129,7 @@ var _ = Describe("PlaylistTrackRepository", func() {
 		It("drops ids that match no track, keeping positions contiguous", func() {
 			Expect(tracks.Insert(ctx, []string{"no-such-track", songComeTogether.ID}, 1)).To(Equal(1))
 
-			Expect(storedRows(tracks.(*playlistTrackRepository).playlistId)).To(Equal([]string{
+			Expect(storedRows(plsID)).To(Equal([]string{
 				"1:" + songComeTogether.ID, "2:" + songDayInALife.ID, "3:" + songRadioactivity.ID,
 			}))
 		})
