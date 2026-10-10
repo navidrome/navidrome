@@ -3,6 +3,7 @@ package external_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"slices"
 	"strings"
@@ -191,7 +192,65 @@ var _ = Describe("Provider - SimilarSongs", func() {
 				Expect(ids(songs)).To(ConsistOf("external-pick", "artist-pick", "local-a", "local-b"))
 				Expect(songs).To(HaveLen(4))
 				Expect(ids(songs)).ToNot(ContainElement("track-1"))
-				Expect(agentsCombined.localTrackCalls).To(Equal([]int{2}))
+				Expect(agentsCombined.localTrackCalls).To(Equal([]int{5}))
+			})
+
+			It("continues artist fallback selection past previously selected tracks", func() {
+				stubTrackSeed()
+
+				const priorPickCount = 20
+				priorPicks := make([]agents.Song, 0, priorPickCount)
+				topSongs := make([]agents.Song, 0, priorPickCount+1)
+				library := make(model.MediaFiles, 0, priorPickCount+1)
+				selectedIDs := make([]string, 0, priorPickCount)
+				for i := range priorPickCount {
+					id := fmt.Sprintf("prior-%02d", i)
+					selectedIDs = append(selectedIDs, id)
+					priorPicks = append(priorPicks, agents.Song{ID: id, Name: id})
+					topSongs = append(topSongs, agents.Song{ID: id, Name: id})
+					library = append(library, model.MediaFile{ID: id, Title: id})
+				}
+				topSongs = append(topSongs, agents.Song{ID: "artist-fallback", Name: "artist-fallback"})
+				library = append(library, model.MediaFile{ID: "artist-fallback", Title: "artist-fallback"})
+
+				stubArtistFallback(topSongs)
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", priorPickCount+1).
+					Return(priorPicks, nil).Once()
+				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(library, nil).Maybe()
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", priorPickCount+1)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids(songs)).To(ConsistOf(append(selectedIDs, "artist-fallback")))
+				mockAgent.AssertCalled(GinkgoT(), "GetArtistTopSongs", mock.Anything, "artist-1", "Artist", "", priorPickCount+2)
+				Expect(agentsCombined.localTrackCalls).To(BeEmpty())
+			})
+
+			It("over-fetches local recommendations to replace previously selected tracks", func() {
+				stubTrackSeed()
+				stubArtistFallback(nil)
+				selected := model.MediaFile{ID: "selected", Title: "Selected"}
+				localTracks := model.MediaFiles{
+					selected,
+					{ID: "local-a", Title: "Local A"},
+					{ID: "local-b", Title: "Local B"},
+					{ID: "local-c", Title: "Local C"},
+				}
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 3).
+					Return([]agents.Song{{ID: selected.ID, Name: selected.Title}}, nil).Once()
+				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(localTracks, nil).Maybe()
+				agentsCombined.localTrackSongs = []agents.Song{
+					{ID: "selected", Name: "Selected"},
+					{ID: "local-a", Name: "Local A"},
+					{ID: "local-b", Name: "Local B"},
+					{ID: "local-c", Name: "Local C"},
+				}
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 3)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids(songs)).To(ConsistOf("selected", "local-a", "local-b"))
+				Expect(agentsCombined.localTrackCalls).To(Equal([]int{4}))
 			})
 
 			It("calls GetSimilarSongsByTrack and returns matched songs", func() {

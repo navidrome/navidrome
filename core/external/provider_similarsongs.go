@@ -66,7 +66,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 				return e.ag.GetSimilarSongsByArtist(ctx, v.ID, v.Name, v.MbzArtistID, count)
 			},
 			func() (model.MediaFiles, error) {
-				return e.similarSongsFallback(ctx, id, count)
+				return e.similarSongsFallback(ctx, id, count, nil)
 			},
 			func() (model.MediaFiles, error) {
 				return e.seedMix(ctx, count, func() (model.MediaFiles, error) {
@@ -94,29 +94,50 @@ func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]
 			return nil, err
 		}
 	}
-	sources := make([]func(int) (model.MediaFiles, error), len(fallbacks))
+	sources := make([]func(int, map[string]struct{}) (model.MediaFiles, error), len(fallbacks))
 	for i, fallback := range fallbacks {
-		sources[i] = func(int) (model.MediaFiles, error) { return fallback() }
+		sources[i] = func(int, map[string]struct{}) (model.MediaFiles, error) { return fallback() }
 	}
-	return topUp(ctx, matched, count, sources...)
+	return topUp(ctx, matched, count, nil, sources...)
 }
 
 // topUp draws on each source in turn until the mix holds count distinct tracks.
-func topUp(ctx context.Context, res model.MediaFiles, count int, sources ...func(int) (model.MediaFiles, error)) (model.MediaFiles, error) {
+func topUp(ctx context.Context, res model.MediaFiles, count int, excluded map[string]struct{}, sources ...func(int, map[string]struct{}) (model.MediaFiles, error)) (model.MediaFiles, error) {
+	selected := make(map[string]struct{}, len(excluded)+len(res))
+	for id := range excluded {
+		selected[id] = struct{}{}
+	}
 	// The matcher can re-emit a track, so a full-looking res may hold fewer than count unique ones.
-	res = dedupByID(res)
+	unique := make(model.MediaFiles, 0, len(res))
+	for _, mf := range res {
+		if _, exists := selected[mf.ID]; exists {
+			continue
+		}
+		selected[mf.ID] = struct{}{}
+		unique = append(unique, mf)
+	}
+	res = unique
 	var lastErr error
 	for _, more := range sources {
 		if len(res) >= count {
 			break
 		}
-		extra, err := more(count - len(res))
+		extra, err := more(count-len(res), selected)
 		if err != nil {
 			log.Debug(ctx, "Could not top up a short mix", "have", len(res), "want", count, err)
 			lastErr = err
 			continue
 		}
-		res = dedupByID(append(res, extra...))
+		for _, mf := range extra {
+			if _, exists := selected[mf.ID]; exists {
+				continue
+			}
+			selected[mf.ID] = struct{}{}
+			res = append(res, mf)
+			if len(res) == count {
+				break
+			}
+		}
 	}
 	if len(res) == 0 {
 		return nil, lastErr
@@ -135,13 +156,15 @@ func (e *provider) similarSongsByTrack(ctx context.Context, track *model.MediaFi
 	}
 	matched = withoutTrackID(matched, track.ID)
 
-	return topUp(ctx, matched, count,
-		func(remaining int) (model.MediaFiles, error) {
-			fallback, err := e.similarSongsFallback(ctx, track.ID, remaining)
-			return withoutTrackID(fallback, track.ID), err
+	return topUp(ctx, matched, count, map[string]struct{}{track.ID: {}},
+		func(remaining int, selected map[string]struct{}) (model.MediaFiles, error) {
+			return e.similarSongsFallback(ctx, track.ID, remaining, selected)
 		},
-		func(remaining int) (model.MediaFiles, error) {
-			localSongs, err := e.ag.GetSimilarSongsByTrackFromLocalAgent(ctx, track.ID, track.Title, track.Artist, track.MbzRecordingID, remaining)
+		func(remaining int, selected map[string]struct{}) (model.MediaFiles, error) {
+			// The local producer limits its result count, so over-fetch by the number of already
+			// selected IDs to leave enough candidates after filtering.
+			localCount := remaining + len(selected)
+			localSongs, err := e.ag.GetSimilarSongsByTrackFromLocalAgent(ctx, track.ID, track.Title, track.Artist, track.MbzRecordingID, localCount)
 			if err != nil {
 				return nil, err
 			}
@@ -149,13 +172,20 @@ func (e *provider) similarSongsByTrack(ctx context.Context, track *model.MediaFi
 			if err != nil {
 				return nil, err
 			}
-			return withoutTrackID(localMatches, track.ID), nil
+			return withoutTrackIDs(localMatches, selected), nil
 		},
 	)
 }
 
 func withoutTrackID(mfs model.MediaFiles, id string) model.MediaFiles {
 	return slice.Filter(mfs, func(mf model.MediaFile) bool { return mf.ID != id })
+}
+
+func withoutTrackIDs(mfs model.MediaFiles, excluded map[string]struct{}) model.MediaFiles {
+	return slice.Filter(mfs, func(mf model.MediaFile) bool {
+		_, exists := excluded[mf.ID]
+		return !exists
+	})
 }
 
 // seedMix samples seed tracks, runs each through the agent chain's per-track similarity and merges
@@ -266,7 +296,7 @@ func (e *provider) sampleTracks(ctx context.Context, filter squirrel.Sqlizer, n 
 // similarSongsFallback uses the original similar artists + top songs algorithm. The idea is to
 // get the artist of the given entity, retrieve similar artists, get their top songs, and pick
 // a weighted random selection of songs to return as similar songs.
-func (e *provider) similarSongsFallback(ctx context.Context, id string, count int) (model.MediaFiles, error) {
+func (e *provider) similarSongsFallback(ctx context.Context, id string, count int, excluded map[string]struct{}) (model.MediaFiles, error) {
 	artist, err := e.getArtist(ctx, id)
 	if err != nil {
 		return nil, err
@@ -285,7 +315,7 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 			return ctx.Err()
 		}
 
-		topCount := max(count, 20)
+		topCount := max(count+len(excluded), 20)
 		topSongs, err := e.getMatchingTopSongs(ctx, e.ag, &auxArtist{Artist: a}, topCount)
 		if err != nil {
 			log.Warn(ctx, "Error getting artist's top songs", "artist", a.Name, err)
@@ -319,6 +349,9 @@ func (e *provider) similarSongsFallback(ctx context.Context, id string, count in
 		s, err := weightedSongs.Pick()
 		if err != nil {
 			log.Warn(ctx, "Error getting weighted song", err)
+			continue
+		}
+		if _, skip := excluded[s.ID]; skip {
 			continue
 		}
 		if _, dup := picked[s.ID]; dup {
