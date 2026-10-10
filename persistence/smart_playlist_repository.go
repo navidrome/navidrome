@@ -68,6 +68,7 @@ func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *
 		return false
 	}
 
+	wasEmpty := pls.SongCount == 0
 	if err = r.refreshCounters(ctx, pls); err != nil {
 		log.Error(ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
 		return false
@@ -81,6 +82,12 @@ func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *
 		return false
 	}
 	pls.EvaluatedAt = &now
+
+	// A cover resolved while the playlist was empty has no grid. Rebuild only on that transition:
+	// rebuilding on every refresh would re-sample the grid, and re-run a grid that has no art.
+	if wasEmpty && pls.SongCount > 0 {
+		r.enqueueCoverRebuild(ctx, pls.ID)
+	}
 
 	log.Debug(ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
 	return true
