@@ -64,6 +64,47 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			})
 		})
 
+		Context("cover artwork", func() {
+			var pls model.Playlist
+
+			queuedIDs := func() []string {
+				queued, err := NewArtworkQueueRepository(GetDBXBuilder()).DequeueBatch(ctx, 1000)
+				Expect(err).ToNot(HaveOccurred())
+				return slice.Map(queued, func(q model.ArtworkQueueItem) string { return q.ItemID })
+			}
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+				clearArtworkTables()
+				DeferCleanup(clearArtworkTables)
+				pls = model.Playlist{Name: "Covered", OwnerID: "userid", Rules: &criteria.Criteria{
+					Expression: criteria.All{criteria.Contains{"title": ""}},
+				}}
+				Expect(repo.Put(ctx, &pls)).To(Succeed())
+				DeferCleanup(func() { _ = repo.Delete(ctx, pls.ID) })
+			})
+
+			It("enqueues the cover when an evaluation fills an empty playlist", func() {
+				refreshed, err := repo.GetWithTracks(ctx, pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(refreshed.Tracks).ToNot(BeEmpty())
+
+				Expect(queuedIDs()).To(ContainElement(pls.ID))
+			})
+
+			It("does not enqueue the cover when re-evaluating a playlist that already had tracks", func() {
+				_, err := repo.GetWithTracks(ctx, pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+				clearArtworkTables()
+
+				_, err = repo.GetWithTracks(ctx, pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(queuedIDs()).ToNot(ContainElement(pls.ID))
+			})
+		})
+
 		Context("invalid rules", func() {
 			It("fails to Put it in the DB", func() {
 				rules = &criteria.Criteria{
