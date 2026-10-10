@@ -434,6 +434,50 @@ var _ = Describe("Agents", func() {
 		})
 
 		Describe("GetSimilarSongsByTrack", func() {
+			It("does not use local genre recommendations in the external-only stage", func() {
+				mfRepo.SetData(model.MediaFiles{
+					{ID: "123", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}},
+					{ID: "local-pick", Title: "Local Pick", Tags: model.Tags{model.TagGenre: []string{"Rock"}}},
+				})
+				conf.Server.Agents = "fake"
+				mock.Err = ErrNotFound
+				ag = createAgents(ds, nil)
+
+				songs, err := ag.GetSimilarSongsByTrackFromExternalAgents(ctx, "123", "test song", "test artist", "mb123", 2)
+
+				Expect(songs).To(BeNil())
+				Expect(err).To(MatchError(ErrNotFound))
+				Expect(mock.Args).To(HaveExactElements("123", "test song", "test artist", "mb123", 2))
+				Expect(mfRepo.Options).To(Equal(model.QueryOptions{}), "local genre search must not run")
+			})
+
+			It("uses only local genre recommendations in the local-only stage", func() {
+				mfRepo.SetData(model.MediaFiles{
+					{ID: "123", Title: "Seed", Tags: model.Tags{model.TagGenre: []string{"Rock"}}},
+					{ID: "local-pick", Title: "Local Pick", Tags: model.Tags{model.TagGenre: []string{"Rock"}}},
+				})
+				conf.Server.Agents = "fake"
+				ag = createAgents(ds, nil)
+
+				songs, err := ag.GetSimilarSongsByTrackFromLocalAgent(
+					ctx, "123", "Seed", "test artist", "mb123", 2,
+				)
+
+				Expect(err).ToNot(HaveOccurred())
+
+				found := false
+				for _, song := range songs {
+					if song.Name == "Local Pick" {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "local genre recommendations should be returned")
+				Expect(mock.Args).To(BeEmpty(), "the external fake agent must not run")
+				Expect(mfRepo.Options).ToNot(Equal(model.QueryOptions{}),
+					"the local genre search must run")
+			})
+
 			It("returns on first match", func() {
 				Expect(ag.GetSimilarSongsByTrack(ctx, "123", "test song", "test artist", "mb123", 2)).To(Equal([]Song{{
 					Name: "Similar Song",
