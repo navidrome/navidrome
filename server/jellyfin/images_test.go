@@ -65,10 +65,10 @@ func newImageRequest(itemId string) (*httptest.ResponseRecorder, *http.Request) 
 var _ = Describe("Images", func() {
 	// Real Jellyfin fits the image inside either bound, so a client that sends only MaxHeight must
 	// still get a resized image rather than the full-size original.
-	DescribeTable("derives the requested size from MaxWidth or MaxHeight",
+	DescribeTable("derives the requested size from the Jellyfin size params",
 		func(query string, wantSize int) {
 			ds := &tests.MockDataStore{}
-			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			fa := &fakeArtwork{}
 			api := &Router{ds: ds, artwork: fa}
 
@@ -84,11 +84,20 @@ var _ = Describe("Images", func() {
 		Entry("both, smaller bound wins", "maxwidth=200&maxheight=300", 200),
 		Entry("both, smaller bound wins regardless of order", "maxwidth=300&maxheight=200", 200),
 		Entry("neither", "", 0),
+		Entry("Width only", "width=300", 300),
+		Entry("Height only", "height=300", 300),
+		Entry("Width capped by MaxWidth", "width=500&maxwidth=300", 300),
+		Entry("FillWidth only", "fillwidth=300", 300),
+		Entry("FillHeight only", "fillheight=300", 300),
+		Entry("both fill sides, larger one covers the box", "fillwidth=200&fillheight=300", 300),
+		Entry("fill smaller than MaxWidth wins", "maxwidth=500&fillwidth=300&fillheight=300", 300),
+		Entry("MaxWidth smaller than fill wins", "maxwidth=200&fillwidth=300&fillheight=300", 200),
+		Entry("non-positive values are ignored", "fillwidth=0&maxwidth=-5&height=250", 250),
 	)
 
 	It("streams album artwork", func() {
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -129,7 +138,7 @@ var _ = Describe("Images", func() {
 
 	It("sniffs the Content-Type instead of hardcoding it", func() {
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 
 		png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, make([]byte, 512)...)
 		fa := &fakeArtwork{data: png}
@@ -144,7 +153,7 @@ var _ = Describe("Images", func() {
 
 	It("resolves a playlist's cover regardless of visibility, even for an anonymous caller", func() {
 		ds := &tests.MockDataStore{}
-		ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")}})
+		ds.Playlist().(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")}})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -160,7 +169,7 @@ var _ = Describe("Images", func() {
 	// silently falls back to the placeholder.
 	It("resolves artwork under an elevated admin context", func() {
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -176,7 +185,7 @@ var _ = Describe("Images", func() {
 	It("serves immutable when the tag param asserts the current hash", func() {
 		const hash = "0123456789abcdef"
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -194,7 +203,7 @@ var _ = Describe("Images", func() {
 	It("revalidates via no-cache when no tag is provided", func() {
 		const hash = "0123456789abcdef"
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 

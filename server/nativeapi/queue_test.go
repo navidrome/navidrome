@@ -25,7 +25,7 @@ var _ = Describe("Queue Endpoints", func() {
 		repo = &tests.MockPlayQueueRepo{}
 		user = model.User{ID: "u1", UserName: "user"}
 		userRepo = tests.CreateMockUserRepo()
-		_ = userRepo.Put(&user)
+		_ = userRepo.Put(GinkgoT().Context(), &user)
 		ds = &tests.MockDataStore{MockedPlayQueue: repo, MockedUser: userRepo, MockedProperty: &tests.MockedPropertyRepo{}}
 	})
 

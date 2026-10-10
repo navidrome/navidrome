@@ -23,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/apiv1"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin"
 	"github.com/navidrome/navidrome/server/nativeapi"
@@ -36,6 +37,8 @@ var allProviders = wire.NewSet(
 	server.New,
 	subsonic.New,
 	jellyfin.New,
+	jellyfin.NewDiscovery,
+	apiv1.New,
 	nativeapi.New,
 	public.New,
 	persistence.New,
@@ -90,6 +93,12 @@ func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	))
 }
 
+func CreateAPIv1Router(ctx context.Context) *apiv1.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
 func CreatePublicRouter() *public.Router {
 	panic(wire.Build(
 		allProviders,
@@ -103,6 +112,12 @@ func CreateLastFMRouter() *lastfm.Router {
 }
 
 func CreateListenBrainzRouter() *listenbrainz.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateJellyfinDiscovery() *jellyfin.Discovery {
 	panic(wire.Build(
 		allProviders,
 	))

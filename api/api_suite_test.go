@@ -1,4 +1,4 @@
-package ffmpeg
+package api_test
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestFFMpeg(t *testing.T) {
-	tests.Init(t, true)
+func TestAPI(t *testing.T) {
+	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "FFMpeg Suite")
+	RunSpecs(t, "API Spec Suite")
 }

@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"path/filepath"
 	"slices"
 	"sync/atomic"
 	"time"
 
 	ppl "github.com/google/go-pipeline/pkg/pipeline"
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/log"
@@ -32,6 +30,7 @@ type scanState struct {
 	libraries         model.Libraries  // Store libraries list for consistency across phases
 	targets           map[int][]string // Optional: map[libraryID][]folderPaths for selective scans
 	totalLibraryCount int              // Total number of libraries (unfiltered), for cross-library move detection
+	failedLibs        map[int]bool     // Libraries that could not be scanned in this run
 }
 
 func (s *scanState) sendProgress(info *ProgressInfo) {
@@ -48,29 +47,15 @@ func (s *scanState) sendWarning(msg string) {
 	s.sendProgress(&ProgressInfo{Warning: msg})
 }
 
-func (s *scanState) sendError(err error) {
-	s.sendProgress(&ProgressInfo{Error: err.Error()})
+func (s *scanState) markFailed(libID int) {
+	if s.failedLibs == nil {
+		s.failedLibs = map[int]bool{}
+	}
+	s.failedLibs[libID] = true
 }
 
-// libraryRelativePath rebases an absolute scan target path onto the library root, since the
-// scanner's fs.FS only accepts paths relative to it. Relative paths, and absolute paths outside
-// the library root, are returned unchanged.
-func libraryRelativePath(libPath, folderPath string) string {
-	if !filepath.IsAbs(folderPath) {
-		return folderPath
-	}
-	// The library root may be relative (e.g. the default "./music"); it must be made absolute
-	// to match against an absolute target, and it resolves against the same cwd as the scanner's fs.
-	absLib, err := filepath.Abs(libPath)
-	if err != nil {
-		return folderPath
-	}
-	rel, err := filepath.Rel(absLib, folderPath)
-	if err != nil || !filepath.IsLocal(rel) {
-		return folderPath
-	}
-	// The scanner's fs.FS is an io/fs, which always uses forward slashes.
-	return filepath.ToSlash(rel)
+func (s *scanState) sendError(err error) {
+	s.sendProgress(&ProgressInfo{Error: err.Error()})
 }
 
 func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []model.ScanTarget, progress chan<- *ProgressInfo) {
@@ -88,7 +73,7 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	}
 
 	// Get libraries and optionally filter by targets
-	allLibs, err := s.ds.Library(ctx).GetAll()
+	allLibs, err := s.ds.Library().GetAll(ctx)
 	if err != nil {
 		state.sendWarning(fmt.Sprintf("getting libraries: %s", err))
 		return
@@ -104,7 +89,7 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 		})
 
 		for _, target := range targets {
-			folderPath := libraryRelativePath(libPaths[target.LibraryID], target.FolderPath)
+			folderPath := model.LibraryRelativePath(libPaths[target.LibraryID], target.FolderPath)
 			if folderPath == "" {
 				folderPath = "."
 			}
@@ -131,19 +116,23 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	if state.isSelectiveScan() {
 		scanType += "-selective"
 	}
-	_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, scanType)
-	_ = s.ds.Property(ctx).Put(consts.LastScanStartTimeKey, startTime.Format(time.RFC3339))
+	_ = s.ds.Property().Put(ctx, consts.LastScanTypeKey, scanType)
+	_ = s.ds.Property().Put(ctx, consts.LastScanStartTimeKey, startTime.Format(time.RFC3339))
 
 	// if there was a full scan in progress, force a full scan
 	if !state.fullScan {
 		for _, lib := range state.libraries {
+			// A pending PID rescan already restarts in full through its own job
+			if lib.NeedsPIDRescan() {
+				continue
+			}
 			if lib.FullScanInProgress {
 				log.Info(ctx, "Scanner: Interrupted full scan detected", "lib", lib.Name)
 				state.fullScan = true
 				if state.isSelectiveScan() {
-					_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full-selective")
+					_ = s.ds.Property().Put(ctx, consts.LastScanTypeKey, "full-selective")
 				} else {
-					_ = s.ds.Property(ctx).Put(consts.LastScanTypeKey, "full")
+					_ = s.ds.Property().Put(ctx, consts.LastScanTypeKey, "full")
 				}
 				break
 			}
@@ -190,12 +179,12 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 	)
 	if err != nil {
 		log.Error(ctx, "Scanner: Finished with error", "duration", time.Since(startTime), err)
-		_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, err.Error())
+		_ = s.ds.Property().Put(ctx, consts.LastScanErrorKey, err.Error())
 		state.sendError(err)
 		return
 	}
 
-	_ = s.ds.Property(ctx).Put(consts.LastScanErrorKey, "")
+	_ = s.ds.Property().Put(ctx, consts.LastScanErrorKey, "")
 
 	if state.changesDetected.Load() {
 		state.sendProgress(&ProgressInfo{ChangesDetected: true})
@@ -215,9 +204,14 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 	var successfulLibs []model.Library
 
 	for _, lib := range state.libraries {
-		if lib.LastScanStartedAt.IsZero() {
+		// A library with a changed PID config restarts its scan: resuming would skip the folders that
+		// the interrupted scan already processed with the old config
+		pidRescan := lib.NeedsPIDRescan()
+		if lib.LastScanStartedAt.IsZero() || pidRescan {
 			// This is a new scan - mark it as started
-			err := s.ds.Library(ctx).ScanBegin(lib.ID, state.fullScan)
+			err := s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
+				return tx.Library().ScanBegin(ctx, lib.ID, state.fullScan || pidRescan)
+			}, "scanner: begin library scan")
 			if err != nil {
 				log.Error(ctx, "Scanner: Error marking scan start", "lib", lib.Name, err)
 				state.sendWarning(err.Error())
@@ -225,7 +219,7 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 			}
 
 			// Reload library to get updated state (timestamps, etc.)
-			reloadedLib, err := s.ds.Library(ctx).Get(lib.ID)
+			reloadedLib, err := s.ds.Library().Get(ctx, lib.ID)
 			if err != nil {
 				log.Error(ctx, "Scanner: Error reloading library", "lib", lib.Name, err)
 				state.sendWarning(err.Error())
@@ -253,7 +247,7 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error {
 	return func() error {
 		state.sendProgress(&ProgressInfo{ForceUpdate: true})
-		return s.ds.WithTx(func(tx model.DataStore) error {
+		return s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
 			if state.changesDetected.Load() {
 				start := time.Now()
 
@@ -264,9 +258,7 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 					log.Debug(ctx, "Scanner: Running selective GC", "libraryIDs", libraryIDs)
 				}
 
-				err := tx.GC(ctx, libraryIDs...)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error running GC", err)
+				if err := tx.GC(ctx, libraryIDs...); err != nil {
 					return fmt.Errorf("running GC: %w", err)
 				}
 				log.Debug(ctx, "Scanner: GC completed", "elapsed", time.Since(start))
@@ -286,10 +278,14 @@ func (s *scannerImpl) runEnqueueMissingArtwork(ctx context.Context, state *scanS
 			return nil
 		}
 		start := time.Now()
-		queue := s.ds.ArtworkQueue(ctx)
 		var total int64
 		for _, kind := range []model.Kind{model.KindAlbumArtwork, model.KindArtistArtwork} {
-			n, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityScan)
+			var n int64
+			err := s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
+				var err error
+				n, err = tx.ArtworkQueue().EnqueueAllMissing(ctx, kind, model.ArtworkPriorityScan)
+				return err
+			}, "scanner: enqueue missing artwork")
 			if err != nil {
 				log.Error(ctx, "Scanner: Error enqueueing missing artwork", "kind", kind, err)
 				return fmt.Errorf("enqueueing missing artwork: %w", err)
@@ -308,7 +304,7 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 			return nil
 		}
 		start := time.Now()
-		stats, err := s.ds.Artist(ctx).RefreshStats(state.fullScan)
+		stats, err := s.ds.Artist().RefreshStats(ctx, state.fullScan)
 		if err != nil {
 			log.Error(ctx, "Scanner: Error refreshing artists stats", err)
 			return fmt.Errorf("refreshing artists stats: %w", err)
@@ -316,7 +312,9 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 		log.Debug(ctx, "Scanner: Refreshed artist stats", "stats", stats, "elapsed", time.Since(start))
 
 		start = time.Now()
-		err = s.ds.Tag(ctx).UpdateCounts()
+		err = s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
+			return tx.Tag().UpdateCounts(ctx)
+		}, "scanner: update tag counts")
 		if err != nil {
 			log.Error(ctx, "Scanner: Error updating tag counts", err)
 			return fmt.Errorf("updating tag counts: %w", err)
@@ -329,28 +327,22 @@ func (s *scannerImpl) runRefreshStats(ctx context.Context, state *scanState) fun
 func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) func() error {
 	return func() error {
 		start := time.Now()
-		return s.ds.WithTx(func(tx model.DataStore) error {
+		return s.ds.WithTxRetry(ctx, func(ctx context.Context, tx model.DataStore) error {
 			for _, lib := range state.libraries {
-				err := tx.Library(ctx).ScanEnd(lib.ID)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error updating last scan completed", "lib", lib.Name, err)
-					return fmt.Errorf("updating last scan completed: %w", err)
+				if err := tx.Library().ScanEnd(ctx, lib.ID); err != nil {
+					return fmt.Errorf("updating last scan completed for %s: %w", lib.Name, err)
 				}
-				err = tx.Property(ctx).Put(consts.PIDTrackKey, conf.Server.PID.Track)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error updating track PID conf", err)
-					return fmt.Errorf("updating track PID conf: %w", err)
-				}
-				err = tx.Property(ctx).Put(consts.PIDAlbumKey, conf.Server.PID.Album)
-				if err != nil {
-					log.Error(ctx, "Scanner: Error updating album PID conf", err)
-					return fmt.Errorf("updating album PID conf: %w", err)
+				// A selective scan covers only part of the library, so the rest may still use the old PID
+				// config. A library that could not be scanned did not apply it either.
+				if !state.isSelectiveScan() && !state.failedLibs[lib.ID] {
+					if err := tx.Library().SetScannedPID(ctx, lib.ID, lib.EffectivePID()); err != nil {
+						return fmt.Errorf("updating PID conf for %s: %w", lib.Name, err)
+					}
 				}
 				if state.changesDetected.Load() {
 					log.Debug(ctx, "Scanner: Refreshing library stats", "lib", lib.Name)
-					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
-						log.Error(ctx, "Scanner: Error refreshing library stats", "lib", lib.Name, err)
-						return fmt.Errorf("refreshing library stats: %w", err)
+					if err := tx.Library().RefreshStats(ctx, lib.ID); err != nil {
+						return fmt.Errorf("refreshing library stats for %s: %w", lib.Name, err)
 					}
 				} else {
 					log.Debug(ctx, "Scanner: No changes detected, skipping library stats refresh", "lib", lib.Name)

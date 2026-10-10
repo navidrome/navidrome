@@ -49,20 +49,23 @@ type BaseItemDto struct {
 	// PlaylistItemId identifies an entry within a playlist listing (GET /Playlists/{id}/Items),
 	// distinct from Id so a song appearing more than once can be removed by occurrence
 	// (DELETE .../Items?EntryIds=...) rather than by song id.
-	PlaylistItemId    string `json:"PlaylistItemId,omitempty"`
-	Type              string `json:"Type"`
-	IsFolder          bool   `json:"IsFolder"`
-	MediaType         string `json:"MediaType,omitempty"`
-	CollectionType    string `json:"CollectionType,omitempty"`
-	LocationType      string `json:"LocationType,omitempty"`
-	HasLyrics         bool   `json:"HasLyrics,omitempty"`
-	SortName          string `json:"SortName,omitempty"`
-	Path              string `json:"Path,omitempty"`
-	ParentId          string `json:"ParentId,omitempty"`
-	RunTimeTicks      int64  `json:"RunTimeTicks,omitempty"`
-	IndexNumber       *int   `json:"IndexNumber,omitempty"`
-	ParentIndexNumber *int   `json:"ParentIndexNumber,omitempty"`
-	ProductionYear    *int   `json:"ProductionYear,omitempty"`
+	PlaylistItemId string `json:"PlaylistItemId,omitempty"`
+	Type           string `json:"Type"`
+	IsFolder       bool   `json:"IsFolder"`
+	MediaType      string `json:"MediaType,omitempty"`
+	CollectionType string `json:"CollectionType,omitempty"`
+	LocationType   string `json:"LocationType,omitempty"`
+	HasLyrics      *bool  `json:"HasLyrics,omitempty"`
+	// ChannelId is always null for music, but Jellyfin emits it on every item and clients may require it.
+	ChannelId         *string  `json:"ChannelId"`
+	Tags              []string `json:"Tags,omitzero"`
+	SortName          string   `json:"SortName,omitempty"`
+	Path              string   `json:"Path,omitempty"`
+	ParentId          string   `json:"ParentId,omitempty"`
+	RunTimeTicks      int64    `json:"RunTimeTicks,omitempty"`
+	IndexNumber       *int     `json:"IndexNumber,omitempty"`
+	ParentIndexNumber *int     `json:"ParentIndexNumber,omitempty"`
+	ProductionYear    *int     `json:"ProductionYear,omitempty"`
 	// PremiereDate is the ISO 8601 release date; Finamp sorts "Latest Releases" by it client-side.
 	PremiereDate *string `json:"PremiereDate,omitempty"`
 	// DateCreated is the ISO 8601 date the item was added to the library; clients show it as
@@ -73,17 +76,17 @@ type BaseItemDto struct {
 	AlbumArtist            string            `json:"AlbumArtist,omitempty"`
 	AlbumArtists           []NameGuidPair    `json:"AlbumArtists,omitempty"`
 	AlbumPrimaryImageTag   string            `json:"AlbumPrimaryImageTag,omitempty"`
-	Artists                []string          `json:"Artists,omitempty"`
+	Artists                []string          `json:"Artists,omitzero"`
 	ArtistItems            []NameGuidPair    `json:"ArtistItems,omitempty"`
-	Genres                 []string          `json:"Genres,omitempty"`
-	GenreItems             []NameGuidPair    `json:"GenreItems,omitempty"`
+	Genres                 []string          `json:"Genres,omitzero"`
+	GenreItems             []NameGuidPair    `json:"GenreItems,omitzero"`
 	Studios                []NameGuidPair    `json:"Studios,omitempty"`
 	NormalizationGain      *float64          `json:"NormalizationGain,omitempty"`
 	AlbumNormalizationGain *float64          `json:"AlbumNormalizationGain,omitempty"`
 	ChildCount             *int              `json:"ChildCount,omitempty"`
 	SongCount              *int              `json:"SongCount,omitempty"`
 	AlbumCount             *int              `json:"AlbumCount,omitempty"`
-	ImageTags              map[string]string `json:"ImageTags,omitempty"`
+	ImageTags              map[string]string `json:"ImageTags"`
 	// ImageBlurHashes is keyed by image type (e.g. "Primary") then image tag. Finamp uses it as a
 	// de-dup key for image downloads (and a placeholder); absent, it warns the server isn't
 	// calculating blurhashes.
@@ -199,14 +202,51 @@ type UserConfiguration struct {
 	CastReceiverId             string   `json:"CastReceiverId"`
 }
 
+// SessionInfo mirrors real Jellyfin's SessionInfoDto. JellyBox requires Id and PlayState, and Finamp
+// requires UserId, LastActivityDate and the bools, so none of those may be omitted.
 type SessionInfo struct {
-	Id     string `json:"Id"`
-	UserId string `json:"UserId"`
+	Id                    string          `json:"Id"`
+	UserId                string          `json:"UserId"`
+	UserName              string          `json:"UserName"`
+	Client                string          `json:"Client"`
+	DeviceId              string          `json:"DeviceId"`
+	DeviceName            string          `json:"DeviceName"`
+	ApplicationVersion    string          `json:"ApplicationVersion"`
+	ServerId              string          `json:"ServerId"`
+	LastActivityDate      string          `json:"LastActivityDate"`
+	IsActive              bool            `json:"IsActive"`
+	SupportsMediaControl  bool            `json:"SupportsMediaControl"`
+	SupportsRemoteControl bool            `json:"SupportsRemoteControl"`
+	HasCustomDeviceName   bool            `json:"HasCustomDeviceName"`
+	PlayableMediaTypes    []string        `json:"PlayableMediaTypes"`
+	SupportedCommands     []string        `json:"SupportedCommands"`
+	AdditionalUsers       []any           `json:"AdditionalUsers"`
+	NowPlayingQueue       []any           `json:"NowPlayingQueue"`
+	PlayState             PlayerStateInfo `json:"PlayState"`
+}
+
+type PlayerStateInfo struct {
+	CanSeek       bool   `json:"CanSeek"`
+	IsPaused      bool   `json:"IsPaused"`
+	IsMuted       bool   `json:"IsMuted"`
+	RepeatMode    string `json:"RepeatMode"`
+	PlaybackOrder string `json:"PlaybackOrder"`
+}
+
+type QuickConnectResult struct {
+	Authenticated bool   `json:"Authenticated"`
+	Secret        string `json:"Secret"`
+	Code          string `json:"Code"`
+	DeviceId      string `json:"DeviceId"`
+	DeviceName    string `json:"DeviceName"`
+	AppName       string `json:"AppName"`
+	AppVersion    string `json:"AppVersion"`
+	DateAdded     string `json:"DateAdded"`
 }
 
 type AuthenticationResult struct {
 	User        *UserDto     `json:"User"`
-	SessionInfo *SessionInfo `json:"SessionInfo,omitempty"`
+	SessionInfo *SessionInfo `json:"SessionInfo"`
 	AccessToken string       `json:"AccessToken"`
 	ServerId    string       `json:"ServerId"`
 }

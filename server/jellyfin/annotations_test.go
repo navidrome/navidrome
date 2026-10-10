@@ -32,7 +32,7 @@ var _ = Describe("Annotations", func() {
 
 	Describe("markFavorite / unmarkFavorite", func() {
 		It("stars a song and returns IsFavorite=true", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
@@ -46,7 +46,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("stars an album and returns IsFavorite=true", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
@@ -60,7 +60,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("stars an artist without checking library access (artists span multiple libraries)", func() {
-			artistRepo := ds.Artist(context.Background()).(*tests.MockArtistRepo)
+			artistRepo := ds.Artist().(*tests.MockArtistRepo)
 			artistRepo.SetData(model.Artists{{ID: testID("ar1"), Name: "Artist"}})
 			w := httptest.NewRecorder()
 			// alice only has access to library 1, but artists aren't gated per-library.
@@ -75,7 +75,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("stars a visible playlist", func() {
-			playlistRepo := ds.Playlist(context.Background()).(*tests.MockPlaylistRepo)
+			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
 			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "Mix", OwnerID: testID("u1")}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("p1")), nil).WithContext(ctxUser())
@@ -86,7 +86,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("unstars a song and returns IsFavorite=false", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Annotations: model.Annotations{Starred: true}}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
@@ -100,7 +100,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not star an album in a library the user can't access", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser()) // only has access to library 1
@@ -111,7 +111,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not star a song in a library the user can't access", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 2}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser()) // only has access to library 1
@@ -130,7 +130,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 500 (not 404) when a repository lookup fails for a reason other than not-found", func() {
-			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetError(true)
+			ds.Album().(*tests.MockAlbumRepo).SetError(true)
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/x1", nil).WithContext(ctxUser())
 			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("x1")))
@@ -139,7 +139,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("emits a refreshResource event when starring a song", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/s1", nil).WithContext(ctxUser())
@@ -150,7 +150,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("emits a refreshResource event when starring an album", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
@@ -161,7 +161,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("does not emit an event when the item is not accessible", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/FavoriteItems/"+dto.EncodeID(testID("a1")), nil).WithContext(ctxUser())
@@ -174,7 +174,7 @@ var _ = Describe("Annotations", func() {
 
 	Describe("setRating / removeRating", func() {
 		It("maps a Jellyfin 0-10 rating to Navidrome's 0-5 scale", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
@@ -189,7 +189,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("rates an album", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser())
@@ -200,7 +200,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("rates a visible playlist", func() {
-			playlistRepo := ds.Playlist(context.Background()).(*tests.MockPlaylistRepo)
+			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
 			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "Mix", OwnerID: testID("u1")}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("p1"))+"/Rating?Rating=8", nil).WithContext(ctxUser())
@@ -211,7 +211,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("removes a rating", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Annotations: model.Annotations{Rating: 4}}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("DELETE", "/Users/u1/Items/s1/Rating", nil).WithContext(ctxUser())
@@ -225,7 +225,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("returns 404 and does not rate an album in a library the user can't access", func() {
-			albumRepo := ds.Album(context.Background()).(*tests.MockAlbumRepo)
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/"+dto.EncodeID(testID("a1"))+"/Rating?Rating=10", nil).WithContext(ctxUser()) // only has access to library 1
@@ -236,7 +236,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("rounds an odd rating to the nearest star instead of truncating", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=9", nil).WithContext(ctxUser())
@@ -247,7 +247,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("stores the minimum star for Rating=1 instead of clearing the rating", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Annotations: model.Annotations{Rating: 4}}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=1", nil).WithContext(ctxUser())
@@ -258,7 +258,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("accepts a fractional rating (UserItemDataDto.Rating is a double)", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=7.5", nil).WithContext(ctxUser())
@@ -269,7 +269,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("clamps a Rating above 10 to Navidrome's max (5)", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=100", nil).WithContext(ctxUser())
@@ -280,7 +280,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("clamps a negative Rating to Navidrome's min (0)", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=-5", nil).WithContext(ctxUser())
@@ -291,7 +291,7 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("emits a refreshResource event when rating a song", func() {
-			mfRepo := ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo)
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())

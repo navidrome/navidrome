@@ -43,6 +43,10 @@ var _ = Describe("Tag", func() {
 			Expect(tags.Values("genre")).To(ConsistOf("Rock", "Pop"))
 			Expect(tags.Values("artist")).To(ConsistOf("The Beatles"))
 		})
+		It("should get the first value by name", func() {
+			Expect(tags.First("genre")).To(Equal("Rock"))
+			Expect(tags.First("missing")).To(BeEmpty())
+		})
 
 		Describe("Hash", func() {
 			It("should always return the same value for the same tags ", func() {

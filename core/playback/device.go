@@ -23,7 +23,7 @@ type Track interface {
 }
 
 type playbackDevice struct {
-	serviceCtx           context.Context
+	serviceCtx           context.Context //nolint:containedctx // playback service lifecycle ctx
 	ParentPlaybackServer PlaybackServer
 	Default              bool
 	User                 string

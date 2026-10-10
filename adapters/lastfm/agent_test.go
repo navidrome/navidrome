@@ -357,7 +357,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		var track *model.MediaFile
 		BeforeEach(func() {
-			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
+			_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
 			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
@@ -648,16 +648,39 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(images).To(BeEmpty())
 		})
 
-		It("returns empty list if page has no meta tags", func() {
+		It("errors when the page has no meta tags", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.no_meta.html")
 			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
 
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).To(MatchError(errNoArtistPage))
+		})
+
+		It("errors when Last.fm serves a bot challenge page", func() {
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
 			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(MatchError(errNoArtistPage))
 			Expect(images).To(BeEmpty())
+		})
+
+		It("does not park the agent: the failure is not a retry-later", func() {
+			// A RetryLaterError would cool down the agent's API-backed methods too.
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeFalse())
 		})
 
 		It("returns error if API call fails", func() {

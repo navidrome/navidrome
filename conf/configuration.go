@@ -161,6 +161,7 @@ type configOptions struct {
 	DevExternalArtistFetchMultiplier  float64
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
+	DevAPIv1                          bool
 }
 
 type scannerOptions struct {
@@ -235,6 +236,8 @@ type jellyfinOptions struct {
 	// ExposedPublicUsers is a comma-separated list of usernames to advertise on the unauthenticated
 	// GET /Users/Public, so Jellyfin clients can show a login user-picker. Empty exposes no users.
 	ExposedPublicUsers string
+	AutoDiscovery      bool
+	QuickConnect       bool
 	// MaxConcurrentStreams bounds how many collection responses can stream at once. Each holds a DB
 	// cursor — and its pooled connection — for the whole client-paced response, so without a bound
 	// enough slow clients would take the entire pool and stall the scanner, scrobbles and the UI.
@@ -510,6 +513,11 @@ func Load(noConfigDump bool) {
 		newValue := max(200, min(1200, Server.UICoverArtSize))
 		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
 		Server.UICoverArtSize = newValue
+	}
+
+	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
+		log.Warn("Invalid Scanner.Extractor, using default", "value", Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		Server.Scanner.Extractor = consts.DefaultScannerExtractor
 	}
 
 	// Floor MaxImageSize at MaxImageUploadSize so accepted uploads can always be read back.
@@ -1087,6 +1095,8 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
 	viper.SetDefault("jellyfin.enabled", false)
 	viper.SetDefault("jellyfin.servername", "")
+	viper.SetDefault("jellyfin.autodiscovery", false)
+	viper.SetDefault("jellyfin.quickconnect", true)
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")
@@ -1115,6 +1125,7 @@ func setViperDefaults() {
 	viper.SetDefault("devshowartistpage", true)
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
+	viper.SetDefault("devapiv1", false)
 	viper.SetDefault("devoffsetoptimize", 50000)
 	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
 	// scrobbles and the UI. See MaxOpenConns.

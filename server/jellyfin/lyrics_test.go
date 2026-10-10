@@ -52,7 +52,7 @@ var _ = Describe("getLyrics", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		ds.MediaFile(context.Background()).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: testID("s1"), Title: "Song", LibraryID: 1},
 			{ID: testID("s2"), Title: "Silent Song", LibraryID: 1},
 		})

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -144,17 +145,6 @@ var _ = Describe("System", func() {
 		Expect(info.IsInNetwork).To(BeTrue())
 	})
 
-	It("reports quick connect as disabled", func() {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/QuickConnect/Enabled", nil)
-		api.quickConnectEnabled(w, r)
-
-		Expect(w.Code).To(Equal(http.StatusOK))
-		var enabled bool
-		Expect(json.Unmarshal(w.Body.Bytes(), &enabled)).To(Succeed())
-		Expect(enabled).To(BeFalse())
-	})
-
 	Context("serverID with a real DataStore", func() {
 		var ctx context.Context
 		var ds *tests.MockDataStore
@@ -173,6 +163,17 @@ var _ = Describe("System", func() {
 			Expect(second.serverID(ctx)).To(Equal(id))
 		})
 
+		It("resolves one id when a Router and a Discovery race on first boot", func() {
+			r, d := &Router{ds: ds}, NewDiscovery(ds)
+			ids := make([]string, 2)
+			var wg sync.WaitGroup
+			wg.Go(func() { ids[0] = r.serverID(ctx) })
+			wg.Go(func() { ids[1] = d.serverID(ctx) })
+			wg.Wait()
+			Expect(ids[0]).ToNot(BeEmpty())
+			Expect(ids[1]).To(Equal(ids[0]))
+		})
+
 		It("memoizes the id across repeated calls on the same Router", func() {
 			r := &Router{ds: ds}
 			id := r.serverID(ctx)
@@ -181,10 +182,10 @@ var _ = Describe("System", func() {
 		})
 
 		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
-			Expect(ds.Property(ctx).Put(consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
 
 			r := &Router{ds: ds}
-			props := ds.Property(ctx).(*tests.MockedPropertyRepo)
+			props := ds.Property().(*tests.MockedPropertyRepo)
 			props.Error = errors.New("database is locked")
 			degraded := r.serverID(ctx)
 			Expect(degraded).ToNot(BeEmpty())
@@ -193,7 +194,7 @@ var _ = Describe("System", func() {
 
 			// Once the DB recovers, the stored id is intact and served again.
 			Expect(r.serverID(ctx)).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
-			stored, err := ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+			stored, err := ds.Property().Get(ctx, consts.JellyfinServerIDKey)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
 		})
@@ -204,7 +205,7 @@ var _ = Describe("System", func() {
 		})
 
 		It("strips dashes from an already-persisted id", func() {
-			Expect(ds.Property(ctx).Put(
+			Expect(ds.Property().Put(ctx,
 				consts.JellyfinServerIDKey, "1b4e28ba-2fa1-11d2-883f-0016d3cca427")).To(Succeed())
 			r := &Router{ds: ds}
 			Expect(r.serverID(ctx)).To(Equal("1b4e28ba2fa111d2883f0016d3cca427"))

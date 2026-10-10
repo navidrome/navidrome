@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
@@ -108,6 +107,7 @@ func (api *Router) routes() http.Handler {
 			r.Use(getPlayer(api.players))
 			h(r, "ping", api.Ping)
 			h(r, "getLicense", api.GetLicense)
+			h(r, "tokenInfo", api.TokenInfo)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -302,10 +302,9 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorMissingParameter, err.Error())
 	case errors.Is(err, req.ErrInvalidParam):
 		err = newError(responses.ErrorGeneric, err.Error())
-	case errors.Is(err, model.ErrNotFound), errors.Is(err, rest.ErrNotFound):
+	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
-	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, rest.ErrPermissionDenied),
-		errors.Is(err, model.ErrPlaylistNotEditable): // Subsonic has no code for "read-only resource"
+	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, model.ErrPlaylistNotEditable): // Subsonic has no code for "read-only resource"
 		err = newError(responses.ErrorAuthorizationFail)
 	case errors.Is(err, stream.ErrTooManyTranscodes):
 		err = newError(responses.ErrorGeneric, "too many concurrent transcodes, please retry shortly")

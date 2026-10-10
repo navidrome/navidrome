@@ -20,6 +20,10 @@ var _ = Describe("httpServiceImpl", func() {
 		ts  *httptest.Server
 	)
 
+	BeforeEach(func() {
+		stubLocalhostDNS()
+	})
+
 	AfterEach(func() {
 		if ts != nil {
 			ts.Close()

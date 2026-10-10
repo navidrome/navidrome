@@ -2,6 +2,7 @@ package tests
 
 import (
 	"cmp"
+	"context"
 	"slices"
 	"sync"
 	"time"
@@ -26,7 +27,7 @@ func CreateMockArtworkQueueRepo() *MockArtworkQueueRepo {
 	return &MockArtworkQueueRepo{Data: map[string]model.ArtworkQueueItem{}}
 }
 
-func (m *MockArtworkQueueRepo) Get(kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
+func (m *MockArtworkQueueRepo) Get(_ context.Context, kind model.Kind, id, imageType string) (*model.ArtworkQueueItem, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -39,7 +40,7 @@ func (m *MockArtworkQueueRepo) Get(kind model.Kind, id, imageType string) (*mode
 	return &it, nil
 }
 
-func (m *MockArtworkQueueRepo) Enqueue(items ...model.ArtworkQueueItem) error {
+func (m *MockArtworkQueueRepo) Enqueue(_ context.Context, items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -73,7 +74,7 @@ func (m *MockArtworkQueueRepo) enqueueLocked(items []model.ArtworkQueueItem) {
 }
 
 // EnqueueIfMissing mirrors the SQL anti-join: skip anything that already has an item_artwork row.
-func (m *MockArtworkQueueRepo) EnqueueIfMissing(items ...model.ArtworkQueueItem) error {
+func (m *MockArtworkQueueRepo) EnqueueIfMissing(_ context.Context, items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -96,7 +97,7 @@ func (m *MockArtworkQueueRepo) EnqueueIfMissing(items ...model.ArtworkQueueItem)
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
+func (m *MockArtworkQueueRepo) DequeueBatch(_ context.Context, n int, kinds ...string) ([]model.ArtworkQueueItem, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -118,7 +119,7 @@ func (m *MockArtworkQueueRepo) DequeueBatch(n int, kinds ...string) ([]model.Art
 	return res, nil
 }
 
-func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
+func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(_ context.Context, kind, id, imageType string, seenRetryAt, retryAt time.Time, trace string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -134,7 +135,7 @@ func (m *MockArtworkQueueRepo) MarkFailedIfUnchanged(kind, id, imageType string,
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) DeleteIfUnchanged(kind, id, imageType string, retryAt time.Time) error {
+func (m *MockArtworkQueueRepo) DeleteIfUnchanged(_ context.Context, kind, id, imageType string, retryAt time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -147,7 +148,7 @@ func (m *MockArtworkQueueRepo) DeleteIfUnchanged(kind, id, imageType string, ret
 	return nil
 }
 
-func (m *MockArtworkQueueRepo) PurgeDangling() (int64, error) {
+func (m *MockArtworkQueueRepo) PurgeDangling(context.Context) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -174,7 +175,7 @@ func queueFilterMatches(it model.ArtworkQueueItem, kinds []model.Kind, prioritie
 		(len(priorities) == 0 || slices.Contains(priorities, it.Priority))
 }
 
-func (m *MockArtworkQueueRepo) PurgeQueued(kinds []model.Kind, priorities []int) (int64, error) {
+func (m *MockArtworkQueueRepo) PurgeQueued(_ context.Context, kinds []model.Kind, priorities []int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -191,7 +192,7 @@ func (m *MockArtworkQueueRepo) PurgeQueued(kinds []model.Kind, priorities []int)
 	return purged, nil
 }
 
-func (m *MockArtworkQueueRepo) Count() (int64, error) {
+func (m *MockArtworkQueueRepo) Count(context.Context) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -200,7 +201,7 @@ func (m *MockArtworkQueueRepo) Count() (int64, error) {
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockArtworkQueueRepo) CountQueued(kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
+func (m *MockArtworkQueueRepo) CountQueued(_ context.Context, kinds []model.Kind, priorities []int) ([]model.ArtworkQueueStat, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -226,7 +227,7 @@ func (m *MockArtworkQueueRepo) CountQueued(kinds []model.Kind, priorities []int)
 	return res, nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(items ...model.ArtworkQueueItem) error {
+func (m *MockArtworkQueueRepo) EnqueuePreservingBackoff(_ context.Context, items ...model.ArtworkQueueItem) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -276,7 +277,7 @@ func (m *MockArtworkQueueRepo) matchingSource(kind model.Kind, sources []string)
 	return res
 }
 
-func (m *MockArtworkQueueRepo) CountBySource(kind model.Kind, sources []string) (int64, error) {
+func (m *MockArtworkQueueRepo) CountBySource(_ context.Context, kind model.Kind, sources []string) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -285,7 +286,7 @@ func (m *MockArtworkQueueRepo) CountBySource(kind model.Kind, sources []string) 
 	return int64(len(m.matchingSource(kind, sources))), nil
 }
 
-func (m *MockArtworkQueueRepo) SourcesInUse(kind model.Kind) ([]string, error) {
+func (m *MockArtworkQueueRepo) SourcesInUse(_ context.Context, kind model.Kind) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -295,7 +296,7 @@ func (m *MockArtworkQueueRepo) SourcesInUse(kind model.Kind) ([]string, error) {
 	return slice.Unique(sources), nil
 }
 
-func (m *MockArtworkQueueRepo) EnqueueBySource(kind model.Kind, sources []string, priority int) (int64, error) {
+func (m *MockArtworkQueueRepo) EnqueueBySource(_ context.Context, kind model.Kind, sources []string, priority int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {
@@ -322,7 +323,7 @@ func (m *MockArtworkQueueRepo) EnqueueBySource(kind model.Kind, sources []string
 }
 
 // EnqueueAllMissing mirrors the SQL set-difference insert: ExistingIDs[kind] minus ItemArtworkSource.
-func (m *MockArtworkQueueRepo) EnqueueAllMissing(kind model.Kind, priority int) (int64, error) {
+func (m *MockArtworkQueueRepo) EnqueueAllMissing(_ context.Context, kind model.Kind, priority int) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.Err != nil {

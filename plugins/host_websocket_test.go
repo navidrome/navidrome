@@ -505,6 +505,7 @@ var _ = Describe("WebSocketService", Ordered, func() {
 		var savedHosts []string
 
 		BeforeEach(func() {
+			stubLocalhostDNS()
 			savedHosts = testService.requiredHosts
 			upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 			wsServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

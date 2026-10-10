@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 
 	"github.com/navidrome/navidrome/model"
@@ -13,7 +14,7 @@ type MockPlayQueueRepo struct {
 	LastCols []string
 }
 
-func (m *MockPlayQueueRepo) Store(q *model.PlayQueue, cols ...string) error {
+func (m *MockPlayQueueRepo) Store(_ context.Context, q *model.PlayQueue, cols ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -26,7 +27,7 @@ func (m *MockPlayQueueRepo) Store(q *model.PlayQueue, cols ...string) error {
 	return nil
 }
 
-func (m *MockPlayQueueRepo) RetrieveWithMediaFiles(userId string) (*model.PlayQueue, error) {
+func (m *MockPlayQueueRepo) RetrieveWithMediaFiles(_ context.Context, userId string) (*model.PlayQueue, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -40,7 +41,7 @@ func (m *MockPlayQueueRepo) RetrieveWithMediaFiles(userId string) (*model.PlayQu
 	return &qCopy, nil
 }
 
-func (m *MockPlayQueueRepo) Retrieve(userId string) (*model.PlayQueue, error) {
+func (m *MockPlayQueueRepo) Retrieve(_ context.Context, userId string) (*model.PlayQueue, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -56,7 +57,7 @@ func (m *MockPlayQueueRepo) Retrieve(userId string) (*model.PlayQueue, error) {
 	return &qCopy, nil
 }
 
-func (m *MockPlayQueueRepo) Clear(userId string) error {
+func (m *MockPlayQueueRepo) Clear(_ context.Context, userId string) error {
 	if m.Err {
 		return errors.New("error")
 	}

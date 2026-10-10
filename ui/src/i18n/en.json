@@ -83,7 +83,8 @@
         "grouping": "Grouping",
         "media": "Media",
         "mood": "Mood",
-        "missing": "Missing"
+        "missing": "Missing",
+        "played": "Played"
       },
       "actions": {
         "playAll": "Play",
@@ -182,6 +183,7 @@
     },
     "player": {
       "name": "Player |||| Players",
+      "menuName": "Players & API keys",
       "fields": {
         "name": "Name",
         "transcodingId": "Transcoding",
@@ -190,7 +192,29 @@
         "userName": "Username",
         "lastSeen": "Last Seen At",
         "reportRealPath": "Report Real Path",
-        "scrobbleEnabled": "Send Scrobbles to external services"
+        "scrobbleEnabled": "Send Scrobbles to external services",
+        "hasApiKey": "API Key"
+      },
+      "actions": {
+        "generateApiKey": "Generate API key",
+        "regenerateApiKey": "Regenerate",
+        "revokeApiKey": "Revoke",
+        "copyApiKey": "Copy"
+      },
+      "message": {
+        "apiKeyActive": "This player has an API key. Use it in your app as the API key, or as the password if the app does not use token authentication.",
+        "apiKeyNone": "No API key. Generate one to connect an app to this player.",
+        "apiKeyNoneOther": "No API key.",
+        "apiKeyPending": "Copy this key now. It is saved when you click Save and will not be shown again.",
+        "apiKeyRevokePending": "The API key will be removed when you save.",
+        "deleteWithKeyTitle": "Delete player",
+        "deleteWithKeyContent": "This player has an API key. Apps using it will stop working."
+      },
+      "notifications": {
+        "apiKeyCopied": "API key copied to clipboard"
+      },
+      "validation": {
+        "apiKeyFormat": "Invalid API key format"
       }
     },
     "transcoding": {
@@ -307,11 +331,22 @@
         "totalDuration": "Duration",
         "defaultNewUsers": "Default for New Users",
         "createdAt": "Created",
-        "updatedAt": "Updated"
+        "updatedAt": "Updated",
+        "pidAlbum": "Album grouping",
+        "pidTrack": "Track identity"
       },
       "sections": {
         "basic": "Basic Information",
-        "statistics": "Statistics"
+        "statistics": "Statistics",
+        "pid": "Persistent IDs"
+      },
+      "pid": {
+        "global": "Use global setting (%{value})",
+        "folder": "Folder (one album per folder)",
+        "custom": "Custom",
+        "spec": "PID spec",
+        "help": "Tags and attributes that identify an item. See the documentation for the syntax:",
+        "docs": "Persistent IDs"
       },
       "actions": {
         "scan": "Scan Library",
@@ -341,7 +376,9 @@
       "messages": {
         "deleteConfirm": "Are you sure you want to delete this library? This will remove all associated data and user access.",
         "scanInProgress": "Scan in progress...",
-        "noLibrariesAssigned": "No libraries assigned to this user"
+        "noLibrariesAssigned": "No libraries assigned to this user",
+        "pidChangeTitle": "Change persistent IDs?",
+        "pidChangeConfirm": "This regroups albums and tracks in this library. A full rescan of this library starts now. Track stars, ratings and play counts are kept. Album stars and ratings move to the new albums where an old album maps to a new one."
       }
     },
     "plugin": {
@@ -591,6 +628,9 @@
     "remove_all_missing_content": "Are you sure you want to remove all missing files from the database? This will permanently remove any references to them, including their play counts and ratings.",
     "notifications_blocked": "You have blocked Notifications for this site in your browser's settings",
     "notifications_not_available": "This browser does not support desktop notifications or you are not accessing Navidrome over https",
+    "quickConnectApproved": "%{app} on %{device} is now signed in",
+    "quickConnectInvalidCode": "Invalid or expired code",
+    "quickConnectError": "Could not approve the code",
     "lastfmLinkSuccess": "Last.fm successfully linked and scrobbling enabled",
     "lastfmLinkFailure": "Last.fm could not be linked",
     "lastfmUnlinkSuccess": "Last.fm unlinked and scrobbling disabled",
@@ -622,6 +662,14 @@
       "none": "None"
     },
     "settings": "Settings",
+    "quickConnect": {
+      "name": "Quick Connect",
+      "code": "Code",
+      "help": "Enter the code shown by a Jellyfin app to sign it in to your account",
+      "confirm": "Sign in %{app} %{version} on %{device} to your account?",
+      "continue": "Continue",
+      "approve": "Approve"
+    },
     "version": "Version",
     "theme": "Theme",
     "personal": {
