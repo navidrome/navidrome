@@ -121,6 +121,9 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 	}
 }
 
+// minLikeRating is Jellyfin's UserItemData.MinLikeValue: a rating at or above it reads as Likes.
+const minLikeRating = 6.5
+
 func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	// Callers pass the raw model id; encode here so Key/ItemId match the encoded Id on the BaseItemDto.
 	encodedID := EncodeID(itemID)
@@ -134,6 +137,7 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	if a.Rating > 0 {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
 		d.Rating = &r
+		d.Likes = new(r >= minLikeRating)
 	}
 	if s := JellyfinDate(a.PlayDate); s != "" {
 		d.LastPlayedDate = &s
