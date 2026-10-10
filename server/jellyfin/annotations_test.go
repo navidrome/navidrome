@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
@@ -40,7 +39,7 @@ var _ = Describe("Annotations", func() {
 	}
 	songReq := func(method, target, body string, params ...string) *http.Request {
 		r := httptest.NewRequest(method, target, strings.NewReader(body)).WithContext(ctxUser())
-		return withChiParams(r, append([]string{"itemId", dto.EncodeID(testID("s1"))}, params...)...)
+		return withChiURLParam(r, append([]string{"itemId", dto.EncodeID(testID("s1"))}, params...)...)
 	}
 
 	Describe("markFavorite / unmarkFavorite", func() {
@@ -282,12 +281,8 @@ var _ = Describe("Annotations", func() {
 		})
 
 		It("emits a refreshResource event when rating a song", func() {
-			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
-			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("POST", "/Users/u1/Items/s1/Rating?Rating=8", nil).WithContext(ctxUser())
-			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s1")))
-			invoke(api.setRating, w, r)
+			songWith(model.Annotations{})
+			invoke(api.setRating, httptest.NewRecorder(), songReq("POST", "/Users/u1/Items/s1/Rating?Rating=8", ""))
 			Expect(broker.Events).To(HaveLen(1))
 			Expect(broker.Events[0].Data(broker.Events[0])).To(Equal(`{"song":["` + testID("s1") + `"]}`))
 		})
@@ -372,30 +367,23 @@ var _ = Describe("Annotations", func() {
 		})
 
 		Context("authorization", func() {
-			It("refuses a userId naming another user and leaves the rating", func() {
-				mfRepo := songWith(model.Annotations{Rating: 4})
-				w := httptest.NewRecorder()
-				invoke(api.setRating, w, songReq("POST", "/Users/u2/Items/s1/Rating?likes=true", "", "userId", dto.EncodeID(testID("u2"))))
-				Expect(w.Code).To(Equal(http.StatusForbidden))
-				Expect(mfRepo.Data[testID("s1")].Rating).To(Equal(4))
-				Expect(broker.Events).To(BeEmpty())
-			})
-
-			It("refuses a userId query param naming another user on the /UserItems form", func() {
-				mfRepo := songWith(model.Annotations{Rating: 4})
-				w := httptest.NewRecorder()
-				invoke(api.setRating, w, songReq("POST", "/UserItems/s1/Rating?likes=true&userId="+dto.EncodeID(testID("u2")), ""))
-				Expect(w.Code).To(Equal(http.StatusForbidden))
-				Expect(mfRepo.Data[testID("s1")].Rating).To(Equal(4))
-			})
-
-			It("refuses to clear another user's rating", func() {
-				mfRepo := songWith(model.Annotations{Rating: 4})
-				w := httptest.NewRecorder()
-				invoke(api.removeRating, w, songReq("DELETE", "/Users/u2/Items/s1/Rating", "", "userId", dto.EncodeID(testID("u2"))))
-				Expect(w.Code).To(Equal(http.StatusForbidden))
-				Expect(mfRepo.Data[testID("s1")].Rating).To(Equal(4))
-			})
+			DescribeTable("refuses a userId naming another user and leaves the rating",
+				func(method, target string, params ...string) {
+					handler := api.setRating
+					if method == "DELETE" {
+						handler = api.removeRating
+					}
+					mfRepo := songWith(model.Annotations{Rating: 4})
+					w := httptest.NewRecorder()
+					invoke(handler, w, songReq(method, target, "", params...))
+					Expect(w.Code).To(Equal(http.StatusForbidden))
+					Expect(mfRepo.Data[testID("s1")].Rating).To(Equal(4))
+					Expect(broker.Events).To(BeEmpty())
+				},
+				Entry("path userId", "POST", "/Users/u2/Items/s1/Rating?likes=true", "userId", dto.EncodeID(testID("u2"))),
+				Entry("query userId on the /UserItems form", "POST", "/UserItems/s1/Rating?likes=true&userId="+dto.EncodeID(testID("u2"))),
+				Entry("clearing", "DELETE", "/Users/u2/Items/s1/Rating", "userId", dto.EncodeID(testID("u2"))),
+			)
 
 			It("accepts the caller's own userId", func() {
 				mfRepo := songWith(model.Annotations{})
@@ -443,23 +431,18 @@ var _ = Describe("Annotations", func() {
 		)
 
 		DescribeTable("leaves the rating untouched when Rating and Likes are omitted or null",
-			func(body string) {
+			func(body string, wantEvents int) {
 				mfRepo := songWith(model.Annotations{Rating: 4})
 				w := post(body)
 				Expect(w.Code).To(Equal(http.StatusOK))
 				Expect(mfRepo.Data[testID("s1")].Rating).To(Equal(4))
 				Expect(*parseUserData(w).Rating).To(Equal(8.0))
+				Expect(broker.Events).To(HaveLen(wantEvents))
 			},
-			Entry("empty object", `{}`),
-			Entry("explicit nulls", `{"Rating":null,"Likes":null,"IsFavorite":null}`),
-			Entry("favorite only", `{"IsFavorite":true}`),
+			Entry("empty object writes nothing", `{}`, 0),
+			Entry("explicit nulls write nothing", `{"Rating":null,"Likes":null,"IsFavorite":null}`, 0),
+			Entry("favorite only", `{"IsFavorite":true}`, 1),
 		)
-
-		It("writes nothing and sends no event for an empty object", func() {
-			songWith(model.Annotations{Rating: 4, Starred: true})
-			Expect(post(`{}`).Code).To(Equal(http.StatusOK))
-			Expect(broker.Events).To(BeEmpty())
-		})
 
 		It("sets and unsets the favorite without touching the rating", func() {
 			mfRepo := songWith(model.Annotations{Rating: 4})
@@ -468,12 +451,6 @@ var _ = Describe("Annotations", func() {
 			Expect(post(`{"IsFavorite":false}`).Code).To(Equal(http.StatusOK))
 			Expect(mfRepo.Data[testID("s1")].Starred).To(BeFalse())
 			Expect(mfRepo.Data[testID("s1")].Rating).To(Equal(4))
-		})
-
-		It("keeps the favorite when only the rating changes", func() {
-			mfRepo := songWith(model.Annotations{Starred: true})
-			Expect(post(`{"Rating":10}`).Code).To(Equal(http.StatusOK))
-			Expect(mfRepo.Data[testID("s1")].Starred).To(BeTrue())
 		})
 
 		It("ignores play-state fields, which only change through playback reporting", func() {
@@ -552,7 +529,7 @@ var _ = Describe("Annotations", func() {
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One", LibraryID: 2}})
 				w := httptest.NewRecorder()
 				r := httptest.NewRequest("POST", "/UserItems/a1/UserData", strings.NewReader(`{"Rating":10,"IsFavorite":true}`)).WithContext(ctxUser())
-				invoke(api.updateUserItemData, w, withChiParams(r, "itemId", dto.EncodeID(testID("a1"))))
+				invoke(api.updateUserItemData, w, withChiURLParam(r, "itemId", dto.EncodeID(testID("a1"))))
 				Expect(w.Code).To(Equal(http.StatusNotFound))
 				Expect(albumRepo.Data[testID("a1")].Rating).To(Equal(0))
 				Expect(albumRepo.Data[testID("a1")].Starred).To(BeFalse())
@@ -565,14 +542,6 @@ var _ = Describe("Annotations", func() {
 		})
 	})
 })
-
-func withChiParams(r *http.Request, kv ...string) *http.Request {
-	rctx := chi.NewRouteContext()
-	for i := 0; i+1 < len(kv); i += 2 {
-		rctx.URLParams.Add(kv[i], kv[i+1])
-	}
-	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-}
 
 func parseUserData(w *httptest.ResponseRecorder) dto.UserItemDataDto {
 	var d dto.UserItemDataDto

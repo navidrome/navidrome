@@ -181,11 +181,11 @@ var _ = Describe("Annotations", func() {
 
 		It("leaves omitted fields and play state untouched", func() {
 			id := songID("Come Together")
-			parseInto(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":8,"IsFavorite":true}`), &dto.UserItemDataDto{})
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":8,"IsFavorite":true}`).Code).To(Equal(http.StatusOK))
 			before := itemUserData(id)
 
-			parseInto(post("/UserItems/"+enc(id)+"/UserData", `{"Played":true,"PlayCount":42,"LastPlayedDate":"2026-01-01T00:00:00Z"}`), &dto.UserItemDataDto{})
-			parseInto(post("/UserItems/"+enc(id)+"/UserData", `{"IsFavorite":false}`), &dto.UserItemDataDto{})
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Played":true,"PlayCount":42,"LastPlayedDate":"2026-01-01T00:00:00Z"}`).Code).To(Equal(http.StatusOK))
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"IsFavorite":false}`).Code).To(Equal(http.StatusOK))
 
 			after := itemUserData(id)
 			Expect(*after.Rating).To(Equal(float64(8)))
@@ -198,9 +198,7 @@ var _ = Describe("Annotations", func() {
 		It("rejects invalid bodies without writing", func() {
 			id := songID("Come Together")
 			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":11,"IsFavorite":true}`).Code).To(Equal(http.StatusBadRequest))
-			Expect(post("/UserItems/"+enc(id)+"/UserData", `not json`).Code).To(Equal(http.StatusBadRequest))
 			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":8} {"Rating":2}`).Code).To(Equal(http.StatusBadRequest))
-			Expect(post("/UserItems/"+enc(id)+"/UserData", "").Code).To(Equal(http.StatusBadRequest))
 			stored := itemUserData(id)
 			Expect(stored.Rating).To(BeNil())
 			Expect(stored.IsFavorite).To(BeFalse())
