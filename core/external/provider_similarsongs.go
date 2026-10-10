@@ -49,13 +49,7 @@ func (e *provider) SimilarSongs(ctx context.Context, id string, count int) (mode
 	// Try entity-specific similarity first, then fall back to seed-track sampling.
 	switch v := entity.(type) {
 	case *model.MediaFile:
-		return e.mixFromAgent(ctx, count,
-			func() ([]agents.Song, error) {
-				return e.ag.GetSimilarSongsByTrack(ctx, v.ID, v.Title, v.Artist, v.MbzRecordingID, count)
-			},
-			func() (model.MediaFiles, error) {
-				return e.similarSongsFallback(ctx, id, count)
-			})
+		return e.similarSongsByTrack(ctx, v, count)
 	case *model.Album:
 		return e.mixFromAgent(ctx, count,
 			func() ([]agents.Song, error) {
@@ -100,11 +94,15 @@ func (e *provider) mixFromAgent(ctx context.Context, count int, fetch func() ([]
 			return nil, err
 		}
 	}
-	return topUp(ctx, matched, count, fallbacks...)
+	sources := make([]func(int) (model.MediaFiles, error), len(fallbacks))
+	for i, fallback := range fallbacks {
+		sources[i] = func(int) (model.MediaFiles, error) { return fallback() }
+	}
+	return topUp(ctx, matched, count, sources...)
 }
 
 // topUp draws on each source in turn until the mix holds count distinct tracks.
-func topUp(ctx context.Context, res model.MediaFiles, count int, sources ...func() (model.MediaFiles, error)) (model.MediaFiles, error) {
+func topUp(ctx context.Context, res model.MediaFiles, count int, sources ...func(int) (model.MediaFiles, error)) (model.MediaFiles, error) {
 	// The matcher can re-emit a track, so a full-looking res may hold fewer than count unique ones.
 	res = dedupByID(res)
 	var lastErr error
@@ -112,7 +110,7 @@ func topUp(ctx context.Context, res model.MediaFiles, count int, sources ...func
 		if len(res) >= count {
 			break
 		}
-		extra, err := more()
+		extra, err := more(count - len(res))
 		if err != nil {
 			log.Debug(ctx, "Could not top up a short mix", "have", len(res), "want", count, err)
 			lastErr = err
@@ -124,6 +122,40 @@ func topUp(ctx context.Context, res model.MediaFiles, count int, sources ...func
 		return nil, lastErr
 	}
 	return res[:min(len(res), count)], nil
+}
+
+func (e *provider) similarSongsByTrack(ctx context.Context, track *model.MediaFile, count int) (model.MediaFiles, error) {
+	songs, err := e.ag.GetSimilarSongsByTrackFromExternalAgents(ctx, track.ID, track.Title, track.Artist, track.MbzRecordingID, count)
+	var matched model.MediaFiles
+	if err == nil {
+		matched, err = e.matcher.MatchSongs(ctx, songs, len(songs))
+		if err != nil {
+			return nil, err
+		}
+	}
+	matched = withoutTrackID(matched, track.ID)
+
+	return topUp(ctx, matched, count,
+		func(remaining int) (model.MediaFiles, error) {
+			fallback, err := e.similarSongsFallback(ctx, track.ID, remaining)
+			return withoutTrackID(fallback, track.ID), err
+		},
+		func(remaining int) (model.MediaFiles, error) {
+			localSongs, err := e.ag.GetSimilarSongsByTrackFromLocalAgent(ctx, track.ID, track.Title, track.Artist, track.MbzRecordingID, remaining)
+			if err != nil {
+				return nil, err
+			}
+			localMatches, err := e.matcher.MatchSongs(ctx, localSongs, len(localSongs))
+			if err != nil {
+				return nil, err
+			}
+			return withoutTrackID(localMatches, track.ID), nil
+		},
+	)
+}
+
+func withoutTrackID(mfs model.MediaFiles, id string) model.MediaFiles {
+	return slice.Filter(mfs, func(mf model.MediaFile) bool { return mf.ID != id })
 }
 
 // seedMix samples seed tracks, runs each through the agent chain's per-track similarity and merges

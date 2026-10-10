@@ -76,8 +76,124 @@ var _ = Describe("Provider - SimilarSongs", func() {
 		artistRepo.On("GetAll", mock.Anything).Return(model.Artists{artist}, nil).Maybe()
 	}
 
+	stubArtistFallback := func(topSongs []agents.Song) {
+		artist := model.Artist{ID: "artist-1", Name: "Artist"}
+		artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
+		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			return opt.Max == 1 && opt.Filters != nil
+		})).Return(model.Artists{artist}, nil).Maybe()
+		artistRepo.On("GetAll", mock.MatchedBy(func(opt model.QueryOptions) bool {
+			return opt.Max == 0 && opt.Filters != nil
+		})).Return(model.Artists{}, nil).Maybe()
+		mockAgent.On("GetSimilarArtists", mock.Anything, "artist-1", "Artist", "", 15).
+			Return([]agents.Artist{}, nil).Once()
+		mockAgent.On("GetArtistTopSongs", mock.Anything, "artist-1", "Artist", "", mock.Anything).
+			Return(topSongs, nil).Once()
+	}
+
+	stubTrackSeed := func() {
+		track := model.MediaFile{ID: "track-1", Title: "Track", Artist: "Artist", ArtistID: "artist-1"}
+		artist := model.Artist{ID: "artist-1", Name: "Artist"}
+		artistRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
+		albumRepo.On("Get", "track-1").Return(nil, model.ErrNotFound).Maybe()
+		mediaFileRepo.On("Get", "track-1").Return(&track, nil).Maybe()
+		artistRepo.On("Get", "artist-1").Return(&artist, nil).Maybe()
+	}
+
 	Describe("dispatch by entity type", func() {
 		Context("when ID is a MediaFile (track)", func() {
+			It("uses the artist fallback before any local genre recommendations", func() {
+				stubTrackSeed()
+				stubArtistFallback([]agents.Song{{Name: "Artist Pick", MBID: "mbid-artist"}})
+				artistPick := model.MediaFile{ID: "artist-pick", Title: "Artist Pick", MbzRecordingID: "mbid-artist"}
+				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(model.MediaFiles{artistPick}, nil).Maybe()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 1).
+					Return([]agents.Song{}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 1)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids(songs)).To(Equal([]string{"artist-pick"}))
+				Expect(agentsCombined.localTrackCalls).To(BeEmpty())
+				mockAgent.AssertNumberOfCalls(GinkgoT(), "GetSimilarArtists", 1)
+			})
+
+			It("keeps partial external matches and fills from the artist fallback before local", func() {
+				stubTrackSeed()
+				stubArtistFallback([]agents.Song{
+					{Name: "Artist Pick A", MBID: "mbid-a"},
+					{Name: "Artist Pick B", MBID: "mbid-b"},
+				})
+				agentPick := model.MediaFile{ID: "external-pick", Title: "External Pick", MbzRecordingID: "mbid-external"}
+				artistPickA := model.MediaFile{ID: "artist-pick-a", Title: "Artist Pick A", MbzRecordingID: "mbid-a"}
+				artistPickB := model.MediaFile{ID: "artist-pick-b", Title: "Artist Pick B", MbzRecordingID: "mbid-b"}
+				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).
+					Return(model.MediaFiles{agentPick, artistPickA, artistPickB}, nil).Maybe()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 3).
+					Return([]agents.Song{{Name: "External Pick", MBID: "mbid-external"}}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 3)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids(songs)).To(ConsistOf("external-pick", "artist-pick-a", "artist-pick-b"))
+				Expect(agentsCombined.localTrackCalls).To(BeEmpty())
+			})
+
+			It("does not invoke fallback sources when external track matches fill the count", func() {
+				stubTrackSeed()
+				externalPicks := model.MediaFiles{
+					{ID: "external-a", Title: "External A", MbzRecordingID: "mbid-a"},
+					{ID: "external-b", Title: "External B", MbzRecordingID: "mbid-b"},
+				}
+				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(externalPicks, nil).Maybe()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 2).
+					Return([]agents.Song{{Name: "External A", MBID: "mbid-a"}, {Name: "External B", MBID: "mbid-b"}}, nil).Once()
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 2)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids(songs)).To(ConsistOf("external-a", "external-b"))
+				mockAgent.AssertNotCalled(GinkgoT(), "GetSimilarArtists", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+				Expect(agentsCombined.localTrackCalls).To(BeEmpty())
+			})
+
+			It("uses local recommendations last and removes duplicates and the seed across stages", func() {
+				stubTrackSeed()
+				stubArtistFallback([]agents.Song{
+					{ID: "track-1", Name: "Seed"},
+					{ID: "artist-pick", Name: "Artist Pick"},
+				})
+				library := model.MediaFiles{
+					{ID: "track-1", Title: "Seed"},
+					{ID: "external-pick", Title: "External Pick"},
+					{ID: "artist-pick", Title: "Artist Pick"},
+					{ID: "local-a", Title: "Local A"},
+					{ID: "local-b", Title: "Local B"},
+				}
+				mediaFileRepo.On("GetAll", mock.AnythingOfType("model.QueryOptions")).Return(library, nil).Maybe()
+				agentsCombined.On("GetSimilarSongsByTrack", mock.Anything, "track-1", "Track", "Artist", "", 4).
+					Return([]agents.Song{
+						{ID: "track-1", Name: "Seed"},
+						{ID: "external-pick", Name: "External Pick"},
+						{ID: "external-pick", Name: "External Pick"},
+					}, nil).Once()
+				agentsCombined.localTrackSongs = []agents.Song{
+					{ID: "track-1", Name: "Seed"},
+					{ID: "external-pick", Name: "External Pick"},
+					{ID: "local-a", Name: "Local A"},
+					{ID: "local-b", Name: "Local B"},
+					{ID: "local-b", Name: "Local B"},
+				}
+
+				songs, err := provider.SimilarSongs(ctx, "track-1", 4)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ids(songs)).To(ConsistOf("external-pick", "artist-pick", "local-a", "local-b"))
+				Expect(songs).To(HaveLen(4))
+				Expect(ids(songs)).ToNot(ContainElement("track-1"))
+				Expect(agentsCombined.localTrackCalls).To(Equal([]int{2}))
+			})
+
 			It("calls GetSimilarSongsByTrack and returns matched songs", func() {
 				track := model.MediaFile{ID: "track-1", Title: "Just Can't Get Enough", Artist: "Depeche Mode", MbzRecordingID: "track-mbid"}
 
