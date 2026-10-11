@@ -103,6 +103,34 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 				Expect(queuedIDs()).ToNot(ContainElement(pls.ID))
 			})
+
+			// Refreshes interrupted before the transaction existed left no tracks but the old song_count.
+			It("enqueues the cover when refilling a playlist whose previous refresh was interrupted", func() {
+				_, err := repo.GetWithTracks(ctx, pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+				clearArtworkTables()
+				_, err = GetDBXBuilder().Delete("playlist_tracks", dbx.HashExp{"playlist_id": pls.ID}).Execute()
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = repo.GetWithTracks(ctx, pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(queuedIDs()).To(ContainElement(pls.ID))
+			})
+
+			It("keeps the previous tracks when a refresh fails after clearing them", func() {
+				before, err := repo.GetWithTracks(ctx, pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+				_, err = GetDBXBuilder().NewQuery(`CREATE TRIGGER fail_refresh BEFORE INSERT ON playlist_tracks
+					WHEN NEW.playlist_id = '` + pls.ID + `' BEGIN SELECT RAISE(ABORT, 'refresh interrupted'); END`).Execute()
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() { _, _ = GetDBXBuilder().NewQuery("DROP TRIGGER fail_refresh").Execute() })
+
+				after, err := repo.GetWithTracks(ctx, pls.ID, true, false)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(after.Tracks).To(HaveLen(len(before.Tracks)))
+			})
 		})
 
 		Context("invalid rules", func() {

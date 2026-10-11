@@ -373,6 +373,16 @@ func (r *playlistRepository) enqueueCoverRebuild(ctx context.Context, id string)
 	}
 }
 
+func (r *playlistRepository) inTx(block func(tx *playlistRepository) error) error {
+	conn, ok := r.db.(*dbx.DB)
+	if !ok {
+		return block(r) // already inside a transaction
+	}
+	return conn.Transactional(func(tx *dbx.Tx) error {
+		return block(NewPlaylistRepository(tx).(*playlistRepository))
+	})
+}
+
 // tracksQuery is shared by loadTracks and GetCursor, so both hydrate rows identically.
 func (r *playlistRepository) tracksQuery(ctx context.Context, query SelectBuilder, id string) SelectBuilder {
 	query = r.applyLibraryFilter(ctx, query, "f")
