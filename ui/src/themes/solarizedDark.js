@@ -86,6 +86,9 @@ export default {
         boxShadow:
           'rgba(15, 17, 21, 0.25) 0px 4px 6px, rgba(15, 17, 21, 0.1) 0px 5px 7px',
       },
+      colorSecondary: {
+        color: foreground,
+      },
     },
     MuiDrawer: {
       root: {
