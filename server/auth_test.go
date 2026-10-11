@@ -379,6 +379,19 @@ var _ = Describe("Auth", func() {
 				Expect(validateIPAgainstList("172.16.0.1:9999", "192.168.0.0/16,10.0.0.0/8")).To(BeFalse())
 			})
 		})
+
+		Context("when listening on a unix socket", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Address = "unix:/tmp/navidrome-test"
+			})
+
+			It("matches '@' for the peer address reported on Linux and on BSDs", func() {
+				Expect(validateIPAgainstList("@", "192.168.0.0/16,@")).To(BeTrue())
+				Expect(validateIPAgainstList("", "192.168.0.0/16,@")).To(BeTrue())
+				Expect(validateIPAgainstList("", "192.168.0.0/16")).To(BeFalse())
+			})
+		})
 	})
 
 	Describe("handleLoginFromHeaders", func() {
