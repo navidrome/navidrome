@@ -264,7 +264,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	// player-forced FLAC transcoder, or a client that only accepts lossless)
 	// has no such alternative and must be honored — AV receivers often need
 	// that path. See #6247.
-	if !src.IsLossless && targetIsLossless && hasLossyTranscodingAlternative(clientInfo) {
+	if !src.IsLossless && targetIsLossless && s.hasLossyTranscodingAlternative(ctx, clientInfo) {
 		log.Trace(ctx, "Skipping transcoding profile: lossy to lossless not allowed", "targetFormat", targetFormat)
 		return nil, ""
 	}
@@ -312,15 +312,19 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	return ts, targetFormat
 }
 
-// hasLossyTranscodingAlternative reports whether clientInfo lists any
-// transcoding profile whose target is lossy.
-func hasLossyTranscodingAlternative(clientInfo *ClientInfo) bool {
+// hasLossyTranscodingAlternative reports whether clientInfo lists a lossy
+// transcoding profile with a supported protocol and an available command.
+func (s *deciderService) hasLossyTranscodingAlternative(ctx context.Context, clientInfo *ClientInfo) bool {
 	if clientInfo == nil {
 		return false
 	}
 	for i := range clientInfo.TranscodingProfiles {
-		_, format := resolveTargetFormat(&clientInfo.TranscodingProfiles[i])
-		if format != "" && !isLosslessFormat(format) {
+		profile := &clientInfo.TranscodingProfiles[i]
+		if profile.Protocol != "" && !strings.EqualFold(profile.Protocol, ProtocolHTTP) {
+			continue
+		}
+		_, format := resolveTargetFormat(profile)
+		if format != "" && !isLosslessFormat(format) && LookupTranscodeCommand(ctx, s.ds, format) != "" {
 			return true
 		}
 	}

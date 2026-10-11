@@ -280,6 +280,28 @@ var _ = Describe("Decider", func() {
 				Expect(decision.TargetFormat).To(Equal("opus"))
 			})
 
+			DescribeTable("allows lossy to lossless when the lossy alternative is unusable",
+				func(alternative Profile, alternativeFirst bool) {
+					mf := withProbe(&model.MediaFile{ID: "1", Suffix: "ogg", Codec: "Vorbis", BitRate: 192, Channels: 2, SampleRate: 44100})
+					profiles := []Profile{{Container: "flac", Protocol: ProtocolHTTP}, alternative}
+					if alternativeFirst {
+						profiles[0], profiles[1] = profiles[1], profiles[0]
+					}
+					ci := &ClientInfo{TranscodingProfiles: profiles}
+					decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(decision.CanDirectPlay).To(BeFalse())
+					Expect(decision.CanTranscode).To(BeTrue())
+					Expect(decision.TargetFormat).To(Equal("flac"))
+					Expect(decision.TranscodeStream.IsLossless).To(BeTrue())
+					Expect(decision.ErrorReason).To(BeEmpty())
+				},
+				Entry("unsupported protocol after FLAC", Profile{Container: "opus", AudioCodec: "opus", Protocol: "hls"}, false),
+				Entry("unsupported protocol before FLAC", Profile{Container: "opus", AudioCodec: "opus", Protocol: "hls"}, true),
+				Entry("unavailable command after FLAC", Profile{Container: "ogg", AudioCodec: "vorbis", Protocol: ProtocolHTTP}, false),
+				Entry("unavailable command before FLAC", Profile{Container: "ogg", AudioCodec: "vorbis", Protocol: ProtocolHTTP}, true),
+			)
+
 			It("allows lossy to lossless when that is the only requested format", func() {
 				// Subsonic format=flac and a player-forced FLAC transcoder both
 				// produce a lossless-only profile list. AV receivers that cannot
