@@ -328,11 +328,22 @@
         "totalDuration": "Duração",
         "defaultNewUsers": "Padrão para Novos Usuários",
         "createdAt": "Data de Criação",
-        "updatedAt": "Últ. Atualização"
+        "updatedAt": "Últ. Atualização",
+        "pidAlbum": "Agrupamento de álbuns",
+        "pidTrack": "Identificação das faixas"
       },
       "sections": {
         "basic": "Informações Básicas",
-        "statistics": "Estatísticas"
+        "statistics": "Estatísticas",
+        "pid": "IDs Persistentes"
+      },
+      "pid": {
+        "global": "Usar configuração global (%{value})",
+        "folder": "Pasta (um álbum por pasta)",
+        "custom": "Personalizado",
+        "spec": "Especificação do PID",
+        "help": "Tags e atributos que identificam um item. Consulte a sintaxe na documentação:",
+        "docs": "IDs Persistentes"
       },
       "actions": {
         "scan": "Scanear Biblioteca",
@@ -362,7 +373,9 @@
       "messages": {
         "deleteConfirm": "Tem certeza que deseja excluir esta biblioteca? Isso removerá todos os dados associados.",
         "scanInProgress": "Scan em progresso...",
-        "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário"
+        "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário",
+        "pidChangeTitle": "Alterar os IDs persistentes?",
+        "pidChangeConfirm": "Ao salvar, os álbuns desta biblioteca serão reagrupados e as faixas serão identificadas novamente. Um scan completo da biblioteca começará imediatamente. As marcações como favoritas, as classificações e as contagens de reprodução das faixas serão mantidas. Os favoritos e as classificações dos álbuns serão transferidos para os novos álbuns quando um álbum antigo corresponder a um novo."
       }
     },
     "plugin": {

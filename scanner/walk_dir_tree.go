@@ -43,6 +43,13 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				continue
 			}
 
+			// A full walk never descends into symlinked folders when following is disabled, so a
+			// target reached through one (e.g. a watcher event for a new link) is skipped too.
+			if !conf.Server.Scanner.FollowSymlinks && isSymlinkedPath(job.fs, folderPath) {
+				log.Debug(ctx, "Scanner: Skipping symlinked target folder, following is disabled", "path", folderPath)
+				continue
+			}
+
 			// Create checker and push patterns from root to this folder
 			checker := newIgnoreChecker(job.fs)
 			err = checker.PushAllParents(ctx, folderPath)
@@ -223,6 +230,18 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 		return false, err
 	}
 	return fileInfo.IsDir(), nil
+}
+
+// isSymlinkedPath returns true if folderPath, or any of its parent folders, is a symbolic link.
+// It needs fsys to implement fs.ReadLinkFS, otherwise links are followed and never detected.
+func isSymlinkedPath(fsys fs.FS, folderPath string) bool {
+	for p := path.Clean(folderPath); p != "." && p != "/"; p = path.Dir(p) {
+		info, err := fs.Lstat(fsys, p)
+		if err == nil && info.Mode()&fs.ModeSymlink != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 const maxSymlinkHops = 40

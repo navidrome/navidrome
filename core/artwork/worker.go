@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"math/rand/v2"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -244,7 +246,7 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 	item.ImageType = cmp.Or(item.ImageType, model.ImageTypePrimary)
 	trace := &ChainTrace{}
 	ctx = withTrace(ctx, trace)
-	out, got, retryIn := w.proc.acquire(ctx, item)
+	out, got, retryIn := w.safeAcquire(ctx, item)
 
 	queue := w.proc.ds.ArtworkQueue()
 	switch out {
@@ -284,6 +286,20 @@ func (w *Worker) process(ctx context.Context, item model.ArtworkQueueItem) (outc
 		}
 	}
 	return out, got
+}
+
+// safeAcquire turns a panic into a failed attempt: the drain runs on a bare goroutine, so an
+// unrecovered panic would crash the server, and the still-queued row would crash it again on restart.
+func (w *Worker) safeAcquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired, retryIn time.Duration) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(ctx, "Artwork: Panic while processing item", "kind", item.ItemKind, "id", item.ItemID,
+				"imageType", item.ImageType, "attempts", item.Attempts, "panic", r, "stack", string(debug.Stack()))
+			traceStage(ctx, "panic", fmt.Errorf("%v", r))
+			out, got, retryIn = outcomeFailed, nil, 0
+		}
+	}()
+	return w.proc.acquire(ctx, item)
 }
 
 // recordGiveUp keeps the last failure on the state row after the queue row is deleted. An item
