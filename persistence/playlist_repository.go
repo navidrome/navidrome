@@ -281,7 +281,7 @@ func (r *playlistRepository) updatePlaylist(ctx context.Context, playlistId stri
 }
 
 // addTracks is the only path that writes playlist_tracks rows (smart playlists aside), so it owns
-// the library check: every caller, including a full replace through Put, goes through it.
+// the library and existence check: every caller, including a full replace through Put, goes through it.
 func (r *playlistRepository) addTracks(ctx context.Context, playlistId string, startingPos int, mediaFileIds []string) (int, error) {
 	mediaFileIds, err := r.keepAccessible(ctx, mediaFileIds)
 	if err != nil {
@@ -305,12 +305,9 @@ func (r *playlistRepository) addTracks(ctx context.Context, playlistId string, s
 	return len(mediaFileIds), r.refreshCounters(ctx, &model.Playlist{ID: playlistId})
 }
 
-// keepAccessible drops ids the caller cannot read, preserving order and duplicates. Chunked
-// because callers pass unbounded id lists (M3U import), well past SQLITE_MAX_VARIABLE_NUMBER.
+// keepAccessible drops ids the caller cannot read or that match no track, preserving order and duplicates.
+// Chunked because callers pass unbounded id lists (M3U import), well past SQLITE_MAX_VARIABLE_NUMBER.
 func (r *playlistRepository) keepAccessible(ctx context.Context, mediaFileIds []string) ([]string, error) {
-	if visible, err := r.visibleLibraryIDs(ctx); err == nil && r.userSeesAllLibraries(ctx, visible) {
-		return mediaFileIds, nil
-	}
 	accessible := make(map[string]struct{}, len(mediaFileIds))
 	for chunk := range slices.Chunk(slice.Unique(mediaFileIds), 200) {
 		sq := r.applyLibraryFilter(ctx, Select("id").From("media_file").Where(Eq{"id": chunk}), "media_file")
