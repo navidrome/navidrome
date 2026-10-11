@@ -213,7 +213,7 @@ func (r *playlistTrackRepository) Insert(ctx context.Context, mediaFileIds []str
 	if err != nil || inserted == n {
 		return inserted, err
 	}
-	// The shift above reserved a slot per requested id, so ids dropped by the library filter
+	// The shift above reserved a slot per requested id, so ids dropped by keepAccessible
 	// leave a hole. Close it.
 	return inserted, r.playlistRepo.renumber(ctx, r.playlistId)
 }
