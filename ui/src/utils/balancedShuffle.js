@@ -5,8 +5,8 @@
  * (with 10 tracks by one artist in a 100-track playlist, 63% of all orders do),
  * which listeners do not perceive as random. This follows the approach Spotify
  * described in "How to shuffle songs?" (2014): every artist's tracks are
- * stretched evenly along the list with a random offset and a small random
- * jitter, and the list is ordered by those positions. Tracks of one artist are
+ * stretched evenly along the list with a random offset and a random jitter,
+ * and the list is ordered by those positions. Tracks of one artist are
  * spread across their albums the same way. Positions wrap around, so an artist
  * with many tracks is as likely to open the list as any other track. A final
  * pass removes the adjacent repeats the spreading leaves behind. When one
@@ -73,9 +73,19 @@ const isAvoidable = (entries) => {
   return count <= entries.length - count + 1
 }
 
+// Jitter as a fraction of a group's spacing. Spotify's 2014 write-up used
+// about 0.1, but with artists of similar track counts that is too small to
+// break the regular rotation the even spread creates, leaving an audible
+// "A, B, C, A, B, C". 0.5 removes that periodicity: it is the largest jitter
+// that still keeps each item within its own evenly-spaced slot (adjacent items
+// can tie but not cross), so the order stops repeating while the spread stays
+// even. repairAdjacent still guarantees no adjacent repeats; the cost is a
+// looser within-artist and within-album spread, still well short of uniform.
+const JITTER_FRACTION = 0.5
+
 // Stretch every group evenly along a circle of length 1: the k-th of n items
-// lands at k/n plus a random offset per group plus up to 10% of the spacing
-// as jitter. orderGroup decides which item of a group takes which slot.
+// lands at k/n plus a random offset per group plus up to JITTER_FRACTION of the
+// spacing as jitter. orderGroup decides which item of a group takes which slot.
 const spread = (entries, field, random, orderGroup) => {
   const positioned = []
   groupBy(entries, field).forEach((group) => {
@@ -83,7 +93,7 @@ const spread = (entries, field, random, orderGroup) => {
     const spacing = 1 / ordered.length
     const offset = random()
     ordered.forEach((entry, k) => {
-      const jitter = (random() * 2 - 1) * 0.1 * spacing
+      const jitter = (random() * 2 - 1) * JITTER_FRACTION * spacing
       const position = (((k * spacing + offset + jitter) % 1) + 1) % 1
       positioned.push({ entry, position, tiebreak: random() })
     })

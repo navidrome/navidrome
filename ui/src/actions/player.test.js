@@ -49,12 +49,16 @@ describe('shuffle', () => {
       ]),
     )
     let albumRepeats = 0
-    for (let n = 0; n < 50; n++) {
+    const trials = 200
+    for (let n = 0; n < trials; n++) {
       const albums = Object.values(shuffle(data)).map((s) => s.albumId)
       albumRepeats += albums.slice(1).filter((a, i) => a === albums[i]).length
     }
-    // a uniform shuffle averages 9 * 4/9 = 4 adjacent tracks from one album
-    expect(albumRepeats / 50).toBeLessThan(1)
+    // a uniform shuffle averages 9 * 4/9 = 4 adjacent tracks from one album;
+    // the larger jitter (0.5) loosens the album spread but stays below uniform.
+    // Unseeded (the shuffle action uses Math.random), so averaged over enough
+    // trials to be stable: the mean is ~2.0, well clear of the bound.
+    expect(albumRepeats / trials).toBeLessThan(3)
   })
 
   it('falls back to the artist name when there is no artistId', () => {

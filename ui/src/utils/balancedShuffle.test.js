@@ -135,8 +135,10 @@ describe('balancedShuffle', () => {
       adjacentRepeats(result, (t) => t.album),
     )
     const mean = albumRepeats.reduce((a, b) => a + b, 0) / albumRepeats.length
-    // a uniform shuffle averages 29 * 9/29 = 9 adjacent tracks from one album
-    expect(mean).toBeLessThan(1)
+    // a uniform shuffle averages 29 * 9/29 = 9 adjacent tracks from one album;
+    // with JITTER_FRACTION at 0.5 the within-artist album spread is looser than
+    // at 0.1 (seeded mean 2.82) but still well below a uniform order.
+    expect(mean).toBeLessThan(3.5)
   })
 
   it.each([
@@ -162,8 +164,32 @@ describe('balancedShuffle', () => {
       return Math.min(...positions.slice(1).map((p, i) => p - positions[i]))
     })
     const mean = smallestGaps.reduce((a, b) => a + b, 0) / smallestGaps.length
-    // a uniform order with its neighbours separated averages about 2
-    expect(mean).toBeGreaterThan(4)
+    // a uniform order with its neighbours separated averages about 1.5; the
+    // larger jitter (0.5) spreads less evenly than 0.1 but still beats uniform.
+    expect(mean).toBeGreaterThan(3)
+  })
+
+  it('breaks the periodic rotation when artists have equal track counts', () => {
+    // Equal counts give every artist the same spacing, so a small jitter leaves
+    // a fixed rotation: the same artist lands k tracks later (k = number of
+    // artists) in most positions, an audible "A, B, C, A, B, C". At a jitter of
+    // 0.1 this lag-k self-match is about 0.84; the chosen 0.5 brings it near the
+    // 1/k chance level. This bound fails for the pre-fix 0.1.
+    const tracks = library([
+      ['a', 1, 10],
+      ['b', 1, 10],
+      ['c', 1, 10],
+    ])
+    const k = 3
+    const lagK = runs(tracks, 200).map((result) => {
+      const artists = result.map((t) => t.artist)
+      const matches = artists
+        .slice(0, -k)
+        .filter((a, i) => a === artists[i + k]).length
+      return matches / (artists.length - k)
+    })
+    const mean = lagK.reduce((a, b) => a + b, 0) / lagK.length
+    expect(mean).toBeLessThan(0.6)
   })
 
   it('gives every track an even chance of every position', () => {
