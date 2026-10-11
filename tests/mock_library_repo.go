@@ -145,6 +145,17 @@ func (m *MockLibraryRepo) ScanEnd(_ context.Context, id int) error {
 	return nil
 }
 
+func (m *MockLibraryRepo) SetScannedPID(_ context.Context, id int, pid model.PIDConfig) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	if lib, ok := m.Data[id]; ok {
+		lib.ScannedPIDAlbum, lib.ScannedPIDTrack = pid.Album, pid.Track
+		m.Data[id] = lib
+	}
+	return nil
+}
+
 func (m *MockLibraryRepo) ScanInProgress(_ context.Context) (bool, error) {
 	if m.Err != nil {
 		return false, m.Err

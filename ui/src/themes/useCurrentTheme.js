@@ -63,6 +63,8 @@ const useCurrentTheme = () => {
         ...theme.props,
         MuiUseMediaQuery: { noSsr: true },
         MuiPopover: { disableScrollLock: true },
+        // MUI defaults to secondary, which many themes use as a surface color
+        MuiSwitch: { color: 'primary' },
       },
     }),
     [theme],

@@ -3,6 +3,10 @@ import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import mediaQuery from 'css-mediaquery'
 import { renderHook } from '@testing-library/react-hooks'
+import { render, screen } from '@testing-library/react'
+import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles'
+import Switch from '@material-ui/core/Switch'
+import themes from './index'
 import useCurrentTheme from './useCurrentTheme'
 import { themeReducer } from '../reducers/themeReducer'
 import { AUTO_THEME_ID } from '../consts'
@@ -160,5 +164,28 @@ describe('useCurrentTheme', () => {
       // Spotify theme has explicit background.default: #121212
       expect(document.body.style.backgroundColor).toBe('rgb(18, 18, 18)')
     })
+  })
+  describe('switch color', () => {
+    it.each(Object.keys(themes))(
+      'renders switches with the primary color in %s',
+      (theme) => {
+        const { result } = renderHook(() => useCurrentTheme(), {
+          wrapper: ({ children }) => (
+            <Provider store={createStore(themeReducer, { theme })}>
+              {children}
+            </Provider>
+          ),
+        })
+        render(
+          <ThemeProvider theme={createMuiTheme(result.current)}>
+            <Switch checked onChange={() => {}} />
+          </ThemeProvider>,
+        )
+        const switchBase = screen
+          .getByRole('checkbox')
+          .closest('.MuiSwitch-switchBase')
+        expect(switchBase.classList).toContain('MuiSwitch-colorPrimary')
+      },
+    )
   })
 })
