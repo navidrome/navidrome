@@ -151,6 +151,31 @@ var _ = Describe("UTF8Reader", func() {
 			Expect(string(output)).To(Equal("Ночные Снайперы/Рубеж/01.mp3\ncafé.mp3\n25時、ナイトコードで。/01.mp3\n"))
 		})
 
+		It("treats a bare carriage return as a line break", func() {
+			// Old Mac style playlists end lines with CR alone. The legacy line must
+			// not drag the valid UTF-8 line next to it into Windows-1252.
+			input := []byte("Ночные Снайперы/01.mp3\r")
+			input = append(input, 'c', 'a', 'f', 0xE9, '.', 'm', 'p', '3', '\r')
+			input = append(input, []byte("25時、ナイトコードで。/01.mp3\r")...)
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("Ночные Снайперы/01.mp3\rcafé.mp3\r25時、ナイトコードで。/01.mp3\r"))
+		})
+
+		It("treats CRLF as a single line break", func() {
+			input := []byte("Ночные Снайперы/01.mp3\r\n")
+			input = append(input, 'c', 'a', 'f', 0xE9, '\r', '\n')
+			var lines int
+			reader := UTF8ReaderWithFallback(bytes.NewReader(input), func(n int) { lines = n })
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("Ночные Снайперы/01.mp3\r\ncafé\r\n"))
+			Expect(lines).To(Equal(1))
+		})
+
 		It("decodes every line of a Windows-1252 file", func() {
 			input := []byte{'P', 'o', 'k', 0xE9, '\r', '\n', 'V', 0xE0, '\r', '\n'}
 			reader := UTF8Reader(bytes.NewReader(input))

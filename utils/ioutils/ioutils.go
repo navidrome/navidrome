@@ -68,8 +68,13 @@ func decodeLines(data []byte) ([]byte, int) {
 	fallbackLines := 0
 	for len(data) > 0 {
 		line := data
-		if i := bytes.IndexByte(data, '\n'); i >= 0 {
-			line = data[:i+1]
+		if i := bytes.IndexAny(data, "\r\n"); i >= 0 {
+			end := i + 1
+			// A CR followed by LF is one line break, not two.
+			if data[i] == '\r' && end < len(data) && data[end] == '\n' {
+				end++
+			}
+			line = data[:end]
 		}
 		data = data[len(line):]
 
