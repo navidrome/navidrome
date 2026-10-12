@@ -18,11 +18,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// withChiURLParam simulates chi's routing having captured a path parameter, since these
-// tests call handlers directly instead of going through the full router.
-func withChiURLParam(r *http.Request, key, value string) *http.Request {
+// withChiURLParam simulates chi's routing having captured path parameters (key, value pairs), since
+// these tests call handlers directly instead of going through the full router.
+func withChiURLParam(r *http.Request, kv ...string) *http.Request {
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add(key, value)
+	for i := 0; i+1 < len(kv); i += 2 {
+		rctx.URLParams.Add(kv[i], kv[i+1])
+	}
 	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 }
 

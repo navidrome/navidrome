@@ -478,6 +478,30 @@ var _ = Describe("mappers", func() {
 		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
+	DescribeTable("UserData derives Likes from the rating like Jellyfin (rating >= 6.5)",
+		func(stars int, expected *bool) {
+			d := UserData(model.Annotations{Rating: stars}, testID("s1"))
+			Expect(d.Likes).To(Equal(expected))
+		},
+		Entry("unrated has no Likes", 0, nil),
+		Entry("1 star (Jellyfin 2) dislikes", 1, new(false)),
+		Entry("3 stars (Jellyfin 6) dislikes", 3, new(false)),
+		Entry("4 stars (Jellyfin 8) likes", 4, new(true)),
+		Entry("5 stars (Jellyfin 10) likes", 5, new(true)),
+	)
+
+	It("emits Rating as a whole number and omits Likes when unrated", func() {
+		rated, err := json.Marshal(UserData(model.Annotations{Rating: 4}, testID("s1")))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(rated)).To(ContainSubstring(`"Rating":8,`))
+		Expect(string(rated)).To(ContainSubstring(`"Likes":true`))
+
+		unrated, err := json.Marshal(UserData(model.Annotations{}, testID("s1")))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(unrated)).ToNot(ContainSubstring(`"Rating"`))
+		Expect(string(unrated)).ToNot(ContainSubstring(`"Likes"`))
+	})
+
 	It("emits DateCreated and SortName on playlists, like albums and artists", func() {
 		p := model.Playlist{ID: testID("pl-1"), Name: "Chill", CreatedAt: time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)}
 		Expect(PlaylistToBaseItem(p, nil).DateCreated).To(Equal("2026-07-01T12:00:00.0000000Z"))
