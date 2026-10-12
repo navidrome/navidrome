@@ -17,18 +17,26 @@ import (
 // saved in. A Byte Order Mark is authoritative: a UTF-8 BOM is stripped and
 // UTF-16 (LE/BE) is transcoded to UTF-8, both handled as a stream.
 //
-// Without a BOM the encoding has to be judged from the whole content. The reader
-// keeps the bytes as they are when they form valid UTF-8, and otherwise decodes
-// the entire input as Windows-1252 (a superset of Latin-1). Choosing one encoding
-// for the whole file, rather than per character, matters: a genuinely
-// Windows-1252 file can contain a byte pair that happens to be valid UTF-8 (for
-// example "Â£" is C2 A3), and a per-character choice would decode that pair as a
-// different string than the rest of the file, so the affected path would silently
-// fail to match. This recovers accented characters from the legacy single-byte
-// encodings Windows editors still emit instead of replacing them with U+FFFD.
+// Without a BOM, each line is judged on its own. A line that is valid UTF-8 is
+// kept as it is, and any other line is decoded as Windows-1252 (a superset of
+// Latin-1). Both file formats we read are line oriented, so a line is the
+// natural unit. It also keeps one stray legacy line, say a track appended by an
+// old editor, from garbling every other path in an otherwise UTF-8 file. The
+// trade-off is a Windows-1252 line whose high bytes happen to form valid UTF-8
+// (for example "Â£" is C2 A3) and has no other accented character: it is read
+// as UTF-8, because nothing on that line says otherwise.
 //
 // Reference: https://en.wikipedia.org/wiki/Byte_order_mark
 func UTF8Reader(r io.Reader) io.Reader {
+	return UTF8ReaderWithFallback(r, nil)
+}
+
+// UTF8ReaderWithFallback works like UTF8Reader, and calls onFallback once with
+// the number of lines it had to decode as Windows-1252. Callers use it to log
+// that a file is not UTF-8, which would otherwise go unnoticed. The callback
+// runs before this function returns and is skipped when no line needed it, or
+// when onFallback is nil. It is never called for input that starts with a BOM.
+func UTF8ReaderWithFallback(r io.Reader, onFallback func(lines int)) io.Reader {
 	br := bufio.NewReader(r)
 
 	// A BOM is an explicit declaration, so honor it and keep the stream lazy.
@@ -36,17 +44,45 @@ func UTF8Reader(r io.Reader) io.Reader {
 		return transform.NewReader(br, unicode.BOMOverride(unicode.UTF8.NewDecoder()))
 	}
 
-	// No BOM: read it all so the encoding can be decided from the whole content.
+	// No BOM: read it all so each line can be checked.
 	data, err := io.ReadAll(br)
-	out := data
-	if !utf8.Valid(data) {
-		// Windows-1252 maps every byte, so this decode never fails.
-		out, _ = charmap.Windows1252.NewDecoder().Bytes(data)
+	out, fallbackLines := decodeLines(data)
+	if fallbackLines > 0 && onFallback != nil {
+		onFallback(fallbackLines)
 	}
 	if err != nil {
 		return io.MultiReader(bytes.NewReader(out), errorReader{err: err})
 	}
 	return bytes.NewReader(out)
+}
+
+// decodeLines keeps the lines of data that are valid UTF-8 and decodes the rest
+// as Windows-1252. It returns the result and how many lines were decoded.
+func decodeLines(data []byte) ([]byte, int) {
+	if utf8.Valid(data) {
+		return data, 0
+	}
+
+	decoder := charmap.Windows1252.NewDecoder()
+	out := make([]byte, 0, len(data))
+	fallbackLines := 0
+	for len(data) > 0 {
+		line := data
+		if i := bytes.IndexByte(data, '\n'); i >= 0 {
+			line = data[:i+1]
+		}
+		data = data[len(line):]
+
+		if utf8.Valid(line) {
+			out = append(out, line...)
+			continue
+		}
+		// Windows-1252 maps every byte, so this decode never fails.
+		decoded, _ := decoder.Bytes(line)
+		out = append(out, decoded...)
+		fallbackLines++
+	}
+	return out, fallbackLines
 }
 
 // hasBOM reports whether b starts with a UTF-8 or UTF-16 (LE/BE) Byte Order Mark.

@@ -126,17 +126,48 @@ var _ = Describe("UTF8Reader", func() {
 			Expect(output).To(Equal(input))
 		})
 
-		It("decodes a byte pair that is coincidentally valid UTF-8 as Windows-1252 when the whole file is not UTF-8", func() {
-			// The file is Windows-1252: "café/Â£.mp3" where é is 0xE9 and "Â£" is
-			// the bytes 0xC2 0xA3. That pair alone is valid UTF-8 for "£", but the
-			// standalone 0xE9 makes the file as a whole invalid UTF-8, so the whole
-			// input must be read as Windows-1252 and the pair must become "Â£".
+		It("decodes a Windows-1252 line even when its high bytes also form valid UTF-8 elsewhere on the line", func() {
+			// "café/Â£.mp3" in Windows-1252: é is 0xE9 and "Â£" is the pair C2 A3.
+			// The lone 0xE9 makes the line invalid UTF-8, so the whole line is
+			// decoded as Windows-1252 and the pair comes out as "Â£".
 			input := []byte{'c', 'a', 'f', 0xE9, '/', 0xC2, 0xA3, '.', 'm', 'p', '3'}
 			reader := UTF8Reader(bytes.NewReader(input))
 
 			output, err := io.ReadAll(reader)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(output)).To(Equal("café/Â£.mp3"))
+		})
+
+		It("keeps valid UTF-8 lines intact when another line is Windows-1252", func() {
+			// One legacy line (a lone 0xE9) must not turn the Cyrillic and Japanese
+			// paths around it into mojibake.
+			input := []byte("Ночные Снайперы/Рубеж/01.mp3\n")
+			input = append(input, 'c', 'a', 'f', 0xE9, '.', 'm', 'p', '3', '\n')
+			input = append(input, []byte("25時、ナイトコードで。/01.mp3\n")...)
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("Ночные Снайперы/Рубеж/01.mp3\ncafé.mp3\n25時、ナイトコードで。/01.mp3\n"))
+		})
+
+		It("decodes every line of a Windows-1252 file", func() {
+			input := []byte{'P', 'o', 'k', 0xE9, '\r', '\n', 'V', 0xE0, '\r', '\n'}
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("Poké\r\nVà\r\n"))
+		})
+
+		It("reads a Windows-1252 line that has no trailing newline", func() {
+			input := []byte("ok.mp3\ncaf")
+			input = append(input, 0xE9)
+			reader := UTF8Reader(bytes.NewReader(input))
+
+			output, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(output)).To(Equal("ok.mp3\ncafé"))
 		})
 
 		It("keeps a C2 A3 pair as £ when the whole file is valid UTF-8", func() {
@@ -148,6 +179,38 @@ var _ = Describe("UTF8Reader", func() {
 			output, err := io.ReadAll(reader)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(output).To(Equal(input))
+		})
+	})
+
+	Context("when a fallback callback is given", func() {
+		It("reports how many lines were decoded as Windows-1252", func() {
+			input := []byte("fine.mp3\n")
+			input = append(input, 'a', 0xE9, '\n', 'b', 0xE0, '\n')
+			var got int
+			reader := UTF8ReaderWithFallback(bytes.NewReader(input), func(lines int) { got = lines })
+
+			_, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got).To(Equal(2))
+		})
+
+		It("is not called for valid UTF-8", func() {
+			called := false
+			reader := UTF8ReaderWithFallback(bytes.NewReader([]byte("café.mp3\n")), func(int) { called = true })
+
+			_, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(called).To(BeFalse())
+		})
+
+		It("is not called when the input starts with a BOM", func() {
+			called := false
+			input := []byte{0xEF, 0xBB, 0xBF, 'a', 0xE9}
+			reader := UTF8ReaderWithFallback(bytes.NewReader(input), func(int) { called = true })
+
+			_, err := io.ReadAll(reader)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(called).To(BeFalse())
 		})
 	})
 
