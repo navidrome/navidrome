@@ -4,6 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { CollapsibleComment } from './CollapsibleComment'
 
+vi.mock('react-admin', () => ({
+  useTranslate: () => (key) => (key === 'ra.action.expand' ? 'Expand' : key),
+}))
+
 let resizeObserverCallback = null
 
 class MockResizeObserver {
@@ -18,6 +22,7 @@ beforeEach(() => {
   vi.stubGlobal('ResizeObserver', MockResizeObserver)
   vi.spyOn(window, 'getComputedStyle').mockReturnValue({
     fontSize: '16px',
+    lineHeight: '24px',
     getPropertyValue: () => '',
   })
 })
@@ -38,11 +43,9 @@ const setScrollHeight = (el, value) => {
 }
 
 const triggerOverflowCheck = (container) => {
-  const typography = container.querySelector('h6')
   act(() => {
     resizeObserverCallback?.([])
   })
-  return typography
 }
 
 describe('<CollapsibleComment />', () => {
@@ -56,62 +59,51 @@ describe('<CollapsibleComment />', () => {
     expect(screen.getByText('Hello world')).toBeInTheDocument()
   })
 
-  it('does not show pointer cursor when content fits within collapsed height', () => {
+  it('does not show cue row when content fits within one line', () => {
     const { container } = render(
       <CollapsibleComment record={makeRecord('Short')} />,
     )
     setScrollHeight(container.querySelector('h6'), 20)
     triggerOverflowCheck(container)
-    expect(screen.getByTestId('collapsible-comment')).not.toHaveClass(
-      /pointerCursor/,
-    )
     expect(
-      screen.queryByTestId('collapsible-comment-more'),
+      screen.queryByTestId('collapsible-comment-cue'),
     ).not.toBeInTheDocument()
+    expect(screen.getByTestId('collapsible-comment')).not.toHaveClass(
+      /interactive/,
+    )
   })
 
-  it('shows pointer cursor when a single long line overflows collapsed height', () => {
+  it('shows expand cue row when a single long line overflows one line', () => {
     const { container } = render(
       <CollapsibleComment
         record={makeRecord(
-          'A very long line that wraps and exceeds two em of height in the collapsed container',
+          'A very long line that wraps and exceeds one line in the collapsed container',
         )}
       />,
     )
     setScrollHeight(container.querySelector('h6'), 80)
     triggerOverflowCheck(container)
-    expect(screen.getByTestId('collapsible-comment')).toHaveClass(
-      /pointerCursor/,
-    )
-  })
-
-  it('shows fade cue and expand icon when overflowing and collapsed', () => {
-    const { container } = render(
-      <CollapsibleComment record={makeRecord('Long text that overflows')} />,
-    )
-    setScrollHeight(container.querySelector('h6'), 80)
-    triggerOverflowCheck(container)
-    expect(screen.getByTestId('collapsible-comment-fade')).toBeInTheDocument()
+    expect(screen.getByTestId('collapsible-comment-cue')).toBeInTheDocument()
+    expect(screen.getByText('Expand')).toBeInTheDocument()
     expect(screen.getByTestId('collapsible-comment-more')).toBeInTheDocument()
   })
 
-  it('removes overflow cue when expanded', async () => {
+  it('replaces expand cue with collapse icon when expanded', async () => {
     const user = userEvent.setup()
     const { container } = render(
       <CollapsibleComment record={makeRecord('Long text that overflows')} />,
     )
     setScrollHeight(container.querySelector('h6'), 80)
     triggerOverflowCheck(container)
-    await user.click(screen.getByTestId('collapsible-comment'))
-    expect(
-      screen.queryByTestId('collapsible-comment-fade'),
-    ).not.toBeInTheDocument()
+    await user.click(screen.getByTestId('collapsible-comment-cue'))
     expect(
       screen.queryByTestId('collapsible-comment-more'),
     ).not.toBeInTheDocument()
+    expect(screen.getByTestId('collapsible-comment-less')).toBeInTheDocument()
+    expect(screen.queryByText('Expand')).not.toBeInTheDocument()
   })
 
-  it('does not expand or show pointer when content fits', async () => {
+  it('does not expand when content fits', async () => {
     const user = userEvent.setup()
     const { container } = render(
       <CollapsibleComment record={makeRecord('Short')} />,
@@ -119,11 +111,8 @@ describe('<CollapsibleComment />', () => {
     setScrollHeight(container.querySelector('h6'), 10)
     triggerOverflowCheck(container)
     await user.click(screen.getByTestId('collapsible-comment'))
-    expect(screen.getByTestId('collapsible-comment')).not.toHaveClass(
-      /pointerCursor/,
-    )
     expect(
-      screen.queryByTestId('collapsible-comment-more'),
+      screen.queryByTestId('collapsible-comment-cue'),
     ).not.toBeInTheDocument()
   })
 
@@ -133,9 +122,9 @@ describe('<CollapsibleComment />', () => {
     )
     setScrollHeight(container.querySelector('h6'), 10)
     triggerOverflowCheck(container)
-    expect(screen.getByTestId('collapsible-comment')).not.toHaveClass(
-      /pointerCursor/,
-    )
+    expect(
+      screen.queryByTestId('collapsible-comment-cue'),
+    ).not.toBeInTheDocument()
 
     rerender(
       <CollapsibleComment
@@ -146,25 +135,6 @@ describe('<CollapsibleComment />', () => {
     )
     setScrollHeight(container.querySelector('h6'), 80)
     triggerOverflowCheck(container)
-    expect(screen.getByTestId('collapsible-comment')).toHaveClass(
-      /pointerCursor/,
-    )
     expect(screen.getByTestId('collapsible-comment-more')).toBeInTheDocument()
-  })
-
-  it('shows pointer and no overflow cue after expanding overflowing content', async () => {
-    const user = userEvent.setup()
-    const { container } = render(
-      <CollapsibleComment record={makeRecord('Long text that overflows')} />,
-    )
-    setScrollHeight(container.querySelector('h6'), 80)
-    triggerOverflowCheck(container)
-    await user.click(screen.getByTestId('collapsible-comment'))
-    expect(screen.getByTestId('collapsible-comment')).toHaveClass(
-      /pointerCursor/,
-    )
-    expect(
-      screen.queryByTestId('collapsible-comment-fade'),
-    ).not.toBeInTheDocument()
   })
 })
