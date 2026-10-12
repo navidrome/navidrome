@@ -70,24 +70,29 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 }
 
 // openSidecar opens the sidecar lyrics file, retrying with the alternate Unicode
-// normalization form when the exact path is missing. A sidecar written next to a
-// track can use a different form than the path stored for the media file (macOS
-// commonly yields NFD, while Linux and Windows typically keep NFC), so a
-// byte-exact lookup would miss a file that is really on disk. Issue #4148.
+// normalization forms of its file name when the exact path is missing. A sidecar
+// written next to a track can use a different form than the path stored for the
+// media file (macOS commonly yields NFD, while Linux and Windows typically keep
+// NFC), so a byte-exact lookup would miss a file that is really on disk. Only the
+// base name is converted: the directories were read from disk by the scanner, so
+// they are already correct as stored. Issue #4148.
 func openSidecar(fsys fs.FS, relPath string) (fs.File, error) {
 	f, err := fsys.Open(relPath)
 	if !errors.Is(err, fs.ErrNotExist) {
 		return f, err
 	}
 
-	altPath := norm.NFD.String(relPath)
-	if altPath == relPath {
-		altPath = norm.NFC.String(relPath)
+	dir, base := path.Split(relPath)
+	for _, form := range []norm.Form{norm.NFD, norm.NFC} {
+		altPath := dir + form.String(base)
+		if altPath == relPath {
+			continue
+		}
+		if altFile, altErr := fsys.Open(altPath); !errors.Is(altErr, fs.ErrNotExist) {
+			return altFile, altErr
+		}
 	}
-	if altPath == relPath {
-		return f, err
-	}
-	return fsys.Open(altPath)
+	return f, err
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name.

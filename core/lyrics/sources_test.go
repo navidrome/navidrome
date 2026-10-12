@@ -173,9 +173,11 @@ var _ = Describe("sources", func() {
 			storagetest.Register(scheme, fsys)
 		})
 
-		lyricsFor := func(trackForm, sidecarForm norm.Form) (model.LyricList, error) {
-			trackBase := trackForm.String(base)
-			sidecarBase := sidecarForm.String(base)
+		// lyricsFor stores the track and its sidecar under dir (kept byte-for-byte,
+		// as the scanner reads it from disk) with the file names in the given forms.
+		lyricsFor := func(dir string, trackForm, sidecarForm norm.Form) (model.LyricList, error) {
+			trackBase := dir + trackForm.String(base)
+			sidecarBase := dir + sidecarForm.String(base)
 			Expect(trackBase).ToNot(Equal(sidecarBase))
 
 			// A non-zero ModTime is required so the FakeFS directory-timestamp
@@ -191,7 +193,7 @@ var _ = Describe("sources", func() {
 		}
 
 		It("finds an NFD-encoded sidecar for an NFC track path", func() {
-			lyrics, err := lyricsFor(norm.NFC, norm.NFD)
+			lyrics, err := lyricsFor("", norm.NFC, norm.NFD)
 
 			Expect(err).To(BeNil())
 			Expect(lyrics).To(HaveLen(1))
@@ -199,11 +201,27 @@ var _ = Describe("sources", func() {
 		})
 
 		It("finds an NFC-encoded sidecar for an NFD track path", func() {
-			lyrics, err := lyricsFor(norm.NFD, norm.NFC)
+			lyrics, err := lyricsFor("", norm.NFD, norm.NFC)
 
 			Expect(err).To(BeNil())
 			Expect(lyrics).To(HaveLen(1))
 			Expect(lyrics[0].Synced).To(BeTrue())
 		})
+
+		// Only the sidecar's file name can differ in form: the directories come from
+		// the scanner, so they are correct as stored and must not be re-normalized.
+		DescribeTable("when the track sits in a folder with composable characters",
+			func(dir string, trackForm, sidecarForm norm.Form) {
+				lyrics, err := lyricsFor(dir, trackForm, sidecarForm)
+
+				Expect(err).To(BeNil())
+				Expect(lyrics).To(HaveLen(1))
+				Expect(lyrics[0].Synced).To(BeTrue())
+			},
+			Entry("NFC folder, NFC track, NFD sidecar", "ビートルズ/Beyoncé/", norm.NFC, norm.NFD),
+			Entry("NFC folder, NFD track, NFC sidecar", norm.NFC.String("ビートルズ/Beyoncé/"), norm.NFD, norm.NFC),
+			Entry("NFD folder, NFD track, NFC sidecar", norm.NFD.String("ビートルズ/Beyoncé/"), norm.NFD, norm.NFC),
+			Entry("NFD folder, NFC track, NFD sidecar", norm.NFD.String("ビートルズ/Beyoncé/"), norm.NFC, norm.NFD),
+		)
 	})
 })
