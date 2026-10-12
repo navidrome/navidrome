@@ -37,6 +37,14 @@ const setScrollHeight = (el, value) => {
   })
 }
 
+const triggerOverflowCheck = (container) => {
+  const typography = container.querySelector('h6')
+  act(() => {
+    resizeObserverCallback?.([])
+  })
+  return typography
+}
+
 describe('<CollapsibleComment />', () => {
   it('renders nothing when comment is absent', () => {
     const { container } = render(<CollapsibleComment record={{ id: '1' }} />)
@@ -52,12 +60,14 @@ describe('<CollapsibleComment />', () => {
     const { container } = render(
       <CollapsibleComment record={makeRecord('Short')} />,
     )
-    const typography = container.querySelector('h6')
-    setScrollHeight(typography, 20)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    expect(container.firstChild).not.toHaveClass(/pointerCursor/)
+    setScrollHeight(container.querySelector('h6'), 20)
+    triggerOverflowCheck(container)
+    expect(screen.getByTestId('collapsible-comment')).not.toHaveClass(
+      /pointerCursor/,
+    )
+    expect(
+      screen.queryByTestId('collapsible-comment-more'),
+    ).not.toBeInTheDocument()
   })
 
   it('shows pointer cursor when a single long line overflows collapsed height', () => {
@@ -68,38 +78,37 @@ describe('<CollapsibleComment />', () => {
         )}
       />,
     )
-    const typography = container.querySelector('h6')
-    setScrollHeight(typography, 80)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    expect(container.firstChild).toHaveClass(/pointerCursor/)
+    setScrollHeight(container.querySelector('h6'), 80)
+    triggerOverflowCheck(container)
+    expect(screen.getByTestId('collapsible-comment')).toHaveClass(
+      /pointerCursor/,
+    )
   })
 
-  it('shows fade overlay when overflowing and collapsed', () => {
+  it('shows fade cue and expand icon when overflowing and collapsed', () => {
     const { container } = render(
       <CollapsibleComment record={makeRecord('Long text that overflows')} />,
     )
-    const typography = container.querySelector('h6')
-    setScrollHeight(typography, 80)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    expect(container.firstChild).toHaveClass(/fadeOverlay/)
+    setScrollHeight(container.querySelector('h6'), 80)
+    triggerOverflowCheck(container)
+    expect(screen.getByTestId('collapsible-comment-fade')).toBeInTheDocument()
+    expect(screen.getByTestId('collapsible-comment-more')).toBeInTheDocument()
   })
 
-  it('removes fade overlay when expanded', async () => {
+  it('removes overflow cue when expanded', async () => {
     const user = userEvent.setup()
     const { container } = render(
       <CollapsibleComment record={makeRecord('Long text that overflows')} />,
     )
-    const typography = container.querySelector('h6')
-    setScrollHeight(typography, 80)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    await user.click(typography)
-    expect(container.firstChild).not.toHaveClass(/fadeOverlay/)
+    setScrollHeight(container.querySelector('h6'), 80)
+    triggerOverflowCheck(container)
+    await user.click(screen.getByTestId('collapsible-comment'))
+    expect(
+      screen.queryByTestId('collapsible-comment-fade'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByTestId('collapsible-comment-more'),
+    ).not.toBeInTheDocument()
   })
 
   it('does not expand or show pointer when content fits', async () => {
@@ -107,26 +116,26 @@ describe('<CollapsibleComment />', () => {
     const { container } = render(
       <CollapsibleComment record={makeRecord('Short')} />,
     )
-    const typography = container.querySelector('h6')
-    setScrollHeight(typography, 10)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    await user.click(typography)
-    expect(container.firstChild).not.toHaveClass(/pointerCursor/)
-    expect(container.firstChild).not.toHaveClass(/fadeOverlay/)
+    setScrollHeight(container.querySelector('h6'), 10)
+    triggerOverflowCheck(container)
+    await user.click(screen.getByTestId('collapsible-comment'))
+    expect(screen.getByTestId('collapsible-comment')).not.toHaveClass(
+      /pointerCursor/,
+    )
+    expect(
+      screen.queryByTestId('collapsible-comment-more'),
+    ).not.toBeInTheDocument()
   })
 
   it('re-checks overflow when content changes', () => {
     const { rerender, container } = render(
       <CollapsibleComment record={makeRecord('Short text')} />,
     )
-    const typography = container.querySelector('h6')
-    setScrollHeight(typography, 10)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    expect(container.firstChild).not.toHaveClass(/pointerCursor/)
+    setScrollHeight(container.querySelector('h6'), 10)
+    triggerOverflowCheck(container)
+    expect(screen.getByTestId('collapsible-comment')).not.toHaveClass(
+      /pointerCursor/,
+    )
 
     rerender(
       <CollapsibleComment
@@ -135,25 +144,27 @@ describe('<CollapsibleComment />', () => {
         )}
       />,
     )
-    setScrollHeight(typography, 80)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    expect(container.firstChild).toHaveClass(/pointerCursor/)
+    setScrollHeight(container.querySelector('h6'), 80)
+    triggerOverflowCheck(container)
+    expect(screen.getByTestId('collapsible-comment')).toHaveClass(
+      /pointerCursor/,
+    )
+    expect(screen.getByTestId('collapsible-comment-more')).toBeInTheDocument()
   })
 
-  it('shows pointer and no fade after expanding overflowing content', async () => {
+  it('shows pointer and no overflow cue after expanding overflowing content', async () => {
     const user = userEvent.setup()
     const { container } = render(
       <CollapsibleComment record={makeRecord('Long text that overflows')} />,
     )
-    const typography = container.querySelector('h6')
-    setScrollHeight(typography, 80)
-    act(() => {
-      resizeObserverCallback?.([])
-    })
-    await user.click(typography)
-    expect(container.firstChild).toHaveClass(/pointerCursor/)
-    expect(container.firstChild).not.toHaveClass(/fadeOverlay/)
+    setScrollHeight(container.querySelector('h6'), 80)
+    triggerOverflowCheck(container)
+    await user.click(screen.getByTestId('collapsible-comment'))
+    expect(screen.getByTestId('collapsible-comment')).toHaveClass(
+      /pointerCursor/,
+    )
+    expect(
+      screen.queryByTestId('collapsible-comment-fade'),
+    ).not.toBeInTheDocument()
   })
 })
