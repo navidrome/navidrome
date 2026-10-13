@@ -49,7 +49,7 @@ func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func doLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
-	user, err := validateLogin(ds.User(r.Context()), username, password)
+	user, err := validateLogin(r.Context(), ds.User(), username, password)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
 		return
@@ -127,7 +127,7 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		c, err := ds.User(r.Context()).CountAll()
+		c, err := ds.User().CountAll(r.Context())
 		if err != nil {
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -157,16 +157,16 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 		IsAdmin:     true,
 		LastLoginAt: new(time.Now()),
 	}
-	err := ds.User(ctx).Put(&initialUser)
+	err := ds.User().Put(ctx, &initialUser)
 	if err != nil {
-		log.Error(ctx, "Could not create initial user", "user", initialUser, err)
+		log.Error(ctx, "Could not create initial user", "user", initialUser.UserName, err)
 		return fmt.Errorf("creating initial user: %w", err)
 	}
 	return nil
 }
 
-func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
-	u, err := userRepo.FindByUsernameWithPassword(userName)
+func validateLogin(ctx context.Context, userRepo model.UserRepository, userName, password string) (*model.User, error) {
+	u, err := userRepo.FindByUsernameWithPassword(ctx, userName)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
@@ -176,9 +176,9 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	if u.Password != password {
 		return nil, nil
 	}
-	err = userRepo.UpdateLastLoginAt(u.ID)
+	err = userRepo.UpdateLastLoginAt(ctx, u.ID)
 	if err != nil {
-		log.Error("Could not update LastLoginAt", "user", userName)
+		log.Error(ctx, "Could not update LastLoginAt", "user", userName)
 	}
 	return u, nil
 }
@@ -244,7 +244,7 @@ func UsernameFromConfig(*http.Request) string {
 }
 
 func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
-	user, err := ds.User(ctx).FindByUsername(username)
+	user, err := ds.User().FindByUsername(ctx, username)
 	if err == nil {
 		ctx = log.NewContext(ctx, "username", username)
 		ctx = request.WithUsername(ctx, user.UserName)
@@ -309,7 +309,7 @@ func tokenAllowed(ctx context.Context) bool {
 // epoch the handler bumped reaches the token the client stores.
 type refreshingWriter struct {
 	http.ResponseWriter
-	ctx   context.Context
+	ctx   context.Context //nolint:containedctx // ResponseWriter wrapper defers work to Write, which has no ctx
 	token jwt.Token
 	once  sync.Once
 }
@@ -377,12 +377,13 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]any 
 		}
 	}
 
-	userRepo := ds.User(r.Context())
-	user, err := userRepo.FindByUsernameWithPassword(username)
+	ctx := r.Context()
+	userRepo := ds.User()
+	user, err := userRepo.FindByUsernameWithPassword(ctx, username)
 	if user == nil || err != nil {
 		log.Info(r, "User passed in header not found", "user", username)
 		// Check if this is the first user being created
-		count, _ := userRepo.CountAll()
+		count, _ := userRepo.CountAll(ctx)
 		isFirstUser := count == 0
 
 		newUser := model.User{
@@ -393,19 +394,19 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]any 
 			NewPassword: consts.PasswordAutogenPrefix + id.NewRandom(),
 			IsAdmin:     isFirstUser, // Make the first user an admin
 		}
-		err := userRepo.Put(&newUser)
+		err := userRepo.Put(ctx, &newUser)
 		if err != nil {
 			log.Error(r, "Could not create new user", "user", username, err)
 			return nil
 		}
-		user, err = userRepo.FindByUsernameWithPassword(username)
+		user, err = userRepo.FindByUsernameWithPassword(ctx, username)
 		if user == nil || err != nil {
 			log.Error(r, "Created user but failed to fetch it", "user", username)
 			return nil
 		}
 	}
 
-	err = userRepo.UpdateLastLoginAt(user.ID)
+	err = userRepo.UpdateLastLoginAt(ctx, user.ID)
 	if err != nil {
 		log.Error(r, "Could not update LastLoginAt", "user", username, err)
 		return nil

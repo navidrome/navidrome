@@ -381,7 +381,7 @@ var _ = Describe("middlewares", func() {
 			id = uuid.NewString()
 			ds = &tests.MockDataStore{}
 			lastAccessTime = time.Now()
-			Expect(ds.User(ctx).Put(&model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
+			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
 				To(Succeed())
 
 			middleware = UpdateLastAccessMiddleware(ds)
@@ -407,14 +407,14 @@ var _ = Describe("middlewares", func() {
 
 				callMiddleware(req)
 
-				user, _ := ds.MockedUser.FindByUsername("johndoe")
+				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
 				Expect(*user.LastAccessAt).To(BeTemporally(">", lastAccessTime, time.Second))
 			})
 
 			It("skip fast successive requests", func() {
 				// First request
 				callMiddleware(req)
-				user, _ := ds.MockedUser.FindByUsername("johndoe")
+				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
 				lastAccessTime = *user.LastAccessAt // Store the last access time
 
 				// Second request
@@ -422,7 +422,7 @@ var _ = Describe("middlewares", func() {
 				callMiddleware(req)
 
 				// The second request should not have changed the last access time
-				user, _ = ds.MockedUser.FindByUsername("johndoe")
+				user, _ = ds.MockedUser.FindByUsername(ctx, "johndoe")
 				Expect(user.LastAccessAt).To(Equal(&lastAccessTime))
 			})
 		})
@@ -431,7 +431,7 @@ var _ = Describe("middlewares", func() {
 				req = req.WithContext(context.Background())
 				callMiddleware(req)
 
-				usr, _ := ds.MockedUser.FindByUsername("johndoe")
+				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
 				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
 			})
 		})

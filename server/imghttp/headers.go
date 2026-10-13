@@ -4,9 +4,9 @@ package imghttp
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/utils/req"
 )
 
 // WriteImageHeaders applies the artwork caching contract and reports whether a 304 was written
@@ -40,28 +40,9 @@ func WriteImageHeaders(w http.ResponseWriter, r *http.Request, img *artwork.Imag
 		h.Set("Cache-Control", "public, no-cache")
 	}
 
-	if etag != "" && ifNoneMatch(r.Header.Get("If-None-Match"), etag) {
+	if etag != "" && req.IfNoneMatch(r, etag) {
 		w.WriteHeader(http.StatusNotModified)
 		return true
-	}
-	return false
-}
-
-// ifNoneMatch reports whether If-None-Match asserts hash, using RFC 9110 weak comparison.
-func ifNoneMatch(header, hash string) bool {
-	header = strings.TrimSpace(header)
-	if header == "" {
-		return false
-	}
-	if header == "*" {
-		return true
-	}
-	for tag := range strings.SplitSeq(header, ",") {
-		tag = strings.TrimSpace(tag)
-		tag = strings.TrimPrefix(tag, "W/")
-		if strings.Trim(tag, `"`) == hash {
-			return true
-		}
 	}
 	return false
 }

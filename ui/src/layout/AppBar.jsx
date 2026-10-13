@@ -102,9 +102,11 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   }
 
   const renderSettingsMenuItemLink = (resource, id) => {
-    const label = translate(`resources.${resource.name}.name`, {
-      smart_count: id ? 1 : 2,
-    })
+    const label = resource.options.label
+      ? translate(resource.options.label)
+      : translate(`resources.${resource.name}.name`, {
+          smart_count: id ? 1 : 2,
+        })
     const link = id ? `/${resource.name}/${id}` : `/${resource.name}`
     return (
       <MenuItemLink

@@ -21,7 +21,7 @@ var _ = Describe("Bookmarks", func() {
 		ds = &tests.MockDataStore{}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		ctx = request.WithUser(context.Background(), model.User{ID: "u1", UserName: "u1"})
-		mfRepo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+		mfRepo = ds.MediaFile().(*tests.MockMediaFileRepo)
 		mfRepo.SetData(model.MediaFiles{{ID: "visible"}})
 	})
 

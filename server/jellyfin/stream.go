@@ -29,7 +29,7 @@ func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (
 	if !ok {
 		return nil, false
 	}
-	mf, err := api.ds.MediaFile(ctx).Get(id)
+	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return nil, false

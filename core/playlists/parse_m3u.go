@@ -1,13 +1,11 @@
 package playlists
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"io"
 	"net/url"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -20,7 +18,7 @@ import (
 )
 
 func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *model.Folder, reader io.Reader) error {
-	mediaFileRepository := s.ds.MediaFile(ctx)
+	mediaFileRepository := s.ds.MediaFile()
 	resolver, err := newPathResolver(ctx, s.ds)
 	if err != nil {
 		return err
@@ -96,7 +94,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 			}
 		}
 
-		found, err := mediaFileRepository.FindByPaths(lookupCandidates)
+		found, err := mediaFileRepository.FindByPaths(ctx, lookupCandidates)
 		if err != nil {
 			log.Warn(ctx, "Error reading files from DB", "playlist", pls.Name, err)
 			continue
@@ -156,70 +154,18 @@ func (r pathResolution) ToQualifiedString() (string, error) {
 	return fmt.Sprintf("%d:%s", r.libraryID, filepath.ToSlash(relativePath)), nil
 }
 
-// libraryMatcher holds sorted libraries with cleaned paths for efficient path matching.
-type libraryMatcher struct {
-	libraries    model.Libraries
-	cleanedPaths []string
-}
-
-// findLibraryForPath finds which library contains the given absolute path.
-// Returns library ID and path, or 0 and empty string if not found.
-func (lm *libraryMatcher) findLibraryForPath(absolutePath string) (int, string) {
-	lib, ok := lm.findLibrary(absolutePath)
-	if !ok {
-		return 0, ""
-	}
-	return lib.ID, filepath.Clean(lib.Path)
-}
-
-// findLibrary checks if the absolute path is under any of the library paths.
-func (lm *libraryMatcher) findLibrary(absolutePath string) (model.Library, bool) {
-	// Check sorted libraries (longest path first) to find the best match
-	for i, cleanLibPath := range lm.cleanedPaths {
-		// Check if absolutePath is under this library path
-		if strings.HasPrefix(absolutePath, cleanLibPath) {
-			// Ensure it's a proper path boundary (not just a prefix)
-			if len(absolutePath) == len(cleanLibPath) || absolutePath[len(cleanLibPath)] == filepath.Separator {
-				return lm.libraries[i], true
-			}
-		}
-	}
-	return model.Library{}, false
-}
-
-// newLibraryMatcher creates a libraryMatcher with libraries sorted by path length (longest first).
-// This ensures correct matching when library paths are prefixes of each other.
-// Example: /music-classical must be checked before /music
-// Otherwise, /music-classical/track.mp3 would match /music instead of /music-classical
-func newLibraryMatcher(libs model.Libraries) *libraryMatcher {
-	// Sort libraries by path length (descending) to ensure longest paths match first.
-	slices.SortFunc(libs, func(i, j model.Library) int {
-		return cmp.Compare(len(j.Path), len(i.Path)) // Reverse order for descending
-	})
-
-	// Pre-clean all library paths once for efficient matching
-	cleanedPaths := make([]string, len(libs))
-	for i, lib := range libs {
-		cleanedPaths[i] = filepath.Clean(lib.Path)
-	}
-	return &libraryMatcher{
-		libraries:    libs,
-		cleanedPaths: cleanedPaths,
-	}
-}
-
 // pathResolver handles path resolution logic for playlist imports.
 type pathResolver struct {
-	matcher *libraryMatcher
+	matcher *model.LibraryMatcher
 }
 
 // newPathResolver creates a pathResolver with libraries loaded from the datastore.
 func newPathResolver(ctx context.Context, ds model.DataStore) (*pathResolver, error) {
-	libs, err := ds.Library(ctx).GetAll()
+	libs, err := ds.Library().GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}
-	matcher := newLibraryMatcher(libs)
+	matcher := model.NewLibraryMatcher(libs)
 	return &pathResolver{matcher: matcher}, nil
 }
 
@@ -246,14 +192,14 @@ func (r *pathResolver) resolvePath(line string, folder *model.Folder) pathResolu
 // a pathResolution with the library information. Returns an invalid resolution if
 // the path is not found in any library.
 func (r *pathResolver) findInLibraries(absolutePath string) pathResolution {
-	libID, libPath := r.matcher.findLibraryForPath(absolutePath)
-	if libID == 0 {
+	lib, ok := r.matcher.FindLibrary(absolutePath)
+	if !ok {
 		return pathResolution{valid: false}
 	}
 	return pathResolution{
 		absolutePath: absolutePath,
-		libraryPath:  libPath,
-		libraryID:    libID,
+		libraryPath:  filepath.Clean(lib.Path),
+		libraryID:    lib.ID,
 		valid:        true,
 	}
 }
@@ -288,7 +234,7 @@ func (r *pathResolver) resolvePaths(ctx context.Context, folder *model.Folder, l
 // HTTP(S) URLs are stored as-is (gated by EnableM3UExternalAlbumArt).
 // Local paths (file://, absolute, or relative) are resolved to an absolute path
 // and validated against known library boundaries via matcher.
-func resolveImageURL(value string, folder *model.Folder, matcher *libraryMatcher, owner model.User) string {
+func resolveImageURL(value string, folder *model.Folder, matcher *model.LibraryMatcher, owner model.User) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return ""
@@ -308,7 +254,7 @@ func resolveImageURL(value string, folder *model.Folder, matcher *libraryMatcher
 		return ""
 	}
 
-	lib, ok := matcher.findLibrary(localPath)
+	lib, ok := matcher.FindLibrary(localPath)
 	// A playlist without a folder (API upload, or CLI import from outside all libraries) may only use the owner's libraries.
 	if !ok || (folder == nil && !owner.HasLibraryAccess(lib.ID)) {
 		return ""

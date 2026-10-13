@@ -54,9 +54,9 @@ var indexedTagNames = []model.TagName{model.TagGenre}
 
 // updateTags rewrites this item's <table>_tags rows from its in-memory tags, mirroring
 // updateParticipants (delete-then-insert in the same Put; JOIN to tag skips not-yet-saved ids).
-func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
+func (r sqlRepository) updateTags(ctx context.Context, itemID string, tags model.Tags) error {
 	del := Delete(r.tableName + "_tags").Where(Eq{r.tableName + "_id": itemID})
-	if _, err := r.executeSQL(del); err != nil {
+	if _, err := r.executeSQL(ctx, del); err != nil {
 		return err
 	}
 	var tagIDs []string
@@ -77,7 +77,7 @@ func (r sqlRepository) updateTags(itemID string, tags model.Tags) error {
 		SELECT ?, value FROM json_each(?)
 		JOIN tag ON tag.id = value
 		ON CONFLICT (%[1]s_id, tag_id) DO NOTHING`, r.tableName)
-	_, err = r.executeSQL(Expr(query, itemID, string(idsJSON)))
+	_, err = r.executeSQL(ctx, Expr(query, itemID, string(idsJSON)))
 	return err
 }
 
@@ -146,11 +146,10 @@ type baseTagRepository struct {
 // newBaseTagRepository creates a new base tag repository with optional tag filtering.
 // If tagFilter is nil, the repository will work with all tags.
 // If tagFilter is provided, the repository will only work with tags of that specific name.
-func newBaseTagRepository(ctx context.Context, db dbx.Builder, tagFilter *model.TagName) *baseTagRepository {
+func newBaseTagRepository(db dbx.Builder, tagFilter *model.TagName) *baseTagRepository {
 	r := &baseTagRepository{
 		tagFilter: tagFilter,
 	}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "tag"
 	r.registerModel(&model.Tag{}, map[string]filterFunc{
@@ -164,12 +163,12 @@ func newBaseTagRepository(ctx context.Context, db dbx.Builder, tagFilter *model.
 }
 
 // applyLibraryFiltering adds the appropriate library joins based on user context
-func (r *baseTagRepository) applyLibraryFiltering(sq SelectBuilder) SelectBuilder {
+func (r *baseTagRepository) applyLibraryFiltering(ctx context.Context, sq SelectBuilder) SelectBuilder {
 	// Add library_tag join
 	sq = sq.LeftJoin("library_tag on library_tag.tag_id = tag.id")
 
 	// For authenticated users, also join with user_library to filter by accessible libraries
-	user := loggedUser(r.ctx)
+	user := loggedUser(ctx)
 	if user.ID != invalidUserId {
 		sq = sq.Join("user_library on user_library.library_id = library_tag.library_id AND user_library.user_id = ?", user.ID)
 	}
@@ -178,8 +177,8 @@ func (r *baseTagRepository) applyLibraryFiltering(sq SelectBuilder) SelectBuilde
 }
 
 // newSelect overrides the base implementation to apply tag name filtering and library filtering.
-func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
-	sq := r.sqlRepository.newSelect(options...)
+func (r *baseTagRepository) newSelect(ctx context.Context, options ...model.QueryOptions) SelectBuilder {
+	sq := r.sqlRepository.newSelect(ctx, options...)
 
 	// Apply tag name filtering if specified
 	if r.tagFilter != nil {
@@ -187,7 +186,7 @@ func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuild
 	}
 
 	// Apply library filtering and set up aggregation columns
-	sq = r.applyLibraryFiltering(sq).Columns(
+	sq = r.applyLibraryFiltering(ctx, sq).Columns(
 		"tag.id",
 		"tag.tag_name",
 		"tag.tag_value",
@@ -198,9 +197,9 @@ func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuild
 	return sq
 }
 
-// ResourceRepository interface implementation
+// REST interface methods
 
-func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
+func (r *baseTagRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
 	sq := Select("COUNT(DISTINCT tag.id)").From("tag")
 
 	// Apply tag name filtering if specified
@@ -209,32 +208,24 @@ func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	}
 
 	// Apply library filtering
-	sq = r.applyLibraryFiltering(sq)
+	sq = r.applyLibraryFiltering(ctx, sq)
 
-	return r.count(sq, r.parseRestOptions(r.ctx, options...))
+	return r.count(ctx, sq, r.parseRestOptions(ctx, options...))
 }
 
-func (r *baseTagRepository) Read(id string) (any, error) {
-	query := r.newSelect().Where(Eq{"id": id})
+func (r *baseTagRepository) Read(ctx context.Context, id string) (*model.Tag, error) {
+	query := r.newSelect(ctx).Where(Eq{"id": id})
 	var res model.Tag
-	err := r.queryOne(query, &res)
+	err := r.queryOne(ctx, query, &res)
 	return &res, err
 }
 
-func (r *baseTagRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	query := r.newSelect(r.parseRestOptions(r.ctx, options...))
+func (r *baseTagRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Tag, error) {
+	query := r.newSelect(ctx, r.parseRestOptions(ctx, options...))
 	var res model.TagList
-	err := r.queryAll(query, &res)
+	err := r.queryAll(ctx, query, &res)
 	return res, err
 }
 
-func (r *baseTagRepository) EntityName() string {
-	return "tag"
-}
-
-func (r *baseTagRepository) NewInstance() any {
-	return model.Tag{}
-}
-
 // Interface compliance check
-var _ model.ResourceRepository = (*baseTagRepository)(nil)
+var _ rest.Repository[model.Tag] = (*baseTagRepository)(nil)

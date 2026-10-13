@@ -21,12 +21,19 @@ var _ = Describe("Playlists", func() {
 	}
 	order := func(plID string) []string { return names(playlistItems(plID).Items) }
 
+	createWith := func(body string) string { return createPlaylistBodyAs(adminUser, body) }
+	openAccess := func(plID string) bool {
+		var info dto.PlaylistInfo
+		parseInto(get("/Playlists/"+enc(plID)), &info)
+		return info.OpenAccess
+	}
+
 	Describe("create", func() {
 		It("creates an empty playlist", func() {
 			plID := createPlaylist("Empty", nil)
 			var info dto.PlaylistInfo
 			parseInto(get("/Playlists/"+enc(plID)), &info)
-			Expect(info.OpenAccess).To(BeFalse())
+			Expect(info.OpenAccess).To(BeFalse(), "a playlist created without IsPublic stays private")
 			Expect(info.Shares).To(BeEmpty())
 			Expect(info.ItemIds).To(BeEmpty())
 		})
@@ -48,16 +55,24 @@ var _ = Describe("Playlists", func() {
 			Expect(playlistItems(plID).TotalRecordCount).To(Equal(3)) // Abbey Road (2) + Help! (1)
 		})
 
+		It("creates a public playlist when the client sends IsPublic true", func() {
+			Expect(openAccess(createWith(`{"Name":"Public","Ids":[],"IsPublic":true}`))).To(BeTrue())
+		})
+
+		It("creates a private playlist when the client sends IsPublic false", func() {
+			Expect(openAccess(createWith(`{"Name":"Private","Ids":[],"IsPublic":false}`))).To(BeFalse())
+		})
+
 		// dto.DecodeIDs is all-or-nothing: a malformed entry must 404 the whole request, not get
 		// dropped while the well-formed entries are still used to create a playlist.
 		It("404s when one of the Ids is malformed, without creating a playlist", func() {
-			before, err := ds.Playlist(ctx).CountAll()
+			before, err := ds.Playlist().CountAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			body := `{"Name":"ShouldNotExist","Ids":["` + enc(songID("So What")) + `","not-a-valid-id"]}`
 			Expect(post("/Playlists", body).Code).To(Equal(http.StatusNotFound))
 
-			after, err := ds.Playlist(ctx).CountAll()
+			after, err := ds.Playlist().CountAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(after).To(Equal(before))
 		})
@@ -303,14 +318,14 @@ var _ = Describe("Playlists", func() {
 			Expect(upload(adminUser, "/Items/"+enc(plID)+"/Images/Primary", "image/jpeg", jpeg).Code).
 				To(Equal(http.StatusNoContent))
 
-			pls, err := ds.Playlist(ctx).Get(plID)
+			pls, err := ds.Playlist().Get(ctx, plID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.UploadedImage).ToNot(BeEmpty())
 			_, statErr := os.Stat(pls.UploadedImagePath())
 			Expect(statErr).ToNot(HaveOccurred(), "cover file should exist on disk")
 
 			Expect(del("/Items/" + enc(plID) + "/Images/Primary").Code).To(Equal(http.StatusNoContent))
-			pls, _ = ds.Playlist(ctx).Get(plID)
+			pls, _ = ds.Playlist().Get(ctx, plID)
 			Expect(pls.UploadedImage).To(BeEmpty())
 		})
 
@@ -323,7 +338,7 @@ var _ = Describe("Playlists", func() {
 		// from their tag-keyed cache until the next scan.
 		It("clears the resolved image tag after a cover upload", func() {
 			plID := createPlaylist("Cover Tag", nil)
-			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: model.KindPlaylistArtwork.Prefix(), ItemID: plID, Hash: "1111111111111111",
 			})).To(Succeed())
 
@@ -355,10 +370,7 @@ var _ = Describe("Playlists", func() {
 		It("makes a playlist public", func() {
 			plID := createPlaylist("Make Public", nil)
 			Expect(post("/Playlists/"+enc(plID), `{"Name":"Make Public","IsPublic":true}`).Code).To(Equal(http.StatusNoContent))
-
-			var info dto.PlaylistInfo
-			parseInto(get("/Playlists/"+enc(plID)), &info)
-			Expect(info.OpenAccess).To(BeTrue())
+			Expect(openAccess(plID)).To(BeTrue())
 			// Now visible to other users.
 			Expect(queryResult(getAs(regularUser, "/Items?IncludeItemTypes=Playlist&Recursive=true")).TotalRecordCount).To(Equal(1))
 		})
@@ -366,7 +378,7 @@ var _ = Describe("Playlists", func() {
 		It("renames a playlist", func() {
 			plID := createPlaylist("Old Name", nil)
 			Expect(post("/Playlists/"+enc(plID), `{"Name":"New Name"}`).Code).To(Equal(http.StatusNoContent))
-			pls, _ := ds.Playlist(ctx).Get(plID)
+			pls, _ := ds.Playlist().Get(ctx, plID)
 			Expect(pls.Name).To(Equal("New Name"))
 		})
 
@@ -398,7 +410,7 @@ var _ = Describe("Playlists", func() {
 			q := playlistItems(plID)
 			Expect(q.TotalRecordCount).To(Equal(1))
 			Expect(q.Items[0].Name).To(Equal("So What"))
-			pls, _ := ds.Playlist(ctx).Get(plID)
+			pls, _ := ds.Playlist().Get(ctx, plID)
 			Expect(pls.Name).To(Equal("Combo Renamed"))
 			Expect(pls.Public).To(BeTrue())
 		})
@@ -412,13 +424,13 @@ var _ = Describe("Playlists", func() {
 		// An id that decodes to "" would tell Create to make a new playlist instead of updating one —
 		// itemIDParam must 404 before that decode ever runs, not silently create one.
 		It("404s for a malformed playlist id, without creating a playlist", func() {
-			before, err := ds.Playlist(ctx).CountAll()
+			before, err := ds.Playlist().CountAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			w := post("/Playlists/00000000000000000000000000000000", `{"Ids":["`+enc(songID("So What"))+`"]}`)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
 
-			after, err := ds.Playlist(ctx).CountAll()
+			after, err := ds.Playlist().CountAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(after).To(Equal(before))
 		})

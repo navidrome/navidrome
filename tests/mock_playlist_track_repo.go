@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"context"
+
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 )
@@ -40,21 +42,21 @@ func (m *MockPlaylistTrackRepo) page(options ...model.QueryOptions) model.Playli
 	return tracks
 }
 
-func (m *MockPlaylistTrackRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
+func (m *MockPlaylistTrackRepo) CountAll(_ context.Context, _ ...model.QueryOptions) (int64, error) {
 	if m.Err != nil {
 		return 0, m.Err
 	}
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockPlaylistTrackRepo) GetAll(options ...model.QueryOptions) (model.PlaylistTracks, error) {
+func (m *MockPlaylistTrackRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.PlaylistTracks, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 	return m.page(options...), nil
 }
 
-func (m *MockPlaylistTrackRepo) GetCursor(options ...model.QueryOptions) (model.PlaylistTrackCursor, error) {
+func (m *MockPlaylistTrackRepo) GetCursor(_ context.Context, options ...model.QueryOptions) (model.PlaylistTrackCursor, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
@@ -68,21 +70,21 @@ func (m *MockPlaylistTrackRepo) GetCursor(options ...model.QueryOptions) (model.
 	}, nil
 }
 
-func (m *MockPlaylistTrackRepo) GetAlbumIDs(...model.QueryOptions) ([]string, error) {
+func (m *MockPlaylistTrackRepo) GetAlbumIDs(context.Context, ...model.QueryOptions) ([]string, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 	return m.AlbumIDs, nil
 }
 
-func (m *MockPlaylistTrackRepo) GetMediaFileIDs(options ...model.QueryOptions) ([]string, error) {
+func (m *MockPlaylistTrackRepo) GetMediaFileIDs(_ context.Context, options ...model.QueryOptions) ([]string, error) {
 	if m.Err != nil {
 		return nil, m.Err
 	}
 	return slice.Map(m.page(options...), func(t model.PlaylistTrack) string { return t.MediaFileID }), nil
 }
 
-func (m *MockPlaylistTrackRepo) Add(ids []string) (int, error) {
+func (m *MockPlaylistTrackRepo) Add(_ context.Context, ids []string) (int, error) {
 	m.AddedIds = append(m.AddedIds, ids...)
 	if m.Err != nil {
 		return 0, m.Err
@@ -90,38 +92,38 @@ func (m *MockPlaylistTrackRepo) Add(ids []string) (int, error) {
 	return m.AddCount, nil
 }
 
-func (m *MockPlaylistTrackRepo) Insert(ids []string, pos int) (int, error) {
+func (m *MockPlaylistTrackRepo) Insert(ctx context.Context, ids []string, pos int) (int, error) {
 	m.InsertPos = pos
-	return m.Add(ids)
+	return m.Add(ctx, ids)
 }
 
-func (m *MockPlaylistTrackRepo) AddAlbums(_ []string) (int, error) {
+func (m *MockPlaylistTrackRepo) AddAlbums(_ context.Context, _ []string) (int, error) {
 	if m.Err != nil {
 		return 0, m.Err
 	}
 	return m.AddCount, nil
 }
 
-func (m *MockPlaylistTrackRepo) AddArtists(_ []string) (int, error) {
+func (m *MockPlaylistTrackRepo) AddArtists(_ context.Context, _ []string) (int, error) {
 	if m.Err != nil {
 		return 0, m.Err
 	}
 	return m.AddCount, nil
 }
 
-func (m *MockPlaylistTrackRepo) AddDiscs(_ []model.DiscID) (int, error) {
+func (m *MockPlaylistTrackRepo) AddDiscs(_ context.Context, _ []model.DiscID) (int, error) {
 	if m.Err != nil {
 		return 0, m.Err
 	}
 	return m.AddCount, nil
 }
 
-func (m *MockPlaylistTrackRepo) Delete(ids ...string) error {
+func (m *MockPlaylistTrackRepo) Delete(_ context.Context, ids ...string) error {
 	m.DeletedIds = append(m.DeletedIds, ids...)
 	return m.Err
 }
 
-func (m *MockPlaylistTrackRepo) Reorder(_, _ int) error {
+func (m *MockPlaylistTrackRepo) Reorder(_ context.Context, _, _ int) error {
 	m.Reordered = true
 	return m.Err
 }

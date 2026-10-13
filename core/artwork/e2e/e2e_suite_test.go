@@ -67,13 +67,17 @@ type fakeFolderRepo struct {
 	result []model.Folder
 }
 
-func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) { return f.result, nil }
+func (f *fakeFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
+	return f.result, nil
+}
 
-func (f *fakeFolderRepo) HasAudioOutsideFolders(model.Folder, []string) (bool, error) {
+func (f *fakeFolderRepo) HasAudioOutsideFolders(context.Context, model.Folder, []string) (bool, error) {
 	return false, nil
 }
 
-func (f *fakeFolderRepo) Get(string) (*model.Folder, error) { return nil, model.ErrNotFound }
+func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
+	return nil, model.ErrNotFound
+}
 
 func writeUpload(entityType, name, srcFixture string) string {
 	GinkgoHelper()

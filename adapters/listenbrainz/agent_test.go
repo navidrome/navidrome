@@ -30,7 +30,7 @@ var _ = Describe("listenBrainzAgent", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		ctx = context.Background()
-		_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
+		_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
 		httpClient = &tests.FakeHttpClient{}
 		agent = listenBrainzConstructor(ds)
 		agent.client = newClient("http://localhost:8080", httpClient)

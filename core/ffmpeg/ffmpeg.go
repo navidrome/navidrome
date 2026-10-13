@@ -49,7 +49,6 @@ type FFmpeg interface {
 	Transcode(ctx context.Context, opts TranscodeOptions) (io.ReadCloser, error)
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
 	ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error)
-	Probe(ctx context.Context, files []string) (string, error)
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
@@ -68,7 +67,6 @@ var ErrAnimatedWebPUnsupported = errors.New("ffmpeg lacks libwebp_anim encoder â
 
 const (
 	extractImageCmd     = "ffmpeg -i %s -map 0:v -map -0:V -vcodec copy -f image2pipe -"
-	probeCmd            = "ffmpeg %s -f ffmetadata"
 	probeAudioStreamCmd = "ffprobe -v error -select_streams a:0 -print_format json -show_streams -show_format %s"
 )
 
@@ -147,17 +145,6 @@ func fileExists(path string) error {
 		return fmt.Errorf("'%s' is a directory", path)
 	}
 	return nil
-}
-
-func (e *ffmpeg) Probe(ctx context.Context, files []string) (string, error) {
-	if _, err := ffmpegCmd(); err != nil {
-		return "", err
-	}
-	args := createProbeCommand(probeCmd, files)
-	log.Trace(ctx, "Executing ffmpeg command", "args", args)
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...) // #nosec
-	output, _ := cmd.CombinedOutput()
-	return string(output), nil
 }
 
 func (e *ffmpeg) ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error) {
@@ -587,20 +574,6 @@ func createFFmpegCommand(cmd, path string, maxBitRate, offset int) []string {
 		} else {
 			s = strings.ReplaceAll(s, "%t", strconv.Itoa(offset))
 			s = strings.ReplaceAll(s, "%b", strconv.Itoa(maxBitRate))
-			args = append(args, s)
-		}
-	}
-	return args
-}
-
-func createProbeCommand(cmd string, inputs []string) []string {
-	var args []string
-	for _, s := range fixCmd(cmd) {
-		if s == "%s" {
-			for _, inp := range inputs {
-				args = append(args, "-i", inp)
-			}
-		} else {
 			args = append(args, s)
 		}
 	}

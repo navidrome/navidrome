@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -87,8 +86,8 @@ var _ = Describe("handleSocket", func() {
 		BeforeEach(func() {
 			ds = &tests.MockDataStore{}
 			auth.Init(ds)
-			ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-			Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+			ur := ds.User().(*tests.MockedUserRepo)
+			Expect(ur.Put(GinkgoT().Context(), &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 
 			t, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 			Expect(err).ToNot(HaveOccurred())

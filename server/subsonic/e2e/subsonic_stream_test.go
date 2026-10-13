@@ -21,7 +21,7 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 	BeforeAll(func() {
 		setupTestDB()
 
-		songs, err := ds.MediaFile(ctx).GetAll()
+		songs, err := ds.MediaFile().GetAll(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		byTitle := map[string]string{}
 		for _, s := range songs {

@@ -107,6 +107,7 @@ func (api *Router) routes() http.Handler {
 			r.Use(getPlayer(api.players))
 			h(r, "ping", api.Ping)
 			h(r, "getLicense", api.GetLicense)
+			h(r, "tokenInfo", api.TokenInfo)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))

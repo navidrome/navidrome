@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -44,7 +45,7 @@ func (m *MockPlaylistRepo) SetData(playlists model.Playlists) {
 	}
 }
 
-func (m *MockPlaylistRepo) GetAll(options ...model.QueryOptions) (model.Playlists, error) {
+func (m *MockPlaylistRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Playlists, error) {
 	if len(options) > 0 {
 		m.Options = options[0]
 	}
@@ -54,8 +55,8 @@ func (m *MockPlaylistRepo) GetAll(options ...model.QueryOptions) (model.Playlist
 	return m.All, nil
 }
 
-func (m *MockPlaylistRepo) GetCursor(options ...model.QueryOptions) (model.PlaylistCursor, error) {
-	res, err := m.GetAll(options...)
+func (m *MockPlaylistRepo) GetCursor(ctx context.Context, options ...model.QueryOptions) (model.PlaylistCursor, error) {
+	res, err := m.GetAll(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +69,7 @@ func (m *MockPlaylistRepo) GetCursor(options ...model.QueryOptions) (model.Playl
 	}, nil
 }
 
-func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {
+func (m *MockPlaylistRepo) Get(_ context.Context, id string) (*model.Playlist, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -80,11 +81,11 @@ func (m *MockPlaylistRepo) Get(id string) (*model.Playlist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPlaylistRepo) GetWithTracks(id string, _, _ bool) (*model.Playlist, error) {
-	return m.Get(id)
+func (m *MockPlaylistRepo) GetWithTracks(ctx context.Context, id string, _, _ bool) (*model.Playlist, error) {
+	return m.Get(ctx, id)
 }
 
-func (m *MockPlaylistRepo) Put(pls *model.Playlist, _ ...string) error {
+func (m *MockPlaylistRepo) Put(_ context.Context, pls *model.Playlist, _ ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -98,7 +99,7 @@ func (m *MockPlaylistRepo) Put(pls *model.Playlist, _ ...string) error {
 	return nil
 }
 
-func (m *MockPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
+func (m *MockPlaylistRepo) FindByPath(_ context.Context, path string) (*model.Playlist, error) {
 	if m.Err {
 		return nil, errors.New("error")
 	}
@@ -110,23 +111,15 @@ func (m *MockPlaylistRepo) FindByPath(path string) (*model.Playlist, error) {
 	return nil, model.ErrNotFound
 }
 
-func (m *MockPlaylistRepo) Delete(id string) error {
+func (m *MockPlaylistRepo) Delete(_ context.Context, ids ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
-	m.Deleted = append(m.Deleted, id)
+	m.Deleted = append(m.Deleted, ids...)
 	return nil
 }
 
-func (m *MockPlaylistRepo) SetOrder(ids []string) error {
-	if m.Err {
-		return errors.New("error")
-	}
-	m.Order = append(m.Order[:0], ids...)
-	return nil
-}
-
-func (m *MockPlaylistRepo) SetStar(starred bool, ids ...string) error {
+func (m *MockPlaylistRepo) SetStar(_ context.Context, starred bool, ids ...string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -139,7 +132,7 @@ func (m *MockPlaylistRepo) SetStar(starred bool, ids ...string) error {
 	return nil
 }
 
-func (m *MockPlaylistRepo) SetRating(rating int, id string) error {
+func (m *MockPlaylistRepo) SetRating(_ context.Context, rating int, id string) error {
 	if m.Err {
 		return errors.New("error")
 	}
@@ -150,26 +143,26 @@ func (m *MockPlaylistRepo) SetRating(rating int, id string) error {
 	return nil
 }
 
-func (m *MockPlaylistRepo) IncPlayCount(string, time.Time) error {
+func (m *MockPlaylistRepo) IncPlayCount(context.Context, string, time.Time) error {
 	if m.Err {
 		return errors.New("error")
 	}
 	return nil
 }
 
-func (m *MockPlaylistRepo) ReassignAnnotation(string, string) error {
+func (m *MockPlaylistRepo) ReassignAnnotation(context.Context, string, string) error {
 	if m.Err {
 		return errors.New("error")
 	}
 	return nil
 }
 
-func (m *MockPlaylistRepo) Tracks(_ string, refreshSmartPlaylist bool) model.PlaylistTrackRepository {
+func (m *MockPlaylistRepo) Tracks(_ context.Context, _ string, refreshSmartPlaylist bool) model.PlaylistTrackRepository {
 	m.TracksRefreshed = refreshSmartPlaylist
 	return m.TracksRepo
 }
 
-func (m *MockPlaylistRepo) Exists(id string) (bool, error) {
+func (m *MockPlaylistRepo) Exists(_ context.Context, id string) (bool, error) {
 	if m.Err {
 		return false, errors.New("error")
 	}
@@ -180,14 +173,14 @@ func (m *MockPlaylistRepo) Exists(id string) (bool, error) {
 	return false, nil
 }
 
-func (m *MockPlaylistRepo) Count(_ ...rest.QueryOptions) (int64, error) {
+func (m *MockPlaylistRepo) Count(_ context.Context, _ ...rest.QueryOptions) (int64, error) {
 	if m.Err {
 		return 0, errors.New("error")
 	}
 	return int64(len(m.Data)), nil
 }
 
-func (m *MockPlaylistRepo) CountAll(_ ...model.QueryOptions) (int64, error) {
+func (m *MockPlaylistRepo) CountAll(_ context.Context, _ ...model.QueryOptions) (int64, error) {
 	if m.Err {
 		return 0, errors.New("error")
 	}
