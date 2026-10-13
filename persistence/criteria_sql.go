@@ -13,6 +13,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
+	"golang.org/x/text/unicode/norm"
 )
 
 type smartPlaylistJoinType int
@@ -344,11 +345,15 @@ func startOfPeriod(numDays int64, from time.Time) string {
 }
 
 func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
-	playlistID, ok := values["id"].(string)
-	if !ok {
-		return nil, errors.New("playlist id not given")
+	var condition squirrel.Sqlizer
+	if playlistId, ok := values["id"].(string); ok && playlistId != "" {
+		condition = squirrel.Eq{"pl.playlist_id": playlistId}
+	} else if playlistPath, ok := values["path"].(string); ok && playlistPath != "" {
+		condition = squirrel.Eq{"playlist.path": pathVariants(playlistPath)}
+	} else {
+		return nil, errors.New("playlist id or path not given")
 	}
-	filters := squirrel.And{squirrel.Eq{"pl.playlist_id": playlistID}}
+	filters := squirrel.And{condition}
 	if !c.owner.IsAdmin {
 		if c.owner.ID == "" {
 			filters = append(filters, squirrel.Eq{"playlist.public": 1})
@@ -371,6 +376,18 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 		return squirrel.Expr("media_file.id NOT IN ("+subSQL+")", subArgs...), nil
 	}
 	return squirrel.Expr("media_file.id IN ("+subSQL+")", subArgs...), nil
+}
+
+// Filesystems disagree on the Unicode form of a name, so match the path in NFC and NFD.
+func pathVariants(path string) []string {
+	variants := []string{path}
+	if alt := norm.NFC.String(path); alt != path {
+		variants = append(variants, alt)
+	}
+	if alt := norm.NFD.String(path); alt != path {
+		variants = append(variants, alt)
+	}
+	return variants
 }
 
 func jsonExpr(info criteria.FieldInfo, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {

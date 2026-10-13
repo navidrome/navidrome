@@ -75,6 +75,43 @@ var _ = Describe("Optimize", func() {
 		Expect(getProperty(consts.DBAnalyzePendingKey)).To(Equal("0"))
 	})
 
+	It("produces the same statistics as a single full ANALYZE", func() {
+		putProperty(consts.DBAnalyzePendingKey, "1")
+		for _, stmt := range []string{
+			"create table unindexed(id integer primary key, v int)",
+			"insert into unindexed(v) select flag from analyze_probe",
+			"create table no_rowid(k text primary key, v int) without rowid",
+			"insert into no_rowid select 'k' || id, id % 7 from analyze_probe",
+			"create index no_rowid_v on no_rowid(v)",
+			"create table partial_only(id integer primary key, v int)",
+			"insert into partial_only(v) select id % 5 from analyze_probe",
+			"create index partial_only_v on partial_only(v) where v = 1",
+			"analyze",
+		} {
+			_, err := database.Exec(stmt)
+			Expect(err).ToNot(HaveOccurred())
+		}
+		statRows := func() []string {
+			rows, err := database.Query("select tbl || '|' || coalesce(idx, '') || '|' || stat from sqlite_stat1 order by 1")
+			Expect(err).ToNot(HaveOccurred())
+			defer rows.Close()
+			var res []string
+			for rows.Next() {
+				var s string
+				Expect(rows.Scan(&s)).To(Succeed())
+				res = append(res, s)
+			}
+			return res
+		}
+		fullAnalyze := statRows()
+		_, err := database.Exec("delete from sqlite_stat1")
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(db.OptimizeDBAt(ctx, database, now)).To(Succeed())
+
+		Expect(statRows()).To(Equal(fullAnalyze))
+	})
+
 	It("runs when no previous analysis was recorded", func() {
 		ran, err := db.OptimizeDBIfNeeded(ctx, database, now)
 		Expect(err).ToNot(HaveOccurred())

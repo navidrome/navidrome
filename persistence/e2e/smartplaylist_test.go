@@ -317,12 +317,12 @@ var _ = Describe("Smart Playlists", func() {
 			smartBID := createPrivateSmartPlaylist(adminUser, `{"all":[{"is":{"genre":"Jazz"}}]}`)
 			smartAID := createPublicSmartPlaylist(regularUser, `{"all":[{"inPlaylist":{"id":"`+smartBID+`"}}]}`)
 
-			loadedA, err := ds.Playlist(ctx).GetWithTracks(smartAID, true, false)
+			loadedA, err := ds.Playlist().GetWithTracks(ctx, smartAID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(loadedA.Tracks).To(BeEmpty())
 			Expect(loadedA.EvaluatedAt).To(BeNil())
 
-			loadedB, err := ds.Playlist(ctx).Get(smartBID)
+			loadedB, err := ds.Playlist().Get(ctx, smartBID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(loadedB.EvaluatedAt).To(BeNil())
 		})

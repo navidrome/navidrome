@@ -414,3 +414,72 @@ var _ = Describe("ResolveRequest", func() {
 		})
 	})
 })
+
+var _ = Describe("ResolveClientRequest", func() {
+	var (
+		svc TranscodeDecider
+		ctx context.Context
+	)
+	mp3Target := []Profile{{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP}}
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		ds := &tests.MockDataStore{
+			MockedProperty:    &tests.MockedPropertyRepo{},
+			MockedTranscoding: &tests.MockTranscodingRepo{},
+		}
+		auth.Init(ds)
+		svc = NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))
+	})
+
+	It("direct plays a source matching a profile through container aliases", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "m4a", Codec: "AAC", BitRate: 256, Channels: 2, SampleRate: 44100})
+		ci := &ClientInfo{
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"mp4"}, AudioCodecs: []string{"aac"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		req := svc.ResolveClientRequest(ctx, mf, ci, 5)
+
+		Expect(req.Format).To(Equal("raw"))
+		Expect(req.Offset).To(Equal(5))
+	})
+
+	It("transcodes to the client's transcoding profile when no direct play profile matches", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+		ci := &ClientInfo{
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"mp3"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		Expect(svc.ResolveClientRequest(ctx, mf, ci, 0).Format).To(Equal("mp3"))
+	})
+
+	It("transcodes a direct-playable source over the bitrate cap to the client's target", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+		ci := &ClientInfo{
+			MaxAudioBitrate:     128,
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"flac"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		req := svc.ResolveClientRequest(ctx, mf, ci, 0)
+
+		Expect(req.Format).To(Equal("mp3"))
+		Expect(req.BitRate).To(Equal(128))
+	})
+
+	It("applies the player's MaxBitRate cap", func() {
+		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
+		ctx = request.WithPlayer(ctx, model.Player{MaxBitRate: 192})
+		ci := &ClientInfo{
+			DirectPlayProfiles:  []DirectPlayProfile{{Containers: []string{"flac"}}},
+			TranscodingProfiles: mp3Target,
+		}
+
+		req := svc.ResolveClientRequest(ctx, mf, ci, 0)
+
+		Expect(req.Format).To(Equal("mp3"))
+		Expect(req.BitRate).To(Equal(192))
+	})
+})

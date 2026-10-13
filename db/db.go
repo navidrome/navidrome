@@ -133,6 +133,12 @@ func ErrorCodes(err error) (code, extended int, ok bool) {
 	return int(se.Code), int(se.ExtendedCode), true
 }
 
+// IsBusy reports whether err is SQLITE_BUSY, including BUSY_SNAPSHOT, which only a new transaction clears.
+func IsBusy(err error) bool {
+	code, _, ok := ErrorCodes(err)
+	return ok && code == int(sqlite3.ErrBusy)
+}
+
 type statusLogger struct{ numPending int }
 
 func (*statusLogger) Fatalf(format string, v ...any) { log.Fatal(fmt.Sprintf(format, v...)) }
@@ -157,17 +163,28 @@ func hasPendingMigrations(ctx context.Context, db *sql.DB, folder string) bool {
 	return l.numPending > 0
 }
 
+// hasGooseTable reports whether goose's bookkeeping table exists, i.e. whether the
+// database has ever been migrated.
+func hasGooseTable(ctx context.Context, db *sql.DB) (bool, error) {
+	var name string
+	err := db.QueryRowContext(ctx,
+		"SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version'").Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func isSchemaEmpty(ctx context.Context, db *sql.DB) bool {
-	rows, err := db.QueryContext(ctx, "SELECT name FROM sqlite_master WHERE type='table' AND name='goose_db_version';") // nolint:rowserrcheck
+	found, err := hasGooseTable(ctx, db)
 	if err != nil {
 		log.Fatal(ctx, "Database could not be opened!", err)
 	}
-	defer rows.Close()
-	return !rows.Next()
+	return !found
 }
 
 type logAdapter struct {
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // goose logger interface has no ctx
 	silent bool
 }
 

@@ -1,5 +1,7 @@
 package model
 
+import "context"
+
 type SearchableRepository[T any] interface {
-	Search(q string, options ...QueryOptions) (T, error)
+	Search(ctx context.Context, q string, options ...QueryOptions) (T, error)
 }
