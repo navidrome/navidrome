@@ -424,6 +424,8 @@ var _ = Describe("Configuration", func() {
 			viper.SetDefault("lastfm.minscrobbleduration", "45s")
 			conf.Load(true)
 			Expect(conf.Server.LastFM.MinScrobbleDuration).To(Equal(45 * time.Second))
+		})
+	})
       
 	Describe("Scanner.Extractor", func() {
 		BeforeEach(func() {
