@@ -520,6 +520,7 @@ func Load(noConfigDump bool) {
 	if Server.LastFM.MinScrobbleDuration < 0 {
 		log.Warn("MinScrobbleDuration must be non-negative, setting to default", "value", Server.LastFM.MinScrobbleDuration, "newValue", consts.DefaultMinScrobbleDuration)
 		Server.LastFM.MinScrobbleDuration = consts.DefaultMinScrobbleDuration
+	}
     
 	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
 		log.Warn("Invalid Scanner.Extractor, using default", "value", Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
