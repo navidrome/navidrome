@@ -855,4 +855,62 @@ var _ = Describe("helpers", func() {
 			})
 		})
 	})
+
+	Describe("childFromFolder", func() {
+		var ctx context.Context
+		BeforeEach(func() {
+			ctx = context.Background()
+		})
+
+		It("maps folder attributes to responses.Child with IsDir=true", func() {
+			createdAt := time.Date(2023, 10, 15, 12, 0, 0, 0, time.UTC)
+			folder := model.Folder{
+				ID:        "folder-123",
+				ParentID:  "parent-456",
+				Name:      "Rock",
+				CreatedAt: createdAt,
+			}
+			child := childFromFolder(ctx, folder)
+			Expect(child.Id).To(Equal("folder-123"))
+			Expect(child.Parent).To(Equal("parent-456"))
+			Expect(child.IsDir).To(BeTrue())
+			Expect(child.Title).To(Equal("Rock"))
+			Expect(child.Name).To(Equal("Rock"))
+			Expect(child.Album).To(Equal("Rock"))
+			Expect(child.Created).NotTo(BeNil())
+			Expect(*child.Created).To(Equal(createdAt))
+			Expect(child.CoverArt).To(BeEmpty())
+		})
+
+		It("leaves CoverArt empty even when folder has image files", func() {
+			folder := model.Folder{
+				ID:         "folder-789",
+				Name:       "Pop",
+				ImageFiles: []string{"cover.jpg"},
+			}
+			child := childFromFolder(ctx, folder)
+			Expect(child.CoverArt).To(BeEmpty())
+		})
+
+		It("leaves Created nil when CreatedAt is zero", func() {
+			folder := model.Folder{
+				ID:        "folder-abc",
+				Name:      "Jazz",
+				CreatedAt: time.Time{},
+			}
+			child := childFromFolder(ctx, folder)
+			Expect(child.Created).To(BeNil())
+			Expect(child.CoverArt).To(BeEmpty())
+		})
+
+		It("sets CoverArt when provided", func() {
+			folder := model.Folder{
+				ID:   "folder-art",
+				Name: "Album Folder",
+			}
+			child := childFromFolder(ctx, folder, "al-album123")
+			Expect(child.CoverArt).To(Equal("al-album123"))
+		})
+	})
 })
+
