@@ -75,6 +75,7 @@ func (api *Router) routes() http.Handler {
 		rx(r, "/player", api.ds.Player(), true)
 		rx(r, "/transcoding", api.ds.Transcoding(), conf.Server.EnableTranscodingConfig)
 		api.addRadioRoute(r)
+		api.addPodcastRoute(r)
 		rx(r, "/tag", api.ds.Tag(), false)
 		rx(r, "/scrobble", api.ds.Scrobble(), false)
 		if conf.Server.EnableSharing {
