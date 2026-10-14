@@ -16,7 +16,7 @@ properties:
     description: HTTP status code of this response.
   detail:
     type: string
-    description: Human-readable explanation specific to this occurrence. Omitted for internal errors.
+    description: Human-readable explanation specific to this occurrence. Omitted unless the server marked the text as safe to show clients.
   code:
     type: string
     description: Machine-readable error code, and the value clients switch on. New codes may be added.
@@ -24,10 +24,18 @@ properties:
       - validation
       - unauthorized
       - forbidden
+      - insufficient_scope
       - not_found
       - method_not_allowed
+      - setup_complete
+      - password_managed_externally
+      - payload_too_large
+      - rate_limited
       - unavailable
       - internal
+  referenceId:
+    type: string
+    description: Present on internal errors. Quote it when reporting a problem; it tags the server's log lines for this request.
   errors:
     type: array
     description: Per-field failures. Present only when `code` is `validation`.

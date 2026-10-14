@@ -1,0 +1,188 @@
+grants:
+  get:
+    operationId: listGrants
+    x-module: core
+    x-scope: read
+    x-stability-level: alpha
+    tags: [auth]
+    summary: List my grants
+    description: "The caller's grants, most recently used first. Grants idle long enough to have expired are not listed."
+    security: [{bearerAuth: []}]
+    parameters:
+      - $ref: ../components/parameters/offset.yaml
+      - $ref: ../components/parameters/limit.yaml
+    responses:
+      '200':
+        description: A page of grants.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/GrantList.yaml
+      '400':
+        $ref: ../components/responses/BadRequest.yaml
+      '401':
+        $ref: ../components/responses/Unauthorized.yaml
+      '403':
+        $ref: ../components/responses/Forbidden.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml
+grant:
+  delete:
+    operationId: revokeGrant
+    x-module: core
+    x-scope: read
+    x-stability-level: alpha
+    tags: [auth]
+    summary: Revoke one of my grants
+    description: "Revokes the grant; requests with its secret fail from then on. Another user's grant id answers 404."
+    security: [{bearerAuth: []}]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Grant id.
+        schema:
+          type: string
+          maxLength: 64
+    responses:
+      '204':
+        description: Revoked.
+      '400':
+        $ref: ../components/responses/BadRequest.yaml
+      '401':
+        $ref: ../components/responses/Unauthorized.yaml
+      '403':
+        $ref: ../components/responses/Forbidden.yaml
+      '404':
+        $ref: ../components/responses/NotFound.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml
+logout:
+  post:
+    operationId: logout
+    x-module: core
+    x-scope: read
+    x-stability-level: alpha
+    tags: [auth]
+    summary: Log out
+    description: Revokes the grant that made this request.
+    security: [{bearerAuth: []}]
+    responses:
+      '200':
+        description: Logged out.
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/LogoutResponse.yaml
+      '401':
+        $ref: ../components/responses/Unauthorized.yaml
+      '403':
+        $ref: ../components/responses/Forbidden.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml
+login:
+  post:
+    operationId: login
+    x-module: password
+    x-stability-level: alpha
+    tags: [auth]
+    summary: Log in with a password
+    description: Checks the username and password and returns a new grant. Unknown user and wrong password fail the same way.
+    security: []
+    requestBody:
+      description: The credentials and a description of the client.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/CredentialsRequest.yaml
+    responses:
+      '200':
+        description: The new grant.
+        headers:
+          Cache-Control:
+            $ref: ../components/headers/CacheControlNoStore.yaml
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/GrantCreated.yaml
+      '400':
+        $ref: ../components/responses/BadRequest.yaml
+      '401':
+        $ref: ../components/responses/Unauthorized.yaml
+      '413':
+        $ref: ../components/responses/PayloadTooLarge.yaml
+      '429':
+        $ref: ../components/responses/TooManyRequests.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml
+setup:
+  post:
+    operationId: setupFirstAdmin
+    x-module: password
+    x-stability-level: alpha
+    tags: [auth]
+    summary: Create the first admin
+    description: "Creates the first administrator while `setupRequired` is true and returns a grant for it. Answers 409 `setup_complete` once any user exists. A server with no setup step always answers 409."
+    security: []
+    requestBody:
+      description: The credentials and a description of the client.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/CredentialsRequest.yaml
+    responses:
+      '201':
+        description: The admin was created.
+        headers:
+          Cache-Control:
+            $ref: ../components/headers/CacheControlNoStore.yaml
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/GrantCreated.yaml
+      '400':
+        $ref: ../components/responses/BadRequest.yaml
+      '409':
+        $ref: ../components/responses/Conflict.yaml
+      '413':
+        $ref: ../components/responses/PayloadTooLarge.yaml
+      '429':
+        $ref: ../components/responses/TooManyRequests.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml
+password:
+  post:
+    operationId: changePassword
+    x-module: password
+    x-scope: password
+    x-stability-level: alpha
+    tags: [auth]
+    summary: Change my password
+    description: "Changes the caller's password. By default every other grant of the user is revoked; the calling grant survives. On Navidrome the change also ends the user's sessions on its other APIs, regardless of `revokeOtherGrants`, which only covers API v1 grants. Answers 409 `password_managed_externally` when the password is not stored by this server."
+    security: [{bearerAuth: []}]
+    requestBody:
+      description: The current and the new password.
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/PasswordChangeRequest.yaml
+    responses:
+      '204':
+        description: Password changed.
+      '400':
+        $ref: ../components/responses/BadRequest.yaml
+      '401':
+        $ref: ../components/responses/Unauthorized.yaml
+      '403':
+        $ref: ../components/responses/Forbidden.yaml
+      '409':
+        $ref: ../components/responses/Conflict.yaml
+      '413':
+        $ref: ../components/responses/PayloadTooLarge.yaml
+      '429':
+        $ref: ../components/responses/TooManyRequests.yaml
+      '500':
+        $ref: ../components/responses/InternalError.yaml

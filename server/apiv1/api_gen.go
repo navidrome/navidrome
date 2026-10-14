@@ -7,21 +7,29 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 )
 
 // Defines values for ProblemCode.
 const (
-	ProblemCodeForbidden        ProblemCode = "forbidden"
-	ProblemCodeInternal         ProblemCode = "internal"
-	ProblemCodeMethodNotAllowed ProblemCode = "method_not_allowed"
-	ProblemCodeNotFound         ProblemCode = "not_found"
-	ProblemCodeUnauthorized     ProblemCode = "unauthorized"
-	ProblemCodeUnavailable      ProblemCode = "unavailable"
-	ProblemCodeValidation       ProblemCode = "validation"
+	ProblemCodeForbidden                 ProblemCode = "forbidden"
+	ProblemCodeInsufficientScope         ProblemCode = "insufficient_scope"
+	ProblemCodeInternal                  ProblemCode = "internal"
+	ProblemCodeMethodNotAllowed          ProblemCode = "method_not_allowed"
+	ProblemCodeNotFound                  ProblemCode = "not_found"
+	ProblemCodePasswordManagedExternally ProblemCode = "password_managed_externally"
+	ProblemCodePayloadTooLarge           ProblemCode = "payload_too_large"
+	ProblemCodeRateLimited               ProblemCode = "rate_limited"
+	ProblemCodeSetupComplete             ProblemCode = "setup_complete"
+	ProblemCodeUnauthorized              ProblemCode = "unauthorized"
+	ProblemCodeUnavailable               ProblemCode = "unavailable"
+	ProblemCodeValidation                ProblemCode = "validation"
 )
 
 // Valid indicates whether the value is a known member of the ProblemCode enum.
@@ -29,11 +37,21 @@ func (e ProblemCode) Valid() bool {
 	switch e {
 	case ProblemCodeForbidden:
 		return true
+	case ProblemCodeInsufficientScope:
+		return true
 	case ProblemCodeInternal:
 		return true
 	case ProblemCodeMethodNotAllowed:
 		return true
 	case ProblemCodeNotFound:
+		return true
+	case ProblemCodePasswordManagedExternally:
+		return true
+	case ProblemCodePayloadTooLarge:
+		return true
+	case ProblemCodeRateLimited:
+		return true
+	case ProblemCodeSetupComplete:
 		return true
 	case ProblemCodeUnauthorized:
 		return true
@@ -46,31 +64,191 @@ func (e ProblemCode) Valid() bool {
 	}
 }
 
-// Defines values for ServerInfoLoginMethods.
+// Defines values for Scope.
 const (
-	ServerInfoLoginMethodsPassword ServerInfoLoginMethods = "password"
+	ScopeAll      Scope = "all"
+	ScopePassword Scope = "password"
+	ScopeRead     Scope = "read"
 )
 
-// Valid indicates whether the value is a known member of the ServerInfoLoginMethods enum.
-func (e ServerInfoLoginMethods) Valid() bool {
+// Valid indicates whether the value is a known member of the Scope enum.
+func (e Scope) Valid() bool {
 	switch e {
-	case ServerInfoLoginMethodsPassword:
+	case ScopeAll:
+		return true
+	case ScopePassword:
+		return true
+	case ScopeRead:
 		return true
 	default:
 		return false
 	}
 }
 
+// AuthUser The user a grant belongs to.
+type AuthUser struct {
+	// Id User id.
+	Id string `json:"id"`
+
+	// IsAdmin Whether the user is an administrator.
+	IsAdmin bool `json:"isAdmin"`
+
+	// Name Display name.
+	Name string `json:"name"`
+
+	// PasswordChangeable Whether `POST /auth/password` can change this user's password. Clients hide "change password" when false.
+	PasswordChangeable bool `json:"passwordChangeable"`
+
+	// UserName Login name.
+	UserName string `json:"userName"`
+}
+
+// Capabilities Capability modules this server implements, keyed by module. Keys are optional; a missing key means the
+// module is not implemented. New modules are added as new optional keys. These are server facts, not what
+// the calling grant may use.
+type Capabilities struct {
+	// Core The mandatory core module.
+	Core *CoreCapability `json:"core,omitempty"`
+
+	// Password The password login module (login, first-admin setup, password change).
+	Password *PasswordCapability `json:"password,omitempty"`
+}
+
+// CoreCapability The mandatory core module.
+type CoreCapability struct {
+	// Version Module version. Bumped only on semantic change.
+	Version int `json:"version"`
+}
+
+// CredentialsRequest Username, password and client description for a login or first-admin setup.
+type CredentialsRequest struct {
+	// Client Name of the client app.
+	Client string `json:"client"`
+
+	// ClientVersion Version of the client app.
+	ClientVersion *string `json:"clientVersion,omitempty"`
+
+	// Name Label for this grant. Defaults to `client`.
+	Name *string `json:"name,omitempty"`
+
+	// Password Password.
+	Password string `json:"password"`
+
+	// Scopes Scopes the grant may hold. Omit for `all`.
+	Scopes *[]ScopeRequest `json:"scopes,omitempty"`
+
+	// Username Login name.
+	Username string `json:"username"`
+}
+
+// Grant A long-lived grant held by one client of one user.
+type Grant struct {
+	// Client Name of the client app that holds the grant.
+	Client string `json:"client"`
+
+	// ClientVersion Version of the client app, when it sent one.
+	ClientVersion *string `json:"clientVersion"`
+
+	// CreatedAt When the grant was created.
+	CreatedAt time.Time `json:"createdAt"`
+
+	// Current True for the grant that made this request.
+	Current bool `json:"current"`
+
+	// Id Grant id.
+	Id string `json:"id"`
+
+	// LastUsedAt When the grant was last used, at a coarse granularity. Null until first use.
+	LastUsedAt *time.Time `json:"lastUsedAt"`
+
+	// LastUsedIp Client IP of the last use. Null until first use.
+	LastUsedIp *string `json:"lastUsedIp"`
+
+	// Name Label shown to the user.
+	Name string `json:"name"`
+
+	// Provider How the grant was created, for example `password` or `setup`. Free-form; new values may appear.
+	Provider string `json:"provider"`
+
+	// Scopes Scopes this grant carries.
+	Scopes []Scope `json:"scopes"`
+}
+
+// GrantCreated Returned by every login method. The secret is shown only here; store it and never parse it.
+type GrantCreated struct {
+	// Grant The new grant.
+	Grant Grant `json:"grant"`
+
+	// Secret Opaque grant secret. Send it as `Authorization: Bearer <secret>`.
+	Secret string `json:"secret"`
+
+	// User The user the grant belongs to.
+	User AuthUser `json:"user"`
+}
+
+// GrantList A page of the caller's grants.
+type GrantList struct {
+	// Items Grants on this page, by last use, most recent first; never-used grants last.
+	Items []Grant `json:"items"`
+
+	// Limit Maximum number of items in this page.
+	Limit int `json:"limit"`
+
+	// Offset Zero-based index of the first returned item.
+	Offset int `json:"offset"`
+
+	// Total Total number of grants.
+	Total int `json:"total"`
+}
+
+// LoginMethods Login methods this server accepts, keyed by method. A missing key means the method is not offered.
+// Keys are optional on purpose: discovery is read by clients of any version against servers of any
+// version, so new methods are added as new optional keys. Clients ignore keys they do not know.
+type LoginMethods struct {
+	// Password Username and password login (`POST /auth/login`). No settings yet.
+	Password *PasswordLoginMethod `json:"password,omitempty"`
+}
+
+// LogoutResponse Result of a logout.
+type LogoutResponse struct {
+	// LogoutUrl Where to send the browser to finish logging out of an external provider. Null when there is nothing more to do.
+	LogoutUrl *string `json:"logoutUrl"`
+}
+
+// PasswordCapability The password login module (login, first-admin setup, password change).
+type PasswordCapability struct {
+	// Version Module version. Bumped only on semantic change.
+	Version int `json:"version"`
+}
+
+// PasswordChangeRequest Change the caller's own password.
+type PasswordChangeRequest struct {
+	// CurrentPassword The current password.
+	CurrentPassword string `json:"currentPassword"`
+
+	// NewPassword The new password.
+	NewPassword string `json:"newPassword"`
+
+	// RevokeOtherGrants Revoke every other grant of the user. The calling grant always survives. Default true.
+	RevokeOtherGrants *bool `json:"revokeOtherGrants,omitempty"`
+}
+
+// PasswordLoginMethod Username and password login (`POST /auth/login`). No settings yet.
+type PasswordLoginMethod = map[string]interface{}
+
 // Problem RFC 9457 problem details, returned for every 4xx and 5xx response.
 type Problem struct {
 	// Code Machine-readable error code, and the value clients switch on. New codes may be added.
 	Code ProblemCode `json:"code"`
 
-	// Detail Human-readable explanation specific to this occurrence. Omitted for internal errors.
+	// Detail Human-readable explanation specific to this occurrence. Omitted unless the server marked the text as safe to show clients.
 	Detail *string `json:"detail,omitempty"`
 
 	// Errors Per-field failures. Present only when `code` is `validation`.
 	Errors *[]ValidationError `json:"errors,omitempty"`
+
+	// ReferenceId Present on internal errors. Quote it when reporting a problem; it tags the server's log lines for this request.
+	ReferenceId *string `json:"referenceId,omitempty"`
 
 	// Status HTTP status code of this response.
 	Status int `json:"status"`
@@ -87,10 +265,19 @@ type Problem struct {
 // ProblemCode Machine-readable error code, and the value clients switch on. New codes may be added.
 type ProblemCode string
 
+// Scope A permission scope. Scopes mirror capability modules; `x:write` includes `x`. `all` appears only on
+// grants and means every scope the user is entitled to, now and in future releases. New scopes may be added.
+type Scope string
+
+// ScopeRequest A requested scope. Scopes the server does not know are dropped, not rejected, so newer clients keep working.
+type ScopeRequest = string
+
 // ServerInfo Public server description. Everything an add-server screen needs before login.
 type ServerInfo struct {
-	// LoginMethods Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
-	LoginMethods []ServerInfoLoginMethods `json:"loginMethods"`
+	// LoginMethods Login methods this server accepts, keyed by method. A missing key means the method is not offered.
+	// Keys are optional on purpose: discovery is read by clients of any version against servers of any
+	// version, so new methods are added as new optional keys. Clients ignore keys they do not know.
+	LoginMethods LoginMethods `json:"loginMethods"`
 
 	// Name Human-readable server product name.
 	Name string `json:"name"`
@@ -105,9 +292,6 @@ type ServerInfo struct {
 	SpecVersion string `json:"specVersion"`
 }
 
-// ServerInfoLoginMethods defines model for ServerInfo.LoginMethods.
-type ServerInfoLoginMethods string
-
 // ValidationError One field-level validation failure.
 type ValidationError struct {
 	// Field Name of the offending query parameter, path parameter, or body field (dotted for nested).
@@ -117,11 +301,77 @@ type ValidationError struct {
 	Message string `json:"message"`
 }
 
+// LimitParam defines model for limit.
+type LimitParam = int
+
+// OffsetParam defines model for offset.
+type OffsetParam = int
+
+// BadRequest RFC 9457 problem details, returned for every 4xx and 5xx response.
+type BadRequest = Problem
+
+// Conflict RFC 9457 problem details, returned for every 4xx and 5xx response.
+type Conflict = Problem
+
+// Forbidden RFC 9457 problem details, returned for every 4xx and 5xx response.
+type Forbidden = Problem
+
 // InternalError RFC 9457 problem details, returned for every 4xx and 5xx response.
 type InternalError = Problem
 
+// NotFound RFC 9457 problem details, returned for every 4xx and 5xx response.
+type NotFound = Problem
+
+// PayloadTooLarge RFC 9457 problem details, returned for every 4xx and 5xx response.
+type PayloadTooLarge = Problem
+
+// TooManyRequests RFC 9457 problem details, returned for every 4xx and 5xx response.
+type TooManyRequests = Problem
+
+// Unauthorized RFC 9457 problem details, returned for every 4xx and 5xx response.
+type Unauthorized = Problem
+
+// ListGrantsParams defines parameters for ListGrants.
+type ListGrantsParams struct {
+	// OffsetParam Zero-based index of the first item to return.
+	OffsetParam *OffsetParam `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// LimitParam Maximum number of items to return.
+	LimitParam *LimitParam `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = CredentialsRequest
+
+// ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
+type ChangePasswordJSONRequestBody = PasswordChangeRequest
+
+// SetupFirstAdminJSONRequestBody defines body for SetupFirstAdmin for application/json ContentType.
+type SetupFirstAdminJSONRequestBody = CredentialsRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// ListGrants List my grants
+	// (GET /auth/grants)
+	ListGrants(w http.ResponseWriter, r *http.Request, params ListGrantsParams)
+	// RevokeGrant Revoke one of my grants
+	// (DELETE /auth/grants/{id})
+	RevokeGrant(w http.ResponseWriter, r *http.Request, id string)
+	// Login Log in with a password
+	// (POST /auth/login)
+	Login(w http.ResponseWriter, r *http.Request)
+	// Logout Log out
+	// (POST /auth/logout)
+	Logout(w http.ResponseWriter, r *http.Request)
+	// ChangePassword Change my password
+	// (POST /auth/password)
+	ChangePassword(w http.ResponseWriter, r *http.Request)
+	// SetupFirstAdmin Create the first admin
+	// (POST /auth/setup)
+	SetupFirstAdmin(w http.ResponseWriter, r *http.Request)
+	// GetCapabilities List implemented capability modules
+	// (GET /capabilities)
+	GetCapabilities(w http.ResponseWriter, r *http.Request)
 	// GetServerInfo Describe the server
 	// (GET /server)
 	GetServerInfo(w http.ResponseWriter, r *http.Request)
@@ -130,6 +380,48 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// ListGrants List my grants
+// (GET /auth/grants)
+func (_ Unimplemented) ListGrants(w http.ResponseWriter, r *http.Request, params ListGrantsParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RevokeGrant Revoke one of my grants
+// (DELETE /auth/grants/{id})
+func (_ Unimplemented) RevokeGrant(w http.ResponseWriter, r *http.Request, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Login Log in with a password
+// (POST /auth/login)
+func (_ Unimplemented) Login(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Logout Log out
+// (POST /auth/logout)
+func (_ Unimplemented) Logout(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ChangePassword Change my password
+// (POST /auth/password)
+func (_ Unimplemented) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SetupFirstAdmin Create the first admin
+// (POST /auth/setup)
+func (_ Unimplemented) SetupFirstAdmin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetCapabilities List implemented capability modules
+// (GET /capabilities)
+func (_ Unimplemented) GetCapabilities(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // GetServerInfo Describe the server
 // (GET /server)
@@ -145,6 +437,148 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ListGrants operation middleware
+func (siw *ServerInterfaceWrapper) ListGrants(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListGrantsParams
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.OffsetParam, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.LimitParam, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListGrants(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevokeGrant operation middleware
+func (siw *ServerInterfaceWrapper) RevokeGrant(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevokeGrant(w, r, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Login operation middleware
+func (siw *ServerInterfaceWrapper) Login(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Login(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// Logout operation middleware
+func (siw *ServerInterfaceWrapper) Logout(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Logout(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ChangePassword operation middleware
+func (siw *ServerInterfaceWrapper) ChangePassword(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ChangePassword(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetupFirstAdmin operation middleware
+func (siw *ServerInterfaceWrapper) SetupFirstAdmin(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetupFirstAdmin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetCapabilities operation middleware
+func (siw *ServerInterfaceWrapper) GetCapabilities(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetCapabilities(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetServerInfo operation middleware
 func (siw *ServerInterfaceWrapper) GetServerInfo(w http.ResponseWriter, r *http.Request) {
@@ -274,13 +708,764 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/auth/grants", wrapper.ListGrants)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/auth/grants/{id}", wrapper.RevokeGrant)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/login", wrapper.Login)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/logout", wrapper.Logout)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/password", wrapper.ChangePassword)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/setup", wrapper.SetupFirstAdmin)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/capabilities", wrapper.GetCapabilities)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/server", wrapper.GetServerInfo)
 	})
 
 	return r
 }
 
+type BadRequestApplicationProblemPlusJSONResponse Problem
+
+type ConflictApplicationProblemPlusJSONResponse Problem
+
+type ForbiddenResponseHeaders struct {
+	WWWAuthenticate *string
+}
+type ForbiddenApplicationProblemPlusJSONResponse struct {
+	Body Problem
+
+	Headers ForbiddenResponseHeaders
+}
+
 type InternalErrorApplicationProblemPlusJSONResponse Problem
+
+type NotFoundApplicationProblemPlusJSONResponse Problem
+
+type PayloadTooLargeApplicationProblemPlusJSONResponse Problem
+
+type TooManyRequestsResponseHeaders struct {
+	RetryAfter *int
+}
+type TooManyRequestsApplicationProblemPlusJSONResponse struct {
+	Body Problem
+
+	Headers TooManyRequestsResponseHeaders
+}
+
+type UnauthorizedResponseHeaders struct {
+	WWWAuthenticate *string
+}
+type UnauthorizedApplicationProblemPlusJSONResponse struct {
+	Body Problem
+
+	Headers UnauthorizedResponseHeaders
+}
+
+type ListGrantsRequestObject struct {
+	Params ListGrantsParams
+}
+
+type ListGrantsResponseObject interface {
+	VisitListGrantsResponse(w http.ResponseWriter) error
+}
+
+type ListGrants200JSONResponse GrantList
+
+func (response ListGrants200JSONResponse) VisitListGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListGrants400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response ListGrants400ApplicationProblemPlusJSONResponse) VisitListGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListGrants401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ListGrants401ApplicationProblemPlusJSONResponse) VisitListGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListGrants403ApplicationProblemPlusJSONResponse struct {
+	ForbiddenApplicationProblemPlusJSONResponse
+}
+
+func (response ListGrants403ApplicationProblemPlusJSONResponse) VisitListGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListGrants500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response ListGrants500ApplicationProblemPlusJSONResponse) VisitListGrantsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeGrantRequestObject struct {
+	Id string `json:"id"`
+}
+
+type RevokeGrantResponseObject interface {
+	VisitRevokeGrantResponse(w http.ResponseWriter) error
+}
+
+type RevokeGrant204Response struct {
+}
+
+func (response RevokeGrant204Response) VisitRevokeGrantResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type RevokeGrant400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response RevokeGrant400ApplicationProblemPlusJSONResponse) VisitRevokeGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeGrant401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response RevokeGrant401ApplicationProblemPlusJSONResponse) VisitRevokeGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeGrant403ApplicationProblemPlusJSONResponse struct {
+	ForbiddenApplicationProblemPlusJSONResponse
+}
+
+func (response RevokeGrant403ApplicationProblemPlusJSONResponse) VisitRevokeGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeGrant404ApplicationProblemPlusJSONResponse struct {
+	NotFoundApplicationProblemPlusJSONResponse
+}
+
+func (response RevokeGrant404ApplicationProblemPlusJSONResponse) VisitRevokeGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevokeGrant500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response RevokeGrant500ApplicationProblemPlusJSONResponse) VisitRevokeGrantResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LoginRequestObject struct {
+	Body *LoginJSONRequestBody
+}
+
+type LoginResponseObject interface {
+	VisitLoginResponse(w http.ResponseWriter) error
+}
+
+type Login200ResponseHeaders struct {
+	CacheControl *string
+}
+
+type Login200JSONResponse struct {
+	Body    GrantCreated
+	Headers Login200ResponseHeaders
+}
+
+func (response Login200JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.CacheControl != nil {
+		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
+	}
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Login400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response Login400ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Login401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response Login401ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Login413ApplicationProblemPlusJSONResponse struct {
+	PayloadTooLargeApplicationProblemPlusJSONResponse
+}
+
+func (response Login413ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(413)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Login429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response Login429ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Login500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response Login500ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type LogoutRequestObject struct {
+}
+
+type LogoutResponseObject interface {
+	VisitLogoutResponse(w http.ResponseWriter) error
+}
+
+type Logout200JSONResponse LogoutResponse
+
+func (response Logout200JSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Logout401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response Logout401ApplicationProblemPlusJSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Logout403ApplicationProblemPlusJSONResponse struct {
+	ForbiddenApplicationProblemPlusJSONResponse
+}
+
+func (response Logout403ApplicationProblemPlusJSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type Logout500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response Logout500ApplicationProblemPlusJSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePasswordRequestObject struct {
+	Body *ChangePasswordJSONRequestBody
+}
+
+type ChangePasswordResponseObject interface {
+	VisitChangePasswordResponse(w http.ResponseWriter) error
+}
+
+type ChangePassword204Response struct {
+}
+
+func (response ChangePassword204Response) VisitChangePasswordResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type ChangePassword400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response ChangePassword400ApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response ChangePassword401ApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword403ApplicationProblemPlusJSONResponse struct {
+	ForbiddenApplicationProblemPlusJSONResponse
+}
+
+func (response ChangePassword403ApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response ChangePassword409ApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword413ApplicationProblemPlusJSONResponse struct {
+	PayloadTooLargeApplicationProblemPlusJSONResponse
+}
+
+func (response ChangePassword413ApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(413)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response ChangePassword429ApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ChangePassword500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response ChangePassword500ApplicationProblemPlusJSONResponse) VisitChangePasswordResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetupFirstAdminRequestObject struct {
+	Body *SetupFirstAdminJSONRequestBody
+}
+
+type SetupFirstAdminResponseObject interface {
+	VisitSetupFirstAdminResponse(w http.ResponseWriter) error
+}
+
+type SetupFirstAdmin201ResponseHeaders struct {
+	CacheControl *string
+}
+
+type SetupFirstAdmin201JSONResponse struct {
+	Body    GrantCreated
+	Headers SetupFirstAdmin201ResponseHeaders
+}
+
+func (response SetupFirstAdmin201JSONResponse) VisitSetupFirstAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if response.Headers.CacheControl != nil {
+		w.Header().Set("Cache-Control", fmt.Sprint(*response.Headers.CacheControl))
+	}
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetupFirstAdmin400ApplicationProblemPlusJSONResponse struct {
+	BadRequestApplicationProblemPlusJSONResponse
+}
+
+func (response SetupFirstAdmin400ApplicationProblemPlusJSONResponse) VisitSetupFirstAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetupFirstAdmin409ApplicationProblemPlusJSONResponse struct {
+	ConflictApplicationProblemPlusJSONResponse
+}
+
+func (response SetupFirstAdmin409ApplicationProblemPlusJSONResponse) VisitSetupFirstAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetupFirstAdmin413ApplicationProblemPlusJSONResponse struct {
+	PayloadTooLargeApplicationProblemPlusJSONResponse
+}
+
+func (response SetupFirstAdmin413ApplicationProblemPlusJSONResponse) VisitSetupFirstAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(413)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetupFirstAdmin429ApplicationProblemPlusJSONResponse struct {
+	TooManyRequestsApplicationProblemPlusJSONResponse
+}
+
+func (response SetupFirstAdmin429ApplicationProblemPlusJSONResponse) VisitSetupFirstAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.RetryAfter != nil {
+		w.Header().Set("Retry-After", fmt.Sprint(*response.Headers.RetryAfter))
+	}
+	w.WriteHeader(429)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetupFirstAdmin500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response SetupFirstAdmin500ApplicationProblemPlusJSONResponse) VisitSetupFirstAdminResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapabilitiesRequestObject struct {
+}
+
+type GetCapabilitiesResponseObject interface {
+	VisitGetCapabilitiesResponse(w http.ResponseWriter) error
+}
+
+type GetCapabilities200JSONResponse Capabilities
+
+func (response GetCapabilities200JSONResponse) VisitGetCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapabilities401ApplicationProblemPlusJSONResponse struct {
+	UnauthorizedApplicationProblemPlusJSONResponse
+}
+
+func (response GetCapabilities401ApplicationProblemPlusJSONResponse) VisitGetCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	if response.Headers.WWWAuthenticate != nil {
+		w.Header().Set("WWW-Authenticate", fmt.Sprint(*response.Headers.WWWAuthenticate))
+	}
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetCapabilities500ApplicationProblemPlusJSONResponse struct {
+	InternalErrorApplicationProblemPlusJSONResponse
+}
+
+func (response GetCapabilities500ApplicationProblemPlusJSONResponse) VisitGetCapabilitiesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type GetServerInfoRequestObject struct {
 }
@@ -321,6 +1506,27 @@ func (response GetServerInfo500ApplicationProblemPlusJSONResponse) VisitGetServe
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// ListGrants List my grants
+	// (GET /auth/grants)
+	ListGrants(ctx context.Context, request ListGrantsRequestObject) (ListGrantsResponseObject, error)
+	// RevokeGrant Revoke one of my grants
+	// (DELETE /auth/grants/{id})
+	RevokeGrant(ctx context.Context, request RevokeGrantRequestObject) (RevokeGrantResponseObject, error)
+	// Login Log in with a password
+	// (POST /auth/login)
+	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
+	// Logout Log out
+	// (POST /auth/logout)
+	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
+	// ChangePassword Change my password
+	// (POST /auth/password)
+	ChangePassword(ctx context.Context, request ChangePasswordRequestObject) (ChangePasswordResponseObject, error)
+	// SetupFirstAdmin Create the first admin
+	// (POST /auth/setup)
+	SetupFirstAdmin(ctx context.Context, request SetupFirstAdminRequestObject) (SetupFirstAdminResponseObject, error)
+	// GetCapabilities List implemented capability modules
+	// (GET /capabilities)
+	GetCapabilities(ctx context.Context, request GetCapabilitiesRequestObject) (GetCapabilitiesResponseObject, error)
 	// GetServerInfo Describe the server
 	// (GET /server)
 	GetServerInfo(ctx context.Context, request GetServerInfoRequestObject) (GetServerInfoResponseObject, error)
@@ -363,6 +1569,199 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ListGrants operation middleware
+func (sh *strictHandler) ListGrants(w http.ResponseWriter, r *http.Request, params ListGrantsParams) {
+	var request ListGrantsRequestObject
+
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListGrants(ctx, request.(ListGrantsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListGrants")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListGrantsResponseObject); ok {
+		if err := validResponse.VisitListGrantsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevokeGrant operation middleware
+func (sh *strictHandler) RevokeGrant(w http.ResponseWriter, r *http.Request, id string) {
+	var request RevokeGrantRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeGrant(ctx, request.(RevokeGrantRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeGrant")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevokeGrantResponseObject); ok {
+		if err := validResponse.VisitRevokeGrantResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Login operation middleware
+func (sh *strictHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var request LoginRequestObject
+
+	var body LoginJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Login(ctx, request.(LoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Login")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LoginResponseObject); ok {
+		if err := validResponse.VisitLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Logout operation middleware
+func (sh *strictHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	var request LogoutRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Logout")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(LogoutResponseObject); ok {
+		if err := validResponse.VisitLogoutResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ChangePassword operation middleware
+func (sh *strictHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	var request ChangePasswordRequestObject
+
+	var body ChangePasswordJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ChangePassword(ctx, request.(ChangePasswordRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ChangePassword")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ChangePasswordResponseObject); ok {
+		if err := validResponse.VisitChangePasswordResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetupFirstAdmin operation middleware
+func (sh *strictHandler) SetupFirstAdmin(w http.ResponseWriter, r *http.Request) {
+	var request SetupFirstAdminRequestObject
+
+	var body SetupFirstAdminJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetupFirstAdmin(ctx, request.(SetupFirstAdminRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetupFirstAdmin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetupFirstAdminResponseObject); ok {
+		if err := validResponse.VisitSetupFirstAdminResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCapabilities operation middleware
+func (sh *strictHandler) GetCapabilities(w http.ResponseWriter, r *http.Request) {
+	var request GetCapabilitiesRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCapabilities(ctx, request.(GetCapabilitiesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCapabilities")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetCapabilitiesResponseObject); ok {
+		if err := validResponse.VisitGetCapabilitiesResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetServerInfo operation middleware
