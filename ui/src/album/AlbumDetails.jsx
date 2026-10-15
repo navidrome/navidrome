@@ -302,11 +302,7 @@ const AlbumDetails = (props) => {
                 />
               </div>
             )}
-            {isDesktop ? (
-              <GenreList />
-            ) : (
-              <Typography component={'p'}>{record.genre}</Typography>
-            )}
+            <GenreList />
             {!isXsmall && (
               <Typography component={'div'} className={classes.recordMeta}>
                 {config.enableExternalServices && (
