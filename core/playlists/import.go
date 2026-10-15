@@ -60,7 +60,7 @@ func (s *playlists) ImportFile(ctx context.Context, absolutePath string, sync bo
 	defer file.Close()
 
 	hasher := xxh3.New()
-	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
+	reader := io.TeeReader(utf8PlaylistReader(ctx, file), hasher)
 	if err := s.parseM3U(ctx, pls, nil, reader); err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (s *playlists) parsePlaylist(ctx context.Context, playlistFile string, fold
 
 	// Hash the bytes the parser consumes, giving every imported playlist a content fingerprint
 	hasher := xxh3.New()
-	reader := io.TeeReader(ioutils.UTF8Reader(file), hasher)
+	reader := io.TeeReader(utf8PlaylistReader(ctx, file), hasher)
 	extension := strings.ToLower(filepath.Ext(playlistFile))
 	switch extension {
 	case ".nsp":
@@ -222,4 +222,12 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		}
 	}
 	return s.ds.Playlist().Put(ctx, newPls)
+}
+
+// utf8PlaylistReader returns the playlist file as UTF-8 and logs when some of its
+// lines were not valid UTF-8 and had to be read as Windows-1252.
+func utf8PlaylistReader(ctx context.Context, file *os.File) io.Reader {
+	return ioutils.UTF8ReaderWithFallback(file, func(lines int) {
+		log.Warn(ctx, "Playlist file is not valid UTF-8, decoded the affected lines as Windows-1252", "file", file.Name(), "lines", lines)
+	})
 }
