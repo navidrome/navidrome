@@ -5,10 +5,11 @@ import { GlobalHotKeys } from 'react-hotkeys'
 import IconButton from '@material-ui/core/IconButton'
 import { useMediaQuery } from '@material-ui/core'
 import { RiSaveLine } from 'react-icons/ri'
-import { LoveButton, useToggleLove } from '../common'
+import { LoveButton, RatingField, useToggleLove } from '../common'
 import { openSaveQueueDialog } from '../actions'
 import { keyMap } from '../hotkeys'
 import { makeStyles } from '@material-ui/core/styles'
+import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -50,6 +51,10 @@ const useStyles = makeStyles((theme) => ({
   },
   mobileIcon: {
     fontSize: '18px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  rating: {
     display: 'flex',
     alignItems: 'center',
   },
@@ -99,16 +104,34 @@ const PlayerToolbar = ({ id, isRadio }) => {
     />
   )
 
+  // Inline star rating for the currently-playing track. Only shown when star
+  // rating is enabled and we have a real (non-radio) song loaded. `alwaysVisible`
+  // keeps the empty stars on screen so an unrated track can be rated in place.
+  const ratingControl =
+    config.enableStarRating && !isRadio && !!id && data ? (
+      <RatingField
+        record={data}
+        resource={'song'}
+        size={'small'}
+        alwaysVisible
+        className={classes.rating}
+      />
+    ) : null
+
   return (
     <>
       <GlobalHotKeys keyMap={keyMap} handlers={handlers} allowChanges />
       {isDesktop ? (
         <li className={`${listItemClass} item`}>
+          {ratingControl}
           {saveQueueButton}
           {loveButton}
         </li>
       ) : (
         <>
+          {ratingControl && (
+            <li className={`${listItemClass} item`}>{ratingControl}</li>
+          )}
           <li className={`${listItemClass} item`}>{saveQueueButton}</li>
           <li className={`${listItemClass} item`}>{loveButton}</li>
         </>
