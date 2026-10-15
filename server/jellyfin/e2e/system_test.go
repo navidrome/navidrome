@@ -51,6 +51,22 @@ var _ = Describe("System", func() {
 		})
 	})
 
+	Describe("GET /System/Endpoint", func() {
+		It("always reports IsInNetwork, which Finamp's connection test probes for", func() {
+			w := getAs(regularUser, "/System/Endpoint")
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var info map[string]any
+			parseInto(w, &info)
+			Expect(info).To(HaveKey("IsInNetwork"))
+			Expect(info).To(HaveKey("IsLocal"))
+		})
+
+		It("rejects unauthenticated requests", func() {
+			w := rawReq("GET", "/System/Endpoint", "")
+			Expect(w.Code).To(Equal(http.StatusUnauthorized))
+		})
+	})
+
 	Describe("GET/POST /System/Ping", func() {
 		It("answers GET with a plain-text server name", func() {
 			w := rawReq("GET", "/System/Ping", "")
@@ -63,14 +79,6 @@ var _ = Describe("System", func() {
 			w := rawReq("POST", "/System/Ping", "")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(strings.TrimSpace(w.Body.String())).To(HavePrefix("Navidrome"))
-		})
-	})
-
-	Describe("GET /QuickConnect/Enabled", func() {
-		It("reports QuickConnect disabled", func() {
-			w := rawReq("GET", "/QuickConnect/Enabled", "")
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(strings.TrimSpace(w.Body.String())).To(Equal("false"))
 		})
 	})
 })

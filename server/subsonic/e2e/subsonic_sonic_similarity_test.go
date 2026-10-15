@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -43,7 +44,7 @@ func buildSonicRouter(provider sonic.Provider) *subsonic.Router {
 		noopProvider{},
 		nil, // scanner
 		events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
 		core.NewShare(ds),
 		playback.PlaybackServer(nil),
@@ -99,14 +100,14 @@ var _ = Describe("Sonic Similarity Endpoints", func() {
 		)
 
 		BeforeEach(func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Come Together"},
 			})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			comeTogether = songs[0]
 
-			songs, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			songs, err = ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Something"},
 			})
 			Expect(err).ToNot(HaveOccurred())

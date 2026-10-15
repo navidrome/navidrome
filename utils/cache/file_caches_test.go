@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -17,7 +19,7 @@ import (
 // Call NewFileCache and wait for it to be ready
 func callNewFileCache(name, cacheSize, cacheFolder string, maxItems int, getReader ReadFunc) *fileCache {
 	fc := NewFileCache(name, cacheSize, cacheFolder, maxItems, getReader).(*fileCache)
-	Eventually(func() bool { return fc.ready.Load() }).Should(BeTrue())
+	Eventually(func() bool { return fc.ready.Load() }, 10*time.Second).Should(BeTrue())
 	return fc
 }
 
@@ -113,11 +115,10 @@ var _ = Describe("File Caches", func() {
 			_, _ = io.ReadAll(s)
 			_ = s.Close()
 
+			// EOF must imply the entry is settled on disk (Windows temp-dir cleanups rely on it).
 			dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"markme"}).Key())
-			Eventually(func() bool {
-				_, statErr := os.Stat(dataPath + ".complete")
-				return statErr == nil
-			}).Should(BeTrue())
+			_, statErr := os.Stat(dataPath + ".complete")
+			Expect(statErr).ToNot(HaveOccurred())
 		})
 
 		It("serves a concurrent reader from an in-progress write and marks complete once", func() {
@@ -258,6 +259,54 @@ var _ = Describe("File Caches", func() {
 				}).Should(BeTrue())
 			})
 
+			It("gets a writer that can report failures to readers", func() {
+				// Guards the fork adoption: if the fscache replace directive is ever lost,
+				// this fails in CI instead of silently reviving the truncation bug.
+				fc := callNewFileCache("test", "10MB", "test", 0, nil)
+				_, w, err := fc.cache.Get("capability")
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = w.Close() })
+
+				_, ok := w.(interface{ CloseWithError(error) error })
+				Expect(ok).To(BeTrue(), "fscache writer lost CloseWithError; check the go.mod replace directive")
+			})
+
+			It("fails the reader with the cause instead of a clean EOF", func() {
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return &partialThenErrReader{data: []byte("PARTIAL"), err: errors.New("transcoder died")}, nil
+				})
+				s, err := fc.Get(context.Background(), &testArg{"inband"})
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = s.Close() })
+
+				_, err = io.ReadAll(s)
+				Expect(err).To(MatchError(ContainSubstring("transcoder died")))
+			})
+
+			It("fails a reader that joined mid-write with the same cause", func() {
+				pr, pw := io.Pipe()
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					return pr, nil
+				})
+				s1, err := fc.Get(context.Background(), &testArg{"joined"})
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = s1.Close() })
+
+				// The blocking pipe write gives a happens-before: the entry is in flight.
+				_, err = pw.Write([]byte("PARTIAL"))
+				Expect(err).To(BeNil())
+
+				s2, err := fc.Get(context.Background(), &testArg{"joined"})
+				Expect(err).To(BeNil())
+				DeferCleanup(func() { _ = s2.Close() })
+				Expect(s2.Cached).To(BeTrue())
+
+				Expect(pw.CloseWithError(errors.New("transcoder died"))).To(Succeed())
+
+				_, err = io.ReadAll(s2)
+				Expect(err).To(MatchError(ContainSubstring("transcoder died")))
+			})
+
 			It("does not write a completion marker when the write fails after partial bytes", func() {
 				// Mimics a transcode that produces real output and then dies:
 				// the bytes land on disk, but the entry must NOT be marked complete.
@@ -276,6 +325,92 @@ var _ = Describe("File Caches", func() {
 					_, e := os.Stat(dataPath + ".complete")
 					return os.IsNotExist(e)
 				}).Should(BeTrue())
+			})
+		})
+
+		Context("entry outliving its data file", func() {
+			It("re-fetches when the data file vanished behind the cache's back", func() {
+				var calls atomic.Int32
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					calls.Add(1)
+					return strings.NewReader("payload"), nil
+				})
+
+				s, err := fc.Get(context.Background(), &testArg{"vanish"})
+				Expect(err).To(BeNil())
+				Expect(io.ReadAll(s)).To(Equal([]byte("payload")))
+				Expect(s.Close()).To(Succeed())
+
+				dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"vanish"}).Key())
+				Eventually(func() error { _, e := os.Stat(dataPath); return e }).Should(Succeed())
+				Expect(os.Remove(dataPath)).To(Succeed())
+
+				s2, err := fc.Get(context.Background(), &testArg{"vanish"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(io.ReadAll(s2)).To(Equal([]byte("payload")))
+				_ = s2.Close()
+				Expect(calls.Load()).To(BeNumerically("==", 2))
+			})
+
+			It("removes a failed entry promptly, without eating its replacement", func() {
+				// Cancel closes the failed entry's readers, so its removal no longer defers
+				// past the point where a new entry re-creates the same file.
+				var n atomic.Int32
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					if n.Add(1) == 1 {
+						return &partialThenErrReader{data: []byte("PARTIAL"), err: errors.New("died")}, nil
+					}
+					return strings.NewReader("GOOD"), nil
+				})
+
+				key := (&testArg{"deferred"}).Key()
+				s1, err := fc.Get(context.Background(), &testArg{"deferred"})
+				Expect(err).To(BeNil())
+
+				Eventually(func() bool { return fc.cache.Exists(key) }).Should(BeFalse())
+
+				s2, err := fc.Get(context.Background(), &testArg{"deferred"})
+				Expect(err).To(BeNil())
+				Expect(io.ReadAll(s2)).To(Equal([]byte("GOOD")))
+				Expect(s2.Close()).To(Succeed())
+
+				Expect(s1.Close()).To(Succeed())
+
+				dataPath := fcSpreadFS(fc).KeyMapper(key)
+				Consistently(func() error {
+					_, e := os.Stat(dataPath)
+					return e
+				}).Should(Succeed(), "the replacement entry's file must survive the failed entry's cleanup")
+
+				s3, err := fc.Get(context.Background(), &testArg{"deferred"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(io.ReadAll(s3)).To(Equal([]byte("GOOD")))
+				_ = s3.Close()
+				Expect(n.Load()).To(Equal(int32(2)), "the third Get must be served from cache")
+			})
+
+			It("re-fetches when an adopted entry's data file vanished", func() {
+				// Entries adopted on startup take a different code path than in-process ones.
+				var calls atomic.Int32
+				fc := callNewFileCache("test", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					calls.Add(1)
+					return strings.NewReader("payload"), nil
+				})
+				dataPath := fcSpreadFS(fc).KeyMapper((&testArg{"adopted"}).Key())
+				Expect(os.MkdirAll(filepath.Dir(dataPath), 0755)).To(Succeed())
+				Expect(os.WriteFile(dataPath, []byte("payload"), 0600)).To(Succeed())
+				Expect(fcSpreadFS(fc).MarkComplete(dataPath)).To(Succeed())
+
+				adopted := callNewFileCache("test2", "10MB", "test", 0, func(ctx context.Context, arg Item) (io.Reader, error) {
+					calls.Add(1)
+					return strings.NewReader("payload"), nil
+				})
+				Expect(os.Remove(dataPath)).To(Succeed())
+
+				s, err := adopted.Get(context.Background(), &testArg{"adopted"})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(io.ReadAll(s)).To(Equal([]byte("payload")))
+				_ = s.Close()
 			})
 		})
 	})

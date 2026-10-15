@@ -13,15 +13,26 @@ import (
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/log"
 )
 
 const apiBaseURL = "https://api.deezer.com"
 const authBaseURL = "https://auth.deezer.com"
 
-var (
-	ErrNotFound = errors.New("deezer: not found")
-)
+// errCodeQuota is Deezer's "Quota limit exceeded"; it arrives in the body, with HTTP 200
+// and no rate-limit headers, so the body code is the only signal.
+const errCodeQuota = 4
+
+type deezerError struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
+
+func (e *deezerError) Error() string {
+	return fmt.Sprintf("deezer error(%d): %s", e.Code, e.Message)
+}
 
 type httpDoer interface {
 	Do(req *http.Request) (*http.Response, error)
@@ -56,7 +67,7 @@ func (c *client) searchArtists(ctx context.Context, name string, limit int) ([]A
 	}
 
 	if len(results.Data) == 0 {
-		return nil, ErrNotFound
+		return nil, agents.ErrNotFound
 	}
 	return results.Data, nil
 }
@@ -74,20 +85,31 @@ func (c *client) makeRequest(req *http.Request, response any) error {
 		return err
 	}
 
+	// Checked before the status: a throttled request still answers 200, and decoding its body
+	// into a result type yields an empty one, which reads as "nothing found".
+	if err := parseBodyError(data); err != nil {
+		return err
+	}
 	if resp.StatusCode != 200 {
-		return c.parseError(data)
+		return fmt.Errorf("deezer http status: (%d)", resp.StatusCode)
 	}
 
 	return json.Unmarshal(data, response)
 }
 
-func (c *client) parseError(data []byte) error {
-	var deezerError Error
-	err := json.Unmarshal(data, &deezerError)
-	if err != nil {
-		return err
+// parseBodyError returns the error Deezer reported in the body, or nil when it reported none.
+func parseBodyError(data []byte) error {
+	var body errorResponse
+	// Discarded: a payload that is not an error object leaves Error nil, which is the "none" answer.
+	_ = json.Unmarshal(data, &body)
+	switch {
+	case body.Error == nil:
+		return nil
+	case body.Error.Code == errCodeQuota:
+		return errors.Join(body.Error, agents.ErrRetryLater)
+	default:
+		return body.Error
 	}
-	return fmt.Errorf("deezer error(%d): %s", deezerError.Error.Code, deezerError.Error.Message)
 }
 
 func (c *client) getRelatedArtists(ctx context.Context, artistID int) ([]Artist, error) {

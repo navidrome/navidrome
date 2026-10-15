@@ -22,7 +22,7 @@ import { useDrag } from 'react-dnd'
 import clsx from 'clsx'
 import {
   ArtistContextMenu,
-  CoverArtAvatar,
+  ArtworkAvatar,
   List,
   useGetHandleArtistClick,
   RatingField,
@@ -173,7 +173,7 @@ const ArtistListView = ({ hasShow, hasEdit, hasList, width, ...rest }) => {
     />
   ) : (
     <ArtistDatagrid rowClick={handleArtistLink} classes={{ row: classes.row }}>
-      <CoverArtAvatar source="id" />
+      <ArtworkAvatar source="id" />
       <TextField source="name" />
       <FunctionField
         source="albumCount"

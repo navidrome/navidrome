@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/deluan/rest"
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/lestrrat-go/jwx/v3/jwt"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
@@ -47,7 +49,7 @@ func login(ds model.DataStore) func(w http.ResponseWriter, r *http.Request) {
 }
 
 func doLogin(ds model.DataStore, username string, password string, w http.ResponseWriter, r *http.Request) {
-	user, err := validateLogin(ds.User(r.Context()), username, password)
+	user, err := validateLogin(r.Context(), ds.User(), username, password)
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, "Unknown error authentication user. Please try again")
 		return
@@ -94,6 +96,16 @@ func buildAuthPayload(user *model.User) map[string]any {
 	return payload
 }
 
+// MaxLoginBodySize bounds the payload of unauthenticated login routes across all APIs.
+const MaxLoginBodySize = 8 << 10
+
+func LimitLoginBody(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, MaxLoginBodySize)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func getCredentialsFromBody(r *http.Request) (username string, password string, err error) {
 	data := make(map[string]string)
 	decoder := json.NewDecoder(r.Body)
@@ -115,7 +127,7 @@ func createAdmin(ds model.DataStore) func(w http.ResponseWriter, r *http.Request
 			_ = rest.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
-		c, err := ds.User(r.Context()).CountAll()
+		c, err := ds.User().CountAll(r.Context())
 		if err != nil {
 			_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -145,15 +157,16 @@ func createAdminUser(ctx context.Context, ds model.DataStore, username, password
 		IsAdmin:     true,
 		LastLoginAt: new(time.Now()),
 	}
-	err := ds.User(ctx).Put(&initialUser)
+	err := ds.User().Put(ctx, &initialUser)
 	if err != nil {
-		log.Error(ctx, "Could not create initial user", "user", initialUser, err)
+		log.Error(ctx, "Could not create initial user", "user", initialUser.UserName, err)
+		return fmt.Errorf("creating initial user: %w", err)
 	}
 	return nil
 }
 
-func validateLogin(userRepo model.UserRepository, userName, password string) (*model.User, error) {
-	u, err := userRepo.FindByUsernameWithPassword(userName)
+func validateLogin(ctx context.Context, userRepo model.UserRepository, userName, password string) (*model.User, error) {
+	u, err := userRepo.FindByUsernameWithPassword(ctx, userName)
 	if errors.Is(err, model.ErrNotFound) {
 		return nil, nil
 	}
@@ -163,9 +176,9 @@ func validateLogin(userRepo model.UserRepository, userName, password string) (*m
 	if u.Password != password {
 		return nil, nil
 	}
-	err = userRepo.UpdateLastLoginAt(u.ID)
+	err = userRepo.UpdateLastLoginAt(ctx, u.ID)
 	if err != nil {
-		log.Error("Could not update LastLoginAt", "user", userName)
+		log.Error(ctx, "Could not update LastLoginAt", "user", userName)
 	}
 	return u, nil
 }
@@ -205,12 +218,12 @@ func UsernameFromExtAuthHeader(r *http.Request) string {
 		log.Error("ExtAuth enabled but no proxy IP found in request context. Please report this error.")
 		return ""
 	}
-	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
-		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
-		return ""
-	}
 	username := r.Header.Get(conf.Server.ExtAuth.UserHeader)
 	if username == "" {
+		return ""
+	}
+	if !validateIPAgainstList(reverseProxyIp, conf.Server.ExtAuth.TrustedSources) {
+		log.Warn(r.Context(), "IP is not whitelisted for external authentication", "proxy-ip", reverseProxyIp, "client-ip", r.RemoteAddr)
 		return ""
 	}
 	log.Trace(r, "Found username in ExtAuth.UserHeader", "username", username)
@@ -231,7 +244,7 @@ func UsernameFromConfig(*http.Request) string {
 }
 
 func contextWithUser(ctx context.Context, ds model.DataStore, username string) (context.Context, error) {
-	user, err := ds.User(ctx).FindByUsername(username)
+	user, err := ds.User().FindByUsername(ctx, username)
 	if err == nil {
 		ctx = log.NewContext(ctx, "username", username)
 		ctx = request.WithUsername(ctx, user.UserName)
@@ -260,7 +273,7 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, err := authenticateRequest(ds, r, UsernameFromConfig, UsernameFromToken, UsernameFromExtAuthHeader)
-			if err != nil {
+			if err != nil || !tokenAllowed(ctx) {
 				_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
 				return
 			}
@@ -270,24 +283,88 @@ func Authenticator(ds model.DataStore) func(next http.Handler) http.Handler {
 	}
 }
 
-// JWTRefresher updates the expiry date of the received JWT token, and add the new one to the Authorization Header
+// tokenAllowed re-checks a JWT that actually identifies the resolved user. Header and
+// config auth carry no token, so they short-circuit to true.
+func tokenAllowed(ctx context.Context) bool {
+	token, _, err := jwtauth.FromContext(ctx)
+	if err != nil || token == nil {
+		return true
+	}
+	usr, ok := request.UserFrom(ctx)
+	if !ok {
+		return true
+	}
+	claims := auth.ClaimsFromToken(token)
+	if !strings.EqualFold(claims.Subject, usr.UserName) {
+		return true
+	}
+	if err := auth.CheckClaims(claims, usr, auth.AudienceNative); err != nil {
+		log.Warn(ctx, "Native API: rejected token", "user", claims.Subject, err)
+		return false
+	}
+	return true
+}
+
+// refreshingWriter defers the refreshed-token header until the handler's first write, so an
+// epoch the handler bumped reaches the token the client stores.
+type refreshingWriter struct {
+	http.ResponseWriter
+	ctx   context.Context //nolint:containedctx // ResponseWriter wrapper defers work to Write, which has no ctx
+	token jwt.Token
+	once  sync.Once
+}
+
+func (w *refreshingWriter) setToken() {
+	w.once.Do(func() {
+		claims := auth.ClaimsFromToken(w.token)
+		if epoch, ok := request.TokenEpochFrom(w.ctx); ok {
+			claims.Epoch = epoch
+		}
+		newToken, err := auth.TouchClaims(claims)
+		if err != nil {
+			log.Error(w.ctx, "Could not sign new token", err)
+			return
+		}
+		w.Header().Set(consts.UIAuthorizationHeader, newToken)
+	})
+}
+
+func (w *refreshingWriter) WriteHeader(code int) {
+	w.setToken()
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *refreshingWriter) Write(b []byte) (int, error) {
+	w.setToken()
+	return w.ResponseWriter.Write(b)
+}
+
+// Flush keeps the SSE events route working through the wrap.
+func (w *refreshingWriter) Flush() {
+	w.setToken()
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Unwrap lets capability lookups, such as SSE's write deadline, see past this wrap.
+func (w *refreshingWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
+}
+
+// JWTRefresher updates the expiry date of the received JWT token, and adds the new one to
+// the Authorization Header.
 func JWTRefresher(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		token, _, err := jwtauth.FromContext(ctx)
-		if err != nil {
+		token, _, err := jwtauth.FromContext(r.Context())
+		if err != nil || token == nil {
 			next.ServeHTTP(w, r)
 			return
 		}
-		newTokenString, err := auth.TouchToken(token)
-		if err != nil {
-			log.Error(r, "Could not sign new token", err)
-			_ = rest.RespondWithError(w, http.StatusUnauthorized, "Not authenticated")
-			return
-		}
-
-		w.Header().Set(consts.UIAuthorizationHeader, newTokenString)
-		next.ServeHTTP(w, r)
+		ctx := request.WithTokenEpochHolder(r.Context())
+		rw := &refreshingWriter{ResponseWriter: w, ctx: ctx, token: token}
+		next.ServeHTTP(rw, r.WithContext(ctx))
+		rw.setToken()
 	})
 }
 
@@ -300,12 +377,13 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]any 
 		}
 	}
 
-	userRepo := ds.User(r.Context())
-	user, err := userRepo.FindByUsernameWithPassword(username)
+	ctx := r.Context()
+	userRepo := ds.User()
+	user, err := userRepo.FindByUsernameWithPassword(ctx, username)
 	if user == nil || err != nil {
 		log.Info(r, "User passed in header not found", "user", username)
 		// Check if this is the first user being created
-		count, _ := userRepo.CountAll()
+		count, _ := userRepo.CountAll(ctx)
 		isFirstUser := count == 0
 
 		newUser := model.User{
@@ -316,19 +394,19 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]any 
 			NewPassword: consts.PasswordAutogenPrefix + id.NewRandom(),
 			IsAdmin:     isFirstUser, // Make the first user an admin
 		}
-		err := userRepo.Put(&newUser)
+		err := userRepo.Put(ctx, &newUser)
 		if err != nil {
 			log.Error(r, "Could not create new user", "user", username, err)
 			return nil
 		}
-		user, err = userRepo.FindByUsernameWithPassword(username)
+		user, err = userRepo.FindByUsernameWithPassword(ctx, username)
 		if user == nil || err != nil {
 			log.Error(r, "Created user but failed to fetch it", "user", username)
 			return nil
 		}
 	}
 
-	err = userRepo.UpdateLastLoginAt(user.ID)
+	err = userRepo.UpdateLastLoginAt(ctx, user.ID)
 	if err != nil {
 		log.Error(r, "Could not update LastLoginAt", "user", username, err)
 		return nil

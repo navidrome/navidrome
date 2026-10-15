@@ -1,31 +1,55 @@
 package artwork
 
 import (
+	"context"
 	"io/fs"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
+	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/goleak"
 )
 
 func TestArtwork(t *testing.T) {
+	// Runs unconditionally: the two leaks below are pre-existing and out of this
+	// package's control, so they're ignored by exact top-function instead.
+	defer goleak.VerifyNone(t,
+		goleak.IgnoreTopFunction("github.com/onsi/ginkgo/v2/internal/interrupt_handler.(*InterruptHandler).registerForInterrupts.func2"),
+		// notify's own init() starts a singleton tree the moment it's imported (via
+		// core/storage/local or plugins); recursive on darwin, nonrecursive on linux.
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*recursiveTree).dispatch"),
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*nonrecursiveTree).dispatch"),
+		goleak.IgnoreTopFunction("github.com/rjeczalik/notify.(*nonrecursiveTree).internal"),
+	)
+
 	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Artwork Suite")
 }
 
+// productionImageClient keeps the guarded client for the specs that assert it refuses loopback.
+var productionImageClient = remoteImageClient
+
+// httptest servers listen on loopback, which the production client refuses.
+var _ = BeforeSuite(func() {
+	remoteImageClient = httpclient.NewExternal(5*time.Second, netip.MustParsePrefix("127.0.0.0/8"), netip.MustParsePrefix("::1/128"))
+})
+
 // osDirFS wraps os.DirFS as a storage.MusicFS for integration tests.
-// ReadTags is not used by albumArtworkReader, so it is left as a stub.
 type osDirFS struct{ fs.FS }
 
 func (o osDirFS) ReadTags(...string) (map[string]metadata.Info, error) { return nil, nil }
@@ -68,4 +92,38 @@ func (s *osDirStorage) FS() (storage.MusicFS, error) {
 		return nil, err
 	}
 	return osDirFS{os.DirFS(s.root)}, nil
+}
+
+// fakeFolderRepo covers the three FolderRepository methods the resolvers reach for. The zero value
+// answers as an unremarkable library does; the fields drive the album-root lookup and its failures.
+type fakeFolderRepo struct {
+	model.FolderRepository
+	result       []model.Folder
+	err          error
+	parentResult *model.Folder
+	getErr       error
+	getCallCount int
+	// hasOtherAudio is returned by HasAudioOutsideFolders (the album-root check).
+	// False means the parent qualifies as an album root.
+	hasOtherAudio bool
+	otherAudioErr error
+}
+
+func (f *fakeFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
+	return f.result, f.err
+}
+
+func (f *fakeFolderRepo) HasAudioOutsideFolders(context.Context, model.Folder, []string) (bool, error) {
+	return f.hasOtherAudio, f.otherAudioErr
+}
+
+func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
+	f.getCallCount++
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	if f.parentResult != nil {
+		return f.parentResult, nil
+	}
+	return nil, model.ErrNotFound
 }

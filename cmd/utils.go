@@ -4,7 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"strings"
+	"text/tabwriter"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
@@ -12,6 +17,33 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 )
+
+// existingDBFile returns the database file (DbPath minus DSN params), and whether it exists.
+func existingDBFile() (string, bool) {
+	path, _, _ := strings.Cut(conf.Server.DbPath, "?")
+	_, err := os.Stat(path)
+	return path, err == nil
+}
+
+// requireExistingDB aborts the command when the database file does not exist.
+func requireExistingDB() {
+	if path, ok := existingDBFile(); !ok {
+		log.Fatal("No existing database", "path", path)
+	}
+}
+
+func confirmYES(warning string) bool {
+	fmt.Println(warning)
+	fmt.Printf("Please enter YES (all caps) to continue: ")
+	var input string
+	_, err := fmt.Scanln(&input)
+	return input == "YES" && err == nil
+}
+
+// newTabWriter keeps every CLI table on the same column settings.
+func newTabWriter(out io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
+}
 
 func getAdminContext(ctx context.Context) (model.DataStore, context.Context) {
 	sqlDB := db.Db()
@@ -25,14 +57,14 @@ func getAdminContext(ctx context.Context) (model.DataStore, context.Context) {
 }
 
 func getUser(ctx context.Context, id string, ds model.DataStore) (*model.User, error) {
-	user, err := ds.User(ctx).FindByUsername(id)
+	user, err := ds.User().FindByUsername(ctx, id)
 
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, fmt.Errorf("finding user by name: %w", err)
 	}
 
 	if errors.Is(err, model.ErrNotFound) {
-		user, err = ds.User(ctx).Get(id)
+		user, err = ds.User().Get(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("finding user by id: %w", err)
 		}

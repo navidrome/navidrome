@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,6 +27,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/server/events"
+	"github.com/navidrome/navidrome/utils/httpclient"
 	"github.com/navidrome/navidrome/utils/singleton"
 )
 
@@ -45,11 +48,11 @@ type insightsCollector struct {
 
 func GetInstance(ds model.DataStore) Insights {
 	return singleton.GetInstance(func() *insightsCollector {
-		id, err := ds.Property(context.TODO()).Get(consts.InsightsIDKey)
+		id, err := ds.Property().Get(context.TODO(), consts.InsightsIDKey)
 		if err != nil {
 			log.Trace("Could not get Insights ID from DB. Creating one", err)
 			id = uuid.NewString()
-			err = ds.Property(context.TODO()).Put(consts.InsightsIDKey, id)
+			err = ds.Property().Put(context.TODO(), consts.InsightsIDKey, id)
 			if err != nil {
 				log.Trace("Could not save Insights ID to DB", err)
 			}
@@ -85,7 +88,7 @@ func (c *insightsCollector) LastRun(context.Context) (timestamp time.Time, succe
 }
 
 func (c *insightsCollector) sendInsights(ctx context.Context) {
-	count, err := c.ds.User(ctx).CountAll(model.QueryOptions{})
+	count, err := c.ds.User().CountAll(ctx, model.QueryOptions{})
 	if err != nil {
 		log.Trace(ctx, "Could not check user count", err)
 		return
@@ -94,9 +97,7 @@ func (c *insightsCollector) sendInsights(ctx context.Context) {
 		log.Trace(ctx, "No users found, skipping Insights data collection")
 		return
 	}
-	hc := &http.Client{
-		Timeout: consts.DefaultHttpClientTimeOut,
-	}
+	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	data := c.collect(ctx)
 	if data == nil {
 		return
@@ -153,6 +154,17 @@ func getFSInfo(path string) *insights.FSInfo {
 	return &info
 }
 
+// installedPackage returns the official installer format used, as written by our own packagers.
+func installedPackage() string {
+	data, _ := os.ReadFile(filepath.Join(conf.Server.DataFolder.String(), ".package"))
+	return strings.TrimSpace(string(data))
+}
+
+// hostingPlatform is env-based, not a file, as app stores can only inject env vars into our image.
+func hostingPlatform() string {
+	return strings.TrimSpace(os.Getenv("ND_PLATFORM"))
+}
+
 var staticData = sync.OnceValue(func() insights.Data {
 	// Basic info
 	data := insights.Data{
@@ -165,11 +177,8 @@ var staticData = sync.OnceValue(func() insights.Data {
 	data.OS.Containerized = consts.InContainer
 
 	// Install info
-	packageFilename := filepath.Join(conf.Server.DataFolder.String(), ".package")
-	packageFileData, err := os.ReadFile(packageFilename)
-	if err == nil {
-		data.OS.Package = string(packageFileData)
-	}
+	data.OS.Package = installedPackage()
+	data.Platform = hostingPlatform()
 
 	// OS info
 	data.OS.Type = runtime.GOOS
@@ -190,7 +199,7 @@ var staticData = sync.OnceValue(func() insights.Data {
 	// Config info
 	data.Config.LogLevel = conf.Server.LogLevel
 	data.Config.LogFileConfigured = conf.Server.LogFile != ""
-	data.Config.TLSConfigured = conf.Server.TLSCert != "" && conf.Server.TLSKey != ""
+	data.Config.TLSConfigured = conf.Server.TLSEnabled()
 	data.Config.DefaultBackgroundURLSet = conf.Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL
 	data.Config.EnableArtworkPrecache = conf.Server.EnableArtworkPrecache
 	data.Config.EnableArtworkUpload = conf.Server.EnableArtworkUpload
@@ -237,41 +246,45 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 	// Library info
 	var err error
-	data.Library.Tracks, err = c.ds.MediaFile(ctx).CountAll()
+	data.Library.Tracks, err = c.ds.MediaFile().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading tracks count", err)
 	}
-	data.Library.Albums, err = c.ds.Album(ctx).CountAll()
+	data.Library.Albums, err = c.ds.Album().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading albums count", err)
 	}
-	data.Library.Artists, err = c.ds.Artist(ctx).CountAll()
+	data.Library.Artists, err = c.ds.Artist().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading artists count", err)
 	}
-	data.Library.Playlists, err = c.ds.Playlist(ctx).CountAll()
+	data.Library.Playlists, err = c.ds.Playlist().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading playlists count", err)
 	}
-	data.Library.Shares, err = c.ds.Share(ctx).CountAll()
+	data.Library.Shares, err = c.ds.Share().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading shares count", err)
 	}
-	data.Library.Radios, err = c.ds.Radio(ctx).Count()
+	data.Library.Radios, err = c.ds.Radio().CountAll(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading radios count", err)
 	}
-	data.Library.Libraries, err = c.ds.Library(ctx).CountAll()
+	libs, err := c.ds.Library().GetAll(ctx)
 	if err != nil {
-		log.Trace(ctx, "Error reading libraries count", err)
+		log.Trace(ctx, "Error reading libraries", err)
 	}
-	data.Library.ActiveUsers, err = c.ds.User(ctx).CountAll(model.QueryOptions{
+	data.Library.Libraries = int64(len(libs))
+	if slices.ContainsFunc(libs, func(lib model.Library) bool { return lib.PIDAlbum != "" || lib.PIDTrack != "" }) {
+		data.Config.HasCustomPID = true
+	}
+	data.Library.ActiveUsers, err = c.ds.User().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.Gt{"last_access_at": time.Now().Add(-7 * 24 * time.Hour)},
 	})
 	if err != nil {
 		log.Trace(ctx, "Error reading active users count", err)
 	}
-	data.Library.FileSuffixes, err = c.ds.MediaFile(ctx).CountBySuffix()
+	data.Library.FileSuffixes, err = c.ds.MediaFile().CountBySuffix(ctx)
 	if err != nil {
 		log.Trace(ctx, "Error reading file suffixes count", err)
 	}
@@ -289,7 +302,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 	// Collect active players if permitted
 	if conf.Server.DevEnablePlayerInsights {
-		data.Library.ActivePlayers, err = c.ds.Player(ctx).CountByClient(model.QueryOptions{
+		data.Library.ActivePlayers, err = c.ds.Player().CountByClient(ctx, model.QueryOptions{
 			Filters: squirrel.Gt{"last_seen": time.Now().Add(-7 * 24 * time.Hour)},
 		})
 		if err != nil {
@@ -316,7 +329,7 @@ func (c *insightsCollector) collect(ctx context.Context) []byte {
 
 // hasSmartPlaylists checks if there are any smart playlists (playlists with rules)
 func (c *insightsCollector) hasSmartPlaylists(ctx context.Context) (bool, error) {
-	count, err := c.ds.Playlist(ctx).CountAll(model.QueryOptions{
+	count, err := c.ds.Playlist().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.And{squirrel.NotEq{"rules": ""}, squirrel.NotEq{"rules": nil}},
 	})
 	return count > 0, err

@@ -11,7 +11,7 @@ func (l *logger) Info(msg string, keysAndValues ...any) {
 		"Scheduler: " + msg,
 	}
 	args = append(args, keysAndValues...)
-	log.Debug(args...)
+	log.Trace(args...)
 }
 
 func (l *logger) Error(err error, msg string, keysAndValues ...any) {

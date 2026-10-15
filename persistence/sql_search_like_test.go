@@ -102,32 +102,32 @@ var _ = Describe("likeSearchExpr", func() {
 
 var _ = Describe("Legacy Integration Search", func() {
 	var mr model.MediaFileRepository
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.Search.Backend = "legacy"
 
-		ctx := log.NewContext(context.TODO())
-		ctx = request.WithUser(ctx, adminUser)
 		conn := GetDBXBuilder()
-		mr = NewMediaFileRepository(ctx, conn)
+		mr = NewMediaFileRepository(conn)
 	})
 
 	It("returns results using legacy LIKE-based search", func() {
-		results, err := mr.Search("Radioactivity", model.QueryOptions{Max: 10})
+		results, err := mr.Search(ctx, "Radioactivity", model.QueryOptions{Max: 10})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(results).To(HaveLen(1))
 		Expect(results[0].Title).To(Equal("Radioactivity"))
 	})
 
 	It("returns empty results for single-char query (doSearch min-length guard)", func() {
-		results, err := mr.Search("a", model.QueryOptions{Max: 10})
+		results, err := mr.Search(ctx, "a", model.QueryOptions{Max: 10})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(results).To(BeEmpty(), "doSearch should reject single-char queries")
 	})
 
 	It("returns results with Max=0 (regression: must not produce LIMIT 0)", func() {
-		results, err := mr.Search("Beatles", model.QueryOptions{Max: 0})
+		results, err := mr.Search(ctx, "Beatles", model.QueryOptions{Max: 0})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(results).ToNot(BeEmpty(), "Max=0 should mean no limit, not LIMIT 0")
 	})

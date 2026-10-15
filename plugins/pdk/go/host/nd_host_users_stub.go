@@ -33,7 +33,11 @@ var UsersMock = &mockUsersService{}
 // GetUsers is the mock method for UsersGetUsers.
 func (m *mockUsersService) GetUsers() ([]User, error) {
 	args := m.Called()
-	return args.Get(0).([]User), args.Error(1)
+	var r0 []User
+	if v := args.Get(0); v != nil {
+		r0 = v.([]User)
+	}
+	return r0, args.Error(1)
 }
 
 // UsersGetUsers delegates to the mock instance.
@@ -49,7 +53,11 @@ func UsersGetUsers() ([]User, error) {
 // GetAdmins is the mock method for UsersGetAdmins.
 func (m *mockUsersService) GetAdmins() ([]User, error) {
 	args := m.Called()
-	return args.Get(0).([]User), args.Error(1)
+	var r0 []User
+	if v := args.Get(0); v != nil {
+		r0 = v.([]User)
+	}
+	return r0, args.Error(1)
 }
 
 // UsersGetAdmins delegates to the mock instance.

@@ -1,0 +1,14 @@
+{
+  "name": "Test Scrobble Retriever",
+  "author": "Navidrome Test",
+  "version": "1.0.0",
+  "description": "A test plugin for scrobble retriever integration settings",
+  "permissions": {
+    "scrobbleRetriever": {
+      "reason": "For testing scrobble retriever operations"
+    },
+    "users": {
+      "reason": "Access user information for scrobble retrieval"
+    }
+  }
+}

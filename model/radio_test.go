@@ -14,12 +14,11 @@ import (
 var _ = Describe("Radio", func() {
 	Describe("CoverArtID", func() {
 		It("returns a radio artwork ID", func() {
-			now := time.Now()
-			r := model.Radio{ID: "rd-1", UpdatedAt: now}
+			r := model.Radio{ID: "rd-1", UpdatedAt: time.Now()}
 			artID := r.CoverArtID()
 			Expect(artID.Kind).To(Equal(model.KindRadioArtwork))
 			Expect(artID.ID).To(Equal("rd-1"))
-			Expect(artID.LastUpdate).To(Equal(now))
+			Expect(artID.LastUpdate.IsZero()).To(BeTrue())
 		})
 	})
 

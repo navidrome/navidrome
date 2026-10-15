@@ -10,7 +10,6 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -27,7 +26,6 @@ var _ = Describe("phasePlaylists", func() {
 		folderRepo *mockFolderRepository
 		ds         *tests.MockDataStore
 		pls        *mockPlaylists
-		cw         artwork.CacheWarmer
 	)
 
 	var userRepo *tests.MockedUserRepo
@@ -40,7 +38,7 @@ var _ = Describe("phasePlaylists", func() {
 		folderRepo = &mockFolderRepository{}
 		userRepo = tests.CreateMockUserRepo()
 		// An admin user exists by default, so playlist import proceeds.
-		Expect(userRepo.Put(&model.User{ID: "123", UserName: "admin", IsAdmin: true})).To(Succeed())
+		Expect(userRepo.Put(ctx, &model.User{ID: "123", UserName: "admin", IsAdmin: true})).To(Succeed())
 		propRepo = &tests.MockedPropertyRepo{}
 		ds = &tests.MockDataStore{
 			MockedFolder:   folderRepo,
@@ -48,9 +46,8 @@ var _ = Describe("phasePlaylists", func() {
 			MockedProperty: propRepo,
 		}
 		pls = &mockPlaylists{}
-		cw = artwork.NoopCacheWarmer()
 		state = &scanState{}
-		phase = createPhasePlaylists(ctx, state, ds, pls, cw)
+		phase = createPhasePlaylists(ctx, state, ds, pls)
 	})
 
 	Describe("description", func() {
@@ -105,7 +102,7 @@ var _ = Describe("phasePlaylists", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(called).To(BeFalse())
-			v, _ := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			v, _ := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(v).To(Equal("1"))
 		})
 
@@ -116,7 +113,7 @@ var _ = Describe("phasePlaylists", func() {
 
 			Expect(err).To(MatchError(ContainSubstring("finding admin user")))
 			// Must NOT have set the pending flag on a real error.
-			_, getErr := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			_, getErr := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(getErr).To(HaveOccurred())
 		})
 
@@ -130,7 +127,7 @@ var _ = Describe("phasePlaylists", func() {
 		})
 
 		It("imports all playlist folders when the pending flag is set", func() {
-			Expect(propRepo.Put(consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			folderRepo.SetAllData(map[*model.Folder]error{
 				{Path: "/path/to/folder1"}: nil,
 				{Path: "/path/to/folder2"}: nil,
@@ -149,22 +146,22 @@ var _ = Describe("phasePlaylists", func() {
 
 	Describe("finalize", func() {
 		It("clears the pending flag after a successful pending import", func() {
-			Expect(propRepo.Put(consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			phase.pendingImport = true
 
 			Expect(phase.finalize(nil)).To(Succeed())
 
-			_, err := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			_, err := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(err).To(HaveOccurred()) // deleted
 		})
 
 		It("keeps the pending flag when the import failed", func() {
-			Expect(propRepo.Put(consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.PlaylistsImportPendingFlagKey, "1")).To(Succeed())
 			phase.pendingImport = true
 
 			Expect(phase.finalize(errors.New("boom"))).To(HaveOccurred())
 
-			v, _ := propRepo.Get(consts.PlaylistsImportPendingFlagKey)
+			v, _ := propRepo.Get(ctx, consts.PlaylistsImportPendingFlagKey)
 			Expect(v).To(Equal("1"))
 		})
 	})
@@ -191,6 +188,29 @@ var _ = Describe("phasePlaylists", func() {
 			Expect(pls.Calls[0].Arguments[2]).To(Equal("playlist1.m3u"))
 			Expect(pls.Calls[1].Arguments[2]).To(Equal("playlist2.m3u"))
 			Expect(phase.refreshed.Load()).To(Equal(uint32(2)))
+		})
+
+		It("enqueues artwork resolution for the imported playlist", func() {
+			libPath := GinkgoT().TempDir()
+			folder := &model.Folder{LibraryPath: libPath, Path: "path/to", Name: "folder"}
+			_ = os.MkdirAll(folder.AbsolutePath(), 0755)
+
+			file1 := filepath.Join(folder.AbsolutePath(), "playlist1.m3u")
+			_ = os.WriteFile(file1, []byte{}, 0600)
+
+			pls.On("ImportFromFolder", mock.Anything, folder, "playlist1.m3u").
+				Return(&model.Playlist{ID: "pl1"}, nil)
+
+			_, err := phase.processPlaylistsInFolder(folder)
+			Expect(err).ToNot(HaveOccurred())
+
+			queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(queued).To(ContainElement(SatisfyAll(
+				HaveField("ItemKind", "pl"),
+				HaveField("ItemID", "pl1"),
+				HaveField("Priority", model.ArtworkPriorityScan),
+			)))
 		})
 
 		It("reports an error if there is an error reading files", func() {
@@ -244,11 +264,11 @@ func cursorFromData(data map[*model.Folder]error) model.FolderCursor {
 	}
 }
 
-func (f *mockFolderRepository) GetTouchedWithPlaylists() (model.FolderCursor, error) {
+func (f *mockFolderRepository) GetTouchedWithPlaylists(context.Context) (model.FolderCursor, error) {
 	return cursorFromData(f.data), nil
 }
 
-func (f *mockFolderRepository) GetAllWithPlaylists() (model.FolderCursor, error) {
+func (f *mockFolderRepository) GetAllWithPlaylists(context.Context) (model.FolderCursor, error) {
 	return cursorFromData(f.allData), nil
 }
 

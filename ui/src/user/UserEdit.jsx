@@ -3,7 +3,6 @@ import { makeStyles } from '@material-ui/core/styles'
 import {
   TextInput,
   BooleanInput,
-  DateField,
   PasswordInput,
   Edit,
   required,
@@ -21,7 +20,7 @@ import {
   useRecordContext,
 } from 'react-admin'
 import { Typography } from '@material-ui/core'
-import { Title } from '../common'
+import { ReadOnlyDateField, Title } from '../common'
 import DeleteUserButton from './DeleteUserButton'
 import { LibrarySelectionField } from './LibrarySelectionField.jsx'
 import { validateUserForm } from './userValidation'
@@ -172,10 +171,21 @@ const UserEdit = (props) => {
           </FormDataConsumer>
         )}
 
-        <DateField variant="body1" source="lastLoginAt" showTime />
-        <DateField variant="body1" source="lastAccessAt" showTime />
-        <DateField variant="body1" source="updatedAt" showTime />
-        <DateField variant="body1" source="createdAt" showTime />
+        <TextInput
+          source="scrobbleFilter"
+          multiline
+          minRows={2}
+          fullWidth
+          spellCheck={false}
+          style={{ maxWidth: '40em' }}
+          inputProps={{ style: { resize: 'vertical' } }}
+          helperText={translate('resources.user.helperTexts.scrobbleFilter')}
+        />
+
+        <ReadOnlyDateField source="lastLoginAt" />
+        <ReadOnlyDateField source="lastAccessAt" />
+        <ReadOnlyDateField source="updatedAt" />
+        <ReadOnlyDateField source="createdAt" />
       </SimpleForm>
     </Edit>
   )

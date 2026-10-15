@@ -92,6 +92,12 @@
         },
         "matcher": {
           "$ref": "#/$defs/MatcherPermission"
+        },
+        "storage": {
+          "$ref": "#/$defs/StoragePermission"
+        },
+        "scrobbleRetriever": {
+          "$ref": "#/$defs/ScrobbleRetrieverPermission"
         }
       }
     },
@@ -128,7 +134,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.musicbrainz.org')",
+          "description": "List of required host patterns for HTTP requests (e.g., 'api.example.com', '*.musicbrainz.org'). A named host alone can't reach a private address; also list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that",
           "items": {
             "type": "string"
           }
@@ -168,7 +174,7 @@
         },
         "requiredHosts": {
           "type": "array",
-          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.musicbrainz.org')",
+          "description": "List of required host patterns for WebSocket connections (e.g., 'api.example.com', '*.musicbrainz.org'). Required: with no entries every connection is blocked. A named host alone can't reach a private address; also list an IP, a CIDR (e.g., '10.0.0.0/8') or '*' for that",
           "items": {
             "type": "string"
           }
@@ -242,6 +248,28 @@
         "reason": {
           "type": "string",
           "description": "Explanation for why matcher access is needed"
+        }
+      }
+    },
+    "StoragePermission": {
+      "type": "object",
+      "description": "Storage permissions for enabling persistent read-write storage exclusively for the plugin",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why storage access is needed"
+        }
+      }
+    },
+    "ScrobbleRetrieverPermission": {
+      "type": "object",
+      "description": "Scrobble retriever permissions for retrieving scrobbles from users",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Explanation for why scrobble retriever access is needed"
         }
       }
     }

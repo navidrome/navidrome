@@ -1,5 +1,3 @@
-//go:build !windows
-
 package plugins
 
 import (
@@ -9,11 +7,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -24,7 +21,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const testDataDir = "plugins/testdata"
+const (
+	testDataDir    = "plugins/testdata"
+	wazeroCacheDir = ".wazero-cache"
+)
 
 // Shared test state initialized in BeforeSuite
 var (
@@ -35,36 +35,21 @@ var (
 
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
-	buildTestPlugins(t, testDataDir)
 
-	// Create a shared wazero compilation cache directory.
-	// All test managers will point CacheFolder here so that WASM compilation
-	// is done once per binary and then reused from disk cache.
-	sharedCacheDir, err := os.MkdirTemp("", "plugins-shared-cache-*")
-	if err != nil {
-		t.Fatalf("Failed to create shared cache dir: %v", err)
-	}
-	t.Cleanup(func() { os.RemoveAll(sharedCacheDir) })
-
-	// Set CacheFolder globally so all tests (including those using
-	// configtest.SetupConfig) inherit it without needing to set it manually.
-	conf.Server.CacheFolder = conf.NewDir(sharedCacheDir)
+	// Set globally so tests using configtest.SetupConfig inherit it. The cache
+	// persists between runs; entries are content-addressed, so a stale one only misses.
+	conf.Server.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
+	conf.Server.Plugins.CacheSize = "1GB" // the default evicts the cache mid-run
 
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
 }
 
-func buildTestPlugins(t *testing.T, path string) {
-	t.Helper()
-	start := time.Now()
-	t.Logf("[BeforeSuite] Current working directory: %s", path)
-	cmd := exec.Command("make", "-C", path)
-	out, err := cmd.CombinedOutput()
-	t.Logf("[BeforeSuite] Make output: %s elapsed: %s", string(out), time.Since(start))
-	if err != nil {
-		t.Fatalf("Failed to build test plugins: %v", err)
-	}
+// stubLocalhostDNS resolves "localhost." without real DNS: the trailing dot never matches /etc/hosts.
+func stubLocalhostDNS() {
+	dialResolver = tests.StubResolver(map[string]string{"localhost.": "127.0.0.1"})
+	DeferCleanup(func() { dialResolver = nil })
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
@@ -81,46 +66,43 @@ func createTestManagerWithPlugins(pluginConfig map[string]map[string]string, plu
 	return createTestManagerWithPluginsAndMetrics(pluginConfig, noopMetricsRecorder{}, plugins...)
 }
 
+// installTestPlugins copies the given .ndp packages into dir and returns their
+// enabled DB rows, so callers can grant whatever access the test needs.
+func installTestPlugins(dir string, plugins ...string) model.Plugins {
+	var rows model.Plugins
+	for _, plugin := range plugins {
+		data, err := os.ReadFile(filepath.Join(testdataDir, plugin))
+		Expect(err).ToNot(HaveOccurred())
+		destPath := filepath.Join(dir, plugin)
+		Expect(os.WriteFile(destPath, data, 0600)).To(Succeed())
+
+		hash := sha256.Sum256(data)
+		rows = append(rows, model.Plugin{
+			ID:      strings.TrimSuffix(plugin, PackageExtension),
+			Path:    destPath,
+			SHA256:  hex.EncodeToString(hash[:]),
+			Enabled: true,
+		})
+	}
+	return rows
+}
+
 // createTestManagerWithPluginsAndMetrics creates a new plugin Manager with the given plugin config,
-// metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins, and starts the manager.
-// Returns the manager and temp directory path.
+// metrics recorder, and specified plugins. It creates a temp directory, copies the specified plugins,
+// and starts the manager. Returns the manager and temp directory path.
 func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]string, metrics PluginMetricsRecorder, plugins ...string) (*Manager, string) {
 	// Create temp directory
 	tmpDir, err := os.MkdirTemp("", "plugins-test-*")
 	Expect(err).ToNot(HaveOccurred())
 
-	// Copy test plugins to temp dir and build plugin list with SHA256
-	var enabledPlugins model.Plugins
-	for _, plugin := range plugins {
-		srcPath := filepath.Join(testdataDir, plugin)
-		destPath := filepath.Join(tmpDir, plugin)
-		data, err := os.ReadFile(srcPath)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.WriteFile(destPath, data, 0600)
-		Expect(err).ToNot(HaveOccurred())
-
-		// Compute SHA256 for the plugin
-		hash := sha256.Sum256(data)
-		hashHex := hex.EncodeToString(hash[:])
-		pluginName := plugin[:len(plugin)-len(PackageExtension)] // Remove .ndp extension
-
-		// Build config JSON if provided
-		configJSON := ""
-		if pluginConfig != nil && pluginConfig[pluginName] != nil {
-			// Encode config to JSON
-			configBytes, err := json.Marshal(pluginConfig[pluginName])
+	enabledPlugins := installTestPlugins(tmpDir, plugins...)
+	for i, p := range enabledPlugins {
+		enabledPlugins[i].AllUsers = true // Allow all users by default in tests
+		if pluginConfig[p.ID] != nil {
+			configBytes, err := json.Marshal(pluginConfig[p.ID])
 			Expect(err).ToNot(HaveOccurred())
-			configJSON = string(configBytes)
+			enabledPlugins[i].Config = string(configBytes)
 		}
-
-		enabledPlugins = append(enabledPlugins, model.Plugin{
-			ID:       pluginName,
-			Path:     destPath,
-			SHA256:   hashHex,
-			Enabled:  true,
-			Config:   configJSON,
-			AllUsers: true, // Allow all users by default in tests
-		})
 	}
 
 	// Setup config
@@ -153,7 +135,10 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	return manager, tmpDir
 }
 
-var _ = BeforeSuite(func() {
+var _ = SynchronizedBeforeSuite(func() {
+	// Build once: the testdata Makefile is not safe to run concurrently.
+	buildTestPlugins(testDataDir)
+}, func() {
 	// Get testdata directory (where test plugin .ndp packages live)
 	_, currentFile, _, ok := runtime.Caller(0)
 	Expect(ok).To(BeTrue())

@@ -48,6 +48,77 @@ func marshalTags(tags model.Tags) string {
 	return string(res)
 }
 
+// indexedTagNames are the tag types materialized into the <table>_tags join tables, so filtering by
+// them is an index-backed semi-join instead of a per-row json_tree(tags) scan. Genre only for now.
+var indexedTagNames = []model.TagName{model.TagGenre}
+
+// updateTags rewrites this item's <table>_tags rows from its in-memory tags, mirroring
+// updateParticipants (delete-then-insert in the same Put; JOIN to tag skips not-yet-saved ids).
+func (r sqlRepository) updateTags(ctx context.Context, itemID string, tags model.Tags) error {
+	del := Delete(r.tableName + "_tags").Where(Eq{r.tableName + "_id": itemID})
+	if _, err := r.executeSQL(ctx, del); err != nil {
+		return err
+	}
+	var tagIDs []string
+	for _, name := range indexedTagNames {
+		for _, value := range tags.Values(name) {
+			tagIDs = append(tagIDs, model.NewTag(name, value).ID)
+		}
+	}
+	if len(tagIDs) == 0 {
+		return nil
+	}
+	idsJSON, err := json.Marshal(tagIDs)
+	if err != nil {
+		return fmt.Errorf("marshaling tag ids: %w", err)
+	}
+	query := fmt.Sprintf(`
+		INSERT INTO %[1]s_tags (%[1]s_id, tag_id)
+		SELECT ?, value FROM json_each(?)
+		JOIN tag ON tag.id = value
+		ON CONFLICT (%[1]s_id, tag_id) DO NOTHING`, r.tableName)
+	_, err = r.executeSQL(ctx, Expr(query, itemID, string(idsJSON)))
+	return err
+}
+
+// genreFilterDef builds indexed genre filters for one item type. Callers use the exported SongGenres / AlbumGenres instances.
+type genreFilterDef struct{ idCol, table, joinCol string }
+
+var (
+	SongGenres  = genreFilterDef{"media_file.id", "media_file_tags", "media_file_id"}
+	AlbumGenres = genreFilterDef{"album.id", "album_tags", "album_id"}
+)
+
+// ByID matches items tagged with any of the given genre tag ids (scalar or slice).
+func (g genreFilterDef) ByID(tagIDs any) Sqlizer {
+	sub, args, _ := Select(g.joinCol).From(g.table).Where(Eq{"tag_id": tagIDs}).ToSql()
+	return Expr(g.idCol+" IN ("+sub+")", args...)
+}
+
+// ByName matches by genre name (Subsonic passes a name, not an id), resolved through the tag
+// dictionary, which is uniquely indexed on (tag_name, tag_value).
+func (g genreFilterDef) ByName(genre string) Sqlizer {
+	sub, args, _ := Select("jt." + g.joinCol).From(g.table + " jt").
+		Join("tag on tag.id = jt.tag_id").
+		Where(And{Eq{"tag.tag_name": "genre"}, Like{"tag.tag_value": genre}}).ToSql()
+	return Expr(g.idCol+" IN ("+sub+")", args...)
+}
+
+// AlbumArtistsByGenreID matches album artists of albums tagged with any of the genre ids. It's a
+// two-table join (album_artists ⨝ album_tags), so it doesn't fit the single-table genreFilterDef.
+func AlbumArtistsByGenreID(tagIDs []string) Sqlizer {
+	sub, args, _ := Select("aa.artist_id").From("album_artists aa").
+		Join("album_tags at on at.album_id = aa.album_id").
+		Where(And{Eq{"aa.role": "albumartist"}, Eq{"at.tag_id": tagIDs}}).ToSql()
+	return Expr("artist.id IN ("+sub+")", args...)
+}
+
+func genreFilter(filter genreFilterDef) func(_ string, v any) Sqlizer {
+	return func(_ string, v any) Sqlizer {
+		return filter.ByID(v)
+	}
+}
+
 // tagIDFilter matches rows whose tags JSON contains the tag id(s); a "<name>_id" key maps to "$.<name>".
 func tagIDFilter(name string, idValue any) Sqlizer {
 	name = strings.TrimSuffix(name, "_id")
@@ -75,11 +146,10 @@ type baseTagRepository struct {
 // newBaseTagRepository creates a new base tag repository with optional tag filtering.
 // If tagFilter is nil, the repository will work with all tags.
 // If tagFilter is provided, the repository will only work with tags of that specific name.
-func newBaseTagRepository(ctx context.Context, db dbx.Builder, tagFilter *model.TagName) *baseTagRepository {
+func newBaseTagRepository(db dbx.Builder, tagFilter *model.TagName) *baseTagRepository {
 	r := &baseTagRepository{
 		tagFilter: tagFilter,
 	}
-	r.ctx = ctx
 	r.db = db
 	r.tableName = "tag"
 	r.registerModel(&model.Tag{}, map[string]filterFunc{
@@ -93,12 +163,12 @@ func newBaseTagRepository(ctx context.Context, db dbx.Builder, tagFilter *model.
 }
 
 // applyLibraryFiltering adds the appropriate library joins based on user context
-func (r *baseTagRepository) applyLibraryFiltering(sq SelectBuilder) SelectBuilder {
+func (r *baseTagRepository) applyLibraryFiltering(ctx context.Context, sq SelectBuilder) SelectBuilder {
 	// Add library_tag join
 	sq = sq.LeftJoin("library_tag on library_tag.tag_id = tag.id")
 
 	// For authenticated users, also join with user_library to filter by accessible libraries
-	user := loggedUser(r.ctx)
+	user := loggedUser(ctx)
 	if user.ID != invalidUserId {
 		sq = sq.Join("user_library on user_library.library_id = library_tag.library_id AND user_library.user_id = ?", user.ID)
 	}
@@ -107,8 +177,8 @@ func (r *baseTagRepository) applyLibraryFiltering(sq SelectBuilder) SelectBuilde
 }
 
 // newSelect overrides the base implementation to apply tag name filtering and library filtering.
-func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuilder {
-	sq := r.sqlRepository.newSelect(options...)
+func (r *baseTagRepository) newSelect(ctx context.Context, options ...model.QueryOptions) SelectBuilder {
+	sq := r.sqlRepository.newSelect(ctx, options...)
 
 	// Apply tag name filtering if specified
 	if r.tagFilter != nil {
@@ -116,7 +186,7 @@ func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuild
 	}
 
 	// Apply library filtering and set up aggregation columns
-	sq = r.applyLibraryFiltering(sq).Columns(
+	sq = r.applyLibraryFiltering(ctx, sq).Columns(
 		"tag.id",
 		"tag.tag_name",
 		"tag.tag_value",
@@ -127,9 +197,9 @@ func (r *baseTagRepository) newSelect(options ...model.QueryOptions) SelectBuild
 	return sq
 }
 
-// ResourceRepository interface implementation
+// REST interface methods
 
-func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
+func (r *baseTagRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
 	sq := Select("COUNT(DISTINCT tag.id)").From("tag")
 
 	// Apply tag name filtering if specified
@@ -138,32 +208,24 @@ func (r *baseTagRepository) Count(options ...rest.QueryOptions) (int64, error) {
 	}
 
 	// Apply library filtering
-	sq = r.applyLibraryFiltering(sq)
+	sq = r.applyLibraryFiltering(ctx, sq)
 
-	return r.count(sq, r.parseRestOptions(r.ctx, options...))
+	return r.count(ctx, sq, r.parseRestOptions(ctx, options...))
 }
 
-func (r *baseTagRepository) Read(id string) (any, error) {
-	query := r.newSelect().Where(Eq{"id": id})
+func (r *baseTagRepository) Read(ctx context.Context, id string) (*model.Tag, error) {
+	query := r.newSelect(ctx).Where(Eq{"id": id})
 	var res model.Tag
-	err := r.queryOne(query, &res)
+	err := r.queryOne(ctx, query, &res)
 	return &res, err
 }
 
-func (r *baseTagRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	query := r.newSelect(r.parseRestOptions(r.ctx, options...))
+func (r *baseTagRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Tag, error) {
+	query := r.newSelect(ctx, r.parseRestOptions(ctx, options...))
 	var res model.TagList
-	err := r.queryAll(query, &res)
+	err := r.queryAll(ctx, query, &res)
 	return res, err
 }
 
-func (r *baseTagRepository) EntityName() string {
-	return "tag"
-}
-
-func (r *baseTagRepository) NewInstance() any {
-	return model.Tag{}
-}
-
 // Interface compliance check
-var _ model.ResourceRepository = (*baseTagRepository)(nil)
+var _ rest.Repository[model.Tag] = (*baseTagRepository)(nil)

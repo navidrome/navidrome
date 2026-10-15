@@ -35,7 +35,7 @@ const PlaylistShowLayout = (props) => {
   const { loading, ...context } = useShowContext(props)
   const { record } = context
   const classes = useStyles()
-  useResourceRefresh('song')
+  useResourceRefresh('playlistTrack', 'song')
 
   return (
     <>

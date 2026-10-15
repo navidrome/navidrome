@@ -13,6 +13,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
+	"golang.org/x/text/unicode/norm"
 )
 
 type smartPlaylistJoinType int
@@ -21,6 +22,7 @@ const (
 	smartPlaylistJoinNone            smartPlaylistJoinType = 0
 	smartPlaylistJoinAlbumAnnotation smartPlaylistJoinType = 1 << iota
 	smartPlaylistJoinArtistAnnotation
+	smartPlaylistJoinAlbum
 )
 
 func (j smartPlaylistJoinType) has(other smartPlaylistJoinType) bool {
@@ -103,6 +105,11 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"albumlastplayed":      {expr: "album_annotation.play_date", joinType: smartPlaylistJoinAlbumAnnotation},
 	"albumdateloved":       {expr: "album_annotation.starred_at", joinType: smartPlaylistJoinAlbumAnnotation},
 	"albumdaterated":       {expr: "album_annotation.rated_at", joinType: smartPlaylistJoinAlbumAnnotation},
+	"albumdateadded":       {expr: "album.created_at", joinType: smartPlaylistJoinAlbum},
+	"albumdatemodified":    {expr: "album.updated_at", joinType: smartPlaylistJoinAlbum},
+	"albumduration":        {expr: "album.duration", joinType: smartPlaylistJoinAlbum},
+	"albumsongcount":       {expr: "album.song_count", joinType: smartPlaylistJoinAlbum},
+	"albumsize":            {expr: "album.size", joinType: smartPlaylistJoinAlbum},
 	"artistrating":         {expr: "artist_annotation.rating", coalesceDefault: 0, joinType: smartPlaylistJoinArtistAnnotation},
 	"artistloved":          {expr: "artist_annotation.starred", coalesceDefault: false, joinType: smartPlaylistJoinArtistAnnotation},
 	"artistplaycount":      {expr: "artist_annotation.play_count", coalesceDefault: 0, joinType: smartPlaylistJoinArtistAnnotation},
@@ -123,7 +130,7 @@ var smartPlaylistFields = map[string]smartPlaylistField{
 	"random":               {order: "random()"},
 }
 
-func (c smartPlaylistCriteria) Where() (squirrel.Sqlizer, error) {
+func (c smartPlaylistCriteria) where() (squirrel.Sqlizer, error) {
 	if c.Criteria.Expression == nil {
 		return squirrel.Expr("1 = 1"), nil
 	}
@@ -338,11 +345,15 @@ func startOfPeriod(numDays int64, from time.Time) string {
 }
 
 func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squirrel.Sqlizer, error) {
-	playlistID, ok := values["id"].(string)
-	if !ok {
-		return nil, errors.New("playlist id not given")
+	var condition squirrel.Sqlizer
+	if playlistId, ok := values["id"].(string); ok && playlistId != "" {
+		condition = squirrel.Eq{"pl.playlist_id": playlistId}
+	} else if playlistPath, ok := values["path"].(string); ok && playlistPath != "" {
+		condition = squirrel.Eq{"playlist.path": pathVariants(playlistPath)}
+	} else {
+		return nil, errors.New("playlist id or path not given")
 	}
-	filters := squirrel.And{squirrel.Eq{"pl.playlist_id": playlistID}}
+	filters := squirrel.And{condition}
 	if !c.owner.IsAdmin {
 		if c.owner.ID == "" {
 			filters = append(filters, squirrel.Eq{"playlist.public": 1})
@@ -365,6 +376,18 @@ func (c smartPlaylistCriteria) inList(values map[string]any, negate bool) (squir
 		return squirrel.Expr("media_file.id NOT IN ("+subSQL+")", subArgs...), nil
 	}
 	return squirrel.Expr("media_file.id IN ("+subSQL+")", subArgs...), nil
+}
+
+// Filesystems disagree on the Unicode form of a name, so match the path in NFC and NFD.
+func pathVariants(path string) []string {
+	variants := []string{path}
+	if alt := norm.NFC.String(path); alt != path {
+		variants = append(variants, alt)
+	}
+	if alt := norm.NFD.String(path); alt != path {
+		variants = append(variants, alt)
+	}
+	return variants
 }
 
 func jsonExpr(info criteria.FieldInfo, cond squirrel.Sqlizer, negate bool) squirrel.Sqlizer {
@@ -780,7 +803,7 @@ func fieldJoinType(name string) smartPlaylistJoinType {
 	return field.joinType
 }
 
-func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
+func (c smartPlaylistCriteria) expressionJoins() smartPlaylistJoinType {
 	var joins smartPlaylistJoinType
 	_ = criteria.Walk(c.Criteria.Expression, func(expr criteria.Expression) error {
 		for field := range criteria.Fields(expr) {
@@ -791,15 +814,50 @@ func (c smartPlaylistCriteria) ExpressionJoins() smartPlaylistJoinType {
 	return joins
 }
 
-func (c smartPlaylistCriteria) RequiredJoins() smartPlaylistJoinType {
-	joins := c.ExpressionJoins()
+func (c smartPlaylistCriteria) requiredJoins() smartPlaylistJoinType {
+	joins := c.expressionJoins()
 	for _, name := range c.Criteria.SortFieldNames() {
 		joins |= fieldJoinType(name)
 	}
 	return joins
 }
 
-func (c smartPlaylistCriteria) OrderBy() string {
+// applyExpressionJoins adds every join the criteria's WHERE clause resolves against.
+func (c smartPlaylistCriteria) applyExpressionJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
+	return c.applyJoins(sq, c.expressionJoins(), userID)
+}
+
+// applyRequiredJoins adds the WHERE joins plus any the ORDER BY resolves against.
+func (c smartPlaylistCriteria) applyRequiredJoins(sq squirrel.SelectBuilder, userID string) squirrel.SelectBuilder {
+	return c.applyJoins(sq, c.requiredJoins(), userID)
+}
+
+// applyJoins joins the media_file annotation unconditionally — annotation fields
+// COALESCE a missing row to a default, so the row has to be reachable to be absent.
+func (c smartPlaylistCriteria) applyJoins(sq squirrel.SelectBuilder, joins smartPlaylistJoinType, userID string) squirrel.SelectBuilder {
+	sq = sq.LeftJoin("annotation on ("+
+		"annotation.item_id = media_file.id"+
+		" AND annotation.item_type = 'media_file'"+
+		" AND annotation.user_id = ?)", userID)
+	if joins.has(smartPlaylistJoinAlbumAnnotation) {
+		sq = sq.LeftJoin("annotation AS album_annotation ON ("+
+			"album_annotation.item_id = media_file.album_id"+
+			" AND album_annotation.item_type = 'album'"+
+			" AND album_annotation.user_id = ?)", userID)
+	}
+	if joins.has(smartPlaylistJoinArtistAnnotation) {
+		sq = sq.LeftJoin("annotation AS artist_annotation ON ("+
+			"artist_annotation.item_id = media_file.artist_id"+
+			" AND artist_annotation.item_type = 'artist'"+
+			" AND artist_annotation.user_id = ?)", userID)
+	}
+	if joins.has(smartPlaylistJoinAlbum) {
+		sq = sq.LeftJoin("album ON album.id = media_file.album_id")
+	}
+	return sq
+}
+
+func (c smartPlaylistCriteria) orderBy() string {
 	sortFields := c.Criteria.OrderByFields()
 	parts := make([]string, 0, len(sortFields))
 	for _, sf := range sortFields {

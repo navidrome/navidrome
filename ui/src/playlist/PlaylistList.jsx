@@ -20,7 +20,7 @@ import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
-  CoverArtAvatar,
+  ArtworkAvatar,
   DurationField,
   List,
   LoveButton,
@@ -67,15 +67,15 @@ const PlaylistFilter = (props) => {
   )
 }
 
-const TogglePublicInput = ({ resource, source }) => {
+export const ToggleField = ({ resource, source }) => {
   const record = useRecordContext()
   const notify = useNotify()
-  const [togglePublic] = useUpdate(
+  const [toggle] = useUpdate(
     resource,
-    record.id,
+    record?.id,
     {
       ...record,
-      public: !record.public,
+      [source]: !record?.[source],
     },
     {
       undoable: false,
@@ -86,48 +86,25 @@ const TogglePublicInput = ({ resource, source }) => {
   )
 
   const handleClick = (e) => {
-    togglePublic()
+    toggle()
     e.stopPropagation()
   }
+
+  if (!record) return null
 
   return (
     <Switch
       checked={record[source]}
+      color="primary"
       onClick={handleClick}
       disabled={!isWritable(record.ownerId)}
     />
   )
 }
 
-const ToggleAutoImport = ({ resource, source }) => {
+export const ToggleAutoImport = (props) => {
   const record = useRecordContext()
-  const notify = useNotify()
-  const [ToggleAutoImport] = useUpdate(
-    resource,
-    record.id,
-    {
-      ...record,
-      sync: !record.sync,
-    },
-    {
-      undoable: false,
-      onFailure: (error) => {
-        notify('ra.page.error', 'warning')
-      },
-    },
-  )
-  const handleClick = (e) => {
-    ToggleAutoImport()
-    e.stopPropagation()
-  }
-
-  return record.path ? (
-    <Switch
-      checked={record[source]}
-      onClick={handleClick}
-      disabled={!isWritable(record.ownerId)}
-    />
-  ) : null
+  return record?.path ? <ToggleField {...props} /> : null
 }
 
 const PlaylistListBulkActions = (props) => {
@@ -169,9 +146,7 @@ const PlaylistList = (props) => {
       updatedAt: isDesktop && (
         <DateField source="updatedAt" sortByOrder={'DESC'} />
       ),
-      public: !isXsmall && (
-        <TogglePublicInput source="public" sortByOrder={'DESC'} />
-      ),
+      public: !isXsmall && <ToggleField source="public" sortByOrder={'DESC'} />,
       comment: <TextField source="comment" />,
       sync: !isXsmall && (
         <ToggleAutoImport source="sync" sortByOrder={'DESC'} />
@@ -197,7 +172,7 @@ const PlaylistList = (props) => {
       bulkActionButtons={!isXsmall && <PlaylistListBulkActions />}
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
-        <CoverArtAvatar source="id" variant="square" />
+        <ArtworkAvatar source="id" variant="square" />
         <TextField source="name" />
         {columns}
         <Writable>
