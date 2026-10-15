@@ -416,15 +416,15 @@ func handleLoginFromHeaders(ds model.DataStore, r *http.Request) map[string]any 
 }
 
 func validateIPAgainstList(ip string, comaSeparatedList string) bool {
-	if comaSeparatedList == "" || ip == "" {
+	if comaSeparatedList == "" {
 		return false
 	}
 
 	cidrs := strings.Split(comaSeparatedList, ",")
 
 	// Per https://github.com/golang/go/issues/49825, the remote address
-	// on a unix socket is '@'
-	if ip == "@" && strings.HasPrefix(conf.Server.Address, "unix:") {
+	// on a unix socket is '@' on Linux, but empty on BSDs (FreeBSD, macOS)
+	if (ip == "@" || ip == "") && strings.HasPrefix(conf.Server.Address, "unix:") {
 		return slices.Contains(cidrs, "@")
 	}
 
