@@ -254,6 +254,29 @@ describe('<LyricsPanel />', () => {
     })
   })
 
+  it('exposes timed token text outside the aria-hidden wave copy', () => {
+    renderPanel({
+      mainLyric: tokenizedMainLyric,
+      pronunciationLyric: tokenizedPronunciationLyric,
+      showPronunciation: true,
+    })
+
+    const tokens = [
+      ...screen.getAllByTestId('lyrics-token'),
+      ...screen.getAllByTestId('lyrics-pronunciation-token'),
+    ]
+    expect(tokens).toHaveLength(4)
+    tokens.forEach((token) => {
+      expect(token).not.toHaveAttribute('aria-label')
+      const readable = Array.from(token.childNodes)
+        .filter((node) => node.getAttribute?.('aria-hidden') !== 'true')
+        .map((node) => node.textContent)
+        .join('')
+      expect(readable).not.toBe('')
+      expect(token.textContent).toContain(readable)
+    })
+  })
+
   it('keeps token ref callbacks stable across equivalent rerenders', () => {
     const registerToken = vi.fn()
     const line = {

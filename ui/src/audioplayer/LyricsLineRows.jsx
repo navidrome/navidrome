@@ -51,6 +51,20 @@ const waveTextRootStyle = {
 
 const waveTextMeasureStyle = { visibility: 'hidden' }
 
+// Keeps timed token text readable by screen readers, since the painted
+// wave copy is aria-hidden and aria-label is ignored on role-less spans.
+const visuallyHiddenStyle = {
+  border: 0,
+  clip: 'rect(0 0 0 0)',
+  height: 1,
+  margin: -1,
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  width: 1,
+}
+
 const waveTextOverlayStyle = {
   display: 'block',
   inset: 0,
@@ -62,36 +76,39 @@ const renderWaveText = (text, eligible, enabled, emphasized, className) => {
   if (!eligible) return text
 
   return (
-    <span
-      aria-hidden="true"
-      data-lyrics-wave-text="true"
-      style={waveTextRootStyle}
-    >
-      {enabled ? (
-        <>
-          <span data-lyrics-wave-measure="true" style={waveTextMeasureStyle}>
-            {text}
-          </span>
-          <span data-lyrics-wave-overlay="true" style={waveTextOverlayStyle}>
-            {splitGraphemes(text).map((character, index) => {
-              if (/^\s+$/.test(character)) return character
-              return (
-                <span
-                  key={`${index}-${character}`}
-                  className={className}
-                  data-lyrics-character="true"
-                  style={emphasized ? emphasisPaintOverhangStyle : undefined}
-                >
-                  {character}
-                </span>
-              )
-            })}
-          </span>
-        </>
-      ) : (
-        text
-      )}
-    </span>
+    <>
+      <span style={visuallyHiddenStyle}>{text}</span>
+      <span
+        aria-hidden="true"
+        data-lyrics-wave-text="true"
+        style={waveTextRootStyle}
+      >
+        {enabled ? (
+          <>
+            <span data-lyrics-wave-measure="true" style={waveTextMeasureStyle}>
+              {text}
+            </span>
+            <span data-lyrics-wave-overlay="true" style={waveTextOverlayStyle}>
+              {splitGraphemes(text).map((character, index) => {
+                if (/^\s+$/.test(character)) return character
+                return (
+                  <span
+                    key={`${index}-${character}`}
+                    className={className}
+                    data-lyrics-character="true"
+                    style={emphasized ? emphasisPaintOverhangStyle : undefined}
+                  >
+                    {character}
+                  </span>
+                )
+              })}
+            </span>
+          </>
+        ) : (
+          text
+        )}
+      </span>
+    </>
   )
 }
 
@@ -270,7 +287,6 @@ export const KaraokeLineRow = memo(
                   : undefined
               }
               style={tokenData.style}
-              aria-label={segment.text}
             >
               {renderWaveText(
                 segment.text,
@@ -516,7 +532,6 @@ export const KaraokeStackedLineRow = memo(
                   : undefined
               }
               style={mainTokenData.style}
-              aria-label={segment.text}
             >
               {renderWaveText(
                 segment.text,
@@ -579,9 +594,6 @@ export const KaraokeStackedLineRow = memo(
                 data-testid="lyrics-pronunciation-token"
                 data-lyrics-state="future"
                 data-timed={pronunciationWindow ? 'true' : 'false'}
-                aria-label={
-                  pronunciationWindow ? segment.pronunciation : undefined
-                }
                 ref={
                   pronunciationWindow
                     ? getTokenRef({
