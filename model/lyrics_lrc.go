@@ -56,9 +56,7 @@ func parseLRC(language, text string) (*Lyrics, error) {
 		var bgEnd *int64
 		value, cues, bgEnd, merged = mergeBgLayers(value, cues, pendingBg)
 		hasBg = hasBg || merged
-		if bgEnd != nil && (end == nil || *bgEnd > *end) {
-			end = bgEnd
-		}
+		end = laterTime(end, bgEnd)
 		for idx := range timestamps {
 			startCopy := timestamps[idx]
 			shift := timestamps[idx] - timestamps[0]
@@ -222,9 +220,7 @@ func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, *
 		if len(bgCues) == 0 {
 			continue
 		}
-		if bgEnd != nil && (latestEnd == nil || *bgEnd > *latestEnd) {
-			latestEnd = bgEnd
-		}
+		latestEnd = laterTime(latestEnd, bgEnd)
 		offset := 0
 		if value != "" {
 			offset = len(value) + 1
@@ -366,6 +362,14 @@ func adjustGroup(match []int, groupIdx int) int {
 // returning the plain lyric text.
 func stripEnhancedMarkers(text string) string {
 	return enhancedLRCRegex.ReplaceAllString(text, "")
+}
+
+// laterTime returns whichever timestamp is later, treating nil as unknown.
+func laterTime(a, b *int64) *int64 {
+	if a == nil || (b != nil && *b > *a) {
+		return b
+	}
+	return a
 }
 
 func shiftELRCTime(value *int64, offsetMs int64) *int64 {
