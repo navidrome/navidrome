@@ -37,7 +37,6 @@ type lyricsCallGroup struct {
 type lyricsCall struct {
 	group    *lyricsCallGroup
 	key      string
-	ctx      context.Context
 	cancel   context.CancelFunc
 	done     chan struct{}
 	lyrics   model.LyricList
@@ -62,7 +61,6 @@ func (g *lyricsCallGroup) join(
 	call := &lyricsCall{
 		group:   g,
 		key:     key,
-		ctx:     ctx,
 		cancel:  cancel,
 		done:    make(chan struct{}),
 		waiters: 1,
@@ -73,12 +71,12 @@ func (g *lyricsCallGroup) join(
 	g.calls[key] = call
 	g.mu.Unlock()
 
-	go call.run(lookup)
+	go call.run(ctx, lookup)
 	return call
 }
 
-func (c *lyricsCall) run(lookup func(context.Context) (model.LyricList, error)) {
-	lyrics, err := lookup(c.ctx)
+func (c *lyricsCall) run(ctx context.Context, lookup func(context.Context) (model.LyricList, error)) {
+	lyrics, err := lookup(ctx)
 
 	c.group.mu.Lock()
 	c.lyrics = lyrics
