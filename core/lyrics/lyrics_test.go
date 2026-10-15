@@ -6,15 +6,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"testing/fstest"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/lyrics"
+	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/text/unicode/norm"
 )
 
 var _ = Describe("Lyrics", func() {
@@ -256,6 +260,38 @@ var _ = Describe("Lyrics", func() {
 		Expect(list[0].Line).To(Equal([]model.Line{
 			{Value: "title: not lyricsfile"},
 		}))
+	})
+
+	It("resolves an external sidecar whose Unicode normalization differs from the track path (issue #4148)", func() {
+		// Reproduces the reported case: a Japanese filename whose sidecar is stored
+		// in a different normalization form than the track. An in-memory FS keeps
+		// the mismatch byte-exact regardless of the host filesystem, which may
+		// normalize names on lookup and hide the bug.
+		const scheme = "fake-lyrics-e2e"
+		fsys := &storagetest.FakeFS{}
+		storagetest.Register(scheme, fsys)
+
+		// "ガ" is katakana KA plus a dakuten, so its NFC and NFD forms differ.
+		const base = "03. 鬱P feat. 初音ミク - ガ"
+		modTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		fsys.SetFiles(fstest.MapFS{
+			norm.NFC.String(base) + ".flac": &fstest.MapFile{Data: []byte("audio"), ModTime: modTime},
+			norm.NFD.String(base) + ".lrc":  &fstest.MapFile{Data: []byte("[00:18.80]We're no strangers to love"), ModTime: modTime},
+		})
+
+		// Default priority from the bug report: ".lrc,.txt,embedded".
+		conf.Server.LyricsPriority = ".lrc,.txt,embedded"
+		svc := lyrics.NewLyrics(nil, nil)
+		list, err := svc.GetLyrics(ctx, &model.MediaFile{
+			LibraryPath: scheme + ":///music",
+			Path:        norm.NFC.String(base) + ".flac",
+		})
+
+		Expect(err).To(BeNil())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Synced).To(BeTrue())
+		Expect(list[0].Line).To(HaveLen(1))
+		Expect(list[0].Line[0].Value).To(Equal("We're no strangers to love"))
 	})
 
 	Context("Errors", func() {
