@@ -18,6 +18,7 @@ import {
   useRecordContext,
   useTranslate,
 } from 'react-admin'
+import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import config from '../config'
 import 'react-image-lightbox/style.css'
@@ -33,6 +34,7 @@ import {
   SizeField,
   useAlbumsPerPage,
 } from '../common'
+import { useDateLocale } from '../i18n/useDateLocale'
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
 import { SafeHTML } from '../common/SafeHTML'
@@ -79,6 +81,9 @@ const useStyles = makeStyles(
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    noCoverAnimation: {
+      '&, &::before, &::after': { animation: 'none' },
     },
     cover: {
       objectFit: 'contain',
@@ -197,6 +202,7 @@ export const Details = (props) => {
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const translate = useTranslate()
   const record = useRecordContext(props)
+  const locale = useDateLocale()
 
   // Create an array of detail elements
   let details = []
@@ -207,12 +213,13 @@ export const Details = (props) => {
 
   // Calculate date related fields
   const yearRange = formatRange(record, 'year')
-  const date = record.date ? formatFullDate(record.date) : yearRange
+  const date = record.date ? formatFullDate(record.date, locale) : yearRange
 
   const originalDate = record.originalDate
-    ? formatFullDate(record.originalDate)
+    ? formatFullDate(record.originalDate, locale)
     : formatRange(record, 'originalYear')
-  const releaseDate = record?.releaseDate && formatFullDate(record.releaseDate)
+  const releaseDate =
+    record?.releaseDate && formatFullDate(record.releaseDate, locale)
 
   const dateToUse = originalDate || date
   const isOriginalDate = originalDate && dateToUse !== date
@@ -293,7 +300,12 @@ const AlbumDetails = (props) => {
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
-        <div className={classes.coverParent}>
+        <div
+          className={clsx(
+            classes.coverParent,
+            !config.enableCoverAnimation && classes.noCoverAnimation,
+          )}
+        >
           <Artwork
             record={record}
             fit="contain"

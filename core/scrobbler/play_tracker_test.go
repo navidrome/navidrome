@@ -55,12 +55,12 @@ type flipOnPlayRepo struct {
 	played        atomic.Bool
 }
 
-func (r *flipOnPlayRepo) IncPlayCount(id string, ts time.Time) error {
+func (r *flipOnPlayRepo) IncPlayCount(ctx context.Context, id string, ts time.Time) error {
 	r.played.Store(true)
-	return r.MediaFileRepository.IncPlayCount(id, ts)
+	return r.MediaFileRepository.IncPlayCount(ctx, id, ts)
 }
 
-func (r *flipOnPlayRepo) MatchesCriteria(string, criteria.Criteria) (bool, error) {
+func (r *flipOnPlayRepo) MatchesCriteria(context.Context, string, criteria.Criteria) (bool, error) {
 	if r.played.Load() {
 		return r.after, nil
 	}
@@ -73,9 +73,9 @@ type slowMediaFileRepo struct {
 	model.MediaFileRepository
 }
 
-func (s *slowMediaFileRepo) GetWithParticipants(id string) (*model.MediaFile, error) {
+func (s *slowMediaFileRepo) GetWithParticipants(ctx context.Context, id string) (*model.MediaFile, error) {
 	time.Sleep(5 * time.Millisecond)
-	return s.MediaFileRepository.GetWithParticipants(id)
+	return s.MediaFileRepository.GetWithParticipants(ctx, id)
 }
 
 var _ = Describe("PlayTracker", func() {
@@ -92,7 +92,7 @@ var _ = Describe("PlayTracker", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = GinkgoT().Context()
-		ctx = request.WithUser(ctx, model.User{ID: "u-1"})
+		ctx = request.WithUser(ctx, model.User{ID: "u-1", Libraries: model.Libraries{{ID: 1}}})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})
 		ds = &tests.MockDataStore{}
 		fake = &fakeScrobbler{Authorized: true}
@@ -108,6 +108,7 @@ var _ = Describe("PlayTracker", func() {
 
 		track = model.MediaFile{
 			ID:             "123",
+			LibraryID:      1,
 			Title:          "Track Title",
 			Album:          "Track Album",
 			AlbumID:        "al-1",
@@ -118,13 +119,13 @@ var _ = Describe("PlayTracker", func() {
 				model.RoleArtist: []model.Participant{_p("ar-1", "Artist 1"), _p("ar-2", "Artist 2")},
 			},
 		}
-		_ = ds.MediaFile(ctx).Put(&track)
+		_ = ds.MediaFile().Put(ctx, &track)
 		artist1 = model.Artist{ID: "ar-1"}
-		_ = ds.Artist(ctx).Put(&artist1)
+		_ = ds.Artist().Put(ctx, &artist1)
 		artist2 = model.Artist{ID: "ar-2"}
-		_ = ds.Artist(ctx).Put(&artist2)
+		_ = ds.Artist().Put(ctx, &artist2)
 		album = model.Album{ID: "al-1"}
-		_ = ds.Album(ctx).(*tests.MockAlbumRepo).Put(&album)
+		_ = ds.Album().(*tests.MockAlbumRepo).Put(ctx, &album)
 	})
 
 	AfterEach(func() {
@@ -148,7 +149,7 @@ var _ = Describe("PlayTracker", func() {
 		It("returns current playing music", func() {
 			track2 := track
 			track2.ID = "456"
-			_ = ds.MediaFile(ctx).Put(&track2)
+			_ = ds.MediaFile().Put(ctx, &track2)
 			ctx1 := request.WithUser(GinkgoT().Context(), model.User{UserName: "user-1"})
 			ctx1 = request.WithPlayer(ctx1, model.Player{ScrobbleEnabled: true})
 			_ = tracker.ReportPlayback(ctx1, ReportPlaybackParams{
@@ -173,6 +174,46 @@ var _ = Describe("PlayTracker", func() {
 			Expect(playing[1].PlayerName).To(Equal("player-one"))
 			Expect(playing[1].Username).To(Equal("user-1"))
 			Expect(playing[1].MediaFile.ID).To(Equal("123"))
+		})
+
+		It("hides sessions playing from libraries the caller cannot access", func() {
+			hidden := track
+			hidden.ID = "789"
+			hidden.LibraryID = 2
+			_ = ds.MediaFile().Put(ctx, &hidden)
+			reporter := request.WithPlayer(
+				request.WithUser(GinkgoT().Context(), model.User{ID: "u-2", UserName: "user-2"}),
+				model.Player{ScrobbleEnabled: true},
+			)
+			_ = tracker.ReportPlayback(reporter, ReportPlaybackParams{
+				MediaId: "789", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-2", ClientName: "player-two",
+			})
+
+			playing, err := tracker.GetNowPlaying(ctx)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(BeEmpty(), "u-1 is granted library 1 only")
+		})
+
+		It("shows every session to an admin", func() {
+			hidden := track
+			hidden.ID = "789"
+			hidden.LibraryID = 2
+			_ = ds.MediaFile().Put(ctx, &hidden)
+			reporter := request.WithPlayer(
+				request.WithUser(GinkgoT().Context(), model.User{ID: "u-2", UserName: "user-2"}),
+				model.Player{ScrobbleEnabled: true},
+			)
+			_ = tracker.ReportPlayback(reporter, ReportPlaybackParams{
+				MediaId: "789", PositionMs: 0, State: StatePlaying, PlaybackRate: 1.0, ClientId: "player-2", ClientName: "player-two",
+			})
+
+			adminCtx := request.WithUser(GinkgoT().Context(), model.User{ID: "adm", IsAdmin: true})
+			playing, err := tracker.GetNowPlaying(adminCtx)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playing).To(HaveLen(1))
+			Expect(playing[0].MediaFile.ID).To(Equal("789"))
 		})
 	})
 
@@ -319,7 +360,7 @@ var _ = Describe("PlayTracker", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				mockDS := ds.(*tests.MockDataStore)
-				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				mockScrobble := mockDS.Scrobble().(*tests.MockScrobbleRepo)
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(1))
 				Expect(mockScrobble.RecordedScrobbles[0].MediaFileID).To(Equal("123"))
 				Expect(mockScrobble.RecordedScrobbles[0].UserID).To(Equal("u-1"))
@@ -335,7 +376,7 @@ var _ = Describe("PlayTracker", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				mockDS := ds.(*tests.MockDataStore)
-				mockScrobble := mockDS.Scrobble(ctx).(*tests.MockScrobbleRepo)
+				mockScrobble := mockDS.Scrobble().(*tests.MockScrobbleRepo)
 				Expect(mockScrobble.RecordedScrobbles).To(HaveLen(0))
 			})
 		})
@@ -347,7 +388,7 @@ var _ = Describe("PlayTracker", func() {
 		BeforeEach(func() {
 			ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1",
 				ScrobbleFilter: `{"all":[{"contains":{"title":"Track"}}]}`})
-			repo = ds.MediaFile(ctx).(*tests.MockMediaFileRepo)
+			repo = ds.MediaFile().(*tests.MockMediaFileRepo)
 		})
 
 		It("does not send a matching track to the agent", func() {
@@ -448,7 +489,7 @@ var _ = Describe("PlayTracker", func() {
 			var flip *flipOnPlayRepo
 
 			install := func(before, after bool) {
-				flip = &flipOnPlayRepo{MediaFileRepository: ds.MediaFile(ctx), before: before, after: after}
+				flip = &flipOnPlayRepo{MediaFileRepository: ds.MediaFile(), before: before, after: after}
 				ds.(*tests.MockDataStore).MockedMediaFile = flip
 			}
 
@@ -591,7 +632,7 @@ var _ = Describe("PlayTracker", func() {
 		It("starting replaces existing entry when switching tracks on same player", func() {
 			track2 := track
 			track2.ID = "456"
-			_ = ds.MediaFile(ctx).Put(&track2)
+			_ = ds.MediaFile().Put(ctx, &track2)
 
 			err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 				MediaId: "123", PositionMs: 50000, State: "playing", PlaybackRate: 1.0, ClientId: defaultClientId,
@@ -618,7 +659,7 @@ var _ = Describe("PlayTracker", func() {
 
 			track2 := track
 			track2.ID = "456"
-			_ = ds.MediaFile(ctx).Put(&track2)
+			_ = ds.MediaFile().Put(ctx, &track2)
 
 			err := tracker.ReportPlayback(ctx1, ReportPlaybackParams{
 				MediaId: "123", PositionMs: 0, State: "playing", PlaybackRate: 1.0, ClientId: "client-1",
@@ -719,7 +760,7 @@ var _ = Describe("PlayTracker", func() {
 						model.RoleArtist: []model.Participant{_p("ar-1", "Artist 1")},
 					},
 				}
-				_ = ds.MediaFile(ctx).Put(&longTrack)
+				_ = ds.MediaFile().Put(ctx, &longTrack)
 
 				err := tracker.ReportPlayback(ctx, ReportPlaybackParams{
 					MediaId: "long", PositionMs: 0, State: "starting", PlaybackRate: 1.0, ClientId: defaultClientId,
@@ -917,7 +958,7 @@ var _ = Describe("PlayTracker", func() {
 			BeforeEach(func() {
 				track2 := track
 				track2.ID = "456"
-				_ = ds.MediaFile(ctx).Put(&track2)
+				_ = ds.MediaFile().Put(ctx, &track2)
 			})
 
 			It("does not downgrade an actively playing session when a late starting report arrives for the same track", func() {
@@ -982,7 +1023,7 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("never lets a concurrent starting report downgrade the playing session", func() {
-				ds.(*tests.MockDataStore).MockedMediaFile = &slowMediaFileRepo{MediaFileRepository: ds.MediaFile(ctx)}
+				ds.(*tests.MockDataStore).MockedMediaFile = &slowMediaFileRepo{MediaFileRepository: ds.MediaFile()}
 				for i := range 20 {
 					raceClientId := fmt.Sprintf("race-client-%d", i)
 					var wg sync.WaitGroup

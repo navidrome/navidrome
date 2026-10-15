@@ -17,19 +17,19 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 
 		BeforeAll(func() {
 			// Look up a song from the scanned data
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			songID = songs[0].ID
 
 			// Look up an album
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "name"})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "name"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).ToNot(BeEmpty())
 			albumID = albums[0].ID
 
 			// Look up an artist
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "name"})
+			artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "name"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artists).ToNot(BeEmpty())
 			artistID = artists[0].ID
@@ -97,12 +97,12 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 		var songID, albumID string
 
 		BeforeAll(func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			songID = songs[0].ID
 
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "name"})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "name"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).ToNot(BeEmpty())
 			albumID = albums[0].ID
@@ -141,7 +141,7 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 
 	Describe("Scrobble", func() {
 		It("submits a scrobble for a song", func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 
@@ -163,7 +163,7 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 		var songID string
 
 		BeforeAll(func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			songID = songs[0].ID

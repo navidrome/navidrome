@@ -13,43 +13,39 @@ type genreRepository struct {
 	*baseTagRepository
 }
 
-func NewGenreRepository(ctx context.Context, db dbx.Builder) model.GenreRepository {
+func NewGenreRepository(db dbx.Builder) model.GenreRepository {
 	return &genreRepository{
-		baseTagRepository: newBaseTagRepository(ctx, db, new(model.TagGenre)),
+		baseTagRepository: newBaseTagRepository(db, new(model.TagGenre)),
 	}
 }
 
-func (r *genreRepository) selectGenre(opt ...model.QueryOptions) SelectBuilder {
-	return r.newSelect(opt...).Columns("tag.tag_value as name")
+func (r *genreRepository) selectGenre(ctx context.Context, opt ...model.QueryOptions) SelectBuilder {
+	return r.newSelect(ctx, opt...).Columns("tag.tag_value as name")
 }
 
-func (r *genreRepository) GetAll(opt ...model.QueryOptions) (model.Genres, error) {
-	sq := r.selectGenre(opt...)
+func (r *genreRepository) GetAll(ctx context.Context, opt ...model.QueryOptions) (model.Genres, error) {
+	sq := r.selectGenre(ctx, opt...)
 	res := model.Genres{}
-	err := r.queryAll(sq, &res)
+	err := r.queryAll(ctx, sq, &res)
 	return res, err
 }
 
-func (r *genreRepository) Get(id string) (*model.Genre, error) {
-	sel := r.selectGenre().Where(Eq{"tag.id": id})
+func (r *genreRepository) Get(ctx context.Context, id string) (*model.Genre, error) {
+	sel := r.selectGenre(ctx).Where(Eq{"tag.id": id})
 	var res model.Genre
-	err := r.queryOne(sel, &res)
+	err := r.queryOne(ctx, sel, &res)
 	return &res, err
 }
 
-// Override ResourceRepository methods to return Genre objects instead of Tag objects
+// Override the base tag REST methods to return Genre objects instead of Tag objects
 
-func (r *genreRepository) Read(id string) (any, error) {
-	return r.Get(id)
+func (r *genreRepository) Read(ctx context.Context, id string) (*model.Genre, error) {
+	return r.Get(ctx, id)
 }
 
-func (r *genreRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	return r.GetAll(r.parseRestOptions(r.ctx, options...))
-}
-
-func (r *genreRepository) NewInstance() any {
-	return &model.Genre{}
+func (r *genreRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.Genre, error) {
+	return r.GetAll(ctx, r.parseRestOptions(ctx, options...))
 }
 
 var _ model.GenreRepository = (*genreRepository)(nil)
-var _ model.ResourceRepository = (*genreRepository)(nil)
+var _ rest.Repository[model.Genre] = (*genreRepository)(nil)

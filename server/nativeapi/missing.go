@@ -6,7 +6,6 @@ import (
 	"maps"
 	"net/http"
 
-	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
@@ -15,24 +14,21 @@ import (
 )
 
 type missingRepository struct {
-	model.ResourceRepository
+	rest.Repository[model.MediaFile]
 	mfRepo model.MediaFileRepository
 }
 
-func newMissingRepository(ds model.DataStore) rest.RepositoryConstructor {
-	return func(ctx context.Context) rest.Repository {
-		return &missingRepository{mfRepo: ds.MediaFile(ctx), ResourceRepository: ds.Resource(ctx, model.MediaFile{})}
-	}
+func newMissingRepository(ds model.DataStore) rest.Repository[model.MediaFile] {
+	mf := ds.MediaFile()
+	return &missingRepository{Repository: mf, mfRepo: mf}
 }
 
-func (r *missingRepository) Count(options ...rest.QueryOptions) (int64, error) {
-	opt := r.parseOptions(options)
-	return r.ResourceRepository.Count(opt)
+func (r *missingRepository) Count(ctx context.Context, options ...rest.QueryOptions) (int64, error) {
+	return r.Repository.Count(ctx, r.parseOptions(options))
 }
 
-func (r *missingRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
-	opt := r.parseOptions(options)
-	return r.ResourceRepository.ReadAll(opt)
+func (r *missingRepository) ReadAll(ctx context.Context, options ...rest.QueryOptions) ([]model.MediaFile, error) {
+	return r.Repository.ReadAll(ctx, r.parseOptions(options))
 }
 
 func (r *missingRepository) parseOptions(options []rest.QueryOptions) rest.QueryOptions {
@@ -45,22 +41,15 @@ func (r *missingRepository) parseOptions(options []rest.QueryOptions) rest.Query
 	return opt
 }
 
-func (r *missingRepository) Read(id string) (any, error) {
-	all, err := r.mfRepo.GetAll(model.QueryOptions{Filters: squirrel.And{
-		squirrel.Eq{"id": id},
-		squirrel.Eq{"missing": true},
-	}})
+func (r *missingRepository) Read(ctx context.Context, id string) (*model.MediaFile, error) {
+	mf, err := r.mfRepo.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if len(all) == 0 {
+	if !mf.Missing {
 		return nil, model.ErrNotFound
 	}
-	return all[0], nil
-}
-
-func (r *missingRepository) EntityName() string {
-	return "missing_files"
+	return mf, nil
 }
 
 func deleteMissingFiles(maintenance core.Maintenance) http.HandlerFunc {
@@ -90,5 +79,3 @@ func deleteMissingFiles(maintenance core.Maintenance) http.HandlerFunc {
 		writeDeleteManyResponse(w, r, ids)
 	}
 }
-
-var _ model.ResourceRepository = &missingRepository{}

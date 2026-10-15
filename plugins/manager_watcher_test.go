@@ -31,7 +31,7 @@ var _ = Describe("Plugin Watcher", func() {
 			_ = manager.unloadPlugin("test-metadata-agent")
 			_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
 			// Also remove from DB so tests start with a clean slate
-			_ = manager.ds.Plugin(ctx).Delete("test-metadata-agent")
+			_ = manager.ds.Plugin().Delete(ctx, "test-metadata-agent")
 		})
 
 		// Helper to copy test plugin into the temp folder
@@ -51,7 +51,7 @@ var _ = Describe("Plugin Watcher", func() {
 				// Clean up: unload plugin if loaded, remove copied file, delete from DB
 				_ = manager.unloadPlugin("test-metadata-agent")
 				_ = os.Remove(filepath.Join(tmpDir, "test-metadata-agent"+PackageExtension))
-				_ = manager.ds.Plugin(ctx).Delete("test-metadata-agent")
+				_ = manager.ds.Plugin().Delete(ctx, "test-metadata-agent")
 			})
 
 			It("adds plugin to DB when file exists", func() {
@@ -62,8 +62,8 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
 
 				// Verify it was added to DB
-				repo := manager.ds.Plugin(ctx)
-				plugin, err := repo.Get("test-metadata-agent")
+				repo := manager.ds.Plugin()
+				plugin, err := repo.Get(ctx, "test-metadata-agent")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(plugin.ID).To(Equal("test-metadata-agent"))
 				Expect(plugin.Enabled).To(BeFalse())
@@ -80,11 +80,11 @@ var _ = Describe("Plugin Watcher", func() {
 
 				// Modify the stored SHA256 in DB to simulate a file change
 				// (In reality, the file would have different content)
-				repo := manager.ds.Plugin(ctx)
-				plugin, err := repo.Get("test-metadata-agent")
+				repo := manager.ds.Plugin()
+				plugin, err := repo.Get(ctx, "test-metadata-agent")
 				Expect(err).ToNot(HaveOccurred())
 				plugin.SHA256 = "different-hash-to-simulate-change"
-				err = repo.Put(plugin)
+				err = repo.Put(ctx, plugin)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Simulate modification - the plugin should be disabled and unloaded
@@ -94,7 +94,7 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
 
 				// But still in DB (just disabled)
-				plugin, err = repo.Get("test-metadata-agent")
+				plugin, err = repo.Get(ctx, "test-metadata-agent")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(plugin.Enabled).To(BeFalse())
 			})
@@ -115,8 +115,8 @@ var _ = Describe("Plugin Watcher", func() {
 				Expect(manager.PluginNames(string(CapabilityMetadataAgent))).ToNot(ContainElement("test-metadata-agent"))
 
 				// And removed from DB
-				repo := manager.ds.Plugin(ctx)
-				_, err = repo.Get("test-metadata-agent")
+				repo := manager.ds.Plugin()
+				_, err = repo.Get(ctx, "test-metadata-agent")
 				Expect(err).To(HaveOccurred())
 			})
 		})

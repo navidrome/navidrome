@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
+	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -96,10 +97,10 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(&testUser)
+		err := userRepo.Put(GinkgoT().Context(), &testUser)
 		Expect(err).ToNot(HaveOccurred())
 
-		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 		w = httptest.NewRecorder()
 	})
@@ -183,6 +184,37 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	})
 })
 
+var _ = Describe("handleExportPlaylist", func() {
+	export := func(name string) *httptest.ResponseRecorder {
+		r := chi.NewRouter()
+		r.Get("/playlist/{playlistId}", handleExportPlaylist(&mockPlaylistsService{
+			playlist: &model.Playlist{ID: "pls-1", Name: name},
+		}))
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest("GET", "/playlist/pls-1", nil))
+		return w
+	}
+
+	It("names the download after the playlist", func() {
+		w := export("Road Trip")
+
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="Road Trip.m3u"`))
+	})
+
+	It("does not let the playlist name inject a second filename parameter", func() {
+		w := export(`party"; filename="evil.html`)
+
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="party_; filename=_evil.html.m3u"`))
+	})
+
+	It("keeps non-ASCII names in filename*", func() {
+		w := export("Кино")
+
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="download.m3u"; filename*=utf-8''%D0%9A%D0%B8%D0%BD%D0%BE.m3u`))
+	})
+})
+
 var _ = Describe("writePlaylistError", func() {
 	DescribeTable("maps a service error to an HTTP status",
 		func(err error, expected int) {
@@ -192,6 +224,7 @@ var _ = Describe("writePlaylistError", func() {
 		},
 		Entry("not found -> 404", model.ErrNotFound, http.StatusNotFound),
 		Entry("not authorized -> 403", model.ErrNotAuthorized, http.StatusForbidden),
+		Entry("rest permission denied -> 403", rest.ErrPermissionDenied, http.StatusForbidden),
 		Entry("not editable -> 409", model.ErrPlaylistNotEditable, http.StatusConflict),
 		Entry("unrecognized -> default", model.ErrValidation, http.StatusBadRequest),
 	)
@@ -202,23 +235,15 @@ type mockPlaylistTrackRepo struct {
 	tracks model.PlaylistTracks
 }
 
-func (m *mockPlaylistTrackRepo) Count(...rest.QueryOptions) (int64, error) {
+func (m *mockPlaylistTrackRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
 	return int64(len(m.tracks)), nil
 }
 
-func (m *mockPlaylistTrackRepo) ReadAll(...rest.QueryOptions) (any, error) {
+func (m *mockPlaylistTrackRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]model.PlaylistTrack, error) {
 	return m.tracks, nil
 }
 
-func (m *mockPlaylistTrackRepo) EntityName() string {
-	return "playlist_track"
-}
-
-func (m *mockPlaylistTrackRepo) NewInstance() any {
-	return &model.PlaylistTrack{}
-}
-
-func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
+func (m *mockPlaylistTrackRepo) Read(_ context.Context, id string) (*model.PlaylistTrack, error) {
 	for _, t := range m.tracks {
 		if t.ID == id {
 			return &t, nil
@@ -229,7 +254,9 @@ func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
 
 type mockPlaylistsService struct {
 	playlists.Playlists
-	tracksRepo    rest.Repository
+	repo          rest.Repository[model.Playlist]
+	tracksRepo    rest.Repository[model.PlaylistTrack]
+	playlist      *model.Playlist
 	removeImageFn func(ctx context.Context, id string) error
 	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
 }
@@ -248,6 +275,17 @@ func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader i
 	return model.ErrNotFound
 }
 
-func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
+func (m *mockPlaylistsService) Repository() rest.Repository[model.Playlist] {
+	return m.repo
+}
+
+func (m *mockPlaylistsService) GetWithTracks(_ context.Context, _ string) (*model.Playlist, error) {
+	if m.playlist == nil {
+		return nil, model.ErrNotFound
+	}
+	return m.playlist, nil
+}
+
+func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository[model.PlaylistTrack] {
 	return m.tracksRepo
 }

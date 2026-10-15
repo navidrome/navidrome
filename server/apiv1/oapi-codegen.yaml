@@ -1,0 +1,12 @@
+package: apiv1
+output: server/apiv1/api_gen.go
+generate:
+  chi-server: true
+  strict-server: true
+  models: true
+output-options:
+  exclude-operation-ids:
+    - getOpenAPISpecJSON
+    - getOpenAPISpecYAML
+compatibility:
+  always-prefix-enum-values: true
