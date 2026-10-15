@@ -111,6 +111,15 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Public).To(BeTrue())
 				Expect(result.Readonly).To(BeFalse())
 			})
+
+			It("is read-only for a synced playlist even as owner", func() {
+				ctx = request.WithUser(ctx, model.User{ID: "1234", UserName: "admin"})
+				playlist.Sync = true
+
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.Readonly).To(BeTrue())
+			})
 		})
 
 		Context("when minimal clients list is empty", func() {
@@ -126,6 +135,19 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Comment).To(Equal("Test comment"))
 				Expect(result.Owner).To(Equal("admin"))
 				Expect(result.Public).To(BeTrue())
+			})
+		})
+
+		Context("artwork emission", func() {
+			It("suffixes coverArt with the content hash when resolved", func() {
+				playlist.ImageHash = "0123456789abcdef"
+				result := router.buildPlaylist(ctx, playlist)
+				Expect(result.CoverArt).To(Equal("pl-pls-1_0123456789abcdef"))
+			})
+			It("omits coverArt when known absent", func() {
+				playlist.ImageAbsent = true
+				result := router.buildPlaylist(ctx, playlist)
+				Expect(result.CoverArt).To(BeEmpty())
 			})
 		})
 
@@ -198,7 +220,7 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.SongCount).To(Equal(int32(10)))
 				Expect(result.Duration).To(Equal(int32(600)))
 				Expect(result.Created).To(Equal(playlist.CreatedAt))
-				Expect(result.Changed).To(Equal(evaluatedAt))
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
 
 				// These should not be set
 				Expect(result.Comment).To(BeEmpty())
@@ -223,7 +245,7 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.SongCount).To(Equal(int32(10)))
 				Expect(result.Duration).To(Equal(int32(600)))
 				Expect(result.Created).To(Equal(playlist.CreatedAt))
-				Expect(result.Changed).To(Equal(*playlist.EvaluatedAt))
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
 				Expect(result.Comment).To(Equal("Test comment"))
 				Expect(result.Owner).To(Equal("admin"))
 				Expect(result.Public).To(BeTrue())
@@ -246,6 +268,21 @@ var _ = Describe("buildPlaylist", func() {
 				Expect(result.Owner).To(Equal("admin"))
 				Expect(result.Public).To(BeTrue())
 				Expect(result.OpenSubsonicPlaylist).To(BeNil())
+			})
+		})
+
+		Context("when it was never evaluated", func() {
+			BeforeEach(func() {
+				playlist.EvaluatedAt = nil
+				player := model.Player{Client: "regular-client"}
+				ctx = request.WithPlayer(ctx, player)
+			})
+
+			It("omits validUntil but still reports changed", func() {
+				result := router.buildPlaylist(ctx, playlist)
+
+				Expect(result.ValidUntil).To(BeNil())
+				Expect(result.Changed).To(Equal(playlist.UpdatedAt))
 			})
 		})
 

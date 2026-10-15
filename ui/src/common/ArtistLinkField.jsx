@@ -7,7 +7,8 @@ import { intersperse } from '../utils/index.js'
 import { useDispatch } from 'react-redux'
 import { closeExtendedInfoDialog } from '../actions/dialogs.js'
 
-const ALink = withWidth()((props) => {
+// noSSR: withWidth otherwise renders null until mounted, so the artist line pops in and grows the row.
+const ALink = withWidth({ noSSR: true })((props) => {
   const { artist, width, ...rest } = props
   const artistLink = useGetHandleArtistClick(width)
   const dispatch = useDispatch()

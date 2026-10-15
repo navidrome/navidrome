@@ -64,7 +64,11 @@ func KVStoreSetWithTTL(key string, value []byte, ttlSeconds int64) error {
 // Get is the mock method for KVStoreGet.
 func (m *mockKVStoreService) Get(key string) ([]byte, bool, error) {
 	args := m.Called(key)
-	return args.Get(0).([]byte), args.Bool(1), args.Error(2)
+	var r0 []byte
+	if v := args.Get(0); v != nil {
+		r0 = v.([]byte)
+	}
+	return r0, args.Bool(1), args.Error(2)
 }
 
 // KVStoreGet delegates to the mock instance.
@@ -81,7 +85,11 @@ func KVStoreGet(key string) ([]byte, bool, error) {
 // GetMany is the mock method for KVStoreGetMany.
 func (m *mockKVStoreService) GetMany(keys []string) (map[string][]byte, error) {
 	args := m.Called(keys)
-	return args.Get(0).(map[string][]byte), args.Error(1)
+	var r0 map[string][]byte
+	if v := args.Get(0); v != nil {
+		r0 = v.(map[string][]byte)
+	}
+	return r0, args.Error(1)
 }
 
 // KVStoreGetMany delegates to the mock instance.
@@ -116,7 +124,11 @@ func KVStoreHas(key string) (bool, error) {
 // List is the mock method for KVStoreList.
 func (m *mockKVStoreService) List(prefix string) ([]string, error) {
 	args := m.Called(prefix)
-	return args.Get(0).([]string), args.Error(1)
+	var r0 []string
+	if v := args.Get(0); v != nil {
+		r0 = v.([]string)
+	}
+	return r0, args.Error(1)
 }
 
 // KVStoreList delegates to the mock instance.

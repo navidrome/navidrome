@@ -1,6 +1,10 @@
 package tests
 
-import "github.com/navidrome/navidrome/model"
+import (
+	"context"
+
+	"github.com/navidrome/navidrome/model"
+)
 
 type MockedPropertyRepo struct {
 	model.PropertyRepository
@@ -14,7 +18,7 @@ func (p *MockedPropertyRepo) init() {
 	}
 }
 
-func (p *MockedPropertyRepo) Put(id string, value string) error {
+func (p *MockedPropertyRepo) Put(_ context.Context, id string, value string) error {
 	if p.Error != nil {
 		return p.Error
 	}
@@ -23,7 +27,7 @@ func (p *MockedPropertyRepo) Put(id string, value string) error {
 	return nil
 }
 
-func (p *MockedPropertyRepo) Get(id string) (string, error) {
+func (p *MockedPropertyRepo) Get(_ context.Context, id string) (string, error) {
 	if p.Error != nil {
 		return "", p.Error
 	}
@@ -34,7 +38,7 @@ func (p *MockedPropertyRepo) Get(id string) (string, error) {
 	return "", model.ErrNotFound
 }
 
-func (p *MockedPropertyRepo) Delete(id string) error {
+func (p *MockedPropertyRepo) Delete(_ context.Context, id string) error {
 	if p.Error != nil {
 		return p.Error
 	}
@@ -46,12 +50,12 @@ func (p *MockedPropertyRepo) Delete(id string) error {
 	return model.ErrNotFound
 }
 
-func (p *MockedPropertyRepo) DefaultGet(id string, defaultValue string) (string, error) {
+func (p *MockedPropertyRepo) DefaultGet(ctx context.Context, id string, defaultValue string) (string, error) {
 	if p.Error != nil {
 		return "", p.Error
 	}
 	p.init()
-	v, err := p.Get(id)
+	v, err := p.Get(ctx, id)
 	if err != nil {
 		return defaultValue, nil //nolint:nilerr
 	}

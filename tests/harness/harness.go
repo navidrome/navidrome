@@ -13,7 +13,6 @@ import (
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
@@ -62,20 +61,20 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	auth.Init(ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(ds.Library(ctx).Put(&h.Library)).To(Succeed())
+	Expect(ds.Library().Put(ctx, &h.Library)).To(Succeed())
 
 	for _, u := range users {
 		seeded := *u
 		seeded.NewPassword = "password"
-		Expect(ds.User(ctx).Put(&seeded)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(u.ID, []int{h.Library.ID})).To(Succeed())
-		loaded, err := ds.User(ctx).FindByUsername(u.UserName)
+		Expect(ds.User().Put(ctx, &seeded)).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, u.ID, []int{h.Library.ID})).To(Succeed())
+		loaded, err := ds.User().FindByUsername(ctx, u.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		u.Libraries = loaded.Libraries
 	}
 
-	s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+	s := scanner.New(ctx, ds, events.NoopBroker(),
+		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 	_, err := s.ScanAll(ctx, true)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -87,17 +86,12 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	return h
 }
 
-// Restore reloads every table from the golden snapshot via ATTACH DATABASE — much faster than a
-// rescan. FTS shadow tables are skipped; they are kept in sync by their content tables' triggers.
-func (h *DB) Restore() {
-	sqlDB := db.Db()
-	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+// ResettableTables lists the tables a per-spec reset may write. FTS shadow tables are excluded:
+// their content tables' triggers keep them in sync, and writing them directly corrupts the index.
+func ResettableTables() []string {
+	rows, err := db.Db().Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
-	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
-	Expect(err).ToNot(HaveOccurred())
-
-	rows, err := sqlDB.Query("SELECT name FROM main.sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
-	Expect(err).ToNot(HaveOccurred())
+	defer rows.Close()
 	var tables []string
 	for rows.Next() {
 		var name string
@@ -105,9 +99,34 @@ func (h *DB) Restore() {
 		tables = append(tables, name)
 	}
 	Expect(rows.Err()).ToNot(HaveOccurred())
-	rows.Close()
+	return tables
+}
+
+// TruncateDB empties every resettable table, leaving the migrated schema in place — for suites
+// whose specs each build their own library, so the schema is not re-migrated per spec.
+func TruncateDB(tables []string) {
+	sqlDB := db.Db()
+	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	Expect(err).ToNot(HaveOccurred())
+	defer func() { _, _ = sqlDB.Exec("PRAGMA foreign_keys = ON") }()
 
 	for _, table := range tables {
+		// Table names come from sqlite_master, not user input.
+		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
+
+// Restore reloads every table from the golden snapshot via ATTACH DATABASE — much faster than a
+// rescan.
+func (h *DB) Restore() {
+	sqlDB := db.Db()
+	_, err := sqlDB.Exec("PRAGMA foreign_keys = OFF")
+	Expect(err).ToNot(HaveOccurred())
+	_, err = sqlDB.Exec("ATTACH DATABASE ? AS snapshot", h.SnapshotPath)
+	Expect(err).ToNot(HaveOccurred())
+
+	for _, table := range ResettableTables() {
 		// Table names come from sqlite_master, not user input.
 		_, err = sqlDB.Exec(`DELETE FROM main."` + table + `"`) //nolint:gosec
 		Expect(err).ToNot(HaveOccurred())
@@ -156,8 +175,6 @@ func (NoopFFmpeg) Transcode(context.Context, ffmpeg.TranscodeOptions) (io.ReadCl
 func (NoopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
 	return nil, errors.New("noop ffmpeg: extract image not supported")
 }
-
-func (NoopFFmpeg) Probe(context.Context, []string) (string, error) { return "", nil }
 
 func (NoopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
 	return nil, errors.New("noop ffmpeg: probe not supported")

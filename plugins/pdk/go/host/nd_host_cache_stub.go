@@ -154,7 +154,11 @@ func CacheSetBytes(key string, value []byte, ttlSeconds int64) error {
 // GetBytes is the mock method for CacheGetBytes.
 func (m *mockCacheService) GetBytes(key string) ([]byte, bool, error) {
 	args := m.Called(key)
-	return args.Get(0).([]byte), args.Bool(1), args.Error(2)
+	var r0 []byte
+	if v := args.Get(0); v != nil {
+		r0 = v.([]byte)
+	}
+	return r0, args.Bool(1), args.Error(2)
 }
 
 // CacheGetBytes delegates to the mock instance.

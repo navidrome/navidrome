@@ -2,11 +2,14 @@ package log
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/kr/pretty"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
@@ -92,7 +95,7 @@ var _ = Describe("Logger", func() {
 			SetLogSourceLine(true)
 			Error("A crash happened")
 			// NOTE: This assertion breaks if the line number above changes
-			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:93"))
+			Expect(hook.LastEntry().Data[" source"]).To(ContainSubstring("/log/log_test.go:96"))
 			Expect(hook.LastEntry().Message).To(Equal("A crash happened"))
 		})
 
@@ -263,6 +266,95 @@ var _ = Describe("Logger", func() {
 		It("redacts a whole JWT in api_key, not just up to its first dot", func() {
 			msg := "/jellyfin/Audio/abc/universal?static=true&api_key=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.c2ln-X_1&other=1"
 			Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/universal?static=true&api_key=[REDACTED]&other=1"))
+		})
+
+		DescribeTable("redacts every api_key spelling the Jellyfin API accepts",
+			func(param string) {
+				msg := "/jellyfin/Audio/abc/File?" + param + "=SECRET&other=1"
+				Expect(Redact(msg)).To(Equal("/jellyfin/Audio/abc/File?" + param + "=[REDACTED]&other=1"))
+			},
+			Entry("api_key", "api_key"),
+			Entry("apikey", "apikey"),
+			Entry("ApiKey", "ApiKey"),
+			Entry("APIKEY", "APIKEY"),
+		)
+
+		It("redacts sensitive request headers in a logged header blob", func() {
+			h := http.Header{
+				"Authorization":        {`MediaBrowser Client="Finamp", Token="jwt-secret"`},
+				"X-Emby-Token":         {"emby-secret"},
+				"X-Mediabrowser-Token": {"mb-secret"},
+				"X-Nd-Authorization":   {"Bearer nd-secret"},
+				"User-Agent":           {"Finamp/1.0"},
+			}
+			blob, _ := json.Marshal(h)
+			got := Redact(string(blob))
+			Expect(got).ToNot(ContainSubstring("secret"))
+			Expect(got).To(ContainSubstring(`"User-Agent":["Finamp/1.0"]`))
+		})
+
+		// https://github.com/navidrome/navidrome/discussions/6232
+		DescribeTable("redacts config keys in the startup Configuration dump",
+			func(line, expected string) {
+				Expect(Redact(line)).To(Equal(expected))
+			},
+			Entry("unpadded ApiKey", `ApiKey:"0123456789abcdef0123456789abcdef"`, `ApiKey:"[REDACTED]"`),
+			Entry("unpadded Secret", `Secret:"fedcba9876543210fedcba9876543210"`, `Secret:"[REDACTED]"`),
+			Entry("padded ApiKey", `        ApiKey:                  "0123456789abcdef0123456789abcdef",`,
+				`        ApiKey:                  "[REDACTED]",`),
+			Entry("padded Secret", `        Secret:                  "fedcba9876543210fedcba9876543210",`,
+				`        Secret:                  "[REDACTED]",`),
+			Entry("unpadded Prometheus Password", `Password:"p@ss w0rd!"`, `Password:"[REDACTED]"`),
+			Entry("padded Prometheus Password", `        Password:    "p@ss w0rd!",`, `        Password:    "[REDACTED]",`),
+			Entry("Prometheus Password with escaped quotes", `        Password:    "a\"b\\\"c",`,
+				`        Password:    "[REDACTED]",`),
+		)
+
+		It("redacts secrets in a pretty-printed config struct", func() {
+			// Mirrors conf.lastfmOptions and conf.prometheusOptions (conf imports log, so it can't be
+			// used here). pretty only breaks a struct into padded lines when it is long enough, so
+			// keep all the fields.
+			type lastfmOptions struct {
+				Enabled                 bool
+				ApiKey                  string
+				Secret                  string
+				Language                string
+				ScrobbleFirstArtistOnly bool
+				Languages               []string
+			}
+			type prometheusOptions struct {
+				Enabled     bool
+				MetricsPath string
+				Password    string
+			}
+			type configOptions struct {
+				Address    string
+				LastFM     lastfmOptions
+				Prometheus prometheusOptions
+			}
+			cfg := configOptions{
+				Address: "0.0.0.0",
+				LastFM: lastfmOptions{ //nolint:gosec
+					Enabled:   true,
+					ApiKey:    "0123456789abcdef0123456789abcdef",
+					Secret:    "fedcba9876543210fedcba9876543210",
+					Language:  "en",
+					Languages: []string{"en"},
+				},
+				Prometheus: prometheusOptions{ //nolint:gosec
+					Enabled:     true,
+					MetricsPath: "/metrics",
+					Password:    `prom"pass-tail`,
+				},
+			}
+			dump := pretty.Sprintf("Configuration: %# v", cfg)
+			Expect(dump).To(MatchRegexp(`ApiKey:\s{2,}"`), "the dump must use the padded layout")
+
+			got := Redact(dump)
+			Expect(got).ToNot(ContainSubstring(cfg.LastFM.ApiKey))
+			Expect(got).ToNot(ContainSubstring(cfg.LastFM.Secret))
+			Expect(got).ToNot(ContainSubstring("pass-tail"))
+			Expect(got).To(ContainSubstring(`"en"`))
 		})
 	})
 })

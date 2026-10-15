@@ -71,8 +71,23 @@ var _ = Describe("Radio", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(response.InternetRadioStations.Radios).To(HaveLen(2))
 				Expect(response.InternetRadioStations.Radios[0].OpenSubsonicRadio).ToNot(BeNil())
-				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("ra-rd-1_0"))
+				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("ra-rd-1"))
 				Expect(response.InternetRadioStations.Radios[1].OpenSubsonicRadio).ToNot(BeNil())
+				Expect(response.InternetRadioStations.Radios[1].CoverArt).To(BeEmpty())
+			})
+
+			It("suffixes coverArt with the content hash when resolved and omits it when known absent", func() {
+				radioRepo.All = model.Radios{
+					{ID: "rd-1", Name: "Radio 1", UploadedImage: "rd-1_cover.jpg", ItemImage: model.ItemImage{ImageHash: "0123456789abcdef"}},
+					{ID: "rd-2", Name: "Radio 2", UploadedImage: "rd-2_cover.jpg", ItemImage: model.ItemImage{ImageAbsent: true}},
+				}
+				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
+				r = r.WithContext(ctx)
+
+				response, err := api.GetInternetRadios(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("ra-rd-1_0123456789abcdef"))
 				Expect(response.InternetRadioStations.Radios[1].CoverArt).To(BeEmpty())
 			})
 		})
@@ -129,7 +144,7 @@ var _ = Describe("Radio", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(response.InternetRadioStations.Radios[0].OpenSubsonicRadio).ToNot(BeNil())
-				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("ra-rd-1_0"))
+				Expect(response.InternetRadioStations.Radios[0].CoverArt).To(Equal("ra-rd-1"))
 			})
 		})
 

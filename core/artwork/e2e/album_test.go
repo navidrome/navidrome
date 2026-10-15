@@ -1,4 +1,4 @@
-package artworke2e_test
+package e2e
 
 import (
 	"testing/fstest"
@@ -9,14 +9,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const (
-	defaultCoverPriority = "cover.*, folder.*, front.*, embedded, external"
-	defaultDiscPriority  = "disc*.*, cd*.*, cover.*, folder.*, front.*, discsubtitle, embedded"
-)
-
+// The in-memory library FS cannot satisfy the os.Open(SourcePath) used to serve folder art, so
+// folder scenarios assert on the worker's state row (Source + SourcePath) instead of the bytes.
 var _ = Describe("Album artwork resolution", func() {
 	BeforeEach(func() {
-		setupHarness()
+		setupResolutionHarness()
 	})
 
 	When("an album has a single folder with cover.jpg at the album root", func() {
@@ -28,12 +25,10 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":      imageFile("album-root"),
+				"Artist/Album/cover.jpg":      smallPNG("album-root"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -55,16 +50,16 @@ var _ = Describe("Album artwork resolution", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "Track CD2"),
-				"Artist/Album/cover.jpg":          imageFile("album-root"),
-				"Artist/Album/CD1/cover.jpg":      imageFile("disc1"),
-				"Artist/Album/CD2/cover.jpg":      imageFile("disc2"),
+				"Artist/Album/cover.jpg":          smallPNG("album-root"),
+				"Artist/Album/CD1/cover.jpg":      smallPNG("disc1"),
+				"Artist/Album/CD2/cover.jpg":      smallPNG("disc2"),
 			})
 			scan()
 
 			al := firstAlbum()
 			Expect(al.FolderIDs).To(HaveLen(2),
-				"sanity check: scanner should treat the two disc subfolders as one multi-disc album")
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root")))
+				"sanity check: the two disc subfolders should form one multi-disc album")
+			expectAlbumFolderCover(al, "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -86,14 +81,12 @@ var _ = Describe("Album artwork resolution", func() {
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
 				"Artist/Album/CD2/01 - Track.mp3": trackFile(1, "Track CD2"),
-				"Artist/Album/folder.jpg":         imageFile("album-root"),
-				"Artist/Album/CD1/folder.jpg":     imageFile("disc1"),
-				"Artist/Album/CD2/folder.jpg":     imageFile("disc2"),
+				"Artist/Album/folder.jpg":         smallPNG("album-root"),
+				"Artist/Album/CD1/folder.jpg":     smallPNG("disc1"),
+				"Artist/Album/CD2/folder.jpg":     smallPNG("disc2"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
 		})
 	})
 
@@ -109,12 +102,10 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/disc1/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":            imageFile("album-root"),
+				"Artist/Album/cover.jpg":            smallPNG("album-root"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -133,14 +124,12 @@ var _ = Describe("Album artwork resolution", func() {
 			setLayout(fstest.MapFS{
 				"Album/CD1/01 - Track.mp3": trackFile(1, "Track CD1"),
 				"Album/CD2/01 - Track.mp3": trackFile(1, "Track CD2"),
-				"Album/cover.jpg":          imageFile("album-root"),
-				"Album/CD1/folder.jpg":     imageFile("disc1"),
-				"Album/CD2/folder.jpg":     imageFile("disc2"),
+				"Album/cover.jpg":          smallPNG("album-root"),
+				"Album/CD1/folder.jpg":     smallPNG("disc1"),
+				"Album/CD2/folder.jpg":     smallPNG("disc2"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("album-root")))
+			expectAlbumFolderCover(firstAlbum(), "Album/cover.jpg")
 		})
 	})
 
@@ -153,14 +142,14 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = "embedded, cover.*, folder.*, front.*, external"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"has_picture": "true"}),
-				"Artist/Album/cover.jpg":      imageFile("external"),
+				"Artist/Album/cover.jpg":      smallPNG("external"),
 			})
 			scan()
-			// Swap in real MP3 bytes so libFS.Open returns a taglib-readable stream.
 			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
 
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(embeddedArtBytes))
+			ia := acquire(model.KindAlbumArtwork, firstAlbum().ID)
+			Expect(ia.Source).To(Equal("embedded"))
+			Expect(storedBytes(ia)).To(Equal(embeddedArtBytes))
 		})
 	})
 
@@ -176,8 +165,9 @@ var _ = Describe("Album artwork resolution", func() {
 			scan()
 			replaceWithRealMP3("Artist/Album/01 - Track.mp3")
 
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(embeddedArtBytes))
+			ia := acquire(model.KindAlbumArtwork, firstAlbum().ID)
+			Expect(ia.Source).To(Equal("embedded"))
+			Expect(storedBytes(ia)).To(Equal(embeddedArtBytes))
 		})
 	})
 
@@ -190,12 +180,10 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = "cover.*, folder.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/Cover.JPG":      imageFile("case-insensitive"),
+				"Artist/Album/Cover.JPG":      smallPNG("case-insensitive"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("case-insensitive")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/Cover.JPG")
 		})
 	})
 
@@ -209,30 +197,25 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = "cover.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":      imageFile("primary"),
-				"Artist/Album/cover.1.jpg":    imageFile("secondary"),
+				"Artist/Album/cover.jpg":      smallPNG("primary"),
+				"Artist/Album/cover.1.jpg":    smallPNG("secondary"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("primary")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
 	When("the album has no cover and CoverArtPriority lists only file patterns", func() {
 		// Artist/
 		// └── Album/
-		//     └── 01 - Track.mp3       (no image files — returns ErrUnavailable)
-		It("returns ErrUnavailable", func() {
+		//     └── 01 - Track.mp3       (no image files — settles absent)
+		It("settles absent", func() {
 			conf.Server.CoverArtPriority = "cover.*, folder.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
 			})
 			scan()
-
-			al := firstAlbum()
-			_, err := readArtworkOrErr(model.NewArtworkID(model.KindAlbumArtwork, al.ID, &al.UpdatedAt))
-			Expect(err).To(HaveOccurred())
+			expectAlbumAbsent(firstAlbum())
 		})
 	})
 
@@ -248,12 +231,10 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/folder.jpg":     imageFile("folder"),
+				"Artist/Album/folder.jpg":     smallPNG("folder"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("folder")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
 		})
 	})
 
@@ -266,12 +247,10 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/front.jpg":      imageFile("front"),
+				"Artist/Album/front.jpg":      smallPNG("front"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("front")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/front.jpg")
 		})
 	})
 
@@ -286,14 +265,12 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":      imageFile("cover"),
-				"Artist/Album/folder.jpg":     imageFile("folder"),
-				"Artist/Album/front.jpg":      imageFile("front"),
+				"Artist/Album/cover.jpg":      smallPNG("cover"),
+				"Artist/Album/folder.jpg":     smallPNG("folder"),
+				"Artist/Album/front.jpg":      smallPNG("front"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("cover")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -307,13 +284,11 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/folder.jpg":     imageFile("folder"),
-				"Artist/Album/front.jpg":      imageFile("front"),
+				"Artist/Album/folder.jpg":     smallPNG("folder"),
+				"Artist/Album/front.jpg":      smallPNG("front"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("folder")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/folder.jpg")
 		})
 	})
 
@@ -328,14 +303,12 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = "cover.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.2.jpg":    imageFile("second"),
-				"Artist/Album/cover.jpg":      imageFile("primary"),
-				"Artist/Album/cover.1.jpg":    imageFile("first"),
+				"Artist/Album/cover.2.jpg":    smallPNG("second"),
+				"Artist/Album/cover.jpg":      smallPNG("primary"),
+				"Artist/Album/cover.1.jpg":    smallPNG("first"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("primary")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -348,12 +321,10 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = "bogus.*, cover.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":      imageFile("cover"),
+				"Artist/Album/cover.jpg":      smallPNG("cover"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("cover")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -371,21 +342,16 @@ var _ = Describe("Album artwork resolution", func() {
 		It("does not use the artist image as album art", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
-				"Artist/folder.jpg":             imageFile("artist-thumbnail"),
+				"Artist/folder.jpg":             smallPNG("artist-thumbnail"),
 				"Artist/Album A/01 - Track.mp3": trackFile(1, "Track A", map[string]any{"album": "Album A", "albumartist": "Artist"}),
 				"Artist/Album B/01 - Track.mp3": trackFile(1, "Track B", map[string]any{"album": "Album B", "albumartist": "Artist"}),
-				"Artist/Album B/cover.jpg":      imageFile("album-b"),
+				"Artist/Album B/cover.jpg":      smallPNG("album-b"),
 			})
 			scan()
 
-			alA := albumByName("Album A")
-			_, err := readArtworkOrErr(alA.CoverArtID())
-			Expect(err).To(HaveOccurred(),
-				"Album A has no images of its own, so it must fall through to the placeholder "+
-					"instead of inheriting the artist folder's folder.jpg")
-
-			alB := albumByName("Album B")
-			Expect(readArtwork(alB.CoverArtID())).To(Equal(imageBytes("album-b")))
+			// Album B first: the acquire in expectAlbumAbsent would settle Album B too.
+			expectAlbumFolderCover(albumByName("Album B"), "Artist/Album B/cover.jpg")
+			expectAlbumAbsent(albumByName("Album A"))
 		})
 	})
 
@@ -402,21 +368,58 @@ var _ = Describe("Album artwork resolution", func() {
 		It("does not use the artist image as album art for the spread album", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
-				"Artist/folder.jpg":                   imageFile("artist-thumbnail"),
+				"Artist/folder.jpg":                   smallPNG("artist-thumbnail"),
 				"Artist/Album A/01 - Track.mp3":       trackFile(1, "Track A1", map[string]any{"album": "Album A", "albumartist": "Artist"}),
 				"Artist/Album A bonus/02 - Track.mp3": trackFile(2, "Track A2", map[string]any{"album": "Album A", "albumartist": "Artist"}),
 				"Artist/Album B/01 - Track.mp3":       trackFile(1, "Track B", map[string]any{"album": "Album B", "albumartist": "Artist"}),
-				"Artist/Album B/cover.jpg":            imageFile("album-b"),
+				"Artist/Album B/cover.jpg":            smallPNG("album-b"),
 			})
 			scan()
 
 			alA := albumByName("Album A")
 			Expect(alA.FolderIDs).To(HaveLen(2),
-				"sanity check: scanner should treat the two sibling folders as one spread album")
-			_, err := readArtworkOrErr(alA.CoverArtID())
-			Expect(err).To(HaveOccurred(),
-				"the spread album has no images of its own, so it must fall through to the "+
-					"placeholder instead of inheriting the artist folder's folder.jpg")
+				"sanity check: the two sibling folders should form one spread album")
+			expectAlbumAbsent(alA)
+		})
+	})
+
+	// albumRootParent refuses the library root as an album root (parent.ParentID == "").
+	When("a multi-disc album sits directly at the library root with a cover.jpg beside it", func() {
+		// (library root)
+		// ├── cover.jpg                ← must NOT be adopted
+		// ├── CD1/
+		// │   └── 01 - Track.mp3
+		// └── CD2/
+		//     └── 01 - Track.mp3
+		It("does not adopt the library-root image as album art", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"cover.jpg":          smallPNG("library-root"),
+				"CD1/01 - Track.mp3": trackFile(1, "T1", map[string]any{"album": "Rootless", "disc": "1"}),
+				"CD2/01 - Track.mp3": trackFile(1, "T2", map[string]any{"album": "Rootless", "disc": "2"}),
+			})
+			scan()
+			expectAlbumAbsent(firstAlbum())
+		})
+	})
+
+	// The shallower artist-folder cover.jpg would win the basename tie, but albumRootParent skips
+	// the parent folder for a single-folder album that has images of its own.
+	When("a single-folder album has its own cover.jpg and the artist folder has one too", func() {
+		// Artist/
+		// ├── cover.jpg                ← shallower, but must NOT win
+		// └── Album/
+		//     ├── 01 - Track.mp3
+		//     └── cover.jpg            ← should win
+		It("prefers the album's own cover over the shallower artist-folder cover", func() {
+			conf.Server.CoverArtPriority = defaultCoverPriority
+			setLayout(fstest.MapFS{
+				"Artist/cover.jpg":            smallPNG("artist-image"),
+				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
+				"Artist/Album/cover.jpg":      smallPNG("album-own"),
+			})
+			scan()
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 
@@ -430,13 +433,13 @@ var _ = Describe("Album artwork resolution", func() {
 		// ├── Album A bonus/
 		// │   └── 02 - Track.mp3       (album: "Album A")
 		// └── Album B/
-		//     └── 01 - Track.mp3
+		//     └── 01 - Track.mp3       (other-album audio: rejects the artist folder as a root)
 		It("prefers the album's own art over the artist image", func() {
 			conf.Server.CoverArtPriority = defaultCoverPriority
 			setLayout(fstest.MapFS{
-				"Artist/cover.jpg":                    imageFile("artist-image"),
+				"Artist/cover.jpg":                    smallPNG("artist-image"),
 				"Artist/Album A/01 - Track.mp3":       trackFile(1, "Track A1", map[string]any{"album": "Album A", "albumartist": "Artist"}),
-				"Artist/Album A/front.jpg":            imageFile("album-a-front"),
+				"Artist/Album A/front.jpg":            smallPNG("album-a-front"),
 				"Artist/Album A bonus/02 - Track.mp3": trackFile(2, "Track A2", map[string]any{"album": "Album A", "albumartist": "Artist"}),
 				"Artist/Album B/01 - Track.mp3":       trackFile(1, "Track B", map[string]any{"album": "Album B", "albumartist": "Artist"}),
 			})
@@ -444,8 +447,8 @@ var _ = Describe("Album artwork resolution", func() {
 
 			alA := albumByName("Album A")
 			Expect(alA.FolderIDs).To(HaveLen(2),
-				"sanity check: scanner should treat the two sibling folders as one spread album")
-			Expect(readArtwork(alA.CoverArtID())).To(Equal(imageBytes("album-a-front")))
+				"sanity check: the two sibling folders should form one spread album")
+			expectAlbumFolderCover(alA, "Artist/Album A/front.jpg")
 		})
 	})
 
@@ -458,12 +461,10 @@ var _ = Describe("Album artwork resolution", func() {
 			conf.Server.CoverArtPriority = "embedded, cover.*"
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track"),
-				"Artist/Album/cover.jpg":      imageFile("cover"),
+				"Artist/Album/cover.jpg":      smallPNG("cover"),
 			})
 			scan()
-
-			al := firstAlbum()
-			Expect(readArtwork(al.CoverArtID())).To(Equal(imageBytes("cover")))
+			expectAlbumFolderCover(firstAlbum(), "Artist/Album/cover.jpg")
 		})
 	})
 })

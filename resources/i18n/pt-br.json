@@ -35,12 +35,12 @@
         "rawTags": "Tags originais",
         "bitDepth": "Profundidade de bits",
         "sampleRate": "Taxa de amostragem",
-        "albumGain": "Ganho do álbum",
-        "trackGain": "Ganho da faixa",
         "missing": "Ausente",
         "libraryName": "Biblioteca",
         "composer": "Compositor",
-        "disc": "Disco %{discNumber}"
+        "disc": "Disco %{discNumber}",
+        "albumGain": "Ganho do álbum",
+        "trackGain": "Ganho da faixa"
       },
       "actions": {
         "addToQueue": "Adicionar à fila",
@@ -93,7 +93,8 @@
         "addToPlaylist": "Adicionar à playlist",
         "download": "Baixar",
         "info": "Detalhes",
-        "share": "Compartilhar"
+        "share": "Compartilhar",
+        "refresh": "Atualizar Metadados"
       },
       "lists": {
         "all": "Todos",
@@ -155,11 +156,13 @@
         "newPassword": "Nova Senha",
         "token": "Token",
         "lastAccessAt": "Últ. Acesso",
-        "libraries": "Bibliotecas"
+        "libraries": "Bibliotecas",
+        "scrobbleFilter": "Filtro de scrobble"
       },
       "helperTexts": {
         "name": "Alterações no seu nome só serão refletidas no próximo login",
-        "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão"
+        "libraries": "Selecione bibliotecas específicas para este usuário, ou deixe vazio para usar bibliotecas padrão",
+        "scrobbleFilter": "Músicas que correspondem a estas regras de playlist inteligente não são enviadas ao Last.fm, ListenBrainz ou plugins de scrobble. Usa a mesma sintaxe JSON e o mesmo comportamento das playlists inteligentes. Exemplo: {\"all\":[{\"lt\":{\"rating\":4}}]}. Deixe vazio para enviar scrobbles de todas as músicas. As contagens de reprodução locais não são afetadas."
       },
       "notifications": {
         "created": "Novo usuário criado",
@@ -173,11 +176,13 @@
         "adminAutoLibraries": "Usuários administradores têm acesso automático a todas as bibliotecas"
       },
       "validation": {
-        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores"
+        "librariesRequired": "Pelo menos uma biblioteca deve ser selecionada para usuários não-administradores",
+        "invalidScrobbleFilter": "Devem ser regras válidas de playlist inteligente. Limite, deslocamento e intervalo de atualização não são suportados."
       }
     },
     "player": {
       "name": "Tocador |||| Tocadores",
+      "menuName": "Tocadores e chaves de API",
       "fields": {
         "name": "Nome",
         "transcodingId": "Conversão",
@@ -186,7 +191,29 @@
         "userName": "Usuário",
         "lastSeen": "Últ. acesso",
         "reportRealPath": "Use paths reais",
-        "scrobbleEnabled": "Enviar scrobbles para serviços externos"
+        "scrobbleEnabled": "Enviar scrobbles para serviços externos",
+        "hasApiKey": "Chave de API"
+      },
+      "actions": {
+        "generateApiKey": "Gerar chave de API",
+        "regenerateApiKey": "Gerar nova",
+        "revokeApiKey": "Revogar",
+        "copyApiKey": "Copiar"
+      },
+      "message": {
+        "apiKeyActive": "Este tocador tem uma chave de API. Use-a no seu app como chave de API, ou como senha se o app não usar autenticação por token.",
+        "apiKeyNone": "Sem chave de API. Gere uma para conectar um app a este tocador.",
+        "apiKeyNoneOther": "Sem chave de API.",
+        "apiKeyPending": "Copie esta chave agora. Ela será salva quando você clicar em Salvar e não será exibida novamente.",
+        "apiKeyRevokePending": "A chave de API será removida quando você salvar.",
+        "deleteWithKeyTitle": "Excluir tocador",
+        "deleteWithKeyContent": "Este tocador tem uma chave de API. Os apps que a usam vão parar de funcionar."
+      },
+      "notifications": {
+        "apiKeyCopied": "Chave de API copiada para o clipboard"
+      },
+      "validation": {
+        "apiKeyFormat": "Formato de chave de API inválido"
       }
     },
     "transcoding": {
@@ -196,6 +223,9 @@
         "targetFormat": "Formato",
         "defaultBitRate": "Bitrate padrão",
         "command": "Comando"
+      },
+      "choices": {
+        "noDefaultBitRate": "Nenhum"
       }
     },
     "playlist": {
@@ -210,7 +240,8 @@
         "songCount": "Músicas",
         "comment": "Comentário",
         "sync": "Auto-importar",
-        "path": "Importar de"
+        "path": "Importar de",
+        "starred": "Favorita"
       },
       "actions": {
         "selectPlaylist": "Selecione a playlist:",
@@ -297,11 +328,22 @@
         "totalDuration": "Duração",
         "defaultNewUsers": "Padrão para Novos Usuários",
         "createdAt": "Data de Criação",
-        "updatedAt": "Últ. Atualização"
+        "updatedAt": "Últ. Atualização",
+        "pidAlbum": "Agrupamento de álbuns",
+        "pidTrack": "Identificação das faixas"
       },
       "sections": {
         "basic": "Informações Básicas",
-        "statistics": "Estatísticas"
+        "statistics": "Estatísticas",
+        "pid": "IDs Persistentes"
+      },
+      "pid": {
+        "global": "Usar configuração global (%{value})",
+        "folder": "Pasta (um álbum por pasta)",
+        "custom": "Personalizado",
+        "spec": "Especificação do PID",
+        "help": "Tags e atributos que identificam um item. Consulte a sintaxe na documentação:",
+        "docs": "IDs Persistentes"
       },
       "actions": {
         "scan": "Scanear Biblioteca",
@@ -331,7 +373,9 @@
       "messages": {
         "deleteConfirm": "Tem certeza que deseja excluir esta biblioteca? Isso removerá todos os dados associados.",
         "scanInProgress": "Scan em progresso...",
-        "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário"
+        "noLibrariesAssigned": "Nenhuma biblioteca atribuída a este usuário",
+        "pidChangeTitle": "Alterar os IDs persistentes?",
+        "pidChangeConfirm": "Ao salvar, os álbuns desta biblioteca serão reagrupados e as faixas serão identificadas novamente. Um scan completo da biblioteca começará imediatamente. As marcações como favoritas, as classificações e as contagens de reprodução das faixas serão mantidas. Os favoritos e as classificações dos álbuns serão transferidos para os novos álbuns quando um álbum antigo corresponder a um novo."
       }
     },
     "plugin": {
@@ -403,7 +447,8 @@
         "requiredHosts": "Hosts necessários",
         "configValidationError": "Falha na validação da configuração:",
         "schemaRenderError": "Não foi possível renderizar o formulário de configuração. O schema do plugin pode estar inválido.",
-        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura."
+        "allowWriteAccessHelp": "Quando habilitado, o plugin pode modificar arquivos nos diretórios das bibliotecas. Por padrão, plugins têm acesso somente leitura.",
+        "idHelp": "O ID do plugin, derivado do nome do arquivo. Use-o ao referenciar este plugin em opções de configuração, como Agents."
       },
       "placeholders": {
         "configKey": "chave",
@@ -599,7 +644,11 @@
     "coverUploaded": "Capa atualizada",
     "coverRemoved": "Capa removida",
     "coverUploadError": "Erro ao enviar capa",
-    "coverRemoveError": "Erro ao remover capa"
+    "coverRemoveError": "Erro ao remover capa",
+    "metadataRefreshStarted": "Atualizando metadados em segundo plano",
+    "quickConnectApproved": "%{app} em %{device} está conectado agora",
+    "quickConnectInvalidCode": "Código inválido ou expirado",
+    "quickConnectError": "Não foi possível aprovar o código"
   },
   "menu": {
     "library": "Biblioteca",
@@ -634,6 +683,15 @@
       "multipleLibraries": "%{selected} de %{total} Bibliotecas",
       "selectLibraries": "Selecionar Bibliotecas",
       "none": "Nenhuma"
+    },
+    "onlyFavourites": "Somente favoritas",
+    "quickConnect": {
+      "name": "Conexão Rápida",
+      "code": "Código",
+      "help": "Digite o código exibido por um aplicativo Jellyfin para conectá-lo à sua conta",
+      "confirm": "Conectar %{app} %{version} em %{device} à sua conta?",
+      "continue": "Continuar",
+      "approve": "Aprovar"
     }
   },
   "player": {

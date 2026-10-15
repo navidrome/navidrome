@@ -33,7 +33,6 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -45,6 +44,7 @@ import (
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/core/playlists"
+	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
@@ -52,6 +52,7 @@ import (
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/persistence"
 	"github.com/navidrome/navidrome/server/events"
@@ -70,6 +71,10 @@ func TestJellyfinE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Jellyfin API E2E Suite")
 }
+
+// testID maps a readable label to a deterministic canonical id, so fixtures exercise the same
+// id shape production uses.
+func testID(label string) string { return id.NewHash("jellyfin-test", label) }
 
 // Easy aliases for the storagetest package
 type _t = map[string]any
@@ -92,14 +97,14 @@ var (
 	dataFolder        string
 
 	adminUser = model.User{
-		ID:       "admin-1",
+		ID:       testID("admin-1"),
 		UserName: "admin",
 		Name:     "Admin User",
 		IsAdmin:  true,
 	}
 
 	regularUser = model.User{
-		ID:       "regular-1",
+		ID:       testID("regular-1"),
 		UserName: "regular",
 		Name:     "Regular User",
 		IsAdmin:  false,
@@ -217,10 +222,18 @@ func createPlaylistAs(user model.User, name string, encodedIds ...string) string
 	}
 	body, err := json.Marshal(map[string]any{"Name": name, "Ids": encodedIds})
 	Expect(err).ToNot(HaveOccurred())
+	return createPlaylistBodyAs(user, string(body))
+}
+
+// createPlaylistBodyAs posts a raw create body, for tests that need fields the helpers above don't
+// build, and returns the new playlist's decoded id.
+func createPlaylistBodyAs(user model.User, body string) string {
 	var res map[string]string
-	parseInto(postAs(user, "/Playlists", string(body)), &res)
+	parseInto(postAs(user, "/Playlists", body), &res)
 	Expect(res["Id"]).ToNot(BeEmpty())
-	return dto.DecodeID(res["Id"])
+	id, ok := dto.DecodeID(res["Id"])
+	Expect(ok).To(BeTrue())
+	return id
 }
 
 // --- Seeded-id lookup helpers (return Navidrome ids; wrap with enc() for URLs) ---
@@ -231,7 +244,7 @@ func enc(id string) string { return dto.EncodeID(id) }
 // guessing repository filter column names.
 
 func albumID(name string) string {
-	albums, err := ds.Album(ctx).GetAll()
+	albums, err := ds.Album().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, a := range albums {
 		if a.Name == name {
@@ -243,7 +256,7 @@ func albumID(name string) string {
 }
 
 func songID(title string) string {
-	mfs, err := ds.MediaFile(ctx).GetAll()
+	mfs, err := ds.MediaFile().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, mf := range mfs {
 		if mf.Title == title {
@@ -255,7 +268,7 @@ func songID(title string) string {
 }
 
 func artistID(name string) string {
-	artists, err := ds.Artist(ctx).GetAll()
+	artists, err := ds.Artist().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, a := range artists {
 		if a.Name == name {
@@ -267,7 +280,7 @@ func artistID(name string) string {
 }
 
 func genreID(name string) string {
-	genres, err := ds.Genre(ctx).GetAll()
+	genres, err := ds.Genre().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, g := range genres {
 		if g.Name == name {
@@ -327,11 +340,12 @@ func setupTestDB() {
 		decider,
 		core.NewPlayers(ds),
 		scrobbler.NewPlayTracker(ds, events.NoopBroker(), nil),
-		playlists.NewPlaylists(ds, core.NewImageUploadService()),
+		playlists.NewPlaylists(ds, artwork.NewUploader(ds)),
 		providerFake,
 		sonicSvc,
 		lyrics.NewLyrics(ds, nil),
 		events.NoopBroker(),
+		quickconnect.New(),
 	)
 }
 
@@ -385,7 +399,7 @@ func (f *fakeSonicProvider) FindSonicPath(context.Context, *model.MediaFile, *mo
 // songAgent looks a seeded track up by title (titles are unique in the seed) and builds an
 // agents.Song carrying its title+artist, so the matcher resolves it back to that MediaFile.
 func songAgent(title string) agents.Song {
-	mfs, err := ds.MediaFile(ctx).GetAll()
+	mfs, err := ds.MediaFile().GetAll(ctx)
 	Expect(err).ToNot(HaveOccurred())
 	for _, mf := range mfs {
 		if mf.Title == title {
@@ -406,18 +420,18 @@ type spyArtwork struct {
 	data    []byte
 }
 
-func (s *spyArtwork) Get(context.Context, model.ArtworkID, int, bool) (io.ReadCloser, time.Time, error) {
-	return nil, time.Time{}, model.ErrNotFound
+func (s *spyArtwork) Get(context.Context, model.ArtworkID, int, bool) (*artwork.Image, error) {
+	return nil, model.ErrNotFound
 }
 
-func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ bool) (io.ReadCloser, time.Time, error) {
+func (s *spyArtwork) GetOrPlaceholder(c context.Context, id string, _ int, _ bool) (*artwork.Image, error) {
 	s.lastID = id
 	s.lastCtx = c
 	d := s.data
 	if d == nil {
 		d = []byte("IMG")
 	}
-	return io.NopCloser(bytes.NewReader(d)), time.Time{}, nil
+	return &artwork.Image{ReadCloser: io.NopCloser(bytes.NewReader(d))}, nil
 }
 
 var _ artwork.Artwork = &spyArtwork{}

@@ -100,7 +100,8 @@ const PlaylistSongs = ({ playlistId, readOnly, actions, ...props }) => {
   const dataProvider = useDataProvider()
   const notify = useNotify()
   const version = useVersion()
-  useResourceRefresh('song', 'playlist')
+  // The rows are stored as playlistTrack, not song: their ids are playlist entries.
+  useResourceRefresh('playlistTrack', 'song', 'playlist')
 
   useEffect(() => {
     setPage(1)

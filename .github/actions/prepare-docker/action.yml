@@ -68,6 +68,11 @@ runs:
     - name: Set up Docker Buildx
       id: buildx
       uses: docker/setup-buildx-action@v4
+      with:
+        # Runner IPs are shared, so anonymous base image pulls get rate-limited.
+        buildkitd-config-inline: |
+          [registry."docker.io"]
+            mirrors = ["mirror.gcr.io"]
 
     - name: Extract metadata for Docker image
       id: meta

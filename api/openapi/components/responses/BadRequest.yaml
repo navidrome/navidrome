@@ -1,0 +1,5 @@
+description: The request is malformed or fails validation.
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

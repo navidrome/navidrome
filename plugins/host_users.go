@@ -23,7 +23,7 @@ func newUsersService(ds model.DataStore, allowedUsers []string, allUsers bool) h
 }
 
 func (s *usersServiceImpl) GetUsers(ctx context.Context) ([]host.User, error) {
-	users, err := s.ds.User(ctx).GetAll()
+	users, err := s.ds.User().GetAll(ctx)
 	if err != nil {
 		return nil, err
 	}

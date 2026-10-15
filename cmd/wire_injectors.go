@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/db"
@@ -22,6 +23,7 @@ import (
 	"github.com/navidrome/navidrome/plugins"
 	"github.com/navidrome/navidrome/scanner"
 	"github.com/navidrome/navidrome/server"
+	"github.com/navidrome/navidrome/server/apiv1"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/server/jellyfin"
 	"github.com/navidrome/navidrome/server/nativeapi"
@@ -35,13 +37,15 @@ var allProviders = wire.NewSet(
 	server.New,
 	subsonic.New,
 	jellyfin.New,
+	jellyfin.NewDiscovery,
+	apiv1.New,
 	nativeapi.New,
 	public.New,
 	persistence.New,
 	lastfm.NewRouter,
 	listenbrainz.NewRouter,
 	events.GetBroker,
-	scanner.New,
+	scanner.GetInstance,
 	scanner.GetWatcher,
 	metrics.GetPrometheusInstance,
 	db.Db,
@@ -56,6 +60,7 @@ var allProviders = wire.NewSet(
 	wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)),
 	wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)),
 	wire.Bind(new(core.Watcher), new(scanner.Watcher)),
+	wire.Bind(new(playlists.ImageUploadService), new(artwork.Uploader)),
 )
 
 func CreateDataStore() model.DataStore {
@@ -88,6 +93,12 @@ func CreateJellyfinAPIRouter(ctx context.Context) *jellyfin.Router {
 	))
 }
 
+func CreateAPIv1Router(ctx context.Context) *apiv1.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
 func CreatePublicRouter() *public.Router {
 	panic(wire.Build(
 		allProviders,
@@ -101,6 +112,12 @@ func CreateLastFMRouter() *lastfm.Router {
 }
 
 func CreateListenBrainzRouter() *listenbrainz.Router {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateJellyfinDiscovery() *jellyfin.Discovery {
 	panic(wire.Build(
 		allProviders,
 	))
@@ -133,6 +150,19 @@ func CreateScanWatcher(ctx context.Context) scanner.Watcher {
 func GetPlaybackServer() playback.PlaybackServer {
 	panic(wire.Build(
 		allProviders,
+	))
+}
+
+func CreateArtworkWorker() *artwork.Worker {
+	panic(wire.Build(
+		allProviders,
+	))
+}
+
+func CreateArtworkResolver(trace *artwork.ChainTrace, live bool) *artwork.TracingResolver {
+	panic(wire.Build(
+		allProviders,
+		artwork.NewTracingResolver,
 	))
 }
 

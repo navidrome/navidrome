@@ -2,14 +2,16 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	. "github.com/navidrome/navidrome/utils/gg"
 	"github.com/navidrome/navidrome/utils/nanoid"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -18,22 +20,24 @@ import (
 
 type Share interface {
 	Load(ctx context.Context, id string) (*model.Share, error)
-	NewRepository(ctx context.Context) rest.Repository
+	Repository() model.ShareRepository
 }
 
 func NewShare(ds model.DataStore) Share {
 	return &shareService{
-		ds: ds,
+		ds:   ds,
+		repo: &shareRepositoryWrapper{ShareRepository: ds.Share(), ds: ds},
 	}
 }
 
 type shareService struct {
-	ds model.DataStore
+	ds   model.DataStore
+	repo *shareRepositoryWrapper
 }
 
 func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error) {
-	repo := s.ds.Share(ctx)
-	share, err := repo.Get(id)
+	repo := s.ds.Share()
+	share, err := repo.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -44,40 +48,29 @@ func (s *shareService) Load(ctx context.Context, id string) (*model.Share, error
 	share.LastVisitedAt = new(time.Now())
 	share.VisitCount++
 
-	err = repo.(rest.Persistable).Update(id, share, "last_visited_at", "visit_count")
+	err = repo.Update(ctx, id, *share, "last_visited_at", "visit_count")
 	if err != nil {
 		log.Warn(ctx, "Could not increment visit count for share", "share", share.ID)
 	}
 	return share, nil
 }
 
-func (s *shareService) NewRepository(ctx context.Context) rest.Repository {
-	repo := s.ds.Share(ctx)
-	wrapper := &shareRepositoryWrapper{
-		ctx:             ctx,
-		ShareRepository: repo,
-		Repository:      repo.(rest.Repository),
-		Persistable:     repo.(rest.Persistable),
-		ds:              s.ds,
-	}
-	return wrapper
+func (s *shareService) Repository() model.ShareRepository {
+	return s.repo
 }
 
 type shareRepositoryWrapper struct {
 	model.ShareRepository
-	rest.Repository
-	rest.Persistable
-	ctx context.Context
-	ds  model.DataStore
+	ds model.DataStore
 }
 
-func (r *shareRepositoryWrapper) newId() (string, error) {
+func (r *shareRepositoryWrapper) newId(ctx context.Context) (string, error) {
 	for {
 		id, err := nanoid.Generate("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 10)
 		if err != nil {
 			return "", err
 		}
-		exists, err := r.Exists(id)
+		exists, err := r.Exists(ctx, id)
 		if err != nil {
 			return "", err
 		}
@@ -87,9 +80,13 @@ func (r *shareRepositoryWrapper) newId() (string, error) {
 	}
 }
 
-func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
-	s := entity.(*model.Share)
-	id, err := r.newId()
+func (r *shareRepositoryWrapper) Save(ctx context.Context, s *model.Share) (string, error) {
+	// Owner is always the caller; never trust a client-supplied UserID, as it
+	// determines the library-access context used to resolve the share contents.
+	if user, ok := request.UserFrom(ctx); ok {
+		s.UserID = user.ID
+	}
+	id, err := r.newId(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -98,82 +95,96 @@ func (r *shareRepositoryWrapper) Save(entity any) (string, error) {
 		s.ExpiresAt = new(time.Now().Add(conf.Server.DefaultShareExpiration))
 	}
 
-	firstId, _, _ := strings.Cut(s.ResourceIDs, ",")
-	v, err := model.GetEntityByID(r.ctx, r.ds, firstId)
+	s.ResourceType, err = r.resourceType(ctx, s.ResourceIDs)
 	if err != nil {
 		return "", err
 	}
-	switch v.(type) {
-	case *model.Artist:
-		s.ResourceType = "artist"
-		s.Contents = r.contentsLabelFromArtist(s.ID, s.ResourceIDs)
-	case *model.Album:
-		s.ResourceType = "album"
-		s.Contents = r.contentsLabelFromAlbums(s.ID, s.ResourceIDs)
-	case *model.Playlist:
-		s.ResourceType = "playlist"
-		s.Contents = r.contentsLabelFromPlaylist(s.ID, s.ResourceIDs)
-	case *model.MediaFile:
-		s.ResourceType = "media_file"
-		s.Contents = r.contentsLabelFromMediaFiles(s.ID, s.ResourceIDs)
-	default:
-		log.Error(r.ctx, "Invalid Resource ID", "id", firstId)
-		return "", model.ErrNotFound
+	switch s.ResourceType {
+	case "artist":
+		s.Contents = r.contentsLabelFromArtist(ctx, s.ID, s.ResourceIDs)
+	case "album":
+		s.Contents = r.contentsLabelFromAlbums(ctx, s.ID, s.ResourceIDs)
+	case "playlist":
+		s.Contents = r.contentsLabelFromPlaylist(ctx, s.ID, s.ResourceIDs)
+	case "media_file":
+		s.Contents = r.contentsLabelFromMediaFiles(ctx, s.ID, s.ResourceIDs)
 	}
 
 	s.Contents = str.TruncateRunes(s.Contents, 30, "...")
 
-	id, err = r.Persistable.Save(s)
-	return id, err
+	return r.ShareRepository.Save(ctx, s)
 }
 
-func (r *shareRepositoryWrapper) Update(id string, entity any, _ ...string) error {
+var shareableKinds = []model.Kind{model.KindArtistArtwork, model.KindAlbumArtwork, model.KindPlaylistArtwork, model.KindMediaFileArtwork}
+
+// resourceType resolves every ID as the current user, so an entity they cannot see cannot
+// ride along behind a valid first one, and requires all IDs to be of the same kind.
+func (r *shareRepositoryWrapper) resourceType(ctx context.Context, resourceIDs string) (string, error) {
+	resourceType := ""
+	for _, id := range strings.Split(resourceIDs, ",") {
+		kind, err := model.GetEntityKindByID(ctx, r.ds, id)
+		if err != nil {
+			return "", err
+		}
+		if !slices.Contains(shareableKinds, kind) {
+			log.Error(ctx, "Invalid Resource ID", "id", id)
+			return "", model.ErrNotFound
+		}
+		if resourceType != "" && kind.String() != resourceType {
+			return "", fmt.Errorf("%w: share mixes %s and %s resources", model.ErrValidation, resourceType, kind)
+		}
+		resourceType = kind.String()
+	}
+	return resourceType, nil
+}
+
+func (r *shareRepositoryWrapper) Update(ctx context.Context, id string, entity model.Share, _ ...string) error {
 	cols := []string{"description", "downloadable"}
 
 	// TODO Better handling of Share expiration
-	if !V(entity.(*model.Share).ExpiresAt).IsZero() {
+	if !V(entity.ExpiresAt).IsZero() {
 		cols = append(cols, "expires_at")
 	}
-	return r.Persistable.Update(id, entity, cols...)
+	return r.ShareRepository.Update(ctx, id, entity, cols...)
 }
 
-func (r *shareRepositoryWrapper) contentsLabelFromArtist(shareID string, ids string) string {
+func (r *shareRepositoryWrapper) contentsLabelFromArtist(ctx context.Context, shareID string, ids string) string {
 	idList := strings.SplitN(ids, ",", 2)
-	a, err := r.ds.Artist(r.ctx).Get(idList[0])
+	a, err := r.ds.Artist().Get(ctx, idList[0])
 	if err != nil {
-		log.Error(r.ctx, "Error retrieving artist name for share", "share", shareID, err)
+		log.Error(ctx, "Error retrieving artist name for share", "share", shareID, err)
 		return ""
 	}
 	return a.Name
 }
 
-func (r *shareRepositoryWrapper) contentsLabelFromAlbums(shareID string, ids string) string {
+func (r *shareRepositoryWrapper) contentsLabelFromAlbums(ctx context.Context, shareID string, ids string) string {
 	idList := strings.Split(ids, ",")
-	all, err := r.ds.Album(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.id": idList}})
+	all, err := r.ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.id": idList}})
 	if err != nil {
-		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
+		log.Error(ctx, "Error retrieving album names for share", "share", shareID, err)
 		return ""
 	}
 	names := slice.Map(all, func(a model.Album) string { return a.Name })
 	return strings.Join(names, ", ")
 }
-func (r *shareRepositoryWrapper) contentsLabelFromPlaylist(shareID string, id string) string {
-	pls, err := r.ds.Playlist(r.ctx).Get(id)
+func (r *shareRepositoryWrapper) contentsLabelFromPlaylist(ctx context.Context, shareID string, id string) string {
+	pls, err := r.ds.Playlist().Get(ctx, id)
 	if err != nil {
-		log.Error(r.ctx, "Error retrieving album names for share", "share", shareID, err)
+		log.Error(ctx, "Error retrieving album names for share", "share", shareID, err)
 		return ""
 	}
 	return pls.Name
 }
 
-func (r *shareRepositoryWrapper) contentsLabelFromMediaFiles(shareID string, ids string) string {
+func (r *shareRepositoryWrapper) contentsLabelFromMediaFiles(ctx context.Context, shareID string, ids string) string {
 	idList := strings.Split(ids, ",")
-	mfs, err := r.ds.MediaFile(r.ctx).GetAll(model.QueryOptions{Filters: squirrel.And{
+	mfs, err := r.ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.And{
 		squirrel.Eq{"media_file.id": idList},
 		squirrel.Eq{"missing": false},
 	}})
 	if err != nil {
-		log.Error(r.ctx, "Error retrieving media files for share", "share", shareID, err)
+		log.Error(ctx, "Error retrieving media files for share", "share", shareID, err)
 		return ""
 	}
 

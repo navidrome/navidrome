@@ -1,7 +1,10 @@
 package model
 
 import (
+	"context"
 	"time"
+
+	"github.com/deluan/rest"
 )
 
 type User struct {
@@ -14,12 +17,16 @@ type User struct {
 	LastAccessAt *time.Time `structs:"last_access_at" json:"lastAccessAt"`
 	CreatedAt    time.Time  `structs:"created_at" json:"createdAt"`
 	UpdatedAt    time.Time  `structs:"updated_at" json:"updatedAt"`
+	// Smart-playlist criteria JSON; matching songs are not sent to external scrobblers
+	ScrobbleFilter string `structs:"scrobble_filter" json:"scrobbleFilter"`
 
 	// Library associations (many-to-many relationship)
 	Libraries Libraries `structs:"-" json:"libraries,omitempty"`
 
 	// This is only available on the backend, and it is never sent over the wire
 	Password string `structs:"-" json:"-"`
+	// Bumped on password change to invalidate every issued token for this user.
+	TokenEpoch int `structs:"-" json:"-"`
 	// This is used to set or change a password when calling Put. If it is empty, the password is not changed.
 	// It is received from the UI with the name "password"
 	NewPassword string `structs:"password,omitempty" json:"password,omitempty"` //nolint:gosec
@@ -42,21 +49,21 @@ func (u User) HasLibraryAccess(libraryID int) bool {
 type Users []User
 
 type UserRepository interface {
-	ResourceRepository
-	CountAll(...QueryOptions) (int64, error)
-	Delete(id string) error
-	Get(id string) (*User, error)
-	GetAll(options ...QueryOptions) (Users, error)
-	Put(*User) error
-	UpdateLastLoginAt(id string) error
-	UpdateLastAccessAt(id string) error
-	FindFirstAdmin() (*User, error)
+	rest.Repository[User]
+	rest.Persistable[User]
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Get(ctx context.Context, id string) (*User, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Users, error)
+	Put(ctx context.Context, u *User) error
+	UpdateLastLoginAt(ctx context.Context, id string) error
+	UpdateLastAccessAt(ctx context.Context, id string) error
+	FindFirstAdmin(ctx context.Context) (*User, error)
 	// FindByUsername must be case-insensitive
-	FindByUsername(username string) (*User, error)
+	FindByUsername(ctx context.Context, username string) (*User, error)
 	// FindByUsernameWithPassword is the same as above, but also returns the decrypted password
-	FindByUsernameWithPassword(username string) (*User, error)
+	FindByUsernameWithPassword(ctx context.Context, username string) (*User, error)
 
 	// Library association methods
-	GetUserLibraries(userID string) (Libraries, error)
-	SetUserLibraries(userID string, libraryIDs []int) error
+	GetUserLibraries(ctx context.Context, userID string) (Libraries, error)
+	SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error
 }

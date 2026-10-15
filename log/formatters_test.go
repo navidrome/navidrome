@@ -25,6 +25,12 @@ var _ = DescribeTable("ShortDur",
 	Entry("4m3s", 4*time.Minute+3*time.Second, "4m3s"),
 	Entry("4h", 4*time.Hour, "4h"),
 	Entry("4h", 4*time.Hour+2*time.Second, "4h"),
+	// A trailing zero digit is significant: only a whole zero-valued component may be dropped.
+	Entry("zero", time.Duration(0), "0s"),
+	Entry("10s", 10*time.Second, "10s"),
+	Entry("20s", 20*time.Second, "20s"),
+	Entry("1m30s", time.Minute+30*time.Second, "1m30s"),
+	Entry("2h30m", 2*time.Hour+30*time.Minute, "2h30m"),
 	Entry("4h2m", 4*time.Hour+2*time.Minute+5*time.Second+200*time.Millisecond, "4h2m"),
 )
 

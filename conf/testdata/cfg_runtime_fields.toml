@@ -1,0 +1,10 @@
+MusicFolder = "/toml/music"
+SearchFullString = true
+ConfigFile = "/somewhere/else"
+ID = "oops"
+
+[Search]
+FullString = false
+
+[LastFM]
+Languages = ["pt"]

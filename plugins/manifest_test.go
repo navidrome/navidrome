@@ -222,6 +222,36 @@ var _ = Describe("Manifest", func() {
 			Expect(err.Error()).To(ContainSubstring("library"))
 		})
 
+		It("validates manifest with scrobbleRetriever and users permissions", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					ScrobbleRetriever: &ScrobbleRetrieverPermission{},
+					Users:             &UsersPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("returns error when scrobbleRetriever without users permission", func() {
+			m := &Manifest{
+				Name:    "Test",
+				Author:  "Author",
+				Version: "1.0.0",
+				Permissions: &Permissions{
+					ScrobbleRetriever: &ScrobbleRetrieverPermission{},
+				},
+			}
+
+			err := m.Validate()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("scrobbleRetriever"))
+		})
+
 		It("validates manifest without subsonicapi", func() {
 			m := &Manifest{
 				Name:    "Test",

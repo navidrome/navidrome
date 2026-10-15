@@ -24,6 +24,11 @@ pub type ArtistRef = nd_pdk_types::ArtistRef;
 
 #[deprecated(note = "use nd_pdk::types::SongRef")]
 pub type SongRef = nd_pdk_types::SongRef;
+/// MetadataAgentError represents an error type for metadata agent operations.
+pub type MetadataAgentError = &'static str;
+/// MetadataAgentErrorRetryLater indicates the provider is throttling; retry later.
+/// Append ":<seconds>" inside the parentheses to request a specific delay.
+pub const METADATA_AGENT_ERROR_RETRY_LATER: MetadataAgentError = "agent(retry_later)";
 /// AlbumImagesResponse is the response for GetAlbumImages.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

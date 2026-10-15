@@ -2,13 +2,15 @@ package model
 
 import (
 	"cmp"
-	"crypto/md5"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
 
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/zeebo/xxh3"
 )
 
 type Tag struct {
@@ -24,13 +26,17 @@ type TagList []Tag
 func (l TagList) GroupByFrequency() Tags {
 	grouped := map[string]map[string]int{}
 	values := map[string]string{}
-	for _, t := range l {
+	firstSeen := map[string]int{}
+	for i, t := range l {
 		if m, ok := grouped[string(t.TagName)]; !ok {
 			grouped[string(t.TagName)] = map[string]int{t.ID: 1}
 		} else {
 			m[t.ID]++
 		}
 		values[t.ID] = t.TagValue
+		if _, ok := firstSeen[t.ID]; !ok {
+			firstSeen[t.ID] = i
+		}
 	}
 
 	tags := Tags{}
@@ -42,7 +48,7 @@ func (l TagList) GroupByFrequency() Tags {
 		slices.SortFunc(idList, func(a, b string) int {
 			return cmp.Or(
 				cmp.Compare(counts[b], counts[a]),
-				cmp.Compare(values[a], values[b]),
+				cmp.Compare(firstSeen[a], firstSeen[b]),
 			)
 		})
 		tags[TagName(name)] = slice.Map(idList, func(id string) string { return values[id] })
@@ -74,6 +80,13 @@ type Tags map[TagName][]string
 
 func (t Tags) Values(name TagName) []string {
 	return t[name]
+}
+
+func (t Tags) First(name TagName) string {
+	if v := t[name]; len(v) > 0 {
+		return v[0]
+	}
+	return ""
 }
 
 func (t Tags) IDs() []string {
@@ -117,7 +130,7 @@ func (t Tags) Hash() []byte {
 	}
 	ids := t.IDs()
 	slices.Sort(ids)
-	sum := md5.New()
+	sum := xxh3.New()
 	sum.Write([]byte(strings.Join(ids, "|")))
 	return sum.Sum(nil)
 }
@@ -151,9 +164,10 @@ func (t Tags) Add(name TagName, v string) {
 }
 
 type TagRepository interface {
-	Add(libraryID int, tags ...Tag) error
-	UpdateCounts() error
-	GetAll(name TagName, options ...QueryOptions) (TagList, error)
+	rest.Repository[Tag]
+	Add(ctx context.Context, libraryID int, tags ...Tag) error
+	UpdateCounts(ctx context.Context) error
+	GetAll(ctx context.Context, name TagName, options ...QueryOptions) (TagList, error)
 }
 
 type TagName string

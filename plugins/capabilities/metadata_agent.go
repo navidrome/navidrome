@@ -9,6 +9,9 @@ import "github.com/navidrome/navidrome/plugins/types"
 // Plugins implementing this capability can choose which methods to implement.
 // Each method is optional - plugins only need to provide the functionality they support.
 //
+// To say "no data for this item", return a nil response and a nil error. Return an error only when
+// the plugin itself failed, because Navidrome retries failed calls with backoff.
+//
 //nd:capability name=metadata
 type MetadataAgent interface {
 	// GetArtistMBID retrieves the MusicBrainz ID for an artist.
@@ -221,3 +224,15 @@ type SimilarSongsResponse struct {
 	// Songs is the list of similar songs.
 	Songs []types.SongRef `json:"songs"`
 }
+
+// MetadataAgentError represents an error type for metadata agent operations.
+type MetadataAgentError string
+
+const (
+	// MetadataAgentErrorRetryLater indicates the provider is throttling; retry later.
+	// Append ":<seconds>" inside the parentheses to request a specific delay.
+	MetadataAgentErrorRetryLater MetadataAgentError = "agent(retry_later)"
+)
+
+// Error implements the error interface for MetadataAgentError.
+func (e MetadataAgentError) Error() string { return string(e) }

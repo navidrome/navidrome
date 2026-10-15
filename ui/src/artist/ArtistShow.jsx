@@ -13,7 +13,12 @@ import subsonic from '../subsonic'
 import AlbumGridView from '../album/AlbumGridView'
 import MobileArtistDetails from './MobileArtistDetails'
 import DesktopArtistDetails from './DesktopArtistDetails'
-import { useAlbumsPerPage, useResourceRefresh, Title } from '../common/index.js'
+import {
+  useAlbumsPerPage,
+  useResourceRefresh,
+  useScrollRestoration,
+  Title,
+} from '../common/index.js'
 import ArtistActions from './ArtistActions'
 import { makeStyles } from '@material-ui/core'
 
@@ -48,7 +53,7 @@ const useStyles = makeStyles(
   },
 )
 
-const ArtistDetails = (props) => {
+export const ArtistDetails = (props) => {
   const record = useRecordContext(props)
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('sm'), {
     noSsr: true,
@@ -70,7 +75,9 @@ const ArtistDetails = (props) => {
         // eslint-disable-next-line no-console
         console.error('error on artist page', e)
       })
-  }, [record.id])
+    // Keyed on the record, not its id: a refreshed record must re-fetch, or the stale
+    // artistInfo state keeps winning the `||` above.
+  }, [record])
 
   const Component = isDesktop ? DesktopArtistDetails : MobileArtistDetails
   return (
@@ -85,6 +92,7 @@ const ArtistShowLayout = (props) => {
   const [, perPageOptions] = useAlbumsPerPage(width)
   const classes = useStyles()
   useResourceRefresh('artist', 'album')
+  useScrollRestoration(!!record?.id)
 
   const maxPerPage = 90
   let perPage = 0

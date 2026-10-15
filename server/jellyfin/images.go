@@ -11,28 +11,43 @@ import (
 	_ "image/png"
 	"io"
 	"net/http"
-	"strconv"
 
 	"github.com/dustin/go-humanize"
-	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/navidrome/navidrome/server/imghttp"
+	"github.com/navidrome/navidrome/utils/req"
 	_ "golang.org/x/image/webp"
 )
 
+// imageSize reduces Jellyfin's size params to Navidrome's single bound. Width/Height/Max* are
+// bounds, so the tightest wins; Fill* must cover its box, so its larger side is the bound.
+func imageSize(p *req.Values) int {
+	fill := max(p.IntOr("fillwidth", 0), p.IntOr("fillheight", 0))
+	size := 0
+	for _, v := range []int{p.IntOr("width", 0), p.IntOr("height", 0), p.IntOr("maxwidth", 0), p.IntOr("maxheight", 0), fill} {
+		if v > 0 && (size == 0 || v < size) {
+			size = v
+		}
+	}
+	return size
+}
+
 func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
-	// Public endpoint, like real Jellyfin's image routes: clients fetch cover URLs without credentials
-	// and item ids are unguessable, so resolution runs elevated to bypass the visibility filter.
+	// Public, like Jellyfin's own image routes: clients build cover URLs without credentials, and
+	// upstream resolves them with no visibility check either (LibraryManager.ItemIsVisible, null user).
 	ctx := request.WithUser(r.Context(), model.User{IsAdmin: true})
-	itemId := api.resolveItemID(ctx, dto.DecodeID(chi.URLParam(r, "itemId")))
-	size, _ := strconv.Atoi(r.URL.Query().Get("maxwidth"))
+	itemId, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
+	size := imageSize(req.Params(r))
 
 	artID := api.resolveArtworkID(ctx, itemId)
-	reader, _, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
+	img, err := api.artwork.GetOrPlaceholder(ctx, artID, size, false)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return
@@ -41,35 +56,56 @@ func (api *Router) getItemImage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	defer reader.Close()
+	defer img.Close()
+	if imghttp.WriteImageHeaders(w, r, img, hashFromTag(r)) {
+		return
+	}
 	// Leave Content-Type unset so net/http sniffs it (covers may be PNG/WebP/JPEG).
-	_, _ = io.Copy(w, reader)
+	_, _ = io.Copy(w, img)
+}
+
+// hashFromTag returns the ?tag query param when it is exactly a 16-char lowercase-hex content
+// hash (what Finamp/Jellyfin clients append), so a matching request can be served immutable.
+func hashFromTag(r *http.Request) string {
+	tag := r.URL.Query().Get("tag")
+	if len(tag) != 16 {
+		return ""
+	}
+	for _, c := range tag {
+		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+			return ""
+		}
+	}
+	return tag
 }
 
 // resolveArtworkID maps a Jellyfin item id to a Navidrome ArtworkID, probing
 // album -> artist -> media file -> playlist.
 func (api *Router) resolveArtworkID(ctx context.Context, itemId string) string {
-	if al, err := api.ds.Album(ctx).Get(itemId); err == nil {
+	if al, err := api.ds.Album().Get(ctx, itemId); err == nil {
 		return al.CoverArtID().String()
 	}
-	if ar, err := api.ds.Artist(ctx).Get(itemId); err == nil {
+	if ar, err := api.ds.Artist().Get(ctx, itemId); err == nil {
 		return ar.CoverArtID().String()
 	}
-	if mf, err := api.ds.MediaFile(ctx).Get(itemId); err == nil {
+	if mf, err := api.ds.MediaFile().Get(ctx, itemId); err == nil {
 		return mf.CoverArtID().String()
 	}
-	if pl, err := api.ds.Playlist(ctx).Get(itemId); err == nil {
+	if pl, err := api.ds.Playlist().Get(ctx, itemId); err == nil {
 		return pl.CoverArtID().String()
 	}
 	return (model.ArtworkID{}).String()
 }
 
 // postItemImage handles cover upload. Only playlists are writable here; album/artist covers come
-// from scanning. The body is always drained first (even on the not-implemented path) because
-// Finamp writes it synchronously and sees a broken pipe if we respond before reading it.
+// from scanning. Past the auth and id gates the body is drained before answering — including on the
+// not-implemented path — because Finamp writes it synchronously and would see a broken pipe.
 func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 
 	// Honor the same artwork-upload gate and size cap as the native endpoint.
 	u, _ := request.UserFrom(ctx)
@@ -79,7 +115,7 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 	}
 	// The limit caps the decoded image (native endpoint semantics); Jellyfin clients base64-encode
 	// the wire body (4/3 bigger), so the read cap allows for inflation.
-	limit := core.MaxImageUploadSize()
+	limit := artwork.MaxImageUploadSize()
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit*4/3+4))
 	if err != nil {
 		log.Warn(ctx, "Jellyfin API: cover upload rejected: body exceeds MaxImageUploadSize",
@@ -124,7 +160,10 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 // deleteItemImage removes a playlist's uploaded cover. Only playlists are supported.
 func (api *Router) deleteItemImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	id := dto.DecodeID(chi.URLParam(r, "itemId"))
+	id, ok := itemIDParam(w, r, "itemId")
+	if !ok {
+		return
+	}
 
 	if _, err := api.playlists.Get(ctx, id); err != nil {
 		http.Error(w, "Not Implemented", http.StatusNotImplemented)

@@ -50,7 +50,7 @@ var _ = Describe("auth_router", func() {
 	})
 
 	storedSessionKey := func(userID string) string {
-		key, _ := userProps.Get(userID, sessionKeyProperty)
+		key, _ := userProps.Get(GinkgoT().Context(), userID, sessionKeyProperty)
 		return key
 	}
 
@@ -213,6 +213,15 @@ var _ = Describe("auth_router", func() {
 
 			_, err = verifyLinkToken(nonExpiringToken)
 			Expect(err).To(MatchError("link token missing expiration"))
+		})
+
+		It("rejects a Jellyfin access token", func() {
+			usr := &model.User{ID: "u1", UserName: "johndoe"}
+			tokenStr, err := auth.CreateAPIToken(usr, auth.AudienceJellyfin)
+			Expect(err).ToNot(HaveOccurred())
+
+			_, err = verifyLinkToken(tokenStr)
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })

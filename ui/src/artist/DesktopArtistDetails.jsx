@@ -3,20 +3,15 @@ import { Typography, Collapse } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core'
 import Card from '@material-ui/core/Card'
 import CardContent from '@material-ui/core/CardContent'
-import CardMedia from '@material-ui/core/CardMedia'
 import ArtistExternalLinks from './ArtistExternalLink'
 import config from '../config'
-import {
-  LoveButton,
-  RatingField,
-  ImageUploadOverlay,
-  useImageLoadingState,
-} from '../common'
+import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import AlbumInfo from '../album/AlbumInfo'
 import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -48,9 +43,6 @@ const useStyles = makeStyles(
       backgroundColor: 'transparent',
       transition: 'opacity 0.3s ease-in-out',
       objectFit: 'cover',
-    },
-    coverLoading: {
-      opacity: 0.5,
     },
     artistImage: {
       maxHeight: '12rem',
@@ -91,35 +83,18 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
   const [expanded, setExpanded] = useState(false)
   const classes = useStyles()
   const title = record.name
-  const {
-    imageLoading,
-    imageError,
-    isLightboxOpen,
-    handleImageLoad,
-    handleImageError,
-    handleOpenLightbox,
-    handleCloseLightbox,
-  } = useImageLoadingState(record.id)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
 
   return (
     <div className={classes.root}>
       <Card className={classes.artistDetail}>
         <Card className={classes.artistImage}>
-          {artistInfo && (
-            <CardMedia
-              key={record.id}
-              component="img"
-              src={subsonic.getCoverArtUrl(record, config.uiCoverArtSize)}
-              className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-              onClick={handleOpenLightbox}
-              onLoad={handleImageLoad}
-              onError={handleImageError}
-              title={title}
-              style={{
-                cursor: imageError ? 'default' : 'pointer',
-              }}
-            />
-          )}
+          <Artwork
+            record={record}
+            className={classes.cover}
+            title={title}
+            onClick={() => setLightboxOpen(true)}
+          />
           <ImageUploadOverlay
             entityType="artist"
             entityId={record.id}
@@ -175,13 +150,13 @@ const DesktopArtistDetails = ({ artistInfo, record, biography }) => {
             )}
           </Typography>
         </div>
-        {isLightboxOpen && !imageError && (
+        {isLightboxOpen && (
           <Lightbox
             imagePadding={50}
             animationDuration={200}
             imageTitle={record.name}
             mainSrc={subsonic.getCoverArtUrl(record)}
-            onCloseRequest={handleCloseLightbox}
+            onCloseRequest={() => setLightboxOpen(false)}
           />
         )}
       </Card>

@@ -8,12 +8,13 @@ import (
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
+	_ "github.com/navidrome/navidrome/conf/mime" // registers mime_types.yaml, so tests see the same image types as the server
 	"github.com/navidrome/navidrome/log"
 )
 
 var once sync.Once
 
-func Init(t *testing.T, skipOnShort bool) {
+func Init(t testing.TB, skipOnShort bool) {
 	if skipOnShort && testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}

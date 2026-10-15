@@ -8,8 +8,9 @@ import {
   DialogTitle,
 } from '@material-ui/core'
 import subsonic from '../subsonic'
-import { closeDownloadMenu } from '../actions'
+import { closeDownloadMenu, DOWNLOAD_MENU_ARTIST } from '../actions'
 import { formatBytes } from '../utils'
+import { artistDownloadSize } from '../common/artist'
 import { useTranscodingOptions } from './useTranscodingOptions'
 
 const DownloadMenuDialog = () => {
@@ -21,6 +22,12 @@ const DownloadMenuDialog = () => {
 
   const { TranscodingOptionsInput, format, maxBitRate, originalFormat } =
     useTranscodingOptions()
+
+  // Artist downloads only include album-artist songs, so show that size
+  const downloadSize =
+    recordType === DOWNLOAD_MENU_ARTIST
+      ? artistDownloadSize(record)
+      : record?.size
 
   const handleClose = (e) => {
     dispatch(closeDownloadMenu())
@@ -55,7 +62,7 @@ const DownloadMenuDialog = () => {
               smart_count: 1,
             }).toLocaleLowerCase(),
             name: record?.name || record?.title,
-            size: formatBytes(record?.size),
+            size: formatBytes(downloadSize),
           })}
       </DialogTitle>
       <DialogContent>

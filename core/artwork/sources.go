@@ -3,74 +3,54 @@ package artwork
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/utils/httpclient"
+	"github.com/navidrome/navidrome/utils/netguard"
 	"go.senan.xyz/taglib"
 )
 
-func selectImageReader(ctx context.Context, artID model.ArtworkID, extractFuncs ...sourceFunc) (io.ReadCloser, string, error) {
-	for _, f := range extractFuncs {
-		if ctx.Err() != nil {
-			return nil, "", ctx.Err()
-		}
-		start := time.Now()
-		r, path, err := f()
-		if r != nil {
-			msg := fmt.Sprintf("Found %s artwork", artID.Kind)
-			log.Debug(ctx, msg, "artID", artID, "path", path, "source", f, "elapsed", time.Since(start))
-			return r, path, nil
-		}
-		log.Trace(ctx, "Failed trying to extract artwork", "artID", artID, "source", f, "elapsed", time.Since(start), err)
-	}
-	return nil, "", fmt.Errorf("could not get `%s` cover art for %s: %w", artID.Kind, artID, ErrUnavailable)
-}
+// errSourceUnreadable marks a candidate the resolver knows exists but could not read. Failing
+// to open it is not evidence the entity has no artwork, so callers must not settle on absent.
+var errSourceUnreadable = errors.New("artwork source unreadable")
 
 type sourceFunc func() (r io.ReadCloser, path string, err error)
 
-func (f sourceFunc) String() string {
-	name := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
-	name = strings.TrimPrefix(name, "github.com/navidrome/navidrome/core/artwork.")
-	if _, after, found := strings.Cut(name, ")."); found {
-		name = after
-	}
-	name = strings.TrimSuffix(name, ".func1")
-	return name
-}
-
 func fromExternalFile(ctx context.Context, libFS fs.FS, files []string, pattern string) sourceFunc {
 	return func() (io.ReadCloser, string, error) {
+		var openErr error
 		for _, file := range files {
 			_, name := filepath.Split(file)
 			match, err := filepath.Match(pattern, strings.ToLower(name))
 			if err != nil {
-				log.Warn(ctx, "Error matching cover art file to pattern", "pattern", pattern, "file", file)
+				log.Warn(ctx, "Artwork: Error matching cover art file to pattern", "pattern", pattern, "file", file)
 				continue
 			}
-			if !match {
+			if !match || !model.IsImageFile(name) {
 				continue
 			}
 			f, err := libFS.Open(file)
 			if err != nil {
-				log.Warn(ctx, "Could not open cover art file", "file", file, err)
+				log.Warn(ctx, "Artwork: Could not open cover art file", "file", file, err)
+				openErr = fmt.Errorf("%w: %s: %w", errSourceUnreadable, file, err)
 				continue
 			}
 			return f, file, nil
+		}
+		if openErr != nil {
+			return nil, "", openErr
 		}
 		return nil, "", fmt.Errorf("pattern '%s' not matched by files %v", pattern, files)
 	}
@@ -90,7 +70,7 @@ func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 		}
 		f, err := libFS.Open(relPath)
 		if err != nil {
-			return nil, "", err
+			return nil, "", fmt.Errorf("%w: %s: %w", errSourceUnreadable, relPath, err)
 		}
 		rs, ok := f.(io.ReadSeeker)
 		if !ok {
@@ -103,7 +83,7 @@ func fromTag(ctx context.Context, libFS fs.FS, relPath string) sourceFunc {
 		)
 		if err != nil {
 			f.Close()
-			return nil, "", err
+			return nil, "", fmt.Errorf("%w: %s: %w", errSourceUnreadable, relPath, err)
 		}
 		// Close in LIFO order: tf first (it holds rs internally), then f.
 		defer f.Close()
@@ -127,12 +107,12 @@ func findBestImageIndex(ctx context.Context, images []taglib.ImageDesc, path str
 	for _, regex := range picTypeRegexes {
 		for i, img := range images {
 			if regex.MatchString(img.Type) {
-				log.Trace(ctx, "Found embedded image", "type", img.Type, "path", path)
+				log.Trace(ctx, "Artwork: Found embedded image", "type", img.Type, "path", path)
 				return i
 			}
 		}
 	}
-	log.Trace(ctx, "Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
+	log.Trace(ctx, "Artwork: Could not find a front image. Getting the first one", "type", images[0].Type, "path", path)
 	return 0
 }
 
@@ -171,51 +151,26 @@ type readCloser struct {
 	io.Closer
 }
 
-func fromAlbum(ctx context.Context, a *artwork, id model.ArtworkID) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, _, err := a.Get(ctx, id, 0, false)
-		if err != nil {
-			return nil, "", err
-		}
-		return r, id.String(), nil
-	}
-}
-
-func fromAlbumPlaceholder() sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		r, _ := resources.FS().Open(consts.PlaceholderAlbumArt)
-		return r, consts.PlaceholderAlbumArt, nil
-	}
-}
-func fromArtistExternalSource(ctx context.Context, ar model.Artist, provider external.Provider) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := provider.ArtistImage(ctx, ar.ID)
-		if err != nil {
-			return nil, "", err
-		}
-
-		return fromURL(ctx, imageUrl)
-	}
-}
-
-func fromAlbumExternalSource(ctx context.Context, al model.Album, provider external.Provider) sourceFunc {
-	return func() (io.ReadCloser, string, error) {
-		imageUrl, err := provider.AlbumImage(ctx, al.ID)
-		if err != nil {
-			return nil, "", err
-		}
-
-		return fromURL(ctx, imageUrl)
-	}
-}
+// remoteImageClient fetches URLs from playlists and agents (plugins included), so it must not reach
+// internal hosts. Shared so fetches reuse connections.
+var remoteImageClient = httpclient.NewExternal(5 * time.Second)
 
 func fromURL(ctx context.Context, imageUrl *url.URL) (io.ReadCloser, string, error) {
-	hc := http.Client{Timeout: 5 * time.Second}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, imageUrl.String(), nil)
-	req.Header.Set("User-Agent", consts.HTTPUserAgent)
-	resp, err := hc.Do(req) //nolint:gosec
+	resp, err := remoteImageClient.Do(req)
+	if errors.Is(err, netguard.ErrPrivateAddress) {
+		// Retrying cannot change where the URL points: settle absent instead of tripping the breaker.
+		log.Warn(ctx, "Artwork: Refused to fetch image from a private or loopback address", "url", imageUrl, err)
+		return nil, "", model.ErrNotFound
+	}
 	if err != nil {
 		return nil, "", err
+	}
+	// An agent-advertised URL that 404s is a definitive miss, not a fault: settle absent
+	// instead of retrying forever and tripping the artwork breaker.
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
+		resp.Body.Close()
+		return nil, "", model.ErrNotFound
 	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()

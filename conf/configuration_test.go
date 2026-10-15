@@ -1,12 +1,18 @@
 package conf_test
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/viper"
@@ -178,6 +184,123 @@ var _ = Describe("Configuration", func() {
 		})
 	})
 
+	Describe("unknownConfigKeys", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("reports misplaced and misspelled options, as spelled in the config file", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_unknown_keys.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(ConsistOf(
+				"ArtistSplitExceptions", "EnableDownlods", "Whatever.Foo",
+			))
+		})
+
+		DescribeTable("recovers the original casing in all supported formats",
+			func(file string) {
+				conf.InitConfig(filepath.Join("testdata", file), false)
+				conf.Load(true)
+
+				Expect(conf.UnknownConfigKeys()).To(ConsistOf("NotAnOption"))
+			},
+			Entry("TOML", "cfg_unknown_casing.toml"),
+			Entry("YAML", "cfg_unknown_casing.yaml"),
+			Entry("JSON", "cfg_unknown_casing.json"),
+			Entry("INI", "cfg_unknown_casing.ini"),
+		)
+
+		It("does not report valid, deprecated or free-form keys", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("does not report the [default] section of INI files", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg.ini"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		DescribeTable("SuggestOptions",
+			func(key string, expected []string) {
+				Expect(conf.SuggestOptions(key)).To(Equal(expected))
+			},
+			Entry("suggests the section of a misplaced option", "artistsplitexceptions",
+				[]string{"Scanner.ArtistSplitExceptions"}),
+			Entry("suggests the section of a misplaced nested option", "backup.fuzzythreshold",
+				[]string{"Matcher.FuzzyThreshold"}),
+			Entry("suggests every section defining the option", "schedule",
+				[]string{"Backup.Schedule", "Scanner.Schedule"}),
+			Entry("suggests nothing for a typo", "enabledownlods", nil),
+		)
+
+		It("does not report ND_-prefixed keys, as they are remapped", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_nd_keys.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("reports ND_-prefixed keys that remap to no known option", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_nd_bogus.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.UnknownConfigKeys()).To(ConsistOf("ND_TOTALLY_BOGUS_OPTION"))
+			Expect(conf.Server.Scanner.Schedule).To(Equal("@every 1h"))
+		})
+
+		It("migrates every deprecated option that has a replacement", func() {
+			conf.InitConfig(filepath.Join("testdata", "cfg_deprecated_search.toml"), false)
+			conf.Load(true)
+
+			Expect(conf.Server.Search.FullString).To(BeTrue())
+			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
+		})
+
+		It("warns about each unrecognized option at startup", func() {
+			var logBuf bytes.Buffer
+			log.SetOutput(&logBuf)
+			DeferCleanup(func() { log.SetOutput(GinkgoWriter) })
+
+			conf.InitConfig(filepath.Join("testdata", "cfg_warning_output.toml"), false)
+			conf.Load(true)
+
+			Expect(logBuf.String()).To(ContainSubstring(
+				"Option 'ArtistSplitExceptions' is not recognized and will be ignored. " +
+					"Did you mean 'Scanner.ArtistSplitExceptions'?"))
+			Expect(logBuf.String()).To(ContainSubstring(
+				"Option 'EnableDownlods' is not recognized and will be ignored"))
+			Expect(logBuf.String()).ToNot(ContainSubstring("ArtistJoiner"))
+		})
+
+		Context("with runtime-computed and removed options in the config", func() {
+			BeforeEach(func() {
+				conf.InitConfig(filepath.Join("testdata", "cfg_runtime_fields.toml"), false)
+				conf.Load(true)
+			})
+
+			It("reports values computed during Load, which the config cannot set", func() {
+				Expect(conf.UnknownConfigKeys()).To(ContainElements("ConfigFile", "LastFM.Languages"))
+			})
+
+			It("never suggests a removed option", func() {
+				Expect(conf.SuggestOptions("id")).To(BeEmpty())
+			})
+
+			It("keeps an explicit replacement over the deprecated value", func() {
+				Expect(conf.Server.Search.FullString).To(BeFalse())
+			})
+		})
+	})
+
 	Describe("logFatal", func() {
 		var invalidPath string
 		BeforeEach(func() {
@@ -207,6 +330,21 @@ var _ = Describe("Configuration", func() {
 			}).To(PanicWith(ContainSubstring("Error creating log file directory")))
 		})
 
+		It("creates the log file readable only by the owner", func() {
+			if runtime.GOOS == "windows" {
+				Skip("file modes are not enforced on Windows")
+			}
+			logFile := filepath.Join(GinkgoT().TempDir(), "navidrome.log")
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("logfile", logFile)
+			DeferCleanup(log.SetOutput, os.Stderr)
+			conf.Load(true)
+
+			info, err := os.Stat(logFile)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Mode().Perm()).To(Equal(os.FileMode(0600)))
+		})
+
 		It("is called when BaseURL is invalid", func() {
 			viper.SetDefault("datafolder", GinkgoT().TempDir())
 			viper.SetDefault("baseurl", "://invalid")
@@ -217,19 +355,10 @@ var _ = Describe("Configuration", func() {
 
 	})
 
-	Describe("ValidateMaxImageUploadSize", func() {
-		BeforeEach(func() {
-			viper.Reset()
-			conf.SetViperDefaults()
-			viper.SetDefault("datafolder", GinkgoT().TempDir())
-			viper.SetDefault("loglevel", "error")
-			conf.ResetConf()
-		})
-
+	Describe("ValidateByteSize", func() {
 		DescribeTable("accepts valid size values",
 			func(input string) {
-				conf.Server.MaxImageUploadSize = input
-				Expect(conf.ValidateMaxImageUploadSize()).To(Succeed())
+				Expect(conf.ValidateByteSize("MaxImageSize", input)()).To(Succeed())
 			},
 			Entry("megabytes", "10MB"),
 			Entry("gigabytes", "1GB"),
@@ -240,12 +369,58 @@ var _ = Describe("Configuration", func() {
 
 		DescribeTable("rejects invalid size values",
 			func(input string) {
-				conf.Server.MaxImageUploadSize = input
-				Expect(conf.ValidateMaxImageUploadSize()).To(MatchError(ContainSubstring("invalid MaxImageUploadSize")))
+				Expect(conf.ValidateByteSize("MaxImageSize", input)()).To(MatchError(ContainSubstring("invalid MaxImageSize")))
 			},
 			Entry("garbage string", "not-a-size"),
 			Entry("negative-looking", "-10MB"),
+			Entry("zero", "0"),
+			Entry("zero with unit", "0MB"),
+			Entry("overflows int64", "9223372036854775808"),
 		)
+	})
+
+	Describe("MaxImageSize floor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("is raised to MaxImageUploadSize when configured lower", func() {
+			viper.SetDefault("maximagesize", "5MB")
+			viper.SetDefault("maximageuploadsize", "50MB")
+			conf.Load(true)
+			Expect(conf.Server.MaxImageSize).To(Equal("50MB"))
+		})
+
+		It("keeps a larger MaxImageSize unchanged", func() {
+			viper.SetDefault("maximagesize", "30MB")
+			conf.Load(true)
+			Expect(conf.Server.MaxImageSize).To(Equal("30MB"))
+		})
+	})
+
+	Describe("Scanner.Extractor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("falls back to taglib for an unknown extractor", func() {
+			viper.SetDefault("scanner.extractor", "ffmpeg")
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
+		})
+
+		It("keeps taglib", func() {
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
+		})
 	})
 
 	Describe("EnforceNonRootUser", func() {
@@ -317,4 +492,73 @@ var _ = Describe("Configuration", func() {
 		Entry("INI format", "ini"),
 		Entry("JSON format", "json"),
 	)
+
+	It("should use default values for negative duration fields", func() {
+		filename := filepath.Join("testdata", "invalid_duration.toml")
+		conf.InitConfig(filename, false)
+		conf.Load(true)
+
+		server := conf.Server
+		Expect(server.SessionTimeout).To(Equal(consts.DefaultSessionTimeout))
+		Expect(server.SmartPlaylistRefreshDelay).To(Equal(consts.DefaultSmartRefresh))
+		Expect(server.DefaultShareExpiration).To(Equal(consts.DefaultShareExpiration))
+		Expect(server.UIPlaybackReportInterval).To(Equal(consts.DefaultUIPlaybackReportInterval))
+		Expect(server.AuthWindowLength).To(Equal(consts.DefaultAuthWindowLength))
+		Expect(server.Scanner.WatcherWait).To(Equal(consts.DefaultWatcherWait))
+
+		Expect(server.DevActivityPanelUpdateRate).To(Equal(consts.DefaultActivityPanelUpdateRate))
+		Expect(server.DevArtworkThrottleBacklogTimeout).To(Equal(consts.RequestThrottleBacklogTimeout))
+		Expect(server.DevArtistInfoTimeToLive).To(Equal(consts.ArtistInfoTimeToLive))
+		Expect(server.DevAlbumInfoTimeToLive).To(Equal(consts.AlbumInfoTimeToLive))
+		Expect(server.DevInsightsInitialDelay).To(Equal(consts.InsightsInitialDelay))
+		Expect(server.DevPluginCompilationTimeout).To(Equal(consts.DefaultPluginCompilationTimeout))
+	})
+
+	It("should use parsed values for duration fields", func() {
+		conf.InitConfig(filepath.Join("testdata", "valid_duration.toml"), false)
+		conf.Load(true)
+
+		configured := 1 * time.Second
+
+		server := conf.Server
+		Expect(server.SessionTimeout).To(Equal(configured))
+		Expect(server.SmartPlaylistRefreshDelay).To(Equal(configured))
+		Expect(server.DefaultShareExpiration).To(Equal(configured))
+		Expect(server.UIPlaybackReportInterval).To(Equal(configured))
+		Expect(server.AuthWindowLength).To(Equal(configured))
+		Expect(server.Scanner.WatcherWait).To(Equal(configured))
+
+		Expect(server.DevActivityPanelUpdateRate).To(Equal(configured))
+		Expect(server.DevArtworkThrottleBacklogTimeout).To(Equal(configured))
+		Expect(server.DevArtistInfoTimeToLive).To(Equal(configured))
+		Expect(server.DevAlbumInfoTimeToLive).To(Equal(configured))
+		Expect(server.DevInsightsInitialDelay).To(Equal(configured))
+		Expect(server.DevPluginCompilationTimeout).To(Equal(configured))
+	})
+})
+
+var _ = Describe("TLSEnabled", func() {
+	BeforeEach(func() {
+		DeferCleanup(configtest.SetupConfig())
+	})
+
+	It("is false when neither the certificate nor the key is set", func() {
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is true when both the certificate and the key are set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeTrue())
+	})
+
+	It("is false when only the certificate is set", func() {
+		conf.Server.TLSCert = "cert.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
+
+	It("is false when only the key is set", func() {
+		conf.Server.TLSKey = "key.pem"
+		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+	})
 })

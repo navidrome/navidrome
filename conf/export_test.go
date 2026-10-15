@@ -14,7 +14,7 @@ var NormalizeSearchBackend = normalizeSearchBackend
 
 var ToPascalCase = toPascalCase
 
-var ValidateMaxImageUploadSize = validateMaxImageUploadSize
+var ValidateByteSize = validateByteSize
 
 func SetRuntimeInfoForTest(goos string, euid int) func() {
 	oldGOOS := currentGOOS
@@ -32,3 +32,7 @@ func SetLogFatal(f func(...any)) func() {
 	logFatal = f
 	return func() { logFatal = old }
 }
+
+var UnknownConfigKeys = unknownConfigKeys
+
+var SuggestOptions = suggestOptions

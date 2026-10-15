@@ -43,6 +43,18 @@ export const useImageUrl = (url) => {
   const [error, setError] = useState(cached?.error || false)
   const abortedRef = useRef(false)
 
+  // Resync during render: otherwise imgUrl holds the previous url's blob for one render, so only
+  // fromCache can answer "already cached" - and a remembered failure has no blob to paint.
+  const [fromCache, setFromCache] = useState(!!cached?.blobUrl)
+  const [trackedUrl, setTrackedUrl] = useState(url)
+  if (trackedUrl !== url) {
+    setTrackedUrl(url)
+    setImgUrl(cached?.blobUrl || null)
+    setLoading(!!url && !cached)
+    setError(cached?.error || false)
+    setFromCache(!!cached?.blobUrl)
+  }
+
   useEffect(() => {
     abortedRef.current = false
 
@@ -140,5 +152,5 @@ export const useImageUrl = (url) => {
     }
   }, [url])
 
-  return { imgUrl, loading, error }
+  return { imgUrl, loading, error, fromCache }
 }

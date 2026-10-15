@@ -1,10 +1,5 @@
-import {
-  Card,
-  CardContent,
-  CardMedia,
-  Typography,
-  useMediaQuery,
-} from '@material-ui/core'
+import { useState } from 'react'
+import { Card, CardContent, Typography, useMediaQuery } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { useTranslate } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
@@ -17,10 +12,9 @@ import {
   SizeField,
   isWritable,
   OverflowTooltip,
-  useImageLoadingState,
 } from '../common'
-import config from '../config'
 import subsonic from '../subsonic'
+import { Artwork } from '../common/Artwork'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -75,9 +69,6 @@ const useStyles = makeStyles(
       backgroundColor: 'transparent',
       transition: 'opacity 0.3s ease-in-out',
     },
-    coverLoading: {
-      opacity: 0.5,
-    },
     title: {
       overflow: 'hidden',
       textOverflow: 'ellipsis',
@@ -107,37 +98,21 @@ const PlaylistDetails = (props) => {
   const translate = useTranslate()
   const classes = useStyles()
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('lg'))
-  const {
-    imageLoading,
-    imageError,
-    isLightboxOpen,
-    handleImageLoad,
-    handleImageError,
-    handleOpenLightbox,
-    handleCloseLightbox,
-  } = useImageLoadingState(record.id)
+  const [isLightboxOpen, setLightboxOpen] = useState(false)
 
-  const imageUrl = subsonic.getCoverArtUrl(record, config.uiCoverArtSize, true)
   const fullImageUrl = subsonic.getCoverArtUrl(record)
 
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
         <div className={classes.coverParent}>
-          <CardMedia
-            key={record.id} // Force re-render when playlist changes
-            component={'img'}
-            src={imageUrl}
-            width="400"
-            height="400"
-            className={`${classes.cover} ${imageLoading ? classes.coverLoading : ''}`}
-            onClick={handleOpenLightbox}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
+          <Artwork
+            record={record}
+            square
+            fit="contain"
+            className={classes.cover}
             title={record.name}
-            style={{
-              cursor: imageError ? 'default' : 'pointer',
-            }}
+            onClick={() => setLightboxOpen(true)}
           />
           {isWritable(record.ownerId) && (
             <ImageUploadOverlay
@@ -187,13 +162,13 @@ const PlaylistDetails = (props) => {
           </CardContent>
         </div>
       </div>
-      {isLightboxOpen && !imageError && (
+      {isLightboxOpen && (
         <Lightbox
           imagePadding={50}
           animationDuration={200}
           imageTitle={record.name}
           mainSrc={fullImageUrl}
-          onCloseRequest={handleCloseLightbox}
+          onCloseRequest={() => setLightboxOpen(false)}
         />
       )}
     </Card>

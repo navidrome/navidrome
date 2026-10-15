@@ -26,8 +26,15 @@ func ShortDur(d time.Duration) string {
 	default:
 		s = d.String()
 	}
-	s = strings.TrimSuffix(s, "0s")
-	return strings.TrimSuffix(s, "0m")
+	// Drop whole zero-valued trailing components ("4h0m0s" -> "4h"). The suffix has to include
+	// the preceding unit, or a value that merely ends in a zero digit loses it: "10s" -> "1".
+	if strings.HasSuffix(s, "m0s") {
+		s = strings.TrimSuffix(s, "0s")
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = strings.TrimSuffix(s, "0m")
+	}
+	return s
 }
 
 func StringerValue(s fmt.Stringer) string {

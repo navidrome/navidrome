@@ -53,19 +53,19 @@ var _ = Describe("Lyrics", func() {
 		})
 
 		It("returns 404 for a fabricated id", func() {
-			Expect(get("/Audio/" + enc("nope") + "/Lyrics").Code).To(Equal(http.StatusNotFound))
+			Expect(get("/Audio/" + enc(testID("nope")) + "/Lyrics").Code).To(Equal(http.StatusNotFound))
 		})
 	})
 
 	Describe("HasLyrics badge", func() {
-		It("is true for a track with embedded lyrics and omitted/false otherwise", func() {
+		It("is true for a track with embedded lyrics and false otherwise", func() {
 			var stairway dto.BaseItemDto
 			parseInto(get("/Items/"+enc(songID("Stairway To Heaven"))), &stairway)
-			Expect(stairway.HasLyrics).To(BeTrue())
+			Expect(*stairway.HasLyrics).To(BeTrue())
 
 			var soWhat dto.BaseItemDto
 			parseInto(get("/Items/"+enc(songID("So What"))), &soWhat)
-			Expect(soWhat.HasLyrics).To(BeFalse())
+			Expect(*soWhat.HasLyrics).To(BeFalse())
 		})
 	})
 })

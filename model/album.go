@@ -1,18 +1,20 @@
 package model
 
 import (
+	"context"
 	"iter"
 	"math"
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-
+	"github.com/deluan/rest"
 	"github.com/gohugoio/hashstructure"
+	"github.com/navidrome/navidrome/conf"
 )
 
 type Album struct {
 	Annotations `structs:"-" hash:"ignore"`
+	ItemImage   `structs:"-" hash:"ignore"`
 
 	ID            string `structs:"id" json:"id"`
 	LibraryID     int    `structs:"library_id" json:"libraryId"`
@@ -75,8 +77,8 @@ func (a Album) CoverArtID() ArtworkID {
 }
 
 func (a Album) FullName() string {
-	if conf.Server.Subsonic.AppendAlbumVersion && len(a.Tags[TagAlbumVersion]) > 0 {
-		return appendSuffix(a.Name, a.Tags[TagAlbumVersion][0])
+	if v := a.Tags.First(TagAlbumVersion); conf.Server.Subsonic.AppendAlbumVersion && v != "" {
+		return appendSuffix(a.Name, v)
 	}
 	return a.Name
 }
@@ -136,21 +138,25 @@ type Albums []Album
 type AlbumCursor iter.Seq2[Album, error]
 
 type AlbumRepository interface {
-	CountAll(...QueryOptions) (int64, error)
-	Exists(id string) (bool, error)
-	Put(*Album) error
-	UpdateExternalInfo(*Album) error
-	Get(id string) (*Album, error)
-	GetAll(...QueryOptions) (Albums, error)
-	GetCursor(...QueryOptions) (AlbumCursor, error)
-	GetYears(libraryIDs ...int) ([]int, error)
+	rest.Repository[Album]
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	Exists(ctx context.Context, id string) (bool, error)
+	Put(ctx context.Context, m *Album) error
+	UpdateExternalInfo(ctx context.Context, m *Album) error
+	Get(ctx context.Context, id string) (*Album, error)
+	GetAll(ctx context.Context, options ...QueryOptions) (Albums, error)
+	// GetSoleAlbumArtistIDsInSubtrees returns the sole album artists of the albums with folders in
+	// any of the given library-relative subtrees.
+	GetSoleAlbumArtistIDsInSubtrees(ctx context.Context, lib Library, paths ...string) ([]string, error)
+	GetCursor(ctx context.Context, options ...QueryOptions) (AlbumCursor, error)
+	GetYears(ctx context.Context, libraryIDs ...int) ([]int, error)
 
 	// The following methods are used exclusively by the scanner:
-	Touch(ids ...string) error
-	TouchByMissingFolder() (int64, error)
-	GetTouchedAlbums(libID int) (AlbumCursor, error)
-	RefreshPlayCounts() (int64, error)
-	CopyAttributes(fromID, toID string, columns ...string) error
+	Touch(ctx context.Context, ids ...string) error
+	TouchByMissingFolder(ctx context.Context) (int64, error)
+	GetTouchedAlbums(ctx context.Context, libID int) (AlbumCursor, error)
+	RefreshPlayCounts(ctx context.Context) (int64, error)
+	CopyAttributes(ctx context.Context, fromID, toID string, columns ...string) error
 
 	AnnotatedRepository
 	SearchableRepository[Albums]

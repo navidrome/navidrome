@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -45,16 +44,16 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 		// Create the second library in the DB (Put auto-assigns admin users)
 		lib2 = model.Library{ID: 2, Name: "Classical Library", Path: "fake2:///classical"}
-		Expect(ds.Library(ctx).Put(&lib2)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
 
 		// Reload admin user to get both libraries in the Libraries field
-		loadedAdmin, err := ds.User(ctx).FindByUsername(adminUser.UserName)
+		loadedAdmin, err := ds.User().FindByUsername(ctx, adminUser.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		adminWithLibs = *loadedAdmin
 
 		// Run incremental scan to import lib2 content (lib1 files unchanged → skipped)
-		s := scanner.New(ctx, ds, artwork.NoopCacheWarmer(), events.NoopBroker(),
-			playlists.NewPlaylists(ds, core.NewImageUploadService()), metrics.NewNoopInstance())
+		s := scanner.New(ctx, ds, events.NoopBroker(),
+			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 		_, err = s.ScanAll(ctx, false)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -66,10 +65,10 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			IsAdmin:     false,
 			NewPassword: "password",
 		}
-		Expect(ds.User(ctx).Put(&userLib1Only)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(userLib1Only.ID, []int{lib.ID})).To(Succeed())
+		Expect(ds.User().Put(ctx, &userLib1Only)).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, userLib1Only.ID, []int{lib.ID})).To(Succeed())
 
-		loadedUser, err := ds.User(ctx).FindByUsername(userLib1Only.UserName)
+		loadedUser, err := ds.User().FindByUsername(ctx, userLib1Only.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		userLib1Only.Libraries = loadedUser.Libraries
 	})
@@ -182,7 +181,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 
 		BeforeAll(func() {
 			// Look up one song from each library
-			lib1Songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			lib1Songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"media_file.library_id": lib.ID},
 				Max:     1, Sort: "title",
 			})
@@ -190,7 +189,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			Expect(lib1Songs).ToNot(BeEmpty())
 			lib1SongID = lib1Songs[0].ID
 
-			lib2Songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			lib2Songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"media_file.library_id": lib2.ID},
 				Max:     1, Sort: "title",
 			})
@@ -225,13 +224,31 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 			Expect(resp.Playlist.Entry).To(HaveLen(1))
 			Expect(resp.Playlist.Entry[0].Id).To(Equal(lib1SongID))
 		})
+
+		It("non-admin user cannot store a song from another library through createPlaylist", func() {
+			resp := doReqWithUser(userLib1Only, "createPlaylist",
+				"name", "Restricted Playlist", "songId", lib1SongID, "songId", lib2SongID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+			ownID := resp.Playlist.Id
+
+			stored := doReqWithUser(adminWithLibs, "getPlaylist", "id", ownID)
+			Expect(stored.Playlist.Entry).To(HaveLen(1), "the lib2 song must not be persisted")
+			Expect(stored.Playlist.Entry[0].Id).To(Equal(lib1SongID))
+
+			By("replacing the tracks of the same playlist")
+			resp = doReqWithUser(userLib1Only, "createPlaylist", "playlistId", ownID, "songId", lib2SongID)
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			stored = doReqWithUser(adminWithLibs, "getPlaylist", "id", ownID)
+			Expect(stored.Playlist.Entry).To(BeEmpty())
+		})
 	})
 
 	Describe("Cross-library shares", Ordered, func() {
 		var lib2AlbumID string
 
 		BeforeAll(func() {
-			lib2Albums, err := ds.Album(ctx).GetAll(model.QueryOptions{
+			lib2Albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"album.library_id": lib2.ID},
 			})
 			Expect(err).ToNot(HaveOccurred())

@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
+	"github.com/navidrome/navidrome/server/imghttp"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/gravatar"
 	"github.com/navidrome/navidrome/utils/req"
@@ -28,7 +29,7 @@ func (api *Router) GetAvatar(w http.ResponseWriter, r *http.Request) (*responses
 		return nil, err
 	}
 	ctx := r.Context()
-	u, err := api.ds.User(ctx).FindByUsername(username)
+	u, err := api.ds.User().FindByUsername(ctx, username)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,7 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	size := p.IntOr("size", 0)
 	square := p.BoolOr("square", false)
 
-	imgReader, lastUpdate, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)
+	img, err := api.artwork.GetOrPlaceholder(ctx, id, size, square)
 	switch {
 	case errors.Is(err, context.Canceled):
 		return nil, nil
@@ -78,11 +79,13 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 		return nil, err
 	}
 
-	defer imgReader.Close()
-	w.Header().Set("cache-control", "public, max-age=315360000")
-	w.Header().Set("last-modified", lastUpdate.Format(http.TimeFormat))
+	defer img.Close()
 
-	cnt, err := io.Copy(w, imgReader)
+	artID, _ := model.ParseArtworkID(id)
+	if imghttp.WriteImageHeaders(w, r, img, artID.Hash) {
+		return nil, nil
+	}
+	cnt, err := io.Copy(w, img)
 	if err != nil {
 		log.Warn(ctx, "Error sending image", "count", cnt, err)
 	}
@@ -125,7 +128,7 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	mediaFile, err := api.ds.MediaFile(r.Context()).Get(id)
+	mediaFile, err := api.ds.MediaFile().Get(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}

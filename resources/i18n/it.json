@@ -17,7 +17,7 @@
                 "genre": "Genere",
                 "compilation": "Compilation",
                 "year": "Anno",
-                "size": "Dimensioni",
+                "size": "Dimensione file",
                 "updatedAt": "Ultimo aggiornamento",
                 "bitRate": "Bitrate",
                 "bitDepth": "Profondità di bit",
@@ -98,9 +98,9 @@
             "lists": {
                 "all": "Tutti",
                 "random": "Casuali",
-                "recentlyAdded": "Aggiunti di Recente",
-                "recentlyPlayed": "Riprodotti di Recente",
-                "mostPlayed": "I Più Riprodotti",
+                "recentlyAdded": "Aggiunti di recente",
+                "recentlyPlayed": "Riprodotti di recente",
+                "mostPlayed": "I più riprodotti",
                 "starred": "Preferiti",
                 "topRated": "Più votati"
             }
@@ -121,17 +121,17 @@
             "roles": {
                 "albumartist": "Artista Album |||| Artisti Album",
                 "artist": "Artista |||| Artisti",
-                "composer": "Compositore |||| Compositori",
-                "conductor": "Direttore d'orchestra |||| Direttori d'orchestra",
-                "lyricist": "Paroliere |||| Parolieri",
-                "arranger": "Arrangiatore |||| Arrangiatori",
-                "producer": "Produttore |||| Produttori",
-                "director": "Direttore |||| Direttori",
-                "engineer": "Ingegnere del suono |||| Ingegneri del suono",
+                "composer": "Composizione |||| Composizione",
+                "conductor": "Direzione d'orchestra |||| Direzione d'orchestra",
+                "lyricist": "Testi |||| Testi",
+                "arranger": "Arrangiamento |||| Arrangiamento",
+                "producer": "Produzione |||| Produzione",
+                "director": "Direzione |||| Direzione",
+                "engineer": "Ingegneria del suono |||| Ingegneria del suono",
                 "mixer": "Mixer |||| Mixer",
                 "remixer": "Remixer |||| Remixer",
                 "djmixer": "DJ Mixer |||| DJ Mixer",
-                "performer": "Esecutore |||| Esecutori",
+                "performer": "Esecuzione |||| Esecuzione",
                 "maincredit": "Artista Album o Artista |||| Artisti Album o Artisti"
             },
             "actions": {
@@ -144,7 +144,7 @@
             "name": "Utente |||| Utenti",
             "fields": {
                 "userName": "Nome utente",
-                "isAdmin": "Amministratore",
+                "isAdmin": "Admin",
                 "lastLoginAt": "Ultimo login",
                 "lastAccessAt": "Ultimo accesso",
                 "updatedAt": "Ultimo aggiornamento",
@@ -152,13 +152,13 @@
                 "password": "Password",
                 "createdAt": "Creato il",
                 "changePassword": "Cambiare la password?",
-                "currentPassword": "Password Attuale",
-                "newPassword": "Nuova Password",
+                "currentPassword": "Password attuale",
+                "newPassword": "Nuova password",
                 "token": "Token",
                 "libraries": "Librerie"
             },
             "helperTexts": {
-                "name": "Le modifiche effettuate al tuo nome verranno mostrate al prossimo accesso",
+                "name": "Le modifiche al tuo nome verranno mostrate solo al prossimo accesso",
                 "libraries": "Seleziona librerie specifiche per questo utente, o lascia vuoto per usare le librerie predefinite"
             },
             "notifications": {
@@ -167,13 +167,13 @@
                 "deleted": "Utente eliminato"
             },
             "validation": {
-                "librariesRequired": "Almeno una libreria deve essere selezionata per gli utenti non amministratori"
+                "librariesRequired": "Almeno una libreria deve essere selezionata per gli utenti non admin"
             },
             "message": {
-                "listenBrainzToken": "Inserisci il tuo token utente ListenBrainz",
+                "listenBrainzToken": "Inserisci il tuo token utente ListenBrainz.",
                 "clickHereForToken": "Clicca qui per ottenere il tuo token",
                 "selectAllLibraries": "Seleziona tutte le librerie",
-                "adminAutoLibraries": "Gli utenti amministratori hanno automaticamente accesso a tutte le librerie"
+                "adminAutoLibraries": "Gli utenti admin hanno automaticamente accesso a tutte le librerie"
             }
         },
         "player": {
@@ -203,28 +203,29 @@
             "fields": {
                 "name": "Nome",
                 "duration": "Durata",
-                "ownerName": "Creatore",
+                "ownerName": "Di",
                 "public": "Pubblica",
                 "updatedAt": "Ultimo aggiornamento",
                 "createdAt": "Data creazione",
                 "songCount": "Tracce",
                 "comment": "Commento",
                 "sync": "Importazione automatica",
-                "path": "Importa da"
+                "path": "Importa da",
+                "starred": "Preferita"
             },
             "actions": {
                 "selectPlaylist": "Seleziona una playlist:",
                 "addNewPlaylist": "Crea \"%{name}\"",
                 "export": "Esporta",
                 "saveQueue": "Salva la coda nella playlist",
-                "makePublic": "Rendi Pubblica",
-                "makePrivate": "Rendi Privata",
+                "makePublic": "Rendi pubblica",
+                "makePrivate": "Rendi privata",
                 "searchOrCreate": "Cerca playlist o digita per crearne una nuova...",
                 "pressEnterToCreate": "Premi Invio per creare una nuova playlist",
                 "removeFromSelection": "Rimuovi dalla selezione"
             },
             "message": {
-                "duplicate_song": "Aggiungere i duplicati",
+                "duplicate_song": "Aggiungi tracce duplicate",
                 "song_exist": "Si stanno aggiungendo dei duplicati nella playlist. Vuoi aggiungerli o saltarli?",
                 "noPlaylistsFound": "Nessuna playlist trovata",
                 "noPlaylists": "Nessuna playlist disponibile"
@@ -331,7 +332,7 @@
                 "pathInvalid": "Percorso della libreria non valido"
             },
             "messages": {
-                "deleteConfirm": "Sei sicuro di voler eliminare questa libreria? Verranno rimossi tutti i dati associati e gli accessi degli utenti.",
+                "deleteConfirm": "Vuoi eliminare questa libreria? Verranno rimossi tutti i dati associati e gli accessi degli utenti.",
                 "scanInProgress": "Scansione in corso...",
                 "noLibrariesAssigned": "Nessuna libreria assegnata a questo utente"
             }
@@ -367,7 +368,7 @@
                 "configuration": "Configurazione",
                 "manifest": "Manifest",
                 "usersPermission": "Permessi utenti",
-                "libraryPermission": "Permesso libreria"
+                "libraryPermission": "Permessi librerie"
             },
             "status": {
                 "enabled": "Abilitato",
@@ -400,10 +401,10 @@
                 "allUsersHelp": "Se abilitato, il plugin avrà accesso a tutti gli utenti, inclusi quelli creati in futuro.",
                 "noUsers": "Nessun utente selezionato",
                 "permissionReason": "Motivo",
-                "usersRequired": "Questo plugin richiede accesso alle informazioni degli utenti. Seleziona quali utenti il plugin può accedere, oppure abilita 'Consenti tutti gli utenti'.",
+                "usersRequired": "Questo plugin richiede accesso alle informazioni degli utenti. Seleziona a quali utenti il plugin può accedere, oppure abilita 'Consenti tutti gli utenti'.",
                 "allLibrariesHelp": "Se abilitato, il plugin avrà accesso a tutte le librerie, incluse quelle create in futuro.",
                 "noLibraries": "Nessuna libreria selezionata",
-                "librariesRequired": "Questo plugin richiede accesso alle informazioni delle librerie. Seleziona quali librerie il plugin può accedere, oppure abilita 'Consenti tutte le librerie'.",
+                "librariesRequired": "Questo plugin richiede accesso alle informazioni delle librerie. Seleziona a quali librerie il plugin può accedere, oppure abilita 'Consenti tutte le librerie'.",
                 "allowWriteAccessHelp": "Se abilitato, il plugin può modificare i file nelle directory della libreria. Per impostazione predefinita, i plugin hanno accesso in sola lettura.",
                 "requiredHosts": "Host richiesti"
             },
@@ -416,9 +417,9 @@
     "ra": {
         "auth": {
             "welcome1": "Grazie per aver installato Navidrome!",
-            "welcome2": "Per iniziare, crea un amministratore",
+            "welcome2": "Per iniziare, crea un account amministratore",
             "confirmPassword": "Conferma la password",
-            "buttonCreateAdmin": "Crea amministratore",
+            "buttonCreateAdmin": "Crea admin",
             "auth_check_error": "Per favore accedi per continuare",
             "user_menu": "Profilo",
             "username": "Nome utente",
@@ -488,8 +489,8 @@
             "loading": "Caricamento in corso",
             "not_found": "Non trovato",
             "show": "%{name} #%{id}",
-            "empty": "Nessun %{name} per adesso.",
-            "invite": "Vuoi aggiungerne uno?"
+            "empty": "Ancora niente %{name}.",
+            "invite": "Vuoi aggiungerne?"
         },
         "input": {
             "file": {
@@ -512,10 +513,10 @@
         },
         "message": {
             "about": "Informazioni",
-            "are_you_sure": "Sei sicuro?",
-            "bulk_delete_content": "Sei sicuro di voler rimuovere questo %{name}? |||| Sei sicuro di voler rimuovere questi %{smart_count} elementi?",
+            "are_you_sure": "Vuoi procedere?",
+            "bulk_delete_content": "Vuoi rimuovere questo %{name}? |||| Vuoi rimuovere questi %{smart_count} elementi?",
             "bulk_delete_title": "Rimuovi %{name} |||| Rimuovi %{smart_count} %{name}",
-            "delete_content": "Sei sicuro di voler eliminare questo elemento?",
+            "delete_content": "Vuoi eliminare questo elemento?",
             "delete_title": "Rimuovi %{name} #%{id}",
             "details": "Dettagli",
             "error": "Un errore dal lato client ha impedito il completamento della tua richiesta.",
@@ -524,7 +525,7 @@
             "no": "No",
             "not_found": "Hai inserito un URL inesistente, oppure hai cliccato un link errato.",
             "yes": "Sì",
-            "unsaved_changes": "Alcune modifiche non sono state salvate. Sei sicuro di volerle ignorare?"
+            "unsaved_changes": "Alcune modifiche non sono state salvate. Vuoi ignorarle?"
         },
         "navigation": {
             "no_results": "Nessun risultato trovato",
@@ -574,11 +575,11 @@
         "noTopSongsFound": "Nessun brano più ascoltato trovato",
         "noPlaylistsAvailable": "Nessuna disponibile",
         "delete_user_title": "Rimuovi utente '%{name}'",
-        "delete_user_content": "Sei sicuro di voler rimuovere questo utente e tutti i suoi dati (incluse playlist e impostazioni)?",
+        "delete_user_content": "Vuoi rimuovere questo utente e tutti i suoi dati (incluse playlist e impostazioni)?",
         "remove_missing_title": "Rimuovi i file mancanti",
-        "remove_missing_content": "Sei sicuro di voler rimuovere i file mancanti selezionati dal database? Verranno eliminati permanentemente tutti i riferimenti ad essi, inclusi i conteggi delle riproduzioni e le valutazioni.",
+        "remove_missing_content": "Vuoi rimuovere i file mancanti selezionati dal database? Verranno eliminati permanentemente tutti i riferimenti ad essi, inclusi i conteggi delle riproduzioni e le valutazioni.",
         "remove_all_missing_title": "Rimuovi tutti i file mancanti",
-        "remove_all_missing_content": "Sei sicuro di voler rimuovere tutti i file mancanti dal database? Verranno eliminati permanentemente tutti i riferimenti ad essi, inclusi i conteggi delle riproduzioni e le valutazioni.",
+        "remove_all_missing_content": "Vuoi rimuovere tutti i file mancanti dal database? Verranno eliminati permanentemente tutti i riferimenti ad essi, inclusi i conteggi delle riproduzioni e le valutazioni.",
         "notifications_blocked": "Hai bloccato le notifiche per questo sito nelle tue impostazioni del browser",
         "notifications_not_available": "Questo browser non supporta le notifiche desktop o non stai accedendo a Navidrome tramite HTTPS",
         "lastfmLinkSuccess": "Collegamento a Last.fm riuscito e scrobbling abilitato",
@@ -619,7 +620,7 @@
             "options": {
                 "theme": "Tema",
                 "language": "Lingua",
-                "defaultView": "Vista Predefinita",
+                "defaultView": "Vista predefinita",
                 "desktop_notifications": "Notifiche desktop",
                 "lastfmNotConfigured": "La chiave API di Last.fm non è configurata",
                 "lastfmScrobbling": "Esegui lo scrobbling tramite Last.fm",
@@ -635,21 +636,22 @@
         },
         "albumList": "Album",
         "playlists": "Playlist",
-        "sharedPlaylists": "Playlist Condivise",
-        "about": "Info"
+        "sharedPlaylists": "Playlist condivise",
+        "about": "Info",
+        "onlyFavourites": "Mostra solo i preferiti"
     },
     "player": {
         "playListsText": "Coda",
         "openText": "Apri",
         "closeText": "Chiudi",
-        "notContentText": "Nessuna traccia",
+        "notContentText": "Niente musica",
         "clickToPlayText": "Clicca per riprodurre",
         "clickToPauseText": "Clicca per mettere in pausa",
         "nextTrackText": "Traccia successiva",
         "previousTrackText": "Traccia precedente",
         "reloadText": "Ricarica",
         "volumeText": "Volume",
-        "toggleLyricText": "Mostra testo",
+        "toggleLyricText": "Mostra/nascondi testo",
         "toggleMiniModeText": "Minimizza",
         "destroyText": "Distruggi",
         "downloadText": "Scarica",
@@ -659,7 +661,7 @@
         "playModeText": {
             "order": "In ordine",
             "orderLoop": "Ripeti",
-            "singleLoop": "Ripeti una volta",
+            "singleLoop": "Ripeti traccia",
             "shufflePlay": "Casuale"
         }
     },
@@ -667,7 +669,7 @@
         "links": {
             "homepage": "Sito web",
             "source": "Codice sorgente",
-            "featureRequests": "Richieste",
+            "featureRequests": "Proponi idee",
             "lastInsightsCollection": "Ultima raccolta dati",
             "insights": {
                 "disabled": "Disabilitato",
@@ -693,7 +695,7 @@
     },
     "activity": {
         "title": "Attività",
-        "totalScanned": "Cartelle scansionate totali",
+        "totalScanned": "Totale cartelle scansionate",
         "quickScan": "Rapida",
         "fullScan": "Completa",
         "selectiveScan": "Selettiva",
@@ -709,16 +711,16 @@
         "minutesAgo": "%{smart_count} minuto fa |||| %{smart_count} minuti fa"
     },
     "help": {
-        "title": "Scorciatoie da Tastiera di Navidrome",
+        "title": "Scorciatoie da tastiera di Navidrome",
         "hotkeys": {
             "show_help": "Mostra questa schermata",
             "toggle_menu": "Mostra/Nascondi la barra laterale",
             "toggle_play": "Riproduzione/Pausa",
-            "prev_song": "Traccia Precedente",
-            "next_song": "Traccia Successiva",
+            "prev_song": "Traccia precedente",
+            "next_song": "Traccia successiva",
             "current_song": "Vai alla traccia corrente",
-            "vol_up": "Alza il Volume",
-            "vol_down": "Abbassa il Volume",
+            "vol_up": "Alza il volume",
+            "vol_down": "Abbassa il volume",
             "toggle_love": "Aggiungi questa traccia ai preferiti"
         }
     }
