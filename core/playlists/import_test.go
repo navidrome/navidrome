@@ -236,6 +236,24 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.ExternalImageURL).To(BeEmpty())
 			})
 
+			It("rejects #EXTALBUMARTURL pointing at a non-image file inside the library", func() {
+				tmpDir := GinkgoT().TempDir()
+				Expect(os.WriteFile(filepath.Join(tmpDir, "config.ini"), []byte("password=secret"), 0600)).To(Succeed())
+
+				m3u := "#EXTALBUMARTURL:config.ini\ntest.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(BeEmpty())
+			})
+
 			It("ignores HTTP #EXTALBUMARTURL when EnableM3UExternalAlbumArt is false", func() {
 				conf.Server.EnableM3UExternalAlbumArt = false
 
@@ -1011,6 +1029,19 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(pls.ExternalImageURL).To(BeEmpty())
 		})
 
+		DescribeTable("restricts a local #EXTALBUMARTURL to the owner's libraries",
+			func(imageURL, expected string) {
+				ctx = request.WithUser(ctx, model.User{ID: "123", Libraries: model.Libraries{{ID: 1, Path: "/music"}}})
+				repo.data = []string{"tests/test.mp3"}
+				m3u := "#EXTALBUMARTURL:" + imageURL + "\n/music/tests/test.mp3\n"
+				pls, err := ps.ImportM3U(ctx, strings.NewReader(m3u))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(Equal(expected))
+			},
+			Entry("accepts a library the owner can access", "file:///music/cover.jpg", filepath.Clean("/music/cover.jpg")),
+			Entry("ignores a library the owner cannot access", "file:///new/cover.jpg", ""),
+		)
+
 		// Fullwidth characters (e.g., ＡＢＣＤ) are not handled by SQLite's NOCASE collation,
 		// so we need exact matching for non-ASCII characters.
 		It("matches fullwidth characters exactly (SQLite NOCASE limitation)", func() {
@@ -1141,7 +1172,7 @@ type mockedMediaFileRepo struct {
 	data map[string]model.MediaFile
 }
 
-func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+func (r *mockedMediaFileRepo) FindByPaths(ctx context.Context, paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
 	// If data map provided, look up files
@@ -1181,7 +1212,7 @@ type mockedMediaFileFromListRepo struct {
 	data []string
 }
 
-func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+func (r *mockedMediaFileFromListRepo) FindByPaths(ctx context.Context, paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
@@ -1216,7 +1247,7 @@ type mockFolderRepoForImport struct {
 	folder *model.Folder
 }
 
-func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.Folder, error) {
+func (m *mockFolderRepoForImport) GetByPath(_ context.Context, _ model.Library, _ string) (*model.Folder, error) {
 	if m.folder != nil {
 		return m.folder, nil
 	}

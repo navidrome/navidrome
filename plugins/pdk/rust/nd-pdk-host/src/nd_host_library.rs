@@ -7,7 +7,7 @@ use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
 /// Library represents a music library with metadata.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Library {
     pub id: i32,

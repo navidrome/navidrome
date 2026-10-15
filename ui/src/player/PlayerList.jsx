@@ -2,18 +2,20 @@ import React from 'react'
 import {
   Datagrid,
   TextField,
-  DateField,
   FunctionField,
   ReferenceField,
   Filter,
   SearchInput,
+  NullableBooleanInput,
 } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { SimpleList, List } from '../common'
+import { FaKey } from 'react-icons/fa'
+import { SimpleList, List, DateField } from '../common'
 
 const PlayerFilter = (props) => (
   <Filter {...props} variant={'outlined'}>
     <SearchInput id="search" source="name" alwaysOn />
+    <NullableBooleanInput source="hasApiKey" alwaysOn />
   </Filter>
 )
 
@@ -30,7 +32,11 @@ const PlayerList = ({ permissions, ...props }) => {
         <SimpleList
           primaryText={(r) => r.name}
           secondaryText={(r) => r.userName}
-          tertiaryText={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
+          tertiaryText={(r) => (
+            <>
+              {r.hasApiKey && <FaKey />} {r.maxBitRate ? r.maxBitRate : '-'}
+            </>
+          )}
         />
       ) : (
         <Datagrid rowClick="edit">
@@ -42,6 +48,11 @@ const PlayerList = ({ permissions, ...props }) => {
           <FunctionField
             source="maxBitRate"
             render={(r) => (r.maxBitRate ? r.maxBitRate : '-')}
+          />
+          <FunctionField
+            source="hasApiKey"
+            sortable={false}
+            render={(r) => (r.hasApiKey ? <FaKey /> : null)}
           />
           <DateField source="lastSeen" showTime sortByOrder={'DESC'} />
         </Datagrid>

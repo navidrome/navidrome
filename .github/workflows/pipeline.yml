@@ -92,8 +92,23 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve OpenAPI tool versions
+        id: api-tools
+        run: echo "key=$(grep -E '^(VACUUM|OAPI_CODEGEN|OASDIFF)_VERSION' Makefile | tr -d ' \n')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache OpenAPI tools
+        uses: actions/cache@v6
+        with:
+          path: bin
+          key: api-tools-${{ runner.os }}-${{ steps.api-tools.outputs.key }}
+
+      - name: Lint OpenAPI spec
+        run: make api-lint
+
       - name: Run go generate
-        run: go generate ./...
+        run: |
+          make api-gen
+          go generate ./...
       - name: Verify no changes from go generate
         run: |
           git status --porcelain
@@ -101,6 +116,12 @@ jobs:
             echo 'Generated code is out of date. Run "make gen" and commit the changes'
             exit 1
           fi
+
+      - name: Check for breaking OpenAPI changes
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin ${{ github.event.pull_request.base.sha }}
+          make api-diff API_DIFF_BASE=${{ github.event.pull_request.base.sha }}
 
   validate-migrations:
     name: Validate DB migrations
@@ -498,13 +519,18 @@ jobs:
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
 
   push-manifest-dockerhub:
-    name: Push to Docker Hub
+    name: Push to Docker Hub (${{ matrix.repository }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # Always push to DOCKER_HUB_REPO. The upstream repository also pushes to the navidrome/navidrome org repository.
+        repository: ${{ fromJSON(github.repository == 'navidrome/navidrome' && format('["{0}","navidrome/navidrome"]', vars.DOCKER_HUB_REPO) || format('["{0}"]', vars.DOCKER_HUB_REPO)) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -520,7 +546,7 @@ jobs:
         id: docker
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          hub_repository: ${{ vars.DOCKER_HUB_REPO }}
+          hub_repository: ${{ matrix.repository }}
           hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
@@ -537,7 +563,7 @@ jobs:
 
       - name: Inspect image in Docker Hub
         run: |
-          docker buildx imagetools inspect ${{ vars.DOCKER_HUB_REPO }}:${{ steps.docker.outputs.version }}
+          docker buildx imagetools inspect ${{ matrix.repository }}:${{ steps.docker.outputs.version }}
 
   cleanup-digests:
     name: Cleanup digest artifacts
@@ -549,7 +575,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for artifact in $(gh api repos/${{ github.repository }}/actions/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
+          for artifact in $(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts | jq -r '.artifacts[] | select(.name | startswith("digests-")) | .id'); do
             gh api --method DELETE repos/${{ github.repository }}/actions/artifacts/$artifact
           done
 

@@ -32,7 +32,7 @@ func (api *Router) CreateInternetRadio(r *http.Request) (*responses.Subsonic, er
 		Name:        name,
 	}
 
-	err = api.ds.Radio(ctx).Put(radio)
+	err = api.ds.Radio().Put(ctx, radio)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (api *Router) DeleteInternetRadio(r *http.Request) (*responses.Subsonic, er
 		return nil, err
 	}
 
-	err = api.ds.Radio(r.Context()).Delete(id)
+	err = api.ds.Radio().Delete(r.Context(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (api *Router) DeleteInternetRadio(r *http.Request) (*responses.Subsonic, er
 
 func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
-	radios, err := api.ds.Radio(ctx).GetAll(model.QueryOptions{Sort: "name"})
+	radios, err := api.ds.Radio().GetAll(ctx, model.QueryOptions{Sort: "name"})
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (api *Router) UpdateInternetRadio(r *http.Request) (*responses.Subsonic, er
 		Name:        name,
 	}
 
-	err = api.ds.Radio(ctx).Put(radio, "StreamUrl", "HomePageUrl", "Name")
+	err = api.ds.Radio().Put(ctx, radio, "StreamUrl", "HomePageUrl", "Name")
 	if err != nil {
 		return nil, err
 	}

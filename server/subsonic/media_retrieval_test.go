@@ -34,7 +34,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		albumRepo := &tests.MockAlbumRepo{}
 		albumRepo.SetData(model.Albums{{ID: "34"}}) // the id the specs request, made accessible
 		radioRepo := tests.CreateMockedRadioRepo()
-		Expect(radioRepo.Put(&model.Radio{ID: "rd1", Name: "Radio"})).To(Succeed())
+		Expect(radioRepo.Put(GinkgoT().Context(), &model.Radio{ID: "rd1", Name: "Radio"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mockRepo,
 			MockedAlbum:     albumRepo,
@@ -293,8 +293,8 @@ type mockedMediaFile struct {
 	tests.MockMediaFileRepo
 }
 
-func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, error) {
-	data, err := m.MockMediaFileRepo.GetAll(opts...)
+func (m *mockedMediaFile) GetAll(ctx context.Context, opts ...model.QueryOptions) (model.MediaFiles, error) {
+	data, err := m.MockMediaFileRepo.GetAll(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

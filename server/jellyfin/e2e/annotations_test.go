@@ -130,13 +130,78 @@ var _ = Describe("Annotations", func() {
 			Expect(*itemUserData(id).Rating).To(Equal(float64(8)))
 		})
 
-		It("clamps an out-of-range rating to the valid domain", func() {
+		It("rejects an out-of-range rating and keeps the stored one", func() {
 			id := albumID("Help!")
+			Expect(post("/Users/admin-1/Items/"+enc(id)+"/Rating?Rating=8", "").Code).To(Equal(http.StatusOK))
+			Expect(post("/Users/admin-1/Items/"+enc(id)+"/Rating?Rating=100", "").Code).To(Equal(http.StatusBadRequest))
+			Expect(*itemUserData(id).Rating).To(Equal(float64(8)))
+		})
+
+		It("stores Jellyfin likes on the current /UserItems route instead of clearing", func() {
+			id := songID("So What")
+			var liked dto.UserItemDataDto
+			parseInto(post("/UserItems/"+enc(id)+"/Rating?likes=true", ""), &liked)
+			Expect(*liked.Rating).To(Equal(float64(10)))
+			Expect(*liked.Likes).To(BeTrue())
+
+			var disliked dto.UserItemDataDto
+			parseInto(post("/Users/admin-1/Items/"+enc(id)+"/Rating?likes=false", ""), &disliked)
+			Expect(*disliked.Rating).To(Equal(float64(2)))
+			Expect(*disliked.Likes).To(BeFalse())
+			Expect(*itemUserData(id).Likes).To(BeFalse())
+
+			Expect(del("/UserItems/" + enc(id) + "/Rating").Code).To(Equal(http.StatusOK))
+			Expect(itemUserData(id).Rating).To(BeNil())
+			Expect(itemUserData(id).Likes).To(BeNil())
+		})
+
+		It("does not clear a rating when the request has no value", func() {
+			id := songID("So What")
+			Expect(post("/UserItems/"+enc(id)+"/Rating?likes=true", "").Code).To(Equal(http.StatusOK))
+			Expect(post("/UserItems/"+enc(id)+"/Rating", "").Code).To(Equal(http.StatusBadRequest))
+			Expect(post("/UserItems/"+enc(id)+"/Rating?likes=sure", "").Code).To(Equal(http.StatusBadRequest))
+			Expect(*itemUserData(id).Rating).To(Equal(float64(10)))
+		})
+	})
+
+	Describe("POST /UserItems/{id}/UserData", func() {
+		It("sets Rating, Likes and IsFavorite on both route spellings", func() {
+			id := songID("Come Together")
 			var data dto.UserItemDataDto
-			parseInto(post("/Users/admin-1/Items/"+enc(id)+"/Rating?Rating=100", ""), &data)
-			// 100 clamps to 10 (Jellyfin) -> 5 (Navidrome) -> 10 back out.
-			Expect(data.Rating).ToNot(BeNil())
-			Expect(*data.Rating).To(Equal(float64(10)))
+			parseInto(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":6}`), &data)
+			Expect(*data.Rating).To(Equal(float64(6)))
+			Expect(*data.Likes).To(BeFalse())
+
+			parseInto(post("/Users/"+enc(adminUser.ID)+"/Items/"+enc(id)+"/UserData", `{"Likes":true,"IsFavorite":true}`), &data)
+			stored := itemUserData(id)
+			Expect(*stored.Rating).To(Equal(float64(10)))
+			Expect(*stored.Likes).To(BeTrue())
+			Expect(stored.IsFavorite).To(BeTrue())
+		})
+
+		It("leaves omitted fields and play state untouched", func() {
+			id := songID("Come Together")
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":8,"IsFavorite":true}`).Code).To(Equal(http.StatusOK))
+			before := itemUserData(id)
+
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Played":true,"PlayCount":42,"LastPlayedDate":"2026-01-01T00:00:00Z"}`).Code).To(Equal(http.StatusOK))
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"IsFavorite":false}`).Code).To(Equal(http.StatusOK))
+
+			after := itemUserData(id)
+			Expect(*after.Rating).To(Equal(float64(8)))
+			Expect(after.IsFavorite).To(BeFalse())
+			Expect(after.PlayCount).To(Equal(before.PlayCount))
+			Expect(after.Played).To(Equal(before.Played))
+			Expect(after.LastPlayedDate).To(Equal(before.LastPlayedDate))
+		})
+
+		It("rejects invalid bodies without writing", func() {
+			id := songID("Come Together")
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":11,"IsFavorite":true}`).Code).To(Equal(http.StatusBadRequest))
+			Expect(post("/UserItems/"+enc(id)+"/UserData", `{"Rating":8} {"Rating":2}`).Code).To(Equal(http.StatusBadRequest))
+			stored := itemUserData(id)
+			Expect(stored.Rating).To(BeNil())
+			Expect(stored.IsFavorite).To(BeFalse())
 		})
 	})
 })

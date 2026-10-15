@@ -90,7 +90,7 @@ var _ = Describe("Extractor", func() {
 		info.FileInfo = testFileInfo{FileInfo: fileInfo}
 
 		metadata := metadata.New(path, info)
-		return new(metadata.ToMediaFile(1, "folderID"))
+		return new(metadata.ToMediaFile(model.Library{ID: 1}, "folderID"))
 	}
 
 	BeforeEach(func() {

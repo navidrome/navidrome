@@ -18,13 +18,15 @@ import (
 )
 
 var _ = Describe("authenticate middleware", func() {
+	var ctx context.Context
 	var api *Router
 	var ds *tests.MockDataStore
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		ur := ds.User().(*tests.MockedUserRepo)
+		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		api = &Router{ds: ds}
 	})
 
@@ -100,9 +102,9 @@ var _ = Describe("authenticate middleware", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			ur := ds.User(context.Background()).(*tests.MockedUserRepo)
+			ur := ds.User().(*tests.MockedUserRepo)
 			usr = &model.User{ID: testID("u2"), UserName: "bob", NewPassword: "secret", TokenEpoch: 3}
-			Expect(ur.Put(usr)).To(Succeed())
+			Expect(ur.Put(ctx, usr)).To(Succeed())
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {
