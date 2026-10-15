@@ -37,6 +37,20 @@ var _ = Describe("IgnoreChecker", func() {
 			})
 		})
 
+		DescribeTable("when .nomedia file exists",
+			func(files fstest.MapFS) {
+				ic = newIgnoreChecker(files)
+				patterns := ic.loadPatternsFromFolder(ctx, ".")
+				Expect(patterns).To(Equal([]string{"**/*"}))
+			},
+			Entry("empty", fstest.MapFS{".nomedia": &fstest.MapFile{}}),
+			Entry("with content", fstest.MapFS{".nomedia": &fstest.MapFile{Data: []byte("*.txt")}}),
+			Entry("alongside .ndignore", fstest.MapFS{
+				".nomedia":  &fstest.MapFile{},
+				".ndignore": &fstest.MapFile{Data: []byte("*.txt")},
+			}),
+		)
+
 		DescribeTable("parsing .ndignore content",
 			func(content string, expectedPatterns []string) {
 				fsys := fstest.MapFS{

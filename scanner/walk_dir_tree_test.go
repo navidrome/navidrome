@@ -55,6 +55,9 @@ var _ = Describe("walk_dir_tree", func() {
 						"root/h/.hidden.mp3":                              {},
 						"root/i/.git/config":                              {},
 						"root/i/.streams/stream.mp3":                      {},
+						"root/j/.nomedia":                                 {},
+						"root/j/f1.mp3":                                   {},
+						"root/j/sub/f2.mp3":                               {},
 					},
 				}
 				job = &scanJob{
@@ -102,6 +105,8 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(folders["root/c"].audioFiles).To(BeEmpty())
 					Expect(folders["root/c"].imageFiles).To(BeEmpty())
 					Expect(folders).ToNot(HaveKey("root/d"))
+					Expect(folders["root/j"].audioFiles).To(BeEmpty())
+					Expect(folders).ToNot(HaveKey("root/j/sub"))
 
 					// By default (Scanner.IgnoreDotFolders == true), dot-prefixed
 					// folders are skipped, dot-prefixed files are not indexed, and
@@ -124,8 +129,8 @@ var _ = Describe("walk_dir_tree", func() {
 						Expect(folders["root/f"].audioFiles).ToNot(HaveKey("evil.mp3"))
 					}
 				},
-				Entry("with symlinks enabled", true, 11),
-				Entry("with symlinks disabled", false, 10),
+				Entry("with symlinks enabled", true, 12),
+				Entry("with symlinks disabled", false, 11),
 			)
 
 			DescribeTable("dot-prefixed folders with IgnoreDotFolders disabled",
