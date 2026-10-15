@@ -256,8 +256,8 @@ const LyricsSidebar = ({
       aria-hidden={!interactive}
       inert={interactive ? undefined : ''}
     >
-      <button
-        type="button"
+      <div
+        tabIndex={0}
         ref={resizerRef}
         className={classes.resizer}
         data-testid="lyrics-sidebar-resizer"
