@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils"
@@ -169,14 +168,15 @@ func loadArtistFolder(ctx context.Context, ds model.DataStore, albums model.Albu
 		folderPath = filepath.Dir(folderPath)
 	}
 
-	// TODO: Hacky, but the easiest way to get the folder ID ATM
-	libPath := core.AbsolutePath(ctx, ds, libID, "")
+	// Cleaned like the album paths; Join keeps an empty path empty, Clean would return ".".
+	libPath, _ := ds.Library().GetPath(ctx, libID)
+	libPath = filepath.Join(libPath)
 	folderID := model.FolderID(model.Library{ID: libID, Path: libPath}, folderPath)
 
 	log.Trace(ctx, "Artwork: Calculating artist folder details", "folderPath", folderPath, "folderID", folderID,
 		"libPath", libPath, "libID", libID, "albumPaths", paths)
 
-	folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
+	folders, err := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"folder.id": folderID, "missing": false}})
 	if err != nil || len(folders) == 0 {
 		log.Warn(ctx, "Artwork: Could not find folder for artist", "folderPath", folderPath, "id", folderID,
 			"libPath", libPath, "libID", libID, err)

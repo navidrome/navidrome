@@ -71,8 +71,8 @@ var _ = Describe("Provider - RefreshInfo", func() {
 		ag = new(mockAgents)
 		broker = &fakeBroker{}
 		p = external.NewProvider(ds, ag, matcher.New(ds), broker)
-		mockArtistRepo = ds.Artist(ctx).(*tests.MockArtistRepo)
-		mockAlbumRepo = ds.Album(ctx).(*tests.MockAlbumRepo)
+		mockArtistRepo = ds.Artist().(*tests.MockArtistRepo)
+		mockAlbumRepo = ds.Album().(*tests.MockAlbumRepo)
 	})
 
 	It("repopulates an artist even when its info is fresh", func() {
@@ -84,7 +84,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 
 		Expect(p.RefreshInfo(ctx, model.KindArtistArtwork, "ar-1")).To(Succeed())
 
-		saved, err := mockArtistRepo.Get("ar-1")
+		saved, err := mockArtistRepo.Get(ctx, "ar-1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(saved.Biography).To(Equal("Fresh Bio"))
 	})
@@ -99,7 +99,7 @@ var _ = Describe("Provider - RefreshInfo", func() {
 
 		Expect(p.RefreshInfo(ctx, model.KindAlbumArtwork, "al-1")).To(Succeed())
 
-		saved, err := mockAlbumRepo.Get("al-1")
+		saved, err := mockAlbumRepo.Get(ctx, "al-1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(saved.Description).To(Equal("Fresh Notes"))
 	})

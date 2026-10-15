@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -93,6 +94,26 @@ var _ = Describe("handleDownloads", func() {
 		w := makeRequest("abc123")
 
 		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="AC_DC_ Live_ 1979.zip"`))
+	})
+
+	It("sanitizes the UTF-8 filename* as well", func() {
+		shareIs(&model.Share{ID: "abc123", Description: "Sigur Rós/Live", Downloadable: true})
+
+		w := makeRequest("abc123")
+
+		Expect(w.Header().Get("Content-Disposition")).To(Equal(`attachment; filename="Sigur Ros_Live.zip"; filename*=utf-8''Sigur%20R%C3%B3s_Live.zip`))
+	})
+
+	It("does not let the share description inject a second filename parameter", func() {
+		shareIs(&model.Share{ID: "abc123", Description: `mix"; filename="evil.html`, Downloadable: true})
+
+		w := makeRequest("abc123")
+
+		disposition := w.Header().Get("Content-Disposition")
+		Expect(disposition).ToNot(ContainSubstring(`filename="evil.html`))
+		_, params, err := mime.ParseMediaType(disposition)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(params["filename"]).To(Equal(`mix_; filename=_evil.html.zip`))
 	})
 
 	It("returns 403 without invoking the archiver when the share is not downloadable", func() {

@@ -41,7 +41,7 @@ func (s *scrobbleRetrieverServiceImpl) getFirstLastScrobble(ctx context.Context,
 		return nil, err
 	}
 
-	scrobbles, err := s.ds.Scrobble(ctx).GetAll(model.QueryOptions{Sort: "submission_time", Order: order, Max: 1})
+	scrobbles, err := s.ds.Scrobble().GetAll(ctx, model.QueryOptions{Sort: "submission_time", Order: order, Max: 1})
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbles(ctx context.Context, usernam
 	// Fetch one more item than requested. The last item is the next timestamp to fetch
 	lookahead := options.MaxItems + 1
 
-	scrobbles, err := s.ds.Scrobble(ctx).GetAll(model.QueryOptions{
+	scrobbles, err := s.ds.Scrobble().GetAll(ctx, model.QueryOptions{
 		Max:     lookahead,
 		Filters: scrobbleRangeFilters(options.FromTimestamp, options.ToTimestamp),
 		// The id tiebreak makes the order of equal timestamps stable, which is what
@@ -142,7 +142,7 @@ func (s *scrobbleRetrieverServiceImpl) GetScrobbleCount(ctx context.Context, use
 		return 0, err
 	}
 
-	return s.ds.Scrobble(ctx).CountAll(model.QueryOptions{
+	return s.ds.Scrobble().CountAll(ctx, model.QueryOptions{
 		Filters: scrobbleRangeFilters(options.FromTimestamp, options.ToTimestamp),
 	})
 }

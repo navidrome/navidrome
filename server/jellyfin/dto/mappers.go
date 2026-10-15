@@ -3,10 +3,12 @@ package dto
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/utils/slice"
 )
 
@@ -46,17 +48,24 @@ func premiereDate(date string, year int) *string {
 		}
 		d = fmt.Sprintf("%04d-01-01", year)
 	}
-	s := d + "T00:00:00Z"
+	parsed, err := time.Parse(time.DateOnly, d)
+	if err != nil {
+		return nil
+	}
+	s := JellyfinDate(&parsed)
 	return &s
 }
 
-// jellyfinDate formats t as the ISO 8601 string clients expect, or "" for the zero time so the
+// Dates use .NET's round-trip layout, 7 fractional digits and all: Manet rejects plain RFC3339.
+const jellyfinDateLayout = "2006-01-02T15:04:05.0000000Z07:00"
+
+// JellyfinDate formats t as the date string clients expect, or "" for the zero time so the
 // field is omitted rather than sent as a meaningless epoch.
-func jellyfinDate(t *time.Time) string {
+func JellyfinDate(t *time.Time) string {
 	if t == nil || t.IsZero() {
 		return ""
 	}
-	return t.UTC().Format(time.RFC3339)
+	return t.UTC().Format(jellyfinDateLayout)
 }
 
 // channelLayout maps a channel count to the label Jellyfin clients expect on a MediaStream.
@@ -113,6 +122,30 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 	}
 }
 
+// minLikeRating is Jellyfin's UserItemData.MinLikeValue: a rating at or above it reads as Likes.
+const minLikeRating = 6.5
+
+// StarsFromRating maps Jellyfin's 0-10 rating to 0-5 stars, rejecting out-of-range values and NaN.
+// A nonzero rating floors at one star, since 0 stars means "not rated".
+func StarsFromRating(rating float64) (int, bool) {
+	if !(rating >= 0 && rating <= 10) {
+		return 0, false
+	}
+	stars := int(math.Round(rating / 2))
+	if rating > 0 {
+		stars = max(stars, 1)
+	}
+	return stars, true
+}
+
+// StarsFromLikes mirrors Jellyfin, which stores likes as Rating 10 and dislikes as Rating 1.
+func StarsFromLikes(likes bool) int {
+	if likes {
+		return 5
+	}
+	return 1
+}
+
 func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	// Callers pass the raw model id; encode here so Key/ItemId match the encoded Id on the BaseItemDto.
 	encodedID := EncodeID(itemID)
@@ -126,9 +159,9 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	if a.Rating > 0 {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
 		d.Rating = &r
+		d.Likes = new(r >= minLikeRating)
 	}
-	if a.PlayDate != nil {
-		s := a.PlayDate.UTC().Format(time.RFC3339)
+	if s := JellyfinDate(a.PlayDate); s != "" {
 		d.LastPlayedDate = &s
 	}
 	return d
@@ -146,13 +179,13 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 		MediaType:         "Audio",
 		IsFolder:          false,
 		LocationType:      "FileSystem",
-		HasLyrics:         mf.HasEmbeddedLyrics(),
+		HasLyrics:         new(mf.HasEmbeddedLyrics()),
 		ParentId:          albumID,
 		Album:             mf.Album,
 		AlbumId:           albumID,
 		AlbumArtist:       mf.AlbumArtist,
 		RunTimeTicks:      TicksFromSeconds(mf.Duration),
-		DateCreated:       jellyfinDate(&mf.CreatedAt),
+		DateCreated:       JellyfinDate(&mf.CreatedAt),
 		Container:         mf.Suffix,
 		CanDownload:       true,
 		BackdropImageTags: []string{},
@@ -251,13 +284,14 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 		Id:                      EncodeID(al.ID),
 		Type:                    "MusicAlbum",
 		IsFolder:                true,
+		LocationType:            "FileSystem",
 		ParentId:                EncodeID(al.AlbumArtistID),
 		AlbumArtist:             al.AlbumArtist,
 		Album:                   al.Name,
 		ChildCount:              new(al.SongCount),
 		SongCount:               new(al.SongCount),
 		RunTimeTicks:            TicksFromSeconds(al.Duration),
-		DateCreated:             jellyfinDate(&al.CreatedAt),
+		DateCreated:             JellyfinDate(&al.CreatedAt),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -265,6 +299,10 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	item.Artists = []string{}
+	if al.AlbumArtist != "" {
+		item.Artists = append(item.Artists, al.AlbumArtist)
 	}
 	if al.AlbumArtistID != "" {
 		item.AlbumArtists = []NameGuidPair{{Name: al.AlbumArtist, Id: EncodeID(al.AlbumArtistID)}}
@@ -306,7 +344,7 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 		IsFolder:                true,
 		AlbumCount:              new(ar.AlbumCount),
 		SongCount:               new(ar.SongCount),
-		DateCreated:             jellyfinDate(ar.CreatedAt),
+		DateCreated:             JellyfinDate(ar.CreatedAt),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -319,6 +357,26 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 		item.SortName = sortName(ar.SortArtistName, ar.OrderArtistName, ar.Name)
 	}
 	return item
+}
+
+// LibraryToBaseItem maps a library to the CollectionFolder item clients browse as a top-level node.
+// Manet keeps no library, and so syncs nothing, unless it carries the fields Jellyfin sends here.
+func LibraryToBaseItem(lib model.Library) BaseItemDto {
+	id := EncodeLibraryID(lib.ID)
+	return BaseItemDto{
+		Id:                id,
+		Name:              lib.Name,
+		SortName:          lib.Name,
+		Type:              "CollectionFolder",
+		CollectionType:    "music",
+		IsFolder:          true,
+		Path:              lib.Path,
+		LocationType:      "FileSystem",
+		DateCreated:       JellyfinDate(&lib.CreatedAt),
+		ChildCount:        new(lib.TotalAlbums),
+		UserData:          &UserItemDataDto{Key: id, ItemId: id},
+		BackdropImageTags: []string{},
+	}
 }
 
 func GenreToBaseItem(g model.Genre) BaseItemDto {
@@ -354,6 +412,7 @@ func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
 		MediaType:               "Audio",
 		ChildCount:              new(p.SongCount),
 		RunTimeTicks:            TicksFromSeconds(p.Duration),
+		DateCreated:             JellyfinDate(&p.CreatedAt),
 		ImageBlurHashes:         blurs,
 		PrimaryImageAspectRatio: ratio,
 		BackdropImageTags:       []string{},
@@ -361,6 +420,10 @@ func PlaylistToBaseItem(p model.Playlist, fields Fields) BaseItemDto {
 	}
 	if tag != "" {
 		item.ImageTags = map[string]string{"Primary": tag}
+	}
+	// Playlists have no sort tag; the repository orders them by name.
+	if fields.Has("SortName") {
+		item.SortName = p.Name
 	}
 	return item
 }
@@ -409,4 +472,26 @@ func LyricDtoFromLyrics(mf model.MediaFile, lyrics model.Lyrics) LyricDto {
 		d.Lyrics = append(d.Lyrics, out)
 	}
 	return d
+}
+
+// NewSessionInfo's Id is stable per client install, as Jellyfin reuses a device's session across logins.
+func NewSessionInfo(u *model.User, client, deviceID, deviceName, version, serverID string) *SessionInfo {
+	now := time.Now()
+	return &SessionInfo{
+		Id:                 EncodeID(id.NewHash(client, deviceID)),
+		UserId:             EncodeID(u.ID),
+		UserName:           u.UserName,
+		Client:             client,
+		DeviceId:           deviceID,
+		DeviceName:         deviceName,
+		ApplicationVersion: version,
+		ServerId:           serverID,
+		LastActivityDate:   JellyfinDate(&now),
+		IsActive:           true,
+		PlayableMediaTypes: []string{"Audio"},
+		SupportedCommands:  []string{},
+		AdditionalUsers:    []any{},
+		NowPlayingQueue:    []any{},
+		PlayState:          PlayerStateInfo{RepeatMode: "RepeatNone", PlaybackOrder: "Default"},
+	}
 }

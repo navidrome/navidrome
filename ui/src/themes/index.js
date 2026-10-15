@@ -25,6 +25,8 @@ import MoonbaseAlphaTheme from './moonbaseAlpha'
 import MoonbaseBravoTheme from './moonbaseBravo'
 import TokyoNightLightTheme from './tokyoNightLight'
 import TokyoNightTheme from './tokyoNight'
+import SolarizedDarkTheme from './solarizedDark'
+import SolarizedLightTheme from './solarizedLight'
 
 export default {
   // Classic default themes
@@ -53,6 +55,8 @@ export default {
   RosePineDawnTheme,
   RosePineMoonTheme,
   RosePineTheme,
+  SolarizedDarkTheme,
+  SolarizedLightTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
   TokyoNightLightTheme,

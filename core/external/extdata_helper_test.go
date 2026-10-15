@@ -31,7 +31,7 @@ func (m *mockArtistRepo) SetData(artists model.Artists) {
 }
 
 // Get implements model.ArtistRepository.
-func (m *mockArtistRepo) Get(id string) (*model.Artist, error) {
+func (m *mockArtistRepo) Get(_ context.Context, id string) (*model.Artist, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -40,7 +40,7 @@ func (m *mockArtistRepo) Get(id string) (*model.Artist, error) {
 }
 
 // GetAll implements model.ArtistRepository.
-func (m *mockArtistRepo) GetAll(options ...model.QueryOptions) (model.Artists, error) {
+func (m *mockArtistRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Artists, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
@@ -85,7 +85,7 @@ func (m *mockMediaFileRepo) SetData(mediaFiles model.MediaFiles) {
 }
 
 // Get implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
+func (m *mockMediaFileRepo) Get(ctx context.Context, id string) (*model.MediaFile, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -94,12 +94,12 @@ func (m *mockMediaFileRepo) Get(id string) (*model.MediaFile, error) {
 }
 
 // GetAllByTags implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) GetAllByTags(_ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
-	return m.GetAll(options...)
+func (m *mockMediaFileRepo) GetAllByTags(ctx context.Context, _ model.TagName, _ []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	return m.GetAll(ctx, options...)
 }
 
 // GetAll implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *mockMediaFileRepo) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
@@ -112,7 +112,7 @@ func (m *mockMediaFileRepo) GetAll(options ...model.QueryOptions) (model.MediaFi
 }
 
 // GetRandom implements model.MediaFileRepository.
-func (m *mockMediaFileRepo) GetRandom(options ...model.QueryOptions) (model.MediaFiles, error) {
+func (m *mockMediaFileRepo) GetRandom(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
@@ -156,7 +156,7 @@ func newMockAlbumRepo() *mockAlbumRepo {
 }
 
 // Get implements model.AlbumRepository.
-func (m *mockAlbumRepo) Get(id string) (*model.Album, error) {
+func (m *mockAlbumRepo) Get(_ context.Context, id string) (*model.Album, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -165,7 +165,7 @@ func (m *mockAlbumRepo) Get(id string) (*model.Album, error) {
 }
 
 // GetAll implements model.AlbumRepository.
-func (m *mockAlbumRepo) GetAll(options ...model.QueryOptions) (model.Albums, error) {
+func (m *mockAlbumRepo) GetAll(_ context.Context, options ...model.QueryOptions) (model.Albums, error) {
 	argsSlice := make([]any, len(options))
 	for i, v := range options {
 		argsSlice[i] = v
