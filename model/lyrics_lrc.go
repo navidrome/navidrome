@@ -53,8 +53,12 @@ func parseLRC(language, text string) (*Lyrics, error) {
 	flushLine := func() {
 		value, cues, end := parseEnhancedLine(priorLine)
 		var merged bool
-		value, cues, merged = mergeBgLayers(value, cues, pendingBg)
+		var bgEnd *int64
+		value, cues, bgEnd, merged = mergeBgLayers(value, cues, pendingBg)
 		hasBg = hasBg || merged
+		if bgEnd != nil && (end == nil || *bgEnd > *end) {
+			end = bgEnd
+		}
 		for idx := range timestamps {
 			startCopy := timestamps[idx]
 			shift := timestamps[idx] - timestamps[0]
@@ -207,12 +211,19 @@ func parseLRC(language, text string) (*Lyrics, error) {
 
 // mergeBgLayers appends parsed [bg:] content to a line's value and cues as a
 // background agent layer, mirroring the TTML background-vocal representation.
-func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, bool) {
+// It also returns the latest explicit trailing end among the merged layers, so
+// an exact source end is not mistaken for a next-line fallback during
+// normalization.
+func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, *int64, bool) {
 	merged := false
+	var latestEnd *int64
 	for _, bg := range bgLines {
-		bgValue, bgCues, _ := parseEnhancedLine(bg)
+		bgValue, bgCues, bgEnd := parseEnhancedLine(bg)
 		if len(bgCues) == 0 {
 			continue
+		}
+		if bgEnd != nil && (latestEnd == nil || *bgEnd > *latestEnd) {
+			latestEnd = bgEnd
 		}
 		offset := 0
 		if value != "" {
@@ -228,7 +239,7 @@ func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, b
 		}
 		merged = true
 	}
-	return value, cues, merged
+	return value, cues, latestEnd, merged
 }
 
 func fillMainAgentID(lines []Line) {
