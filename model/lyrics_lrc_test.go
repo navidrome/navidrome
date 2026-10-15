@@ -183,6 +183,14 @@ var _ = Describe("parseLRC", func() {
 		Expect(lyrics.Line[1].Value).To(Equal("Next"))
 	})
 
+	It("keeps an explicit [bg:] trailing end that equals the next line start", func() {
+		lyrics, err := parseLRC("xxx", "[00:01.00]Main\n[bg: <00:01.50>Ooh<00:03.00>]\n[00:03.00]Next")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics.Line).To(HaveLen(2))
+		Expect(lyrics.Line[0].Value).To(Equal("Main Ooh"))
+		Expect(lyrics.Line[0].End).To(Equal(new(int64(3000))))
+	})
+
 	It("should skip a [bg:] line that has no inline timing", func() {
 		lyrics, err := parseLRC("xxx", "[00:01.00]Hi\n[bg: untimed]\n[00:03.00]Next")
 		Expect(err).ToNot(HaveOccurred())
