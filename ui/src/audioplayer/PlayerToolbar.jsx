@@ -130,6 +130,7 @@ const PlayerToolbar = ({
           aria-pressed={lyricsActive}
         >
           <RiFileMusicLine
+            aria-hidden="true"
             className={!isDesktop ? classes.mobileIcon : undefined}
           />
         </IconButton>
