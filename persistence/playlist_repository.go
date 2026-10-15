@@ -62,6 +62,9 @@ func NewPlaylistRepository(db dbx.Builder) model.PlaylistRepository {
 	r.setSortMappings(map[string]string{
 		"name":       naturalSort("playlist.name"),
 		"owner_name": naturalSort("owner_name"),
+		// Custom ordering is handled by getAllCustom, but it must still be a
+		// recognized sort key when the native REST API parses query parameters.
+		"custom": naturalSort("playlist.name"),
 	})
 	return r
 }
@@ -206,6 +209,29 @@ func (r *playlistRepository) GetAll(ctx context.Context, options ...model.QueryO
 	}
 	r.hydrateArtwork(ctx, playlists)
 	return playlists, err
+}
+
+// getAllCustom returns a user's manually ordered playlists first. Any playlist
+// not yet explicitly ordered (for example, a newly created public playlist)
+// follows in the normal name order, keeping the result complete and stable.
+func (r *playlistRepository) getAllCustom(option model.QueryOptions) (model.Playlists, error) {
+	option.Sort = ""
+	user := loggedUser(r.ctx)
+	sel := r.selectPlaylist(option).
+		LeftJoin("user_playlist_order playlist_order ON playlist_order.playlist_id = playlist.id AND playlist_order.user_id = ?", user.ID).
+		Where(r.userFilter()).
+		OrderBy("playlist_order.position IS NULL", "playlist_order.position", r.buildSortOrder("name", ""))
+
+	var res []dbPlaylist
+	if err := r.queryAll(sel, &res); err != nil {
+		return nil, err
+	}
+	playlists := make(model.Playlists, len(res))
+	for i, p := range res {
+		playlists[i] = p.Playlist
+	}
+	r.hydrateArtwork(playlists)
+	return playlists, nil
 }
 
 // getAllIDs returns the IDs of GetAll's row set, skipping its per-row processing.
