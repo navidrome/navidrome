@@ -6,6 +6,8 @@ import IconButton from '@material-ui/core/IconButton'
 import { makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'
 import { useToggleLove } from './useToggleLove'
+import { useDateLocale } from '../i18n/useDateLocale'
+import { formatDateTime } from '../utils/formatters'
 import { useRecordContext } from 'react-admin'
 import config from '../config'
 import { isDateSet } from '../utils/validations'
@@ -40,6 +42,7 @@ export const LoveButton = ({
   const record = useRecordContext({ record: recordProp }) || {}
   const classes = useStyles({ color, visible, loved: record.starred })
   const [toggleLove, loading] = useToggleLove(resource, record)
+  const locale = useDateLocale()
 
   const handleToggleLove = useCallback(
     (e) => {
@@ -61,7 +64,7 @@ export const LoveButton = ({
       className={clsx(classes.love, className)}
       title={
         isDateSet(record.starredAt)
-          ? new Date(record.starredAt).toLocaleString()
+          ? formatDateTime(record.starredAt, locale)
           : undefined
       }
       {...rest}

@@ -1,0 +1,155 @@
+extends: [[spectral:oas, recommended]]
+rules:
+  # vacuum's `enumeration` function mis-resolves hyphenated `then.field` names,
+  # so the value check below targets `x-module` via `given` instead.
+  nd-operation-x-module-required:
+    description: Every operation belongs to exactly one capability module.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: x-module
+      function: truthy
+  nd-operation-x-module:
+    description: Every operation's capability module is one of the known values.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]['x-module']
+    then:
+      function: enumeration
+      functionOptions:
+        values:
+          - core
+          - streaming
+          - download
+          - artwork
+          - lyrics
+          - transcoding
+          - annotations
+          - playback
+          - queue
+          - custom-tags
+          - grouping
+          - playlists
+          - smart-playlists
+          - sync
+          - events
+          - jukebox
+          - sharing
+          - radio
+          - admin
+  nd-operation-stability-level-required:
+    description: Every operation declares its stability level, which the breaking-change gate relies on.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: x-stability-level
+      function: truthy
+  nd-operation-stability-level:
+    description: Every operation's stability level is alpha, beta, or stable.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]['x-stability-level']
+    then:
+      function: enumeration
+      functionOptions:
+        values:
+          - alpha
+          - beta
+          - stable
+  nd-operation-required-fields:
+    description: Operations need a stable operationId, summary, description and tags.
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      - field: operationId
+        function: truthy
+      - field: summary
+        function: truthy
+      - field: description
+        function: truthy
+      - field: tags
+        function: truthy
+  # Our schemas live in path/response files, not root components, so this
+  # walks every resolved `properties` map in the document via `$..` instead.
+  nd-schema-property-descriptions:
+    description: Every schema property is documented.
+    severity: error
+    given: $..properties[*]
+    then:
+      field: description
+      function: truthy
+  # patternProperties covers the full 4xx/5xx range; needs an explicit
+  # `properties` entry too, or `additionalProperties: false` rejects it.
+  nd-error-responses-are-problems:
+    description: 4xx and 5xx responses use application/problem+json.
+    severity: error
+    given: $.paths[*][*].responses
+    then:
+      function: schema
+      functionOptions:
+        forceValidationOnCurrentNode: true
+        schema:
+          type: object
+          patternProperties:
+            "^[45][0-9][0-9]$":
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: object
+                  properties:
+                    application/problem+json: {}
+                  required: [application/problem+json]
+                  additionalProperties: false
+  # Same filter limitation applies here: "is this a list endpoint" is expressed
+  # as a JSON Schema if/then on the operation object instead of a `given` filter.
+  nd-list-endpoints-paginate:
+    description: List endpoints declare the shared offset and limit parameters.
+    severity: error
+    given: $.paths[*].get
+    then:
+      function: schema
+      functionOptions:
+        forceValidationOnCurrentNode: true
+        schema:
+          type: object
+          if:
+            required: [responses]
+            properties:
+              responses:
+                type: object
+                required: ['200']
+                properties:
+                  '200':
+                    type: object
+                    required: [content]
+                    properties:
+                      content:
+                        type: object
+                        required: [application/json]
+                        properties:
+                          application/json:
+                            type: object
+                            required: [schema]
+                            properties:
+                              schema:
+                                type: object
+                                required: [properties]
+                                properties:
+                                  properties:
+                                    type: object
+                                    required: [items]
+          then:
+            required: [parameters]
+            properties:
+              parameters:
+                type: array
+                allOf:
+                  - contains:
+                      type: object
+                      properties:
+                        name:
+                          const: offset
+                  - contains:
+                      type: object
+                      properties:
+                        name:
+                          const: limit

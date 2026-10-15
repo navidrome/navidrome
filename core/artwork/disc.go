@@ -45,7 +45,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 		return nil, fmt.Errorf("invalid disc artwork id '%s': %w", artID.ID, err)
 	}
 
-	al, err := ds.Album(ctx).Get(albumID)
+	al, err := ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	}
 
 	// Query mediafiles for this album + disc to find folder associations and first track
-	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Sort:    "track_number",
 		Order:   "ASC",
 		Filters: squirrel.Eq{"album_id": albumID, "disc_number": discNumber},
@@ -88,7 +88,7 @@ func newDiscArtworkReader(ctx context.Context, ds model.DataStore, artID model.A
 	// Resolve folder IDs to library-relative paths
 	discFoldersRel := make(map[string]bool)
 	if len(folderIDs) > 0 {
-		folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+		folders, err := ds.Folder().GetAll(ctx, model.QueryOptions{
 			Filters: squirrel.Eq{"folder.id": folderIDs},
 		})
 		if err != nil {

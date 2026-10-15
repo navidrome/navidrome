@@ -59,28 +59,38 @@ func (ci *ClientInfo) CapBitrate(maxKbps int) bool {
 	return changed
 }
 
-// ForceFormat narrows the client to transcoding to targetFormat and suppresses
-// direct play, but only if the client already declares a profile for that
-// format. All matching profiles are kept so negotiation can still pick among
-// them (e.g. by protocol). Returns false (no-op) when targetFormat is empty or
-// unsupported.
+// ForceFormat narrows the client to transcoding to targetFormat, but only if the
+// client already declares a profile for it. All matching profiles are kept so
+// negotiation can still pick among them (e.g. by protocol). Direct play is rebuilt
+// from those profiles rather than dropped, since declaring a transcoding profile
+// for a format is proof the client can play it. Returns false when unsupported.
 func (ci *ClientInfo) ForceFormat(targetFormat string) bool {
 	if targetFormat == "" {
 		return false
 	}
 	var matched []Profile
+	var directPlay []DirectPlayProfile
 	for i := range ci.TranscodingProfiles {
+		p := &ci.TranscodingProfiles[i]
 		// matchesContainer is alias-aware, so a forced "oga" (legacy Opus
 		// target_format) still matches a resolved "opus" profile.
-		if _, format := resolveTargetFormat(&ci.TranscodingProfiles[i]); matchesContainer(format, []string{targetFormat}) {
-			matched = append(matched, ci.TranscodingProfiles[i])
+		container, format := resolveTargetFormat(p)
+		if !matchesContainer(format, []string{targetFormat}) {
+			continue
 		}
+		matched = append(matched, *p)
+		directPlay = append(directPlay, DirectPlayProfile{
+			Containers:       []string{container},
+			AudioCodecs:      []string{format},
+			Protocols:        []string{ProtocolHTTP},
+			MaxAudioChannels: p.MaxAudioChannels,
+		})
 	}
 	if len(matched) == 0 {
 		return false
 	}
 	ci.TranscodingProfiles = matched
-	ci.DirectPlayProfiles = nil
+	ci.DirectPlayProfiles = directPlay
 	return true
 }
 

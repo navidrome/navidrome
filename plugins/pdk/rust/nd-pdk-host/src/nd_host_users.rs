@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// User represents a Navidrome user with minimal information exposed to plugins.
 /// Sensitive fields like password, email, and internal IDs are intentionally excluded.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub user_name: String,

@@ -82,7 +82,7 @@ type processor struct {
 // acquire resolves one queue item end to end: find an image, hash/decode/
 // blurhash it, place its bytes, and persist the resulting state.
 func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired, retryIn time.Duration) {
-	repo := p.ds.Artwork(ctx)
+	repo := p.ds.Artwork()
 	start := time.Now()
 	defer func() {
 		log.Debug(ctx, "Artwork: Acquisition finished", "kind", item.ItemKind, "id", item.ItemID,
@@ -137,7 +137,7 @@ func (p *processor) acquire(ctx context.Context, item model.ArtworkQueueItem) (o
 	log.Trace(ctx, "Artwork: Hashed image", "kind", item.ItemKind, "id", item.ItemID,
 		"hash", hash, "bytes", len(data), "elapsed", time.Since(hashStart))
 
-	art, err := repo.GetImage(hash)
+	art, err := repo.GetImage(ctx, hash)
 	switch {
 	case err == nil && art.Width > 0:
 		log.Debug(ctx, "Artwork: Reusing a known image, skipping decode", "kind", item.ItemKind,
@@ -195,7 +195,7 @@ func (p *processor) persist(ctx context.Context, repo model.ArtworkRepository, i
 	if err != nil {
 		return nil, fmt.Errorf("writing image store: %w", err)
 	}
-	if err := repo.PutImage(art); err != nil {
+	if err := repo.PutImage(ctx, art); err != nil {
 		return nil, fmt.Errorf("persisting artwork image: %w", err)
 	}
 	ia := &model.ItemArtwork{
@@ -210,7 +210,7 @@ func (p *processor) persist(ctx context.Context, repo model.ArtworkRepository, i
 		Trace:       traceFrom(ctx).encode(sourcePath),
 	}
 	// PutItemArtwork stamps UpdatedAt on ia, so the returned struct matches the persisted row.
-	if err := repo.PutItemArtwork(ia); err != nil {
+	if err := repo.PutItemArtwork(ctx, ia); err != nil {
 		return nil, fmt.Errorf("persisting item artwork state: %w", err)
 	}
 	return ia, nil
@@ -218,7 +218,7 @@ func (p *processor) persist(ctx context.Context, repo model.ArtworkRepository, i
 
 // writeAbsent records a known-absent state: every source answered definitively "no".
 func writeAbsent(ctx context.Context, repo model.ArtworkRepository, item model.ArtworkQueueItem) outcome {
-	err := repo.PutItemArtwork(&model.ItemArtwork{
+	err := repo.PutItemArtwork(ctx, &model.ItemArtwork{
 		ItemKind:    item.ItemKind,
 		ItemID:      item.ItemID,
 		ImageType:   item.ImageType,

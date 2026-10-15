@@ -107,18 +107,20 @@ var _ = Describe("encodeMediafileShare", func() {
 })
 
 var _ = Describe("handleStream", func() {
+	var ctx context.Context
 	var ds *tests.MockDataStore
 	var shareRepo *tests.MockShareRepo
 	var streamer *mockStreamer
 	var pub *Router
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
-		ds = &tests.MockDataStore{}
+		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		shareRepo = &tests.MockShareRepo{}
 		ds.MockedShare = shareRepo
 		streamer = &mockStreamer{}
-		pub = &Router{ds: ds, streamer: streamer}
+		pub = &Router{ds: ds, streamer: streamer, decider: stream.NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))}
 	})
 
 	makeRequest := func(token string) *httptest.ResponseRecorder {
@@ -132,7 +134,7 @@ var _ = Describe("handleStream", func() {
 		shareRepo.ID = "share123"
 		shareRepo.Entity = &model.Share{ID: "share123", UserID: owner.ID, Tracks: model.MediaFiles{mf}}
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&owner)).To(Succeed())
+		Expect(userRepo.Put(ctx, &owner)).To(Succeed())
 		ds.MockedUser = userRepo
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{mf})
@@ -150,8 +152,17 @@ var _ = Describe("handleStream", func() {
 		makeRequest(token)
 
 		Expect(streamer.called).To(BeTrue())
-		Expect(streamer.req.Format).To(Equal("mp3"))
-		Expect(streamer.req.BitRate).To(Equal(192))
+	})
+
+	It("resolves the full stream request like the Subsonic endpoint, so transcodes share the cache", func() {
+		mf := model.MediaFile{ID: "mf-123", Suffix: "flac", BitRate: 1500, SampleRate: 44100, BitDepth: new(24), Channels: 2}
+		shareOwnedBy(model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}, mf)
+
+		claims := auth.Claims{ID: "mf-123", Format: "opus", BitRate: 128, ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		makeRequest(token)
+
+		Expect(streamer.req).To(Equal(stream.Request{Format: "opus", BitRate: 128, SampleRate: 48000, Channels: 2}))
 	})
 
 	It("returns 404 when the track is outside the share owner's libraries", func() {
@@ -171,7 +182,7 @@ var _ = Describe("handleStream", func() {
 	It("returns 404 when the track is not a member of the share", func() {
 		owner := model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&owner)).To(Succeed())
+		Expect(userRepo.Put(ctx, &owner)).To(Succeed())
 		ds.MockedUser = userRepo
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{{ID: "mf-shared"}, {ID: "mf-other"}})

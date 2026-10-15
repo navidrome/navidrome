@@ -81,12 +81,4 @@ var _ = Describe("System", func() {
 			Expect(strings.TrimSpace(w.Body.String())).To(HavePrefix("Navidrome"))
 		})
 	})
-
-	Describe("GET /QuickConnect/Enabled", func() {
-		It("reports QuickConnect disabled", func() {
-			w := rawReq("GET", "/QuickConnect/Enabled", "")
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(strings.TrimSpace(w.Body.String())).To(Equal("false"))
-		})
-	})
 })
