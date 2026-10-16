@@ -75,6 +75,7 @@ var _ = Describe("auth_router", func() {
 			Expect(json.Unmarshal(rec.Body.Bytes(), &body)).To(Succeed())
 			Expect(body["apiKey"]).To(Equal("API_KEY"))
 			Expect(body["status"]).To(Equal(false))
+			Expect(body["syncFavorites"]).To(Equal(false))
 			token, ok := body["linkToken"].(string)
 			Expect(ok).To(BeTrue())
 			Expect(token).ToNot(BeEmpty())
@@ -82,6 +83,31 @@ var _ = Describe("auth_router", func() {
 			verified, err := verifyLinkToken(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(verified).To(Equal(victimID))
+		})
+	})
+
+	Describe("setSyncFavorites", func() {
+		It("saves the choice and reports it on the link status", func() {
+			req := httptest.NewRequest(http.MethodPut, "/favorites", bytes.NewBufferString(`{"enabled":false}`))
+			ctx := request.WithUser(req.Context(), model.User{ID: victimID})
+			req = req.WithContext(ctx)
+			rec := httptest.NewRecorder()
+
+			router.setSyncFavorites(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusOK))
+			stored, err := userProps.Get(GinkgoT().Context(), victimID, syncFavoritesProperty)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(stored).To(Equal("false"))
+
+			statusReq := httptest.NewRequest(http.MethodGet, "/link", nil)
+			statusReq = statusReq.WithContext(request.WithUser(statusReq.Context(), model.User{ID: victimID}))
+			statusRec := httptest.NewRecorder()
+			router.getLinkStatus(statusRec, statusReq)
+
+			var body map[string]any
+			Expect(json.Unmarshal(statusRec.Body.Bytes(), &body)).To(Succeed())
+			Expect(body["syncFavorites"]).To(Equal(false))
 		})
 	})
 
