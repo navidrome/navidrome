@@ -365,6 +365,18 @@ var _ = Describe("Lyrics", func() {
 			Expect(err).To(BeNil())
 			Expect(list).To(Equal(embeddedLyrics)) // falls through to embedded
 		})
+
+		It("should return a plugin error when no later source has lyrics", func() {
+			conf.Server.LyricsPriority = "test-lyrics-plugin,embedded"
+			mf.Lyrics = ""
+			mockLoader.err = fmt.Errorf("remote lyrics cooldown active for 30s")
+			svc := lyrics.NewLyrics(nil, mockLoader)
+
+			list, err := svc.GetLyrics(ctx, &mf)
+
+			Expect(list).To(BeEmpty())
+			Expect(err).To(MatchError("remote lyrics cooldown active for 30s"))
+		})
 	})
 
 	var _ = Describe("GetLyricsByArtistTitle", func() {
