@@ -378,6 +378,50 @@ var _ = Describe("MediaRepository", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
+	Describe("GetMissingAndMatching", func() {
+		var lastScanStartedAt time.Time
+
+		BeforeEach(func() {
+			lib, err := NewLibraryRepository(GetDBXBuilder()).Get(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			lastScanStartedAt = lib.LastScanStartedAt
+		})
+
+		AfterEach(func() {
+			_, err := GetDBXBuilder().NewQuery("UPDATE library SET last_scan_started_at = {:t} WHERE id = 1").
+				Bind(dbx.Params{"t": lastScanStartedAt}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		// A coarse clock (15.6 ms on Windows) can give the scan start and a track
+		// written in the same scan the same timestamp (#6342)
+		It("matches a track created at the same instant the scan started", func() {
+			scanStart := time.Now()
+			_, err := GetDBXBuilder().NewQuery("UPDATE library SET last_scan_started_at = {:t} WHERE id = 1").
+				Bind(dbx.Params{"t": scanStart}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			pid := id.NewRandom()
+			missing := model.MediaFile{ID: id.NewRandom(), LibraryID: 1, PID: pid, Path: "old/moved.mp3"}
+			moved := model.MediaFile{ID: id.NewRandom(), LibraryID: 1, PID: pid, Path: "new/moved.mp3", CreatedAt: scanStart}
+			Expect(mr.Put(ctx, &missing)).To(Succeed())
+			Expect(mr.MarkMissing(ctx, true, &missing)).To(Succeed())
+			Expect(mr.Put(ctx, &moved)).To(Succeed())
+			DeferCleanup(func() { _ = mr.Delete(ctx, missing.ID); _ = mr.Delete(ctx, moved.ID) })
+
+			cursor, err := mr.GetMissingAndMatching(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			var ids []string
+			for mf, err := range cursor {
+				Expect(err).ToNot(HaveOccurred())
+				if mf.PID == pid {
+					ids = append(ids, mf.ID)
+				}
+			}
+			Expect(ids).To(ConsistOf(missing.ID, moved.ID))
+		})
+	})
+
 	It("deletes all missing files", func() {
 		new1 := model.MediaFile{ID: id.NewRandom(), LibraryID: 1}
 		new2 := model.MediaFile{ID: id.NewRandom(), LibraryID: 1}

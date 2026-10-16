@@ -506,7 +506,7 @@ func (r *mediaFileRepository) GetMissingAndMatching(ctx context.Context, libId i
 		Where("pid in ("+subQText+")", subQArgs...).
 		Where(Or{
 			Eq{"missing": true},
-			ConcatExpr("media_file.created_at > library.last_scan_started_at"),
+			ConcatExpr("media_file.created_at >= library.last_scan_started_at"),
 		}).
 		OrderBy("pid")
 	cursor, err := queryWithStableResults[dbMediaFile](ctx, r.sqlRepository, sel)
