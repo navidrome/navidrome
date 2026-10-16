@@ -21,6 +21,14 @@ func shortTime(year int, month time.Month, day, hour, minute int) time.Time {
 	return time.Date(year, month, day, hour, minute, 0, 0, time.UTC)
 }
 
+// Same table goose creates on a fresh SQLite database.
+const gooseTableDDL = `CREATE TABLE goose_db_version (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	version_id INTEGER NOT NULL,
+	is_applied INTEGER NOT NULL,
+	tstamp TIMESTAMP DEFAULT (datetime('now'))
+)`
+
 var _ = Describe("database backups", func() {
 	When("there are a few backup files", func() {
 		var ctx context.Context
@@ -236,5 +244,68 @@ var _ = Describe("database backups", func() {
 			_, statErr := os.Stat(missingPath)
 			Expect(statErr).To(MatchError(os.ErrNotExist))
 		})
+
+		DescribeTable("fails to restore from a file that is not a Navidrome database, leaving the database intact",
+			func(createFile func(path string)) {
+				By("seeding user data in the current database")
+				_, err := Db().ExecContext(ctx, `INSERT OR REPLACE INTO user (id, user_name, name, email, password, is_admin, created_at, updated_at)
+					VALUES ('u-restore-3', 'stillhere', 'stillhere', 'stillhere@example.com', 'x', 1, datetime('now'), datetime('now'))`)
+				Expect(err).ToNot(HaveOccurred())
+
+				By("attempting a restore from the invalid file")
+				invalidPath := filepath.Join(tempFolder, "invalid_backup.db")
+				_ = os.Remove(invalidPath)
+				createFile(invalidPath)
+				err = Restore(ctx, invalidPath)
+				Expect(err).To(HaveOccurred())
+
+				By("verifying the database was not wiped")
+				var userName string
+				Expect(Db().QueryRowContext(ctx, "SELECT user_name FROM user WHERE id = 'u-restore-3'").Scan(&userName)).To(Succeed())
+				Expect(userName).To(Equal("stillhere"))
+			},
+			Entry("empty file", func(path string) {
+				Expect(os.WriteFile(path, nil, 0600)).To(Succeed())
+			}),
+			Entry("file that is not a SQLite database", func(path string) {
+				Expect(os.WriteFile(path, []byte("this is not a database, just some text"), 0600)).To(Succeed())
+			}),
+			Entry("SQLite database without the Navidrome schema", func(path string) {
+				other, err := sql.Open(Driver, path)
+				Expect(err).ToNot(HaveOccurred())
+				defer other.Close()
+				_, err = other.Exec("CREATE TABLE something_else(x)")
+				Expect(err).ToNot(HaveOccurred())
+			}),
+			Entry("SQLite database with an empty goose_db_version table", func(path string) {
+				other, err := sql.Open(Driver, path)
+				Expect(err).ToNot(HaveOccurred())
+				defer other.Close()
+				_, err = other.Exec(gooseTableDDL)
+				Expect(err).ToNot(HaveOccurred())
+			}),
+			Entry("SQLite database with only goose's initial version row", func(path string) {
+				other, err := sql.Open(Driver, path)
+				Expect(err).ToNot(HaveOccurred())
+				defer other.Close()
+				_, err = other.Exec(gooseTableDDL + "; INSERT INTO goose_db_version (version_id, is_applied) VALUES (0, 1)")
+				Expect(err).ToNot(HaveOccurred())
+			}),
+			Entry("backup with garbage over its last pages", func(path string) {
+				// Filler rows go to the end of the file, so the damage below stays clear of
+				// the schema and of goose_db_version, which still read fine.
+				_, err := Db().ExecContext(ctx, "CREATE TABLE _restore_filler AS SELECT zeroblob(1000000) AS x")
+				Expect(err).ToNot(HaveOccurred())
+				backupFile, err := Backup(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				data, err := os.ReadFile(backupFile)
+				Expect(err).ToNot(HaveOccurred())
+
+				for i := len(data) * 4 / 5; i < len(data); i++ {
+					data[i] = 0xFF
+				}
+				Expect(os.WriteFile(path, data, 0600)).To(Succeed())
+			}),
+		)
 	})
 })
