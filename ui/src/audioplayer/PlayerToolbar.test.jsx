@@ -61,35 +61,20 @@ describe('<PlayerToolbar />', () => {
       useMediaQuery.mockReturnValue(true) // isDesktop = true
     })
 
-    it('renders desktop toolbar with both buttons', () => {
+    it('renders desktop toolbar with all buttons', () => {
       render(<PlayerToolbar id="song-1" />)
 
-      // Both buttons should be in a single list item
+      // All buttons should be in a single list item
       const listItems = screen.getAllByRole('listitem')
       expect(listItems).toHaveLength(1)
 
-      // Verify both buttons are rendered
+      // Verify all buttons are rendered
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
+      expect(screen.getByTestId('toggle-lyrics-button')).toBeInTheDocument()
 
       // Verify desktop classes are applied
       expect(listItems[0].className).toContain('toolbar')
-    })
-
-    it('disables save queue button when isRadio is true', () => {
-      render(<PlayerToolbar id="song-1" isRadio={true} />)
-
-      const saveQueueButton = screen.getByTestId('save-queue-button')
-      expect(saveQueueButton).toBeDisabled()
-    })
-
-    it('disables love button when conditions are met', () => {
-      useGetOne.mockReturnValue({ data: mockSongData, loading: true })
-
-      render(<PlayerToolbar id="song-1" />)
-
-      const loveButton = screen.getByTestId('love-button')
-      expect(loveButton).toBeDisabled()
     })
 
     it('opens save queue dialog when save button is clicked', () => {
@@ -101,6 +86,32 @@ describe('<PlayerToolbar />', () => {
       expect(mockDispatch).toHaveBeenCalledWith({
         type: 'OPEN_SAVE_QUEUE_DIALOG',
       })
+    })
+
+    it('toggles lyrics from an accessible toolbar button', () => {
+      const onToggleLyrics = vi.fn()
+      const lyricsToggleRef = React.createRef()
+      render(
+        <PlayerToolbar
+          id="song-1"
+          onToggleLyrics={onToggleLyrics}
+          lyricsActive
+          lyricsToggleRef={lyricsToggleRef}
+        />,
+      )
+
+      const lyricsButton = screen.getByLabelText('Toggle lyrics')
+      expect(lyricsButton).toHaveAttribute(
+        'data-testid',
+        'toggle-lyrics-button',
+      )
+      expect(lyricsButton).toHaveClass('MuiIconButton-colorPrimary')
+      expect(lyricsButton).toHaveAttribute('aria-pressed', 'true')
+      expect(lyricsToggleRef.current).toBe(lyricsButton)
+
+      fireEvent.click(lyricsButton)
+
+      expect(onToggleLyrics).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -114,35 +125,57 @@ describe('<PlayerToolbar />', () => {
 
       // Each button should be in its own list item
       const listItems = screen.getAllByRole('listitem')
-      expect(listItems).toHaveLength(2)
+      expect(listItems).toHaveLength(3)
 
-      // Verify both buttons are rendered
+      // Verify all buttons are rendered
       expect(screen.getByTestId('save-queue-button')).toBeInTheDocument()
       expect(screen.getByTestId('love-button')).toBeInTheDocument()
+      expect(screen.getByTestId('toggle-lyrics-button')).toBeInTheDocument()
 
       // Verify mobile classes are applied
       expect(listItems[0].className).toContain('mobileListItem')
       expect(listItems[1].className).toContain('mobileListItem')
+      expect(listItems[2].className).toContain('mobileListItem')
     })
 
-    it('disables save queue button when isRadio is true', () => {
-      render(<PlayerToolbar id="song-1" isRadio={true} />)
+    it('disables lyrics toggle when lyrics are unavailable', () => {
+      render(
+        <PlayerToolbar id="song-1" onToggleLyrics={vi.fn()} lyricsDisabled />,
+      )
 
-      const saveQueueButton = screen.getByTestId('save-queue-button')
-      expect(saveQueueButton).toBeDisabled()
+      expect(screen.getByTestId('toggle-lyrics-button')).toBeDisabled()
     })
 
-    it('disables love button when conditions are met', () => {
-      useGetOne.mockReturnValue({ data: mockSongData, loading: true })
+    it('shows loading state on the lyrics toggle before lyrics are available', () => {
+      render(
+        <PlayerToolbar id="song-1" onToggleLyrics={vi.fn()} lyricsLoading />,
+      )
 
-      render(<PlayerToolbar id="song-1" />)
-
-      const loveButton = screen.getByTestId('love-button')
-      expect(loveButton).toBeDisabled()
+      const lyricsButton = screen.getByTestId('toggle-lyrics-button')
+      expect(lyricsButton).toBeDisabled()
+      expect(lyricsButton).toHaveAttribute('aria-label', 'Loading lyrics')
+      expect(lyricsButton).toHaveAttribute('aria-busy', 'true')
+      expect(lyricsButton).toHaveAttribute('aria-pressed', 'false')
     })
   })
 
   describe('Common behavior', () => {
+    it('disables save queue button when isRadio is true', () => {
+      useMediaQuery.mockReturnValue(true)
+      render(<PlayerToolbar id="song-1" isRadio={true} />)
+
+      expect(screen.getByTestId('save-queue-button')).toBeDisabled()
+    })
+
+    it('disables love button when conditions are met', () => {
+      useMediaQuery.mockReturnValue(true)
+      useGetOne.mockReturnValue({ data: mockSongData, loading: true })
+
+      render(<PlayerToolbar id="song-1" />)
+
+      expect(screen.getByTestId('love-button')).toBeDisabled()
+    })
+
     it('renders global hotkeys in both layouts', () => {
       // Test desktop layout
       useMediaQuery.mockReturnValue(true)

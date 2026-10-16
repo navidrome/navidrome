@@ -20,6 +20,13 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 		return lyrics.GetLyricsResponse{}, fmt.Errorf("%s", errMsg)
 	}
 
+	var source *lyrics.LyricsSource
+	provider, hasProvider := pdk.GetConfig("source_provider")
+	sourceFormat, hasSourceFormat := pdk.GetConfig("source_format")
+	if hasProvider || hasSourceFormat {
+		source = &lyrics.LyricsSource{Provider: provider, Format: sourceFormat}
+	}
+
 	// Config-selected format lets tests exercise the adapter's content-sniffing per format.
 	format, hasFormat := pdk.GetConfig("format")
 	if hasFormat {
@@ -52,6 +59,7 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 		if text != "" {
 			return lyrics.GetLyricsResponse{
 				Lyrics: []lyrics.LyricsText{{Lang: lang, Text: text}},
+				Source: source,
 			}, nil
 		}
 	}
@@ -65,6 +73,7 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 
 	// Return test lyrics based on track info
 	return lyrics.GetLyricsResponse{
+		Source: source,
 		Lyrics: []lyrics.LyricsText{
 			{
 				Lang: lang,
