@@ -103,6 +103,25 @@ var _ = Describe("Criteria", func() {
 		)
 	})
 
+	Context("with an empty nested group", func() {
+		DescribeTable("keeps the group when saving, so it can be loaded again",
+			func(jsonStr, expected string) {
+				var c Criteria
+				gomega.Expect(json.Unmarshal([]byte(jsonStr), &c)).To(gomega.Succeed())
+				j, err := json.Marshal(c)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
+				gomega.Expect(string(j)).To(gomega.Equal(expected))
+
+				var reloaded Criteria
+				gomega.Expect(json.Unmarshal(j, &reloaded)).To(gomega.Succeed())
+				gomega.Expect(reloaded.Limit).To(gomega.Equal(c.Limit))
+			},
+			Entry("empty all inside all", `{"all":[{"all":[]}],"limit":10}`, `{"all":[{"all":[]}],"limit":10}`),
+			Entry("empty any inside all", `{"all":[{"any":[]}]}`, `{"all":[{"any":[]}]}`),
+			Entry("null all inside any", `{"any":[{"all":null}]}`, `{"any":[{"all":[]}]}`),
+		)
+	})
+
 	Describe("LimitPercent", func() {
 		Describe("JSON round-trip", func() {
 			It("marshals and unmarshals limitPercent", func() {
