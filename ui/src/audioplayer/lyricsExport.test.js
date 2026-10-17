@@ -56,6 +56,29 @@ describe('lyrics export', () => {
     )
   })
 
+  it('folds the source offset into the exported timestamps', () => {
+    const lyric = {
+      kind: 'main',
+      lang: 'eng',
+      synced: true,
+      offset: -500,
+      line: [line('Hello world', 8000, 11000)],
+      cueLine: [
+        cueLine(0, 'Hello world', [
+          { start: 8000, value: 'Hello ' },
+          { start: 9500, value: 'world' },
+        ]),
+      ],
+    }
+
+    expect(serializeLyrics(lyric, 'elrc')).toBe(
+      '[00:07.50]<00:07.50>Hello <00:09.00>world',
+    )
+    expect(serializeLyrics(lyric, 'ttml')).toContain(
+      '<p begin="00:00:07.500" end="00:00:10.500">',
+    )
+  })
+
   it('serializes line timing to a plain LRC stamp per line', () => {
     const lyric = {
       kind: 'main',

@@ -85,25 +85,32 @@ const timedCues = (groups) =>
     ),
   )
 
-const serializeLrc = (lyric, lines) => {
+const serializeLrc = (lyric, lines, baseOffset) => {
   const cuesByIndex = cuesByLineIndex(lyric)
+  const withBase = (value) =>
+    value == null ? value : Number(value) + baseOffset
   return lines
     .map((line, index) => {
       const cues = timedCues(cuesByIndex.get(index) || [])
       if (cues.length === 0) {
-        return `${lrcStamp(line?.start)}${line?.value ?? ''}`
+        return `${lrcStamp(withBase(line?.start))}${line?.value ?? ''}`
       }
       const body = cues
-        .map((cue) => `${lrcStamp(cue.start, '<', '>')}${cue.value ?? ''}`)
+        .map(
+          (cue) =>
+            `${lrcStamp(withBase(cue.start), '<', '>')}${cue.value ?? ''}`,
+        )
         .join('')
-      return `${lrcStamp(line?.start)}${body}`
+      return `${lrcStamp(withBase(line?.start))}${body}`
     })
     .join('\n')
 }
 
-const serializeTtml = (lyric, lines) => {
+const serializeTtml = (lyric, lines, baseOffset) => {
   const lang = typeof lyric.lang === 'string' ? lyric.lang.trim() : ''
   const cuesByIndex = cuesByLineIndex(lyric)
+  const withBase = (value) =>
+    value == null ? value : Number(value) + baseOffset
   const hasCues = [...cuesByIndex.values()].some(
     (groups) => timedCues(groups).length > 0,
   )
@@ -114,16 +121,20 @@ const serializeTtml = (lyric, lines) => {
     ...(lang && lang !== 'xxx' ? [`xml:lang="${escapeXml(lang)}"`] : []),
   ]
   const paragraphs = lines.map((line, index) => {
-    const begin = line?.start == null ? '' : ` begin="${ttmlClock(line.start)}"`
-    const end = line?.end == null ? '' : ` end="${ttmlClock(line.end)}"`
+    const begin =
+      line?.start == null ? '' : ` begin="${ttmlClock(withBase(line.start))}"`
+    const end =
+      line?.end == null ? '' : ` end="${ttmlClock(withBase(line.end))}"`
     const cues = timedCues(cuesByIndex.get(index) || [])
     const content =
       cues.length > 0
         ? cues
             .map(
               (cue) =>
-                `<span begin="${ttmlClock(cue.start)}"${
-                  cue.end == null ? '' : ` end="${ttmlClock(cue.end)}"`
+                `<span begin="${ttmlClock(withBase(cue.start))}"${
+                  cue.end == null
+                    ? ''
+                    : ` end="${ttmlClock(withBase(cue.end))}"`
                 }>${escapeXml(cue.value)}</span>`,
             )
             .join('')
@@ -143,11 +154,15 @@ const serializeTtml = (lyric, lines) => {
 export const serializeLyrics = (lyric, format) => {
   if (!lyric) return ''
   const lines = Array.isArray(lyric.line) ? lyric.line : []
+  // The source's own offset is a separate field on the response; fold it in so
+  // the exported timing matches what the panel plays (the listener's local
+  // nudge intentionally stays out).
+  const baseOffset = Number(lyric.offset) || 0
   switch (lyricsFileExtension(format)) {
     case 'ttml':
-      return serializeTtml(lyric, lines)
+      return serializeTtml(lyric, lines, baseOffset)
     case 'lrc':
-      return serializeLrc(lyric, lines)
+      return serializeLrc(lyric, lines, baseOffset)
     default:
       return lines.map((line) => line?.value ?? '').join('\n')
   }
