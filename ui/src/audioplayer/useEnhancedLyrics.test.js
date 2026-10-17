@@ -367,6 +367,90 @@ describe('useEnhancedLyrics', () => {
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps lyric references stable when a refresh returns the same payload', async () => {
+    subsonic.getLyricsBySongId.mockImplementation(async () =>
+      responseForEntries([
+        sourceEntry('NetEase', 'NetEase line'),
+        sourceEntry('LRCLib', 'LRCLib line'),
+      ]),
+    )
+
+    const { result } = renderLyrics({ trackId: 'song-stable' })
+
+    await expectLyric(result, 'NetEase line')
+    const layers = result.current.layers
+    const variants = result.current.variants
+
+    act(() => {
+      result.current.refresh()
+    })
+    await waitFor(() => expect(result.current.refreshing).toBe(false))
+
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+    expect(result.current.layers).toBe(layers)
+    expect(result.current.variants).toBe(variants)
+  })
+
+  it('auto-retries a failed request with a bounded backoff', async () => {
+    vi.useFakeTimers()
+    subsonic.getLyricsBySongId
+      .mockRejectedValueOnce(
+        new Error('plugin call failed: BiniLyrics search returned HTTP 502'),
+      )
+      .mockResolvedValueOnce(
+        responseForEntries([sourceEntry('NetEase', 'Recovered line')]),
+      )
+
+    const { result } = renderLyrics({ trackId: 'song-auto-retry' })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(result.current.error).not.toBeNull()
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(5_000)
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+    expect(result.current.error).toBeNull()
+    expect(result.current.layers.main.line[0].value).toBe('Recovered line')
+  })
+
+  it('stops auto-retrying after the backoff schedule is exhausted', async () => {
+    vi.useFakeTimers()
+    subsonic.getLyricsBySongId.mockRejectedValue(new Error('boom'))
+
+    const { result } = renderLyrics({ trackId: 'song-auto-retry-capped' })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(result.current.error).not.toBeNull()
+
+    for (const delay of [5_000, 15_000, 45_000, 90_000, 180_000]) {
+      await act(async () => {
+        vi.advanceTimersByTime(delay)
+      })
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+    }
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(6)
+
+    await act(async () => {
+      vi.advanceTimersByTime(600_000)
+    })
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(6)
+  })
+
   it('keeps current lyrics when a refresh fails', async () => {
     subsonic.getLyricsBySongId
       .mockResolvedValueOnce(

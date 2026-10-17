@@ -16,6 +16,11 @@ export const emptyLyricLayers = Object.freeze({
 const MAX_LYRIC_CACHE_ENTRIES = 75
 const NEGATIVE_CACHE_TTL_MS = 30_000
 const COOLDOWN_PATTERN = /(?:cooldown active for|retry after)\s+(\d+)s/gi
+// Transient plugin failures (provider 5xx) can clear on their own: the plugin's
+// background sweep fills its per-source caches after the failed fast pass, so a
+// bounded backoff recovers without a manual track switch. Server-reported
+// cooldowns use their own schedule instead.
+const AUTO_RETRY_DELAYS_MS = [5_000, 15_000, 45_000, 90_000, 180_000]
 
 const cache = new Map()
 const inFlight = new Map()
@@ -57,6 +62,20 @@ const readCachedLyrics = (cacheKey) => {
   cache.delete(cacheKey)
   cache.set(cacheKey, cached)
   return cached.structuredLyrics
+}
+
+// Servers re-serialize identical payloads per request, so a refreshed response
+// only replaces the previous one when its content actually changed. Keeping the
+// reference stable stops downstream memoization (and the lyrics panel's scroll
+// reset) from churning on every progressive refresh.
+const sameStructuredLyrics = (left, right) => {
+  if (left === right) return true
+  if (!left || !right) return false
+  try {
+    return JSON.stringify(left) === JSON.stringify(right)
+  } catch {
+    return false
+  }
 }
 
 const createLyricsRequest = ({ trackId, cacheKey }) => {
@@ -135,6 +154,7 @@ const useEnhancedLyrics = ({
   const [state, setState] = useState(() => emptyLyricsState(cacheKey))
   const [requestGeneration, setRequestGeneration] = useState(0)
   const [refreshToken, setRefreshToken] = useState(0)
+  const [autoRetry, setAutoRetry] = useState(null)
   const [, setCountdownTick] = useState(0)
 
   // The refresh path reads the currently displayed state when deciding whether
@@ -145,9 +165,11 @@ const useEnhancedLyrics = ({
     stateRef.current = state
   }, [state])
   const handledRefreshRef = useRef(refreshToken)
+  const autoRetryRef = useRef({ cacheKey: null, attempts: 0 })
 
   const retry = useCallback(() => {
     cache.delete(cacheKey)
+    autoRetryRef.current = { cacheKey, attempts: 0 }
     setRequestGeneration((current) => current + 1)
   }, [cacheKey])
 
@@ -164,6 +186,7 @@ const useEnhancedLyrics = ({
   useEffect(() => {
     if (!trackId || disabled || !requested) {
       handledRefreshRef.current = refreshToken
+      setAutoRetry(null)
       setState(emptyLyricsState(cacheKey))
       return undefined
     }
@@ -211,14 +234,20 @@ const useEnhancedLyrics = ({
     request.promise
       .then((structuredLyrics) => {
         if (!active) return
-        setState({
+        autoRetryRef.current = { cacheKey, attempts: 0 }
+        setAutoRetry(null)
+        setState((current) => ({
           cacheKey,
-          structuredLyrics,
+          structuredLyrics:
+            current.cacheKey === cacheKey &&
+            sameStructuredLyrics(current.structuredLyrics, structuredLyrics)
+              ? current.structuredLyrics
+              : structuredLyrics,
           loading: false,
           refreshing: false,
           error: null,
           retryAt: null,
-        })
+        }))
       })
       .catch((error) => {
         if (!active || error?.name === 'AbortError') return
@@ -232,6 +261,22 @@ const useEnhancedLyrics = ({
           return
         }
         cache.delete(cacheKey)
+        const cooldownDelay = retryDelayFromError(error)
+        if (cooldownDelay != null) {
+          autoRetryRef.current = { cacheKey, attempts: 0 }
+          setAutoRetry(null)
+        } else {
+          const attempts =
+            autoRetryRef.current.cacheKey === cacheKey
+              ? autoRetryRef.current.attempts
+              : 0
+          autoRetryRef.current = { cacheKey, attempts: attempts + 1 }
+          setAutoRetry(
+            attempts < AUTO_RETRY_DELAYS_MS.length
+              ? { cacheKey, at: Date.now() + AUTO_RETRY_DELAYS_MS[attempts] }
+              : null,
+          )
+        }
         setState({
           cacheKey,
           structuredLyrics: null,
@@ -239,7 +284,7 @@ const useEnhancedLyrics = ({
           refreshing: false,
           error,
           retryAt: (() => {
-            const delay = retryDelayFromError(error)
+            const delay = cooldownDelay
             return delay == null ? null : Date.now() + delay
           })(),
         })
@@ -272,6 +317,24 @@ const useEnhancedLyrics = ({
       window.clearInterval(countdownTimer)
     }
   }, [cacheKey, disabled, requested, retry, state.cacheKey, state.retryAt])
+
+  useEffect(() => {
+    if (
+      !autoRetry ||
+      autoRetry.cacheKey !== cacheKey ||
+      disabled ||
+      !requested
+    ) {
+      return undefined
+    }
+
+    const retryDelay = Math.max(0, autoRetry.at - Date.now())
+    const retryTimer = window.setTimeout(() => {
+      setAutoRetry(null)
+      setRequestGeneration((current) => current + 1)
+    }, retryDelay)
+    return () => window.clearTimeout(retryTimer)
+  }, [autoRetry, cacheKey, disabled, requested])
 
   const structuredLyrics =
     state.cacheKey === cacheKey ? state.structuredLyrics : null
