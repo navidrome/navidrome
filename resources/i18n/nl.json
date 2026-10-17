@@ -83,7 +83,8 @@
         "mood": "Sfeer",
         "date": "Opnamedatum",
         "missing": "Ontbrekend",
-        "libraryName": "Bibliotheek"
+        "libraryName": "Bibliotheek",
+        "played": ""
       },
       "actions": {
         "playAll": "Afspelen",
@@ -190,7 +191,30 @@
         "userName": "Gebruikersnaam",
         "lastSeen": "Laatst gezien op",
         "reportRealPath": "Toon het echte bestandspad",
-        "scrobbleEnabled": "Scrobbles naar externe dienst sturen"
+        "scrobbleEnabled": "Scrobbles naar externe dienst sturen",
+        "hasApiKey": ""
+      },
+      "menuName": "",
+      "actions": {
+        "generateApiKey": "",
+        "regenerateApiKey": "",
+        "revokeApiKey": "",
+        "copyApiKey": ""
+      },
+      "message": {
+        "apiKeyActive": "",
+        "apiKeyNone": "",
+        "apiKeyNoneOther": "",
+        "apiKeyPending": "",
+        "apiKeyRevokePending": "",
+        "deleteWithKeyTitle": "",
+        "deleteWithKeyContent": ""
+      },
+      "notifications": {
+        "apiKeyCopied": ""
+      },
+      "validation": {
+        "apiKeyFormat": ""
       }
     },
     "transcoding": {
@@ -305,11 +329,14 @@
         "totalDuration": "Afspeelduur",
         "defaultNewUsers": "Standaard voor nieuwe gebruikers",
         "createdAt": "Aangemaakt",
-        "updatedAt": "Bijgewerkt"
+        "updatedAt": "Bijgewerkt",
+        "pidAlbum": "",
+        "pidTrack": ""
       },
       "sections": {
         "basic": "Basisinformatie",
-        "statistics": "Statistieken"
+        "statistics": "Statistieken",
+        "pid": ""
       },
       "actions": {
         "scan": "Scan bibliotheek",
@@ -339,7 +366,17 @@
       "messages": {
         "deleteConfirm": "Weet je zeker dat je deze bibliotheek wil verwijderen? Dit verwijdert ook alle gerelateerde data en gebruikerstoegang.",
         "scanInProgress": "Scan is bezig...",
-        "noLibrariesAssigned": "Geen bibliotheken aan deze gebruiker toegewezen"
+        "noLibrariesAssigned": "Geen bibliotheken aan deze gebruiker toegewezen",
+        "pidChangeTitle": "",
+        "pidChangeConfirm": ""
+      },
+      "pid": {
+        "global": "",
+        "folder": "",
+        "custom": "",
+        "spec": "",
+        "help": "",
+        "docs": ""
       }
     },
     "plugin": {
@@ -610,9 +647,9 @@
     "coverUploadError": "Fout bij het toevoegen albumhoes",
     "coverRemoveError": "Fout bij verwijderen albumhoes",
     "metadataRefreshStarted": "Metadata verversen op de achtergrond",
-    "quickConnectApproved": "",
-    "quickConnectInvalidCode": "",
-    "quickConnectError": ""
+    "quickConnectApproved": "%{app} op %{device} is nu ingelogd",
+    "quickConnectInvalidCode": "Ongeldige of verlopen code",
+    "quickConnectError": "Kon de code niet goedkeuren"
   },
   "menu": {
     "library": "Bibliotheek",
@@ -650,12 +687,12 @@
     },
     "onlyFavourites": "Toon alleen favorieten",
     "quickConnect": {
-      "name": "",
-      "code": "",
-      "help": "",
-      "confirm": "",
-      "continue": "",
-      "approve": ""
+      "name": "Snel verbinden",
+      "code": "Code",
+      "help": "Voer de code in van een Jellyfin app om het in te loggen op je account",
+      "confirm": "Log %{app} %{version} op %{device} in op je account?",
+      "continue": "Doorgaan",
+      "approve": "Goedkeuren"
     }
   },
   "player": {
