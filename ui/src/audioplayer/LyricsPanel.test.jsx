@@ -193,6 +193,28 @@ describe('<LyricsPanel />', () => {
     cleanup()
   })
 
+  it('applies the per-song user offset to the karaoke timeline', () => {
+    const propsAt = (offsetMs) => ({
+      mainLyric,
+      offsetMs,
+      audioInstance: { currentTime: 1.1, paused: true },
+    })
+
+    const { rerenderPanel } = renderPanel(propsAt(0))
+
+    expect(screen.getByTestId('lyrics-line-group')).toHaveAttribute(
+      'data-highlight-active',
+      'false',
+    )
+
+    rerenderPanel(propsAt(1000))
+
+    expect(screen.getByTestId('lyrics-line-group')).toHaveAttribute(
+      'data-highlight-active',
+      'true',
+    )
+  })
+
   it('renders main, stacked pronunciation, and translation in layer order', () => {
     renderPanel({
       mainLyric: tokenizedMainLyric,

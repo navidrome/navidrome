@@ -97,9 +97,17 @@ const LyricsSidebar = ({
   showPronunciation,
   translationEnabled,
   pronunciationEnabled,
-  source,
   onToggleTranslation,
   onTogglePronunciation,
+  variants = [],
+  selectedSourceKey = null,
+  onSelectSource,
+  onSourceMenuOpenChange,
+  refreshing = false,
+  offsetMs = 0,
+  offsetEnabled = false,
+  onOffsetChange,
+  onDownload,
   audioInstance,
   loading = false,
   error = null,
@@ -279,7 +287,15 @@ const LyricsSidebar = ({
           translationEnabled={translationEnabled}
           onTogglePronunciation={onTogglePronunciation}
           onToggleTranslation={onToggleTranslation}
-          source={source}
+          variants={variants}
+          selectedSourceKey={selectedSourceKey}
+          onSelectSource={onSelectSource}
+          onSourceMenuOpenChange={onSourceMenuOpenChange}
+          refreshing={refreshing}
+          offsetMs={offsetMs}
+          offsetEnabled={offsetEnabled}
+          onOffsetChange={onOffsetChange}
+          onDownload={onDownload}
           active={interactive}
           labels={labels}
           testId="lyrics-sidebar-floating-controls"
@@ -293,6 +309,7 @@ const LyricsSidebar = ({
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
           audioInstance={audioInstance}
+          offsetMs={offsetMs}
           loading={loading}
           error={error}
           errorMessage={errorMessage}

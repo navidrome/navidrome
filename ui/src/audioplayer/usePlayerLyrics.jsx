@@ -1,13 +1,24 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
-import { hasStructuredLyricContent } from './lyrics'
+import { hasNudgeableTiming, hasStructuredLyricContent } from './lyrics'
+import { downloadLyrics } from './lyricsExport'
+import {
+  readLyricsOffset,
+  readPreferredSource,
+  writeLyricsOffset,
+  writePreferredSource,
+} from './lyricsPreferences'
+import { getVariantLabel } from './lyricsSource'
 import {
   resolveLyricsSidebarState,
   toggleLayerPreference,
 } from './lyricsSidebarState'
 import useEnhancedLyrics from './useEnhancedLyrics'
+
+const SOURCE_REFRESH_INTERVAL_MS = 5_000
+const SOURCE_REFRESH_MAX_TICKS = 12
 
 const usePlayerLyrics = ({
   trackId,
@@ -21,30 +32,69 @@ const usePlayerLyrics = ({
   const [lyricsVisiblePreference, setLyricsVisiblePreference] = useState(false)
   const [translationPreference, setTranslationPreference] = useState(null)
   const [pronunciationPreference, setPronunciationPreference] = useState(null)
+  const [selectedSourceKey, setSelectedSourceKey] = useState(() =>
+    readPreferredSource(trackId),
+  )
+  const [offsetMs, setOffsetMs] = useState(0)
+  const [sourceMenuOpen, setSourceMenuOpen] = useState(false)
   const lyricsToggleRef = useRef(null)
 
   const {
+    variants,
     layers: lyricLayers,
     loading: lyricsLoading,
+    refreshing: lyricsRefreshing,
     error: lyricsError,
     retryAfterSeconds: lyricsRetryAfterSeconds,
     retry: retryLyrics,
+    refresh: refreshLyrics,
   } = useEnhancedLyrics({
     trackId,
     updatedAt: trackUpdatedAt,
     disabled: isRadio,
     requested: lyricsVisiblePreference,
+    selectedSourceKey,
   })
+
+  // The selected variant falls back to the plugin's winner when the saved
+  // source is not in this track's response (cache expiry, config change).
+  const resolvedVariantKey = useMemo(() => {
+    if (
+      selectedSourceKey &&
+      variants.some((variant) => variant.key === selectedSourceKey)
+    ) {
+      return selectedSourceKey
+    }
+    return variants[0]?.key ?? null
+  }, [selectedSourceKey, variants])
+
+  useEffect(() => {
+    setSelectedSourceKey(readPreferredSource(trackId))
+    setSourceMenuOpen(false)
+  }, [trackId])
+
+  useEffect(() => {
+    setOffsetMs(readLyricsOffset(trackId, resolvedVariantKey))
+  }, [resolvedVariantKey, trackId])
+
+  // Progressive fill: while the source menu is open, ask for the served
+  // variants again on a bounded interval so sweep-filled sources appear.
+  useEffect(() => {
+    if (!sourceMenuOpen) return undefined
+    refreshLyrics()
+    let ticks = 0
+    const timer = window.setInterval(() => {
+      ticks += 1
+      refreshLyrics()
+      if (ticks >= SOURCE_REFRESH_MAX_TICKS) window.clearInterval(timer)
+    }, SOURCE_REFRESH_INTERVAL_MS)
+    return () => window.clearInterval(timer)
+  }, [refreshLyrics, sourceMenuOpen])
 
   const hasTranslationLyric = hasStructuredLyricContent(lyricLayers.translation)
   const hasPronunciationLyric = hasStructuredLyricContent(
     lyricLayers.pronunciation,
   )
-  const lyricsSource =
-    lyricLayers.main?.source ||
-    lyricLayers.translation?.source ||
-    lyricLayers.pronunciation?.source ||
-    null
   const { lyricsVisible, showTranslation, showPronunciation } =
     resolveLyricsSidebarState({
       lyricsVisiblePreference,
@@ -55,6 +105,7 @@ const usePlayerLyrics = ({
     })
   const lyricsToggleDisabled = !lyricsVisiblePreference && (isRadio || !trackId)
   const useInlineMobileLyrics = lyricsVisible && !isDesktop
+  const offsetEnabled = hasNudgeableTiming(lyricLayers.main)
 
   const labels = useMemo(
     () => ({
@@ -79,8 +130,26 @@ const usePlayerLyrics = ({
       embeddedSource: translate('player.embeddedLyricsSourceText'),
       sidecarSource: translate('player.sidecarLyricsSourceText'),
       pluginSource: translate('player.pluginLyricsSourceText'),
-      provider: translate('player.lyricsProviderText'),
-      format: translate('player.lyricsFormatText'),
+      autoSource: translate('player.autoLyricsSourceText'),
+      refreshingSources: translate('player.refreshingLyricsSourcesText'),
+      wordSynced: translate('player.wordSyncedLyricText'),
+      lineSynced: translate('player.lineSyncedLyricText'),
+      plainSynced: translate('player.plainLyricText'),
+      offset: translate('player.lyricsOffsetText'),
+      offsetCoarseEarlier: translate('player.lyricsOffsetEarlierText', {
+        seconds: '0.5',
+      }),
+      offsetFineEarlier: translate('player.lyricsOffsetEarlierText', {
+        seconds: '0.05',
+      }),
+      offsetCoarseLater: translate('player.lyricsOffsetLaterText', {
+        seconds: '0.5',
+      }),
+      offsetFineLater: translate('player.lyricsOffsetLaterText', {
+        seconds: '0.05',
+      }),
+      offsetReset: translate('player.lyricsOffsetResetText'),
+      download: translate('player.downloadLyricsText'),
     }),
     [lyricsRetryAfterSeconds, translate],
   )
@@ -109,6 +178,61 @@ const usePlayerLyrics = ({
     )
   }, [hasPronunciationLyric])
 
+  const selectSource = useCallback(
+    (sourceKey) => {
+      const next = sourceKey || null
+      setSelectedSourceKey(next)
+      writePreferredSource(trackId, next)
+    },
+    [trackId],
+  )
+
+  const changeOffset = useCallback(
+    (nextOffsetMs) => {
+      setOffsetMs(nextOffsetMs)
+      writeLyricsOffset(trackId, resolvedVariantKey, nextOffsetMs)
+    },
+    [resolvedVariantKey, trackId],
+  )
+
+  const handleSourceMenuOpenChange = useCallback((open) => {
+    setSourceMenuOpen(open)
+  }, [])
+
+  const downloadSelected = useCallback(() => {
+    downloadLyrics(lyricLayers.main, {
+      format: lyricLayers.main?.source?.format,
+      artist: lyricLayers.main?.displayArtist,
+      title: lyricLayers.main?.displayTitle,
+      label: getVariantLabel(lyricLayers.main?.source, labels),
+    })
+  }, [labels, lyricLayers.main])
+
+  const variantControlProps = useMemo(
+    () => ({
+      variants,
+      selectedSourceKey,
+      onSelectSource: selectSource,
+      onSourceMenuOpenChange: handleSourceMenuOpenChange,
+      refreshing: lyricsRefreshing,
+      offsetMs,
+      offsetEnabled,
+      onOffsetChange: changeOffset,
+      onDownload: downloadSelected,
+    }),
+    [
+      changeOffset,
+      downloadSelected,
+      handleSourceMenuOpenChange,
+      lyricsRefreshing,
+      offsetEnabled,
+      offsetMs,
+      selectSource,
+      selectedSourceKey,
+      variants,
+    ],
+  )
+
   const toolbarLyricsProps = useMemo(
     () => ({
       onToggleLyrics: toggleLyrics,
@@ -132,9 +256,9 @@ const usePlayerLyrics = ({
       showPronunciation,
       translationEnabled: hasTranslationLyric,
       pronunciationEnabled: hasPronunciationLyric,
-      source: lyricsSource,
       onToggleTranslation: toggleTranslation,
       onTogglePronunciation: togglePronunciation,
+      ...variantControlProps,
       audioInstance,
       loading: lyricsLoading,
       error: lyricsError,
@@ -154,13 +278,13 @@ const usePlayerLyrics = ({
       lyricLayers.translation,
       lyricsError,
       lyricsLoading,
-      lyricsSource,
       lyricsVisible,
       obscuredByQueue,
       showPronunciation,
       showTranslation,
       togglePronunciation,
       toggleTranslation,
+      variantControlProps,
     ],
   )
 
@@ -180,6 +304,7 @@ const usePlayerLyrics = ({
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
           audioInstance={audioInstance}
+          offsetMs={offsetMs}
           loading={lyricsLoading}
           error={lyricsError}
           errorMessage={labels.rateLimited}
@@ -194,7 +319,7 @@ const usePlayerLyrics = ({
           pronunciationEnabled={hasPronunciationLyric}
           onToggleTranslation={toggleTranslation}
           onTogglePronunciation={togglePronunciation}
-          source={lyricsSource}
+          {...variantControlProps}
           active={useInlineMobileLyrics && !obscuredByQueue}
           labels={labels}
           testId="lyrics-mobile-layer-controls"
@@ -205,19 +330,20 @@ const usePlayerLyrics = ({
       audioInstance,
       hasPronunciationLyric,
       hasTranslationLyric,
+      labels,
       lyricLayers.main,
       lyricLayers.pronunciation,
       lyricLayers.translation,
       lyricsError,
       lyricsLoading,
-      lyricsSource,
-      labels,
       obscuredByQueue,
+      offsetMs,
       showPronunciation,
       showTranslation,
       togglePronunciation,
       toggleTranslation,
       useInlineMobileLyrics,
+      variantControlProps,
     ],
   )
 

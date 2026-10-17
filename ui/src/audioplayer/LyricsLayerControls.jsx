@@ -1,45 +1,38 @@
+import Button from '@material-ui/core/Button'
+import CircularProgress from '@material-ui/core/CircularProgress'
 import IconButton from '@material-ui/core/IconButton'
+import Menu from '@material-ui/core/Menu'
+import MenuItem from '@material-ui/core/MenuItem'
 import Popover from '@material-ui/core/Popover'
 import Tooltip from '@material-ui/core/Tooltip'
 import Typography from '@material-ui/core/Typography'
 import { alpha, makeStyles } from '@material-ui/core/styles'
-import InfoOutlinedIcon from '@material-ui/icons/InfoOutlined'
+import AvTimerIcon from '@material-ui/icons/AvTimer'
+import GetAppIcon from '@material-ui/icons/GetApp'
+import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import RecordVoiceOverIcon from '@material-ui/icons/RecordVoiceOver'
+import RotateLeftIcon from '@material-ui/icons/RotateLeft'
 import TranslateIcon from '@material-ui/icons/Translate'
 import clsx from 'clsx'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
+import {
+  LYRICS_OFFSET_COARSE_MS,
+  LYRICS_OFFSET_FINE_MS,
+  formatLyricsOffset,
+  stepLyricsOffset,
+} from './lyrics'
+import { formatSourceValue, getVariantLabel } from './lyricsSource'
 
-const UPPERCASE_SOURCE_VALUES = new Set([
-  'elrc',
-  'lrc',
-  'srt',
-  'ttml',
-  'txt',
-  'yaml',
-])
+const noop = () => {}
 
-const formatSourceValue = (value) => {
-  const normalized = typeof value === 'string' ? value.trim() : ''
-  if (!normalized) return ''
-  if (UPPERCASE_SOURCE_VALUES.has(normalized.toLowerCase())) {
-    return normalized.toUpperCase()
-  }
-  if (normalized.toLowerCase() === 'plain') return 'Plain text'
-  return normalized
-    .replace(/[-_]+/g, ' ')
-    .replace(/\b\w/g, (character) => character.toUpperCase())
-}
-
-const getSourceName = (source, labels) => {
-  switch (source?.type) {
-    case 'embedded':
-      return labels.embeddedSource || 'Embedded lyrics'
-    case 'sidecar':
-      return labels.sidecarSource || 'Sidecar file'
-    case 'plugin':
-      return source.name || labels.pluginSource || 'Lyrics plugin'
+const syncLabelFor = (sync, labels) => {
+  switch (sync) {
+    case 'word':
+      return labels.wordSynced || 'Word-synced'
+    case 'line':
+      return labels.lineSynced || 'Line-synced'
     default:
-      return source?.name || formatSourceValue(source?.type) || 'Lyrics'
+      return labels.plainSynced || 'Plain text'
   }
 }
 
@@ -103,35 +96,56 @@ const useStyles = makeStyles(
       },
     },
     controlActive: {},
-    sourcePopover: {
-      minWidth: 200,
-      maxWidth: 280,
-      padding: theme.spacing(1.5, 2),
+    sourceMenu: {
+      minWidth: 210,
+      maxWidth: 320,
+    },
+    sourceHeader: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing(1),
+      padding: theme.spacing(1, 2, 0.5),
     },
     sourceHeading: {
       display: 'block',
       color: alpha(theme.palette.text.primary, 0.58),
       lineHeight: 1.4,
     },
-    sourceName: {
-      marginTop: theme.spacing(0.25),
-      color: theme.palette.text.primary,
-      overflowWrap: 'anywhere',
-    },
-    sourceDetails: {
-      display: 'grid',
-      gridTemplateColumns: 'auto minmax(0, 1fr)',
-      columnGap: theme.spacing(1.5),
-      rowGap: theme.spacing(0.5),
-      marginTop: theme.spacing(1),
-    },
-    sourceDetailLabel: {
+    sourceSpinner: {
       color: alpha(theme.palette.text.primary, 0.58),
     },
-    sourceDetailValue: {
-      color: theme.palette.text.primary,
-      textAlign: 'right',
+    sourceItem: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: theme.spacing(2),
+    },
+    variantLabel: {
       overflowWrap: 'anywhere',
+    },
+    variantMeta: {
+      color: alpha(theme.palette.text.primary, 0.58),
+      whiteSpace: 'nowrap',
+    },
+    offsetPopover: {
+      padding: theme.spacing(1, 1.5),
+    },
+    offsetRow: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(0.5),
+    },
+    offsetStep: {
+      minWidth: 0,
+      padding: theme.spacing(0.25, 0.75),
+      color: alpha(theme.palette.text.primary, 0.78),
+      whiteSpace: 'nowrap',
+    },
+    offsetValue: {
+      minWidth: 64,
+      textAlign: 'center',
+      fontVariantNumeric: 'tabular-nums',
+      color: theme.palette.text.primary,
     },
   }),
   { name: 'NDLyricsLayerControls' },
@@ -175,29 +189,53 @@ const LyricsLayerControls = ({
   pronunciationEnabled,
   onToggleTranslation,
   onTogglePronunciation,
-  source,
+  variants = [],
+  selectedSourceKey = null,
+  onSelectSource = noop,
+  onSourceMenuOpenChange = noop,
+  refreshing = false,
+  offsetMs = 0,
+  offsetEnabled = false,
+  onOffsetChange = noop,
+  onDownload = noop,
   active = true,
   labels = {},
   testId = 'lyrics-layer-controls',
 }) => {
   const classes = useStyles()
   const [sourceAnchor, setSourceAnchor] = useState(null)
-  const sourcePopoverId = `${testId}-source-popover`
-  const sourceOpen = Boolean(active && source && sourceAnchor)
-  const sourceDetails = [
-    {
-      label: labels.provider || 'Provider',
-      value: formatSourceValue(source?.provider),
-    },
-    {
-      label: labels.format || 'Format',
-      value: formatSourceValue(source?.format),
-    },
-  ].filter((detail) => detail.value)
+  const [offsetAnchor, setOffsetAnchor] = useState(null)
+  const sourceMenuId = `${testId}-source-menu`
+  const offsetPopoverId = `${testId}-offset-popover`
+  const hasVariants = variants.length > 0
+  const sourceOpen = Boolean(active && hasVariants && sourceAnchor)
+  const offsetOpen = Boolean(active && offsetEnabled && offsetAnchor)
+  const offsetLabel = labels.offset || 'Lyrics timing offset'
 
   useEffect(() => {
-    if (!active || !source) setSourceAnchor(null)
-  }, [active, source])
+    if (!sourceOpen) return undefined
+    onSourceMenuOpenChange(true)
+    return () => onSourceMenuOpenChange(false)
+  }, [onSourceMenuOpenChange, sourceOpen])
+
+  useEffect(() => {
+    if (!active || !hasVariants) setSourceAnchor(null)
+  }, [active, hasVariants])
+
+  useEffect(() => {
+    if (!active || !offsetEnabled) setOffsetAnchor(null)
+  }, [active, offsetEnabled])
+
+  const selectSource = useCallback(
+    (sourceKey) => {
+      setSourceAnchor(null)
+      onSelectSource(sourceKey)
+    },
+    [onSelectSource],
+  )
+
+  const stepOffset = (delta) =>
+    onOffsetChange(stepLyricsOffset(offsetMs, delta))
 
   return (
     <div
@@ -208,68 +246,187 @@ const LyricsLayerControls = ({
       data-testid={testId}
       onClick={(event) => event.stopPropagation()}
     >
-      {source && (
+      {hasVariants && (
         <>
           <Tooltip title={labels.viewSource || 'View lyrics source'}>
             <IconButton
               size="small"
               onClick={(event) => setSourceAnchor(event.currentTarget)}
               aria-label={labels.viewSource || 'View lyrics source'}
-              aria-haspopup="dialog"
+              aria-haspopup="menu"
               aria-expanded={sourceOpen}
-              aria-controls={sourceOpen ? sourcePopoverId : undefined}
+              aria-controls={sourceOpen ? sourceMenuId : undefined}
               data-testid="lyrics-source-button"
               className={clsx(classes.controlButton, {
                 [classes.controlActive]: sourceOpen,
               })}
             >
-              <InfoOutlinedIcon fontSize="small" />
+              <LibraryMusicIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Popover
-            id={sourcePopoverId}
-            open={sourceOpen}
+          <Menu
+            id={sourceMenuId}
             anchorEl={sourceAnchor}
+            open={sourceOpen}
             onClose={() => setSourceAnchor(null)}
             anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
             transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            PaperProps={{ className: classes.sourcePopover }}
+            PaperProps={{ className: classes.sourceMenu }}
+            onClick={(event) => event.stopPropagation()}
           >
-            <div
-              role="dialog"
-              aria-label={labels.sourceTitle || 'Lyrics source'}
-              onClick={(event) => event.stopPropagation()}
-            >
+            <li className={classes.sourceHeader} role="presentation">
               <Typography variant="overline" className={classes.sourceHeading}>
                 {labels.sourceTitle || 'Lyrics source'}
               </Typography>
-              <Typography variant="subtitle2" className={classes.sourceName}>
-                {getSourceName(source, labels)}
-              </Typography>
-              {sourceDetails.length > 0 && (
-                <div className={classes.sourceDetails}>
-                  {sourceDetails.map((detail) => (
-                    <React.Fragment key={detail.label}>
-                      <Typography
-                        variant="caption"
-                        className={classes.sourceDetailLabel}
-                      >
-                        {detail.label}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        className={classes.sourceDetailValue}
-                      >
-                        {detail.value}
-                      </Typography>
-                    </React.Fragment>
-                  ))}
-                </div>
+              {refreshing && (
+                <CircularProgress
+                  size={12}
+                  className={classes.sourceSpinner}
+                  aria-label={
+                    labels.refreshingSources || 'Looking for more sources'
+                  }
+                />
               )}
-            </div>
-          </Popover>
+            </li>
+            <MenuItem
+              role="menuitemradio"
+              aria-checked={selectedSourceKey == null}
+              selected={selectedSourceKey == null}
+              onClick={() => selectSource(null)}
+              className={classes.sourceItem}
+              data-testid="lyrics-source-auto"
+            >
+              {labels.autoSource || 'Auto (best match)'}
+            </MenuItem>
+            {variants.map((variant) => (
+              <MenuItem
+                key={variant.key}
+                role="menuitemradio"
+                aria-checked={selectedSourceKey === variant.key}
+                selected={selectedSourceKey === variant.key}
+                onClick={() => selectSource(variant.key)}
+                className={classes.sourceItem}
+                data-testid={`lyrics-source-${variant.key}`}
+              >
+                <span className={classes.variantLabel}>
+                  {getVariantLabel(variant.source, labels)}
+                </span>
+                <span className={classes.variantMeta}>
+                  {[
+                    formatSourceValue(variant.source?.format),
+                    syncLabelFor(variant.sync, labels),
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </MenuItem>
+            ))}
+          </Menu>
         </>
       )}
+      <Tooltip title={offsetLabel}>
+        <span>
+          <IconButton
+            size="small"
+            disabled={!offsetEnabled}
+            onClick={(event) => setOffsetAnchor(event.currentTarget)}
+            aria-label={`${offsetLabel}: ${formatLyricsOffset(offsetMs)}`}
+            aria-haspopup="dialog"
+            aria-expanded={offsetOpen}
+            aria-controls={offsetOpen ? offsetPopoverId : undefined}
+            data-testid="lyrics-offset-button"
+            className={clsx(classes.controlButton, {
+              [classes.controlActive]: offsetOpen || offsetMs !== 0,
+            })}
+          >
+            <AvTimerIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+      <Popover
+        id={offsetPopoverId}
+        open={offsetOpen}
+        anchorEl={offsetAnchor}
+        onClose={() => setOffsetAnchor(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        PaperProps={{ className: classes.offsetPopover }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div
+          className={classes.offsetRow}
+          role="group"
+          aria-label={offsetLabel}
+        >
+          <Button
+            size="small"
+            aria-label={labels.offsetCoarseEarlier}
+            onClick={() => stepOffset(-LYRICS_OFFSET_COARSE_MS)}
+            className={classes.offsetStep}
+          >
+            -0.5 s
+          </Button>
+          <Button
+            size="small"
+            aria-label={labels.offsetFineEarlier}
+            onClick={() => stepOffset(-LYRICS_OFFSET_FINE_MS)}
+            className={classes.offsetStep}
+          >
+            -0.05 s
+          </Button>
+          <Typography
+            variant="body2"
+            component="span"
+            className={classes.offsetValue}
+          >
+            {formatLyricsOffset(offsetMs)}
+          </Typography>
+          <Button
+            size="small"
+            aria-label={labels.offsetFineLater}
+            onClick={() => stepOffset(LYRICS_OFFSET_FINE_MS)}
+            className={classes.offsetStep}
+          >
+            +0.05 s
+          </Button>
+          <Button
+            size="small"
+            aria-label={labels.offsetCoarseLater}
+            onClick={() => stepOffset(LYRICS_OFFSET_COARSE_MS)}
+            className={classes.offsetStep}
+          >
+            +0.5 s
+          </Button>
+          <Tooltip title={labels.offsetReset || 'Reset timing offset'}>
+            <span>
+              <IconButton
+                size="small"
+                disabled={offsetMs === 0}
+                onClick={() => onOffsetChange(0)}
+                aria-label={labels.offsetReset || 'Reset timing offset'}
+                data-testid="lyrics-offset-reset"
+                className={classes.controlButton}
+              >
+                <RotateLeftIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </div>
+      </Popover>
+      <Tooltip title={labels.download || 'Download lyrics'}>
+        <span>
+          <IconButton
+            size="small"
+            disabled={!hasVariants}
+            onClick={onDownload}
+            aria-label={labels.download || 'Download lyrics'}
+            data-testid="lyrics-download-button"
+            className={classes.controlButton}
+          >
+            <GetAppIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
       <LayerButton
         active={showPronunciation}
         classes={classes}

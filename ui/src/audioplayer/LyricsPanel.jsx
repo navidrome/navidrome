@@ -414,6 +414,7 @@ const LyricsPanel = ({
   showTranslation,
   showPronunciation,
   audioInstance,
+  offsetMs = 0,
   inline = false,
   loading = false,
   error = null,
@@ -440,14 +441,17 @@ const LyricsPanel = ({
     ? KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO
     : KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO
 
-  const mainLines = useMemo(() => buildKaraokeLines(mainLyric), [mainLyric])
+  const mainLines = useMemo(
+    () => buildKaraokeLines(mainLyric, offsetMs),
+    [mainLyric, offsetMs],
+  )
   const translationLines = useMemo(
-    () => buildKaraokeLines(translationLyric),
-    [translationLyric],
+    () => buildKaraokeLines(translationLyric, offsetMs),
+    [offsetMs, translationLyric],
   )
   const pronunciationLines = useMemo(
-    () => buildKaraokeLines(pronunciationLyric),
-    [pronunciationLyric],
+    () => buildKaraokeLines(pronunciationLyric, offsetMs),
+    [offsetMs, pronunciationLyric],
   )
   const hasTimedMainLines = useMemo(
     () => hasUsableKaraokeTiming(mainLines),

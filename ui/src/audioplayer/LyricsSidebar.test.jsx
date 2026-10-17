@@ -37,6 +37,7 @@ const source = {
   provider: 'ttml',
   format: 'ttml',
 }
+const variants = [{ key: 'better-lyrics', source, sync: 'word' }]
 const originalPointerEvent = window.PointerEvent
 
 const ControlledLyricsSidebar = ({
@@ -190,18 +191,16 @@ describe('<LyricsSidebar />', () => {
     expect(sidebar).not.toHaveAttribute('inert')
   })
 
-  it('closes the source popover when the queue obscures the sidebar', async () => {
-    const { rerender } = renderSidebar({ source })
+  it('closes the source menu when the queue obscures the sidebar', async () => {
+    const { rerender } = renderSidebar({ variants })
 
     fireEvent.click(screen.getByRole('button', { name: 'View lyrics source' }))
-    expect(screen.getByRole('dialog', { name: 'Lyrics source' })).toBeVisible()
+    expect(screen.getByRole('menu')).toBeVisible()
 
-    rerender(sidebarView({ source, obscuredByQueue: true }))
+    rerender(sidebarView({ variants, obscuredByQueue: true }))
 
     await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Lyrics source' }),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument(),
     )
   })
 

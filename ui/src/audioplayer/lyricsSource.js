@@ -34,3 +34,9 @@ export const getSourceName = (source, labels) => {
       return source?.name || formatSourceValue(source?.type) || 'Lyrics'
   }
 }
+
+// Variant labels identify the upstream that actually served the lyrics: with
+// a provider the plugin name is shared by every variant and would not
+// distinguish them.
+export const getVariantLabel = (source, labels) =>
+  formatSourceValue(source?.provider) || getSourceName(source, labels)

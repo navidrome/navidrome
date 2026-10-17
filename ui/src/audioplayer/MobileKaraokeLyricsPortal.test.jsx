@@ -28,9 +28,12 @@ const { defaultLyricsResponse, useEnhancedLyricsMock } = vi.hoisted(() => {
       translation: null,
       pronunciation: null,
     },
+    variants: [],
     loading: false,
+    refreshing: false,
     error: null,
     retry: vi.fn(),
+    refresh: vi.fn(),
   }
   return {
     defaultLyricsResponse,
@@ -40,6 +43,18 @@ const { defaultLyricsResponse, useEnhancedLyricsMock } = vi.hoisted(() => {
 
 const sourcedLyricsResponse = {
   ...defaultLyricsResponse,
+  variants: [
+    {
+      key: 'better-lyrics',
+      source: {
+        type: 'plugin',
+        name: 'Better Lyrics',
+        provider: 'ttml',
+        format: 'ttml',
+      },
+      sync: 'word',
+    },
+  ],
   layers: {
     ...defaultLyricsResponse.layers,
     main: {
@@ -214,7 +229,7 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     expect(layer).toHaveStyle({ pointerEvents: 'auto' })
   })
 
-  it('closes the source popover when the queue obscures mobile lyrics', async () => {
+  it('closes the source menu when the queue obscures mobile lyrics', async () => {
     useEnhancedLyricsMock.mockImplementation(() => sourcedLyricsResponse)
     const host = createHost()
     const { rerender } = render(<MobileLyricsHarness />)
@@ -222,12 +237,12 @@ describe('<MobileKaraokeLyricsPortal />', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Toggle lyrics' }))
     const sourceButton = await within(host).findByTestId('lyrics-source-button')
     fireEvent.click(sourceButton)
-    expect(screen.getByRole('dialog')).toBeVisible()
+    expect(screen.getByRole('menu')).toBeVisible()
 
     rerender(<MobileLyricsHarness obscuredByQueue />)
 
     await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument(),
     )
   })
 
