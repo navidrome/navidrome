@@ -252,6 +252,66 @@ export const hasStructuredLyricContent = (structuredLyric) =>
       hasCueTiming(structuredLyric)),
   )
 
+// variantKey identifies a lyrics source for selection and persistence. The
+// plugin's provider label is the upstream identity; name and type cover
+// non-plugin sources.
+export const variantKey = (source) => {
+  const label = [source?.provider, source?.name, source?.type].find(
+    (value) => typeof value === 'string' && value.trim() !== '',
+  )
+  return (label || 'unknown').trim().toLowerCase()
+}
+
+// variantSync grades a variant for its badge: word timing from cue lines,
+// line timing from synced line starts, plain otherwise.
+export const variantSync = (lyric) => {
+  if (hasCueTiming(lyric)) return 'word'
+  if (hasTimedLines(lyric)) return 'line'
+  return 'plain'
+}
+
+// mainKindEntries mirrors the contract's main rule: blank/unknown kinds count
+// as main, and a response without any main entry falls back to every entry.
+const mainKindEntries = (available) => {
+  const mains = available.filter(
+    (lyric) => normalizeLyricKind(lyric?.kind) === LYRIC_KIND_MAIN,
+  )
+  return mains.length > 0 ? mains : available
+}
+
+// groupLyricVariants groups entries by source, keeping first-appearance
+// order. One source can emit several main entries (embedded multi-language
+// tags), and they stay one variant.
+const groupLyricVariants = (entries) => {
+  const variants = []
+  const byKey = new Map()
+  for (const lyric of entries) {
+    const key = variantKey(lyric?.source)
+    let variant = byKey.get(key)
+    if (!variant) {
+      variant = {
+        key,
+        source: lyric?.source || null,
+        sync: variantSync(lyric),
+        lyric,
+        entries: [],
+      }
+      byKey.set(key, variant)
+      variants.push(variant)
+    }
+    variant.entries.push(lyric)
+  }
+  return variants
+}
+
+export const collectLyricVariants = (structuredLyrics) => {
+  if (!Array.isArray(structuredLyrics)) return []
+  const available = structuredLyrics.filter(hasStructuredLyricContent)
+  return groupLyricVariants(mainKindEntries(available)).map(
+    ({ entries, ...variant }) => variant,
+  )
+}
+
 export const getPreferredLyricLanguage = () => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -267,7 +327,11 @@ export const getPreferredLyricLanguage = () => {
   return 'en'
 }
 
-export const selectLyricLayers = (structuredLyrics, preferredLanguage) => {
+export const selectLyricLayers = (
+  structuredLyrics,
+  preferredLanguage,
+  selectedSourceKey = null,
+) => {
   if (!Array.isArray(structuredLyrics)) {
     return { main: null, translation: null, pronunciation: null }
   }
@@ -287,18 +351,32 @@ export const selectLyricLayers = (structuredLyrics, preferredLanguage) => {
     grouped[normalizeLyricKind(lyric?.kind)].push(lyric)
   }
 
-  const mainCandidates = grouped[LYRIC_KIND_MAIN].length
-    ? grouped[LYRIC_KIND_MAIN]
-    : available
+  const variants = groupLyricVariants(mainKindEntries(available))
+  const selectedVariant =
+    variants.find((variant) => variant.key === selectedSourceKey) ||
+    variants[0] ||
+    null
+  const mainCandidates = selectedVariant ? selectedVariant.entries : []
+
+  // Translation/pronunciation entries travel with their own source when the
+  // response tags them; without a tagged match the global pick stands.
+  const scopedLayer = (kind) => {
+    const entries = grouped[kind]
+    if (!selectedVariant || entries.length === 0) return entries
+    const scoped = entries.filter(
+      (lyric) => variantKey(lyric?.source) === selectedVariant.key,
+    )
+    return scoped.length > 0 ? scoped : entries
+  }
 
   return {
     main: pickPreferredLyric(mainCandidates, preferredLanguage),
     translation: pickPreferredLyric(
-      grouped[LYRIC_KIND_TRANSLATION],
+      scopedLayer(LYRIC_KIND_TRANSLATION),
       preferredLanguage,
     ),
     pronunciation: pickPreferredLyric(
-      grouped[LYRIC_KIND_PRONUNCIATION],
+      scopedLayer(LYRIC_KIND_PRONUNCIATION),
       preferredLanguage,
     ),
   }

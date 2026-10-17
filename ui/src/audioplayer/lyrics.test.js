@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildKaraokeLines,
+  collectLyricVariants,
   getPreferredLyricLanguage,
   hasStructuredLyricContent,
   selectLyricLayers,
@@ -358,5 +359,145 @@ describe('lyrics helpers', () => {
         line: [],
       }),
     ).toBe(false)
+  })
+})
+
+describe('lyrics variants', () => {
+  it('groups main entries from the same source into one variant', () => {
+    const lyrics = [
+      {
+        ...structured('main', 'eng', 'Hello'),
+        source: { type: 'embedded' },
+      },
+      {
+        ...structured('main', 'jpn', 'こんにちは'),
+        source: { type: 'embedded' },
+      },
+    ]
+
+    const variants = collectLyricVariants(lyrics)
+
+    expect(variants).toHaveLength(1)
+    expect(variants[0].key).toBe('embedded')
+  })
+
+  it('lists plugin variants in response order with their sync levels', () => {
+    const wordEntry = {
+      kind: 'main',
+      lang: 'eng',
+      synced: true,
+      line: [timed('word line', 0)],
+      cueLine: [
+        cueLine(0, 'word line', 0, 1000, [{ start: 0, value: 'word line' }]),
+      ],
+      source: {
+        type: 'plugin',
+        name: 'Better Lyrics',
+        provider: 'NetEase',
+        format: 'elrc',
+      },
+    }
+    const lineEntry = {
+      ...structured('main', 'eng', 'line line'),
+      source: {
+        type: 'plugin',
+        name: 'Better Lyrics',
+        provider: 'LRCLib',
+        format: 'lrc',
+      },
+    }
+    const plainEntry = {
+      kind: 'main',
+      lang: 'eng',
+      synced: false,
+      line: [{ value: 'plain words' }],
+      source: { type: 'plugin', provider: 'Genius', format: 'plain' },
+    }
+
+    expect(
+      collectLyricVariants([wordEntry, lineEntry, plainEntry]).map((v) => [
+        v.key,
+        v.sync,
+      ]),
+    ).toEqual([
+      ['netease', 'word'],
+      ['lrclib', 'line'],
+      ['genius', 'plain'],
+    ])
+  })
+
+  it('selects the requested variant and falls back to the winner', () => {
+    const netease = {
+      ...structured('main', 'eng', 'NetEase line'),
+      source: { provider: 'NetEase', format: 'elrc' },
+    }
+    const lrclib = {
+      ...structured('main', 'eng', 'LRCLib line'),
+      source: { provider: 'LRCLib', format: 'lrc' },
+    }
+    const lyrics = [netease, lrclib]
+
+    expect(selectLyricLayers(lyrics, 'en').main.line[0].value).toBe(
+      'NetEase line',
+    )
+    expect(selectLyricLayers(lyrics, 'en', 'lrclib').main.line[0].value).toBe(
+      'LRCLib line',
+    )
+    expect(selectLyricLayers(lyrics, 'en', 'gone').main.line[0].value).toBe(
+      'NetEase line',
+    )
+  })
+
+  it('keeps the language pick inside the selected variant', () => {
+    const english = {
+      ...structured('main', 'eng', 'English words'),
+      source: { provider: 'NetEase' },
+    }
+    const japanese = {
+      ...structured('main', 'jpn', '日本語の歌詞'),
+      source: { provider: 'NetEase' },
+    }
+
+    expect(
+      selectLyricLayers([english, japanese], 'ja').main.line[0].value,
+    ).toBe('日本語の歌詞')
+    expect(
+      selectLyricLayers([english, japanese], 'en').main.line[0].value,
+    ).toBe('English words')
+  })
+
+  it('scopes translation layers to the selected source with a global fallback', () => {
+    const neteaseMain = {
+      ...structured('main', 'eng', 'NetEase main'),
+      source: { provider: 'NetEase' },
+    }
+    const geniusMain = {
+      ...structured('main', 'eng', 'Genius main'),
+      source: { provider: 'Genius' },
+    }
+    const neteaseTranslation = {
+      ...structured('translation', 'es', 'Traducción NetEase'),
+      source: { provider: 'NetEase' },
+    }
+    const geniusTranslation = {
+      ...structured('translation', 'fr', 'Traduction Genius'),
+      source: { provider: 'Genius' },
+    }
+
+    const scoped = selectLyricLayers(
+      [neteaseMain, geniusMain, neteaseTranslation, geniusTranslation],
+      'en',
+      'genius',
+    )
+    expect(scoped.main.line[0].value).toBe('Genius main')
+    expect(scoped.translation.line[0].value).toBe('Traduction Genius')
+
+    const fallback = selectLyricLayers(
+      [neteaseMain, geniusMain, geniusTranslation],
+      'en',
+      'netease',
+    )
+    expect(fallback.main.line[0].value).toBe('NetEase main')
+    expect(fallback.translation.line[0].value).toBe('Traduction Genius')
   })
 })
