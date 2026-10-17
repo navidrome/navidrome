@@ -31,6 +31,22 @@ const responseFor = (value, lang = 'en', source) => ({
   },
 })
 
+const responseForEntries = (entries) => ({
+  json: {
+    'subsonic-response': {
+      lyricsList: { structuredLyrics: entries },
+    },
+  },
+})
+
+const sourceEntry = (provider, value) => ({
+  kind: 'main',
+  lang: 'en',
+  synced: true,
+  line: [{ start: 0, value }],
+  source: { type: 'plugin', provider, format: 'lrc' },
+})
+
 const createDeferred = () => {
   let resolve
   let reject
@@ -227,6 +243,125 @@ describe('useEnhancedLyrics', () => {
     expect(signal.aborted).toBe(false)
     second.unmount()
     expect(signal.aborted).toBe(true)
+  })
+
+  it('exposes variants in response order with auto selection', async () => {
+    subsonic.getLyricsBySongId.mockResolvedValueOnce(
+      responseForEntries([
+        sourceEntry('NetEase', 'NetEase line'),
+        sourceEntry('LRCLib', 'LRCLib line'),
+      ]),
+    )
+
+    const { result } = renderLyrics({ trackId: 'song-variants' })
+
+    await expectLyric(result, 'NetEase line')
+    expect(result.current.variants.map((variant) => variant.key)).toEqual([
+      'netease',
+      'lrclib',
+    ])
+  })
+
+  it('re-derives layers for a selected source without refetching', async () => {
+    subsonic.getLyricsBySongId.mockResolvedValueOnce(
+      responseForEntries([
+        sourceEntry('NetEase', 'NetEase line'),
+        sourceEntry('LRCLib', 'LRCLib line'),
+      ]),
+    )
+
+    const { result, rerender } = renderLyrics({ trackId: 'song-select' })
+
+    await expectLyric(result, 'NetEase line')
+
+    rerender({ trackId: 'song-select', selectedSourceKey: 'lrclib' })
+    await expectLyric(result, 'LRCLib line')
+
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+  })
+
+  it('falls back to auto when the selected source disappears', async () => {
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(
+        responseForEntries([
+          sourceEntry('NetEase', 'NetEase line'),
+          sourceEntry('LRCLib', 'LRCLib line'),
+        ]),
+      )
+      .mockResolvedValueOnce(
+        responseForEntries([sourceEntry('NetEase', 'NetEase line')]),
+      )
+
+    const { result } = renderLyrics({
+      trackId: 'song-fallback',
+      selectedSourceKey: 'lrclib',
+    })
+
+    await expectLyric(result, 'LRCLib line')
+
+    act(() => {
+      result.current.refresh()
+    })
+
+    await expectLyric(result, 'NetEase line')
+    expect(result.current.variants.map((variant) => variant.key)).toEqual([
+      'netease',
+    ])
+    expect(result.current.error).toBeNull()
+  })
+
+  it('refreshes variants without blanking the current lyrics', async () => {
+    const nextRequest = createDeferred()
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(
+        responseForEntries([sourceEntry('NetEase', 'NetEase line')]),
+      )
+      .mockReturnValueOnce(nextRequest.promise)
+
+    const { result } = renderLyrics({ trackId: 'song-refresh' })
+
+    await expectLyric(result, 'NetEase line')
+
+    act(() => {
+      result.current.refresh()
+    })
+
+    await waitFor(() => expect(result.current.refreshing).toBe(true))
+    expect(result.current.layers.main.line[0].value).toBe('NetEase line')
+
+    act(() => {
+      nextRequest.resolve(
+        responseForEntries([
+          sourceEntry('NetEase', 'NetEase line'),
+          sourceEntry('LRCLib', 'LRCLib line'),
+        ]),
+      )
+    })
+
+    await waitFor(() => expect(result.current.variants).toHaveLength(2))
+    expect(result.current.refreshing).toBe(false)
+    expect(result.current.layers.main.line[0].value).toBe('NetEase line')
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps current lyrics when a refresh fails', async () => {
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(
+        responseForEntries([sourceEntry('NetEase', 'NetEase line')]),
+      )
+      .mockRejectedValueOnce(new Error('refresh failed'))
+
+    const { result } = renderLyrics({ trackId: 'song-refresh-fail' })
+
+    await expectLyric(result, 'NetEase line')
+
+    act(() => {
+      result.current.refresh()
+    })
+
+    await waitFor(() => expect(result.current.refreshing).toBe(false))
+    expect(result.current.error).toBeNull()
+    expect(result.current.layers.main.line[0].value).toBe('NetEase line')
   })
 
   it('starts a fresh request after an abandoned request is aborted', () => {

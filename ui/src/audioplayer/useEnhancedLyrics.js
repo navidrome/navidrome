@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import subsonic from '../subsonic'
-import { getPreferredLyricLanguage, selectLyricLayers } from './lyrics'
+import {
+  collectLyricVariants,
+  getPreferredLyricLanguage,
+  hasStructuredLyricContent,
+  selectLyricLayers,
+} from './lyrics'
 
 export const emptyLyricLayers = Object.freeze({
   main: null,
@@ -15,11 +20,8 @@ const COOLDOWN_PATTERN = /(?:cooldown active for|retry after)\s+(\d+)s/gi
 const cache = new Map()
 const inFlight = new Map()
 
-const normalizeLyricLayers = (layers) => ({
-  main: layers?.main || null,
-  translation: layers?.translation || null,
-  pronunciation: layers?.pronunciation || null,
-})
+const normalizeStructuredLyrics = (lyrics) =>
+  Array.isArray(lyrics) ? lyrics : []
 
 const readStructuredLyrics = (response) =>
   response?.json?.['subsonic-response']?.lyricsList?.structuredLyrics || []
@@ -36,9 +38,9 @@ const retryDelayFromError = (error) => {
 const buildCacheKey = ({ trackId, preferredLanguage, updatedAt }) =>
   [trackId || '', updatedAt || '', preferredLanguage || ''].join('\u0000')
 
-const rememberLyrics = (cacheKey, layers, expiresAt = null) => {
+const rememberLyrics = (cacheKey, structuredLyrics, expiresAt = null) => {
   cache.delete(cacheKey)
-  cache.set(cacheKey, { layers, expiresAt })
+  cache.set(cacheKey, { structuredLyrics, expiresAt })
   while (cache.size > MAX_LYRIC_CACHE_ENTRIES) {
     const oldestCacheKey = cache.keys().next().value
     cache.delete(oldestCacheKey)
@@ -54,10 +56,10 @@ const readCachedLyrics = (cacheKey) => {
   }
   cache.delete(cacheKey)
   cache.set(cacheKey, cached)
-  return cached.layers
+  return cached.structuredLyrics
 }
 
-const createLyricsRequest = ({ trackId, preferredLanguage, cacheKey }) => {
+const createLyricsRequest = ({ trackId, cacheKey }) => {
   const controller = new AbortController()
   const entry = {
     controller,
@@ -68,18 +70,16 @@ const createLyricsRequest = ({ trackId, preferredLanguage, cacheKey }) => {
   entry.promise = subsonic
     .getLyricsBySongId(trackId, { signal: controller.signal })
     .then((response) => {
-      const selected = normalizeLyricLayers(
-        selectLyricLayers(readStructuredLyrics(response), preferredLanguage),
+      const structuredLyrics = normalizeStructuredLyrics(
+        readStructuredLyrics(response),
       )
-      const hasAnyLayer = Boolean(
-        selected.main || selected.translation || selected.pronunciation,
-      )
+      const hasAnyLyric = structuredLyrics.some(hasStructuredLyricContent)
       rememberLyrics(
         cacheKey,
-        selected,
-        hasAnyLayer ? null : Date.now() + NEGATIVE_CACHE_TTL_MS,
+        structuredLyrics,
+        hasAnyLyric ? null : Date.now() + NEGATIVE_CACHE_TTL_MS,
       )
-      return selected
+      return structuredLyrics
     })
     .finally(() => {
       entry.settled = true
@@ -89,12 +89,12 @@ const createLyricsRequest = ({ trackId, preferredLanguage, cacheKey }) => {
   return entry
 }
 
-const acquireLyricsRequest = ({ trackId, preferredLanguage, cacheKey }) => {
+const acquireLyricsRequest = ({ trackId, cacheKey }) => {
   const existing = inFlight.get(cacheKey)
   const entry =
     existing && !existing.controller.signal.aborted
       ? existing
-      : createLyricsRequest({ trackId, preferredLanguage, cacheKey })
+      : createLyricsRequest({ trackId, cacheKey })
   entry.consumers += 1
   let released = false
   return {
@@ -111,88 +111,127 @@ const acquireLyricsRequest = ({ trackId, preferredLanguage, cacheKey }) => {
   }
 }
 
+const emptyLyricsState = (cacheKey) => ({
+  cacheKey,
+  structuredLyrics: null,
+  loading: false,
+  refreshing: false,
+  error: null,
+  retryAt: null,
+})
+
 const useEnhancedLyrics = ({
   trackId,
   updatedAt,
   disabled = false,
   requested = true,
+  selectedSourceKey = null,
 }) => {
   const preferredLanguage = getPreferredLyricLanguage()
   const cacheKey = useMemo(
     () => buildCacheKey({ trackId, preferredLanguage, updatedAt }),
     [preferredLanguage, trackId, updatedAt],
   )
-  const [state, setState] = useState(() => ({
-    cacheKey,
-    layers: emptyLyricLayers,
-    loading: false,
-    error: null,
-    retryAt: null,
-  }))
+  const [state, setState] = useState(() => emptyLyricsState(cacheKey))
   const [requestGeneration, setRequestGeneration] = useState(0)
+  const [refreshToken, setRefreshToken] = useState(0)
   const [, setCountdownTick] = useState(0)
+
+  // The refresh path reads the currently displayed state when deciding whether
+  // to keep it visible, so mirror it through a ref updated before the request
+  // effect runs.
+  const stateRef = useRef(state)
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
+  const handledRefreshRef = useRef(refreshToken)
 
   const retry = useCallback(() => {
     cache.delete(cacheKey)
     setRequestGeneration((current) => current + 1)
   }, [cacheKey])
 
+  const refresh = useCallback(() => {
+    if (!trackId || disabled || !requested) return
+    setRefreshToken((current) => current + 1)
+  }, [disabled, requested, trackId])
+
   useEffect(() => {
     if (!trackId || disabled || !requested) {
-      setState({
-        cacheKey,
-        layers: emptyLyricLayers,
-        loading: false,
-        error: null,
-        retryAt: null,
-      })
+      handledRefreshRef.current = refreshToken
+      setState(emptyLyricsState(cacheKey))
       return undefined
     }
 
-    const cached = readCachedLyrics(cacheKey)
-    if (cached) {
-      setState({
-        cacheKey,
-        layers: cached,
-        loading: false,
-        error: null,
-        retryAt: null,
-      })
-      return undefined
+    const isRefresh = refreshToken !== handledRefreshRef.current
+    handledRefreshRef.current = refreshToken
+
+    if (!isRefresh) {
+      const cached = readCachedLyrics(cacheKey)
+      if (cached) {
+        setState({
+          cacheKey,
+          structuredLyrics: cached,
+          loading: false,
+          refreshing: false,
+          error: null,
+          retryAt: null,
+        })
+        return undefined
+      }
     }
 
+    // Progressive refreshes keep the currently shown lyrics; a refresh landing
+    // while a request is in flight coalesces with it.
+    const keepingContent = Boolean(
+      isRefresh &&
+      stateRef.current.cacheKey === cacheKey &&
+      stateRef.current.structuredLyrics?.length,
+    )
     let active = true
-    const request = acquireLyricsRequest({
-      trackId,
-      preferredLanguage,
-      cacheKey,
-    })
-    setState({
-      cacheKey,
-      layers: emptyLyricLayers,
-      loading: true,
-      error: null,
-      retryAt: null,
-    })
+    const request = acquireLyricsRequest({ trackId, cacheKey })
+    setState((current) =>
+      keepingContent
+        ? { ...current, refreshing: true }
+        : {
+            cacheKey,
+            structuredLyrics: null,
+            loading: true,
+            refreshing: false,
+            error: null,
+            retryAt: null,
+          },
+    )
 
     request.promise
-      .then((layers) => {
+      .then((structuredLyrics) => {
         if (!active) return
         setState({
           cacheKey,
-          layers,
+          structuredLyrics,
           loading: false,
+          refreshing: false,
           error: null,
           retryAt: null,
         })
       })
       .catch((error) => {
         if (!active || error?.name === 'AbortError') return
+        if (keepingContent && stateRef.current.cacheKey === cacheKey) {
+          // A failed progressive refresh must not blank working lyrics.
+          setState((current) =>
+            current.cacheKey === cacheKey
+              ? { ...current, refreshing: false }
+              : current,
+          )
+          return
+        }
         cache.delete(cacheKey)
         setState({
           cacheKey,
-          layers: emptyLyricLayers,
+          structuredLyrics: null,
           loading: false,
+          refreshing: false,
           error,
           retryAt: (() => {
             const delay = retryDelayFromError(error)
@@ -205,14 +244,7 @@ const useEnhancedLyrics = ({
       active = false
       request.release()
     }
-  }, [
-    cacheKey,
-    disabled,
-    preferredLanguage,
-    requestGeneration,
-    requested,
-    trackId,
-  ])
+  }, [cacheKey, disabled, refreshToken, requestGeneration, requested, trackId])
 
   useEffect(() => {
     if (
@@ -236,24 +268,48 @@ const useEnhancedLyrics = ({
     }
   }, [cacheKey, disabled, requested, retry, state.cacheKey, state.retryAt])
 
+  const structuredLyrics =
+    state.cacheKey === cacheKey ? state.structuredLyrics : null
+  const variants = useMemo(
+    () => collectLyricVariants(structuredLyrics || []),
+    [structuredLyrics],
+  )
+  const layers = useMemo(
+    () =>
+      structuredLyrics && structuredLyrics.length > 0
+        ? selectLyricLayers(
+            structuredLyrics,
+            preferredLanguage,
+            selectedSourceKey,
+          )
+        : emptyLyricLayers,
+    [preferredLanguage, selectedSourceKey, structuredLyrics],
+  )
+
   if (state.cacheKey !== cacheKey) {
     return {
+      variants: [],
       layers: emptyLyricLayers,
       loading: Boolean(trackId && !disabled && requested),
+      refreshing: false,
       error: null,
       retryAfterSeconds: null,
       retry,
+      refresh,
     }
   }
   return {
-    layers: state.layers,
+    variants,
+    layers,
     loading: state.loading,
+    refreshing: state.refreshing,
     error: state.error,
     retryAfterSeconds:
       state.retryAt == null
         ? null
         : Math.max(1, Math.ceil((state.retryAt - Date.now()) / 1_000)),
     retry,
+    refresh,
   }
 }
 
