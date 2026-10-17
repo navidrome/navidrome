@@ -186,6 +186,26 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			}
 		})
 
+		It("skips an empty variant without dropping later ones", func() {
+			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-lyrics": {
+					"variants": `[{"text":""},` +
+						`{"text":"[00:02.00]Real line","provider":"Beta","format":"lrc"}]`,
+				},
+			}, "test-lyrics"+PackageExtension)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+
+			result, err := p.GetLyrics(GinkgoT().Context(), &model.MediaFile{
+				ID: "track-1", Title: "Test Song", Artist: "Test Artist",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Line[0].Value).To(Equal("Real line"))
+			Expect(result[0].Source.Provider).To(Equal("Beta"))
+		})
+
 		It("blocks new calls while the per-plugin concurrency cap is saturated", func() {
 			sem := provider.plugin.lyricsSem
 			for range cap(sem) {
