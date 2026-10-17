@@ -156,6 +156,54 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 	})
 
+	It("should return every variant with its own source", func() {
+		lineStart := int64(1000)
+		lyricsJSON, err := json.Marshal(model.LyricList{
+			{
+				Kind: "main", Lang: "eng", Synced: true,
+				Line:   []model.Line{{Start: &lineStart, Value: "alpha line"}},
+				Source: &model.LyricsSource{Type: model.LyricsSourcePlugin, Name: "Better Lyrics", Provider: "NetEase", Format: "elrc"},
+			},
+			{
+				Kind: "main", Lang: "eng", Synced: true,
+				Line:   []model.Line{{Start: &lineStart, Value: "beta line"}},
+				Source: &model.LyricsSource{Type: model.LyricsSourcePlugin, Name: "Better Lyrics", Provider: "LRCLib", Format: "lrc"},
+			},
+		})
+		Expect(err).ToNot(HaveOccurred())
+
+		mockRepo.SetData(model.MediaFiles{
+			{
+				ID:     "1",
+				Artist: "Rick Astley",
+				Title:  "Never Gonna Give You Up",
+				Lyrics: string(lyricsJSON),
+			},
+		})
+
+		response, err := router.GetLyricsBySongId(newGetRequest("id=1&enhanced=true"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(response.LyricsList.StructuredLyrics).To(HaveLen(2))
+		Expect(response.LyricsList.StructuredLyrics[0].Kind).To(Equal("main"))
+		Expect(response.LyricsList.StructuredLyrics[0].Source).To(Equal(&responses.LyricsSource{
+			Type: "plugin", Name: "Better Lyrics", Provider: "NetEase", Format: "elrc",
+		}))
+		Expect(response.LyricsList.StructuredLyrics[1].Kind).To(Equal("main"))
+		Expect(response.LyricsList.StructuredLyrics[1].Source).To(Equal(&responses.LyricsSource{
+			Type: "plugin", Name: "Better Lyrics", Provider: "LRCLib", Format: "lrc",
+		}))
+
+		// The v1 (non-enhanced) shape still returns the entries, without any
+		// enhanced fields: no source, no kind.
+		v1, err := router.GetLyricsBySongId(newGetRequest("id=1"))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v1.LyricsList.StructuredLyrics).To(HaveLen(2))
+		for _, lyric := range v1.LyricsList.StructuredLyrics {
+			Expect(lyric.Source).To(BeNil())
+			Expect(lyric.Kind).To(BeEmpty())
+		}
+	})
+
 	It("should parse lrc metadata", func() {
 		r := newGetRequest("id=1")
 		syncedList, _ := model.ParseLyrics(GinkgoT().Context(), ".lrc", "eng", []byte(metadata+"\n"+syncedLyrics))

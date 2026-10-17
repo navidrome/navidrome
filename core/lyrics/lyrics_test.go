@@ -362,6 +362,46 @@ var _ = Describe("Lyrics", func() {
 			})
 		})
 
+		It("returns every source-tagged variant in order", func() {
+			conf.Server.LyricsPriority = "test-lyrics-plugin"
+			mockLoader.lyrics = model.LyricList{
+				{
+					Lang:   "eng",
+					Synced: true,
+					Line:   []model.Line{{Value: "first"}},
+					Source: &model.LyricsSource{
+						Type: model.LyricsSourcePlugin, Name: "test-lyrics-plugin",
+						Provider: "NetEase", Format: "elrc",
+					},
+				},
+				{
+					Lang:   "eng",
+					Synced: true,
+					Line:   []model.Line{{Value: "second"}},
+					Source: &model.LyricsSource{
+						Type: model.LyricsSourcePlugin, Name: "test-lyrics-plugin",
+						Provider: "LRCLib", Format: "lrc",
+					},
+				},
+			}
+			svc := lyrics.NewLyrics(nil, mockLoader)
+			list, err := svc.GetLyrics(ctx, &mf)
+			Expect(err).To(BeNil())
+			Expect(list).To(HaveLen(2))
+			Expect(*list[0].Source).To(Equal(model.LyricsSource{
+				Type: model.LyricsSourcePlugin, Name: "test-lyrics-plugin",
+				Provider: "NetEase", Format: "elrc",
+			}))
+			Expect(*list[1].Source).To(Equal(model.LyricsSource{
+				Type: model.LyricsSourcePlugin, Name: "test-lyrics-plugin",
+				Provider: "LRCLib", Format: "lrc",
+			}))
+			// Legacy single-lyric consumers keep serving the first variant.
+			main, ok := list.Main()
+			Expect(ok).To(BeTrue())
+			Expect(main.Line[0].Value).To(Equal("first"))
+		})
+
 		It("should skip unknown plugin names gracefully", func() {
 			conf.Server.LyricsPriority = "nonexistent-plugin,embedded"
 			mockLoader.notFound = true
