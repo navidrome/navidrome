@@ -99,6 +99,93 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			}))
 		})
 
+		It("labels each variant with its own source", func() {
+			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-lyrics": {
+					"variants": `[{"text":"[00:01.00]Alpha line","provider":"Alpha","format":"lrc"},` +
+						`{"text":"[00:02.00]Beta line","provider":"Beta","format":"lrc"}]`,
+				},
+			}, "test-lyrics"+PackageExtension)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+
+			result, err := p.GetLyrics(GinkgoT().Context(), &model.MediaFile{
+				ID: "track-1", Title: "Test Song", Artist: "Test Artist",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].Line[0].Value).To(Equal("Alpha line"))
+			Expect(result[1].Line[0].Value).To(Equal("Beta line"))
+			Expect(result[0].Source).To(Equal(&model.LyricsSource{
+				Type:     model.LyricsSourcePlugin,
+				Name:     "Test Lyrics",
+				Provider: "Alpha",
+				Format:   "lrc",
+			}))
+			Expect(result[1].Source).To(Equal(&model.LyricsSource{
+				Type:     model.LyricsSourcePlugin,
+				Name:     "Test Lyrics",
+				Provider: "Beta",
+				Format:   "lrc",
+			}))
+		})
+
+		It("falls back to the response source for entries without their own", func() {
+			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-lyrics": {
+					"source_provider": "Fallback",
+					"source_format":   "lrc",
+					"variants": `[{"text":"[00:01.00]Alpha line","provider":"Alpha"},` +
+						`{"text":"[00:02.00]Bare line"}]`,
+				},
+			}, "test-lyrics"+PackageExtension)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+
+			result, err := p.GetLyrics(GinkgoT().Context(), &model.MediaFile{
+				ID: "track-1", Title: "Test Song", Artist: "Test Artist",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].Source).To(Equal(&model.LyricsSource{
+				Type:     model.LyricsSourcePlugin,
+				Name:     "Test Lyrics",
+				Provider: "Alpha",
+				Format:   "lrc",
+			}))
+			Expect(result[1].Source).To(Equal(&model.LyricsSource{
+				Type:     model.LyricsSourcePlugin,
+				Name:     "Test Lyrics",
+				Provider: "Fallback",
+				Format:   "lrc",
+			}))
+		})
+
+		It("keeps the plugin identity when no source is given anywhere", func() {
+			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
+				"test-lyrics": {
+					"variants": `[{"text":"[00:01.00]Alpha line"},{"text":"[00:02.00]Beta line"}]`,
+				},
+			}, "test-lyrics"+PackageExtension)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+
+			result, err := p.GetLyrics(GinkgoT().Context(), &model.MediaFile{
+				ID: "track-1", Title: "Test Song", Artist: "Test Artist",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(HaveLen(2))
+			for _, lyric := range result {
+				Expect(lyric.Source).To(Equal(&model.LyricsSource{
+					Type: model.LyricsSourcePlugin,
+					Name: "Test Lyrics",
+				}))
+			}
+		})
+
 		It("blocks new calls while the per-plugin concurrency cap is saturated", func() {
 			sem := provider.plugin.lyricsSem
 			for range cap(sem) {

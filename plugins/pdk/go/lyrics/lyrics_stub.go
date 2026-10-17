@@ -19,6 +19,8 @@ type GetLyricsRequest struct {
 }
 
 // GetLyricsResponse contains the lyrics returned by the plugin.
+// Lyrics are in preference order: the first entry that parses to a main-kind
+// lyric is the plugin's winner.
 type GetLyricsResponse struct {
 	Lyrics []LyricsText  `json:"lyrics"`
 	Source *LyricsSource `json:"source,omitempty"`
@@ -26,6 +28,7 @@ type GetLyricsResponse struct {
 
 // LyricsSource identifies the optional upstream provider and format selected
 // by a plugin. Navidrome supplies the plugin name and source type itself.
+// The response-level value is the default for entries without their own.
 type LyricsSource struct {
 	Provider string `json:"provider,omitempty"`
 	Format   string `json:"format,omitempty"`
@@ -36,6 +39,10 @@ type LyricsSource struct {
 type LyricsText struct {
 	Lang string `json:"lang,omitempty"`
 	Text string `json:"text"`
+	// Source labels this entry's upstream, letting a plugin return several
+	// providers' lyrics in one response. It overrides the response-level
+	// Source for this entry.
+	Source *LyricsSource `json:"source,omitempty"`
 }
 
 // TrackInfo contains track metadata.

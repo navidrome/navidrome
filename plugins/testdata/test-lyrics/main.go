@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/navidrome/navidrome/plugins/pdk/go/lyrics"
@@ -25,6 +26,31 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 	sourceFormat, hasSourceFormat := pdk.GetConfig("source_format")
 	if hasProvider || hasSourceFormat {
 		source = &lyrics.LyricsSource{Provider: provider, Format: sourceFormat}
+	}
+
+	// Config-provided variants let tests exercise multi-source responses: each
+	// entry carries its own source when it names a provider or format, and the
+	// response-level source stays the default for the rest.
+	if raw, hasVariants := pdk.GetConfig("variants"); hasVariants && raw != "" {
+		var variants []struct {
+			Lang     string `json:"lang"`
+			Text     string `json:"text"`
+			Provider string `json:"provider"`
+			Format   string `json:"format"`
+		}
+		if err := json.Unmarshal([]byte(raw), &variants); err != nil {
+			return lyrics.GetLyricsResponse{}, fmt.Errorf("decode variants config: %w", err)
+		}
+		if len(variants) > 0 {
+			texts := make([]lyrics.LyricsText, len(variants))
+			for i, variant := range variants {
+				texts[i] = lyrics.LyricsText{Lang: variant.Lang, Text: variant.Text}
+				if variant.Provider != "" || variant.Format != "" {
+					texts[i].Source = &lyrics.LyricsSource{Provider: variant.Provider, Format: variant.Format}
+				}
+			}
+			return lyrics.GetLyricsResponse{Lyrics: texts, Source: source}, nil
+		}
 	}
 
 	// Config-selected format lets tests exercise the adapter's content-sniffing per format.
