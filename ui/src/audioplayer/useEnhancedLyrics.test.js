@@ -344,6 +344,29 @@ describe('useEnhancedLyrics', () => {
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
   })
 
+  it('coalesces a refresh with a request that is still in flight', async () => {
+    const pending = createDeferred()
+    subsonic.getLyricsBySongId.mockReturnValueOnce(pending.promise)
+
+    const { result } = renderLyrics({ trackId: 'song-coalesce' })
+
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      result.current.refresh()
+    })
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      pending.resolve(
+        responseForEntries([sourceEntry('NetEase', 'NetEase line')]),
+      )
+    })
+
+    await expectLyric(result, 'NetEase line')
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps current lyrics when a refresh fails', async () => {
     subsonic.getLyricsBySongId
       .mockResolvedValueOnce(

@@ -153,8 +153,13 @@ const useEnhancedLyrics = ({
 
   const refresh = useCallback(() => {
     if (!trackId || disabled || !requested) return
+    // Coalesce with an unsettled request: its answer is at least as fresh as
+    // one started now, and restarting it would strand slow responses behind
+    // the poll interval.
+    const entry = inFlight.get(cacheKey)
+    if (entry && !entry.settled) return
     setRefreshToken((current) => current + 1)
-  }, [disabled, requested, trackId])
+  }, [cacheKey, disabled, requested, trackId])
 
   useEffect(() => {
     if (!trackId || disabled || !requested) {

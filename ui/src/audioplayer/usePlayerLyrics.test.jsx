@@ -195,29 +195,32 @@ describe('usePlayerLyrics', () => {
     vi.useFakeTimers()
     subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
 
+    const flushMicrotasks = () =>
+      act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
     const { result } = renderPlayerLyrics()
     act(() => result.current.toolbarLyricsProps.onToggleLyrics())
-    await act(async () => {
-      await Promise.resolve()
-    })
+    await flushMicrotasks()
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
 
     act(() => result.current.desktopLyricsProps.onSourceMenuOpenChange(true))
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
 
-    await act(async () => {
-      vi.advanceTimersByTime(5_000)
-    })
-    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(3)
-
-    for (let step = 0; step < 11; step += 1) {
+    let expectedCalls = 2
+    for (let step = 0; step < 12; step += 1) {
+      await flushMicrotasks()
       await act(async () => {
         vi.advanceTimersByTime(5_000)
       })
+      expectedCalls += 1
+      expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(expectedCalls)
     }
-    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(14)
 
     act(() => result.current.desktopLyricsProps.onSourceMenuOpenChange(false))
+    await flushMicrotasks()
     await act(async () => {
       vi.advanceTimersByTime(15_000)
     })
