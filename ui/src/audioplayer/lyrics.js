@@ -242,6 +242,32 @@ const pickPreferredLyric = (lyrics, preferredLanguage) => {
 export const hasCueTiming = (structuredLyric) =>
   hasTimedCueLines(structuredLyric)
 
+export const LYRICS_OFFSET_FINE_MS = 50
+export const LYRICS_OFFSET_COARSE_MS = 500
+export const LYRICS_OFFSET_LIMIT_MS = 5000
+
+export const clampLyricsOffset = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return 0
+  return Math.max(
+    -LYRICS_OFFSET_LIMIT_MS,
+    Math.min(LYRICS_OFFSET_LIMIT_MS, Math.round(numeric)),
+  )
+}
+
+export const stepLyricsOffset = (current, delta) =>
+  clampLyricsOffset((Number(current) || 0) + (Number(delta) || 0))
+
+export const formatLyricsOffset = (ms) => {
+  const seconds = (clampLyricsOffset(ms) / 1000).toFixed(2)
+  return `${Number(seconds) > 0 ? '+' : ''}${seconds} s`
+}
+
+// hasNudgeableTiming gates the offset control: plain lyrics have nothing to
+// shift.
+export const hasNudgeableTiming = (lyric) =>
+  hasTimedLines(lyric) || hasCueTiming(lyric)
+
 export const hasStructuredLyricContent = (structuredLyric) =>
   Boolean(
     structuredLyric &&
@@ -542,10 +568,11 @@ export const buildKaraokeLinesFromCueLines = (
     })
 }
 
-export const buildKaraokeLines = (structuredLyric) => {
+export const buildKaraokeLines = (structuredLyric, userOffsetMs = 0) => {
   if (!structuredLyric) return []
 
-  const offset = toTime(structuredLyric.offset) ?? 0
+  const offset =
+    (toTime(structuredLyric.offset) ?? 0) + (toTime(userOffsetMs) ?? 0)
   const agentLookup = buildAgentLookup(structuredLyric)
   const baseLines = Array.isArray(structuredLyric.line)
     ? structuredLyric.line

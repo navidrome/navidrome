@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   buildKaraokeLines,
+  clampLyricsOffset,
   collectLyricVariants,
+  formatLyricsOffset,
   getPreferredLyricLanguage,
+  hasNudgeableTiming,
   hasStructuredLyricContent,
   selectLyricLayers,
+  stepLyricsOffset,
   utf8ByteRangeToCodeUnitRange,
 } from './lyrics'
 
@@ -359,6 +363,86 @@ describe('lyrics helpers', () => {
         line: [],
       }),
     ).toBe(false)
+  })
+})
+
+describe('lyrics offset', () => {
+  it('clamps the offset to the limit', () => {
+    expect(clampLyricsOffset(0)).toBe(0)
+    expect(clampLyricsOffset(4999)).toBe(4999)
+    expect(clampLyricsOffset(5001)).toBe(5000)
+    expect(clampLyricsOffset(-5001)).toBe(-5000)
+    expect(clampLyricsOffset(Number.NaN)).toBe(0)
+  })
+
+  it('steps by the given delta and clamps at the limit', () => {
+    let offset = 3000
+    for (let step = 0; step < 5; step += 1) {
+      offset = stepLyricsOffset(offset, 500)
+    }
+    expect(offset).toBe(5000)
+  })
+
+  it('formats the offset for display', () => {
+    expect(formatLyricsOffset(-50)).toBe('-0.05 s')
+    expect(formatLyricsOffset(0)).toBe('0.00 s')
+    expect(formatLyricsOffset(1250)).toBe('+1.25 s')
+  })
+
+  it('reports whether a lyric can take a timing nudge', () => {
+    expect(
+      hasNudgeableTiming({
+        kind: 'main',
+        lang: 'en',
+        synced: false,
+        line: [{ value: 'plain words' }],
+      }),
+    ).toBe(false)
+    expect(hasNudgeableTiming(structured('main', 'en', 'timed line'))).toBe(
+      true,
+    )
+    expect(
+      hasNudgeableTiming({
+        kind: 'main',
+        lang: 'en',
+        synced: false,
+        line: [{ value: 'word timed' }],
+        cueLine: [
+          { index: 0, value: 'word timed', cue: [{ start: 0, value: 'word' }] },
+        ],
+      }),
+    ).toBe(true)
+  })
+
+  it('applies the user offset on top of the source offset', () => {
+    const lines = buildKaraokeLines(
+      { ...structured('main', 'en', 'Hello'), offset: 500 },
+      -300,
+    )
+
+    expect(lines[0].start).toBe(200)
+  })
+
+  it('shifts cue word starts by the user offset', () => {
+    const lines = buildKaraokeLines(
+      {
+        kind: 'main',
+        lang: 'en',
+        synced: true,
+        line: [timed('Hello world', 8000, 11000)],
+        cueLine: [
+          cueLine(0, 'Hello world', 8000, 11000, [
+            { start: 8000, value: 'Hello ' },
+            { start: 9500, value: 'world' },
+          ]),
+        ],
+      },
+      -500,
+    )
+
+    expect(lines[0].start).toBe(7500)
+    expect(lines[0].tokens[0].start).toBe(7500)
+    expect(lines[0].tokens[1].start).toBe(9000)
   })
 })
 
