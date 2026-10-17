@@ -83,7 +83,8 @@
         "mood": "Tunnelma",
         "date": "Tallennuspäivä",
         "missing": "Puuttuva",
-        "libraryName": "Kirjasto"
+        "libraryName": "Kirjasto",
+        "played": "Toistettu"
       },
       "actions": {
         "playAll": "Soita",
@@ -190,7 +191,30 @@
         "userName": "Käyttäjänimi",
         "lastSeen": "Viimeksi käytetty",
         "reportRealPath": "Ilmoita todellinen polku",
-        "scrobbleEnabled": "Lähetä kuuntelutottumukset ulkoiseen palveluun"
+        "scrobbleEnabled": "Lähetä kuuntelutottumukset ulkoiseen palveluun",
+        "hasApiKey": "API-avain"
+      },
+      "menuName": "Soittimet ja API-avaimet",
+      "actions": {
+        "generateApiKey": "Luo API-avain",
+        "regenerateApiKey": "Luo uudelleen",
+        "revokeApiKey": "Kumoa",
+        "copyApiKey": "Kopio"
+      },
+      "message": {
+        "apiKeyActive": "Tällä soittimella on API-avain. Käytä sitä sovelluksessasi API-avaimena tai salasanana, jos sovellus ei käytä tunnustodennetta.",
+        "apiKeyNone": "Ei API-avainta. Luo sellainen yhdistääksesi sovelluksen tähän soittimeen.",
+        "apiKeyNoneOther": "Ei API-avainta.",
+        "apiKeyPending": "Kopioi tämä avain nyt. Se tallennetaan, kun napsautat Tallenna, eikä sitä näytetä uudelleen.",
+        "apiKeyRevokePending": "API-avain poistetaan, kun tallennat.",
+        "deleteWithKeyTitle": "Poista soitin",
+        "deleteWithKeyContent": "Tällä soittimella on API-avain. Sitä käyttävät sovellukset lakkaavat toimimasta."
+      },
+      "notifications": {
+        "apiKeyCopied": "API-avain kopioitu leikepöydälle"
+      },
+      "validation": {
+        "apiKeyFormat": "Virheellinen API-avaimen muoto"
       }
     },
     "transcoding": {
@@ -305,11 +329,14 @@
         "totalDuration": "Kesto",
         "defaultNewUsers": "Oletus uusille käyttäjille",
         "createdAt": "Luotu",
-        "updatedAt": "Päivitetty"
+        "updatedAt": "Päivitetty",
+        "pidAlbum": "",
+        "pidTrack": ""
       },
       "sections": {
         "basic": "Perustiedot",
-        "statistics": "Tilastot"
+        "statistics": "Tilastot",
+        "pid": ""
       },
       "actions": {
         "scan": "Skannaa kirjasto",
@@ -339,7 +366,17 @@
       "messages": {
         "deleteConfirm": "Haluatko varmasti poistaa tämän kirjaston? Kaikki siihen liittyvät tiedot ja käyttäjien pääsy poistetaan.",
         "scanInProgress": "Skannaus käynnissä...",
-        "noLibrariesAssigned": "Tälle käyttäjälle ei ole määritetty kirjastoja"
+        "noLibrariesAssigned": "Tälle käyttäjälle ei ole määritetty kirjastoja",
+        "pidChangeTitle": "",
+        "pidChangeConfirm": ""
+      },
+      "pid": {
+        "global": "",
+        "folder": "",
+        "custom": "",
+        "spec": "",
+        "help": "",
+        "docs": ""
       }
     },
     "plugin": {
@@ -610,9 +647,9 @@
     "coverUploadError": "Virhe ladattaessa kansikuvaa",
     "coverRemoveError": "Virhe poistettaessa kansikuvaa",
     "metadataRefreshStarted": "Metatietoja päivitetään taustalla",
-    "quickConnectApproved": "",
-    "quickConnectInvalidCode": "",
-    "quickConnectError": ""
+    "quickConnectApproved": "%{app} laitteessa %{device} on nyt kirjautunut sisään",
+    "quickConnectInvalidCode": "Virheellinen tai vanhentunut koodi",
+    "quickConnectError": "Koodin hyväksyminen epäonnistui"
   },
   "menu": {
     "library": "Kirjasto",
@@ -650,12 +687,12 @@
     },
     "onlyFavourites": "Näytä vain suosikit",
     "quickConnect": {
-      "name": "",
-      "code": "",
-      "help": "",
-      "confirm": "",
-      "continue": "",
-      "approve": ""
+      "name": "Pikayhteys",
+      "code": "Koodi",
+      "help": "Kirjoita Jellyfin-sovelluksen näyttämä koodi kirjautuaksesi tilillesi",
+      "confirm": "Kirjaudutaanko tilillesi sovelluksessa %{app} %{version} laitteella %{device}?",
+      "continue": "Jatka",
+      "approve": "Hyväksy"
     }
   },
   "player": {
