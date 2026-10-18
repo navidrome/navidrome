@@ -1,17 +1,21 @@
-// Serializes a structured lyric (already parsed by Navidrome) back into the
-// format its source reported, for download-to-device. Timestamps are absolute:
-// the source's own offset is already folded into them by the response, and the
-// listener's local nudge is deliberately not exported.
+// Serializes structured lyrics for download in the source's format, falling
+// back to plain text for untimed LRC. Source offsets are included; the
+// listener's local timing adjustment is deliberately not exported.
+
+import { buildKaraokeLines, hasUsableKaraokeTiming } from './lyrics'
+import { buildSegmentsFromLine } from './lyricsSegments'
 
 const pad = (value, length = 2) => String(value).padStart(length, '0')
 
-export const lyricsFileExtension = (format) => {
+export const lyricsFileExtension = (format, lyric) => {
   const normalized = String(format || '')
     .trim()
     .toLowerCase()
   if (normalized === 'ttml') return 'ttml'
   if (normalized === 'lrc' || normalized === 'elrc' || normalized === 'srt') {
-    return 'lrc'
+    return lyric && !hasUsableKaraokeTiming(buildKaraokeLines(lyric))
+      ? 'txt'
+      : 'lrc'
   }
   return 'txt'
 }
@@ -67,84 +71,150 @@ const ttmlClock = (ms) => {
   )}`
 }
 
-const cuesByLineIndex = (lyric) => {
-  const byIndex = new Map()
-  for (const cueLine of Array.isArray(lyric.cueLine) ? lyric.cueLine : []) {
-    const index = Number(cueLine?.index)
-    if (!Number.isInteger(index)) continue
-    if (!byIndex.has(index)) byIndex.set(index, [])
-    byIndex.get(index).push(cueLine)
-  }
-  return byIndex
-}
+const lanesForLine = (line) => (line.lanes?.length > 0 ? line.lanes : [line])
 
-const timedCues = (groups) =>
-  groups.flatMap((cueLine) =>
-    (Array.isArray(cueLine.cue) ? cueLine.cue : []).filter(
-      (cue) => cue?.start != null,
-    ),
-  )
-
-const serializeLrc = (lyric, lines, baseOffset) => {
-  const cuesByIndex = cuesByLineIndex(lyric)
-  const withBase = (value) =>
-    value == null ? value : Number(value) + baseOffset
-  return lines
-    .map((line, index) => {
-      const cues = timedCues(cuesByIndex.get(index) || [])
-      if (cues.length === 0) {
-        return `${lrcStamp(withBase(line?.start))}${line?.value ?? ''}`
+const serializeLrcLane = (lane, fallbackStart) => {
+  const segments = buildSegmentsFromLine(lane)
+  const start = lane.start ?? fallbackStart ?? lane.tokens[0]?.start ?? 0
+  let lastStart = Math.max(0, start)
+  let hasStamp = false
+  let prefix = ''
+  const body = segments
+    .map(({ text, token }) => {
+      if (token?.start == null) {
+        if (!hasStamp) {
+          prefix += text
+          return ''
+        }
+        return text
       }
-      const body = cues
-        .map(
-          (cue) =>
-            `${lrcStamp(withBase(cue.start), '<', '>')}${cue.value ?? ''}`,
-        )
-        .join('')
-      return `${lrcStamp(withBase(line?.start))}${body}`
+      lastStart = Math.max(lastStart, token.start)
+      hasStamp = true
+      const value = `${lrcStamp(lastStart, '<', '>')}${prefix}${text}`
+      prefix = ''
+      return value
     })
-    .join('\n')
+    .join('')
+  const lastToken = [...segments]
+    .reverse()
+    .find(({ token }) => token?.start != null)?.token
+  const endStamp =
+    lastToken?.end == null
+      ? ''
+      : lrcStamp(Math.max(lastStart, lastToken.end), '<', '>')
+  const content = `${body}${prefix}${endStamp}`
+  return {
+    start,
+    content,
+    hasCues: hasStamp,
+    value: `${lrcStamp(start)}${content}`,
+  }
 }
 
-const serializeTtml = (lyric, lines, baseOffset) => {
+const serializeLrc = (lines) =>
+  lines
+    .flatMap((line) => {
+      const lanes = lanesForLine(line).map((lane) => ({
+        ...serializeLrcLane(lane, line.start),
+        background: lane.agentRole === 'bg',
+      }))
+      const backgrounds = lanes.filter(
+        (lane) => lane.background && lane.hasCues,
+      )
+      const rows = lanes.filter((lane) => !lane.background || !lane.hasCues)
+      if (backgrounds.length === 0) return rows
+      if (rows.length === 0) {
+        const start = line.start ?? backgrounds[0].start
+        rows.push({ start, value: lrcStamp(start) })
+      }
+      // Navidrome's [bg:] extension attaches to the preceding timestamped
+      // line. Keep it with that parent while sorting other voice rows.
+      rows[0].value += backgrounds
+        .map((lane) => `\n[bg:${lane.content}]`)
+        .join('')
+      return rows
+    })
+    .sort((left, right) => left.start - right.start)
+    .map(({ value }) => value)
+    .join('\n')
+
+const serializeTtmlLane = (lane) => {
+  let lastStart = 0
+  return buildSegmentsFromLine(lane)
+    .map(({ text, token }) => {
+      if (token?.start == null) return escapeXml(text)
+      const start = Math.max(lastStart, token.start)
+      lastStart = start
+      const end =
+        token.end == null
+          ? ''
+          : ` end="${ttmlClock(Math.max(start, token.end))}"`
+      return `<span begin="${ttmlClock(start)}"${end}>${escapeXml(text)}</span>`
+    })
+    .join('')
+}
+
+const ttmlTimingAttributes = ({ start, end }) =>
+  `${start == null ? '' : ` begin="${ttmlClock(start)}"`}${
+    end == null ? '' : ` end="${ttmlClock(Math.max(start ?? 0, end))}"`
+  }`
+
+const serializeTtml = (lyric, lines) => {
   const lang = typeof lyric.lang === 'string' ? lyric.lang.trim() : ''
-  const cuesByIndex = cuesByLineIndex(lyric)
-  const withBase = (value) =>
-    value == null ? value : Number(value) + baseOffset
-  const hasCues = [...cuesByIndex.values()].some(
-    (groups) => timedCues(groups).length > 0,
+  const lanes = lines.flatMap(lanesForLine)
+  const hasCues = lanes.some((lane) =>
+    lane.tokens.some((token) => token.start != null),
   )
+  // Wire agent IDs can contain characters forbidden in XML IDs. Keep stable
+  // references in this document while preserving the agent's role and name.
+  const agentIds = [
+    ...new Set(lanes.map((lane) => lane.agentId).filter(Boolean)),
+  ]
+  const agentRefs = new Map(agentIds.map((id, index) => [id, `v${index + 1}`]))
   const attributes = [
     'xmlns="http://www.w3.org/ns/ttml"',
     'xmlns:itunes="http://music.apple.com/lyric-ttml-internal"',
+    ...(agentIds.length > 0
+      ? ['xmlns:ttm="http://www.w3.org/ns/ttml#metadata"']
+      : []),
     ...(hasCues ? ['itunes:timing="Word"'] : []),
     ...(lang && lang !== 'xxx' ? [`xml:lang="${escapeXml(lang)}"`] : []),
   ]
-  const paragraphs = lines.map((line, index) => {
-    const begin =
-      line?.start == null ? '' : ` begin="${ttmlClock(withBase(line.start))}"`
-    const end =
-      line?.end == null ? '' : ` end="${ttmlClock(withBase(line.end))}"`
-    const cues = timedCues(cuesByIndex.get(index) || [])
-    const content =
-      cues.length > 0
-        ? cues
-            .map(
-              (cue) =>
-                `<span begin="${ttmlClock(withBase(cue.start))}"${
-                  cue.end == null
-                    ? ''
-                    : ` end="${ttmlClock(withBase(cue.end))}"`
-                }>${escapeXml(cue.value)}</span>`,
-            )
-            .join('')
-        : escapeXml(line?.value)
-    return `<p${begin}${end}>${content}</p>`
+  const agents = agentIds.map((id) => {
+    const lane = lanes.find((candidate) => candidate.agentId === id)
+    const type = lane.agentRole === 'group' ? 'group' : 'person'
+    const name = lane.agentName
+      ? `<ttm:name>${escapeXml(lane.agentName)}</ttm:name>`
+      : ''
+    return `<ttm:agent xml:id="${agentRefs.get(id)}" type="${type}">${name}</ttm:agent>`
+  })
+  const paragraphs = lines.map((line) => {
+    const content = lanesForLine(line)
+      .map((lane) => {
+        const value = serializeTtmlLane(lane)
+        if (
+          !lane.agentId &&
+          (lane.start == null || lane.start === line.start) &&
+          (lane.end == null || lane.end === line.end)
+        ) {
+          return value
+        }
+        const agent = lane.agentId
+          ? ` ttm:agent="${agentRefs.get(lane.agentId)}"`
+          : ''
+        const role = lane.agentRole === 'bg' ? ' ttm:role="x-bg"' : ''
+        return `<span${ttmlTimingAttributes(lane)}${agent}${role}>${value}</span>`
+      })
+      .join(' ')
+    return `<p${ttmlTimingAttributes(line)}>${content}</p>`
   })
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<tt ${attributes.join(' ')}>`,
+    ...(agents.length > 0
+      ? [`<head><metadata>${agents.join('')}</metadata></head>`]
+      : []),
     '<body><div>',
     ...paragraphs,
     '</div></body></tt>',
@@ -153,18 +223,16 @@ const serializeTtml = (lyric, lines, baseOffset) => {
 
 export const serializeLyrics = (lyric, format) => {
   if (!lyric) return ''
-  const lines = Array.isArray(lyric.line) ? lyric.line : []
-  // The source's own offset is a separate field on the response; fold it in so
-  // the exported timing matches what the panel plays (the listener's local
-  // nudge intentionally stays out).
-  const baseOffset = Number(lyric.offset) || 0
-  switch (lyricsFileExtension(format)) {
+  // Reuse the panel's source-offset and voice-lane normalization, with no
+  // listener offset, so a downloaded line contains what the listener reads.
+  const lines = buildKaraokeLines(lyric)
+  switch (lyricsFileExtension(format, lyric)) {
     case 'ttml':
-      return serializeTtml(lyric, lines, baseOffset)
+      return serializeTtml(lyric, lines)
     case 'lrc':
-      return serializeLrc(lyric, lines, baseOffset)
+      return serializeLrc(lines)
     default:
-      return lines.map((line) => line?.value ?? '').join('\n')
+      return lines.map((line) => line.value).join('\n')
   }
 }
 
@@ -176,13 +244,18 @@ export const downloadLyrics = (
   const text = serializeLyrics(lyric, format)
   if (!text) return
 
-  const extension = lyricsFileExtension(format)
+  const extension = lyricsFileExtension(format, lyric)
   const type = extension === 'ttml' ? 'application/xml' : 'text/plain'
   const blob = new Blob([text], { type: `${type};charset=utf-8` })
   const objectUrl = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = objectUrl
-  anchor.download = buildLyricsFileName({ artist, title, label, format })
+  anchor.download = buildLyricsFileName({
+    artist,
+    title,
+    label,
+    format: extension,
+  })
   document.body.appendChild(anchor)
   anchor.click()
   anchor.remove()
