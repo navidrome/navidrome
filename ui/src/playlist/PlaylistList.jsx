@@ -95,6 +95,7 @@ export const ToggleField = ({ resource, source }) => {
   return (
     <Switch
       checked={record[source]}
+      color="primary"
       onClick={handleClick}
       disabled={!isWritable(record.ownerId)}
     />
