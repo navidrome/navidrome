@@ -8,7 +8,6 @@ import {
   ArrayField,
   BooleanField,
   ChipField,
-  DateField,
   FunctionField,
   SingleFieldList,
   TextField,
@@ -17,6 +16,7 @@ import {
 } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import {
+  DateField,
   ArtistLinkField,
   MultiLineTextField,
   ParticipantsInfo,
