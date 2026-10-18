@@ -450,6 +450,15 @@ var _ = Describe("Lyrics", func() {
 		})
 	})
 
+	It("does not classify malformed mixed-case embedded lyrics as a plugin failure", func() {
+		conf.Server.LyricsPriority = "Embedded"
+		mf.Lyrics = "{malformed json"
+		svc := lyrics.NewLyrics(nil, nil)
+		list, err := svc.GetLyrics(ctx, &mf)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(list).To(BeEmpty())
+	})
+
 	var _ = Describe("GetLyricsByArtistTitle", func() {
 		var svc lyrics.Lyrics
 		var repo *tests.MockMediaFileRepo

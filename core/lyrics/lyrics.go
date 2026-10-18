@@ -102,7 +102,7 @@ func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles [
 			lyricsList, err := l.getLyricsFromSource(ctx, mf, pattern)
 			if err != nil {
 				log.Error(ctx, "error getting lyrics", "source", pattern, err)
-				if pattern != "embedded" && !strings.HasPrefix(pattern, ".") {
+				if !strings.EqualFold(pattern, "embedded") && !strings.HasPrefix(pattern, ".") {
 					pluginErr = err
 				}
 				continue
