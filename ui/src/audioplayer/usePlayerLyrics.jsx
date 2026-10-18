@@ -19,6 +19,7 @@ import useEnhancedLyrics from './useEnhancedLyrics'
 
 const SOURCE_REFRESH_INTERVAL_MS = 5_000
 const SOURCE_REFRESH_MAX_TICKS = 12
+const SOURCE_REFRESH_SLOW_TICKS = 6
 
 const usePlayerLyrics = ({
   trackId,
@@ -36,8 +37,10 @@ const usePlayerLyrics = ({
     readPreferredSource(trackId),
   )
   const [offsetMs, setOffsetMs] = useState(0)
-  const [sourceMenuOpen, setSourceMenuOpen] = useState(false)
+  const [discoveryGeneration, setDiscoveryGeneration] = useState(0)
+  const [discovering, setDiscovering] = useState(false)
   const lyricsToggleRef = useRef(null)
+  const discoveryStateRef = useRef(null)
 
   const {
     variants,
@@ -70,26 +73,62 @@ const usePlayerLyrics = ({
 
   useEffect(() => {
     setSelectedSourceKey(readPreferredSource(trackId))
-    setSourceMenuOpen(false)
   }, [trackId])
 
   useEffect(() => {
     setOffsetMs(readLyricsOffset(trackId, resolvedVariantKey))
   }, [resolvedVariantKey, trackId])
 
-  // Progressive fill: while the source menu is open, ask for the served
-  // variants again on a bounded interval so sweep-filled sources appear.
   useEffect(() => {
-    if (!sourceMenuOpen) return undefined
-    refreshLyrics()
+    discoveryStateRef.current = {
+      loading: lyricsLoading,
+      error: lyricsError,
+      main: lyricLayers.main,
+    }
+  }, [lyricLayers.main, lyricsError, lyricsLoading])
+
+  // Older providers expose no completion signal. Check quickly for one minute,
+  // then every 30 visible seconds so queued sweeps can still deliver late hits.
+  useEffect(() => {
+    if (!lyricsVisiblePreference || !trackId || isRadio) {
+      setDiscovering(false)
+      return undefined
+    }
+    setDiscovering(true)
     let ticks = 0
     const timer = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return
       ticks += 1
-      refreshLyrics()
-      if (ticks >= SOURCE_REFRESH_MAX_TICKS) window.clearInterval(timer)
+      const current = discoveryStateRef.current
+      const local = current?.main && current.main.source?.type !== 'plugin'
+      if (local) {
+        window.clearInterval(timer)
+        setDiscovering(false)
+        return
+      }
+      if (ticks >= SOURCE_REFRESH_MAX_TICKS) setDiscovering(false)
+      const shouldRefresh =
+        ticks <= SOURCE_REFRESH_MAX_TICKS ||
+        (ticks - SOURCE_REFRESH_MAX_TICKS) % SOURCE_REFRESH_SLOW_TICKS === 0
+      // Error retries already honor provider cooldowns and transient backoff.
+      if (shouldRefresh && !current?.loading && !current?.error) {
+        refreshLyrics()
+      }
     }, SOURCE_REFRESH_INTERVAL_MS)
     return () => window.clearInterval(timer)
-  }, [refreshLyrics, sourceMenuOpen])
+  }, [
+    discoveryGeneration,
+    isRadio,
+    lyricsVisiblePreference,
+    refreshLyrics,
+    trackId,
+    trackUpdatedAt,
+  ])
+
+  const waitingForLyrics =
+    lyricsLoading || (discovering && !lyricsError && variants.length === 0)
+  const checkingMoreSources =
+    discovering && !lyricsLoading && !lyricsError && variants.length === 0
 
   const hasTranslationLyric = hasStructuredLyricContent(lyricLayers.translation)
   const hasPronunciationLyric = hasStructuredLyricContent(
@@ -111,7 +150,11 @@ const usePlayerLyrics = ({
     () => ({
       title: translate('player.lyricsTitleText'),
       toggle: translate('player.toggleLyricText'),
-      loading: translate('player.lyricsLoadingText'),
+      loading: translate(
+        checkingMoreSources
+          ? 'player.lyricsSearchingMoreText'
+          : 'player.lyricsLoadingText',
+      ),
       unavailable: translate('player.lyricsUnavailableText'),
       rateLimited:
         lyricsRetryAfterSeconds == null
@@ -119,7 +162,8 @@ const usePlayerLyrics = ({
           : translate('player.lyricsRateLimitedText', {
               smart_count: lyricsRetryAfterSeconds,
             }),
-      empty: translate('player.emptyLyricText'),
+      empty: translate('player.lyricsNotFoundYetText'),
+      returnToCurrentLine: translate('player.returnToCurrentLyricText'),
       resize: translate('player.resizeLyricsSidebarText'),
       showTranslation: translate('player.showLyricsTranslationText'),
       hideTranslation: translate('player.hideLyricsTranslationText'),
@@ -151,7 +195,7 @@ const usePlayerLyrics = ({
       offsetReset: translate('player.lyricsOffsetResetText'),
       download: translate('player.downloadLyricsText'),
     }),
-    [lyricsRetryAfterSeconds, translate],
+    [checkingMoreSources, lyricsRetryAfterSeconds, translate],
   )
 
   const toggleLyrics = useCallback(() => {
@@ -195,9 +239,14 @@ const usePlayerLyrics = ({
     [resolvedVariantKey, trackId],
   )
 
-  const handleSourceMenuOpenChange = useCallback((open) => {
-    setSourceMenuOpen(open)
-  }, [])
+  const handleSourceMenuOpenChange = useCallback(
+    (open) => {
+      if (!open) return
+      refreshLyrics()
+      setDiscoveryGeneration((current) => current + 1)
+    },
+    [refreshLyrics],
+  )
 
   const downloadSelected = useCallback(() => {
     downloadLyrics(lyricLayers.main, {
@@ -238,17 +287,24 @@ const usePlayerLyrics = ({
       onToggleLyrics: toggleLyrics,
       lyricsActive: lyricsVisible,
       lyricsDisabled: lyricsToggleDisabled,
-      lyricsLoading,
+      lyricsLoading: waitingForLyrics,
       lyricsLabel: labels.toggle,
       lyricsLoadingLabel: labels.loading,
       lyricsToggleRef,
     }),
-    [labels, lyricsLoading, lyricsToggleDisabled, lyricsVisible, toggleLyrics],
+    [
+      labels,
+      waitingForLyrics,
+      lyricsToggleDisabled,
+      lyricsVisible,
+      toggleLyrics,
+    ],
   )
 
   const desktopLyricsProps = useMemo(
     () => ({
       visible: isDesktop && lyricsVisible,
+      trackId,
       mainLyric: lyricLayers.main,
       translationLyric: lyricLayers.translation,
       pronunciationLyric: lyricLayers.pronunciation,
@@ -260,7 +316,7 @@ const usePlayerLyrics = ({
       onTogglePronunciation: togglePronunciation,
       ...variantControlProps,
       audioInstance,
-      loading: lyricsLoading,
+      loading: waitingForLyrics,
       error: lyricsError,
       errorMessage: labels.rateLimited,
       labels,
@@ -277,13 +333,14 @@ const usePlayerLyrics = ({
       lyricLayers.pronunciation,
       lyricLayers.translation,
       lyricsError,
-      lyricsLoading,
+      waitingForLyrics,
       lyricsVisible,
       obscuredByQueue,
       showPronunciation,
       showTranslation,
       togglePronunciation,
       toggleTranslation,
+      trackId,
       variantControlProps,
     ],
   )
@@ -297,6 +354,8 @@ const usePlayerLyrics = ({
       >
         <LyricsPanel
           visible
+          trackId={trackId}
+          selectedSourceKey={selectedSourceKey}
           obscured={obscuredByQueue}
           mainLyric={lyricLayers.main}
           translationLyric={lyricLayers.translation}
@@ -305,7 +364,7 @@ const usePlayerLyrics = ({
           showPronunciation={showPronunciation}
           audioInstance={audioInstance}
           offsetMs={offsetMs}
-          loading={lyricsLoading}
+          loading={waitingForLyrics}
           error={lyricsError}
           errorMessage={labels.rateLimited}
           labels={labels}
@@ -335,13 +394,15 @@ const usePlayerLyrics = ({
       lyricLayers.pronunciation,
       lyricLayers.translation,
       lyricsError,
-      lyricsLoading,
+      waitingForLyrics,
       obscuredByQueue,
       offsetMs,
+      selectedSourceKey,
       showPronunciation,
       showTranslation,
       togglePronunciation,
       toggleTranslation,
+      trackId,
       useInlineMobileLyrics,
       variantControlProps,
     ],

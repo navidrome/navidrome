@@ -18,7 +18,6 @@ import {
   KARAOKE_CHARACTER_RISE_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_LIFT_PX,
-  KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
   TOKEN_FUTURE_ALPHA,
 } from './lyricsKaraokeConstants'
@@ -188,6 +187,7 @@ describe('<LyricsPanel />', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     window.matchMedia = originalMatchMedia
     window.ResizeObserver = originalResizeObserver
     cleanup()
@@ -905,30 +905,171 @@ describe('<LyricsPanel />', () => {
     expect(window.cancelAnimationFrame).toHaveBeenCalledWith(7)
   })
 
-  it('pauses auto-scroll only for genuine manual scroll intent', async () => {
+  it('keeps manual browsing paused until returning to the current line', () => {
     vi.useFakeTimers()
-    const requestAnimationFrameSpy = vi
-      .spyOn(window, 'requestAnimationFrame')
-      .mockImplementation(() => 0)
+    const audioInstance = createAudio({ currentTime: 0.5 })
+    renderPanel({ mainLyric, audioInstance })
+
+    const body = screen.getByTestId('lyrics-scroll-body')
+    fireEvent.scroll(body)
+    expect(
+      screen.queryByRole('button', { name: 'Return to current line' }),
+    ).not.toBeInTheDocument()
+    fireEvent.wheel(body)
+    expect(body).toHaveAttribute('data-scrollbar-visible', 'true')
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'true')
+    const returnButton = screen.getByRole('button', {
+      name: 'Return to current line',
+    })
+
+    act(() => {
+      vi.advanceTimersByTime(30_000)
+      audioInstance.currentTime = 0.8
+      audioInstance.dispatchEvent(new Event('timeupdate'))
+    })
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'true')
+    expect(returnButton).toBeInTheDocument()
+
+    const initialFrames = window.requestAnimationFrame.mock.calls.length
+    fireEvent.click(returnButton)
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'false')
+    expect(returnButton).not.toBeInTheDocument()
+    expect(window.requestAnimationFrame.mock.calls.length).toBeGreaterThan(
+      initialFrames,
+    )
+    expect(document.activeElement).toBe(screen.getByTestId('lyrics-line-group'))
+  })
+
+  it('pauses following for keyboard browsing and scrollbar interaction', () => {
     renderPanel({
-      mainLyric,
-      audioInstance: { currentTime: 0.5, paused: true },
+      mainLyric: {
+        synced: true,
+        line: [
+          { start: 0, end: 1000, value: 'Current line' },
+          { start: 1000, end: 2000, value: 'Next line' },
+        ],
+      },
+      audioInstance: createAudio({ currentTime: 0.5 }),
+      labels: { returnToCurrentLine: 'Follow current lyric' },
     })
 
     const body = screen.getByTestId('lyrics-scroll-body')
-    const initialFrames = requestAnimationFrameSpy.mock.calls.length
-    fireEvent.wheel(body)
-    expect(body).toHaveAttribute('data-scrollbar-visible', 'true')
-    expect(requestAnimationFrameSpy).toHaveBeenCalledTimes(initialFrames)
+    const currentLine = screen
+      .getByText('Current line')
+      .closest('[role="button"]')
+    fireEvent.keyDown(currentLine, { key: 'ArrowDown' })
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'true')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow current lyric' }),
+    )
+    vi.stubGlobal('PointerEvent', MouseEvent)
+    vi.spyOn(body, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 400,
+    })
+    fireEvent.pointerDown(body, { clientX: 200 })
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'false')
+    fireEvent.pointerDown(body, { clientX: 399 })
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'true')
+  })
 
-    act(() => {
-      vi.advanceTimersByTime(KARAOKE_MANUAL_SCROLL_PAUSE_MS)
+  it('preserves manual browsing through same-song lyric upgrades', () => {
+    const props = {
+      trackId: 'current-song',
+      mainLyric: { ...mainLyric, source: { provider: 'NetEase' } },
+      audioInstance: createAudio({ currentTime: 0.5 }),
+    }
+    const { rerenderPanel } = renderPanel(props)
+    const body = screen.getByTestId('lyrics-scroll-body')
+    fireEvent.wheel(body)
+    body.scrollTop = 180
+
+    rerenderPanel({
+      ...props,
+      mainLyric: {
+        ...props.mainLyric,
+        line: [
+          ...props.mainLyric.line,
+          { start: 1000, end: 2000, value: 'Newly discovered line' },
+        ],
+      },
     })
-    await waitFor(() => {
-      expect(requestAnimationFrameSpy.mock.calls.length).toBeGreaterThan(
-        initialFrames,
-      )
+    expect(body.scrollTop).toBe(180)
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'true')
+
+    rerenderPanel({ ...props, trackId: 'next-song' })
+    expect(body.scrollTop).toBe(0)
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'false')
+  })
+
+  it('preserves browsing when Auto discovers a better provider or language', () => {
+    const props = {
+      trackId: 'current-song',
+      selectedSourceKey: null,
+      mainLyric: { ...mainLyric, lang: 'eng', source: { provider: 'LRCLib' } },
+      audioInstance: createAudio({ currentTime: 0.5 }),
+    }
+    const { rerenderPanel } = renderPanel(props)
+    const body = screen.getByTestId('lyrics-scroll-body')
+    fireEvent.wheel(body)
+    body.scrollTop = 180
+
+    const upgradedProps = {
+      ...props,
+      mainLyric: { ...mainLyric, lang: 'jpn', source: { provider: 'NetEase' } },
+    }
+    rerenderPanel(upgradedProps)
+    expect(body.scrollTop).toBe(180)
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'true')
+
+    rerenderPanel({ ...upgradedProps, selectedSourceKey: 'netease' })
+    expect(body.scrollTop).toBe(0)
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'false')
+  })
+
+  it('observes the scroll body after asynchronous lyrics arrive', () => {
+    const observers = []
+    window.ResizeObserver = class {
+      constructor(callback) {
+        this.callback = callback
+        this.observe = vi.fn()
+        this.disconnect = vi.fn()
+        observers.push(this)
+      }
+    }
+    let bodyHeight = 400
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(
+      function getClientHeight() {
+        return this.dataset.testid === 'lyrics-scroll-body' ? bodyHeight : 0
+      },
+    )
+    const { rerenderPanel, unmount } = renderPanel({
+      mainLyric: null,
+      loading: true,
     })
+    expect(
+      observers.every((observer) => observer.observe.mock.calls.length === 0),
+    ).toBe(true)
+
+    rerenderPanel({ mainLyric })
+    const body = screen.getByTestId('lyrics-scroll-body')
+    const observer = observers.find((candidate) =>
+      candidate.observe.mock.calls.some(([target]) => target === body),
+    )
+    expect(observer).toBeDefined()
+    expect(body.firstElementChild).toHaveAttribute(
+      'data-scroll-end-padding',
+      '360',
+    )
+
+    bodyHeight = 600
+    act(() => observer.callback([{ target: body }]))
+    expect(body.firstElementChild).toHaveAttribute(
+      'data-scroll-end-padding',
+      '540',
+    )
+    unmount()
+    expect(observer.disconnect).toHaveBeenCalled()
   })
 
   it('keeps scrollbar geometry stable before, during, and after manual scroll', () => {

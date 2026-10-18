@@ -384,15 +384,24 @@ export const selectLyricLayers = (
     null
   const mainCandidates = selectedVariant ? selectedVariant.entries : []
 
-  // Translation/pronunciation entries travel with their own source when the
-  // response tags them; without a tagged match the global pick stands.
+  // A different provider's auxiliary track can have incompatible timing or
+  // text. Only older responses without source attribution can be a fallback.
   const scopedLayer = (kind) => {
     const entries = grouped[kind]
     if (!selectedVariant || entries.length === 0) return entries
     const scoped = entries.filter(
       (lyric) => variantKey(lyric?.source) === selectedVariant.key,
     )
-    return scoped.length > 0 ? scoped : entries
+    return scoped.length > 0
+      ? scoped
+      : entries.filter(
+          (lyric) =>
+            ![
+              lyric?.source?.provider,
+              lyric?.source?.name,
+              lyric?.source?.type,
+            ].some((value) => typeof value === 'string' && value.trim() !== ''),
+        )
   }
 
   return {

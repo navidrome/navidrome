@@ -76,6 +76,21 @@ describe('useEnhancedLyrics', () => {
     clearEnhancedLyricsCache()
   })
 
+  it('keeps readable lyrics when a background refresh returns an empty result', async () => {
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(responseFor('Readable lyrics'))
+      .mockResolvedValueOnce(responseForEntries([]))
+    const { result, rerender } = renderLyrics({ trackId: 'song-empty-refresh' })
+    await expectLyric(result, 'Readable lyrics')
+    act(() => result.current.refresh())
+    await waitFor(() => expect(result.current.refreshing).toBe(false))
+    expect(result.current.layers.main.line[0].value).toBe('Readable lyrics')
+    rerender({ trackId: 'song-empty-refresh', requested: false })
+    rerender({ trackId: 'song-empty-refresh', requested: true })
+    expect(result.current.layers.main.line[0].value).toBe('Readable lyrics')
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
   it('fetches enhanced structured lyrics and caches them by track id', async () => {
     subsonic.getLyricsBySongId
       .mockResolvedValueOnce(responseFor('Track one'))

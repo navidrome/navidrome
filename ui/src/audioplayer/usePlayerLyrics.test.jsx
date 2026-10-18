@@ -191,7 +191,105 @@ describe('usePlayerLyrics', () => {
     expect(localStorage.getItem('lyrics.offset:song-1:netease')).toBe('-100')
   })
 
-  it('refreshes once per five seconds while the source menu is open and stops at the cap', async () => {
+  it('recovers a clean empty first pass without opening the source menu', async () => {
+    vi.useFakeTimers()
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce({
+        json: { 'subsonic-response': { lyricsList: { structuredLyrics: [] } } },
+      })
+      .mockResolvedValue(variantsResponse())
+    const { result } = renderPlayerLyrics()
+    await act(async () => {
+      result.current.toolbarLyricsProps.onToggleLyrics()
+    })
+    expect(result.current.desktopLyricsProps.mainLyric).toBeNull()
+    expect(result.current.desktopLyricsProps.loading).toBe(true)
+
+    await act(async () => vi.advanceTimersByTime(5_000))
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'NetEase line',
+    )
+    expect(result.current.desktopLyricsProps.loading).toBe(false)
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('stops discovery when lyrics are hidden and does not poll local lyrics', async () => {
+    vi.useFakeTimers()
+    const response = variantsResponse()
+    response.json['subsonic-response'].lyricsList.structuredLyrics = [
+      { ...sourceEntry('local', 'Local line'), source: { type: 'embedded' } },
+    ]
+    subsonic.getLyricsBySongId.mockResolvedValue(response)
+    const { result } = renderPlayerLyrics()
+    await act(async () => {
+      result.current.toolbarLyricsProps.onToggleLyrics()
+    })
+    await act(async () => vi.advanceTimersByTime(15_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    act(() => result.current.toolbarLyricsProps.onToggleLyrics())
+    await act(async () => vi.advanceTimersByTime(60_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not bypass a server cooldown with discovery polling', async () => {
+    vi.useFakeTimers()
+    subsonic.getLyricsBySongId.mockRejectedValue(
+      new Error('provider retry after 120s'),
+    )
+    const { result } = renderPlayerLyrics()
+    await act(async () => {
+      result.current.toolbarLyricsProps.onToggleLyrics()
+    })
+    await act(async () => vi.advanceTimersByTime(60_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    expect(result.current.desktopLyricsProps.error).not.toBeNull()
+  })
+
+  it('preserves a selected source as automatic discovery updates the winner', async () => {
+    vi.useFakeTimers()
+    localStorage.setItem('lyrics.source:song-1', 'lrclib')
+    subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
+    const { result } = renderPlayerLyrics()
+    await act(async () => {
+      result.current.toolbarLyricsProps.onToggleLyrics()
+    })
+    const updated = variantsResponse()
+    updated.json['subsonic-response'].lyricsList.structuredLyrics.unshift(
+      sourceEntry('Better Lyrics', 'New best line'),
+    )
+    subsonic.getLyricsBySongId.mockResolvedValue(updated)
+    await act(async () => vi.advanceTimersByTime(5_000))
+    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe('lrclib')
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'LRCLib line',
+    )
+  })
+
+  it('slows an empty search after one minute and discovers delayed results', async () => {
+    vi.useFakeTimers()
+    subsonic.getLyricsBySongId.mockResolvedValue({
+      json: { 'subsonic-response': { lyricsList: { structuredLyrics: [] } } },
+    })
+    const { result } = renderPlayerLyrics()
+    await act(async () => {
+      result.current.toolbarLyricsProps.onToggleLyrics()
+    })
+    for (let tick = 0; tick < 12; tick += 1) {
+      await act(async () => vi.advanceTimersByTime(5_000))
+    }
+    expect(result.current.desktopLyricsProps.loading).toBe(false)
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(13)
+    subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
+    await act(async () => vi.advanceTimersByTime(25_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(13)
+    await act(async () => vi.advanceTimersByTime(5_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(14)
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'NetEase line',
+    )
+  })
+
+  it('refreshes every five seconds, then slows while the picker is closed', async () => {
     vi.useFakeTimers()
     subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
 

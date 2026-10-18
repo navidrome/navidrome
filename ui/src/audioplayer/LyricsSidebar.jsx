@@ -90,6 +90,7 @@ const LyricsSidebar = ({
   width = LYRICS_SIDEBAR_DEFAULT_WIDTH,
   maxWidth = LYRICS_SIDEBAR_MAX_WIDTH,
   onWidthChange = noop,
+  trackId,
   mainLyric,
   translationLyric,
   pronunciationLyric,
@@ -100,7 +101,7 @@ const LyricsSidebar = ({
   onToggleTranslation,
   onTogglePronunciation,
   variants = [],
-  selectedSourceKey = null,
+  selectedSourceKey,
   onSelectSource,
   onSourceMenuOpenChange,
   refreshing = false,
@@ -303,6 +304,8 @@ const LyricsSidebar = ({
         <LyricsPanel
           visible={visible}
           obscured={obscuredByQueue}
+          trackId={trackId}
+          selectedSourceKey={selectedSourceKey}
           mainLyric={mainLyric}
           translationLyric={translationLyric}
           pronunciationLyric={pronunciationLyric}

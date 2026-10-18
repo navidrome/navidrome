@@ -550,7 +550,7 @@ describe('lyrics variants', () => {
     ).toBe('English words')
   })
 
-  it('scopes translation layers to the selected source with a global fallback', () => {
+  it('scopes translation layers to the selected source', () => {
     const neteaseMain = {
       ...structured('main', 'eng', 'NetEase main'),
       source: { provider: 'NetEase' },
@@ -582,6 +582,30 @@ describe('lyrics variants', () => {
       'netease',
     )
     expect(fallback.main.line[0].value).toBe('NetEase main')
-    expect(fallback.translation.line[0].value).toBe('Traduction Genius')
+    expect(fallback.translation).toBeNull()
+  })
+
+  it('uses untagged legacy auxiliary tracks without mixing explicit providers', () => {
+    const main = {
+      ...structured('main', 'ja', '日本語'),
+      source: { type: 'plugin', provider: 'NetEase' },
+    }
+    const translation = structured('translation', 'en', 'Japanese')
+    const pronunciation = structured('pronunciation', 'ja-Latn', 'nihongo')
+    const otherProvider = {
+      ...structured('pronunciation', 'ja-Latn', 'other pronunciation'),
+      source: { type: 'plugin', provider: 'LyricsPlus' },
+    }
+    const layers = selectLyricLayers(
+      [main, translation, otherProvider, pronunciation],
+      'en',
+      'netease',
+    )
+
+    expect(layers.translation).toBe(translation)
+    expect(layers.pronunciation).toBe(pronunciation)
+    expect(
+      selectLyricLayers([main, otherProvider], 'en').pronunciation,
+    ).toBeNull()
   })
 })

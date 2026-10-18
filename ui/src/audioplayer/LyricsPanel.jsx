@@ -1,3 +1,4 @@
+import { Button } from '@material-ui/core'
 import { alpha, makeStyles, useTheme } from '@material-ui/core/styles'
 import clsx from 'clsx'
 import React, {
@@ -12,6 +13,7 @@ import {
   buildKaraokeLines,
   hasStructuredLyricContent,
   hasUsableKaraokeTiming,
+  variantKey,
 } from './lyrics'
 import { KaraokeLineRow, KaraokeStackedLineRow } from './LyricsLineRows'
 import {
@@ -23,7 +25,6 @@ import {
   KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_LINE_MOTION_EASING,
-  KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
 } from './lyricsKaraokeConstants'
 import {
@@ -40,6 +41,7 @@ const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KAR
 
 const useStyles = makeStyles((theme) => ({
   root: {
+    position: 'relative',
     height: '100%',
     minHeight: 0,
     display: 'flex',
@@ -265,6 +267,15 @@ const useStyles = makeStyles((theme) => ({
   secondaryVoiceLane: {
     fontSize: 22,
   },
+  returnToCurrent: {
+    position: 'absolute',
+    bottom: theme.spacing(7),
+    left: '50%',
+    transform: 'translateX(-50%)',
+    maxWidth: 'calc(100% - 32px)',
+    width: 'max-content',
+    zIndex: 1,
+  },
   emptyState: {
     flex: 1,
     minHeight: 0,
@@ -408,6 +419,8 @@ const usePrefersReducedMotion = () => {
 const LyricsPanel = ({
   visible = true,
   obscured = false,
+  trackId,
+  selectedSourceKey,
   mainLyric,
   translationLyric,
   pronunciationLyric,
@@ -426,9 +439,8 @@ const LyricsPanel = ({
   const bodyRef = useRef(null)
   const scrollAnimationRef = useRef(null)
   const scrollbarTimerRef = useRef(null)
-  const manualScrollTimerRef = useRef(null)
-  const manualScrollUntilRef = useRef(0)
   const [showScrollbar, setShowScrollbar] = useState(false)
+  const [autoScrollPaused, setAutoScrollPaused] = useState(false)
   const [autoScrollResumeKey, setAutoScrollResumeKey] = useState(0)
   const [layoutVersion, setLayoutVersion] = useState(0)
   const [hasTopFade, setHasTopFade] = useState(false)
@@ -437,6 +449,12 @@ const LyricsPanel = ({
   const [focusedLineIndex, setFocusedLineIndex] = useState(null)
   const prefersReducedMotion = usePrefersReducedMotion()
   const timelineVisible = visible && !obscured
+  const sourceSelection =
+    selectedSourceKey === undefined
+      ? `${variantKey(mainLyric?.source)}:${mainLyric?.lang || ''}`
+      : (selectedSourceKey ?? 'auto')
+  const lyricIdentity =
+    trackId == null ? mainLyric : `${trackId}:${sourceSelection}`
   const activeLineAnchorRatio = inline
     ? KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO
     : KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO
@@ -453,6 +471,8 @@ const LyricsPanel = ({
     () => buildKaraokeLines(pronunciationLyric, offsetMs),
     [offsetMs, pronunciationLyric],
   )
+  const hasLyricBody =
+    hasStructuredLyricContent(mainLyric) && mainLines.length > 0
   const hasTimedMainLines = useMemo(
     () => hasUsableKaraokeTiming(mainLines),
     [mainLines],
@@ -488,7 +508,7 @@ const LyricsPanel = ({
 
   useEffect(() => {
     setFocusedLineIndex(null)
-  }, [mainLyric])
+  }, [lyricIdentity])
 
   const trByMainIndex = useMemo(() => {
     if (!showTranslation || translationLines.length === 0) return {}
@@ -547,30 +567,16 @@ const LyricsPanel = ({
     }, KARAOKE_SCROLLBAR_VISIBLE_MS)
   }, [])
 
-  const clearManualScrollTimer = useCallback(() => {
-    if (manualScrollTimerRef.current) {
-      window.clearTimeout(manualScrollTimerRef.current)
-      manualScrollTimerRef.current = null
-    }
-  }, [])
-
   const resumeAutoScroll = useCallback(() => {
-    clearManualScrollTimer()
-    manualScrollUntilRef.current = 0
+    setAutoScrollPaused(false)
     setAutoScrollResumeKey((current) => current + 1)
-  }, [clearManualScrollTimer])
+  }, [])
 
   const markManualScrollIntent = useCallback(() => {
     cancelScrollAnimation(scrollAnimationRef)
-    clearManualScrollTimer()
-    manualScrollUntilRef.current =
-      performance.now() + KARAOKE_MANUAL_SCROLL_PAUSE_MS
-    manualScrollTimerRef.current = window.setTimeout(() => {
-      manualScrollTimerRef.current = null
-      resumeAutoScroll()
-    }, KARAOKE_MANUAL_SCROLL_PAUSE_MS)
+    setAutoScrollPaused(true)
     showScrollbarForManualScroll()
-  }, [clearManualScrollTimer, resumeAutoScroll, showScrollbarForManualScroll])
+  }, [showScrollbarForManualScroll])
 
   const updateTopFade = useCallback(() => {
     const body = bodyRef.current
@@ -584,9 +590,6 @@ const LyricsPanel = ({
     () => () => {
       if (scrollbarTimerRef.current) {
         window.clearTimeout(scrollbarTimerRef.current)
-      }
-      if (manualScrollTimerRef.current) {
-        window.clearTimeout(manualScrollTimerRef.current)
       }
       cancelScrollAnimation(scrollAnimationRef)
     },
@@ -604,7 +607,7 @@ const LyricsPanel = ({
     })
     resizeObserver.observe(body)
     return () => resizeObserver.disconnect()
-  }, [visible])
+  }, [hasLyricBody, visible])
 
   useLayoutEffect(() => {
     const body = bodyRef.current
@@ -633,20 +636,23 @@ const LyricsPanel = ({
     const body = bodyRef.current
     if (!visible || !body) return
     cancelScrollAnimation(scrollAnimationRef)
-    clearManualScrollTimer()
-    manualScrollUntilRef.current = 0
+    setAutoScrollPaused(false)
     body.scrollTop = 0
     setHasTopFade(false)
-  }, [clearManualScrollTimer, mainLyric, visible])
+  }, [lyricIdentity, visible])
 
   useEffect(() => {
-    if (!timelineVisible || !hasTimedMainLines || scrollTargetIndex < 0) {
+    if (
+      !timelineVisible ||
+      !hasTimedMainLines ||
+      autoScrollPaused ||
+      scrollTargetIndex < 0
+    ) {
       cancelScrollAnimation(scrollAnimationRef)
       return undefined
     }
 
     const animFrameId = window.requestAnimationFrame(() => {
-      if (manualScrollUntilRef.current > performance.now()) return
       const body = bodyRef.current
       const targetNode = getLineNode(scrollTargetIndex)
       if (!body || !targetNode) return
@@ -665,6 +671,7 @@ const LyricsPanel = ({
     return () => window.cancelAnimationFrame(animFrameId)
   }, [
     activeLineAnchorRatio,
+    autoScrollPaused,
     autoScrollResumeKey,
     getLineNode,
     hasTimedMainLines,
@@ -676,7 +683,7 @@ const LyricsPanel = ({
 
   if (!visible) return null
 
-  if (!hasStructuredLyricContent(mainLyric) || mainLines.length === 0) {
+  if (!hasLyricBody) {
     const message = loading
       ? labels.loading || 'Loading lyrics'
       : error
@@ -707,6 +714,7 @@ const LyricsPanel = ({
   }
 
   const focusSeekableLine = (index) => {
+    markManualScrollIntent()
     setFocusedLineIndex(index)
     getLineNode(index)?.focus()
   }
@@ -754,10 +762,44 @@ const LyricsPanel = ({
         data-testid="lyrics-scroll-body"
         data-reduced-motion={prefersReducedMotion ? 'true' : 'false'}
         data-scrollbar-visible={showScrollbar ? 'true' : 'false'}
+        data-auto-scroll-paused={autoScrollPaused ? 'true' : 'false'}
         data-top-fade-enabled={hasTopFade ? 'true' : 'false'}
         onScroll={updateTopFade}
         onWheel={markManualScrollIntent}
         onTouchMove={markManualScrollIntent}
+        onPointerDown={(event) => {
+          const body = event.currentTarget
+          if (event.target !== body) return
+          const bounds = body.getBoundingClientRect()
+          const scrollbarWidth = Math.max(
+            8,
+            body.offsetWidth - body.clientWidth,
+          )
+          const isRtl = window.getComputedStyle(body).direction === 'rtl'
+          if (
+            isRtl
+              ? event.clientX <= bounds.left + scrollbarWidth
+              : event.clientX >= bounds.right - scrollbarWidth
+          ) {
+            markManualScrollIntent()
+          }
+        }}
+        onKeyDown={(event) => {
+          if (
+            !event.defaultPrevented &&
+            [
+              'PageUp',
+              'PageDown',
+              'Home',
+              'End',
+              'ArrowUp',
+              'ArrowDown',
+              ' ',
+            ].includes(event.key)
+          ) {
+            markManualScrollIntent()
+          }
+        }}
       >
         <div
           className={classes.lines}
@@ -939,6 +981,22 @@ const LyricsPanel = ({
           })}
         </div>
       </div>
+      {autoScrollPaused && hasTimedMainLines && (
+        <Button
+          className={classes.returnToCurrent}
+          variant="contained"
+          size="small"
+          onClick={() => {
+            resumeAutoScroll()
+            if (scrollTargetIndex >= 0) {
+              setFocusedLineIndex(scrollTargetIndex)
+              getLineNode(scrollTargetIndex)?.focus({ preventScroll: true })
+            }
+          }}
+        >
+          {labels.returnToCurrentLine || 'Return to current line'}
+        </Button>
+      )}
     </div>
   )
 }
