@@ -348,6 +348,9 @@ for unavailable sources and retry discovery rather than replacing working lyrics
 When present, `lyricsList.retryAfterSeconds` is the longest reported provider
 cooldown. Clients should wait that long before discovering sources again.
 
+Plugin error diagnostics stay in server logs. Failed Subsonic lyrics requests
+return a generic message and, when recognized, only the numeric retry duration.
+
 Source provenance distinguishes embedded lyrics, sidecar formats, and plugin
 names/providers without exposing filesystem paths. Any lyrics plugin can
 participate: optional source metadata is filled in by Navidrome when omitted.

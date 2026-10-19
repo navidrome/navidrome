@@ -32,6 +32,15 @@ func lyricsRetryAfterSeconds(err error) int {
 	return seconds
 }
 
+// Plugin diagnostics can contain credentials or local paths. Only a fixed
+// message and the recognized numeric cooldown cross the client boundary.
+func lyricsClientError(err error) error {
+	if seconds := lyricsRetryAfterSeconds(err); seconds > 0 {
+		return newError(responses.ErrorGeneric, "error getting lyrics; retry after %ds", seconds)
+	}
+	return newError(responses.ErrorGeneric, "error getting lyrics")
+}
+
 func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {
 	filtered := lyricsList
 	if !enhanced {

@@ -185,7 +185,7 @@ describe('useEnhancedLyrics', () => {
   it('reports a cooldown countdown and retries the current song when it expires', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-23T06:00:00Z'))
-    const cooldownError = new Error('better lyrics API cooldown active for 2s')
+    const cooldownError = new Error('error getting lyrics; retry after 2s')
     subsonic.getLyricsBySongId
       .mockRejectedValueOnce(cooldownError)
       .mockResolvedValueOnce(responseFor('Recovered after cooldown'))

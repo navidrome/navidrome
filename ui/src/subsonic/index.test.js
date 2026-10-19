@@ -227,15 +227,14 @@ describe('getLyricsBySongId', () => {
           status: 'failed',
           error: {
             code: 0,
-            message:
-              'Internal Server Error: better lyrics API cooldown active for 30s',
+            message: 'error getting lyrics; retry after 30s',
           },
         },
       },
     })
 
     await expect(subsonic.getLyricsBySongId('song-123')).rejects.toThrow(
-      'better lyrics API cooldown active for 30s',
+      'error getting lyrics; retry after 30s',
     )
   })
 })

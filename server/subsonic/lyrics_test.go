@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"net/http/httptest"
 	"path/filepath"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -247,6 +250,70 @@ var _ = Describe("GetLyricsBySongId", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(legacy.LyricsList.SourcesIncomplete).To(BeFalse())
 	})
+
+	DescribeTable("keeps provider diagnostics private on lyrics failure", func(query string, legacy bool) {
+		conf.Server.LyricsPriority = "Unavailable"
+		mockRepo.SetData(model.MediaFiles{{ID: "1", Artist: "Artist", Title: "Song"}})
+		for _, diagnostic := range []struct {
+			name    string
+			err     error
+			message string
+		}{
+			{
+				name: "joined credential and filesystem diagnostics with a cooldown",
+				err: errors.Join(
+					errors.New("https://user:PRIVATE_PASSWORD@provider.test/lyrics?apikey=PRIVATE_API_KEY: retry after 5s"),
+					errors.New("/private/music/PRIVATE_PATH: provider body PRIVATE_BODY; cooldown active for 120s"),
+				),
+				message: "error getting lyrics; retry after 120s",
+			},
+			{
+				name:    "unstructured upstream response",
+				err:     errors.New(`<html>PRIVATE_BODY & PRIVATE_API_KEY</html> at /private/music/PRIVATE_PATH`),
+				message: "error getting lyrics",
+			},
+		} {
+			By(diagnostic.name)
+			router.lyrics = lyrics.NewLyrics(ds, failedLyricsPlugins{"Unavailable": diagnostic.err})
+			for _, format := range []string{"json", "xml", "jsonp"} {
+				By("serializing " + format)
+				r := newGetRequest(query + "&f=" + format + "&callback=lyricsCallback")
+				r = r.WithContext(request.WithUser(r.Context(), model.User{ID: "listener", IsAdmin: false}))
+				var err error
+				if legacy {
+					_, err = router.GetLyrics(r)
+				} else {
+					_, err = router.GetLyricsBySongId(r)
+				}
+				Expect(err).To(HaveOccurred())
+				w := httptest.NewRecorder()
+				sendError(w, r, err)
+				body := w.Body.String()
+				Expect(body).NotTo(ContainSubstring("PRIVATE_"))
+				Expect(body).NotTo(ContainSubstring("provider.test"))
+				var response responses.Subsonic
+				if format == "xml" {
+					Expect(xml.Unmarshal(w.Body.Bytes(), &response)).To(Succeed())
+				} else {
+					if format == "jsonp" {
+						Expect(body).To(HavePrefix("lyricsCallback("))
+						body = strings.TrimSuffix(strings.TrimPrefix(body, "lyricsCallback("), ")")
+					}
+					var wrapper responses.JsonWrapper
+					Expect(json.Unmarshal([]byte(body), &wrapper)).To(Succeed())
+					response = wrapper.Subsonic
+				}
+				Expect(response.Status).To(Equal(responses.StatusFailed))
+				Expect(response.Error.Code).To(Equal(responses.ErrorGeneric))
+				Expect(response.Error.Message).To(Equal(diagnostic.message))
+			}
+		}
+	},
+		Entry("legacy artist/title", "artist=Artist&title=Song", true),
+		Entry("v1 song lookup", "id=1", false),
+		Entry("enhanced initial lookup", "id=1&enhanced=true", false),
+		Entry("enhanced discovery", "id=1&enhanced=true&allSources=true", false),
+	)
 
 	It("serves local lyrics with the longest failed provider cooldown without exposing error messages", func() {
 		conf.Server.LyricsPriority = "LongCooldown,ShortCooldown,embedded"
