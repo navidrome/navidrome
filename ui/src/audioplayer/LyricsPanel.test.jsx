@@ -1084,6 +1084,30 @@ describe('<LyricsPanel />', () => {
     ).toBeGreaterThanOrEqual(4.5)
   })
 
+  it('resumes following after a track loads with the same selected source', () => {
+    const props = {
+      trackId: 'old-track',
+      selectedSourceKey: 'same-source',
+      mainLyric,
+      audioInstance: createAudio({ currentTime: 0.5 }),
+    }
+    const { rerenderPanel } = renderPanel(props)
+    const previousBody = screen.getByTestId('lyrics-scroll-body')
+    fireEvent.wheel(previousBody)
+    expect(previousBody).toHaveAttribute('data-auto-scroll-paused', 'true')
+    rerenderPanel({
+      ...props,
+      trackId: 'new-track',
+      mainLyric: null,
+      loading: true,
+    })
+    expect(screen.queryByTestId('lyrics-scroll-body')).not.toBeInTheDocument()
+    rerenderPanel({ ...props, trackId: 'new-track', loading: false })
+    const body = screen.getByTestId('lyrics-scroll-body')
+    expect(body).toHaveAttribute('data-auto-scroll-paused', 'false')
+    expect(body.scrollTop).toBe(0)
+  })
+
   it('starts the next track at the top before its first lyric, after a late audio clock reset', () => {
     const frame = installScrollFrames()
     const audio = createAudio({ currentTime: 8, duration: 30 })

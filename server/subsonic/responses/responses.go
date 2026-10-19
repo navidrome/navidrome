@@ -595,7 +595,9 @@ type StructuredLyric struct {
 
 type StructuredLyrics []StructuredLyric
 type LyricsList struct {
-	StructuredLyrics []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
+	StructuredLyrics  []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
+	SourcesIncomplete bool              `xml:"sourcesIncomplete,attr,omitempty" json:"sourcesIncomplete,omitempty"`
+	RetryAfterSeconds int               `xml:"retryAfterSeconds,attr,omitempty" json:"retryAfterSeconds,omitempty"`
 }
 
 type OpenSubsonicExtension struct {

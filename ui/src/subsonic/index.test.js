@@ -208,6 +208,18 @@ describe('getLyricsBySongId', () => {
     expect(requestedUrl).toContain('enhanced=true')
   })
 
+  it('requests all sources separately from HTTP request options', async () => {
+    const controller = new AbortController()
+    await subsonic.getLyricsBySongId('song-123', {
+      allSources: true,
+      signal: controller.signal,
+    })
+    expect(httpClient).toHaveBeenCalledWith(
+      expect.stringContaining('allSources=true'),
+      { signal: controller.signal },
+    )
+  })
+
   it('rejects a failed Subsonic lyrics response with its server message', async () => {
     httpClient.mockResolvedValueOnce({
       json: {

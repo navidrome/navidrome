@@ -82,7 +82,9 @@ describe('useEnhancedLyrics', () => {
       .mockResolvedValueOnce(responseForEntries([]))
     const { result, rerender } = renderLyrics({ trackId: 'song-empty-refresh' })
     await expectLyric(result, 'Readable lyrics')
-    act(() => result.current.refresh())
+    act(() => {
+      result.current.refresh()
+    })
     await waitFor(() => expect(result.current.refreshing).toBe(false))
     expect(result.current.layers.main.line[0].value).toBe('Readable lyrics')
     rerender({ trackId: 'song-empty-refresh', requested: false })
@@ -207,6 +209,134 @@ describe('useEnhancedLyrics', () => {
     )
   })
 
+  it('reuses a cached empty result until its negative-cache TTL expires', async () => {
+    vi.useFakeTimers()
+    subsonic.getLyricsBySongId.mockResolvedValue(responseForEntries([]))
+    const first = renderLyrics({ trackId: 'empty-cache' })
+    await act(async () => {})
+    first.unmount()
+    const second = renderLyrics({ trackId: 'empty-cache' })
+    await act(async () => {})
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    second.unmount()
+    await act(async () => vi.advanceTimersByTime(30_001))
+    renderLyrics({ trackId: 'empty-cache' })
+    await act(async () => {})
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('preserves server cooldowns across panel closure and hook remount', async () => {
+    vi.useFakeTimers()
+    const error = new Error('provider retry after 120s')
+    subsonic.getLyricsBySongId
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue(responseFor('Recovered'))
+    const first = renderLyrics({ trackId: 'remember-cooldown' })
+    await act(async () => {})
+    expect(first.result.current.retryAfterSeconds).toBe(120)
+    first.unmount()
+    await act(async () => vi.advanceTimersByTime(10_000))
+    const second = renderLyrics({ trackId: 'remember-cooldown' })
+    await act(async () => {})
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    expect(second.result.current.retryAfterSeconds).toBe(110)
+    act(() => {
+      second.result.current.retry()
+      second.result.current.refresh()
+    })
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    await act(async () => vi.advanceTimersByTime(110_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+    expect(second.result.current.layers.main.line[0].value).toBe('Recovered')
+  })
+
+  it('recovers a coalesced consumer when the other view closes during cooldown', async () => {
+    vi.useFakeTimers()
+    const pending = createDeferred()
+    subsonic.getLyricsBySongId
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValue(responseFor('Recovered'))
+    let delayed = false
+    const first = renderHook(() => {
+      const lyrics = useEnhancedLyrics({ trackId: 'shared-cooldown' })
+      if (lyrics.error && !delayed) {
+        delayed = true
+        vi.setSystemTime(Date.now() + 80)
+      }
+      return lyrics
+    })
+    const second = renderLyrics({ trackId: 'shared-cooldown' })
+    await act(async () => {
+      pending.reject(new Error('provider retry after 1s'))
+    })
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    expect(first.result.current.retryAfterSeconds).toBe(1)
+    second.unmount()
+    await act(async () => vi.advanceTimersByTime(1_300))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+    expect(first.result.current.layers.main.line[0].value).toBe('Recovered')
+  })
+
+  it.each([
+    ['server cooldown', 'provider cooldown active for 120s', 120_000],
+    ['transient backoff', 'provider HTTP 502', 5_000],
+  ])(
+    'retains readable lyrics and pauses refreshes during %s',
+    async (_name, message, delay) => {
+      vi.useFakeTimers()
+      subsonic.getLyricsBySongId
+        .mockResolvedValueOnce(responseFor('Readable'))
+        .mockRejectedValueOnce(new Error(message))
+        .mockResolvedValue(responseFor('Recovered'))
+      const { result, rerender } = renderLyrics({ trackId: 'refresh-cooldown' })
+      await act(async () => {})
+      act(() => {
+        result.current.refresh()
+      })
+      await act(async () => {})
+      expect(result.current.layers.main.line[0].value).toBe('Readable')
+      expect(result.current.error).toBeNull()
+      expect(result.current.retryAfterSeconds).toBe(delay / 1000)
+      act(() => {
+        result.current.refresh()
+      })
+      expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+      rerender({ trackId: 'refresh-cooldown', requested: false })
+      rerender({ trackId: 'refresh-cooldown', requested: true })
+      await act(async () => {})
+      expect(result.current.layers.main.line[0].value).toBe('Readable')
+      expect(result.current.retryAfterSeconds).toBe(delay / 1000)
+      await act(async () => vi.advanceTimersByTime(delay))
+      expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(3)
+      expect(result.current.layers.main.line[0].value).toBe('Recovered')
+    },
+  )
+
+  it('honors the retry deadline on a successful partial discovery', async () => {
+    vi.useFakeTimers()
+    const partial = responseFor('Readable')
+    partial.json['subsonic-response'].lyricsList.sourcesIncomplete = true
+    partial.json['subsonic-response'].lyricsList.retryAfterSeconds = 120
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(responseFor('Readable'))
+      .mockResolvedValueOnce(partial)
+      .mockResolvedValue(responseFor('Recovered'))
+    const { result } = renderLyrics({ trackId: 'partial-cooldown' })
+    await act(async () => {})
+    act(() => {
+      result.current.refresh()
+    })
+    await act(async () => {})
+    expect(result.current.retryAfterSeconds).toBe(120)
+    expect(result.current.layers.main.line[0].value).toBe('Readable')
+    act(() => {
+      result.current.refresh()
+    })
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+    await act(async () => vi.advanceTimersByTime(120_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(3)
+  })
+
   it('keeps cached lyrics separate by preferred language', async () => {
     subsonic.getLyricsBySongId
       .mockResolvedValueOnce(responseFor('English lyrics', 'en'))
@@ -323,6 +453,60 @@ describe('useEnhancedLyrics', () => {
       'netease',
     ])
     expect(result.current.error).toBeNull()
+  })
+
+  it('keeps the selected cached source when discovery only partially succeeds', async () => {
+    const local = {
+      ...sourceEntry('local', 'Local words'),
+      source: { type: 'embedded' },
+    }
+    const partial = responseForEntries([local])
+    partial.json['subsonic-response'].lyricsList.sourcesIncomplete = true
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(
+        responseForEntries([
+          local,
+          sourceEntry('Other provider', 'Selected words'),
+        ]),
+      )
+      .mockResolvedValueOnce(partial)
+    const { result } = renderLyrics({
+      trackId: 'song-partial',
+      selectedSourceKey: 'other provider',
+    })
+    await expectLyric(result, 'Selected words')
+    act(() => {
+      result.current.refresh()
+    })
+    await waitFor(() => expect(result.current.sourcesIncomplete).toBe(true))
+    expect(result.current.variants).toHaveLength(2)
+    expect(result.current.layers.main.line[0].value).toBe('Selected words')
+    expect(result.current.error).toBeNull()
+  })
+
+  it('honors a newly discovered higher-priority source in an incomplete response', async () => {
+    const local = {
+      ...sourceEntry('local', 'Local words'),
+      source: { type: 'embedded' },
+    }
+    const partial = responseForEntries([
+      sourceEntry('Higher priority', 'Priority words'),
+      local,
+    ])
+    partial.json['subsonic-response'].lyricsList.sourcesIncomplete = true
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(responseForEntries([local]))
+      .mockResolvedValueOnce(partial)
+    const { result } = renderLyrics({ trackId: 'song-partial-priority' })
+    await expectLyric(result, 'Local words')
+    act(() => {
+      result.current.refresh()
+    })
+    await expectLyric(result, 'Priority words')
+    expect(result.current.variants.map((entry) => entry.key)).toEqual([
+      'higher priority',
+      'embedded',
+    ])
   })
 
   it('refreshes variants without blanking the current lyrics', async () => {

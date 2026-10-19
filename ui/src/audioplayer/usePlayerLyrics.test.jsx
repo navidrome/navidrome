@@ -75,6 +75,24 @@ describe('usePlayerLyrics', () => {
     clearEnhancedLyricsCache()
   })
 
+  it('restores an existing provider selection and migrates its timing offset', async () => {
+    localStorage.setItem('lyrics.source:song-1', 'lrclib')
+    localStorage.setItem('lyrics.offset:song-1:lrclib', '250')
+    subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
+    const { result } = renderPlayerLyrics()
+    await showLyrics(result)
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'LRCLib line',
+    )
+    expect(result.current.desktopLyricsProps.offsetMs).toBe(250)
+    expect(localStorage.getItem('lyrics.source:song-1')).toBe(
+      'plugin:better%20lyrics:lrclib',
+    )
+    act(() => result.current.desktopLyricsProps.onOffsetChange(0))
+    expect(result.current.desktopLyricsProps.offsetMs).toBe(0)
+    expect(localStorage.getItem('lyrics.offset:song-1:lrclib')).toBeNull()
+  })
+
   it('loads lyrics for a Subsonic queue entry without embedded lyrics', async () => {
     const current = {
       trackId: 'song-1',
@@ -131,20 +149,33 @@ describe('usePlayerLyrics', () => {
   })
 
   it('restores the saved source choice per track and persists changes', async () => {
-    localStorage.setItem('lyrics.source:song-1', 'lrclib')
+    localStorage.setItem(
+      'lyrics.source:song-1',
+      'plugin:better%20lyrics:lrclib',
+    )
     subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
 
     const { result } = renderPlayerLyrics()
     await showLyrics(result)
 
-    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe('lrclib')
+    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe(
+      'plugin:better%20lyrics:lrclib',
+    )
     expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
       'LRCLib line',
     )
 
-    act(() => result.current.desktopLyricsProps.onSelectSource('netease'))
-    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe('netease')
-    expect(localStorage.getItem('lyrics.source:song-1')).toBe('netease')
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        'plugin:better%20lyrics:netease',
+      ),
+    )
+    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe(
+      'plugin:better%20lyrics:netease',
+    )
+    expect(localStorage.getItem('lyrics.source:song-1')).toBe(
+      'plugin:better%20lyrics:netease',
+    )
 
     act(() => result.current.desktopLyricsProps.onSelectSource(null))
     expect(localStorage.getItem('lyrics.source:song-1')).toBeNull()
@@ -169,7 +200,10 @@ describe('usePlayerLyrics', () => {
   })
 
   it('keys the offset by track and resolved source', async () => {
-    localStorage.setItem('lyrics.offset:song-1:netease', '-350')
+    localStorage.setItem(
+      'lyrics.offset:song-1:plugin:better%20lyrics:netease',
+      '-350',
+    )
     subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
 
     const { result } = renderPlayerLyrics()
@@ -179,16 +213,32 @@ describe('usePlayerLyrics', () => {
     expect(result.current.desktopLyricsProps.offsetEnabled).toBe(true)
 
     act(() => result.current.desktopLyricsProps.onOffsetChange(-100))
-    expect(localStorage.getItem('lyrics.offset:song-1:netease')).toBe('-100')
+    expect(
+      localStorage.getItem(
+        'lyrics.offset:song-1:plugin:better%20lyrics:netease',
+      ),
+    ).toBe('-100')
 
-    act(() => result.current.desktopLyricsProps.onSelectSource('lrclib'))
+    act(() =>
+      result.current.desktopLyricsProps.onSelectSource(
+        'plugin:better%20lyrics:lrclib',
+      ),
+    )
     await waitFor(() =>
       expect(result.current.desktopLyricsProps.offsetMs).toBe(0),
     )
 
     act(() => result.current.desktopLyricsProps.onOffsetChange(200))
-    expect(localStorage.getItem('lyrics.offset:song-1:lrclib')).toBe('200')
-    expect(localStorage.getItem('lyrics.offset:song-1:netease')).toBe('-100')
+    expect(
+      localStorage.getItem(
+        'lyrics.offset:song-1:plugin:better%20lyrics:lrclib',
+      ),
+    ).toBe('200')
+    expect(
+      localStorage.getItem(
+        'lyrics.offset:song-1:plugin:better%20lyrics:netease',
+      ),
+    ).toBe('-100')
   })
 
   it('recovers a clean empty first pass without opening the source menu', async () => {
@@ -213,7 +263,7 @@ describe('usePlayerLyrics', () => {
     expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
   })
 
-  it('stops discovery when lyrics are hidden and does not poll local lyrics', async () => {
+  it('discovers alternatives once for local lyrics and stops when hidden', async () => {
     vi.useFakeTimers()
     const response = variantsResponse()
     response.json['subsonic-response'].lyricsList.structuredLyrics = [
@@ -224,11 +274,98 @@ describe('usePlayerLyrics', () => {
     await act(async () => {
       result.current.toolbarLyricsProps.onToggleLyrics()
     })
-    await act(async () => vi.advanceTimersByTime(15_000))
-    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    await act(async () => vi.advanceTimersByTime(5_000))
+    await act(async () => vi.advanceTimersByTime(10_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
     act(() => result.current.toolbarLyricsProps.onToggleLyrics())
     await act(async () => vi.advanceTimersByTime(60_000))
-    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(1)
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps local lyrics readable while a slow generic plugin is discovered', async () => {
+    vi.useFakeTimers()
+    const local = {
+      ...sourceEntry('local', 'Local line'),
+      source: { type: 'embedded' },
+    }
+    const responseFor = (entries) => ({
+      json: {
+        'subsonic-response': { lyricsList: { structuredLyrics: entries } },
+      },
+    })
+    let finishDiscovery
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(responseFor([local]))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishDiscovery = resolve
+          }),
+      )
+      .mockResolvedValue(variantsResponse())
+    const { result } = renderPlayerLyrics()
+    await act(async () => {
+      result.current.toolbarLyricsProps.onToggleLyrics()
+    })
+    await act(async () => vi.advanceTimersByTime(5_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenLastCalledWith(
+      'song-1',
+      expect.objectContaining({ allSources: true }),
+    )
+    await act(async () => vi.advanceTimersByTime(10_000))
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'Local line',
+    )
+    expect(result.current.desktopLyricsProps.loading).toBe(false)
+    expect(result.current.desktopLyricsProps.refreshing).toBe(true)
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(2)
+    const plugin = {
+      ...sourceEntry('Shared provider', 'Remote line'),
+      source: {
+        type: 'plugin',
+        name: 'Independent plugin',
+        provider: 'Shared provider',
+        format: 'lrc',
+      },
+    }
+    await act(async () => finishDiscovery(responseFor([local, plugin])))
+    expect(result.current.desktopLyricsProps.variants).toHaveLength(2)
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'Local line',
+    )
+    await act(async () => vi.advanceTimersByTime(5_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(3)
+  })
+
+  it('keeps discovering after a partial response with only local lyrics', async () => {
+    vi.useFakeTimers()
+    const initial = variantsResponse()
+    initial.json['subsonic-response'].lyricsList.structuredLyrics = [
+      { ...sourceEntry('local', 'Local words'), source: { type: 'embedded' } },
+    ]
+    const partial = {
+      json: {
+        'subsonic-response': {
+          lyricsList: {
+            ...initial.json['subsonic-response'].lyricsList,
+            sourcesIncomplete: true,
+          },
+        },
+      },
+    }
+    subsonic.getLyricsBySongId
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValue(partial)
+    const { result } = renderPlayerLyrics()
+    await act(async () => {
+      result.current.toolbarLyricsProps.onToggleLyrics()
+    })
+    await act(async () => vi.advanceTimersByTime(5_000))
+    await act(async () => vi.advanceTimersByTime(5_000))
+    expect(subsonic.getLyricsBySongId).toHaveBeenCalledTimes(3)
+    expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
+      'Local words',
+    )
   })
 
   it('does not bypass a server cooldown with discovery polling', async () => {
@@ -247,7 +384,10 @@ describe('usePlayerLyrics', () => {
 
   it('preserves a selected source as automatic discovery updates the winner', async () => {
     vi.useFakeTimers()
-    localStorage.setItem('lyrics.source:song-1', 'lrclib')
+    localStorage.setItem(
+      'lyrics.source:song-1',
+      'plugin:better%20lyrics:lrclib',
+    )
     subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
     const { result } = renderPlayerLyrics()
     await act(async () => {
@@ -259,7 +399,9 @@ describe('usePlayerLyrics', () => {
     )
     subsonic.getLyricsBySongId.mockResolvedValue(updated)
     await act(async () => vi.advanceTimersByTime(5_000))
-    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe('lrclib')
+    expect(result.current.desktopLyricsProps.selectedSourceKey).toBe(
+      'plugin:better%20lyrics:lrclib',
+    )
     expect(result.current.desktopLyricsProps.mainLyric.line[0].value).toBe(
       'LRCLib line',
     )

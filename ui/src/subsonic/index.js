@@ -144,9 +144,13 @@ const requireSuccessfulLyricsResponse = (response) => {
 }
 
 const getLyricsBySongId = (id, requestOptions) => {
-  const requestUrl = url('getLyricsBySongId', id, { enhanced: true })
-  const request = requestOptions
-    ? httpClient(requestUrl, requestOptions)
+  const { allSources, ...httpOptions } = requestOptions || {}
+  const requestUrl = url('getLyricsBySongId', id, {
+    enhanced: true,
+    ...(allSources ? { allSources: true } : {}),
+  })
+  const request = Object.keys(httpOptions).length
+    ? httpClient(requestUrl, httpOptions)
     : httpClient(requestUrl)
   return request.then(requireSuccessfulLyricsResponse)
 }

@@ -2,7 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import LyricsLayerControls from './LyricsLayerControls'
 import LyricsPanel from './LyricsPanel'
 import MobileKaraokeLyricsPortal from './MobileKaraokeLyricsPortal'
-import { hasNudgeableTiming, hasStructuredLyricContent } from './lyrics'
+import {
+  findLyricVariant,
+  hasNudgeableTiming,
+  hasStructuredLyricContent,
+  legacyVariantKey,
+} from './lyrics'
 import { downloadLyrics } from './lyricsExport'
 import {
   readLyricsOffset,
@@ -47,6 +52,7 @@ const usePlayerLyrics = ({
     layers: lyricLayers,
     loading: lyricsLoading,
     refreshing: lyricsRefreshing,
+    sourcesIncomplete,
     error: lyricsError,
     retryAfterSeconds: lyricsRetryAfterSeconds,
     retry: retryLyrics,
@@ -59,33 +65,59 @@ const usePlayerLyrics = ({
     selectedSourceKey,
   })
 
-  // The selected variant falls back to the plugin's winner when the saved
+  // The selected variant falls back to source priority when the saved
   // source is not in this track's response (cache expiry, config change).
   const resolvedVariantKey = useMemo(() => {
-    if (
-      selectedSourceKey &&
-      variants.some((variant) => variant.key === selectedSourceKey)
-    ) {
-      return selectedSourceKey
-    }
-    return variants[0]?.key ?? null
+    return (
+      findLyricVariant(variants, selectedSourceKey)?.key ??
+      variants[0]?.key ??
+      null
+    )
   }, [selectedSourceKey, variants])
 
   useEffect(() => {
     setSelectedSourceKey(readPreferredSource(trackId))
   }, [trackId])
 
+  const legacyOffsetKey = useMemo(() => {
+    const variant = findLyricVariant(variants, resolvedVariantKey)
+    const legacyKey = variant ? legacyVariantKey(variant.source) : null
+    const unambiguous =
+      legacyKey &&
+      variants.filter((entry) => legacyVariantKey(entry.source) === legacyKey)
+        .length === 1
+    return unambiguous ? legacyKey : null
+  }, [resolvedVariantKey, variants])
+
   useEffect(() => {
-    setOffsetMs(readLyricsOffset(trackId, resolvedVariantKey))
-  }, [resolvedVariantKey, trackId])
+    setOffsetMs(readLyricsOffset(trackId, resolvedVariantKey, legacyOffsetKey))
+  }, [legacyOffsetKey, resolvedVariantKey, trackId])
+
+  useEffect(() => {
+    const saved = findLyricVariant(variants, selectedSourceKey)
+    if (saved && saved.key !== selectedSourceKey) {
+      setSelectedSourceKey(saved.key)
+      writePreferredSource(trackId, saved.key)
+    }
+  }, [selectedSourceKey, trackId, variants])
 
   useEffect(() => {
     discoveryStateRef.current = {
       loading: lyricsLoading,
+      refreshing: lyricsRefreshing,
       error: lyricsError,
       main: lyricLayers.main,
+      hasPlugin: variants.some((variant) => variant.source?.type === 'plugin'),
+      sourcesIncomplete,
     }
-  }, [lyricLayers.main, lyricsError, lyricsLoading])
+  }, [
+    lyricLayers.main,
+    lyricsError,
+    lyricsLoading,
+    lyricsRefreshing,
+    variants,
+    sourcesIncomplete,
+  ])
 
   // Older providers expose no completion signal. Check quickly for one minute,
   // then every 30 visible seconds so queued sweeps can still deliver late hits.
@@ -96,12 +128,14 @@ const usePlayerLyrics = ({
     }
     setDiscovering(true)
     let ticks = 0
+    let requestedDiscovery = false
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'hidden') return
       ticks += 1
       const current = discoveryStateRef.current
-      const local = current?.main && current.main.source?.type !== 'plugin'
-      if (local) {
+      const localOnly =
+        current?.main && !current.hasPlugin && !current.sourcesIncomplete
+      if (localOnly && requestedDiscovery && !current.refreshing) {
         window.clearInterval(timer)
         setDiscovering(false)
         return
@@ -112,7 +146,7 @@ const usePlayerLyrics = ({
         (ticks - SOURCE_REFRESH_MAX_TICKS) % SOURCE_REFRESH_SLOW_TICKS === 0
       // Error retries already honor provider cooldowns and transient backoff.
       if (shouldRefresh && !current?.loading && !current?.error) {
-        refreshLyrics()
+        requestedDiscovery = refreshLyrics() || requestedDiscovery
       }
     }, SOURCE_REFRESH_INTERVAL_MS)
     return () => window.clearInterval(timer)

@@ -447,6 +447,36 @@ describe('lyrics offset', () => {
 })
 
 describe('lyrics variants', () => {
+  it('keeps the same provider in different plugins independently selectable', () => {
+    const entries = ['First Plugin', 'Second Plugin'].map((name) => ({
+      ...structured('main', 'eng', name),
+      source: { type: 'plugin', name, provider: 'LRCLib', format: 'lrc' },
+    }))
+    const variants = collectLyricVariants(entries)
+    expect(variants).toHaveLength(2)
+    expect(
+      selectLyricLayers(entries, 'en', variants[1].key).main.line[0].value,
+    ).toBe('Second Plugin')
+  })
+
+  it('keeps sidecar formats and their translation layers separate', () => {
+    const lrc = { type: 'sidecar', format: 'lrc' }
+    const ttml = { type: 'sidecar', format: 'ttml' }
+    const lyrics = [
+      { ...structured('main', 'eng', 'Local LRC'), source: lrc },
+      { ...structured('main', 'eng', 'Local TTML'), source: ttml },
+      { ...structured('translation', 'eng', 'TTML translation'), source: ttml },
+    ]
+    const variants = collectLyricVariants(lyrics)
+    expect(variants).toHaveLength(2)
+    expect(
+      selectLyricLayers(lyrics, 'en', variants[0].key).translation,
+    ).toBeNull()
+    const selected = selectLyricLayers(lyrics, 'en', variants[1].key)
+    expect(selected.main.line[0].value).toBe('Local TTML')
+    expect(selected.translation.line[0].value).toBe('TTML translation')
+  })
+
   it('groups main entries from the same source into one variant', () => {
     const lyrics = [
       {
@@ -504,8 +534,8 @@ describe('lyrics variants', () => {
         v.sync,
       ]),
     ).toEqual([
-      ['netease', 'word'],
-      ['lrclib', 'line'],
+      ['plugin:better%20lyrics:netease', 'word'],
+      ['plugin:better%20lyrics:lrclib', 'line'],
       ['genius', 'plain'],
     ])
   })

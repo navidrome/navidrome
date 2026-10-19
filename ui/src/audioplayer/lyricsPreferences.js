@@ -34,10 +34,23 @@ export const writePreferredSource = (trackId, sourceKey) => {
   }
 }
 
-export const readLyricsOffset = (trackId, sourceKey) => {
+export const readLyricsOffset = (
+  trackId,
+  sourceKey,
+  legacySourceKey = null,
+) => {
   if (!trackId || !sourceKey) return 0
   try {
-    const raw = storage()?.getItem(offsetStorageKey(trackId, sourceKey))
+    const key = offsetStorageKey(trackId, sourceKey)
+    let raw = storage()?.getItem(key)
+    if (raw == null && legacySourceKey && legacySourceKey !== sourceKey) {
+      const oldKey = offsetStorageKey(trackId, legacySourceKey)
+      raw = storage()?.getItem(oldKey)
+      if (raw != null) {
+        storage()?.setItem(key, raw)
+        storage()?.removeItem(oldKey)
+      }
+    }
     if (raw == null || raw === '') return 0
     const value = Number(raw)
     return Number.isFinite(value) ? value : 0

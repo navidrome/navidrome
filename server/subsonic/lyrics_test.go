@@ -1,7 +1,10 @@
 package subsonic
 
 import (
+	"context"
 	"encoding/json"
+	"encoding/xml"
+	"errors"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
@@ -202,6 +205,116 @@ var _ = Describe("GetLyricsBySongId", func() {
 			Expect(lyric.Source).To(BeNil())
 			Expect(lyric.Kind).To(BeEmpty())
 		}
+	})
+
+	It("lists all configured local sources without a plugin system, preserving legacy priority", func() {
+		conf.Server.LyricsPriority = ".lrc,embedded,.ttml"
+		fixturesDir, err := filepath.Abs("tests/fixtures")
+		Expect(err).NotTo(HaveOccurred())
+		mockRepo.SetData(model.MediaFiles{{
+			ID: "1", LibraryPath: fixturesDir, Path: "test.mp3",
+			Lyrics: `[{"lang":"eng","line":[{"value":"Embedded words"}]}]`,
+		}})
+
+		response, err := router.GetLyricsBySongId(newGetRequest("id=1&enhanced=true"))
+		Expect(err).NotTo(HaveOccurred())
+		var sources []string
+		for _, lyric := range response.LyricsList.StructuredLyrics {
+			Expect(lyric.Source).NotTo(BeNil())
+			sources = append(sources, lyric.Source.Type+":"+lyric.Source.Format)
+		}
+		Expect(sources).To(Equal([]string{"sidecar:lrc", "embedded:", "sidecar:ttml", "sidecar:ttml"}))
+
+		legacy, err := router.GetLyricsBySongId(newGetRequest("id=1&allSources=true"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(legacy.LyricsList.StructuredLyrics).To(HaveLen(1))
+		Expect(legacy.LyricsList.StructuredLyrics[0].Source).To(BeNil())
+	})
+
+	It("marks discovery as incomplete while serving local lyrics when another plugin fails", func() {
+		conf.Server.LyricsPriority = "embedded,IndependentPlugin"
+		mockRepo.SetData(model.MediaFiles{{
+			ID: "1", Lyrics: `[{"lang":"eng","line":[{"value":"Local words"}]}]`,
+		}})
+		router.lyrics = lyrics.NewLyrics(ds, unavailableLyricsPlugin{})
+		response, err := router.GetLyricsBySongId(newGetRequest("id=1&enhanced=true&allSources=true"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.LyricsList.SourcesIncomplete).To(BeTrue())
+		Expect(response.LyricsList.StructuredLyrics).To(HaveLen(1))
+		Expect(response.LyricsList.StructuredLyrics[0].Source.Type).To(Equal("embedded"))
+
+		legacy, err := router.GetLyricsBySongId(newGetRequest("id=1&allSources=true"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(legacy.LyricsList.SourcesIncomplete).To(BeFalse())
+	})
+
+	It("serves local lyrics with the longest failed provider cooldown without exposing error messages", func() {
+		conf.Server.LyricsPriority = "LongCooldown,ShortCooldown,embedded"
+		mockRepo.SetData(model.MediaFiles{{
+			ID: "1", Lyrics: `[{"lang":"eng","line":[{"value":"Local words"}]}]`,
+		}})
+		router.lyrics = lyrics.NewLyrics(ds, failedLyricsPlugins{
+			"LongCooldown":  errors.New("first provider cooldown active for 120s"),
+			"ShortCooldown": errors.New("second provider retry after 5s"),
+		})
+
+		response, err := router.GetLyricsBySongId(newGetRequest("id=1&enhanced=true&allSources=true"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.LyricsList.SourcesIncomplete).To(BeTrue())
+		Expect(response.LyricsList.RetryAfterSeconds).To(Equal(120))
+		Expect(response.LyricsList.StructuredLyrics).To(HaveLen(1))
+		Expect(response.LyricsList.StructuredLyrics[0].Line[0].Value).To(Equal("Local words"))
+		encoded, err := json.Marshal(response.LyricsList)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(encoded)).To(ContainSubstring(`"retryAfterSeconds":120`))
+		Expect(string(encoded)).NotTo(ContainSubstring("provider"))
+		encoded, err = xml.Marshal(response.LyricsList)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(encoded)).To(ContainSubstring(`retryAfterSeconds="120"`))
+
+		legacy, err := router.GetLyricsBySongId(newGetRequest("id=1&allSources=true"))
+		Expect(err).NotTo(HaveOccurred())
+		encoded, err = json.Marshal(legacy.LyricsList)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(encoded)).NotTo(ContainSubstring("retryAfterSeconds"))
+		Expect(string(encoded)).NotTo(ContainSubstring("sourcesIncomplete"))
+	})
+
+	DescribeTable("returns only recognized, valid retry durations for incomplete discovery", func(message string, seconds int) {
+		conf.Server.LyricsPriority = "embedded,Unavailable"
+		mockRepo.SetData(model.MediaFiles{{
+			ID: "1", Lyrics: `[{"lang":"eng","line":[{"value":"Local words"}]}]`,
+		}})
+		router.lyrics = lyrics.NewLyrics(ds, failedLyricsPlugins{"Unavailable": errors.New(message)})
+		response, err := router.GetLyricsBySongId(newGetRequest("id=1&enhanced=true&allSources=true"))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(response.LyricsList.SourcesIncomplete).To(BeTrue())
+		Expect(response.LyricsList.RetryAfterSeconds).To(Equal(seconds))
+		if seconds == 0 {
+			encoded, err := json.Marshal(response.LyricsList)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(encoded)).NotTo(ContainSubstring("retryAfterSeconds"))
+		}
+	},
+		Entry("case-insensitive cooldown", "COOLDOWN ACTIVE FOR 45s", 45),
+		Entry("retry-after wording", "retry after\t30s", 30),
+		Entry("longest duration within a provider error", "retry after 5s; cooldown active for 120s", 120),
+		Entry("unknown wording", "provider took 120s", 0),
+		Entry("negative duration", "retry after -5s", 0),
+		Entry("integer overflow with a valid alternative", "retry after 999999999999999999999999s; retry after 5s", 5),
+	)
+
+	It("omits discovery status and cooldown fields without plugin failures or a plugin system", func() {
+		conf.Server.LyricsPriority = "embedded"
+		mockRepo.SetData(model.MediaFiles{{
+			ID: "1", Lyrics: `[{"lang":"eng","line":[{"value":"Local words"}]}]`,
+		}})
+		response, err := router.GetLyricsBySongId(newGetRequest("id=1&enhanced=true&allSources=true"))
+		Expect(err).NotTo(HaveOccurred())
+		encoded, err := json.Marshal(response.LyricsList)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(string(encoded)).NotTo(ContainSubstring("retryAfterSeconds"))
+		Expect(string(encoded)).NotTo(ContainSubstring("sourcesIncomplete"))
 	})
 
 	It("should parse lrc metadata", func() {
@@ -897,3 +1010,27 @@ var _ = Describe("GetLyricsBySongId", func() {
 		})
 	})
 })
+
+// Exercise the host's generic plugin contract without a plugin installation.
+type unavailableLyricsPlugin struct{}
+
+func (p unavailableLyricsPlugin) LoadLyricsProvider(name string) (lyrics.Provider, bool) {
+	return p, name == "IndependentPlugin"
+}
+
+func (unavailableLyricsPlugin) GetLyrics(context.Context, *model.MediaFile) (model.LyricList, error) {
+	return nil, errors.New("provider unavailable")
+}
+
+type failedLyricsPlugins map[string]error
+
+func (p failedLyricsPlugins) LoadLyricsProvider(name string) (lyrics.Provider, bool) {
+	err, ok := p[name]
+	return failingLyricsProvider{err: err}, ok
+}
+
+type failingLyricsProvider struct{ err error }
+
+func (p failingLyricsProvider) GetLyrics(context.Context, *model.MediaFile) (model.LyricList, error) {
+	return nil, p.err
+}

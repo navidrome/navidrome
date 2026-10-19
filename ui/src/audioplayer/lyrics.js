@@ -279,13 +279,35 @@ export const hasStructuredLyricContent = (structuredLyric) =>
   )
 
 // variantKey identifies a lyrics source for selection and persistence. The
-// plugin's provider label is the upstream identity; name and type cover
-// non-plugin sources.
+// sidecar format distinguishes separate files; a plugin name scopes upstream
+// provider labels so two plugins can use the same provider independently.
 export const variantKey = (source) => {
+  if (source?.type === 'sidecar' && source.format) {
+    return `sidecar:${source.format.trim().toLowerCase()}`
+  }
+  if (source?.type === 'plugin' && source.name) {
+    return [source.type, source.name, source.provider || '']
+      .map((value) => encodeURIComponent(value.trim().toLowerCase()))
+      .join(':')
+  }
+  return legacyVariantKey(source)
+}
+
+export const legacyVariantKey = (source) => {
   const label = [source?.provider, source?.name, source?.type].find(
     (value) => typeof value === 'string' && value.trim() !== '',
   )
   return (label || 'unknown').trim().toLowerCase()
+}
+
+// Restore existing selections only when the old key identifies one source.
+export const findLyricVariant = (variants, key) => {
+  const exact = variants.find((variant) => variant.key === key)
+  if (exact || !key) return exact
+  const matches = variants.filter(
+    (variant) => legacyVariantKey(variant.source) === key,
+  )
+  return matches.length === 1 ? matches[0] : undefined
 }
 
 // variantSync grades a variant for its badge: word timing from cue lines,
@@ -379,9 +401,7 @@ export const selectLyricLayers = (
 
   const variants = groupLyricVariants(mainKindEntries(available))
   const selectedVariant =
-    variants.find((variant) => variant.key === selectedSourceKey) ||
-    variants[0] ||
-    null
+    findLyricVariant(variants, selectedSourceKey) || variants[0] || null
   const mainCandidates = selectedVariant ? selectedVariant.entries : []
 
   // A different provider's auxiliary track can have incompatible timing or

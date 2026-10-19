@@ -326,6 +326,32 @@ Provides lyrics for tracks. The single method is **required**.
 
 Each returned lyric entry has a `lang` (language code) and `text` field. Multiple entries can be returned for different languages.
 
+The web player's lyrics source picker is a Navidrome feature. Embedded lyrics
+and configured sidecar formats work without any plugin installed. Set
+`LyricsPriority` to enable and order sources; a plugin name can be added alongside
+local sources, for example:
+
+```toml
+LyricsPriority = ".ttml,.yaml,.yml,.elrc,.lrc,.srt,.txt,embedded,my-lyrics-provider"
+```
+
+`getLyricsBySongId?enhanced=true` includes all available configured local sources
+and retains the first successful plugin lookup, in priority order. The web player
+uses `enhanced=true&allSources=true` for background discovery of every configured
+plugin. Discovery runs concurrently, keeps successful sources when another fails,
+and has a 30-second budget. Existing lyrics stay visible during discovery. Legacy
+requests continue to stop at the first successful source.
+
+An enhanced response with `lyricsList.sourcesIncomplete=true` contains partial
+results after a source failed or timed out. Clients can retain cached variants
+for unavailable sources and retry discovery rather than replacing working lyrics.
+When present, `lyricsList.retryAfterSeconds` is the longest reported provider
+cooldown. Clients should wait that long before discovering sources again.
+
+Source provenance distinguishes embedded lyrics, sidecar formats, and plugin
+names/providers without exposing filesystem paths. Any lyrics plugin can
+participate: optional source metadata is filled in by Navidrome when omitted.
+
 ### SonicSimilarity
 
 Audio-similarity discovery based on acoustic features (e.g., embeddings). Both methods are **required**.
