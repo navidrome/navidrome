@@ -33,7 +33,7 @@ import {
   getAnchoredScrollTop,
   getScrollEndPadding,
 } from './lyricsScroll'
-import { finiteTime } from './lyricsTimeline'
+import { finiteTime, getTimelineScrollTarget } from './lyricsTimeline'
 import useLyricsTimeline from './useLyricsTimeline'
 
 const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
@@ -275,6 +275,22 @@ const useStyles = makeStyles((theme) => ({
     maxWidth: 'calc(100% - 32px)',
     width: 'max-content',
     zIndex: 1,
+    // Themes may style the button label independently of its surface.
+    '&&': {
+      background: theme.palette.background.paper,
+      color: theme.palette.getContrastText(theme.palette.background.paper),
+      border: `1px solid ${alpha(theme.palette.text.primary, 0.3)}`,
+      '& .MuiButton-label': {
+        color: 'inherit',
+      },
+      '&:hover': {
+        background: `${theme.palette.background.paper} !important`,
+      },
+      '&:focus-visible': {
+        outline: '2px solid currentColor',
+        outlineOffset: 3,
+      },
+    },
   },
   emptyState: {
     flex: 1,
@@ -438,6 +454,7 @@ const LyricsPanel = ({
   const theme = useTheme()
   const bodyRef = useRef(null)
   const scrollAnimationRef = useRef(null)
+  const scrollContextRef = useRef(null)
   const scrollbarTimerRef = useRef(null)
   const [showScrollbar, setShowScrollbar] = useState(false)
   const [autoScrollPaused, setAutoScrollPaused] = useState(false)
@@ -635,11 +652,60 @@ const LyricsPanel = ({
   useLayoutEffect(() => {
     const body = bodyRef.current
     if (!visible || !body) return
+    const previous = scrollContextRef.current
+    scrollContextRef.current = { body, lyricIdentity, trackId }
+    if (previous?.body === body && previous.lyricIdentity === lyricIdentity) {
+      return
+    }
     cancelScrollAnimation(scrollAnimationRef)
     setAutoScrollPaused(false)
-    body.scrollTop = 0
-    setHasTopFade(false)
-  }, [lyricIdentity, visible])
+    const trackChanged = previous && previous.trackId !== trackId
+    const currentIndex = getTimelineScrollTarget(
+      timeline,
+      (finiteTime(audioInstance?.currentTime) ?? 0) * 1000,
+    )
+    const targetNode = getLineNode(currentIndex)
+    // A new track starts at the top. A source change is placed at the current
+    // media time before paint, without replaying a scroll from the beginning.
+    body.scrollTop =
+      !trackChanged && trackId != null && targetNode
+        ? getAnchoredScrollTop(body, targetNode, activeLineAnchorRatio)
+        : 0
+    setHasTopFade(body.scrollTop > 1)
+  }, [
+    activeLineAnchorRatio,
+    audioInstance,
+    getLineNode,
+    hasLyricBody,
+    lyricIdentity,
+    timeline,
+    trackId,
+    visible,
+  ])
+
+  useLayoutEffect(() => {
+    if (
+      timelineVisible &&
+      hasTimedMainLines &&
+      !autoScrollPaused &&
+      scrollTargetIndex < 0 &&
+      getTimelineScrollTarget(
+        timeline,
+        (finiteTime(audioInstance?.currentTime) ?? 0) * 1000,
+      ) < 0
+    ) {
+      cancelScrollAnimation(scrollAnimationRef)
+      if (bodyRef.current) bodyRef.current.scrollTop = 0
+      setHasTopFade(false)
+    }
+  }, [
+    audioInstance,
+    autoScrollPaused,
+    hasTimedMainLines,
+    scrollTargetIndex,
+    timeline,
+    timelineVisible,
+  ])
 
   useEffect(() => {
     if (

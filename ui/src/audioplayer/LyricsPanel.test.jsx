@@ -10,9 +10,11 @@ import {
 import { ThemeProvider, createTheme } from '@material-ui/core/styles'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LyricsPanel from './LyricsPanel'
+import spotify from '../themes/spotify'
 import { KaraokeLineRow } from './LyricsLineRows'
 import {
   KARAOKE_EASING,
+  KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_LINE_OPACITY_MS,
   KARAOKE_CHARACTER_LIFT_PX,
   KARAOKE_CHARACTER_RISE_MS,
@@ -173,6 +175,43 @@ const createAudio = ({ currentTime = 0, duration = 10 } = {}) => {
   audio.playbackRate = 1
   audio.seeking = false
   return audio
+}
+
+const installScrollFrames = () => {
+  let now = 0
+  let nextFrame = 0
+  const frames = new Map()
+  vi.spyOn(performance, 'now').mockImplementation(() => now)
+  window.requestAnimationFrame.mockImplementation((callback) => {
+    frames.set(++nextFrame, callback)
+    return nextFrame
+  })
+  window.cancelAnimationFrame.mockImplementation((id) => frames.delete(id))
+  const frame = (time) => {
+    now = time
+    const batch = [...frames.values()]
+    frames.clear()
+    act(() => batch.forEach((callback) => callback(time)))
+  }
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(
+    function () {
+      return this.dataset.testid === 'lyrics-scroll-body' ? 200 : 0
+    },
+  )
+  vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(
+    () => 2000,
+  )
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+    function () {
+      if (this.dataset.testid === 'lyrics-line-group') {
+        const index = [...this.parentElement.children].indexOf(this)
+        const body = screen.getByTestId('lyrics-scroll-body')
+        return { top: index * 200 - body.scrollTop, height: 100 }
+      }
+      return { top: 0, height: 200 }
+    },
+  )
+  return frame
 }
 
 describe('<LyricsPanel />', () => {
@@ -1026,6 +1065,143 @@ describe('<LyricsPanel />', () => {
     expect(body.scrollTop).toBe(0)
     expect(body).toHaveAttribute('data-auto-scroll-paused', 'false')
   })
+
+  it('keeps the return control readable with Spotify button overrides', () => {
+    renderPanel(
+      { mainLyric, audioInstance: createAudio() },
+      createTheme(spotify),
+    )
+    fireEvent.wheel(screen.getByTestId('lyrics-scroll-body'))
+    const button = screen.getByRole('button', {
+      name: 'Return to current line',
+    })
+    const style = window.getComputedStyle(button)
+    expect(
+      contrastRatio(
+        window.getComputedStyle(button.querySelector('.MuiButton-label')).color,
+        style.backgroundColor,
+      ),
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('starts the next track at the top before its first lyric, after a late audio clock reset', () => {
+    const frame = installScrollFrames()
+    const audio = createAudio({ currentTime: 8, duration: 30 })
+    const lyric = {
+      synced: true,
+      line: Array.from({ length: 8 }, (_, index) => ({
+        start: 5000 + index * 1000,
+        end: 6000 + index * 1000,
+        value: `Line ${index}`,
+      })),
+    }
+    const props = {
+      trackId: 'old-song',
+      selectedSourceKey: null,
+      mainLyric: lyric,
+      audioInstance: audio,
+    }
+    const { rerenderPanel } = renderPanel(props)
+    frame(0)
+    frame(600)
+    const body = screen.getByTestId('lyrics-scroll-body')
+    expect(body.scrollTop).toBeGreaterThan(0)
+    rerenderPanel({
+      ...props,
+      trackId: 'new-song',
+      mainLyric: {
+        ...lyric,
+        line: lyric.line.map((line) => ({
+          ...line,
+          start: line.start - 1000,
+          end: line.end - 1000,
+        })),
+      },
+    })
+    frame(620)
+    frame(700)
+    audio.currentTime = 0
+    act(() => {
+      audio.dispatchEvent(new Event('seeking'))
+    })
+    frame(900)
+    expect(body.scrollTop).toBe(0)
+  })
+
+  it('places a changed source at the current line without scrolling from the top', () => {
+    const frame = installScrollFrames()
+    const audio = createAudio({ currentTime: 8, duration: 30 })
+    const lyric = {
+      synced: true,
+      line: Array.from({ length: 8 }, (_, index) => ({
+        start: 5000 + index * 1000,
+        end: 6000 + index * 1000,
+        value: `Line ${index}`,
+      })),
+    }
+    const props = {
+      trackId: 'current-song',
+      selectedSourceKey: 'first',
+      mainLyric: lyric,
+      audioInstance: audio,
+    }
+    const { rerenderPanel } = renderPanel(props)
+    frame(0)
+    frame(600)
+    const body = screen.getByTestId('lyrics-scroll-body')
+    expect(body.scrollTop).toBeGreaterThan(0)
+    rerenderPanel({
+      ...props,
+      selectedSourceKey: 'second',
+      mainLyric: {
+        ...lyric,
+        line: lyric.line.map((line) => ({
+          ...line,
+          start: line.start - 1000,
+          end: line.end - 1000,
+        })),
+      },
+    })
+    const expectedTop = 4 * 200 - 200 * KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO
+    expect(body.scrollTop).toBe(expectedTop)
+    frame(620)
+    frame(700)
+    expect(body.scrollTop).toBe(expectedTop)
+  })
+
+  it.each(['untimed', 'loading'])(
+    'places newly timed lyrics immediately after %s content',
+    (previous) => {
+      const frame = installScrollFrames()
+      const audio = createAudio({ currentTime: 8, duration: 30 })
+      const lyric = {
+        synced: true,
+        line: Array.from({ length: 8 }, (_, index) => ({
+          start: 5000 + index * 1000,
+          end: 6000 + index * 1000,
+          value: `Line ${index}`,
+        })),
+      }
+      const props = {
+        trackId: 'current-song',
+        selectedSourceKey: 'first',
+        mainLyric:
+          previous === 'loading'
+            ? null
+            : { synced: false, line: [{ value: 'Untimed first source' }] },
+        audioInstance: audio,
+      }
+      const { rerenderPanel } = renderPanel(props)
+      rerenderPanel({ ...props, selectedSourceKey: 'second', mainLyric: lyric })
+      const body = screen.getByTestId('lyrics-scroll-body')
+      const expectedTop =
+        3 * 200 - 200 * KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO
+      expect(body.scrollTop).toBe(expectedTop)
+      frame(0)
+      frame(300)
+      expect(body.scrollTop).toBe(expectedTop)
+    },
+  )
 
   it('observes the scroll body after asynchronous lyrics arrive', () => {
     const observers = []
