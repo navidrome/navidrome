@@ -2,6 +2,7 @@ import { SimpleForm, Title, useTranslate } from 'react-admin'
 import { Card } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { SelectLanguage } from './SelectLanguage'
+import { SelectDateFormat } from './SelectDateFormat'
 import { SelectTheme } from './SelectTheme'
 import { SelectDefaultView } from './SelectDefaultView'
 import { NotificationsToggle } from './NotificationsToggle'
@@ -24,6 +25,7 @@ const Personal = () => {
       <SimpleForm toolbar={null} variant={'outlined'}>
         <SelectTheme />
         <SelectLanguage />
+        <SelectDateFormat />
         <SelectDefaultView />
         {config.enableReplayGain && <ReplayGainToggle />}
         <NotificationsToggle />
