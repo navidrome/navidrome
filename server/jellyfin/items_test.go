@@ -341,6 +341,39 @@ var _ = Describe("Items", func() {
 			Expect(albumRepo.Options.Max).To(Equal(3))
 		})
 
+		It("treats a negative StartIndex as 0 on the multi-type merge instead of panicking", func() {
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}, {ID: testID("s2"), Title: "Song2"}})
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=-1&Limit=2", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.StartIndex).To(Equal(0))
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.TotalRecordCount).To(Equal(4))
+			// The clamped offset must feed the per-type window too: 0+Limit, not -1+Limit.
+			Expect(mfRepo.Options.Max).To(Equal(2))
+			Expect(albumRepo.Options.Max).To(Equal(2))
+		})
+
+		It("clamps a negative StartIndex to 0 on the single-type path", func() {
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&StartIndex=-1&Limit=10", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Offset).To(Equal(0))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.StartIndex).To(Equal(0))
+			Expect(res.Items).To(HaveLen(1))
+		})
+
 		DescribeTable("translates the Filters list and its standalone equivalents",
 			func(query string, wantSQL, notWantSQL []string) {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
