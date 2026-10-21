@@ -143,7 +143,7 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Deta
 	} else {
 		sd.Codec = mf.AudioCodec()
 		sd.Bitrate = mf.BitRate
-		sd.SampleRate = mf.SampleRate
+		sd.SampleRate = normalizeSourceSampleRate(mf.SampleRate, sd.Codec)
 		sd.BitDepth = gg.V(mf.BitDepth)
 		sd.Channels = mf.Channels
 	}
@@ -268,7 +268,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 	ts := &Details{
 		Container:  responseContainer,
 		Codec:      strings.ToLower(profile.AudioCodec),
-		SampleRate: normalizeSourceSampleRate(src.SampleRate, src.Codec),
+		SampleRate: targetSampleRate(src.SampleRate, src.Codec, targetIsLossless),
 		Channels:   src.Channels,
 		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
 		IsLossless: targetIsLossless,

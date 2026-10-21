@@ -340,8 +340,8 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(resp.TranscodeDecision.CanTranscode).To(BeTrue())
 				Expect(resp.TranscodeDecision.TranscodeStream).ToNot(BeNil())
 				Expect(resp.TranscodeDecision.TranscodeStream.Codec).To(Equal("flac"))
-				// DSD sample rate normalized: 2822400 / 8 = 352800
-				Expect(resp.TranscodeDecision.TranscodeStream.AudioSamplerate).To(Equal(int32(352800)))
+				// DSD sample rate normalized: 2822400 / 8 = 352800, capped at 88200
+				Expect(resp.TranscodeDecision.TranscodeStream.AudioSamplerate).To(Equal(int32(88200)))
 				// DSD 1-bit → 24-bit PCM
 				Expect(resp.TranscodeDecision.TranscodeStream.AudioBitdepth).To(Equal(int32(24)))
 			})
