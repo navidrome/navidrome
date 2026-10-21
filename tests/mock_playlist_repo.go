@@ -30,6 +30,7 @@ type MockPlaylistRepo struct {
 	Err             bool
 	TracksRepo      model.PlaylistTrackRepository
 	TracksRefreshed bool
+	Order           []string
 }
 
 func (m *MockPlaylistRepo) SetError(err bool) {

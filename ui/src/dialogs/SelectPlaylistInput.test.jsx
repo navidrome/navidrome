@@ -60,7 +60,7 @@ const createTestComponent = (
                 data: indexedData,
                 list: {
                   cachedRequests: {
-                    '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"name","order":"ASC"},"filter":{"smart":false}}':
+                    '{"pagination":{"page":1,"perPage":-1},"sort":{"field":"custom","order":"ASC"},"filter":{"smart":false}}':
                       {
                         ids: Object.keys(indexedData),
                         total: Object.keys(indexedData).length,

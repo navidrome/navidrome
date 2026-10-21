@@ -95,6 +95,30 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("Reorder", func() {
+		BeforeEach(func() {
+			mockPlsRepo.SetData(model.Playlists{
+				{ID: "pls-1", Name: "One"},
+				{ID: "pls-2", Name: "Two"},
+			})
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+		})
+
+		It("persists the requested order", func() {
+			Expect(ps.Reorder(ctx, []string{"pls-2", "pls-1"})).To(Succeed())
+			Expect(mockPlsRepo.Order).To(Equal([]string{"pls-2", "pls-1"}))
+		})
+
+		DescribeTable("rejects invalid orders",
+			func(ids []string) {
+				Expect(ps.Reorder(ctx, ids)).To(MatchError(model.ErrInvalidPlaylistOrder))
+				Expect(mockPlsRepo.Order).To(BeNil())
+			},
+			Entry("unknown playlist", []string{"missing"}),
+			Entry("duplicate playlist", []string{"pls-1", "pls-1"}),
+		)
+	})
+
 	Describe("Create", func() {
 		BeforeEach(func() {
 			mockPlsRepo.Data = map[string]*model.Playlist{
