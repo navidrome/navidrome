@@ -3,6 +3,7 @@ package metadata
 import (
 	"cmp"
 	"io/fs"
+	"maps"
 	"math"
 	"path"
 	"regexp"
@@ -106,6 +107,21 @@ func (md Metadata) Float(key model.TagName, def ...float64) float64 {
 	return float(md.first(key), def...)
 }
 func (md Metadata) NullableFloat(key model.TagName) *float64 { return nullableFloat(md.first(key)) }
+
+func (md Metadata) WithTags(tags map[string][]string) Metadata {
+	merged := maps.Clone(md.tags)
+	for name, values := range tags {
+		tagName, ok := model.CanonicalTagName(name)
+		if !ok {
+			log.Warn("Ignoring unknown tag", "file", md.filePath, "tag", name)
+			continue
+		}
+		delete(merged, tagName)
+		maps.Copy(merged, sanitizeAll(md.filePath, model.Tags{tagName: values}))
+	}
+	md.tags = merged
+	return md
+}
 
 func (md Metadata) Gain(key model.TagName) *float64 {
 	v := strings.TrimSpace(strings.Replace(md.first(key), "dB", "", 1))
