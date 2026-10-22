@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"cmp"
+	"fmt"
 	"io/fs"
 	"maps"
 	"math"
@@ -108,14 +109,23 @@ func (md Metadata) Float(key model.TagName, def ...float64) float64 {
 }
 func (md Metadata) NullableFloat(key model.TagName) *float64 { return nullableFloat(md.first(key)) }
 
-func (md Metadata) WithTags(tags map[string][]string) Metadata {
-	merged := maps.Clone(md.tags)
+func (md Metadata) WithTags(tags map[string][]string) (Metadata, error) {
+	canonical := make(map[model.TagName][]string, len(tags))
+	names := make(map[model.TagName]string, len(tags))
 	for name, values := range tags {
 		tagName, ok := model.CanonicalTagName(name)
 		if !ok {
 			log.Warn("Ignoring unknown tag", "file", md.filePath, "tag", name)
 			continue
 		}
+		if other, ok := names[tagName]; ok {
+			return md, fmt.Errorf("tags %q and %q both set %q", other, name, tagName)
+		}
+		names[tagName] = name
+		canonical[tagName] = values
+	}
+	merged := maps.Clone(md.tags)
+	for tagName, values := range canonical {
 		if model.TagMappings()[tagName].Type == model.TagTypePair {
 			values = encodePairs(tagName, values)
 		}
@@ -123,7 +133,7 @@ func (md Metadata) WithTags(tags map[string][]string) Metadata {
 		maps.Copy(merged, sanitizeAll(md.filePath, model.Tags{tagName: values}))
 	}
 	md.tags = merged
-	return md
+	return md, nil
 }
 
 func (md Metadata) Gain(key model.TagName) *float64 {

@@ -305,9 +305,11 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 			md := metadata.New(filePath, info)
 			name := path.Base(filePath)
 			if _, ok := entry.tagsFiles[name]; ok {
-				if tags, err := readTagsSidecar(entry.job.fs, filePath); err == nil {
-					md = md.WithTags(tags)
-				} else {
+				tags, err := readTagsSidecar(entry.job.fs, filePath)
+				if err == nil {
+					md, err = md.WithTags(tags)
+				}
+				if err != nil {
 					log.Warn(p.ctx, "Scanner: Error reading tags sidecar. Ignoring it", "file", filePath, err)
 				}
 			}
