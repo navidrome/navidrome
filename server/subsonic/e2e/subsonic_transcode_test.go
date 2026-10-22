@@ -127,7 +127,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 	BeforeAll(func() {
 		setupTestDB()
 
-		songs, err := ds.MediaFile(ctx).GetAll()
+		songs, err := ds.MediaFile().GetAll(ctx)
 		Expect(err).ToNot(HaveOccurred())
 		byTitle := map[string]string{}
 		for _, s := range songs {
@@ -153,29 +153,29 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 		// It makes a dummy request to register the player, then updates it via the repository.
 		setPlayerMaxBitRate := func(maxBitRate int) {
 			doReq("ping")
-			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
 			Expect(err).ToNot(HaveOccurred())
 			player.MaxBitRate = maxBitRate
-			Expect(ds.Player(ctx).Put(player)).To(Succeed())
+			Expect(ds.Player().Put(ctx, player)).To(Succeed())
 		}
 
 		setPlayerForcedFormat := func(format string) {
 			doReq("ping")
-			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
 			Expect(err).ToNot(HaveOccurred())
-			trc, err := ds.Transcoding(ctx).FindByFormat(format)
+			trc, err := ds.Transcoding().FindByFormat(ctx, format)
 			Expect(err).ToNot(HaveOccurred())
 			player.TranscodingId = trc.ID
-			Expect(ds.Player(ctx).Put(player)).To(Succeed())
+			Expect(ds.Player().Put(ctx, player)).To(Succeed())
 		}
 
 		AfterEach(func() {
 			// Reset player MaxBitRate to 0 after each test
-			player, err := ds.Player(ctx).FindMatch(adminUser.ID, "test-client", "")
+			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
 			if err == nil {
 				player.MaxBitRate = 0
 				player.TranscodingId = ""
-				_ = ds.Player(ctx).Put(player)
+				_ = ds.Player().Put(ctx, player)
 			}
 		})
 
@@ -595,13 +595,13 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 				Expect(token).ToNot(BeEmpty())
 
 				// Save original UpdatedAt and restore after test
-				mf, err := ds.MediaFile(ctx).Get(mp3TrackID)
+				mf, err := ds.MediaFile().Get(ctx, mp3TrackID)
 				Expect(err).ToNot(HaveOccurred())
 				originalUpdatedAt := mf.UpdatedAt
 
 				// Update the media file's UpdatedAt to simulate a change after token issuance
 				mf.UpdatedAt = time.Now().Add(time.Hour)
-				Expect(ds.MediaFile(ctx).Put(mf)).To(Succeed())
+				Expect(ds.MediaFile().Put(ctx, mf)).To(Succeed())
 
 				// Attempt to stream with the now-stale token
 				w := doRawReq("getTranscodeStream", "mediaId", mp3TrackID, "mediaType", "song", "transcodeParams", token)
@@ -609,7 +609,7 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 
 				// Restore original UpdatedAt
 				mf.UpdatedAt = originalUpdatedAt
-				Expect(ds.MediaFile(ctx).Put(mf)).To(Succeed())
+				Expect(ds.MediaFile().Put(ctx, mf)).To(Succeed())
 			})
 
 			It("returns 500 when stream creation fails", func() {

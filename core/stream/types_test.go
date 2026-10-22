@@ -58,7 +58,7 @@ var _ = Describe("ClientInfo", func() {
 	})
 
 	Describe("ForceFormat", func() {
-		It("restricts to the forced format and clears direct play when supported", func() {
+		It("restricts direct play to the forced format when supported", func() {
 			ci := &ClientInfo{
 				DirectPlayProfiles: []DirectPlayProfile{{Containers: []string{"flac"}, AudioCodecs: []string{"flac"}}},
 				TranscodingProfiles: []Profile{
@@ -71,7 +71,35 @@ var _ = Describe("ClientInfo", func() {
 			Expect(ok).To(BeTrue())
 			Expect(ci.TranscodingProfiles).To(HaveLen(1))
 			Expect(ci.TranscodingProfiles[0].AudioCodec).To(Equal("opus"))
-			Expect(ci.DirectPlayProfiles).To(BeEmpty())
+			Expect(ci.DirectPlayProfiles).To(ConsistOf(DirectPlayProfile{
+				Containers: []string{"ogg"}, AudioCodecs: []string{"opus"}, Protocols: []string{ProtocolHTTP},
+			}))
+		})
+
+		It("keeps direct play for a source already in the forced format", func() {
+			ci := &ClientInfo{
+				DirectPlayProfiles: []DirectPlayProfile{{Containers: []string{"flac"}, AudioCodecs: []string{"flac"}}},
+				TranscodingProfiles: []Profile{
+					{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+					{Container: "mp3", AudioCodec: "mp3", Protocol: ProtocolHTTP},
+				},
+			}
+			ok := ci.ForceFormat("flac")
+			Expect(ok).To(BeTrue())
+			Expect(ci.DirectPlayProfiles).To(ConsistOf(DirectPlayProfile{
+				Containers: []string{"flac"}, AudioCodecs: []string{"flac"}, Protocols: []string{ProtocolHTTP},
+			}))
+		})
+
+		It("carries the channel limit of the forced profile into direct play", func() {
+			ci := &ClientInfo{
+				TranscodingProfiles: []Profile{
+					{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP, MaxAudioChannels: 2},
+				},
+			}
+			Expect(ci.ForceFormat("flac")).To(BeTrue())
+			Expect(ci.DirectPlayProfiles).To(HaveLen(1))
+			Expect(ci.DirectPlayProfiles[0].MaxAudioChannels).To(Equal(2))
 		})
 
 		It("matches a container-only forced format (mp3)", func() {

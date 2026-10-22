@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"strings"
 
 	. "github.com/Masterminds/squirrel"
@@ -20,10 +21,10 @@ func (s *likeSearch) ToSql() (string, []any, error) {
 	return s.filter.ToSql()
 }
 
-func (s *likeSearch) execute(r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
+func (s *likeSearch) execute(ctx context.Context, r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
 	sq = sq.Where(s.filter)
 	sq = sq.OrderBy(cfg.OrderBy...)
-	return r.queryAll(sq, dest, options)
+	return r.queryAll(ctx, sq, dest, options)
 }
 
 // newLegacySearch creates a LIKE search against the full_text column.

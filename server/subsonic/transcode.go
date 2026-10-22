@@ -280,12 +280,19 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		return stream.IsAACCodec(p.Container)
 	})
 
+	player, hasPlayer := request.PlayerFrom(ctx)
+
 	// Honor the player's forced transcoding format, falling back to normal
 	// negotiation when the client can't play it (issue #5583).
+	maxBitRate := 0
 	if trc, ok := request.TranscodingFrom(ctx); ok && trc.TargetFormat != "" {
-		if !clientInfo.ForceFormat(trc.TargetFormat) {
+		if clientInfo.ForceFormat(trc.TargetFormat) {
+			// DirectPlayProfile carries no bitrate, so this ceiling is the only
+			// thing keeping an over-bitrate source out of direct play.
+			maxBitRate = trc.DefaultBitRate
+		} else {
 			clientName := clientInfo.Name
-			if player, ok := request.PlayerFrom(ctx); ok && player.Client != "" {
+			if hasPlayer && player.Client != "" {
 				clientName = player.Client
 			}
 			log.Debug(ctx, "Player forced format not supported by client; falling back to negotiation",
@@ -293,17 +300,17 @@ func (api *Router) GetTranscodeDecision(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Apply the player's MaxBitRate as a ceiling on the client's declared
-	// limits (issue #5583). Both fields are capped because the client sends
-	// them independently here; capping only MaxAudioBitrate would let an
-	// independent MaxTranscodingAudioBitrate slip through computeBitrate.
-	if player, ok := request.PlayerFrom(ctx); ok && clientInfo.CapBitrate(player.MaxBitRate) {
-		log.Debug(ctx, "Applied player MaxBitRate cap to transcode decision",
-			"playerMaxBitRate", player.MaxBitRate, "client", clientInfo.Name)
+	// The player's own MaxBitRate outranks the forced-format default (issue #5583).
+	if hasPlayer && player.MaxBitRate > 0 {
+		maxBitRate = player.MaxBitRate
+	}
+	if clientInfo.CapBitrate(maxBitRate) {
+		log.Debug(ctx, "Applied bitrate ceiling to transcode decision",
+			"maxBitRate", maxBitRate, "client", clientInfo.Name)
 	}
 
 	// Get media file
-	mf, err := api.ds.MediaFile(ctx).Get(mediaID)
+	mf, err := api.ds.MediaFile().Get(ctx, mediaID)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return nil, newError(responses.ErrorDataNotFound, "media file not found: %s", mediaID)
@@ -392,7 +399,7 @@ func (api *Router) GetTranscodeStream(w http.ResponseWriter, r *http.Request) (*
 	}
 
 	// Fetch the media file
-	mf, err := api.ds.MediaFile(ctx).Get(mediaID)
+	mf, err := api.ds.MediaFile().Get(ctx, mediaID)
 	if err != nil {
 		if errors.Is(err, model.ErrNotFound) {
 			http.Error(w, "Not Found", http.StatusNotFound)

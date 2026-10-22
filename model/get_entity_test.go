@@ -19,7 +19,7 @@ var _ = Describe("GetEntityByID", func() {
 	})
 
 	It("returns the entity matching the id", func() {
-		ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1", Name: "One"}})
 		entity, err := model.GetEntityByID(ctx, ds, "a1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(entity).To(BeAssignableToTypeOf(&model.Album{}))
@@ -32,7 +32,7 @@ var _ = Describe("GetEntityByID", func() {
 	})
 
 	It("propagates unexpected repository errors instead of reporting not-found", func() {
-		ds.Album(ctx).(*tests.MockAlbumRepo).SetError(true)
+		ds.Album().(*tests.MockAlbumRepo).SetError(true)
 		_, err := model.GetEntityByID(ctx, ds, "a1")
 		Expect(err).To(HaveOccurred())
 		Expect(err).ToNot(MatchError(model.ErrNotFound))
@@ -49,7 +49,7 @@ var _ = Describe("GetEntityKindByID", func() {
 	})
 
 	It("returns the artwork kind for the matching id", func() {
-		ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "a1"}})
 		kind, err := model.GetEntityKindByID(ctx, ds, "a1")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(kind).To(Equal(model.KindAlbumArtwork))

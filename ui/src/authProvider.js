@@ -64,7 +64,8 @@ const authProvider = {
 
   logout: () => {
     removeItems()
-    if (config.extAuthLogoutURL) {
+    // Only proxy-authenticated sessions go to the IdP; others (e.g. direct LAN access) get the login form
+    if (config.extAuthLogoutURL && config.auth) {
       window.location.href = config.extAuthLogoutURL
       return Promise.resolve(false)
     }

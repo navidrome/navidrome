@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -329,6 +330,21 @@ var _ = Describe("Configuration", func() {
 			}).To(PanicWith(ContainSubstring("Error creating log file directory")))
 		})
 
+		It("creates the log file readable only by the owner", func() {
+			if runtime.GOOS == "windows" {
+				Skip("file modes are not enforced on Windows")
+			}
+			logFile := filepath.Join(GinkgoT().TempDir(), "navidrome.log")
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("logfile", logFile)
+			DeferCleanup(log.SetOutput, os.Stderr)
+			conf.Load(true)
+
+			info, err := os.Stat(logFile)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Mode().Perm()).To(Equal(os.FileMode(0600)))
+		})
+
 		It("is called when BaseURL is invalid", func() {
 			viper.SetDefault("datafolder", GinkgoT().TempDir())
 			viper.SetDefault("baseurl", "://invalid")
@@ -383,6 +399,27 @@ var _ = Describe("Configuration", func() {
 			viper.SetDefault("maximagesize", "30MB")
 			conf.Load(true)
 			Expect(conf.Server.MaxImageSize).To(Equal("30MB"))
+		})
+	})
+
+	Describe("Scanner.Extractor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("falls back to taglib for an unknown extractor", func() {
+			viper.SetDefault("scanner.extractor", "ffmpeg")
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
+		})
+
+		It("keeps taglib", func() {
+			conf.Load(true)
+			Expect(conf.Server.Scanner.Extractor).To(Equal("taglib"))
 		})
 	})
 

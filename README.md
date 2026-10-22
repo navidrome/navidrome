@@ -5,7 +5,7 @@
 [![Last Release](https://img.shields.io/github/v/release/navidrome/navidrome?logo=github&label=latest&style=flat-square)](https://github.com/navidrome/navidrome/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/navidrome/navidrome/pipeline.yml?branch=master&logo=github&style=flat-square)](https://nightly.link/navidrome/navidrome/workflows/pipeline/master)
 [![Downloads](https://img.shields.io/github/downloads/navidrome/navidrome/total?logo=github&style=flat-square)](https://github.com/navidrome/navidrome/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/deluan/navidrome?logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/deluan/navidrome)
+[![Docker Pulls](https://img.shields.io/endpoint?url=https%3A%2F%2Fwww.navidrome.org%2Fbadges%2Fcontainer-downloads.json&logo=docker&label=pulls&style=flat-square)](https://hub.docker.com/r/navidrome/navidrome)
 [![Dev Chat](https://img.shields.io/discord/671335427726114836?logo=discord&label=discord&style=flat-square)](https://discord.gg/xh7j7yF)
 [![Subreddit](https://img.shields.io/reddit/subreddit-subscribers/navidrome?logo=reddit&label=/r/navidrome&style=flat-square)](https://www.reddit.com/r/navidrome/)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
@@ -35,11 +35,18 @@ See instructions on the [project's website](https://www.navidrome.org/docs/insta
 
 ## Cloud Hosting
 
-[PikaPods](https://www.pikapods.com) has partnered with us to offer you an 
-[officially supported, cloud-hosted solution](https://www.navidrome.org/docs/installation/managed/#pikapods). 
-A share of the revenue helps fund the development of Navidrome at no additional cost for you.
+Several cloud hosting providers partner with us to offer [officially supported, cloud-hosted solutions](https://www.navidrome.org/docs/installation/managed). If you sign up with any of these providers, a share of the revenue funds the development of Navidrome at no additional cost for you.
 
-[![PikaPods](https://www.pikapods.com/static/run-button.svg)](https://www.pikapods.com/pods?run=navidrome)
+<a href="https://www.pikapods.com/pods?run=navidrome"><img src="resources/hosting/pikapods.svg" alt="Run on PikaPods" width="200" height="40"></a>
+<br>
+<a href="https://zenith.hosting/host/navidrome?ref=navidrome"><img src="resources/hosting/zenith.svg" alt="Deploy with Zenith" width="200" height="40"></a>
+<br>
+<a href="https://store.elfhosted.com/product/navidrome/"><img src="resources/hosting/elfhosted.svg" alt="Deploy on ElfHosted" width="200" height="40"></a>
+
+
+
+
+
 
 ## Features
  

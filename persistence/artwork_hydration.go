@@ -59,7 +59,7 @@ func hydrateItemImages(ctx context.Context, db dbx.Builder, kind model.Kind, ids
 	if len(ids) == 0 {
 		return map[string]model.ItemArtworkInfo{}
 	}
-	infos, err := NewArtworkRepository(ctx, db).GetInfoForItems(kind, ids)
+	infos, err := NewArtworkRepository(db).GetInfoForItems(ctx, kind, ids)
 	if err != nil {
 		log.Error(ctx, "Failed to hydrate artwork info onto page", "kind", kind, err)
 		return map[string]model.ItemArtworkInfo{}
