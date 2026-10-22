@@ -116,6 +116,9 @@ func (md Metadata) WithTags(tags map[string][]string) Metadata {
 			log.Warn("Ignoring unknown tag", "file", md.filePath, "tag", name)
 			continue
 		}
+		if model.TagMappings()[tagName].Type == model.TagTypePair {
+			values = encodePairs(tagName, values)
+		}
 		delete(merged, tagName)
 		maps.Copy(merged, sanitizeAll(md.filePath, model.Tags{tagName: values}))
 	}
@@ -274,17 +277,18 @@ func processPairMapping(name model.TagName, mapping model.TagConf, lowered model
 	id3Base := parseID3Pairs(name, lowered)
 
 	if len(aliasValues) > 0 {
-		// For lyrics, don't use parseVorbisPairs as parentheses in lyrics content
-		// should not be interpreted as language keys (e.g. "(intro)" is not a language)
-		if name == model.TagLyrics {
-			for _, v := range aliasValues {
-				id3Base = append(id3Base, NewPair("xxx", v))
-			}
-		} else {
-			id3Base = append(id3Base, parseVorbisPairs(aliasValues)...)
-		}
+		id3Base = append(id3Base, encodePairs(name, aliasValues)...)
 	}
 	return id3Base
+}
+
+func encodePairs(name model.TagName, values []string) []string {
+	// For lyrics, don't use parseVorbisPairs as parentheses in lyrics content
+	// should not be interpreted as language keys (e.g. "(intro)" is not a language)
+	if name == model.TagLyrics {
+		return slice.Map(values, func(v string) string { return NewPair("xxx", v) })
+	}
+	return parseVorbisPairs(values)
 }
 
 func parseID3Pairs(name model.TagName, lowered model.Tags) []string {
