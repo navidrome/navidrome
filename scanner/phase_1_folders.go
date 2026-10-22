@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"path"
 	"slices"
@@ -23,6 +24,7 @@ import (
 	"github.com/navidrome/navidrome/utils"
 	"github.com/navidrome/navidrome/utils/pl"
 	"github.com/navidrome/navidrome/utils/slice"
+	"gopkg.in/yaml.v3"
 )
 
 func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStore) *phaseFolders {
@@ -259,7 +261,8 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 				p.state.sendWarning(fmt.Sprintf("Error getting file info for %s/%s: %v", entry.path, af.Name(), err))
 				return entry, nil
 			}
-			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
+			modTime := utils.TimeNewest(info.ModTime(), entry.tagsModTime(af.Name()))
+			if modTime.After(dbTrack.UpdatedAt) || dbTrack.Missing {
 				filesToImport[fullPath] = dbTrack
 			}
 		}
@@ -300,7 +303,16 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 		}
 		for filePath, info := range allInfo {
 			md := metadata.New(filePath, info)
+			name := path.Base(filePath)
+			if _, ok := entry.tagsFiles[name]; ok {
+				if tags, err := readTagsSidecar(entry.job.fs, filePath); err == nil {
+					md = md.WithTags(tags)
+				} else {
+					log.Warn(p.ctx, "Scanner: Error reading tags sidecar. Ignoring it", "file", filePath, err)
+				}
+			}
 			track := md.ToMediaFile(entry.job.lib, entry.id)
+			track.UpdatedAt = utils.TimeNewest(track.UpdatedAt, entry.tagsModTime(name))
 			tracks = append(tracks, track)
 			for _, t := range track.Tags.FlattenAll() {
 				uniqueTags[t.ID] = t
@@ -322,6 +334,20 @@ func (p *phaseFolders) loadTagsFromFiles(entry *folderEntry, toImport map[string
 	entry.tracks = tracks
 	entry.tags = slices.Collect(maps.Values(uniqueTags))
 	return nil
+}
+
+const tagsSidecarSuffix = ".tags"
+
+func readTagsSidecar(fsys fs.FS, audioPath string) (map[string][]string, error) {
+	data, err := fs.ReadFile(fsys, audioPath+tagsSidecarSuffix)
+	if err != nil {
+		return nil, err
+	}
+	var tags map[string][]string
+	if err := yaml.Unmarshal(data, &tags); err != nil {
+		return nil, err
+	}
+	return tags, nil
 }
 
 // createAlbumsFromMediaFiles groups the entry's tracks by album ID and creates albums
