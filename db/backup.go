@@ -59,6 +59,12 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	}
 	defer backupDb.Close()
 
+	if !isBackup {
+		if err := checkRestoreSource(ctx, backupDb, path); err != nil {
+			return err
+		}
+	}
+
 	backupConn, err := backupDb.Conn(ctx)
 	if err != nil {
 		return fmt.Errorf("getting backup connection: %w", err)
@@ -111,6 +117,40 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 	})
 
 	return err
+}
+
+// checkRestoreSource runs sanity checks on a file about to be restored over the live
+// database. They catch the common ways a backup goes bad, not every kind of damage.
+func checkRestoreSource(ctx context.Context, backupDb *sql.DB, path string) error {
+	// SQLite opens an empty file as an empty database, and restoring it would wipe the live one.
+	found, err := hasGooseTable(ctx, backupDb)
+	if err != nil {
+		return fmt.Errorf("reading backup file '%s': %w", path, err)
+	}
+	if !found {
+		return fmt.Errorf("backup file '%s' is not a Navidrome database", path)
+	}
+
+	// The table can be there with nothing in it, or with only the row goose adds when it creates it.
+	var version int64
+	err = backupDb.QueryRowContext(ctx,
+		"SELECT coalesce(max(version_id), 0) FROM goose_db_version WHERE is_applied = 1").Scan(&version)
+	if err != nil {
+		return fmt.Errorf("reading backup file '%s': %w", path, err)
+	}
+	if version <= 0 {
+		return fmt.Errorf("backup file '%s' has no applied migrations", path)
+	}
+
+	// The queries above only read the first pages. quick_check walks the whole file.
+	var result string
+	if err := backupDb.QueryRowContext(ctx, "PRAGMA quick_check(1)").Scan(&result); err != nil {
+		return fmt.Errorf("checking backup file '%s': %w", path, err)
+	}
+	if result != "ok" {
+		return fmt.Errorf("backup file '%s' is damaged: %s", path, result)
+	}
+	return nil
 }
 
 func Backup(ctx context.Context) (string, error) {
