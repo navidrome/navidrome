@@ -38,6 +38,8 @@
         "missing": "Manquant",
         "libraryName": "Bibliothèque",
         "composer": "Compositeur·e",
+        "albumGain": "Gain de l'album",
+        "trackGain": "Gain du titre",
         "disc": "Disque %{discNumber}"
       },
       "actions": {
@@ -49,7 +51,7 @@
         "playNext": "Jouer ensuite",
         "info": "Plus d'informations",
         "showInPlaylist": "Montrer dans la playlist",
-        "instantMix": "Mix instantanné"
+        "instantMix": "Mix instantané"
       }
     },
     "album": {
@@ -81,7 +83,8 @@
         "mood": "Humeur",
         "date": "Date d'enregistrement",
         "missing": "Manquant",
-        "libraryName": "Bibliothèque"
+        "libraryName": "Bibliothèque",
+        "played": "Joué"
       },
       "actions": {
         "playAll": "Lire",
@@ -91,7 +94,8 @@
         "addToPlaylist": "Ajouter à la playlist",
         "download": "Télécharger",
         "info": "Plus d'informations",
-        "share": "Partager"
+        "share": "Partager",
+        "refresh": "Actualiser les métadonnées"
       },
       "lists": {
         "all": "Tous",
@@ -153,11 +157,13 @@
         "newPassword": "Nouveau mot de passe",
         "token": "Token",
         "lastAccessAt": "Dernier accès",
-        "libraries": "Bibliothèques"
+        "libraries": "Bibliothèques",
+        "scrobbleFilter": "Filtre de scrobble"
       },
       "helperTexts": {
         "name": "Les changements liés à votre nom ne seront reflétés qu'à la prochaine connexion",
-        "libraries": "Sélectionner une bibliothèque pour cet utilisateur ou laisser vide pour utiliser la bibliothèque par défaut"
+        "libraries": "Sélectionner une bibliothèque pour cet utilisateur ou laisser vide pour utiliser la bibliothèque par défaut",
+        "scrobbleFilter": "Les titres correspondant à ces règles de playlist intelligente ne sont pas envoyés à Last.fm, ListenBrainz ni aux extensions de scrobble. Utilise la même syntaxe JSON et le même comportement que les playlists intelligentes. Exemple : {\"all\":[{\"lt\":{\"rating\":4}}]}. Laisser vide pour tout scrobbler. Les nombres d'écoutes locaux ne sont pas affectés."
       },
       "notifications": {
         "created": "Utilisateur créé",
@@ -171,11 +177,13 @@
         "adminAutoLibraries": "Les utilisateurs admin ont automatiquement accès à l'ensemble des bibliothèques"
       },
       "validation": {
-        "librariesRequired": "Au moins une bibliothèque doit être sélectionnée pour les utilisateurs non administrateurs"
+        "librariesRequired": "Au moins une bibliothèque doit être sélectionnée pour les utilisateurs non administrateurs",
+        "invalidScrobbleFilter": "Doit être des règles de playlist intelligente valides. Les options limit, offset et le délai d'actualisation ne sont pas pris en charge."
       }
     },
     "player": {
       "name": "Lecteur |||| Lecteurs",
+      "menuName": "Lecteurs et clés API",
       "fields": {
         "name": "Nom",
         "transcodingId": "Transcodage",
@@ -184,7 +192,29 @@
         "userName": "Nom d'utilisateur",
         "lastSeen": "Vu pour la dernière fois",
         "reportRealPath": "Rapporter le chemin d'accès absolu",
-        "scrobbleEnabled": "Scrobbler vers des services externes"
+        "scrobbleEnabled": "Scrobbler vers des services externes",
+        "hasApiKey": "Clé API"
+      },
+      "actions": {
+        "generateApiKey": "Générer une clé API",
+        "regenerateApiKey": "Régénérer",
+        "revokeApiKey": "Révoquer",
+        "copyApiKey": "Copier"
+      },
+      "message": {
+        "apiKeyActive": "Ce lecteur possède une clé API. Utilisez-la dans votre application comme clé API, ou comme mot de passe si l'application n'utilise pas l'authentification par token.",
+        "apiKeyNone": "Aucune clé API. Générez-en une pour connecter une application à ce lecteur.",
+        "apiKeyNoneOther": "Aucune clé API.",
+        "apiKeyPending": "Copiez cette clé maintenant. Elle est enregistrée lorsque vous cliquez sur Enregistrer et ne sera plus affichée.",
+        "apiKeyRevokePending": "La clé API sera supprimée lors de l'enregistrement.",
+        "deleteWithKeyTitle": "Supprimer le lecteur",
+        "deleteWithKeyContent": "Ce lecteur possède une clé API. Les applications qui l'utilisent cesseront de fonctionner."
+      },
+      "notifications": {
+        "apiKeyCopied": "Clé API copiée dans le presse-papier"
+      },
+      "validation": {
+        "apiKeyFormat": "Format de clé API invalide"
       }
     },
     "transcoding": {
@@ -194,6 +224,9 @@
         "targetFormat": "Format",
         "defaultBitRate": "Bitrate par défaut",
         "command": "Commande"
+      },
+      "choices": {
+        "noDefaultBitRate": "Aucun"
       }
     },
     "playlist": {
@@ -208,7 +241,8 @@
         "songCount": "Morceaux",
         "comment": "Commentaire",
         "sync": "Import automatique",
-        "path": "Importer depuis"
+        "path": "Importer depuis",
+        "starred": "Favori"
       },
       "actions": {
         "selectPlaylist": "Sélectionner une playlist :",
@@ -256,7 +290,9 @@
         "updatedAt": "Mis à jour le",
         "createdAt": "Créé le",
         "downloadable": "Autoriser les téléchargements ?"
-      }
+      },
+      "notifications": {},
+      "actions": {}
     },
     "missing": {
       "name": "Fichier manquant|||| Fichiers manquants",
@@ -294,12 +330,23 @@
         "totalSize": "Taille totale",
         "totalDuration": "Durée",
         "defaultNewUsers": "Défaut pour les nouveaux utilisateurs",
-        "createdAt": "Crée",
-        "updatedAt": "Mise à jour"
+        "createdAt": "Créée",
+        "updatedAt": "Mise à jour",
+        "pidAlbum": "Regroupement des albums",
+        "pidTrack": "Identité des titres"
       },
       "sections": {
         "basic": "Informations",
-        "statistics": "Statistiques"
+        "statistics": "Statistiques",
+        "pid": "Identifiants persistants"
+      },
+      "pid": {
+        "global": "Utiliser le paramètre global (%{value})",
+        "folder": "Dossier (un album par dossier)",
+        "custom": "Personnalisé",
+        "spec": "Spécification du PID",
+        "help": "Étiquettes et attributs qui identifient un élément. Consultez la documentation pour la syntaxe :",
+        "docs": "Identifiants persistants"
       },
       "actions": {
         "scan": "Scanner la bibliothèque",
@@ -329,7 +376,9 @@
       "messages": {
         "deleteConfirm": "Êtes-vous sûr(e) de vouloir supprimer cette bibliothèque ? Cela supprimera toutes les données associées ainsi que les accès utilisateurs.",
         "scanInProgress": "Scan en cours...",
-        "noLibrariesAssigned": "Aucune bibliothèque pour cet utilisateur"
+        "noLibrariesAssigned": "Aucune bibliothèque pour cet utilisateur",
+        "pidChangeTitle": "Modifier les identifiants persistants ?",
+        "pidChangeConfirm": "Cela regroupe à nouveau les albums et les titres de cette bibliothèque. Un scan complet de cette bibliothèque démarre maintenant. Les favoris, les notes et les nombres d'écoutes des titres sont conservés. Les favoris et les notes des albums sont reportés sur les nouveaux albums lorsqu'un ancien album correspond à un nouveau."
       }
     },
     "plugin": {
@@ -339,7 +388,7 @@
         "name": "Nom",
         "description": "Description",
         "version": "Version",
-        "author": "Auteur.e",
+        "author": "Auteur·rice",
         "website": "Site web",
         "permissions": "Permissions",
         "enabled": "Activée",
@@ -349,10 +398,10 @@
         "hasError": "Erreur",
         "updatedAt": "Mise à jour",
         "createdAt": "Installée",
-        "configKey": "Clef",
+        "configKey": "Clé",
         "configValue": "Valeur",
         "allUsers": "Autoriser tous les utilisateur·rices",
-        "selectedUsers": "Utilisateur·rices sélectionné.e.s",
+        "selectedUsers": "Utilisateur·rices sélectionné·e·s",
         "allLibraries": "Autoriser toutes les bibliothèques",
         "selectedLibraries": "Bibliothèques sélectionnées",
         "allowWriteAccess": "Autoriser l'accès en écriture"
@@ -362,7 +411,7 @@
         "info": "Informations de l'extension",
         "configuration": "Configuration",
         "manifest": "Manifeste",
-        "usersPermission": "Permissions utilisateur·ices",
+        "usersPermission": "Permissions utilisateur·rices",
         "libraryPermission": "Permissions des bibliothèques"
       },
       "status": {
@@ -372,8 +421,8 @@
       "actions": {
         "enable": "Activer",
         "disable": "Désactiver",
-        "disabledDueToError": "L'erreur doit être réglée avant de pouvoir activer la bibliothèque",
-        "disabledUsersRequired": "Sélectionner des utilisateur·ices avant d'activer la bibliothèque",
+        "disabledDueToError": "L'erreur doit être réglée avant de pouvoir activer l'extension",
+        "disabledUsersRequired": "Sélectionner des utilisateur·rices avant d'activer l'extension",
         "disabledLibrariesRequired": "Sélectionner au moins une bibliothèque",
         "addConfig": "Ajouter une configuration",
         "rescan": "Rescanner"
@@ -388,23 +437,24 @@
         "invalidJson": "La configuration doit être un JSON valide"
       },
       "messages": {
-        "configHelp": "Configurer l'extension en utilisant des paires clef/valeurs. Laisser vide si l'extension ne requiert aucune configuration.",
+        "idHelp": "L'ID de l'extension, dérivé du nom de son fichier. Utilisez-le pour référencer cette extension dans les options de configuration, comme Agents.",
+        "configHelp": "Configurer l'extension en utilisant des paires clé/valeurs. Laisser vide si l'extension ne requiert aucune configuration.",
         "clickPermissions": "Cliquer sur une permission pour plus de détails",
         "noConfig": "Aucune configuration",
-        "allUsersHelp": "Quand sélectionnée, l'extension aura accès à l'ensemble des utilisateur·rices, y compris ceux créé.e.s dans le future.",
-        "noUsers": "Aucun.e utilisateur·rice sélectionné.e",
+        "allUsersHelp": "Quand sélectionnée, l'extension aura accès à l'ensemble des utilisateur·rices, y compris celles et ceux créé·e·s dans le futur.",
+        "noUsers": "Aucun·e utilisateur·rice sélectionné·e",
         "permissionReason": "Raison",
-        "usersRequired": "Cette extension nécessite un accès aux informations utilisateurs. Sélectionnez les utilisateur·rices autorisé.e.s ou sélectionnez 'Tout autoriser'.",
+        "usersRequired": "Cette extension nécessite un accès aux informations utilisateurs. Sélectionnez les utilisateur·rices autorisé·e·s ou sélectionnez 'Tout autoriser'.",
         "allLibrariesHelp": "Quand sélectionnée, cette extension aura accès à l'ensemble des bibliothèques, y compris celles créées dans le futur.",
         "noLibraries": "Aucune bibliothèque sélectionnée",
-        "librariesRequired": "Cette extension nécessite l'accès aux information de la bibliothèque. Sélectionnez à quelles bibliothèque cette extension a accès, ou sélectionnez 'Autoriser toutes les bibliothèques'.",
+        "librariesRequired": "Cette extension nécessite l'accès aux informations des bibliothèques. Sélectionnez à quelles bibliothèques cette extension a accès, ou sélectionnez 'Autoriser toutes les bibliothèques'.",
         "requiredHosts": "Hôtes requis",
         "configValidationError": "Erreur lors de la validation de la configuration",
-        "schemaRenderError": "Impossible de processer la configuration. Le schéma de l'extension n'est peut-être pas valide.",
-        "allowWriteAccessHelp": "Lorsque cette option est activée, le plugin peut modifier les fichiers dans les répertoires de la bibliothèque. Par défaut, les plugins ont un accès en lecture seule."
+        "schemaRenderError": "Impossible de traiter la configuration. Le schéma de l'extension n'est peut-être pas valide.",
+        "allowWriteAccessHelp": "Lorsque cette option est activée, l'extension peut modifier les fichiers dans les répertoires de la bibliothèque. Par défaut, les extensions ont un accès en lecture seule."
       },
       "placeholders": {
-        "configKey": "clef",
+        "configKey": "clé",
         "configValue": "valeur"
       }
     }
@@ -461,7 +511,7 @@
       "show": "Afficher",
       "sort": "Trier",
       "undo": "Annuler",
-      "expand": "Étendre",
+      "expand": "Développer",
       "close": "Fermer",
       "open_menu": "Ouvrir le menu",
       "close_menu": "Fermer le menu",
@@ -556,7 +606,7 @@
   },
   "message": {
     "note": "NOTE",
-    "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancer le serveur avec l'option %{config} activée.",
+    "transcodingDisabled": "Le changement de paramètres depuis l'interface web est désactivé pour des raisons de sécurité. Pour changer (éditer ou supprimer) les options de transcodage, relancez le serveur avec l'option %{config} activée.",
     "transcodingEnabled": "Navidrome fonctionne actuellement avec %{config}, rendant possible l’exécution de commandes arbitraires depuis l'interface web. Il est recommandé d'activer cette fonctionnalité uniquement lors de la configuration du transcodage.",
     "songsAddedToPlaylist": "1 titre a été ajouté à la playlist |||| %{smart_count} titres ont été ajoutés à la playlist",
     "noPlaylistsAvailable": "Aucune playlist",
@@ -588,7 +638,7 @@
     "remove_missing_title": "Supprimer les fichiers manquants",
     "remove_missing_content": "Êtes-vous sûr(e) de vouloir supprimer les fichiers manquants sélectionnés de la base de données ? Ceci supprimera définitivement toute référence à ceux-ci, y compris leurs nombres d'écoutes et leurs notations",
     "remove_all_missing_title": "Supprimer tous les fichiers manquants",
-    "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes,  leur notations et tout ce qui y fait référence.",
+    "remove_all_missing_content": "Êtes-vous sûr(e) de vouloir supprimer tous les fichiers manquants de la base de données ? Cette action est permanente et supprimera leurs nombres d'écoutes, leurs notations et tout ce qui y fait référence.",
     "noSimilarSongsFound": "Aucun titre similaire n'a été trouvé",
     "noTopSongsFound": "Aucun meilleur titre n'a été trouvé",
     "startingInstantMix": "Chargement du mix instantané...",
@@ -597,7 +647,11 @@
     "coverUploaded": "Pochette mise à jour",
     "coverRemoved": "Pochette supprimée",
     "coverUploadError": "Erreur lors du téléversement de la pochette",
-    "coverRemoveError": "Erreur lors de la suppression de la pochette"
+    "coverRemoveError": "Erreur lors de la suppression de la pochette",
+    "metadataRefreshStarted": "Actualisation des métadonnées en arrière-plan",
+    "quickConnectApproved": "%{app} sur %{device} est maintenant connecté",
+    "quickConnectInvalidCode": "Code invalide ou expiré",
+    "quickConnectError": "Impossible d'approuver le code"
   },
   "menu": {
     "library": "Bibliothèque",
@@ -620,7 +674,7 @@
           "album": "Utiliser le gain de l'album",
           "track": "Utiliser le gain des titres"
         },
-        "lastfmNotConfigured": "La clef API de Last.fm n'est pas configurée"
+        "lastfmNotConfigured": "La clé API de Last.fm n'est pas configurée"
       }
     },
     "albumList": "Albums",
@@ -632,7 +686,16 @@
       "multipleLibraries": "%{selected} bibliothèque(s) sélectionnée(s) sur %{total}",
       "selectLibraries": "Sélectionner les bibliothèques",
       "none": "Aucune"
-    }
+    },
+    "quickConnect": {
+      "name": "Connexion rapide",
+      "code": "Code",
+      "help": "Saisissez le code affiché par une application Jellyfin pour la connecter à votre compte",
+      "confirm": "Connecter %{app} %{version} sur %{device} à votre compte ?",
+      "continue": "Continuer",
+      "approve": "Approuver"
+    },
+    "onlyFavourites": "Afficher uniquement les favoris"
   },
   "player": {
     "playListsText": "File de lecture",
@@ -663,8 +726,8 @@
     "links": {
       "homepage": "Page d'accueil",
       "source": "Code source",
-      "featureRequests": "Demande de fonctionnalités",
-      "lastInsightsCollection": "Dernière collection des données",
+      "featureRequests": "Demandes de fonctionnalités",
+      "lastInsightsCollection": "Dernière collecte des données",
       "insights": {
         "disabled": "Désactivée",
         "waiting": "En attente"
