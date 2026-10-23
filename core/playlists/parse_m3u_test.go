@@ -2,6 +2,7 @@ package playlists
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -16,7 +17,6 @@ var _ = Describe("pathResolver", func() {
 	ctx := context.Background()
 
 	BeforeEach(func() {
-		tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
 		mockLibRepo = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{
 			MockedLibrary: mockLibRepo,
@@ -41,8 +41,8 @@ var _ = Describe("pathResolver", func() {
 
 				Expect(resolution.valid).To(BeTrue())
 				Expect(resolution.libraryID).To(Equal(1))
-				Expect(resolution.libraryPath).To(Equal("/music"))
-				Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
+				Expect(resolution.libraryPath).To(Equal(filepath.FromSlash("/music")))
+				Expect(resolution.absolutePath).To(Equal(filepath.FromSlash("/music/artist/album/track.mp3")))
 			})
 
 			It("resolves relative paths when folder is provided", func() {
@@ -56,7 +56,7 @@ var _ = Describe("pathResolver", func() {
 
 				Expect(resolution.valid).To(BeTrue())
 				Expect(resolution.libraryID).To(Equal(1))
-				Expect(resolution.absolutePath).To(Equal("/music/artist/album/track.mp3"))
+				Expect(resolution.absolutePath).To(Equal(filepath.FromSlash("/music/artist/album/track.mp3")))
 			})
 
 			It("returns invalid resolution for paths outside any library", func() {
@@ -72,8 +72,8 @@ var _ = Describe("pathResolver", func() {
 
 				Expect(resolution.valid).To(BeTrue())
 				Expect(resolution.libraryID).To(Equal(1))
-				Expect(resolution.libraryPath).To(Equal("/music"))
-				Expect(resolution.absolutePath).To(Equal("/music/track.mp3"))
+				Expect(resolution.libraryPath).To(Equal(filepath.FromSlash("/music")))
+				Expect(resolution.absolutePath).To(Equal(filepath.FromSlash("/music/track.mp3")))
 			})
 
 			It("resolves path to the longest matching library", func() {
@@ -81,7 +81,7 @@ var _ = Describe("pathResolver", func() {
 
 				Expect(resolution.valid).To(BeTrue())
 				Expect(resolution.libraryID).To(Equal(2))
-				Expect(resolution.libraryPath).To(Equal("/music-classical"))
+				Expect(resolution.libraryPath).To(Equal(filepath.FromSlash("/music-classical")))
 			})
 
 			It("returns invalid resolution for path outside libraries", func() {
@@ -94,7 +94,7 @@ var _ = Describe("pathResolver", func() {
 				resolution := resolver.resolvePath("/music//artist/../artist/track.mp3", nil)
 
 				Expect(resolution.valid).To(BeTrue())
-				Expect(resolution.absolutePath).To(Equal("/music/artist/track.mp3"))
+				Expect(resolution.absolutePath).To(Equal(filepath.FromSlash("/music/artist/track.mp3")))
 			})
 		})
 
@@ -110,7 +110,7 @@ var _ = Describe("pathResolver", func() {
 
 				Expect(resolution.valid).To(BeTrue())
 				Expect(resolution.libraryID).To(Equal(1))
-				Expect(resolution.absolutePath).To(Equal("/music/songs/track.mp3"))
+				Expect(resolution.absolutePath).To(Equal(filepath.FromSlash("/music/songs/track.mp3")))
 			})
 
 			It("resolves relative path to different library", func() {
@@ -125,7 +125,7 @@ var _ = Describe("pathResolver", func() {
 
 				Expect(resolution.valid).To(BeTrue())
 				Expect(resolution.libraryID).To(Equal(3))
-				Expect(resolution.libraryPath).To(Equal("/podcasts"))
+				Expect(resolution.libraryPath).To(Equal(filepath.FromSlash("/podcasts")))
 			})
 
 			It("uses matcher to find correct library for resolved path", func() {
@@ -140,7 +140,7 @@ var _ = Describe("pathResolver", func() {
 
 				Expect(resolution.valid).To(BeTrue())
 				Expect(resolution.libraryID).To(Equal(2))
-				Expect(resolution.libraryPath).To(Equal("/music-classical"))
+				Expect(resolution.libraryPath).To(Equal(filepath.FromSlash("/music-classical")))
 			})
 
 			It("returns invalid for relative paths escaping all libraries", func() {
@@ -171,7 +171,7 @@ var _ = Describe("pathResolver", func() {
 
 			Expect(resolution.valid).To(BeTrue())
 			Expect(resolution.libraryID).To(Equal(3), "Should resolve to podcasts library")
-			Expect(resolution.libraryPath).To(Equal("/podcasts"))
+			Expect(resolution.libraryPath).To(Equal(filepath.FromSlash("/podcasts")))
 		})
 
 		It("prefers longer library paths when resolving", func() {
