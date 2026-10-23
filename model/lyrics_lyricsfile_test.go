@@ -55,8 +55,7 @@ lines:
 
 		Expect(l.Line).To(HaveLen(2))
 		Expect(*l.Line[0].Start).To(Equal(int64(18800)))
-		Expect(l.Line[0].End).ToNot(BeNil())
-		Expect(*l.Line[0].End).To(Equal(int64(22801)))
+		Expect(l.Line[0].End).To(BeNil())
 		Expect(l.Line[0].Value).To(Equal("We're no strangers to love"))
 		Expect(l.Line[0].Cue).To(BeNil())
 
@@ -296,5 +295,104 @@ lines:
 		Expect(l.Agents).To(BeNil())
 		Expect(l.Line[0].Cue).To(BeNil())
 		Expect(l.Line[1].Cue).To(BeNil())
+	})
+
+	It("distinguishes an omitted line start from an explicit zero", func() {
+		explicitZero := `version: "1.0"
+lines:
+  - text: "At zero"
+    start_ms: 0
+`
+		lyrics, err := parseLyricsfile("", []byte(explicitZero))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics[0].Line[0].Start).To(Equal(new(int64(0))))
+
+		missing := `version: "1.0"
+lines:
+  - text: "Missing start"
+plain: |
+  Safe fallback
+`
+		lyrics, err = parseLyricsfile("", []byte(missing))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics[0].Synced).To(BeFalse())
+		Expect(lyrics[0].Line).To(Equal([]Line{{Value: "Safe fallback"}}))
+
+		_, err = parseLyricsfile("", []byte(`version: "1.0"
+lines:
+  - text: "Missing start"
+`))
+		Expect(err).To(MatchError(ContainSubstring("missing or invalid start_ms")))
+	})
+
+	It("sanitizes word text before computing UTF-8 offsets", func() {
+		input := `version: "1.0"
+lines:
+  - text: "ignored"
+    start_ms: 0
+    end_ms: 1000
+    words:
+      - text: "<script>unsafe</script>Hi "
+        start_ms: 0
+        end_ms: 500
+      - text: "世"
+        start_ms: 500
+        end_ms: 1000
+`
+		lyrics, err := parseLyricsfile("", []byte(input))
+		Expect(err).ToNot(HaveOccurred())
+		line := lyrics[0].Line[0]
+		Expect(line.Value).To(Equal("Hi 世"))
+		Expect(line.Cue).To(Equal([]Cue{
+			{Start: new(int64(0)), End: new(int64(500)), Value: "Hi ", ByteStart: 0, ByteEnd: 2},
+			{Start: new(int64(500)), End: new(int64(1000)), Value: "世", ByteStart: 3, ByteEnd: 5},
+		}))
+	})
+
+	DescribeTable("retains reconstructed text but drops invalid word timing",
+		func(words string) {
+			input := `version: "1.0"
+lines:
+  - text: "ignored"
+    start_ms: 1000
+    words:
+` + words
+			lyrics, err := parseLyricsfile("", []byte(input))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(lyrics[0].Line[0].Value).To(Equal("hello"))
+			Expect(lyrics[0].Line[0].Cue).To(BeNil())
+		},
+		Entry("missing word start", "      - text: \"hello\"\n"),
+		Entry("out-of-order word starts", "      - text: \"hel\"\n        start_ms: 1500\n      - text: \"lo\"\n        start_ms: 1400\n"),
+	)
+
+	It("assigns overlapping voices chronologically while retaining display order", func() {
+		input := `version: "1.0"
+lines:
+  - text: "Later"
+    start_ms: 3000
+    end_ms: 5000
+    words:
+      - text: "Later"
+        start_ms: 3000
+        end_ms: 5000
+  - text: "Earlier"
+    start_ms: 1000
+    end_ms: 4000
+    words:
+      - text: "Earlier"
+        start_ms: 1000
+        end_ms: 4000
+`
+		lyrics, err := parseLyricsfile("", []byte(input))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(lyrics[0].Line[0].Value).To(Equal("Later"))
+		Expect(lyrics[0].Line[0].Cue[0].AgentID).To(Equal("voice-1"))
+		Expect(lyrics[0].Line[1].Value).To(Equal("Earlier"))
+		Expect(lyrics[0].Line[1].Cue[0].AgentID).To(Equal("voice-0"))
+		Expect(lyrics[0].Agents).To(Equal([]Agent{
+			{ID: "voice-0", Role: "main"},
+			{ID: "voice-1", Role: "voice"},
+		}))
 	})
 })

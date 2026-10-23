@@ -48,6 +48,13 @@ func (t *testLyrics) GetLyrics(input lyrics.GetLyricsRequest) (lyrics.GetLyricsR
 		case "plain":
 			lang = "eng"
 			text = "plugin plain line"
+		case "mixed":
+			return lyrics.GetLyricsResponse{
+				Lyrics: []lyrics.LyricsText{
+					{Lang: "eng", Text: `<tt><body><p>malformed`},
+					{Lang: "eng", Text: "[00:01.00]valid plugin line"},
+				},
+			}, nil
 		}
 		if text != "" {
 			return lyrics.GetLyricsResponse{
