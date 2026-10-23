@@ -234,16 +234,21 @@ func trustedProxyPrefixes(list string) []string {
 
 // ClientIPRateLimiter returns a rate limiter keyed by ClientIP, so spoofed forwarding headers
 // cannot be rotated for a fresh bucket.
-func ClientIPRateLimiter(requestLimit int, windowLength time.Duration) func(http.Handler) http.Handler {
+func ClientIPRateLimiter(requestLimit int, windowLength time.Duration, opts ...httprate.Option) func(http.Handler) http.Handler {
 	return httprate.LimitBy(requestLimit, windowLength, func(r *http.Request) (string, error) {
 		return ClientIP(r), nil
-	})
+	}, opts...)
 }
 
 // ClientIP returns the canonical client IP resolved by realIPMiddleware, for keying rate limits. The
 // peer address fallback degrades a missing middleware to per-peer limiting, not one shared bucket.
 func ClientIP(r *http.Request) string {
-	return httprate.CanonicalizeIP(cmp.Or(middleware.GetClientIP(r.Context()), peerHost(r)))
+	return httprate.CanonicalizeIP(ClientAddr(r))
+}
+
+// ClientAddr returns the client IP resolved by realIPMiddleware unmasked, for recording who made a request.
+func ClientAddr(r *http.Request) string {
+	return cmp.Or(middleware.GetClientIP(r.Context()), peerHost(r))
 }
 
 // reqToCtx creates a middleware that updates the request's context with a value computed from the request. A given key

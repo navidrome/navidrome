@@ -4,6 +4,7 @@ json:
     x-module: core
     x-stability-level: alpha
     tags: [server]
+    security: []
     summary: Get the OpenAPI document (JSON)
     description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
     responses:
@@ -25,6 +26,7 @@ yaml:
     x-module: core
     x-stability-level: alpha
     tags: [server]
+    security: []
     summary: Get the OpenAPI document (YAML)
     description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
     responses:

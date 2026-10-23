@@ -1,0 +1,19 @@
+type: object
+description: The user a grant belongs to.
+required: [id, userName, name, isAdmin, passwordChangeable]
+properties:
+  id:
+    type: string
+    description: User id.
+  userName:
+    type: string
+    description: Login name.
+  name:
+    type: string
+    description: Display name.
+  isAdmin:
+    type: boolean
+    description: Whether the user is an administrator.
+  passwordChangeable:
+    type: boolean
+    description: "Whether `POST /auth/password` can change this user's password. Clients hide \"change password\" when false."

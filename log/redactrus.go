@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 )
@@ -35,6 +36,7 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 	if err := h.initRedaction(); err != nil {
 		return err
 	}
+	redactSecrets(e)
 	for _, re := range h.redactionKeys {
 		// Redact based on key matching in Data fields
 		for k, v := range e.Data {
@@ -47,7 +49,8 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 			}
 			switch reflect.TypeOf(v).Kind() {
 			case reflect.String:
-				e.Data[k] = re.ReplaceAllString(v.(string), "$1[REDACTED]$2")
+				// Via reflect: named string types (e.g. enums) have Kind String but fail v.(string).
+				e.Data[k] = re.ReplaceAllString(reflect.ValueOf(v).String(), "$1[REDACTED]$2")
 				continue
 			case reflect.Map:
 				s := fmt.Sprintf("%+v", v)
@@ -61,6 +64,36 @@ func (h *Hook) Fire(e *logrus.Entry) error {
 	}
 
 	return nil
+}
+
+// redactSecrets hides the values marked with WithSecrets in the context the entry was logged with.
+func redactSecrets(e *logrus.Entry) {
+	secrets := secretsFrom(e.Context)
+	if len(secrets) == 0 {
+		return
+	}
+	hide := func(s string) string {
+		for _, secret := range secrets {
+			s = strings.ReplaceAll(s, secret, "[REDACTED]")
+		}
+		return s
+	}
+	e.Message = hide(e.Message)
+	for k, v := range e.Data {
+		if v == nil {
+			continue
+		}
+		// fmt.Sprint renders like the text formatter and survives typed-nil errors; []byte is written raw.
+		var s string
+		if b, ok := v.([]byte); ok {
+			s = string(b)
+		} else {
+			s = fmt.Sprint(v)
+		}
+		if hidden := hide(s); hidden != s {
+			e.Data[k] = hidden
+		}
+	}
 }
 
 func (h *Hook) initRedaction() error {

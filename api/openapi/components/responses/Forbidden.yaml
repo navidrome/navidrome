@@ -1,4 +1,7 @@
 description: The caller is authenticated but not allowed to do this.
+headers:
+  WWW-Authenticate:
+    $ref: ../headers/WWWAuthenticate.yaml
 content:
   application/problem+json:
     schema:

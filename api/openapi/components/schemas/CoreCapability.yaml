@@ -1,0 +1,5 @@
+type: object
+description: The mandatory core module.
+required: [version]
+properties:
+  version: {type: integer, description: Module version. Bumped only on semantic change.}
