@@ -32,9 +32,10 @@ func isLosslessFormat(format string) bool {
 	return false
 }
 
-// normalizeSourceSampleRate adjusts the source sample rate for codecs that store
-// it differently than PCM. Currently handles DSD (÷8):
+// normalizeSourceSampleRate adjusts a sample rate read from tags for codecs that
+// store it differently than PCM. Currently handles DSD (÷8):
 // DSD64=2822400→352800, DSD128=5644800→705600, etc.
+// ffprobe already reports DSD at this rate, so probe data needs no adjustment.
 // For other codecs, returns the rate unchanged.
 func normalizeSourceSampleRate(sampleRate int, codec string) int {
 	if strings.EqualFold(codec, "dsd") && sampleRate > 0 {
@@ -43,14 +44,28 @@ func normalizeSourceSampleRate(sampleRate int, codec string) int {
 	return sampleRate
 }
 
+// dsdMaxPCMSampleRate caps DSD transcoded to lossless PCM. It divides every
+// 44.1kHz-based DSD rate exactly, DSD carries mostly its own shaped noise above
+// it, and many clients cannot play 352.8kHz PCM.
+const dsdMaxPCMSampleRate = 88200
+
+// targetSampleRate returns the sample rate for a transcoded stream before codec
+// and client limits are applied, with DSD capped when the target is lossless.
+func targetSampleRate(srcSampleRate int, srcCodec string, targetIsLossless bool) int {
+	if targetIsLossless && strings.EqualFold(srcCodec, "dsd") {
+		return min(srcSampleRate, dsdMaxPCMSampleRate)
+	}
+	return srcSampleRate
+}
+
 // targetBitDepth returns the bit depth for a transcoded stream: 0 for lossy
 // targets (they have no PCM bit depth), otherwise the source depth, with DSD
-// adjusted to the 24-bit PCM that ffmpeg produces.
+// (1 bit in tags, 8 in ffprobe) adjusted to the 24-bit PCM that ffmpeg produces.
 func targetBitDepth(srcBitDepth int, srcCodec string, targetIsLossless bool) int {
 	if !targetIsLossless {
 		return 0
 	}
-	if strings.EqualFold(srcCodec, "dsd") && srcBitDepth == 1 {
+	if strings.EqualFold(srcCodec, "dsd") {
 		return 24
 	}
 	return srcBitDepth
