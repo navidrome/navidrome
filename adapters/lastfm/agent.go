@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	lastFMAgentName    = "lastfm"
-	sessionKeyProperty = "LastFMSessionKey"
+	lastFMAgentName       = "lastfm"
+	sessionKeyProperty    = "LastFMSessionKey"
+	syncFavoritesProperty = "LastFMSyncFavorites"
 )
 
 var ignoredContent = []string{
@@ -392,8 +393,9 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		log.Debug(ctx, "Skipping Last.fm scrobble for short song", "track", s.Title, "duration", s.Duration)
 		return nil
 	}
+	artist := l.getArtistForScrobble(&s.MediaFile, model.RoleArtist, s.Artist)
 	err = l.client.scrobble(ctx, sk, ScrobbleInfo{
-		artist:      l.getArtistForScrobble(&s.MediaFile, model.RoleArtist, s.Artist),
+		artist:      artist,
 		track:       s.Title,
 		album:       s.Album,
 		trackNumber: s.TrackNumber,
@@ -402,20 +404,33 @@ func (l *lastfmAgent) Scrobble(ctx context.Context, userId string, s scrobbler.S
 		albumArtist: l.getArtistForScrobble(&s.MediaFile, model.RoleAlbumArtist, s.AlbumArtist),
 		timestamp:   s.TimeStamp,
 	})
-	if err == nil {
-		return nil
+	if err != nil {
+		var lfErr *lastFMError
+		isLastFMError := errors.As(err, &lfErr)
+		if !isLastFMError {
+			log.Warn(ctx, "Last.fm client.scrobble returned error", "track", s.Title, err)
+			return errors.Join(err, scrobbler.ErrRetryLater)
+		}
+		// 11: service offline; 16: temporarily unavailable. Rate limiting is mapped by the client.
+		if lfErr.Code == 11 || lfErr.Code == 16 || errors.Is(err, scrobbler.ErrRetryLater) {
+			return errors.Join(err, scrobbler.ErrRetryLater)
+		}
+		return errors.Join(err, scrobbler.ErrUnrecoverable)
 	}
-	var lfErr *lastFMError
-	isLastFMError := errors.As(err, &lfErr)
-	if !isLastFMError {
-		log.Warn(ctx, "Last.fm client.scrobble returned error", "track", s.Title, err)
-		return errors.Join(err, scrobbler.ErrRetryLater)
+	if s.Starred && syncFavoritesEnabled(ctx, l.ds.UserProps(), userId) {
+		if loveErr := l.client.love(ctx, sk, artist, s.Title); loveErr != nil {
+			log.Warn(ctx, "Last.fm client.love returned error", "track", s.Title, loveErr)
+		}
 	}
-	// 11: service offline; 16: temporarily unavailable. Rate limiting is mapped by the client.
-	if lfErr.Code == 11 || lfErr.Code == 16 || errors.Is(err, scrobbler.ErrRetryLater) {
-		return errors.Join(err, scrobbler.ErrRetryLater)
+	return nil
+}
+
+func syncFavoritesEnabled(ctx context.Context, props model.UserPropsRepository, userId string) bool {
+	v, err := props.DefaultGet(ctx, userId, syncFavoritesProperty, "false")
+	if err != nil {
+		log.Warn(ctx, "Could not read Last.fm favorite sync setting", "userId", userId, err)
 	}
-	return errors.Join(err, scrobbler.ErrUnrecoverable)
+	return v == "true"
 }
 
 func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {

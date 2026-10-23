@@ -63,13 +63,14 @@ func (r *scrobbleBufferRepository) Enqueue(ctx context.Context, service, userId,
 }
 
 func (r *scrobbleBufferRepository) Next(ctx context.Context, service string, userId string) (*model.ScrobbleEntry, error) {
-	// Put `s.*` last or else m.id overrides s.id
-	sql := Select().Columns("m.*, s.*").
+	// `s.*` follows `m.*` so the buffer id wins. starred is selected after that.
+	sql := Select().Columns("m.*, s.*", "coalesce(annotation.starred, 0) as starred").
 		From(r.tableName+" s").
 		LeftJoin("media_file m on m.id = s.media_file_id").
+		LeftJoin("annotation on annotation.item_id = m.id AND annotation.item_type = 'media_file' AND annotation.user_id = s.user_id").
 		Where(And{
 			Eq{"service": service},
-			Eq{"user_id": userId},
+			Eq{"s.user_id": userId},
 		}).
 		OrderBy("play_time", "s.rowid").Limit(1)
 

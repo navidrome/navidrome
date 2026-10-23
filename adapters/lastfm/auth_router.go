@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -56,6 +57,7 @@ func (s *Router) routes() http.Handler {
 
 		r.Get("/link", s.getLinkStatus)
 		r.Delete("/link", s.unlink)
+		r.Put("/favorites", s.setSyncFavorites)
 	})
 
 	r.Get("/link/callback", s.callback)
@@ -76,6 +78,7 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp["status"] = key != ""
+	resp["syncFavorites"] = syncFavoritesEnabled(r.Context(), s.ds.UserProps(), u.ID)
 	linkToken, err := createLinkToken(u.ID)
 	if err != nil {
 		log.Error(r.Context(), "Could not create LastFM link token", "userId", u.ID, err)
@@ -84,6 +87,26 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	resp["linkToken"] = linkToken
 	_ = rest.RespondWithJSON(w, http.StatusOK, resp)
+}
+
+func (s *Router) setSyncFavorites(w http.ResponseWriter, r *http.Request) {
+	u, _ := request.UserFrom(r.Context())
+	var body struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		_ = rest.RespondWithError(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	value := "false"
+	if body.Enabled {
+		value = "true"
+	}
+	if err := s.ds.UserProps().Put(r.Context(), u.ID, syncFavoritesProperty, value); err != nil {
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	_ = rest.RespondWithJSON(w, http.StatusOK, map[string]bool{"enabled": body.Enabled})
 }
 
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {
