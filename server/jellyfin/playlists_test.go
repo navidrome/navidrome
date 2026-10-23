@@ -270,6 +270,27 @@ var _ = Describe("Playlists", func() {
 			Expect(fp.tracksRepo.Options.Max).To(Equal(1))
 		})
 
+		It("clamps a negative StartIndex to 0", func() {
+			fp.getPls = &model.Playlist{
+				ID: testID("pl1"),
+				Tracks: model.PlaylistTracks{
+					{ID: "1", MediaFileID: testID("s1"), PlaylistID: testID("pl1"), MediaFile: model.MediaFile{ID: testID("s1")}},
+					{ID: "2", MediaFileID: testID("s2"), PlaylistID: testID("pl1"), MediaFile: model.MediaFile{ID: testID("s2")}},
+				},
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Playlists/"+testID("pl1")+"/Items?StartIndex=-1&Limit=1", nil).
+				WithContext(context.Background())
+			r = withChiURLParam(r, "playlistId", dto.EncodeID(testID("pl1")))
+			invoke(api.getPlaylistItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.StartIndex).To(Equal(0))
+			Expect(res.Items).To(HaveLen(1))
+			Expect(fp.tracksRepo.Options.Offset).To(Equal(0))
+		})
+
 		It("returns 404 for a non-owned or absent playlist", func() {
 			fp.getErr = model.ErrNotFound
 			w := httptest.NewRecorder()

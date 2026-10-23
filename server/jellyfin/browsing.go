@@ -57,7 +57,7 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)
-	opts := model.QueryOptions{Offset: p.IntOr("startindex", 0), Max: p.IntOr("limit", 0)}
+	opts := model.QueryOptions{Offset: max(p.IntOr("startindex", 0), 0), Max: p.IntOr("limit", 0)}
 	res, err := api.listGenres(ctx, opts)
 	if err != nil {
 		api.internalError(w, r, err)
@@ -83,8 +83,8 @@ func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	items := slice.Map(labels, dto.StudioToBaseItem)
-	offset, max := p.IntOr("startindex", 0), p.IntOr("limit", 0)
-	api.ok(w, r, result(paginate(items, offset, max), len(items), offset))
+	offset, limit := max(p.IntOr("startindex", 0), 0), p.IntOr("limit", 0)
+	api.ok(w, r, result(paginate(items, offset, limit), len(items), offset))
 }
 
 // getQueryFiltersLegacy handles GET /Items/Filters. Genres and Years are scoped to ParentId's
