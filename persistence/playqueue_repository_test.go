@@ -20,7 +20,7 @@ var _ = Describe("PlayQueueRepository", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		ctx = log.NewContext(context.TODO())
+		ctx = log.NewContext(GinkgoT().Context())
 		ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 		repo = NewPlayQueueRepository(GetDBXBuilder())
 	})
@@ -311,36 +311,68 @@ var _ = Describe("PlayQueueRepository", func() {
 			AssertPlayQueue(expected, actual)
 		})
 
-		It("does not return tracks if they don't exist in the DB", func() {
-			// Add a new song to the DB
-			newSong := songRadioactivity
-			newSong.ID = "temp-track"
-			newSong.Path = "/new-path"
-			mfRepo := NewMediaFileRepository(GetDBXBuilder())
+		Context("when tracks are no longer in the library", func() {
+			var mfRepo model.MediaFileRepository
+			gone := songRadioactivity
+			gone.ID = "gone-track"
+			gone.Path = "/gone-track"
 
-			Expect(mfRepo.Put(ctx, &newSong)).To(Succeed())
+			BeforeEach(func() {
+				mfRepo = NewMediaFileRepository(GetDBXBuilder())
+				Expect(mfRepo.Put(ctx, &gone)).To(Succeed())
+				DeferCleanup(func() { _ = mfRepo.Delete(ctx, gone.ID) })
+			})
 
-			// Create a playqueue with the new song
-			pq := aPlayQueue("userid", 0, 0, newSong, songAntenna)
-			Expect(repo.Store(ctx, pq)).To(Succeed())
+			retrieveAfterRemoval := func(current int, position int64, items ...model.MediaFile) *model.PlayQueue {
+				Expect(repo.Store(ctx, aPlayQueue("userid", current, position, items...))).To(Succeed())
+				Expect(mfRepo.Delete(ctx, gone.ID)).To(Succeed())
+				actual, err := repo.RetrieveWithMediaFiles(ctx, "userid")
+				Expect(err).ToNot(HaveOccurred())
+				return actual
+			}
 
-			// Retrieve the playqueue
-			actual, err := repo.RetrieveWithMediaFiles(ctx, "userid")
-			Expect(err).ToNot(HaveOccurred())
+			DescribeTable("points to the right current track",
+				func(current int, items []model.MediaFile, expectedID string, expectedPosition int64) {
+					actual := retrieveAfterRemoval(current, 45, items...)
 
-			// The playqueue should contain both tracks
-			AssertPlayQueue(pq, actual)
+					Expect(actual.Items).To(HaveLen(len(items) - 1))
+					Expect(actual.Items[actual.Current].ID).To(Equal(expectedID))
+					Expect(actual.Position).To(Equal(expectedPosition))
+				},
+				Entry("when an earlier track is removed", 1, []model.MediaFile{gone, songComeTogether, songDayInALife}, songComeTogether.ID, int64(45)),
+				Entry("when a later track is removed", 0, []model.MediaFile{songComeTogether, gone}, songComeTogether.ID, int64(45)),
+				Entry("moving to the next track from the start when the current one is removed", 1, []model.MediaFile{songComeTogether, gone, songDayInALife}, songDayInALife.ID, int64(0)),
+				Entry("moving to the last track when the removed current one was the last", 1, []model.MediaFile{songComeTogether, gone}, songComeTogether.ID, int64(0)),
+			)
 
-			// Delete the new song
-			Expect(mfRepo.Delete(ctx, "temp-track")).To(Succeed())
+			It("saves the cleaned queue", func() {
+				retrieveAfterRemoval(1, 45, gone, songComeTogether, songDayInALife)
 
-			// Retrieve the playqueue
-			actual, err = repo.RetrieveWithMediaFiles(ctx, "userid")
-			Expect(err).ToNot(HaveOccurred())
+				Eventually(func(g Gomega) {
+					stored, err := repo.Retrieve(ctx, "userid")
+					g.Expect(err).ToNot(HaveOccurred())
+					g.Expect(stored.Items).To(HaveLen(2))
+					g.Expect(stored.Items[0].ID).To(Equal(songComeTogether.ID))
+					g.Expect(stored.Current).To(BeZero())
+					g.Expect(stored.Position).To(Equal(int64(45)))
+				}).Should(Succeed())
+			})
 
-			// The playqueue should not contain the deleted track
-			Expect(actual.Items).To(HaveLen(1))
-			Expect(actual.Items[0].ID).To(Equal(songAntenna.ID))
+			It("does not overwrite a queue that changed after it was read", func() {
+				r := repo.(*playQueueRepository)
+				read := aPlayQueue("userid", 1, 45, gone, songComeTogether)
+				Expect(repo.Store(ctx, read)).To(Succeed())
+
+				By("Saving a new queue from a client before the cleanup runs")
+				Expect(repo.Store(ctx, aPlayQueue("userid", 0, 10, songAntenna))).To(Succeed())
+				r.saveCleanedQueue(ctx, r.fromModel(read), playQueue{Items: songComeTogether.ID, Position: 45})
+
+				stored, err := repo.Retrieve(ctx, "userid")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(stored.Items).To(HaveLen(1))
+				Expect(stored.Items[0].ID).To(Equal(songAntenna.ID))
+				Expect(stored.Position).To(Equal(int64(10)))
+			})
 		})
 	})
 
