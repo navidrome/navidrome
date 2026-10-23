@@ -2,6 +2,7 @@ import ReactJkMusicPlayer from 'navidrome-music-player'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import config, { shareInfo } from '../config'
 import { shareCoverUrl, shareDownloadUrl, shareStreamUrl } from '../utils'
+import VolumeControl from './VolumeControl'
 
 import { makeStyles } from '@material-ui/core/styles'
 
@@ -33,6 +34,7 @@ const useStyle = makeStyles({
 
 const SharePlayer = () => {
   const [downloading, setDownloading] = useState(false)
+  const [audio, setAudio] = useState(null)
   const timer = useRef(null)
   const classes = useStyle({
     single: shareInfo?.tracks.length === 1,
@@ -82,6 +84,8 @@ const SharePlayer = () => {
     spaceBar: true,
     volumeFade: { fadeIn: 200, fadeOut: 200 },
     sortableOptions: { delay: 200, delayOnTouchOnly: true },
+    getAudioInstance: setAudio,
+    extendsContent: <VolumeControl audio={audio} />,
   }
   return (
     <ReactJkMusicPlayer
