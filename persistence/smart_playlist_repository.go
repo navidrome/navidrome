@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -39,14 +40,10 @@ func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *
 	log.Debug(ctx, "Refreshing smart playlist", "playlist", pls.Name, "id", pls.ID)
 	start := time.Now()
 
-	del := Delete("playlist_tracks").Where(Eq{"playlist_id": pls.ID})
-	if _, err := r.executeSQL(ctx, del); err != nil {
-		log.Error(ctx, "Error deleting old smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
-		return false
-	}
-
 	rulesSQL := newSmartPlaylistCriteria(*pls.NormalizedRules(), withSmartPlaylistOwner(*usr))
 
+	// Children refresh first, each in its own transaction, so the parent's holds the write lock only
+	// for its own tracks.
 	if !r.refreshChildPlaylists(ctx, pls, rulesSQL, visited) {
 		return false
 	}
@@ -62,28 +59,51 @@ func (r *playlistRepository) refreshSmartPlaylistTree(ctx context.Context, pls *
 		return false
 	}
 
+	// One transaction, so a refresh that fails or is cancelled keeps the previous tracks. Work on a
+	// copy, so a rolled-back refresh leaves pls as it was.
+	refreshed := *pls
+	err = r.inTx(func(tx *playlistRepository) error { return tx.replaceSmartPlaylistTracks(ctx, &refreshed, sq) })
+	if err != nil {
+		log.Error(ctx, "Error refreshing smart playlist", "playlist", pls.Name, "id", pls.ID, err)
+		return false
+	}
+	*pls = refreshed
+
+	log.Debug(ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
+	return true
+}
+
+func (r *playlistRepository) replaceSmartPlaylistTracks(ctx context.Context, pls *model.Playlist, sq SelectBuilder) error {
+	// The delete goes first: a transaction that reads before its first write can fail on a busy DB
+	// without waiting. Its row count, not song_count, says whether the playlist had tracks.
+	prevTracks, err := r.executeSQL(ctx, Delete("playlist_tracks").Where(Eq{"playlist_id": pls.ID}))
+	if err != nil {
+		return fmt.Errorf("deleting old tracks: %w", err)
+	}
+
 	insSql := Insert("playlist_tracks").Columns("id", "playlist_id", "media_file_id").Select(sq)
 	if _, err = r.executeSQL(ctx, insSql); err != nil {
-		log.Error(ctx, "Error refreshing smart playlist tracks", "playlist", pls.Name, "id", pls.ID, err)
-		return false
+		return fmt.Errorf("inserting tracks: %w", err)
 	}
 
 	if err = r.refreshCounters(ctx, pls); err != nil {
-		log.Error(ctx, "Error updating smart playlist stats", "playlist", pls.Name, "id", pls.ID, err)
-		return false
+		return fmt.Errorf("updating stats: %w", err)
 	}
 
 	// Reuse the stamp refreshCounters just wrote, so evaluated_at and updated_at agree
 	now := pls.UpdatedAt
 	updSql := Update(r.tableName).Set("evaluated_at", now).Where(Eq{"id": pls.ID})
 	if _, err = r.executeSQL(ctx, updSql); err != nil {
-		log.Error(ctx, "Error updating smart playlist", "playlist", pls.Name, "id", pls.ID, err)
-		return false
+		return fmt.Errorf("updating evaluated_at: %w", err)
 	}
 	pls.EvaluatedAt = &now
 
-	log.Debug(ctx, "Refreshed playlist", "playlist", pls.Name, "id", pls.ID, "numTracks", pls.SongCount, "elapsed", time.Since(start))
-	return true
+	// A cover resolved while the playlist was empty has no grid. Rebuild only on that transition:
+	// rebuilding on every refresh would re-sample the grid, and re-run a grid that has no art.
+	if prevTracks == 0 && pls.SongCount > 0 {
+		r.enqueueCoverRebuild(ctx, pls.ID)
+	}
+	return nil
 }
 
 // shouldRefreshSmartPlaylist determines if a smart playlist needs to be refreshed based on its type, last evaluated
