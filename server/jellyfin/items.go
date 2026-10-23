@@ -302,6 +302,16 @@ type itemsQuery struct {
 	albumIds         []string
 	years            []int
 	studioIds        []string
+	// userRoot is an unfiltered, non-recursive query with no ParentId: Jellyfin answers it with the
+	// user's libraries, not their contents.
+	userRoot bool
+}
+
+// hasFilters mirrors Jellyfin's InternalItemsQuery.HasFilters for the params Navidrome understands.
+func (q itemsQuery) hasFilters() bool {
+	return q.rawTypes != "" || len(q.ids) > 0 || q.search != "" || q.artistId != "" ||
+		len(q.genreIds) > 0 || len(q.albumIds) > 0 || len(q.studioIds) > 0 || len(q.years) > 0 ||
+		q.filters.favorite != nil || q.filters.played != nil
 }
 
 // listParams reads the itemsQuery fields that come straight from query params.
@@ -366,6 +376,8 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	q.artistId = artistId
 	q.contributingOnly = albumArtistScope == "" && contributingScope != ""
 
+	q.userRoot = q.parentId == "" && !p.BoolOr("recursive", false) && !q.hasFilters()
+
 	q.types = parseTypes(q.rawTypes)
 	q.scopeIDs, q.isLibraryParent = resolveLibraryScope(ctx, q.parentId)
 
@@ -410,6 +422,15 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	// A ManualPlaylistsFolder query asks for the synthetic "playlists library" container, not real items.
 	case strings.Contains(strings.ToLower(q.rawTypes), "manualplaylistsfolder"):
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
+	// Symfonium's sync reads the libraries this way; answering with albums makes it sync nothing.
+	case q.userRoot:
+		views, err := api.userViews(ctx)
+		if err != nil {
+			return itemsResult{}, err
+		}
+		sortViews(views, q.sortBy, q.sortOrder)
+		offset := max(q.offset, 0)
+		return materialized(result(paginate(views, offset, q.limit), len(views), offset)), nil
 	}
 	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
 		return api.playlistTrackPage(ctx, repo, q.fields, q.offset, q.limit)
@@ -643,6 +664,39 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 		items = items[:limit]
 	}
 	return items
+}
+
+// sortViews applies SortBy/SortOrder to the user-root libraries, sorted in memory since a user only
+// has a handful; without a usable key they keep the repository order.
+func sortViews(views []dto.BaseItemDto, sortBy, order string) {
+	var cmps []func(a, b dto.BaseItemDto) int
+	for key := range strings.SplitSeq(sortBy, ",") {
+		switch strings.ToLower(strings.TrimSpace(key)) {
+		case "sortname", "name":
+			cmps = append(cmps, func(a, b dto.BaseItemDto) int {
+				return strings.Compare(strings.ToLower(a.SortName), strings.ToLower(b.SortName))
+			})
+		case "datecreated":
+			cmps = append(cmps, func(a, b dto.BaseItemDto) int { return strings.Compare(a.DateCreated, b.DateCreated) })
+		}
+	}
+	if len(cmps) == 0 {
+		return
+	}
+	// As in applySort, the first SortOrder value applies to every key.
+	first, _, _ := strings.Cut(order, ",")
+	desc := strings.EqualFold(first, "Descending")
+	slices.SortStableFunc(views, func(a, b dto.BaseItemDto) int {
+		for _, c := range cmps {
+			if r := c(a, b); r != 0 {
+				if desc {
+					return -r
+				}
+				return r
+			}
+		}
+		return 0
+	})
 }
 
 // interleave merges per-type item lists round-robin: one item from each list in turn, preserving
