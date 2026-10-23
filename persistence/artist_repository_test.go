@@ -1345,6 +1345,105 @@ var _ = Describe("ArtistRepository", func() {
 
 			Expect(missing(legacyOrphan.ID)).To(BeTrue())
 		})
+
+		// https://github.com/navidrome/navidrome/issues/6353
+		Describe("when an artist has several credits on the same file", func() {
+			var artist model.Artist
+
+			credits := func(roles ...model.Role) model.Participants {
+				p := model.Participants{}
+				for _, role := range roles {
+					p.Add(role, artist)
+				}
+				return p
+			}
+
+			putFile := func(id string, libID int, albumID string, size int64, participants model.Participants) {
+				mf := model.MediaFile{ID: "refresh-multi-" + id, LibraryID: libID, AlbumID: albumID,
+					Path: "/multi/" + id + ".mp3", Size: size, Participants: participants}
+				Expect(NewMediaFileRepository(GetDBXBuilder()).Put(ctx, &mf)).To(Succeed())
+			}
+
+			refreshAndGet := func() *model.Artist {
+				_, err := repo.RefreshStats(ctx, true)
+				Expect(err).ToNot(HaveOccurred())
+				got, err := repo.Get(ctx, artist.ID)
+				Expect(err).ToNot(HaveOccurred())
+				return got
+			}
+
+			BeforeEach(func() {
+				artist = model.Artist{ID: "refresh-multi-role", Name: "Multi Role Artist"}
+				Expect(createArtistWithLibrary(ctx, repo, &artist, 1)).To(Succeed())
+				DeferCleanup(func() {
+					_, _ = repo.executeSQL(ctx, squirrel.Delete("media_file").Where(squirrel.Like{"id": "refresh-multi-%"}))
+					_, _ = repo.executeSQL(ctx, squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": artist.ID}))
+					_ = repo.delete(ctx, squirrel.Eq{"id": artist.ID})
+				})
+			})
+
+			It("counts the file once in total and maincredit", func() {
+				putFile("1", 1, "al-1", 1000, credits(model.RoleAlbumArtist, model.RoleArtist, model.RoleComposer))
+				putFile("2", 1, "al-1", 300, credits(model.RoleArtist))
+
+				got := refreshAndGet()
+				Expect(got.Size).To(Equal(int64(1300)))
+				Expect(got.SongCount).To(Equal(2))
+				Expect(got.AlbumCount).To(Equal(1))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleMainCredit, model.ArtistStats{SongCount: 2, AlbumCount: 1, Size: 1300}))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleAlbumArtist, model.ArtistStats{SongCount: 1, AlbumCount: 1, Size: 1000}))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleArtist, model.ArtistStats{SongCount: 2, AlbumCount: 1, Size: 1300}))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleComposer, model.ArtistStats{SongCount: 1, AlbumCount: 1, Size: 1000}))
+			})
+
+			It("counts the file once for a role with several sub-roles", func() {
+				p := model.Participants{}
+				p.AddWithSubRole(model.RolePerformer, "guitar", artist)
+				p.AddWithSubRole(model.RolePerformer, "vocals", artist)
+				putFile("1", 1, "al-1", 1000, p)
+
+				got := refreshAndGet()
+				Expect(got.Size).To(Equal(int64(1000)))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RolePerformer, model.ArtistStats{SongCount: 1, AlbumCount: 1, Size: 1000}))
+			})
+
+			It("has no maincredit stats when the artist has no album artist or artist credits", func() {
+				putFile("1", 1, "al-1", 1000, credits(model.RoleComposer, model.RoleLyricist))
+
+				got := refreshAndGet()
+				Expect(got.Size).To(Equal(int64(1000)))
+				Expect(got.SongCount).To(Equal(1))
+				Expect(got.Stats).ToNot(HaveKey(model.RoleMainCredit))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleComposer, model.ArtistStats{SongCount: 1, AlbumCount: 1, Size: 1000}))
+			})
+
+			It("leaves files and albums with only other credits out of maincredit", func() {
+				putFile("1", 1, "al-1", 1000, credits(model.RoleArtist, model.RoleComposer))
+				putFile("2", 1, "al-2", 300, credits(model.RoleComposer))
+
+				got := refreshAndGet()
+				Expect(got.Size).To(Equal(int64(1300)))
+				Expect(got.AlbumCount).To(Equal(2))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleMainCredit, model.ArtistStats{SongCount: 1, AlbumCount: 1, Size: 1000}))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleComposer, model.ArtistStats{SongCount: 2, AlbumCount: 2, Size: 1300}))
+			})
+
+			It("counts the file once in each library", func() {
+				_, lib2, _ := restrictedFixture("refresh-multi")
+				Expect(NewLibraryRepository(GetDBXBuilder()).AddArtist(ctx, lib2.ID, artist.ID)).To(Succeed())
+				putFile("1", 1, "al-1", 1000, credits(model.RoleAlbumArtist, model.RoleArtist))
+				putFile("2", lib2.ID, "al-2", 300, credits(model.RoleAlbumArtist, model.RoleArtist))
+
+				got := refreshAndGet()
+				Expect(got.Size).To(Equal(int64(1300)))
+				Expect(got.Stats).To(HaveKeyWithValue(model.RoleMainCredit, model.ArtistStats{SongCount: 2, AlbumCount: 2, Size: 1300}))
+
+				var sizes []int64
+				Expect(repo.queryAllSlice(ctx, squirrel.Select("json_extract(stats, '$.total.s')").From("library_artist").
+					Where(squirrel.Eq{"artist_id": artist.ID}).OrderBy("library_id"), &sizes)).To(Succeed())
+				Expect(sizes).To(Equal([]int64{1000, 300}))
+			})
+		})
 	})
 })
 
