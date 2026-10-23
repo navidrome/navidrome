@@ -2,8 +2,12 @@ package persistence
 
 import (
 	"context"
+	"slices"
 
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/hasher"
@@ -418,6 +422,136 @@ var _ = Describe("sqlRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sql).To(Equal("SELECT * FROM test_table"))
 			})
+		})
+	})
+})
+
+var _ = Describe("paginated queries", func() {
+	var ctx context.Context
+	var mr model.MediaFileRepository
+
+	BeforeEach(func() {
+		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
+		DeferCleanup(configtest.SetupConfig())
+		mr = NewMediaFileRepository(GetDBXBuilder())
+	})
+
+	Describe("SQL", func() {
+		var r sqlRepository
+		BeforeEach(func() {
+			r = sqlRepository{tableName: "media_file", sortMappings: map[string]string{"name": "title"}}
+			conf.Server.DevOffsetOptimize = 10
+		})
+
+		DescribeTable("adds a rowid tie-breaker in the requested direction",
+			func(options model.QueryOptions, expectedOrder string) {
+				sql, _, err := r.paginate(squirrel.Select("*").From("media_file"), options).ToSql()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(sql).To(HaveSuffix(expectedOrder))
+			},
+			Entry("no sort", model.QueryOptions{Max: 5}, "ORDER BY media_file.rowid asc"),
+			Entry("desc", model.QueryOptions{Sort: "name", Order: "desc", Max: 5}, "ORDER BY media_file.rowid desc"),
+		)
+
+		It("leaves unpaginated queries alone", func() {
+			sql, _, _ := r.paginate(squirrel.Select("*").From("media_file"), model.QueryOptions{Sort: "name"}).ToSql()
+			Expect(sql).To(Equal("SELECT * FROM media_file"))
+		})
+
+		It("uses the rowid subquery only past the threshold, keeping the outer projection", func() {
+			sq := squirrel.Select("media_file.*", "library.path as library_path").From("media_file").OrderBy("id asc")
+			atThreshold, _, _ := r.paginate(sq.Limit(5).Offset(10), model.QueryOptions{Max: 5, Offset: 10}).ToSql()
+			Expect(atThreshold).ToNot(ContainSubstring("not in"))
+
+			past, _, _ := r.paginate(sq.Limit(5).Offset(11), model.QueryOptions{Max: 5, Offset: 11}).ToSql()
+			Expect(past).To(ContainSubstring("media_file.rowid not in (SELECT _paginated_rowid FROM (" +
+				"SELECT media_file.*, library.path as library_path, media_file.rowid as _paginated_rowid FROM media_file"))
+			Expect(past).ToNot(ContainSubstring("OFFSET"))
+		})
+	})
+
+	// walk pages through the repository, crossing the optimizer threshold
+	walk := func(ctx context.Context, sort, order string, pageSize int) []string {
+		var ids []string
+		for offset := 0; ; offset += pageSize {
+			page, err := mr.GetAll(ctx, model.QueryOptions{Sort: sort, Order: order, Offset: offset, Max: pageSize, Seed: "seed"})
+			Expect(err).ToNot(HaveOccurred(), "sort=%s order=%s offset=%d", sort, order, offset)
+			for _, m := range page {
+				ids = append(ids, m.ID)
+			}
+			if len(page) < pageSize {
+				return ids
+			}
+		}
+	}
+
+	DescribeTable("returns every song exactly once, in the same order as a single page",
+		func(sort string) {
+			conf.Server.DevOffsetOptimize = 2
+			for _, order := range []string{"asc", "desc"} {
+				expected := walk(ctx, sort, order, 1000)
+				Expect(len(expected)).To(BeNumerically(">=", len(testSongs)))
+				Expect(slices.Compact(slices.Sorted(slices.Values(expected)))).To(HaveLen(len(expected)))
+				// Page size 2 hits offset == threshold (plain OFFSET), size 3 hits offset > threshold first.
+				for _, pageSize := range []int{2, 3} {
+					Expect(walk(ctx, sort, order, pageSize)).To(Equal(expected), "sort=%s order=%s page=%d", sort, order, pageSize)
+				}
+			}
+		},
+		Entry("id", "id"),
+		Entry("path", "path"),
+		Entry("updatedAt", "updatedAt"),
+		Entry("comment", "comment"),
+		Entry("title", "title"),
+		Entry("createdAt", "createdAt"),
+		Entry("starred (ties)", "starred"),
+		Entry("playCount (ties)", "playCount"),
+		Entry("rating (ties)", "rating"),
+		Entry("album", "album"),
+		Entry("seeded random", "random"),
+	)
+
+	It("keeps the library filter on every page", func() {
+		_, otherLib, restrictedUser := restrictedFixture("paginate")
+		hidden := model.MediaFile{ID: "paginate-hidden", Title: "Hidden", LibraryID: otherLib.ID, Path: p("other/hidden.mp3")}
+		Expect(mr.Put(ctx, &hidden)).To(Succeed())
+		DeferCleanup(func() { _ = mr.Delete(ctx, hidden.ID) })
+		conf.Server.DevOffsetOptimize = 2
+
+		Expect(walk(ctx, "id", "asc", 1000)).To(ContainElement(hidden.ID))
+		restrictedCtx := request.WithUser(ctx, restrictedUser)
+		expected := walk(restrictedCtx, "id", "asc", 1000)
+		Expect(expected).ToNot(BeEmpty())
+		Expect(expected).ToNot(ContainElement(hidden.ID))
+		Expect(walk(restrictedCtx, "id", "asc", 3)).To(Equal(expected))
+	})
+
+	Describe("legacy search", func() {
+		BeforeEach(func() {
+			conf.Server.Search.Backend = "legacy"
+			conf.Server.DevOffsetOptimize = 0
+		})
+
+		It("pages albums whose name is shared with the joined library", func() {
+			alr := NewAlbumRepository(GetDBXBuilder())
+			all, err := alr.Search(ctx, "abbey", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(all).To(HaveLen(2))
+			second, err := alr.Search(ctx, "abbey", model.QueryOptions{Max: 1, Offset: 1})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(second).To(HaveLen(1))
+			Expect(second[0].ID).To(Equal(all[1].ID))
+		})
+
+		It("pages artists", func() {
+			arr := NewArtistRepository(GetDBXBuilder())
+			all, err := arr.Search(ctx, "the", model.QueryOptions{Max: 10})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(all)).To(BeNumerically(">=", 2))
+			second, err := arr.Search(ctx, "the", model.QueryOptions{Max: 1, Offset: 1})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(second).To(HaveLen(1))
+			Expect(second[0].ID).To(Equal(all[1].ID))
 		})
 	})
 })
