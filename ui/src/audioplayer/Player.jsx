@@ -424,6 +424,21 @@ const Player = () => {
     }
   }, [isMobilePlayer, audioInstance])
 
+  // The player library maps both the Media Session "play" and "pause" actions
+  // to togglePlay, so an OS "pause" (e.g. when a call starts) resumes paused
+  // music. Re-register them so each only acts in the matching state. This runs
+  // after every player update, as the library re-registers its own handlers.
+  useEffect(() => {
+    if (!audioInstance || !('mediaSession' in navigator)) return
+    if (playerState.current?.isRadio) return
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (audioInstance.paused) audioInstance.togglePlay()
+    })
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (!audioInstance.paused) audioInstance.togglePlay()
+    })
+  }, [audioInstance, playerState])
+
   // Report every seek (including programmatic ones the library does not surface
   // via onAudioSeeked, e.g. restartCurrentOnPrev). Debounce coalesces drag
   // bursts into one report at the final position.
