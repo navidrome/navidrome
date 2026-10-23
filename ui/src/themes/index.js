@@ -19,6 +19,7 @@ import RosePineTheme from './rosePine'
 import RosePineDawnTheme from './rosePineDawn'
 import RosePineMoonTheme from './rosePineMoon'
 import AmusicTheme from './amusic'
+import CaveTheme from './cave'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
 import MoonbaseAlphaTheme from './moonbaseAlpha'
@@ -35,6 +36,7 @@ export default {
 
   // New themes should be added here, in alphabetic order
   AmusicTheme,
+  CaveTheme,
   CatppuccinFrappeTheme,
   CatppuccinLatteTheme,
   CatppuccinMacchiatoTheme,
