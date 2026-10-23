@@ -1,0 +1,29 @@
+name: Release podcast offline tests
+on:
+  pull_request:
+    paths:
+      - release/podcast/**
+      - .github/workflows/release-podcast*.yml
+  push:
+    branches: [master]
+    paths:
+      - release/podcast/**
+      - .github/workflows/release-podcast*.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+      - name: Install tools for the offline MP3 decode test
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: go test -race -count=1 -v ./release/podcast
