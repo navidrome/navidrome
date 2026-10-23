@@ -7,7 +7,7 @@ const surface = '#151518'
 const text = '#f2f2f0'
 const textMuted = '#b7b7b7'
 const accent = '#ff4d1a'
-const accentDark = '#d93a0d'
+const accentDark = '#e84518'
 
 export default {
   themeName: 'Cave',
