@@ -163,20 +163,46 @@ func fingerprint(h *xxh3.Hasher) string {
 	return id.Encode(h.Sum128().Bytes())
 }
 
-// findByPathNormalized looks up a playlist by path, trying both NFC and NFD Unicode
-// normalization forms to handle cross-platform filesystem differences.
+// findByPathNormalized looks up a playlist by path. When the exact path is not
+// stored, it retries with the other Unicode normalization forms, to handle
+// cross-platform filesystem differences. The folder and the file name are
+// converted independently, because they do not always change form together: a
+// library moved between systems changes both, while a playlist re-saved on
+// another OS next to unchanged folders changes only its file name.
 func (s *playlists) findByPathNormalized(ctx context.Context, path string) (*model.Playlist, error) {
 	pls, err := s.ds.Playlist().FindByPath(ctx, path)
-	if errors.Is(err, model.ErrNotFound) {
-		altPath := norm.NFD.String(path)
-		if altPath == path {
-			altPath = norm.NFC.String(path)
-		}
-		if altPath != path {
-			pls, err = s.ds.Playlist().FindByPath(ctx, altPath)
+	if !errors.Is(err, model.ErrNotFound) {
+		return pls, err
+	}
+
+	for _, altPath := range normalizedPathVariants(path) {
+		pls, err = s.ds.Playlist().FindByPath(ctx, altPath)
+		if !errors.Is(err, model.ErrNotFound) {
+			return pls, err
 		}
 	}
 	return pls, err
+}
+
+// normalizedPathVariants returns the distinct paths made by combining the NFC and
+// NFD forms of the folder with the NFC and NFD forms of the file name, leaving out
+// the path itself.
+func normalizedPathVariants(path string) []string {
+	dir, base := filepath.Split(path)
+	forms := []norm.Form{norm.NFC, norm.NFD}
+	variants := make([]string, 0, len(forms)*len(forms))
+	seen := map[string]struct{}{path: {}}
+	for _, dirForm := range forms {
+		for _, baseForm := range forms {
+			variant := dirForm.String(dir) + baseForm.String(base)
+			if _, ok := seen[variant]; ok {
+				continue
+			}
+			seen[variant] = struct{}{}
+			variants = append(variants, variant)
+		}
+	}
+	return variants
 }
 
 func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, forceSync bool) error {

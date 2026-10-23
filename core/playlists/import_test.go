@@ -549,6 +549,50 @@ var _ = Describe("Playlists - Import", func() {
 			Entry("finds NFC-stored playlist when filesystem provides NFD path", "NFC", "NFD"),
 		)
 
+		// The stored path and the one the scanner reports can differ in Unicode form
+		// for the folder, the file name, or both (a library moved between systems, a
+		// playlist re-saved on another OS). Every mix must resolve to the same record.
+		DescribeTable("Playlist path Unicode normalization with a non-ASCII folder",
+			func(storedDirForm, storedNameForm, fsDirForm, fsNameForm string) {
+				tests.SkipOnWindows("/tmp hardcoded in test")
+				dirNFC, nameNFC := "Beyoncé", "Piosenki_Polskie_zółć"
+				forms := map[string]norm.Form{"NFC": norm.NFC, "NFD": norm.NFD}
+				Expect(norm.NFD.String(dirNFC)).ToNot(Equal(dirNFC))
+				Expect(norm.NFD.String(nameNFC)).ToNot(Equal(nameNFC))
+
+				storedDir, storedName := forms[storedDirForm].String(dirNFC), forms[storedNameForm].String(nameNFC)
+				fsDir, fsName := forms[fsDirForm].String(dirNFC), forms[fsNameForm].String(nameNFC)
+
+				tmpDir := GinkgoT().TempDir()
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{}}
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+
+				Expect(os.MkdirAll(filepath.Join(tmpDir, fsDir), 0750)).To(Succeed())
+				Expect(os.WriteFile(filepath.Join(tmpDir, fsDir, fsName+".m3u"), []byte("#PLAYLIST:Test\n"), 0600)).To(Succeed())
+
+				storedPath := filepath.Join(tmpDir, storedDir, storedName+".m3u")
+				mockPlsRepo.PathMap = map[string]*model.Playlist{
+					storedPath: {ID: "existing-id", Name: "Existing Playlist", Path: storedPath, Sync: true},
+				}
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: fsDir}
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, fsName+".m3u")
+				Expect(err).ToNot(HaveOccurred())
+
+				// Should update the existing playlist, not create a new one
+				Expect(pls.ID).To(Equal("existing-id"))
+				Expect(pls.Name).To(Equal("Existing Playlist"))
+			},
+			Entry("whole path stored as NFD, scanner reports NFC", "NFD", "NFD", "NFC", "NFC"),
+			Entry("whole path stored as NFC, scanner reports NFD", "NFC", "NFC", "NFD", "NFD"),
+			Entry("only the file name changes form (NFC to NFD)", "NFC", "NFC", "NFC", "NFD"),
+			Entry("only the file name changes form (NFD to NFC)", "NFC", "NFD", "NFC", "NFC"),
+			Entry("only the folder changes form", "NFC", "NFC", "NFD", "NFC"),
+			Entry("mixed stored path, scanner reports NFD throughout", "NFC", "NFD", "NFD", "NFD"),
+			Entry("mixed stored path, scanner reports NFC throughout", "NFD", "NFC", "NFC", "NFC"),
+		)
+
 		Describe("Cross-library relative paths", func() {
 			var tmpDir, plsDir, songsDir string
 
