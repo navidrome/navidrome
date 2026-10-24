@@ -34,4 +34,9 @@ export const TOKEN_ACTIVE_ALPHA = 1
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
-export const easeScrollOut = (value) => 1 - (1 - clamp(value, 0, 1)) ** 5
+export const easeInOut = (value) => {
+  const progress = clamp(value, 0, 1)
+  return progress < 0.5
+    ? 2 * progress * progress
+    : 1 - (-2 * progress + 2) ** 2 / 2
+}
