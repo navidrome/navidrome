@@ -13,7 +13,6 @@ import {
   TOKEN_ACTIVE_ALPHA,
   TOKEN_FUTURE_ALPHA,
   TOKEN_WIPE_EDGE_PCT,
-  TOKEN_WIPE_SOFT_SPREAD_PCT,
 } from './lyricsKaraokeConstants'
 import {
   buildEmphasisStyle,
@@ -49,10 +48,28 @@ const waveTextRootStyle = {
   verticalAlign: 'baseline',
 }
 
-const waveTextMeasureStyle = { visibility: 'hidden' }
+const waveTextBaseStyle = { display: 'inline' }
+
+// The painted copy carries the active colour on a single masked layer. The sweep
+// then repaints only that layer instead of every glyph, so the character lift can
+// stay on the compositor. --lyrics-progress runs 0 (hidden) to 1 (revealed).
+const sweepMaskImage = `linear-gradient(90deg, #000 0%, #000 calc(var(--lyrics-progress, 0) * ${
+  100 + TOKEN_WIPE_EDGE_PCT
+}% - ${TOKEN_WIPE_EDGE_PCT}%), transparent calc(var(--lyrics-progress, 0) * ${
+  100 + TOKEN_WIPE_EDGE_PCT
+}%))`
+
+const waveTextSweepStyle = {
+  display: 'block',
+  inset: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  maskImage: sweepMaskImage,
+  WebkitMaskImage: sweepMaskImage,
+}
 
 // Keeps timed token text readable by screen readers, since the painted
-// wave copy is aria-hidden and aria-label is ignored on role-less spans.
+// copies are aria-hidden and aria-label is ignored on role-less spans.
 const visuallyHiddenStyle = {
   border: 0,
   clip: 'rect(0 0 0 0)',
@@ -65,15 +82,11 @@ const visuallyHiddenStyle = {
   width: 1,
 }
 
-const waveTextOverlayStyle = {
-  display: 'block',
-  inset: 0,
-  position: 'absolute',
-  whiteSpace: 'nowrap',
-}
-
-const renderWaveText = (text, eligible, enabled, emphasized, className) => {
-  if (!eligible) return text
+const renderWaveText = (
+  text,
+  { enabled, letters, baseColor, activeColor, emphasized, className },
+) => {
+  if (!enabled) return text
 
   return (
     <>
@@ -83,13 +96,26 @@ const renderWaveText = (text, eligible, enabled, emphasized, className) => {
         data-lyrics-wave-text="true"
         style={waveTextRootStyle}
       >
-        {enabled ? (
-          <>
-            <span data-lyrics-wave-measure="true" style={waveTextMeasureStyle}>
-              {text}
-            </span>
-            <span data-lyrics-wave-overlay="true" style={waveTextOverlayStyle}>
-              {splitGraphemes(text).map((character, index) => {
+        <span
+          data-lyrics-wave-base="true"
+          style={{
+            ...waveTextBaseStyle,
+            color: baseColor,
+            WebkitTextFillColor: baseColor,
+          }}
+        >
+          {text}
+        </span>
+        <span
+          data-lyrics-sweep-layer="true"
+          style={{
+            ...waveTextSweepStyle,
+            color: activeColor,
+            WebkitTextFillColor: activeColor,
+          }}
+        >
+          {letters
+            ? splitGraphemes(text).map((character, index) => {
                 if (/^\s+$/.test(character)) return character
                 return (
                   <span
@@ -101,12 +127,9 @@ const renderWaveText = (text, eligible, enabled, emphasized, className) => {
                     {character}
                   </span>
                 )
-              })}
-            </span>
-          </>
-        ) : (
-          text
-        )}
+              })
+            : text}
+        </span>
       </span>
     </>
   )
@@ -150,41 +173,18 @@ const buildStaticEmphasisStyle = (token) => {
   }
 }
 
-const buildTokenData = (token, rgb, line) => {
-  const emphasized = isEmphasisRole(token) || isEmphasisRole(line)
-  const tonedRGB = getTokenRGB(token, rgb)
-  const futureColor = tokenColor(tonedRGB, TOKEN_FUTURE_ALPHA)
-  const gradientDoneColor = tokenColor(
-    tonedRGB,
-    'var(--lyrics-token-active-alpha, 1)',
-  )
-  const softColor = tokenColor(
-    tonedRGB,
-    TOKEN_FUTURE_ALPHA + (TOKEN_ACTIVE_ALPHA - TOKEN_FUTURE_ALPHA) * 0.58,
-  )
-  const sweepRange = 100 + TOKEN_WIPE_SOFT_SPREAD_PCT
-  const activeStop = `calc(var(--lyrics-progress) * ${sweepRange}% - ${TOKEN_WIPE_SOFT_SPREAD_PCT}%)`
-  const softStop = `calc(var(--lyrics-progress) * ${sweepRange}% - ${TOKEN_WIPE_EDGE_PCT}%)`
-  const futureStop = `calc(var(--lyrics-progress) * ${sweepRange}%)`
-  const gradient = `linear-gradient(90deg, ${gradientDoneColor} 0%, ${gradientDoneColor} ${activeStop}, ${softColor} ${softStop}, ${futureColor} ${futureStop}, ${futureColor} 100%)`
-
+const buildTokenStyle = (token, rgb, emphasized) => {
+  const colors = {
+    base: tokenColor(getTokenRGB(token, rgb), TOKEN_FUTURE_ALPHA),
+    active: tokenColor(getTokenRGB(token, rgb), TOKEN_ACTIVE_ALPHA),
+  }
   return {
+    colors,
     style: {
-      '--lyrics-progress': 0,
-      '--lyrics-token-active-alpha': TOKEN_ACTIVE_ALPHA,
-      color: 'transparent',
-      WebkitTextFillColor: 'transparent',
-      backgroundImage: gradient,
-      backgroundSize: '100% 100%',
-      backgroundClip: 'text',
-      WebkitBackgroundClip: 'text',
+      color: colors.base,
+      WebkitTextFillColor: colors.base,
       ...buildEmphasisStyle(token),
       ...(emphasized ? emphasisPaintOverhangStyle : {}),
-    },
-    presentation: {
-      futureAlpha: TOKEN_FUTURE_ALPHA,
-      activeAlpha: TOKEN_ACTIVE_ALPHA,
-      gradient,
     },
   }
 }
@@ -197,29 +197,23 @@ const useStableTokenRef = (registerToken) => {
   const callbacksRef = useRef(new Map())
   registerTokenRef.current = registerToken
 
-  return useCallback(
-    ({ key, lineIndex, window, presentation, waveEnabled }) => {
-      const signature = [
-        lineIndex,
-        window?.start ?? '',
-        window?.end ?? '',
-        presentation?.futureAlpha ?? '',
-        presentation?.activeAlpha ?? '',
-        presentation?.gradient ?? '',
-        waveEnabled ? 1 : 0,
-      ].join('\u0000')
-      const cached = callbacksRef.current.get(key)
-      if (cached?.signature === signature) return cached.callback
+  return useCallback(({ key, lineIndex, window, waveEnabled }) => {
+    const signature = [
+      lineIndex,
+      window?.start ?? '',
+      window?.end ?? '',
+      waveEnabled ? 1 : 0,
+    ].join('\u0000')
+    const cached = callbacksRef.current.get(key)
+    if (cached?.signature === signature) return cached.callback
 
-      const descriptor = { lineIndex, window, presentation }
-      const callback = (node) => {
-        registerTokenRef.current?.(key, descriptor, node)
-      }
-      callbacksRef.current.set(key, { signature, callback })
-      return callback
-    },
-    [],
-  )
+    const descriptor = { lineIndex, window }
+    const callback = (node) => {
+      registerTokenRef.current?.(key, descriptor, node)
+    }
+    callbacksRef.current.set(key, { signature, callback })
+    return callback
+  }, [])
 }
 
 export const KaraokeLineRow = memo(
@@ -268,7 +262,16 @@ export const KaraokeLineRow = memo(
           const key = `${lineIndex}:${rowKey}:${segment.tokenIndex}:main`
           const emphasized =
             isEmphasisRole(segment.token) || isEmphasisRole(line)
-          const tokenData = buildTokenData(segment.token, tokenRGB, line)
+          const waveEnabled = Boolean(renderCharacterWave && timedWindow)
+          const tokenData = timedWindow
+            ? buildTokenStyle(segment.token, tokenRGB, emphasized)
+            : {
+                colors: null,
+                style: {
+                  ...buildEmphasisStyle(segment.token),
+                  ...(emphasized ? emphasisPaintOverhangStyle : {}),
+                },
+              }
           return (
             <span
               key={`token-${idx}-${window?.start ?? 'na'}`}
@@ -281,20 +284,20 @@ export const KaraokeLineRow = memo(
                       key,
                       lineIndex,
                       window: timedWindow,
-                      presentation: tokenData.presentation,
-                      waveEnabled: renderCharacterWave,
+                      waveEnabled,
                     })
                   : undefined
               }
               style={tokenData.style}
             >
-              {renderWaveText(
-                segment.text,
-                Boolean(timedWindow),
-                Boolean(renderCharacterWave && timedWindow),
+              {renderWaveText(segment.text, {
+                enabled: Boolean(timedWindow),
+                letters: waveEnabled,
+                baseColor: tokenData.colors?.base,
+                activeColor: tokenData.colors?.active,
                 emphasized,
-                waveCharacterClassName,
-              )}
+                className: waveCharacterClassName,
+              })}
             </span>
           )
         })}
@@ -509,11 +512,14 @@ export const KaraokeStackedLineRow = memo(
             ? resolvedMainWindow
             : null
           const mainKey = `${lineIndex}:${rowKey}:${segment.tokenIndex}:main`
-          const mainTokenData = segment.token
-            ? buildTokenData(segment.token, tokenRGB, line)
-            : null
           const mainEmphasized =
             isEmphasisRole(segment.token) || isEmphasisRole(line)
+          const mainWaveEnabled = Boolean(
+            renderCharacterWave && mainWindow && segment.token,
+          )
+          const mainTokenData = segment.token
+            ? buildTokenStyle(segment.token, tokenRGB, mainEmphasized)
+            : null
           const mainText = segment.token ? (
             <span
               key={`main-${idx}`}
@@ -526,24 +532,25 @@ export const KaraokeStackedLineRow = memo(
                       key: mainKey,
                       lineIndex,
                       window: mainWindow,
-                      presentation: mainTokenData.presentation,
-                      waveEnabled: renderCharacterWave,
+                      waveEnabled: mainWaveEnabled,
                     })
                   : undefined
               }
-              style={mainTokenData.style}
+              style={
+                mainTokenData?.style || {
+                  ...buildEmphasisStyle(segment.token),
+                  ...(mainEmphasized ? emphasisPaintOverhangStyle : {}),
+                }
+              }
             >
-              {renderWaveText(
-                segment.text,
-                Boolean(mainWindow?.start != null && mainWindow?.end != null),
-                Boolean(
-                  renderCharacterWave &&
-                  mainWindow?.start != null &&
-                  mainWindow?.end != null,
-                ),
-                mainEmphasized,
-                waveCharacterClassName,
-              )}
+              {renderWaveText(segment.text, {
+                enabled: Boolean(segment.token),
+                letters: mainWaveEnabled,
+                baseColor: mainTokenData?.colors.base,
+                activeColor: mainTokenData?.colors.active,
+                emphasized: mainEmphasized,
+                className: waveCharacterClassName,
+              })}
             </span>
           ) : (
             <span key={`main-${idx}`} className={classes.stackedSpacer}>
@@ -569,19 +576,22 @@ export const KaraokeStackedLineRow = memo(
                 ? segment.tokenIndex
                 : idx
           const pronunciationKey = `${lineIndex}:${rowKey}:${pronunciationTokenIndex}:pronunciation`
-          const pronunciationTokenData = pronunciationWindow
-            ? buildTokenData(
-                pronunciationToken || segment.token,
-                pronunciationRGB,
-                pronunciationLine || line,
-              )
-            : null
+          const pronunciationWaveEnabled = Boolean(
+            renderCharacterWave && pronunciationWindow,
+          )
           const pronunciationEmphasized = Boolean(
             isEmphasisRole(pronunciationToken) ||
             isEmphasisRole(segment.token) ||
             isEmphasisRole(pronunciationLine) ||
             isEmphasisRole(line),
           )
+          const pronunciationTokenData = pronunciationWaveEnabled
+            ? buildTokenStyle(
+                pronunciationToken || segment.token,
+                pronunciationRGB,
+                pronunciationEmphasized,
+              )
+            : null
           return (
             <span
               key={`stacked-${idx}-${mainWindow?.start ?? segment.text}`}
@@ -600,27 +610,26 @@ export const KaraokeStackedLineRow = memo(
                         key: pronunciationKey,
                         lineIndex,
                         window: pronunciationWindow,
-                        presentation: pronunciationTokenData.presentation,
-                        waveEnabled: renderCharacterWave,
+                        waveEnabled: pronunciationWaveEnabled,
                       })
                     : undefined
                 }
                 style={
                   pronunciationTokenData?.style || {
-                    backgroundImage: 'none',
                     ...buildStaticEmphasisStyle(
                       pronunciationToken || segment.token,
                     ),
                   }
                 }
               >
-                {renderWaveText(
-                  segment.pronunciation,
-                  Boolean(pronunciationWindow),
-                  Boolean(renderCharacterWave && pronunciationWindow),
-                  pronunciationEmphasized,
-                  waveCharacterClassName,
-                )}
+                {renderWaveText(segment.pronunciation, {
+                  enabled: Boolean(pronunciationWindow),
+                  letters: pronunciationWaveEnabled,
+                  baseColor: pronunciationTokenData?.colors.base,
+                  activeColor: pronunciationTokenData?.colors.active,
+                  emphasized: pronunciationEmphasized,
+                  className: waveCharacterClassName,
+                })}
               </span>
             </span>
           )

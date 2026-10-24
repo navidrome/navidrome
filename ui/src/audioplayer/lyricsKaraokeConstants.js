@@ -1,10 +1,10 @@
 export const KARAOKE_CLOCK_DRIFT_RESET_MS = 140
 export const KARAOKE_HIGHLIGHT_LEAD_MS = 120
-export const KARAOKE_ANIMATION_MS = 500
 export const KARAOKE_LINE_OPACITY_MS = 300
 export const KARAOKE_SCROLLBAR_VISIBLE_MS = 1400
 export const KARAOKE_MANUAL_SCROLL_PAUSE_MS = 2200
 export const KARAOKE_SCROLL_ANIMATION_MS = 300
+export const KARAOKE_SCROLL_ANIMATION_MAX_MS = 560
 export const KARAOKE_LINE_LIFT_PX = 1.5
 const KARAOKE_EASE_IN_OUT_X1 = 0.77
 const KARAOKE_EASE_IN_OUT_Y1 = 0
@@ -15,8 +15,10 @@ const KARAOKE_OPACITY_EASING_Y1 = 1
 const KARAOKE_OPACITY_EASING_X2 = 0.36
 const KARAOKE_OPACITY_EASING_Y2 = 1
 export const KARAOKE_LINE_MOTION_EASING = `cubic-bezier(${KARAOKE_EASE_IN_OUT_X1}, ${KARAOKE_EASE_IN_OUT_Y1}, ${KARAOKE_EASE_IN_OUT_X2}, ${KARAOKE_EASE_IN_OUT_Y2})`
-export const KARAOKE_CHARACTER_LIFT_PX = KARAOKE_LINE_LIFT_PX
-export const KARAOKE_CHARACTER_RISE_MS = KARAOKE_ANIMATION_MS
+export const KARAOKE_CHARACTER_LIFT_EM = 0.04
+export const KARAOKE_CHARACTER_SETTLE_EM = 0.015
+export const KARAOKE_CHARACTER_WAVE_MS = 750
+export const KARAOKE_CHARACTER_CREST_RATIO = 0.4
 export const KARAOKE_CHARACTER_WAVE_SPAN_RATIO = 0.36
 export const KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS = 140
 export const KARAOKE_IDLE_LAYER_OPACITY = 0.49
@@ -30,7 +32,6 @@ export const KARAOKE_AUX_LINE_HEIGHT = 1.18
 export const KARAOKE_EASING = `cubic-bezier(${KARAOKE_OPACITY_EASING_X1}, ${KARAOKE_OPACITY_EASING_Y1}, ${KARAOKE_OPACITY_EASING_X2}, ${KARAOKE_OPACITY_EASING_Y2})`
 export const TOKEN_FUTURE_ALPHA = 0.56
 export const TOKEN_ACTIVE_ALPHA = 1
-export const TOKEN_WIPE_SOFT_SPREAD_PCT = 34
 export const TOKEN_WIPE_EDGE_PCT = 12
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
@@ -105,9 +106,25 @@ export const easeKaraokeOpacity = (value) => {
   )
 }
 
-export const easeInOut = (value) => {
+// A letter lifts quickly to its crest, then settles to a resting offset instead
+// of creeping upward for the whole token. The settling tail is what keeps a long
+// word from looking frozen mid-rise.
+export const karaokeCharacterLiftAt = (value) => {
   const progress = clamp(value, 0, 1)
-  return progress < 0.5
-    ? 2 * progress * progress
-    : 1 - (-2 * progress + 2) ** 2 / 2
+  if (progress <= 0) return 0
+  const settleRatio = KARAOKE_CHARACTER_SETTLE_EM / KARAOKE_CHARACTER_LIFT_EM
+  if (progress >= 1) return settleRatio
+  if (progress < KARAOKE_CHARACTER_CREST_RATIO) {
+    return easeKaraokeOpacity(progress / KARAOKE_CHARACTER_CREST_RATIO)
+  }
+  return (
+    1 -
+    (1 - settleRatio) *
+      easeKaraokeMotion(
+        (progress - KARAOKE_CHARACTER_CREST_RATIO) /
+          (1 - KARAOKE_CHARACTER_CREST_RATIO),
+      )
+  )
 }
+
+export const easeScrollOut = (value) => 1 - (1 - clamp(value, 0, 1)) ** 5

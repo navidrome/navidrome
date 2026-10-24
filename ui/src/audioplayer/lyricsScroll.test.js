@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { KARAOKE_SCROLL_ANIMATION_MS } from './lyricsKaraokeConstants'
+import { easeScrollOut } from './lyricsKaraokeConstants'
 import {
   animateScrollTop,
   cancelScrollAnimation,
   getAnchoredScrollTop,
+  getScrollDurationMs,
   getScrollEndPadding,
 } from './lyricsScroll'
 
@@ -135,7 +136,7 @@ describe('lyrics scroll helpers', () => {
 
     expect(secondAnimation).not.toBe(firstAnimation)
 
-    now = KARAOKE_SCROLL_ANIMATION_MS / 2
+    now = getScrollDurationMs(500) / 2
     animationFrames[0]()
 
     expect(body.scrollTop).toBe(0)
@@ -144,11 +145,11 @@ describe('lyrics scroll helpers', () => {
 
     animationFrames[1]()
 
-    expect(body.scrollTop).toBe(250)
+    expect(body.scrollTop).toBeCloseTo(500 * easeScrollOut(0.5), 5)
     expect(scrollAnimationRef.current).toBe(secondAnimation)
     expect(animationFrames).toHaveLength(3)
 
-    now = KARAOKE_SCROLL_ANIMATION_MS
+    now = getScrollDurationMs(500)
     animationFrames[2]()
 
     expect(body.scrollTop).toBe(500)
