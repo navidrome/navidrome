@@ -9,6 +9,7 @@ vi.mock('react-admin', () => ({
 describe('useDateLocale', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.removeItem('dateFormat')
   })
 
   const renderWith = async (locale, browserLocales) => {
@@ -40,6 +41,12 @@ describe('useDateLocale', () => {
 
   it('returns undefined when there is no language', async () => {
     const result = await renderWith(undefined, ['en-GB'])
+    expect(result.current).toBeUndefined()
+  })
+
+  it('returns undefined to use the browser locale when set to browser', async () => {
+    localStorage.setItem('dateFormat', 'browser')
+    const result = await renderWith('en', ['fr-FR'])
     expect(result.current).toBeUndefined()
   })
 })
