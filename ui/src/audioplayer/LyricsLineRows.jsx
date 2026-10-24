@@ -1,0 +1,641 @@
+import Typography from '@material-ui/core/Typography'
+import clsx from 'clsx'
+import React, {
+  memo,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { buildSegmentsFromLine } from './lyricsSegments'
+import {
+  buildLetterMaskStyle,
+  isGecko,
+  sweepLayerStyle,
+} from './lyricsKaraokeMotion'
+import {
+  TOKEN_ACTIVE_ALPHA,
+  TOKEN_FUTURE_ALPHA,
+} from './lyricsKaraokeConstants'
+import {
+  buildEmphasisStyle,
+  isEmphasisRole,
+  parseColorRGB,
+} from './lyricsKaraokeStyles'
+import { resolveKaraokeTokenWindows } from './lyricsTimeline'
+
+// WebRender snaps 2D-translated glyphs to whole pixels; perspective rasterizes
+// them in local space instead.
+const GECKO_STYLE = isGecko() ? { perspective: '100000px' } : null
+
+const EMPHASIS_TONE = 0.7
+const EMPHASIS_PAINT_OVERHANG = '0.18em'
+const DEFAULT_RGB = [255, 255, 255]
+
+const emphasisPaintOverhangStyle = {
+  marginInlineEnd: `-${EMPHASIS_PAINT_OVERHANG}`,
+  paddingInlineEnd: EMPHASIS_PAINT_OVERHANG,
+}
+
+const graphemeSegmenter =
+  typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    : null
+
+const splitGraphemes = (value) => {
+  const text = String(value || '')
+  return graphemeSegmenter
+    ? Array.from(graphemeSegmenter.segment(text), ({ segment }) => segment)
+    : Array.from(text)
+}
+
+const waveTextRootStyle = {
+  display: 'inline-block',
+  position: 'relative',
+  verticalAlign: 'baseline',
+}
+
+const waveTextBaseStyle = { display: 'inline' }
+
+// Keeps timed token text readable by screen readers, since the painted
+// copies are aria-hidden and aria-label is ignored on role-less spans.
+const visuallyHiddenStyle = {
+  border: 0,
+  clip: 'rect(0 0 0 0)',
+  height: 1,
+  margin: -1,
+  overflow: 'hidden',
+  padding: 0,
+  position: 'absolute',
+  whiteSpace: 'nowrap',
+  width: 1,
+}
+
+const renderWaveText = (
+  text,
+  { enabled, baseColor, activeColor, emphasized, className },
+) => {
+  if (!enabled) return text
+
+  const graphemes = splitGraphemes(text)
+  let letterCount = 0
+  const parts = graphemes.map((character) => {
+    if (/^\s+$/.test(character)) return { character, letterIndex: -1 }
+    const letterIndex = letterCount
+    letterCount += 1
+    return { character, letterIndex }
+  })
+  const maskStyle = buildLetterMaskStyle(letterCount)
+
+  return (
+    <>
+      <span style={visuallyHiddenStyle}>{text}</span>
+      <span
+        aria-hidden="true"
+        data-lyrics-wave-text="true"
+        style={waveTextRootStyle}
+      >
+        <span
+          data-lyrics-wave-base="true"
+          style={{
+            ...waveTextBaseStyle,
+            color: baseColor,
+            WebkitTextFillColor: baseColor,
+          }}
+        >
+          {text}
+        </span>
+        <span
+          data-lyrics-sweep-layer="true"
+          style={{
+            ...sweepLayerStyle,
+            ...GECKO_STYLE,
+            color: activeColor,
+            WebkitTextFillColor: activeColor,
+          }}
+        >
+          {parts.map(({ character, letterIndex }) => {
+            if (letterIndex < 0) return character
+            return (
+              <span
+                key={`${letterIndex}-${character}`}
+                className={className}
+                data-lyrics-character="true"
+                style={{
+                  ...maskStyle,
+                  ...(emphasized ? emphasisPaintOverhangStyle : undefined),
+                }}
+              >
+                {character}
+              </span>
+            )
+          })}
+        </span>
+      </span>
+    </>
+  )
+}
+
+const tokenColor = (rgb, alpha) => {
+  const [r, g, b] = rgb || [255, 255, 255]
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+const toneEmphasisRGB = (rgb) =>
+  rgb ? rgb.map((channel) => Math.round(channel * EMPHASIS_TONE)) : rgb
+
+const getTokenRGB = (token, rgb) =>
+  isEmphasisRole(token) ? toneEmphasisRGB(rgb) : rgb
+
+const stripLayerColors = (style) => {
+  const result = { ...(style || {}) }
+  delete result.opacity
+  delete result.color
+  delete result.WebkitTextFillColor
+  delete result['--lyrics-active-color']
+  return result
+}
+
+const buildLineStyle = (line, style) => {
+  const emphasisStyle = buildEmphasisStyle(line)
+  return {
+    ...stripLayerColors(style),
+    ...emphasisStyle,
+    ...(emphasisStyle ? { filter: `brightness(${EMPHASIS_TONE})` } : {}),
+  }
+}
+
+const buildStaticEmphasisStyle = (token) => {
+  const emphasisStyle = buildEmphasisStyle(token)
+  if (!emphasisStyle) return undefined
+  return {
+    ...emphasisStyle,
+    filter: `brightness(${EMPHASIS_TONE})`,
+  }
+}
+
+const buildTokenStyle = (token, rgb, emphasized) => {
+  const colors = {
+    base: tokenColor(getTokenRGB(token, rgb), TOKEN_FUTURE_ALPHA),
+    active: tokenColor(getTokenRGB(token, rgb), TOKEN_ACTIVE_ALPHA),
+  }
+  return {
+    colors,
+    style: {
+      color: colors.base,
+      WebkitTextFillColor: colors.base,
+      ...buildEmphasisStyle(token),
+      ...(emphasized ? emphasisPaintOverhangStyle : {}),
+    },
+  }
+}
+
+const isTimedWindow = (window) =>
+  Number.isFinite(window?.start) && Number.isFinite(window?.end)
+
+const useStableTokenRef = (registerToken) => {
+  const registerTokenRef = useRef(registerToken)
+  const callbacksRef = useRef(new Map())
+  registerTokenRef.current = registerToken
+
+  return useCallback(({ key, lineIndex, window, waveEnabled }) => {
+    const signature = [
+      lineIndex,
+      window?.start ?? '',
+      window?.end ?? '',
+      waveEnabled ? 1 : 0,
+    ].join('\u0000')
+    const cached = callbacksRef.current.get(key)
+    if (cached?.signature === signature) return cached.callback
+
+    const descriptor = { lineIndex, window, waveEnabled }
+    const callback = (node) => {
+      registerTokenRef.current?.(key, descriptor, node)
+    }
+    callbacksRef.current.set(key, { signature, callback })
+    return callback
+  }, [])
+}
+
+export const KaraokeLineRow = memo(
+  ({
+    lineIndex,
+    line,
+    nextLineStart,
+    className,
+    style,
+    tokenClassName,
+    waveCharacterClassName,
+    registerToken,
+    renderCharacterWave = true,
+    rowKey = 'main',
+    testId,
+  }) => {
+    const getTokenRef = useStableTokenRef(registerToken)
+    const segments = useMemo(() => buildSegmentsFromLine(line), [line])
+    const windows = useMemo(
+      () => resolveKaraokeTokenWindows(line, nextLineStart),
+      [line, nextLineStart],
+    )
+    const tokenRGB = useMemo(
+      () => (style?.color ? parseColorRGB(style.color) : DEFAULT_RGB),
+      [style?.color],
+    )
+    const hasTimedTokens = windows.some(
+      (window) => window?.start != null && window?.end != null,
+    )
+    const lineStyle = useMemo(() => buildLineStyle(line, style), [line, style])
+
+    return (
+      <Typography
+        className={className}
+        component="div"
+        data-testid={testId}
+        data-tokenized={hasTimedTokens ? 'true' : 'false'}
+        style={lineStyle}
+      >
+        {segments.map((segment, idx) => {
+          if (!segment.token)
+            return <span key={`text-${idx}`}>{segment.text}</span>
+
+          const window = windows[segment.tokenIndex]
+          const timedWindow = isTimedWindow(window) ? window : null
+          const key = `${lineIndex}:${rowKey}:${segment.tokenIndex}:main`
+          const emphasized =
+            isEmphasisRole(segment.token) || isEmphasisRole(line)
+          const waveEnabled = Boolean(renderCharacterWave && timedWindow)
+          const tokenData = timedWindow
+            ? buildTokenStyle(segment.token, tokenRGB, emphasized)
+            : {
+                colors: null,
+                style: {
+                  ...buildEmphasisStyle(segment.token),
+                  ...(emphasized ? emphasisPaintOverhangStyle : {}),
+                },
+              }
+          return (
+            <span
+              key={`token-${idx}-${window?.start ?? 'na'}`}
+              className={tokenClassName}
+              data-testid="lyrics-token"
+              data-lyrics-state="future"
+              ref={
+                timedWindow
+                  ? getTokenRef({
+                      key,
+                      lineIndex,
+                      window: timedWindow,
+                      waveEnabled,
+                    })
+                  : undefined
+              }
+              style={tokenData.style}
+            >
+              {renderWaveText(segment.text, {
+                enabled: Boolean(timedWindow),
+                baseColor: tokenData.colors?.base,
+                activeColor: tokenData.colors?.active,
+                emphasized,
+                className: waveCharacterClassName,
+              })}
+            </span>
+          )
+        })}
+      </Typography>
+    )
+  },
+)
+
+KaraokeLineRow.displayName = 'KaraokeLineRow'
+
+const splitTextSegments = (value) =>
+  (value || '')
+    .split(/(\s+)/)
+    .filter((text) => text.length > 0)
+    .map((text) => ({
+      text,
+      token: null,
+      tokenIndex: -1,
+      isWhitespace: /^\s+$/.test(text),
+    }))
+
+const buildPronunciationParts = (line) => {
+  if (!line?.value) return []
+
+  const segments = buildSegmentsFromLine(line)
+  const tokenParts = segments
+    .filter((segment) => segment.token && segment.text.trim())
+    .map((segment) => ({
+      text: segment.text.trim(),
+      segment,
+    }))
+
+  if (tokenParts.length > 0) return tokenParts
+
+  return splitTextSegments(line.value)
+    .filter((segment) => !segment.isWhitespace)
+    .map((segment) => ({
+      text: segment.text.trim(),
+      segment: null,
+    }))
+}
+
+const canPairPronunciationSegment = (segment, hasTokenSegments) =>
+  Boolean(
+    segment.token ||
+    (!hasTokenSegments && !segment.isWhitespace && segment.text.trim()),
+  )
+
+const buildStackedPronunciationSegments = (line, pronunciationLine) => {
+  const lineSegments = buildSegmentsFromLine(line)
+  const hasTokenSegments = lineSegments.some((segment) => segment.token)
+  const mainSegments = hasTokenSegments
+    ? lineSegments
+    : splitTextSegments(line?.value || '')
+  const pronunciationParts = buildPronunciationParts(pronunciationLine)
+  const pairableSegments = mainSegments.filter((segment) =>
+    canPairPronunciationSegment(segment, hasTokenSegments),
+  )
+
+  if (
+    !hasTokenSegments &&
+    pronunciationParts.length > 0 &&
+    pairableSegments.length > 0 &&
+    pronunciationParts.length !== pairableSegments.length
+  ) {
+    return [
+      {
+        text: line?.value || '',
+        token: null,
+        tokenIndex: -1,
+        isWhitespace: false,
+        pronunciation: pronunciationLine?.value?.trim() || '',
+        pronunciationSegment: null,
+      },
+    ]
+  }
+
+  const plainPronunciationParts = []
+  const emphasisPronunciationParts = []
+  for (const part of pronunciationParts) {
+    if (hasTokenSegments && isEmphasisRole(part.segment?.token)) {
+      emphasisPronunciationParts.push(part)
+    } else {
+      plainPronunciationParts.push(part)
+    }
+  }
+
+  let pronunciationIndex = 0
+  let plainPronunciationIndex = 0
+  let emphasisPronunciationIndex = 0
+
+  const getPronunciationPart = (segment) => {
+    if (!hasTokenSegments) {
+      const part = pronunciationParts[pronunciationIndex] || null
+      pronunciationIndex += 1
+      return part
+    }
+
+    if (isEmphasisRole(segment.token)) {
+      const part =
+        emphasisPronunciationParts[emphasisPronunciationIndex] || null
+      emphasisPronunciationIndex += 1
+      return part
+    }
+
+    const part = plainPronunciationParts[plainPronunciationIndex] || null
+    plainPronunciationIndex += 1
+    return part
+  }
+
+  return mainSegments.map((segment) => {
+    if (!canPairPronunciationSegment(segment, hasTokenSegments)) {
+      return { ...segment, pronunciation: '' }
+    }
+    const pronunciationPart = getPronunciationPart(segment)
+    return {
+      ...segment,
+      pronunciation: pronunciationPart?.text || '',
+      pronunciationSegment: pronunciationPart?.segment || null,
+    }
+  })
+}
+
+export const KaraokeStackedLineRow = memo(
+  ({
+    lineIndex,
+    line,
+    pronunciationLine,
+    pronunciationStyle,
+    nextLineStart,
+    className,
+    style,
+    tokenClassName,
+    waveCharacterClassName,
+    classes,
+    registerToken,
+    renderCharacterWave = true,
+    rowKey = 'main',
+    testId,
+  }) => {
+    const rowRef = useRef(null)
+    const getTokenRef = useStableTokenRef(registerToken)
+    const [isWrapped, setIsWrapped] = useState(false)
+    const segments = useMemo(
+      () => buildStackedPronunciationSegments(line, pronunciationLine),
+      [line, pronunciationLine],
+    )
+    const mainWindows = useMemo(
+      () => resolveKaraokeTokenWindows(line, nextLineStart),
+      [line, nextLineStart],
+    )
+    const pronunciationWindows = useMemo(
+      () => resolveKaraokeTokenWindows(pronunciationLine, null),
+      [pronunciationLine],
+    )
+    const tokenRGB = useMemo(
+      () => (style?.color ? parseColorRGB(style.color) : [255, 255, 255]),
+      [style?.color],
+    )
+    const pronunciationRGB = useMemo(
+      () =>
+        pronunciationStyle?.color
+          ? parseColorRGB(pronunciationStyle.color)
+          : DEFAULT_RGB,
+      [pronunciationStyle?.color],
+    )
+    const hasTimedTokens = mainWindows.some(
+      (window) => window?.start != null && window?.end != null,
+    )
+    const lineStyle = useMemo(() => buildLineStyle(line, style), [line, style])
+
+    useLayoutEffect(() => {
+      const row = rowRef.current
+      if (!row) return undefined
+
+      const updateWrappedState = () => {
+        const tokenRows = new Set(
+          Array.from(row.querySelectorAll('[data-stacked-token="true"]')).map(
+            (node) => node.offsetTop,
+          ),
+        )
+        const wrapped = tokenRows.size > 1
+        setIsWrapped((current) => (current === wrapped ? current : wrapped))
+      }
+
+      updateWrappedState()
+      const ResizeObserverConstructor =
+        typeof window !== 'undefined' ? window.ResizeObserver : null
+      if (!ResizeObserverConstructor) return undefined
+      const resizeObserver = new ResizeObserverConstructor(updateWrappedState)
+      resizeObserver.observe(row)
+      return () => resizeObserver.disconnect()
+    }, [segments])
+
+    return (
+      <Typography
+        className={clsx(className, {
+          [classes.wrappedStackedLine]: isWrapped,
+        })}
+        component="div"
+        data-wrapped={isWrapped ? 'true' : 'false'}
+        data-testid={testId}
+        data-tokenized={hasTimedTokens ? 'true' : 'false'}
+        ref={rowRef}
+        style={lineStyle}
+      >
+        {segments.map((segment, idx) => {
+          const resolvedMainWindow = segment.token
+            ? mainWindows[segment.tokenIndex]
+            : null
+          const mainWindow = isTimedWindow(resolvedMainWindow)
+            ? resolvedMainWindow
+            : null
+          const mainKey = `${lineIndex}:${rowKey}:${segment.tokenIndex}:main`
+          const mainEmphasized =
+            isEmphasisRole(segment.token) || isEmphasisRole(line)
+          const mainWaveEnabled = Boolean(
+            renderCharacterWave && mainWindow && segment.token,
+          )
+          const mainTokenData = segment.token
+            ? buildTokenStyle(segment.token, tokenRGB, mainEmphasized)
+            : null
+          const mainText = segment.token ? (
+            <span
+              key={`main-${idx}`}
+              className={clsx(tokenClassName, classes.stackedMainText)}
+              data-testid="lyrics-token"
+              data-lyrics-state="future"
+              ref={
+                mainWindow
+                  ? getTokenRef({
+                      key: mainKey,
+                      lineIndex,
+                      window: mainWindow,
+                      waveEnabled: mainWaveEnabled,
+                    })
+                  : undefined
+              }
+              style={
+                mainTokenData?.style || {
+                  ...buildEmphasisStyle(segment.token),
+                  ...(mainEmphasized ? emphasisPaintOverhangStyle : {}),
+                }
+              }
+            >
+              {renderWaveText(segment.text, {
+                enabled: Boolean(segment.token),
+                baseColor: mainTokenData?.colors.base,
+                activeColor: mainTokenData?.colors.active,
+                emphasized: mainEmphasized,
+                className: waveCharacterClassName,
+              })}
+            </span>
+          ) : (
+            <span key={`main-${idx}`} className={classes.stackedSpacer}>
+              {segment.text}
+            </span>
+          )
+
+          if (!segment.pronunciation) return mainText
+
+          const pronunciationToken = segment.pronunciationSegment?.token
+          const resolvedPronunciationWindow = pronunciationToken
+            ? pronunciationWindows[segment.pronunciationSegment.tokenIndex]
+            : null
+          const pronunciationWindow =
+            mainWindow ||
+            (isTimedWindow(resolvedPronunciationWindow)
+              ? resolvedPronunciationWindow
+              : null)
+          const pronunciationTokenIndex =
+            segment.pronunciationSegment?.tokenIndex >= 0
+              ? segment.pronunciationSegment.tokenIndex
+              : segment.tokenIndex >= 0
+                ? segment.tokenIndex
+                : idx
+          const pronunciationKey = `${lineIndex}:${rowKey}:${pronunciationTokenIndex}:pronunciation`
+          const pronunciationWaveEnabled = Boolean(
+            renderCharacterWave && pronunciationWindow,
+          )
+          const pronunciationEmphasized = Boolean(
+            isEmphasisRole(pronunciationToken) ||
+            isEmphasisRole(segment.token) ||
+            isEmphasisRole(pronunciationLine) ||
+            isEmphasisRole(line),
+          )
+          const pronunciationTokenData = pronunciationWaveEnabled
+            ? buildTokenStyle(
+                pronunciationToken || segment.token,
+                pronunciationRGB,
+                pronunciationEmphasized,
+              )
+            : null
+          return (
+            <span
+              key={`stacked-${idx}-${mainWindow?.start ?? segment.text}`}
+              className={classes.stackedToken}
+              data-stacked-token="true"
+            >
+              {mainText}
+              <span
+                className={classes.stackedPronunciation}
+                data-testid="lyrics-pronunciation-token"
+                data-lyrics-state="future"
+                data-timed={pronunciationWindow ? 'true' : 'false'}
+                ref={
+                  pronunciationWindow
+                    ? getTokenRef({
+                        key: pronunciationKey,
+                        lineIndex,
+                        window: pronunciationWindow,
+                        waveEnabled: pronunciationWaveEnabled,
+                      })
+                    : undefined
+                }
+                style={
+                  pronunciationTokenData?.style || {
+                    ...buildStaticEmphasisStyle(
+                      pronunciationToken || segment.token,
+                    ),
+                  }
+                }
+              >
+                {renderWaveText(segment.pronunciation, {
+                  enabled: Boolean(pronunciationWindow),
+                  baseColor: pronunciationTokenData?.colors.base,
+                  activeColor: pronunciationTokenData?.colors.active,
+                  emphasized: pronunciationEmphasized,
+                  className: waveCharacterClassName,
+                })}
+              </span>
+            </span>
+          )
+        })}
+      </Typography>
+    )
+  },
+)
+
+KaraokeStackedLineRow.displayName = 'KaraokeStackedLineRow'
