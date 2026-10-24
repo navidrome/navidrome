@@ -102,7 +102,8 @@ func (api *Router) GetLyrics(r *http.Request) (*responses.Subsonic, error) {
 	response.Lyrics = &lyricsResponse
 	structuredLyrics, err := api.lyrics.GetLyricsByArtistTitle(r.Context(), artist, title)
 	if err != nil {
-		return nil, err
+		log.Error(r.Context(), "Error getting lyrics", "artist", artist, "title", title, err)
+		return nil, lyricsClientError(err)
 	}
 
 	mainLyric, ok := structuredLyrics.Main()
@@ -133,15 +134,25 @@ func (api *Router) GetLyricsBySongId(r *http.Request) (*responses.Subsonic, erro
 		return nil, err
 	}
 
-	structuredLyrics, err := api.lyrics.GetLyrics(r.Context(), mediaFile)
-	if err != nil {
-		return nil, err
-	}
-
 	enhanced, _ := req.Params(r).Bool("enhanced")
+	allSources, _ := req.Params(r).Bool("allSources")
+	var structuredLyrics model.LyricList
+	if enhanced {
+		structuredLyrics, err = api.lyrics.GetLyricsVariants(r.Context(), mediaFile, allSources)
+	} else {
+		structuredLyrics, err = api.lyrics.GetLyrics(r.Context(), mediaFile)
+	}
+	if err != nil && (!enhanced || len(structuredLyrics) == 0) {
+		log.Error(r.Context(), "Error getting lyrics", "id", id, err)
+		return nil, lyricsClientError(err)
+	}
 
 	response := newResponse()
 	response.LyricsList = buildLyricsList(mediaFile, structuredLyrics, enhanced)
+	response.LyricsList.SourcesIncomplete = enhanced && err != nil
+	if enhanced {
+		response.LyricsList.RetryAfterSeconds = lyricsRetryAfterSeconds(err)
+	}
 
 	return response, nil
 }
