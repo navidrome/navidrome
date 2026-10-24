@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  readLetterWavePreference,
   readLyricsOffset,
   readPreferredSource,
+  writeLetterWavePreference,
   writeLyricsOffset,
   writePreferredSource,
 } from './lyricsPreferences'
@@ -47,6 +49,16 @@ describe('lyrics preferences', () => {
     expect(readLyricsOffset('song-1', 'netease')).toBe(0)
   })
 
+  it('defaults the letter wave on and remembers when it is turned off', () => {
+    expect(readLetterWavePreference()).toBe(true)
+
+    writeLetterWavePreference(false)
+    expect(readLetterWavePreference()).toBe(false)
+
+    writeLetterWavePreference(true)
+    expect(readLetterWavePreference()).toBe(true)
+  })
+
   it('degrades silently when storage is unavailable', () => {
     const original = Object.getOwnPropertyDescriptor(window, 'localStorage')
     const deny = () => {
@@ -60,8 +72,10 @@ describe('lyrics preferences', () => {
     try {
       expect(() => writePreferredSource('song-1', 'netease')).not.toThrow()
       expect(() => writeLyricsOffset('song-1', 'netease', -250)).not.toThrow()
+      expect(() => writeLetterWavePreference(false)).not.toThrow()
       expect(readPreferredSource('song-1')).toBeNull()
       expect(readLyricsOffset('song-1', 'netease')).toBe(0)
+      expect(readLetterWavePreference()).toBe(true)
     } finally {
       if (original) Object.defineProperty(window, 'localStorage', original)
     }

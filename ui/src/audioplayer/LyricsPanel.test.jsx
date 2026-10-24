@@ -16,7 +16,7 @@ import {
   KARAOKE_EASING,
   KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_LINE_OPACITY_MS,
-  KARAOKE_CHARACTER_SETTLE_EM,
+  KARAOKE_CHARACTER_CREST_RATIO,
   KARAOKE_CHARACTER_WAVE_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_LIFT_PX,
@@ -586,19 +586,24 @@ describe('<LyricsPanel />', () => {
     expect(group).toHaveAttribute('data-character-wave', 'true')
     expect(window.getComputedStyle(group).transform).toBe('translateY(0)')
     expect(window.getComputedStyle(translation).transform).toBe('')
+    const letterAnimation = (node) =>
+      (node.__animations || []).find((animation) =>
+        animation.keyframes.some((frame) => frame.transform != null),
+      )
+
     expect(mainCharacters).toHaveLength(4)
     expect(pronunciationCharacters).toHaveLength(4)
-    expect(mainCharacters[0].style.transform).toBe(
-      `translate3d(0, -${KARAOKE_CHARACTER_SETTLE_EM.toFixed(4)}em, 0)`,
+    expect(letterAnimation(mainCharacters[0]).keyframes[1].offset).toBe(
+      KARAOKE_CHARACTER_CREST_RATIO,
     )
     expect(window.getComputedStyle(mainCharacters[0]).willChange).toBe(
       'transform',
     )
-    expect(mainCharacters[3].style.transform).not.toBe(
-      mainCharacters[0].style.transform,
+    expect(letterAnimation(mainCharacters[3]).options.delay).toBeGreaterThan(
+      letterAnimation(mainCharacters[0]).options.delay,
     )
-    expect(pronunciationCharacters[0].style.transform).toBe(
-      mainCharacters[0].style.transform,
+    expect(letterAnimation(pronunciationCharacters[0]).options.delay).toBe(
+      letterAnimation(mainCharacters[0]).options.delay,
     )
     expect(mainToken.style.backgroundImage).toBe('')
     expect(mainCharacters[0].style.backgroundImage).toBe('')
@@ -765,6 +770,31 @@ describe('<LyricsPanel />', () => {
     ).toHaveLength(0)
     expect(
       groups[3].querySelectorAll('[data-lyrics-character="true"]'),
+    ).not.toHaveLength(0)
+  })
+
+  it('keeps the sweep while the letter wave is switched off', () => {
+    const props = {
+      mainLyric: tokenizedMainLyric,
+      audioInstance: { currentTime: 0.25, paused: true },
+      letterWave: false,
+    }
+    const { rerenderPanel } = renderPanel(props)
+
+    const token = screen.getAllByTestId('lyrics-token')[0]
+    expect(
+      token.querySelectorAll('[data-lyrics-character="true"]'),
+    ).toHaveLength(0)
+    expect(
+      token.querySelector('[data-lyrics-sweep-layer="true"]'),
+    ).toBeInTheDocument()
+
+    rerenderPanel({ ...props, letterWave: true })
+
+    expect(
+      screen
+        .getAllByTestId('lyrics-token')[0]
+        .querySelectorAll('[data-lyrics-character="true"]'),
     ).not.toHaveLength(0)
   })
 

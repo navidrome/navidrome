@@ -721,6 +721,8 @@
     "hideLyricsTranslationText": "Hide translation",
     "showLyricsPronunciationText": "Show pronunciation",
     "hideLyricsPronunciationText": "Hide pronunciation",
+    "showLyricsLetterWaveText": "Turn on letter wave (experimental)",
+    "hideLyricsLetterWaveText": "Turn off letter wave (experimental)",
     "viewLyricsSourceText": "View lyrics source",
     "lyricsSourceText": "Lyrics source",
     "embeddedLyricsSourceText": "Embedded lyrics",

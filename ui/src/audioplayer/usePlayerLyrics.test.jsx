@@ -93,6 +93,18 @@ describe('usePlayerLyrics', () => {
     expect(localStorage.getItem('lyrics.offset:song-1:lrclib')).toBeNull()
   })
 
+  it('toggles the letter wave preference', async () => {
+    subsonic.getLyricsBySongId.mockResolvedValue(variantsResponse())
+    const { result } = renderPlayerLyrics()
+    await showLyrics(result)
+
+    expect(result.current.desktopLyricsProps.letterWave).toBe(true)
+    act(() => result.current.desktopLyricsProps.onToggleLetterWave())
+    expect(result.current.desktopLyricsProps.letterWave).toBe(false)
+    act(() => result.current.desktopLyricsProps.onToggleLetterWave())
+    expect(result.current.desktopLyricsProps.letterWave).toBe(true)
+  })
+
   it('loads lyrics for a Subsonic queue entry without embedded lyrics', async () => {
     const current = {
       trackId: 'song-1',

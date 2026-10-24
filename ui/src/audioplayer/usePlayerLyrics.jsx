@@ -6,12 +6,15 @@ import {
   findLyricVariant,
   hasNudgeableTiming,
   hasStructuredLyricContent,
+  hasWordTiming,
   legacyVariantKey,
 } from './lyrics'
 import { downloadLyrics } from './lyricsExport'
 import {
+  readLetterWavePreference,
   readLyricsOffset,
   readPreferredSource,
+  writeLetterWavePreference,
   writeLyricsOffset,
   writePreferredSource,
 } from './lyricsPreferences'
@@ -38,6 +41,9 @@ const usePlayerLyrics = ({
   const [lyricsVisiblePreference, setLyricsVisiblePreference] = useState(false)
   const [translationPreference, setTranslationPreference] = useState(null)
   const [pronunciationPreference, setPronunciationPreference] = useState(null)
+  const [letterWavePreference, setLetterWavePreference] = useState(
+    readLetterWavePreference,
+  )
   const [selectedSourceKey, setSelectedSourceKey] = useState(() =>
     readPreferredSource(trackId),
   )
@@ -168,6 +174,10 @@ const usePlayerLyrics = ({
   const hasPronunciationLyric = hasStructuredLyricContent(
     lyricLayers.pronunciation,
   )
+  const hasLetterWave = useMemo(
+    () => hasWordTiming(lyricLayers.main),
+    [lyricLayers.main],
+  )
   const { lyricsVisible, showTranslation, showPronunciation } =
     resolveLyricsSidebarState({
       lyricsVisiblePreference,
@@ -203,6 +213,8 @@ const usePlayerLyrics = ({
       hideTranslation: translate('player.hideLyricsTranslationText'),
       showPronunciation: translate('player.showLyricsPronunciationText'),
       hidePronunciation: translate('player.hideLyricsPronunciationText'),
+      showLetterWave: translate('player.showLyricsLetterWaveText'),
+      hideLetterWave: translate('player.hideLyricsLetterWaveText'),
       viewSource: translate('player.viewLyricsSourceText'),
       sourceTitle: translate('player.lyricsSourceText'),
       embeddedSource: translate('player.embeddedLyricsSourceText'),
@@ -255,6 +267,14 @@ const usePlayerLyrics = ({
       toggleLayerPreference(current, hasPronunciationLyric, true),
     )
   }, [hasPronunciationLyric])
+
+  const toggleLetterWave = useCallback(() => {
+    setLetterWavePreference((current) => {
+      const next = !current
+      writeLetterWavePreference(next)
+      return next
+    })
+  }, [])
 
   const selectSource = useCallback(
     (sourceKey) => {
@@ -344,10 +364,13 @@ const usePlayerLyrics = ({
       pronunciationLyric: lyricLayers.pronunciation,
       showTranslation,
       showPronunciation,
+      letterWave: letterWavePreference,
       translationEnabled: hasTranslationLyric,
       pronunciationEnabled: hasPronunciationLyric,
+      letterWaveEnabled: hasLetterWave,
       onToggleTranslation: toggleTranslation,
       onTogglePronunciation: togglePronunciation,
+      onToggleLetterWave: toggleLetterWave,
       ...variantControlProps,
       audioInstance,
       loading: waitingForLyrics,
@@ -359,10 +382,12 @@ const usePlayerLyrics = ({
     }),
     [
       audioInstance,
+      hasLetterWave,
       hasPronunciationLyric,
       hasTranslationLyric,
       isDesktop,
       labels,
+      letterWavePreference,
       lyricLayers.main,
       lyricLayers.pronunciation,
       lyricLayers.translation,
@@ -372,6 +397,7 @@ const usePlayerLyrics = ({
       obscuredByQueue,
       showPronunciation,
       showTranslation,
+      toggleLetterWave,
       togglePronunciation,
       toggleTranslation,
       trackId,
@@ -396,6 +422,7 @@ const usePlayerLyrics = ({
           pronunciationLyric={lyricLayers.pronunciation}
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
+          letterWave={letterWavePreference}
           audioInstance={audioInstance}
           offsetMs={offsetMs}
           loading={waitingForLyrics}
@@ -408,10 +435,13 @@ const usePlayerLyrics = ({
           placement="mobile"
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
+          letterWave={letterWavePreference}
           translationEnabled={hasTranslationLyric}
           pronunciationEnabled={hasPronunciationLyric}
+          letterWaveEnabled={hasLetterWave}
           onToggleTranslation={toggleTranslation}
           onTogglePronunciation={togglePronunciation}
+          onToggleLetterWave={toggleLetterWave}
           {...variantControlProps}
           active={useInlineMobileLyrics && !obscuredByQueue}
           labels={labels}
@@ -421,9 +451,11 @@ const usePlayerLyrics = ({
     ),
     [
       audioInstance,
+      hasLetterWave,
       hasPronunciationLyric,
       hasTranslationLyric,
       labels,
+      letterWavePreference,
       lyricLayers.main,
       lyricLayers.pronunciation,
       lyricLayers.translation,
@@ -434,6 +466,7 @@ const usePlayerLyrics = ({
       selectedSourceKey,
       showPronunciation,
       showTranslation,
+      toggleLetterWave,
       togglePronunciation,
       toggleTranslation,
       trackId,

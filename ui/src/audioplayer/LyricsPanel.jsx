@@ -155,7 +155,7 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: alpha(theme.palette.text.primary, 0.055),
       },
     },
-    '&[data-raised="true"][data-line-motion="character"][data-character-wave="false"] $line':
+    '&[data-active="false"][data-raised="true"][data-line-motion="character"][data-character-wave="false"] $line':
       {
         transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
         transition: KARAOKE_LAYER_OPACITY_TRANSITION,
@@ -283,6 +283,9 @@ const useStyles = makeStyles((theme) => ({
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
+    '@supports (-moz-appearance: none)': {
+      '& [data-lyrics-sweep-layer]': { perspective: '100000px' },
+    },
     ...sweepLayerStyles,
   },
   token: {
@@ -290,6 +293,11 @@ const useStyles = makeStyles((theme) => ({
     overflowWrap: 'anywhere',
     fontKerning: 'none',
     fontVariantLigatures: 'none',
+    // WebRender snaps 2D-translated glyphs to whole pixels; perspective
+    // rasterizes them in local space instead.
+    '@supports (-moz-appearance: none)': {
+      '& [data-lyrics-sweep-layer]': { perspective: '100000px' },
+    },
     ...sweepLayerStyles,
   },
   voiceLanes: {
@@ -476,6 +484,7 @@ const LyricsPanel = ({
   pronunciationLyric,
   showTranslation,
   showPronunciation,
+  letterWave = true,
   audioInstance,
   offsetMs = 0,
   inline = false,
@@ -928,6 +937,7 @@ const LyricsPanel = ({
             const canSeekLine = Boolean(audioInstance && line.start != null)
             const isActiveLine = activeIndexSet.has(idx)
             const renderCharacterWave = Boolean(
+              letterWave &&
               !prefersReducedMotion &&
               hasTimedMainLines &&
               usesCharacterRise &&

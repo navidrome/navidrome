@@ -9,10 +9,10 @@ import React, {
   useState,
 } from 'react'
 import { buildSegmentsFromLine } from './lyricsSegments'
+import { sweepLayerStyle } from './lyricsKaraokeMotion'
 import {
   TOKEN_ACTIVE_ALPHA,
   TOKEN_FUTURE_ALPHA,
-  TOKEN_WIPE_EDGE_PCT,
 } from './lyricsKaraokeConstants'
 import {
   buildEmphasisStyle,
@@ -49,24 +49,6 @@ const waveTextRootStyle = {
 }
 
 const waveTextBaseStyle = { display: 'inline' }
-
-// The painted copy carries the active colour on a single masked layer. The sweep
-// then repaints only that layer instead of every glyph, so the character lift can
-// stay on the compositor. --lyrics-progress runs 0 (hidden) to 1 (revealed).
-const sweepMaskImage = `linear-gradient(90deg, #000 0%, #000 calc(var(--lyrics-progress, 0) * ${
-  100 + TOKEN_WIPE_EDGE_PCT
-}% - ${TOKEN_WIPE_EDGE_PCT}%), transparent calc(var(--lyrics-progress, 0) * ${
-  100 + TOKEN_WIPE_EDGE_PCT
-}%))`
-
-const waveTextSweepStyle = {
-  display: 'block',
-  inset: 0,
-  position: 'absolute',
-  whiteSpace: 'nowrap',
-  maskImage: sweepMaskImage,
-  WebkitMaskImage: sweepMaskImage,
-}
 
 // Keeps timed token text readable by screen readers, since the painted
 // copies are aria-hidden and aria-label is ignored on role-less spans.
@@ -109,7 +91,7 @@ const renderWaveText = (
         <span
           data-lyrics-sweep-layer="true"
           style={{
-            ...waveTextSweepStyle,
+            ...sweepLayerStyle,
             color: activeColor,
             WebkitTextFillColor: activeColor,
           }}

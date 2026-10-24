@@ -13,6 +13,7 @@ import LibraryMusicIcon from '@material-ui/icons/LibraryMusic'
 import RecordVoiceOverIcon from '@material-ui/icons/RecordVoiceOver'
 import RotateLeftIcon from '@material-ui/icons/RotateLeft'
 import TranslateIcon from '@material-ui/icons/Translate'
+import WavesIcon from '@material-ui/icons/Waves'
 import clsx from 'clsx'
 import React, { useCallback, useEffect, useState } from 'react'
 import {
@@ -185,10 +186,13 @@ const LyricsLayerControls = ({
   placement = 'sidebar',
   showTranslation,
   showPronunciation,
+  letterWave = true,
   translationEnabled,
   pronunciationEnabled,
+  letterWaveEnabled = false,
   onToggleTranslation,
   onTogglePronunciation,
+  onToggleLetterWave = noop,
   variants = [],
   selectedSourceKey = null,
   onSelectSource = noop,
@@ -440,6 +444,20 @@ const LyricsLayerControls = ({
         testId="toggle-pronunciation-button"
       >
         <RecordVoiceOverIcon fontSize="small" />
+      </LayerButton>
+      <LayerButton
+        active={letterWave}
+        classes={classes}
+        disabled={!letterWaveEnabled}
+        label={
+          letterWave
+            ? labels.hideLetterWave || 'Turn off letter wave (experimental)'
+            : labels.showLetterWave || 'Turn on letter wave (experimental)'
+        }
+        onClick={onToggleLetterWave}
+        testId="toggle-letter-wave-button"
+      >
+        <WavesIcon fontSize="small" />
       </LayerButton>
       <LayerButton
         active={showTranslation}

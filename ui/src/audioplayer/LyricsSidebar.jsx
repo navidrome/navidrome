@@ -96,10 +96,13 @@ const LyricsSidebar = ({
   pronunciationLyric,
   showTranslation,
   showPronunciation,
+  letterWave = true,
   translationEnabled,
   pronunciationEnabled,
+  letterWaveEnabled,
   onToggleTranslation,
   onTogglePronunciation,
+  onToggleLetterWave,
   variants = [],
   selectedSourceKey,
   onSelectSource,
@@ -284,10 +287,13 @@ const LyricsSidebar = ({
         <LyricsLayerControls
           showPronunciation={showPronunciation}
           showTranslation={showTranslation}
+          letterWave={letterWave}
           pronunciationEnabled={pronunciationEnabled}
           translationEnabled={translationEnabled}
+          letterWaveEnabled={letterWaveEnabled}
           onTogglePronunciation={onTogglePronunciation}
           onToggleTranslation={onToggleTranslation}
+          onToggleLetterWave={onToggleLetterWave}
           variants={variants}
           selectedSourceKey={selectedSourceKey}
           onSelectSource={onSelectSource}
@@ -311,6 +317,7 @@ const LyricsSidebar = ({
           pronunciationLyric={pronunciationLyric}
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
+          letterWave={letterWave}
           audioInstance={audioInstance}
           offsetMs={offsetMs}
           loading={loading}

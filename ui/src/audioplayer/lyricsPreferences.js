@@ -10,6 +10,24 @@ const preferredSourceKey = (trackId) => `lyrics.source:${trackId}`
 const offsetStorageKey = (trackId, sourceKey) =>
   `lyrics.offset:${trackId}:${sourceKey}`
 
+const LETTER_WAVE_STORAGE_KEY = 'lyrics.letterWave'
+
+export const readLetterWavePreference = () => {
+  try {
+    return storage()?.getItem(LETTER_WAVE_STORAGE_KEY) !== 'false'
+  } catch {
+    return true
+  }
+}
+
+export const writeLetterWavePreference = (enabled) => {
+  try {
+    storage()?.setItem(LETTER_WAVE_STORAGE_KEY, enabled ? 'true' : 'false')
+  } catch {
+    // Session-only fallback.
+  }
+}
+
 export const readPreferredSource = (trackId) => {
   if (!trackId) return null
   try {

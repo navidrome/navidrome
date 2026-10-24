@@ -27,4 +27,32 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 })
 
+// jsdom has no Web Animations API. The lyrics timeline schedules native
+// animations, so record them on the target for assertions instead of running
+// a fake timeline.
+if (typeof Element !== 'undefined' && !Element.prototype.animate) {
+  Element.prototype.animate = function animate(keyframes, options) {
+    const animation = {
+      keyframes,
+      options,
+      currentTime: 0,
+      playbackRate: 1,
+      playState: 'idle',
+      play() {
+        this.playState = 'running'
+      },
+      pause() {
+        this.playState = 'paused'
+      },
+      cancel() {
+        this.playState = 'idle'
+      },
+    }
+    if (!this.__animations)
+      Object.defineProperty(this, '__animations', { value: [] })
+    this.__animations.push(animation)
+    return animation
+  }
+}
+
 localStorage.setItem('username', 'admin')

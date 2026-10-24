@@ -1,4 +1,5 @@
 export const KARAOKE_CLOCK_DRIFT_RESET_MS = 140
+export const KARAOKE_ANIMATION_SYNC_DRIFT_MS = 80
 export const KARAOKE_HIGHLIGHT_LEAD_MS = 120
 export const KARAOKE_LINE_OPACITY_MS = 300
 export const KARAOKE_SCROLLBAR_VISIBLE_MS = 1400
@@ -34,96 +35,5 @@ export const TOKEN_ACTIVE_ALPHA = 1
 export const TOKEN_WIPE_EDGE_PCT = 12
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
-
-const cubicBezierCoordinate = (time, firstControl, secondControl) => {
-  const inverse = 1 - time
-  return (
-    3 * inverse * inverse * time * firstControl +
-    3 * inverse * time * time * secondControl +
-    time * time * time
-  )
-}
-
-const cubicBezierSlope = (time, firstControl, secondControl) => {
-  const inverse = 1 - time
-  return (
-    3 * inverse * inverse * firstControl +
-    6 * inverse * time * (secondControl - firstControl) +
-    3 * time * time * (1 - secondControl)
-  )
-}
-
-const solveCubicBezierTime = (progress, firstControl, secondControl) => {
-  let time = progress
-  for (let iteration = 0; iteration < 6; iteration += 1) {
-    const error =
-      cubicBezierCoordinate(time, firstControl, secondControl) - progress
-    if (Math.abs(error) < 0.000001) return time
-    const slope = cubicBezierSlope(time, firstControl, secondControl)
-    if (Math.abs(slope) < 0.000001) break
-    time = clamp(time - error / slope, 0, 1)
-  }
-
-  let lower = 0
-  let upper = 1
-  for (let iteration = 0; iteration < 12; iteration += 1) {
-    time = (lower + upper) / 2
-    if (cubicBezierCoordinate(time, firstControl, secondControl) < progress) {
-      lower = time
-    } else {
-      upper = time
-    }
-  }
-  return time
-}
-
-export const easeKaraokeMotion = (value) => {
-  const progress = clamp(value, 0, 1)
-  if (progress === 0 || progress === 1) return progress
-  return cubicBezierCoordinate(
-    solveCubicBezierTime(
-      progress,
-      KARAOKE_EASE_IN_OUT_X1,
-      KARAOKE_EASE_IN_OUT_X2,
-    ),
-    KARAOKE_EASE_IN_OUT_Y1,
-    KARAOKE_EASE_IN_OUT_Y2,
-  )
-}
-
-export const easeKaraokeOpacity = (value) => {
-  const progress = clamp(value, 0, 1)
-  if (progress === 0 || progress === 1) return progress
-  return cubicBezierCoordinate(
-    solveCubicBezierTime(
-      progress,
-      KARAOKE_OPACITY_EASING_X1,
-      KARAOKE_OPACITY_EASING_X2,
-    ),
-    KARAOKE_OPACITY_EASING_Y1,
-    KARAOKE_OPACITY_EASING_Y2,
-  )
-}
-
-// A letter lifts quickly to its crest, then settles to a resting offset instead
-// of creeping upward for the whole token. The settling tail is what keeps a long
-// word from looking frozen mid-rise.
-export const karaokeCharacterLiftAt = (value) => {
-  const progress = clamp(value, 0, 1)
-  if (progress <= 0) return 0
-  const settleRatio = KARAOKE_CHARACTER_SETTLE_EM / KARAOKE_CHARACTER_LIFT_EM
-  if (progress >= 1) return settleRatio
-  if (progress < KARAOKE_CHARACTER_CREST_RATIO) {
-    return easeKaraokeOpacity(progress / KARAOKE_CHARACTER_CREST_RATIO)
-  }
-  return (
-    1 -
-    (1 - settleRatio) *
-      easeKaraokeMotion(
-        (progress - KARAOKE_CHARACTER_CREST_RATIO) /
-          (1 - KARAOKE_CHARACTER_CREST_RATIO),
-      )
-  )
-}
 
 export const easeScrollOut = (value) => 1 - (1 - clamp(value, 0, 1)) ** 5
