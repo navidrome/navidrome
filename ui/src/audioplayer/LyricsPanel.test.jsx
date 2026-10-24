@@ -602,6 +602,11 @@ describe('<LyricsPanel />', () => {
     )
     expect(mainToken.style.backgroundImage).toBe('')
     expect(mainCharacters[0].style.backgroundImage).toBe('')
+    const sweepLayer = mainToken.querySelector(
+      '[data-lyrics-sweep-layer="true"]',
+    )
+    expect(sweepLayer.style.maskImage).toContain('linear-gradient')
+    expect(sweepLayer.style.backgroundImage).toBe('')
 
     rerenderPanel(propsAt(1.1))
 
