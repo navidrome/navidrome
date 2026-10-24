@@ -44,6 +44,9 @@ const EDGE_START_TO = 1.1
 const EDGE_END_FROM = 0
 const EDGE_END_TO = 1.2
 
+// mask-position is paint-bound rather than compositor-friendly, but it is the
+// only way to get a soft per-letter wipe; only the active line owns these
+// animations, and a Chromium trace measured roughly two paint passes per frame.
 export const buildLetterMaskSweep = (durationMs, letterCount, index) => {
   const span = letterCount + 2
   const positionAt = (edge) => {

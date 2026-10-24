@@ -65,9 +65,7 @@ export const animateScrollTop = ({
 
     const progress = clamp((performance.now() - startedAt) / durationMs, 0, 1)
     body.scrollTop =
-      progress >= 1
-        ? nextTargetTop
-        : startTop + distance * easeInOut(progress)
+      progress >= 1 ? nextTargetTop : startTop + distance * easeInOut(progress)
 
     if (progress < 1) {
       animation.frameId = window.requestAnimationFrame(step)

@@ -506,6 +506,32 @@ describe('useLyricsTimeline', () => {
     expect(animations[0].currentTime).toBe(70)
   })
 
+  it('creates token animations only when their line becomes active', () => {
+    const audio = createAudio({ currentTime: 0, paused: true })
+    const lateLines = [
+      {
+        start: 1000,
+        end: 2000,
+        tokens: [{ start: 1000, end: 2000, value: 'later' }],
+      },
+    ]
+    const { result } = renderTimeline({ audio, sourceLines: lateLines })
+    const tokenNode = registerToken(
+      result,
+      '0:late-word',
+      { start: 1000, end: 2000 },
+      'later',
+    )
+
+    expect(sweepAnimationOf(tokenNode)).toBeUndefined()
+    expect(characterAnimationsOf(tokenNode)[0]).toBeUndefined()
+
+    syncNow(result, 1500)
+
+    expect(sweepAnimationOf(tokenNode)).toBeDefined()
+    expect(characterAnimationsOf(tokenNode)[0]).toBeDefined()
+  })
+
   it('resumes on the sampled clock instead of replaying a finished wave', () => {
     let frameCallback = null
     let now = 0

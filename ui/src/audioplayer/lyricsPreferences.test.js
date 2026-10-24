@@ -49,14 +49,14 @@ describe('lyrics preferences', () => {
     expect(readLyricsOffset('song-1', 'netease')).toBe(0)
   })
 
-  it('defaults the letter wave on and remembers when it is turned off', () => {
-    expect(readLetterWavePreference()).toBe(true)
-
-    writeLetterWavePreference(false)
+  it('defaults the letter wave off and remembers when it is turned on', () => {
     expect(readLetterWavePreference()).toBe(false)
 
     writeLetterWavePreference(true)
     expect(readLetterWavePreference()).toBe(true)
+
+    writeLetterWavePreference(false)
+    expect(readLetterWavePreference()).toBe(false)
   })
 
   it('degrades silently when storage is unavailable', () => {
@@ -75,7 +75,7 @@ describe('lyrics preferences', () => {
       expect(() => writeLetterWavePreference(false)).not.toThrow()
       expect(readPreferredSource('song-1')).toBeNull()
       expect(readLyricsOffset('song-1', 'netease')).toBe(0)
-      expect(readLetterWavePreference()).toBe(true)
+      expect(readLetterWavePreference()).toBe(false)
     } finally {
       if (original) Object.defineProperty(window, 'localStorage', original)
     }

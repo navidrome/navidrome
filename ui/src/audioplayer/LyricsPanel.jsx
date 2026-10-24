@@ -18,6 +18,7 @@ import {
 import { KaraokeLineRow, KaraokeStackedLineRow } from './LyricsLineRows'
 import {
   KARAOKE_LINE_OPACITY_MS,
+  KARAOKE_LINE_BLUR_MS,
   KARAOKE_AUX_LINE_HEIGHT,
   KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_EASING,
@@ -37,7 +38,7 @@ import useLyricsTimeline from './useLyricsTimeline'
 
 const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
 const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_LINE_FOCUS_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, filter ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
+const KARAOKE_LINE_FOCUS_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, filter ${KARAOKE_LINE_BLUR_MS}ms ${KARAOKE_EASING}`
 
 // The active colour lives on one masked layer and the character lift on its
 // children, so glyphs never repaint while the sweep advances.
@@ -117,6 +118,14 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'column',
     alignItems: 'stretch',
     gap: theme.spacing(3),
+    animation: 'lyrics-content-in 150ms ease-out both',
+    '@media (prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
+  },
+  '@keyframes lyrics-content-in': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
   },
   lineGroup: {
     width: '100%',
@@ -153,6 +162,14 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: alpha(theme.palette.text.primary, 0.055),
       },
     },
+    '&[data-character-wave="true"] $waveCharacter': {
+      transform: 'translate3d(0, 0, 0)',
+      willChange: 'transform',
+      '@media (prefers-reduced-motion: reduce)': {
+        transform: 'none !important',
+        willChange: 'auto',
+      },
+    },
     '&[data-active="true"]': {
       '--lyrics-main-current-color':
         'var(--lyrics-main-active-color, var(--lyrics-main-idle-color, currentColor))',
@@ -174,13 +191,7 @@ const useStyles = makeStyles((theme) => ({
   waveCharacter: {
     display: 'inline-block',
     verticalAlign: 'baseline',
-    transform: 'translate3d(0, 0, 0)',
     transformOrigin: 'center bottom',
-    willChange: 'transform',
-    '@media (prefers-reduced-motion: reduce)': {
-      transform: 'none !important',
-      willChange: 'auto',
-    },
   },
   line: {
     display: 'inline-block',
@@ -500,6 +511,7 @@ const LyricsPanel = ({
       : (selectedSourceKey ?? 'auto')
   const lyricIdentity =
     trackId == null ? mainLyric : `${trackId}:${sourceSelection}`
+  const lyricContentKey = `${trackId ?? ''}:${sourceSelection}`
   const activeLineAnchorRatio = inline
     ? KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO
     : KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO
@@ -896,6 +908,7 @@ const LyricsPanel = ({
         }}
       >
         <div
+          key={lyricContentKey}
           className={classes.lines}
           data-scroll-end-padding={scrollEndPadding}
           style={

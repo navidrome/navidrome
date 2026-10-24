@@ -268,6 +268,15 @@ const useLyricsTimeline = ({
     })
   }, [])
 
+  const ensureLineAnimations = useCallback((lineIndex) => {
+    lineTokenKeysRef.current.get(lineIndex)?.forEach((key) => {
+      const record = tokenRecordsRef.current.get(key)
+      if (record && !record.animations) {
+        createTokenAnimations(record, mediaContextRef.current)
+      }
+    })
+  }, [])
+
   const updateLineTokens = useCallback((lineIndex, time, force = false) => {
     lineTokenKeysRef.current.get(lineIndex)?.forEach((key) => {
       const record = tokenRecordsRef.current.get(key)
@@ -360,6 +369,7 @@ const useLyricsTimeline = ({
       result.indexes.forEach((lineIndex) => {
         releaseIndexesRef.current.delete(lineIndex)
         setLineState(lineIndex, 'active')
+        ensureLineAnimations(lineIndex)
         updateLineTokens(lineIndex, current + lead, forceSeek)
       })
 
@@ -386,6 +396,7 @@ const useLyricsTimeline = ({
     },
     [
       audioInstance,
+      ensureLineAnimations,
       publishActiveState,
       publishScrollTarget,
       reducedMotion,
@@ -456,7 +467,6 @@ const useLyricsTimeline = ({
         rate: null,
         state: null,
       }
-      createTokenAnimations(record, mediaContextRef.current)
       tokenRecordsRef.current.set(key, record)
       if (!lineTokenKeysRef.current.has(record.lineIndex)) {
         lineTokenKeysRef.current.set(record.lineIndex, new Set())
@@ -464,6 +474,7 @@ const useLyricsTimeline = ({
       lineTokenKeysRef.current.get(record.lineIndex).add(key)
 
       if (cursorRef.current.active.has(record.lineIndex)) {
+        createTokenAnimations(record, mediaContextRef.current)
         setTokenPresentation(
           record,
           lastAppliedTimeRef.current +

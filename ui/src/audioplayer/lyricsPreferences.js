@@ -14,9 +14,9 @@ const LETTER_WAVE_STORAGE_KEY = 'lyrics.letterWave'
 
 export const readLetterWavePreference = () => {
   try {
-    return storage()?.getItem(LETTER_WAVE_STORAGE_KEY) !== 'false'
+    return storage()?.getItem(LETTER_WAVE_STORAGE_KEY) === 'true'
   } catch {
-    return true
+    return false
   }
 }
 

@@ -98,11 +98,11 @@ describe('usePlayerLyrics', () => {
     const { result } = renderPlayerLyrics()
     await showLyrics(result)
 
-    expect(result.current.desktopLyricsProps.letterWave).toBe(true)
-    act(() => result.current.desktopLyricsProps.onToggleLetterWave())
     expect(result.current.desktopLyricsProps.letterWave).toBe(false)
     act(() => result.current.desktopLyricsProps.onToggleLetterWave())
     expect(result.current.desktopLyricsProps.letterWave).toBe(true)
+    act(() => result.current.desktopLyricsProps.onToggleLetterWave())
+    expect(result.current.desktopLyricsProps.letterWave).toBe(false)
   })
 
   it('loads lyrics for a Subsonic queue entry without embedded lyrics', async () => {
