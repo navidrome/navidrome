@@ -16,12 +16,12 @@ import {
 import { KaraokeLineRow, KaraokeStackedLineRow } from './LyricsLineRows'
 import {
   KARAOKE_LINE_OPACITY_MS,
+  KARAOKE_LINE_BLUR_MS,
   KARAOKE_AUX_LINE_HEIGHT,
   KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
-  KARAOKE_EASING,
+  KARAOKE_FADE_EASING,
   KARAOKE_IDLE_LAYER_OPACITY,
   KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO,
-  KARAOKE_LINE_LIFT_PX,
   KARAOKE_LINE_MOTION_EASING,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
@@ -35,9 +35,9 @@ import {
 import { finiteTime } from './lyricsTimeline'
 import useLyricsTimeline from './useLyricsTimeline'
 
-const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_LINE_FOCUS_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, filter ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
+const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`
+const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`
+const KARAOKE_LINE_FOCUS_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}, filter ${KARAOKE_LINE_BLUR_MS}ms ${KARAOKE_FADE_EASING}`
 
 // The active colour lives on one masked layer and the character lift on its
 // children, so glyphs never repaint while the sweep advances.
@@ -116,6 +116,14 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: 'column',
     alignItems: 'stretch',
     gap: theme.spacing(3),
+    animation: 'lyrics-content-in 150ms ease-out both',
+    '@media (prefers-reduced-motion: reduce)': {
+      animation: 'none',
+    },
+  },
+  '@keyframes lyrics-content-in': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
   },
   lineGroup: {
     width: '100%',
@@ -130,16 +138,15 @@ const useStyles = makeStyles((theme) => ({
     transform: 'translateY(0)',
     transition: `background-color 150ms ${KARAOKE_LINE_MOTION_EASING}, ${KARAOKE_LINE_FOCUS_TRANSITION}`,
     '&[data-lifecycle="idle"]': {
-      opacity: 0.92,
-      filter: 'blur(0.9px)',
+      opacity: 1,
     },
     '&[data-lifecycle="past"]': {
       opacity: 0.74,
       filter: 'blur(1.4px)',
     },
     '&[data-lifecycle="release"]': {
-      opacity: 1,
-      filter: 'blur(0px)',
+      opacity: 0.74,
+      filter: 'blur(1.4px)',
     },
     '&[data-lifecycle="active"]': {
       opacity: 1,
@@ -153,11 +160,14 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: alpha(theme.palette.text.primary, 0.055),
       },
     },
-    '&[data-raised="true"][data-line-motion="character"][data-character-wave="false"] $line':
-      {
-        transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-        transition: KARAOKE_LAYER_OPACITY_TRANSITION,
+    '&[data-character-wave="true"] $waveCharacter': {
+      transform: 'translate3d(0, 0, 0)',
+      willChange: 'transform',
+      '@media (prefers-reduced-motion: reduce)': {
+        transform: 'none !important',
+        willChange: 'auto',
       },
+    },
     '&[data-active="true"]': {
       '--lyrics-main-current-color':
         'var(--lyrics-main-active-color, var(--lyrics-main-idle-color, currentColor))',
@@ -179,13 +189,7 @@ const useStyles = makeStyles((theme) => ({
   waveCharacter: {
     display: 'inline-block',
     verticalAlign: 'baseline',
-    transform: 'translate3d(0, 0, 0)',
     transformOrigin: 'center bottom',
-    willChange: 'transform',
-    '@media (prefers-reduced-motion: reduce)': {
-      transform: 'none !important',
-      willChange: 'auto',
-    },
   },
   line: {
     display: 'inline-block',
@@ -442,11 +446,13 @@ const usePrefersReducedMotion = () => {
 const LyricsPanel = ({
   visible = true,
   obscured = false,
+  trackId,
   mainLyric,
   translationLyric,
   pronunciationLyric,
   showTranslation,
   showPronunciation,
+  letterWave = false,
   audioInstance,
   inline = false,
   loading = false,
@@ -487,6 +493,7 @@ const LyricsPanel = ({
     () => hasUsableKaraokeTiming(mainLines),
     [mainLines],
   )
+  const lyricContentKey = `${trackId ?? ''}:${mainLyric?.lang || ''}`
   const {
     activeIndexes,
     primaryIndex: activeIndex,
@@ -790,6 +797,7 @@ const LyricsPanel = ({
         onTouchMove={markManualScrollIntent}
       >
         <div
+          key={lyricContentKey}
           className={classes.lines}
           data-scroll-end-padding={scrollEndPadding}
           style={
@@ -816,6 +824,7 @@ const LyricsPanel = ({
             const canSeekLine = Boolean(audioInstance && line.start != null)
             const isActiveLine = activeIndexSet.has(idx)
             const renderCharacterWave = Boolean(
+              letterWave &&
               !prefersReducedMotion &&
               hasTimedMainLines &&
               usesCharacterRise &&

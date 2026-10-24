@@ -7,15 +7,22 @@ import {
   useState,
 } from 'react'
 import {
-  KARAOKE_CHARACTER_LIFT_EM,
+  KARAOKE_ANIMATION_PRELOAD_MS,
+  KARAOKE_ANIMATION_SYNC_DRIFT_MS,
   KARAOKE_CHARACTER_WAVE_MS,
-  KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS,
-  KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
   KARAOKE_CLOCK_DRIFT_RESET_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_RELEASE_MS,
-  karaokeCharacterLiftAt,
 } from './lyricsKaraokeConstants'
+import {
+  GECKO_REDRAW_KEYFRAMES,
+  GECKO_REDRAW_MS,
+  buildCharacterWavePlan,
+  buildLetterMaskSweep,
+  characterAnimationKeyframes,
+  getTokenDurationMs,
+  isGecko,
+} from './lyricsKaraokeMotion'
 import {
   buildLyricsTimeline,
   getTimelineScrollTarget,
@@ -34,120 +41,165 @@ const mediaDurationMs = (audio) => {
   return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : null
 }
 
-const setProgress = (record, value) => {
-  const next = Math.max(0, Math.min(1, value))
-  if (record.progress != null && Math.abs(record.progress - next) < 0.001)
-    return
-  record.progress = next
-  record.node.style.setProperty('--lyrics-progress', String(next))
-}
+const GECKO = isGecko()
 
-const setCharacterTransform = (node, localProgress) => {
-  const lift = Math.max(
-    0,
-    Math.min(
-      KARAOKE_CHARACTER_LIFT_EM,
-      KARAOKE_CHARACTER_LIFT_EM * karaokeCharacterLiftAt(localProgress),
-    ),
-  )
-  if (lift < 0.00005) {
-    if (node.style.transform) node.style.removeProperty('transform')
-    return
+const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : 0)
+
+// The sweep and letter wave are native animations. The audio clock only nudges
+// them when they drift, so the browser interpolates every frame itself instead
+// of receiving a new inline transform per glyph per frame.
+const setAnimationsRate = (record, rate) => {
+  const next = Number(rate) > 0 ? Number(rate) : 1
+  if (record.rate === next) return
+  const now = nowMs()
+  if (record.rate != null && record.animationSyncedAt != null) {
+    record.animationTime =
+      (record.animationTime ?? 0) +
+      (now - record.animationSyncedAt) * record.rate
   }
-  const nextTransform = `translate3d(0, -${lift.toFixed(4)}em, 0)`
-  if (node.style.transform !== nextTransform) {
-    node.style.transform = nextTransform
-  }
-}
-
-const resetCharacterLift = (record) => {
-  const characters = record.characters || []
-  if (!characters.length) return
-  if (record.characterMotionState === 'future') return
-
-  characters.forEach(({ node }) => setCharacterTransform(node, 0))
-  record.characterMotionState = 'future'
-}
-
-const settleCharacterLift = (record) => {
-  const characters = record.characters || []
-  if (!characters.length) return
-  if (record.characterMotionState === 'settled') return
-
-  characters.forEach(({ node }) => setCharacterTransform(node, 1))
-  record.characterMotionState = 'settled'
-}
-
-const setCharacterLiftAtTime = (record, time) => {
-  const characters = record.characters || []
-  if (!characters.length) return
-
-  const current = Number(time)
-  if (!Number.isFinite(current) || current <= record.characterMotionStart) {
-    resetCharacterLift(record)
-    return
-  }
-  if (current >= record.characterMotionEnd) {
-    settleCharacterLift(record)
-    return
-  }
-
-  characters.forEach(({ node, start }) => {
-    const localProgress = Math.max(
-      0,
-      Math.min(1, (current - start) / KARAOKE_CHARACTER_WAVE_MS),
-    )
-    setCharacterTransform(node, localProgress)
+  record.animationSyncedAt = now
+  record.rate = next
+  record.animations?.forEach((animation) => {
+    animation.playbackRate = next
   })
-  record.characterMotionState = 'moving'
 }
 
-const getCharacterTiming = (window, characterCount) => {
-  const start = Number(window?.start)
-  const duration = Number(window?.end) - Number(window?.start)
-  const safeStart = Number.isFinite(start) ? start : 0
-  const safeDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0
-  const waveSpan =
-    characterCount <= 1
+const predictedAnimationTime = (record, now) => {
+  if (record.animationTime == null) return null
+  const elapsed =
+    record.animationSyncedAt == null
       ? 0
-      : Math.min(
-          safeDuration * KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
-          KARAOKE_CHARACTER_WAVE_SPAN_MAX_MS,
+      : (now - record.animationSyncedAt) * (record.rate ?? 1)
+  return record.animationTime + elapsed
+}
+
+const setAnimationsPlaying = (record, playing) => {
+  if (record.playing === playing) return
+  record.playing = playing
+  record.animations?.forEach((animation) => {
+    if (playing) animation.play()
+    else animation.pause()
+  })
+}
+
+const createTokenAnimations = (record, context) => {
+  const animations = []
+  const letterCount = record.characters.length
+  record.characters.forEach((node, index) => {
+    if (typeof node.animate !== 'function') return
+    const sweep = buildLetterMaskSweep(
+      record.animationDuration,
+      letterCount,
+      index,
+    )
+    animations.push(
+      node.animate(sweep.keyframes, {
+        duration: sweep.durationMs,
+        delay: sweep.delayMs,
+        easing: 'linear',
+        fill: 'both',
+      }),
+    )
+  })
+
+  if (record.waveEnabled) {
+    const plan = buildCharacterWavePlan(record.window, letterCount)
+    record.characters.forEach((node, index) => {
+      if (typeof node.animate !== 'function') return
+      const timing = plan[index]
+      animations.push(
+        node.animate(characterAnimationKeyframes, {
+          duration: timing.durationMs,
+          delay: timing.delayMs,
+          fill: 'both',
+        }),
+      )
+      if (GECKO) {
+        animations.push(
+          node.animate(GECKO_REDRAW_KEYFRAMES, {
+            duration: GECKO_REDRAW_MS,
+            iterations: Math.max(
+              1,
+              Math.ceil(timing.durationMs / GECKO_REDRAW_MS),
+            ),
+            delay: timing.delayMs,
+            composite: 'add',
+          }),
         )
-  return {
-    start: safeStart,
-    waveSpan,
-    end: safeStart + waveSpan + KARAOKE_CHARACTER_WAVE_MS,
+      }
+    })
+  }
+
+  record.animations = animations
+  record.animationTime = null
+  record.animationSyncedAt = null
+  record.playing = null
+  record.rate = null
+  setAnimationsRate(record, context.rate)
+}
+
+const syncTokenAnimations = (record, timeMs, context, force = false) => {
+  if (!record.animations?.length) return
+  setAnimationsRate(record, context.rate)
+  const now = nowMs()
+  const next = Math.max(0, Number(timeMs) || 0)
+  const predicted = predictedAnimationTime(record, now)
+  const drift = predicted == null ? Infinity : Math.abs(predicted - next)
+  const wasPlaying = record.playing
+  if (force || drift > KARAOKE_ANIMATION_SYNC_DRIFT_MS) {
+    record.animationTime = next
+    record.animationSyncedAt = now
+    record.animations.forEach((animation) => {
+      animation.currentTime = next
+    })
+  }
+  setAnimationsPlaying(record, context.playing)
+  if (context.playing && wasPlaying !== true) {
+    // play() rewinds an animation that already finished. Put every animation back
+    // on the sampled clock so resuming a paused song never replays a line.
+    record.animationTime = next
+    record.animationSyncedAt = now
+    record.animations.forEach((animation) => {
+      animation.currentTime = next
+    })
   }
 }
 
-const applyTokenState = (record, state, progress = 0) => {
+const applyTokenState = (record, state, context) => {
   record.state = state
   record.node.dataset.lyricsState = state
 
-  const isFuture = state === 'future'
-  const nextProgress = isFuture ? 0 : state === 'active' ? progress : 1
-  setProgress(record, nextProgress)
-
-  if (isFuture) {
-    resetCharacterLift(record)
-  } else if (state === 'release' || state === 'inactive-past') {
-    settleCharacterLift(record)
+  if (state === 'future') {
+    syncTokenAnimations(record, 0, { ...context, playing: false }, true)
+    return
+  }
+  if (state === 'release' || state === 'inactive-past') {
+    syncTokenAnimations(
+      record,
+      record.animationDuration + KARAOKE_CHARACTER_WAVE_MS,
+      { ...context, playing: false },
+      true,
+    )
   }
 }
 
-const resetToken = (record, state = 'future') => {
-  applyTokenState(record, state, state === 'future' ? 0 : 1)
+const resetToken = (record, state, context) => {
+  applyTokenState(record, state, context)
 }
 
-const setTokenPresentation = (record, time) => {
+const setTokenPresentation = (record, time, context, force = false) => {
   const progress = tokenProgressAt(record.window, time)
   const state =
     progress <= 0 ? 'future' : progress >= 1 ? 'completed' : 'active'
-  if (record.state !== state || state === 'active') {
-    applyTokenState(record, state, progress)
+  const changed = record.state !== state
+  if (changed || state === 'active') {
+    applyTokenState(record, state, context)
   }
-  setCharacterLiftAtTime(record, time)
+
+  if (state === 'active' || state === 'completed') {
+    const start = Number(record.window?.start) || 0
+    syncTokenAnimations(record, time - start, context, force || changed)
+  }
 }
 
 const canListenToMedia = (audio) =>
@@ -194,6 +246,7 @@ const useLyricsTimeline = ({
   const lastPublishedPrimaryIndexRef = useRef(-1)
   const lastScrollTargetRef = useRef(-1)
   const lastAppliedTimeRef = useRef(0)
+  const mediaContextRef = useRef({ playing: false, rate: 1 })
   const [activeState, setActiveState] = useState(() => ({
     indexes: [],
     primaryIndex: -1,
@@ -212,14 +265,45 @@ const useLyricsTimeline = ({
   const resetLineTokens = useCallback((lineIndex, state = 'future') => {
     lineTokenKeysRef.current.get(lineIndex)?.forEach((key) => {
       const record = tokenRecordsRef.current.get(key)
-      if (record) resetToken(record, state)
+      if (record) resetToken(record, state, mediaContextRef.current)
     })
   }, [])
 
-  const updateLineTokens = useCallback((lineIndex, time) => {
+  const ensureLineAnimations = useCallback((lineIndex) => {
     lineTokenKeysRef.current.get(lineIndex)?.forEach((key) => {
       const record = tokenRecordsRef.current.get(key)
-      if (record) setTokenPresentation(record, time)
+      if (record && !record.animations) {
+        createTokenAnimations(record, mediaContextRef.current)
+      }
+    })
+  }, [])
+
+  const preloadUpcomingLine = useCallback(
+    (current) => {
+      let nextIndex = -1
+      let nextStart = Infinity
+      timeline.windows.forEach((window) => {
+        if (!window.valid || window.start == null) return
+        const delta = window.start - current
+        if (
+          delta > 0 &&
+          delta <= KARAOKE_ANIMATION_PRELOAD_MS &&
+          window.start < nextStart
+        ) {
+          nextStart = window.start
+          nextIndex = window.lineIndex
+        }
+      })
+      if (nextIndex >= 0) ensureLineAnimations(nextIndex)
+    },
+    [ensureLineAnimations, timeline.windows],
+  )
+
+  const updateLineTokens = useCallback((lineIndex, time, force = false) => {
+    lineTokenKeysRef.current.get(lineIndex)?.forEach((key) => {
+      const record = tokenRecordsRef.current.get(key)
+      if (record)
+        setTokenPresentation(record, time, mediaContextRef.current, force)
     })
   }, [])
 
@@ -251,6 +335,16 @@ const useLyricsTimeline = ({
         ? Math.max(0, Number(time))
         : 0
       const lead = reducedMotion ? 0 : KARAOKE_HIGHLIGHT_LEAD_MS
+      const rate = Number(audioInstance?.playbackRate)
+      mediaContextRef.current = {
+        playing: Boolean(
+          audioInstance &&
+          !audioInstance.paused &&
+          (typeof document === 'undefined' ||
+            document.visibilityState === 'visible'),
+        ),
+        rate: Number.isFinite(rate) && rate > 0 ? rate : 1,
+      }
       lastAppliedTimeRef.current = current
       const cursor = cursorRef.current
       const previousIndexes = cursor.lastIndexes
@@ -297,7 +391,8 @@ const useLyricsTimeline = ({
       result.indexes.forEach((lineIndex) => {
         releaseIndexesRef.current.delete(lineIndex)
         setLineState(lineIndex, 'active')
-        updateLineTokens(lineIndex, current + lead)
+        ensureLineAnimations(lineIndex)
+        updateLineTokens(lineIndex, current + lead, forceSeek)
       })
 
       releaseIndexesRef.current.forEach((lineIndex) => {
@@ -316,12 +411,16 @@ const useLyricsTimeline = ({
       })
 
       if (result.changed || forceSeek) {
+        preloadUpcomingLine(current)
         publishActiveState(result.indexes, result.primaryIndex)
       }
       publishScrollTarget(current)
       return result
     },
     [
+      audioInstance,
+      ensureLineAnimations,
+      preloadUpcomingLine,
       publishActiveState,
       publishScrollTarget,
       reducedMotion,
@@ -363,6 +462,7 @@ const useLyricsTimeline = ({
       const existing = tokenRecordsRef.current.get(key)
       if (!node) {
         if (existing) {
+          existing.animations?.forEach((animation) => animation.cancel?.())
           tokenRecordsRef.current.delete(key)
           const keys = lineTokenKeysRef.current.get(existing.lineIndex)
           keys?.delete(key)
@@ -376,29 +476,19 @@ const useLyricsTimeline = ({
       const characterNodes = reducedMotion
         ? []
         : Array.from(node.querySelectorAll('[data-lyrics-character="true"]'))
-      const characterCount = characterNodes.length
-      const characterTiming = getCharacterTiming(
-        descriptor.window,
-        characterCount,
-      )
-      const characters = characterNodes.map((characterNode, index) => ({
-        node: characterNode,
-        start:
-          characterCount <= 1
-            ? characterTiming.start
-            : characterTiming.start +
-              (index / (characterCount - 1)) * characterTiming.waveSpan,
-      }))
       const record = {
         key,
         node,
         lineIndex: descriptor.lineIndex,
         window: descriptor.window,
-        characters,
-        characterMotionStart: characterTiming.start,
-        characterMotionEnd: characterTiming.end,
-        characterMotionState: null,
-        progress: null,
+        waveEnabled: descriptor.waveEnabled,
+        animationDuration: getTokenDurationMs(descriptor.window),
+        characters: characterNodes,
+        animations: null,
+        animationTime: null,
+        animationSyncedAt: null,
+        playing: null,
+        rate: null,
         state: null,
       }
       tokenRecordsRef.current.set(key, record)
@@ -408,10 +498,13 @@ const useLyricsTimeline = ({
       lineTokenKeysRef.current.get(record.lineIndex).add(key)
 
       if (cursorRef.current.active.has(record.lineIndex)) {
+        createTokenAnimations(record, mediaContextRef.current)
         setTokenPresentation(
           record,
           lastAppliedTimeRef.current +
             (reducedMotion ? 0 : KARAOKE_HIGHLIGHT_LEAD_MS),
+          mediaContextRef.current,
+          true,
         )
       } else {
         const lineWindow = timeline.windows[record.lineIndex]
@@ -420,13 +513,14 @@ const useLyricsTimeline = ({
           lastAppliedTimeRef.current >= lineWindow.end &&
           lastAppliedTimeRef.current < lineWindow.end + KARAOKE_LINE_RELEASE_MS
         ) {
-          resetToken(record, 'release')
+          resetToken(record, 'release', mediaContextRef.current)
         } else {
           resetToken(
             record,
             lineWindow?.valid && lastAppliedTimeRef.current >= lineWindow.end
               ? 'inactive-past'
               : 'future',
+            mediaContextRef.current,
           )
         }
       }
@@ -446,7 +540,9 @@ const useLyricsTimeline = ({
       node.dataset.highlightActive = 'false'
       node.dataset.raised = 'false'
     })
-    tokenRecordsRef.current.forEach((record) => resetToken(record))
+    tokenRecordsRef.current.forEach((record) =>
+      resetToken(record, 'future', mediaContextRef.current),
+    )
     cursorRef.current = new LyricTimelineCursor(timeline)
     releaseIndexesRef.current.clear()
     lastPublishedIndexesRef.current = []
@@ -564,6 +660,13 @@ const useLyricsTimeline = ({
 
     const visibility = () => {
       if (window.document.visibilityState !== 'visible') {
+        mediaContextRef.current = {
+          ...mediaContextRef.current,
+          playing: false,
+        }
+        tokenRecordsRef.current.forEach((record) =>
+          setAnimationsPlaying(record, false),
+        )
         stop()
         return
       }
@@ -593,6 +696,15 @@ const useLyricsTimeline = ({
     (time = mediaTimeMs(audioInstance), forceSeek = true) =>
       apply(time, forceSeek),
     [apply, audioInstance],
+  )
+
+  useEffect(
+    () => () => {
+      tokenRecordsRef.current.forEach((record) => {
+        record.animations?.forEach((animation) => animation.cancel?.())
+      })
+    },
+    [],
   )
 
   return {

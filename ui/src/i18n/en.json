@@ -718,6 +718,8 @@
     "hideLyricsTranslationText": "Hide translation",
     "showLyricsPronunciationText": "Show pronunciation",
     "hideLyricsPronunciationText": "Hide pronunciation",
+    "showLyricsLetterWaveText": "Turn on letter wave (experimental)",
+    "hideLyricsLetterWaveText": "Turn off letter wave (experimental)",
     "toggleMiniModeText": "Minimize",
     "destroyText": "Destroy",
     "downloadText": "Download",

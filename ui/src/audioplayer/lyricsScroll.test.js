@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { easeScrollOut } from './lyricsKaraokeConstants'
+import { easeInOut } from './lyricsKaraokeConstants'
 import {
   animateScrollTop,
   cancelScrollAnimation,
@@ -145,7 +145,7 @@ describe('lyrics scroll helpers', () => {
 
     animationFrames[1]()
 
-    expect(body.scrollTop).toBeCloseTo(500 * easeScrollOut(0.5), 5)
+    expect(body.scrollTop).toBeCloseTo(500 * easeInOut(0.5), 5)
     expect(scrollAnimationRef.current).toBe(secondAnimation)
     expect(animationFrames).toHaveLength(3)
 

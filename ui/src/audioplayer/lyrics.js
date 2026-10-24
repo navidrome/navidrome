@@ -242,6 +242,18 @@ const pickPreferredLyric = (lyrics, preferredLanguage) => {
 export const hasCueTiming = (structuredLyric) =>
   hasTimedCueLines(structuredLyric)
 
+// Word-level lyrics split tokens into letters for the animated wave. Cue lines
+// are the only source of those tokens.
+export const hasWordTiming = (lyric) =>
+  Array.isArray(lyric?.cueLine) &&
+  lyric.cueLine.some(
+    (cueLine) =>
+      Array.isArray(cueLine?.cue) &&
+      cueLine.cue.some(
+        (cue) => toTime(cue?.start) != null || toTime(cue?.end) != null,
+      ),
+  )
+
 export const hasStructuredLyricContent = (structuredLyric) =>
   Boolean(
     structuredLyric &&

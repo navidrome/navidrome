@@ -12,12 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LyricsPanel from './LyricsPanel'
 import { KaraokeLineRow } from './LyricsLineRows'
 import {
-  KARAOKE_EASING,
+  KARAOKE_FADE_EASING,
   KARAOKE_LINE_OPACITY_MS,
-  KARAOKE_CHARACTER_SETTLE_EM,
+  KARAOKE_CHARACTER_CREST_RATIO,
   KARAOKE_CHARACTER_WAVE_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
-  KARAOKE_LINE_LIFT_PX,
   KARAOKE_MANUAL_SCROLL_PAUSE_MS,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
   TOKEN_FUTURE_ALPHA,
@@ -397,6 +396,7 @@ describe('<LyricsPanel />', () => {
       },
       showPronunciation: true,
       showTranslation: true,
+      letterWave: true,
       audioInstance: { currentTime, paused: true },
     })
     const { rerenderPanel } = renderPanel(propsAt(0.5))
@@ -413,10 +413,10 @@ describe('<LyricsPanel />', () => {
       expect(row.style.opacity).toBe('')
     })
     expect(window.getComputedStyle(mainRow).transition).toContain(
-      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     expect(window.getComputedStyle(translationRow).transition).toContain(
-      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     pronunciation.forEach((token) =>
       expect(token).toHaveAttribute('data-timed', 'false'),
@@ -436,7 +436,7 @@ describe('<LyricsPanel />', () => {
     expect(lineGroup).toHaveAttribute('data-active', 'false')
     expect(window.getComputedStyle(translationRow).opacity).toBe('1')
     expect(window.getComputedStyle(translationRow).transition).toContain(
-      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     expect(window.getComputedStyle(translationRow).transform).toBe('')
   })
@@ -465,7 +465,7 @@ describe('<LyricsPanel />', () => {
     expect(activeStyle.transform).toBe('translateY(0)')
     expect(window.getComputedStyle(mainRow).transform).toBe('')
     expect(window.getComputedStyle(mainRow).transition).toContain(
-      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     expect(window.getComputedStyle(mainRow).transition).not.toContain(
       'transform',
@@ -502,6 +502,7 @@ describe('<LyricsPanel />', () => {
       },
       showPronunciation: true,
       showTranslation: true,
+      letterWave: true,
       audioInstance: { currentTime, paused: true },
     })
     const { rerenderPanel } = renderPanel(propsAt(settledFirstCharacterTime))
@@ -525,27 +526,33 @@ describe('<LyricsPanel />', () => {
     expect(group).toHaveAttribute('data-character-wave', 'true')
     expect(window.getComputedStyle(group).transform).toBe('translateY(0)')
     expect(window.getComputedStyle(translation).transform).toBe('')
+    const letterAnimation = (node) =>
+      (node.__animations || []).find((animation) =>
+        animation.keyframes.some((frame) => frame.transform != null),
+      )
+
     expect(mainCharacters).toHaveLength(4)
     expect(pronunciationCharacters).toHaveLength(4)
-    expect(mainCharacters[0].style.transform).toBe(
-      `translate3d(0, -${KARAOKE_CHARACTER_SETTLE_EM.toFixed(4)}em, 0)`,
+    expect(letterAnimation(mainCharacters[0]).keyframes[1].offset).toBe(
+      KARAOKE_CHARACTER_CREST_RATIO,
     )
     expect(window.getComputedStyle(mainCharacters[0]).willChange).toBe(
       'transform',
     )
-    expect(mainCharacters[3].style.transform).not.toBe(
-      mainCharacters[0].style.transform,
+    expect(letterAnimation(mainCharacters[3]).options.delay).toBeGreaterThan(
+      letterAnimation(mainCharacters[0]).options.delay,
     )
-    expect(pronunciationCharacters[0].style.transform).toBe(
-      mainCharacters[0].style.transform,
+    expect(letterAnimation(pronunciationCharacters[0]).options.delay).toBe(
+      letterAnimation(mainCharacters[0]).options.delay,
     )
     expect(mainToken.style.backgroundImage).toBe('')
     expect(mainCharacters[0].style.backgroundImage).toBe('')
     const sweepLayer = mainToken.querySelector(
       '[data-lyrics-sweep-layer="true"]',
     )
-    expect(sweepLayer.style.maskImage).toContain('linear-gradient')
-    expect(sweepLayer.style.backgroundImage).toBe('')
+    expect(sweepLayer.style.maskImage).toBe('')
+    expect(mainCharacters[0].style.maskImage).toContain('linear-gradient')
+    expect(mainCharacters[0].style.maskSize).not.toBe('')
 
     rerenderPanel(propsAt(1.1))
 
@@ -554,17 +561,19 @@ describe('<LyricsPanel />', () => {
     expect(group).toHaveAttribute('data-character-wave', 'false')
     expect(
       group.querySelectorAll('[data-lyrics-character="true"]'),
+    ).not.toHaveLength(0)
+    expect(
+      group
+        .querySelectorAll('[data-lyrics-character="true"]')[0]
+        .__animations.filter((animation) =>
+          animation.keyframes.some((frame) => frame.transform != null),
+        ),
     ).toHaveLength(0)
     expect(window.getComputedStyle(group).transform).toBe('translateY(0)')
     const releasedMainRow = screen
       .getAllByTestId('lyrics-token')[0]
       .closest('[data-tokenized]')
-    expect(window.getComputedStyle(releasedMainRow).transform).toBe(
-      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-    )
-    expect(window.getComputedStyle(releasedMainRow).transition).not.toContain(
-      'transform',
-    )
+    expect(window.getComputedStyle(releasedMainRow).transform).toBe('')
     expect(window.getComputedStyle(translation).transform).toBe('')
     const idleText = screen
       .getAllByTestId('lyrics-token')[0]
@@ -620,6 +629,7 @@ describe('<LyricsPanel />', () => {
       },
       showPronunciation: true,
       showTranslation: true,
+      letterWave: true,
       audioInstance: { currentTime, paused: true },
     })
     const { rerenderPanel } = renderPanel(propsAt(0.25))
@@ -674,16 +684,21 @@ describe('<LyricsPanel />', () => {
       mainLyric: lyricFor(),
       pronunciationLyric: lyricFor(true),
       showPronunciation: true,
+      letterWave: true,
       audioInstance: { currentTime, paused: true },
     })
     const { rerenderPanel } = renderPanel(propsAt(2.5))
 
+    const hasWaveAnimation = (group) =>
+      Array.from(group.querySelectorAll('[data-lyrics-character="true"]')).some(
+        (node) =>
+          (node.__animations || []).some((animation) =>
+            animation.keyframes.some((frame) => frame.transform != null),
+          ),
+      )
+
     let groups = screen.getAllByTestId('lyrics-line-group')
-    expect(
-      groups.map((group) =>
-        Boolean(group.querySelector('[data-lyrics-character="true"]')),
-      ),
-    ).toEqual([false, false, true, false])
+    expect(groups.map(hasWaveAnimation)).toEqual([false, false, true, false])
     expect(
       groups[2].querySelectorAll('[data-lyrics-wave-base="true"]'),
     ).not.toHaveLength(0)
@@ -699,12 +714,7 @@ describe('<LyricsPanel />', () => {
 
     rerenderPanel(propsAt(3.5))
     groups = screen.getAllByTestId('lyrics-line-group')
-    expect(
-      groups[2].querySelectorAll('[data-lyrics-character="true"]'),
-    ).toHaveLength(0)
-    expect(
-      groups[3].querySelectorAll('[data-lyrics-character="true"]'),
-    ).not.toHaveLength(0)
+    expect(groups.map(hasWaveAnimation)).toEqual([false, false, false, true])
   })
 
   it('renders unsynced lyrics as static selectable text', () => {

@@ -90,15 +90,19 @@ const LyricsSidebar = ({
   width = LYRICS_SIDEBAR_DEFAULT_WIDTH,
   maxWidth = LYRICS_SIDEBAR_MAX_WIDTH,
   onWidthChange = noop,
+  trackId,
   mainLyric,
   translationLyric,
   pronunciationLyric,
   showTranslation,
   showPronunciation,
+  letterWave = false,
   translationEnabled,
   pronunciationEnabled,
+  letterWaveEnabled,
   onToggleTranslation,
   onTogglePronunciation,
+  onToggleLetterWave,
   audioInstance,
   loading = false,
   error = null,
@@ -274,21 +278,26 @@ const LyricsSidebar = ({
         <LyricsLayerControls
           showPronunciation={showPronunciation}
           showTranslation={showTranslation}
+          letterWave={letterWave}
           pronunciationEnabled={pronunciationEnabled}
           translationEnabled={translationEnabled}
+          letterWaveEnabled={letterWaveEnabled}
           onTogglePronunciation={onTogglePronunciation}
           onToggleTranslation={onToggleTranslation}
+          onToggleLetterWave={onToggleLetterWave}
           labels={labels}
           testId="lyrics-sidebar-floating-controls"
         />
         <LyricsPanel
           visible={visible}
           obscured={obscuredByQueue}
+          trackId={trackId}
           mainLyric={mainLyric}
           translationLyric={translationLyric}
           pronunciationLyric={pronunciationLyric}
           showTranslation={showTranslation}
           showPronunciation={showPronunciation}
+          letterWave={letterWave}
           audioInstance={audioInstance}
           loading={loading}
           error={error}

@@ -10,9 +10,13 @@ import React, {
 } from 'react'
 import { buildSegmentsFromLine } from './lyricsSegments'
 import {
+  buildLetterMaskStyle,
+  isGecko,
+  sweepLayerStyle,
+} from './lyricsKaraokeMotion'
+import {
   TOKEN_ACTIVE_ALPHA,
   TOKEN_FUTURE_ALPHA,
-  TOKEN_WIPE_EDGE_PCT,
 } from './lyricsKaraokeConstants'
 import {
   buildEmphasisStyle,
@@ -20,6 +24,10 @@ import {
   parseColorRGB,
 } from './lyricsKaraokeStyles'
 import { resolveKaraokeTokenWindows } from './lyricsTimeline'
+
+// WebRender snaps 2D-translated glyphs to whole pixels; perspective rasterizes
+// them in local space instead.
+const GECKO_STYLE = isGecko() ? { perspective: '100000px' } : null
 
 const EMPHASIS_TONE = 0.7
 const EMPHASIS_PAINT_OVERHANG = '0.18em'
@@ -50,24 +58,6 @@ const waveTextRootStyle = {
 
 const waveTextBaseStyle = { display: 'inline' }
 
-// The painted copy carries the active colour on a single masked layer. The sweep
-// then repaints only that layer instead of every glyph, so the character lift can
-// stay on the compositor. --lyrics-progress runs 0 (hidden) to 1 (revealed).
-const sweepMaskImage = `linear-gradient(90deg, #000 0%, #000 calc(var(--lyrics-progress, 0) * ${
-  100 + TOKEN_WIPE_EDGE_PCT
-}% - ${TOKEN_WIPE_EDGE_PCT}%), transparent calc(var(--lyrics-progress, 0) * ${
-  100 + TOKEN_WIPE_EDGE_PCT
-}%))`
-
-const waveTextSweepStyle = {
-  display: 'block',
-  inset: 0,
-  position: 'absolute',
-  whiteSpace: 'nowrap',
-  maskImage: sweepMaskImage,
-  WebkitMaskImage: sweepMaskImage,
-}
-
 // Keeps timed token text readable by screen readers, since the painted
 // copies are aria-hidden and aria-label is ignored on role-less spans.
 const visuallyHiddenStyle = {
@@ -84,9 +74,19 @@ const visuallyHiddenStyle = {
 
 const renderWaveText = (
   text,
-  { enabled, letters, baseColor, activeColor, emphasized, className },
+  { enabled, baseColor, activeColor, emphasized, className },
 ) => {
   if (!enabled) return text
+
+  const graphemes = splitGraphemes(text)
+  let letterCount = 0
+  const parts = graphemes.map((character) => {
+    if (/^\s+$/.test(character)) return { character, letterIndex: -1 }
+    const letterIndex = letterCount
+    letterCount += 1
+    return { character, letterIndex }
+  })
+  const maskStyle = buildLetterMaskStyle(letterCount)
 
   return (
     <>
@@ -109,26 +109,28 @@ const renderWaveText = (
         <span
           data-lyrics-sweep-layer="true"
           style={{
-            ...waveTextSweepStyle,
+            ...sweepLayerStyle,
+            ...GECKO_STYLE,
             color: activeColor,
             WebkitTextFillColor: activeColor,
           }}
         >
-          {letters
-            ? splitGraphemes(text).map((character, index) => {
-                if (/^\s+$/.test(character)) return character
-                return (
-                  <span
-                    key={`${index}-${character}`}
-                    className={className}
-                    data-lyrics-character="true"
-                    style={emphasized ? emphasisPaintOverhangStyle : undefined}
-                  >
-                    {character}
-                  </span>
-                )
-              })
-            : text}
+          {parts.map(({ character, letterIndex }) => {
+            if (letterIndex < 0) return character
+            return (
+              <span
+                key={`${letterIndex}-${character}`}
+                className={className}
+                data-lyrics-character="true"
+                style={{
+                  ...maskStyle,
+                  ...(emphasized ? emphasisPaintOverhangStyle : undefined),
+                }}
+              >
+                {character}
+              </span>
+            )
+          })}
         </span>
       </span>
     </>
@@ -207,7 +209,7 @@ const useStableTokenRef = (registerToken) => {
     const cached = callbacksRef.current.get(key)
     if (cached?.signature === signature) return cached.callback
 
-    const descriptor = { lineIndex, window }
+    const descriptor = { lineIndex, window, waveEnabled }
     const callback = (node) => {
       registerTokenRef.current?.(key, descriptor, node)
     }
@@ -292,7 +294,6 @@ export const KaraokeLineRow = memo(
             >
               {renderWaveText(segment.text, {
                 enabled: Boolean(timedWindow),
-                letters: waveEnabled,
                 baseColor: tokenData.colors?.base,
                 activeColor: tokenData.colors?.active,
                 emphasized,
@@ -545,7 +546,6 @@ export const KaraokeStackedLineRow = memo(
             >
               {renderWaveText(segment.text, {
                 enabled: Boolean(segment.token),
-                letters: mainWaveEnabled,
                 baseColor: mainTokenData?.colors.base,
                 activeColor: mainTokenData?.colors.active,
                 emphasized: mainEmphasized,
@@ -624,7 +624,6 @@ export const KaraokeStackedLineRow = memo(
               >
                 {renderWaveText(segment.pronunciation, {
                   enabled: Boolean(pronunciationWindow),
-                  letters: pronunciationWaveEnabled,
                   baseColor: pronunciationTokenData?.colors.base,
                   activeColor: pronunciationTokenData?.colors.active,
                   emphasized: pronunciationEmphasized,

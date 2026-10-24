@@ -3,7 +3,7 @@ import {
   KARAOKE_SCROLL_ANIMATION_MS,
   KARAOKE_SCROLL_SETTLE_PX,
   clamp,
-  easeScrollOut,
+  easeInOut,
 } from './lyricsKaraokeConstants'
 
 export const cancelScrollAnimation = (scrollAnimationRef) => {
@@ -65,9 +65,7 @@ export const animateScrollTop = ({
 
     const progress = clamp((performance.now() - startedAt) / durationMs, 0, 1)
     body.scrollTop =
-      progress >= 1
-        ? nextTargetTop
-        : startTop + distance * easeScrollOut(progress)
+      progress >= 1 ? nextTargetTop : startTop + distance * easeInOut(progress)
 
     if (progress < 1) {
       animation.frameId = window.requestAnimationFrame(step)

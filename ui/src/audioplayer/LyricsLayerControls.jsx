@@ -3,6 +3,7 @@ import Tooltip from '@material-ui/core/Tooltip'
 import { alpha, makeStyles } from '@material-ui/core/styles'
 import RecordVoiceOverIcon from '@material-ui/icons/RecordVoiceOver'
 import TranslateIcon from '@material-ui/icons/Translate'
+import WavesIcon from '@material-ui/icons/Waves'
 import clsx from 'clsx'
 import React from 'react'
 
@@ -104,10 +105,13 @@ const LyricsLayerControls = ({
   placement = 'sidebar',
   showTranslation,
   showPronunciation,
+  letterWave = false,
   translationEnabled,
   pronunciationEnabled,
+  letterWaveEnabled = false,
   onToggleTranslation,
   onTogglePronunciation,
+  onToggleLetterWave = () => {},
   labels = {},
   testId = 'lyrics-layer-controls',
 }) => {
@@ -149,6 +153,20 @@ const LyricsLayerControls = ({
         testId="toggle-translation-button"
       >
         <TranslateIcon fontSize="small" />
+      </LayerButton>
+      <LayerButton
+        active={letterWave}
+        classes={classes}
+        disabled={!letterWaveEnabled}
+        label={
+          letterWave
+            ? labels.hideLetterWave || 'Turn off letter wave (experimental)'
+            : labels.showLetterWave || 'Turn on letter wave (experimental)'
+        }
+        onClick={onToggleLetterWave}
+        testId="toggle-letter-wave-button"
+      >
+        <WavesIcon fontSize="small" />
       </LayerButton>
     </div>
   )
