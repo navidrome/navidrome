@@ -138,8 +138,8 @@ const useStyles = makeStyles((theme) => ({
       filter: 'blur(1.4px)',
     },
     '&[data-lifecycle="release"]': {
-      opacity: 1,
-      filter: 'blur(0px)',
+      opacity: 0.74,
+      filter: 'blur(1.4px)',
     },
     '&[data-lifecycle="active"]': {
       opacity: 1,
