@@ -33,6 +33,7 @@ Object.defineProperty(window, 'localStorage', {
 if (typeof Element !== 'undefined' && !Element.prototype.animate) {
   Element.prototype.animate = function animate(keyframes, options) {
     const animation = {
+      owner: this,
       keyframes,
       options,
       currentTime: 0,
@@ -46,6 +47,9 @@ if (typeof Element !== 'undefined' && !Element.prototype.animate) {
       },
       cancel() {
         this.playState = 'idle'
+        const list = this.owner.__animations
+        const index = list.indexOf(this)
+        if (index >= 0) list.splice(index, 1)
       },
     }
     if (!this.__animations)

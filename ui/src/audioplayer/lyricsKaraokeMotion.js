@@ -7,44 +7,76 @@ import {
   KARAOKE_CHARACTER_WAVE_SPAN_RATIO,
   KARAOKE_EASING,
   KARAOKE_LINE_MOTION_EASING,
-  TOKEN_WIPE_EDGE_PCT,
 } from './lyricsKaraokeConstants'
 
-const sweepFadePct = TOKEN_WIPE_EDGE_PCT / 2
-// Sliding the mask one full edge-width past the token hides the trailing fade
-// as well as the text, otherwise the first token letters peek through at rest.
-export const sweepStartPct = 100 + TOKEN_WIPE_EDGE_PCT
+const letterMaskFadePct = 8
+const letterMaskImage = `linear-gradient(90deg, #000 0%, #000 50%, transparent calc(50% + ${letterMaskFadePct}%) 100%)`
 
-// The overlay is masked by a static gradient twice its width. Sliding that mask
-// from 112% (edge before the token) to 0% (edge past it) sweeps the reveal, and
-// the whole thing is one compositor-friendly property instead of per-glyph paint.
-const sweepMaskImage = `linear-gradient(90deg, #000 0%, #000 50%, transparent calc(50% + ${sweepFadePct}%) 100%)`
-
+// The overlay itself is unmasked. Each letter carries a mask sized in its own
+// letter widths, so a letter can be transform-composited while the sweep moves
+// across the word.
 export const sweepLayerStyle = {
   display: 'block',
   inset: 0,
   position: 'absolute',
   whiteSpace: 'nowrap',
-  maskImage: sweepMaskImage,
-  WebkitMaskImage: sweepMaskImage,
-  maskSize: '200% 100%',
-  WebkitMaskSize: '200% 100%',
-  maskRepeat: 'no-repeat',
-  WebkitMaskRepeat: 'no-repeat',
-  maskPosition: `${sweepStartPct}% 0%`,
-  WebkitMaskPosition: `${sweepStartPct}% 0%`,
 }
 
-export const sweepAnimationKeyframes = [
-  {
-    maskPosition: `${sweepStartPct}% 0%`,
-    WebkitMaskPosition: `${sweepStartPct}% 0%`,
-  },
-  {
+export const buildLetterMaskStyle = (letterCount) => {
+  const maskSize = `${(letterCount + 2) * 100}% 100%`
+  return {
+    maskImage: letterMaskImage,
+    WebkitMaskImage: letterMaskImage,
+    maskSize,
+    WebkitMaskSize: maskSize,
+    maskRepeat: 'no-repeat',
+    WebkitMaskRepeat: 'no-repeat',
     maskPosition: '0% 0%',
     WebkitMaskPosition: '0% 0%',
-  },
-]
+  }
+}
+
+// The visible edge runs slightly before the word to slightly past it, so each
+// letter only animates during the slice where that edge crosses its box. The
+// keyframes then hold the revealed position instead of sweeping past it.
+const EDGE_START_FROM = -0.1
+const EDGE_START_TO = 1.1
+const EDGE_END_FROM = 0
+const EDGE_END_TO = 1.2
+
+export const buildLetterMaskSweep = (durationMs, letterCount, index) => {
+  const span = letterCount + 2
+  const positionAt = (edge) => {
+    const q = (0.5 * span - (edge * letterCount - index)) / (span - 1)
+    return `${q * 100}% 0%`
+  }
+  const timeWhereStart = (value) =>
+    (durationMs * (value - EDGE_START_FROM)) / (EDGE_START_TO - EDGE_START_FROM)
+  const timeWhereEnd = (value) =>
+    (durationMs * (value - EDGE_END_FROM)) / (EDGE_END_TO - EDGE_END_FROM)
+  const startAt = (timeMs) =>
+    EDGE_START_FROM + ((EDGE_START_TO - EDGE_START_FROM) * timeMs) / durationMs
+
+  const beginMs = Math.min(
+    durationMs,
+    Math.max(0, timeWhereEnd(index / letterCount)),
+  )
+  const finishMs = Math.min(
+    durationMs,
+    Math.max(beginMs + 1, timeWhereStart((index + 1) / letterCount)),
+  )
+  const from = positionAt(startAt(beginMs))
+  const to = positionAt(startAt(finishMs))
+
+  return {
+    keyframes: [
+      { maskPosition: from, WebkitMaskPosition: from },
+      { maskPosition: to, WebkitMaskPosition: to },
+    ],
+    delayMs: beginMs,
+    durationMs: finishMs - beginMs,
+  }
+}
 
 export const characterAnimationKeyframes = [
   {

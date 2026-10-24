@@ -9,7 +9,7 @@ import React, {
   useState,
 } from 'react'
 import { buildSegmentsFromLine } from './lyricsSegments'
-import { sweepLayerStyle } from './lyricsKaraokeMotion'
+import { buildLetterMaskStyle, sweepLayerStyle } from './lyricsKaraokeMotion'
 import {
   TOKEN_ACTIVE_ALPHA,
   TOKEN_FUTURE_ALPHA,
@@ -66,9 +66,19 @@ const visuallyHiddenStyle = {
 
 const renderWaveText = (
   text,
-  { enabled, letters, baseColor, activeColor, emphasized, className },
+  { enabled, baseColor, activeColor, emphasized, className },
 ) => {
   if (!enabled) return text
+
+  const graphemes = splitGraphemes(text)
+  let letterCount = 0
+  const parts = graphemes.map((character) => {
+    if (/^\s+$/.test(character)) return { character, letterIndex: -1 }
+    const letterIndex = letterCount
+    letterCount += 1
+    return { character, letterIndex }
+  })
+  const maskStyle = buildLetterMaskStyle(letterCount)
 
   return (
     <>
@@ -96,21 +106,22 @@ const renderWaveText = (
             WebkitTextFillColor: activeColor,
           }}
         >
-          {letters
-            ? splitGraphemes(text).map((character, index) => {
-                if (/^\s+$/.test(character)) return character
-                return (
-                  <span
-                    key={`${index}-${character}`}
-                    className={className}
-                    data-lyrics-character="true"
-                    style={emphasized ? emphasisPaintOverhangStyle : undefined}
-                  >
-                    {character}
-                  </span>
-                )
-              })
-            : text}
+          {parts.map(({ character, letterIndex }) => {
+            if (letterIndex < 0) return character
+            return (
+              <span
+                key={`${letterIndex}-${character}`}
+                className={className}
+                data-lyrics-character="true"
+                style={{
+                  ...maskStyle,
+                  ...(emphasized ? emphasisPaintOverhangStyle : undefined),
+                }}
+              >
+                {character}
+              </span>
+            )
+          })}
         </span>
       </span>
     </>
@@ -189,7 +200,7 @@ const useStableTokenRef = (registerToken) => {
     const cached = callbacksRef.current.get(key)
     if (cached?.signature === signature) return cached.callback
 
-    const descriptor = { lineIndex, window }
+    const descriptor = { lineIndex, window, waveEnabled }
     const callback = (node) => {
       registerTokenRef.current?.(key, descriptor, node)
     }
@@ -274,7 +285,6 @@ export const KaraokeLineRow = memo(
             >
               {renderWaveText(segment.text, {
                 enabled: Boolean(timedWindow),
-                letters: waveEnabled,
                 baseColor: tokenData.colors?.base,
                 activeColor: tokenData.colors?.active,
                 emphasized,
@@ -527,7 +537,6 @@ export const KaraokeStackedLineRow = memo(
             >
               {renderWaveText(segment.text, {
                 enabled: Boolean(segment.token),
-                letters: mainWaveEnabled,
                 baseColor: mainTokenData?.colors.base,
                 activeColor: mainTokenData?.colors.active,
                 emphasized: mainEmphasized,
@@ -606,7 +615,6 @@ export const KaraokeStackedLineRow = memo(
               >
                 {renderWaveText(segment.pronunciation, {
                   enabled: Boolean(pronunciationWindow),
-                  letters: pronunciationWaveEnabled,
                   baseColor: pronunciationTokenData?.colors.base,
                   activeColor: pronunciationTokenData?.colors.active,
                   emphasized: pronunciationEmphasized,

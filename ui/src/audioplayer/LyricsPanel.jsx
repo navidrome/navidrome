@@ -23,7 +23,6 @@ import {
   KARAOKE_EASING,
   KARAOKE_IDLE_LAYER_OPACITY,
   KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO,
-  KARAOKE_LINE_LIFT_PX,
   KARAOKE_LINE_MOTION_EASING,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
 } from './lyricsKaraokeConstants'
@@ -132,8 +131,7 @@ const useStyles = makeStyles((theme) => ({
     transform: 'translateY(0)',
     transition: `background-color 150ms ${KARAOKE_LINE_MOTION_EASING}, ${KARAOKE_LINE_FOCUS_TRANSITION}`,
     '&[data-lifecycle="idle"]': {
-      opacity: 0.92,
-      filter: 'blur(0.9px)',
+      opacity: 1,
     },
     '&[data-lifecycle="past"]': {
       opacity: 0.74,
@@ -155,11 +153,6 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: alpha(theme.palette.text.primary, 0.055),
       },
     },
-    '&[data-active="false"][data-raised="true"][data-line-motion="character"][data-character-wave="false"] $line':
-      {
-        transform: `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-        transition: KARAOKE_LAYER_OPACITY_TRANSITION,
-      },
     '&[data-active="true"]': {
       '--lyrics-main-current-color':
         'var(--lyrics-main-active-color, var(--lyrics-main-idle-color, currentColor))',

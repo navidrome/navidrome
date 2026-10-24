@@ -5,7 +5,6 @@ export const KARAOKE_LINE_OPACITY_MS = 300
 export const KARAOKE_SCROLLBAR_VISIBLE_MS = 1400
 export const KARAOKE_SCROLL_ANIMATION_MS = 300
 export const KARAOKE_SCROLL_ANIMATION_MAX_MS = 560
-export const KARAOKE_LINE_LIFT_PX = 1.5
 const KARAOKE_EASE_IN_OUT_X1 = 0.77
 const KARAOKE_EASE_IN_OUT_Y1 = 0
 const KARAOKE_EASE_IN_OUT_X2 = 0.175
@@ -32,7 +31,6 @@ export const KARAOKE_AUX_LINE_HEIGHT = 1.18
 export const KARAOKE_EASING = `cubic-bezier(${KARAOKE_OPACITY_EASING_X1}, ${KARAOKE_OPACITY_EASING_Y1}, ${KARAOKE_OPACITY_EASING_X2}, ${KARAOKE_OPACITY_EASING_Y2})`
 export const TOKEN_FUTURE_ALPHA = 0.56
 export const TOKEN_ACTIVE_ALPHA = 1
-export const TOKEN_WIPE_EDGE_PCT = 12
 
 export const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 

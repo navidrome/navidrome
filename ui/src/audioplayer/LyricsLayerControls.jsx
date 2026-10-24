@@ -446,20 +446,6 @@ const LyricsLayerControls = ({
         <RecordVoiceOverIcon fontSize="small" />
       </LayerButton>
       <LayerButton
-        active={letterWave}
-        classes={classes}
-        disabled={!letterWaveEnabled}
-        label={
-          letterWave
-            ? labels.hideLetterWave || 'Turn off letter wave (experimental)'
-            : labels.showLetterWave || 'Turn on letter wave (experimental)'
-        }
-        onClick={onToggleLetterWave}
-        testId="toggle-letter-wave-button"
-      >
-        <WavesIcon fontSize="small" />
-      </LayerButton>
-      <LayerButton
         active={showTranslation}
         classes={classes}
         disabled={!translationEnabled}
@@ -472,6 +458,20 @@ const LyricsLayerControls = ({
         testId="toggle-translation-button"
       >
         <TranslateIcon fontSize="small" />
+      </LayerButton>
+      <LayerButton
+        active={letterWave}
+        classes={classes}
+        disabled={!letterWaveEnabled}
+        label={
+          letterWave
+            ? labels.hideLetterWave || 'Turn off letter wave (experimental)'
+            : labels.showLetterWave || 'Turn on letter wave (experimental)'
+        }
+        onClick={onToggleLetterWave}
+        testId="toggle-letter-wave-button"
+      >
+        <WavesIcon fontSize="small" />
       </LayerButton>
     </div>
   )

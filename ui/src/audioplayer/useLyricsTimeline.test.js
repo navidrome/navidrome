@@ -44,10 +44,9 @@ const lines = [
 const animationsOf = (node) => node?.__animations || []
 
 const sweepAnimationOf = (tokenNode) =>
-  animationsOf(
-    tokenNode.querySelector('[data-lyrics-sweep-layer="true"]'),
-  ).find((animation) =>
-    animation.keyframes.some((frame) => frame.maskPosition != null),
+  animationsOf(tokenNode.querySelector('[data-lyrics-character="true"]')).find(
+    (animation) =>
+      animation.keyframes.some((frame) => frame.maskPosition != null),
   )
 
 const characterAnimationsOf = (tokenNode) =>
@@ -75,7 +74,11 @@ const createTokenNode = (text = '') => {
 const registerToken = (result, key, window, text = '') => {
   const tokenNode = createTokenNode(text)
   act(() => {
-    result.current.registerToken(key, { lineIndex: 0, window }, tokenNode)
+    result.current.registerToken(
+      key,
+      { lineIndex: 0, window, waveEnabled: true },
+      tokenNode,
+    )
   })
   return tokenNode
 }
@@ -114,7 +117,7 @@ describe('useLyricsTimeline', () => {
     const audio = createAudio({ currentTime: 0.25, paused: true })
     const { result } = renderTimeline({ audio })
     const lineNode = document.createElement('div')
-    const tokenNode = createTokenNode()
+    const tokenNode = createTokenNode('first')
 
     act(() => {
       result.current.registerLine(0, lineNode)
@@ -424,13 +427,14 @@ describe('useLyricsTimeline', () => {
 
     const audio = createAudio({ currentTime: 0.2, paused: false })
     const { result } = renderTimeline({ audio })
-    const tokenNode = createTokenNode()
+    const tokenNode = createTokenNode('first')
     act(() => {
       result.current.registerToken(
         '0:monotonic',
         {
           lineIndex: 0,
           window: { start: 0, end: 1000 },
+          waveEnabled: true,
         },
         tokenNode,
       )
@@ -502,6 +506,43 @@ describe('useLyricsTimeline', () => {
     expect(animations[0].currentTime).toBe(70)
   })
 
+  it('resumes on the sampled clock instead of replaying a finished wave', () => {
+    let frameCallback = null
+    let now = 0
+    window.requestAnimationFrame.mockImplementation((callback) => {
+      frameCallback = callback
+      return 1
+    })
+    vi.spyOn(performance, 'now').mockImplementation(() => now)
+
+    const audio = createAudio({ currentTime: 0.25, paused: true })
+    const { result } = renderTimeline({ audio })
+    const tokenNode = registerToken(
+      result,
+      '0:resume-wave',
+      { start: 0, end: 2000 },
+      'first',
+    )
+    const animation = sweepAnimationOf(tokenNode)
+    expect(animation.currentTime).toBe(370)
+
+    // Browsers rewind a finished animation when play() is called again.
+    animation.play = function play() {
+      this.currentTime = 0
+      this.playState = 'running'
+    }
+
+    now = 0
+    act(() => {
+      audio.paused = false
+      audio.dispatchEvent(new Event('play'))
+    })
+    now = 100
+    act(() => frameCallback())
+
+    expect(animation.currentTime).toBe(470)
+  })
+
   it('pauses native animations while hidden and resyncs them on recovery', () => {
     let visibility = 'visible'
     vi.spyOn(window.document, 'visibilityState', 'get').mockImplementation(
@@ -566,13 +607,14 @@ describe('useLyricsTimeline', () => {
 
     const audio = createAudio({ currentTime: 0.8, paused: false })
     const { result } = renderTimeline({ audio })
-    const tokenNode = createTokenNode()
+    const tokenNode = createTokenNode('first')
     act(() => {
       result.current.registerToken(
         '0:backward-seek',
         {
           lineIndex: 0,
           window: { start: 0, end: 1000 },
+          waveEnabled: true,
         },
         tokenNode,
       )

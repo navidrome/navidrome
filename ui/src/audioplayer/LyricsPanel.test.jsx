@@ -19,7 +19,6 @@ import {
   KARAOKE_CHARACTER_CREST_RATIO,
   KARAOKE_CHARACTER_WAVE_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
-  KARAOKE_LINE_LIFT_PX,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
   TOKEN_FUTURE_ALPHA,
 } from './lyricsKaraokeConstants'
@@ -610,8 +609,9 @@ describe('<LyricsPanel />', () => {
     const sweepLayer = mainToken.querySelector(
       '[data-lyrics-sweep-layer="true"]',
     )
-    expect(sweepLayer.style.maskImage).toContain('linear-gradient')
-    expect(sweepLayer.style.backgroundImage).toBe('')
+    expect(sweepLayer.style.maskImage).toBe('')
+    expect(mainCharacters[0].style.maskImage).toContain('linear-gradient')
+    expect(mainCharacters[0].style.maskSize).not.toBe('')
 
     rerenderPanel(propsAt(1.1))
 
@@ -620,17 +620,19 @@ describe('<LyricsPanel />', () => {
     expect(group).toHaveAttribute('data-character-wave', 'false')
     expect(
       group.querySelectorAll('[data-lyrics-character="true"]'),
+    ).not.toHaveLength(0)
+    expect(
+      group
+        .querySelectorAll('[data-lyrics-character="true"]')[0]
+        .__animations.filter((animation) =>
+          animation.keyframes.some((frame) => frame.transform != null),
+        ),
     ).toHaveLength(0)
     expect(window.getComputedStyle(group).transform).toBe('translateY(0)')
     const releasedMainRow = screen
       .getAllByTestId('lyrics-token')[0]
       .closest('[data-tokenized]')
-    expect(window.getComputedStyle(releasedMainRow).transform).toBe(
-      `translateY(-${KARAOKE_LINE_LIFT_PX}px)`,
-    )
-    expect(window.getComputedStyle(releasedMainRow).transition).not.toContain(
-      'transform',
-    )
+    expect(window.getComputedStyle(releasedMainRow).transform).toBe('')
     expect(window.getComputedStyle(translation).transform).toBe('')
     const idleText = screen
       .getAllByTestId('lyrics-token')[0]
@@ -744,12 +746,16 @@ describe('<LyricsPanel />', () => {
     })
     const { rerenderPanel } = renderPanel(propsAt(2.5))
 
+    const hasWaveAnimation = (group) =>
+      Array.from(group.querySelectorAll('[data-lyrics-character="true"]')).some(
+        (node) =>
+          (node.__animations || []).some((animation) =>
+            animation.keyframes.some((frame) => frame.transform != null),
+          ),
+      )
+
     let groups = screen.getAllByTestId('lyrics-line-group')
-    expect(
-      groups.map((group) =>
-        Boolean(group.querySelector('[data-lyrics-character="true"]')),
-      ),
-    ).toEqual([false, false, true, false])
+    expect(groups.map(hasWaveAnimation)).toEqual([false, false, true, false])
     expect(
       groups[2].querySelectorAll('[data-lyrics-wave-base="true"]'),
     ).not.toHaveLength(0)
@@ -765,12 +771,7 @@ describe('<LyricsPanel />', () => {
 
     rerenderPanel(propsAt(3.5))
     groups = screen.getAllByTestId('lyrics-line-group')
-    expect(
-      groups[2].querySelectorAll('[data-lyrics-character="true"]'),
-    ).toHaveLength(0)
-    expect(
-      groups[3].querySelectorAll('[data-lyrics-character="true"]'),
-    ).not.toHaveLength(0)
+    expect(groups.map(hasWaveAnimation)).toEqual([false, false, false, true])
   })
 
   it('keeps the sweep while the letter wave is switched off', () => {
@@ -781,20 +782,25 @@ describe('<LyricsPanel />', () => {
     }
     const { rerenderPanel } = renderPanel(props)
 
+    const transformAnimations = (node) =>
+      (node.__animations || []).filter((animation) =>
+        animation.keyframes.some((frame) => frame.transform != null),
+      )
+
     const token = screen.getAllByTestId('lyrics-token')[0]
-    expect(
-      token.querySelectorAll('[data-lyrics-character="true"]'),
-    ).toHaveLength(0)
-    expect(
-      token.querySelector('[data-lyrics-sweep-layer="true"]'),
-    ).toBeInTheDocument()
+    const character = token.querySelector('[data-lyrics-character="true"]')
+    expect(character).toBeInTheDocument()
+    expect(character.style.maskImage).toContain('linear-gradient')
+    expect(transformAnimations(character)).toHaveLength(0)
 
     rerenderPanel({ ...props, letterWave: true })
 
     expect(
-      screen
-        .getAllByTestId('lyrics-token')[0]
-        .querySelectorAll('[data-lyrics-character="true"]'),
+      transformAnimations(
+        screen
+          .getAllByTestId('lyrics-token')[0]
+          .querySelector('[data-lyrics-character="true"]'),
+      ),
     ).not.toHaveLength(0)
   })
 

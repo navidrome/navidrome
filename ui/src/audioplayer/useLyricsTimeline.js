@@ -17,11 +17,10 @@ import {
   GECKO_REDRAW_KEYFRAMES,
   GECKO_REDRAW_MS,
   buildCharacterWavePlan,
+  buildLetterMaskSweep,
   characterAnimationKeyframes,
   getTokenDurationMs,
   isGecko,
-  sweepAnimationKeyframes,
-  sweepStartPct,
 } from './lyricsKaraokeMotion'
 import {
   buildLyricsTimeline,
@@ -48,13 +47,6 @@ const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : 0)
 // The sweep and letter wave are native animations. The audio clock only nudges
 // them when they drift, so the browser interpolates every frame itself instead
 // of receiving a new inline transform per glyph per frame.
-const setSweepFallback = (record, revealed) => {
-  if (record.animations?.length || !record.sweepNode) return
-  const value = revealed ? '0% 0%' : `${sweepStartPct}% 0%`
-  record.sweepNode.style.maskPosition = value
-  record.sweepNode.style.webkitMaskPosition = value
-}
-
 const setAnimationsRate = (record, rate) => {
   const next = Number(rate) > 0 ? Number(rate) : 1
   if (record.rate === next) return
@@ -91,41 +83,51 @@ const setAnimationsPlaying = (record, playing) => {
 
 const createTokenAnimations = (record, context) => {
   const animations = []
-  if (typeof record.sweepNode?.animate === 'function') {
+  const letterCount = record.characters.length
+  record.characters.forEach((node, index) => {
+    if (typeof node.animate !== 'function') return
+    const sweep = buildLetterMaskSweep(
+      record.animationDuration,
+      letterCount,
+      index,
+    )
     animations.push(
-      record.sweepNode.animate(sweepAnimationKeyframes, {
-        duration: record.animationDuration,
+      node.animate(sweep.keyframes, {
+        duration: sweep.durationMs,
+        delay: sweep.delayMs,
         easing: 'linear',
         fill: 'both',
       }),
     )
-  }
+  })
 
-  const plan = buildCharacterWavePlan(record.window, record.characters.length)
-  record.characters.forEach((node, index) => {
-    if (typeof node.animate !== 'function') return
-    const timing = plan[index]
-    animations.push(
-      node.animate(characterAnimationKeyframes, {
-        duration: timing.durationMs,
-        delay: timing.delayMs,
-        fill: 'both',
-      }),
-    )
-    if (GECKO) {
+  if (record.waveEnabled) {
+    const plan = buildCharacterWavePlan(record.window, letterCount)
+    record.characters.forEach((node, index) => {
+      if (typeof node.animate !== 'function') return
+      const timing = plan[index]
       animations.push(
-        node.animate(GECKO_REDRAW_KEYFRAMES, {
-          duration: GECKO_REDRAW_MS,
-          iterations: Math.max(
-            1,
-            Math.ceil(timing.durationMs / GECKO_REDRAW_MS),
-          ),
+        node.animate(characterAnimationKeyframes, {
+          duration: timing.durationMs,
           delay: timing.delayMs,
-          composite: 'add',
+          fill: 'both',
         }),
       )
-    }
-  })
+      if (GECKO) {
+        animations.push(
+          node.animate(GECKO_REDRAW_KEYFRAMES, {
+            duration: GECKO_REDRAW_MS,
+            iterations: Math.max(
+              1,
+              Math.ceil(timing.durationMs / GECKO_REDRAW_MS),
+            ),
+            delay: timing.delayMs,
+            composite: 'add',
+          }),
+        )
+      }
+    })
+  }
 
   record.animations = animations
   record.animationTime = null
@@ -136,15 +138,13 @@ const createTokenAnimations = (record, context) => {
 }
 
 const syncTokenAnimations = (record, timeMs, context, force = false) => {
-  if (!record.animations?.length) {
-    setSweepFallback(record, Number(timeMs) > 0)
-    return
-  }
+  if (!record.animations?.length) return
   setAnimationsRate(record, context.rate)
   const now = nowMs()
   const next = Math.max(0, Number(timeMs) || 0)
   const predicted = predictedAnimationTime(record, now)
   const drift = predicted == null ? Infinity : Math.abs(predicted - next)
+  const wasPlaying = record.playing
   if (force || drift > KARAOKE_ANIMATION_SYNC_DRIFT_MS) {
     record.animationTime = next
     record.animationSyncedAt = now
@@ -153,6 +153,15 @@ const syncTokenAnimations = (record, timeMs, context, force = false) => {
     })
   }
   setAnimationsPlaying(record, context.playing)
+  if (context.playing && wasPlaying !== true) {
+    // play() rewinds an animation that already finished. Put every animation back
+    // on the sampled clock so resuming a paused song never replays a line.
+    record.animationTime = next
+    record.animationSyncedAt = now
+    record.animations.forEach((animation) => {
+      animation.currentTime = next
+    })
+  }
 }
 
 const applyTokenState = (record, state, context) => {
@@ -170,9 +179,7 @@ const applyTokenState = (record, state, context) => {
       { ...context, playing: false },
       true,
     )
-    return
   }
-  setSweepFallback(record, true)
 }
 
 const resetToken = (record, state, context) => {
@@ -437,9 +444,9 @@ const useLyricsTimeline = ({
       const record = {
         key,
         node,
-        sweepNode: node.querySelector('[data-lyrics-sweep-layer="true"]'),
         lineIndex: descriptor.lineIndex,
         window: descriptor.window,
+        waveEnabled: descriptor.waveEnabled,
         animationDuration: getTokenDurationMs(descriptor.window),
         characters: characterNodes,
         animations: null,
