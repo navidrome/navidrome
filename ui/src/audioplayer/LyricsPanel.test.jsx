@@ -804,6 +804,22 @@ describe('<LyricsPanel />', () => {
     ).not.toHaveLength(0)
   })
 
+  it('remounts the lyric lines when the track changes', () => {
+    const props = {
+      trackId: 'song-1',
+      mainLyric: tokenizedMainLyric,
+      audioInstance: { currentTime: 0.25, paused: true },
+    }
+    const { rerenderPanel } = renderPanel(props)
+    const firstLines = document.querySelector('[data-scroll-end-padding]')
+
+    rerenderPanel({ ...props, trackId: 'song-2' })
+
+    expect(document.querySelector('[data-scroll-end-padding]')).not.toBe(
+      firstLines,
+    )
+  })
+
   it('renders unsynced lyrics as static selectable text', () => {
     renderPanel({
       mainLyric: {
