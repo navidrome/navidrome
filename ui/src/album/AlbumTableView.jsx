@@ -3,7 +3,6 @@ import {
   Datagrid,
   DatagridBody,
   DatagridRow,
-  DateField,
   NumberField,
   TextField,
   FunctionField,
@@ -13,6 +12,7 @@ import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
 import { makeStyles } from '@material-ui/core/styles'
 import { useDrag } from 'react-dnd'
 import {
+  DateField,
   ArtistLinkField,
   ArtworkAvatar,
   DurationField,
