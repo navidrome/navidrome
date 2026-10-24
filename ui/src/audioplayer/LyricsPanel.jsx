@@ -276,9 +276,6 @@ const useStyles = makeStyles((theme) => ({
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
-    '@supports (-moz-appearance: none)': {
-      '& [data-lyrics-sweep-layer]': { perspective: '100000px' },
-    },
     ...sweepLayerStyles,
   },
   token: {
@@ -286,11 +283,6 @@ const useStyles = makeStyles((theme) => ({
     overflowWrap: 'anywhere',
     fontKerning: 'none',
     fontVariantLigatures: 'none',
-    // WebRender snaps 2D-translated glyphs to whole pixels; perspective
-    // rasterizes them in local space instead.
-    '@supports (-moz-appearance: none)': {
-      '& [data-lyrics-sweep-layer]': { perspective: '100000px' },
-    },
     ...sweepLayerStyles,
   },
   voiceLanes: {

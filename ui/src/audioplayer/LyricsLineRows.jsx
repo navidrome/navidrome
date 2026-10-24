@@ -9,7 +9,11 @@ import React, {
   useState,
 } from 'react'
 import { buildSegmentsFromLine } from './lyricsSegments'
-import { buildLetterMaskStyle, sweepLayerStyle } from './lyricsKaraokeMotion'
+import {
+  buildLetterMaskStyle,
+  isGecko,
+  sweepLayerStyle,
+} from './lyricsKaraokeMotion'
 import {
   TOKEN_ACTIVE_ALPHA,
   TOKEN_FUTURE_ALPHA,
@@ -20,6 +24,10 @@ import {
   parseColorRGB,
 } from './lyricsKaraokeStyles'
 import { resolveKaraokeTokenWindows } from './lyricsTimeline'
+
+// WebRender snaps 2D-translated glyphs to whole pixels; perspective rasterizes
+// them in local space instead.
+const GECKO_STYLE = isGecko() ? { perspective: '100000px' } : null
 
 const EMPHASIS_TONE = 0.7
 const EMPHASIS_PAINT_OVERHANG = '0.18em'
@@ -102,6 +110,7 @@ const renderWaveText = (
           data-lyrics-sweep-layer="true"
           style={{
             ...sweepLayerStyle,
+            ...GECKO_STYLE,
             color: activeColor,
             WebkitTextFillColor: activeColor,
           }}
