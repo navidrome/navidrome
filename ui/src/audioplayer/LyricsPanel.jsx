@@ -38,6 +38,22 @@ import useLyricsTimeline from './useLyricsTimeline'
 
 const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
 const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
+const KARAOKE_LINE_FOCUS_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, filter ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
+
+// The active colour lives on one masked layer and the character lift on its
+// children, so glyphs never repaint while the sweep advances.
+const sweepLayerStyles = {
+  '& [data-lyrics-sweep-layer]': {
+    transition: KARAOKE_LAYER_OPACITY_TRANSITION,
+  },
+  '&[data-lyrics-state="future"] [data-lyrics-sweep-layer]': { opacity: 0 },
+  '&[data-lyrics-state="active"] [data-lyrics-sweep-layer]': { opacity: 1 },
+  '&[data-lyrics-state="completed"] [data-lyrics-sweep-layer]': { opacity: 1 },
+  '&[data-lyrics-state="release"] [data-lyrics-sweep-layer]': { opacity: 0 },
+  '&[data-lyrics-state="inactive-past"] [data-lyrics-sweep-layer]': {
+    opacity: 0,
+  },
+}
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -114,7 +130,23 @@ const useStyles = makeStyles((theme) => ({
       'var(--lyrics-translation-idle-color, currentColor)',
     '--lyrics-layer-opacity': KARAOKE_IDLE_LAYER_OPACITY,
     transform: 'translateY(0)',
-    transition: `background-color 150ms ${KARAOKE_LINE_MOTION_EASING}`,
+    transition: `background-color 150ms ${KARAOKE_LINE_MOTION_EASING}, ${KARAOKE_LINE_FOCUS_TRANSITION}`,
+    '&[data-lifecycle="idle"]': {
+      opacity: 0.92,
+      filter: 'blur(0.9px)',
+    },
+    '&[data-lifecycle="past"]': {
+      opacity: 0.74,
+      filter: 'blur(1.4px)',
+    },
+    '&[data-lifecycle="release"]': {
+      opacity: 1,
+      filter: 'blur(0px)',
+    },
+    '&[data-lifecycle="active"]': {
+      opacity: 1,
+      filter: 'none',
+    },
     '&[role="button"]:focus-visible': {
       backgroundColor: alpha(theme.palette.text.primary, 0.055),
     },
@@ -251,12 +283,14 @@ const useStyles = makeStyles((theme) => ({
     '@media (prefers-reduced-motion: reduce)': {
       transition: 'none',
     },
+    ...sweepLayerStyles,
   },
   token: {
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
     fontKerning: 'none',
     fontVariantLigatures: 'none',
+    ...sweepLayerStyles,
   },
   voiceLanes: {
     display: 'flex',

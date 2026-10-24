@@ -16,8 +16,8 @@ import {
   KARAOKE_EASING,
   KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_LINE_OPACITY_MS,
-  KARAOKE_CHARACTER_LIFT_PX,
-  KARAOKE_CHARACTER_RISE_MS,
+  KARAOKE_CHARACTER_SETTLE_EM,
+  KARAOKE_CHARACTER_WAVE_MS,
   KARAOKE_HIGHLIGHT_LEAD_MS,
   KARAOKE_LINE_LIFT_PX,
   KARAOKE_SCROLLBAR_VISIBLE_MS,
@@ -553,7 +553,7 @@ describe('<LyricsPanel />', () => {
 
   it('keeps word-timed translations still while main and pronunciation rise', () => {
     const settledFirstCharacterTime =
-      (KARAOKE_CHARACTER_RISE_MS - KARAOKE_HIGHLIGHT_LEAD_MS) / 1000
+      (KARAOKE_CHARACTER_WAVE_MS - KARAOKE_HIGHLIGHT_LEAD_MS) / 1000
     const propsAt = (currentTime) => ({
       mainLyric: tokenizedMainLyric,
       pronunciationLyric: tokenizedPronunciationLyric,
@@ -589,7 +589,7 @@ describe('<LyricsPanel />', () => {
     expect(mainCharacters).toHaveLength(4)
     expect(pronunciationCharacters).toHaveLength(4)
     expect(mainCharacters[0].style.transform).toBe(
-      `translate3d(0, -${KARAOKE_CHARACTER_LIFT_PX.toFixed(4)}px, 0)`,
+      `translate3d(0, -${KARAOKE_CHARACTER_SETTLE_EM.toFixed(4)}em, 0)`,
     )
     expect(window.getComputedStyle(mainCharacters[0]).willChange).toBe(
       'transform',
@@ -600,8 +600,8 @@ describe('<LyricsPanel />', () => {
     expect(pronunciationCharacters[0].style.transform).toBe(
       mainCharacters[0].style.transform,
     )
-    expect(mainToken.style.backgroundImage).toBe('none')
-    expect(mainCharacters[0].style.backgroundImage).toContain('linear-gradient')
+    expect(mainToken.style.backgroundImage).toBe('')
+    expect(mainCharacters[0].style.backgroundImage).toBe('')
 
     rerenderPanel(propsAt(1.1))
 
@@ -625,7 +625,9 @@ describe('<LyricsPanel />', () => {
     const idleText = screen
       .getAllByTestId('lyrics-token')[0]
       .querySelector('[data-lyrics-wave-text="true"]')
-    expect(idleText.style.backgroundImage).toContain('linear-gradient')
+    expect(
+      idleText.querySelector('[data-lyrics-wave-base="true"]').style.color,
+    ).toContain('rgba(')
   })
 
   it('keeps the translation still when a word-timed line wraps or unwraps', () => {
@@ -739,7 +741,7 @@ describe('<LyricsPanel />', () => {
       ),
     ).toEqual([false, false, true, false])
     expect(
-      groups[2].querySelectorAll('[data-lyrics-wave-measure="true"]'),
+      groups[2].querySelectorAll('[data-lyrics-wave-base="true"]'),
     ).not.toHaveLength(0)
     const activeRow = groups[2].querySelector('[data-wrapped]')
     const spacers = activeRow.querySelectorAll(
@@ -1365,16 +1367,12 @@ describe('<LyricsPanel />', () => {
       expect(translation).toBeInTheDocument()
       expect(window.getComputedStyle(translation).opacity).toBe('1')
       const token = screen.getAllByTestId('lyrics-token')[0]
-      const gradientNode = [token, ...token.querySelectorAll('*')].find(
-        (node) => node.style.backgroundImage.includes('linear-gradient'),
-      )
-      const gradientColors = Array.from(
-        gradientNode.style.backgroundImage.matchAll(/rgba?\([^)]+\)/g),
-        (match) => match[0],
-      )
-      const futureColor = gradientColors.at(-1)
+      const baseNode = token.querySelector('[data-lyrics-wave-base="true"]')
+      const activeNode = token.querySelector('[data-lyrics-sweep-layer="true"]')
+      const futureColor = baseNode.style.color
       const translationColors = translationColorsFor(accessibleTheme)
 
+      expect(activeNode.style.color).not.toBe(futureColor)
       expect(parseCssColor(futureColor).alpha).toBe(TOKEN_FUTURE_ALPHA)
       expect(contrastRatio(futureColor, background)).toBeGreaterThanOrEqual(4.5)
       expect(

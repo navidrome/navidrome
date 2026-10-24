@@ -1,8 +1,9 @@
 import {
+  KARAOKE_SCROLL_ANIMATION_MAX_MS,
   KARAOKE_SCROLL_ANIMATION_MS,
   KARAOKE_SCROLL_SETTLE_PX,
   clamp,
-  easeInOut,
+  easeScrollOut,
 } from './lyricsKaraokeConstants'
 
 export const cancelScrollAnimation = (scrollAnimationRef) => {
@@ -12,6 +13,15 @@ export const cancelScrollAnimation = (scrollAnimationRef) => {
   }
   scrollAnimationRef.current = null
 }
+
+// A short hop settles quickly; a long jump gets more time so the motion stays
+// readable instead of snapping the viewport.
+export const getScrollDurationMs = (distance) =>
+  clamp(
+    KARAOKE_SCROLL_ANIMATION_MS + Math.abs(distance) * 0.55,
+    KARAOKE_SCROLL_ANIMATION_MS,
+    KARAOKE_SCROLL_ANIMATION_MAX_MS,
+  )
 
 export const getScrollEndPadding = (body, anchorRatio) => {
   const height = Number(body?.clientHeight)
@@ -47,18 +57,17 @@ export const animateScrollTop = ({
     return
   }
 
+  const durationMs = getScrollDurationMs(distance)
   const startedAt = performance.now()
   const animation = { frameId: null }
   const step = () => {
     if (scrollAnimationRef.current !== animation) return
 
-    const progress = clamp(
-      (performance.now() - startedAt) / KARAOKE_SCROLL_ANIMATION_MS,
-      0,
-      1,
-    )
+    const progress = clamp((performance.now() - startedAt) / durationMs, 0, 1)
     body.scrollTop =
-      progress >= 1 ? nextTargetTop : startTop + distance * easeInOut(progress)
+      progress >= 1
+        ? nextTargetTop
+        : startTop + distance * easeScrollOut(progress)
 
     if (progress < 1) {
       animation.frameId = window.requestAnimationFrame(step)
