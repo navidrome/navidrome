@@ -83,7 +83,8 @@
         "mood": "Stimmung",
         "date": "Aufnahmedatum",
         "missing": "Fehlend",
-        "libraryName": "Bibliothek"
+        "libraryName": "Bibliothek",
+        "played": "Gespielt"
       },
       "actions": {
         "playAll": "Abspielen",
@@ -190,7 +191,30 @@
         "userName": "Nutzername",
         "lastSeen": "Zuletzt gesehen am",
         "reportRealPath": "Echten Pfad anzeigen",
-        "scrobbleEnabled": "An externe Dienstleister scrobblen"
+        "scrobbleEnabled": "An externe Dienstleister scrobblen",
+        "hasApiKey": "API Key"
+      },
+      "menuName": "Player & API keys",
+      "actions": {
+        "generateApiKey": "API Key generieren",
+        "regenerateApiKey": "Erneuern",
+        "revokeApiKey": "Zurückziehen",
+        "copyApiKey": "Kopieren"
+      },
+      "message": {
+        "apiKeyActive": "Dieser player hat einen API Key. Verwende diesen in der App als API Key, oder als passwort wenn die App keinen API Key unterstützt.",
+        "apiKeyNone": "Kein API Key. Generieren einen um deine App mit diesem Player zu verbinden.",
+        "apiKeyNoneOther": "Kein API Key.",
+        "apiKeyPending": "Kopiere diesen Key jetzt. Er wird gespeichert wenn du Speichern drückst, aber nicht mehr angezeigt.",
+        "apiKeyRevokePending": "Der API Key wird entfernt wenn du speicherst.",
+        "deleteWithKeyTitle": "Player entfernen",
+        "deleteWithKeyContent": "Dieser Player hat einen API Key. Apps die diese verwenden werden nicht mehr funktionieren."
+      },
+      "notifications": {
+        "apiKeyCopied": "API Key in die Zwischenablage kopiert"
+      },
+      "validation": {
+        "apiKeyFormat": "Ungültiges API Key Format"
       }
     },
     "transcoding": {
@@ -305,11 +329,14 @@
         "totalDuration": "Dauer",
         "defaultNewUsers": "Standard für neue Benutzer",
         "createdAt": "Erstellt",
-        "updatedAt": "Geändert"
+        "updatedAt": "Geändert",
+        "pidAlbum": "Album Gruppierung",
+        "pidTrack": "Song Gruppierung"
       },
       "sections": {
         "basic": "Basis Informationen",
-        "statistics": "Statistik"
+        "statistics": "Statistik",
+        "pid": "Persistente IDs"
       },
       "actions": {
         "scan": "Bibliothek scannen",
@@ -337,9 +364,19 @@
         "pathInvalid": "Bibliothekspfad ungültig"
       },
       "messages": {
-        "deleteConfirm": "Möchtest du diese Bibliothek wirklich löschen? Zugriffsrechte und Daten werden entfernt. ",
+        "deleteConfirm": "Möchtest du diese Bibliothek wirklich löschen? Zugriffsrechte und Daten werden entfernt.",
         "scanInProgress": "Bibliothek Scan läuft...",
-        "noLibrariesAssigned": "Keine Bibliotheken zugeordnet"
+        "noLibrariesAssigned": "Keine Bibliotheken zugeordnet",
+        "pidChangeTitle": "Persistente IDs ändern?",
+        "pidChangeConfirm": "Dies gruppiert Alben und Songs in dieser Bibliothek neu. Ein kompletter Scan dieser Bibliothek startet jetzt. Song Favoriten, Bewertungen und Anzahl Wiedergaben werden behalten. Album Favoriten und Bewertungen werden auf das neue Album übertragen wenn es zugeordnet werden konnte."
+      },
+      "pid": {
+        "global": "Globale Einstellung verwenden (%{value})",
+        "folder": "Ordner (Ein Album pro Ordner)",
+        "custom": "Benutzerdefiniert",
+        "spec": "PID Spezifikation",
+        "help": "Tags und Attribute, die ein Element identifizieren. Siehe die Dokumentation zur Syntax:",
+        "docs": "Persistente IDs"
       }
     },
     "plugin": {
@@ -398,7 +435,6 @@
         "invalidJson": "Konfiguration muss valides JSON sein"
       },
       "messages": {
-        "idHelp": "Die Plugin-ID, abgeleitet vom Dateinamen. Verwende diese, um in Konfigurationen (z. B. bei Agents) auf dieses Plugin zu verweisen.",
         "configHelp": "Plugin mit Schlüssel-Werte Paaren konfigurieren. Leer lassen wenn das Plugin keine Konfiguration benötigt.",
         "clickPermissions": "Berechtigung anklicken für mehr Details",
         "noConfig": "Keine Konfiguration gesetzt",
@@ -412,7 +448,8 @@
         "requiredHosts": "Benötigte Hosts",
         "configValidationError": "Validierung der Konfiguration fehlgeschlagen:",
         "schemaRenderError": "Rendern der Konfiguration fehlgeschlagen. Das Schema das Plugins ist eventuell nicht korrekt.",
-        "allowWriteAccessHelp": "Wenn aktiviert, kann das Plugin Dateien in den Bibliotheken verändern. Als Standard haben Plugins nur Lesezugriff."
+        "allowWriteAccessHelp": "Wenn aktiviert, kann das Plugin Dateien in den Bibliotheken verändern. Als Standard haben Plugins nur Lesezugriff.",
+        "idHelp": "Die Plugin-ID, abgeleitet vom Dateinamen. Verwende diese, um in Konfigurationen (z. B. bei Agents) auf dieses Plugin zu verweisen."
       },
       "placeholders": {
         "configKey": "Schlüssel",
@@ -609,7 +646,10 @@
     "coverRemoved": "Cover entfernt",
     "coverUploadError": "Fehler beim Hochladen des Covers",
     "coverRemoveError": "Fehler beim Entfernen des Covers",
-    "metadataRefreshStarted": "Aktualisiert Metadaten im Hintergrund"
+    "metadataRefreshStarted": "Aktualisiert Metadaten im Hintergrund",
+    "quickConnectApproved": "%{app} auf %{device} ist jetzt eingeloggt",
+    "quickConnectInvalidCode": "Code ungültig oder abgelaufen",
+    "quickConnectError": "Code nicht akzeptiert"
   },
   "menu": {
     "library": "Bibliothek",
@@ -632,7 +672,12 @@
           "album": "Album Gain verwenden",
           "track": "Titel Gain verwenden"
         },
-        "lastfmNotConfigured": "Last.fm API-Key ist nicht konfiguriert"
+        "lastfmNotConfigured": "Last.fm API-Key ist nicht konfiguriert",
+        "dateFormat": "",
+        "dateFormats": {
+          "language": "",
+          "browser": ""
+        }
       }
     },
     "albumList": "Alben",
@@ -645,7 +690,15 @@
       "selectLibraries": "Bibliotheken auswählen",
       "none": "Keine"
     },
-    "onlyFavourites": "Nur Favoriten anzeigen"
+    "onlyFavourites": "Nur Favoriten anzeigen",
+    "quickConnect": {
+      "name": "Quick Connect",
+      "code": "Code",
+      "help": "Gib den Code aus deiner Jellyfin App ein um dich in deinen Account einzuloggen",
+      "confirm": "%{app} %{version} auf %{device} in deinen Account enloggen?",
+      "continue": "Fortfahren",
+      "approve": "Akzeptieren"
+    }
   },
   "player": {
     "playListsText": "Warteschlange abspielen",
