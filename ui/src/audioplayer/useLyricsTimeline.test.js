@@ -510,23 +510,23 @@ describe('useLyricsTimeline', () => {
     const audio = createAudio({ currentTime: 0, paused: true })
     const lateLines = [
       {
-        start: 1000,
-        end: 2000,
-        tokens: [{ start: 1000, end: 2000, value: 'later' }],
+        start: 5000,
+        end: 6000,
+        tokens: [{ start: 5000, end: 6000, value: 'later' }],
       },
     ]
     const { result } = renderTimeline({ audio, sourceLines: lateLines })
     const tokenNode = registerToken(
       result,
       '0:late-word',
-      { start: 1000, end: 2000 },
+      { start: 5000, end: 6000 },
       'later',
     )
 
     expect(sweepAnimationOf(tokenNode)).toBeUndefined()
     expect(characterAnimationsOf(tokenNode)[0]).toBeUndefined()
 
-    syncNow(result, 1500)
+    syncNow(result, 5500)
 
     expect(sweepAnimationOf(tokenNode)).toBeDefined()
     expect(characterAnimationsOf(tokenNode)[0]).toBeDefined()

@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react'
 import {
+  KARAOKE_ANIMATION_PRELOAD_MS,
   KARAOKE_ANIMATION_SYNC_DRIFT_MS,
   KARAOKE_CHARACTER_WAVE_MS,
   KARAOKE_CLOCK_DRIFT_RESET_MS,
@@ -277,6 +278,27 @@ const useLyricsTimeline = ({
     })
   }, [])
 
+  const preloadUpcomingLine = useCallback(
+    (current) => {
+      let nextIndex = -1
+      let nextStart = Infinity
+      timeline.windows.forEach((window) => {
+        if (!window.valid || window.start == null) return
+        const delta = window.start - current
+        if (
+          delta > 0 &&
+          delta <= KARAOKE_ANIMATION_PRELOAD_MS &&
+          window.start < nextStart
+        ) {
+          nextStart = window.start
+          nextIndex = window.lineIndex
+        }
+      })
+      if (nextIndex >= 0) ensureLineAnimations(nextIndex)
+    },
+    [ensureLineAnimations, timeline.windows],
+  )
+
   const updateLineTokens = useCallback((lineIndex, time, force = false) => {
     lineTokenKeysRef.current.get(lineIndex)?.forEach((key) => {
       const record = tokenRecordsRef.current.get(key)
@@ -389,6 +411,7 @@ const useLyricsTimeline = ({
       })
 
       if (result.changed || forceSeek) {
+        preloadUpcomingLine(current)
         publishActiveState(result.indexes, result.primaryIndex)
       }
       publishScrollTarget(current)
@@ -397,6 +420,7 @@ const useLyricsTimeline = ({
     [
       audioInstance,
       ensureLineAnimations,
+      preloadUpcomingLine,
       publishActiveState,
       publishScrollTarget,
       reducedMotion,
