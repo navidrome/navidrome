@@ -13,7 +13,7 @@ import LyricsPanel from './LyricsPanel'
 import spotify from '../themes/spotify'
 import { KaraokeLineRow } from './LyricsLineRows'
 import {
-  KARAOKE_EASING,
+  KARAOKE_FADE_EASING,
   KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_LINE_OPACITY_MS,
   KARAOKE_CHARACTER_CREST_RATIO,
@@ -473,10 +473,10 @@ describe('<LyricsPanel />', () => {
       expect(row.style.opacity).toBe('')
     })
     expect(window.getComputedStyle(mainRow).transition).toContain(
-      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     expect(window.getComputedStyle(translationRow).transition).toContain(
-      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     pronunciation.forEach((token) =>
       expect(token).toHaveAttribute('data-timed', 'false'),
@@ -496,7 +496,7 @@ describe('<LyricsPanel />', () => {
     expect(lineGroup).toHaveAttribute('data-active', 'false')
     expect(window.getComputedStyle(translationRow).opacity).toBe('1')
     expect(window.getComputedStyle(translationRow).transition).toContain(
-      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     expect(window.getComputedStyle(translationRow).transform).toBe('')
   })
@@ -525,7 +525,7 @@ describe('<LyricsPanel />', () => {
     expect(activeStyle.transform).toBe('translateY(0)')
     expect(window.getComputedStyle(mainRow).transform).toBe('')
     expect(window.getComputedStyle(mainRow).transition).toContain(
-      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`,
+      `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`,
     )
     expect(window.getComputedStyle(mainRow).transition).not.toContain(
       'transform',

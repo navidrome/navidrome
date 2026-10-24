@@ -31,6 +31,9 @@ export const KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO = 0.42
 export const KARAOKE_SCROLL_SETTLE_PX = 2
 export const KARAOKE_AUX_LINE_HEIGHT = 1.18
 export const KARAOKE_EASING = `cubic-bezier(${KARAOKE_OPACITY_EASING_X1}, ${KARAOKE_OPACITY_EASING_Y1}, ${KARAOKE_OPACITY_EASING_X2}, ${KARAOKE_OPACITY_EASING_Y2})`
+// State fades start gently; the strong ease-out above makes a 240ms unhighlight
+// read as a snap on lines that are ending.
+export const KARAOKE_FADE_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)'
 export const TOKEN_FUTURE_ALPHA = 0.56
 export const TOKEN_ACTIVE_ALPHA = 1
 

@@ -21,7 +21,7 @@ import {
   KARAOKE_LINE_BLUR_MS,
   KARAOKE_AUX_LINE_HEIGHT,
   KARAOKE_DESKTOP_ACTIVE_LINE_ANCHOR_RATIO,
-  KARAOKE_EASING,
+  KARAOKE_FADE_EASING,
   KARAOKE_IDLE_LAYER_OPACITY,
   KARAOKE_INLINE_ACTIVE_LINE_ANCHOR_RATIO,
   KARAOKE_LINE_MOTION_EASING,
@@ -36,9 +36,9 @@ import {
 import { finiteTime, getTimelineScrollTarget } from './lyricsTimeline'
 import useLyricsTimeline from './useLyricsTimeline'
 
-const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}`
-const KARAOKE_LINE_FOCUS_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_EASING}, filter ${KARAOKE_LINE_BLUR_MS}ms ${KARAOKE_EASING}`
+const KARAOKE_LAYER_OPACITY_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`
+const KARAOKE_LAYER_COLOR_TRANSITION = `color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}, -webkit-text-fill-color ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}`
+const KARAOKE_LINE_FOCUS_TRANSITION = `opacity ${KARAOKE_LINE_OPACITY_MS}ms ${KARAOKE_FADE_EASING}, filter ${KARAOKE_LINE_BLUR_MS}ms ${KARAOKE_FADE_EASING}`
 
 // The active colour lives on one masked layer and the character lift on its
 // children, so glyphs never repaint while the sweep advances.
