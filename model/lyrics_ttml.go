@@ -530,38 +530,71 @@ func attachTrailingPunctuation(pieces []ttmlPiece) []ttmlPiece {
 	}
 
 	out := make([]ttmlPiece, 0, len(pieces))
+	var fold punctuationFold
+
+	finishFold := func() {
+		if fold.active {
+			fold.finish(&out[len(out)-1])
+		}
+	}
+
 	for _, piece := range pieces {
 		if piece.cue == nil && len(out) > 0 {
 			previous := &out[len(out)-1]
 			if previous.cue != nil && previous.raw != "" && !strings.HasSuffix(previous.raw, " ") {
-				moved, remaining := splitTrailingPunctuation(piece.raw, previous.raw)
+				if !fold.active {
+					fold.reset(previous.raw)
+				}
+				moved, remaining := fold.consume(piece.raw)
 				if moved != "" {
-					previous.raw += moved
 					piece.raw = remaining
 					if piece.raw == "" {
 						continue
 					}
 				}
+				finishFold()
+				out = append(out, piece)
+				continue
 			}
 		}
+
+		finishFold()
 		out = append(out, piece)
 	}
+	finishFold()
 	return out
 }
 
-func splitTrailingPunctuation(raw, previous string) (string, string) {
-	if raw == "" || previous == "" {
-		return "", raw
-	}
+// punctuationFold accumulates punctuation moved into the preceding timed cue.
+// It keeps the bracket balances and last byte as state so a run split across
+// many XML text tokens is processed linearly instead of rescanning and
+// re-copying the cue text for every token.
+type punctuationFold struct {
+	text strings.Builder
 
-	// The cue text built so far is scanned once to seed the bracket balances;
-	// each candidate rune is then decided in constant time. Re-scanning the
-	// growing prefix per rune made the fold quadratic in the run length.
-	openRound, closeRound := strings.Count(previous, "("), strings.Count(previous, ")")
-	openBracket, closeBracket := strings.Count(previous, "["), strings.Count(previous, "]")
-	openBrace, closeBrace := strings.Count(previous, "{"), strings.Count(previous, "}")
-	last := previous[len(previous)-1]
+	openRound, closeRound     int
+	openBracket, closeBracket int
+	openBrace, closeBrace     int
+	last                      byte
+	active                    bool
+}
 
+func (f *punctuationFold) reset(previous string) {
+	f.text.Reset()
+	f.text.Grow(len(previous))
+	f.text.WriteString(previous)
+
+	f.openRound = strings.Count(previous, "(")
+	f.closeRound = strings.Count(previous, ")")
+	f.openBracket = strings.Count(previous, "[")
+	f.closeBracket = strings.Count(previous, "]")
+	f.openBrace = strings.Count(previous, "{")
+	f.closeBrace = strings.Count(previous, "}")
+	f.last = previous[len(previous)-1]
+	f.active = true
+}
+
+func (f *punctuationFold) consume(raw string) (string, string) {
 	end := 0
 	for i, r := range raw {
 		switch r {
@@ -569,29 +602,41 @@ func splitTrailingPunctuation(raw, previous string) (string, string) {
 			// Attach when the cue still has an unmatched opening parenthesis, or
 			// when it does not already end with a closing one. The latter covers
 			// producers that put the opening parenthesis outside the timed span.
-			if closeRound >= openRound && last == ')' {
-				return raw[:end], raw[end:]
+			if f.closeRound >= f.openRound && f.last == ')' {
+				return f.commit(raw, end)
 			}
-			closeRound++
+			f.closeRound++
 		case ']':
-			if closeBracket >= openBracket && last == ']' {
-				return raw[:end], raw[end:]
+			if f.closeBracket >= f.openBracket && f.last == ']' {
+				return f.commit(raw, end)
 			}
-			closeBracket++
+			f.closeBracket++
 		case '}':
-			if closeBrace >= openBrace && last == '}' {
-				return raw[:end], raw[end:]
+			if f.closeBrace >= f.openBrace && f.last == '}' {
+				return f.commit(raw, end)
 			}
-			closeBrace++
+			f.closeBrace++
 		default:
 			if !strings.ContainsRune(trailingCuePunctuation, r) {
-				return raw[:end], raw[end:]
+				return f.commit(raw, end)
 			}
 		}
 		end = i + len(string(r))
-		last = raw[end-1]
+		f.last = raw[end-1]
+	}
+	return f.commit(raw, end)
+}
+
+func (f *punctuationFold) commit(raw string, end int) (string, string) {
+	if end > 0 {
+		f.text.WriteString(raw[:end])
 	}
 	return raw[:end], raw[end:]
+}
+
+func (f *punctuationFold) finish(previous *ttmlPiece) {
+	previous.raw = f.text.String()
+	f.active = false
 }
 
 func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []Cue) {
