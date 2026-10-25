@@ -218,7 +218,7 @@ additional:
     aliases: [ grp1, grouping, ©grp, wm/contentgroupdescription ]
     album: true
   key:
-    aliases: [ tkey, key, ----:com.apple.itunes:initialkey, wm/initialkey ]
+    aliases: [ tkey, key, initialkey, ----:com.apple.itunes:initialkey, wm/initialkey ]
   isrc:
     aliases: [ tsrc, isrc, ----:com.apple.itunes:isrc, wm/isrc ]
   language:
