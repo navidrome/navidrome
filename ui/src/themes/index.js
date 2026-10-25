@@ -36,11 +36,11 @@ export default {
 
   // New themes should be added here, in alphabetic order
   AmusicTheme,
-  CaveTheme,
   CatppuccinFrappeTheme,
   CatppuccinLatteTheme,
   CatppuccinMacchiatoTheme,
   CatppuccinMochaTheme,
+  CaveTheme,
   DraculaTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
