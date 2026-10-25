@@ -582,6 +582,27 @@ var _ = Describe("parseTTML", func() {
 			Expect(line.Cue[0].ByteStart).To(Equal(1))
 			Expect(line.Cue[0].ByteEnd).To(Equal(4))
 		})
+
+		It("should fold other immediately adjacent punctuation into the preceding cue", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body xml:lang="eng">
+    <div>
+      <p begin="1.000" end="2.000"><span begin="1.000" end="1.500">Ooh</span>]},.!?;:…</p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+
+			line := list[0].Line[0]
+			Expect(line.Value).To(Equal("Ooh]},.!?;:…"))
+			Expect(line.Cue).To(HaveLen(1))
+			Expect(line.Cue[0].Value).To(Equal("Ooh]},.!?;:…"))
+		})
 	})
 
 	Describe("Pronunciation with bare decimal end times", func() {

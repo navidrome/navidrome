@@ -554,34 +554,44 @@ func splitTrailingPunctuation(raw, previous string) (string, string) {
 		return "", raw
 	}
 
+	// The cue text built so far is scanned once to seed the bracket balances;
+	// each candidate rune is then decided in constant time. Re-scanning the
+	// growing prefix per rune made the fold quadratic in the run length.
+	openRound, closeRound := strings.Count(previous, "("), strings.Count(previous, ")")
+	openBracket, closeBracket := strings.Count(previous, "["), strings.Count(previous, "]")
+	openBrace, closeBrace := strings.Count(previous, "{"), strings.Count(previous, "}")
+	last := previous[len(previous)-1]
+
 	end := 0
 	for i, r := range raw {
-		if !strings.ContainsRune(trailingCuePunctuation, r) || !canAttachPunctuation(previous, r) {
-			break
+		switch r {
+		case ')':
+			// Attach when the cue still has an unmatched opening parenthesis, or
+			// when it does not already end with a closing one. The latter covers
+			// producers that put the opening parenthesis outside the timed span.
+			if closeRound >= openRound && last == ')' {
+				return raw[:end], raw[end:]
+			}
+			closeRound++
+		case ']':
+			if closeBracket >= openBracket && last == ']' {
+				return raw[:end], raw[end:]
+			}
+			closeBracket++
+		case '}':
+			if closeBrace >= openBrace && last == '}' {
+				return raw[:end], raw[end:]
+			}
+			closeBrace++
+		default:
+			if !strings.ContainsRune(trailingCuePunctuation, r) {
+				return raw[:end], raw[end:]
+			}
 		}
-		previous += string(r)
 		end = i + len(string(r))
+		last = raw[end-1]
 	}
 	return raw[:end], raw[end:]
-}
-
-func canAttachPunctuation(previous string, r rune) bool {
-	switch r {
-	case ')':
-		// Attach when the cue still has an unmatched opening parenthesis, or
-		// when it does not already end with a closing one. The latter covers
-		// producers that put the opening parenthesis outside the timed span.
-		return strings.Count(previous, "(") > strings.Count(previous, ")") ||
-			!strings.HasSuffix(previous, ")")
-	case ']':
-		return strings.Count(previous, "[") > strings.Count(previous, "]") ||
-			!strings.HasSuffix(previous, "]")
-	case '}':
-		return strings.Count(previous, "{") > strings.Count(previous, "}") ||
-			!strings.HasSuffix(previous, "}")
-	default:
-		return true
-	}
 }
 
 func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []Cue) {
