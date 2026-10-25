@@ -210,6 +210,9 @@ var _ = Describe("processor.acquire", func() {
 			// The file would still open, so the spec would pass on the decode error instead.
 			Skip("chmod does not restrict read access on Windows")
 		}
+		if os.Geteuid() == 0 {
+			Skip("root reads a 0o000 file (e.g. tests in a container)")
+		}
 		radioRepo := tests.CreateMockedRadioRepo()
 		radioRepo.Data = map[string]*model.Radio{}
 		ds.MockedRadio = radioRepo
