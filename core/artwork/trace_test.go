@@ -388,6 +388,9 @@ var _ = Describe("resolveArtist tracing", func() {
 		if runtime.GOOS == "windows" {
 			Skip("chmod does not restrict read access on Windows")
 		}
+		if os.Geteuid() == 0 {
+			Skip("root reads a 0o000 file (e.g. tests in a container)")
+		}
 		path := uploadPath("ar3_test.jpg")
 		Expect(os.Chmod(path, 0o000)).To(Succeed())
 		DeferCleanup(func() { _ = os.Chmod(path, 0o600) })
