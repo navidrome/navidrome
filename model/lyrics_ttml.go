@@ -517,7 +517,131 @@ func splitTTMLPiecesByBreak(pieces []ttmlPiece) [][]ttmlPiece {
 	return lines
 }
 
+const trailingCuePunctuation = ")]},.!?;:…"
+
+// attachTrailingPunctuation folds punctuation that immediately follows a timed
+// span into that span's cue. Some TTML producers emit background ad-libs as
+// `(Ooh` inside the timed span and the closing `)` after `</span>`. Without
+// this, the orphan `)` has no agent and later becomes a leading gap on another
+// voice's cue line (for example, `) eo ri...`).
+func attachTrailingPunctuation(pieces []ttmlPiece) []ttmlPiece {
+	if len(pieces) < 2 {
+		return pieces
+	}
+
+	out := make([]ttmlPiece, 0, len(pieces))
+	var fold punctuationFold
+
+	finishFold := func() {
+		if fold.active {
+			fold.finish(&out[len(out)-1])
+		}
+	}
+
+	for _, piece := range pieces {
+		if piece.cue == nil && len(out) > 0 {
+			previous := &out[len(out)-1]
+			if previous.cue != nil && previous.raw != "" &&
+				len(strings.TrimRightFunc(previous.raw, unicode.IsSpace)) == len(previous.raw) {
+				if !fold.active {
+					fold.reset(previous.raw)
+				}
+				moved, remaining := fold.consume(piece.raw)
+				if moved != "" {
+					piece.raw = remaining
+					if piece.raw == "" {
+						continue
+					}
+				}
+				finishFold()
+				out = append(out, piece)
+				continue
+			}
+		}
+
+		finishFold()
+		out = append(out, piece)
+	}
+	finishFold()
+	return out
+}
+
+// punctuationFold accumulates punctuation moved into the preceding timed cue.
+// It keeps the bracket balances and last byte as state so a run split across
+// many XML text tokens is processed linearly instead of rescanning and
+// re-copying the cue text for every token.
+type punctuationFold struct {
+	text strings.Builder
+
+	openRound, closeRound     int
+	openBracket, closeBracket int
+	openBrace, closeBrace     int
+	last                      byte
+	active                    bool
+}
+
+func (f *punctuationFold) reset(previous string) {
+	f.text.Reset()
+	f.text.Grow(len(previous))
+	f.text.WriteString(previous)
+
+	f.openRound = strings.Count(previous, "(")
+	f.closeRound = strings.Count(previous, ")")
+	f.openBracket = strings.Count(previous, "[")
+	f.closeBracket = strings.Count(previous, "]")
+	f.openBrace = strings.Count(previous, "{")
+	f.closeBrace = strings.Count(previous, "}")
+	f.last = previous[len(previous)-1]
+	f.active = true
+}
+
+func (f *punctuationFold) consume(raw string) (string, string) {
+	end := 0
+	for i, r := range raw {
+		switch r {
+		case ')':
+			// Attach when the cue still has an unmatched opening parenthesis, or
+			// when it does not already end with a closing one. The latter covers
+			// producers that put the opening parenthesis outside the timed span.
+			if f.closeRound >= f.openRound && f.last == ')' {
+				return f.commit(raw, end)
+			}
+			f.closeRound++
+		case ']':
+			if f.closeBracket >= f.openBracket && f.last == ']' {
+				return f.commit(raw, end)
+			}
+			f.closeBracket++
+		case '}':
+			if f.closeBrace >= f.openBrace && f.last == '}' {
+				return f.commit(raw, end)
+			}
+			f.closeBrace++
+		default:
+			if !strings.ContainsRune(trailingCuePunctuation, r) {
+				return f.commit(raw, end)
+			}
+		}
+		end = i + len(string(r))
+		f.last = raw[end-1]
+	}
+	return f.commit(raw, end)
+}
+
+func (f *punctuationFold) commit(raw string, end int) (string, string) {
+	if end > 0 {
+		f.text.WriteString(raw[:end])
+	}
+	return raw[:end], raw[end:]
+}
+
+func (f *punctuationFold) finish(previous *ttmlPiece) {
+	previous.raw = f.text.String()
+	f.active = false
+}
+
 func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []Cue) {
+	line = attachTrailingPunctuation(line)
 	rawLine := concatTTMLPieceRaw(line)
 	if rawLine == "" {
 		return "", nil

@@ -504,6 +504,149 @@ var _ = Describe("parseTTML", func() {
 		})
 	})
 
+	Describe("Trailing punctuation outside timed spans", func() {
+		It("should fold an orphan closing parenthesis into the preceding cue", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
+  <head>
+    <metadata>
+      <iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+        <transliterations>
+          <transliteration xml:lang="ko-Latn">
+            <text for="L1"><span ttm:role="x-bg"><span begin="9.111" end="9.500" xmlns="http://www.w3.org/ns/ttml">(Ooh</span>)</span> <span begin="9.400" end="10.096" xmlns="http://www.w3.org/ns/ttml">eo ri</span></text>
+          </transliteration>
+        </transliterations>
+      </iTunesMetadata>
+    </metadata>
+  </head>
+  <body xml:lang="ko">
+    <div>
+      <p begin="9.111" end="11.303" itunes:key="L1">어리숙하다</p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+
+			var pronunciation *Lyrics
+			for i := range list {
+				if list[i].Kind == "pronunciation" {
+					pronunciation = &list[i]
+					break
+				}
+			}
+			Expect(pronunciation).ToNot(BeNil())
+			Expect(pronunciation.Line).To(HaveLen(1))
+
+			line := pronunciation.Line[0]
+			Expect(line.Value).To(Equal("(Ooh) eo ri"))
+			Expect(line.Cue).To(HaveLen(2))
+			Expect(line.Cue[0]).To(Equal(Cue{
+				Start:     new(int64(9111)),
+				End:       new(int64(9500)),
+				Value:     "(Ooh)",
+				ByteStart: 0,
+				ByteEnd:   4,
+				AgentID:   "__nd_bg__|main",
+			}))
+			Expect(line.Cue[1]).To(Equal(Cue{
+				Start:     new(int64(9400)),
+				End:       new(int64(10096)),
+				Value:     "eo ri",
+				ByteStart: 6,
+				ByteEnd:   10,
+				AgentID:   "main",
+			}))
+		})
+
+		It("should attach a closing parenthesis when the opening is outside the timed span", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body xml:lang="eng">
+    <div>
+      <p begin="1.000" end="2.000">(<span begin="1.000" end="1.500">Ooh</span>)</p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+
+			line := list[0].Line[0]
+			Expect(line.Value).To(Equal("(Ooh)"))
+			Expect(line.Cue).To(HaveLen(1))
+			Expect(line.Cue[0].Value).To(Equal("Ooh)"))
+			Expect(line.Cue[0].ByteStart).To(Equal(1))
+			Expect(line.Cue[0].ByteEnd).To(Equal(4))
+		})
+
+		It("should fold other immediately adjacent punctuation into the preceding cue", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body xml:lang="eng">
+    <div>
+      <p begin="1.000" end="2.000"><span begin="1.000" end="1.500">Ooh</span>]},.!?;:…</p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+
+			line := list[0].Line[0]
+			Expect(line.Value).To(Equal("Ooh]},.!?;:…"))
+			Expect(line.Cue).To(HaveLen(1))
+			Expect(line.Cue[0].Value).To(Equal("Ooh]},.!?;:…"))
+		})
+
+		It("should fold punctuation split across adjacent text pieces", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body xml:lang="eng">
+    <div>
+      <p begin="1.000" end="2.000"><span begin="1.000" end="1.500">Ooh</span>.<!--c-->.<!--c-->.<!--c-->.</p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+
+			line := list[0].Line[0]
+			Expect(line.Value).To(Equal("Ooh...."))
+			Expect(line.Cue).To(HaveLen(1))
+			Expect(line.Cue[0].Value).To(Equal("Ooh...."))
+		})
+
+		It("should not fold punctuation after preserved Unicode whitespace", func() {
+			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml">
+  <body xml:lang="eng">
+    <div>
+      <p begin="1.000" end="2.000"><span begin="1.000" end="1.500">Ooh&#xA0;</span>)</p>
+    </div>
+  </body>
+</tt>`)
+
+			list, err := parseTTML("xxx", content)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line).To(HaveLen(1))
+
+			line := list[0].Line[0]
+			Expect(line.Value).To(Equal("Ooh\u00a0)"))
+			Expect(line.Cue).To(HaveLen(1))
+			Expect(line.Cue[0].Value).To(Equal("Ooh\u00a0"))
+		})
+	})
+
 	Describe("Pronunciation with bare decimal end times", func() {
 		It("should correctly parse bare decimal times in transliteration spans", func() {
 			content := []byte(`<?xml version="1.0" encoding="UTF-8"?>
