@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"context"
 	"encoding/json"
 	"path/filepath"
 
@@ -532,6 +533,59 @@ var _ = Describe("GetLyricsBySongId", func() {
 				},
 			},
 		}))
+	})
+
+	It("should not leak orphan trailing punctuation into another agent's cue line", func() {
+		ttml := []byte(`<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:itunes="http://music.apple.com/lyric-ttml-internal">
+  <head>
+    <metadata>
+      <iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal">
+        <transliterations>
+          <transliteration xml:lang="ko-Latn">
+            <text for="L1"><span ttm:role="x-bg"><span begin="9.111" end="9.500" xmlns="http://www.w3.org/ns/ttml">(Ooh</span>)</span> <span begin="9.400" end="10.096" xmlns="http://www.w3.org/ns/ttml">eo ri</span></text>
+          </transliteration>
+        </transliterations>
+      </iTunesMetadata>
+    </metadata>
+  </head>
+  <body xml:lang="ko">
+    <div>
+      <p begin="9.111" end="11.303" itunes:key="L1">어리숙하다</p>
+    </div>
+  </body>
+</tt>`)
+
+		list, err := model.ParseLyrics(context.Background(), ".ttml", "ko", ttml)
+		Expect(err).ToNot(HaveOccurred())
+
+		var pronunciation model.Lyrics
+		for _, lyrics := range list {
+			if lyrics.Kind == model.LyricKindPronunciation {
+				pronunciation = lyrics
+				break
+			}
+		}
+		Expect(pronunciation.Line).To(HaveLen(1))
+
+		cueLines := buildCueLines(pronunciation.Line[0], 0, newLyricAgents(pronunciation.Agents))
+		var mainLine, backgroundLine *responses.CueLine
+		for i := range cueLines {
+			switch cueLines[i].AgentID {
+			case "main":
+				mainLine = &cueLines[i]
+			case "__nd_bg__|main":
+				backgroundLine = &cueLines[i]
+			}
+		}
+
+		Expect(mainLine).ToNot(BeNil())
+		Expect(mainLine.Value).To(Equal("eo ri"))
+		Expect(mainLine.Cue).To(HaveLen(1))
+		Expect(mainLine.Cue[0].Value).To(Equal("eo ri"))
+
+		Expect(backgroundLine).ToNot(BeNil())
+		Expect(backgroundLine.Value).To(Equal("(Ooh)"))
 	})
 
 	It("should remap cue offsets for interleaved agent cue lines", func() {

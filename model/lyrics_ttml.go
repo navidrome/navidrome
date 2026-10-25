@@ -517,7 +517,75 @@ func splitTTMLPiecesByBreak(pieces []ttmlPiece) [][]ttmlPiece {
 	return lines
 }
 
+const trailingCuePunctuation = ")]},.!?;:…"
+
+// attachTrailingPunctuation folds punctuation that immediately follows a timed
+// span into that span's cue. Some TTML producers emit background ad-libs as
+// `(Ooh` inside the timed span and the closing `)` after `</span>`. Without
+// this, the orphan `)` has no agent and later becomes a leading gap on another
+// voice's cue line (for example, `) eo ri...`).
+func attachTrailingPunctuation(pieces []ttmlPiece) []ttmlPiece {
+	if len(pieces) < 2 {
+		return pieces
+	}
+
+	out := make([]ttmlPiece, 0, len(pieces))
+	for _, piece := range pieces {
+		if piece.cue == nil && len(out) > 0 {
+			previous := &out[len(out)-1]
+			if previous.cue != nil && previous.raw != "" && !strings.HasSuffix(previous.raw, " ") {
+				moved, remaining := splitTrailingPunctuation(piece.raw, previous.raw)
+				if moved != "" {
+					previous.raw += moved
+					piece.raw = remaining
+					if piece.raw == "" {
+						continue
+					}
+				}
+			}
+		}
+		out = append(out, piece)
+	}
+	return out
+}
+
+func splitTrailingPunctuation(raw, previous string) (string, string) {
+	if raw == "" || previous == "" {
+		return "", raw
+	}
+
+	end := 0
+	for i, r := range raw {
+		if !strings.ContainsRune(trailingCuePunctuation, r) || !canAttachPunctuation(previous, r) {
+			break
+		}
+		previous += string(r)
+		end = i + len(string(r))
+	}
+	return raw[:end], raw[end:]
+}
+
+func canAttachPunctuation(previous string, r rune) bool {
+	switch r {
+	case ')':
+		// Attach when the cue still has an unmatched opening parenthesis, or
+		// when it does not already end with a closing one. The latter covers
+		// producers that put the opening parenthesis outside the timed span.
+		return strings.Count(previous, "(") > strings.Count(previous, ")") ||
+			!strings.HasSuffix(previous, ")")
+	case ']':
+		return strings.Count(previous, "[") > strings.Count(previous, "]") ||
+			!strings.HasSuffix(previous, "]")
+	case '}':
+		return strings.Count(previous, "{") > strings.Count(previous, "}") ||
+			!strings.HasSuffix(previous, "}")
+	default:
+		return true
+	}
+}
+
 func finalizeTTMLLogicalLine(line []ttmlPiece) (string, []Cue) {
+	line = attachTrailingPunctuation(line)
 	rawLine := concatTTMLPieceRaw(line)
 	if rawLine == "" {
 		return "", nil
