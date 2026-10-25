@@ -541,7 +541,8 @@ func attachTrailingPunctuation(pieces []ttmlPiece) []ttmlPiece {
 	for _, piece := range pieces {
 		if piece.cue == nil && len(out) > 0 {
 			previous := &out[len(out)-1]
-			if previous.cue != nil && previous.raw != "" && !strings.HasSuffix(previous.raw, " ") {
+			if previous.cue != nil && previous.raw != "" &&
+				len(strings.TrimRightFunc(previous.raw, unicode.IsSpace)) == len(previous.raw) {
 				if !fold.active {
 					fold.reset(previous.raw)
 				}
