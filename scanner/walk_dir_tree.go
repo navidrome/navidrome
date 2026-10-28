@@ -167,6 +167,8 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 				continue
 			}
 			switch {
+			case strings.HasSuffix(entry.Name(), tagsSidecarSuffix):
+				folder.tagsFiles[strings.TrimSuffix(entry.Name(), tagsSidecarSuffix)] = entry
 			case model.IsAudioFile(name):
 				folder.audioFiles[entry.Name()] = entry
 			case model.IsValidPlaylist(name):

@@ -317,6 +317,50 @@ var _ = Describe("Metadata", func() {
 			})
 		})
 
+		Describe("WithTags", func() {
+			BeforeEach(func() {
+				props.Tags = model.RawTags{
+					"TALB": {"Album"},
+					"TIT2": {"Title"},
+					"TCON": {"Rock"},
+				}
+				md = metadata.New(filePath, props)
+			})
+
+			It("replaces tag instead of adding", func() {
+				md, _ = md.WithTags(map[string][]string{"album": {"Album (Deluxe)"}})
+				Expect(md.Strings(model.TagAlbum)).To(Equal([]string{"Album (Deluxe)"}))
+				Expect(md.String(model.TagTitle)).To(Equal("Title"))
+			})
+
+			It("accepts alias", func() {
+				md, _ = md.WithTags(map[string][]string{"talb": {"Album (Deluxe)"}})
+				Expect(md.Strings(model.TagAlbum)).To(Equal([]string{"Album (Deluxe)"}))
+			})
+
+			It("empty list removes a tag", func() {
+				md, _ = md.WithTags(map[string][]string{"genre": {}})
+				Expect(md.All()).ToNot(HaveKey(model.TagGenre))
+			})
+
+			It("ignores unknown tags", func() {
+				md, _ = md.WithTags(map[string][]string{"not a tag": {"value"}})
+				Expect(md.All()).To(Equal(metadata.New(filePath, props).All()))
+			})
+
+			It("rejects two names for the same tag", func() {
+				out, err := md.WithTags(map[string][]string{"album": {"Album (Deluxe)"}, "talb": {"Other"}, "title": {"New"}})
+				Expect(err).To(HaveOccurred())
+				Expect(out.All()).To(Equal(md.All()))
+			})
+
+			It("does not change the original", func() {
+				original := md
+				_, _ = md.WithTags(map[string][]string{"album": {"Album (Deluxe)"}})
+				Expect(original.String(model.TagAlbum)).To(Equal("Album"))
+			})
+		})
+
 		Describe("ReplayGain", func() {
 			createMF := func(tag, tagValue string) model.MediaFile {
 				props.Tags = model.RawTags{
