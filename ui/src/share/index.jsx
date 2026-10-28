@@ -1,7 +1,7 @@
 import ShareList from './ShareList'
 import { ShareEdit } from './ShareEdit'
-import ShareIcon from '@material-ui/icons/Share'
-import ShareOutlinedIcon from '@material-ui/icons/ShareOutlined'
+import ShareIcon from '@mui/icons-material/Share'
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined'
 import DynamicMenuIcon from '../layout/DynamicMenuIcon'
 import React from 'react'
 

@@ -4,7 +4,7 @@ import (
 	"image"
 	"image/color"
 
-	"github.com/navidrome/navidrome/core/artwork/dominant"
+	"github.com/SunilSherkhane/navidrome/core/artwork/dominant"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

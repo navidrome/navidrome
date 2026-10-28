@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model/criteria"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model/criteria"
 )
 
 type Playlist struct {

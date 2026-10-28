@@ -11,8 +11,8 @@ import {
   NullableBooleanInput,
   usePermissions,
 } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
-import FavoriteIcon from '@material-ui/icons/Favorite'
+import { useMediaQuery } from '@mui/material'
+import FavoriteIcon from '@mui/icons-material/Favorite'
 import {
   DateField,
   DurationField,
@@ -30,8 +30,8 @@ import {
   getStoredPerPage,
 } from '../common'
 import { useDispatch } from 'react-redux'
-import { makeStyles } from '@material-ui/core/styles'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import { useTheme } from '@mui/material/styles'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import { setTrack } from '../actions'
 import { SongListActions } from './SongListActions'
 import { AlbumLinkField } from './AlbumLinkField'
@@ -39,7 +39,8 @@ import { SongBulkActions, QualityInfo, useSelectedFields } from '../common'
 import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   contextHeader: {
     marginLeft: '3px',
     marginTop: '-2px',

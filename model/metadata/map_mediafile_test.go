@@ -5,9 +5,9 @@ import (
 	"os"
 	"sort"
 
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/metadata"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/metadata"
+	"github.com/SunilSherkhane/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

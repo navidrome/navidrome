@@ -13,11 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/core/artwork"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
 	_ "golang.org/x/image/webp"
 )
 

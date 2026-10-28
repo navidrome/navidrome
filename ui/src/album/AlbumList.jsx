@@ -16,8 +16,8 @@ import {
   useTranslate,
   useVersion,
 } from 'react-admin'
-import FavoriteIcon from '@material-ui/icons/Favorite'
-import { withWidth } from '@material-ui/core'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import { withWidth } from '@mui/material'
 import {
   List,
   Pagination,
@@ -40,7 +40,7 @@ import config from '../config'
 import AlbumInfo from './AlbumInfo'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { humanize } from 'inflection'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 
 // Waits for rows: restoring into an unrendered list leaves the page too short to hold the offset.
 const ScrollRestorer = ({ children, ...rest }) => {
@@ -49,7 +49,8 @@ const ScrollRestorer = ({ children, ...rest }) => {
   return cloneElement(children, rest)
 }
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   chip: {
     margin: 0,
     height: '24px',
@@ -216,7 +217,7 @@ const AlbumList = (props) => {
     .replace(/^\//, '')
 
   // Workaround to force album columns to appear the first time.
-  // See https://github.com/navidrome/navidrome/pull/923#issuecomment-833004842
+  // See https://github.com/SunilSherkhane/navidrome/pull/923#issuecomment-833004842
   // TODO: Find a better solution
   useSetToggleableFields(
     'album',

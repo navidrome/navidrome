@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/core/scrobbler"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/events"
+	"github.com/SunilSherkhane/navidrome/core/scrobbler"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/server/events"
 )
 
 // PluginMetadata holds the extracted information from a plugin file

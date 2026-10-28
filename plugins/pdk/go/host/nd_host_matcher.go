@@ -11,9 +11,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/navidrome/navidrome/plugins/pdk/go/types"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"
 
-	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
 )
 
 // MatchOptions represents the MatchOptions data structure.

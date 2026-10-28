@@ -5,7 +5,7 @@ import { useGetList } from 'react-admin'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // Mock Material-UI components
-vi.mock('@material-ui/core', () => ({
+vi.mock('@mui/material', () => ({
   List: ({ children }) => <div>{children}</div>,
   ListItem: ({ children, button, onClick, dense, className }) => (
     <button onClick={onClick} className={className}>
@@ -39,7 +39,7 @@ vi.mock('@material-ui/core', () => ({
 }))
 
 // Mock Material-UI icons
-vi.mock('@material-ui/icons', () => ({
+vi.mock('@mui/icons-material', () => ({
   CheckBox: () => <span>☑</span>,
   CheckBoxOutlineBlank: () => <span>☐</span>,
 }))

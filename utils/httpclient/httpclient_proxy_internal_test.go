@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/navidrome/navidrome/utils/netguard"
+	"github.com/SunilSherkhane/navidrome/utils/netguard"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

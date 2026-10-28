@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { Divider, makeStyles } from '@material-ui/core'
+import { Divider, makeStyles } from '@mui/material'
 import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
-import ViewListIcon from '@material-ui/icons/ViewList'
-import AlbumIcon from '@material-ui/icons/Album'
+import ViewListIcon from '@mui/icons-material/ViewList'
+import AlbumIcon from '@mui/icons-material/Album'
 import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
@@ -12,7 +12,8 @@ import PlaylistsSubMenu from './PlaylistsSubMenu'
 import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   root: {
     marginTop: theme.spacing(1),
     marginBottom: theme.spacing(1),

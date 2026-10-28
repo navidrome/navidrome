@@ -8,10 +8,10 @@ import (
 	"io/fs"
 	"path"
 
-	"github.com/navidrome/navidrome/core/storage"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/ioutils"
+	"github.com/SunilSherkhane/navidrome/core/storage"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils/ioutils"
 )
 
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {

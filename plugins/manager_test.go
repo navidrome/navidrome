@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/server/events"
+	"github.com/SunilSherkhane/navidrome/core/agents"
+	"github.com/SunilSherkhane/navidrome/server/events"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

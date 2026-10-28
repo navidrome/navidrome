@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/log"
 )
 
 // TranscodeOptions contains all parameters for a transcoding operation.

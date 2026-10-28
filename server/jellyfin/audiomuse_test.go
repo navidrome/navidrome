@@ -8,11 +8,11 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/sonic"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/core/sonic"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

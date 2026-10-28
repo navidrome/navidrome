@@ -14,14 +14,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/artwork/blurhash"
-	"github.com/navidrome/navidrome/core/artwork/dominant"
-	"github.com/navidrome/navidrome/core/artwork/thumbhash"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/core/agents"
+	"github.com/SunilSherkhane/navidrome/core/artwork/blurhash"
+	"github.com/SunilSherkhane/navidrome/core/artwork/dominant"
+	"github.com/SunilSherkhane/navidrome/core/artwork/thumbhash"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
 	xdraw "golang.org/x/image/draw"
 )
 

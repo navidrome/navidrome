@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/navidrome/navidrome/db"
+	"github.com/SunilSherkhane/navidrome/db"
 	"github.com/pressly/goose/v3"
 
 	. "github.com/onsi/ginkgo/v2"

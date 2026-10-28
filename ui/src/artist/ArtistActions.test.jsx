@@ -9,7 +9,7 @@ import {
   openDownloadMenu,
   DOWNLOAD_MENU_ARTIST,
 } from '../actions'
-import { ThemeProvider, createTheme } from '@material-ui/core/styles'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
 
 const mockDispatch = vi.fn()
 vi.mock('react-redux', () => ({ useDispatch: () => mockDispatch }))

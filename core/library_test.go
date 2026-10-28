@@ -9,14 +9,14 @@ import (
 	"sync"
 
 	"github.com/deluan/rest"
-	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
-	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/core"
-	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/events"
-	"github.com/navidrome/navidrome/tests"
+	_ "github.com/SunilSherkhane/navidrome/adapters/gotaglib" // Register taglib extractor
+	"github.com/SunilSherkhane/navidrome/conf/configtest"
+	"github.com/SunilSherkhane/navidrome/core"
+	_ "github.com/SunilSherkhane/navidrome/core/storage/local" // Register local storage
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/server/events"
+	"github.com/SunilSherkhane/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

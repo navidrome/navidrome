@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import config, { shareInfo } from '../config'
 import { shareCoverUrl, shareDownloadUrl, shareStreamUrl } from '../utils'
 
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 
 // How long the download button stays inert after a click. The browser needs a
 // moment to show its own download UI; until then the page looks unresponsive.

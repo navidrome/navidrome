@@ -1,7 +1,7 @@
 import React, { useCallback, useState, useMemo } from 'react'
 import PropTypes from 'prop-types'
-import { Card, CardContent, Typography, Box } from '@material-ui/core'
-import Alert from '@material-ui/lab/Alert'
+import { Card, CardContent, Typography, Box } from '@mui/material'
+import Alert from '@mui/lab/Alert'
 import { SchemaConfigEditor } from './SchemaConfigEditor'
 
 // Format error with field title and full path for nested fields

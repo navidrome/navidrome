@@ -2,8 +2,8 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import get from 'lodash/get'
 import { FieldTitle, useRecordContext } from 'react-admin'
-import { TextField } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { TextField } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { useDateLocale } from '../i18n/useDateLocale'
 import {
   formatBytes,
@@ -13,7 +13,8 @@ import {
 } from '../utils/formatters'
 import { isDateSet } from '../utils/validations'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     inputRoot: {
       '&:hover $notchedOutline': {

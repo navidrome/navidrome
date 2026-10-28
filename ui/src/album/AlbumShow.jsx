@@ -6,13 +6,14 @@ import {
   useShowController,
   Title as RaTitle,
 } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import AlbumSongs from './AlbumSongs'
 import AlbumDetails from './AlbumDetails'
 import AlbumActions from './AlbumActions'
 import { useResourceRefresh, useScrollRestoration, Title } from '../common'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     albumActions: {
       width: '100%',

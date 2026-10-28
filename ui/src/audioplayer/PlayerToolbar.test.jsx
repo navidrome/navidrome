@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { useGetOne } from 'react-admin'
 import { useDispatch } from 'react-redux'
 import { useToggleLove } from '../common'
@@ -8,8 +8,8 @@ import { openSaveQueueDialog } from '../actions'
 import PlayerToolbar from './PlayerToolbar'
 
 // Mock dependencies
-vi.mock('@material-ui/core', async () => {
-  const actual = await import('@material-ui/core')
+vi.mock('@mui/material', async () => {
+  const actual = await import('@mui/material')
   return {
     ...actual,
     useMediaQuery: vi.fn(),

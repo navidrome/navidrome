@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/criteria"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/conf/configtest"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/criteria"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

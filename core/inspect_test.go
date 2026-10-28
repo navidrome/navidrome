@@ -3,8 +3,8 @@ package core_test
 import (
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/core"
+	"github.com/SunilSherkhane/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

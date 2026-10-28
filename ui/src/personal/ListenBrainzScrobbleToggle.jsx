@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNotify, useTranslate } from 'react-admin'
-import { FormControl, FormControlLabel, Switch } from '@material-ui/core'
+import { FormControl, FormControlLabel, Switch } from '@mui/material'
 import { httpClient } from '../dataProvider'
 import { ListenBrainzTokenDialog } from '../dialogs'
 import { useDispatch } from 'react-redux'

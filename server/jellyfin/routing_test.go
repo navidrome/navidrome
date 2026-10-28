@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/SunilSherkhane/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

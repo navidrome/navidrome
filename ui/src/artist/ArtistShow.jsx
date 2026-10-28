@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useMediaQuery, withWidth } from '@material-ui/core'
+import { useMediaQuery, withWidth } from '@mui/material'
 import {
   useShowController,
   ShowContextProvider,
@@ -20,9 +20,10 @@ import {
   Title,
 } from '../common/index.js'
 import ArtistActions from './ArtistActions'
-import { makeStyles } from '@material-ui/core'
+import { useTheme } from '@mui/material'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     actions: {
       width: '100%',

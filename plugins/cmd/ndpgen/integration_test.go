@@ -357,16 +357,16 @@ type ArtistRef struct {
 
 go 1.25
 
-require github.com/navidrome/navidrome/plugins/pdk/go v0.0.0
+require github.com/SunilSherkhane/navidrome/plugins/pdk/go v0.0.0
 
-replace github.com/navidrome/navidrome/plugins/pdk/go => %s
+replace github.com/SunilSherkhane/navidrome/plugins/pdk/go => %s
 `, goDir)
 			Expect(os.WriteFile(filepath.Join(pluginDir, "go.mod"), []byte(goMod), 0600)).To(Succeed())
 
 			// Add a simple main function that imports and uses the ndpdk package
 			mainGo := `package main
 
-import ndpdk "github.com/navidrome/navidrome/plugins/pdk/go/host"
+import ndpdk "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
 
 func main() {}
 

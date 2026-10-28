@@ -9,8 +9,8 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/fatih/structs"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/db"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/db"
 )
 
 type PostMapper interface {

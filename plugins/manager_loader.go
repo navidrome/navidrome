@@ -9,10 +9,10 @@ import (
 	"time"
 
 	extism "github.com/extism/go-sdk"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/scheduler"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/plugins/host"
+	"github.com/SunilSherkhane/navidrome/scheduler"
 	"github.com/tetratelabs/wazero"
 	"golang.org/x/sync/errgroup"
 )

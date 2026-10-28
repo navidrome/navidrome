@@ -8,7 +8,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-} from '@material-ui/core'
+} from '@mui/material'
 import { closeExtendedInfoDialog } from '../actions'
 
 const ExpandInfoDialog = ({ title, content }) => {

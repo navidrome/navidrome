@@ -8,8 +8,8 @@
 package metadata
 
 import (
-	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
-	"github.com/navidrome/navidrome/plugins/pdk/go/types"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"
 )
 
 // Deprecated: use types.ArtistRef.

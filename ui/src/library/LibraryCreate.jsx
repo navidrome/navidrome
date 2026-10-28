@@ -11,12 +11,13 @@ import {
   useNotify,
   useRedirect,
 } from 'react-admin'
-import { Typography } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Typography } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { Title } from '../common'
 import { PIDInputs } from './PIDInput'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   spaced: { marginTop: theme.spacing(3) },
 }))
 

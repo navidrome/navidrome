@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import DeleteIcon from '@material-ui/icons/Delete'
-import { makeStyles, alpha } from '@material-ui/core/styles'
+import DeleteIcon from '@mui/icons-material/Delete'
+import { makeStyles, alpha } from '@mui/material/styles'
 import clsx from 'clsx'
 import {
   Button,
@@ -11,7 +11,8 @@ import {
   useUnselectAll,
 } from 'react-admin'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     deleteButton: {
       color: theme.palette.error.main,

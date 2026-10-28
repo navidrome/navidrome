@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/plugins/capabilities"
-	"github.com/navidrome/navidrome/plugins/types"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/core/agents"
+	"github.com/SunilSherkhane/navidrome/plugins/capabilities"
+	"github.com/SunilSherkhane/navidrome/plugins/types"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 )
 
 // CapabilityMetadataAgent indicates the plugin can provide artist/album metadata.

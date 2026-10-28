@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/navidrome/navidrome/api"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/api"
+	"github.com/SunilSherkhane/navidrome/consts"
 )
 
 func (rt *Router) GetServerInfo(ctx context.Context, _ GetServerInfoRequestObject) (GetServerInfoResponseObject, error) {

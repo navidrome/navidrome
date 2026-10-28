@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Layout as RALayout, toggleSidebar } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import { HotKeys } from 'react-hotkeys'
 import Menu from './Menu'
 import AppBar from './AppBar'
@@ -9,7 +9,8 @@ import Notification from './Notification'
 import useCurrentTheme from '../themes/useCurrentTheme'
 import { useSearchRefocus } from '../common'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   root: { paddingBottom: (props) => (props.addPadding ? '80px' : 0) },
 })
 

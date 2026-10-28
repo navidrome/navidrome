@@ -14,7 +14,7 @@ import {
   DialogTitle,
   TextField,
   CircularProgress,
-} from '@material-ui/core'
+} from '@mui/material'
 import { closeSaveQueueDialog } from '../actions'
 import { useHistory } from 'react-router-dom'
 

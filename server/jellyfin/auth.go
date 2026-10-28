@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/SunilSherkhane/navidrome/core/auth"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/server/jellyfin/dto"
 )
 
 type authenticateByNameRequest struct {

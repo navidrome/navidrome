@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import PropTypes from 'prop-types'
 import { JsonForms } from '@jsonforms/react'
 import { materialRenderers, materialCells } from '@jsonforms/material-renderers'
-import { makeStyles } from '@material-ui/core/styles'
-import { Typography } from '@material-ui/core'
+import { useTheme } from '@mui/material/styles'
+import { Typography } from '@mui/material'
 import { useTranslate } from 'react-admin'
 import Ajv from 'ajv'
 import {
@@ -64,7 +64,8 @@ ajv.compile = (schema) => {
   return wrapped
 }
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {
       '& .MuiFormControl-root': {

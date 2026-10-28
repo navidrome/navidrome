@@ -2,15 +2,16 @@ import React, { useCallback } from 'react'
 import { useDispatch } from 'react-redux'
 import { useGetOne } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
-import IconButton from '@material-ui/core/IconButton'
-import { useMediaQuery } from '@material-ui/core'
+import IconButton from '@mui/material/IconButton'
+import { useMediaQuery } from '@mui/material'
 import { RiSaveLine } from 'react-icons/ri'
 import { LoveButton, useToggleLove } from '../common'
 import { openSaveQueueDialog } from '../actions'
 import { keyMap } from '../hotkeys'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   toolbar: {
     display: 'flex',
     alignItems: 'center',

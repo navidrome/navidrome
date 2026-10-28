@@ -15,9 +15,9 @@ import {
   BulkDeleteButton,
   usePermissions,
 } from 'react-admin'
-import Switch from '@material-ui/core/Switch'
-import { makeStyles } from '@material-ui/core/styles'
-import { useMediaQuery } from '@material-ui/core'
+import Switch from '@mui/material/Switch'
+import { useTheme } from '@mui/material/styles'
+import { useMediaQuery } from '@mui/material'
 import {
   DateField,
   ArtworkAvatar,
@@ -29,12 +29,13 @@ import {
   useSelectedFields,
   useResourceRefresh,
 } from '../common'
-import FavoriteIcon from '@material-ui/icons/Favorite'
+import FavoriteIcon from '@mui/icons-material/Favorite'
 import config from '../config'
 import PlaylistListActions from './PlaylistListActions'
 import ChangePublicStatusButton from './ChangePublicStatusButton'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   button: {
     color: theme.palette.type === 'dark' ? 'white' : undefined,
   },

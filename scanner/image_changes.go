@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 // imageChangedFolder records a folder whose image files changed during the scan, so the

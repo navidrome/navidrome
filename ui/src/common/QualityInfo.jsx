@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react'
 import PropTypes from 'prop-types'
-import Chip from '@material-ui/core/Chip'
+import Chip from '@mui/material/Chip'
 import config from '../config'
-import { makeStyles } from '@material-ui/core'
+import { useTheme } from '@mui/material'
 import clsx from 'clsx'
 import { calculateGain } from '../utils/calculateReplayGain'
 

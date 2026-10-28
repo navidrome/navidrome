@@ -654,6 +654,12 @@
     "downloadOriginalFormat": "Download in original format"
   },
   "menu": {
+    "theme": {
+      "toggle": "Toggle theme",
+      "dark": "Dark",
+      "light": "Light",
+      "auto": "Auto"
+    },
     "library": "Library",
     "librarySelector": {
       "allLibraries": "All Libraries (%{count})",

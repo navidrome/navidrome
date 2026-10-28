@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/core/ffmpeg"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/core/ffmpeg"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 )
 
 // discArtworkReader resolves disc-level artwork from a library's folder images

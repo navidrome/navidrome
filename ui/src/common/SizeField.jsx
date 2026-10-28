@@ -2,9 +2,10 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { formatBytes } from '../utils'
 import { useRecordContext } from 'react-admin'
-import { makeStyles } from '@material-ui/core'
+import { useTheme } from '@mui/material'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   root: {
     display: 'inline-block',
   },

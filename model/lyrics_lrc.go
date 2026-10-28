@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/str"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/utils/str"
 )
 
 // support the standard [mm:ss.mm], as well as [hh:*] and [*.mmm]

@@ -1,16 +1,17 @@
 import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
-import Rating from '@material-ui/lab/Rating'
-import { makeStyles } from '@material-ui/core/styles'
+import Rating from '@mui/lab/Rating'
+import { useTheme } from '@mui/material/styles'
 import { isDateSet } from '../utils/validations'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
 import clsx from 'clsx'
 import { useRating } from './useRating'
 import { useDateLocale } from '../i18n/useDateLocale'
 import { formatDateTime } from '../utils/formatters'
 import { useRecordContext } from 'react-admin'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   rating: {
     color: (props) => props.color,
     visibility: (props) => (props.visible === false ? 'hidden' : 'inherit'),

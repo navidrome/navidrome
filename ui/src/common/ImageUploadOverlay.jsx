@@ -1,14 +1,15 @@
-import { IconButton, Tooltip } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
-import PhotoCameraIcon from '@material-ui/icons/PhotoCamera'
-import DeleteIcon from '@material-ui/icons/Delete'
+import { IconButton, Tooltip } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera'
+import DeleteIcon from '@mui/icons-material/Delete'
 import { useTranslate, useNotify, useRefresh } from 'react-admin'
 import { useCallback, useRef } from 'react'
 import config from '../config'
 import { REST_URL } from '../consts'
 import { httpClient } from '../dataProvider'
 
-const useStyles = makeStyles(() => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(() => ({
   coverOverlay: {
     position: 'absolute',
     bottom: 0,

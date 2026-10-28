@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/plugins/capabilities"
-	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/scheduler"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model/id"
+	"github.com/SunilSherkhane/navidrome/plugins/capabilities"
+	"github.com/SunilSherkhane/navidrome/plugins/host"
+	"github.com/SunilSherkhane/navidrome/scheduler"
 )
 
 // CapabilityScheduler indicates the plugin can receive scheduled event callbacks.

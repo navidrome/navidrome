@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/core/scrobbler"
+	"github.com/SunilSherkhane/navidrome/core/agents"
+	"github.com/SunilSherkhane/navidrome/core/scrobbler"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

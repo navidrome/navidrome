@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils"
+	"github.com/SunilSherkhane/navidrome/tests"
+	"github.com/SunilSherkhane/navidrome/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

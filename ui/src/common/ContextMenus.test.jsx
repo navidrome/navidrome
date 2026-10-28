@@ -2,7 +2,7 @@ import React from 'react'
 import { render, fireEvent, screen } from '@testing-library/react'
 import { TestContext } from 'ra-test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ThemeProvider, createTheme } from '@material-ui/core/styles'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { AlbumContextMenu, ArtistContextMenu } from './ContextMenus'
 
 const mockDispatch = vi.fn()

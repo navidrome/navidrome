@@ -3,8 +3,8 @@ package e2e
 import (
 	"testing/fstest"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,7 +32,7 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// https://github.com/navidrome/navidrome/issues/5376
+	// https://github.com/SunilSherkhane/navidrome/issues/5376
 	// cover.* basenames tie across album-root and per-disc folders;
 	// compareImageFiles must prefer shallower paths.
 	When("a multi-disc album has a cover.jpg at the album root and per-disc covers", func() {
@@ -63,7 +63,7 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// https://github.com/navidrome/navidrome/issues/5376
+	// https://github.com/SunilSherkhane/navidrome/issues/5376
 	// folder.jpg basenames tie across album-root and per-disc folders;
 	// compareImageFiles must prefer shallower paths.
 	When("a multi-disc album has folder.jpg at the album root AND in each disc subfolder", func() {
@@ -90,7 +90,7 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// https://github.com/navidrome/navidrome/issues/5376
+	// https://github.com/SunilSherkhane/navidrome/issues/5376
 	// Single-subfolder albums must still consider the parent folder's images.
 	When("an album lives entirely under a single disc subfolder with cover.jpg at the parent", func() {
 		// Artist/
@@ -109,7 +109,7 @@ var _ = Describe("Album artwork resolution", func() {
 		})
 	})
 
-	// https://github.com/navidrome/navidrome/issues/5456
+	// https://github.com/SunilSherkhane/navidrome/issues/5456
 	When("a top-level multi-disc album has cover.jpg at the album root and per-disc folder.jpg", func() {
 		// Album/                        (top-level folder, Path=".")
 		// ├── CD1/

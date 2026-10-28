@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/str"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/utils/str"
 	"github.com/pressly/goose/v3"
 )
 

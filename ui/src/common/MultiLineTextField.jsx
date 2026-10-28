@@ -1,5 +1,5 @@
 import React, { memo } from 'react'
-import Typography from '@material-ui/core/Typography'
+import Typography from '@mui/material/Typography'
 import sanitizeFieldRestProps from './sanitizeFieldRestProps'
 import md5 from 'blueimp-md5'
 import { useRecordContext } from 'react-admin'

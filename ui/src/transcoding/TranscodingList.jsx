@@ -1,6 +1,6 @@
 import React from 'react'
 import { Datagrid, SelectField, TextField } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { SimpleList, List } from '../common'
 import { TRANSCODING_BITRATE_CHOICES } from '../consts'
 import config from '../config'

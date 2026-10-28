@@ -5,10 +5,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
+	"github.com/google/uuid"
+	"github.com/SunilSherkhane/navidrome/core/agents"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
 )
 
 const (
@@ -111,7 +112,29 @@ func (b *bufferedScrobbler) PlaybackReport(ctx context.Context, info PlaybackSes
 	if !ok {
 		return errors.New("scrobbler not available")
 	}
-	return s.PlaybackReport(ctx, info)
+	err := s.PlaybackReport(ctx, info)
+	if err != nil {
+		return err
+	}
+
+	// Record listening stats for this playback
+	if !info.MediaFile.ID.IsZero() && info.UserId != "" {
+		uid, parseErr := uuid.Parse(info.UserId)
+		if parseErr == nil {
+			durationMs := int64(time.Since(info.Start).Seconds() * 1000)
+			if durationMs > 0 {
+				_ = b.ds.ListeningStats().Increment(ctx, uid, info.MediaFile.ID, "song", durationMs)
+				if !info.MediaFile.AlbumID.IsZero() {
+					_ = b.ds.ListeningStats().Increment(ctx, uid, info.MediaFile.AlbumID, "album", durationMs)
+				}
+				if !info.MediaFile.ArtistID.IsZero() {
+					_ = b.ds.ListeningStats().Increment(ctx, uid, info.MediaFile.ArtistID, "artist", durationMs)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (b *bufferedScrobbler) sendWakeSignal() {

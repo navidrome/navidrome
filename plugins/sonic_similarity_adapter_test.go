@@ -1,9 +1,9 @@
 package plugins
 
 import (
-	"github.com/navidrome/navidrome/core/sonic"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/capabilities"
+	"github.com/SunilSherkhane/navidrome/core/sonic"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/plugins/capabilities"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

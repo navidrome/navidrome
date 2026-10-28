@@ -2,8 +2,8 @@ import * as React from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
 import { createMemoryHistory } from 'history'
 import { Router } from 'react-router-dom'
-import StarIcon from '@material-ui/icons/Star'
-import StarBorderIcon from '@material-ui/icons/StarBorder'
+import StarIcon from '@mui/icons-material/Star'
+import StarBorderIcon from '@mui/icons-material/StarBorder'
 import DynamicMenuIcon from './DynamicMenuIcon'
 
 describe('<DynamicMenuIcon />', () => {

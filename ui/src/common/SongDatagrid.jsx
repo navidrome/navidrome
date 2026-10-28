@@ -17,10 +17,10 @@ import {
   TableRow,
   Typography,
   useMediaQuery,
-} from '@material-ui/core'
+} from '@mui/material'
 import PropTypes from 'prop-types'
-import { makeStyles } from '@material-ui/core/styles'
-import AlbumIcon from '@material-ui/icons/Album'
+import { useTheme } from '@mui/material/styles'
+import AlbumIcon from '@mui/icons-material/Album'
 import clsx from 'clsx'
 import { useDrag } from 'react-dnd'
 import Lightbox from 'react-image-lightbox'
@@ -31,7 +31,8 @@ import { AlbumContextMenu } from '../common'
 import { DraggableTypes } from '../consts'
 import { formatFullDate } from '../utils'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   subtitle: {
     whiteSpace: 'nowrap',
     overflow: 'hidden',

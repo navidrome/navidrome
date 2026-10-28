@@ -3,7 +3,7 @@ package natural_test
 import (
 	"testing"
 
-	"github.com/navidrome/navidrome/utils/natural"
+	"github.com/SunilSherkhane/navidrome/utils/natural"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

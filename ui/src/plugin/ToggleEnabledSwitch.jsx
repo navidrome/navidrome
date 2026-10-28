@@ -7,12 +7,13 @@ import {
   useTranslate,
   useResourceContext,
 } from 'react-admin'
-import Switch from '@material-ui/core/Switch'
-import { makeStyles } from '@material-ui/core/styles'
-import { Tooltip, FormControlLabel } from '@material-ui/core'
+import Switch from '@mui/material/Switch'
+import { useTheme } from '@mui/material/styles'
+import { Tooltip, FormControlLabel } from '@mui/material'
 import PropTypes from 'prop-types'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   enabledSwitch: {
     '& .MuiSwitch-colorSecondary.Mui-checked': {
       color: theme.palette.success?.main || theme.palette.primary.main,

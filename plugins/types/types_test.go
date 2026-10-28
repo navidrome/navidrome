@@ -1,7 +1,7 @@
 package types_test
 
 import (
-	"github.com/navidrome/navidrome/plugins/types"
+	"github.com/SunilSherkhane/navidrome/plugins/types"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

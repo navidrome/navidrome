@@ -10,7 +10,7 @@ package host
 import (
 	"encoding/json"
 
-	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
 )
 
 // config_get is the host function provided by Navidrome.

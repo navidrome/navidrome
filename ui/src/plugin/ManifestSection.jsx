@@ -5,7 +5,7 @@ import {
   AccordionDetails,
   Typography,
   Box,
-} from '@material-ui/core'
+} from '@mui/material'
 import { MdExpandMore } from 'react-icons/md'
 
 export const ManifestSection = ({ manifestJson, classes, translate }) => (

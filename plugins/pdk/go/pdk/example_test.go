@@ -8,8 +8,8 @@ package pdk_test
 import (
 	"testing"
 
-	"github.com/navidrome/navidrome/plugins/pdk/go/host"
-	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
 	"github.com/stretchr/testify/mock"
 )
 

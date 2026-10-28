@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 const problemContentType = "application/problem+json"

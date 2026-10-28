@@ -5,7 +5,7 @@ import (
 	"net"
 	"slices"
 
-	"github.com/navidrome/navidrome/utils/netguard"
+	"github.com/SunilSherkhane/navidrome/utils/netguard"
 )
 
 // dialResolver is nil in production (the system resolver); tests swap in a stub to avoid real DNS.

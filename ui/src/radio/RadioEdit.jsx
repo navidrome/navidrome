@@ -5,8 +5,8 @@ import {
   TextInput,
   useTranslate,
 } from 'react-admin'
-import { CardMedia } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { CardMedia } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { urlValidate } from '../utils/validations'
 import {
   Title,
@@ -18,7 +18,8 @@ import subsonic from '../subsonic'
 import config from '../config'
 import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   coverParent: {
     display: 'inline-flex',
     position: 'relative',

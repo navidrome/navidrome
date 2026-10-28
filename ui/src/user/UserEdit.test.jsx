@@ -85,11 +85,11 @@ vi.mock('../common', () => ({
 }))
 
 // Mock Material-UI
-vi.mock('@material-ui/core/styles', () => ({
+vi.mock('@mui/material/styles', () => ({
   makeStyles: () => () => ({}),
 }))
 
-vi.mock('@material-ui/core', () => ({
+vi.mock('@mui/material', () => ({
   Typography: ({ children }) => <p>{children}</p>,
 }))
 

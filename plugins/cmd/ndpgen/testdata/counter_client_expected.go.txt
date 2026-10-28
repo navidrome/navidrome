@@ -10,7 +10,7 @@ package ndhost
 import (
 	"encoding/json"
 
-	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
 )
 
 // counter_count is the host function provided by Navidrome.

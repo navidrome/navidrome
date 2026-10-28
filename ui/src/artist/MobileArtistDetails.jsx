@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { Typography, Collapse } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
-import Card from '@material-ui/core/Card'
+import { Typography, Collapse } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import Card from '@mui/material/Card'
 import config from '../config'
 import { LoveButton, RatingField, ImageUploadOverlay } from '../common'
 import Lightbox from 'react-image-lightbox'
@@ -9,7 +9,8 @@ import subsonic from '../subsonic'
 import { SafeHTML } from '../common/SafeHTML'
 import { Artwork } from '../common/Artwork'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {
       display: 'flex',

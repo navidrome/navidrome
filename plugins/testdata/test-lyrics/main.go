@@ -4,8 +4,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/navidrome/navidrome/plugins/pdk/go/lyrics"
-	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/lyrics"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
 )
 
 func init() {

@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/plugins/host"
 )
 
 // maxScrobbleItems caps how many scrobbles a single GetScrobbles call can return.

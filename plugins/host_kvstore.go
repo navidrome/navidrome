@@ -14,10 +14,10 @@ import (
 
 	"github.com/dustin/go-humanize"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/plugins/host"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/plugins/host"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 )
 
 const (

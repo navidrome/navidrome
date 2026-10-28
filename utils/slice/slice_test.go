@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/navidrome/navidrome/tests"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/tests"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

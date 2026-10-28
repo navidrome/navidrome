@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	sonicsvc "github.com/navidrome/navidrome/core/sonic"
-	"github.com/navidrome/navidrome/server/subsonic"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
+	sonicsvc "github.com/SunilSherkhane/navidrome/core/sonic"
+	"github.com/SunilSherkhane/navidrome/server/subsonic"
+	"github.com/SunilSherkhane/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

@@ -4,7 +4,7 @@ import (
 	"io/fs"
 	"sync"
 
-	"github.com/navidrome/navidrome/model/metadata"
+	"github.com/SunilSherkhane/navidrome/model/metadata"
 )
 
 // Extractor is an interface that defines the methods that a tag/metadata extractor must implement

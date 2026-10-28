@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing/fstest"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/core/artwork"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -229,7 +229,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		})
 	})
 
-	// Reproduces https://github.com/navidrome/navidrome/issues/5456
+	// Reproduces https://github.com/SunilSherkhane/navidrome/issues/5456
 	// Deeply nested layout matching the reporter's actual structure.
 	When("a deeply nested multi-disc album has cover.jpg and per-disc folder.jpg", func() {
 		// Genre/Artist/Album/                 ← album root with cover.jpg
@@ -279,7 +279,7 @@ var _ = Describe("Disc artwork resolution", func() {
 		})
 	})
 
-	// https://github.com/navidrome/navidrome/issues/5456
+	// https://github.com/SunilSherkhane/navidrome/issues/5456
 	// Top-level album variant — album folder at library root (Path=".").
 	When("a top-level multi-disc album has cover.jpg and per-disc folder.jpg", func() {
 		// Album/                       (top-level, Path=".")

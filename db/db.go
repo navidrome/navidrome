@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/mattn/go-sqlite3"
-	"github.com/navidrome/navidrome/conf"
-	_ "github.com/navidrome/navidrome/db/migrations"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/hasher"
-	"github.com/navidrome/navidrome/utils/natural"
-	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/SunilSherkhane/navidrome/conf"
+	_ "github.com/SunilSherkhane/navidrome/db/migrations"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/utils/hasher"
+	"github.com/SunilSherkhane/navidrome/utils/natural"
+	"github.com/SunilSherkhane/navidrome/utils/singleton"
 	"github.com/pressly/goose/v3"
 )
 

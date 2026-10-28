@@ -8,7 +8,7 @@ import {
   SearchInput,
   NullableBooleanInput,
 } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { FaKey } from 'react-icons/fa'
 import { SimpleList, List, DateField } from '../common'
 

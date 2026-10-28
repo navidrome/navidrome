@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/id"
 )
 
 func CreateMockPlaylistRepo() *MockPlaylistRepo {

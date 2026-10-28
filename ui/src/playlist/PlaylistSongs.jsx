@@ -12,8 +12,8 @@ import {
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
-import { Card, useMediaQuery } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Card, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import ReactDragListView from 'react-drag-listview'
 import {
   DurationField,
@@ -34,7 +34,8 @@ import PlaylistSongBulkActions from './PlaylistSongBulkActions'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import config from '../config'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {},
     main: {

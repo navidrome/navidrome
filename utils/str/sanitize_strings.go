@@ -8,7 +8,7 @@ import (
 
 	"github.com/deluan/sanitize"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/navidrome/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/conf"
 )
 
 var ignoredCharsRegex = regexp.MustCompile("[“”‘’'\"\\[({\\])},]")

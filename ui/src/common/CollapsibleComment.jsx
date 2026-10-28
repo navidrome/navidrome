@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Typography, Collapse } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Typography, Collapse } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import AnchorMe from './Linkify'
 import clsx from 'clsx'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     commentBlock: {
       display: 'inline-block',

@@ -1,8 +1,8 @@
-import { withStyles } from '@material-ui/core/styles'
-import MuiDialogTitle from '@material-ui/core/DialogTitle'
-import Typography from '@material-ui/core/Typography'
-import IconButton from '@material-ui/core/IconButton'
-import CloseIcon from '@material-ui/icons/Close'
+import { withStyles } from '@mui/material/styles'
+import MuiDialogTitle from '@mui/material/DialogTitle'
+import Typography from '@mui/material/Typography'
+import IconButton from '@mui/material/IconButton'
+import CloseIcon from '@mui/icons-material/Close'
 import React from 'react'
 
 const styles = (theme) => ({
@@ -18,7 +18,8 @@ const styles = (theme) => ({
   },
 })
 
-export const DialogTitle = withStyles(styles)((props) => {
+export const DialogTitle = // TODO(v6): migrate withStyles → styled()
+withStyles(styles)((props) => {
   const { children, classes, onClose, ...other } = props
   return (
     <MuiDialogTitle disableTypography className={classes.root} {...other}>

@@ -1,14 +1,15 @@
 import React from 'react'
 import { useTranslate } from 'react-admin'
-import { IconButton, Tooltip, Link } from '@material-ui/core'
+import { IconButton, Tooltip, Link } from '@mui/material'
 
 import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
 import { intersperse, isLastFmURL } from '../utils'
 import config from '../config'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   linkBar: {
     minHeight: '1.875em',
   },

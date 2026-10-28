@@ -9,7 +9,7 @@ import {
   LinearProgress,
   Link,
   TextField,
-} from '@material-ui/core'
+} from '@mui/material'
 import { useNotify, useTranslate } from 'react-admin'
 import { useDispatch, useSelector } from 'react-redux'
 import { closeListenBrainzTokenDialog } from '../actions'

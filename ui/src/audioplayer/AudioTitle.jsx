@@ -1,5 +1,5 @@
 import React from 'react'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import { QualityInfo } from '../common'

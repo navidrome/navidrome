@@ -293,7 +293,7 @@ var _ = Describe("Logger", func() {
 			Expect(got).To(ContainSubstring(`"User-Agent":["Finamp/1.0"]`))
 		})
 
-		// https://github.com/navidrome/navidrome/discussions/6232
+		// https://github.com/SunilSherkhane/navidrome/discussions/6232
 		DescribeTable("redacts config keys in the startup Configuration dump",
 			func(line, expected string) {
 				Expect(Redact(line)).To(Equal(expected))

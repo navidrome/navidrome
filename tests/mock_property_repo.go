@@ -3,7 +3,7 @@ package tests
 import (
 	"context"
 
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 type MockedPropertyRepo struct {

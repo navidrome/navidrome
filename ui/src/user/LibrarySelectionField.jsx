@@ -1,5 +1,5 @@
 import { useInput, useTranslate, useRecordContext } from 'react-admin'
-import { Box, FormControl, FormLabel, Typography } from '@material-ui/core'
+import { Box, FormControl, FormLabel, Typography } from '@mui/material'
 import { SelectLibraryInput } from '../common/SelectLibraryInput.jsx'
 import React, { useMemo } from 'react'
 

@@ -10,9 +10,9 @@ import {
 } from 'react-admin'
 import clsx from 'clsx'
 import { useDispatch } from 'react-redux'
-import { Card, useMediaQuery } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
+import { Card, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import { playTracks } from '../actions'
 import {
   ArtistLinkField,
@@ -33,7 +33,8 @@ import config from '../config'
 import ExpandInfoDialog from '../dialogs/ExpandInfoDialog'
 import { removeAlbumCommentsFromSongs } from './utils.js'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {},
     main: {

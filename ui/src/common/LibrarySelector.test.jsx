@@ -34,7 +34,7 @@ vi.mock('react-admin', () => ({
 }))
 
 // Mock Material-UI components
-vi.mock('@material-ui/core', () => ({
+vi.mock('@mui/material', () => ({
   Box: ({ children, className, ...props }) => (
     <div className={className} {...props}>
       {children}
@@ -105,7 +105,7 @@ vi.mock('@material-ui/core', () => ({
   },
 }))
 
-vi.mock('@material-ui/icons', () => ({
+vi.mock('@mui/icons-material', () => ({
   ExpandMore: () => <span data-testid="expand-more">▼</span>,
   ExpandLess: () => <span data-testid="expand-less">▲</span>,
   LibraryMusic: () => <span data-testid="library-music">🎵</span>,

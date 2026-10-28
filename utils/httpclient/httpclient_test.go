@@ -6,9 +6,9 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/utils/httpclient"
-	"github.com/navidrome/navidrome/utils/netguard"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/utils/httpclient"
+	"github.com/SunilSherkhane/navidrome/utils/netguard"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

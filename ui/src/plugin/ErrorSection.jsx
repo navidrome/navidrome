@@ -1,6 +1,6 @@
 import React from 'react'
-import { Typography } from '@material-ui/core'
-import Alert from '@material-ui/lab/Alert'
+import { Typography } from '@mui/material'
+import Alert from '@mui/lab/Alert'
 
 export const ErrorSection = ({ error, translate }) => {
   if (!error) return null

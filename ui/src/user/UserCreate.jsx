@@ -13,7 +13,7 @@ import {
   useRedirect,
   useTranslate,
 } from 'react-admin'
-import { Typography } from '@material-ui/core'
+import { Typography } from '@mui/material'
 import { Title } from '../common'
 import { LibrarySelectionField } from './LibrarySelectionField.jsx'
 

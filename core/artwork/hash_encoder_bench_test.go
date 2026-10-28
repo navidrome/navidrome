@@ -5,8 +5,8 @@ import (
 	"image"
 	"testing"
 
-	"github.com/navidrome/navidrome/core/artwork/blurhash"
-	"github.com/navidrome/navidrome/core/artwork/thumbhash"
+	"github.com/SunilSherkhane/navidrome/core/artwork/blurhash"
+	"github.com/SunilSherkhane/navidrome/core/artwork/thumbhash"
 )
 
 // hashEncoders are the two placeholder hashes decodeArtwork computes from one shared thumbnail.

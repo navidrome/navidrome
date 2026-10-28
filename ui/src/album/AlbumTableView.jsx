@@ -7,9 +7,9 @@ import {
   TextField,
   FunctionField,
 } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import { makeStyles } from '@material-ui/core/styles'
+import { useMediaQuery } from '@mui/material'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
+import { useTheme } from '@mui/material/styles'
 import { useDrag } from 'react-dnd'
 import {
   DateField,
@@ -27,7 +27,8 @@ import config from '../config'
 import { DraggableTypes } from '../consts'
 import clsx from 'clsx'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   columnIcon: {
     marginLeft: '3px',
     marginTop: '-2px',

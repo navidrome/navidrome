@@ -207,7 +207,7 @@ Agents = "lastfm,spotify,my-plugin"
 ```go
 package main
 
-import "github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/metadata"
 
 type myPlugin struct{}
 
@@ -309,7 +309,7 @@ On success, return `0`. On failure, use `pdk.SetError()` with one of these error
 - `scrobbler(unrecoverable)` – Permanent failure, scrobble discarded
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/scrobbler"
 
 return scrobbler.ScrobblerErrorNotAuthorized
 return scrobbler.ScrobblerErrorRetryLater
@@ -389,14 +389,14 @@ Host services let your plugin call back into Navidrome for advanced functionalit
 All host service examples below use the generated Go SDK. Add this to your `go.mod`:
 
 ```
-require github.com/navidrome/navidrome/plugins/pdk/go v0.0.0
-replace github.com/navidrome/navidrome/plugins/pdk/go => ../../pdk/go
+require github.com/SunilSherkhane/navidrome/plugins/pdk/go v0.0.0
+replace github.com/SunilSherkhane/navidrome/plugins/pdk/go => ../../pdk/go
 ```
 
 Then import:
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/host"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
 ```
 
 ### HTTP
@@ -617,7 +617,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/plugins/pdk/go/host"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
 )
 
 // The path never changes, so read it once instead of per operation
@@ -825,7 +825,7 @@ The result has one entry per input song, in the same order; the entry for a song
 **Usage:**
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/types"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"
 
 matches, err := host.MatcherMatchSongs([]types.SongRef{
     {Name: "Song Title", Artists: []types.ArtistRef{{Name: "Artist Name"}}},
@@ -1146,7 +1146,7 @@ Navidrome provides type-safe Go packages for each capability and host service in
 ```go
 package main
 
-import "github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/metadata"
 
 type myPlugin struct{}
 
@@ -1161,8 +1161,8 @@ func main() {}
 Add to your `go.mod`:
 
 ```
-require github.com/navidrome/navidrome v0.0.0
-replace github.com/navidrome/navidrome => ../../..
+require github.com/SunilSherkhane/navidrome v0.0.0
+replace github.com/SunilSherkhane/navidrome => ../../..
 ```
 
 **Available capability packages:**

@@ -306,7 +306,7 @@ var _ = Describe("Generator", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			codeStr := string(code)
-			Expect(codeStr).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/types"`))
+			Expect(codeStr).To(ContainSubstring(`"github.com/SunilSherkhane/navidrome/plugins/types"`))
 			Expect(codeStr).To(ContainSubstring("Songs []types.SongRef"))
 		})
 
@@ -321,7 +321,7 @@ var _ = Describe("Generator", func() {
 
 			code, err := GenerateHost(svc, "host")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(string(code)).NotTo(ContainSubstring(`"github.com/navidrome/navidrome/plugins/types"`))
+			Expect(string(code)).NotTo(ContainSubstring(`"github.com/SunilSherkhane/navidrome/plugins/types"`))
 		})
 	})
 
@@ -519,9 +519,9 @@ var _ = Describe("Generator", func() {
 			codeStr := string(code)
 
 			// Check for module declaration (consolidated PDK path at pdk/go level)
-			Expect(codeStr).To(ContainSubstring("module github.com/navidrome/navidrome/plugins/pdk/go"))
+			Expect(codeStr).To(ContainSubstring("module github.com/SunilSherkhane/navidrome/plugins/pdk/go"))
 			// Ensure it's not the old host-specific path
-			Expect(codeStr).NotTo(ContainSubstring("module github.com/navidrome/navidrome/plugins/pdk/go/host"))
+			Expect(codeStr).NotTo(ContainSubstring("module github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"))
 
 			// Check for Go version
 			Expect(codeStr).To(ContainSubstring("go 1.25"))
@@ -622,7 +622,7 @@ var _ = Describe("Generator", func() {
 			Expect(codeStr).To(ContainSubstring("//go:wasmimport extism:host/user"))
 
 			// Check for PDK import
-			Expect(codeStr).To(ContainSubstring("github.com/navidrome/navidrome/plugins/pdk/go/pdk"))
+			Expect(codeStr).To(ContainSubstring("github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"))
 		})
 
 	})
@@ -998,7 +998,7 @@ type TestService interface {
 			code, err := GenerateCapabilityGo(cap, "scrobbler")
 			Expect(err).NotTo(HaveOccurred())
 			out := string(code)
-			Expect(out).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/pdk/go/types"`))
+			Expect(out).To(ContainSubstring(`"github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"`))
 			Expect(out).To(ContainSubstring("// Deprecated: use types.TrackInfo."))
 			Expect(out).To(ContainSubstring("type TrackInfo = types.TrackInfo"))
 			Expect(out).NotTo(ContainSubstring("type TrackInfo struct"))
@@ -1021,7 +1021,7 @@ type TestService interface {
 			code, err := GenerateCapabilityGo(cap, "scrobbler")
 			Expect(err).NotTo(HaveOccurred())
 			out := string(code)
-			Expect(out).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/pdk/go/types"`))
+			Expect(out).To(ContainSubstring(`"github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"`))
 			Expect(out).To(ContainSubstring("types.SongRef"))
 		})
 
@@ -1040,7 +1040,7 @@ type TestService interface {
 			code, err := GenerateCapabilityGo(cap, "demo")
 			Expect(err).NotTo(HaveOccurred())
 			out := string(code)
-			Expect(out).To(ContainSubstring(`"github.com/navidrome/navidrome/plugins/pdk/go/types"`))
+			Expect(out).To(ContainSubstring(`"github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"`))
 			Expect(out).To(ContainSubstring("types.SongRef"))
 		})
 	})

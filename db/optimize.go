@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/log"
 )
 
 var analyzeMux sync.Mutex

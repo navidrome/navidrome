@@ -1,15 +1,16 @@
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useSelector } from 'react-redux'
 import { FunctionField } from 'react-admin'
-import { useTheme } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import PlayingLight from '../icons/playing-light.gif'
 import PlayingDark from '../icons/playing-dark.gif'
 import PausedLight from '../icons/paused-light.png'
 import PausedDark from '../icons/paused-dark.png'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   icon: {
     width: '32px',
     height: '32px',

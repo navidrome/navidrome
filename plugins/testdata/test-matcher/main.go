@@ -3,9 +3,9 @@
 package main
 
 import (
-	"github.com/navidrome/navidrome/plugins/pdk/go/host"
-	"github.com/navidrome/navidrome/plugins/pdk/go/pdk"
-	"github.com/navidrome/navidrome/plugins/pdk/go/types"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"
 )
 
 // TestMatcherInput is the input for the nd_test_matcher callback.

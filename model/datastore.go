@@ -37,6 +37,7 @@ type DataStore interface {
 	Plugin() PluginRepository
 	Artwork() ArtworkRepository
 	ArtworkQueue() ArtworkQueueRepository
+	ListeningStats() *listeningStatsRepository
 
 	WithTx(block func(tx DataStore) error, scope ...string) error
 	WithTxImmediate(block func(tx DataStore) error, scope ...string) error

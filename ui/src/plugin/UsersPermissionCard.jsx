@@ -11,10 +11,10 @@ import {
   ListItemIcon,
   ListItemText,
   Checkbox,
-} from '@material-ui/core'
-import CheckBoxIcon from '@material-ui/icons/CheckBox'
-import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank'
-import Alert from '@material-ui/lab/Alert'
+} from '@mui/material'
+import CheckBoxIcon from '@mui/icons-material/CheckBox'
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank'
+import Alert from '@mui/lab/Alert'
 import { useGetList, useTranslate } from 'react-admin'
 import PropTypes from 'prop-types'
 

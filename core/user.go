@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 // PluginUnloader defines the interface for unloading disabled plugins.

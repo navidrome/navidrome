@@ -7,7 +7,7 @@ import {
   SimpleList,
   TextField,
 } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { List, DateField } from '../common'
 import { useDateLocale } from '../i18n/useDateLocale'
 import { formatDateTime } from '../utils/formatters'

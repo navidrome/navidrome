@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
 import { QuickFilter } from './QuickFilter'
-import StarIcon from '@material-ui/icons/Star'
+import StarIcon from '@mui/icons-material/Star'
 
 describe('QuickFilter', () => {
   afterEach(cleanup)

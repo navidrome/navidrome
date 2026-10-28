@@ -2,8 +2,8 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { RecordContextProvider } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
-import { createTheme, ThemeProvider } from '@material-ui/core/styles'
+import { useMediaQuery } from '@mui/material'
+import { createTheme, ThemeProvider } from '@mui/material/styles'
 import config from '../config'
 import AlbumDetails, { Details } from './AlbumDetails'
 
@@ -28,8 +28,8 @@ vi.mock('react-admin', async () => {
 })
 
 // Mock useMediaQuery
-vi.mock('@material-ui/core', async () => {
-  const actual = await import('@material-ui/core')
+vi.mock('@mui/material', async () => {
+  const actual = await import('@mui/material')
   return {
     ...actual,
     useMediaQuery: vi.fn(),

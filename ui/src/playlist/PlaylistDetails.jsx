@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Card, CardContent, Typography, useMediaQuery } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Card, CardContent, Typography, useMediaQuery } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { useTranslate } from 'react-admin'
 import Lightbox from 'react-image-lightbox'
 import 'react-image-lightbox/style.css'
@@ -16,7 +16,8 @@ import {
 import subsonic from '../subsonic'
 import { Artwork } from '../common/Artwork'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {
       [theme.breakpoints.down('xs')]: {

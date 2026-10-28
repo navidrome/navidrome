@@ -13,17 +13,19 @@ import {
   MdSupervisorAccount,
 } from 'react-icons/md'
 import { useSelector } from 'react-redux'
-import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
-import ViewListIcon from '@material-ui/icons/ViewList'
+import { makeStyles, MenuItem, ListItemIcon, Divider } from '@mui/material'
+import ViewListIcon from '@mui/icons-material/ViewList'
 import { Dialogs } from '../dialogs/Dialogs'
 import { AboutDialog, QuickConnectDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
 import NowPlayingPanel from './NowPlayingPanel'
 import UserMenu from './UserMenu'
+import ThemeToggle from './ThemeToggle'
 import config from '../config'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {
       color: theme.palette.text.secondary,
@@ -132,7 +134,8 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
         permissions === 'admin' &&
         config.enableNowPlaying && <NowPlayingPanel />}
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
-      <UserMenu {...rest}>
+      <ThemeToggle />
+		<UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
         {config.enableQuickConnect && (
           <DialogMenuItem

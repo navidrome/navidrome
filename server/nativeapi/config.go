@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/log"
 )
 
 // sensitiveFieldsPartialMask contains configuration field names that should be redacted

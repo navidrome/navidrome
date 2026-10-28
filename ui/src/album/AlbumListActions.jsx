@@ -10,14 +10,15 @@ import {
   useMediaQuery,
   Typography,
   makeStyles,
-} from '@material-ui/core'
-import ViewHeadlineIcon from '@material-ui/icons/ViewHeadline'
-import ViewModuleIcon from '@material-ui/icons/ViewModule'
+} from '@mui/material'
+import ViewHeadlineIcon from '@mui/icons-material/ViewHeadline'
+import ViewModuleIcon from '@mui/icons-material/ViewModule'
 import { useDispatch, useSelector } from 'react-redux'
 import { albumViewGrid, albumViewTable } from '../actions'
 import { ToggleFieldsMenu } from '../common'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   title: { margin: '1rem' },
   buttonGroup: { width: '100%', justifyContent: 'center' },
   leftButton: { paddingRight: '0.5rem' },

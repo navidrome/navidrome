@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	. "github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model"
 	"github.com/pocketbase/dbx"
 )
 

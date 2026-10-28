@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/dexterlb/mpvipc"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 type MpvTrack struct {

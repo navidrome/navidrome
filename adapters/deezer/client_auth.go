@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/lestrrat-go/jwx/v3/jwt"
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/log"
 )
 
 type jwtToken struct {

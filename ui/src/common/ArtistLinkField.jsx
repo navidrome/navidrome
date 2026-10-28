@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { Link } from 'react-admin'
-import { withWidth } from '@material-ui/core'
+import { withWidth } from '@mui/material'
 import { useGetHandleArtistClick } from './useGetHandleArtistClick'
 import { intersperse } from '../utils/index.js'
 import { useDispatch } from 'react-redux'

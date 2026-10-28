@@ -8,18 +8,22 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/api"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/api"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 type Router struct {
 	http.Handler
-	ds model.DataStore
+	ds           model.DataStore
+	statsService *core.ListeningStatsService
 }
 
 func New(ds model.DataStore) *Router {
-	rt := &Router{ds: ds}
+	rt := &Router{
+		ds:           ds,
+		statsService: core.NewListeningStatsService(ds.ListeningStatsRepository()),
+	}
 	rt.Handler = rt.routes()
 	return rt
 }
@@ -37,6 +41,11 @@ func (rt *Router) routes() http.Handler {
 
 	r.Get("/openapi.json", specHandler(withBasePath(api.SpecJSON(), `"url": `, true), "application/json"))
 	r.Get("/openapi.yaml", specHandler(withBasePath(api.SpecYAML(), "url: ", false), "application/yaml"))
+
+	// Listening stats endpoints (SunilSherkhane/navidrome extension)
+	r.Get("/listening-stats/artists", rt.handleTopArtists)
+	r.Get("/listening-stats/albums", rt.handleTopAlbums)
+	r.Get("/listening-stats/songs", rt.handleTopSongs)
 
 	strict := NewStrictHandlerWithOptions(rt, nil, StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, req *http.Request, err error) {

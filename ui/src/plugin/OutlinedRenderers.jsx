@@ -25,11 +25,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
-} from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import merge from 'lodash/merge'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     control: {
       marginBottom: theme.spacing(2),

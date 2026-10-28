@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/server/subsonic/responses"
 )
 
 // agentRoleMain is the OpenSubsonic agent role that marks the primary vocal

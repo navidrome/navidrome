@@ -7,9 +7,9 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/utils/req"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/server/jellyfin/dto"
+	"github.com/SunilSherkhane/navidrome/utils/req"
 )
 
 // accessibleLibraryIDs returns the ids of the libraries the current user can access. An empty

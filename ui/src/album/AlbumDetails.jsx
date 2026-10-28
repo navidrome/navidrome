@@ -7,7 +7,7 @@ import {
   Typography,
   useMediaQuery,
   withWidth,
-} from '@material-ui/core'
+} from '@mui/material'
 import {
   ArrayField,
   ChipField,
@@ -37,7 +37,8 @@ import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
 import { SafeHTML } from '../common/SafeHTML'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {
       [theme.breakpoints.down('xs')]: {

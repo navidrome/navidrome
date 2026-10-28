@@ -1,7 +1,8 @@
-import { withStyles } from '@material-ui/core/styles'
-import MuiDialogContent from '@material-ui/core/DialogContent'
+import { withStyles } from '@mui/material/styles'
+import MuiDialogContent from '@mui/material/DialogContent'
 
-export const DialogContent = withStyles((theme) => ({
+export const DialogContent = // TODO(v6): migrate withStyles → styled()
+withStyles((theme) => ({
   root: {
     padding: theme.spacing(2),
   },

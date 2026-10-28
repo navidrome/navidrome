@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/utils/netguard"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/utils/netguard"
 )
 
 type uaTransport struct {

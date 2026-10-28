@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/plugins/host"
 )
 
 const storageMount = "/storage"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/host"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/plugins/host"
 )
 
 type libraryServiceImpl struct {

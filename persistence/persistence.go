@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/run"
+	"github.com/SunilSherkhane/navidrome/db"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	_ "github.com/SunilSherkhane/navidrome/persistence"
+	"github.com/SunilSherkhane/navidrome/utils/run"
 	"github.com/pocketbase/dbx"
 )
 
@@ -37,6 +38,7 @@ type SQLStore struct {
 	plugin       func() model.PluginRepository
 	artwork      func() model.ArtworkRepository
 	artworkQueue func() model.ArtworkQueueRepository
+	listeningStats func() *listeningStatsRepository
 }
 
 // Repositories are built on first use, so a transaction store only pays for the ones its block touches.
@@ -64,6 +66,7 @@ func newSQLStore(db dbx.Builder) *SQLStore {
 		plugin:       sync.OnceValue(func() model.PluginRepository { return NewPluginRepository(db) }),
 		artwork:      sync.OnceValue(func() model.ArtworkRepository { return NewArtworkRepository(db) }),
 		artworkQueue: sync.OnceValue(func() model.ArtworkQueueRepository { return NewArtworkQueueRepository(db) }),
+		listeningStats: sync.OnceValue(func() *listeningStatsRepository { return newListeningStatsRepository(db) }),
 	}
 }
 
@@ -153,6 +156,10 @@ func (s *SQLStore) Artwork() model.ArtworkRepository {
 
 func (s *SQLStore) ArtworkQueue() model.ArtworkQueueRepository {
 	return s.artworkQueue()
+}
+
+func (s *SQLStore) ListeningStats() *listeningStatsRepository {
+	return s.listeningStats()
 }
 
 func scopeLabel(scope []string) string {

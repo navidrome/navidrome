@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/navidrome/navidrome/core/storage"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/core/storage"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 // libraryView bundles the MusicFS for a library with its absolute root path,

@@ -44,7 +44,7 @@ Agents = "lastfm,spotify,minimal"
 ## PDK Usage
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/metadata"
 
 type myPlugin struct{}
 

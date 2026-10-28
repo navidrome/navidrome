@@ -13,7 +13,7 @@ import {
   Divider,
   Box,
   Typography,
-} from '@material-ui/core'
+} from '@mui/material'
 import { FiActivity } from 'react-icons/fi'
 import { BiError, BiMessageError } from 'react-icons/bi'
 import { VscSync } from 'react-icons/vsc'
@@ -25,7 +25,8 @@ import { useScanElapsedTime } from './useScanElapsedTime'
 import { formatDuration, formatShortDuration } from '../utils'
 import config from '../config'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   wrapper: {
     position: 'relative',
     color: (props) =>

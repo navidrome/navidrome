@@ -1,9 +1,10 @@
 import React, { forwardRef } from 'react'
 import { MenuItemLink, useTranslate } from 'react-admin'
 import { MdTune } from 'react-icons/md'
-import { makeStyles } from '@material-ui/core'
+import { useTheme } from '@mui/material'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   menuItem: {
     color: theme.palette.text.secondary,
   },

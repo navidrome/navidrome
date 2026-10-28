@@ -9,7 +9,7 @@ import {
   Tooltip,
   Link,
   ClickAwayListener,
-} from '@material-ui/core'
+} from '@mui/material'
 import { useTranslate } from 'react-admin'
 import { DateField } from '../common'
 

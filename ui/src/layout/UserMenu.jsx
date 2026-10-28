@@ -18,15 +18,16 @@ import {
   CardContent,
   Divider,
   Typography,
-} from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
-import AccountCircle from '@material-ui/icons/AccountCircle'
+} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import AccountCircle from '@mui/icons-material/AccountCircle'
 import config from '../config'
 import authProvider from '../authProvider'
 import { startEventStream } from '../eventStream'
 import { useDispatch } from 'react-redux'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   user: {},
   button: {
     color: 'inherit',

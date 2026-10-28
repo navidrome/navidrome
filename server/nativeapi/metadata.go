@@ -7,10 +7,10 @@ import (
 	"slices"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/external"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/core/artwork"
+	"github.com/SunilSherkhane/navidrome/core/external"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 func (api *Router) addMetadataRoute(r chi.Router) {

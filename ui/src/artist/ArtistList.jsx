@@ -14,10 +14,10 @@ import {
   NullableBooleanInput,
   usePermissions,
 } from 'react-admin'
-import { useMediaQuery, withWidth } from '@material-ui/core'
-import FavoriteIcon from '@material-ui/icons/Favorite'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import { makeStyles } from '@material-ui/core/styles'
+import { useMediaQuery, withWidth } from '@mui/material'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
+import { useTheme } from '@mui/material/styles'
 import { useDrag } from 'react-dnd'
 import clsx from 'clsx'
 import {
@@ -36,7 +36,8 @@ import { DraggableTypes } from '../consts'
 import en from '../i18n/en.json'
 import { formatBytes } from '../utils/index.js'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   contextHeader: {
     marginLeft: '3px',
     marginTop: '-2px',

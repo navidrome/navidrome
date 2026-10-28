@@ -9,7 +9,7 @@ import {
   DialogContentText,
   DialogTitle,
   TextField,
-} from '@material-ui/core'
+} from '@mui/material'
 
 export const QuickConnectDialog = ({ open, onClose }) => {
   const translate = useTranslate()

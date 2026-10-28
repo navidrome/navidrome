@@ -7,7 +7,7 @@ import {
   LinearProgress,
   Switch,
   Tooltip,
-} from '@material-ui/core'
+} from '@mui/material'
 import { useInterval } from '../common'
 import { baseUrl, openInNewTab } from '../utils'
 import { httpClient } from '../dataProvider'

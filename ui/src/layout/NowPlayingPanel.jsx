@@ -17,7 +17,7 @@ import {
   LinearProgress,
   useTheme,
   useMediaQuery,
-} from '@material-ui/core'
+} from '@mui/material'
 import { FaRegCirclePlay, FaPause } from 'react-icons/fa6'
 import subsonic from '../subsonic'
 import { useInterval } from '../common'
@@ -25,7 +25,8 @@ import { nowPlayingCountSync } from '../actions'
 import { formatDuration } from '../utils'
 import config from '../config'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
   list: {
     width: '26em',

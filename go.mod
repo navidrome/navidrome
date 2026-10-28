@@ -1,8 +1,9 @@
-module github.com/navidrome/navidrome
+module github.com/SunilSherkhane/navidrome
 
 go 1.27
 
 // Fork to implement raw tags support
+// Maintained at https://github.com/SunilSherkhane/navidrome
 replace go.senan.xyz/taglib => github.com/deluan/go-taglib v0.0.0-20260913142955-d55e0c9353cb
 
 require (

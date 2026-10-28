@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogTitle,
   makeStyles,
-} from '@material-ui/core'
+} from '@mui/material'
 import {
   closeAddToPlaylist,
   closeDuplicateSongDialog,
@@ -24,7 +24,8 @@ import DuplicateSongDialog from './DuplicateSongDialog'
 import { httpClient } from '../dataProvider'
 import { REST_URL } from '../consts'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   dialogPaper: {
     height: '26em',
     maxHeight: '26em',

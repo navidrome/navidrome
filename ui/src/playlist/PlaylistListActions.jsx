@@ -5,7 +5,7 @@ import {
   CreateButton,
   useTranslate,
 } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { ToggleFieldsMenu } from '../common'
 
 const PlaylistListActions = ({ className, ...rest }) => {

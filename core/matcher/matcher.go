@@ -8,12 +8,12 @@ import (
 	"slices"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/slice"
-	"github.com/navidrome/navidrome/utils/str"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/core/agents"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/utils/str"
 	"github.com/xrash/smetrics"
 )
 

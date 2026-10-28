@@ -13,12 +13,13 @@ import {
   Paper,
   Popper,
   makeStyles,
-} from '@material-ui/core'
-import { ExpandMore, ExpandLess, LibraryMusic } from '@material-ui/icons'
+} from '@mui/material'
+import { ExpandMore, ExpandLess, LibraryMusic } from '@mui/icons-material'
 import { setSelectedLibraries, setUserLibraries } from '../actions'
 import { useRefreshOnEvents } from './useRefreshOnEvents'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   root: {
     marginTop: theme.spacing(3),
     marginBottom: theme.spacing(3),

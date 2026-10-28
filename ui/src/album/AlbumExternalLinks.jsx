@@ -1,6 +1,6 @@
 import React from 'react'
 import { useRecordContext, useTranslate } from 'react-admin'
-import { IconButton, Tooltip, Link } from '@material-ui/core'
+import { IconButton, Tooltip, Link } from '@mui/material'
 import { ImLastfm2 } from 'react-icons/im'
 import MusicBrainz from '../icons/MusicBrainz'
 import { intersperse } from '../utils'

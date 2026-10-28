@@ -5,7 +5,7 @@ package mpv
 import (
 	"path/filepath"
 
-	"github.com/navidrome/navidrome/model/id"
+	"github.com/SunilSherkhane/navidrome/model/id"
 )
 
 func socketName(prefix, suffix string) string {

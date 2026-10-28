@@ -8,7 +8,7 @@
 
 package metadata
 
-import "github.com/navidrome/navidrome/plugins/pdk/go/types"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/types"
 
 // Deprecated: use types.ArtistRef.
 type ArtistRef = types.ArtistRef

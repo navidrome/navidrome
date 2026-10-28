@@ -20,6 +20,7 @@ import artist from './artist'
 import playlist from './playlist'
 import radio from './radio'
 import share from './share'
+import Stats from './stats/Stats'
 import library from './library'
 import plugin from './plugin'
 import { Player } from './audioplayer'
@@ -131,7 +132,8 @@ const Admin = (props) => {
           name="radio"
           {...(permissions === 'admin' ? radio.admin : radio.all)}
         />,
-        config.enableSharing && <Resource name="share" {...share} />,
+        config.enableSharing && <Resource name="share" {...share} />
+			<Route path="/stats" element={<Stats />} />,
         <Resource
           name="playlist"
           {...playlist}

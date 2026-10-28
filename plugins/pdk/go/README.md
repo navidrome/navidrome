@@ -30,9 +30,9 @@ This is a consolidated Go module that includes:
 Add this module as a dependency in your plugin's `go.mod`:
 
 ```go
-require github.com/navidrome/navidrome/plugins/pdk/go v0.0.0
+require github.com/SunilSherkhane/navidrome/plugins/pdk/go v0.0.0
 
-replace github.com/navidrome/navidrome/plugins/pdk/go => ../../pdk/go
+replace github.com/SunilSherkhane/navidrome/plugins/pdk/go => ../../pdk/go
 ```
 
 Then import the packages you need:
@@ -41,9 +41,9 @@ Then import the packages you need:
 package main
 
 import (
-    "github.com/navidrome/navidrome/plugins/pdk/go/host"
-    "github.com/navidrome/navidrome/plugins/pdk/go/lifecycle"
-    "github.com/navidrome/navidrome/plugins/pdk/go/scheduler"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/lifecycle"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/scheduler"
 )
 
 func init() {
@@ -86,7 +86,7 @@ The `host` package provides wrappers for calling Navidrome's host services:
 package main
 
 import (
-    "github.com/navidrome/navidrome/plugins/pdk/go/host"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
 )
 
 func myPluginFunction() error {
@@ -125,7 +125,7 @@ in the `init()` function.
 Provides plugin initialization hooks.
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/lifecycle"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/lifecycle"
 
 func init() {
     lifecycle.Register(&myPlugin{})
@@ -144,7 +144,7 @@ func (p *myPlugin) OnInit() error {
 Provides artist and album metadata from external sources.
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/metadata"
 
 func init() {
     metadata.Register(&myAgent{})
@@ -173,8 +173,8 @@ Handles callbacks from scheduled tasks.
 
 ```go
 import (
-    "github.com/navidrome/navidrome/plugins/pdk/go/host"
-    "github.com/navidrome/navidrome/plugins/pdk/go/scheduler"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/scheduler"
 )
 
 func init() {
@@ -198,7 +198,7 @@ func (s *myScheduler) OnCallback(req scheduler.SchedulerCallbackRequest) error {
 Tracks play activity.
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/scrobbler"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/scrobbler"
 
 func init() {
     scrobbler.Register(&myScrobbler{})
@@ -222,7 +222,7 @@ func (s *myScrobbler) NowPlaying(req scrobbler.NowPlayingRequest) error {
 Handles incoming WebSocket messages.
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/websocket"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/websocket"
 
 func init() {
     websocket.Register(&myHandler{})
@@ -261,7 +261,7 @@ The `pdk` subpackage provides a testable wrapper around the Extism PDK functions
 `github.com/extism/go-pdk` directly, import the abstraction layer:
 
 ```go
-import "github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+import "github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
 
 func myFunction() {
     // Use pdk functions - same API as extism/go-pdk
@@ -290,7 +290,7 @@ package myplugin
 import (
     "testing"
     
-    "github.com/navidrome/navidrome/plugins/pdk/go/pdk"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/pdk"
 )
 
 func TestMyFunction(t *testing.T) {
@@ -338,7 +338,7 @@ package myplugin
 import (
     "testing"
 
-    "github.com/navidrome/navidrome/plugins/pdk/go/host"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
 )
 
 func TestMyPluginFunction(t *testing.T) {

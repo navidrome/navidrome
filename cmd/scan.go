@@ -9,14 +9,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/playlists"
-	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/persistence"
-	"github.com/navidrome/navidrome/scanner"
-	"github.com/navidrome/navidrome/utils/pl"
+	"github.com/SunilSherkhane/navidrome/core/artwork"
+	"github.com/SunilSherkhane/navidrome/core/playlists"
+	"github.com/SunilSherkhane/navidrome/db"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/persistence"
+	"github.com/SunilSherkhane/navidrome/scanner"
+	"github.com/SunilSherkhane/navidrome/utils/pl"
 	"github.com/spf13/cobra"
 )
 

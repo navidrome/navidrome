@@ -1,7 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useInput, useNotify, useTranslate } from 'react-admin'
-import { Button, TextField } from '@material-ui/core'
+import { Button, TextField } from '@mui/material'
 import { FaKey } from 'react-icons/fa'
 import { MdContentCopy, MdDelete, MdRefresh } from 'react-icons/md'
 import { isWritable } from '../common/playlistUtils'

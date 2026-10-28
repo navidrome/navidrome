@@ -5,8 +5,8 @@ package imghttp
 import (
 	"net/http"
 
-	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/utils/req"
+	"github.com/SunilSherkhane/navidrome/core/artwork"
+	"github.com/SunilSherkhane/navidrome/utils/req"
 )
 
 // WriteImageHeaders applies the artwork caching contract and reports whether a 304 was written

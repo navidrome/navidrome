@@ -65,8 +65,8 @@ vi.mock('../common', async () => {
 })
 
 // Mock Material-UI
-vi.mock('@material-ui/core', async () => {
-  const actual = await vi.importActual('@material-ui/core')
+vi.mock('@mui/material', async () => {
+  const actual = await vi.importActual('@mui/material')
   return {
     ...actual,
     useMediaQuery: vi.fn(() => false),

@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 // MockScanner implements scanner.Scanner for testing with proper synchronization

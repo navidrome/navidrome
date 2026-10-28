@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/random"
-	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils/random"
+	"github.com/SunilSherkhane/navidrome/utils/singleton"
 )
 
 const timeout = 10 * time.Minute

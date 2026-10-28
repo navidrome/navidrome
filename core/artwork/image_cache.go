@@ -5,11 +5,11 @@ import (
 	"context"
 	"io"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/core/ffmpeg"
-	"github.com/navidrome/navidrome/utils/cache"
-	"github.com/navidrome/navidrome/utils/singleton"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/core/ffmpeg"
+	"github.com/SunilSherkhane/navidrome/utils/cache"
+	"github.com/SunilSherkhane/navidrome/utils/singleton"
 )
 
 // artworkReader is the cache.Item the image cache loader dispatches on: Reader

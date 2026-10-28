@@ -8,13 +8,13 @@ import {
   useDataProvider,
   useNotify,
 } from 'react-admin'
-import { useMediaQuery, makeStyles } from '@material-ui/core'
-import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import ShuffleIcon from '@material-ui/icons/Shuffle'
-import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
+import { useMediaQuery, makeStyles } from '@mui/material'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import ShuffleIcon from '@mui/icons-material/Shuffle'
+import CloudDownloadOutlinedIcon from '@mui/icons-material/CloudDownloadOutlined'
 import { RiPlayListAddFill, RiPlayList2Fill } from 'react-icons/ri'
-import QueueMusicIcon from '@material-ui/icons/QueueMusic'
-import ShareIcon from '@material-ui/icons/Share'
+import QueueMusicIcon from '@mui/icons-material/QueueMusic'
+import ShareIcon from '@mui/icons-material/Share'
 import { httpClient } from '../dataProvider'
 import {
   playNext,
@@ -31,7 +31,8 @@ import { formatBytes } from '../utils'
 import config from '../config'
 import { ToggleFieldsMenu } from '../common'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   toolbar: { display: 'flex', justifyContent: 'space-between', width: '100%' },
 })
 

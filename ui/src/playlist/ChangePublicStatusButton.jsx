@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { LockOpen, Lock } from '@material-ui/icons'
+import { LockOpen, Lock } from '@mui/icons-material'
 import { BulkUpdateButton, useTranslate } from 'react-admin'
 
 const ChangePublicStatusButton = (props) => {

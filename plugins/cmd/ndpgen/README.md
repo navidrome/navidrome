@@ -91,7 +91,7 @@ type SubsonicAPIService interface {
 
 ### Go Client Library (Go/TinyGo WASM)
 
-Generated files are named `nd_host_<servicename>.go` (lowercase) and placed in `$output/go/host/`. The `$output/go/` directory becomes a complete Go module (`github.com/navidrome/navidrome/plugins/pdk/go`) with package name `host`, intended for import by Navidrome plugins built with TinyGo.
+Generated files are named `nd_host_<servicename>.go` (lowercase) and placed in `$output/go/host/`. The `$output/go/` directory becomes a complete Go module (`github.com/SunilSherkhane/navidrome/plugins/pdk/go`) with package name `host`, intended for import by Navidrome plugins built with TinyGo.
 
 The generator creates:
 - `nd_host_<servicename>.go` - Client wrapper code (WASM build)
@@ -124,7 +124,7 @@ package myplugin
 import (
     "testing"
     
-    "github.com/navidrome/navidrome/plugins/pdk/go/host"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
 )
 
 func TestMyPluginFunction(t *testing.T) {

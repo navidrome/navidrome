@@ -1,10 +1,11 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import { Tooltip } from '@material-ui/core'
-import { makeStyles, alpha } from '@material-ui/core/styles'
-import grey from '@material-ui/core/colors/grey'
+import { Tooltip } from '@mui/material'
+import { makeStyles, alpha } from '@mui/material/styles'
+import grey from '@mui/material/colors/grey'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     tooltip: {
       backgroundColor:

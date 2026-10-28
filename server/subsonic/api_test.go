@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/core/stream"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/SunilSherkhane/navidrome/core/stream"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

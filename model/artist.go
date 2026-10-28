@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/consts"
 )
 
 type Artist struct {

@@ -17,7 +17,7 @@ vi.mock('../utils/index.js', () => ({
   intersperse: vi.fn((arr) => arr),
 }))
 
-vi.mock('@material-ui/core', () => ({
+vi.mock('@mui/material', () => ({
   withWidth: () => (Component) => {
     const WithWidthComponent = (props) => <Component {...props} width="md" />
     WithWidthComponent.displayName = `WithWidth(${Component.displayName || Component.name || 'Component'})`

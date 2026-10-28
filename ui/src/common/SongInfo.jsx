@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import Table from '@material-ui/core/Table'
-import TableBody from '@material-ui/core/TableBody'
-import TableCell from '@material-ui/core/TableCell'
-import TableContainer from '@material-ui/core/TableContainer'
-import TableRow from '@material-ui/core/TableRow'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableRow from '@mui/material/TableRow'
 import {
   BooleanField,
   TextField,
@@ -22,12 +22,13 @@ import {
   SizeField,
 } from './index'
 import { MultiLineTextField } from './MultiLineTextField'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import config from '../config'
 import { AlbumLinkField } from '../song/AlbumLinkField'
-import { Tab, Tabs } from '@material-ui/core'
+import { Tab, Tabs } from '@mui/material'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   gain: {
     '&:after': {
       content: (props) => (props.gain ? " ' db'" : ''),

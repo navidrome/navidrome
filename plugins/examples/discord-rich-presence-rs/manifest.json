@@ -3,7 +3,7 @@
   "author": "Navidrome Team",
   "version": "1.0.0",
   "description": "Discord Rich Presence integration for Navidrome - Rust implementation",
-  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/discord-rich-presence-rs",
+  "website": "https://github.com/SunilSherkhane/navidrome/tree/master/plugins/examples/discord-rich-presence-rs",
   "permissions": {
     "users": {
       "reason": "To process scrobbles on behalf of users"

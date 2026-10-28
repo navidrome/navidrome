@@ -2,7 +2,7 @@ module test-artwork
 
 go 1.25
 
-require github.com/navidrome/navidrome/plugins/pdk/go v0.0.0
+require github.com/SunilSherkhane/navidrome/plugins/pdk/go v0.0.0
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -13,4 +13,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/navidrome/navidrome/plugins/pdk/go => ../../pdk/go
+replace github.com/SunilSherkhane/navidrome/plugins/pdk/go => ../../pdk/go

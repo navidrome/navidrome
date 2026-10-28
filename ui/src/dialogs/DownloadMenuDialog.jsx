@@ -6,7 +6,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-} from '@material-ui/core'
+} from '@mui/material'
 import subsonic from '../subsonic'
 import { closeDownloadMenu, DOWNLOAD_MENU_ARTIST } from '../actions'
 import { formatBytes } from '../utils'

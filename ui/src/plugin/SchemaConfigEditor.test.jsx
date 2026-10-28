@@ -1,7 +1,7 @@
 import React from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render } from '@testing-library/react'
-import { ThemeProvider, createTheme } from '@material-ui/core/styles'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { SchemaConfigEditor } from './SchemaConfigEditor'

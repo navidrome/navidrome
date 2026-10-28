@@ -1,6 +1,6 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import { Card, CardContent, Typography } from '@material-ui/core'
+import { Card, CardContent, Typography } from '@mui/material'
 import ToggleEnabledSwitch from './ToggleEnabledSwitch'
 
 export const StatusCard = ({ classes, translate, manifest }) => {

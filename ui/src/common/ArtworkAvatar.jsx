@@ -1,10 +1,11 @@
 import { useRecordContext } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import clsx from 'clsx'
 import config from '../config'
 import { Artwork } from './Artwork'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   avatar: {
     width: '55px',
     height: '55px',

@@ -1,9 +1,10 @@
 import React from 'react'
 import { Notification as RANotification } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 
 // RA's primary.light Undo is unreadable on the light snackbar of dark themes
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   {
     undo: {
       color: 'inherit',

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 type MockedScrobbleBufferRepo struct {

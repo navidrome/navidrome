@@ -77,10 +77,10 @@ This plugin imports the Navidrome PDK subpackages directly:
 
 ```go
 import (
-    "github.com/navidrome/navidrome/plugins/pdk/go/host"
-    "github.com/navidrome/navidrome/plugins/pdk/go/lifecycle"
-    "github.com/navidrome/navidrome/plugins/pdk/go/scheduler"
-    "github.com/navidrome/navidrome/plugins/pdk/go/websocket"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/host"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/lifecycle"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/scheduler"
+    "github.com/SunilSherkhane/navidrome/plugins/pdk/go/websocket"
 )
 ```
 

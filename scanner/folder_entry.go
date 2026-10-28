@@ -10,10 +10,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/navidrome/navidrome/core/artwork"
-	"github.com/navidrome/navidrome/core/playlists"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/chrono"
+	"github.com/SunilSherkhane/navidrome/core/artwork"
+	"github.com/SunilSherkhane/navidrome/core/playlists"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils/chrono"
 )
 
 func newFolderEntry(job *scanJob, id, path string, info model.FolderUpdateInfo) *folderEntry {

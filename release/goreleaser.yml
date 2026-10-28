@@ -102,7 +102,7 @@ release:
   draft: true
   mode: append
   footer: |
-    **Full Changelog**: https://github.com/navidrome/navidrome/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/SunilSherkhane/navidrome/compare/{{ .PreviousTag }}...{{ .Tag }}
 
     ## Helping out
 

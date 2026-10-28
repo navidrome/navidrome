@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { ThemeProvider, createTheme } from '@material-ui/core/styles'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { RefreshMetadataButton } from './RefreshMetadataButton'
 

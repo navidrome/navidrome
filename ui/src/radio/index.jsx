@@ -2,8 +2,8 @@ import RadioCreate from './RadioCreate'
 import RadioEdit from './RadioEdit'
 import RadioList from './RadioList'
 import DynamicMenuIcon from '../layout/DynamicMenuIcon'
-import RadioIcon from '@material-ui/icons/Radio'
-import RadioOutlinedIcon from '@material-ui/icons/RadioOutlined'
+import RadioIcon from '@mui/icons-material/Radio'
+import RadioOutlinedIcon from '@mui/icons-material/RadioOutlined'
 import React from 'react'
 
 const all = {

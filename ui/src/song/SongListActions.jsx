@@ -1,6 +1,6 @@
 import React, { cloneElement } from 'react'
 import { sanitizeListRestProps, TopToolbar } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { ShuffleAllButton, ToggleFieldsMenu } from '../common'
 
 export const SongListActions = ({

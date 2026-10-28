@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server/public"
-	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/utils/req"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/server/public"
+	"github.com/SunilSherkhane/navidrome/server/subsonic/responses"
+	"github.com/SunilSherkhane/navidrome/utils/req"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 )
 
 func (api *Router) GetShares(r *http.Request) (*responses.Subsonic, error) {

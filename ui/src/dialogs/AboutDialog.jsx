@@ -1,32 +1,33 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import Link from '@material-ui/core/Link'
-import Dialog from '@material-ui/core/Dialog'
-import IconButton from '@material-ui/core/IconButton'
-import TableContainer from '@material-ui/core/TableContainer'
-import Table from '@material-ui/core/Table'
-import TableBody from '@material-ui/core/TableBody'
-import TableRow from '@material-ui/core/TableRow'
-import TableCell from '@material-ui/core/TableCell'
-import Paper from '@material-ui/core/Paper'
-import CloudDownloadIcon from '@material-ui/icons/CloudDownload'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import FileCopyIcon from '@material-ui/icons/FileCopy'
-import Button from '@material-ui/core/Button'
+import Link from '@mui/material/Link'
+import Dialog from '@mui/material/Dialog'
+import IconButton from '@mui/material/IconButton'
+import TableContainer from '@mui/material/TableContainer'
+import Table from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableRow from '@mui/material/TableRow'
+import TableCell from '@mui/material/TableCell'
+import Paper from '@mui/material/Paper'
+import CloudDownloadIcon from '@mui/icons-material/CloudDownload'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
+import FileCopyIcon from '@mui/icons-material/FileCopy'
+import Button from '@mui/material/Button'
 import { humanize, underscore } from 'inflection'
 import { useGetOne, usePermissions, useTranslate, useNotify } from 'react-admin'
-import { Tabs, Tab } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Tabs, Tab } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import config from '../config'
 import { DialogTitle } from './DialogTitle'
 import { DialogContent } from './DialogContent'
 import { INSIGHTS_DOC_URL } from '../consts.js'
 import subsonic from '../subsonic/index.js'
-import { Typography } from '@material-ui/core'
-import TableHead from '@material-ui/core/TableHead'
+import { Typography } from '@mui/material'
+import TableHead from '@mui/material/TableHead'
 import { configToToml, separateAndSortConfigs } from './aboutUtils'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   configNameColumn: {
     maxWidth: '200px',
     width: '200px',
@@ -74,9 +75,9 @@ const links = {
   reddit: 'reddit.com/r/Navidrome',
   twitter: 'twitter.com/navidrome',
   discord: 'discord.gg/xh7j7yF',
-  source: 'github.com/navidrome/navidrome',
-  bugReports: 'github.com/navidrome/navidrome/issues/new/choose',
-  featureRequests: 'github.com/navidrome/navidrome/discussions/new',
+  source: 'github.com/SunilSherkhane/navidrome',
+  bugReports: 'github.com/SunilSherkhane/navidrome/issues/new/choose',
+  featureRequests: 'github.com/SunilSherkhane/navidrome/discussions/new',
 }
 
 const LinkToVersion = ({ version }) => {
@@ -88,10 +89,10 @@ const LinkToVersion = ({ version }) => {
   const commitID = parts[1].replace(/[()]/g, '')
   const isSnapshot = version.includes('SNAPSHOT')
   const url = isSnapshot
-    ? `https://github.com/navidrome/navidrome/compare/v${
+    ? `https://github.com/SunilSherkhane/navidrome/compare/v${
         parts[0].split('-')[0]
       }...${commitID}`
-    : `https://github.com/navidrome/navidrome/releases/tag/v${parts[0]}`
+    : `https://github.com/SunilSherkhane/navidrome/releases/tag/v${parts[0]}`
   return (
     <>
       <Link href={url} target="_blank" rel="noopener noreferrer">

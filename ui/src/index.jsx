@@ -1,10 +1,10 @@
 window.global = window // fix "global is not defined" error in react-image-lightbox
 
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 import { registerSW } from 'virtual:pwa-register'
 
 registerSW({ immediate: true })
 
-ReactDOM.render(<App />, document.getElementById('root'))
+createRoot(document.getElementById('root')).render(<App />)

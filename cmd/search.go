@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/db"
+	"github.com/SunilSherkhane/navidrome/log"
 	"github.com/spf13/cobra"
 )
 

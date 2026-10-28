@@ -12,12 +12,12 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/core/stream"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/utils/req"
+	"github.com/SunilSherkhane/navidrome/core/stream"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/server/jellyfin/dto"
+	"github.com/SunilSherkhane/navidrome/utils/req"
 )
 
 // mediaFileForRequest resolves {itemId} to a MediaFile and verifies the user has access to its

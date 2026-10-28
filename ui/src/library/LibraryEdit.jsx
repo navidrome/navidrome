@@ -14,8 +14,8 @@ import {
   useRedirect,
   Toolbar,
 } from 'react-admin'
-import { Typography, Box } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Typography, Box } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import DeleteLibraryButton from './DeleteLibraryButton'
 import {
   ReadOnlyDateField,
@@ -28,7 +28,8 @@ import config from '../config'
 import { PIDInputs } from './PIDInput'
 import { pidConfigChanged } from './pidPresets'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   toolbar: {
     display: 'flex',
     justifyContent: 'space-between',

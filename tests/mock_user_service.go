@@ -2,7 +2,7 @@ package tests
 
 import (
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 // MockUserService provides a simple wrapper around MockedUserRepo

@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/model/id"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 	"github.com/zeebo/xxh3"
 )
 

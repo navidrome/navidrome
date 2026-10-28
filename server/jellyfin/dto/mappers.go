@@ -6,10 +6,10 @@ import (
 	"math"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/id"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/id"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 )
 
 // sortName must match the persistence ORDER BY key (see setSortMappings): Finamp's A-Z jump

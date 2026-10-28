@@ -3,7 +3,7 @@ package tests
 import (
 	"context"
 
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 // MockTagRepo records the QueryOptions passed to GetAll, mirroring MockArtistRepo, so tests can

@@ -1,4 +1,4 @@
-import { Avatar, makeStyles, useMediaQuery } from '@material-ui/core'
+import { Avatar, makeStyles, useMediaQuery } from '@mui/material'
 import React, { cloneElement } from 'react'
 import {
   CreateButton,
@@ -28,7 +28,8 @@ import { songFromRadio } from './helper'
 import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
 import { useDispatch } from 'react-redux'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   row: {
     '&:hover': {
       '& $contextMenu': {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/navidrome/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/consts"
 )
 
 // authLimiter caps failed Subsonic logins per key. Checks run at most `limit` at a time and failures

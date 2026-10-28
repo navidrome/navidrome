@@ -6,7 +6,7 @@ import {
   useShowController,
   Title as RaTitle,
 } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import PlaylistDetails from './PlaylistDetails'
 import PlaylistSongs from './PlaylistSongs'
 import PlaylistActions from './PlaylistActions'
@@ -20,7 +20,8 @@ import {
 
 const playlistTrackPerPageOptions = [100, 250, 500]
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     playlistActions: {
       width: '100%',

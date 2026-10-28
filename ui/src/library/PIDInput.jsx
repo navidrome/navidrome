@@ -2,8 +2,8 @@ import React, { useState } from 'react'
 import PropTypes from 'prop-types'
 import { TextInput, required, useTranslate } from 'react-admin'
 import { useField } from 'react-final-form'
-import { FormHelperText, Link, MenuItem, TextField } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { FormHelperText, Link, MenuItem, TextField } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   PID_CUSTOM,
   PID_FOLDER,
@@ -16,7 +16,8 @@ import { docsUrl } from '../utils'
 
 const PID_DOCS_URL = docsUrl('/docs/usage/pids/')
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   help: { marginBottom: theme.spacing(1) },
 }))
 

@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"slices"
 
-	"github.com/navidrome/navidrome/core/artwork/thumbhash"
+	"github.com/SunilSherkhane/navidrome/core/artwork/thumbhash"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

@@ -1,8 +1,8 @@
 package model
 
 import (
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -24,7 +24,7 @@ var _ = Describe("TagConf", func() {
 			Expect(conf.SplitTagValue([]string{"Love, Emotional, Ballad"})).To(Equal([]string{"Love", "Emotional", "Ballad"}))
 		})
 
-		// Regression test for https://github.com/navidrome/navidrome/issues/5065
+		// Regression test for https://github.com/SunilSherkhane/navidrome/issues/5065
 		//
 		// When multiple ID3v2 frames map to the same logical tag (e.g. TMOO + TXXX:MOOD),
 		// TagLib's PropertyMap merges them into a slice with several entries. Previously

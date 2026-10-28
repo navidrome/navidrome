@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/kr/pretty"
-	"github.com/navidrome/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/conf"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

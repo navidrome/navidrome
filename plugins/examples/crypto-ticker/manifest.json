@@ -3,7 +3,7 @@
   "author": "Navidrome",
   "version": "1.0.0",
   "description": "Real-time cryptocurrency price ticker using Coinbase WebSocket API",
-  "website": "https://github.com/navidrome/navidrome/tree/master/plugins/examples/crypto-ticker",
+  "website": "https://github.com/SunilSherkhane/navidrome/tree/master/plugins/examples/crypto-ticker",
   "config": {
     "schema": {
       "type": "object",

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/navidrome/navidrome/core/scrobbler"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/plugins/capabilities"
-	"github.com/navidrome/navidrome/plugins/types"
+	"github.com/SunilSherkhane/navidrome/core/scrobbler"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/plugins/capabilities"
+	"github.com/SunilSherkhane/navidrome/plugins/types"
 )
 
 // CapabilityScrobbler indicates the plugin can receive scrobble events.

@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInterval } from '../common'
 import { useDispatch, useSelector } from 'react-redux'
-import { useMediaQuery } from '@material-ui/core'
-import { ThemeProvider } from '@material-ui/core/styles'
+import { useMediaQuery } from '@mui/material'
+import { ThemeProvider } from '@mui/material/styles'
 import {
   createMuiTheme,
   useAuthState,

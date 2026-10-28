@@ -10,20 +10,21 @@ import {
   useRefresh,
   useTranslate,
 } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import {
   useMediaQuery,
   Tooltip,
   Chip,
   Typography,
   Box,
-} from '@material-ui/core'
+} from '@mui/material'
 import { MdError, MdRefresh } from 'react-icons/md'
 import { List, DateField, SimpleList, useResourceRefresh } from '../common'
 import { httpClient } from '../dataProvider'
 import ToggleEnabledSwitch from './ToggleEnabledSwitch'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   errorIcon: {
     color: theme.palette.error.main,
     marginRight: theme.spacing(0.5),

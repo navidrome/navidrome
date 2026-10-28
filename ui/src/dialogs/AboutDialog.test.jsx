@@ -1,10 +1,10 @@
 import * as React from 'react'
 import { cleanup, render, screen } from '@testing-library/react'
 import { LinkToVersion } from './AboutDialog'
-import TableBody from '@material-ui/core/TableBody'
-import TableRow from '@material-ui/core/TableRow'
-import Table from '@material-ui/core/Table'
-import TableCell from '@material-ui/core/TableCell'
+import TableBody from '@mui/material/TableBody'
+import TableRow from '@mui/material/TableRow'
+import Table from '@mui/material/Table'
+import TableCell from '@mui/material/TableCell'
 
 const Wrapper = ({ version }) => (
   <Table>
@@ -33,7 +33,7 @@ describe('<LinkToVersion />', () => {
 
     const link = screen.queryByRole('link')
     expect(link.href).toBe(
-      'https://github.com/navidrome/navidrome/releases/tag/v0.40.0',
+      'https://github.com/SunilSherkhane/navidrome/releases/tag/v0.40.0',
     )
     expect(link.textContent).toBe('0.40.0')
 
@@ -47,7 +47,7 @@ describe('<LinkToVersion />', () => {
 
     const link = screen.queryByRole('link')
     expect(link.href).toBe(
-      'https://github.com/navidrome/navidrome/compare/v0.40.0...300a0292',
+      'https://github.com/SunilSherkhane/navidrome/compare/v0.40.0...300a0292',
     )
     expect(link.textContent).toBe('0.40.0-SNAPSHOT')
 

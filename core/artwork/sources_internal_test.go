@@ -15,8 +15,8 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/httpclient"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils/httpclient"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

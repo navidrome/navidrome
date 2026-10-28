@@ -3,10 +3,10 @@ package plugins
 import (
 	"context"
 
-	"github.com/navidrome/navidrome/core/sonic"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/plugins/capabilities"
-	"github.com/navidrome/navidrome/plugins/types"
+	"github.com/SunilSherkhane/navidrome/core/sonic"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/plugins/capabilities"
+	"github.com/SunilSherkhane/navidrome/plugins/types"
 )
 
 const CapabilitySonicSimilarity Capability = "SonicSimilarity"

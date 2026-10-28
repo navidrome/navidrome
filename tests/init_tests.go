@@ -7,9 +7,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/navidrome/navidrome/conf"
-	_ "github.com/navidrome/navidrome/conf/mime" // registers mime_types.yaml, so tests see the same image types as the server
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/conf"
+	_ "github.com/SunilSherkhane/navidrome/conf/mime" // registers mime_types.yaml, so tests see the same image types as the server
+	"github.com/SunilSherkhane/navidrome/log"
 )
 
 var once sync.Once

@@ -1,12 +1,13 @@
 import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
-import Tooltip from '@material-ui/core/Tooltip'
-import { makeStyles } from '@material-ui/core/styles'
+import Tooltip from '@mui/material/Tooltip'
+import { useTheme } from '@mui/material/styles'
 import { Button, usePermissions, useTranslate } from 'react-admin'
 import { MdRefresh } from 'react-icons/md'
 import { useRefreshMetadata } from './useRefreshMetadata'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   // Tooltip needs a ref-holding child, and react-admin's Button does not forward one.
   wrapper: { display: 'inline-flex', verticalAlign: 'middle' },
   button: { minWidth: 'auto' },

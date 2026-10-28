@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import AudioTitle from './AudioTitle'
 
-vi.mock('@material-ui/core', async () => {
-  const actual = await import('@material-ui/core')
+vi.mock('@mui/material', async () => {
+  const actual = await import('@mui/material')
   return {
     ...actual,
     useMediaQuery: vi.fn(),

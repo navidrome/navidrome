@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/str"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils/str"
 )
 
 func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFile {

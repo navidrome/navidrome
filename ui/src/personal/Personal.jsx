@@ -1,6 +1,6 @@
 import { SimpleForm, Title, useTranslate } from 'react-admin'
-import { Card } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Card } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { SelectLanguage } from './SelectLanguage'
 import { SelectDateFormat } from './SelectDateFormat'
 import { SelectTheme } from './SelectTheme'
@@ -11,7 +11,8 @@ import { ListenBrainzScrobbleToggle } from './ListenBrainzScrobbleToggle'
 import config from '../config'
 import { ReplayGainToggle } from './ReplayGainToggle'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   root: { marginTop: '1em' },
 })
 

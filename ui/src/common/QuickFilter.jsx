@@ -1,5 +1,5 @@
 import React from 'react'
-import { Chip, makeStyles } from '@material-ui/core'
+import { Chip, makeStyles } from '@mui/material'
 import { useTranslate } from 'react-admin'
 import { humanize, underscore } from 'inflection'
 

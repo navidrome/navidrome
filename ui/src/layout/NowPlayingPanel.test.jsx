@@ -42,11 +42,11 @@ vi.mock('react-admin', async (importOriginal) => {
 })
 
 // Mock the specific Material-UI hooks we need
-vi.mock('@material-ui/core/useMediaQuery', () => ({
+vi.mock('@mui/material/useMediaQuery', () => ({
   default: () => mockUseMediaQuery(),
 }))
 
-vi.mock('@material-ui/core/styles/useTheme', () => ({
+vi.mock('@mui/material/styles/useTheme', () => ({
   default: () => ({
     breakpoints: {
       down: () => '(max-width:959.95px)', // Mock breakpoint string

@@ -3,7 +3,7 @@ package migrations
 import (
 	"strings"
 
-	"github.com/navidrome/navidrome/model/id"
+	"github.com/SunilSherkhane/navidrome/model/id"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

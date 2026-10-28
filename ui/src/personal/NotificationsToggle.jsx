@@ -6,7 +6,7 @@ import {
   FormControlLabel,
   FormHelperText,
   Switch,
-} from '@material-ui/core'
+} from '@mui/material'
 
 export const NotificationsToggle = () => {
   const translate = useTranslate()

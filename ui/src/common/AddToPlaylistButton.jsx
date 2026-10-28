@@ -2,7 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
 import { Button, useTranslate, useUnselectAll } from 'react-admin'
-import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd'
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd'
 import { openAddToPlaylist } from '../actions'
 
 export const AddToPlaylistButton = ({ resource, selectedIds, className }) => {

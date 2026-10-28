@@ -7,7 +7,7 @@ import {
   SaveButton,
   Toolbar,
 } from 'react-admin'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import { ReadOnlyTextField, Title } from '../common'
 import ApiKeyInput from './ApiKeyInput'
 import { playerInputs } from './playerInputs'

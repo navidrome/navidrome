@@ -18,12 +18,12 @@ endif
 SUPPORTED_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v5,linux/arm/v6,linux/arm/v7,linux/386,linux/riscv64,darwin/amd64,darwin/arm64,windows/amd64,windows/386
 IMAGE_PLATFORMS ?= $(shell echo $(SUPPORTED_PLATFORMS) | tr ',' '\n' | grep "linux" | grep -v "arm/v5" | tr '\n' ',' | sed 's/,$$//')
 PLATFORMS ?= $(SUPPORTED_PLATFORMS)
-DOCKER_TAG ?= navidrome/navidrome:develop
+DOCKER_TAG ?= sunilsherkhane/navidrome:develop
 
-GOLANGCI_LINT_VERSION ?= v2.14.0
-VACUUM_VERSION ?= v0.30.6
-OAPI_CODEGEN_VERSION ?= v2.8.0
-OASDIFF_VERSION ?= v1.32.1
+GOLANGCI_LINT_VERSION ?= v2.17.0
+VACUUM_VERSION ?= v0.31.0
+OAPI_CODEGEN_VERSION ?= v2.13.0
+OASDIFF_VERSION ?= v1.34.0
 API_DIFF_BASE ?= origin/master
 
 UI_SRC_FILES := $(shell find ui -type f -not -path "ui/build/*" -not -path "ui/node_modules/*")
@@ -188,14 +188,14 @@ setup-git: ##@Development Setup Git hooks (pre-commit and pre-push)
 .PHONY: setup-git
 
 build: check_go_env buildjs ##@Build Build the project
-	go build -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
+	go build -ldflags="-X github.com/SunilSherkhane/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/SunilSherkhane/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
 .PHONY: build
 
 buildall: deprecated build
 .PHONY: buildall
 
 debug-build: check_go_env buildjs ##@Build Build the project (with remote debug on)
-	go build -gcflags="all=-N -l" -ldflags="-X github.com/navidrome/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/navidrome/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
+	go build -gcflags="all=-N -l" -ldflags="-X github.com/SunilSherkhane/navidrome/consts.gitSha=$(GIT_SHA) -X github.com/SunilSherkhane/navidrome/consts.gitTag=$(GIT_TAG)" -tags=$(GO_BUILD_TAGS)
 .PHONY: debug-build
 
 buildjs: check_node_env ui/build/index.html ##@Build Build only frontend

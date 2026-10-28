@@ -8,7 +8,7 @@
 package main
 
 import (
-	"github.com/navidrome/navidrome/plugins/pdk/go/metadata"
+	"github.com/SunilSherkhane/navidrome/plugins/pdk/go/metadata"
 )
 
 // minimalPlugin implements the metadata provider interfaces.

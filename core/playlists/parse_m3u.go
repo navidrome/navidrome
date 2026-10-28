@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/model/request"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -61,7 +61,7 @@ func (s *playlists) parseM3U(ctx context.Context, pls *model.Playlist, folder *m
 		// SQLite comparisons do not perform Unicode normalization, and filesystem normalization
 		// differs across platforms (macOS often yields NFD, while Linux/Windows typically use NFC).
 		// Generate lookup candidates for both forms so playlist entries match DB paths regardless
-		// of the original normalization. See https://github.com/navidrome/navidrome/issues/4884
+		// of the original normalization. See https://github.com/SunilSherkhane/navidrome/issues/4884
 		//
 		// We also include the original (non-lowercased) paths because SQLite's COLLATE NOCASE
 		// only handles ASCII case-insensitivity. Non-ASCII characters like fullwidth letters

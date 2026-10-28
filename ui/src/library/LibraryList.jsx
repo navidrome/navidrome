@@ -8,7 +8,7 @@ import {
   NumberField,
   BooleanField,
 } from 'react-admin'
-import { useMediaQuery } from '@material-ui/core'
+import { useMediaQuery } from '@mui/material'
 import { List, DateField, useResourceRefresh, SizeField } from '../common'
 import LibraryListBulkActions from './LibraryListBulkActions'
 import LibraryListActions from './LibraryListActions'

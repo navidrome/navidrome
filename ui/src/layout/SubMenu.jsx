@@ -1,18 +1,19 @@
 import React, { Fragment } from 'react'
 import { useDispatch } from 'react-redux'
-import ExpandMore from '@material-ui/icons/ExpandMore'
-import ArrowRightOutlined from '@material-ui/icons/ArrowRightOutlined'
-import List from '@material-ui/core/List'
-import MenuItem from '@material-ui/core/MenuItem'
-import ListItemIcon from '@material-ui/core/ListItemIcon'
-import Typography from '@material-ui/core/Typography'
-import Collapse from '@material-ui/core/Collapse'
-import Tooltip from '@material-ui/core/Tooltip'
-import { makeStyles } from '@material-ui/core/styles'
+import ExpandMore from '@mui/icons-material/ExpandMore'
+import ArrowRightOutlined from '@mui/icons-material/ArrowRightOutlined'
+import List from '@mui/material/List'
+import MenuItem from '@mui/material/MenuItem'
+import ListItemIcon from '@mui/material/ListItemIcon'
+import Typography from '@mui/material/Typography'
+import Collapse from '@mui/material/Collapse'
+import Tooltip from '@mui/material/Tooltip'
+import { useTheme } from '@mui/material/styles'
 import { setSidebarVisibility, useTranslate } from 'react-admin'
-import { IconButton, useMediaQuery } from '@material-ui/core'
+import { IconButton, useMediaQuery } from '@mui/material'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     icon: { minWidth: theme.spacing(5) },
     sidebarIsOpen: {

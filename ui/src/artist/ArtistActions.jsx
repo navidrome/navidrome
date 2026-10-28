@@ -1,8 +1,8 @@
 import React from 'react'
 import PropTypes from 'prop-types'
 import { useDispatch } from 'react-redux'
-import { useMediaQuery, CircularProgress } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { useMediaQuery, CircularProgress } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   Button,
   TopToolbar,
@@ -11,10 +11,10 @@ import {
   useNotify,
   useTranslate,
 } from 'react-admin'
-import ShuffleIcon from '@material-ui/icons/Shuffle'
-import PlayArrowIcon from '@material-ui/icons/PlayArrow'
-import ShareIcon from '@material-ui/icons/Share'
-import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
+import ShuffleIcon from '@mui/icons-material/Shuffle'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import ShareIcon from '@mui/icons-material/Share'
+import CloudDownloadOutlinedIcon from '@mui/icons-material/CloudDownloadOutlined'
 import { IoIosRadio } from 'react-icons/io'
 import { playShuffle, playTopSongs } from './actions.js'
 import { playSimilar } from '../common/playbackActions.js'
@@ -28,7 +28,8 @@ import { formatBytes } from '../utils'
 import { artistDownloadSize } from '../common/artist'
 import { RefreshMetadataButton } from '../common/RefreshMetadataButton'
 
-const useStyles = makeStyles((theme) => ({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles((theme) => ({
   toolbar: {
     minHeight: 'auto',
     padding: '0 !important',

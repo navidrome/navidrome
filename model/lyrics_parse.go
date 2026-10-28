@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/log"
 )
 
 // lyricParser returns an empty list (not an error) when the input is not its

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import PropTypes from 'prop-types'
 import clsx from 'clsx'
-import { makeStyles } from '@material-ui/core/styles'
+import { useTheme } from '@mui/material/styles'
 import config from '../config'
 import subsonic from '../subsonic'
 import { useImageUrl } from './useImageUrl'
@@ -10,7 +10,8 @@ import { ThumbHashCanvas } from './ThumbHashCanvas'
 // Drives both the CSS transition and the timer that retires the placeholder, so they cannot drift.
 const fadeMs = 150
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   // className supplies the size and shape; overflow:hidden clips the fills to it.
   root: {
     position: 'relative',

@@ -274,7 +274,7 @@ type MatcherService interface {
 		It("returns an error when a shared-type alias cannot be resolved (no registry)", func() {
 			fileA := `package host
 
-import "github.com/navidrome/navidrome/plugins/types"
+import "github.com/SunilSherkhane/navidrome/plugins/types"
 
 type TrackInfo = types.TrackInfo
 `
@@ -301,7 +301,7 @@ type MatcherService interface {
 			// File A: declares the shared-type alias in the same package
 			fileA := `package host
 
-import "github.com/navidrome/navidrome/plugins/types"
+import "github.com/SunilSherkhane/navidrome/plugins/types"
 
 // Deprecated: use types.Track.
 type Track = types.Track
@@ -654,7 +654,7 @@ type Output struct {
 		It("distinguishes Go type aliases from defined types", func() {
 			src := `package capabilities
 
-import "github.com/navidrome/navidrome/plugins/types"
+import "github.com/SunilSherkhane/navidrome/plugins/types"
 
 // Deprecated: use types.ArtistRef.
 type ArtistRef = types.ArtistRef
@@ -699,7 +699,7 @@ type Scrobbler interface {
 		It("returns an error when a shared-type alias cannot be resolved (no registry)", func() {
 			src := `package capabilities
 
-import "github.com/navidrome/navidrome/plugins/types"
+import "github.com/SunilSherkhane/navidrome/plugins/types"
 
 // TrackInfo is an alias for the shared type.
 type TrackInfo = types.TrackInfo
@@ -728,7 +728,7 @@ type NowPlaying interface {
 			}
 			src := `package capabilities
 
-import "github.com/navidrome/navidrome/plugins/types"
+import "github.com/SunilSherkhane/navidrome/plugins/types"
 
 // Deprecated: use types.TrackInfo.
 type TrackInfo = types.TrackInfo
@@ -779,7 +779,7 @@ type Scrobbler interface {
 			}
 			src := `package capabilities
 
-import "github.com/navidrome/navidrome/plugins/types"
+import "github.com/SunilSherkhane/navidrome/plugins/types"
 
 // Deprecated: use types.Track.
 type TrackInfo = types.Track

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Card, CardContent, Typography, Box } from '@material-ui/core'
+import { Card, CardContent, Typography, Box } from '@mui/material'
 import { useTranslate } from 'react-admin'
 
 export const Interpolate = ({ message, field, children }) => {

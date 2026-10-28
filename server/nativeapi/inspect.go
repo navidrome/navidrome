@@ -6,10 +6,10 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/navidrome/navidrome/core"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/utils/req"
+	"github.com/SunilSherkhane/navidrome/core"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/utils/req"
 )
 
 func doInspect(ctx context.Context, ds model.DataStore, id string) (*core.InspectOutput, error) {

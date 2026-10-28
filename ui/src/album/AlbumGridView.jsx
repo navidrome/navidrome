@@ -5,9 +5,9 @@ import {
   Typography,
   GridListTileBar,
   useMediaQuery,
-} from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
-import withWidth from '@material-ui/core/withWidth'
+} from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import withWidth from '@mui/material/withWidth'
 import { Link } from 'react-router-dom'
 import { linkToRecord, useListContext, Loading } from 'react-admin'
 import { withContentRect } from 'react-measure'
@@ -24,7 +24,8 @@ import clsx from 'clsx'
 import { AlbumDatesField } from './AlbumDatesField.jsx'
 import { Artwork } from '../common/Artwork'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     root: {
       margin: '20px',

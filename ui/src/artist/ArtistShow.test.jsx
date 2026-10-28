@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { RecordContextProvider } from 'react-admin'
-import { ThemeProvider, createTheme } from '@material-ui/core/styles'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ArtistDetails } from './ArtistShow'
 import subsonic from '../subsonic'

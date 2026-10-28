@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/mattn/go-sqlite3"
-	"github.com/navidrome/navidrome/db"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/db"
+	"github.com/SunilSherkhane/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

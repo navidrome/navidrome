@@ -7,11 +7,11 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/navidrome/navidrome/core/auth"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
-	"github.com/navidrome/navidrome/tests"
+	"github.com/SunilSherkhane/navidrome/core/auth"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/server"
+	"github.com/SunilSherkhane/navidrome/server/jellyfin/dto"
+	"github.com/SunilSherkhane/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )

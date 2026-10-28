@@ -12,9 +12,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/utils/gg"
-	"github.com/navidrome/navidrome/utils/str"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/utils/gg"
+	"github.com/SunilSherkhane/navidrome/utils/str"
 )
 
 const (

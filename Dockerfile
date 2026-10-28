@@ -73,8 +73,8 @@ RUN --mount=type=bind,source=. \
     # -latomic is required on 32-bit arm (arm/v6, arm/v7) so SQLite's 64-bit atomics resolve.
     go build -tags="${BUILD_TAGS}" -ldflags="-w -s \
         -linkmode=external -extldflags '-latomic' \
-        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
-        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+        -X github.com/SunilSherkhane/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/SunilSherkhane/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome .
     # Fail the build if native libwebp (purego) leaked into a 32-bit binary (issue #5738).
     ./release/verify-binary.sh /out/navidrome
@@ -139,8 +139,8 @@ RUN --mount=type=bind,source=. \
 
     BUILD_TAGS=$(./release/build-tags.sh)
     go build -tags="${BUILD_TAGS}" -ldflags="${LD_EXTRA} -w -s \
-        -X github.com/navidrome/navidrome/consts.gitSha=${GIT_SHA} \
-        -X github.com/navidrome/navidrome/consts.gitTag=${GIT_TAG}" \
+        -X github.com/SunilSherkhane/navidrome/consts.gitSha=${GIT_SHA} \
+        -X github.com/SunilSherkhane/navidrome/consts.gitTag=${GIT_TAG}" \
         -o /out/navidrome${EXT} .
     # Fail the build if native libwebp (purego) leaked into a 32-bit binary (issue #5738).
     ./release/verify-binary.sh /out/navidrome*
@@ -181,7 +181,7 @@ EOT
 ### Build Final Image
 FROM alpine:3.22 AS final
 LABEL maintainer="deluan@navidrome.org"
-LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
+LABEL org.opencontainers.image.source="https://github.com/SunilSherkhane/navidrome"
 
 # Install runtime dependencies
 # - libwebp + symlinks: enables native WebP encoding via purego/dlopen

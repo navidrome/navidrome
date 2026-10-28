@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
 )
 
 // pruneMinAge guards the window between artwork insert and item_artwork upsert.

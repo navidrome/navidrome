@@ -1,9 +1,9 @@
 import React, { useCallback } from 'react'
 import PropTypes from 'prop-types'
-import FavoriteIcon from '@material-ui/icons/Favorite'
-import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder'
-import IconButton from '@material-ui/core/IconButton'
-import { makeStyles } from '@material-ui/core/styles'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
+import IconButton from '@mui/material/IconButton'
+import { useTheme } from '@mui/material/styles'
 import clsx from 'clsx'
 import { useToggleLove } from './useToggleLove'
 import { useDateLocale } from '../i18n/useDateLocale'
@@ -12,7 +12,8 @@ import { useRecordContext } from 'react-admin'
 import config from '../config'
 import { isDateSet } from '../utils/validations'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   {
     love: {
       color: (props) => props.color,

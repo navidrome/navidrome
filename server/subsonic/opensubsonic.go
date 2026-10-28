@@ -3,7 +3,7 @@ package subsonic
 import (
 	"net/http"
 
-	"github.com/navidrome/navidrome/server/subsonic/responses"
+	"github.com/SunilSherkhane/navidrome/server/subsonic/responses"
 )
 
 func (api *Router) GetOpenSubsonicExtensions(_ *http.Request) (*responses.Subsonic, error) {

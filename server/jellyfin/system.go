@@ -13,12 +13,12 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/log"
-	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/server"
-	"github.com/navidrome/navidrome/server/jellyfin/dto"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/model"
+	"github.com/SunilSherkhane/navidrome/server"
+	"github.com/SunilSherkhane/navidrome/server/jellyfin/dto"
 )
 
 // jellyfinVersion is the Jellyfin API version advertised in the handshake. Clients and SDKs gate on

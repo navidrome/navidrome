@@ -14,7 +14,7 @@ body:
     attributes:
       label: "I confirm that:"
       options:
-        - label: I have searched the existing [open AND closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) to see if an issue already exists for the bug I've encountered
+        - label: I have searched the existing [open AND closed issues](https://github.com/SunilSherkhane/navidrome/issues?q=is%3Aissue) to see if an issue already exists for the bug I've encountered
           required: true
         - label: I'm using the latest version (your issue may have been fixed already)
           required: false
@@ -97,7 +97,7 @@ body:
     id: terms
     attributes:
       label: Code of Conduct
-      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/navidrome/navidrome/blob/master/CODE_OF_CONDUCT.md).
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/SunilSherkhane/navidrome/blob/master/CODE_OF_CONDUCT.md).
       options:
         - label: I agree to follow Navidrome's Code of Conduct
           required: true

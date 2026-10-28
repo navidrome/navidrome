@@ -9,7 +9,7 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/gohugoio/hashstructure"
-	"github.com/navidrome/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/conf"
 )
 
 type Album struct {

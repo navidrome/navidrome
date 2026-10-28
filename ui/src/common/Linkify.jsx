@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo } from 'react'
-import { Link } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
+import { Link } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 
-const useStyles = makeStyles(
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles(
   (theme) => ({
     link: {
       textDecoration: 'none',

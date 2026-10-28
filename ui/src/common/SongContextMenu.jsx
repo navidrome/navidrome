@@ -7,9 +7,9 @@ import {
   useTranslate,
   useDataProvider,
 } from 'react-admin'
-import { IconButton, Menu, MenuItem } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
-import MoreVertIcon from '@material-ui/icons/MoreVert'
+import { IconButton, Menu, MenuItem } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
 import { MdQuestionMark } from 'react-icons/md'
 import clsx from 'clsx'
 import {
@@ -28,7 +28,8 @@ import { playSimilar } from './playbackActions.js'
 import { formatBytes } from '../utils'
 import { useRedirect } from 'react-admin'
 
-const useStyles = makeStyles({
+// TODO(v6): migrate makeStyles → sx prop / styled()
+// const useStyles = makeStyles({
   noWrap: {
     whiteSpace: 'nowrap',
   },

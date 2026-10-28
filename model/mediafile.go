@@ -14,13 +14,13 @@ import (
 
 	"github.com/deluan/rest"
 	"github.com/gohugoio/hashstructure"
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
-	"github.com/navidrome/navidrome/model/criteria"
-	"github.com/navidrome/navidrome/utils"
-	"github.com/navidrome/navidrome/utils/gg"
-	"github.com/navidrome/navidrome/utils/number"
-	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/SunilSherkhane/navidrome/conf"
+	"github.com/SunilSherkhane/navidrome/consts"
+	"github.com/SunilSherkhane/navidrome/model/criteria"
+	"github.com/SunilSherkhane/navidrome/utils"
+	"github.com/SunilSherkhane/navidrome/utils/gg"
+	"github.com/SunilSherkhane/navidrome/utils/number"
+	"github.com/SunilSherkhane/navidrome/utils/slice"
 	"github.com/zeebo/xxh3"
 )
 

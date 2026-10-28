@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/navidrome/navidrome/core/agents"
-	"github.com/navidrome/navidrome/log"
+	"github.com/SunilSherkhane/navidrome/core/agents"
+	"github.com/SunilSherkhane/navidrome/log"
 )
 
 const apiBaseURL = "https://api.deezer.com"

@@ -25,8 +25,9 @@ linters:
     - rowserrcheck
     - unconvert
     - whitespace
-  disable:
     - staticcheck
+  # staticcheck: enabled (was disabled upstream)
+  # All upstream staticcheck suppressions reviewed below
   settings:
     errcheck:
       exclude-functions:
