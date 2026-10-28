@@ -223,6 +223,7 @@ var _ = Describe("Scanner", func() {
 			})
 
 			It("should update the album", func() {
+				tests.SkipOnWindows("coarse clock can give the album the last scan time, so the quick scan skips its refresh (#6342)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
@@ -749,7 +750,7 @@ var _ = Describe("Scanner", func() {
 		})
 
 		It("detects a file was moved to a different folder", func() {
-			tests.SkipOnWindows("coarse clock can give a new track the scan start time, so the move is missed")
+			tests.SkipOnWindows("coarse clock can give a new track the scan start time, so the move is missed (#6342)")
 			By("Storing the original ID")
 			original, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 			Expect(err).ToNot(HaveOccurred())
@@ -782,7 +783,7 @@ var _ = Describe("Scanner", func() {
 		})
 
 		It("detects a move after a scan is interrupted by an error", func() {
-			tests.SkipOnWindows("coarse clock can give a new track the scan start time, so the move is missed")
+			tests.SkipOnWindows("coarse clock can give a new track the scan start time, so the move is missed (#6342)")
 			By("Storing the original ID")
 			By("Moving the file to a different folder")
 			fsys.Move("The Beatles/Revolver/01 - Taxman.mp3", "The Beatles/Help!/01 - Taxman.mp3")
@@ -810,7 +811,7 @@ var _ = Describe("Scanner", func() {
 		})
 
 		It("detects file format upgrades", func() {
-			tests.SkipOnWindows("coarse clock can give a new track the scan start time, so the move is missed")
+			tests.SkipOnWindows("coarse clock can give a new track the scan start time, so the move is missed (#6342)")
 			By("Storing the original ID")
 			original, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 			Expect(err).ToNot(HaveOccurred())
@@ -1345,6 +1346,7 @@ var _ = Describe("Scanner", func() {
 		})
 
 		It("should update artist stats during quick scans when new albums are added", func() {
+			tests.SkipOnWindows("coarse clock can give the artist the last scan time, so the quick scan skips its stats (#6342)")
 
 			By("Initial scan with one album")
 			Expect(runScanner(ctx, true)).To(Succeed())
