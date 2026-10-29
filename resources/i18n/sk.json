@@ -83,7 +83,8 @@
         "mood": "Nálada",
         "date": "Dátum záznamu",
         "missing": "Chýbajúce",
-        "libraryName": "Knižnica"
+        "libraryName": "Knižnica",
+        "played": "Prehrané"
       },
       "actions": {
         "playAll": "Prehrať",
@@ -93,7 +94,8 @@
         "addToPlaylist": "Pridať do zoznamu skladieb",
         "download": "Stiahnuť",
         "info": "Získať informácie",
-        "share": "Zdieľať"
+        "share": "Zdieľať",
+        "refresh": "Obnoviť metadáta"
       },
       "lists": {
         "all": "Všetko",
@@ -155,11 +157,13 @@
         "newPassword": "Nové heslo",
         "token": "Token",
         "lastAccessAt": "Posledný Prístup",
-        "libraries": "Knižnice"
+        "libraries": "Knižnice",
+        "scrobbleFilter": "Filter scrobblovania"
       },
       "helperTexts": {
         "name": "Zmena mena sa zobrazí až po ďalšom prihlásení",
-        "libraries": "Vyberte konkrétne knižnice pre tohto používateľa alebo nechajte pole prázdne, ak chcete použiť predvolené knižnice"
+        "libraries": "Vyberte konkrétne knižnice pre tohto používateľa alebo nechajte pole prázdne, ak chcete použiť predvolené knižnice",
+        "scrobbleFilter": "Skladby, ktoré vyhovujú pravidlám týchto inteligentných zoznamov, sa neodosielajú do služieb Last.fm, ListenBrainz ani do scrobblerov. Používa rovnaký syntax JSON a správanie ako inteligentné zoznamy skladieb. Príklad: {\"all\":[{\"lt\":{\"rating\":4}}]}. Ak chcete zaznamenávať všetko, ponechajte pole prázdne. Lokálne počty prehratí zostávajú nezmenené."
       },
       "notifications": {
         "created": "Používateľ vytvorený",
@@ -173,7 +177,8 @@
         "adminAutoLibraries": "Administrátori majú automaticky prístup ku všetkým knižniciam"
       },
       "validation": {
-        "librariesRequired": "Pre používateľov bez administrátorských práv musí byť vybratá aspoň jedna knižnica"
+        "librariesRequired": "Pre používateľov bez administrátorských práv musí byť vybratá aspoň jedna knižnica",
+        "invalidScrobbleFilter": "Musí ísť o platné pravidlá pre inteligentný zoznam skladieb. Parametre limit, offset a oneskorenie obnovenia nie sú podporované."
       }
     },
     "player": {
@@ -186,7 +191,30 @@
         "userName": "Používateľské meno",
         "lastSeen": "Naposledy videný",
         "reportRealPath": "Skutočná cesta hlásenia",
-        "scrobbleEnabled": "Odosielať scrobbling na externé služby"
+        "scrobbleEnabled": "Odosielať scrobbling na externé služby",
+        "hasApiKey": "API kľúč"
+      },
+      "menuName": "Prehrávače a API kľúče",
+      "actions": {
+        "generateApiKey": "Vygenerovať API kľúč",
+        "regenerateApiKey": "Regenerovať",
+        "revokeApiKey": "Odvolať",
+        "copyApiKey": "Kopírovať"
+      },
+      "message": {
+        "apiKeyActive": "Tento prehrávač má kľúč API. Použite ho vo svojej aplikácii ako kľúč API, prípadne ako heslo, ak aplikácia nepoužíva autentifikáciu pomocou tokenov.",
+        "apiKeyNone": "Chýba kľúč API. Vygenerujte ho, aby ste mohli prepojiť aplikáciu s týmto prehrávačom.",
+        "apiKeyNoneOther": "Žiadny kľúč API.",
+        "apiKeyPending": "Skopírujte si tento kľúč teraz. Uloží sa po kliknutí na tlačidlo Uložiť a už sa znova nezobrazí.",
+        "apiKeyRevokePending": "Kľúč API sa pri uložení odstráni.",
+        "deleteWithKeyTitle": "Odstrániť prehrávač",
+        "deleteWithKeyContent": "Tento prehrávač má kľúč API. Aplikácie, ktoré ho využívajú, prestanú fungovať."
+      },
+      "notifications": {
+        "apiKeyCopied": "Kľúč API skopírovaný do schránky"
+      },
+      "validation": {
+        "apiKeyFormat": "Neplatný formát kľúča API"
       }
     },
     "transcoding": {
@@ -196,6 +224,9 @@
         "targetFormat": "Cieľový formát",
         "defaultBitRate": "Predvolená prenosová rýchlosť",
         "command": "Príkaz"
+      },
+      "choices": {
+        "noDefaultBitRate": "Žiadne"
       }
     },
     "playlist": {
@@ -210,7 +241,8 @@
         "songCount": "Skladby",
         "comment": "Komentár",
         "sync": "Auto-import",
-        "path": "Importovať z"
+        "path": "Importovať z",
+        "starred": "Obľúbené"
       },
       "actions": {
         "selectPlaylist": "Vybrať zoznam skladieb:",
@@ -297,11 +329,14 @@
         "totalDuration": "Dĺžka",
         "defaultNewUsers": "Predvolené pre nových používateľov",
         "createdAt": "Vytvorené",
-        "updatedAt": "Aktualizované"
+        "updatedAt": "Aktualizované",
+        "pidAlbum": "Zoskupovanie albumov",
+        "pidTrack": "Identita skladby"
       },
       "sections": {
         "basic": "Základné informácie",
-        "statistics": "Štatistiky"
+        "statistics": "Štatistiky",
+        "pid": "Trvalé identifikátory"
       },
       "actions": {
         "scan": "Skenovať knižnicu",
@@ -331,7 +366,17 @@
       "messages": {
         "deleteConfirm": "Ste si istý, že chcete odstrániť túto knižnicu? Tým sa odstránia všetky súvisiace dáta a prístupy používateľov.",
         "scanInProgress": "Skenovanie prebieha...",
-        "noLibrariesAssigned": "Tomuto používateľovi nie sú priradené žiadne knižnice"
+        "noLibrariesAssigned": "Tomuto používateľovi nie sú priradené žiadne knižnice",
+        "pidChangeTitle": "Upraviť trvalé identifikátory?",
+        "pidChangeConfirm": "Táto operácia nanovo usporiada albumy a skladby v tejto knižnici. Práve sa spúšťa kompletné opätovné skenovanie knižnice. Hviezdičkové hodnotenia skladieb, celkové hodnotenia a počty prehratí zostanú zachované. Hviezdičkové a iné hodnotenia albumov sa prenesú na nové albumy v prípadoch, keď je pôvodný album priradený k novému."
+      },
+      "pid": {
+        "global": "Použiť globálne nastavenie (%{value})",
+        "folder": "Priečinok (jeden album na priečinok)",
+        "custom": "Vlastné",
+        "spec": "Špecifikácia PID",
+        "help": "Značky a atribúty, ktoré identifikujú položku. Syntax nájdete v dokumentácii:",
+        "docs": "Trvalé identifikátory"
       }
     },
     "plugin": {
@@ -403,7 +448,8 @@
         "requiredHosts": "Požadovaní hostitelia",
         "configValidationError": "Overenie konfigurácie zlyhalo:",
         "schemaRenderError": "Nie je možné zobraziť konfiguračný formulár. Schéma pluginu môže byť neplatná.",
-        "allowWriteAccessHelp": "Keď je povolené, plugin môže upravovať súbory v adresároch knižníc. Predvolene majú pluginy prístup iba na čítanie."
+        "allowWriteAccessHelp": "Keď je povolené, plugin môže upravovať súbory v adresároch knižníc. Predvolene majú pluginy prístup iba na čítanie.",
+        "idHelp": "ID doplnku, odvodené od názvu jeho súboru. Použite ho pri odkazovaní na tento doplnok v možnostiach konfigurácie, napríklad v časti Agents."
       },
       "placeholders": {
         "configKey": "kľúč",
@@ -486,7 +532,7 @@
       "loading": "Načítavanie",
       "not_found": "Nenájdené",
       "show": "%{name} #%{id}",
-      "empty": "Zatiaľ žiaden %{name}.",
+      "empty": "Zatiaľ žiadne %{name}.",
       "invite": "Chcete pridať nové?"
     },
     "input": {
@@ -599,7 +645,11 @@
     "coverUploaded": "Obrázok obalu albumu aktualizovaný",
     "coverRemoved": "Obrázok obalu albumu odstránený",
     "coverUploadError": "Chyba pri nahrávaní obrázku obalu albumu",
-    "coverRemoveError": "Chyba pri odstraňovaní obrázku obalu albumu"
+    "coverRemoveError": "Chyba pri odstraňovaní obrázku obalu albumu",
+    "metadataRefreshStarted": "Obnovovanie metadát na pozadí",
+    "quickConnectApproved": "%{app} na zariadení %{device} je teraz prihlásená",
+    "quickConnectInvalidCode": "Neplatný alebo expirovaný kód",
+    "quickConnectError": "Kód sa nepodarilo schváliť"
   },
   "menu": {
     "library": "Knižnica",
@@ -622,7 +672,12 @@
           "album": "Použiť Album Gain",
           "track": "Použiť Track Gain"
         },
-        "lastfmNotConfigured": "Kľúč API Last.fm nie je nakonfigurovaný"
+        "lastfmNotConfigured": "Kľúč API Last.fm nie je nakonfigurovaný",
+        "dateFormat": "",
+        "dateFormats": {
+          "language": "",
+          "browser": ""
+        }
       }
     },
     "albumList": "Albumy",
@@ -634,6 +689,15 @@
       "multipleLibraries": "%{selected} z %{total} knižníc",
       "selectLibraries": "Vyberte knižnice",
       "none": "Žiadne"
+    },
+    "onlyFavourites": "Zobraziť iba obľúbené",
+    "quickConnect": {
+      "name": "Rýchle pripojenie",
+      "code": "Kód",
+      "help": "Zadajte kód zobrazený v aplikácii Jellyfin, aby ste ju prihlásili k svojmu účtu",
+      "confirm": "Prihlásiť sa do svojho účtu v aplikácii %{app} %{version} na zariadení %{device}?",
+      "continue": "Pokračovať",
+      "approve": "Schváliť"
     }
   },
   "player": {
