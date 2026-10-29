@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"maps"
 	"math"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -42,6 +44,7 @@ func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFi
 	}
 	mf.Lyrics = md.mapLyrics()
 	mf.ExplicitStatus = md.mapExplicitStatusTag()
+	md.mapMovementNumbers(mf.Tags)
 
 	// Dates
 	date, origDate, relDate := md.mapDates()
@@ -133,6 +136,27 @@ func (md Metadata) mapGain(rg, r128 model.TagName) *float64 {
 		return &value
 	}
 	return nil
+}
+
+// mapMovementNumbers splits ID3 MVIN "n/N" values, like tuple() does for track and disc numbers.
+// Totals are only filled when every value has one, so the parallel movement tags stay aligned.
+func (md Metadata) mapMovementNumbers(tags model.Tags) {
+	values := md.Strings(model.TagMovementNumber)
+	if !slices.ContainsFunc(values, func(v string) bool { return strings.Contains(v, "/") }) {
+		return
+	}
+	numbers := make([]string, len(values))
+	totals := make([]string, len(values))
+	allHaveTotals := true
+	for i, v := range values {
+		var found bool
+		numbers[i], totals[i], found = strings.Cut(v, "/")
+		allHaveTotals = allHaveTotals && found
+	}
+	tags[model.TagMovementNumber] = numbers
+	if allHaveTotals && len(md.Strings(model.TagMovementTotal)) == 0 {
+		tags[model.TagMovementTotal] = totals
+	}
 }
 
 func (md Metadata) mapLyrics() string {

@@ -156,6 +156,27 @@ var _ = Describe("ToMediaFile", func() {
 		})
 	})
 
+	Describe("Movements", func() {
+		It("splits an ID3 MVIN n/N value into movement number and total", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"Allegro"}, "movementnumber": {"1/4"}})
+			Expect(mf.Tags).To(HaveKeyWithValue(model.TagMovementNumber, []string{"1"}))
+			Expect(mf.Tags).To(HaveKeyWithValue(model.TagMovementTotal, []string{"4"}))
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "Allegro", Number: 1, Count: 4}}))
+		})
+		It("maps MP4 movement number and count", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"Andante"}, "movementnumber": {"2"}, "movementcount": {"4"}})
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "Andante", Number: 2, Count: 4}}))
+		})
+		It("prefers an explicit movement total over the n/N total", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"Allegro"}, "movement": {"2/4"}, "movementtotal": {"5"}})
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "Allegro", Number: 2, Count: 5}}))
+		})
+		It("does not add a total when only some values have one", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"I", "II"}, "movement": {"1/4", "2"}})
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "I", Number: 1}, {Name: "II", Number: 2}}))
+		})
+	})
+
 	Describe("BitDepth", func() {
 		It("maps the bit depth when present", func() {
 			props.AudioProperties = metadata.AudioProperties{BitDepth: 24}
