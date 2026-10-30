@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"runtime"
 	"time"
 
@@ -21,9 +22,9 @@ import (
 )
 
 const (
-	// formatVersion is the first byte of every cached entry. Bump it whenever the peak
+	// formatVersion is the first byte of every cached entry. Bump it whenever the
 	// algorithm or the encoding changes, so stale entries are recomputed.
-	formatVersion = 1
+	formatVersion = 2
 
 	// MaxSamples is the resolution waveforms are computed and stored at. Requests for
 	// fewer samples are downsampled from it.
@@ -36,8 +37,8 @@ const (
 	// envelope, not the audio itself.
 	sampleRate = 8000
 
-	// windowSize is the number of PCM samples (10ms) folded into each intermediate peak,
-	// keeping memory bounded (~720KB per hour of audio) regardless of track length.
+	// windowSize is the number of PCM samples (10ms) folded into each intermediate energy value,
+	// keeping memory bounded (~1.4MB per hour of audio) regardless of track length.
 	windowSize = sampleRate / 100
 )
 
@@ -46,8 +47,10 @@ var ErrDisabled = errors.New("waveform generation is disabled")
 
 // Waveform computes the amplitude envelope of media files.
 type Waveform interface {
-	// Get returns the peaks of mf, downsampled to the given number of samples. Each peak is
-	// the maximum absolute amplitude of its time slice on a linear 0-255 scale (255 = full scale).
+	// Get returns the loudness envelope of mf, downsampled to the given number of samples. Each
+	// value is the RMS amplitude of its time slice on a linear 0-255 scale, relative to the
+	// loudest slice of the track (255). RMS is used instead of the peak amplitude because mastered
+	// music reaches full scale almost everywhere, which makes a peak envelope flat.
 	Get(ctx context.Context, mf *model.MediaFile, samples int) ([]uint8, error)
 }
 
@@ -133,21 +136,21 @@ func (w *waveform) generate(ctx context.Context, mf *model.MediaFile) (io.Reader
 	}
 	defer pcm.Close()
 
-	windows, err := windowPeaks(pcm)
+	windows, err := windowEnergy(pcm)
 	if err != nil {
 		return nil, fmt.Errorf("decoding audio: %w", err)
 	}
-	peaks := Downsample(scale(windows), MaxSamples)
+	peaks := envelope(windows, MaxSamples)
 	log.Debug(ctx, "Generated waveform", "id", mf.ID, "path", mf.Path, "samples", len(peaks), "elapsed", time.Since(start))
 	return bytes.NewReader(encode(peaks)), nil
 }
 
-// windowPeaks reads mono s16le PCM and returns the maximum absolute amplitude of each window.
-func windowPeaks(r io.Reader) ([]uint16, error) {
+// windowEnergy reads mono s16le PCM and returns the mean square amplitude (0-1) of each window.
+func windowEnergy(r io.Reader) ([]float32, error) {
 	br := bufio.NewReaderSize(r, 64*1024)
-	var peaks []uint16
+	var energies []float32
 	var buf [2]byte
-	var peak uint16
+	var sum float64
 	n := 0
 	for {
 		if _, err := io.ReadFull(br, buf[:]); err != nil {
@@ -156,48 +159,62 @@ func windowPeaks(r io.Reader) ([]uint16, error) {
 			}
 			return nil, err
 		}
-		v := int16(binary.LittleEndian.Uint16(buf[:]))
-		a := uint16(v)
-		if v < 0 {
-			a = uint16(-int32(v))
-		}
-		peak = max(peak, a)
+		v := float64(int16(binary.LittleEndian.Uint16(buf[:]))) / 32768
+		sum += v * v
 		n++
 		if n == windowSize {
-			peaks = append(peaks, peak)
-			peak, n = 0, 0
+			energies = append(energies, float32(sum/float64(n)))
+			sum, n = 0, 0
 		}
 	}
 	if n > 0 {
-		peaks = append(peaks, peak)
+		energies = append(energies, float32(sum/float64(n)))
 	}
-	return peaks, nil
+	return energies, nil
 }
 
-// scale maps 16-bit amplitudes (0-32768) to 0-255.
-func scale(amps []uint16) []uint8 {
-	out := make([]uint8, len(amps))
-	for i, a := range amps {
-		out[i] = uint8(min(255, (uint32(a)*255+16384)/32768))
+// envelope groups window energies into at most samples slices and returns the RMS amplitude of
+// each, scaled so the loudest slice is 255. A silent track is all zeros.
+func envelope(energies []float32, samples int) []uint8 {
+	n := len(energies)
+	samples = min(samples, n)
+	rms := make([]float64, samples)
+	var loudest float64
+	for i := range samples {
+		from, to := i*n/samples, (i+1)*n/samples
+		var sum float64
+		for _, e := range energies[from:to] {
+			sum += float64(e)
+		}
+		rms[i] = math.Sqrt(sum / float64(to-from))
+		loudest = max(loudest, rms[i])
+	}
+	out := make([]uint8, samples)
+	if loudest == 0 {
+		return out
+	}
+	for i, v := range rms {
+		out[i] = uint8(math.Round(v / loudest * 255))
 	}
 	return out
 }
 
-// Downsample reduces peaks to the given number of samples, keeping the maximum of each group so
-// short transients stay visible. It never upsamples: when samples >= len(peaks), peaks is returned as is.
-func Downsample(peaks []uint8, samples int) []uint8 {
-	n := len(peaks)
+// Downsample reduces values to the given number of samples. Each output is the quadratic mean of
+// the values it covers, so it stays the RMS of the longer slice. It never upsamples: when
+// samples >= len(values), values is returned as is.
+func Downsample(values []uint8, samples int) []uint8 {
+	n := len(values)
 	if samples <= 0 || samples >= n {
-		return peaks
+		return values
 	}
 	out := make([]uint8, samples)
 	for i := range samples {
 		from, to := i*n/samples, (i+1)*n/samples
-		var m uint8
-		for _, p := range peaks[from:to] {
-			m = max(m, p)
+		var sum float64
+		for _, v := range values[from:to] {
+			sum += float64(v) * float64(v)
 		}
-		out[i] = m
+		out[i] = uint8(math.Round(math.Sqrt(sum / float64(to-from))))
 	}
 	return out
 }

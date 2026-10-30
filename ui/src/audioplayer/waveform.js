@@ -36,24 +36,25 @@ export const loadWaveform = (id) => {
 
 export const clearWaveformCache = () => cache.clear()
 
-// resample returns count values, each the maximum of the peaks it covers. When count is larger
-// than the number of peaks, peaks are repeated.
+// resample returns count values. The server sends RMS values, so each output is the quadratic
+// mean of the values it covers. When count is larger than the number of peaks, peaks are repeated.
 export const resample = (peaks, count) => {
   const out = new Array(count)
   for (let i = 0; i < count; i++) {
     const from = Math.floor((i * peaks.length) / count)
     const to = Math.max(from + 1, Math.floor(((i + 1) * peaks.length) / count))
-    let max = 0
+    let sum = 0
     for (let j = from; j < to; j++) {
-      max = Math.max(max, peaks[j])
+      sum += peaks[j] * peaks[j]
     }
-    out[i] = max
+    out[i] = Math.sqrt(sum / (to - from))
   }
   return out
 }
 
-// drawWaveform draws peaks as vertically centered bars, scaled so the loudest peak fills the
-// height. Bars left of progress (0-1) are drawn opaque, the rest translucent.
+// drawWaveform draws peaks as vertically centered bars. Heights are the squared RMS relative to the
+// loudest peak (i.e. power), which spreads out the loud range most mastered music sits in. Bars
+// left of progress (0-1) are drawn opaque, the rest translucent.
 export const drawWaveform = (ctx, peaks, width, height, progress, color) => {
   ctx.clearRect(0, 0, width, height)
   if (!peaks?.length || width <= 0 || height <= 0) {
@@ -69,7 +70,7 @@ export const drawWaveform = (ctx, peaks, width, height, progress, color) => {
   ctx.fillStyle = color
   bars.forEach((peak, i) => {
     const x = i * step
-    const h = Math.max(1, (peak / loudest) * height)
+    const h = Math.max(1, (peak / loudest) ** 2 * height)
     ctx.globalAlpha = x + BAR_WIDTH / 2 <= playedX ? 1 : UNPLAYED_ALPHA
     ctx.fillRect(x, mid - h / 2, BAR_WIDTH, h)
   })

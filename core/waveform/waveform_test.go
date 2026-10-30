@@ -22,10 +22,12 @@ func pcm(samples ...int16) string {
 	return buf.String()
 }
 
-// window returns a full window of samples where the loudest one is v.
-func window(v int16) []int16 {
+// constant returns a full window of samples all set to v.
+func constant(v int16) []int16 {
 	w := make([]int16, windowSize)
-	w[windowSize/2] = v
+	for i := range w {
+		w[i] = v
+	}
 	return w
 }
 
@@ -47,49 +49,62 @@ func (c *passthroughCache) Available(context.Context) bool { return true }
 func (c *passthroughCache) Disabled(context.Context) bool  { return false }
 
 var _ = Describe("Waveform", func() {
-	Describe("windowPeaks", func() {
-		It("returns the max absolute amplitude of each window", func() {
+	Describe("windowEnergy", func() {
+		It("returns the mean square amplitude of each window", func() {
 			var samples []int16
-			samples = append(samples, window(1000)...)
-			samples = append(samples, window(-2000)...)
-			samples = append(samples, 300, -32768) // partial last window
-			peaks, err := windowPeaks(bytes.NewReader([]byte(pcm(samples...))))
+			samples = append(samples, constant(16384)...)
+			samples = append(samples, constant(-8192)...)
+			samples = append(samples, -32768) // partial last window
+			energies, err := windowEnergy(bytes.NewReader([]byte(pcm(samples...))))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(peaks).To(Equal([]uint16{1000, 2000, 32768}))
+			Expect(energies).To(Equal([]float32{0.25, 0.0625, 1}))
 		})
 
 		It("ignores a trailing odd byte", func() {
-			peaks, err := windowPeaks(bytes.NewReader(append([]byte(pcm(500)), 0x7f)))
+			energies, err := windowEnergy(bytes.NewReader(append([]byte(pcm(16384)), 0x7f)))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(peaks).To(Equal([]uint16{500}))
+			Expect(energies).To(Equal([]float32{0.25}))
 		})
 
-		It("returns no peaks for empty input", func() {
-			peaks, err := windowPeaks(bytes.NewReader(nil))
+		It("returns no energies for empty input", func() {
+			energies, err := windowEnergy(bytes.NewReader(nil))
 			Expect(err).ToNot(HaveOccurred())
-			Expect(peaks).To(BeEmpty())
+			Expect(energies).To(BeEmpty())
 		})
 	})
 
-	Describe("scale", func() {
-		It("maps 16-bit amplitudes to 0-255", func() {
-			Expect(scale([]uint16{0, 16384, 32767, 32768})).To(Equal([]uint8{0, 128, 255, 255}))
+	Describe("envelope", func() {
+		It("returns the RMS of each slice, relative to the loudest one", func() {
+			Expect(envelope([]float32{0.25, 0.25, 0.0625, 0.0625}, 2)).To(Equal([]uint8{255, 128}))
+		})
+
+		It("averages energy, not amplitude, within a slice", func() {
+			// RMS of the slice is sqrt((1+0)/2) = 0.707, relative to the loudest slice (1)
+			Expect(envelope([]float32{1, 0, 1, 1}, 2)).To(Equal([]uint8{180, 255}))
+		})
+
+		It("never returns more slices than windows", func() {
+			Expect(envelope([]float32{1, 0.25}, 10)).To(Equal([]uint8{255, 128}))
+		})
+
+		It("returns zeros for silence", func() {
+			Expect(envelope([]float32{0, 0}, 2)).To(Equal([]uint8{0, 0}))
 		})
 	})
 
 	Describe("Downsample", func() {
-		It("keeps the maximum of each group", func() {
-			Expect(Downsample([]uint8{1, 9, 2, 3, 8, 4}, 3)).To(Equal([]uint8{9, 3, 8}))
+		It("returns the quadratic mean of each group", func() {
+			Expect(Downsample([]uint8{100, 100, 255, 0, 3, 4}, 3)).To(Equal([]uint8{100, 180, 4}))
 		})
 
 		It("handles uneven groups", func() {
-			Expect(Downsample([]uint8{1, 2, 3, 4, 5}, 2)).To(Equal([]uint8{2, 5}))
+			Expect(Downsample([]uint8{10, 10, 10, 10, 10}, 2)).To(Equal([]uint8{10, 10}))
 		})
 
 		It("never upsamples", func() {
-			peaks := []uint8{1, 2, 3}
-			Expect(Downsample(peaks, 10)).To(Equal(peaks))
-			Expect(Downsample(peaks, 0)).To(Equal(peaks))
+			values := []uint8{1, 2, 3}
+			Expect(Downsample(values, 10)).To(Equal(values))
+			Expect(Downsample(values, 0)).To(Equal(values))
 		})
 	})
 
@@ -117,8 +132,8 @@ var _ = Describe("Waveform", func() {
 		BeforeEach(func() {
 			conf.Update(func(c *conf.Options) { c.EnableWaveform = true })
 			var samples []int16
-			for _, v := range []int16{32767, 0, 16384, 0} {
-				samples = append(samples, window(v)...)
+			for _, v := range []int16{16384, 0, 8192, 0} {
+				samples = append(samples, constant(v)...)
 			}
 			ff = tests.NewMockFFmpeg(pcm(samples...))
 			fc = &passthroughCache{}
@@ -129,7 +144,8 @@ var _ = Describe("Waveform", func() {
 		It("returns the peaks at the requested resolution", func() {
 			peaks, err := w.Get(GinkgoT().Context(), mf, 2)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(peaks).To(Equal([]uint8{255, 128}))
+			// Stored as {255, 0, 128, 0}, then each pair is combined by quadratic mean
+			Expect(peaks).To(Equal([]uint8{180, 91}))
 			Expect(ff.IsClosed()).To(BeTrue())
 		})
 

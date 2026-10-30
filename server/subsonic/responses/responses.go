@@ -591,8 +591,8 @@ type LyricsList struct {
 	StructuredLyrics []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
 }
 
-// Waveform holds a song's amplitude envelope: each peak is the loudest absolute amplitude
-// of an equal time slice, on a linear 0-255 scale (255 = full scale).
+// Waveform holds a song's loudness envelope: each peak is the RMS amplitude of an equal time
+// slice, on a linear 0-255 scale relative to the song's loudest slice (255).
 type Waveform struct {
 	ID       string  `xml:"id,attr"       json:"id"`
 	Duration float32 `xml:"duration,attr" json:"duration"`

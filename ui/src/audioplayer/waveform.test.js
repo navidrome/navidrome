@@ -16,8 +16,8 @@ const waveformResponse = (peaks) => ({
 })
 
 describe('resample', () => {
-  it('keeps the maximum of each group when downsampling', () => {
-    expect(resample([1, 9, 2, 3, 8, 4], 3)).toEqual([9, 3, 8])
+  it('returns the quadratic mean of each group when downsampling', () => {
+    expect(resample([3, 4, 5, 5, 0, 0], 3)).toEqual([Math.sqrt(12.5), 5, 0])
   })
 
   it('repeats peaks when upsampling', () => {
@@ -35,12 +35,12 @@ describe('drawWaveform', () => {
     return ctx
   }
 
-  it('draws one centered bar per 3px, normalized to the loudest peak', () => {
+  it('draws one centered bar per 3px, as power relative to the loudest peak', () => {
     const ctx = fakeContext()
     drawWaveform(ctx, [50, 100], 6, 20, 0, 'red')
     expect(ctx.fillStyle).toBe('red')
     expect(ctx.rects).toEqual([
-      { x: 0, y: 5, w: 2, h: 10, alpha: 0.35 },
+      { x: 0, y: 7.5, w: 2, h: 5, alpha: 0.35 },
       { x: 3, y: 0, w: 2, h: 20, alpha: 0.35 },
     ])
   })
