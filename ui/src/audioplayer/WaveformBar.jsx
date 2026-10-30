@@ -7,16 +7,25 @@ const PROGRESS_BAR_SELECTOR = [
   '.react-jinke-music-player-main .music-player-panel .progress-bar',
   '.react-jinke-music-player-mobile .react-jinke-music-player-mobile-progress-bar',
 ].join(', ')
-const FALLBACK_COLOR = '#31c27c'
+const FALLBACK_PLAYED_COLOR = '#31c27c'
+const FALLBACK_UNPLAYED_COLOR = '#888888'
 
-// The player library styles the slider track per theme, so the waveform reuses its color.
-const trackColor = (progressBar) => {
+const isVisible = (color) =>
+  color && color !== 'transparent' && color !== 'rgba(0, 0, 0, 0)'
+
+// Played bars use the slider track color, which the player library styles per theme.
+const playedColor = (progressBar) => {
   const track = progressBar.querySelector('.rc-slider-track')
   const color = track && window.getComputedStyle(track).backgroundColor
-  if (!color || color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
-    return FALLBACK_COLOR
-  }
-  return color
+  return isVisible(color) ? color : FALLBACK_PLAYED_COLOR
+}
+
+// Unplayed bars use the color of the time next to the bar, which themes make readable on the
+// player background. The slider rail color is often too dark for that.
+const unplayedColor = (progressBar) => {
+  const time = progressBar.parentElement?.querySelector('.current-time')
+  const color = time && window.getComputedStyle(time).color
+  return isVisible(color) ? color : FALLBACK_UNPLAYED_COLOR
 }
 
 const canvasStyle = {
@@ -90,7 +99,15 @@ const WaveformBar = ({ trackId, audioInstance, onAvailable }) => {
       duration > 0 && Number.isFinite(duration)
         ? Math.min(1, audioInstance.currentTime / duration)
         : 0
-    drawWaveform(ctx, peaks, width, height, progress, trackColor(progressBar))
+    drawWaveform(
+      ctx,
+      peaks,
+      width,
+      height,
+      progress,
+      playedColor(progressBar),
+      unplayedColor(progressBar),
+    )
   }, [peaks, progressBar, audioInstance])
 
   useEffect(() => {

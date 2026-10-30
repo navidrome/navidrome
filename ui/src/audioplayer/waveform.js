@@ -5,7 +5,7 @@ export const WAVEFORM_SAMPLES = 500
 
 const BAR_WIDTH = 2
 const BAR_GAP = 1
-const UNPLAYED_ALPHA = 0.35
+const UNPLAYED_ALPHA = 0.5
 const MAX_CACHED = 50
 
 const cache = new Map()
@@ -54,8 +54,16 @@ export const resample = (peaks, count) => {
 
 // drawWaveform draws peaks as vertically centered bars. Heights are the squared RMS relative to the
 // loudest peak (i.e. power), which spreads out the loud range most mastered music sits in. Bars
-// left of progress (0-1) are drawn opaque, the rest translucent.
-export const drawWaveform = (ctx, peaks, width, height, progress, color) => {
+// left of progress (0-1) are drawn in played, the rest in unplayed at half opacity.
+export const drawWaveform = (
+  ctx,
+  peaks,
+  width,
+  height,
+  progress,
+  played,
+  unplayed,
+) => {
   ctx.clearRect(0, 0, width, height)
   if (!peaks?.length || width <= 0 || height <= 0) {
     return
@@ -67,11 +75,12 @@ export const drawWaveform = (ctx, peaks, width, height, progress, color) => {
   const playedX = progress * width
   const mid = height / 2
 
-  ctx.fillStyle = color
   bars.forEach((peak, i) => {
     const x = i * step
     const h = Math.max(1, (peak / loudest) ** 2 * height)
-    ctx.globalAlpha = x + BAR_WIDTH / 2 <= playedX ? 1 : UNPLAYED_ALPHA
+    const isPlayed = x + BAR_WIDTH / 2 <= playedX
+    ctx.fillStyle = isPlayed ? played : unplayed
+    ctx.globalAlpha = isPlayed ? 1 : UNPLAYED_ALPHA
     ctx.fillRect(x, mid - h / 2, BAR_WIDTH, h)
   })
   ctx.globalAlpha = 1

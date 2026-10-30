@@ -30,37 +30,46 @@ describe('drawWaveform', () => {
     const ctx = { rects: [], globalAlpha: 1 }
     ctx.clearRect = vi.fn()
     ctx.fillRect = vi.fn((x, y, w, h) =>
-      ctx.rects.push({ x, y, w, h, alpha: ctx.globalAlpha }),
+      ctx.rects.push({
+        x,
+        y,
+        w,
+        h,
+        color: ctx.fillStyle,
+        alpha: ctx.globalAlpha,
+      }),
     )
     return ctx
   }
 
   it('draws one centered bar per 3px, as power relative to the loudest peak', () => {
     const ctx = fakeContext()
-    drawWaveform(ctx, [50, 100], 6, 20, 0, 'red')
-    expect(ctx.fillStyle).toBe('red')
+    drawWaveform(ctx, [50, 100], 6, 20, 0, 'red', 'grey')
     expect(ctx.rects).toEqual([
-      { x: 0, y: 7.5, w: 2, h: 5, alpha: 0.35 },
-      { x: 3, y: 0, w: 2, h: 20, alpha: 0.35 },
+      { x: 0, y: 7.5, w: 2, h: 5, color: 'grey', alpha: 0.5 },
+      { x: 3, y: 0, w: 2, h: 20, color: 'grey', alpha: 0.5 },
     ])
   })
 
-  it('draws played bars opaque', () => {
+  it('draws played bars opaque in the played color', () => {
     const ctx = fakeContext()
-    drawWaveform(ctx, [100, 100], 6, 20, 0.5, 'red')
-    expect(ctx.rects.map((r) => r.alpha)).toEqual([1, 0.35])
+    drawWaveform(ctx, [100, 100], 6, 20, 0.5, 'red', 'grey')
+    expect(ctx.rects.map((r) => [r.color, r.alpha])).toEqual([
+      ['red', 1],
+      ['grey', 0.5],
+    ])
     expect(ctx.globalAlpha).toBe(1)
   })
 
   it('draws silence as a flat line', () => {
     const ctx = fakeContext()
-    drawWaveform(ctx, [0, 0], 6, 20, 0, 'red')
+    drawWaveform(ctx, [0, 0], 6, 20, 0, 'red', 'grey')
     expect(ctx.rects.map((r) => r.h)).toEqual([1, 1])
   })
 
   it('draws nothing without peaks', () => {
     const ctx = fakeContext()
-    drawWaveform(ctx, [], 6, 20, 0, 'red')
+    drawWaveform(ctx, [], 6, 20, 0, 'red', 'grey')
     expect(ctx.fillRect).not.toHaveBeenCalled()
   })
 })
