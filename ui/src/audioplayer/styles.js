@@ -85,6 +85,16 @@ const useStyle = makeStyles(
       '& .react-jinke-music-player-mobile-progress': {
         display: (props) => (props.isRadio ? 'none' : 'flex'),
       },
+      // With a waveform, the slider grows to cover it (keeping its rail centered) so clicks
+      // anywhere on the waveform seek, and the bar itself is hidden behind the waveform.
+      '& .music-player-panel .progress-bar .rc-slider': {
+        height: (props) => props.hasWaveform && '24px',
+        padding: (props) => props.hasWaveform && '10px 0',
+      },
+      '& .music-player-panel .progress-bar .rc-slider-rail, & .music-player-panel .progress-bar .rc-slider-track, & .music-player-panel .progress-bar .progress-load-bar':
+        {
+          opacity: (props) => props.hasWaveform && '0',
+        },
     },
   }),
   { name: 'NDAudioPlayer' },
