@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react'
 import {
   Datagrid,
-  DateField,
   EditButton,
   Filter,
   NullableBooleanInput,
@@ -20,6 +19,7 @@ import Switch from '@material-ui/core/Switch'
 import { makeStyles } from '@material-ui/core/styles'
 import { useMediaQuery } from '@material-ui/core'
 import {
+  DateField,
   ArtworkAvatar,
   DurationField,
   List,
@@ -37,6 +37,18 @@ import ChangePublicStatusButton from './ChangePublicStatusButton'
 const useStyles = makeStyles((theme) => ({
   button: {
     color: theme.palette.type === 'dark' ? 'white' : undefined,
+  },
+  // RA's layout root is min-width: fit-content; capping the card keeps the page width
+  content: {
+    [theme.breakpoints.down('xs')]: {
+      overflowX: 'auto',
+      maxWidth: '100vw',
+    },
+  },
+  name: {
+    [theme.breakpoints.down('xs')]: {
+      overflowWrap: 'anywhere',
+    },
   },
 }))
 
@@ -95,6 +107,7 @@ export const ToggleField = ({ resource, source }) => {
   return (
     <Switch
       checked={record[source]}
+      color="primary"
       onClick={handleClick}
       disabled={!isWritable(record.ownerId)}
     />
@@ -133,6 +146,7 @@ export const PlaylistLove = ({ record, className }) => (
 PlaylistLove.defaultProps = { source: 'starred', sortable: false }
 
 const PlaylistList = (props) => {
+  const classes = useStyles()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('playlist')
@@ -164,6 +178,7 @@ const PlaylistList = (props) => {
   return (
     <List
       {...props}
+      classes={{ content: classes.content }}
       exporter={false}
       sort={{ field: 'name', order: 'ASC' }}
       filters={<PlaylistFilter />}
@@ -172,7 +187,7 @@ const PlaylistList = (props) => {
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <ArtworkAvatar source="id" variant="square" />
-        <TextField source="name" />
+        <TextField source="name" className={classes.name} />
         {columns}
         <Writable>
           <EditButton />

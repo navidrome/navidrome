@@ -231,9 +231,9 @@ additional:
   movementname:
     aliases: [ mvnm, movementname, ©mvn ]
   movementtotal:
-    aliases: [ movementtotal, mvc ]
+    aliases: [ movementtotal, movementcount, mvc ]
   movement:
-    aliases: [ mvin, movement, mvi ]
+    aliases: [ mvin, movement, movementnumber, mvi ]
   recordlabel:
     aliases: [ tpub, label, publisher, ----:com.apple.itunes:label, wm/publisher, organization ]
     album: true
