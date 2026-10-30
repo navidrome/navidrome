@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/waveform"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/persistence"
+	"github.com/navidrome/navidrome/persistence/persistencetest"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -26,12 +29,11 @@ func (f *fakeWaveform) Get(_ context.Context, _ *model.MediaFile, samples int) (
 var _ = Describe("GetWaveform", func() {
 	var router *Router
 	var wf *fakeWaveform
-	var mockRepo *tests.MockMediaFileRepo
 
 	BeforeEach(func() {
-		mockRepo = tests.CreateMockMediaFileRepo()
-		mockRepo.SetData(model.MediaFiles{{ID: "1", Duration: 12.5}})
-		ds := &tests.MockDataStore{MockedMediaFile: mockRepo}
+		conf.Update(func(c *conf.Options) { c.EnableWaveform = true })
+		ds := persistence.New(db.Db())
+		persistencetest.PutMediaFiles(GinkgoT().Context(), ds, model.MediaFile{ID: "1", Duration: 12.5})
 		wf = &fakeWaveform{peaks: []uint8{0, 64, 255, 128}}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, wf)
 	})
@@ -75,5 +77,26 @@ var _ = Describe("GetWaveform", func() {
 		wf.err = errors.New("boom")
 		_, err := router.GetWaveform(newGetRequest("id=1"))
 		Expect(err).To(MatchError("boom"))
+	})
+
+	Context("when waveforms are disabled", func() {
+		BeforeEach(func() {
+			conf.Update(func(c *conf.Options) { c.EnableWaveform = false })
+		})
+
+		It("returns a Subsonic error without generating anything", func() {
+			_, err := router.GetWaveform(newGetRequest("id=1"))
+			var subErr subError
+			Expect(errors.As(err, &subErr)).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+			Expect(wf.samples).To(BeZero())
+		})
+	})
+
+	It("returns a Subsonic error when no waveform service is configured", func() {
+		router.waveform = nil
+		_, err := router.GetWaveform(newGetRequest("id=1"))
+		var subErr subError
+		Expect(errors.As(err, &subErr)).To(BeTrue())
 	})
 })

@@ -188,6 +188,7 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getAvatar", api.GetAvatar)
 			h(r, "getLyrics", api.GetLyrics)
 			h(r, "getLyricsBySongId", api.GetLyricsBySongId)
+			h(r, "getWaveform", api.GetWaveform)
 			hr(r, "stream", api.Stream)
 			hr(r, "download", api.Download)
 			hr(r, "getTranscodeDecision", api.GetTranscodeDecision)
@@ -218,15 +219,6 @@ func (api *Router) routes() http.Handler {
 			})
 		} else {
 			h501(r, "getShares", "createShare", "updateShare", "deleteShare")
-		}
-
-		if conf.Server().EnableWaveform {
-			r.Group(func(r chi.Router) {
-				r.Use(getPlayer(api.players))
-				h(r, "getWaveform", api.GetWaveform)
-			})
-		} else {
-			h501(r, "getWaveform")
 		}
 
 		if conf.Server().Jukebox.Enabled {

@@ -3,12 +3,19 @@ package subsonic
 import (
 	"net/http"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/waveform"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
+// GetWaveform is always routed, so a client calling it on a server with waveforms turned off gets a
+// regular Subsonic error instead of a non-Subsonic 501 page. Clients should check for the
+// songWaveform extension before calling it.
 func (api *Router) GetWaveform(r *http.Request) (*responses.Subsonic, error) {
+	if !conf.Server().EnableWaveform || api.waveform == nil {
+		return nil, newError(responses.ErrorGeneric, "waveforms are disabled on this server")
+	}
 	p := req.Params(r)
 	id, err := p.String("id")
 	if err != nil {
