@@ -24,6 +24,9 @@ const setupHandlers = (stream, dispatchFn) => {
     stream.addEventListener('nowPlayingCount', eventHandler(dispatchFn))
   }
   stream.addEventListener('keepAlive', eventHandler(dispatchFn))
+  stream.addEventListener('podcastEpisodeProgress', (event) => {
+    window.dispatchEvent(new CustomEvent('podcastEpisodeProgress', { detail: JSON.parse(event.data) }))
+  })
   stream.onerror = (e) => {
     // eslint-disable-next-line no-console
     console.log('EventStream error', e)
@@ -80,6 +83,9 @@ const startEventStreamLegacy = async (dispatchFn) => {
         newStream.addEventListener('nowPlayingCount', eventHandler(dispatchFn))
       }
       newStream.addEventListener('keepAlive', eventHandler(dispatchFn))
+      newStream.addEventListener('podcastEpisodeProgress', (event) => {
+        window.dispatchEvent(new CustomEvent('podcastEpisodeProgress', { detail: JSON.parse(event.data) }))
+      })
       newStream.onerror = (e) => {
         // eslint-disable-next-line no-console
         console.log('EventStream error', e)

@@ -25,7 +25,7 @@ var _ = Describe("buildPlaylist", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		ctx = context.Background()
 	})
 
@@ -331,7 +331,7 @@ var _ = Describe("UpdatePlaylist", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		playlists = &fakePlaylists{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, playlists, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, playlists, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	It("clears the comment when parameter is empty", func() {
