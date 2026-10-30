@@ -129,7 +129,7 @@ const Player = () => {
 
   const visible = authenticated && playerState.queue.length > 0
   const isRadio = playerState.current?.isRadio || false
-  const showWaveform = config.enableWaveform && isDesktop && visible && !isRadio
+  const showWaveform = config.enableWaveform && visible && !isRadio
   const classes = useStyle({
     isRadio,
     visible,

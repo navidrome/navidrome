@@ -95,6 +95,15 @@ const useStyle = makeStyles(
         {
           opacity: (props) => props.hasWaveform && '0',
         },
+      // The mobile full-screen player has more room, so its waveform is taller.
+      '& .react-jinke-music-player-mobile-progress .rc-slider': {
+        height: (props) => props.hasWaveform && '32px',
+        padding: (props) => props.hasWaveform && '14px 0',
+      },
+      '& .react-jinke-music-player-mobile-progress .rc-slider-rail, & .react-jinke-music-player-mobile-progress .rc-slider-track, & .react-jinke-music-player-mobile-progress .progress-load-bar':
+        {
+          opacity: (props) => props.hasWaveform && '0',
+        },
     },
   }),
   { name: 'NDAudioPlayer' },

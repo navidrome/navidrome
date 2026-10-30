@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { drawWaveform, loadWaveform } from './waveform'
 
-const PROGRESS_BAR_SELECTOR =
-  '.react-jinke-music-player-main .music-player-panel .progress-bar'
-const MAX_LOCATE_ATTEMPTS = 60
+// The desktop panel and the mobile full-screen player each have a progress bar; only one is shown at a time.
+const PROGRESS_BAR_SELECTOR = [
+  '.react-jinke-music-player-main .music-player-panel .progress-bar',
+  '.react-jinke-music-player-mobile .react-jinke-music-player-mobile-progress-bar',
+].join(', ')
 const FALLBACK_COLOR = '#31c27c'
 
 // The player library styles the slider track per theme, so the waveform reuses its color.
@@ -27,7 +29,7 @@ const canvasStyle = {
   zIndex: 77,
 }
 
-// WaveformBar draws the current song's waveform inside the desktop player's progress bar. The
+// WaveformBar draws the current song's waveform inside the player's progress bar. The
 // slider stays on top of it, so seeking keeps working as before. onAvailable reports whether a
 // waveform is being shown, so the player can hide the regular bar.
 const WaveformBar = ({ trackId, audioInstance, onAvailable }) => {
@@ -35,22 +37,16 @@ const WaveformBar = ({ trackId, audioInstance, onAvailable }) => {
   const [peaks, setPeaks] = useState(null)
   const canvasRef = useRef(null)
 
-  // The progress bar is rendered by the player library, so it may not exist yet, and it can be
-  // replaced when the player re-mounts.
+  // The progress bar is rendered by the player library, which mounts the mobile player only while
+  // it is open and can re-mount the desktop panel, so it is looked up again whenever the DOM changes.
   useEffect(() => {
-    let frame
-    let attempts = 0
-    const locate = () => {
-      const el = document.querySelector(PROGRESS_BAR_SELECTOR)
-      if (el) {
-        setProgressBar(el)
-      } else if (++attempts < MAX_LOCATE_ATTEMPTS) {
-        frame = requestAnimationFrame(locate)
-      }
-    }
+    const locate = () =>
+      setProgressBar(document.querySelector(PROGRESS_BAR_SELECTOR))
     locate()
-    return () => cancelAnimationFrame(frame)
-  }, [trackId])
+    const observer = new MutationObserver(locate)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     setPeaks(null)
