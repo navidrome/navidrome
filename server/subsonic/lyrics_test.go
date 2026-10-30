@@ -23,7 +23,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
 		useRepoRootAsLibrary(ctx, ds)
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil, nil)
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.lrc" })
 	})
 

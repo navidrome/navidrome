@@ -27,7 +27,7 @@ var _ = Describe("Search", func() {
 		ds = persistence.New(db.Db())
 		auth.Init(ds)
 
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	Context("musicFolderId parameter", func() {

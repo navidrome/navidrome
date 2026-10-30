@@ -36,7 +36,7 @@ var _ = Describe("Transcode endpoints", func() {
 		ctx = GinkgoT().Context()
 		ds = persistence.New(db.Db())
 		mockTD = &mockTranscodeDecision{}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil, nil)
 		w = httptest.NewRecorder()
 	})
 
@@ -80,7 +80,7 @@ var _ = Describe("Transcode endpoints", func() {
 			router = New(persistencetest.Stub(ds, persistencetest.Repos{MediaFile: func(r model.MediaFileRepository) model.MediaFileRepository {
 				return failingMediaFileGetRepo{r}
 			}}),
-				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil, nil)
 			persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "song-1", Suffix: "flac"})
 			r := newJSONPostRequest("mediaId=song-1&mediaType=song", "{}")
 			_, err := router.GetTranscodeDecision(w, r)
@@ -514,7 +514,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("builds correct StreamRequest for direct play", func() {
 			fakeStreamer := &fakeMediaStreamer{}
-			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil, nil)
 			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1"}}...)
 			mockTD.resolvedReq = stream.Request{}
 
@@ -531,7 +531,7 @@ var _ = Describe("Transcode endpoints", func() {
 
 		It("builds correct StreamRequest for transcoding", func() {
 			fakeStreamer := &fakeMediaStreamer{}
-			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+			router = New(ds, nil, fakeStreamer, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil, nil)
 			persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-2"}}...)
 			mockTD.resolvedReq = stream.Request{
 				Format:     "mp3",
@@ -557,7 +557,7 @@ var _ = Describe("Transcode endpoints", func() {
 			transcoded := []byte("transcoded audio")
 
 			serve := func(method string, newStream func(*model.MediaFile) *stream.Stream, params ...string) {
-				router = New(ds, nil, &fakeMediaStreamer{newStream: newStream}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+				router = New(ds, nil, &fakeMediaStreamer{newStream: newStream}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil, nil)
 				persistencetest.PutMediaFiles(ctx, ds, model.MediaFiles{{ID: "song-1", Title: "Song", Duration: 10}}...)
 				mockTD.resolvedReq = stream.Request{Format: "mp3", BitRate: 128}
 				r := newGetRequest(append([]string{"mediaId=song-1", "mediaType=song", "transcodeParams=valid-token"}, params...)...)

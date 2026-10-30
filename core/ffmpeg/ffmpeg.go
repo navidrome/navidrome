@@ -50,6 +50,7 @@ type FFmpeg interface {
 	ExtractImage(ctx context.Context, path string) (io.ReadCloser, error)
 	ConvertAnimatedImage(ctx context.Context, reader io.Reader, maxSize int, quality int) (io.ReadCloser, error)
 	ProbeAudioStream(ctx context.Context, filePath string) (*AudioProbeResult, error)
+	DecodePCM(ctx context.Context, filePath string, sampleRate int) (io.ReadCloser, error)
 	CmdPath() (string, error)
 	IsAvailable() bool
 	IsProbeAvailable() bool
@@ -133,6 +134,21 @@ func (e *ffmpeg) ExtractImage(ctx context.Context, path string) (io.ReadCloser, 
 		return nil, err
 	}
 	args := createFFmpegCommand(extractImageCmd, path, 0, 0)
+	return e.start(ctx, args)
+}
+
+// DecodePCM decodes the first audio stream of filePath to raw mono, signed 16-bit little-endian PCM
+// at the given sample rate.
+func (e *ffmpeg) DecodePCM(ctx context.Context, filePath string, sampleRate int) (io.ReadCloser, error) {
+	cmdPath, err := ffmpegCmd()
+	if err != nil {
+		return nil, err
+	}
+	if err := fileExists(filePath); err != nil {
+		return nil, err
+	}
+	args := []string{cmdPath, "-v", "error", "-i", filePath, "-map", "0:a:0", "-vn",
+		"-ac", "1", "-ar", strconv.Itoa(sampleRate), "-c:a", "pcm_s16le", "-f", "s16le", "-"}
 	return e.start(ctx, args)
 }
 

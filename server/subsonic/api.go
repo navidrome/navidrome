@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/core/scrobbler"
 	sonicsvc "github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/core/waveform"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
@@ -54,13 +55,14 @@ type Router struct {
 	lyrics            lyricssvc.Lyrics
 	transcodeDecision stream.TranscodeDecider
 	sonic             *sonicsvc.Sonic
+	waveform          waveform.Waveform
 }
 
 func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, archiver core.Archiver,
 	players core.Players, provider external.Provider, scanner model.Scanner, broker events.Broker,
 	playlists playlistsvc.Playlists, scrobbler scrobbler.PlayTracker, share core.Share, playback playback.PlaybackServer,
 	metrics metrics.Metrics, lyrics lyricssvc.Lyrics, transcodeDecision stream.TranscodeDecider,
-	sonic *sonicsvc.Sonic,
+	sonic *sonicsvc.Sonic, waveform waveform.Waveform,
 ) *Router {
 	r := &Router{
 		ds:                ds,
@@ -79,6 +81,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 		lyrics:            lyrics,
 		transcodeDecision: transcodeDecision,
 		sonic:             sonic,
+		waveform:          waveform,
 	}
 	r.Handler = r.routes()
 	return r
@@ -215,6 +218,15 @@ func (api *Router) routes() http.Handler {
 			})
 		} else {
 			h501(r, "getShares", "createShare", "updateShare", "deleteShare")
+		}
+
+		if conf.Server().EnableWaveform {
+			r.Group(func(r chi.Router) {
+				r.Use(getPlayer(api.players))
+				h(r, "getWaveform", api.GetWaveform)
+			})
+		} else {
+			h501(r, "getWaveform")
 		}
 
 		if conf.Server().Jukebox.Enabled {

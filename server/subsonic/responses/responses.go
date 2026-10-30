@@ -64,6 +64,7 @@ type Subsonic struct {
 	TranscodeDecision      *TranscodeDecision      `xml:"transcodeDecision,omitempty"       json:"transcodeDecision,omitempty"`
 	SonicMatches           *Array[SonicMatch]      `xml:"sonicMatch,omitempty"              json:"sonicMatch,omitempty"`
 	TokenInfo              *TokenInfo              `xml:"tokenInfo,omitempty"               json:"tokenInfo,omitempty"`
+	Waveform               *Waveform               `xml:"waveform,omitempty"                json:"waveform,omitempty"`
 }
 
 const (
@@ -588,6 +589,15 @@ type StructuredLyric struct {
 type StructuredLyrics []StructuredLyric
 type LyricsList struct {
 	StructuredLyrics []StructuredLyric `xml:"structuredLyrics,omitempty" json:"structuredLyrics,omitempty"`
+}
+
+// Waveform holds a song's amplitude envelope: each peak is the loudest absolute amplitude
+// of an equal time slice, on a linear 0-255 scale (255 = full scale).
+type Waveform struct {
+	ID       string  `xml:"id,attr"       json:"id"`
+	Duration float32 `xml:"duration,attr" json:"duration"`
+	Samples  int32   `xml:"samples,attr"  json:"samples"`
+	Peaks    []int32 `xml:"peaks"         json:"peaks"`
 }
 
 type OpenSubsonicExtension struct {

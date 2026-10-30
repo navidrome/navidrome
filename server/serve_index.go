@@ -59,6 +59,7 @@ func serveIndex(ds model.DataStore, fs fs.FS, shareInfo *model.Share) http.Handl
 			"uiCoverArtSize":            conf.Server().UICoverArtSize,
 			"uiAppendRemixers":          conf.Server().UIAppendRemixers,
 			"enableCoverAnimation":      conf.Server().EnableCoverAnimation,
+			"enableWaveform":            conf.Server().EnableWaveform,
 			"pidAlbum":                  conf.Server().PID.Album,
 			"pidTrack":                  conf.Server().PID.Track,
 			"enableNowPlaying":          conf.Server().EnableNowPlaying,

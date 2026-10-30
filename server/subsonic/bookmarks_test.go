@@ -36,7 +36,7 @@ var _ = Describe("Bookmarks", func() {
 		Expect(ds.Library().Put(ctx, &model.Library{ID: 2, Name: "Private", Path: "/private"})).To(Succeed())
 		putUsers(ctx, ds, model.User{ID: "u1", UserName: "u1"})
 		persistencetest.PutMediaFiles(ctx, ds, model.MediaFile{ID: "visible"}, model.MediaFile{ID: "hidden", LibraryID: 2})
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	})
 
 	Describe("CreateBookmark", func() {
@@ -66,7 +66,7 @@ var _ = Describe("Bookmarks", func() {
 			router = New(persistencetest.Stub(ds, persistencetest.Repos{PlayQueue: func(r model.PlayQueueRepository) model.PlayQueueRepository {
 				return incompletePlayQueueRepo{r}
 			}}),
-				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+				nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		})
 
 		It("getPlayQueue returns the loaded tracks", func() {
