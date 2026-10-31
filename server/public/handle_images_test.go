@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"time"
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -30,6 +31,19 @@ var _ = Describe("decodeArtworkID", func() {
 	It("fails to decode a token without an id", func() {
 		token, _ := auth.CreatePublicToken(auth.Claims{})
 		_, err := decodeArtworkID(token)
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("rejects expired tokens and audience-scoped stream tokens", func() {
+		expired, _ := auth.CreateExpiringPublicToken(time.Now().Add(-time.Minute), auth.Claims{ID: "al-1"})
+		_, err := decodeArtworkID(expired)
+		Expect(err).To(HaveOccurred())
+
+		castScoped, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), auth.Claims{
+			Audience: []string{auth.AudienceCast},
+			ID:       "al-1",
+		})
+		_, err = decodeArtworkID(castScoped)
 		Expect(err).To(HaveOccurred())
 	})
 })
