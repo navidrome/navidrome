@@ -32,6 +32,7 @@ import subsonic from '../subsonic'
 import locale from './locale'
 import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
+import useMediaSession from './useMediaSession'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 
@@ -48,6 +49,7 @@ const Player = () => {
   const currentTrackIdRef = useRef(null)
   const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
+  const { syncTrackMetadata } = useMediaSession(audioInstance, playerState)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -218,7 +220,7 @@ const Player = () => {
       toggleMode: !isDesktop,
       glassBg: false,
       showThemeSwitch: false,
-      showMediaSession: true,
+      showMediaSession: false,
       restartCurrentOnPrev: true,
       quietUpdate: true,
       defaultPosition: {
@@ -254,7 +256,6 @@ const Player = () => {
         <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
       ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
-      showMediaSession: !current.isRadio,
     }
   }, [playerState, defaultOptions, isMobilePlayer])
 
@@ -284,6 +285,7 @@ const Player = () => {
         context.resume()
       }
 
+      syncTrackMetadata(info)
       dispatch(currentPlaying(info))
       if (info.duration) {
         const song = info.song
@@ -320,20 +322,33 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, currentTrackId],
+    [context, dispatch, showNotifications, currentTrackId, syncTrackMetadata],
   )
 
-  const onAudioPlayTrackChange = useCallback(() => {
-    if (currentTrackId) {
-      subsonic.reportPlayback(
-        currentTrackId,
-        lastPositionMsRef.current,
-        'stopped',
-      )
-    }
-    setHeartbeatTrackId(null)
-    setCurrentTrackId(null)
-  }, [currentTrackId])
+  const onAudioPlayTrackChange = useCallback(
+    (nextPlayId, audioLists) => {
+      if (currentTrackId) {
+        subsonic.reportPlayback(
+          currentTrackId,
+          lastPositionMsRef.current,
+          'stopped',
+        )
+      }
+      setHeartbeatTrackId(null)
+      setCurrentTrackId(null)
+      // navidrome-music-player passes its internal __PLAYER_KEY__ as nextPlayId; fall back to uuid
+      const nextItem = Array.isArray(audioLists)
+        ? audioLists.find(
+            (item) =>
+              item.__PLAYER_KEY__ === nextPlayId || item.uuid === nextPlayId,
+          )
+        : null
+      if (nextItem) {
+        syncTrackMetadata(nextItem)
+      }
+    },
+    [currentTrackId, syncTrackMetadata],
+  )
 
   const onAudioPause = useCallback(
     (info) => {
