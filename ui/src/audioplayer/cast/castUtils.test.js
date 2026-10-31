@@ -1,24 +1,15 @@
-import subsonic from '../../subsonic'
 import {
   buildCastQueueItems,
   buildCastQueueWindow,
   canDirectPlayOnCast,
   canLoadCastSdk,
   formatCastTime,
+  isCredentialFreeCastUrl,
   planCastQueueSync,
+  resolveCastCoverUrl,
   resolveCastStream,
   toAbsoluteUrl,
 } from './castUtils'
-
-vi.mock('../../subsonic', () => ({
-  default: {
-    streamUrl: vi.fn((id, opts) => {
-      const format = opts?.format || ''
-      const br = opts?.maxBitRate ? `&maxBitRate=${opts.maxBitRate}` : ''
-      return `/app/rest/stream?id=${id}&format=${format}${br}`
-    }),
-  },
-}))
 
 describe('castUtils', () => {
   beforeEach(() => {
@@ -124,60 +115,104 @@ describe('castUtils', () => {
     })
   })
 
-  describe('resolveCastStream', () => {
+  describe('resolveCastStream & resolveCastCoverUrl', () => {
     const origin = 'https://music.example.com'
 
-    it('uses raw direct stream for standard FLAC tracks', () => {
-      const res = resolveCastStream(
-        {
-          trackId: 't-flac',
-          song: { id: 't-flac', suffix: 'flac', sampleRate: 44100 },
+    it('uses scoped /share/cast token URL for standard FLAC tracks without Subsonic credentials', () => {
+      const tokenMap = {
+        'song:t-flac:raw:0': {
+          streamToken: 'jwt-flac-raw',
+          coverToken: 'jwt-cover-flac',
         },
-        origin,
-      )
-      expect(subsonic.streamUrl).toHaveBeenCalledWith('t-flac', {
-        format: 'raw',
-      })
+      }
+      const item = {
+        trackId: 't-flac',
+        cover: '/app/rest/getCoverArt?u=alice&t=secret&s=salt&id=mf-t-flac',
+        song: { id: 't-flac', suffix: 'flac', sampleRate: 44100 },
+      }
+      const res = resolveCastStream(item, origin, tokenMap)
       expect(res).toEqual({
-        url: 'https://music.example.com/app/rest/stream?id=t-flac&format=raw',
+        url: 'https://music.example.com/share/cast/jwt-flac-raw',
         contentType: 'audio/flac',
         isLive: false,
       })
+      expect(resolveCastCoverUrl(item, origin, tokenMap)).toBe(
+        'https://music.example.com/share/img/jwt-cover-flac?size=300',
+      )
     })
 
-    it('falls back to 320kbps MP3 transcode for ALAC or 192kHz files', () => {
+    it('uses 320kbps MP3 transcode token profile for ALAC or 192kHz files', () => {
+      const tokenMap = {
+        'song:t-alac:mp3:320': {
+          streamToken: 'jwt-alac-mp3',
+          coverToken: 'jwt-cover-alac',
+        },
+      }
       const res = resolveCastStream(
         {
           trackId: 't-alac',
           song: { id: 't-alac', suffix: 'm4a', codec: 'alac' },
         },
         origin,
+        tokenMap,
       )
-      expect(subsonic.streamUrl).toHaveBeenCalledWith('t-alac', {
-        format: 'mp3',
-        maxBitRate: 320,
-      })
       expect(res).toEqual({
-        url: 'https://music.example.com/app/rest/stream?id=t-alac&format=mp3&maxBitRate=320',
+        url: 'https://music.example.com/share/cast/jwt-alac-mp3',
         contentType: 'audio/mpeg',
         isLive: false,
       })
     })
 
-    it('handles live internet radio streams', () => {
-      const res = resolveCastStream(
-        {
-          trackId: 'r-1',
-          isRadio: true,
-          song: { streamUrl: 'https://icecast.example.org/stream.aac' },
+    it('never leaks Subsonic u/t/s URLs when a token is absent or for radio uploaded images', () => {
+      const songWithoutToken = {
+        trackId: 't-missing',
+        cover: '/rest/getCoverArt?u=alice&t=md5hash&s=salt&id=mf-t-missing',
+        song: { id: 't-missing', suffix: 'mp3' },
+      }
+      expect(resolveCastStream(songWithoutToken, origin, {}).url).toBe('')
+      expect(resolveCastCoverUrl(songWithoutToken, origin, {})).toBe('')
+
+      const radioWithSubsonicCover = {
+        trackId: 'r-1',
+        isRadio: true,
+        cover: '/rest/getCoverArt?u=alice&t=md5hash&s=salt&id=ra-r-1',
+        song: {
+          id: 'r-1',
+          streamUrl: 'https://icecast.example.org/stream.aac',
         },
-        origin,
+      }
+      expect(resolveCastCoverUrl(radioWithSubsonicCover, origin, {})).toBe('')
+      expect(
+        resolveCastCoverUrl(radioWithSubsonicCover, origin, {
+          'radio:r-1': { coverToken: 'jwt-radio-cover' },
+        }),
+      ).toBe(
+        'https://music.example.com/share/img/jwt-radio-cover?size=300&square=true',
       )
+      expect(
+        isCredentialFreeCastUrl(
+          '/rest/stream?u=alice&t=abc&s=xyz&id=1',
+          origin,
+        ),
+      ).toBe(false)
+    })
+
+    it('handles live internet radio streams and external favicons', () => {
+      const radioItem = {
+        trackId: 'r-1',
+        isRadio: true,
+        cover: 'https://icecast.example.org/favicon.ico',
+        song: { streamUrl: 'https://icecast.example.org/stream.aac' },
+      }
+      const res = resolveCastStream(radioItem, origin, {})
       expect(res).toEqual({
         url: 'https://icecast.example.org/stream.aac',
         contentType: 'audio/mpeg',
         isLive: true,
       })
+      expect(resolveCastCoverUrl(radioItem, origin, {})).toBe(
+        'https://icecast.example.org/favicon.ico',
+      )
     })
   })
 
@@ -371,7 +406,7 @@ describe('castUtils', () => {
             trackId: 't-1',
             uuid: 'u-1',
             duration: 215,
-            cover: '/app/rest/getCoverArt?id=mf-t-1',
+            cover: '/app/rest/getCoverArt?u=alice&t=secret&s=salt&id=mf-t-1',
             song: {
               id: 't-1',
               title: 'Nude',
@@ -385,15 +420,24 @@ describe('castUtils', () => {
           },
         ],
         'https://music.example.com',
+        {
+          'song:t-1:raw:0': {
+            streamToken: 'tok-stream-t1',
+            coverToken: 'tok-cover-t1',
+          },
+        },
       )
 
       expect(items).toHaveLength(1)
       expect(items[0].autoplay).toBe(true)
       expect(items[0].preloadTime).toBe(10)
+      expect(items[0].media.contentId).toBe(
+        'https://music.example.com/share/cast/tok-stream-t1',
+      )
       expect(items[0].media.contentType).toBe('audio/flac')
       expect(items[0].media.metadata.title).toBe('Nude')
       expect(items[0].media.metadata.images[0].url).toBe(
-        'https://music.example.com/app/rest/getCoverArt?id=mf-t-1',
+        'https://music.example.com/share/img/tok-cover-t1?size=300',
       )
       expect(items[0].media.customData).toEqual({
         trackId: 't-1',

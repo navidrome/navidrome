@@ -1,4 +1,5 @@
-import subsonic from '../../subsonic'
+import config from '../../config'
+import { baseUrl } from '../../utils'
 
 export const CAST_SENDER_SDK_URL =
   'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1'
@@ -101,45 +102,148 @@ export const canDirectPlayOnCast = (song = {}) => {
   return true
 }
 
-export const resolveCastStream = (item, origin) => {
-  if (!item) {
-    return { url: '', contentType: 'audio/mpeg', isLive: false }
-  }
+const FORBIDDEN_SUBSONIC_AUTH_PARAMS = ['t', 's', 'p', 'jwt']
 
+export const isCredentialFreeCastUrl = (urlOrPath, origin) => {
+  if (!urlOrPath || typeof urlOrPath !== 'string') {
+    return false
+  }
+  const base =
+    origin ||
+    (typeof window !== 'undefined' ? window.location.origin : '') ||
+    'http://localhost'
+  try {
+    const parsed = new URL(urlOrPath, base)
+    if (/(?:^|\/)rest(?:\/|$)/.test(parsed.pathname)) {
+      return false
+    }
+    return !FORBIDDEN_SUBSONIC_AUTH_PARAMS.some((param) =>
+      parsed.searchParams.has(param),
+    )
+  } catch {
+    return false
+  }
+}
+
+export const getCastStreamProfile = (item) => {
+  if (!item) {
+    return null
+  }
   if (item.isRadio) {
-    const rawUrl = item.song?.streamUrl || item.musicSrc || ''
+    const id = String(item.trackId || item.song?.id || '').trim()
     return {
-      url: toAbsoluteUrl(typeof rawUrl === 'string' ? rawUrl : '', origin),
+      key: id ? `radio:${id}` : '',
+      id,
+      isRadio: true,
+      format: '',
+      maxBitRate: 0,
       contentType: item.song?.contentType || 'audio/mpeg',
       isLive: true,
     }
   }
 
   const song = item.song || {}
-  const trackId = item.trackId || song.mediaFileId || song.id
+  const trackId = String(
+    item.trackId || song.mediaFileId || song.id || '',
+  ).trim()
   if (!trackId) {
-    return { url: '', contentType: 'audio/mpeg', isLive: false }
+    return null
   }
 
   if (canDirectPlayOnCast(song)) {
     const suffix = String(song.suffix).trim().toLowerCase()
-    const streamPath = subsonic.streamUrl(trackId, { format: 'raw' })
     return {
-      url: toAbsoluteUrl(streamPath, origin),
+      key: `song:${trackId}:raw:0`,
+      id: trackId,
+      isRadio: false,
+      format: 'raw',
+      maxBitRate: 0,
       contentType: DIRECT_PLAY_MIME_BY_SUFFIX[suffix],
       isLive: false,
     }
   }
 
-  const transcodedPath = subsonic.streamUrl(trackId, {
+  return {
+    key: `song:${trackId}:mp3:320`,
+    id: trackId,
+    isRadio: false,
     format: 'mp3',
     maxBitRate: 320,
-  })
-  return {
-    url: toAbsoluteUrl(transcodedPath, origin),
     contentType: 'audio/mpeg',
     isLive: false,
   }
+}
+
+const lookupCastToken = (tokenMap, key) => {
+  if (!tokenMap || !key) {
+    return null
+  }
+  if (typeof tokenMap.get === 'function') {
+    return tokenMap.get(key) || null
+  }
+  return tokenMap[key] || null
+}
+
+export const resolveCastStream = (item, origin, tokenMap) => {
+  const profile = getCastStreamProfile(item)
+  if (!profile) {
+    return { url: '', contentType: 'audio/mpeg', isLive: false }
+  }
+
+  if (profile.isLive) {
+    const rawUrl = item.song?.streamUrl || item.musicSrc || ''
+    const safeUrl =
+      typeof rawUrl === 'string' && isCredentialFreeCastUrl(rawUrl, origin)
+        ? toAbsoluteUrl(rawUrl, origin)
+        : ''
+    return {
+      url: safeUrl,
+      contentType: profile.contentType,
+      isLive: true,
+    }
+  }
+
+  const tokenEntry = lookupCastToken(tokenMap, profile.key)
+  if (!tokenEntry?.streamToken) {
+    return { url: '', contentType: profile.contentType, isLive: false }
+  }
+
+  const publicBase = config.publicBaseUrl || '/share'
+  const streamPath = baseUrl(
+    `${publicBase}/cast/${encodeURIComponent(tokenEntry.streamToken)}`,
+  )
+  return {
+    url: toAbsoluteUrl(streamPath, origin),
+    contentType: profile.contentType,
+    isLive: false,
+  }
+}
+
+export const resolveCastCoverUrl = (item, origin, tokenMap) => {
+  const profile = getCastStreamProfile(item)
+  if (!profile) {
+    return ''
+  }
+
+  const tokenEntry = lookupCastToken(tokenMap, profile.key)
+  if (tokenEntry?.coverToken) {
+    const publicBase = config.publicBaseUrl || '/share'
+    const query = profile.isLive ? '?size=300&square=true' : '?size=300'
+    const coverPath = baseUrl(
+      `${publicBase}/img/${encodeURIComponent(tokenEntry.coverToken)}${query}`,
+    )
+    return toAbsoluteUrl(coverPath, origin)
+  }
+
+  if (
+    profile.isLive &&
+    typeof item.cover === 'string' &&
+    isCredentialFreeCastUrl(item.cover, origin)
+  ) {
+    return toAbsoluteUrl(item.cover, origin)
+  }
+
+  return ''
 }
 
 export const buildCastQueueWindow = (
@@ -435,14 +539,23 @@ export const planCastQueueSync = (
   }
 }
 
-export const buildCastQueueItems = (chromeCastApi, items = [], origin) => {
+export const buildCastQueueItems = (
+  chromeCastApi,
+  items = [],
+  origin,
+  tokenMap,
+) => {
   if (!chromeCastApi?.media) {
     return []
   }
 
   return items
     .map((item) => {
-      const { url, contentType, isLive } = resolveCastStream(item, origin)
+      const { url, contentType, isLive } = resolveCastStream(
+        item,
+        origin,
+        tokenMap,
+      )
       if (!url) {
         return null
       }
@@ -470,7 +583,7 @@ export const buildCastQueueItems = (chromeCastApi, items = [], origin) => {
         metadata.discNumber = Number(song.discNumber)
       }
 
-      const coverUrl = toAbsoluteUrl(item.cover, origin)
+      const coverUrl = resolveCastCoverUrl(item, origin, tokenMap)
       if (coverUrl && chromeCastApi.Image) {
         metadata.images = [new chromeCastApi.Image(coverUrl)]
       }

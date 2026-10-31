@@ -5,6 +5,7 @@ import { combineReducers, legacy_createStore as createStore } from 'redux'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
 import { createTheme } from '@material-ui/core/styles'
 import config from '../../config'
+import { httpClient } from '../../dataProvider'
 import subsonic from '../../subsonic'
 import { playerReducer } from '../../reducers/playerReducer'
 import { addTracks, playNext, playTracks } from '../../actions'
@@ -79,6 +80,29 @@ vi.mock('../../common', () => ({
   ),
   useToggleLove: () => [vi.fn(), false],
   QualityInfo: () => <span data-testid="quality-info" />,
+}))
+
+vi.mock('../../dataProvider', () => ({
+  httpClient: vi.fn((_url, options) => {
+    const parsed = options?.body ? JSON.parse(options.body) : { items: [] }
+    const tokens = {}
+    const expiresAt = Math.floor(Date.now() / 1000) + 14400
+    ;(parsed.items || []).forEach((it) => {
+      if (it.isRadio) {
+        tokens[it.key] = {
+          coverToken: `radio-cover-jwt-${it.id}`,
+          expiresAt,
+        }
+      } else {
+        tokens[it.key] = {
+          streamToken: `cast-stream-jwt-${it.id}-${it.format || 'raw'}`,
+          coverToken: `cast-cover-jwt-${it.id}`,
+          expiresAt,
+        }
+      }
+    })
+    return Promise.resolve({ json: { tokens } })
+  }),
 }))
 
 vi.mock('../../subsonic', () => ({
@@ -507,7 +531,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     expect(env.requestSession).toHaveBeenCalledTimes(1)
 
     // Start Cast session at 47s
-    act(() => {
+    await act(async () => {
       env.startSession('Living Room Speaker')
     })
 
@@ -520,12 +544,23 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       document.querySelector('.react-jinke-music-player-main'),
     ).toBeVisible()
 
-    // Initial QueueLoadRequest sent once at 47s offset
+    // Initial QueueLoadRequest sent once at 47s offset using scoped /share/cast & /share/img tokens (zero Subsonic u/t/s)
+    expect(httpClient).toHaveBeenCalledWith(
+      '/api/cast/tokens',
+      expect.objectContaining({ method: 'POST' }),
+    )
     expect(env.queueLoad).toHaveBeenCalledTimes(1)
     const initialLoadReq = env.queueLoad.mock.calls[0][0]
     expect(initialLoadReq.items).toHaveLength(2)
     expect(initialLoadReq.startIndex).toBe(0)
     expect(initialLoadReq.currentTime).toBe(47)
+    expect(initialLoadReq.items[0].media.contentId).toContain(
+      '/share/cast/cast-stream-jwt-song-1-raw',
+    )
+    expect(initialLoadReq.items[0].media.contentId).not.toContain('/rest/')
+    expect(initialLoadReq.items[0].media.metadata.images[0].url).toContain(
+      '/share/img/cast-cover-jwt-song-1?size=300',
+    )
 
     const initialUuids = store.getState().player.queue.map((i) => i.uuid)
     const secondTrackCastItemId = env.getMediaItems()[1].itemId
@@ -645,7 +680,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       </Provider>,
     )
 
-    act(() => {
+    await act(async () => {
       env.startSession('Studio Chromecast')
     })
 
@@ -729,7 +764,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     expect(queueRows).toHaveLength(4)
   })
 
-  it('re-initializes Cast SDK listeners cleanly after logout (enabled=false) and login (enabled=true)', () => {
+  it('ends any active Cast session on logout and re-initializes Cast SDK listeners cleanly on next login', async () => {
     const env = createFakeCastEnvironment()
     const store = buildFullStore()
     store.dispatch(playTracks({ 'song-1': song1 }, ['song-1']))
@@ -744,8 +779,12 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     )
 
     expect(screen.getByTestId('cast-button')).toBeTruthy()
+    await act(async () => {
+      env.startSession('Shared Lounge TV')
+    })
+    expect(env.queueLoad).toHaveBeenCalledTimes(1)
 
-    // Simulate logout
+    // Simulate logout while casting -> must terminate the Cast session so next user cannot take it over
     rerender(
       <Provider store={store}>
         <CastProvider audioInstance={fakeAudio} enabled={false}>
@@ -753,6 +792,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
         </CastProvider>
       </Provider>,
     )
+    expect(env.endCurrentSession).toHaveBeenCalledWith(true)
     expect(screen.queryByTestId('cast-button')).toBeNull()
 
     // Simulate login without page reload
@@ -765,11 +805,11 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     )
     expect(screen.getByTestId('cast-button')).toBeTruthy()
 
-    act(() => {
+    await act(async () => {
       env.startSession('Office Speaker')
     })
 
-    expect(env.queueLoad).toHaveBeenCalledTimes(1)
+    expect(env.queueLoad).toHaveBeenCalledTimes(2)
     fireEvent.click(screen.getByTestId('cast-button'))
     expect(screen.getByTestId('cast-stop-button')).toBeTruthy()
   })
@@ -801,7 +841,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       </Provider>,
     )
 
-    act(() => {
+    await act(async () => {
       env.startSession('Hallway Chromecast')
     })
 
@@ -857,7 +897,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       </Provider>,
     )
 
-    act(() => {
+    await act(async () => {
       env.startSession('Shared Receiver')
     })
     subsonic.reportPlayback.mockClear()
@@ -881,5 +921,38 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       expect.anything(),
       expect.anything(),
     )
+  })
+
+  it('recovers player controls when receiver transitions to IDLE with IdleReason.ERROR', async () => {
+    const env = createFakeCastEnvironment()
+    const store = buildFullStore()
+    store.dispatch(playTracks({ 'song-1': song1 }, ['song-1']))
+    const fakeAudio = document.createElement('audio')
+
+    render(
+      <Provider store={store}>
+        <CastProvider audioInstance={fakeAudio} enabled={true}>
+          <CastButton />
+        </CastProvider>
+      </Provider>,
+    )
+
+    await act(async () => {
+      env.startSession('Bedroom Speaker')
+    })
+    expect(env.queueLoad).toHaveBeenCalledTimes(1)
+
+    // Receiver fails to fetch stream and goes IDLE + ERROR
+    await act(async () => {
+      env.remotePlayer.playerState = 'IDLE'
+      env.setIdleReason('ERROR')
+      env.emitRemoteChange()
+    })
+
+    // Calling play() on the shimmed audio element must now recover and reload the queue instead of stalling
+    await act(async () => {
+      await fakeAudio.play()
+    })
+    expect(env.queueLoad).toHaveBeenCalledTimes(2)
   })
 })

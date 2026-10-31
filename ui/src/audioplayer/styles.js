@@ -27,10 +27,12 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
-      '@media screen and (max-width:1020px)': {
+      '@media screen and (max-width:810px)': {
         '& .sound-operation': {
           display: 'none',
         },
+      },
+      '@media screen and (max-width:1020px)': {
         '& .music-player-panel .panel-content': {
           padding: '0 12px',
         },

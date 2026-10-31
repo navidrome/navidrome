@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useInterval } from '../../common'
 import { currentPlaying } from '../../actions'
 import config from '../../config'
+import { httpClient } from '../../dataProvider'
 import subsonic from '../../subsonic'
 import { CastContext } from './CastContext'
 import {
@@ -11,8 +12,11 @@ import {
   buildCastQueueItems,
   buildCastQueueWindow,
   canLoadCastSdk,
+  getCastStreamProfile,
   planCastQueueSync,
 } from './castUtils'
+
+const MIN_CAST_TOKEN_FRESHNESS_MS = 15 * 60 * 1000
 
 const SHIMMED_AUDIO_PROPS = [
   'play',
@@ -141,6 +145,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   const castReportedStateRef = useRef('IDLE')
   const castLastPosMsRef = useRef(0)
   const seekReportTimerRef = useRef(null)
+  const castTokenCacheRef = useRef(new Map())
+  const castOpSeqRef = useRef(0)
 
   const bridgeRef = useRef({
     shimmedAudio: null,
@@ -285,6 +291,61 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     }, 250)
   }, [])
 
+  const fetchCastMediaTokens = useCallback(async (items = []) => {
+    const nowMs = Date.now()
+    const cache = castTokenCacheRef.current
+    const resolved = new Map()
+    const pendingPayload = []
+    const seenKeys = new Set()
+
+    items.forEach((item) => {
+      const profile = getCastStreamProfile(item)
+      if (!profile || !profile.id || !profile.key) {
+        return
+      }
+      const cached = cache.get(profile.key)
+      if (cached && cached.expiresAtMs - nowMs > MIN_CAST_TOKEN_FRESHNESS_MS) {
+        resolved.set(profile.key, cached)
+        return
+      }
+      if (!seenKeys.has(profile.key)) {
+        seenKeys.add(profile.key)
+        pendingPayload.push({
+          key: profile.key,
+          id: profile.id,
+          isRadio: profile.isRadio,
+          format: profile.format,
+          maxBitRate: profile.maxBitRate,
+        })
+      }
+    })
+
+    if (pendingPayload.length === 0) {
+      return resolved
+    }
+
+    const response = await httpClient('/api/cast/tokens', {
+      method: 'POST',
+      body: JSON.stringify({ items: pendingPayload }),
+    })
+    const tokens = response?.json?.tokens || {}
+    Object.entries(tokens).forEach(([key, entry]) => {
+      if (!entry) return
+      const expiresAtMs =
+        typeof entry.expiresAt === 'number' && entry.expiresAt > 0
+          ? entry.expiresAt * 1000
+          : Date.now() + 60 * 60 * 1000
+      const normalized = {
+        streamToken: entry.streamToken || '',
+        coverToken: entry.coverToken || '',
+        expiresAtMs,
+      }
+      cache.set(key, normalized)
+      resolved.set(key, normalized)
+    })
+    return resolved
+  }, [])
+
   const loadQueueOnCast = useCallback(
     (targetIndex = 0, startSeconds = 0) => {
       const ctx = castContextRef.current
@@ -303,33 +364,12 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         targetIndex,
         MAX_CAST_WINDOW_ITEMS,
       )
-      const queueItems = buildCastQueueItems(
-        chromeCastApi,
-        windowSpec.items,
-        window.location.origin,
-      )
-      if (queueItems.length === 0) {
+      if (windowSpec.items.length === 0) {
         return
       }
 
-      const request = new chromeCastApi.media.QueueLoadRequest(queueItems)
-      request.startIndex = Math.min(
-        windowSpec.startOffset,
-        queueItems.length - 1,
-      )
-      if (startSeconds > 0 && !windowSpec.items[request.startIndex]?.isRadio) {
-        request.currentTime = startSeconds
-      }
-      const repeatMode = resolveReceiverRepeatMode(
-        chromeCastApi,
-        state.mode,
-        windowSpec.windowStartIndex,
-        windowSpec.windowEndIndex,
-        queue.length,
-      )
-      if (repeatMode) {
-        request.repeatMode = repeatMode
-      }
+      castOpSeqRef.current += 1
+      const opSeq = castOpSeqRef.current
 
       uuidToItemIdRef.current.clear()
       mediaSessionRef.current = null
@@ -340,7 +380,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       }
       pendingCastLoadRef.current = true
 
-      const targetItem = windowSpec.items[request.startIndex]
+      const initialStartIdx = Math.min(
+        windowSpec.startOffset,
+        windowSpec.items.length - 1,
+      )
+      const targetItem = windowSpec.items[initialStartIdx]
       if (targetItem) {
         activeUuidRef.current = targetItem.uuid
         setActiveTrackId(targetItem.trackId || null)
@@ -364,20 +408,83 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         }
       }
 
-      sessionObj.queueLoad(
-        request,
-        (media) => {
-          if (media) {
-            mediaSessionRef.current = media
-            recordMediaSessionItems(media)
+      fetchCastMediaTokens(windowSpec.items)
+        .then((tokenMap) => {
+          if (!isCastingRef.current || castOpSeqRef.current !== opSeq) {
+            return
           }
-        },
-        () => {
-          pendingCastLoadRef.current = false
-        },
-      )
+          const activeSessionObj = castContextRef.current
+            ?.getCurrentSession?.()
+            ?.getSessionObj?.()
+          if (!activeSessionObj) {
+            pendingCastLoadRef.current = false
+            return
+          }
+
+          const queueItems = buildCastQueueItems(
+            chromeCastApi,
+            windowSpec.items,
+            window.location.origin,
+            tokenMap,
+          )
+          if (queueItems.length === 0) {
+            pendingCastLoadRef.current = false
+            return
+          }
+
+          loadedWindowUuidsRef.current = queueItems
+            .map((qi) => qi.media?.customData?.uuid)
+            .filter(Boolean)
+
+          const targetQueueIdx = targetItem
+            ? queueItems.findIndex(
+                (qi) => qi.media?.customData?.uuid === targetItem.uuid,
+              )
+            : -1
+          const request = new chromeCastApi.media.QueueLoadRequest(queueItems)
+          request.startIndex = targetQueueIdx >= 0 ? targetQueueIdx : 0
+          const selectedSourceItem = windowSpec.items.find(
+            (it) =>
+              it.uuid ===
+              queueItems[request.startIndex]?.media?.customData?.uuid,
+          )
+          if (startSeconds > 0 && !selectedSourceItem?.isRadio) {
+            request.currentTime = startSeconds
+          }
+          const repeatMode = resolveReceiverRepeatMode(
+            chromeCastApi,
+            playerStateRef.current?.mode,
+            windowSpec.windowStartIndex,
+            windowSpec.windowEndIndex,
+            (playerStateRef.current?.queue || []).length,
+          )
+          if (repeatMode) {
+            request.repeatMode = repeatMode
+          }
+
+          activeSessionObj.queueLoad(
+            request,
+            (media) => {
+              if (castOpSeqRef.current !== opSeq) return
+              if (media) {
+                mediaSessionRef.current = media
+                recordMediaSessionItems(media)
+              }
+            },
+            () => {
+              if (castOpSeqRef.current === opSeq) {
+                pendingCastLoadRef.current = false
+              }
+            },
+          )
+        })
+        .catch(() => {
+          if (castOpSeqRef.current === opSeq) {
+            pendingCastLoadRef.current = false
+          }
+        })
     },
-    [dispatch, recordMediaSessionItems],
+    [dispatch, fetchCastMediaTokens, recordMediaSessionItems],
   )
 
   const uninstallAudioShim = useCallback((audio, finalTimeSec = 0) => {
@@ -729,7 +836,18 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     const audio = audioInstanceRef.current
     const bridge = bridgeRef.current
 
-    if (nextState === 'PLAYING' || nextState === 'PAUSED') {
+    const idleReasons = window.chrome?.cast?.media?.IdleReason
+    if (
+      nextState === 'PLAYING' ||
+      nextState === 'PAUSED' ||
+      (nextState === 'IDLE' &&
+        ((idleReasons?.ERROR &&
+          mediaSession?.idleReason === idleReasons.ERROR) ||
+          mediaSession?.idleReason === 'ERROR' ||
+          (idleReasons?.CANCELLED &&
+            mediaSession?.idleReason === idleReasons.CANCELLED) ||
+          mediaSession?.idleReason === 'CANCELLED'))
+    ) {
       pendingCastLoadRef.current = false
     }
 
@@ -977,6 +1095,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             sessionState === types.SESSION_ENDED ||
             sessionState === 'SESSION_ENDED'
           ) {
+            castOpSeqRef.current += 1
             const finalSec = getActiveCastTime()
             const endedUuid = activeUuidRef.current
             flushStoppedReport()
@@ -1075,14 +1194,25 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     window.addEventListener('nd-cast-api-ready', initCastSdk)
 
     return () => {
+      castOpSeqRef.current += 1
+      castTokenCacheRef.current = new Map()
       window.removeEventListener('nd-cast-api-ready', initCastSdk)
       if (seekReportTimerRef.current) {
         clearTimeout(seekReportTimerRef.current)
         seekReportTimerRef.current = null
       }
+      flushStoppedReport()
       uninstallAudioShim(audioInstanceRef.current, 0)
       if (cleanupListeners) {
         cleanupListeners()
+      }
+      const activeContext = castContextRef.current
+      if (isCastingRef.current && activeContext?.endCurrentSession) {
+        try {
+          activeContext.endCurrentSession(true)
+        } catch {
+          // Ignore teardown failures on an already-closed session
+        }
       }
       castContextRef.current = null
       remotePlayerRef.current = null
@@ -1181,6 +1311,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
     if (plan.action === 'STOP') {
       if (loadedWindowUuidsRef.current.length > 0 || activeUuidRef.current) {
+        castOpSeqRef.current += 1
         loadedWindowUuidsRef.current = []
         activeUuidRef.current = null
         uuidToItemIdRef.current.clear()
@@ -1233,51 +1364,74 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     }
 
     if (plan.action === 'INSERT') {
-      const castItems = buildCastQueueItems(
-        chromeCastApi,
-        plan.insertedItems,
-        window.location.origin,
-      )
       const InsertReq = chromeCastApi?.media?.QueueInsertItemsRequest
       if (
-        castItems.length > 0 &&
-        typeof mediaSession?.queueInsertItems === 'function' &&
-        typeof InsertReq === 'function'
+        typeof mediaSession?.queueInsertItems !== 'function' ||
+        typeof InsertReq !== 'function'
       ) {
-        if (plan.insertBeforeUuid === null) {
-          const req = new InsertReq(castItems)
-          loadedWindowUuidsRef.current = plan.nextWindowUuids
-          loadedWindowRef.current = {
-            start: plan.windowSpec.windowStartIndex,
-            end: plan.windowSpec.windowEndIndex,
-          }
-          mediaSession.queueInsertItems(
-            req,
-            () => recordMediaSessionItems(getActiveMediaSession()),
-            () => loadQueueOnCast(plan.activeIndex, getActiveCastTime()),
-          )
-          return
-        }
-
-        const beforeItemId = findCastItemId(mediaSession, plan.insertBeforeUuid)
-        if (beforeItemId != null) {
-          const req = new InsertReq(castItems)
-          req.insertBefore = beforeItemId
-          loadedWindowUuidsRef.current = plan.nextWindowUuids
-          loadedWindowRef.current = {
-            start: plan.windowSpec.windowStartIndex,
-            end: plan.windowSpec.windowEndIndex,
-          }
-          mediaSession.queueInsertItems(
-            req,
-            () => recordMediaSessionItems(getActiveMediaSession()),
-            () => loadQueueOnCast(plan.activeIndex, getActiveCastTime()),
-          )
-          return
-        }
+        loadQueueOnCast(plan.activeIndex, getActiveCastTime())
+        return
       }
 
-      loadQueueOnCast(plan.activeIndex, getActiveCastTime())
+      const beforeItemId =
+        plan.insertBeforeUuid === null
+          ? null
+          : findCastItemId(mediaSession, plan.insertBeforeUuid)
+      if (plan.insertBeforeUuid !== null && beforeItemId == null) {
+        loadQueueOnCast(plan.activeIndex, getActiveCastTime())
+        return
+      }
+
+      const opSeq = castOpSeqRef.current
+      loadedWindowUuidsRef.current = plan.nextWindowUuids
+      loadedWindowRef.current = {
+        start: plan.windowSpec.windowStartIndex,
+        end: plan.windowSpec.windowEndIndex,
+      }
+
+      fetchCastMediaTokens(plan.insertedItems)
+        .then((tokenMap) => {
+          if (!isCastingRef.current || castOpSeqRef.current !== opSeq) {
+            return
+          }
+          const activeMediaSession = getActiveMediaSession()
+          const castItems = buildCastQueueItems(
+            chromeCastApi,
+            plan.insertedItems,
+            window.location.origin,
+            tokenMap,
+          )
+          if (
+            castItems.length === 0 ||
+            typeof activeMediaSession?.queueInsertItems !== 'function'
+          ) {
+            loadQueueOnCast(plan.activeIndex, getActiveCastTime())
+            return
+          }
+
+          const req = new InsertReq(castItems)
+          if (plan.insertBeforeUuid !== null) {
+            const latestBeforeId =
+              findCastItemId(activeMediaSession, plan.insertBeforeUuid) ??
+              beforeItemId
+            if (latestBeforeId == null) {
+              loadQueueOnCast(plan.activeIndex, getActiveCastTime())
+              return
+            }
+            req.insertBefore = latestBeforeId
+          }
+
+          activeMediaSession.queueInsertItems(
+            req,
+            () => recordMediaSessionItems(getActiveMediaSession()),
+            () => loadQueueOnCast(plan.activeIndex, getActiveCastTime()),
+          )
+        })
+        .catch(() => {
+          if (isCastingRef.current && castOpSeqRef.current === opSeq) {
+            loadQueueOnCast(plan.activeIndex, getActiveCastTime())
+          }
+        })
       return
     }
 
@@ -1340,6 +1494,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     loadQueueOnCast(plan.activeIndex, getActiveCastTime())
   }, [
     dispatch,
+    fetchCastMediaTokens,
     findCastItemId,
     flushStoppedReport,
     getActiveCastTime,
