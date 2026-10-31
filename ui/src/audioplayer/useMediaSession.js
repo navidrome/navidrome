@@ -162,11 +162,9 @@ export const useMediaSession = (audioInstance, playerState) => {
     }
 
     if (!item || item.isRadio) {
-      if (lastMetadataKeyRef.current !== '') {
-        lastMetadataKeyRef.current = ''
-        setMediaSessionProperty(ms, 'metadata', null)
-        setMediaSessionProperty(ms, 'playbackState', 'none')
-      }
+      lastMetadataKeyRef.current = ''
+      setMediaSessionProperty(ms, 'metadata', null)
+      setMediaSessionProperty(ms, 'playbackState', 'none')
       return
     }
 
@@ -204,6 +202,21 @@ export const useMediaSession = (audioInstance, playerState) => {
   useEffect(() => {
     syncTrackMetadata(activeItem)
   }, [activeItem, syncTrackMetadata])
+
+  useEffect(() => {
+    return () => {
+      if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) {
+        return
+      }
+      const ms = navigator.mediaSession
+      if (!ms) {
+        return
+      }
+      lastMetadataKeyRef.current = ''
+      setMediaSessionProperty(ms, 'metadata', null)
+      setMediaSessionProperty(ms, 'playbackState', 'none')
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) {

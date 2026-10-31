@@ -409,5 +409,51 @@ describe('useMediaSession', () => {
       expect(env.ms.playbackState).toBe('none')
       expect(env.handlers.play).toBeNull()
     })
+
+    it('clears stale pre-existing MediaSession metadata on mount with an empty queue and resets metadata on unmount', () => {
+      const env = createFakeMediaSessionEnv()
+      const audio = document.createElement('audio')
+
+      // Simulate stale metadata left behind by a prior session before mount
+      setMediaSessionProperty(
+        env.ms,
+        'metadata',
+        new window.MediaMetadata({ title: 'Stale Track', artist: 'Old User' }),
+      )
+      setMediaSessionProperty(env.ms, 'playbackState', 'paused')
+      expect(env.ms.metadata?.title).toBe('Stale Track')
+
+      const { rerender, unmount } = render(
+        <Harness
+          audioInstance={audio}
+          playerState={{
+            queue: [],
+            current: {},
+            savedPlayIndex: 0,
+          }}
+        />,
+      )
+
+      expect(env.ms.metadata).toBeNull()
+      expect(env.ms.playbackState).toBe('none')
+
+      // Start playing a real song, then unmount (e.g. on logout) and verify cleanup
+      rerender(
+        <Harness
+          audioInstance={audio}
+          playerState={{
+            queue: [songItem1],
+            current: songItem1,
+            savedPlayIndex: 0,
+          }}
+        />,
+      )
+      expect(env.ms.metadata?.title).toBe('Duvet')
+
+      unmount()
+      expect(env.ms.metadata).toBeNull()
+      expect(env.ms.playbackState).toBe('none')
+      expect(env.handlers.play).toBeNull()
+    })
   })
 })
