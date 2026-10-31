@@ -27,6 +27,7 @@ import {
   syncQueue,
 } from '../actions'
 import PlayerToolbar from './PlayerToolbar'
+import { CastProvider, useCast } from './cast'
 import { sendNotification } from '../utils'
 import subsonic from '../subsonic'
 import locale from './locale'
@@ -35,26 +36,25 @@ import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 
-const Player = () => {
+const PlayerContent = ({ authenticated, audioInstance, setAudioInstance }) => {
   const theme = useCurrentTheme()
   const translate = useTranslate()
   const playerTheme = theme.player?.theme || 'dark'
   const dataProvider = useDataProvider()
   const playerState = useSelector((state) => state.player)
   const dispatch = useDispatch()
+  const castControls = useCast()
+  const { isCastingRef } = castControls
   const [currentTrackId, setCurrentTrackId] = useState(null)
   const [heartbeatTrackId, setHeartbeatTrackId] = useState(null)
   const lastPositionMsRef = useRef(0)
   const currentTrackIdRef = useRef(null)
   const stoppedRef = useRef(false)
-  const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent,
     )
-
-  const { authenticated } = useAuthState()
 
   // Keep a ref to playerState so the mount effect can read the latest value
   // without re-triggering on every queue/position change
@@ -62,6 +62,13 @@ const Player = () => {
   playerStateRef.current = playerState
 
   currentTrackIdRef.current = currentTrackId
+
+  useEffect(() => {
+    if (castControls.isCasting) {
+      setHeartbeatTrackId(null)
+      setCurrentTrackId(null)
+    }
+  }, [castControls.isCasting])
 
   useInterval(
     () => {
@@ -173,7 +180,12 @@ const Player = () => {
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      if (playerState.current?.uuid && audioInstance && !audioInstance.paused) {
+      if (
+        !isCastingRef.current &&
+        playerState.current?.uuid &&
+        audioInstance &&
+        !audioInstance.paused
+      ) {
         e.preventDefault()
         e.returnValue = ''
       }
@@ -200,7 +212,7 @@ const Player = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       window.removeEventListener('pagehide', handlePageHide)
     }
-  }, [playerState, audioInstance])
+  }, [playerState, audioInstance, isCastingRef])
 
   const defaultOptions = useMemo(
     () => ({
@@ -246,6 +258,7 @@ const Player = () => {
       audioLists: playerState.queue.map((item) => item),
       playIndex: playerState.playIndex,
       autoPlay:
+        !castControls.isCasting &&
         playerState.queue.length > 0 &&
         playerState.autoPlay !== false &&
         (playerState.clear || playerState.playIndex === 0),
@@ -254,32 +267,43 @@ const Player = () => {
         <PlayerToolbar id={current.trackId} isRadio={current.isRadio} />
       ),
       defaultVolume: isMobilePlayer ? 1 : playerState.volume,
-      showMediaSession: !current.isRadio,
+      volumeFade: castControls.isCasting
+        ? { fadeIn: 0, fadeOut: 0 }
+        : defaultOptions.volumeFade,
+      showMediaSession: !current.isRadio && !castControls.isCasting,
     }
-  }, [playerState, defaultOptions, isMobilePlayer])
+  }, [playerState, defaultOptions, isMobilePlayer, castControls.isCasting])
 
   const onAudioListsChange = useCallback(
     (_, audioLists, audioInfo) => dispatch(syncQueue(audioInfo, audioLists)),
     [dispatch],
   )
 
-  const onAudioProgress = useCallback((info) => {
-    if (info.ended) {
-      document.title = 'Navidrome'
-    }
-    if (!info.isRadio && info.currentTime != null) {
-      lastPositionMsRef.current = Math.floor(info.currentTime * 1000)
-    }
-  }, [])
+  const onAudioProgress = useCallback(
+    (info) => {
+      if (isCastingRef.current) return
+      if (info.ended) {
+        document.title = 'Navidrome'
+      }
+      if (!info.isRadio && info.currentTime != null) {
+        lastPositionMsRef.current = Math.floor(info.currentTime * 1000)
+      }
+    },
+    [isCastingRef],
+  )
 
   const onAudioVolumeChange = useCallback(
-    // sqrt to compensate for the logarithmic volume
-    (volume) => dispatch(setVolume(Math.sqrt(volume))),
-    [dispatch],
+    (volume) => {
+      if (isCastingRef.current) return
+      // sqrt to compensate for the logarithmic volume
+      dispatch(setVolume(Math.sqrt(volume)))
+    },
+    [dispatch, isCastingRef],
   )
 
   const onAudioPlay = useCallback(
     (info) => {
+      if (isCastingRef.current) return
       if (context && context.state !== 'running') {
         context.resume()
       }
@@ -320,10 +344,11 @@ const Player = () => {
         }
       }
     },
-    [context, dispatch, showNotifications, currentTrackId],
+    [context, dispatch, showNotifications, currentTrackId, isCastingRef],
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
+    if (isCastingRef.current) return
     if (currentTrackId) {
       subsonic.reportPlayback(
         currentTrackId,
@@ -333,10 +358,11 @@ const Player = () => {
     }
     setHeartbeatTrackId(null)
     setCurrentTrackId(null)
-  }, [currentTrackId])
+  }, [currentTrackId, isCastingRef])
 
   const onAudioPause = useCallback(
     (info) => {
+      if (isCastingRef.current) return
       dispatch(currentPlaying(info))
       if (!info.isRadio && currentTrackId) {
         const posMs = Math.floor(info.currentTime * 1000)
@@ -345,11 +371,12 @@ const Player = () => {
       }
       setHeartbeatTrackId(null)
     },
-    [dispatch, currentTrackId],
+    [dispatch, currentTrackId, isCastingRef],
   )
 
   const onAudioEnded = useCallback(
     (currentPlayId, audioLists, info) => {
+      if (isCastingRef.current) return
       if (currentTrackId && !info.isRadio) {
         const posMs = Math.floor((info.duration || 0) * 1000)
         subsonic.reportPlayback(currentTrackId, posMs, 'stopped')
@@ -362,7 +389,7 @@ const Player = () => {
         // eslint-disable-next-line no-console
         .catch((e) => console.log('Keepalive error:', e))
     },
-    [dispatch, dataProvider, currentTrackId],
+    [dispatch, dataProvider, currentTrackId, isCastingRef],
   )
 
   const onCoverClick = useCallback((mode, audioLists, audioInfo) => {
@@ -418,6 +445,8 @@ const Player = () => {
     [audioInstance, playerState],
   )
 
+  const muiTheme = useMemo(() => createMuiTheme(theme), [theme])
+
   useEffect(() => {
     if (isMobilePlayer && audioInstance) {
       audioInstance.volume = 1
@@ -433,6 +462,7 @@ const Player = () => {
     const flush = () => {
       timer = null
       if (
+        isCastingRef.current ||
         !currentTrackIdRef.current ||
         playerStateRef.current?.current?.isRadio
       ) {
@@ -451,10 +481,10 @@ const Player = () => {
       if (timer) clearTimeout(timer)
       audioInstance.removeEventListener('seeked', handleSeeked)
     }
-  }, [audioInstance])
+  }, [audioInstance, isCastingRef])
 
   return (
-    <ThemeProvider theme={createMuiTheme(theme)}>
+    <ThemeProvider theme={muiTheme}>
       <ReactJkMusicPlayer
         {...options}
         className={classes.player}
@@ -465,6 +495,7 @@ const Player = () => {
         onAudioPlayTrackChange={onAudioPlayTrackChange}
         onAudioPause={onAudioPause}
         onPlayModeChange={(mode) => dispatch(setPlayMode(mode))}
+        onPlayIndexChange={castControls.onPlayIndexChange}
         onAudioEnded={onAudioEnded}
         onCoverClick={onCoverClick}
         onAudioError={onAudioError}
@@ -473,6 +504,20 @@ const Player = () => {
       />
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
+  )
+}
+
+const Player = () => {
+  const { authenticated } = useAuthState()
+  const [audioInstance, setAudioInstance] = useState(null)
+  return (
+    <CastProvider audioInstance={audioInstance} enabled={authenticated}>
+      <PlayerContent
+        authenticated={authenticated}
+        audioInstance={audioInstance}
+        setAudioInstance={setAudioInstance}
+      />
+    </CastProvider>
   )
 }
 
