@@ -101,6 +101,27 @@ describe('loadWaveform', () => {
     )
   })
 
+  it('does not reuse a pending request once it is aborted', async () => {
+    subsonic.getWaveform.mockReturnValueOnce(new Promise(() => {}))
+    const controller = new AbortController()
+    loadWaveform('song-1', controller.signal).catch(() => {})
+    controller.abort()
+
+    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([4]))
+    await expect(loadWaveform('song-1')).resolves.toEqual([4])
+    expect(subsonic.getWaveform).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps fetched peaks when a later abort fires', async () => {
+    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([1]))
+    const controller = new AbortController()
+    await loadWaveform('song-1', controller.signal)
+    controller.abort()
+
+    await expect(loadWaveform('song-1')).resolves.toEqual([1])
+    expect(subsonic.getWaveform).toHaveBeenCalledTimes(1)
+  })
+
   it('refetches a song whose request was aborted', async () => {
     subsonic.getWaveform.mockRejectedValueOnce(
       new DOMException('Aborted', 'AbortError'),

@@ -29,11 +29,17 @@ export const loadWaveform = (id, signal) => {
       }
       return peaks
     })
-  promise.catch(() => {
+  const evict = () => {
     if (cache.get(id) === promise) {
       cache.delete(id)
     }
-  })
+  }
+  promise.catch(evict)
+  // A request aborted while pending is evicted right away, so a call made before its rejection
+  // settles (e.g. skipping away and straight back) starts a fresh request instead of reusing it.
+  let settled = false
+  promise.finally(() => (settled = true)).catch(() => {})
+  signal?.addEventListener('abort', () => !settled && evict(), { once: true })
   cache.set(id, promise)
   if (cache.size > MAX_CACHED) {
     cache.delete(cache.keys().next().value)
