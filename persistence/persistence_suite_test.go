@@ -352,6 +352,15 @@ func GetDBXBuilder() *dbx.DB {
 	return dbx.NewFromDB(db.Db(), db.Dialect)
 }
 
+// storedRows reads playlist_tracks without joining media_file, so it also shows rows pointing to no track.
+func storedRows(playlistID string) []string {
+	GinkgoHelper()
+	var rows []string
+	Expect(GetDBXBuilder().NewQuery("SELECT id || ':' || media_file_id FROM playlist_tracks WHERE playlist_id = {:id} ORDER BY id").
+		Bind(dbx.Params{"id": playlistID}).Column(&rows)).To(Succeed())
+	return rows
+}
+
 // collectCursor takes the cursor's underlying func type so the named cursor types
 // (model.AlbumCursor, ...) infer T.
 func collectCursor[T any](cursor func(func(T, error) bool), err error) []T {
