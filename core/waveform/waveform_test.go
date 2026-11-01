@@ -55,19 +55,39 @@ var _ = Describe("Waveform", func() {
 			samples = append(samples, constant(16384)...)
 			samples = append(samples, constant(-8192)...)
 			samples = append(samples, -32768) // partial last window
-			energies, err := windowEnergy(bytes.NewReader([]byte(pcm(samples...))))
+			energies, err := windowEnergy(bytes.NewReader([]byte(pcm(samples...))), maxWindows)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(energies).To(Equal([]float32{0.25, 0.0625, 1}))
 		})
 
 		It("ignores a trailing odd byte", func() {
-			energies, err := windowEnergy(bytes.NewReader(append([]byte(pcm(16384)), 0x7f)))
+			energies, err := windowEnergy(bytes.NewReader(append([]byte(pcm(16384)), 0x7f)), maxWindows)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(energies).To(Equal([]float32{0.25}))
 		})
 
+		It("merges windows in pairs to stay within the limit", func() {
+			var samples []int16
+			for _, v := range []int16{16384, 16384, 8192, 8192, 16384, 16384, 8192} {
+				samples = append(samples, constant(v)...)
+			}
+			energies, err := windowEnergy(bytes.NewReader([]byte(pcm(samples...))), 4)
+			Expect(err).ToNot(HaveOccurred())
+			// The first 4 windows merge into 2 when the limit is reached; the next 2 windows fill
+			// one double-size window, and the last one is a partial double-size window.
+			Expect(energies).To(Equal([]float32{0.25, 0.0625, 0.25, 0.0625}))
+		})
+
+		It("never keeps more than limit values, however long the track", func() {
+			silence := bytes.NewReader(make([]byte, 1000*windowSize*2))
+			energies, err := windowEnergy(silence, 8)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(energies)).To(BeNumerically(">=", 4))
+			Expect(cap(energies)).To(Equal(8))
+		})
+
 		It("returns no energies for empty input", func() {
-			energies, err := windowEnergy(bytes.NewReader(nil))
+			energies, err := windowEnergy(bytes.NewReader(nil), maxWindows)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(energies).To(BeEmpty())
 		})

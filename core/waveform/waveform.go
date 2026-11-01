@@ -37,9 +37,13 @@ const (
 	// envelope, not the audio itself.
 	sampleRate = 8000
 
-	// windowSize is the number of PCM samples (10ms) folded into each intermediate energy value,
-	// keeping memory bounded (~1.4MB per hour of audio) regardless of track length.
+	// windowSize is the number of PCM samples (10ms) folded into each intermediate energy value.
 	windowSize = sampleRate / 100
+
+	// maxWindows bounds the energy values kept while decoding. When it is reached, neighbouring
+	// windows are merged in pairs and later windows cover twice as many samples, so memory stays
+	// around 64KB whatever the track length, with at least 4x MaxSamples windows left to envelope.
+	maxWindows = 8 * MaxSamples
 )
 
 // ErrDisabled is returned when the waveform feature is turned off in the configuration.
@@ -136,7 +140,7 @@ func (w *waveform) generate(ctx context.Context, mf *model.MediaFile) (io.Reader
 	}
 	defer pcm.Close()
 
-	windows, err := windowEnergy(pcm)
+	windows, err := windowEnergy(pcm, maxWindows)
 	if err != nil {
 		return nil, fmt.Errorf("decoding audio: %w", err)
 	}
@@ -146,9 +150,12 @@ func (w *waveform) generate(ctx context.Context, mf *model.MediaFile) (io.Reader
 }
 
 // windowEnergy reads mono s16le PCM and returns the mean square amplitude (0-1) of each window.
-func windowEnergy(r io.Reader) ([]float32, error) {
+// Windows start at windowSize samples. Whenever limit (an even number) of them are stored, they
+// are merged in pairs and the window size doubles, so at most limit values are ever kept.
+func windowEnergy(r io.Reader, limit int) ([]float32, error) {
 	br := bufio.NewReaderSize(r, 64*1024)
-	var energies []float32
+	energies := make([]float32, 0, limit)
+	size := windowSize
 	var buf [2]byte
 	var sum float64
 	n := 0
@@ -162,15 +169,29 @@ func windowEnergy(r io.Reader) ([]float32, error) {
 		v := float64(int16(binary.LittleEndian.Uint16(buf[:]))) / 32768
 		sum += v * v
 		n++
-		if n == windowSize {
+		if n == size {
 			energies = append(energies, float32(sum/float64(n)))
 			sum, n = 0, 0
+			if len(energies) == limit {
+				energies = mergePairs(energies)
+				size *= 2
+			}
 		}
 	}
 	if n > 0 {
 		energies = append(energies, float32(sum/float64(n)))
 	}
 	return energies, nil
+}
+
+// mergePairs averages neighbouring values in place and returns the first half of energies.
+// Both values of a pair cover the same number of samples, so the average stays their mean square.
+func mergePairs(energies []float32) []float32 {
+	half := len(energies) / 2
+	for i := range half {
+		energies[i] = (energies[2*i] + energies[2*i+1]) / 2
+	}
+	return energies[:half]
 }
 
 // envelope groups window energies into at most samples slices and returns the RMS amplitude of
