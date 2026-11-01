@@ -144,8 +144,8 @@ const getTranscodeDecision = async (songId, browserProfile) => {
   return subsonicResponse.transcodeDecision
 }
 
-const getWaveform = (id, samples) => {
-  return httpClient(url('getWaveform', id, { samples }))
+const getWaveform = (id, samples, options) => {
+  return httpClient(url('getWaveform', id, { samples }), options)
 }
 
 const streamUrl = (id, options) => {

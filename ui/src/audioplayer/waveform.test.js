@@ -86,7 +86,30 @@ describe('loadWaveform', () => {
     expect(subsonic.getWaveform).toHaveBeenCalledWith(
       'song-1',
       WAVEFORM_SAMPLES,
+      { signal: undefined },
     )
+  })
+
+  it('passes the abort signal to the request', async () => {
+    subsonic.getWaveform.mockResolvedValue(waveformResponse([1]))
+    const controller = new AbortController()
+    await loadWaveform('song-1', controller.signal)
+    expect(subsonic.getWaveform).toHaveBeenCalledWith(
+      'song-1',
+      WAVEFORM_SAMPLES,
+      { signal: controller.signal },
+    )
+  })
+
+  it('refetches a song whose request was aborted', async () => {
+    subsonic.getWaveform.mockRejectedValueOnce(
+      new DOMException('Aborted', 'AbortError'),
+    )
+    await expect(loadWaveform('song-1')).rejects.toThrow()
+
+    subsonic.getWaveform.mockResolvedValueOnce(waveformResponse([4]))
+    await expect(loadWaveform('song-1')).resolves.toEqual([4])
+    expect(subsonic.getWaveform).toHaveBeenCalledTimes(2)
   })
 
   it('reuses previously fetched peaks', async () => {

@@ -42,7 +42,28 @@ describe('<WaveformBar />', () => {
 
     await waitFor(() => expect(onAvailable).toHaveBeenLastCalledWith(true))
     expect(progressBar.contains(screen.getByTestId('waveform'))).toBe(true)
-    expect(loadWaveform).toHaveBeenCalledWith('song-1')
+    expect(loadWaveform).toHaveBeenCalledWith('song-1', expect.any(AbortSignal))
+  })
+
+  it('aborts the previous request when the track changes', async () => {
+    renderProgressBar()
+    loadWaveform.mockReturnValue(new Promise(() => {}))
+    const onAvailable = vi.fn()
+
+    const { rerender } = render(
+      <WaveformBar trackId="song-1" onAvailable={onAvailable} />,
+    )
+    const firstSignal = loadWaveform.mock.calls[0][1]
+    expect(firstSignal.aborted).toBe(false)
+
+    rerender(<WaveformBar trackId="song-2" onAvailable={onAvailable} />)
+
+    expect(firstSignal.aborted).toBe(true)
+    expect(loadWaveform).toHaveBeenLastCalledWith(
+      'song-2',
+      expect.any(AbortSignal),
+    )
+    expect(loadWaveform.mock.calls[1][1].aborted).toBe(false)
   })
 
   it('renders nothing when the waveform is unavailable', async () => {

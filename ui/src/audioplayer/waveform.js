@@ -11,22 +11,29 @@ const MAX_CACHED = 50
 const cache = new Map()
 
 // loadWaveform fetches the peaks of a song, keeping the most recently used ones in memory so
-// replaying or skipping back does not refetch them.
-export const loadWaveform = (id) => {
+// replaying or skipping back does not refetch them. Aborting signal cancels the request, which
+// also stops the server from decoding a song that is no longer playing.
+export const loadWaveform = (id, signal) => {
   if (cache.has(id)) {
     const cached = cache.get(id)
     cache.delete(id)
     cache.set(id, cached)
     return cached
   }
-  const promise = subsonic.getWaveform(id, WAVEFORM_SAMPLES).then((resp) => {
-    const peaks = resp.json['subsonic-response']?.waveform?.peaks
-    if (!peaks?.length) {
-      throw new Error('No waveform available')
+  const promise = subsonic
+    .getWaveform(id, WAVEFORM_SAMPLES, { signal })
+    .then((resp) => {
+      const peaks = resp.json['subsonic-response']?.waveform?.peaks
+      if (!peaks?.length) {
+        throw new Error('No waveform available')
+      }
+      return peaks
+    })
+  promise.catch(() => {
+    if (cache.get(id) === promise) {
+      cache.delete(id)
     }
-    return peaks
   })
-  promise.catch(() => cache.delete(id))
   cache.set(id, promise)
   if (cache.size > MAX_CACHED) {
     cache.delete(cache.keys().next().value)

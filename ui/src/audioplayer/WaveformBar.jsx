@@ -62,13 +62,13 @@ const WaveformBar = ({ trackId, audioInstance, onAvailable }) => {
     if (!trackId) {
       return
     }
-    let cancelled = false
-    loadWaveform(trackId)
-      .then((p) => !cancelled && setPeaks(p))
+    // Aborting on track change stops the server from decoding a song that is no longer playing,
+    // so skipping through a queue does not hold up the current song's waveform.
+    const controller = new AbortController()
+    loadWaveform(trackId, controller.signal)
+      .then((p) => !controller.signal.aborted && setPeaks(p))
       .catch(() => {})
-    return () => {
-      cancelled = true
-    }
+    return () => controller.abort()
   }, [trackId])
 
   const available = !!(peaks && progressBar)
