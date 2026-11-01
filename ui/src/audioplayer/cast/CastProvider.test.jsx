@@ -7,8 +7,9 @@ import { createTheme } from '@material-ui/core/styles'
 import config from '../../config'
 import { httpClient } from '../../dataProvider'
 import subsonic from '../../subsonic'
+import { decisionService } from '../../transcode'
 import { playerReducer } from '../../reducers/playerReducer'
-import { addTracks, playNext, playTracks } from '../../actions'
+import { addTracks, playNext, playTracks, shuffleTracks } from '../../actions'
 import { Player } from '../Player'
 import CastProvider from './CastProvider'
 import CastButton from './CastButton'
@@ -130,9 +131,19 @@ const createFakeCastEnvironment = () => {
   const seek = vi.fn()
   const setVolumeLevel = vi.fn()
   const muteOrUnmute = vi.fn()
-  const queueNext = vi.fn()
-  const queuePrev = vi.fn()
+  const queueNext = vi.fn((onSuccess) => {
+    onSuccess?.()
+  })
+  const queuePrev = vi.fn((onSuccess) => {
+    onSuccess?.()
+  })
   const queueJumpToItem = vi.fn((itemId, onSuccess) => {
+    if (!mediaItems.some((it) => it?.itemId === itemId)) {
+      return
+    }
+    onSuccess?.()
+  })
+  const queueUpdateItems = vi.fn((_req, onSuccess) => {
     onSuccess?.()
   })
   const queueSetRepeatMode = vi.fn((_mode, onSuccess) => {
@@ -198,6 +209,7 @@ const createFakeCastEnvironment = () => {
     queueNext,
     queuePrev,
     queueJumpToItem,
+    queueUpdateItems,
     queueInsertItems,
     queueRemoveItems,
     queueReorderItems,
@@ -303,6 +315,10 @@ const createFakeCastEnvironment = () => {
         QueueReorderItemsRequest: function QueueReorderItemsRequest(itemIds) {
           this.itemIds = itemIds
         },
+        QueueJumpRequest: function QueueJumpRequest() {
+          this.currentItemId = null
+          this.jump = null
+        },
         PlayRequest: function PlayRequest() {},
         PauseRequest: function PauseRequest() {},
         SeekRequest: function SeekRequest() {
@@ -320,7 +336,10 @@ const createFakeCastEnvironment = () => {
     queueInsertItems,
     queueRemoveItems,
     queueReorderItems,
+    queueNext,
+    queuePrev,
     queueJumpToItem,
+    queueUpdateItems,
     queueSetRepeatMode,
     stop,
     requestSession,
@@ -330,6 +349,9 @@ const createFakeCastEnvironment = () => {
     setVolumeLevel,
     muteOrUnmute,
     getMediaItems: () => mediaItems,
+    setMediaItems: (items) => {
+      mediaItems = items
+    },
     setIdleReason: (reason) => {
       mediaIdleReason = reason
     },
@@ -1156,7 +1178,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
 
       // Advance 3 seconds on Song 2 — progress bar must tick 00:03 on the new track
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(3000)
+        await vi.advanceTimersByTimeAsync(3500)
       })
       expect(document.querySelector('.current-time')?.textContent).toBe('00:03')
 
@@ -1183,5 +1205,476 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('shuffles a playlist containing the currently playing track while /api/cast/tokens is slow without leaking old elapsed time or self-cancelling queueLoad', async () => {
+    vi.useFakeTimers()
+    const defaultHttpImpl = httpClient.getMockImplementation()
+    try {
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+
+      const medahat = {
+        ...song1,
+        id: 'song-medahat',
+        title: 'Medahat',
+        artist: 'Acid Arab',
+        duration: 272,
+      }
+      const watchMyHeart = {
+        ...song2,
+        id: 'song-watch',
+        title: 'Watch my heart go...',
+        artist: 'R3HAB',
+        duration: 185,
+      }
+      const loseMyMind = {
+        ...song3,
+        id: 'song-lose',
+        title: 'Lose My Mind (Acid Arab Remix)',
+        artist: 'Emel, Acid Arab',
+        duration: 259,
+      }
+      const laHafla = {
+        ...song4,
+        id: 'song-hafla',
+        title: 'La Hafla',
+        artist: 'Acid Arab',
+        duration: 262,
+      }
+
+      store.dispatch(
+        playTracks(
+          {
+            'song-medahat': medahat,
+            'song-lose': loseMyMind,
+          },
+          ['song-medahat', 'song-lose'],
+        ),
+      )
+
+      let liveMedia = null
+      let lastUpdatedAtMs = Date.now()
+      const makeLiveMedia = (items, baseItemId) => {
+        const listeners = new Set()
+        const assigned = items.map((qItem, idx) => ({
+          ...qItem,
+          itemId: baseItemId + idx,
+        }))
+        const mediaObj = {
+          playerState: 'IDLE',
+          idleReason: null,
+          currentItemId: null,
+          loadingItemId: assigned[0]?.itemId ?? null,
+          media: null,
+          currentTime: 0,
+          playbackRate: 1,
+          items: assigned.slice(0, 2),
+          addUpdateListener: vi.fn((fn) => listeners.add(fn)),
+          removeUpdateListener: vi.fn((fn) => listeners.delete(fn)),
+          emit() {
+            listeners.forEach((fn) => fn(true))
+          },
+          getEstimatedTime() {
+            if (this.playerState === 'PLAYING') {
+              return (
+                this.currentTime +
+                ((Date.now() - lastUpdatedAtMs) / 1000) * this.playbackRate
+              )
+            }
+            return this.currentTime
+          },
+        }
+        return mediaObj
+      }
+
+      const realQueueLoad = vi.fn((req, onSuccess) => {
+        const baseId = realQueueLoad.mock.calls.length * 100
+        lastUpdatedAtMs = Date.now()
+        liveMedia = makeLiveMedia(req.items || [], baseId)
+        onSuccess?.(liveMedia)
+      })
+
+      const sessionObj = {
+        receiver: { friendlyName: 'Living Room Chromecast' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        get media() {
+          return liveMedia ? [liveMedia] : []
+        },
+      }
+      const castSession = {
+        getCastDevice: () => ({ friendlyName: 'Living Room Chromecast' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () => liveMedia,
+      }
+      env.castContext.getCurrentSession.mockImplementation(() => castSession)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+      const oldMedia = liveMedia
+      const initialUuids = store.getState().player.queue.map((i) => i.uuid)
+
+      // Medahat is actively playing on Chromecast at 02:04 (124s)
+      await act(async () => {
+        oldMedia.playerState = 'PLAYING'
+        oldMedia.loadingItemId = null
+        oldMedia.currentItemId = 100
+        oldMedia.currentTime = 124
+        oldMedia.media = {
+          customData: {
+            trackId: 'song-medahat',
+            uuid: initialUuids[0],
+            isRadio: false,
+          },
+          duration: 272,
+        }
+        env.remotePlayer.playerState = 'PLAYING'
+        env.remotePlayer.currentTime = 124
+        env.remotePlayer.duration = 272
+        env.remotePlayer.mediaInfo = oldMedia.media
+        lastUpdatedAtMs = Date.now()
+        oldMedia.emit()
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(document.querySelector('.audio-title')?.textContent).toContain(
+        'Medahat',
+      )
+      expect(document.querySelector('.current-time')?.textContent).toBe('02:04')
+
+      // Simulate a slow 2000ms /api/cast/tokens response (e.g. SQLite lock during scan)
+      // while the user clicks SHUFFLE on the same playlist (so song-medahat is STILL in the
+      // new queue with a brand-new UUID, and Watch my heart go... is now at index 0).
+      httpClient.mockClear()
+      httpClient.mockImplementation(
+        (_url, options) =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve(defaultHttpImpl(_url, options))
+            }, 2000)
+          }),
+      )
+
+      const randomSpy = vi
+        .spyOn(Math, 'random')
+        .mockReturnValueOnce(0)
+        .mockReturnValueOnce(0)
+        .mockReturnValueOnce(0)
+      await act(async () => {
+        // With Fisher-Yates & Math.random() === 0 on [medahat, watch, lose, hafla]:
+        // i=3 -> [hafla, watch, lose, medahat]
+        // i=2 -> [lose, watch, hafla, medahat]
+        // i=1 -> [watch, lose, hafla, medahat]
+        store.dispatch(
+          shuffleTracks(
+            {
+              'song-medahat': medahat,
+              'song-watch': watchMyHeart,
+              'song-lose': loseMyMind,
+              'song-hafla': laHafla,
+            },
+            ['song-medahat', 'song-watch', 'song-lose', 'song-hafla'],
+          ),
+        )
+        await vi.advanceTimersByTimeAsync(50)
+      })
+      randomSpy.mockRestore()
+
+      expect(store.getState().player.queue.map((t) => t.trackId)).toEqual([
+        'song-watch',
+        'song-lose',
+        'song-hafla',
+        'song-medahat',
+      ])
+
+      // While /api/cast/tokens is still in flight for 1.5s, oldMedia keeps playing Medahat
+      // at 125s..126s and emitting MEDIA_STATUS + 500ms local ticks!
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(750)
+        oldMedia.currentTime = 125
+        env.remotePlayer.currentTime = 125
+        lastUpdatedAtMs = Date.now()
+        oldMedia.emit()
+        env.emitRemoteChange()
+        await vi.advanceTimersByTimeAsync(750)
+      })
+
+      // UI MUST stay on Watch my heart go... at 00:00 / 03:05 (NEVER 02:04/02:05!)
+      // and MUST NOT self-cancel & re-fire /api/cast/tokens in a loop!
+      expect(document.querySelector('.audio-title')?.textContent).toContain(
+        'Watch my heart go...',
+      )
+      expect(document.querySelector('.duration')?.textContent).toBe('03:05')
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:00')
+      expect(httpClient).toHaveBeenCalledTimes(1)
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+
+      // Finish the 2000ms token request -> new shuffled queue MUST load on Chromecast!
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+
+      expect(httpClient).toHaveBeenCalledTimes(1)
+      expect(realQueueLoad).toHaveBeenCalledTimes(2)
+      const shuffledLoadReq = realQueueLoad.mock.calls[1][0]
+      expect(shuffledLoadReq.startIndex).toBe(0)
+      expect(shuffledLoadReq.items[0].media.metadata.title).toBe(
+        'Watch my heart go...',
+      )
+
+      // Receiver begins playing Watch my heart go... -> elapsed time advances from 00:00 -> 00:03
+      await act(async () => {
+        liveMedia.playerState = 'PLAYING'
+        liveMedia.loadingItemId = null
+        liveMedia.currentItemId = 200
+        liveMedia.currentTime = 0
+        liveMedia.media = {
+          ...liveMedia.items[0].media,
+          duration: 185,
+        }
+        lastUpdatedAtMs = Date.now()
+        liveMedia.emit()
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3500)
+      })
+
+      expect(document.querySelector('.audio-title')?.textContent).toContain(
+        'Watch my heart go...',
+      )
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:03')
+    } finally {
+      httpClient.mockImplementation(defaultHttpImpl)
+      vi.useRealTimers()
+    }
+  })
+
+  it('jumps across tracks when Chromecast trims MEDIA_STATUS.items to a 2-item window and reloads cleanly on >40-track shuffle jumps', async () => {
+    const env = createFakeCastEnvironment()
+    const store = buildFullStore()
+
+    const songsById = {}
+    const songIds = []
+    for (let i = 1; i <= 60; i += 1) {
+      const id = `song-${i}`
+      songsById[id] = {
+        ...song1,
+        id,
+        title: `Shuffled Track ${i}`,
+        duration: 180 + i,
+      }
+      songIds.push(id)
+    }
+    store.dispatch(playTracks(songsById, songIds))
+
+    // Mirror CC1AD845 Default Media Receiver: queueLoad accepts 40 items,
+    // but MEDIA_STATUS.items only exposes a 2-item window [item 0, item 1].
+    let fullLoadedItems = []
+    env.queueLoad.mockImplementation((req, onSuccess) => {
+      fullLoadedItems = (req.items || []).map((qItem, idx) => ({
+        ...qItem,
+        itemId: 500 + idx,
+      }))
+      const start = req.startIndex || 0
+      env.setMediaItems(fullLoadedItems.slice(start, start + 2))
+      onSuccess?.(env.castContext.getCurrentSession().getMediaSession())
+    })
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Player />
+        </MemoryRouter>
+      </Provider>,
+    )
+
+    await act(async () => {
+      env.startSession('Living Room Speaker')
+    })
+
+    expect(env.queueLoad).toHaveBeenCalledTimes(1)
+    const queue = store.getState().player.queue
+
+    // Track 1 is playing on Chromecast; receiver only exposed itemIds 500 & 501
+    await act(async () => {
+      env.remotePlayer.playerState = 'PLAYING'
+      env.remotePlayer.currentTime = 42
+      env.remotePlayer.duration = 181
+      env.remotePlayer.mediaInfo = {
+        customData: {
+          trackId: 'song-1',
+          uuid: queue[0].uuid,
+          isRadio: false,
+        },
+      }
+      env.emitRemoteChange()
+    })
+
+    // User clicks Track 6 (index 5) in the Queue Drawer: its itemId (505) was NEVER
+    // included in Chromecast's 2-item MEDIA_STATUS.items slice!
+    fireEvent.click(document.querySelector('.audio-lists-btn'))
+    const queueRows = document.querySelectorAll(
+      '.audio-lists-panel-content .audio-item',
+    )
+    expect(queueRows).toHaveLength(60)
+
+    await act(async () => {
+      fireEvent.click(queueRows[5])
+    })
+
+    // Must NOT hang on silent-drop queueJumpToItem; must send QueueJumpRequest{ jump: 5 }!
+    expect(env.queueJumpToItem).not.toHaveBeenCalled()
+    expect(env.queueUpdateItems).toHaveBeenCalledTimes(1)
+    expect(env.queueUpdateItems.mock.calls[0][0].jump).toBe(5)
+    expect(env.queueLoad).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('.current-time')?.textContent).toBe('00:00')
+
+    // Trailing stale MEDIA_STATUS from Track 1 at 43s arrives before receiver switches ->
+    // UI must ignore it and stay on Shuffled Track 6 at 00:00!
+    await act(async () => {
+      env.remotePlayer.currentTime = 43
+      env.emitRemoteChange()
+    })
+    expect(store.getState().player.current.name).toBe('Shuffled Track 6')
+    expect(document.querySelector('.current-time')?.textContent).toBe('00:00')
+
+    // Receiver now switches to Track 6 (exposing 2-item slice [505, 506])
+    await act(async () => {
+      env.setMediaItems(fullLoadedItems.slice(5, 7))
+      env.remotePlayer.playerState = 'PLAYING'
+      env.remotePlayer.currentTime = 0
+      env.remotePlayer.duration = 186
+      env.remotePlayer.mediaInfo = {
+        customData: {
+          trackId: 'song-6',
+          uuid: queue[5].uuid,
+          isRadio: false,
+        },
+      }
+      env.emitRemoteChange()
+    })
+
+    // Now click back on Track 1 (index 0): its itemId (500) WAS previously recorded in
+    // uuidToItemIdRef, even though media.items currently only holds [505, 506].
+    // Must bypass queueJumpToItem's silent drop via QueueJumpRequest{ currentItemId: 500 }!
+    await act(async () => {
+      fireEvent.click(queueRows[0])
+    })
+    expect(env.queueJumpToItem).not.toHaveBeenCalled()
+    expect(env.queueUpdateItems).toHaveBeenCalledTimes(2)
+    expect(env.queueUpdateItems.mock.calls[1][0].currentItemId).toBe(500)
+
+    // Finally click Track 52 (index 51), which lies outside the [0, 40) Cast window ->
+    // must immediately reload a fresh 40-track window centered around Track 52!
+    await act(async () => {
+      fireEvent.click(queueRows[51])
+    })
+    expect(env.queueLoad).toHaveBeenCalledTimes(2)
+    const secondWinReq = env.queueLoad.mock.calls[1][0]
+    expect(
+      secondWinReq.items[secondWinReq.startIndex].media.customData.uuid,
+    ).toBe(queue[51].uuid)
+  })
+
+  it('clears the queue and stops Chromecast cleanly from both the Play Queue trash button and the player close button without resurrecting cleared tracks', async () => {
+    const profileSpy = vi
+      .spyOn(decisionService, 'getProfile')
+      .mockReturnValue({ name: 'chrome' })
+    const env = createFakeCastEnvironment()
+    const store = buildFullStore()
+
+    store.dispatch(
+      playTracks({ 'song-1': song1, 'song-2': song2, 'song-3': song3 }, [
+        'song-1',
+        'song-2',
+        'song-3',
+      ]),
+    )
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Player />
+        </MemoryRouter>
+      </Provider>,
+    )
+
+    await act(async () => {
+      env.startSession('Kitchen Speaker')
+    })
+
+    const initialUuids = store.getState().player.queue.map((i) => i.uuid)
+    await act(async () => {
+      env.remotePlayer.playerState = 'PLAYING'
+      env.remotePlayer.currentTime = 35
+      env.remotePlayer.mediaInfo = {
+        customData: {
+          trackId: 'song-1',
+          uuid: initialUuids[0],
+          isRadio: false,
+        },
+      }
+      env.emitRemoteChange()
+    })
+
+    // 1. Open Play Queue drawer and click Trash button (.audio-lists-panel-header-delete-btn)
+    fireEvent.click(document.querySelector('.audio-lists-btn'))
+    const trashBtn = document.querySelector(
+      '.audio-lists-panel-header-delete-btn',
+    )
+    expect(trashBtn).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.click(trashBtn)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(store.getState().player.queue).toEqual([])
+    expect(store.getState().player.clear).toBe(true)
+    expect(env.stop).toHaveBeenCalledTimes(1)
+
+    // Subsequent Add to Queue must NOT resurrect any of the 3 cleared tracks!
+    await act(async () => {
+      store.dispatch(addTracks({ 'song-4': song4 }, ['song-4']))
+      await Promise.resolve()
+    })
+    expect(store.getState().player.queue.map((t) => t.name)).toEqual([
+      'House of Cards',
+    ])
+    expect(env.queueLoad).toHaveBeenCalledTimes(2)
+
+    // 2. Click player Destroy button (.destroy-btn) while casting -> empties queue & stops Cast again
+    const destroyBtn = document.querySelector('.destroy-btn')
+    expect(destroyBtn).not.toBeNull()
+    await act(async () => {
+      fireEvent.click(destroyBtn)
+      await Promise.resolve()
+    })
+
+    expect(store.getState().player.queue).toEqual([])
+    expect(store.getState().player.clear).toBe(true)
+    expect(env.stop).toHaveBeenCalledTimes(2)
+    profileSpy.mockRestore()
   })
 })

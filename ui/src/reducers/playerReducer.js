@@ -98,7 +98,12 @@ const mapToAudioLists = (item) => {
   }
 }
 
-const reduceClearQueue = () => ({ ...initialState, clear: true })
+const reduceClearQueue = () => ({
+  ...initialState,
+  queue: [],
+  current: {},
+  clear: true,
+})
 
 const reducePlayTracks = (state, { data, id }) => {
   let playIndex = 0
@@ -126,7 +131,7 @@ const reduceSetTrack = (state, { data }) => {
 }
 
 const reduceAddTracks = (state, { data }) => {
-  const queue = state.queue
+  const queue = [...state.queue]
   Object.keys(data).forEach((id) => {
     queue.push(mapToAudioLists(data[id]))
   })
