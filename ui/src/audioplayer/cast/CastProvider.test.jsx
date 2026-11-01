@@ -303,6 +303,11 @@ const createFakeCastEnvironment = () => {
         QueueReorderItemsRequest: function QueueReorderItemsRequest(itemIds) {
           this.itemIds = itemIds
         },
+        PlayRequest: function PlayRequest() {},
+        PauseRequest: function PauseRequest() {},
+        SeekRequest: function SeekRequest() {
+          this.currentTime = 0
+        },
         StopRequest: function StopRequest() {},
       },
     },
@@ -954,5 +959,229 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       await fakeAudio.play()
     })
     expect(env.queueLoad).toHaveBeenCalledTimes(2)
+  })
+
+  it('advances elapsed time and updates track metadata when CAF RemotePlayer stays frozen after queueLoad(media === null)', async () => {
+    vi.useFakeTimers()
+    try {
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+
+      let liveMedia = null
+      const updateListeners = new Set()
+      let lastUpdatedAtMs = Date.now()
+
+      const mediaPlay = vi.fn((_req, onSuccess) => {
+        if (liveMedia) {
+          liveMedia.playerState = 'PLAYING'
+          lastUpdatedAtMs = Date.now()
+        }
+        onSuccess?.()
+        updateListeners.forEach((fn) => fn(true))
+      })
+      const mediaPause = vi.fn((_req, onSuccess) => {
+        if (liveMedia) {
+          liveMedia.currentTime = liveMedia.getEstimatedTime()
+          liveMedia.playerState = 'PAUSED'
+          lastUpdatedAtMs = Date.now()
+        }
+        onSuccess?.()
+        updateListeners.forEach((fn) => fn(true))
+      })
+      const mediaSeek = vi.fn((req, onSuccess) => {
+        if (liveMedia) {
+          liveMedia.currentTime = req.currentTime
+          lastUpdatedAtMs = Date.now()
+        }
+        onSuccess?.()
+        updateListeners.forEach((fn) => fn(true))
+      })
+
+      // Mirror real Google Cast Web Sender queueLoad: initial response has
+      // playerState === 'IDLE', loadingItemId === 101, media === null, which
+      // causes CAF RemotePlayerController's internal media pointer to stay null
+      // and RemotePlayer to remain permanently frozen at IDLE / 0s / null.
+      const realQueueLoad = vi.fn((req, onSuccess) => {
+        const assignedItems = (req.items || []).map((qItem, idx) => ({
+          ...qItem,
+          itemId: 101 + idx,
+        }))
+        lastUpdatedAtMs = Date.now()
+        liveMedia = {
+          playerState: 'IDLE',
+          idleReason: null,
+          currentItemId: null,
+          loadingItemId: assignedItems[0]?.itemId ?? null,
+          media: null,
+          currentTime: 0,
+          playbackRate: 1,
+          items: assignedItems,
+          addUpdateListener: vi.fn((fn) => updateListeners.add(fn)),
+          removeUpdateListener: vi.fn((fn) => updateListeners.delete(fn)),
+          getEstimatedTime() {
+            if (this.playerState === 'PLAYING') {
+              const est =
+                this.currentTime +
+                ((Date.now() - lastUpdatedAtMs) / 1000) * this.playbackRate
+              const dur = this.media?.duration
+              return Number.isFinite(dur) && dur > 0 ? Math.min(est, dur) : est
+            }
+            return this.currentTime
+          },
+          play: mediaPlay,
+          pause: mediaPause,
+          seek: mediaSeek,
+        }
+        onSuccess?.(liveMedia)
+      })
+
+      const sessionObj = {
+        receiver: { friendlyName: 'Office Chromecast' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        get media() {
+          return liveMedia ? [liveMedia] : []
+        },
+      }
+      const frozenSession = {
+        getCastDevice: () => ({ friendlyName: 'Office Chromecast' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () =>
+          liveMedia && !liveMedia.idleReason ? liveMedia : null,
+      }
+      env.castContext.getCurrentSession.mockImplementation(() => frozenSession)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      const audioEl = document.querySelector('audio.music-player-audio')
+      expect(audioEl).not.toBeNull()
+
+      // Start casting while RemotePlayer stays frozen at IDLE / currentTime: 0 / mediaInfo: null
+      // and NEVER fires RemotePlayerEventType.ANY_CHANGE.
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        env.remotePlayer.playerState = 'IDLE'
+        env.remotePlayer.currentTime = 0
+        env.remotePlayer.duration = 0
+        env.remotePlayer.mediaInfo = null
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+      expect(liveMedia).not.toBeNull()
+      expect(liveMedia.addUpdateListener).toHaveBeenCalledTimes(1)
+
+      // Receiver starts playing Song 1 (itemId 101) — notified ONLY via media.addUpdateListener
+      await act(async () => {
+        liveMedia.playerState = 'PLAYING'
+        liveMedia.idleReason = null
+        liveMedia.loadingItemId = null
+        liveMedia.currentItemId = 101
+        liveMedia.currentTime = 0
+        liveMedia.media = {
+          ...liveMedia.items[0].media,
+          duration: 318,
+        }
+        lastUpdatedAtMs = Date.now()
+        updateListeners.forEach((fn) => fn(true))
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(document.querySelector('.audio-title')?.textContent).toContain(
+        'Weird Fishes',
+      )
+      expect(document.querySelector('.duration')?.textContent).toBe('05:18')
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:00')
+
+      // Advance 5 seconds with ZERO incoming MEDIA_STATUS packets — local ticker must advance progress bar
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000)
+      })
+
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:05')
+      expect(
+        document
+          .querySelector('.progress-bar [role="slider"]')
+          ?.getAttribute('aria-valuenow'),
+      ).toBe('5')
+
+      // Receiver finishes Song 1 -> briefly emits IDLE + FINISHED + loadingItemId: 102 (media: null)
+      // -> then transitions to PLAYING Song 2 (itemId 102, duration 228s = 03:48)
+      await act(async () => {
+        liveMedia.playerState = 'IDLE'
+        liveMedia.idleReason = 'FINISHED'
+        liveMedia.currentItemId = 101
+        liveMedia.loadingItemId = 102
+        liveMedia.media = null
+        updateListeners.forEach((fn) => fn(true))
+        await vi.advanceTimersByTimeAsync(20)
+
+        liveMedia.playerState = 'PLAYING'
+        liveMedia.idleReason = null
+        liveMedia.loadingItemId = null
+        liveMedia.currentItemId = 102
+        liveMedia.currentTime = 0
+        liveMedia.media = {
+          ...liveMedia.items[1].media,
+          duration: 228,
+        }
+        lastUpdatedAtMs = Date.now()
+        updateListeners.forEach((fn) => fn(true))
+        await vi.advanceTimersByTimeAsync(50)
+      })
+
+      // Must NOT reload the queue during track transition, and UI must switch to Song 2 ("All I Need")
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+      expect(store.getState().player.current.name).toBe('All I Need')
+      expect(store.getState().player.savedPlayIndex).toBe(1)
+      expect(document.querySelector('.audio-title')?.textContent).toContain(
+        'All I Need',
+      )
+      expect(document.querySelector('.duration')?.textContent).toBe('03:48')
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:00')
+
+      // Advance 3 seconds on Song 2 — progress bar must tick 00:03 on the new track
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:03')
+
+      // Direct media.pause / media.play / media.seek must work even with frozen RemotePlayerController
+      await act(async () => {
+        fireEvent.click(document.querySelector('.play-btn'))
+        await vi.advanceTimersByTimeAsync(20)
+      })
+      expect(mediaPause).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        fireEvent.click(document.querySelector('.play-btn'))
+        await vi.advanceTimersByTimeAsync(20)
+      })
+      expect(mediaPlay).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        audioEl.currentTime = 120
+        await vi.advanceTimersByTimeAsync(200)
+      })
+      expect(mediaSeek).toHaveBeenCalledTimes(1)
+      expect(mediaSeek.mock.calls[0][0].currentTime).toBe(120)
+      expect(document.querySelector('.current-time')?.textContent).toBe('02:00')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

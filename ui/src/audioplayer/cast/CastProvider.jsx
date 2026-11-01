@@ -23,6 +23,8 @@ const SHIMMED_AUDIO_PROPS = [
   'pause',
   'load',
   'currentTime',
+  'duration',
+  'buffered',
   'volume',
   'muted',
   'paused',
@@ -32,6 +34,52 @@ const SHIMMED_AUDIO_PROPS = [
   'setAttribute',
   'removeAttribute',
 ]
+
+const resolveEffectivePlayerState = (mediaSession, rp) => {
+  const mediaState = mediaSession?.playerState
+  const rpState = rp?.playerState
+  if (mediaState && mediaState !== 'IDLE') {
+    return mediaState
+  }
+  if (rpState && rpState !== 'IDLE') {
+    return rpState
+  }
+  return mediaState || rpState || 'IDLE'
+}
+
+const resolveActiveItemId = (mediaSession) => {
+  if (!mediaSession) return null
+  if (
+    mediaSession.playerState === 'IDLE' &&
+    mediaSession.loadingItemId != null
+  ) {
+    return mediaSession.loadingItemId
+  }
+  return mediaSession.currentItemId ?? mediaSession.loadingItemId ?? null
+}
+
+const resolveActiveMediaInfo = (mediaSession, rp) => {
+  const activeItemId = resolveActiveItemId(mediaSession)
+  if (activeItemId != null && Array.isArray(mediaSession?.items)) {
+    const queueItem = mediaSession.items.find(
+      (it) => it?.itemId === activeItemId,
+    )
+    if (queueItem?.media) {
+      return queueItem.media
+    }
+  }
+  const isTransitioningToNextItem =
+    mediaSession?.playerState === 'IDLE' &&
+    mediaSession?.loadingItemId != null &&
+    mediaSession?.currentItemId !== mediaSession?.loadingItemId
+  if (!isTransitioningToNextItem && mediaSession?.media) {
+    return mediaSession.media
+  }
+  return rp?.mediaInfo || null
+}
+
+const resolveQueueItemDuration = (item) =>
+  Number(item?.duration || item?.song?.duration || 0)
 
 const ensureCastSdkLoaded = () => {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -140,6 +188,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   const loadedWindowUuidsRef = useRef([])
   const loadedWindowRef = useRef({ start: 0, end: 0 })
   const activeUuidRef = useRef(null)
+  const lastSyncedUiUuidRef = useRef(null)
   const pendingCastLoadRef = useRef(false)
   const castReportedTrackRef = useRef(null)
   const castReportedStateRef = useRef('IDLE')
@@ -147,11 +196,21 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   const seekReportTimerRef = useRef(null)
   const castTokenCacheRef = useRef(new Map())
   const castOpSeqRef = useRef(0)
+  const syncFromRemotePlayerRef = useRef(() => {})
+  const attachedMediaRef = useRef({ media: null, listener: null })
+  const attachedSessionObjRef = useRef({ sessionObj: null, listener: null })
+  const castClockRef = useRef({
+    baseTimeSec: 0,
+    sampledAtMs: 0,
+    playbackRate: 1,
+    isPlaying: false,
+  })
 
   const bridgeRef = useRef({
     shimmedAudio: null,
     savedDescriptors: {},
     virtualCurrentTime: 0,
+    virtualDuration: 0,
     virtualVolume: 1,
     virtualMuted: false,
     virtualPaused: true,
@@ -161,6 +220,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     lastSeekSentAt: 0,
     seekThrottleTimer: null,
     volumeDebounceTimer: null,
+    readyTimer: null,
+    suppressAutoResumeOnLoad: false,
     nativePause: null,
     nativeSetAttribute: null,
     nativeRemoveAttribute: null,
@@ -177,18 +238,110 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     })
   }, [])
 
-  const getActiveMediaSession = useCallback(() => {
-    const session = castContextRef.current?.getCurrentSession?.()
-    const media =
-      session?.getMediaSession?.() ||
-      session?.getSessionObj?.()?.media?.[0] ||
-      mediaSessionRef.current
-    if (media) {
+  const detachMediaSession = useCallback(() => {
+    const prev = attachedMediaRef.current
+    if (
+      prev?.media &&
+      prev?.listener &&
+      typeof prev.media.removeUpdateListener === 'function'
+    ) {
+      try {
+        prev.media.removeUpdateListener(prev.listener)
+      } catch {
+        // Ignore teardown errors on closed media sessions
+      }
+    }
+    attachedMediaRef.current = { media: null, listener: null }
+  }, [])
+
+  const attachMediaSession = useCallback(
+    (media) => {
+      if (!media) return
       mediaSessionRef.current = media
       recordMediaSessionItems(media)
+      if (attachedMediaRef.current?.media === media) {
+        return
+      }
+      detachMediaSession()
+      if (typeof media.addUpdateListener === 'function') {
+        const listener = () => {
+          recordMediaSessionItems(media)
+          syncFromRemotePlayerRef.current()
+        }
+        try {
+          media.addUpdateListener(listener)
+          attachedMediaRef.current = { media, listener }
+        } catch {
+          // Ignore non-standard media mock errors
+        }
+      }
+    },
+    [detachMediaSession, recordMediaSessionItems],
+  )
+
+  const detachSessionObj = useCallback(() => {
+    const prev = attachedSessionObjRef.current
+    if (
+      prev?.sessionObj &&
+      prev?.listener &&
+      typeof prev.sessionObj.removeMediaListener === 'function'
+    ) {
+      try {
+        prev.sessionObj.removeMediaListener(prev.listener)
+      } catch {
+        // Ignore teardown errors on ended Cast sessions
+      }
+    }
+    attachedSessionObjRef.current = { sessionObj: null, listener: null }
+  }, [])
+
+  const attachSessionObj = useCallback(
+    (sessionObj) => {
+      if (
+        !sessionObj ||
+        attachedSessionObjRef.current?.sessionObj === sessionObj
+      ) {
+        return
+      }
+      detachSessionObj()
+      if (typeof sessionObj.addMediaListener === 'function') {
+        const listener = (media) => {
+          attachMediaSession(media)
+          syncFromRemotePlayerRef.current()
+        }
+        try {
+          sessionObj.addMediaListener(listener)
+          attachedSessionObjRef.current = { sessionObj, listener }
+        } catch {
+          // Ignore non-standard session mock errors
+        }
+      }
+    },
+    [attachMediaSession, detachSessionObj],
+  )
+
+  const getActiveMediaSession = useCallback(() => {
+    const session = castContextRef.current?.getCurrentSession?.()
+    const sessionObj = session?.getSessionObj?.()
+    if (sessionObj) {
+      attachSessionObj(sessionObj)
+    }
+    const mediaList = Array.isArray(sessionObj?.media) ? sessionObj.media : []
+    const liveFromList = mediaList.find(
+      (m) =>
+        m &&
+        (m.playerState !== 'IDLE' || m.loadingItemId != null || !m.idleReason),
+    )
+    const media =
+      liveFromList ||
+      session?.getMediaSession?.() ||
+      mediaList[0] ||
+      mediaSessionRef.current
+    if (media) {
+      attachMediaSession(media)
     }
     return media
-  }, [recordMediaSessionItems])
+  }, [attachMediaSession, attachSessionObj])
 
   const findCastItemId = useCallback((mediaSession, uuid) => {
     if (!uuid) return undefined
@@ -203,6 +356,13 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   }, [])
 
   const getActiveCastTime = useCallback(() => {
+    const mediaSession = mediaSessionRef.current
+    if (typeof mediaSession?.getEstimatedTime === 'function') {
+      const est = Number(mediaSession.getEstimatedTime())
+      if (Number.isFinite(est) && est > 0) {
+        return Math.floor(est)
+      }
+    }
     const rp = remotePlayerRef.current
     if (
       rp &&
@@ -226,70 +386,99 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     }
   }, [])
 
-  const seekCastTo = useCallback((seconds) => {
-    const bridge = bridgeRef.current
-    const queue = playerStateRef.current?.queue || []
-    const currentItem = queue.find((it) => it.uuid === activeUuidRef.current)
-    if (currentItem?.isRadio) return
+  const seekCastTo = useCallback(
+    (seconds) => {
+      const bridge = bridgeRef.current
+      const queue = playerStateRef.current?.queue || []
+      const currentItem = queue.find((it) => it.uuid === activeUuidRef.current)
+      if (currentItem?.isRadio) return
 
-    const maxDuration = Number(
-      remotePlayerRef.current?.duration || currentItem?.duration || 0,
-    )
-    const raw = Number.isFinite(Number(seconds)) ? Number(seconds) : 0
-    const clamped =
-      maxDuration > 0
-        ? Math.max(0, Math.min(raw, maxDuration))
-        : Math.max(0, raw)
+      const maxDuration = Number(
+        bridge.virtualDuration ||
+          remotePlayerRef.current?.duration ||
+          currentItem?.duration ||
+          0,
+      )
+      const raw = Number.isFinite(Number(seconds)) ? Number(seconds) : 0
+      const clamped =
+        maxDuration > 0
+          ? Math.max(0, Math.min(raw, maxDuration))
+          : Math.max(0, raw)
 
-    bridge.virtualCurrentTime = clamped
-    bridge.seekingUntil = Date.now() + 800
-    castLastPosMsRef.current = Math.floor(clamped * 1000)
-
-    const sendSeek = (targetSec) => {
-      const rp = remotePlayerRef.current
-      const controller = remoteControllerRef.current
-      if (!rp || !controller) return
-      rp.currentTime = targetSec
-      controller.seek()
-      bridge.lastSeekSentAt = Date.now()
-    }
-
-    const elapsed = Date.now() - bridge.lastSeekSentAt
-    if (elapsed >= 150 && !bridge.seekThrottleTimer) {
-      sendSeek(clamped)
-    } else if (!bridge.seekThrottleTimer) {
-      bridge.seekThrottleTimer = setTimeout(() => {
-        bridge.seekThrottleTimer = null
-        if (isCastingRef.current) {
-          sendSeek(bridge.virtualCurrentTime)
-        }
-      }, 150)
-    }
-
-    if (seekReportTimerRef.current) {
-      clearTimeout(seekReportTimerRef.current)
-    }
-    seekReportTimerRef.current = setTimeout(() => {
-      seekReportTimerRef.current = null
-      if (
-        isCastingRef.current &&
-        castReportedTrackRef.current &&
-        !currentItem?.isRadio
-      ) {
-        const stateStr =
-          remotePlayerRef.current?.playerState === 'PAUSED'
-            ? 'paused'
-            : 'playing'
-        subsonic
-          .reportPlayback(
-            castReportedTrackRef.current,
-            Math.floor(bridge.virtualCurrentTime * 1000),
-            stateStr,
-          )
-          .catch(() => {})
+      bridge.virtualCurrentTime = clamped
+      bridge.seekingUntil = Date.now() + 800
+      castLastPosMsRef.current = Math.floor(clamped * 1000)
+      castClockRef.current = {
+        ...castClockRef.current,
+        baseTimeSec: clamped,
+        sampledAtMs: Date.now(),
       }
-    }, 250)
-  }, [])
+      dispatchMediaEvent(audioInstanceRef.current, 'timeupdate')
+
+      const sendSeek = (targetSec) => {
+        const mediaSession = getActiveMediaSession()
+        const SeekReq = window.chrome?.cast?.media?.SeekRequest
+        if (
+          typeof mediaSession?.seek === 'function' &&
+          typeof SeekReq === 'function'
+        ) {
+          const req = new SeekReq()
+          req.currentTime = targetSec
+          mediaSession.seek(
+            req,
+            () => syncFromRemotePlayerRef.current(),
+            () => {},
+          )
+          bridge.lastSeekSentAt = Date.now()
+          return
+        }
+        const rp = remotePlayerRef.current
+        const controller = remoteControllerRef.current
+        if (!rp || !controller) return
+        rp.currentTime = targetSec
+        controller.seek()
+        bridge.lastSeekSentAt = Date.now()
+      }
+
+      const elapsed = Date.now() - bridge.lastSeekSentAt
+      if (elapsed >= 150 && !bridge.seekThrottleTimer) {
+        sendSeek(clamped)
+      } else if (!bridge.seekThrottleTimer) {
+        bridge.seekThrottleTimer = setTimeout(() => {
+          bridge.seekThrottleTimer = null
+          if (isCastingRef.current) {
+            sendSeek(bridge.virtualCurrentTime)
+          }
+        }, 150)
+      }
+
+      if (seekReportTimerRef.current) {
+        clearTimeout(seekReportTimerRef.current)
+      }
+      seekReportTimerRef.current = setTimeout(() => {
+        seekReportTimerRef.current = null
+        if (
+          isCastingRef.current &&
+          castReportedTrackRef.current &&
+          !currentItem?.isRadio
+        ) {
+          const effectiveState = resolveEffectivePlayerState(
+            getActiveMediaSession(),
+            remotePlayerRef.current,
+          )
+          const stateStr = effectiveState === 'PAUSED' ? 'paused' : 'playing'
+          subsonic
+            .reportPlayback(
+              castReportedTrackRef.current,
+              Math.floor(bridge.virtualCurrentTime * 1000),
+              stateStr,
+            )
+            .catch(() => {})
+        }
+      }, 250)
+    },
+    [getActiveMediaSession],
+  )
 
   const fetchCastMediaTokens = useCallback(async (items = []) => {
     const nowMs = Date.now()
@@ -372,6 +561,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       const opSeq = castOpSeqRef.current
 
       uuidToItemIdRef.current.clear()
+      detachMediaSession()
       mediaSessionRef.current = null
       loadedWindowUuidsRef.current = windowSpec.items.map((item) => item.uuid)
       loadedWindowRef.current = {
@@ -386,12 +576,24 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       )
       const targetItem = windowSpec.items[initialStartIdx]
       if (targetItem) {
+        const itemDuration = resolveQueueItemDuration(targetItem)
         activeUuidRef.current = targetItem.uuid
         setActiveTrackId(targetItem.trackId || null)
         setActiveIsRadio(Boolean(targetItem.isRadio))
         bridgeRef.current.virtualCurrentTime = startSeconds
+        bridgeRef.current.virtualDuration = itemDuration
         bridgeRef.current.virtualPaused = false
         castLastPosMsRef.current = Math.floor(startSeconds * 1000)
+        castClockRef.current = {
+          baseTimeSec: startSeconds,
+          sampledAtMs: Date.now(),
+          playbackRate: 1,
+          isPlaying: false,
+        }
+
+        if (state.current?.uuid === targetItem.uuid) {
+          lastSyncedUiUuidRef.current = targetItem.uuid
+        }
 
         if (
           state.current?.uuid !== targetItem.uuid ||
@@ -401,10 +603,24 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             currentPlaying({
               ...targetItem,
               currentTime: startSeconds,
-              duration: targetItem.duration || 0,
+              duration: itemDuration,
               volume: state.volume ?? 1,
             }),
           )
+        }
+
+        if (
+          state.playIndex == null &&
+          state.current?.uuid !== targetItem.uuid &&
+          lastSyncedUiUuidRef.current !== targetItem.uuid &&
+          typeof audioInstanceRef.current?.updatePlayIndex === 'function'
+        ) {
+          lastSyncedUiUuidRef.current = targetItem.uuid
+          audioInstanceRef.current.updatePlayIndex(
+            windowSpec.windowStartIndex + initialStartIdx,
+          )
+        } else if (state.playIndex != null) {
+          lastSyncedUiUuidRef.current = targetItem.uuid
         }
       }
 
@@ -467,8 +683,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             (media) => {
               if (castOpSeqRef.current !== opSeq) return
               if (media) {
-                mediaSessionRef.current = media
-                recordMediaSessionItems(media)
+                attachMediaSession(media)
+                syncFromRemotePlayerRef.current()
               }
             },
             () => {
@@ -484,7 +700,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           }
         })
     },
-    [dispatch, fetchCastMediaTokens, recordMediaSessionItems],
+    [attachMediaSession, detachMediaSession, dispatch, fetchCastMediaTokens],
   )
 
   const uninstallAudioShim = useCallback((audio, finalTimeSec = 0) => {
@@ -501,6 +717,10 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     if (bridge.volumeDebounceTimer) {
       clearTimeout(bridge.volumeDebounceTimer)
       bridge.volumeDebounceTimer = null
+    }
+    if (bridge.readyTimer) {
+      clearTimeout(bridge.readyTimer)
+      bridge.readyTimer = null
     }
 
     const saved = bridge.savedDescriptors || {}
@@ -521,6 +741,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
     bridge.shimmedAudio = null
     bridge.savedDescriptors = {}
+    bridge.virtualDuration = 0
+    bridge.suppressAutoResumeOnLoad = false
     bridge.trackChangedWhileCasting = false
 
     if (nativePause) {
@@ -614,32 +836,104 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         }
       })
 
+      const pStateForInit = playerStateRef.current
+      const initQueue = pStateForInit?.queue || []
+      const initQueueItem =
+        initQueue.find((it) => it.uuid === activeUuidRef.current) ||
+        pStateForInit?.current ||
+        initQueue[
+          pStateForInit?.playIndex ?? pStateForInit?.savedPlayIndex ?? 0
+        ]
+      const initialDuration =
+        resolveQueueItemDuration(initQueueItem) ||
+        (typeof audio.duration === 'number' &&
+        Number.isFinite(audio.duration) &&
+        audio.duration > 0
+          ? audio.duration
+          : 0)
+
       bridge.shimmedAudio = audio
       bridge.savedDescriptors = savedDescriptors
       bridge.virtualCurrentTime = Number.isFinite(initialTimeSec)
         ? initialTimeSec
         : 0
+      bridge.virtualDuration = initialDuration
       bridge.virtualVolume = initialVol
       bridge.virtualMuted = initialMuted
       bridge.virtualPaused = false
       bridge.virtualSrc = initialSrc
+      bridge.suppressAutoResumeOnLoad = false
       bridge.trackChangedWhileCasting = false
       bridge.seekingUntil = 0
       bridge.nativePause = nativePause
       bridge.nativeSetAttribute = nativeSetAttribute
       bridge.nativeRemoveAttribute = nativeRemoveAttribute
 
+      const scheduleVirtualReady = () => {
+        if (bridge.readyTimer) {
+          clearTimeout(bridge.readyTimer)
+        }
+        bridge.readyTimer = setTimeout(() => {
+          bridge.readyTimer = null
+          if (!isCastingRef.current || bridge.shimmedAudio !== audio) {
+            return
+          }
+          dispatchMediaEvent(audio, 'loadedmetadata')
+          dispatchMediaEvent(audio, 'canplay')
+          bridge.suppressAutoResumeOnLoad = false
+          const effState = resolveEffectivePlayerState(
+            getActiveMediaSession(),
+            remotePlayerRef.current,
+          )
+          if (effState === 'PAUSED') {
+            bridge.virtualPaused = true
+            dispatchMediaEvent(audio, 'pause')
+          } else if (effState === 'PLAYING' || !bridge.virtualPaused) {
+            dispatchMediaEvent(audio, 'play')
+          }
+          dispatchMediaEvent(audio, 'timeupdate')
+        }, 0)
+      }
+
       Object.defineProperties(audio, {
         play: {
           configurable: true,
           value: () => {
+            if (bridge.suppressAutoResumeOnLoad) {
+              bridge.suppressAutoResumeOnLoad = false
+              bridge.virtualPaused = true
+              setTimeout(() => {
+                if (
+                  isCastingRef.current &&
+                  bridge.shimmedAudio === audio &&
+                  bridge.virtualPaused
+                ) {
+                  dispatchMediaEvent(audio, 'pause')
+                }
+              }, 0)
+              return Promise.resolve()
+            }
             bridge.virtualPaused = false
             if (!pendingCastLoadRef.current) {
+              const mediaSession = getActiveMediaSession()
               const rp = remotePlayerRef.current
               const controller = remoteControllerRef.current
-              if (rp?.playerState === 'PAUSED' && controller?.playOrPause) {
-                controller.playOrPause()
-              } else if (rp?.playerState === 'IDLE') {
+              const effState = resolveEffectivePlayerState(mediaSession, rp)
+              if (effState === 'PAUSED') {
+                const PlayReq = window.chrome?.cast?.media?.PlayRequest
+                if (typeof mediaSession?.play === 'function') {
+                  mediaSession.play(
+                    typeof PlayReq === 'function' ? new PlayReq() : null,
+                    () => syncFromRemotePlayerRef.current(),
+                    () => {},
+                  )
+                } else if (controller?.playOrPause) {
+                  controller.playOrPause()
+                }
+              } else if (
+                effState === 'IDLE' &&
+                mediaSession?.loadingItemId == null
+              ) {
                 const pState = playerStateRef.current
                 const idx = Math.max(
                   0,
@@ -666,14 +960,21 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
               return
             }
             bridge.virtualPaused = true
+            const mediaSession = getActiveMediaSession()
             const rp = remotePlayerRef.current
             const controller = remoteControllerRef.current
-            if (
-              (rp?.playerState === 'PLAYING' ||
-                rp?.playerState === 'BUFFERING') &&
-              controller?.playOrPause
-            ) {
-              controller.playOrPause()
+            const effState = resolveEffectivePlayerState(mediaSession, rp)
+            if (effState === 'PLAYING' || effState === 'BUFFERING') {
+              const PauseReq = window.chrome?.cast?.media?.PauseRequest
+              if (typeof mediaSession?.pause === 'function') {
+                mediaSession.pause(
+                  typeof PauseReq === 'function' ? new PauseReq() : null,
+                  () => syncFromRemotePlayerRef.current(),
+                  () => {},
+                )
+              } else if (controller?.playOrPause) {
+                controller.playOrPause()
+              }
             }
             dispatchMediaEvent(audio, 'pause')
           },
@@ -681,17 +982,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         load: {
           configurable: true,
           value: () => {
-            setTimeout(() => {
-              if (!isCastingRef.current || bridge.shimmedAudio !== audio) {
-                return
-              }
-              dispatchMediaEvent(audio, 'canplay')
-              const pState = remotePlayerRef.current?.playerState
-              if (pState === 'PLAYING' || !bridge.virtualPaused) {
-                dispatchMediaEvent(audio, 'play')
-              }
-              dispatchMediaEvent(audio, 'timeupdate')
-            }, 0)
+            scheduleVirtualReady()
           },
         },
         currentTime: {
@@ -700,6 +991,18 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           set: (val) => {
             seekCastTo(val)
           },
+        },
+        duration: {
+          configurable: true,
+          get: () => bridge.virtualDuration,
+        },
+        buffered: {
+          configurable: true,
+          get: () => ({
+            length: bridge.virtualDuration > 0 ? 1 : 0,
+            start: () => 0,
+            end: () => bridge.virtualDuration,
+          }),
         },
         volume: {
           configurable: true,
@@ -770,16 +1073,26 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           configurable: true,
           get: () => bridge.virtualSrc,
           set: (val) => {
-            bridge.virtualSrc = String(val ?? '')
+            const prevSrc = bridge.virtualSrc
+            const nextSrc = String(val ?? '')
+            bridge.virtualSrc = nextSrc
             bridge.trackChangedWhileCasting = true
+            if (nextSrc && nextSrc !== prevSrc) {
+              scheduleVirtualReady()
+            }
           },
         },
         setAttribute: {
           configurable: true,
           value: (name, val) => {
             if (String(name).toLowerCase() === 'src') {
-              bridge.virtualSrc = String(val ?? '')
+              const prevSrc = bridge.virtualSrc
+              const nextSrc = String(val ?? '')
+              bridge.virtualSrc = nextSrc
               bridge.trackChangedWhileCasting = true
+              if (nextSrc && nextSrc !== prevSrc) {
+                scheduleVirtualReady()
+              }
               return
             }
             if (nativeSetAttribute) {
@@ -802,22 +1115,20 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         },
       })
 
-      setTimeout(() => {
-        if (isCastingRef.current && bridge.shimmedAudio === audio) {
-          dispatchMediaEvent(audio, 'canplay')
-        }
-      }, 0)
+      scheduleVirtualReady()
     },
-    [loadQueueOnCast, seekCastTo, uninstallAudioShim],
+    [getActiveMediaSession, loadQueueOnCast, seekCastTo, uninstallAudioShim],
   )
 
   const syncFromRemotePlayer = useCallback(() => {
     const rp = remotePlayerRef.current
     const ctx = castContextRef.current
-    if (!rp) return
+    if (!rp && !ctx) return
 
-    const connected = Boolean(rp.isConnected)
     const session = ctx?.getCurrentSession?.()
+    const connected = Boolean(
+      rp?.isConnected || (isCastingRef.current && session),
+    )
     const castDeviceName =
       session?.getCastDevice?.()?.friendlyName ||
       session?.getSessionObj?.()?.receiver?.friendlyName ||
@@ -830,9 +1141,36 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     }
 
     const mediaSession = getActiveMediaSession()
-    const nextState = rp.playerState || 'IDLE'
-    const nextTime = Number.isFinite(rp.currentTime) ? rp.currentTime : 0
-    const nextDuration = Number.isFinite(rp.duration) ? rp.duration : 0
+    const nextState = resolveEffectivePlayerState(mediaSession, rp)
+    const mediaInfo = resolveActiveMediaInfo(mediaSession, rp)
+    const activeItemId = resolveActiveItemId(mediaSession)
+
+    const isIdleLoadingNext =
+      mediaSession?.playerState === 'IDLE' &&
+      mediaSession?.loadingItemId != null
+    let nextTime = 0
+    if (!isIdleLoadingNext) {
+      if (typeof mediaSession?.getEstimatedTime === 'function') {
+        const est = Number(mediaSession.getEstimatedTime())
+        nextTime = Number.isFinite(est) && est >= 0 ? est : 0
+      } else if (
+        mediaSession?.playerState &&
+        mediaSession.playerState !== 'IDLE' &&
+        Number.isFinite(mediaSession?.currentTime)
+      ) {
+        nextTime = Math.max(0, Number(mediaSession.currentTime))
+      } else if (Number.isFinite(rp?.currentTime)) {
+        nextTime = Math.max(0, Number(rp.currentTime))
+      }
+    }
+
+    const mediaInfoDuration = Number(mediaInfo?.duration)
+    const nextDuration =
+      Number.isFinite(mediaInfoDuration) && mediaInfoDuration > 0
+        ? mediaInfoDuration
+        : Number.isFinite(rp?.duration) && rp.duration > 0
+          ? rp.duration
+          : 0
     const audio = audioInstanceRef.current
     const bridge = bridgeRef.current
 
@@ -853,7 +1191,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
     setRemoteState(nextState)
 
-    if (typeof rp.volumeLevel === 'number' && Number.isFinite(rp.volumeLevel)) {
+    if (
+      rp &&
+      typeof rp.volumeLevel === 'number' &&
+      Number.isFinite(rp.volumeLevel)
+    ) {
       const nextVirtualVol = rp.isMuted
         ? 0
         : Math.max(0, Math.min(1, rp.volumeLevel ** 2))
@@ -867,6 +1209,35 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       }
     }
 
+    const customData = mediaInfo?.customData || {}
+    const queue = playerStateRef.current?.queue || []
+
+    let matchedIdx = -1
+    if (customData.uuid) {
+      matchedIdx = queue.findIndex((item) => item.uuid === customData.uuid)
+    }
+    if (matchedIdx < 0 && activeItemId != null) {
+      for (const [uuid, mappedId] of uuidToItemIdRef.current.entries()) {
+        if (mappedId === activeItemId) {
+          matchedIdx = queue.findIndex((item) => item.uuid === uuid)
+          if (matchedIdx >= 0) break
+        }
+      }
+    }
+    if (matchedIdx < 0 && customData.trackId) {
+      matchedIdx = queue.findIndex(
+        (item) => item.trackId === customData.trackId,
+      )
+    }
+    const matched = matchedIdx >= 0 ? queue[matchedIdx] : null
+    const resolvedDuration =
+      nextDuration || resolveQueueItemDuration(matched) || 0
+
+    if (resolvedDuration > 0 && bridge.virtualDuration !== resolvedDuration) {
+      bridge.virtualDuration = resolvedDuration
+      dispatchMediaEvent(audio, 'durationchange')
+    }
+
     const isActivelySeeking = Date.now() < bridge.seekingUntil
     if (!isActivelySeeking) {
       const preservePendingOffset =
@@ -876,6 +1247,15 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       if (!preservePendingOffset) {
         bridge.virtualCurrentTime = nextTime
         castLastPosMsRef.current = Math.floor(nextTime * 1000)
+        castClockRef.current = {
+          baseTimeSec: nextTime,
+          sampledAtMs: Date.now(),
+          playbackRate:
+            Number(mediaSession?.playbackRate) > 0
+              ? Number(mediaSession.playbackRate)
+              : 1,
+          isPlaying: nextState === 'PLAYING',
+        }
         dispatchMediaEvent(audio, 'timeupdate')
       }
     }
@@ -892,21 +1272,6 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       dispatchMediaEvent(audio, 'pause')
     }
 
-    const mediaInfo = rp.mediaInfo
-    const customData = mediaInfo?.customData || {}
-    const queue = playerStateRef.current?.queue || []
-
-    let matchedIdx = -1
-    if (customData.uuid) {
-      matchedIdx = queue.findIndex((item) => item.uuid === customData.uuid)
-    }
-    if (matchedIdx < 0 && customData.trackId) {
-      matchedIdx = queue.findIndex(
-        (item) => item.trackId === customData.trackId,
-      )
-    }
-    const matched = matchedIdx >= 0 ? queue[matchedIdx] : null
-
     if (matched) {
       if (activeUuidRef.current !== matched.uuid) {
         activeUuidRef.current = matched.uuid
@@ -916,13 +1281,19 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           currentPlaying({
             ...matched,
             currentTime: nextTime,
-            duration: nextDuration || matched.duration || 0,
+            duration: resolvedDuration,
             volume: playerStateRef.current?.volume ?? 1,
           }),
         )
-        if (audio && typeof audio.updatePlayIndex === 'function') {
-          audio.updatePlayIndex(matchedIdx)
-        }
+      }
+      if (
+        lastSyncedUiUuidRef.current !== matched.uuid &&
+        audio &&
+        typeof audio.updatePlayIndex === 'function'
+      ) {
+        lastSyncedUiUuidRef.current = matched.uuid
+        bridge.suppressAutoResumeOnLoad = nextState === 'PAUSED'
+        audio.updatePlayIndex(matchedIdx)
       }
       if (matched.song?.title && matched.song?.artist) {
         document.title = `${matched.song.title} - ${matched.song.artist} - Navidrome`
@@ -976,8 +1347,10 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     if (
       nextState === 'IDLE' &&
       !pendingCastLoadRef.current &&
-      mediaSession?.idleReason ===
-        window.chrome?.cast?.media?.IdleReason?.FINISHED
+      mediaSession?.loadingItemId == null &&
+      (mediaSession?.idleReason ===
+        window.chrome?.cast?.media?.IdleReason?.FINISHED ||
+        mediaSession?.idleReason === 'FINISHED')
     ) {
       const { end } = loadedWindowRef.current
       if (
@@ -989,6 +1362,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       }
     }
   }, [dispatch, getActiveMediaSession, loadQueueOnCast])
+
+  syncFromRemotePlayerRef.current = syncFromRemotePlayer
 
   useEffect(() => {
     let cleanupListeners = null
@@ -1041,11 +1416,13 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
                 ? Math.floor(audio.currentTime)
                 : 0
             isCastingRef.current = true
+            attachSessionObj(ctx.getCurrentSession?.()?.getSessionObj?.())
             installAudioShim(audio, resumeSec)
             setIsCasting(true)
             setIsConnecting(false)
 
             const pState = playerStateRef.current
+            lastSyncedUiUuidRef.current = pState?.current?.uuid || null
             const startIdx =
               pState.playIndex ??
               (pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0)
@@ -1056,26 +1433,37 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             sessionState === 'SESSION_RESUMED'
           ) {
             const audio = audioInstanceRef.current
+            attachSessionObj(ctx.getCurrentSession?.()?.getSessionObj?.())
+            const existingMedia = getActiveMediaSession()
+            const existingTime =
+              typeof existingMedia?.getEstimatedTime === 'function'
+                ? Math.floor(Number(existingMedia.getEstimatedTime()) || 0)
+                : 0
             const resumeSec =
+              existingTime ||
               remotePlayerRef.current?.currentTime ||
               (audio && Number.isFinite(audio.currentTime)
                 ? Math.floor(audio.currentTime)
                 : 0)
             isCastingRef.current = true
+            lastSyncedUiUuidRef.current =
+              playerStateRef.current?.current?.uuid || null
             installAudioShim(audio, resumeSec)
             setIsCasting(true)
             setIsConnecting(false)
 
-            const existingMedia = ctx.getCurrentSession?.()?.getMediaSession?.()
             const pState = playerStateRef.current
-            if (!existingMedia || existingMedia.playerState === 'IDLE') {
+            if (
+              !existingMedia ||
+              (existingMedia.playerState === 'IDLE' &&
+                existingMedia.loadingItemId == null)
+            ) {
               const startIdx =
                 pState.playIndex ??
                 (pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0)
               loadQueueOnCast(startIdx, 0)
             } else {
-              mediaSessionRef.current = existingMedia
-              recordMediaSessionItems(existingMedia)
+              attachMediaSession(existingMedia)
               const queue = pState.queue || []
               const activeIdx =
                 pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0
@@ -1100,10 +1488,19 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             const endedUuid = activeUuidRef.current
             flushStoppedReport()
             pendingCastLoadRef.current = false
+            detachMediaSession()
+            detachSessionObj()
             mediaSessionRef.current = null
             uuidToItemIdRef.current.clear()
             loadedWindowUuidsRef.current = []
             activeUuidRef.current = null
+            lastSyncedUiUuidRef.current = null
+            castClockRef.current = {
+              baseTimeSec: 0,
+              sampledAtMs: 0,
+              playbackRate: 1,
+              isPlaying: false,
+            }
 
             const audio = audioInstanceRef.current
             const queue = playerStateRef.current?.queue || []
@@ -1158,10 +1555,15 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         const existingSession = ctx.getCurrentSession?.()
         if (existingSession) {
           isCastingRef.current = true
-          installAudioShim(
-            audioInstanceRef.current,
-            remotePlayerRef.current?.currentTime || 0,
-          )
+          lastSyncedUiUuidRef.current =
+            playerStateRef.current?.current?.uuid || null
+          attachSessionObj(existingSession.getSessionObj?.())
+          const activeMedia = getActiveMediaSession()
+          const initSec =
+            typeof activeMedia?.getEstimatedTime === 'function'
+              ? Math.floor(Number(activeMedia.getEstimatedTime()) || 0)
+              : remotePlayerRef.current?.currentTime || 0
+          installAudioShim(audioInstanceRef.current, initSec)
           setIsCasting(true)
           syncFromRemotePlayer()
         }
@@ -1202,6 +1604,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         seekReportTimerRef.current = null
       }
       flushStoppedReport()
+      detachMediaSession()
+      detachSessionObj()
       uninstallAudioShim(audioInstanceRef.current, 0)
       if (cleanupListeners) {
         cleanupListeners()
@@ -1221,6 +1625,13 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       uuidToItemIdRef.current = new Map()
       loadedWindowUuidsRef.current = []
       activeUuidRef.current = null
+      lastSyncedUiUuidRef.current = null
+      castClockRef.current = {
+        baseTimeSec: 0,
+        sampledAtMs: 0,
+        playbackRate: 1,
+        isPlaying: false,
+      }
       pendingCastLoadRef.current = false
       isCastingRef.current = false
       setCastAvailable(false)
@@ -1232,12 +1643,16 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       setActiveIsRadio(false)
     }
   }, [
+    attachMediaSession,
+    attachSessionObj,
+    detachMediaSession,
+    detachSessionObj,
     enabled,
     flushStoppedReport,
     getActiveCastTime,
+    getActiveMediaSession,
     installAudioShim,
     loadQueueOnCast,
-    recordMediaSessionItems,
     syncFromRemotePlayer,
     uninstallAudioShim,
   ])
@@ -1334,17 +1749,28 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
     if (plan.action === 'JUMP') {
       const itemId = findCastItemId(mediaSession, plan.targetUuid)
+      const targetDuration = resolveQueueItemDuration(plan.targetItem)
       activeUuidRef.current = plan.targetUuid
+      lastSyncedUiUuidRef.current = plan.targetUuid
       pendingCastLoadRef.current = true
       bridgeRef.current.virtualCurrentTime = 0
+      bridgeRef.current.virtualDuration = targetDuration
       bridgeRef.current.virtualPaused = false
+      castLastPosMsRef.current = 0
+      castClockRef.current = {
+        baseTimeSec: 0,
+        sampledAtMs: Date.now(),
+        playbackRate: 1,
+        isPlaying: false,
+      }
+      dispatchMediaEvent(audioInstanceRef.current, 'timeupdate')
       setActiveTrackId(plan.targetItem?.trackId || null)
       setActiveIsRadio(Boolean(plan.targetItem?.isRadio))
       dispatch(
         currentPlaying({
           ...plan.targetItem,
           currentTime: 0,
-          duration: plan.targetItem?.duration || 0,
+          duration: targetDuration,
           volume: playerState.volume ?? 1,
         }),
       )
@@ -1354,7 +1780,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       ) {
         mediaSession.queueJumpToItem(
           itemId,
-          () => {},
+          () => syncFromRemotePlayerRef.current(),
           () => loadQueueOnCast(plan.targetIndex, 0),
         )
       } else {
@@ -1520,10 +1946,21 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         return
       }
 
+      const targetDuration = resolveQueueItemDuration(target)
       activeUuidRef.current = target.uuid
+      lastSyncedUiUuidRef.current = target.uuid
       pendingCastLoadRef.current = true
       bridgeRef.current.virtualCurrentTime = 0
+      bridgeRef.current.virtualDuration = targetDuration
       bridgeRef.current.virtualPaused = false
+      castLastPosMsRef.current = 0
+      castClockRef.current = {
+        baseTimeSec: 0,
+        sampledAtMs: Date.now(),
+        playbackRate: 1,
+        isPlaying: false,
+      }
+      dispatchMediaEvent(audioInstanceRef.current, 'timeupdate')
       setActiveTrackId(target.trackId || null)
       setActiveIsRadio(Boolean(target.isRadio))
 
@@ -1531,7 +1968,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         currentPlaying({
           ...target,
           currentTime: 0,
-          duration: target.duration || 0,
+          duration: targetDuration,
           volume: playerStateRef.current?.volume ?? 1,
         }),
       )
@@ -1544,7 +1981,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       ) {
         mediaSession.queueJumpToItem(
           itemId,
-          () => {},
+          () => syncFromRemotePlayerRef.current(),
           () => loadQueueOnCast(playIndex, 0),
         )
       } else {
@@ -1553,6 +1990,73 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     },
     [dispatch, findCastItemId, getActiveMediaSession, loadQueueOnCast],
   )
+
+  // Poll estimated playback time locally while Chromecast is actively playing.
+  // Cast receivers only broadcast MEDIA_STATUS on state/track changes, not
+  // every second, and CAF's RemotePlayerController internal timer fails to
+  // attach when queueLoad's initial response returns media === null.
+  useEffect(() => {
+    if (!isCasting || remoteState !== 'PLAYING') {
+      return undefined
+    }
+
+    const tick = () => {
+      const bridge = bridgeRef.current
+      if (
+        !isCastingRef.current ||
+        pendingCastLoadRef.current ||
+        Date.now() < bridge.seekingUntil
+      ) {
+        return
+      }
+
+      const mediaSession = getActiveMediaSession()
+      const rp = remotePlayerRef.current
+      const effState = resolveEffectivePlayerState(mediaSession, rp)
+      if (effState !== 'PLAYING') {
+        return
+      }
+
+      let nextTime = null
+      if (typeof mediaSession?.getEstimatedTime === 'function') {
+        const est = Number(mediaSession.getEstimatedTime())
+        if (Number.isFinite(est) && est >= 0) {
+          nextTime = est
+        }
+      } else if (
+        rp?.isConnected &&
+        rp?.playerState === 'PLAYING' &&
+        Number.isFinite(rp?.currentTime)
+      ) {
+        nextTime = Math.max(0, Number(rp.currentTime))
+      } else {
+        const clock = castClockRef.current
+        if (clock.isPlaying && clock.sampledAtMs > 0) {
+          const elapsedSec =
+            ((Date.now() - clock.sampledAtMs) / 1000) *
+            (clock.playbackRate || 1)
+          nextTime = Math.max(0, clock.baseTimeSec + elapsedSec)
+        }
+      }
+
+      if (nextTime == null) {
+        return
+      }
+
+      if (!activeIsRadio && bridge.virtualDuration > 0) {
+        nextTime = Math.min(nextTime, bridge.virtualDuration)
+      }
+
+      if (Math.abs(nextTime - bridge.virtualCurrentTime) >= 0.05) {
+        bridge.virtualCurrentTime = nextTime
+        castLastPosMsRef.current = Math.floor(nextTime * 1000)
+        dispatchMediaEvent(audioInstanceRef.current, 'timeupdate')
+      }
+    }
+
+    const timerId = setInterval(tick, 500)
+    return () => clearInterval(timerId)
+  }, [activeIsRadio, getActiveMediaSession, isCasting, remoteState])
 
   // Periodic OpenSubsonic reportPlayback heartbeat for Now Playing & Last.fm scrobbling
   useInterval(
