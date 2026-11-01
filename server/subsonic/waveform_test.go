@@ -73,10 +73,13 @@ var _ = Describe("GetWaveform", func() {
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
-	It("returns generation errors", func() {
-		wf.err = errors.New("boom")
+	It("returns a generic Subsonic error when generation fails", func() {
+		wf.err = errors.New("stat /music/secret/song.flac: no such file or directory")
 		_, err := router.GetWaveform(newGetRequest("id=1"))
-		Expect(err).To(MatchError("boom"))
+		var subErr subError
+		Expect(errors.As(err, &subErr)).To(BeTrue())
+		Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+		Expect(err.Error()).ToNot(ContainSubstring("/music"))
 	})
 
 	Context("when waveforms are disabled", func() {
