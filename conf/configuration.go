@@ -210,6 +210,7 @@ type lastfmOptions struct {
 	Secret                  string //nolint:gosec
 	Language                string
 	ScrobbleFirstArtistOnly bool
+	SyncLovedTracks         bool
 
 	// Computed values
 	Languages []string `conf:"-"` // Computed from Language, split by comma
@@ -1087,6 +1088,7 @@ func setViperDefaults() {
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
+	viper.SetDefault("lastfm.synclovedtracks", false)
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
@@ -101,6 +102,11 @@ func (api *Router) applyUserData(w http.ResponseWriter, r *http.Request, change 
 			return
 		}
 		item.ann.Starred = *change.favorite
+		if item.resource == "song" {
+			if syncer, ok := api.scrobbler.(scrobbler.FavoriteSyncer); ok {
+				syncer.SyncFavorite(ctx, *change.favorite, id)
+			}
+		}
 	}
 	if change.rating != nil || change.favorite != nil {
 		api.broker.SendMessage(ctx, (&events.RefreshResource{}).With(item.resource, id))

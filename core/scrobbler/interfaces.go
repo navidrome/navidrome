@@ -28,4 +28,16 @@ type Scrobbler interface {
 	PlaybackReport(ctx context.Context, info PlaybackSession) error
 }
 
+// FavoriteScrobbler is an optional capability implemented by scrobblers that can sync
+// track favorite/love state (e.g. Last.fm track.love / track.unlove).
+type FavoriteScrobbler interface {
+	SetFavorite(ctx context.Context, userId string, track *model.MediaFile, starred bool) error
+}
+
+// FavoriteSyncer is an optional interface implemented by PlayTracker to propagate
+// song star/unstar events to active FavoriteScrobblers asynchronously.
+type FavoriteSyncer interface {
+	SyncFavorite(ctx context.Context, starred bool, trackIDs ...string)
+}
+
 type Constructor func(ds model.DataStore) Scrobbler

@@ -536,6 +536,68 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(err).To(MatchError(scrobbler.ErrUnrecoverable))
 			})
 		})
+
+		Describe("SetFavorite", func() {
+			It("is a no-op by default when SyncLovedTracks and user preference are disabled", func() {
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				err := agent.SetFavorite(ctx, "user-1", track, true)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("calls track.love when SyncLovedTracks is enabled and starred is true", func() {
+				conf.Server.LastFM.SyncLovedTracks = true
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				err := agent.SetFavorite(ctx, "user-1", track, true)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				bodyParams, _ := url.ParseQuery(string(body))
+				Expect(bodyParams.Get("method")).To(Equal("track.love"))
+				Expect(bodyParams.Get("artist")).To(Equal(track.Artist))
+				Expect(bodyParams.Get("track")).To(Equal(track.Title))
+				Expect(bodyParams.Get("sk")).To(Equal("SK-1"))
+			})
+
+			It("calls track.unlove when per-user LastFMSyncLoved is enabled and starred is false", func() {
+				_ = ds.UserProps().Put(ctx, "user-1", syncLovedProperty, "true")
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				err := agent.SetFavorite(ctx, "user-1", track, false)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest.Method).To(Equal(http.MethodPost))
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				bodyParams, _ := url.ParseQuery(string(body))
+				Expect(bodyParams.Get("method")).To(Equal("track.unlove"))
+				Expect(bodyParams.Get("artist")).To(Equal(track.Artist))
+				Expect(bodyParams.Get("track")).To(Equal(track.Title))
+				Expect(bodyParams.Get("sk")).To(Equal("SK-1"))
+			})
+
+			It("respects per-user LastFMSyncLoved=false even when server SyncLovedTracks is true", func() {
+				conf.Server.LastFM.SyncLovedTracks = true
+				_ = ds.UserProps().Put(ctx, "user-1", syncLovedProperty, "false")
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+				err := agent.SetFavorite(ctx, "user-1", track, true)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("returns ErrNotAuthorized if user is not linked", func() {
+				conf.Server.LastFM.SyncLovedTracks = true
+				err := agent.SetFavorite(ctx, "user-2", track, true)
+				Expect(err).To(MatchError(scrobbler.ErrNotAuthorized))
+			})
+
+			It("returns ErrRetryLater on transient Last.fm errors", func() {
+				conf.Server.LastFM.SyncLovedTracks = true
+				httpClient.Res = http.Response{
+					Body:       io.NopCloser(bytes.NewBufferString(`{"error":16,"message":"Temporary error"}`)),
+					StatusCode: 400,
+				}
+				err := agent.SetFavorite(ctx, "user-1", track, true)
+				Expect(err).To(MatchError(scrobbler.ErrRetryLater))
+			})
+		})
 	})
 
 	Describe("GetAlbumInfo", func() {

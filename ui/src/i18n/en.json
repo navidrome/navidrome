@@ -686,6 +686,7 @@
         "desktop_notifications": "Desktop Notifications",
         "lastfmNotConfigured": "Last.fm API-Key is not configured",
         "lastfmScrobbling": "Scrobble to Last.fm",
+        "lastfmSyncLoved": "Sync loved tracks with Last.fm",
         "listenBrainzScrobbling": "Scrobble to ListenBrainz",
         "replaygain": "ReplayGain Mode",
         "preAmp": "ReplayGain PreAmp (dB)",
