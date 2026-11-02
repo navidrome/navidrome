@@ -89,33 +89,63 @@ const resolveActiveItemId = (mediaSession) => {
   return mediaSession.loadingItemId ?? mediaSession.currentItemId ?? null
 }
 
-const resolveActiveMediaInfo = (mediaSession, rp, supersededUuids = null) => {
+const extractMediaInfoUuid = (mediaInfo, contentIdMap = null) =>
+  mediaInfo?.customData?.uuid ||
+  (mediaInfo?.contentId && contentIdMap
+    ? contentIdMap.get(mediaInfo.contentId)
+    : undefined)
+
+const extractQueueItemUuid = (queueItem, contentIdMap = null) =>
+  queueItem?.customData?.uuid ||
+  extractMediaInfoUuid(queueItem?.media, contentIdMap)
+
+const resolveActiveMediaInfo = (
+  mediaSession,
+  rp,
+  supersededUuids = null,
+  contentIdMap = null,
+) => {
   const isSuperseded = (uuid) =>
     Boolean(uuid && supersededUuids?.size > 0 && supersededUuids.has(uuid))
   const activeItemId = resolveActiveItemId(mediaSession)
-  if (activeItemId != null && Array.isArray(mediaSession?.items)) {
-    const queueItem = mediaSession.items.find(
-      (it) => it?.itemId === activeItemId,
-    )
-    if (queueItem?.media) {
-      return queueItem.media
-    }
-  }
   const isTransitioningToNextItem =
     mediaSession?.loadingItemId != null &&
     mediaSession?.currentItemId !== mediaSession?.loadingItemId
-  if (
-    !isTransitioningToNextItem &&
-    mediaSession?.media &&
-    !isSuperseded(mediaSession.media?.customData?.uuid)
-  ) {
-    return mediaSession.media
+
+  const queueItem =
+    activeItemId != null && Array.isArray(mediaSession?.items)
+      ? mediaSession.items.find((it) => it?.itemId === activeItemId)
+      : null
+
+  if (isTransitioningToNextItem && queueItem?.media) {
+    const itemUuid = extractQueueItemUuid(queueItem, contentIdMap)
+    if (!isSuperseded(itemUuid)) {
+      return queueItem.media
+    }
   }
-  const rpMedia = rp?.mediaInfo || null
-  if (isSuperseded(rpMedia?.customData?.uuid)) {
-    return null
+
+  if (mediaSession?.media) {
+    const mediaUuid = extractMediaInfoUuid(mediaSession.media, contentIdMap)
+    if (!isSuperseded(mediaUuid)) {
+      return mediaSession.media
+    }
   }
-  return rpMedia
+
+  if (rp?.mediaInfo) {
+    const rpUuid = extractMediaInfoUuid(rp.mediaInfo, contentIdMap)
+    if (!isSuperseded(rpUuid)) {
+      return rp.mediaInfo
+    }
+  }
+
+  if (queueItem?.media) {
+    const itemUuid = extractQueueItemUuid(queueItem, contentIdMap)
+    if (!isSuperseded(itemUuid)) {
+      return queueItem.media
+    }
+  }
+
+  return mediaSession?.media || rp?.mediaInfo || queueItem?.media || null
 }
 
 const stopMediaSession = (media, chromeCastApi) => {
@@ -228,6 +258,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   const remoteControllerRef = useRef(null)
   const mediaSessionRef = useRef(null)
   const uuidToItemIdRef = useRef(new Map())
+  const contentIdToUuidRef = useRef(new Map())
 
   const playerStateRef = useRef(playerState)
   playerStateRef.current = playerState
@@ -243,12 +274,14 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
   const loadedWindowUuidsRef = useRef([])
   const loadedWindowRef = useRef({ start: 0, end: 0 })
+  const loadedQueueLengthRef = useRef(0)
   const activeUuidRef = useRef(null)
   const lastSyncedUiUuidRef = useRef(null)
   const pendingCastLoadRef = useRef(false)
   const queueLoadInFlightRef = useRef(false)
   const supersededMediaRef = useRef(null)
   const supersededUuidsRef = useRef(new Set())
+  const supersededUntilMsRef = useRef(0)
   const pendingJumpRef = useRef(null)
   const receiverUuidRef = useRef(null)
   const receiverRepeatModeRef = useRef(null)
@@ -299,10 +332,46 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
   const recordMediaSessionItems = useCallback((mediaSession) => {
     const items = mediaSession?.items
-    if (!Array.isArray(items)) return
-    items.forEach((it) => {
-      const uuid = it?.media?.customData?.uuid
-      if (uuid && it.itemId != null) {
+    if (!Array.isArray(items) || items.length === 0) return
+
+    const windowUuids = loadedWindowUuidsRef.current
+    const currentItemId = mediaSession?.currentItemId
+    const curSliceIdx =
+      currentItemId != null
+        ? items.findIndex((it) => it?.itemId === currentItemId)
+        : -1
+
+    let activeWinIdx = -1
+    if (
+      curSliceIdx >= 0 &&
+      Array.isArray(windowUuids) &&
+      windowUuids.length > 0
+    ) {
+      const currentUuid =
+        extractQueueItemUuid(items[curSliceIdx], contentIdToUuidRef.current) ||
+        extractMediaInfoUuid(mediaSession?.media, contentIdToUuidRef.current) ||
+        receiverUuidRef.current ||
+        activeUuidRef.current
+      if (currentUuid && !supersededUuidsRef.current.has(currentUuid)) {
+        activeWinIdx = windowUuids.indexOf(currentUuid)
+      }
+    }
+
+    items.forEach((it, sliceIdx) => {
+      if (it?.itemId == null) return
+      let uuid = extractQueueItemUuid(it, contentIdToUuidRef.current)
+      if (
+        !uuid &&
+        curSliceIdx >= 0 &&
+        activeWinIdx >= 0 &&
+        receiverRepeatModeRef.current !== 'REPEAT_ALL_AND_SHUFFLE'
+      ) {
+        const winIdx = activeWinIdx + (sliceIdx - curSliceIdx)
+        if (winIdx >= 0 && winIdx < windowUuids.length) {
+          uuid = windowUuids[winIdx]
+        }
+      }
+      if (uuid && !supersededUuidsRef.current.has(uuid)) {
         uuidToItemIdRef.current.set(uuid, it.itemId)
       }
     })
@@ -429,24 +498,58 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     return media
   }, [attachMediaSession, attachSessionObj])
 
-  const findCastItemId = useCallback((mediaSession, uuid) => {
-    if (!uuid) return undefined
-    const direct = mediaSession?.items?.find(
-      (it) => it?.media?.customData?.uuid === uuid,
-    )
-    if (direct && direct.itemId != null) {
-      uuidToItemIdRef.current.set(uuid, direct.itemId)
-      return direct.itemId
-    }
-    return uuidToItemIdRef.current.get(uuid)
-  }, [])
+  const findCastItemId = useCallback(
+    (mediaSession, uuid) => {
+      if (!uuid) return undefined
+      recordMediaSessionItems(mediaSession)
+      const direct = mediaSession?.items?.find(
+        (it) => extractQueueItemUuid(it, contentIdToUuidRef.current) === uuid,
+      )
+      if (direct && direct.itemId != null) {
+        uuidToItemIdRef.current.set(uuid, direct.itemId)
+        return direct.itemId
+      }
+      const mapped = uuidToItemIdRef.current.get(uuid)
+      if (mapped != null) {
+        return mapped
+      }
+      if (
+        mediaSession?.currentItemId != null &&
+        receiverRepeatModeRef.current !== 'REPEAT_ALL_AND_SHUFFLE'
+      ) {
+        const windowUuids = loadedWindowUuidsRef.current
+        const anchorUuid = receiverUuidRef.current || activeUuidRef.current
+        const activeWinIdx = anchorUuid ? windowUuids.indexOf(anchorUuid) : -1
+        const targetWinIdx = windowUuids.indexOf(uuid)
+        if (activeWinIdx >= 0 && targetWinIdx >= 0) {
+          const delta = targetWinIdx - activeWinIdx
+          if (Array.isArray(mediaSession.items)) {
+            const curSliceIdx = mediaSession.items.findIndex(
+              (it) => it?.itemId === mediaSession.currentItemId,
+            )
+            const sliceItem =
+              curSliceIdx >= 0
+                ? mediaSession.items[curSliceIdx + delta]
+                : undefined
+            if (sliceItem?.itemId != null) {
+              uuidToItemIdRef.current.set(uuid, sliceItem.itemId)
+              return sliceItem.itemId
+            }
+          }
+        }
+      }
+      return undefined
+    },
+    [recordMediaSessionItems],
+  )
 
   const getActiveCastTime = useCallback(() => {
+    const virtualSec = Number(bridgeRef.current.virtualCurrentTime) || 0
     const mediaSession = mediaSessionRef.current
     if (typeof mediaSession?.getEstimatedTime === 'function') {
       const est = Number(mediaSession.getEstimatedTime())
       if (Number.isFinite(est) && est > 0) {
-        return Math.floor(est)
+        return Math.floor(Math.max(est, virtualSec))
       }
     }
     const rp = remotePlayerRef.current
@@ -456,9 +559,9 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       Number.isFinite(rp.currentTime) &&
       rp.currentTime > 0
     ) {
-      return Math.floor(rp.currentTime)
+      return Math.floor(Math.max(rp.currentTime, virtualSec))
     }
-    return Math.floor(bridgeRef.current.virtualCurrentTime || 0)
+    return Math.floor(virtualSec)
   }, [])
 
   const flushStoppedReport = useCallback(() => {
@@ -669,6 +772,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         null
 
       uuidToItemIdRef.current.clear()
+      contentIdToUuidRef.current.clear()
       detachMediaSession()
       mediaSessionRef.current = null
       loadedWindowUuidsRef.current = windowSpec.items.map((item) => item.uuid)
@@ -676,6 +780,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         start: windowSpec.windowStartIndex,
         end: windowSpec.windowEndIndex,
       }
+      loadedQueueLengthRef.current = queue.length
       queueLoadInFlightRef.current = true
       pendingCastLoadRef.current = true
 
@@ -687,6 +792,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       supersededUuidsRef.current = new Set(
         staleCandidates.filter((u) => u && u !== targetItem?.uuid),
       )
+      supersededUntilMsRef.current =
+        supersededUuidsRef.current.size > 0 ? Date.now() + 8000 : 0
 
       if (targetItem) {
         const itemDuration = resolveQueueItemDuration(targetItem)
@@ -766,6 +873,14 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           loadedWindowUuidsRef.current = queueItems
             .map((qi) => qi.media?.customData?.uuid)
             .filter(Boolean)
+          contentIdToUuidRef.current.clear()
+          queueItems.forEach((qi) => {
+            const contentId = qi?.media?.contentId
+            const uuid = qi?.media?.customData?.uuid
+            if (contentId && uuid) {
+              contentIdToUuidRef.current.set(contentId, uuid)
+            }
+          })
 
           const targetQueueIdx = targetItem
             ? queueItems.findIndex(
@@ -794,6 +909,18 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             request.repeatMode = repeatMode
           }
 
+          if (Array.isArray(activeSessionObj.media)) {
+            activeSessionObj.media.forEach((m) => {
+              try {
+                if (m && Array.isArray(m.items)) {
+                  m.items = null
+                }
+              } catch {
+                // Ignore read-only items getters in test doubles
+              }
+            })
+          }
+
           activeSessionObj.queueLoad(
             request,
             (media) => {
@@ -807,16 +934,18 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
               if (castOpSeqRef.current !== opSeq) return
               queueLoadInFlightRef.current = false
               supersededMediaRef.current = null
-              if (media) {
-                attachMediaSession(media)
-                syncFromRemotePlayerRef.current()
+              const resolvedMedia = media || getActiveMediaSession()
+              if (resolvedMedia) {
+                attachMediaSession(resolvedMedia)
               }
+              syncFromRemotePlayerRef.current()
             },
             () => {
               if (castOpSeqRef.current === opSeq) {
                 queueLoadInFlightRef.current = false
                 supersededMediaRef.current = null
                 supersededUuidsRef.current.clear()
+                supersededUntilMsRef.current = 0
                 pendingCastLoadRef.current = false
               }
             },
@@ -827,6 +956,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             queueLoadInFlightRef.current = false
             supersededMediaRef.current = null
             supersededUuidsRef.current.clear()
+            supersededUntilMsRef.current = 0
             pendingCastLoadRef.current = false
           }
         })
@@ -837,6 +967,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       detachMediaSession,
       dispatch,
       fetchCastMediaTokens,
+      getActiveMediaSession,
     ],
   )
 
@@ -1289,6 +1420,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       mediaSession,
       rp,
       supersededUuidsRef.current,
+      contentIdToUuidRef.current,
     )
     const activeItemId = resolveActiveItemId(mediaSession)
 
@@ -1354,37 +1486,53 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       clearJumpWatchdog()
       pendingJumpRef.current = null
       supersededUuidsRef.current.clear()
+      supersededUntilMsRef.current = 0
       pendingCastLoadRef.current = false
     }
 
     const customData = mediaInfo?.customData || {}
+    const resolvedUuid =
+      extractMediaInfoUuid(mediaInfo, contentIdToUuidRef.current) || null
 
     let matchedIdx = -1
-    if (customData.uuid) {
-      matchedIdx = queue.findIndex((item) => item.uuid === customData.uuid)
-    } else {
-      if (activeItemId != null) {
-        for (const [uuid, mappedId] of uuidToItemIdRef.current.entries()) {
-          if (mappedId === activeItemId) {
-            matchedIdx = queue.findIndex((item) => item.uuid === uuid)
-            if (matchedIdx >= 0) break
-          }
+    if (resolvedUuid) {
+      matchedIdx = queue.findIndex((item) => item.uuid === resolvedUuid)
+    }
+    if (matchedIdx < 0 && activeItemId != null) {
+      for (const [uuid, mappedId] of uuidToItemIdRef.current.entries()) {
+        if (mappedId === activeItemId) {
+          matchedIdx = queue.findIndex((item) => item.uuid === uuid)
+          if (matchedIdx >= 0) break
         }
       }
-      if (matchedIdx < 0 && customData.trackId) {
-        matchedIdx = queue.findIndex(
-          (item) => item.trackId === customData.trackId,
-        )
-      }
+    }
+    if (matchedIdx < 0 && customData.trackId) {
+      matchedIdx = queue.findIndex(
+        (item) => item.trackId === customData.trackId,
+      )
     }
     const matched = matchedIdx >= 0 ? queue[matchedIdx] : null
+    const candidateUuid = matched?.uuid || resolvedUuid
 
     if (!isTerminalIdleFailure) {
       if (supersededUuidsRef.current.size > 0) {
-        if (!matched || supersededUuidsRef.current.has(matched.uuid)) {
+        if (
+          supersededUntilMsRef.current > 0 &&
+          Date.now() >= supersededUntilMsRef.current
+        ) {
+          supersededUuidsRef.current.clear()
+          supersededUntilMsRef.current = 0
+        } else if (
+          candidateUuid &&
+          supersededUuidsRef.current.has(candidateUuid)
+        ) {
           return
+        } else if (!candidateUuid && isTransitioningItem) {
+          return
+        } else {
+          supersededUuidsRef.current.clear()
+          supersededUntilMsRef.current = 0
         }
-        supersededUuidsRef.current.clear()
       }
 
       const pendingJump = pendingJumpRef.current
@@ -1393,14 +1541,16 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           clearJumpWatchdog()
           pendingJumpRef.current = null
         } else if (
-          !matched ||
-          (pendingJump.staleUuid && matched.uuid === pendingJump.staleUuid)
+          (candidateUuid &&
+            pendingJump.staleUuid &&
+            candidateUuid === pendingJump.staleUuid) ||
+          (!candidateUuid && isTransitioningItem)
         ) {
           return
         } else {
           clearJumpWatchdog()
           if (
-            mediaSession?.loadingItemId == null &&
+            !isTransitioningItem &&
             (nextState === 'PLAYING' || nextState === 'PAUSED')
           ) {
             pendingJumpRef.current = null
@@ -1413,7 +1563,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     if (
       !pendingJumpRef.current &&
       supersededUuidsRef.current.size === 0 &&
-      mediaSession?.loadingItemId == null &&
+      !isTransitioningItem &&
       (nextState === 'PLAYING' ||
         nextState === 'PAUSED' ||
         isTerminalIdleFailure)
@@ -1469,7 +1619,10 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     }
 
     if (matched) {
-      if (activeUuidRef.current !== matched.uuid) {
+      if (
+        activeUuidRef.current !== matched.uuid ||
+        playerStateRef.current?.current?.uuid !== matched.uuid
+      ) {
         activeUuidRef.current = matched.uuid
         setActiveTrackId(matched.trackId || null)
         setActiveIsRadio(Boolean(matched.isRadio))
@@ -1684,6 +1837,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
                 start: winSpec.windowStartIndex,
                 end: winSpec.windowEndIndex,
               }
+              loadedQueueLengthRef.current = queue.length
             }
             syncFromRemotePlayer()
           } else if (
@@ -1699,14 +1853,17 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             queueLoadInFlightRef.current = false
             supersededMediaRef.current = null
             supersededUuidsRef.current.clear()
+            supersededUntilMsRef.current = 0
             pendingJumpRef.current = null
             pendingCastLoadRef.current = false
             detachMediaSession()
             detachSessionObj()
             mediaSessionRef.current = null
             uuidToItemIdRef.current.clear()
+            contentIdToUuidRef.current.clear()
             loadedWindowUuidsRef.current = []
             loadedWindowRef.current = { start: 0, end: 0 }
+            loadedQueueLengthRef.current = 0
             activeUuidRef.current = null
             receiverUuidRef.current = null
             receiverRepeatModeRef.current = null
@@ -1848,8 +2005,10 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       remoteControllerRef.current = null
       mediaSessionRef.current = null
       uuidToItemIdRef.current = new Map()
+      contentIdToUuidRef.current = new Map()
       loadedWindowUuidsRef.current = []
       loadedWindowRef.current = { start: 0, end: 0 }
+      loadedQueueLengthRef.current = 0
       activeUuidRef.current = null
       receiverUuidRef.current = null
       receiverRepeatModeRef.current = null
@@ -1863,6 +2022,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       queueLoadInFlightRef.current = false
       supersededMediaRef.current = null
       supersededUuidsRef.current.clear()
+      supersededUntilMsRef.current = 0
       pendingJumpRef.current = null
       pendingCastLoadRef.current = false
       isCastingRef.current = false
@@ -2112,9 +2272,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       explicitPlayIndex: playerState.playIndex,
       savedPlayIndex: playerState.savedPlayIndex,
       maxItems: MAX_CAST_WINDOW_ITEMS,
+      prevQueueLength: loadedQueueLengthRef.current,
     })
 
     if (plan.action === 'NONE') {
+      loadedQueueLengthRef.current = queue.length
       if (playerState.playIndex != null) {
         const activeItem = queue[playerState.playIndex]
         if (activeItem) {
@@ -2148,14 +2310,17 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         queueLoadInFlightRef.current = false
         supersededMediaRef.current = activeMedia || null
         supersededUuidsRef.current.clear()
+        supersededUntilMsRef.current = 0
         pendingJumpRef.current = null
         pendingCastLoadRef.current = false
         loadedWindowUuidsRef.current = []
         loadedWindowRef.current = { start: 0, end: 0 }
+        loadedQueueLengthRef.current = 0
         activeUuidRef.current = null
         receiverUuidRef.current = null
         lastSyncedUiUuidRef.current = null
         uuidToItemIdRef.current.clear()
+        contentIdToUuidRef.current.clear()
         castLastPosMsRef.current = 0
         castClockRef.current = {
           baseTimeSec: 0,
@@ -2214,6 +2379,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         start: plan.windowSpec.windowStartIndex,
         end: plan.windowSpec.windowEndIndex,
       }
+      loadedQueueLengthRef.current = queue.length
 
       fetchCastMediaTokens(plan.insertedItems)
         .then((tokenMap) => {
@@ -2234,12 +2400,19 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             loadQueueOnCast(plan.activeIndex, getActiveCastTime())
             return
           }
+          for (let i = 0; i < castItems.length; i += 1) {
+            const cId = castItems[i]?.media?.contentId
+            const u = plan.insertedItems[i]?.uuid
+            if (cId && u) {
+              contentIdToUuidRef.current.set(cId, u)
+            }
+          }
 
           const req = new InsertReq(castItems)
           if (plan.insertBeforeUuid !== null) {
             const latestBeforeId =
-              findCastItemId(activeMediaSession, plan.insertBeforeUuid) ??
-              beforeItemId
+              beforeItemId ??
+              findCastItemId(activeMediaSession, plan.insertBeforeUuid)
             if (latestBeforeId == null) {
               loadQueueOnCast(plan.activeIndex, getActiveCastTime())
               return
@@ -2277,9 +2450,10 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           start: plan.windowSpec.windowStartIndex,
           end: plan.windowSpec.windowEndIndex,
         }
+        loadedQueueLengthRef.current = queue.length
         mediaSession.queueRemoveItems(
           new RemoveReq(itemIds),
-          () => {},
+          () => recordMediaSessionItems(getActiveMediaSession()),
           () => loadQueueOnCast(plan.activeIndex, getActiveCastTime()),
         )
         return
@@ -2305,9 +2479,10 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           start: plan.windowSpec.windowStartIndex,
           end: plan.windowSpec.windowEndIndex,
         }
+        loadedQueueLengthRef.current = queue.length
         mediaSession.queueReorderItems(
           new ReorderReq(itemIds),
-          () => {},
+          () => recordMediaSessionItems(getActiveMediaSession()),
           () => loadQueueOnCast(plan.activeIndex, getActiveCastTime()),
         )
         return
@@ -2381,26 +2556,44 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         return
       }
 
+      const clock = castClockRef.current
+      const clockTime =
+        clock.isPlaying && clock.sampledAtMs > 0
+          ? Math.max(
+              0,
+              clock.baseTimeSec +
+                ((Date.now() - clock.sampledAtMs) / 1000) *
+                  (clock.playbackRate || 1),
+            )
+          : null
+
       let nextTime = null
       if (typeof mediaSession?.getEstimatedTime === 'function') {
         const est = Number(mediaSession.getEstimatedTime())
         if (Number.isFinite(est) && est >= 0) {
-          nextTime = est
+          nextTime =
+            clockTime != null &&
+            Math.abs(est - clock.baseTimeSec) < 0.01 &&
+            clockTime - est >= 0.4
+              ? clockTime
+              : est
         }
       } else if (
         rp?.isConnected &&
         rp?.playerState === 'PLAYING' &&
-        Number.isFinite(rp?.currentTime)
+        Number.isFinite(rp?.currentTime) &&
+        Number(rp.currentTime) > 0
       ) {
-        nextTime = Math.max(0, Number(rp.currentTime))
-      } else {
-        const clock = castClockRef.current
-        if (clock.isPlaying && clock.sampledAtMs > 0) {
-          const elapsedSec =
-            ((Date.now() - clock.sampledAtMs) / 1000) *
-            (clock.playbackRate || 1)
-          nextTime = Math.max(0, clock.baseTimeSec + elapsedSec)
-        }
+        const rpTime = Math.max(0, Number(rp.currentTime))
+        nextTime =
+          clockTime != null &&
+          Math.abs(rpTime - clock.baseTimeSec) < 0.01 &&
+          clockTime - rpTime >= 0.4
+            ? clockTime
+            : rpTime
+      }
+      if (nextTime == null && clockTime != null) {
+        nextTime = clockTime
       }
 
       if (nextTime == null) {

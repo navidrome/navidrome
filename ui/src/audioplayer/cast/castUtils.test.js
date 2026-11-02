@@ -377,6 +377,27 @@ describe('castUtils', () => {
       expect(plan.insertBeforeUuid).toBe('u-11')
       expect(plan.nextWindowUuids).toHaveLength(41)
     })
+
+    it('returns INSERT when "Play Next" queues a multi-track album right after the last item of a 40-track window', () => {
+      const base = Array.from({ length: 90 }, (_, i) => mk(`u-${i}`))
+      const prevWindow = base.slice(0, 40).map((it) => it.uuid)
+      const insertedAlbum = Array.from({ length: 12 }, (_, i) =>
+        mk(`u-alb-${i}`),
+      )
+      const next = [...base.slice(0, 40), ...insertedAlbum, ...base.slice(40)]
+      const plan = planCastQueueSync(prevWindow, next, {
+        activeUuid: 'u-39',
+        savedPlayIndex: 39,
+        prevQueueLength: 90,
+      })
+
+      expect(plan.action).toBe('INSERT')
+      expect(plan.insertedItems.map((i) => i.uuid)).toEqual(
+        insertedAlbum.map((i) => i.uuid),
+      )
+      expect(plan.insertBeforeUuid).toBeNull()
+      expect(plan.nextWindowUuids).toHaveLength(52)
+    })
   })
 
   describe('buildCastQueueItems', () => {
@@ -440,6 +461,12 @@ describe('castUtils', () => {
         'https://music.example.com/share/img/tok-cover-t1?size=300',
       )
       expect(items[0].media.customData).toEqual({
+        trackId: 't-1',
+        uuid: 'u-1',
+        isRadio: false,
+        albumId: 'alb-1',
+      })
+      expect(items[0].customData).toEqual({
         trackId: 't-1',
         uuid: 'u-1',
         isRadio: false,

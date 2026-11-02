@@ -295,6 +295,7 @@ export const planCastQueueSync = (
     explicitPlayIndex = undefined,
     savedPlayIndex = 0,
     maxItems = MAX_CAST_WINDOW_ITEMS,
+    prevQueueLength = null,
   } = {},
 ) => {
   if (!Array.isArray(nextQueue) || nextQueue.length === 0) {
@@ -369,8 +370,18 @@ export const planCastQueueSync = (
 
   if (isContiguousMatch && prevWindowUuids.includes(activeUuid)) {
     const currentEnd = firstIdx + prevWindowUuids.length
-    if (currentEnd < nextQueue.length && prevWindowUuids.length < maxItems) {
-      const newEnd = Math.min(nextQueue.length, firstIdx + maxItems)
+    const addedAtWindowTail =
+      prevQueueLength != null &&
+      nextQueue.length > prevQueueLength &&
+      (currentEnd === prevQueueLength || activeIndex === currentEnd - 1)
+    const shouldAppendNewItems =
+      currentEnd < nextQueue.length &&
+      (prevWindowUuids.length < maxItems || addedAtWindowTail)
+    if (shouldAppendNewItems) {
+      const maxInsertCount = addedAtWindowTail
+        ? Math.min(nextQueue.length - prevQueueLength, maxItems)
+        : Math.max(1, maxItems - prevWindowUuids.length)
+      const newEnd = Math.min(nextQueue.length, currentEnd + maxInsertCount)
       const insertedItems = nextQueue.slice(currentEnd, newEnd)
       const nextWindowItems = nextQueue.slice(firstIdx, newEnd)
       const nextWindowUuids = nextWindowItems.map((item) => item.uuid)
@@ -416,7 +427,6 @@ export const planCastQueueSync = (
 
     if (
       candidateUuids.length > prevWindowUuids.length &&
-      candidateUuids.length <= maxAllowedWindow &&
       candidateUuids.includes(activeUuid)
     ) {
       let prefixLen = 0
@@ -439,7 +449,10 @@ export const planCastQueueSync = (
       if (prefixLen + suffixLen === prevWindowUuids.length) {
         const insertEnd = candidateItems.length - suffixLen
         const insertedItems = candidateItems.slice(prefixLen, insertEnd)
-        if (insertedItems.length > 0 && insertedItems.length <= maxItems) {
+        if (
+          insertedItems.length > 0 &&
+          insertedItems.length <= maxAllowedWindow
+        ) {
           const insertBeforeUuid =
             suffixLen > 0 ? prevWindowUuids[prefixLen] : null
           return {
@@ -588,15 +601,17 @@ export const buildCastQueueItems = (
         metadata.images = [new chromeCastApi.Image(coverUrl)]
       }
 
-      mediaInfo.metadata = metadata
-      mediaInfo.customData = {
+      const customData = {
         trackId: item.trackId,
         uuid: item.uuid,
         isRadio: Boolean(item.isRadio),
         albumId: song.albumId || '',
       }
+      mediaInfo.metadata = metadata
+      mediaInfo.customData = customData
 
       const queueItem = new chromeCastApi.media.QueueItem(mediaInfo)
+      queueItem.customData = customData
       queueItem.autoplay = true
       if (!isLive) {
         queueItem.preloadTime = 10

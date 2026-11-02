@@ -1782,4 +1782,217 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       false,
     )
   })
+
+  it('queues "Play Next" via queueInsertItems without repeating the current song when MEDIA_STATUS.items omits .media on non-active items', async () => {
+    const env = createFakeCastEnvironment()
+    const store = buildFullStore()
+
+    store.dispatch(
+      playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+    )
+
+    let activeMediaObj = null
+    const realQueueLoad = vi.fn((req, onSuccess) => {
+      // Simulate real Chromecast V2 MEDIA_STATUS.items: only the active item (itemId 101)
+      // has .media populated; queued non-active items (itemId 102) omit .media!
+      const firstMedia = req.items[0]?.media
+      activeMediaObj = {
+        mediaSessionId: 1,
+        playerState: 'PLAYING',
+        currentItemId: 101,
+        loadingItemId: null,
+        currentTime: 42,
+        playbackRate: 1,
+        media: firstMedia,
+        items: [{ itemId: 101, media: firstMedia }, { itemId: 102 }],
+        getEstimatedTime: () => 42,
+        addUpdateListener: vi.fn(),
+        removeUpdateListener: vi.fn(),
+        queueInsertItems: env.queueInsertItems,
+        queueJumpToItem: env.queueJumpToItem,
+        queueUpdateItems: env.queueUpdateItems,
+        queueSetRepeatMode: env.queueSetRepeatMode,
+        stop: env.stop,
+      }
+      onSuccess?.(activeMediaObj)
+    })
+
+    const sessionObj = {
+      receiver: { friendlyName: 'Living Room Speaker' },
+      queueLoad: realQueueLoad,
+      addMediaListener: vi.fn(),
+      removeMediaListener: vi.fn(),
+      get media() {
+        return activeMediaObj ? [activeMediaObj] : []
+      },
+    }
+    const customSession = {
+      getCastDevice: () => ({ friendlyName: 'Living Room Speaker' }),
+      getSessionObj: () => sessionObj,
+      getMediaSession: () => activeMediaObj,
+    }
+    env.castContext.getCurrentSession.mockImplementation(() => customSession)
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Player />
+        </MemoryRouter>
+      </Provider>,
+    )
+
+    await act(async () => {
+      env.remotePlayer.isConnected = true
+      const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+        (c) => c[0] === 'sessionstatechanged',
+      )?.[1]
+      sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+    })
+
+    expect(realQueueLoad).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('.current-time')?.textContent).toBe('00:42')
+
+    // User clicks "Play Next" on a different album/tracks (song-3, song-4) while song-1 is playing at 00:42
+    await act(async () => {
+      store.dispatch(
+        playNext({ 'song-3': song3, 'song-4': song4 }, ['song-3', 'song-4']),
+      )
+    })
+
+    // Must infer itemId 102 for song-2 and call queueInsertItems(insertBefore: 102), NEVER queueLoad!
+    expect(realQueueLoad).toHaveBeenCalledTimes(1)
+    expect(env.queueInsertItems).toHaveBeenCalledTimes(1)
+    const insertReq = env.queueInsertItems.mock.calls[0][0]
+    expect(insertReq.insertBefore).toBe(102)
+    expect(insertReq.items.map((it) => it.media.metadata.title)).toEqual([
+      'Reckoner',
+      'House of Cards',
+    ])
+    expect(document.querySelector('.current-time')?.textContent).toBe('00:42')
+  })
+
+  it('continues advancing the progress bar when cast_sender.js reuses mediaSession across queueLoad with stale items[0].media', async () => {
+    vi.useFakeTimers()
+    try {
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+
+      let reusedMediaObj = null
+      let updateListeners = []
+      let firstQueueFirstMedia = null
+
+      const realQueueLoad = vi.fn((req, onSuccess) => {
+        const currentFirstMedia = req.items[0]?.media
+        if (!reusedMediaObj) {
+          firstQueueFirstMedia = currentFirstMedia
+          reusedMediaObj = {
+            mediaSessionId: 1,
+            playerState: 'PLAYING',
+            currentItemId: 1,
+            loadingItemId: null,
+            currentTime: 0,
+            playbackRate: 1,
+            media: currentFirstMedia,
+            items: [{ itemId: 1, media: currentFirstMedia }, { itemId: 2 }],
+            // Simulate cast_sender.js getEstimatedTime() stuck at 0 when this.Oa < 0
+            getEstimatedTime: () => 0,
+            addUpdateListener: (fn) => {
+              updateListeners.push(fn)
+            },
+            removeUpdateListener: (fn) => {
+              updateListeners = updateListeners.filter((l) => l !== fn)
+            },
+            queueInsertItems: env.queueInsertItems,
+            queueJumpToItem: env.queueJumpToItem,
+            queueUpdateItems: env.queueUpdateItems,
+            queueSetRepeatMode: env.queueSetRepeatMode,
+            stop: env.stop,
+          }
+        } else {
+          // Simulate cast_sender.js Y.prototype.zb bug on second queueLoad:
+          // mediaSession.media updates to the new track, but items[0].media retains
+          // stale t.media from the first queue!
+          reusedMediaObj.playerState = 'PLAYING'
+          reusedMediaObj.currentItemId = 1
+          reusedMediaObj.loadingItemId = null
+          reusedMediaObj.currentTime = 0
+          reusedMediaObj.media = currentFirstMedia
+          reusedMediaObj.items = [
+            { itemId: 1, media: firstQueueFirstMedia },
+            { itemId: 2 },
+          ]
+        }
+        onSuccess?.(null)
+      })
+
+      const sessionObj = {
+        receiver: { friendlyName: 'Studio Chromecast' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        get media() {
+          return reusedMediaObj ? [reusedMediaObj] : []
+        },
+      }
+      const customSession = {
+        getCastDevice: () => ({ friendlyName: 'Studio Chromecast' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () => reusedMediaObj,
+      }
+      env.castContext.getCurrentSession.mockImplementation(() => customSession)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+
+      // Replace queue with a new playlist/shuffle (song-3, song-4)
+      await act(async () => {
+        store.dispatch(
+          playTracks({ 'song-3': song3, 'song-4': song4 }, [
+            'song-3',
+            'song-4',
+          ]),
+        )
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(realQueueLoad).toHaveBeenCalledTimes(2)
+      await act(async () => {
+        updateListeners.forEach((fn) => fn(true))
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(store.getState().player.current.name).toBe('Reckoner')
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:00')
+
+      // Advance wall clock by 3.5 seconds: even with stale items[0].media and getEstimatedTime() === 0,
+      // CastProvider must interpolate via castClockRef and advance .current-time to 00:03!
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3500)
+      })
+
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:03')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
