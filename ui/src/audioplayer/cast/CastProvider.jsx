@@ -12,6 +12,8 @@ import {
   buildCastQueueItems,
   buildCastQueueWindow,
   canLoadCastSdk,
+  extractCastTrackId,
+  findNearestQueueIndexByTrackId,
   getCastStreamProfile,
   planCastQueueSync,
 } from './castUtils'
@@ -1679,9 +1681,16 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         }
       }
     }
-    if (matchedIdx < 0 && customData.trackId) {
-      matchedIdx = queue.findIndex(
-        (item) => item.trackId === customData.trackId,
+    const receiverTrackId =
+      customData.trackId || extractCastTrackId(mediaInfo?.contentId)
+    if (matchedIdx < 0 && receiverTrackId) {
+      const activeIdx = queue.findIndex(
+        (item) => item.uuid === activeUuidRef.current,
+      )
+      matchedIdx = findNearestQueueIndexByTrackId(
+        queue,
+        receiverTrackId,
+        activeIdx >= 0 ? activeIdx : playerStateRef.current?.savedPlayIndex,
       )
     }
     if (
@@ -2550,6 +2559,21 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       maxItems: MAX_CAST_WINDOW_ITEMS,
       prevQueueLength: loadedQueueLengthRef.current,
     })
+
+    // Without a known active track the planner falls back to a full reload,
+    // which would restart whatever the receiver is playing (e.g. right after a
+    // page reload resumed the session). Wait until it has been identified.
+    if (
+      plan.action === 'LOAD' &&
+      !activeUuidRef.current &&
+      loadedWindowUuidsRef.current.length > 0 &&
+      playerState.playIndex == null
+    ) {
+      const liveMedia = getActiveMediaSession()
+      if (liveMedia && liveMedia.playerState !== 'IDLE') {
+        return
+      }
+    }
 
     if (plan.action === 'NONE') {
       loadedQueueLengthRef.current = queue.length

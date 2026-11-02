@@ -9,6 +9,8 @@ import {
   resolveCastCoverUrl,
   resolveCastStream,
   toAbsoluteUrl,
+  extractCastTrackId,
+  findNearestQueueIndexByTrackId,
 } from './castUtils'
 
 describe('castUtils', () => {
@@ -482,5 +484,45 @@ describe('castUtils', () => {
       expect(formatCastTime(3661)).toBe('1:01:01')
       expect(formatCastTime(NaN)).toBe('0:00')
     })
+  })
+})
+
+describe('extractCastTrackId', () => {
+  const token = (claims) =>
+    `h.${btoa(JSON.stringify(claims))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')}.sig`
+
+  it('reads the track id from a /share/cast capability URL', () => {
+    expect(
+      extractCastTrackId(
+        `https://nd.example/share/cast/${token({ aud: 'cast', id: 'tr-1' })}`,
+      ),
+    ).toBe('tr-1')
+  })
+
+  it('returns null for other URLs or malformed tokens', () => {
+    expect(extractCastTrackId('https://radio.example/stream.mp3')).toBeNull()
+    expect(extractCastTrackId('/share/cast/not-a-jwt')).toBeNull()
+    expect(extractCastTrackId('/share/cast/a.%%%.b')).toBeNull()
+    expect(extractCastTrackId(null)).toBeNull()
+  })
+})
+
+describe('findNearestQueueIndexByTrackId', () => {
+  const queue = ['a', 'b', 'c', 'a', 'b'].map((trackId, i) => ({
+    trackId,
+    uuid: `u${i}`,
+  }))
+
+  it('picks the copy closest to the anchor', () => {
+    expect(findNearestQueueIndexByTrackId(queue, 'a', 0)).toBe(0)
+    expect(findNearestQueueIndexByTrackId(queue, 'a', 4)).toBe(3)
+    expect(findNearestQueueIndexByTrackId(queue, 'b', 3)).toBe(4)
+  })
+
+  it('returns -1 when the track is not queued', () => {
+    expect(findNearestQueueIndexByTrackId(queue, 'z', 0)).toBe(-1)
   })
 })

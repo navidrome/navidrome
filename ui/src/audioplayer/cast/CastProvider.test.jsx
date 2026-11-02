@@ -2430,4 +2430,80 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       vi.useRealTimers()
     }
   })
+
+  it('identifies the playing track from its /share/cast token after a reload resumes the session, instead of reloading the saved queue position', async () => {
+    vi.useFakeTimers()
+    try {
+      localStorage.setItem('userId', 'user-1')
+      localStorage.setItem('nd-cast-session-owner', 'user-1')
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+      expect(store.getState().player.savedPlayIndex).toBe(0)
+
+      // The receiver advanced to song-2 while this page was closed. Its
+      // MEDIA_STATUS has no customData: only the capability URL identifies it.
+      const castToken = (trackId) =>
+        `h.${btoa(JSON.stringify({ aud: 'cast', id: trackId }))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '')}.s`
+      const loadReq = {
+        startIndex: 1,
+        items: ['song-1', 'song-2'].map((id) => ({
+          media: {
+            contentId: `https://nd.example/share/cast/${castToken(id)}`,
+            metadata: { title: id },
+          },
+        })),
+      }
+      const live = createGhostAwareMedia(env, 7, loadReq, 30)
+      const realQueueLoad = vi.fn()
+      const sessionObj = {
+        receiver: { friendlyName: 'Living Room' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        media: [live],
+      }
+      const customSession = {
+        getCastDevice: () => ({ friendlyName: 'Living Room' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () => live,
+      }
+      env.castContext.getCurrentSession.mockReturnValue(null)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      env.castContext.getCurrentSession.mockReturnValue(customSession)
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_RESUMED' })
+        await vi.advanceTimersByTimeAsync(600)
+      })
+
+      expect(store.getState().player.current.name).toBe('All I Need')
+      expect(currentTimeSec()).toBeGreaterThanOrEqual(30)
+
+      await act(async () => {
+        live.estimatedTime = 36
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+      expect(realQueueLoad).not.toHaveBeenCalled()
+      expect(currentTimeSec()).toBeGreaterThanOrEqual(36)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

@@ -621,6 +621,46 @@ export const buildCastQueueItems = (
     .filter(Boolean)
 }
 
+// The Default Media Receiver drops MediaInfo.customData from MEDIA_STATUS, so
+// a page that did not load the queue itself (e.g. after a reload that resumes
+// the Cast session) cannot map the playing media back to a queue entry by
+// uuid. /share/cast/<token> URLs carry the track ID in the token payload; it
+// is only read here to identify the track, the server verifies the token.
+export const extractCastTrackId = (contentId) => {
+  if (typeof contentId !== 'string') return null
+  const match = contentId.match(/\/share\/cast\/([^/?#]+)/)
+  const payload = match?.[1]?.split('.')[1]
+  if (!payload) return null
+  try {
+    const claims = JSON.parse(
+      atob(payload.replace(/-/g, '+').replace(/_/g, '/')),
+    )
+    return typeof claims?.id === 'string' && claims.id ? claims.id : null
+  } catch {
+    return null
+  }
+}
+
+// A queue may hold the same track more than once: pick the copy closest to
+// the entry the player was on.
+export const findNearestQueueIndexByTrackId = (
+  queue = [],
+  trackId,
+  anchorIndex = 0,
+) => {
+  let best = -1
+  queue.forEach((item, idx) => {
+    if (!trackId || item?.trackId !== trackId) return
+    if (
+      best < 0 ||
+      Math.abs(idx - anchorIndex) < Math.abs(best - anchorIndex)
+    ) {
+      best = idx
+    }
+  })
+  return best
+}
+
 export const formatCastTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) {
     return '0:00'
