@@ -183,7 +183,7 @@
     },
     "player": {
       "name": "Cihaz |||| Cihazlar",
-      "menuName": "Oynatıcılar ve API anahtarları",
+      "menuName": "Cihazlar ve API anahtarları",
       "fields": {
         "name": "İsim",
         "transcodingId": "Kod Dönüştürme",
@@ -202,13 +202,13 @@
         "copyApiKey": "Kopyala"
       },
       "message": {
-        "apiKeyActive": "Bu oynatıcının bir API anahtarı var. Bunu uygulamanızda API anahtarı olarak veya uygulamanız belirteç tabanlı kimlik doğrulama kullanmıyorsa parola olarak kullanın.",
-        "apiKeyNone": "API anahtarı yok. Bir uygulamayı bu oynatıcıya bağlamak için bir anahtar oluşturun.",
+        "apiKeyActive": "Bu cihazın bir API anahtarı var. Bunu uygulamanızda API anahtarı olarak veya uygulamanız belirteç tabanlı kimlik doğrulama kullanmıyorsa parola olarak kullanın.",
+        "apiKeyNone": "API anahtarı yok. Bir uygulamayı bu cihaza bağlamak için bir anahtar oluşturun.",
         "apiKeyNoneOther": "API anahtarı yok.",
         "apiKeyPending": "Bu anahtarı şimdi kopyalayın. Kaydet'e tıkladığınızda kaydedilir ve bir daha gösterilmez.",
         "apiKeyRevokePending": "Kaydettiğinizde API anahtarı kaldırılacak.",
-        "deleteWithKeyTitle": "Oynatıcıyı sil",
-        "deleteWithKeyContent": "Bu oynatıcının bir API anahtarı var. Bu anahtarı kullanan uygulamalar çalışmayı durduracak."
+        "deleteWithKeyTitle": "Cihazı sil",
+        "deleteWithKeyContent": "Bu cihazın bir API anahtarı var. Bu anahtarı kullanan uygulamalar çalışmayı durduracak."
       },
       "notifications": {
         "apiKeyCopied": "API anahtarı panoya kopyalandı"
@@ -625,7 +625,7 @@
     "remove_missing_title": "Eksik dosyaları kaldır",
     "remove_missing_content": "Seçili eksik dosyaları veritabanından kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeleri dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
     "remove_all_missing_title": "Tüm eksik dosyaları kaldırın",
-    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayısı ve derecelendirmelerde dahil olmak üzere bunlara ilişkili tüm değerleri kalıcı olarak kaldıracaktır.",
+    "remove_all_missing_content": "Veritabanından tüm eksik dosyaları kaldırmak istediğinizden emin misiniz? Bu, oynatma sayıları ve derecelendirmeler de dahil olmak üzere bunlara ilişkin tüm referansları kalıcı olarak kaldıracaktır.",
     "notifications_blocked": "Tarayıcınızın ayarlarında bu site için Bildirimleri engellediniz",
     "notifications_not_available": "Bu tarayıcı masaüstü bildirimlerini desteklemiyor veya Navidrome'a ​​\"https://\" üzerinden erişmiyorsunuz",
     "quickConnectApproved": "%{device} üzerindeki %{app} uygulamasında oturum açıldı",
@@ -635,7 +635,7 @@
     "lastfmLinkFailure": "Last.fm'e bağlanılamadı",
     "lastfmUnlinkSuccess": "Last.fm bağlantısı kaldırıldı ve Skroplama devre dışı bırakıldı",
     "lastfmUnlinkFailure": "Last.fm bağlantısı kaldırılamadı",
-    "listenBrainzLinkSuccess": "ListenBrainz bağlantısı başarılı ve skroplama %{user} tarafından etkinleştirildi",
+    "listenBrainzLinkSuccess": "ListenBrainz bağlantısı başarılı ve %{user} kullanıcısı olarak skroplama etkinleştirildi",
     "listenBrainzLinkFailure": "ListenBrainz'a bağlanılamadı: %{error}",
     "listenBrainzUnlinkSuccess": "ListenBrainz bağlantısı kaldırıldı ve skroplama devre dışı bırakıldı",
     "listenBrainzUnlinkFailure": "ListenBrainz bağlantısı kaldırılamadı",
