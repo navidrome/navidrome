@@ -1958,6 +1958,115 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           )
         }
 
+        // Adopts a Cast session that outlived the page that started it, either
+        // reported by SESSION_RESUMED or already present when the SDK initializes.
+        const adoptResumedSession = (session) => {
+          const audio = audioInstanceRef.current
+          attachSessionObj(session?.getSessionObj?.())
+          const existingMedia = getActiveMediaSession()
+          const existingTime =
+            typeof existingMedia?.getEstimatedTime === 'function'
+              ? Math.floor(Number(existingMedia.getEstimatedTime()) || 0)
+              : 0
+          const resumeSec =
+            existingTime ||
+            remotePlayerRef.current?.currentTime ||
+            (audio && Number.isFinite(audio.currentTime)
+              ? Math.floor(audio.currentTime)
+              : 0)
+          isCastingRef.current = true
+          lastSyncedUiUuidRef.current =
+            playerStateRef.current?.current?.uuid || null
+          installAudioShim(audio, resumeSec)
+          setIsCasting(true)
+          setIsConnecting(false)
+
+          const pState = playerStateRef.current
+          const resumeStartIdx =
+            pState.playIndex ??
+            (pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0)
+          // The receiver keeps playing the queue this page persisted, so
+          // track it as the loaded window instead of reloading it.
+          const adoptReceiverWindow = () => {
+            const queue = playerStateRef.current?.queue || []
+            const savedIdx = playerStateRef.current?.savedPlayIndex
+            const winSpec = buildCastQueueWindow(
+              queue,
+              savedIdx >= 0 ? savedIdx : 0,
+              MAX_CAST_WINDOW_ITEMS,
+            )
+            loadedWindowUuidsRef.current = winSpec.items.map((it) => it.uuid)
+            loadedWindowRef.current = {
+              start: winSpec.windowStartIndex,
+              end: winSpec.windowEndIndex,
+            }
+            loadedQueueLengthRef.current = queue.length
+          }
+          // Reload the queue only when the receiver really has nothing
+          // loaded. Reloading right away restarts the track that is
+          // already playing whenever MEDIA_STATUS arrives after this event.
+          const scheduleResumeLoad = () => {
+            clearResumeLoadTimer()
+            const opSeq = castOpSeqRef.current
+            resumeLoadTimerRef.current = setTimeout(() => {
+              resumeLoadTimerRef.current = null
+              if (
+                !isCastingRef.current ||
+                queueLoadInFlightRef.current ||
+                castOpSeqRef.current !== opSeq
+              ) {
+                return
+              }
+              const liveMedia = getActiveMediaSession()
+              if (
+                liveMedia &&
+                (liveMedia.playerState !== 'IDLE' ||
+                  liveMedia.loadingItemId != null)
+              ) {
+                if (loadedWindowUuidsRef.current.length === 0) {
+                  adoptReceiverWindow()
+                }
+                syncFromRemotePlayerRef.current()
+                return
+              }
+              loadQueueOnCast(resumeStartIdx, 0)
+            }, RESUME_MEDIA_GRACE_MS)
+          }
+          if (
+            !existingMedia ||
+            (existingMedia.playerState === 'IDLE' &&
+              existingMedia.loadingItemId == null)
+          ) {
+            scheduleResumeLoad()
+          } else {
+            attachMediaSession(existingMedia)
+            // The media may be a ghost cached from the previous page: it
+            // keeps reporting its last state but the receiver no longer
+            // knows it. Drop it as soon as the receiver rejects it.
+            if (typeof existingMedia.getStatus === 'function') {
+              try {
+                existingMedia.getStatus(
+                  null,
+                  () => {},
+                  () => {
+                    deadMediaRef.current.add(existingMedia)
+                    if (mediaSessionRef.current === existingMedia) {
+                      detachMediaSession()
+                      mediaSessionRef.current = null
+                    }
+                    scheduleResumeLoad()
+                    syncFromRemotePlayerRef.current()
+                  },
+                )
+              } catch {
+                // Ignore status requests on closed sessions
+              }
+            }
+            adoptReceiverWindow()
+          }
+          syncFromRemotePlayer()
+        }
+
         const handleSessionState = (event) => {
           const sessionState = event?.sessionState || ''
           const types = framework.SessionState || {}
@@ -2000,110 +2109,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
               }
               return
             }
-            const audio = audioInstanceRef.current
-            attachSessionObj(ctx.getCurrentSession?.()?.getSessionObj?.())
-            const existingMedia = getActiveMediaSession()
-            const existingTime =
-              typeof existingMedia?.getEstimatedTime === 'function'
-                ? Math.floor(Number(existingMedia.getEstimatedTime()) || 0)
-                : 0
-            const resumeSec =
-              existingTime ||
-              remotePlayerRef.current?.currentTime ||
-              (audio && Number.isFinite(audio.currentTime)
-                ? Math.floor(audio.currentTime)
-                : 0)
-            isCastingRef.current = true
-            lastSyncedUiUuidRef.current =
-              playerStateRef.current?.current?.uuid || null
-            installAudioShim(audio, resumeSec)
-            setIsCasting(true)
-            setIsConnecting(false)
-
-            const pState = playerStateRef.current
-            const resumeStartIdx =
-              pState.playIndex ??
-              (pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0)
-            // The receiver keeps playing the queue this page persisted, so
-            // track it as the loaded window instead of reloading it.
-            const adoptReceiverWindow = () => {
-              const queue = playerStateRef.current?.queue || []
-              const savedIdx = playerStateRef.current?.savedPlayIndex
-              const winSpec = buildCastQueueWindow(
-                queue,
-                savedIdx >= 0 ? savedIdx : 0,
-                MAX_CAST_WINDOW_ITEMS,
-              )
-              loadedWindowUuidsRef.current = winSpec.items.map((it) => it.uuid)
-              loadedWindowRef.current = {
-                start: winSpec.windowStartIndex,
-                end: winSpec.windowEndIndex,
-              }
-              loadedQueueLengthRef.current = queue.length
-            }
-            // Reload the queue only when the receiver really has nothing
-            // loaded. Reloading right away restarts the track that is
-            // already playing whenever MEDIA_STATUS arrives after this event.
-            const scheduleResumeLoad = () => {
-              clearResumeLoadTimer()
-              const opSeq = castOpSeqRef.current
-              resumeLoadTimerRef.current = setTimeout(() => {
-                resumeLoadTimerRef.current = null
-                if (
-                  !isCastingRef.current ||
-                  queueLoadInFlightRef.current ||
-                  castOpSeqRef.current !== opSeq
-                ) {
-                  return
-                }
-                const liveMedia = getActiveMediaSession()
-                if (
-                  liveMedia &&
-                  (liveMedia.playerState !== 'IDLE' ||
-                    liveMedia.loadingItemId != null)
-                ) {
-                  if (loadedWindowUuidsRef.current.length === 0) {
-                    adoptReceiverWindow()
-                  }
-                  syncFromRemotePlayerRef.current()
-                  return
-                }
-                loadQueueOnCast(resumeStartIdx, 0)
-              }, RESUME_MEDIA_GRACE_MS)
-            }
-            if (
-              !existingMedia ||
-              (existingMedia.playerState === 'IDLE' &&
-                existingMedia.loadingItemId == null)
-            ) {
-              scheduleResumeLoad()
-            } else {
-              attachMediaSession(existingMedia)
-              // The media may be a ghost cached from the previous page: it
-              // keeps reporting its last state but the receiver no longer
-              // knows it. Drop it as soon as the receiver rejects it.
-              if (typeof existingMedia.getStatus === 'function') {
-                try {
-                  existingMedia.getStatus(
-                    null,
-                    () => {},
-                    () => {
-                      deadMediaRef.current.add(existingMedia)
-                      if (mediaSessionRef.current === existingMedia) {
-                        detachMediaSession()
-                        mediaSessionRef.current = null
-                      }
-                      scheduleResumeLoad()
-                      syncFromRemotePlayerRef.current()
-                    },
-                  )
-                } catch {
-                  // Ignore status requests on closed sessions
-                }
-              }
-              adoptReceiverWindow()
-            }
-            syncFromRemotePlayer()
+            adoptResumedSession(ctx.getCurrentSession?.())
           } else if (
             sessionState === types.SESSION_ENDED ||
             sessionState === 'SESSION_ENDED'
@@ -2202,18 +2208,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             // Ignore teardown failures on an already-closed session
           }
         } else if (existingSession) {
-          isCastingRef.current = true
-          lastSyncedUiUuidRef.current =
-            playerStateRef.current?.current?.uuid || null
-          attachSessionObj(existingSession.getSessionObj?.())
-          const activeMedia = getActiveMediaSession()
-          const initSec =
-            typeof activeMedia?.getEstimatedTime === 'function'
-              ? Math.floor(Number(activeMedia.getEstimatedTime()) || 0)
-              : remotePlayerRef.current?.currentTime || 0
-          installAudioShim(audioInstanceRef.current, initSec)
-          setIsCasting(true)
-          syncFromRemotePlayer()
+          adoptResumedSession(existingSession)
         }
 
         cleanupListeners = () => {
@@ -2326,6 +2321,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   useEffect(() => {
     if (isCasting && audioInstance) {
       installAudioShim(audioInstance, getActiveCastTime())
+      // Point the new player at the track the receiver is playing
+      syncFromRemotePlayerRef.current()
     }
   }, [isCasting, audioInstance, installAudioShim, getActiveCastTime])
 

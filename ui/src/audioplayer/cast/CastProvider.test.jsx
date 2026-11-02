@@ -2506,4 +2506,73 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       vi.useRealTimers()
     }
   })
+
+  it('keeps the receiver playing when the Cast session already exists as the page mounts after a reload', async () => {
+    vi.useFakeTimers()
+    try {
+      localStorage.setItem('userId', 'user-1')
+      localStorage.setItem('nd-cast-session-owner', 'user-1')
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+
+      const castToken = (trackId) =>
+        `h.${btoa(JSON.stringify({ aud: 'cast', id: trackId }))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '')}.s`
+      const loadReq = {
+        startIndex: 1,
+        items: ['song-1', 'song-2'].map((id) => ({
+          media: {
+            contentId: `https://nd.example/share/cast/${castToken(id)}`,
+            metadata: { title: id },
+          },
+        })),
+      }
+      // A ghost from the previous page and the Media that is really playing
+      const ghost = createGhostAwareMedia(env, 4, loadReq, 0)
+      turnIntoGhost(ghost)
+      const live = createGhostAwareMedia(env, 5, loadReq, 120)
+      const realQueueLoad = vi.fn()
+      const sessionObj = {
+        receiver: { friendlyName: 'Living Room' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        media: [ghost, live],
+      }
+      env.remotePlayer.isConnected = true
+      env.castContext.getCurrentSession.mockReturnValue({
+        getCastDevice: () => ({ friendlyName: 'Living Room' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () => live,
+      })
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(store.getState().player.current.name).toBe('All I Need')
+      expect(currentTimeSec()).toBeGreaterThanOrEqual(120)
+
+      await act(async () => {
+        live.estimatedTime = 126
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+      expect(realQueueLoad).not.toHaveBeenCalled()
+      expect(currentTimeSec()).toBeGreaterThanOrEqual(126)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
