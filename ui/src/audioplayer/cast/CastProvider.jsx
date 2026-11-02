@@ -1987,9 +1987,6 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           isCastingRef.current = true
           lastSyncedUiUuidRef.current =
             playerStateRef.current?.current?.uuid || null
-          installAudioShim(audio, resumeSec)
-          setIsCasting(true)
-          setIsConnecting(false)
 
           const pState = playerStateRef.current
           const resumeStartIdx =
@@ -2074,7 +2071,15 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             }
             adoptReceiverWindow()
           }
+          // Set every ref and record the receiver's track before the state
+          // updates: called from a Cast SDK callback, each setState renders
+          // synchronously and flushes the pending effects, so the queue sync
+          // effect would otherwise see an empty window or the selection
+          // restored from storage, and reload the queue.
+          installAudioShim(audio, resumeSec)
           syncFromRemotePlayer()
+          setIsCasting(true)
+          setIsConnecting(false)
         }
 
         const handleSessionState = (event) => {

@@ -2660,12 +2660,14 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
         })
         if (viaResumeEvent) {
           env.castContext.getCurrentSession.mockReturnValue(customSession)
+          const sessionHandler =
+            env.castContext.addEventListener.mock.calls.find(
+              (c) => c[0] === 'sessionstatechanged',
+            )?.[1]
+          // The SDK calls back outside React's batching: every setState
+          // renders synchronously and flushes pending effects.
+          sessionHandler?.({ sessionState: 'SESSION_RESUMED' })
           await act(async () => {
-            const sessionHandler =
-              env.castContext.addEventListener.mock.calls.find(
-                (c) => c[0] === 'sessionstatechanged',
-              )?.[1]
-            sessionHandler?.({ sessionState: 'SESSION_RESUMED' })
             await vi.advanceTimersByTimeAsync(300)
           })
         }
