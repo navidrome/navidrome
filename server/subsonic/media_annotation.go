@@ -17,6 +17,9 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
+// maxRating is the highest value accepted by the Subsonic spec for setRating. 0 clears the rating.
+const maxRating = 5
+
 func (api *Router) SetRating(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	id, err := p.String("id")
@@ -26,6 +29,10 @@ func (api *Router) SetRating(r *http.Request) (*responses.Subsonic, error) {
 	rating, err := p.Int("rating")
 	if err != nil {
 		return nil, err
+	}
+	// Out-of-range values would otherwise land in average_rating, which every user sees.
+	if rating < 0 || rating > maxRating {
+		return nil, newError(responses.ErrorGeneric, "Invalid rating: %d. Must be between 0 and %d", rating, maxRating)
 	}
 
 	log.Debug(r, "Setting rating", "rating", rating, "id", id)
