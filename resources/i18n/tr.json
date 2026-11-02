@@ -656,7 +656,7 @@
   "menu": {
     "library": "Kütüphane",
     "librarySelector": {
-      "allLibraries": "Tüm Kitaplıklar (%{count})",
+      "allLibraries": "Tüm Kütüphaneler (%{count})",
       "multipleLibraries": "%{total} kütüphaneden %{selected} tanesi seçildi",
       "selectLibraries": "Seçili Kütüphaneler",
       "none": "Hiçbiri"
