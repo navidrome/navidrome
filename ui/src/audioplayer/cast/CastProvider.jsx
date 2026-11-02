@@ -18,6 +18,43 @@ import {
 
 const MIN_CAST_TOKEN_FRESHNESS_MS = 15 * 60 * 1000
 
+// Identifies the Navidrome user that started the current Cast session so a
+// later user of the same browser cannot adopt an ORIGIN_SCOPED session left
+// behind after a full-page external-IdP logout navigation.
+const CAST_SESSION_OWNER_KEY = 'nd-cast-session-owner'
+
+const recordCastSessionOwner = () => {
+  try {
+    localStorage.setItem(
+      CAST_SESSION_OWNER_KEY,
+      localStorage.getItem('userId') || '',
+    )
+  } catch {
+    // Ignore storage failures (private browsing, quota)
+  }
+}
+
+const clearCastSessionOwner = () => {
+  try {
+    localStorage.removeItem(CAST_SESSION_OWNER_KEY)
+  } catch {
+    // Ignore storage failures
+  }
+}
+
+const isResumedSessionOwnedByCurrentUser = () => {
+  try {
+    const previousOwner = localStorage.getItem(CAST_SESSION_OWNER_KEY)
+    const currentUserId = localStorage.getItem('userId') || ''
+    if (previousOwner === null) {
+      return currentUserId === ''
+    }
+    return previousOwner === currentUserId
+  } catch {
+    return false
+  }
+}
+
 const SHIMMED_AUDIO_PROPS = [
   'play',
   'pause',
@@ -1225,8 +1262,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
     const session = ctx?.getCurrentSession?.()
     const connected = Boolean(
-      rp?.isConnected || (isCastingRef.current && session),
+      isCastingRef.current && (rp?.isConnected || session),
     )
+    if (!connected) {
+      return
+    }
     const castDeviceName =
       session?.getCastDevice?.()?.friendlyName ||
       session?.getSessionObj?.()?.receiver?.friendlyName ||
@@ -1234,7 +1274,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
     setDeviceName(castDeviceName)
 
-    if (!connected || queueLoadInFlightRef.current) {
+    if (queueLoadInFlightRef.current) {
       return
     }
 
@@ -1566,6 +1606,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             sessionState === types.SESSION_STARTED ||
             sessionState === 'SESSION_STARTED'
           ) {
+            recordCastSessionOwner()
             const audio = audioInstanceRef.current
             const resumeSec =
               audio && Number.isFinite(audio.currentTime)
@@ -1588,6 +1629,16 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             sessionState === types.SESSION_RESUMED ||
             sessionState === 'SESSION_RESUMED'
           ) {
+            if (!isResumedSessionOwnedByCurrentUser()) {
+              clearCastSessionOwner()
+              setIsConnecting(false)
+              try {
+                ctx.endCurrentSession(true)
+              } catch {
+                // Ignore teardown failures on an already-closed session
+              }
+              return
+            }
             const audio = audioInstanceRef.current
             attachSessionObj(ctx.getCurrentSession?.()?.getSessionObj?.())
             const existingMedia = getActiveMediaSession()
@@ -1639,6 +1690,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             sessionState === types.SESSION_ENDED ||
             sessionState === 'SESSION_ENDED'
           ) {
+            clearCastSessionOwner()
             castOpSeqRef.current += 1
             clearJumpWatchdog()
             const finalSec = getActiveCastTime()
@@ -1715,9 +1767,17 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           handleRemoteChange,
         )
 
-        // Check if a session is already active at mount time
+        // Check if a session is already active at mount time. A session that
+        // was started by a different user of this browser must not be adopted.
         const existingSession = ctx.getCurrentSession?.()
-        if (existingSession) {
+        if (existingSession && !isResumedSessionOwnedByCurrentUser()) {
+          clearCastSessionOwner()
+          try {
+            ctx.endCurrentSession(true)
+          } catch {
+            // Ignore teardown failures on an already-closed session
+          }
+        } else if (existingSession) {
           isCastingRef.current = true
           lastSyncedUiUuidRef.current =
             playerStateRef.current?.current?.uuid || null

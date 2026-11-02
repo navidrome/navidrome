@@ -416,6 +416,8 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     delete window.__ND_CAST_CALLBACK_INSTALLED__
     delete window.__ND_CAST_API_READY__
     delete window.__onGCastApiAvailable
+    localStorage.removeItem('nd-cast-session-owner')
+    localStorage.removeItem('userId')
     document
       .querySelectorAll('script[data-nd-cast-sdk="true"]')
       .forEach((node) => node.remove())
@@ -1676,5 +1678,108 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     expect(store.getState().player.clear).toBe(true)
     expect(env.stop).toHaveBeenCalledTimes(2)
     profileSpy.mockRestore()
+  })
+
+  it('refuses to adopt or resume another user Cast session after a full-page external-IdP logout navigation', async () => {
+    const env = createFakeCastEnvironment()
+    const aliceStore = buildFullStore()
+    aliceStore.dispatch(playTracks({ 'song-1': song1 }, ['song-1']))
+
+    localStorage.setItem('userId', 'user-alice')
+    const aliceAudio = document.createElement('audio')
+
+    const aliceView = render(
+      <Provider store={aliceStore}>
+        <CastProvider audioInstance={aliceAudio} enabled={true}>
+          <CastButton />
+        </CastProvider>
+      </Provider>,
+    )
+
+    await act(async () => {
+      env.startSession('Alice Lounge Speaker')
+    })
+
+    expect(localStorage.getItem('nd-cast-session-owner')).toBe('user-alice')
+    expect(
+      Object.prototype.hasOwnProperty.call(aliceAudio, 'currentTime'),
+    ).toBe(true)
+
+    // Same user reloading the page must still adopt their own active session
+    const activeAliceSession = env.castContext.getCurrentSession()
+    env.endCurrentSession.mockImplementationOnce(() => {})
+    aliceView.unmount()
+    env.endCurrentSession.mockClear()
+
+    const aliceReloadAudio = document.createElement('audio')
+    const aliceReloadView = render(
+      <Provider store={aliceStore}>
+        <CastProvider audioInstance={aliceReloadAudio} enabled={true}>
+          <CastButton />
+        </CastProvider>
+      </Provider>,
+    )
+    expect(env.endCurrentSession).not.toHaveBeenCalled()
+    expect(
+      Object.prototype.hasOwnProperty.call(aliceReloadAudio, 'currentTime'),
+    ).toBe(true)
+
+    // Simulate external-IdP logout (full-page navigation: authProvider removes userId
+    // without running a clean SESSION_ENDED, leaving ORIGIN_SCOPED session alive)
+    env.endCurrentSession.mockImplementationOnce(() => {})
+    aliceReloadView.unmount()
+    env.endCurrentSession.mockClear()
+    localStorage.removeItem('userId')
+
+    // User Bob signs in on the same browser; mount-time getCurrentSession() sees Alice's session
+    localStorage.setItem('userId', 'user-bob')
+    const bobStore = buildFullStore()
+    const bobAudio = document.createElement('audio')
+
+    const bobView = render(
+      <Provider store={bobStore}>
+        <CastProvider audioInstance={bobAudio} enabled={true}>
+          <CastButton />
+        </CastProvider>
+      </Provider>,
+    )
+
+    expect(env.endCurrentSession).toHaveBeenCalledTimes(1)
+    expect(env.endCurrentSession).toHaveBeenCalledWith(true)
+    expect(Object.prototype.hasOwnProperty.call(bobAudio, 'currentTime')).toBe(
+      false,
+    )
+    fireEvent.click(screen.getByTestId('cast-button'))
+    expect(screen.queryByTestId('cast-stop-button')).toBeNull()
+    bobView.unmount()
+
+    // Also verify the async SESSION_RESUMED path when getCurrentSession() is initially null at mount
+    localStorage.setItem('nd-cast-session-owner', 'user-alice')
+    localStorage.setItem('userId', 'user-bob')
+    env.endCurrentSession.mockClear()
+    env.castContext.getCurrentSession.mockReturnValue(null)
+
+    const bobAudio2 = document.createElement('audio')
+    render(
+      <Provider store={bobStore}>
+        <CastProvider audioInstance={bobAudio2} enabled={true}>
+          <CastButton />
+        </CastProvider>
+      </Provider>,
+    )
+
+    env.castContext.getCurrentSession.mockReturnValue(activeAliceSession)
+    const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+      (c) => c[0] === 'sessionstatechanged',
+    )?.[1]
+    await act(async () => {
+      sessionHandler?.({ sessionState: 'SESSION_RESUMED' })
+    })
+
+    expect(env.endCurrentSession).toHaveBeenCalledTimes(1)
+    expect(env.endCurrentSession).toHaveBeenCalledWith(true)
+    expect(Object.prototype.hasOwnProperty.call(bobAudio2, 'currentTime')).toBe(
+      false,
+    )
   })
 })
