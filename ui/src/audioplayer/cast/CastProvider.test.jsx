@@ -2575,4 +2575,119 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       vi.useRealTimers()
     }
   })
+
+  it.each([
+    ['already present at mount', false],
+    ['reported by SESSION_RESUMED', true],
+  ])(
+    'keeps the receiver on its track after a reload restores only queue and savedPlayIndex (session %s)',
+    async (_label, viaResumeEvent) => {
+      vi.useFakeTimers()
+      try {
+        localStorage.setItem('userId', 'user-1')
+        localStorage.setItem('nd-cast-session-owner', 'user-1')
+        const env = createFakeCastEnvironment()
+        // A reload restores only what loadState persisted: no playIndex,
+        // no current, and a savedPlayIndex that lags behind the receiver.
+        const seed = buildFullStore()
+        seed.dispatch(
+          playTracks({ 'song-1': song1, 'song-2': song2, 'song-3': song3 }, [
+            'song-1',
+            'song-2',
+            'song-3',
+          ]),
+        )
+        const { queue, volume } = seed.getState().player
+        const store = createStore(
+          combineReducers({
+            player: playerReducer,
+            settings: (s = { notifications: false }) => s,
+            replayGain: (s = { gainMode: 'none', preAmp: 0 }) => s,
+          }),
+          {
+            player: {
+              ...playerReducer(undefined, { type: '@@INIT' }),
+              queue,
+              volume,
+              savedPlayIndex: 0,
+            },
+          },
+        )
+
+        const castToken = (trackId) =>
+          `h.${btoa(JSON.stringify({ aud: 'cast', id: trackId }))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '')}.s`
+        const loadReq = {
+          startIndex: 2,
+          items: ['song-1', 'song-2', 'song-3'].map((id) => ({
+            media: {
+              contentId: `https://nd.example/share/cast/${castToken(id)}`,
+              metadata: { title: id },
+            },
+          })),
+        }
+        const live = createGhostAwareMedia(env, 9, loadReq, 120)
+        const realQueueLoad = vi.fn()
+        const sessionObj = {
+          receiver: { friendlyName: 'Living Room' },
+          queueLoad: realQueueLoad,
+          addMediaListener: vi.fn(),
+          removeMediaListener: vi.fn(),
+          media: [live],
+        }
+        const customSession = {
+          getCastDevice: () => ({ friendlyName: 'Living Room' }),
+          getSessionObj: () => sessionObj,
+          getMediaSession: () => live,
+        }
+        env.remotePlayer.isConnected = true
+        env.castContext.getCurrentSession.mockReturnValue(
+          viaResumeEvent ? null : customSession,
+        )
+
+        render(
+          <Provider store={store}>
+            <MemoryRouter>
+              <Player />
+            </MemoryRouter>
+          </Provider>,
+        )
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(300)
+        })
+        if (viaResumeEvent) {
+          env.castContext.getCurrentSession.mockReturnValue(customSession)
+          await act(async () => {
+            const sessionHandler =
+              env.castContext.addEventListener.mock.calls.find(
+                (c) => c[0] === 'sessionstatechanged',
+              )?.[1]
+            sessionHandler?.({ sessionState: 'SESSION_RESUMED' })
+            await vi.advanceTimersByTimeAsync(300)
+          })
+        }
+        await act(async () => {
+          live.notify()
+          await vi.advanceTimersByTimeAsync(600)
+        })
+
+        expect(store.getState().player.current.name).toBe('Reckoner')
+        expect(currentTimeSec()).toBeGreaterThanOrEqual(120)
+
+        await act(async () => {
+          live.estimatedTime = 126
+          await vi.advanceTimersByTimeAsync(3000)
+        })
+        expect(realQueueLoad).not.toHaveBeenCalled()
+        expect(env.queueJumpToItem).not.toHaveBeenCalled()
+        expect(env.queueUpdateItems).not.toHaveBeenCalled()
+        expect(currentTimeSec()).toBeGreaterThanOrEqual(126)
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
 })

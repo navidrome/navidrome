@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useInterval } from '../../common'
-import { currentPlaying } from '../../actions'
+import { castCurrentPlaying, currentPlaying } from '../../actions'
 import config from '../../config'
 import { httpClient } from '../../dataProvider'
 import subsonic from '../../subsonic'
@@ -318,6 +318,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   const deadMediaRef = useRef(new WeakSet())
   const queueLoadWatchdogTimerRef = useRef(null)
   const resumeLoadTimerRef = useRef(null)
+  const adoptingSessionRef = useRef(false)
   const supersededUuidsRef = useRef(new Set())
   const supersededUntilMsRef = useRef(0)
   const pendingJumpRef = useRef(null)
@@ -858,6 +859,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       castOpSeqRef.current += 1
       const opSeq = castOpSeqRef.current
 
+      adoptingSessionRef.current = false
       clearJumpWatchdog()
       pendingJumpRef.current = null
 
@@ -1826,15 +1828,22 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     }
 
     if (matched) {
+      const adoptingSession = adoptingSessionRef.current
       if (
+        adoptingSession ||
         activeUuidRef.current !== matched.uuid ||
         playerStateRef.current?.current?.uuid !== matched.uuid
       ) {
+        adoptingSessionRef.current = false
         activeUuidRef.current = matched.uuid
         setActiveTrackId(matched.trackId || null)
         setActiveIsRadio(Boolean(matched.isRadio))
+        // A resumed session overrides the track selection restored from
+        // storage, otherwise the player and the queue sync keep jumping
+        // back to it.
+        const setCurrent = adoptingSession ? castCurrentPlaying : currentPlaying
         dispatch(
-          currentPlaying({
+          setCurrent({
             ...matched,
             currentTime: nextTime,
             duration: resolvedDuration,
@@ -1961,6 +1970,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         // Adopts a Cast session that outlived the page that started it, either
         // reported by SESSION_RESUMED or already present when the SDK initializes.
         const adoptResumedSession = (session) => {
+          adoptingSessionRef.current = true
           const audio = audioInstanceRef.current
           attachSessionObj(session?.getSessionObj?.())
           const existingMedia = getActiveMediaSession()
@@ -2119,6 +2129,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             clearJumpWatchdog()
             clearQueueLoadWatchdog()
             clearResumeLoadTimer()
+            adoptingSessionRef.current = false
             const finalSec = getActiveCastTime()
             const endedUuid = activeUuidRef.current
             flushStoppedReport()

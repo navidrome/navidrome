@@ -6,6 +6,7 @@ import {
   PLAYER_SYNC_QUEUE,
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
+  PLAYER_CAST_CURRENT,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -249,6 +250,37 @@ describe('playerReducer', () => {
       const clearedTwice = playerReducer(afterAdd, { type: PLAYER_CLEAR_QUEUE })
       expect(clearedTwice.queue).toEqual([])
       expect(clearedTwice.clear).toBe(true)
+    })
+  })
+
+  describe('Cast receiver track after a page reload', () => {
+    it('PLAYER_CAST_CURRENT resolves the selection restored by PLAYER_REFRESH_QUEUE', () => {
+      const queue = ['a', 'b', 'c'].map((trackId) => ({
+        trackId,
+        uuid: `uuid-${trackId}`,
+      }))
+      const restored = playerReducer(
+        { queue, current: {}, savedPlayIndex: 0, volume: 0.5 },
+        { type: PLAYER_REFRESH_QUEUE, data: {} },
+      )
+      expect(restored.playIndex).toBe(0)
+      expect(restored.clear).toBe(true)
+
+      // A plain CURRENT for another track keeps the restored selection pending
+      const pending = playerReducer(restored, {
+        type: PLAYER_CURRENT,
+        data: { ...restored.queue[2], volume: 0.5 },
+      })
+      expect(pending.playIndex).toBe(0)
+
+      const adopted = playerReducer(restored, {
+        type: PLAYER_CAST_CURRENT,
+        data: { ...restored.queue[2], volume: 0.5 },
+      })
+      expect(adopted.playIndex).toBeUndefined()
+      expect(adopted.clear).toBe(false)
+      expect(adopted.savedPlayIndex).toBe(2)
+      expect(adopted.current.uuid).toBe('uuid-c')
     })
   })
 })
