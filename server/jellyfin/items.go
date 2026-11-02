@@ -39,17 +39,20 @@ type itemFilters struct {
 }
 
 // parseItemFilters reads the standalone params first and lets the Filters list win, matching real
-// Jellyfin. Tokens with no Navidrome equivalent (Likes, IsFolder, IsResumable) are dropped.
+// Jellyfin. Tokens with no Navidrome equivalent (Likes, IsFolder, IsResumable) are dropped. Filters is
+// a list param, so both spellings count: comma-separated in one value and repeated keys.
 func parseItemFilters(p *req.Values) itemFilters {
 	f := itemFilters{favorite: p.BoolPtr("isfavorite"), played: p.BoolPtr("isplayed")}
-	for token := range strings.SplitSeq(p.StringOr("filters", ""), ",") {
-		switch strings.TrimSpace(token) {
-		case "IsFavorite", "IsFavoriteOrLikes":
-			f.favorite = new(true)
-		case "IsPlayed":
-			f.played = new(true)
-		case "IsUnplayed":
-			f.played = new(false)
+	for _, filter := range p.Strings("filters") {
+		for token := range strings.SplitSeq(filter, ",") {
+			switch strings.TrimSpace(token) {
+			case "IsFavorite", "IsFavoriteOrLikes":
+				f.favorite = new(true)
+			case "IsPlayed":
+				f.played = new(true)
+			case "IsUnplayed":
+				f.played = new(false)
+			}
 		}
 	}
 	return f
@@ -349,7 +352,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	}
 	q := listParams(p)
 	q.ids = ids
-	q.rawTypes = knownItemKinds(p.StringOr("includeitemtypes", ""))
+	q.rawTypes = knownItemKinds(p.Strings("includeitemtypes"))
 	q.parentId = parentId
 	q.genreIds = genreIds
 	q.albumIds = albumIds
@@ -605,12 +608,16 @@ var jellyfinItemKinds = map[string]bool{
 }
 
 // knownItemKinds drops IncludeItemTypes entries that aren't BaseItemKind names, as Jellyfin's binder
-// does, so an all-unknown list (JellyBox sends "music") behaves like an absent one.
-func knownItemKinds(types string) string {
+// does, so an all-unknown list (JellyBox sends "music") behaves like an absent one. It takes every
+// value of the param: Jellyfin's binder accepts a list either comma-separated in one value (Finamp) or
+// as repeated keys (Jellify's @jellyfin/sdk).
+func knownItemKinds(values []string) string {
 	var known []string
-	for t := range strings.SplitSeq(types, ",") {
-		if t = strings.TrimSpace(t); jellyfinItemKinds[strings.ToLower(t)] {
-			known = append(known, t)
+	for _, value := range values {
+		for t := range strings.SplitSeq(value, ",") {
+			if t = strings.TrimSpace(t); jellyfinItemKinds[strings.ToLower(t)] {
+				known = append(known, t)
+			}
 		}
 	}
 	return strings.Join(known, ",")

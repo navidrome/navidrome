@@ -288,6 +288,38 @@ var _ = Describe("Items", func() {
 			Expect(res.TotalRecordCount).To(Equal(2))
 		})
 
+		// Jellify's @jellyfin/sdk spells array params as repeated keys. Honouring only the first
+		// turned a search for every type into an artist-only search.
+		It("merges results from every repeated IncludeItemTypes key", func() {
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Salt"}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Salt"}})
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "Salt"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?SearchTerm=Salt&IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(3))
+			types := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type}
+			Expect(types).To(ConsistOf("MusicArtist", "Audio", "MusicAlbum"))
+			Expect(res.TotalRecordCount).To(Equal(3))
+		})
+
+		It("mixes a repeated IncludeItemTypes key with a comma-separated one", func() {
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Salt"}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Salt"}})
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "Salt"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio,MusicAlbum", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			types := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type}
+			Expect(types).To(ConsistOf("MusicArtist", "Audio", "MusicAlbum"))
+		})
+
 		It("merges favorite songs, albums, and playlists", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
@@ -311,6 +343,21 @@ var _ = Describe("Items", func() {
 			playlistSQL, _, err := playlistRepo.Options.Filters.ToSql()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(playlistSQL).To(ContainSubstring("starred"))
+		})
+
+		// Same param, same repeated-key spelling: Filters=IsFavorite&Filters=IsPlayed has to apply
+		// both conditions, not only the first.
+		It("applies every repeated Filters key", func() {
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite&Filters=IsPlayed", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, _, err := albumRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("starred"))
+			Expect(sql).To(ContainSubstring("play_count"))
 		})
 
 		It("applies StartIndex/Limit to the merged multi-type result set", func() {
@@ -1150,8 +1197,14 @@ var _ = Describe("Items", func() {
 		})
 
 		It("drops names that aren't Jellyfin item kinds, case-insensitively", func() {
-			Expect(knownItemKinds("music")).To(BeEmpty())
-			Expect(knownItemKinds("music, audio,MUSICVIDEO")).To(Equal("audio,MUSICVIDEO"))
+			Expect(knownItemKinds([]string{"music"})).To(BeEmpty())
+			Expect(knownItemKinds([]string{"music, audio,MUSICVIDEO"})).To(Equal("audio,MUSICVIDEO"))
+		})
+
+		It("keeps entries from every value of a repeated param", func() {
+			Expect(knownItemKinds([]string{"MusicArtist", "Audio", "MusicAlbum"})).To(Equal("MusicArtist,Audio,MusicAlbum"))
+			Expect(knownItemKinds([]string{"Nonsense", "music"})).To(BeEmpty())
+			Expect(knownItemKinds(nil)).To(BeEmpty())
 		})
 
 		It("defaults to albums only when IncludeItemTypes is absent", func() {
