@@ -183,7 +183,7 @@
     },
     "player": {
       "name": "Cihaz |||| Cihazlar",
-      "menuName": "Oyuncular ve API anahtarları",
+      "menuName": "Oynatıcılar ve API anahtarları",
       "fields": {
         "name": "İsim",
         "transcodingId": "Kod Dönüştürme",
