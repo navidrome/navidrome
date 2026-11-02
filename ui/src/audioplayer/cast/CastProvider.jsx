@@ -17,6 +17,10 @@ import {
 } from './castUtils'
 
 const MIN_CAST_TOKEN_FRESHNESS_MS = 15 * 60 * 1000
+const QUEUE_LOAD_TIMEOUT_MS = 15 * 1000
+// After SESSION_RESUMED the receiver's MEDIA_STATUS may arrive after the
+// session event; wait for it before reloading (and restarting) the queue.
+const RESUME_MEDIA_GRACE_MS = 2500
 
 // Identifies the Navidrome user that started the current Cast session so a
 // later user of the same browser cannot adopt an ORIGIN_SCOPED session left
@@ -87,6 +91,30 @@ const resolveEffectivePlayerState = (mediaSession, rp) => {
 const resolveActiveItemId = (mediaSession) => {
   if (!mediaSession) return null
   return mediaSession.loadingItemId ?? mediaSession.currentItemId ?? null
+}
+
+const mediaSessionIdOf = (media) => {
+  if (media?.mediaSessionId == null) return null
+  const id = Number(media.mediaSessionId)
+  return Number.isFinite(id) ? id : null
+}
+
+// cast_sender.js keeps every Media object it has seen in sessionObj.media,
+// including the ones replaced by a later queueLoad and, after a page reload,
+// the ones cached from the previous page. Those ghosts keep their last status
+// forever (for example a stale loadingItemId), so prefer the media session the
+// receiver created most recently: mediaSessionId grows with every load.
+const pickNewestMedia = (candidates) => {
+  let newest = null
+  let newestId = null
+  candidates.forEach((media) => {
+    const id = mediaSessionIdOf(media)
+    if (id != null && (newestId == null || id > newestId)) {
+      newest = media
+      newestId = id
+    }
+  })
+  return newest
 }
 
 const extractMediaInfoUuid = (mediaInfo, contentIdMap = null) =>
@@ -285,6 +313,9 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   const pendingCastLoadRef = useRef(false)
   const queueLoadInFlightRef = useRef(false)
   const supersededMediaRef = useRef(null)
+  const deadMediaRef = useRef(new WeakSet())
+  const queueLoadWatchdogTimerRef = useRef(null)
+  const resumeLoadTimerRef = useRef(null)
   const supersededUuidsRef = useRef(new Set())
   const supersededUntilMsRef = useRef(0)
   const pendingJumpRef = useRef(null)
@@ -311,6 +342,20 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     if (jumpWatchdogTimerRef.current) {
       clearTimeout(jumpWatchdogTimerRef.current)
       jumpWatchdogTimerRef.current = null
+    }
+  }, [])
+
+  const clearQueueLoadWatchdog = useCallback(() => {
+    if (queueLoadWatchdogTimerRef.current) {
+      clearTimeout(queueLoadWatchdogTimerRef.current)
+      queueLoadWatchdogTimerRef.current = null
+    }
+  }, [])
+
+  const clearResumeLoadTimer = useCallback(() => {
+    if (resumeLoadTimerRef.current) {
+      clearTimeout(resumeLoadTimerRef.current)
+      resumeLoadTimerRef.current = null
     }
   }, [])
 
@@ -496,6 +541,10 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             stopMediaSession(media, window.chrome?.cast)
             return
           }
+          const replaced = supersededMediaRef.current
+          if (media && replaced && replaced !== media) {
+            deadMediaRef.current.add(replaced)
+          }
           queueLoadInFlightRef.current = false
           supersededMediaRef.current = null
           attachMediaSession(media)
@@ -522,22 +571,26 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       return null
     }
     const superseded = supersededMediaRef.current
+    const isUsable = (m) =>
+      Boolean(m) && m !== superseded && !deadMediaRef.current.has(m)
     const mediaList = Array.isArray(sessionObj?.media)
-      ? sessionObj.media.filter((m) => m && m !== superseded)
+      ? sessionObj.media.filter(isUsable)
       : []
     const liveFromList = mediaList.find(
       (m) =>
         m.playerState !== 'IDLE' || m.loadingItemId != null || !m.idleReason,
     )
     const sessionMedia = session?.getMediaSession?.()
-    const validSessionMedia =
-      sessionMedia && sessionMedia !== superseded ? sessionMedia : null
-    const currentRefMedia =
-      mediaSessionRef.current && mediaSessionRef.current !== superseded
-        ? mediaSessionRef.current
-        : null
+    const validSessionMedia = isUsable(sessionMedia) ? sessionMedia : null
+    const currentRefMedia = isUsable(mediaSessionRef.current)
+      ? mediaSessionRef.current
+      : null
     const media =
-      liveFromList || validSessionMedia || mediaList[0] || currentRefMedia
+      pickNewestMedia([...mediaList, validSessionMedia, currentRefMedia]) ||
+      liveFromList ||
+      validSessionMedia ||
+      mediaList[0] ||
+      currentRefMedia
     if (media) {
       attachMediaSession(media)
     }
@@ -968,6 +1021,26 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             })
           }
 
+          // cast_sender.js never times out a queueLoad. If neither callback
+          // arrives, release the in-flight guards so the progress clock and the
+          // player controls do not stay frozen until the session ends.
+          clearQueueLoadWatchdog()
+          queueLoadWatchdogTimerRef.current = setTimeout(() => {
+            queueLoadWatchdogTimerRef.current = null
+            if (
+              castOpSeqRef.current !== opSeq ||
+              !queueLoadInFlightRef.current
+            ) {
+              return
+            }
+            queueLoadInFlightRef.current = false
+            supersededMediaRef.current = null
+            supersededUuidsRef.current.clear()
+            supersededUntilMsRef.current = 0
+            pendingCastLoadRef.current = false
+            syncFromRemotePlayerRef.current()
+          }, QUEUE_LOAD_TIMEOUT_MS)
+
           activeSessionObj.queueLoad(
             request,
             (media) => {
@@ -979,6 +1052,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
                 return
               }
               if (castOpSeqRef.current !== opSeq) return
+              clearQueueLoadWatchdog()
+              const replaced = supersededMediaRef.current
+              if (media && replaced && replaced !== media) {
+                deadMediaRef.current.add(replaced)
+              }
               queueLoadInFlightRef.current = false
               supersededMediaRef.current = null
               const resolvedMedia = media || getActiveMediaSession()
@@ -999,6 +1077,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             },
             () => {
               if (castOpSeqRef.current === opSeq) {
+                clearQueueLoadWatchdog()
                 queueLoadInFlightRef.current = false
                 supersededMediaRef.current = null
                 supersededUuidsRef.current.clear()
@@ -1021,6 +1100,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     [
       attachMediaSession,
       clearJumpWatchdog,
+      clearQueueLoadWatchdog,
       detachMediaSession,
       dispatch,
       fetchCastMediaTokens,
@@ -1257,7 +1337,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
                 }
               } else if (
                 effState === 'IDLE' &&
-                mediaSession?.loadingItemId == null
+                mediaSession?.loadingItemId == null &&
+                !resumeLoadTimerRef.current
               ) {
                 const pState = playerStateRef.current
                 const idx = Math.max(
@@ -1877,6 +1958,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             sessionState === 'SESSION_STARTED'
           ) {
             recordCastSessionOwner()
+            clearResumeLoadTimer()
             const audio = audioInstanceRef.current
             const resumeSec =
               audio && Number.isFinite(audio.currentTime)
@@ -1930,23 +2012,17 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             setIsConnecting(false)
 
             const pState = playerStateRef.current
-            if (
-              !existingMedia ||
-              (existingMedia.playerState === 'IDLE' &&
-                existingMedia.loadingItemId == null)
-            ) {
-              const startIdx =
-                pState.playIndex ??
-                (pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0)
-              loadQueueOnCast(startIdx, 0)
-            } else {
-              attachMediaSession(existingMedia)
-              const queue = pState.queue || []
-              const activeIdx =
-                pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0
+            const resumeStartIdx =
+              pState.playIndex ??
+              (pState.savedPlayIndex >= 0 ? pState.savedPlayIndex : 0)
+            // The receiver keeps playing the queue this page persisted, so
+            // track it as the loaded window instead of reloading it.
+            const adoptReceiverWindow = () => {
+              const queue = playerStateRef.current?.queue || []
+              const savedIdx = playerStateRef.current?.savedPlayIndex
               const winSpec = buildCastQueueWindow(
                 queue,
-                activeIdx,
+                savedIdx >= 0 ? savedIdx : 0,
                 MAX_CAST_WINDOW_ITEMS,
               )
               loadedWindowUuidsRef.current = winSpec.items.map((it) => it.uuid)
@@ -1956,6 +2032,68 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
               }
               loadedQueueLengthRef.current = queue.length
             }
+            // Reload the queue only when the receiver really has nothing
+            // loaded. Reloading right away restarts the track that is
+            // already playing whenever MEDIA_STATUS arrives after this event.
+            const scheduleResumeLoad = () => {
+              clearResumeLoadTimer()
+              const opSeq = castOpSeqRef.current
+              resumeLoadTimerRef.current = setTimeout(() => {
+                resumeLoadTimerRef.current = null
+                if (
+                  !isCastingRef.current ||
+                  queueLoadInFlightRef.current ||
+                  castOpSeqRef.current !== opSeq
+                ) {
+                  return
+                }
+                const liveMedia = getActiveMediaSession()
+                if (
+                  liveMedia &&
+                  (liveMedia.playerState !== 'IDLE' ||
+                    liveMedia.loadingItemId != null)
+                ) {
+                  if (loadedWindowUuidsRef.current.length === 0) {
+                    adoptReceiverWindow()
+                  }
+                  syncFromRemotePlayerRef.current()
+                  return
+                }
+                loadQueueOnCast(resumeStartIdx, 0)
+              }, RESUME_MEDIA_GRACE_MS)
+            }
+            if (
+              !existingMedia ||
+              (existingMedia.playerState === 'IDLE' &&
+                existingMedia.loadingItemId == null)
+            ) {
+              scheduleResumeLoad()
+            } else {
+              attachMediaSession(existingMedia)
+              // The media may be a ghost cached from the previous page: it
+              // keeps reporting its last state but the receiver no longer
+              // knows it. Drop it as soon as the receiver rejects it.
+              if (typeof existingMedia.getStatus === 'function') {
+                try {
+                  existingMedia.getStatus(
+                    null,
+                    () => {},
+                    () => {
+                      deadMediaRef.current.add(existingMedia)
+                      if (mediaSessionRef.current === existingMedia) {
+                        detachMediaSession()
+                        mediaSessionRef.current = null
+                      }
+                      scheduleResumeLoad()
+                      syncFromRemotePlayerRef.current()
+                    },
+                  )
+                } catch {
+                  // Ignore status requests on closed sessions
+                }
+              }
+              adoptReceiverWindow()
+            }
             syncFromRemotePlayer()
           } else if (
             sessionState === types.SESSION_ENDED ||
@@ -1964,6 +2102,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             clearCastSessionOwner()
             castOpSeqRef.current += 1
             clearJumpWatchdog()
+            clearQueueLoadWatchdog()
+            clearResumeLoadTimer()
             const finalSec = getActiveCastTime()
             const endedUuid = activeUuidRef.current
             flushStoppedReport()
@@ -1976,6 +2116,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             detachMediaSession()
             detachSessionObj()
             mediaSessionRef.current = null
+            deadMediaRef.current = new WeakSet()
             uuidToItemIdRef.current.clear()
             contentIdToUuidRef.current.clear()
             loadedWindowUuidsRef.current = []
@@ -2096,6 +2237,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     return () => {
       castOpSeqRef.current += 1
       clearJumpWatchdog()
+      clearQueueLoadWatchdog()
+      clearResumeLoadTimer()
       castTokenCacheRef.current = new Map()
       window.removeEventListener('nd-cast-api-ready', initCastSdk)
       if (seekReportTimerRef.current) {
@@ -2121,6 +2264,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       remotePlayerRef.current = null
       remoteControllerRef.current = null
       mediaSessionRef.current = null
+      deadMediaRef.current = new WeakSet()
       uuidToItemIdRef.current = new Map()
       contentIdToUuidRef.current = new Map()
       loadedWindowUuidsRef.current = []
@@ -2155,6 +2299,8 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     attachMediaSession,
     attachSessionObj,
     clearJumpWatchdog,
+    clearQueueLoadWatchdog,
+    clearResumeLoadTimer,
     detachMediaSession,
     detachSessionObj,
     enabled,
@@ -2393,6 +2539,9 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   // item deletions, drag-and-drop reorders, and explicit track jumps)
   useEffect(() => {
     if (!isCasting) return
+    // A resumed session is still waiting for the receiver's MEDIA_STATUS;
+    // the resume handler decides whether the queue has to be reloaded.
+    if (resumeLoadTimerRef.current) return
     const queue = playerState.queue || []
     const plan = planCastQueueSync(loadedWindowUuidsRef.current, queue, {
       activeUuid: activeUuidRef.current,

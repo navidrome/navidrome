@@ -2119,4 +2119,315 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       vi.useRealTimers()
     }
   })
+
+  // cast_sender.js keeps every Media object it has seen in sessionObj.media.
+  // The ones replaced by a later queueLoad keep their last status forever,
+  // including a stale loadingItemId (observed on a CC1AD845 receiver).
+  const createGhostAwareMedia = (env, mediaSessionId, req, startTime) => {
+    const startIndex = req.startIndex || 0
+    const items = req.items.map((qi, i) => ({
+      itemId: mediaSessionId * 100 + i,
+      media: qi.media,
+    }))
+    let listeners = []
+    const media = {
+      mediaSessionId,
+      playerState: 'PLAYING',
+      idleReason: null,
+      currentItemId: items[startIndex].itemId,
+      loadingItemId: null,
+      currentTime: startTime,
+      playbackRate: 1,
+      media: items[startIndex].media,
+      items,
+      estimatedTime: startTime,
+      getEstimatedTime: () => media.estimatedTime,
+      getStatus: (_req, onSuccess) => onSuccess?.(),
+      addUpdateListener: (fn) => {
+        listeners.push(fn)
+      },
+      removeUpdateListener: (fn) => {
+        listeners = listeners.filter((l) => l !== fn)
+      },
+      notify: () => listeners.forEach((fn) => fn(true)),
+      queueInsertItems: env.queueInsertItems,
+      queueJumpToItem: env.queueJumpToItem,
+      queueUpdateItems: env.queueUpdateItems,
+      queueRemoveItems: env.queueRemoveItems,
+      queueReorderItems: env.queueReorderItems,
+      queueSetRepeatMode: env.queueSetRepeatMode,
+      stop: env.stop,
+    }
+    return media
+  }
+
+  const currentTimeSec = () => {
+    const [min, sec] = (
+      document.querySelector('.current-time')?.textContent || '0:0'
+    )
+      .split(':')
+      .map(Number)
+    return min * 60 + sec
+  }
+
+  const turnIntoGhost = (media) => {
+    media.playerState = 'IDLE'
+    media.idleReason = 'INTERRUPTED'
+    media.loadingItemId = media.currentItemId
+    media.estimatedTime = 0
+    media.getStatus = (_req, _onSuccess, onError) =>
+      onError?.({ code: 'session_error' })
+  }
+
+  it('keeps the progress bar moving and Play Later in place when a later queueLoad leaves the previous Media as a ghost in sessionObj.media', async () => {
+    vi.useFakeTimers()
+    try {
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+
+      const mediaList = []
+      const realQueueLoad = vi.fn((req, onSuccess) => {
+        const previous = mediaList[mediaList.length - 1]
+        if (previous) {
+          turnIntoGhost(previous)
+        }
+        const media = createGhostAwareMedia(
+          env,
+          mediaList.length + 1,
+          req,
+          req.currentTime || 0,
+        )
+        mediaList.push(media)
+        // The second queueLoad answers with media === null; the new Media
+        // only shows up in sessionObj.media, after the ghost.
+        onSuccess?.(mediaList.length === 1 ? media : null)
+      })
+      const sessionObj = {
+        receiver: { friendlyName: 'Living Room' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        get media() {
+          return mediaList
+        },
+      }
+      const customSession = {
+        getCastDevice: () => ({ friendlyName: 'Living Room' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () => mediaList[mediaList.length - 1] || null,
+      }
+      env.castContext.getCurrentSession.mockImplementation(() => customSession)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+
+      // A new album replaces the whole queue while casting
+      await act(async () => {
+        store.dispatch(
+          playTracks({ 'song-3': song3, 'song-4': song4 }, [
+            'song-3',
+            'song-4',
+          ]),
+        )
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(realQueueLoad).toHaveBeenCalledTimes(2)
+      expect(mediaList[0].loadingItemId).not.toBeNull()
+
+      await act(async () => {
+        mediaList[1].estimatedTime = 5
+        mediaList[1].notify()
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(store.getState().player.current.name).toBe('Reckoner')
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:05')
+
+      await act(async () => {
+        mediaList[1].estimatedTime = 11
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:11')
+
+      // Play Later must append to the live queue, not reload (and restart) it
+      env.queueInsertItems.mockClear()
+      await act(async () => {
+        store.dispatch(addTracks({ 'song-1': song1 }, ['song-1']))
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(env.queueInsertItems).toHaveBeenCalledTimes(1)
+      expect(realQueueLoad).toHaveBeenCalledTimes(2)
+
+      await act(async () => {
+        mediaList[1].estimatedTime = 14
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:14')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('adopts the playing Media instead of restarting the track when a resumed session reports its MEDIA_STATUS late', async () => {
+    vi.useFakeTimers()
+    try {
+      localStorage.setItem('userId', 'user-1')
+      localStorage.setItem('nd-cast-session-owner', 'user-1')
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+
+      let mediaList = []
+      const mediaListeners = []
+      const realQueueLoad = vi.fn()
+      const sessionObj = {
+        receiver: { friendlyName: 'Living Room' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn((fn) => mediaListeners.push(fn)),
+        removeMediaListener: vi.fn(),
+        get media() {
+          return mediaList
+        },
+      }
+      const customSession = {
+        getCastDevice: () => ({ friendlyName: 'Living Room' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () =>
+          mediaList.find((m) => m.playerState !== 'IDLE') || null,
+      }
+      env.castContext.getCurrentSession.mockReturnValue(null)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      env.castContext.getCurrentSession.mockReturnValue(customSession)
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_RESUMED' })
+        await vi.advanceTimersByTimeAsync(400)
+      })
+
+      // MEDIA_STATUS arrives after SESSION_RESUMED: a ghost cached from the
+      // previous page plus the Media that is really playing.
+      const loadReq = {
+        startIndex: 0,
+        items: [
+          { media: { contentId: 'c1', customData: { uuid: 'x' } } },
+          { media: { contentId: 'c2', customData: { uuid: 'y' } } },
+        ],
+      }
+      const ghost = createGhostAwareMedia(env, 1, loadReq, 0)
+      turnIntoGhost(ghost)
+      const live = createGhostAwareMedia(env, 2, loadReq, 40)
+      await act(async () => {
+        mediaList = [ghost, live]
+        mediaListeners.forEach((fn) => fn(live))
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:40')
+
+      await act(async () => {
+        live.estimatedTime = 46
+        await vi.advanceTimersByTimeAsync(3000)
+      })
+      expect(realQueueLoad).not.toHaveBeenCalled()
+      expect(currentTimeSec()).toBeGreaterThanOrEqual(46)
+      expect(currentTimeSec()).toBeLessThan(50)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('releases the in-flight guards when queueLoad never calls back so the progress bar does not stay frozen', async () => {
+    vi.useFakeTimers()
+    try {
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+
+      const mediaList = []
+      // cast_sender.js has no timeout for queueLoad: the receiver plays, but
+      // neither callback ever fires.
+      const realQueueLoad = vi.fn((req) => {
+        mediaList.push(createGhostAwareMedia(env, 1, req, 0))
+      })
+      const sessionObj = {
+        receiver: { friendlyName: 'Living Room' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        get media() {
+          return mediaList
+        },
+      }
+      const customSession = {
+        getCastDevice: () => ({ friendlyName: 'Living Room' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () => mediaList[0] || null,
+      }
+      env.castContext.getCurrentSession.mockImplementation(() => customSession)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        mediaList[0].estimatedTime = 16
+        await vi.advanceTimersByTimeAsync(16000)
+      })
+      const elapsedAfterWatchdog = currentTimeSec()
+      expect(elapsedAfterWatchdog).toBeGreaterThanOrEqual(16)
+
+      await act(async () => {
+        mediaList[0].estimatedTime = 25
+        await vi.advanceTimersByTimeAsync(600)
+      })
+      expect(currentTimeSec()).toBeGreaterThan(elapsedAfterWatchdog)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
