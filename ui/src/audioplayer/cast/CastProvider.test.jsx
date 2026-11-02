@@ -1995,4 +1995,128 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       vi.useRealTimers()
     }
   })
+
+  it('advances the progress bar after changing tracks via queueJumpToItem when CAF RemotePlayer stays frozen on the first song', async () => {
+    vi.useFakeTimers()
+    try {
+      const env = createFakeCastEnvironment()
+      const store = buildFullStore()
+      store.dispatch(
+        playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+      )
+
+      let activeMediaObj = null
+      let updateListeners = []
+      let estimatedTime = 18
+
+      const realQueueLoad = vi.fn((req, onSuccess) => {
+        const firstMedia = req.items[0]?.media
+        activeMediaObj = {
+          mediaSessionId: 1,
+          playerState: 'PLAYING',
+          currentItemId: 100,
+          loadingItemId: null,
+          currentTime: 18,
+          playbackRate: 1,
+          media: firstMedia,
+          // Cast V2 MEDIA_STATUS: only the active item (100) has .media; item 101 omits .media
+          items: [{ itemId: 100, media: firstMedia }, { itemId: 101 }],
+          getEstimatedTime: () => estimatedTime,
+          addUpdateListener: (fn) => {
+            updateListeners.push(fn)
+          },
+          removeUpdateListener: (fn) => {
+            updateListeners = updateListeners.filter((l) => l !== fn)
+          },
+          queueInsertItems: env.queueInsertItems,
+          queueJumpToItem: env.queueJumpToItem,
+          queueUpdateItems: env.queueUpdateItems,
+          queueSetRepeatMode: env.queueSetRepeatMode,
+          stop: env.stop,
+        }
+        env.remotePlayer.playerState = 'PLAYING'
+        env.remotePlayer.currentTime = 18
+        env.remotePlayer.mediaInfo = firstMedia
+        onSuccess?.(activeMediaObj)
+      })
+
+      const sessionObj = {
+        receiver: { friendlyName: 'Bedroom Speaker' },
+        queueLoad: realQueueLoad,
+        addMediaListener: vi.fn(),
+        removeMediaListener: vi.fn(),
+        get media() {
+          return activeMediaObj ? [activeMediaObj] : []
+        },
+      }
+      const customSession = {
+        getCastDevice: () => ({ friendlyName: 'Bedroom Speaker' }),
+        getSessionObj: () => sessionObj,
+        getMediaSession: () => activeMediaObj,
+      }
+      env.castContext.getCurrentSession.mockImplementation(() => customSession)
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <Player />
+          </MemoryRouter>
+        </Provider>,
+      )
+
+      await act(async () => {
+        env.remotePlayer.isConnected = true
+        const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+          (c) => c[0] === 'sessionstatechanged',
+        )?.[1]
+        sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+        await vi.advanceTimersByTimeAsync(600)
+      })
+
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:18')
+
+      // User changes to Track 2 in the Queue Drawer while casting
+      fireEvent.click(document.querySelector('.audio-lists-btn'))
+      const queueRows = document.querySelectorAll(
+        '.audio-lists-panel-content .audio-item',
+      )
+      await act(async () => {
+        fireEvent.click(queueRows[1])
+        await vi.advanceTimersByTimeAsync(20)
+      })
+
+      expect(env.queueJumpToItem).toHaveBeenCalledWith(
+        101,
+        expect.any(Function),
+        expect.any(Function),
+      )
+
+      // Receiver switches currentItemId to 101 and advances getEstimatedTime() (0 -> 9 -> 15),
+      // while mediaSession.media is null, items[1].media is undefined, and remotePlayer.mediaInfo
+      // remains frozen on Track 1 (song-1)!
+      await act(async () => {
+        activeMediaObj.currentItemId = 101
+        activeMediaObj.media = null
+        activeMediaObj.currentTime = 9
+        estimatedTime = 9
+        updateListeners.forEach((fn) => fn(true))
+        await vi.advanceTimersByTimeAsync(600)
+      })
+
+      expect(store.getState().player.current.name).toBe('All I Need')
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:09')
+
+      await act(async () => {
+        activeMediaObj.currentTime = 15
+        estimatedTime = 15
+        await vi.advanceTimersByTimeAsync(600)
+      })
+
+      expect(document.querySelector('.current-time')?.textContent).toBe('00:15')
+      expect(realQueueLoad).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

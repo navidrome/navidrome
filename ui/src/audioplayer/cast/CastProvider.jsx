@@ -104,9 +104,14 @@ const resolveActiveMediaInfo = (
   rp,
   supersededUuids = null,
   contentIdMap = null,
+  ignoredUuid = null,
 ) => {
   const isSuperseded = (uuid) =>
-    Boolean(uuid && supersededUuids?.size > 0 && supersededUuids.has(uuid))
+    Boolean(
+      uuid &&
+      ((supersededUuids?.size > 0 && supersededUuids.has(uuid)) ||
+        (ignoredUuid && uuid === ignoredUuid)),
+    )
   const activeItemId = resolveActiveItemId(mediaSession)
   const isTransitioningToNextItem =
     mediaSession?.loadingItemId != null &&
@@ -145,7 +150,7 @@ const resolveActiveMediaInfo = (
     }
   }
 
-  return mediaSession?.media || rp?.mediaInfo || queueItem?.media || null
+  return null
 }
 
 const stopMediaSession = (media, chromeCastApi) => {
@@ -341,18 +346,56 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         ? items.findIndex((it) => it?.itemId === currentItemId)
         : -1
 
+    const pendingJump = pendingJumpRef.current
+    const jumpMovedOffStaleItem =
+      Boolean(pendingJump) &&
+      (pendingJump.staleItemId == null ||
+        (currentItemId != null && currentItemId !== pendingJump.staleItemId))
+    const isStaleUuid = (uuid) =>
+      Boolean(
+        uuid &&
+        (supersededUuidsRef.current.has(uuid) ||
+          (jumpMovedOffStaleItem &&
+            pendingJump?.staleUuid &&
+            uuid === pendingJump.staleUuid)),
+      )
+    const pickValidUuid = (...candidates) =>
+      candidates.find((u) => u && !isStaleUuid(u)) || null
+
     let activeWinIdx = -1
     if (
       curSliceIdx >= 0 &&
       Array.isArray(windowUuids) &&
       windowUuids.length > 0
     ) {
-      const currentUuid =
-        extractQueueItemUuid(items[curSliceIdx], contentIdToUuidRef.current) ||
-        extractMediaInfoUuid(mediaSession?.media, contentIdToUuidRef.current) ||
-        receiverUuidRef.current ||
-        activeUuidRef.current
-      if (currentUuid && !supersededUuidsRef.current.has(currentUuid)) {
+      let existingMappedUuid = null
+      if (currentItemId != null) {
+        for (const [u, id] of uuidToItemIdRef.current.entries()) {
+          if (id === currentItemId && !isStaleUuid(u)) {
+            existingMappedUuid = u
+            break
+          }
+        }
+      }
+      const jumpTargetUuid =
+        pendingJump?.targetUuid &&
+        ((pendingJump.targetItemId != null &&
+          currentItemId === pendingJump.targetItemId) ||
+          (pendingJump.staleItemId != null &&
+            currentItemId != null &&
+            currentItemId !== pendingJump.staleItemId))
+          ? pendingJump.targetUuid
+          : null
+
+      const currentUuid = pickValidUuid(
+        extractQueueItemUuid(items[curSliceIdx], contentIdToUuidRef.current),
+        existingMappedUuid,
+        jumpTargetUuid,
+        extractMediaInfoUuid(mediaSession?.media, contentIdToUuidRef.current),
+        receiverUuidRef.current,
+        activeUuidRef.current,
+      )
+      if (currentUuid) {
         activeWinIdx = windowUuids.indexOf(currentUuid)
       }
     }
@@ -360,6 +403,9 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     items.forEach((it, sliceIdx) => {
       if (it?.itemId == null) return
       let uuid = extractQueueItemUuid(it, contentIdToUuidRef.current)
+      if (uuid && isStaleUuid(uuid)) {
+        uuid = null
+      }
       if (
         !uuid &&
         curSliceIdx >= 0 &&
@@ -371,7 +417,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           uuid = windowUuids[winIdx]
         }
       }
-      if (uuid && !supersededUuidsRef.current.has(uuid)) {
+      if (uuid && !isStaleUuid(uuid)) {
         uuidToItemIdRef.current.set(uuid, it.itemId)
       }
     })
@@ -798,6 +844,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       if (targetItem) {
         const itemDuration = resolveQueueItemDuration(targetItem)
         activeUuidRef.current = targetItem.uuid
+        receiverUuidRef.current = targetItem.uuid
         setActiveTrackId(targetItem.trackId || null)
         setActiveIsRadio(Boolean(targetItem.isRadio))
         bridgeRef.current.virtualCurrentTime = startSeconds
@@ -936,6 +983,16 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
               supersededMediaRef.current = null
               const resolvedMedia = media || getActiveMediaSession()
               if (resolvedMedia) {
+                if (
+                  targetItem?.uuid &&
+                  resolvedMedia.currentItemId != null &&
+                  !uuidToItemIdRef.current.has(targetItem.uuid)
+                ) {
+                  uuidToItemIdRef.current.set(
+                    targetItem.uuid,
+                    resolvedMedia.currentItemId,
+                  )
+                }
                 attachMediaSession(resolvedMedia)
               }
               syncFromRemotePlayerRef.current()
@@ -1416,18 +1473,49 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
 
     const mediaSession = getActiveMediaSession()
     const nextState = resolveEffectivePlayerState(mediaSession, rp)
+    const activeItemId = resolveActiveItemId(mediaSession)
+    const isTransitioningItem =
+      mediaSession?.loadingItemId != null &&
+      (mediaSession?.playerState === 'IDLE' ||
+        mediaSession?.currentItemId !== mediaSession?.loadingItemId)
+
+    const pendingJumpForResolve = pendingJumpRef.current
+    const receiverSwitchedJumpItem =
+      Boolean(pendingJumpForResolve) &&
+      activeItemId != null &&
+      ((pendingJumpForResolve.targetItemId != null &&
+        activeItemId === pendingJumpForResolve.targetItemId) ||
+        (!isTransitioningItem &&
+          pendingJumpForResolve.staleItemId != null &&
+          activeItemId !== pendingJumpForResolve.staleItemId))
+    if (receiverSwitchedJumpItem && pendingJumpForResolve?.targetUuid) {
+      uuidToItemIdRef.current.set(
+        pendingJumpForResolve.targetUuid,
+        activeItemId,
+      )
+    }
+
+    const ignoredJumpUuid = receiverSwitchedJumpItem
+      ? pendingJumpForResolve?.staleUuid || null
+      : null
+
     const mediaInfo = resolveActiveMediaInfo(
       mediaSession,
       rp,
       supersededUuidsRef.current,
       contentIdToUuidRef.current,
+      ignoredJumpUuid,
     )
-    const activeItemId = resolveActiveItemId(mediaSession)
+    const rpUuid = extractMediaInfoUuid(
+      rp?.mediaInfo,
+      contentIdToUuidRef.current,
+    )
+    const isRpStale = Boolean(
+      rpUuid &&
+      (supersededUuidsRef.current.has(rpUuid) ||
+        (ignoredJumpUuid && rpUuid === ignoredJumpUuid)),
+    )
 
-    const isTransitioningItem =
-      mediaSession?.loadingItemId != null &&
-      (mediaSession?.playerState === 'IDLE' ||
-        mediaSession?.currentItemId !== mediaSession?.loadingItemId)
     let nextTime = 0
     if (!isTransitioningItem) {
       if (typeof mediaSession?.getEstimatedTime === 'function') {
@@ -1439,7 +1527,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         Number.isFinite(mediaSession?.currentTime)
       ) {
         nextTime = Math.max(0, Number(mediaSession.currentTime))
-      } else if (Number.isFinite(rp?.currentTime)) {
+      } else if (!isRpStale && Number.isFinite(rp?.currentTime)) {
         nextTime = Math.max(0, Number(rp.currentTime))
       }
     }
@@ -1448,7 +1536,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     const nextDuration =
       Number.isFinite(mediaInfoDuration) && mediaInfoDuration > 0
         ? mediaInfoDuration
-        : Number.isFinite(rp?.duration) && rp.duration > 0
+        : !isRpStale && Number.isFinite(rp?.duration) && rp.duration > 0
           ? rp.duration
           : 0
     const audio = audioInstanceRef.current
@@ -1500,7 +1588,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
     }
     if (matchedIdx < 0 && activeItemId != null) {
       for (const [uuid, mappedId] of uuidToItemIdRef.current.entries()) {
-        if (mappedId === activeItemId) {
+        if (
+          mappedId === activeItemId &&
+          !supersededUuidsRef.current.has(uuid) &&
+          (!ignoredJumpUuid || uuid !== ignoredJumpUuid)
+        ) {
           matchedIdx = queue.findIndex((item) => item.uuid === uuid)
           if (matchedIdx >= 0) break
         }
@@ -1511,8 +1603,29 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         (item) => item.trackId === customData.trackId,
       )
     }
+    if (
+      matchedIdx < 0 &&
+      !queueLoadInFlightRef.current &&
+      (!pendingJumpForResolve || receiverSwitchedJumpItem) &&
+      !isTransitioningItem &&
+      mediaSession &&
+      mediaSession.media == null &&
+      activeUuidRef.current &&
+      !supersededUuidsRef.current.has(activeUuidRef.current) &&
+      (nextState === 'PLAYING' || nextState === 'PAUSED')
+    ) {
+      matchedIdx = queue.findIndex(
+        (item) => item.uuid === activeUuidRef.current,
+      )
+    }
     const matched = matchedIdx >= 0 ? queue[matchedIdx] : null
-    const candidateUuid = matched?.uuid || resolvedUuid
+    const rawFallbackUuid =
+      !resolvedUuid &&
+      !receiverSwitchedJumpItem &&
+      (extractMediaInfoUuid(mediaSession?.media, contentIdToUuidRef.current) ||
+        rpUuid)
+    const candidateUuid =
+      matched?.uuid || resolvedUuid || rawFallbackUuid || null
 
     if (!isTerminalIdleFailure) {
       if (supersededUuidsRef.current.size > 0) {
@@ -1529,7 +1642,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
           return
         } else if (!candidateUuid && isTransitioningItem) {
           return
-        } else {
+        } else if (
+          candidateUuid &&
+          !isTransitioningItem &&
+          (nextState === 'PLAYING' || nextState === 'PAUSED')
+        ) {
           supersededUuidsRef.current.clear()
           supersededUntilMsRef.current = 0
         }
@@ -2118,9 +2235,21 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       const staleUuid =
         rawStaleUuid && rawStaleUuid !== targetItem.uuid ? rawStaleUuid : null
 
+      const mediaSession = getActiveMediaSession()
+      const itemId = mediaSession
+        ? findCastItemId(mediaSession, targetItem.uuid)
+        : undefined
+      const staleItemId =
+        mediaSession?.currentItemId != null &&
+        (itemId == null || mediaSession.currentItemId !== itemId)
+          ? mediaSession.currentItemId
+          : null
+
       pendingJumpRef.current = {
         targetUuid: targetItem.uuid,
         staleUuid,
+        staleItemId,
+        targetItemId: itemId ?? null,
         targetIndex,
         opSeq,
         expiresAtMs: Date.now() + 8000,
@@ -2153,13 +2282,11 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         }),
       )
 
-      const mediaSession = getActiveMediaSession()
       if (!mediaSession) {
         loadQueueOnCast(targetIndex, 0)
         return
       }
 
-      const itemId = findCastItemId(mediaSession, targetItem.uuid)
       const chromeCastApi = window.chrome?.cast
       const QueueJumpReq = chromeCastApi?.media?.QueueJumpRequest
 
@@ -2533,7 +2660,7 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
   // every second, and CAF's RemotePlayerController internal timer fails to
   // attach when queueLoad's initial response returns media === null.
   useEffect(() => {
-    if (!isCasting || remoteState !== 'PLAYING') {
+    if (!isCasting) {
       return undefined
     }
 
@@ -2542,8 +2669,6 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
       if (
         !isCastingRef.current ||
         queueLoadInFlightRef.current ||
-        pendingCastLoadRef.current ||
-        Boolean(pendingJumpRef.current) ||
         Date.now() < bridge.seekingUntil
       ) {
         return
@@ -2556,41 +2681,89 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         return
       }
 
-      const clock = castClockRef.current
-      const clockTime =
-        clock.isPlaying && clock.sampledAtMs > 0
-          ? Math.max(
-              0,
-              clock.baseTimeSec +
-                ((Date.now() - clock.sampledAtMs) / 1000) *
-                  (clock.playbackRate || 1),
-            )
-          : null
+      const pendingJump = pendingJumpRef.current
+      if (pendingJump) {
+        const jumpCompletedOnReceiver =
+          mediaSession?.loadingItemId == null &&
+          ((pendingJump.targetItemId != null &&
+            mediaSession?.currentItemId === pendingJump.targetItemId) ||
+            (pendingJump.staleItemId != null &&
+              mediaSession?.currentItemId != null &&
+              mediaSession.currentItemId !== pendingJump.staleItemId))
+        if (Date.now() >= pendingJump.expiresAtMs || jumpCompletedOnReceiver) {
+          clearJumpWatchdog()
+          pendingJumpRef.current = null
+          pendingCastLoadRef.current = false
+        } else {
+          return
+        }
+      }
+
+      if (pendingCastLoadRef.current) {
+        if (mediaSession?.loadingItemId == null) {
+          pendingCastLoadRef.current = false
+        } else {
+          return
+        }
+      }
+
+      let clock = castClockRef.current
+      if (!clock.isPlaying || clock.sampledAtMs <= 0) {
+        clock = {
+          baseTimeSec: bridge.virtualCurrentTime || 0,
+          sampledAtMs: Date.now(),
+          playbackRate:
+            Number(mediaSession?.playbackRate) > 0
+              ? Number(mediaSession.playbackRate)
+              : 1,
+          isPlaying: true,
+        }
+        castClockRef.current = clock
+      }
+      const clockTime = Math.max(
+        0,
+        clock.baseTimeSec +
+          ((Date.now() - clock.sampledAtMs) / 1000) * (clock.playbackRate || 1),
+      )
 
       let nextTime = null
       if (typeof mediaSession?.getEstimatedTime === 'function') {
         const est = Number(mediaSession.getEstimatedTime())
-        if (Number.isFinite(est) && est >= 0) {
+        if (Number.isFinite(est) && est > 0) {
           nextTime =
             clockTime != null &&
             Math.abs(est - clock.baseTimeSec) < 0.01 &&
             clockTime - est >= 0.4
               ? clockTime
               : est
+        } else if (est === 0 && clockTime != null && clockTime >= 0.4) {
+          nextTime = clockTime
+        } else if (est === 0) {
+          nextTime = 0
         }
-      } else if (
+      }
+      if (
+        (nextTime == null || nextTime === 0) &&
         rp?.isConnected &&
         rp?.playerState === 'PLAYING' &&
         Number.isFinite(rp?.currentTime) &&
         Number(rp.currentTime) > 0
       ) {
-        const rpTime = Math.max(0, Number(rp.currentTime))
-        nextTime =
-          clockTime != null &&
-          Math.abs(rpTime - clock.baseTimeSec) < 0.01 &&
-          clockTime - rpTime >= 0.4
-            ? clockTime
-            : rpTime
+        const rpUuid = extractMediaInfoUuid(
+          rp.mediaInfo,
+          contentIdToUuidRef.current,
+        )
+        const rpMatchesActive =
+          !rpUuid || !activeUuidRef.current || rpUuid === activeUuidRef.current
+        if (rpMatchesActive) {
+          const rpTime = Math.max(0, Number(rp.currentTime))
+          nextTime =
+            clockTime != null &&
+            Math.abs(rpTime - clock.baseTimeSec) < 0.01 &&
+            clockTime - rpTime >= 0.4
+              ? clockTime
+              : rpTime
+        }
       }
       if (nextTime == null && clockTime != null) {
         nextTime = clockTime
@@ -2604,16 +2777,24 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
         nextTime = Math.min(nextTime, bridge.virtualDuration)
       }
 
-      if (Math.abs(nextTime - bridge.virtualCurrentTime) >= 0.05) {
-        bridge.virtualCurrentTime = nextTime
-        castLastPosMsRef.current = Math.floor(nextTime * 1000)
-        dispatchMediaEvent(audioInstanceRef.current, 'timeupdate')
+      bridge.virtualCurrentTime = nextTime
+      castLastPosMsRef.current = Math.floor(nextTime * 1000)
+      if (bridge.virtualPaused) {
+        bridge.virtualPaused = false
+        dispatchMediaEvent(audioInstanceRef.current, 'play')
       }
+      dispatchMediaEvent(audioInstanceRef.current, 'timeupdate')
     }
 
     const timerId = setInterval(tick, 500)
     return () => clearInterval(timerId)
-  }, [activeIsRadio, getActiveMediaSession, isCasting, remoteState])
+  }, [
+    activeIsRadio,
+    clearJumpWatchdog,
+    getActiveMediaSession,
+    isCasting,
+    remoteState,
+  ])
 
   // Periodic OpenSubsonic reportPlayback heartbeat for Now Playing & Last.fm scrobbling
   useInterval(
