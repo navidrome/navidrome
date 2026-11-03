@@ -137,6 +137,15 @@ var _ = Describe("Media Annotation Endpoints", Ordered, func() {
 			resp = doReq("setRating", "id", songID)
 			Expect(resp.Status).To(Equal(responses.StatusFailed))
 		})
+
+		It("rejects ratings outside the 0-5 range", func() {
+			for _, rating := range []string{"-1", "6"} {
+				resp := doReq("setRating", "id", songID, "rating", rating)
+
+				Expect(resp.Status).To(Equal(responses.StatusFailed))
+				Expect(resp.Error).ToNot(BeNil())
+			}
+		})
 	})
 
 	Describe("Scrobble", func() {
