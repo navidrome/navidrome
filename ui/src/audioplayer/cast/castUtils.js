@@ -4,7 +4,11 @@ import { baseUrl } from '../../utils'
 export const CAST_SENDER_SDK_URL =
   'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1'
 
-export const MAX_CAST_WINDOW_ITEMS = 40
+// Cast rejects sender messages above ~64KB ("Message length over limit"). A
+// 40-item window of a compilation with long titles plus the stream/cover JWT
+// URLs (~1.4KB per item) already hits it, so loads and inserts stay at 20.
+export const MAX_CAST_WINDOW_ITEMS = 20
+export const MAX_CAST_ITEMS_PER_MESSAGE = 20
 export const MAX_CAST_SAMPLE_RATE = 96000
 export const MAX_CAST_CHANNELS = 2
 

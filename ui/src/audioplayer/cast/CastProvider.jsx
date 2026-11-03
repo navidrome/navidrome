@@ -8,6 +8,7 @@ import subsonic from '../../subsonic'
 import { CastContext } from './CastContext'
 import {
   CAST_SENDER_SDK_URL,
+  MAX_CAST_ITEMS_PER_MESSAGE,
   MAX_CAST_WINDOW_ITEMS,
   buildCastQueueItems,
   buildCastQueueWindow,
@@ -2721,23 +2722,43 @@ const CastProvider = ({ audioInstance, enabled = true, children }) => {
             }
           }
 
-          const req = new InsertReq(castItems)
+          let latestBeforeId = null
           if (plan.insertBeforeUuid !== null) {
-            const latestBeforeId =
+            latestBeforeId =
               beforeItemId ??
               findCastItemId(activeMediaSession, plan.insertBeforeUuid)
             if (latestBeforeId == null) {
               loadQueueOnCast(plan.activeIndex, getActiveCastTime())
               return
             }
-            req.insertBefore = latestBeforeId
           }
 
-          activeMediaSession.queueInsertItems(
-            req,
-            () => recordMediaSessionItems(getActiveMediaSession()),
-            () => loadQueueOnCast(plan.activeIndex, getActiveCastTime()),
-          )
+          // Send in batches to stay under the Cast message size limit. Each
+          // batch goes before the same item (or at the end), so order holds.
+          const sendBatch = (from) => {
+            if (!isCastingRef.current || castOpSeqRef.current !== opSeq) {
+              return
+            }
+            const req = new InsertReq(
+              castItems.slice(from, from + MAX_CAST_ITEMS_PER_MESSAGE),
+            )
+            if (latestBeforeId != null) {
+              req.insertBefore = latestBeforeId
+            }
+            activeMediaSession.queueInsertItems(
+              req,
+              () => {
+                const next = from + MAX_CAST_ITEMS_PER_MESSAGE
+                if (next < castItems.length) {
+                  sendBatch(next)
+                } else {
+                  recordMediaSessionItems(getActiveMediaSession())
+                }
+              },
+              () => loadQueueOnCast(plan.activeIndex, getActiveCastTime()),
+            )
+          }
+          sendBatch(0)
         })
         .catch(() => {
           if (isCastingRef.current && castOpSeqRef.current === opSeq) {

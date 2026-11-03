@@ -13,6 +13,7 @@ import { addTracks, playNext, playTracks, shuffleTracks } from '../../actions'
 import { Player } from '../Player'
 import CastProvider from './CastProvider'
 import CastButton from './CastButton'
+import { MAX_CAST_ITEMS_PER_MESSAGE, MAX_CAST_WINDOW_ITEMS } from './castUtils'
 
 vi.mock('sortablejs', () => {
   function Sortable() {
@@ -875,7 +876,7 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
     })
 
     expect(env.queueLoad).toHaveBeenCalledTimes(1)
-    // Partial window [0, 40) of 90 tracks must not send REPEAT_ALL to receiver
+    // Partial first window of 90 tracks must not send REPEAT_ALL to receiver
     expect(env.queueLoad.mock.calls[0][0].repeatMode).toBe('REPEAT_OFF')
 
     const queue = store.getState().player.queue
@@ -884,8 +885,8 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       env.remotePlayer.currentTime = 179
       env.remotePlayer.mediaInfo = {
         customData: {
-          trackId: 'song-40',
-          uuid: queue[39].uuid,
+          trackId: `song-${MAX_CAST_WINDOW_ITEMS}`,
+          uuid: queue[MAX_CAST_WINDOW_ITEMS - 1].uuid,
           isRadio: false,
         },
       }
@@ -901,13 +902,13 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       env.emitRemoteChange()
     })
 
-    // Must load the next window starting at index 40 exactly once (not skip to 75+)
+    // Must load the next window right after the first one, exactly once
     expect(env.queueLoad).toHaveBeenCalledTimes(2)
     expect(
       env.queueLoad.mock.calls[1][0].items[
         env.queueLoad.mock.calls[1][0].startIndex
       ].media.customData.uuid,
-    ).toBe(queue[40].uuid)
+    ).toBe(queue[MAX_CAST_WINDOW_ITEMS].uuid)
   })
 
   it('ignores untrusted receiver trackIds not present in the local queue', async () => {
@@ -1869,6 +1870,99 @@ describe('Chromecast Web Sender (<CastProvider />, <CastButton /> & <Player />)'
       'House of Cards',
     ])
     expect(document.querySelector('.current-time')?.textContent).toBe('00:42')
+  })
+
+  it('splits a large "Play Next" into queueInsertItems batches below the Cast message size limit, keeping order', async () => {
+    const env = createFakeCastEnvironment()
+    const store = buildFullStore()
+
+    store.dispatch(
+      playTracks({ 'song-1': song1, 'song-2': song2 }, ['song-1', 'song-2']),
+    )
+
+    let activeMediaObj = null
+    const realQueueLoad = vi.fn((req, onSuccess) => {
+      // Simulate real Chromecast V2 MEDIA_STATUS.items: only the active item (itemId 101)
+      // has .media populated; queued non-active items (itemId 102) omit .media!
+      const firstMedia = req.items[0]?.media
+      activeMediaObj = {
+        mediaSessionId: 1,
+        playerState: 'PLAYING',
+        currentItemId: 101,
+        loadingItemId: null,
+        currentTime: 42,
+        playbackRate: 1,
+        media: firstMedia,
+        items: [{ itemId: 101, media: firstMedia }, { itemId: 102 }],
+        getEstimatedTime: () => 42,
+        addUpdateListener: vi.fn(),
+        removeUpdateListener: vi.fn(),
+        queueInsertItems: env.queueInsertItems,
+        queueJumpToItem: env.queueJumpToItem,
+        queueUpdateItems: env.queueUpdateItems,
+        queueSetRepeatMode: env.queueSetRepeatMode,
+        stop: env.stop,
+      }
+      onSuccess?.(activeMediaObj)
+    })
+
+    const sessionObj = {
+      receiver: { friendlyName: 'Living Room Speaker' },
+      queueLoad: realQueueLoad,
+      addMediaListener: vi.fn(),
+      removeMediaListener: vi.fn(),
+      get media() {
+        return activeMediaObj ? [activeMediaObj] : []
+      },
+    }
+    const customSession = {
+      getCastDevice: () => ({ friendlyName: 'Living Room Speaker' }),
+      getSessionObj: () => sessionObj,
+      getMediaSession: () => activeMediaObj,
+    }
+    env.castContext.getCurrentSession.mockImplementation(() => customSession)
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <Player />
+        </MemoryRouter>
+      </Provider>,
+    )
+
+    await act(async () => {
+      env.remotePlayer.isConnected = true
+      const sessionHandler = env.castContext.addEventListener.mock.calls.find(
+        (c) => c[0] === 'sessionstatechanged',
+      )?.[1]
+      sessionHandler?.({ sessionState: 'SESSION_STARTED' })
+    })
+
+    expect(realQueueLoad).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('.current-time')?.textContent).toBe('00:42')
+
+    const total = MAX_CAST_ITEMS_PER_MESSAGE + 5
+    const many = {}
+    const ids = []
+    for (let n = 0; n < total; n += 1) {
+      const id = `big-${n}`
+      ids.push(id)
+      many[id] = { ...song1, id, title: `Big ${n}` }
+    }
+    await act(async () => {
+      store.dispatch(playNext(many, ids))
+    })
+
+    expect(realQueueLoad).toHaveBeenCalledTimes(1)
+    const reqs = env.queueInsertItems.mock.calls.map((c) => c[0])
+    expect(reqs.length).toBe(2)
+    reqs.forEach((r) => {
+      expect(r.items.length).toBeLessThanOrEqual(MAX_CAST_ITEMS_PER_MESSAGE)
+      expect(r.insertBefore).toBe(102)
+    })
+    expect(
+      reqs.flatMap((r) => r.items.map((it) => it.media.metadata.title)),
+    ).toEqual(ids.map((_, n) => `Big ${n}`))
   })
 
   it('continues advancing the progress bar when cast_sender.js reuses mediaSession across queueLoad with stale items[0].media', async () => {
