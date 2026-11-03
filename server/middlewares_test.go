@@ -494,6 +494,35 @@ var _ = Describe("middlewares", func() {
 		})
 	})
 
+	Describe("ClientAddr", func() {
+		var ctx context.Context
+		var addr, ip string
+		BeforeEach(func() {
+			ctx = GinkgoT().Context()
+			conf.Server.ExtAuth.TrustedSources = "10.0.0.0/8"
+		})
+		call := func(h http.Handler, peer, xff string) {
+			r := httptest.NewRequestWithContext(ctx, "POST", "/auth/login", nil)
+			r.RemoteAddr = peer
+			r.Header.Set("X-Forwarded-For", xff)
+			h.ServeHTTP(httptest.NewRecorder(), r)
+		}
+		capture := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			addr, ip = ClientAddr(r), ClientIP(r)
+		})
+
+		It("returns the full resolved IPv6 address, while ClientIP keeps the /64 for rate limiting", func() {
+			call(realIPMiddleware(capture), "10.0.0.1:1234", "2001:db8:1:2:3:4:5:6")
+			Expect(addr).To(Equal("2001:db8:1:2:3:4:5:6"))
+			Expect(ip).To(Equal("2001:db8:1:2::"))
+		})
+
+		It("falls back to the peer host without the middleware", func() {
+			call(capture, "[2001:db8:1:2:3:4:5:6]:1234", "")
+			Expect(addr).To(Equal("2001:db8:1:2:3:4:5:6"))
+		})
+	})
+
 	Describe("ClientIPRateLimiter", func() {
 		var handler http.Handler
 		JustBeforeEach(func() {
@@ -519,6 +548,12 @@ var _ = Describe("middlewares", func() {
 			Entry("X-Real-IP", "X-Real-IP"),
 			Entry("True-Client-IP", "True-Client-IP"),
 		)
+
+		It("sends the X-RateLimit headers by default", func() {
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), "POST", "/auth/login", nil))
+			Expect(w.Header().Get("X-RateLimit-Limit")).To(Equal("2"))
+		})
 
 		Context("behind a trusted proxy", func() {
 			BeforeEach(func() {

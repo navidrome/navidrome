@@ -36,6 +36,14 @@ rules:
           - sharing
           - radio
           - admin
+          - password
+  nd-operation-security-required:
+    description: Every operation declares security explicitly (use [] for public operations).
+    severity: error
+    given: $.paths[*][get,put,post,delete,patch]
+    then:
+      field: security
+      function: defined
   nd-operation-stability-level-required:
     description: Every operation declares its stability level, which the breaking-change gate relies on.
     severity: error

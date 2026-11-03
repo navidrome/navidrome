@@ -1,0 +1,5 @@
+type: string
+description: |
+  A permission scope. Scopes mirror capability modules; `x:write` includes `x`. `all` appears only on
+  grants and means every scope the user is entitled to, now and in future releases. New scopes may be added.
+enum: [all, read, password]

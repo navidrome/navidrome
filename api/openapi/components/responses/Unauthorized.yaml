@@ -1,4 +1,7 @@
 description: Missing, invalid, or expired credentials.
+headers:
+  WWW-Authenticate:
+    $ref: ../headers/WWWAuthenticate.yaml
 content:
   application/problem+json:
     schema:

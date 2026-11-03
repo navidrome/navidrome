@@ -1,0 +1,18 @@
+type: object
+description: "A page of the caller's grants."
+required: [items, total, offset, limit]
+properties:
+  items:
+    type: array
+    description: "Grants on this page, by last use, most recent first; never-used grants last."
+    items:
+      $ref: ./Grant.yaml
+  total:
+    type: integer
+    description: Total number of grants.
+  offset:
+    type: integer
+    description: Zero-based index of the first returned item.
+  limit:
+    type: integer
+    description: Maximum number of items in this page.

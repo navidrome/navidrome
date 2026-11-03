@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: |
     Navidrome API v1. Spec-first, additive within v1. Clients discover implemented
-    capability modules through `GET /server` and never sniff versions.
+    capability modules through `GET /capabilities` and never sniff versions.
 
     Enums are open: new values may be added to any enum within v1. Clients must
     accept values they do not recognise instead of failing.
@@ -15,6 +15,10 @@ info:
 
     `HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods
     in its `Allow` header.
+
+    Operations that need a grant declare `security: [{bearerAuth: []}]` and the scope they need in
+    `x-scope` (OpenAPI 3.0 does not allow scopes on bearer schemes). Clients send the grant secret as
+    `Authorization: Bearer <secret>`. A revoked grant stops working within one minute at most.
   license:
     name: GPL-3.0
     url: https://www.gnu.org/licenses/gpl-3.0.html
@@ -23,6 +27,8 @@ servers:
 tags:
   - name: server
     description: Server discovery and the published OpenAPI document.
+  - name: auth
+    description: Grants and login methods.
 paths:
   /server:
     get:
@@ -30,11 +36,11 @@ paths:
       x-module: core
       x-stability-level: alpha
       tags: [server]
+      security: []
       summary: Describe the server
       description: |
         Returns the public server description. No authentication required.
-        Authenticated requests will additionally receive the implemented capability modules
-        once authentication is available.
+        Capability modules are listed by `GET /capabilities`.
       responses:
         '200':
           description: Server description.
@@ -44,12 +50,30 @@ paths:
                 $ref: '#/components/schemas/ServerInfo'
         '500':
           $ref: '#/components/responses/InternalError'
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      x-module: core
+      x-stability-level: alpha
+      tags: [server]
+      summary: List implemented capability modules
+      description: The capability modules this server implements. Any valid grant may read it, whatever its scopes.
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Implemented modules.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Capabilities'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '500': {$ref: '#/components/responses/InternalError'}
   /openapi.json:
     get:
       operationId: getOpenAPISpecJSON
       x-module: core
       x-stability-level: alpha
       tags: [server]
+      security: []
       summary: Get the OpenAPI document (JSON)
       description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
       responses:
@@ -65,12 +89,41 @@ paths:
                 description: OpenAPI 3.0 document.
         '304':
           $ref: '#/components/responses/NotModified'
+  /auth/grants:
+    get:
+      operationId: listGrants
+      x-module: core
+      x-scope: read
+      x-stability-level: alpha
+      tags: [auth]
+      summary: List my grants
+      description: "The caller's grants, most recently used first. Grants idle long enough to have expired are not listed."
+      security: [{bearerAuth: []}]
+      parameters:
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+      responses:
+        '200':
+          description: A page of grants.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrantList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
   /openapi.yaml:
     get:
       operationId: getOpenAPISpecYAML
       x-module: core
       x-stability-level: alpha
       tags: [server]
+      security: []
       summary: Get the OpenAPI document (YAML)
       description: The bundled OpenAPI document of the running server version. Supports ETag revalidation.
       responses:
@@ -86,13 +139,172 @@ paths:
                 description: OpenAPI 3.0 document.
         '304':
           $ref: '#/components/responses/NotModified'
+  /auth/grants/{id}:
+    delete:
+      operationId: revokeGrant
+      x-module: core
+      x-scope: read
+      x-stability-level: alpha
+      tags: [auth]
+      summary: Revoke one of my grants
+      description: "Revokes the grant; requests with its secret fail from then on. Another user's grant id answers 404."
+      security: [{bearerAuth: []}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Grant id.
+          schema:
+            type: string
+            maxLength: 64
+      responses:
+        '204':
+          description: Revoked.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/logout:
+    post:
+      operationId: logout
+      x-module: core
+      x-scope: read
+      x-stability-level: alpha
+      tags: [auth]
+      summary: Log out
+      description: Revokes the grant that made this request.
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Logged out.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/login:
+    post:
+      operationId: login
+      x-module: password
+      x-stability-level: alpha
+      tags: [auth]
+      summary: Log in with a password
+      description: Checks the username and password and returns a new grant. Unknown user and wrong password fail the same way.
+      security: []
+      requestBody:
+        description: The credentials and a description of the client.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialsRequest'
+      responses:
+        '200':
+          description: The new grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrantCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/setup:
+    post:
+      operationId: setupFirstAdmin
+      x-module: password
+      x-stability-level: alpha
+      tags: [auth]
+      summary: Create the first admin
+      description: "Creates the first administrator while `setupRequired` is true and returns a grant for it. Answers 409 `setup_complete` once any user exists. A server with no setup step always answers 409."
+      security: []
+      requestBody:
+        description: The credentials and a description of the client.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialsRequest'
+      responses:
+        '201':
+          description: The admin was created.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrantCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /auth/password:
+    post:
+      operationId: changePassword
+      x-module: password
+      x-scope: password
+      x-stability-level: alpha
+      tags: [auth]
+      summary: Change my password
+      description: "Changes the caller's password. By default every other grant of the user is revoked; the calling grant survives. On Navidrome the change also ends the user's sessions on its other APIs, regardless of `revokeOtherGrants`, which only covers API v1 grants. Answers 409 `password_managed_externally` when the password is not stored by this server."
+      security: [{bearerAuth: []}]
+      requestBody:
+        description: The current and the new password.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '204':
+          description: Password changed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: JWT
-      description: Short-lived access token minted from a device grant. Not yet applied to any operation.
+      description: "Grant secret from a login method (`POST /auth/login`, `POST /auth/setup`). Opaque. The required scope is in each operation's `x-scope`."
   schemas:
     ServerInfo:
       type: object
@@ -117,12 +329,19 @@ components:
           type: boolean
           description: True until the first admin user has been created.
         loginMethods:
-          type: array
-          description: Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
-          items:
-            type: string
-            enum:
-              - password
+          $ref: '#/components/schemas/LoginMethods'
+    LoginMethods:
+      type: object
+      description: |
+        Login methods this server accepts, keyed by method. A missing key means the method is not offered.
+        Keys are optional on purpose: discovery is read by clients of any version against servers of any
+        version, so new methods are added as new optional keys. Clients ignore keys they do not know.
+      properties:
+        password:
+          $ref: '#/components/schemas/PasswordLoginMethod'
+    PasswordLoginMethod:
+      type: object
+      description: Username and password login (`POST /auth/login`). No settings yet.
     Problem:
       type: object
       description: RFC 9457 problem details, returned for every 4xx and 5xx response.
@@ -145,7 +364,7 @@ components:
           description: HTTP status code of this response.
         detail:
           type: string
-          description: Human-readable explanation specific to this occurrence. Omitted for internal errors.
+          description: Human-readable explanation specific to this occurrence. Omitted unless the server marked the text as safe to show clients.
         code:
           type: string
           description: Machine-readable error code, and the value clients switch on. New codes may be added.
@@ -153,10 +372,18 @@ components:
             - validation
             - unauthorized
             - forbidden
+            - insufficient_scope
             - not_found
             - method_not_allowed
+            - setup_complete
+            - password_managed_externally
+            - payload_too_large
+            - rate_limited
             - unavailable
             - internal
+        referenceId:
+          type: string
+          description: Present on internal errors. Quote it when reporting a problem; it tags the server's log lines for this request.
         errors:
           type: array
           description: Per-field failures. Present only when `code` is `validation`.
@@ -175,9 +402,250 @@ components:
         message:
           type: string
           description: Why the value was rejected.
+    Capabilities:
+      type: object
+      description: |
+        Capability modules this server implements, keyed by module. Keys are optional; a missing key means the
+        module is not implemented. New modules are added as new optional keys. These are server facts, not what
+        the calling grant may use.
+      properties:
+        core:
+          $ref: '#/components/schemas/CoreCapability'
+        password:
+          $ref: '#/components/schemas/PasswordCapability'
+    CoreCapability:
+      type: object
+      description: The mandatory core module.
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          description: Module version. Bumped only on semantic change.
+    PasswordCapability:
+      type: object
+      description: The password login module (login, first-admin setup, password change).
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          description: Module version. Bumped only on semantic change.
+    GrantList:
+      type: object
+      description: "A page of the caller's grants."
+      required:
+        - items
+        - total
+        - offset
+        - limit
+      properties:
+        items:
+          type: array
+          description: "Grants on this page, by last use, most recent first; never-used grants last."
+          items:
+            $ref: '#/components/schemas/Grant'
+        total:
+          type: integer
+          description: Total number of grants.
+        offset:
+          type: integer
+          description: Zero-based index of the first returned item.
+        limit:
+          type: integer
+          description: Maximum number of items in this page.
+    LogoutResponse:
+      type: object
+      description: Result of a logout.
+      required:
+        - logoutUrl
+      properties:
+        logoutUrl:
+          type: string
+          nullable: true
+          description: "Where to send the browser to finish logging out of an external provider. Null when there is nothing more to do."
+    CredentialsRequest:
+      type: object
+      description: "Username, password and client description for a login or first-admin setup."
+      required:
+        - username
+        - password
+        - client
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Login name.
+        password:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: Password.
+        client:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Name of the client app.
+        clientVersion:
+          type: string
+          maxLength: 32
+          description: Version of the client app.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: "Label for this grant. Defaults to `client`."
+        scopes:
+          type: array
+          maxItems: 32
+          description: "Scopes the grant may hold. Omit for `all`."
+          items:
+            $ref: '#/components/schemas/ScopeRequest'
+    GrantCreated:
+      type: object
+      description: "Returned by every login method. The secret is shown only here; store it and never parse it."
+      required:
+        - secret
+        - grant
+        - user
+      properties:
+        secret:
+          type: string
+          maxLength: 512
+          description: "Opaque grant secret. Send it as `Authorization: Bearer <secret>`."
+        grant:
+          description: The new grant.
+          allOf:
+            - $ref: '#/components/schemas/Grant'
+        user:
+          description: The user the grant belongs to.
+          allOf:
+            - $ref: '#/components/schemas/AuthUser'
+    PasswordChangeRequest:
+      type: object
+      description: "Change the caller's own password."
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: The current password.
+        newPassword:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: The new password.
+        revokeOtherGrants:
+          type: boolean
+          default: true
+          description: "Revoke every other grant of the user. The calling grant always survives. Default true."
+    Grant:
+      type: object
+      description: A long-lived grant held by one client of one user.
+      required:
+        - id
+        - name
+        - client
+        - clientVersion
+        - scopes
+        - provider
+        - createdAt
+        - lastUsedAt
+        - lastUsedIp
+        - current
+      properties:
+        id:
+          type: string
+          description: Grant id.
+        name:
+          type: string
+          description: Label shown to the user.
+        client:
+          type: string
+          description: Name of the client app that holds the grant.
+        clientVersion:
+          type: string
+          nullable: true
+          description: "Version of the client app, when it sent one."
+        scopes:
+          type: array
+          description: Scopes this grant carries.
+          items:
+            $ref: '#/components/schemas/Scope'
+        provider:
+          type: string
+          description: "How the grant was created, for example `password` or `setup`. Free-form; new values may appear."
+        createdAt:
+          type: string
+          format: date-time
+          description: When the grant was created.
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: "When the grant was last used, at a coarse granularity. Null until first use."
+        lastUsedIp:
+          type: string
+          nullable: true
+          description: Client IP of the last use. Null until first use.
+        current:
+          type: boolean
+          description: True for the grant that made this request.
+    Scope:
+      type: string
+      description: |
+        A permission scope. Scopes mirror capability modules; `x:write` includes `x`. `all` appears only on
+        grants and means every scope the user is entitled to, now and in future releases. New scopes may be added.
+      enum:
+        - all
+        - read
+        - password
+    ScopeRequest:
+      type: string
+      description: "A requested scope. Scopes the server does not know are dropped, not rejected, so newer clients keep working."
+      pattern: '^[a-z][a-z-]*(:write)?$'
+      maxLength: 64
+    AuthUser:
+      type: object
+      description: The user a grant belongs to.
+      required:
+        - id
+        - userName
+        - name
+        - isAdmin
+        - passwordChangeable
+      properties:
+        id:
+          type: string
+          description: User id.
+        userName:
+          type: string
+          description: Login name.
+        name:
+          type: string
+          description: Display name.
+        isAdmin:
+          type: boolean
+          description: Whether the user is an administrator.
+        passwordChangeable:
+          type: boolean
+          description: "Whether `POST /auth/password` can change this user's password. Clients hide \"change password\" when false."
   responses:
     InternalError:
       description: Unexpected server failure. Details are in the server log.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Missing, invalid, or expired credentials.
+      headers:
+        WWW-Authenticate:
+          $ref: '#/components/headers/WWWAuthenticate'
       content:
         application/problem+json:
           schema:
@@ -187,8 +655,82 @@ components:
       headers:
         ETag:
           $ref: '#/components/headers/ETag'
+    BadRequest:
+      description: The request is malformed or fails validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: The caller is authenticated but not allowed to do this.
+      headers:
+        WWW-Authenticate:
+          $ref: '#/components/headers/WWWAuthenticate'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: No such resource or endpoint.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    PayloadTooLarge:
+      description: "The request body is too large (`payload_too_large`)."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TooManyRequests:
+      description: "Rate limited (`rate_limited`). Retry after the `Retry-After` seconds."
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: "The request conflicts with the server's state, for example `setup_complete` or `password_managed_externally`."
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  parameters:
+    offset:
+      name: offset
+      in: query
+      description: Zero-based index of the first item to return.
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    limit:
+      name: limit
+      in: query
+      description: Maximum number of items to return.
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 2000
+        default: 100
   headers:
+    WWWAuthenticate:
+      description: 'RFC 6750 Bearer challenge, for example `Bearer error="insufficient_scope", scope="read"`.'
+      schema:
+        type: string
     ETag:
       description: Entity tag for `If-None-Match` revalidation.
       schema:
         type: string
+    CacheControlNoStore:
+      description: Always `no-store`, because the response carries a secret.
+      schema:
+        type: string
+        enum:
+          - no-store
