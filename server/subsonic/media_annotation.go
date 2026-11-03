@@ -26,14 +26,16 @@ func (api *Router) SetRating(r *http.Request) (*responses.Subsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	rating, err := p.Int("rating")
+	rating64, err := p.Int64("rating")
 	if err != nil {
 		return nil, err
 	}
 	// Out-of-range values would otherwise land in average_rating, which every user sees.
-	if rating < 0 || rating > maxRating {
-		return nil, newError(responses.ErrorGeneric, "Invalid rating: %d. Must be between 0 and %d", rating, maxRating)
+	// Check before narrowing to int, so a value like 4294967296 cannot wrap into range on 32-bit builds.
+	if rating64 < 0 || rating64 > maxRating {
+		return nil, newError(responses.ErrorGeneric, "Invalid rating: %d. Must be between 0 and %d", rating64, maxRating)
 	}
+	rating := int(rating64)
 
 	log.Debug(r, "Setting rating", "rating", rating, "id", id)
 	err = api.setRating(r.Context(), id, rating)

@@ -245,19 +245,25 @@ var _ = Describe("MediaAnnotationController", func() {
 
 		DescribeTable("rejects ratings outside the 0-5 range allowed by the Subsonic spec",
 			func(rating string) {
+				_, err := router.SetRating(newGetRequest("id=pl-1", "rating=4"))
+				Expect(err).ToNot(HaveOccurred())
+
 				r := newGetRequest("id=pl-1", "rating="+rating)
 
-				_, err := router.SetRating(r)
+				_, err = router.SetRating(r)
 
 				Expect(err).To(MatchError(errSubsonic))
 				var subErr subError
 				Expect(errors.As(err, &subErr)).To(BeTrue())
 				Expect(subErr.code).To(Equal(responses.ErrorGeneric))
-				Expect(plRepo.Ratings).To(BeEmpty())
+				Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
 			},
 			Entry("above maximum", "6"),
 			Entry("well above maximum", "1000"),
 			Entry("negative", "-3"),
+			// These wrap to 0 and 5 when narrowed to a 32-bit int.
+			Entry("2^32 (wraps to 0 on 32-bit)", "4294967296"),
+			Entry("2^32+5 (wraps to 5 on 32-bit)", "4294967301"),
 		)
 
 		DescribeTable("accepts ratings inside the 0-5 range",
