@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -237,6 +238,23 @@ var _ = Describe("Album List Endpoints", func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.NowPlaying).ToNot(BeNil())
+			Expect(resp.NowPlaying.Entry).To(BeEmpty())
+		})
+
+		It("hides active sessions when Subsonic.EnableGetNowPlaying is disabled", func() {
+			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).ToNot(BeEmpty())
+
+			resp := doReq("reportPlayback", "mediaId", songs[0].ID, "mediaType", "song",
+				"positionMs", "0", "state", "playing")
+			Expect(resp.Status).To(Equal(responses.StatusOK))
+
+			conf.Server.Subsonic.EnableGetNowPlaying = false
+
+			resp = doReq("getNowPlaying")
+
+			Expect(resp.Status).To(Equal(responses.StatusOK))
 			Expect(resp.NowPlaying.Entry).To(BeEmpty())
 		})
 	})
