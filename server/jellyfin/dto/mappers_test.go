@@ -150,6 +150,19 @@ var _ = Describe("mappers", func() {
 				"MusicBrainzAlbum": "alb-id", "MusicBrainzReleaseGroup": "rg-id",
 			}))
 		})
+
+		It("takes the album artist's MusicBrainz id from the participants, falling back to the legacy field", func() {
+			al := model.Album{ID: testID("al-aa"), Name: "Rumours", Participants: model.Participants{}}
+			al.Participants.Add(model.RoleAlbumArtist, model.Artist{ID: testID("ar-aa"), Name: "Fleetwood Mac", MbzArtistID: "participant-id"})
+			Expect(AlbumToBaseItem(al, ParseFields("ProviderIds")).ProviderIds).To(Equal(map[string]string{
+				"MusicBrainzAlbumArtist": "participant-id",
+			}))
+
+			legacy := model.Album{ID: testID("al-legacy"), Name: "Rumours", MbzAlbumArtistID: "legacy-id"}
+			Expect(AlbumToBaseItem(legacy, ParseFields("ProviderIds")).ProviderIds).To(Equal(map[string]string{
+				"MusicBrainzAlbumArtist": "legacy-id",
+			}))
+		})
 	})
 
 	It("omits ImageBlurHashes when a song has no album", func() {

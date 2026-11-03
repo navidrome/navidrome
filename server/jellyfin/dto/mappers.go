@@ -332,10 +332,13 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	// convention as tracks; clients read it off the album item as NormalizationGain.
 	item.NormalizationGain = al.RGAlbumGain
 	if fields.Has("ProviderIds") {
+		// The scanner records the album artist's MusicBrainz id on the participants; the
+		// album-level field is deprecated and only kept as a fallback.
+		albumArtistMbzID := cmp.Or(al.Participants.First(model.RoleAlbumArtist).MbzArtistID, al.MbzAlbumArtistID)
 		item.ProviderIds = providerIds(map[string]string{
 			"MusicBrainzAlbum":        al.MbzAlbumID,
 			"MusicBrainzReleaseGroup": al.MbzReleaseGroupID,
-			"MusicBrainzAlbumArtist":  al.MbzAlbumArtistID,
+			"MusicBrainzAlbumArtist":  albumArtistMbzID,
 		})
 	}
 	if fields.Has("SortName") {
