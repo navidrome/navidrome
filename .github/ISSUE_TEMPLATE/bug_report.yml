@@ -1,98 +1,65 @@
-name: Bug Report
-description: Before opening a new issue, please search to see if an issue already exists for the bug you encountered.
+name: Bug report
+description: Report something that is not working as expected. You do not need to know the cause or how to fix it.
 title: "[Bug]: "
-labels: ["bug", "triage"]
+labels: ["triage"]
 #assignees:
 #  - deluan
 body:
   - type: markdown
     attributes:
       value: |
-        ### Thanks for taking the time to fill out this bug report!
-  - type: checkboxes
-    id: requirements
+        Thanks for reporting a problem. Describe what you observed in your own words. Search existing [open and closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) first, and add new details to a matching report if you find one. If you are unsure whether this is a bug, say so. Please do not include passwords, tokens, API keys, session cookies, or other private information. For a possible security vulnerability, use [private reporting](https://github.com/navidrome/navidrome/security/advisories/new).
+  - type: textarea
+    id: what-happened
     attributes:
-      label: "I confirm that:"
-      options:
-        - label: I have searched the existing [open AND closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) to see if an issue already exists for the bug I've encountered
-          required: true
-        - label: I'm using the latest version (your issue may have been fixed already)
-          required: false
+      label: What happened
+      description: Describe what you observed and how it affected you. Include any error message you saw. You do not need to diagnose the cause or suggest code changes.
+    validations:
+      required: true
   - type: input
     id: version
     attributes:
-      label: Version
-      description: What version of Navidrome are you running? (please try upgrading first, as your issue may have been fixed already).
+      label: Navidrome version
+      description: Which Navidrome version or build are you using? If you cannot find it, enter 'not sure'. If you tried another version, mention whether the behavior changed. Upgrading is helpful when practical, but is not required to submit a report.
     validations:
       required: true
   - type: textarea
+    id: expected
     attributes:
-      label: Current Behavior
-      description: A concise description of what you're experiencing.
+      label: Expected behavior and why
+      description: What did you expect, and why? If available, link documentation, an applicable API contract, or a previously working version. A personal expectation is useful context too; it does not by itself establish that the product should change. If you are unsure, say so.
     validations:
-      required: true
+      required: false
   - type: textarea
+    id: steps
     attributes:
-      label: Expected Behavior
-      description: A concise description of what you expected to happen.
-    validations:
-      required: true
-  - type: textarea
-    attributes:
-      label: Steps To Reproduce
-      description: Steps to reproduce the behavior.
-      placeholder: |
-        1. In this scenario...
-        2. With this config...
-        3. Click (or Execute) '...'
-        4. See error...
+      label: Steps to reproduce
+      description: List the steps, relevant settings, and how often the problem occurs. If it is intermittent or you cannot reproduce it reliably, describe what was happening when you noticed it and what you have already tried.
     validations:
       required: false
   - type: textarea
     id: env
     attributes:
-      label: Environment
-      description: |
-        examples:
-          - **OS**: Ubuntu 20.04
-          - **Browser**: Chrome 110.0.5481.177 on Windows 11
-          - **Client**: DSub 5.5.1
-      value: |
-        - OS:
-        - Browser:
-        - Client:
-      render: markdown
-  - type: dropdown
-    id: distribution
-    attributes:
-      label: How Navidrome is installed?
-      multiple: false
-      options:
-        - Docker
-        - Binary (from downloads page)
-        - Package
-        - Built from sources
+      label: Relevant environment
+      description: >-
+        Include only details relevant to this problem: server operating system, installation method, and the browser or client app with its version, if involved. Leave out details you do not know. Examples of installation methods: Docker, downloaded binary, package, or source build.
     validations:
-      required: true
+      required: false
   - type: textarea
-    id: config
+    id: config-logs
     attributes:
-      label: Configuration
-      description: Please copy and paste your `navidrome.toml` (and/or `docker-compose.yml`) configuration. This will be automatically formatted into code, so no need for backticks.
-      render: toml
+      label: Relevant configuration and logs
+      description: >-
+        Paste only the configuration settings or log excerpt related to this problem. Remove passwords, tokens, API keys, session cookies, private URLs, and identifying information before submitting. Debug logs are optional. If you cannot safely share an excerpt, explain what it shows instead. [Log guidance](https://www.navidrome.org/docs/faq/#-where-are-the-logs).
+    validations:
+      required: false
   - type: textarea
-    id: logs
+    id: additional-context
     attributes:
-      label: Relevant log output
-      description: Please copy and paste any relevant log output (change your `LogLevel` (`ND_LOGLEVEL`) to debug). This will be automatically formatted into code, so no need for backticks. ([Where I can find the logs?](https://www.navidrome.org/docs/faq/#where-are-the-logs))
-      render: shell
-  - type: textarea
-    attributes:
-      label: Anything else?
-      description: |
-        Links? References? Anything that will give us more context about the issue you are encountering!
-
-        Tip: You can attach screenshots by clicking this area to highlight it and then dragging files in.
+      label: Screenshots or additional context
+      description: Add screenshots, recordings, links, or other observations that help explain the problem. Remove private information from attachments as well.
+    validations:
+      required: false
   - type: checkboxes
     id: terms
     attributes:
