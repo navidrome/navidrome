@@ -21,13 +21,21 @@ func shortTime(year int, month time.Month, day, hour, minute int) time.Time {
 	return time.Date(year, month, day, hour, minute, 0, 0, time.UTC)
 }
 
-// Same table goose creates on a fresh SQLite database.
-const gooseTableDDL = `CREATE TABLE goose_db_version (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	version_id INTEGER NOT NULL,
-	is_applied INTEGER NOT NULL,
-	tstamp TIMESTAMP DEFAULT (datetime('now'))
-)`
+const (
+	gooseTableDDL      = "CREATE TABLE goose_db_version(version_id, is_applied)"
+	navidromeTablesDDL = "CREATE TABLE user(id); CREATE TABLE media_file(id)"
+)
+
+func sqliteFile(statements string) func(path string) {
+	return func(path string) {
+		GinkgoHelper()
+		other, err := sql.Open(Driver, path)
+		Expect(err).ToNot(HaveOccurred())
+		defer other.Close()
+		_, err = other.Exec(statements)
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
 
 var _ = Describe("database backups", func() {
 	When("there are a few backup files", func() {
@@ -166,7 +174,7 @@ var _ = Describe("database backups", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(IsSchemaEmpty(ctx, Db())).To(BeTrue())
 
-			err = Restore(ctx, path)
+			err = Restore(ctx, path, false)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(IsSchemaEmpty(ctx, Db())).To(BeFalse())
 		})
@@ -184,6 +192,7 @@ var _ = Describe("database backups", func() {
 			var err error
 			tempFolder, err = os.MkdirTemp("", "navidrome_restore")
 			Expect(err).ToNot(HaveOccurred())
+			conf.Server.Backup.Path = conf.NewDir(tempFolder)
 			DeferCleanup(func() {
 				Close(ctx)
 				_ = os.RemoveAll(tempFolder)
@@ -217,7 +226,7 @@ var _ = Describe("database backups", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			By("restoring the backup")
-			Expect(Restore(ctx, path)).To(Succeed())
+			Expect(Restore(ctx, path, false)).To(Succeed())
 
 			By("verifying the restored data is readable through a fresh connection")
 			singleton.DeleteInstance[*sql.DB]()
@@ -226,71 +235,53 @@ var _ = Describe("database backups", func() {
 			Expect(userName).To(Equal("drilladmin"))
 		})
 
-		It("fails to restore from a backup file that does not exist, leaving the database intact", func() {
+		expectRestoreRefused := func(path, expectedErr string) {
+			GinkgoHelper()
 			By("seeding user data in the current database")
-			_, err := Db().ExecContext(ctx, `INSERT INTO user (id, user_name, name, email, password, is_admin, created_at, updated_at)
+			_, err := Db().ExecContext(ctx, `INSERT OR REPLACE INTO user (id, user_name, name, email, password, is_admin, created_at, updated_at)
 				VALUES ('u-restore-2', 'keepme', 'keepme', 'keepme@example.com', 'x', 1, datetime('now'), datetime('now'))`)
 			Expect(err).ToNot(HaveOccurred())
 
-			By("attempting a restore from a nonexistent file")
-			missingPath := filepath.Join(tempFolder, "does_not_exist.db")
-			err = Restore(ctx, missingPath)
-			Expect(err).To(HaveOccurred())
+			By("attempting the restore")
+			Expect(Restore(ctx, path, false)).To(MatchError(ContainSubstring(expectedErr)))
 
 			By("verifying the database was not wiped")
 			var userName string
 			Expect(Db().QueryRowContext(ctx, "SELECT user_name FROM user WHERE id = 'u-restore-2'").Scan(&userName)).To(Succeed())
 			Expect(userName).To(Equal("keepme"))
+		}
+
+		It("fails to restore from a backup file that does not exist, leaving the database intact", func() {
+			missingPath := filepath.Join(tempFolder, "does_not_exist.db")
+			expectRestoreRefused(missingPath, "backup file not available")
 			_, statErr := os.Stat(missingPath)
 			Expect(statErr).To(MatchError(os.ErrNotExist))
 		})
 
 		DescribeTable("fails to restore from a file that is not a Navidrome database, leaving the database intact",
-			func(createFile func(path string)) {
-				By("seeding user data in the current database")
-				_, err := Db().ExecContext(ctx, `INSERT OR REPLACE INTO user (id, user_name, name, email, password, is_admin, created_at, updated_at)
-					VALUES ('u-restore-3', 'stillhere', 'stillhere', 'stillhere@example.com', 'x', 1, datetime('now'), datetime('now'))`)
-				Expect(err).ToNot(HaveOccurred())
-
-				By("attempting a restore from the invalid file")
-				invalidPath := filepath.Join(tempFolder, "invalid_backup.db")
-				_ = os.Remove(invalidPath)
+			func(createFile func(path string), expectedErr string) {
+				invalidPath := filepath.Join(GinkgoT().TempDir(), "invalid_backup.db")
 				createFile(invalidPath)
-				err = Restore(ctx, invalidPath)
-				Expect(err).To(HaveOccurred())
-
-				By("verifying the database was not wiped")
-				var userName string
-				Expect(Db().QueryRowContext(ctx, "SELECT user_name FROM user WHERE id = 'u-restore-3'").Scan(&userName)).To(Succeed())
-				Expect(userName).To(Equal("stillhere"))
+				expectRestoreRefused(invalidPath, expectedErr)
 			},
 			Entry("empty file", func(path string) {
 				Expect(os.WriteFile(path, nil, 0600)).To(Succeed())
-			}),
+			}, "is not a Navidrome database"),
 			Entry("file that is not a SQLite database", func(path string) {
 				Expect(os.WriteFile(path, []byte("this is not a database, just some text"), 0600)).To(Succeed())
-			}),
-			Entry("SQLite database without the Navidrome schema", func(path string) {
-				other, err := sql.Open(Driver, path)
-				Expect(err).ToNot(HaveOccurred())
-				defer other.Close()
-				_, err = other.Exec("CREATE TABLE something_else(x)")
-				Expect(err).ToNot(HaveOccurred())
-			}),
-			Entry("SQLite database with an empty goose_db_version table", func(path string) {
-				other, err := sql.Open(Driver, path)
-				Expect(err).ToNot(HaveOccurred())
-				defer other.Close()
-				_, err = other.Exec(gooseTableDDL)
-				Expect(err).ToNot(HaveOccurred())
-			}),
-			Entry("SQLite database with only goose's initial version row", func(path string) {
-				other, err := sql.Open(Driver, path)
-				Expect(err).ToNot(HaveOccurred())
-				defer other.Close()
-				_, err = other.Exec(gooseTableDDL + "; INSERT INTO goose_db_version (version_id, is_applied) VALUES (0, 1)")
-				Expect(err).ToNot(HaveOccurred())
-			}),
+			}, "reading backup file"),
+			Entry("SQLite database without the Navidrome schema",
+				sqliteFile("CREATE TABLE something_else(x)"), "is not a Navidrome database"),
+			Entry("another project's goose database",
+				sqliteFile(gooseTableDDL+"; INSERT INTO goose_db_version VALUES (1, 1)"), "is not a Navidrome database"),
+			Entry("goose database with only one of the Navidrome tables",
+				sqliteFile(gooseTableDDL+"; INSERT INTO goose_db_version VALUES (1, 1); CREATE TABLE media_file(id)"), "is not a Navidrome database"),
+			Entry("SQLite database with an empty goose_db_version table",
+				sqliteFile(gooseTableDDL+"; "+navidromeTablesDDL), "has no applied migrations"),
+			Entry("SQLite database with only goose's initial version row",
+				sqliteFile(gooseTableDDL+"; "+navidromeTablesDDL+"; INSERT INTO goose_db_version VALUES (0, 1)"), "has no applied migrations"),
+			Entry("SQLite database whose migrations were all rolled back",
+				sqliteFile(gooseTableDDL+"; "+navidromeTablesDDL+"; INSERT INTO goose_db_version VALUES (1, 0)"), "has no applied migrations"),
 			Entry("backup with garbage over its last pages", func(path string) {
 				// Filler rows go to the end of the file, so the damage below stays clear of
 				// the schema and of goose_db_version, which still read fine.
@@ -305,7 +296,30 @@ var _ = Describe("database backups", func() {
 					data[i] = 0xFF
 				}
 				Expect(os.WriteFile(path, data, 0600)).To(Succeed())
-			}),
+			}, "is damaged"),
 		)
+
+		It("restores a good backup with the integrity check", func() {
+			path, err := Backup(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(Restore(ctx, path, true)).To(Succeed())
+		})
+
+		It("refuses an index that doesn't match its table only with the integrity check", func() {
+			path, err := Backup(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			writeMismatchedIndex(ctx, path, 1)
+			restored := func() int {
+				var count int
+				Expect(Db().QueryRowContext(ctx, "SELECT count(*) FROM sqlite_master WHERE name = 't'").Scan(&count)).To(Succeed())
+				return count
+			}
+
+			Expect(Restore(ctx, path, true)).To(MatchError(ContainSubstring("is damaged")))
+			Expect(restored()).To(BeZero())
+
+			Expect(Restore(ctx, path, false)).To(Succeed())
+			Expect(restored()).To(Equal(1))
+		})
 	})
 })
