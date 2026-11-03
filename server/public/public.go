@@ -47,6 +47,7 @@ func (pub *Router) routes() http.Handler {
 				conf.Server.DevArtworkThrottleBacklogTimeout))
 			r.HandleFunc("/img/{id}", pub.handleImages)
 		})
+		r.HandleFunc("/cast/{id}", pub.handleCastStream)
 		if conf.Server.EnableSharing {
 			r.HandleFunc("/s/{id}", pub.handleStream)
 			if conf.Server.EnableDownloads {

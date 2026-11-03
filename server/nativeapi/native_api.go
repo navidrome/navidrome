@@ -89,6 +89,7 @@ func (api *Router) routes() http.Handler {
 		api.addKeepAliveRoute(r)
 		api.addInsightsRoute(r)
 		api.addQuickConnectRoute(r)
+		api.addCastRoute(r)
 
 		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
 			api.addInspectRoute(r)
