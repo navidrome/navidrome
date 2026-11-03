@@ -3,6 +3,7 @@
 // in the /server/app/serve_index.go
 const defaultConfig = {
   version: 'dev',
+  instanceName: 'Navidrome',
   firstTime: false,
   baseURL: '',
   variousArtistsId: '63sqASlAfjbGMuLP4JhnZU', // See consts.VariousArtistsID in consts.go
