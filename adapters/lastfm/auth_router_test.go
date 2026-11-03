@@ -75,6 +75,7 @@ var _ = Describe("auth_router", func() {
 			Expect(json.Unmarshal(rec.Body.Bytes(), &body)).To(Succeed())
 			Expect(body["apiKey"]).To(Equal("API_KEY"))
 			Expect(body["status"]).To(Equal(false))
+			Expect(body["syncLoved"]).To(Equal(false))
 			token, ok := body["linkToken"].(string)
 			Expect(ok).To(BeTrue())
 			Expect(token).ToNot(BeEmpty())
@@ -82,6 +83,23 @@ var _ = Describe("auth_router", func() {
 			verified, err := verifyLinkToken(token)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(verified).To(Equal(victimID))
+		})
+
+		It("persists and returns per-user syncLoved preference via PUT /link", func() {
+			req := httptest.NewRequest(http.MethodPut, "/link", bytes.NewBufferString(`{"syncLoved":true}`))
+			ctx := request.WithUser(req.Context(), model.User{ID: victimID})
+			req = req.WithContext(ctx)
+			rec := httptest.NewRecorder()
+
+			router.updateSyncLoved(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
+
+			getReq := httptest.NewRequest(http.MethodGet, "/link", nil).WithContext(ctx)
+			getRec := httptest.NewRecorder()
+			router.getLinkStatus(getRec, getReq)
+			var body map[string]any
+			Expect(json.Unmarshal(getRec.Body.Bytes(), &body)).To(Succeed())
+			Expect(body["syncLoved"]).To(Equal(true))
 		})
 	})
 

@@ -614,6 +614,7 @@
         "defaultView": "Vista por defecto",
         "desktop_notifications": "Notificaciones de escritorio",
         "lastfmScrobbling": "Scrobble a Last.fm",
+        "lastfmSyncLoved": "Sincronizar canciones favoritas con Last.fm",
         "listenBrainzScrobbling": "Scrobble a ListenBrainz",
         "replaygain": "Modo de ReplayGain",
         "preAmp": "ReplayGain PreAmp (dB)",

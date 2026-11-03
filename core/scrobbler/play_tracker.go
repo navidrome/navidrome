@@ -111,6 +111,11 @@ type playTracker struct {
 	prMu              sync.Mutex
 	prSignal          chan struct{}
 	prWorkerDone      chan struct{}
+	favPending        map[favoriteKey]favoriteEntry
+	favOrder          []favoriteKey
+	favMu             sync.Mutex
+	favSignal         chan struct{}
+	favWorkerDone     chan struct{}
 }
 
 func GetPlayTracker(ds model.DataStore, broker events.Broker, pluginManager PluginLoader) PlayTracker {
@@ -140,6 +145,9 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		workerDone:        make(chan struct{}),
 		prSignal:          make(chan struct{}, 1),
 		prWorkerDone:      make(chan struct{}),
+		favPending:        make(map[favoriteKey]favoriteEntry),
+		favSignal:         make(chan struct{}, 1),
+		favWorkerDone:     make(chan struct{}),
 	}
 	enableNowPlaying := conf.Server.EnableNowPlaying
 	m.OnExpiration(func(_ string, info PlaybackSession) {
@@ -171,14 +179,16 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 	log.Debug("List of builtin scrobblers enabled", "names", enabled)
 	go p.nowPlayingWorker()
 	go p.playbackReportWorker()
+	go p.favoriteWorker()
 	return p
 }
 
 // stopBackgroundWorkers stops the background workers. This is primarily for testing.
 func (p *playTracker) stopBackgroundWorkers() {
 	close(p.shutdown)
-	<-p.workerDone   // Wait for nowPlaying worker to finish
-	<-p.prWorkerDone // Wait for playbackReport worker to finish
+	<-p.workerDone    // Wait for nowPlaying worker to finish
+	<-p.prWorkerDone  // Wait for playbackReport worker to finish
+	<-p.favWorkerDone // Wait for favorite worker to finish
 }
 
 // pluginNamesMatchScrobblers returns true if the set of pluginNames matches the keys in pluginScrobblers.

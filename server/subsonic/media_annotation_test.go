@@ -291,12 +291,49 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(eventBroker.Events).To(BeEmpty())
 		})
 	})
+
+	Describe("Star/Unstar songs syncs favorites to PlayTracker", func() {
+		BeforeEach(func() {
+			_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "song-1", Title: "Song 1", Artist: "Artist 1"})
+		})
+
+		It("calls SyncFavorite(true) when starring a song", func() {
+			r := newGetRequest("id=song-1")
+
+			_, err := router.Star(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playTracker.SyncedFavorites).To(Equal([]syncedFavorite{{Starred: true, IDs: []string{"song-1"}}}))
+		})
+
+		It("calls SyncFavorite(false) when unstarring a song", func() {
+			r := newGetRequest("id=song-1")
+
+			_, err := router.Unstar(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(playTracker.SyncedFavorites).To(Equal([]syncedFavorite{{Starred: false, IDs: []string{"song-1"}}}))
+		})
+	})
 })
+
+type syncedFavorite struct {
+	Starred bool
+	IDs     []string
+}
 
 type fakePlayTracker struct {
 	Submissions      []scrobbler.Submission
 	ReportedPlayback []scrobbler.ReportPlaybackParams
+	SyncedFavorites  []syncedFavorite
 	Error            error
+}
+
+func (f *fakePlayTracker) SyncFavorite(_ context.Context, starred bool, trackIDs ...string) {
+	f.SyncedFavorites = append(f.SyncedFavorites, syncedFavorite{
+		Starred: starred,
+		IDs:     append([]string(nil), trackIDs...),
+	})
 }
 
 func (f *fakePlayTracker) GetNowPlaying(_ context.Context) ([]scrobbler.PlaybackSession, error) {

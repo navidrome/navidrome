@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/deluan/rest"
@@ -29,6 +31,7 @@ type Router struct {
 	http.Handler
 	ds          model.DataStore
 	sessionKeys *agents.SessionKeys
+	syncLoved   *agents.SessionKeys
 	client      *client
 	apiKey      string
 	secret      string
@@ -40,6 +43,7 @@ func NewRouter(ds model.DataStore) *Router {
 		apiKey:      conf.Server.LastFM.ApiKey,
 		secret:      conf.Server.LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		syncLoved:   &agents.SessionKeys{DataStore: ds, KeyName: syncLovedProperty},
 	}
 	r.Handler = r.routes()
 	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
@@ -55,6 +59,7 @@ func (s *Router) routes() http.Handler {
 		r.Use(server.JWTRefresher)
 
 		r.Get("/link", s.getLinkStatus)
+		r.Put("/link", s.updateSyncLoved)
 		r.Delete("/link", s.unlink)
 	})
 
@@ -76,6 +81,7 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp["status"] = key != ""
+	resp["syncLoved"] = isSyncLovedEnabled(r.Context(), s.syncLoved, u.ID)
 	linkToken, err := createLinkToken(u.ID)
 	if err != nil {
 		log.Error(r.Context(), "Could not create LastFM link token", "userId", u.ID, err)
@@ -86,9 +92,34 @@ func (s *Router) getLinkStatus(w http.ResponseWriter, r *http.Request) {
 	_ = rest.RespondWithJSON(w, http.StatusOK, resp)
 }
 
+type syncLovedPayload struct {
+	SyncLoved *bool `json:"syncLoved"`
+}
+
+func (s *Router) updateSyncLoved(w http.ResponseWriter, r *http.Request) {
+	u, _ := request.UserFrom(r.Context())
+	var payload syncLovedPayload
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024))
+	if err := dec.Decode(&payload); err != nil || payload.SyncLoved == nil {
+		_ = rest.RespondWithError(w, http.StatusBadRequest, "syncLoved boolean is required")
+		return
+	}
+	if s.syncLoved == nil {
+		s.syncLoved = &agents.SessionKeys{DataStore: s.ds, KeyName: syncLovedProperty}
+	}
+	if err := s.syncLoved.Put(r.Context(), u.ID, strconv.FormatBool(*payload.SyncLoved)); err != nil {
+		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	_ = rest.RespondWithJSON(w, http.StatusOK, map[string]any{"syncLoved": *payload.SyncLoved})
+}
+
 func (s *Router) unlink(w http.ResponseWriter, r *http.Request) {
 	u, _ := request.UserFrom(r.Context())
 	err := s.sessionKeys.Delete(r.Context(), u.ID)
+	if s.syncLoved != nil {
+		_ = s.syncLoved.Delete(r.Context(), u.ID)
+	}
 	if err != nil {
 		_ = rest.RespondWithError(w, http.StatusInternalServerError, err.Error())
 	} else {
