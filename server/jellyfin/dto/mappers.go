@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"fmt"
 	"math"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -329,10 +331,53 @@ func AlbumToBaseItem(al model.Album, fields Fields) BaseItemDto {
 	// The album's own ReplayGain gain (dB at the RG2 -18 LUFS reference) — same
 	// convention as tracks; clients read it off the album item as NormalizationGain.
 	item.NormalizationGain = al.RGAlbumGain
+	if fields.Has("ProviderIds") {
+		// The scanner records the album artist's MusicBrainz id on the participants; the
+		// album-level field is deprecated and only kept as a fallback.
+		albumArtistMbzID := cmp.Or(al.Participants.First(model.RoleAlbumArtist).MbzArtistID, al.MbzAlbumArtistID)
+		item.ProviderIds = providerIds(map[string]string{
+			"MusicBrainzAlbum":        al.MbzAlbumID,
+			"MusicBrainzReleaseGroup": al.MbzReleaseGroupID,
+			"MusicBrainzAlbumArtist":  albumArtistMbzID,
+		})
+	}
 	if fields.Has("SortName") {
 		item.SortName = sortName(al.SortAlbumName, al.OrderAlbumName, al.Name)
 	}
 	return item
+}
+
+// providerIds drops empty ids and returns nil when none remain, so the field is omitted entirely.
+func providerIds(ids map[string]string) map[string]string {
+	for k, v := range ids {
+		if v == "" {
+			delete(ids, k)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	return ids
+}
+
+// externalUrlName labels an external link by its host, falling back to a generic name. The only
+// agent that sets Artist.ExternalUrl today is Last.fm, but Spotify and others may too.
+func externalUrlName(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "Link"
+	}
+	switch host := strings.TrimPrefix(u.Hostname(), "www."); {
+	case host == "last.fm" || strings.HasSuffix(host, ".last.fm"):
+		return "Last.fm"
+	case host == "spotify.com" || strings.HasSuffix(host, ".spotify.com"):
+		return "Spotify"
+	case host == "musicbrainz.org":
+		return "MusicBrainz"
+	case host != "":
+		return host
+	}
+	return "Link"
 }
 
 func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
@@ -355,6 +400,17 @@ func ArtistToBaseItem(ar model.Artist, fields Fields) BaseItemDto {
 	}
 	if fields.Has("SortName") {
 		item.SortName = sortName(ar.SortArtistName, ar.OrderArtistName, ar.Name)
+	}
+	// Biography and the external link are only present once the external-info agents have run for
+	// the artist (e.g. after a getArtistInfo2 call); until then they are simply omitted.
+	if fields.Has("Overview") {
+		item.Overview = ar.Biography
+	}
+	if fields.Has("ProviderIds") {
+		item.ProviderIds = providerIds(map[string]string{"MusicBrainzArtist": ar.MbzArtistID})
+	}
+	if fields.Has("ExternalUrls") && ar.ExternalUrl != "" {
+		item.ExternalUrls = []ExternalUrl{{Name: externalUrlName(ar.ExternalUrl), Url: ar.ExternalUrl}}
 	}
 	return item
 }
