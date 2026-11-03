@@ -146,6 +146,9 @@ func (s *Stream) Duration() float32   { return s.mf.Duration }
 func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.format) }
 func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
+
+// EstimatedContentLength deliberately overshoots by 2.4%: the body also carries tags and
+// padding, and net/http aborts a response that writes past its declared length.
 func (s *Stream) EstimatedContentLength() int {
 	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
 }

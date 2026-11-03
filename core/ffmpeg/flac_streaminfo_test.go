@@ -31,7 +31,7 @@ var _ = Describe("patchFLACDuration", func() {
 	}
 
 	readAll := func(in []byte, duration float32) []byte {
-		out, err := io.ReadAll(patchFLACDuration(io.NopCloser(bytes.NewReader(in)), duration))
+		out, err := io.ReadAll(patchPipedHeader(io.NopCloser(bytes.NewReader(in)), duration))
 		Expect(err).ToNot(HaveOccurred())
 		return out
 	}
@@ -118,14 +118,14 @@ var _ = Describe("patchFLACDuration", func() {
 	})
 
 	It("propagates a read error from the underlying stream", func() {
-		_, err := io.ReadAll(patchFLACDuration(io.NopCloser(io.MultiReader(
+		_, err := io.ReadAll(patchPipedHeader(io.NopCloser(io.MultiReader(
 			bytes.NewReader(pipedFLAC()[:10]), &errReader{})), 1.0))
 		Expect(err).To(MatchError("boom"))
 	})
 
 	It("closes the underlying stream", func() {
 		c := &closeSpy{Reader: bytes.NewReader(pipedFLAC())}
-		Expect(patchFLACDuration(c, 1.0).Close()).To(Succeed())
+		Expect(patchPipedHeader(c, 1.0).Close()).To(Succeed())
 		Expect(c.closed).To(BeTrue())
 	})
 })
