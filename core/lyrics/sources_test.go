@@ -47,6 +47,13 @@ var _ = Describe("sources", func() {
 			lyrics, err := fromEmbedded(ctx, &mf)
 			Expect(err).To(BeNil())
 			Expect(lyrics).ToNot(BeNil())
+			Expect(lyrics).To(HaveLen(len(expectedList)))
+			for i := range lyrics {
+				Expect(lyrics[i].Source).To(Equal(&model.LyricsSource{
+					Type: model.LyricsSourceEmbedded,
+				}))
+				lyrics[i].Source = nil
+			}
 			Expect(lyrics).To(Equal(expectedList))
 		})
 
@@ -91,6 +98,10 @@ var _ = Describe("sources", func() {
 				Expect(lyrics).ToNot(BeEmpty())
 				Expect(lyrics[0].Line).ToNot(BeEmpty())
 				Expect(lyrics[0].Synced).To(Equal(expectSynced))
+				Expect(lyrics[0].Source).To(Equal(&model.LyricsSource{
+					Type:   model.LyricsSourceSidecar,
+					Format: suffix[1:],
+				}))
 			},
 			Entry(".lrc synced", "test.mp3", ".lrc", true),
 			Entry(".elrc enhanced", "test.mp3", ".elrc", true),

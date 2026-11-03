@@ -1,8 +1,10 @@
 package subsonic
 
 import (
+	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/navidrome/navidrome/model"
@@ -12,6 +14,32 @@ import (
 // agentRoleMain is the OpenSubsonic agent role that marks the primary vocal
 // layer; its cue line is emitted before other agents sharing the same index.
 const agentRoleMain = "main"
+
+var lyricsRetryAfterPattern = regexp.MustCompile(`(?i)(?:cooldown active for|retry after)\s+(\d+)s`)
+
+// Providers currently communicate cooldowns through errors. Expose only a
+// recognized duration to clients that received partial lyrics, not diagnostics.
+func lyricsRetryAfterSeconds(err error) int {
+	if err == nil {
+		return 0
+	}
+	seconds := 0
+	for _, match := range lyricsRetryAfterPattern.FindAllStringSubmatch(err.Error(), -1) {
+		if duration, parseErr := strconv.Atoi(match[1]); parseErr == nil {
+			seconds = max(seconds, duration)
+		}
+	}
+	return seconds
+}
+
+// Plugin diagnostics can contain credentials or local paths. Only a fixed
+// message and the recognized numeric cooldown cross the client boundary.
+func lyricsClientError(err error) error {
+	if seconds := lyricsRetryAfterSeconds(err); seconds > 0 {
+		return newError(responses.ErrorGeneric, "error getting lyrics; retry after %ds", seconds)
+	}
+	return newError(responses.ErrorGeneric, "error getting lyrics")
+}
 
 func buildLyricsList(mf *model.MediaFile, lyricsList model.LyricList, enhanced bool) *responses.LyricsList {
 	filtered := lyricsList
@@ -56,6 +84,14 @@ func buildStructuredLyric(mf *model.MediaFile, lyrics model.Lyrics, enhanced boo
 
 	if enhanced {
 		structured.Kind = lyrics.EffectiveKind()
+		if lyrics.Source != nil && lyrics.Source.Type != "" {
+			structured.Source = &responses.LyricsSource{
+				Type:     string(lyrics.Source.Type),
+				Name:     lyrics.Source.Name,
+				Provider: lyrics.Source.Provider,
+				Format:   lyrics.Source.Format,
+			}
+		}
 		if len(cueLines) > 0 && len(agents.response) > 0 {
 			structured.Agents = agents.response
 		}

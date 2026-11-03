@@ -11,6 +11,10 @@ import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
 import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
+import {
+  APP_SIDEBAR_CLOSED_WIDTH,
+  APP_SIDEBAR_OPEN_WIDTH,
+} from './layoutWidths'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -23,10 +27,10 @@ const useStyles = makeStyles((theme) => ({
     paddingBottom: (props) => (props.addPadding ? '80px' : '20px'),
   },
   open: {
-    width: 240,
+    width: APP_SIDEBAR_OPEN_WIDTH,
   },
   closed: {
-    width: 55,
+    width: APP_SIDEBAR_CLOSED_WIDTH,
   },
   active: {
     color: theme.palette.text.primary,

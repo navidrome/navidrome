@@ -39,6 +39,10 @@ func (f *fakeLyricsService) GetLyricsByArtistTitle(context.Context, string, stri
 	return nil, nil
 }
 
+func (f *fakeLyricsService) GetLyricsVariants(ctx context.Context, mf *model.MediaFile, _ bool) (model.LyricList, error) {
+	return f.GetLyrics(ctx, mf)
+}
+
 func p(ms int64) *int64 { return &ms }
 
 func newTestLyricsCache() cache.SimpleCache[string, model.LyricList] {

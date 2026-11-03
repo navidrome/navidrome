@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -63,11 +64,11 @@ func newHTTPService(pluginName string, permission *HTTPPermission) *httpServiceI
 			return http.ErrUseLastResponse
 		}
 		if len(via) >= httpClientMaxRedirects {
-			log.Warn(req.Context(), "HTTP redirect limit exceeded", "plugin", svc.pluginName, "url", req.URL.String(), "redirectCount", len(via))
+			log.Warn(req.Context(), "HTTP redirect limit exceeded", "plugin", svc.pluginName, "url", httpDiagnosticURL(req.URL.String()), "redirectCount", len(via))
 			return http.ErrUseLastResponse
 		}
 		if err := svc.validateHost(req.Context(), req.URL.Host); err != nil {
-			log.Warn(req.Context(), "HTTP redirect blocked", "plugin", svc.pluginName, "url", req.URL.String(), "err", err)
+			log.Warn(req.Context(), "HTTP redirect blocked", "plugin", svc.pluginName, "url", httpDiagnosticURL(req.URL.String()), "err", err)
 			return err
 		}
 		return nil
@@ -81,7 +82,10 @@ func (s *httpServiceImpl) Close() error {
 	return nil
 }
 
-func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*host.HTTPResponse, error) {
+func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (response *host.HTTPResponse, sendErr error) {
+	defer func() {
+		sendErr = httpDiagnosticError(sendErr)
+	}()
 	// Parse and validate URL
 	parsedURL, err := url.Parse(request.URL)
 	if err != nil {
@@ -131,7 +135,7 @@ func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*
 	}
 	defer resp.Body.Close()
 
-	log.Trace(ctx, "HTTP request", "plugin", s.pluginName, "method", method, "url", request.URL, "status", resp.StatusCode)
+	log.Trace(ctx, "HTTP request", "plugin", s.pluginName, "method", method, "url", httpDiagnosticURL(request.URL), "status", resp.StatusCode)
 
 	// Read response body (with size limit to prevent memory exhaustion)
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, httpClientMaxResponseBodyLen))
@@ -152,6 +156,52 @@ func (s *httpServiceImpl) Send(ctx context.Context, request host.HTTPRequest) (*
 		Headers:    headers,
 		Body:       respBody,
 	}, nil
+}
+
+// Query strings and userinfo may contain credentials even on successful calls.
+// Diagnostic formatting must not alter the request that is sent to the provider.
+func httpDiagnosticURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return "[invalid URL]"
+	}
+	parsed.User = nil
+	parsed.RawQuery = ""
+	parsed.ForceQuery = false
+	parsed.Fragment = ""
+	return parsed.String()
+}
+
+type httpSafeError struct {
+	message string
+	cause   error
+}
+
+func (e *httpSafeError) Error() string { return e.message }
+func (e *httpSafeError) Unwrap() error { return e.cause }
+
+func httpDiagnosticError(err error) error {
+	var urlErr *url.Error
+	if err == nil || !errors.As(err, &urlErr) {
+		return err
+	}
+	// A malformed redirect Location can also occur inside urlErr.Err. Never
+	// reuse that text: filtering only urlErr.URL would expose the inner copy.
+	reason := "network or redirect error"
+	switch {
+	case errors.Is(err, context.Canceled):
+		reason = "context canceled"
+	case urlErr.Timeout():
+		reason = "context deadline exceeded"
+	case strings.Contains(urlErr.Err.Error(), "private/loopback"):
+		reason = "private/loopback address is not allowed"
+	case strings.Contains(urlErr.Err.Error(), "not allowed"):
+		reason = "host is not allowed"
+	}
+	return &httpSafeError{
+		message: fmt.Sprintf("HTTP request to %s failed: %s", httpDiagnosticURL(urlErr.URL), reason),
+		cause:   err,
+	}
 }
 
 // validateHost checks whether a request to the given host is permitted.
