@@ -1,0 +1,17 @@
+{
+  "status": "ok",
+  "version": "1.16.1",
+  "type": "navidrome",
+  "serverVersion": "v0.55.0",
+  "openSubsonic": true,
+  "waveform": {
+    "id": "1",
+    "duration": 12.5,
+    "samples": 3,
+    "peaks": [
+      0,
+      128,
+      255
+    ]
+  }
+}

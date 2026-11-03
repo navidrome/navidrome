@@ -13,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/core/stream"
+	"github.com/navidrome/navidrome/core/waveform"
 )
 
 var Set = wire.NewSet(
@@ -36,4 +37,5 @@ var Set = wire.NewSet(
 	quickconnect.GetInstance,
 	metrics.GetInstance,
 	lyrics.NewLyrics,
+	waveform.New,
 )

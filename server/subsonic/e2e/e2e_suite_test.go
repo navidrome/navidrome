@@ -431,5 +431,6 @@ func setupTestDB() {
 		lyrics.NewLyrics(ds, nil),
 		decider,
 		nil,
+		nil,
 	)
 }

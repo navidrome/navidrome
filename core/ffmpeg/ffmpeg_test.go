@@ -630,6 +630,23 @@ var _ = Describe("ffmpeg", func() {
 				Expect(pe.NotFound).To(BeTrue())
 			})
 
+			It("DecodePCM decodes the audio stream to mono s16le at the requested rate", func() {
+				// test.mp3 is ~1.03s long and has embedded cover art, which must be ignored
+				stream, err := ff.DecodePCM(GinkgoT().Context(), "tests/fixtures/test.mp3", 8000)
+				Expect(err).ToNot(HaveOccurred())
+				defer stream.Close()
+
+				data, err := io.ReadAll(stream)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(len(data) % 2).To(BeZero())
+				Expect(len(data)).To(BeNumerically("~", 8000*2, 8000*2/10))
+			})
+
+			It("DecodePCM fails for a missing file", func() {
+				_, err := ff.DecodePCM(GinkgoT().Context(), "/no/such/dir/really-missing.flac", 8000)
+				Expect(errors.Is(err, os.ErrNotExist)).To(BeTrue())
+			})
+
 			It("should interrupt transcoding when context is cancelled", func() {
 				ctx, cancel := context.WithTimeout(GinkgoT().Context(), 5*time.Second)
 				defer cancel()

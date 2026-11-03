@@ -64,6 +64,13 @@ func (ff *MockFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioPr
 	return ff.ProbeAudioResult, nil
 }
 
+func (ff *MockFFmpeg) DecodePCM(context.Context, string, int) (io.ReadCloser, error) {
+	if ff.Error != nil {
+		return nil, ff.Error
+	}
+	return ff, nil
+}
+
 func (ff *MockFFmpeg) CmdPath() (string, error) {
 	if ff.Error != nil {
 		return "", ff.Error

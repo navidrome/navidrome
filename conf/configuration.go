@@ -61,6 +61,7 @@ type configOptions struct {
 	EnableMediaFileCoverArt         bool
 	TranscodingCacheSize            string
 	ImageCacheSize                  string
+	WaveformCacheSize               string
 	AlbumPlayCountMode              string
 	EnableArtworkPrecache           bool
 	AutoImportPlaylists             bool
@@ -104,6 +105,7 @@ type configOptions struct {
 	UICoverArtSize                  int
 	EnableReplayGain                bool
 	EnableCoverAnimation            bool
+	EnableWaveform                  bool
 	EnableNowPlaying                bool
 	UIPlaybackReportInterval        time.Duration
 	GATrackingID                    string
@@ -991,6 +993,7 @@ func setViperDefaults() {
 	viper.SetDefault("enabletranscodingconfig", false)
 	viper.SetDefault("transcodingcachesize", "100MB")
 	viper.SetDefault("imagecachesize", "100MB")
+	viper.SetDefault("waveformcachesize", "50MB")
 	viper.SetDefault("albumplaycountmode", consts.AlbumPlayCountModeAbsolute)
 	viper.SetDefault("enableartworkprecache", true)
 	viper.SetDefault("autoimportplaylists", true)
@@ -1033,6 +1036,7 @@ func setViperDefaults() {
 	viper.SetDefault("uicoverartsize", consts.DefaultUICoverArtSize)
 	viper.SetDefault("enablereplaygain", true)
 	viper.SetDefault("enablecoveranimation", true)
+	viper.SetDefault("enablewaveform", false)
 	viper.SetDefault("enablenowplaying", true)
 	viper.SetDefault("uiplaybackreportinterval", consts.DefaultUIPlaybackReportInterval)
 	viper.SetDefault("enableartworkupload", true)

@@ -89,6 +89,7 @@ var _ = Describe("serveIndex", func() {
 		Entry("uiSearchDebounceMs", func() { conf.Server.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
 		Entry("uiCoverArtSize", func() { conf.Server.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
 		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
+		Entry("enableWaveform", func() { conf.Server.EnableWaveform = true }, "enableWaveform", true),
 		Entry("pidAlbum", func() { conf.Server.PID.Album = "folder" }, "pidAlbum", "folder"),
 		Entry("pidTrack", func() { conf.Server.PID.Track = "title" }, "pidTrack", "title"),
 		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
