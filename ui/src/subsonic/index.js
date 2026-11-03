@@ -131,6 +131,26 @@ const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
 }
 
+const requireSuccessfulLyricsResponse = (response) => {
+  const subsonicResponse = response?.json?.['subsonic-response']
+  if (subsonicResponse?.status !== 'failed') return response
+
+  const error = new Error(
+    subsonicResponse.error?.message || 'Lyrics request failed',
+  )
+  error.body = response.json
+  error.code = subsonicResponse.error?.code
+  throw error
+}
+
+const getLyricsBySongId = (id, requestOptions) => {
+  const requestUrl = url('getLyricsBySongId', id, { enhanced: true })
+  const request = requestOptions
+    ? httpClient(requestUrl, requestOptions)
+    : httpClient(requestUrl)
+  return request.then(requireSuccessfulLyricsResponse)
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -160,4 +180,5 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getLyricsBySongId,
 }

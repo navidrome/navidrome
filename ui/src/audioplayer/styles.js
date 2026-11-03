@@ -1,4 +1,8 @@
 import { makeStyles } from '@material-ui/core/styles'
+import { MOBILE_KARAOKE_LYRICS_TRANSITION_MS } from './lyricsKaraokeConstants'
+import { PLAYER_MOBILE_MEDIA_QUERY } from './playerBreakpoints'
+
+const MOBILE_LYRICS_TRANSITION = `opacity ${MOBILE_KARAOKE_LYRICS_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), transform ${MOBILE_KARAOKE_LYRICS_TRANSITION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
 
 const useStyle = makeStyles(
   (theme) => ({
@@ -27,12 +31,12 @@ const useStyle = makeStyles(
     },
     player: {
       display: (props) => (props.visible ? 'block' : 'none'),
-      '@media screen and (max-width:810px)': {
+      [PLAYER_MOBILE_MEDIA_QUERY]: {
         '& .sound-operation': {
           display: 'none',
         },
       },
-      '@media (prefers-reduced-motion)': {
+      '@media (prefers-reduced-motion: reduce)': {
         '& .music-player-panel .panel-content div.img-rotate': {
           animation: 'none',
         },
@@ -42,7 +46,10 @@ const useStyle = makeStyles(
         flexDirection: 'column',
       },
       '& .play-mode-title': {
-        'pointer-events': 'none',
+        pointerEvents: 'none',
+      },
+      '& .audio-lists-panel': {
+        zIndex: theme.zIndex.appBar,
       },
       '& .music-player-panel .panel-content div.img-rotate': {
         // Customize desktop player when cover animation is disabled
@@ -62,11 +69,56 @@ const useStyle = makeStyles(
           // Fix cover display when image is not square
           aspectRatio: '1/1',
           display: 'flex',
+          position: 'relative',
+        },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover.nd-mobile-lyrics-active':
+        {
+          width: '100%',
+          maxWidth: '100%',
+          height: '100%',
+          aspectRatio: 'auto',
+          borderRadius: 0,
+          alignItems: 'stretch',
+          justifyContent: 'stretch',
+        },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover .nd-mobile-lyrics-layer':
+        {
+          position: 'absolute',
+          inset: 0,
+          opacity: 0,
+          transform: 'scale(0.985)',
+          transition: MOBILE_LYRICS_TRANSITION,
+          '@media (prefers-reduced-motion: reduce)': {
+            transition: 'opacity 120ms linear',
+            transform: 'none',
+          },
+        },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover .nd-mobile-lyrics-layer[data-entered="true"]':
+        {
+          opacity: 1,
+          transform: 'scale(1)',
+          '@media (prefers-reduced-motion: reduce)': {
+            transform: 'none',
+          },
         },
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover img.cover':
         {
           animationDuration: (props) => !props.enableCoverAnimation && '0s',
           objectFit: 'contain', // Fix cover display when image is not square
+          transition: MOBILE_LYRICS_TRANSITION,
+          '@media (prefers-reduced-motion: reduce)': {
+            transition: 'opacity 120ms linear',
+            transform: 'none',
+          },
+        },
+      '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-cover.nd-mobile-lyrics-active img.cover':
+        {
+          opacity: 0,
+          transform: 'scale(0.96)',
+          pointerEvents: 'none',
+          '@media (prefers-reduced-motion: reduce)': {
+            transform: 'none',
+          },
         },
       // Hide old singer display
       '& .react-jinke-music-player-mobile .react-jinke-music-player-mobile-singer':
