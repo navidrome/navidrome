@@ -416,8 +416,14 @@ make test PKG=./server/jellyfin/...
   a different user get `403`, even for admins; Jellyfin lets admins edit other users' data.
 - **Missing endpoints.** `UserPlayedItems` (mark played/unplayed) and `Search/Hints` are not
   implemented. Play counts only change through playback reporting.
-- **Some `Fields` are never emitted.** `ProviderIds`, `People`, `Etag` and `DateLastMediaAdded` are
-  accepted but never returned.
+- **Some `Fields` are never emitted.** `People`, `Etag` and `DateLastMediaAdded` are accepted but
+  never returned.
+- **Artist and album metadata is partial.** When asked for via `Fields`, artists carry `Overview`
+  (the biography), `ProviderIds` (`MusicBrainzArtist`) and `ExternalUrls`, and albums carry
+  `ProviderIds` (`MusicBrainzAlbum`, `MusicBrainzReleaseGroup`, `MusicBrainzAlbumArtist`). Empty
+  values are omitted. The biography and external link come from the external-info agents and are
+  only stored after they have run for the artist (for example after a Subsonic `getArtistInfo2`
+  call), so they can be empty on first view. Artist `Genres` and backdrops are not provided.
 - **Blurhashes can be missing.** `ImageBlurHashes` carries the real blurhash that the artwork
   pipeline computes and stores. Until that happens for an item, the field is omitted: a fake value
   would pin the wrong placeholder in clients that key their image cache on it.
