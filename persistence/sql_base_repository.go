@@ -409,9 +409,7 @@ func wrapCursor[D, T any](cursor iter.Seq2[D, error], toModel func(D) *T) iter.S
 // queryWithStableResults is a helper function to execute a query and return an iterator that will yield its results
 // from a cursor, guaranteeing that the results will be stable, even if the underlying data changes.
 func queryWithStableResults[T any](ctx context.Context, r sqlRepository, sq SelectBuilder, options ...model.QueryOptions) (iter.Seq2[T, error], error) {
-	if len(options) > 0 && options[0].Offset > 0 {
-		sq = r.optimizePagination(sq, options[0])
-	}
+	sq = r.paginate(sq, options...)
 	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return nil, err
@@ -439,9 +437,7 @@ func queryWithStableResults[T any](ctx context.Context, r sqlRepository, sq Sele
 }
 
 func (r sqlRepository) queryAll(ctx context.Context, sq SelectBuilder, response any, options ...model.QueryOptions) error {
-	if len(options) > 0 && options[0].Offset > 0 {
-		sq = r.optimizePagination(sq, options[0])
-	}
+	sq = r.paginate(sq, options...)
 	query, args, err := r.toSQL(sq)
 	if err != nil {
 		return err
@@ -472,15 +468,28 @@ func (r sqlRepository) queryAllSlice(ctx context.Context, sq SelectBuilder, resp
 	return err
 }
 
+// paginate adds a rowid tie-breaker, so the order is total and rows with equal sort values land on the
+// same page every time. Indexes already end with the rowid, so index-served sorts stay index-served.
+func (r sqlRepository) paginate(sq SelectBuilder, options ...model.QueryOptions) SelectBuilder {
+	if len(options) == 0 || (options[0].Max == 0 && options[0].Offset == 0) {
+		return sq
+	}
+	order := "asc"
+	if strings.EqualFold(strings.TrimSpace(options[0].Order), "desc") {
+		order = "desc"
+	}
+	return r.optimizePagination(sq.OrderBy(r.tableName+".rowid "+order), options[0])
+}
+
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
 	if options.Offset > conf.Server.DevOffsetOptimize {
 		sq = sq.RemoveOffset()
-		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
-		rowidSq = rowidSq.Limit(uint64(options.Offset))
+		// Keep the outer projection, so ORDER BY names resolve to the same columns in both queries.
+		rowidSq := sq.Column(r.tableName + ".rowid as _paginated_rowid").Limit(uint64(options.Offset))
 		rowidSql, args, _ := rowidSq.ToSql()
-		sq = sq.Where(r.tableName+".rowid not in ("+rowidSql+")", args...)
+		sq = sq.Where(r.tableName+".rowid not in (SELECT _paginated_rowid FROM ("+rowidSql+"))", args...)
 	}
 	return sq
 }
