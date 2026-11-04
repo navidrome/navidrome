@@ -311,7 +311,7 @@ func listParams(p *req.Values) itemsQuery {
 		search:    searchTerm(p),
 		sortBy:    p.StringOr("sortby", ""),
 		sortOrder: p.StringOr("sortorder", ""),
-		offset:    p.IntOr("startindex", 0),
+		offset:    max(p.IntOr("startindex", 0), 0),
 		limit:     p.IntOr("limit", 0),
 		filters:   parseItemFilters(p),
 	}
@@ -635,6 +635,8 @@ func parseTypes(types string) []string {
 // paginate applies StartIndex/Limit to an in-memory item list, for the multi-type merge path only
 // (single-type queries push Offset/Max down to SQL instead).
 func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
+	// A negative offset would panic the slice below; Jellyfin treats it as 0.
+	offset = max(offset, 0)
 	if offset >= len(items) {
 		return []dto.BaseItemDto{}
 	}
