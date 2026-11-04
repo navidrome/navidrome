@@ -236,7 +236,7 @@ func (api *Router) GetAlbumInfo(r *http.Request) (*responses.Subsonic, error) {
 		response.AlbumInfo.LargeImageUrl = publicurl.ImageURL(r.Context(), album.CoverArtID(), 1200)
 	}
 
-	response.AlbumInfo.LastFmUrl = album.ExternalUrl
+	response.AlbumInfo.LastFmUrl = lastFmURLOrEmpty(album.ExternalUrl)
 	response.AlbumInfo.MusicBrainzID = album.MbzAlbumID
 
 	return response, nil
@@ -302,7 +302,7 @@ func (api *Router) getArtistInfo(r *http.Request) (*responses.ArtistInfoBase, *m
 		base.MediumImageUrl = publicurl.ImageURL(r.Context(), artist.CoverArtID(), 600)
 		base.LargeImageUrl = publicurl.ImageURL(r.Context(), artist.CoverArtID(), 1200)
 	}
-	base.LastFmUrl = artist.ExternalUrl
+	base.LastFmUrl = lastFmURLOrEmpty(artist.ExternalUrl)
 	base.MusicBrainzID = artist.MbzArtistID
 
 	return &base, &artist.SimilarArtists, nil
