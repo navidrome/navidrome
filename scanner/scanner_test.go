@@ -285,6 +285,60 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 	})
 
+	Context("Library with tag sidecars", func() {
+		var fsys storagetest.FakeFS
+		sidecar := func(data string, modTime time.Time) *fstest.MapFile {
+			return &fstest.MapFile{Data: []byte(data), ModTime: modTime}
+		}
+		albumNames := func() []string {
+			GinkgoHelper()
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Sort: "name"})
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(albums, func(a model.Album) string { return a.Name })
+		}
+
+		BeforeEach(func() {
+			revolver := template(_t{"albumartist": "The Beatles", "album": "Revolver", "year": 1966})
+			fsys = createFS(fstest.MapFS{
+				"The Beatles/Revolver/01 - Taxman.mp3":        revolver(track(1, "Taxman")),
+				"The Beatles/Revolver/02 - Eleanor Rigby.mp3": revolver(track(2, "Eleanor Rigby")),
+			})
+		})
+
+		It("override tags of audio file", func() {
+			fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.mp3.tags", sidecar("album: [Revolver (Super Duper Deluxe Version)]\n", time.Now()))
+			Expect(runScanner(ctx, false)).To(Succeed())
+			Expect(albumNames()).To(Equal([]string{"Revolver", "Revolver (Super Duper Deluxe Version)"}))
+		})
+
+		It("reimport audio file when sidecar added later", func() {
+			Expect(runScanner(ctx, false)).To(Succeed())
+			Expect(albumNames()).To(Equal([]string{"Revolver"}))
+			later := time.Now().Add(time.Hour)
+			fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.mp3.tags", sidecar("album: ['Revolver (Super Duper Deluxe Version)']\n", later), later)
+			Expect(runScanner(ctx, false)).To(Succeed())
+			Expect(albumNames()).To(Equal([]string{"Revolver", "Revolver (Super Duper Deluxe Version)"}))
+		})
+
+		It("reimport audio file when sidecar changes", func() {
+			fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.mp3.tags", sidecar("album: ['Revolver (Super Duper Deluxe Version)']\n", time.Now()))
+			Expect(runScanner(ctx, false)).To(Succeed())
+			later := time.Now().Add(time.Hour)
+			fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.mp3.tags", sidecar("album: ['Revolver (50th Anniversary Edition)']\nyear: [2016]\n", later), later)
+			Expect(runScanner(ctx, false)).To(Succeed())
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"title": "Eleanor Rigby"}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).To(HaveLen(1))
+			Expect(mfs[0].Album).To(Equal("Revolver (50th Anniversary Edition)"))
+		})
+
+		It("ignore invalid", func() {
+			fsys.Add("The Beatles/Revolver/02 - Eleanor Rigby.mp3.tags", sidecar("album: ['Revolver (Super Duper Deluxe Version)']\ntitle: 'Not a list'\n", time.Now()))
+			Expect(runScanner(ctx, false)).To(Succeed())
+			Expect(albumNames()).To(Equal([]string{"Revolver"}))
+		})
+	})
+
 	Context("Library with image files", func() {
 		var fsys storagetest.FakeFS
 		image := func(data string) *fstest.MapFile { return &fstest.MapFile{Data: []byte(data)} }
