@@ -43,6 +43,10 @@ Several cloud hosting providers partner with us to offer [officially supported, 
 <br>
 <a href="https://store.elfhosted.com/product/navidrome/"><img src="resources/hosting/elfhosted.svg" alt="Deploy on ElfHosted" width="200" height="40"></a>
 
+Navidrome also has a one-click deployment template on [Easypanel](https://easypanel.io), a self-hosted Docker deployment platform (not a managed/revenue-share partner, just a one-click template):
+
+<a href="https://easypanel.io/templates/navidrome"><img src="https://easypanel.io/img/deploy-on-easypanel-40.svg" alt="Deploy on Easypanel" width="200" height="40"></a>
+
 
 
 
