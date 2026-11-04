@@ -2,6 +2,8 @@ package subsonic
 
 import (
 	"encoding/json"
+	"encoding/xml"
+	"fmt"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
@@ -61,6 +63,12 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Expect(realLine.Start).To(BeNil())
 				} else {
 					Expect(*realLine.Start).To(Equal(*expectedLine.Start))
+				}
+				if expectedLine.End == nil {
+					Expect(realLine.End).To(BeNil())
+				} else {
+					Expect(realLine.End).ToNot(BeNil())
+					Expect(*realLine.End).To(Equal(*expectedLine.End))
 				}
 			}
 
@@ -276,7 +284,9 @@ var _ = Describe("GetLyricsBySongId", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		mainStartA := int64(1000)
+		mainEndA := int64(1500)
 		mainStartB := int64(2000)
+		mainEndB := int64(2700)
 		tokenStartA := int64(2000)
 		tokenEndA := int64(2300)
 		tokenStartB := int64(2300)
@@ -292,10 +302,12 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Line: []responses.Line{
 						{
 							Start: &mainStartA,
+							End:   &mainEndA,
 							Value: "こんにちは",
 						},
 						{
 							Start: &mainStartB,
+							End:   &mainEndB,
 							Value: "こんばんは",
 						},
 					},
@@ -309,6 +321,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Line: []responses.Line{
 						{
 							Start: &mainStartA,
+							End:   &mainEndA,
 							Value: "Hola",
 						},
 					},
@@ -322,6 +335,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Line: []responses.Line{
 						{
 							Start: &mainStartB,
+							End:   &tokenEndB,
 							Value: "konni",
 						},
 					},
@@ -423,6 +437,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Line: []responses.Line{
 						{
 							Start: &lineStart,
+							End:   &lineEnd,
 							Value: "Hello echo",
 						},
 					},
@@ -534,6 +549,76 @@ var _ = Describe("GetLyricsBySongId", func() {
 		}))
 	})
 
+	It("should serialize overlapping agent cues in JSON and XML", func() {
+		lineStart := int64(1000)
+		lineEnd := int64(2000)
+		cueStart := int64(1200)
+		cueEnd := int64(1800)
+		structured := buildStructuredLyric(&model.MediaFile{}, model.Lyrics{
+			Lang:   "eng",
+			Synced: true,
+			Agents: []model.Agent{
+				{ID: "lead", Role: "main"},
+				{ID: "__nd_bg__|lead", Role: "bg"},
+			},
+			Line: []model.Line{
+				{
+					Start: &lineStart,
+					End:   &lineEnd,
+					Value: "(Hello)",
+					Cue: []model.Cue{
+						{
+							Start:     &cueStart,
+							End:       &cueEnd,
+							Value:     "Hello",
+							ByteStart: 1,
+							ByteEnd:   5,
+							AgentID:   "lead",
+						},
+						{
+							Start:     &cueStart,
+							End:       &cueEnd,
+							Value:     "Hello",
+							ByteStart: 1,
+							ByteEnd:   5,
+							AgentID:   "__nd_bg__|lead",
+						},
+					},
+				},
+			},
+		}, true)
+
+		response := responses.Subsonic{
+			LyricsList: &responses.LyricsList{
+				StructuredLyrics: []responses.StructuredLyric{structured},
+			},
+		}
+		assertCueLines := func(roundTrip responses.Subsonic) {
+			Expect(roundTrip.LyricsList).ToNot(BeNil())
+			Expect(roundTrip.LyricsList.StructuredLyrics).To(HaveLen(1))
+			cueLines := roundTrip.LyricsList.StructuredLyrics[0].CueLine
+			Expect(cueLines).To(HaveLen(2))
+			Expect(cueLines[0].AgentID).To(Equal("lead"))
+			Expect(cueLines[1].AgentID).To(Equal("__nd_bg__|lead"))
+			Expect(cueLines[0].Cue).To(HaveLen(1))
+			Expect(cueLines[1].Cue).To(HaveLen(1))
+			Expect(cueLines[0].Cue[0].Value).To(Equal("Hello"))
+			Expect(cueLines[1].Cue[0].Value).To(Equal("Hello"))
+		}
+
+		jsonData, err := json.Marshal(responses.JsonWrapper{Subsonic: response})
+		Expect(err).ToNot(HaveOccurred())
+		var jsonRoundTrip responses.JsonWrapper
+		Expect(json.Unmarshal(jsonData, &jsonRoundTrip)).To(Succeed())
+		assertCueLines(jsonRoundTrip.Subsonic)
+
+		xmlData, err := xml.Marshal(response)
+		Expect(err).ToNot(HaveOccurred())
+		var xmlRoundTrip responses.Subsonic
+		Expect(xml.Unmarshal(xmlData, &xmlRoundTrip)).To(Succeed())
+		assertCueLines(xmlRoundTrip)
+	})
+
 	It("should remap cue offsets for interleaved agent cue lines", func() {
 		r := newGetRequest("id=1&enhanced=true")
 
@@ -623,6 +708,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Line: []responses.Line{
 						{
 							Start: &lineStart,
+							End:   &lineEnd,
 							Value: "real slow (When you slide)",
 						},
 					},
@@ -722,6 +808,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Line: []responses.Line{
 						{
 							Start: &lineStart,
+							End:   &lineEnd,
 							Value: "Line without word timing",
 						},
 					},
@@ -806,8 +893,8 @@ var _ = Describe("GetLyricsBySongId", func() {
 					Lang:          "eng",
 					Synced:        true,
 					Line: []responses.Line{
-						{Start: &asciiLineStart, Value: "Oh love love me tonight"},
-						{Start: &utfLineStart, Value: "눈을 뜬 순간"},
+						{Start: &asciiLineStart, End: &asciiLineEnd, Value: "Oh love love me tonight"},
+						{Start: &utfLineStart, End: &utfLineEnd, Value: "눈을 뜬 순간"},
 					},
 					CueLine: []responses.CueLine{
 						{
@@ -838,5 +925,66 @@ var _ = Describe("GetLyricsBySongId", func() {
 				},
 			},
 		})
+	})
+
+	It("should expose valid line ends only in enhanced synced responses", func() {
+		startA := int64(1000)
+		endA := int64(2000)
+		startB := int64(3000)
+		endB := int64(4500)
+		startC := int64(4000)
+		instant := int64(5000)
+		reversedEnd := int64(5500)
+		reversedStart := int64(6000)
+		endWithoutStart := int64(7000)
+
+		lyrics := model.Lyrics{
+			Lang:   "eng",
+			Synced: true,
+			Line: []model.Line{
+				{Start: &startA, End: &endA, Value: "explicit final end"},
+				{Start: &startB, End: &endB, Value: "gap before this line"},
+				{Start: &startC, Value: "overlap with an unknown end"},
+				{Start: &instant, End: &instant, Value: "instant marker"},
+				{Start: &reversedStart, End: &reversedEnd, Value: "invalid historical end"},
+				{End: &endWithoutStart, Value: "end without start"},
+			},
+		}
+
+		for _, enhanced := range []bool{false, true} {
+			By("serializing with enhanced=" + fmt.Sprint(enhanced))
+			actual := buildStructuredLyric(&model.MediaFile{}, lyrics, enhanced)
+			Expect(actual.Line).To(HaveLen(6))
+			Expect(actual.Line[0].Start).To(HaveValue(Equal(startA)))
+			Expect(actual.Line[1].Start).To(HaveValue(Equal(startB)))
+			Expect(actual.Line[2].Start).To(HaveValue(Equal(startC)))
+			Expect(actual.Line[3].Start).To(HaveValue(Equal(instant)))
+			Expect(actual.Line[4].Start).To(HaveValue(Equal(reversedStart)))
+			Expect(actual.Line[5].Start).To(BeNil())
+
+			if enhanced {
+				Expect(actual.Line[0].End).To(HaveValue(Equal(endA)))
+				Expect(actual.Line[1].End).To(HaveValue(Equal(endB)))
+				Expect(actual.Line[2].End).To(BeNil())
+				Expect(actual.Line[3].End).To(HaveValue(Equal(instant)))
+				Expect(actual.Line[4].End).To(BeNil())
+				Expect(actual.Line[5].End).To(BeNil())
+			} else {
+				for _, line := range actual.Line {
+					Expect(line.End).To(BeNil())
+				}
+			}
+		}
+
+		lyrics.Synced = false
+		lyrics.Line[0].Cue = []model.Cue{
+			{Start: &startA, End: &endA, Value: "explicit", ByteStart: 0, ByteEnd: 7},
+		}
+		actual := buildStructuredLyric(&model.MediaFile{}, lyrics, true)
+		Expect(actual.CueLine).To(BeEmpty())
+		for _, line := range actual.Line {
+			Expect(line.Start).To(BeNil())
+			Expect(line.End).To(BeNil())
+		}
 	})
 })
