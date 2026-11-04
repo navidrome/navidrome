@@ -48,6 +48,8 @@ Several cloud hosting providers partner with us to offer [officially supported, 
 
 
 
+[![Deploy with Zenith](https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg)](https://zenith.hosting/host/navidrome?ref=navidrome)
+
 ## Features
  
  - Handles very **large music collections**
