@@ -388,4 +388,413 @@ var _ = Describe("FolderRepository", func() {
 			Expect(ids).To(ConsistOf(withPls.ID)) // only the non-missing folder with playlists
 		})
 	})
+
+	Describe("GetRootSubfoldersWithAudio and GetSubfoldersWithAudio", func() {
+		var (
+			rootFolder, otherRoot           *model.Folder
+			rootWithDirect                  *model.Folder
+			rootWithDesc                    *model.Folder
+			rootWithDescChild               *model.Folder
+			rootWithGrandchild              *model.Folder
+			rootWithGrandchildChild         *model.Folder
+			rootWithGrandchildGrandchild    *model.Folder
+			rootEmpty                       *model.Folder
+			rootEmptyChild                  *model.Folder
+			rootMissing                     *model.Folder
+			rootDescMissing                 *model.Folder
+			rootDescMissingChild            *model.Folder
+			rootSortA, rootSortB, rootSortC *model.Folder
+			rootOtherLib                    *model.Folder
+			rootSpecialWildcard             *model.Folder
+			rootSpecialChild                *model.Folder
+			rootSpecialFalseMatch           *model.Folder
+
+			parentFolder               *model.Folder
+			childDirect                *model.Folder
+			childWithDesc              *model.Folder
+			childWithDescGrandchild    *model.Folder
+			childEmpty                 *model.Folder
+			childEmptyGrandchild       *model.Folder
+			childMissing               *model.Folder
+			childDescMissing           *model.Folder
+			childDescMissingGrandchild *model.Folder
+			otherParentFolder          *model.Folder
+			otherParentChild           *model.Folder
+		)
+
+		BeforeEach(func() {
+			// Ensure root folders exist for both libraries
+			rootFolder = model.NewFolder(testLib, ".")
+			Expect(repo.Put(ctx, rootFolder)).To(Succeed())
+
+			otherRoot = model.NewFolder(otherLib, ".")
+			Expect(repo.Put(ctx, otherRoot)).To(Succeed())
+
+			// 1. Top-level folder with direct audio
+			rootWithDirect = model.NewFolder(testLib, "TestAudioRootDirect")
+			rootWithDirect.NumAudioFiles = 3
+			Expect(repo.Put(ctx, rootWithDirect)).To(Succeed())
+
+			// 2. Top-level folder with 0 direct audio, but child has audio
+			rootWithDesc = model.NewFolder(testLib, "TestAudioRootDesc")
+			rootWithDesc.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootWithDesc)).To(Succeed())
+			rootWithDescChild = model.NewFolder(testLib, "TestAudioRootDesc/Child")
+			rootWithDescChild.NumAudioFiles = 4
+			Expect(repo.Put(ctx, rootWithDescChild)).To(Succeed())
+
+			// 3. Top-level folder with 0 direct audio, grandchild has audio
+			rootWithGrandchild = model.NewFolder(testLib, "TestAudioRootGrandchild")
+			rootWithGrandchild.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootWithGrandchild)).To(Succeed())
+			rootWithGrandchildChild = model.NewFolder(testLib, "TestAudioRootGrandchild/Album")
+			rootWithGrandchildChild.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootWithGrandchildChild)).To(Succeed())
+			rootWithGrandchildGrandchild = model.NewFolder(testLib, "TestAudioRootGrandchild/Album/CD1")
+			rootWithGrandchildGrandchild.NumAudioFiles = 2
+			Expect(repo.Put(ctx, rootWithGrandchildGrandchild)).To(Succeed())
+
+			// 4. Empty top-level folder
+			rootEmpty = model.NewFolder(testLib, "TestAudioRootEmpty")
+			rootEmpty.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootEmpty)).To(Succeed())
+			rootEmptyChild = model.NewFolder(testLib, "TestAudioRootEmpty/Sub")
+			rootEmptyChild.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootEmptyChild)).To(Succeed())
+
+			// 5. Missing top-level folder (has audio directly)
+			rootMissing = model.NewFolder(testLib, "TestAudioRootMissing")
+			rootMissing.NumAudioFiles = 5
+			rootMissing.Missing = true
+			Expect(repo.Put(ctx, rootMissing)).To(Succeed())
+
+			// 6. Top-level folder whose only audio-bearing child is missing
+			rootDescMissing = model.NewFolder(testLib, "TestAudioRootDescMissing")
+			rootDescMissing.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootDescMissing)).To(Succeed())
+			rootDescMissingChild = model.NewFolder(testLib, "TestAudioRootDescMissing/Sub")
+			rootDescMissingChild.NumAudioFiles = 3
+			rootDescMissingChild.Missing = true
+			Expect(repo.Put(ctx, rootDescMissingChild)).To(Succeed())
+
+			// 7. Case-insensitive sorting folders
+			rootSortB = model.NewFolder(testLib, "TestAudioSort_b")
+			rootSortB.NumAudioFiles = 1
+			Expect(repo.Put(ctx, rootSortB)).To(Succeed())
+			rootSortA = model.NewFolder(testLib, "TestAudioSort_A")
+			rootSortA.NumAudioFiles = 1
+			Expect(repo.Put(ctx, rootSortA)).To(Succeed())
+			rootSortC = model.NewFolder(testLib, "TestAudioSort_c")
+			rootSortC.NumAudioFiles = 1
+			Expect(repo.Put(ctx, rootSortC)).To(Succeed())
+
+			// 8. Other library folder
+			rootOtherLib = model.NewFolder(otherLib, "TestAudioOtherLibRoot")
+			rootOtherLib.NumAudioFiles = 2
+			Expect(repo.Put(ctx, rootOtherLib)).To(Succeed())
+
+			// 9. Special character escaping: "TestAudio_AC%DC" vs "TestAudio_AC-DC"
+			rootSpecialWildcard = model.NewFolder(testLib, "TestAudio_AC%DC")
+			rootSpecialWildcard.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootSpecialWildcard)).To(Succeed())
+			rootSpecialChild = model.NewFolder(testLib, "TestAudio_AC%DC/Album")
+			rootSpecialChild.NumAudioFiles = 1
+			Expect(repo.Put(ctx, rootSpecialChild)).To(Succeed())
+
+			rootSpecialFalseMatch = model.NewFolder(testLib, "TestAudio_AC-DC")
+			rootSpecialFalseMatch.NumAudioFiles = 0
+			Expect(repo.Put(ctx, rootSpecialFalseMatch)).To(Succeed())
+
+			// Hierarchy for GetSubfoldersWithAudio
+			parentFolder = model.NewFolder(testLib, "TestAudioSub_Parent")
+			parentFolder.NumAudioFiles = 0
+			Expect(repo.Put(ctx, parentFolder)).To(Succeed())
+
+			childDirect = model.NewFolder(testLib, "TestAudioSub_Parent/ChildDirect")
+			childDirect.NumAudioFiles = 2
+			Expect(repo.Put(ctx, childDirect)).To(Succeed())
+
+			childWithDesc = model.NewFolder(testLib, "TestAudioSub_Parent/ChildWithDesc")
+			childWithDesc.NumAudioFiles = 0
+			Expect(repo.Put(ctx, childWithDesc)).To(Succeed())
+			childWithDescGrandchild = model.NewFolder(testLib, "TestAudioSub_Parent/ChildWithDesc/Sub")
+			childWithDescGrandchild.NumAudioFiles = 3
+			Expect(repo.Put(ctx, childWithDescGrandchild)).To(Succeed())
+
+			childEmpty = model.NewFolder(testLib, "TestAudioSub_Parent/ChildEmpty")
+			childEmpty.NumAudioFiles = 0
+			Expect(repo.Put(ctx, childEmpty)).To(Succeed())
+			childEmptyGrandchild = model.NewFolder(testLib, "TestAudioSub_Parent/ChildEmpty/Sub")
+			childEmptyGrandchild.NumAudioFiles = 0
+			Expect(repo.Put(ctx, childEmptyGrandchild)).To(Succeed())
+
+			childMissing = model.NewFolder(testLib, "TestAudioSub_Parent/ChildMissing")
+			childMissing.NumAudioFiles = 4
+			childMissing.Missing = true
+			Expect(repo.Put(ctx, childMissing)).To(Succeed())
+
+			childDescMissing = model.NewFolder(testLib, "TestAudioSub_Parent/ChildDescMissing")
+			childDescMissing.NumAudioFiles = 0
+			Expect(repo.Put(ctx, childDescMissing)).To(Succeed())
+			childDescMissingGrandchild = model.NewFolder(testLib, "TestAudioSub_Parent/ChildDescMissing/Sub")
+			childDescMissingGrandchild.NumAudioFiles = 2
+			childDescMissingGrandchild.Missing = true
+			Expect(repo.Put(ctx, childDescMissingGrandchild)).To(Succeed())
+
+			otherParentFolder = model.NewFolder(testLib, "TestAudioSub_OtherParent")
+			otherParentFolder.NumAudioFiles = 0
+			Expect(repo.Put(ctx, otherParentFolder)).To(Succeed())
+			otherParentChild = model.NewFolder(testLib, "TestAudioSub_OtherParent/OtherChild")
+			otherParentChild.NumAudioFiles = 5
+			Expect(repo.Put(ctx, otherParentChild)).To(Succeed())
+
+			DeferCleanup(func() {
+				_, _ = conn.NewQuery("DELETE FROM folder WHERE name LIKE 'TestAudio%' OR path LIKE 'TestAudio%'").Execute()
+				_, _ = conn.NewQuery("DELETE FROM folder WHERE id = {:id}").Bind(dbx.Params{"id": otherRoot.ID}).Execute()
+			})
+		})
+
+		Describe("GetRootSubfoldersWithAudio", func() {
+			It("returns only root subfolders with audio in their subtree, sorted by name NOCASE", func() {
+				folders, err := repo.GetRootSubfoldersWithAudio(ctx, testLib.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				ids := slice.Map(folders, func(f model.Folder) string { return f.ID })
+
+				// Should include folders with audio directly or in descendants
+				Expect(ids).To(ContainElements(
+					rootWithDirect.ID,
+					rootWithDesc.ID,
+					rootWithGrandchild.ID,
+					rootSpecialWildcard.ID,
+				))
+
+				// Should exclude empty, missing, or false-wildcard folders
+				Expect(ids).ToNot(ContainElements(
+					rootEmpty.ID,
+					rootMissing.ID,
+					rootDescMissing.ID,
+					rootSpecialFalseMatch.ID,
+				))
+
+				// Should exclude folders from other library when filtering by testLib.ID
+				Expect(ids).ToNot(ContainElement(rootOtherLib.ID))
+			})
+
+			It("filters by libraryIDs when provided", func() {
+				folders, err := repo.GetRootSubfoldersWithAudio(ctx, otherLib.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				ids := slice.Map(folders, func(f model.Folder) string { return f.ID })
+				Expect(ids).To(ConsistOf(rootOtherLib.ID))
+			})
+
+			It("sorts results by name COLLATE NOCASE ASC", func() {
+				folders, err := repo.GetRootSubfoldersWithAudio(ctx, testLib.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				// Filter down to the three sort test folders
+				var sortNames []string
+				for _, f := range folders {
+					if f.ID == rootSortA.ID || f.ID == rootSortB.ID || f.ID == rootSortC.ID {
+						sortNames = append(sortNames, f.Name)
+					}
+				}
+				Expect(sortNames).To(Equal([]string{
+					"TestAudioSort_A",
+					"TestAudioSort_b",
+					"TestAudioSort_c",
+				}))
+			})
+		})
+
+		Describe("GetSubfoldersWithAudio", func() {
+			It("returns direct children with audio directly or in descendants", func() {
+				children, err := repo.GetSubfoldersWithAudio(ctx, parentFolder.ID)
+				Expect(err).ToNot(HaveOccurred())
+
+				ids := slice.Map(children, func(f model.Folder) string { return f.ID })
+
+				// Should include child with direct audio and child with descendant audio
+				Expect(ids).To(ConsistOf(childDirect.ID, childWithDesc.ID))
+
+				// Should exclude child of other parent
+				Expect(ids).ToNot(ContainElement(otherParentChild.ID))
+			})
+
+			It("filters by libraryIDs when provided", func() {
+				// Asking with otherLib.ID should return empty slice since parent is in testLib
+				children, err := repo.GetSubfoldersWithAudio(ctx, parentFolder.ID, otherLib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(children).To(BeEmpty())
+
+				// Asking with testLib.ID should return the matching children
+				children, err = repo.GetSubfoldersWithAudio(ctx, parentFolder.ID, testLib.ID)
+				Expect(err).ToNot(HaveOccurred())
+				ids := slice.Map(children, func(f model.Folder) string { return f.ID })
+				Expect(ids).To(ConsistOf(childDirect.ID, childWithDesc.ID))
+			})
+
+			It("sorts children by name COLLATE NOCASE ASC", func() {
+				sortParent := model.NewFolder(testLib, "TestAudioSortParent")
+				Expect(repo.Put(ctx, sortParent)).To(Succeed())
+
+				childB := model.NewFolder(testLib, "TestAudioSortParent/beta")
+				childB.NumAudioFiles = 1
+				Expect(repo.Put(ctx, childB)).To(Succeed())
+
+				childA := model.NewFolder(testLib, "TestAudioSortParent/Alpha")
+				childA.NumAudioFiles = 1
+				Expect(repo.Put(ctx, childA)).To(Succeed())
+
+				childC := model.NewFolder(testLib, "TestAudioSortParent/gamma")
+				childC.NumAudioFiles = 1
+				Expect(repo.Put(ctx, childC)).To(Succeed())
+
+				children, err := repo.GetSubfoldersWithAudio(ctx, sortParent.ID)
+				Expect(err).ToNot(HaveOccurred())
+				names := slice.Map(children, func(f model.Folder) string { return f.Name })
+				Expect(names).To(Equal([]string{"Alpha", "beta", "gamma"}))
+			})
+
+			It("returns empty slice when parentID has no children", func() {
+				children, err := repo.GetSubfoldersWithAudio(ctx, "non-existent-id")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(children).To(BeEmpty())
+			})
+		})
+
+		Describe("GetCoverArtForFolders", func() {
+			var albumRepo model.AlbumRepository
+			var mfRepo model.MediaFileRepository
+			var alDirect, alDisc *model.Album
+			var folDirect, folMultiDisc, folDisc1, folEmpty *model.Folder
+
+			BeforeEach(func() {
+				albumRepo = NewAlbumRepository(conn)
+				mfRepo = NewMediaFileRepository(conn)
+
+				alDirect = &model.Album{
+					ID:        "test-cov-al-1",
+					Name:      "Direct Album",
+					LibraryID: testLib.ID,
+					ItemImage: model.ItemImage{ImageHash: "hashdirect", ImageAbsent: false},
+				}
+				Expect(albumRepo.Put(ctx, alDirect)).To(Succeed())
+
+				alDisc = &model.Album{
+					ID:        "test-cov-al-2",
+					Name:      "MultiDisc Album",
+					LibraryID: testLib.ID,
+					ItemImage: model.ItemImage{ImageHash: "hashdisc", ImageAbsent: false},
+				}
+				Expect(albumRepo.Put(ctx, alDisc)).To(Succeed())
+
+				folDirect = model.NewFolder(testLib, "TestCover/Direct")
+				folDirect.NumAudioFiles = 1
+				Expect(repo.Put(ctx, folDirect)).To(Succeed())
+
+				folMultiDisc = model.NewFolder(testLib, "TestCover/MultiDisc")
+				Expect(repo.Put(ctx, folMultiDisc)).To(Succeed())
+
+				folDisc1 = model.NewFolder(testLib, "TestCover/MultiDisc/CD1")
+				folDisc1.NumAudioFiles = 1
+				Expect(repo.Put(ctx, folDisc1)).To(Succeed())
+
+				folEmpty = model.NewFolder(testLib, "TestCover/Empty")
+				Expect(repo.Put(ctx, folEmpty)).To(Succeed())
+
+				mfDirect := &model.MediaFile{
+					ID:        "test-cov-mf-1",
+					LibraryID: testLib.ID,
+					AlbumID:   alDirect.ID,
+					FolderID:  folDirect.ID,
+					Path:      "TestCover/Direct/01.mp3",
+				}
+				Expect(mfRepo.Put(ctx, mfDirect)).To(Succeed())
+
+				mfDisc := &model.MediaFile{
+					ID:        "test-cov-mf-2",
+					LibraryID: testLib.ID,
+					AlbumID:   alDisc.ID,
+					FolderID:  folDisc1.ID,
+					Path:      "TestCover/MultiDisc/CD1/01.mp3",
+				}
+				Expect(mfRepo.Put(ctx, mfDisc)).To(Succeed())
+
+				artworkRepo := NewArtworkRepository(conn)
+				Expect(artworkRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: alDirect.ID, Hash: "hashdirect"})).To(Succeed())
+				Expect(artworkRepo.PutItemArtwork(ctx, &model.ItemArtwork{ItemKind: "al", ItemID: alDisc.ID, Hash: "hashdisc"})).To(Succeed())
+
+				DeferCleanup(func() {
+					_, _ = conn.NewQuery("DELETE FROM media_file WHERE id LIKE 'test-cov-mf-%'").Execute()
+					_, _ = conn.NewQuery("DELETE FROM album WHERE id LIKE 'test-cov-al-%'").Execute()
+					_, _ = conn.NewQuery("DELETE FROM item_artwork WHERE item_id LIKE 'test-cov-al-%'").Execute()
+				})
+			})
+
+			It("returns coverArt for folders with direct audio files", func() {
+				res, err := repo.GetCoverArtForFolders(ctx, folDirect.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res).To(HaveKeyWithValue(folDirect.ID, "al-test-cov-al-1_hashdirect"))
+			})
+
+			It("returns coverArt for multi-disc parent folders from disc subfolders", func() {
+				res, err := repo.GetCoverArtForFolders(ctx, folMultiDisc.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res).To(HaveKeyWithValue(folMultiDisc.ID, "al-test-cov-al-2_hashdisc"))
+			})
+
+			It("does not return coverArt for empty folders", func() {
+				res, err := repo.GetCoverArtForFolders(ctx, folEmpty.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res).ToNot(HaveKey(folEmpty.ID))
+			})
+
+			It("does not return coverArt for artist folders containing multiple albums", func() {
+				folArtist := model.NewFolder(testLib, "TestCover/Artist")
+				Expect(repo.Put(ctx, folArtist)).To(Succeed())
+
+				folAlb1 := model.NewFolder(testLib, "TestCover/Artist/Album1")
+				folAlb1.NumAudioFiles = 1
+				Expect(repo.Put(ctx, folAlb1)).To(Succeed())
+
+				folAlb2 := model.NewFolder(testLib, "TestCover/Artist/Album2")
+				folAlb2.NumAudioFiles = 1
+				Expect(repo.Put(ctx, folAlb2)).To(Succeed())
+
+				mfAlb1 := &model.MediaFile{
+					ID:        "test-cov-mf-alb1",
+					LibraryID: testLib.ID,
+					AlbumID:   alDirect.ID,
+					FolderID:  folAlb1.ID,
+					Path:      "TestCover/Artist/Album1/01.mp3",
+				}
+				Expect(mfRepo.Put(ctx, mfAlb1)).To(Succeed())
+
+				mfAlb2 := &model.MediaFile{
+					ID:        "test-cov-mf-alb2",
+					LibraryID: testLib.ID,
+					AlbumID:   alDisc.ID,
+					FolderID:  folAlb2.ID,
+					Path:      "TestCover/Artist/Album2/01.mp3",
+				}
+				Expect(mfRepo.Put(ctx, mfAlb2)).To(Succeed())
+
+				res, err := repo.GetCoverArtForFolders(ctx, folArtist.ID, folAlb1.ID, folAlb2.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res).ToNot(HaveKey(folArtist.ID))
+				Expect(res).To(HaveKeyWithValue(folAlb1.ID, "al-test-cov-al-1_hashdirect"))
+				Expect(res).To(HaveKeyWithValue(folAlb2.ID, "al-test-cov-al-2_hashdisc"))
+			})
+
+			It("resolves multiple folders in a single call", func() {
+				res, err := repo.GetCoverArtForFolders(ctx, folDirect.ID, folMultiDisc.ID, folEmpty.ID)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(res).To(HaveLen(2))
+				Expect(res).To(HaveKeyWithValue(folDirect.ID, "al-test-cov-al-1_hashdirect"))
+				Expect(res).To(HaveKeyWithValue(folMultiDisc.ID, "al-test-cov-al-2_hashdisc"))
+			})
+		})
+	})
 })
