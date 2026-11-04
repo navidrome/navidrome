@@ -48,7 +48,10 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 	}
 	defer f.Close()
 
-	contents, err := io.ReadAll(ioutils.UTF8Reader(f))
+	reader := ioutils.UTF8ReaderWithFallback(f, func(lines int) {
+		log.Warn(ctx, "Lyrics file is not valid UTF-8, decoded the affected lines as Windows-1252", "lines", lines)
+	})
+	contents, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}

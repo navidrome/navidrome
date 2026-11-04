@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/zeebo/xxh3"
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -98,6 +99,34 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Name).To(Equal("UTF-16 Test Playlist"))
 				Expect(pls.Tracks).To(HaveLen(1))
 				Expect(pls.Tracks[0].Path).To(Equal("tests/fixtures/playlists/test.mp3"))
+			})
+
+			It("matches accented tracks from a Windows-1252/Latin-1 encoded playlist (issue #6037)", func() {
+				tmpDir := GinkgoT().TempDir()
+
+				// The track exists in the library with a correctly UTF-8 encoded name
+				// mixing CJK folders with accented Latin characters, as reported.
+				dbPath := "PokéMon Black Và White.mp3"
+
+				// The playlist was saved by a Windows editor as Windows-1252, so the
+				// accented characters are single high bytes (é=0xE9, à=0xE0) rather
+				// than UTF-8. Encode the same name to Windows-1252 for the on-disk file.
+				latin1Line, err := charmap.Windows1252.NewEncoder().String(dbPath)
+				Expect(err).ToNot(HaveOccurred())
+				Expect([]byte(latin1Line)).To(ContainElement(byte(0xE9)))
+
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(latin1Line+"\n"), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{dbPath}}
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.Tracks).To(HaveLen(1))
+				Expect(pls.Tracks[0].Path).To(Equal(dbPath))
 			})
 
 			It("parses #EXTALBUMARTURL with HTTP URL", func() {
