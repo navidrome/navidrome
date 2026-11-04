@@ -51,16 +51,20 @@ func parseLRC(language, text string) (*Lyrics, error) {
 	var pendingBg []string
 
 	flushLine := func() {
-		value, cues := parseEnhancedLine(priorLine)
+		value, cues, end := parseEnhancedLine(priorLine)
 		var merged bool
-		value, cues, merged = mergeBgLayers(value, cues, pendingBg)
+		var bgEnd *int64
+		value, cues, bgEnd, merged = mergeBgLayers(value, cues, pendingBg)
 		hasBg = hasBg || merged
+		end = laterTime(end, bgEnd)
 		for idx := range timestamps {
 			startCopy := timestamps[idx]
+			shift := timestamps[idx] - timestamps[0]
 			structuredLines = append(structuredLines, Line{
 				Start: &startCopy,
+				End:   shiftELRCTime(end, shift),
 				Value: value,
-				Cue:   shiftELRCCues(cues, timestamps[idx]-timestamps[0]),
+				Cue:   shiftELRCCues(cues, shift),
 			})
 		}
 		timestamps = nil
@@ -189,7 +193,7 @@ func parseLRC(language, text string) (*Lyrics, error) {
 		DisplayArtist: artist,
 		DisplayTitle:  title,
 		Lang:          language,
-		Line:          normalizeCueLines(structuredLines),
+		Line:          structuredLines,
 		Offset:        offset,
 		Synced:        synced,
 	}
@@ -199,18 +203,24 @@ func parseLRC(language, text string) (*Lyrics, error) {
 			{ID: backgroundAgentID("main"), Role: "bg"},
 		}
 	}
+	lyrics = NormalizeLyrics(lyrics)
 	return &lyrics, nil
 }
 
 // mergeBgLayers appends parsed [bg:] content to a line's value and cues as a
 // background agent layer, mirroring the TTML background-vocal representation.
-func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, bool) {
+// It also returns the latest explicit trailing end among the merged layers, so
+// an exact source end is not mistaken for a next-line fallback during
+// normalization.
+func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, *int64, bool) {
 	merged := false
+	var latestEnd *int64
 	for _, bg := range bgLines {
-		bgValue, bgCues := parseEnhancedLine(bg)
+		bgValue, bgCues, bgEnd := parseEnhancedLine(bg)
 		if len(bgCues) == 0 {
 			continue
 		}
+		latestEnd = laterTime(latestEnd, bgEnd)
 		offset := 0
 		if value != "" {
 			offset = len(value) + 1
@@ -225,7 +235,7 @@ func mergeBgLayers(value string, cues []Cue, bgLines []string) (string, []Cue, b
 		}
 		merged = true
 	}
-	return value, cues, merged
+	return value, cues, latestEnd, merged
 }
 
 func fillMainAgentID(lines []Line) {
@@ -240,10 +250,10 @@ func fillMainAgentID(lines []Line) {
 
 // parseEnhancedLine extracts word-level timing cues from Enhanced LRC inline markers
 // and computes UTF-8 byte offsets against the final stripped line value.
-func parseEnhancedLine(text string) (string, []Cue) {
+func parseEnhancedLine(text string) (string, []Cue, *int64) {
 	matches := enhancedLRCRegex.FindAllStringSubmatchIndex(text, -1)
 	if len(matches) == 0 {
-		return strings.TrimSpace(text), nil
+		return strings.TrimSpace(text), nil, nil
 	}
 
 	type segment struct {
@@ -254,6 +264,9 @@ func parseEnhancedLine(text string) (string, []Cue) {
 
 	segments := make([]segment, 0, len(matches))
 	var rawValue strings.Builder
+	// Enhanced LRC permits text before the first inline timestamp. It is part of
+	// the visible line even though it has no word-level timing of its own.
+	rawValue.WriteString(text[:matches[0][0]])
 	var trailingEnd *int64
 	for i, match := range matches {
 		timeMs, err := parseTime(
@@ -299,7 +312,7 @@ func parseEnhancedLine(text string) (string, []Cue) {
 	}
 
 	if len(segments) == 0 {
-		return strings.TrimSpace(stripEnhancedMarkers(text)), nil
+		return strings.TrimSpace(stripEnhancedMarkers(text)), nil, trailingEnd
 	}
 
 	finalRaw := rawValue.String()
@@ -331,7 +344,7 @@ func parseEnhancedLine(text string) (string, []Cue) {
 		cues[len(cues)-1].End = trailingEnd
 	}
 
-	return strings.TrimSpace(finalRaw), cues
+	return strings.TrimSpace(finalRaw), cues, trailingEnd
 }
 
 // adjustGroup remaps a capture group index from the original match to our rewritten "[...]" string.
@@ -349,6 +362,22 @@ func adjustGroup(match []int, groupIdx int) int {
 // returning the plain lyric text.
 func stripEnhancedMarkers(text string) string {
 	return enhancedLRCRegex.ReplaceAllString(text, "")
+}
+
+// laterTime returns whichever timestamp is later, treating nil as unknown.
+func laterTime(a, b *int64) *int64 {
+	if a == nil || (b != nil && *b > *a) {
+		return b
+	}
+	return a
+}
+
+func shiftELRCTime(value *int64, offsetMs int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	shifted := *value + offsetMs
+	return &shifted
 }
 
 // shiftELRCCues returns a deep copy of baseCues with each cue's Start/End
