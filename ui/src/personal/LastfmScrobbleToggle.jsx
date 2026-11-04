@@ -65,6 +65,7 @@ export const LastfmScrobbleToggle = (props) => {
   const [linked, setLinked] = useState(null)
   const [checkingLink, setCheckingLink] = useState(false)
   const [apiKey, setApiKey] = useState(false)
+  const [syncFavorites, setSyncFavorites] = useState(false)
   const openedTab = useRef()
 
   useEffect(() => {
@@ -72,6 +73,7 @@ export const LastfmScrobbleToggle = (props) => {
       .then((response) => {
         setLinked(response.json.status === true)
         setApiKey(response.json.apiKey)
+        setSyncFavorites(response.json.syncFavorites === true)
       })
       .catch(() => {
         setLinked(false)
@@ -111,6 +113,16 @@ export const LastfmScrobbleToggle = (props) => {
       })
   }
 
+  const toggleSyncFavorites = (event) => {
+    const next = event.target.checked
+    httpClient('/api/lastfm/favorites', {
+      method: 'PUT',
+      body: JSON.stringify({ enabled: next }),
+    })
+      .then(() => setSyncFavorites(next))
+      .catch(() => notify('message.lastfmSyncFavoritesFailure', 'warning'))
+  }
+
   const toggleScrobble = () => {
     if (!linked) {
       startLink()
@@ -147,6 +159,21 @@ export const LastfmScrobbleToggle = (props) => {
           openedTab={openedTab}
         />
       )}
+      <FormControlLabel
+        disabled={!apiKey || linked !== true || checkingLink}
+        control={
+          <Switch
+            id={'lastfm-sync-favorites'}
+            color="primary"
+            checked={syncFavorites}
+            disabled={!apiKey || linked !== true || checkingLink}
+            onChange={toggleSyncFavorites}
+          />
+        }
+        label={
+          <span>{translate('menu.personal.options.lastfmSyncFavorites')}</span>
+        }
+      />
       {!apiKey && (
         <FormHelperText id="scrobble-lastfm-disabled-helper-text">
           {translate('menu.personal.options.lastfmNotConfigured')}

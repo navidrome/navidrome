@@ -200,6 +200,16 @@ func (c *client) scrobble(ctx context.Context, sessionKey string, info ScrobbleI
 	return nil
 }
 
+func (c *client) love(ctx context.Context, sessionKey, artist, track string) error {
+	params := url.Values{}
+	params.Add("method", "track.love")
+	params.Add("artist", artist)
+	params.Add("track", track)
+	params.Add("sk", sessionKey)
+	_, err := c.makeRequest(ctx, http.MethodPost, params, true)
+	return err
+}
+
 func (c *client) makeRequest(ctx context.Context, method string, params url.Values, signed bool) (*Response, error) {
 	params.Add("format", "json")
 	params.Add("api_key", c.apiKey)

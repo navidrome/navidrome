@@ -259,6 +259,32 @@ var _ = Describe("client", func() {
 		})
 	})
 
+	Describe("love", func() {
+		It("sends parameters in request body for POST", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
+				StatusCode: 200,
+			}
+
+			err := client.love(context.Background(), "SESSION_KEY", "U2", "One")
+			Expect(err).To(BeNil())
+
+			req := httpClient.SavedRequest
+			Expect(req.Method).To(Equal(http.MethodPost))
+			Expect(req.Header.Get("Content-Type")).To(Equal("application/x-www-form-urlencoded"))
+			Expect(req.URL.RawQuery).To(BeEmpty())
+
+			body, _ := io.ReadAll(req.Body)
+			bodyParams, _ := url.ParseQuery(string(body))
+			Expect(bodyParams.Get("method")).To(Equal("track.love"))
+			Expect(bodyParams.Get("artist")).To(Equal("U2"))
+			Expect(bodyParams.Get("track")).To(Equal("One"))
+			Expect(bodyParams.Get("sk")).To(Equal("SESSION_KEY"))
+			Expect(bodyParams.Get("api_key")).To(Equal("API_KEY"))
+			Expect(bodyParams.Get("api_sig")).ToNot(BeEmpty())
+		})
+	})
+
 	Describe("updateNowPlaying", func() {
 		It("sends parameters in request body for POST", func() {
 			httpClient.Res = http.Response{

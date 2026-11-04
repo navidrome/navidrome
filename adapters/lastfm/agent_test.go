@@ -452,6 +452,58 @@ var _ = Describe("lastfmAgent", func() {
 				Expect(sentParams.Get("timestamp")).To(Equal(strconv.FormatInt(ts.Unix(), 10)))
 			})
 
+			It("does not love a track that is not starred", func() {
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.RequestCount).To(Equal(1))
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Get("method")).To(Equal("track.scrobble"))
+			})
+
+			It("loves a starred track after scrobbling it", func() {
+				track.Starred = true
+				Expect(ds.UserProps().Put(ctx, "user-1", syncFavoritesProperty, "true")).To(Succeed())
+				recorder := &recordingHttpClient{}
+				agent.client = newClient("API_KEY", "SECRET", recorder)
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(recorder.methods()).To(Equal([]string{"track.scrobble", "track.love"}))
+				love := recorder.params[1]
+				Expect(love.Get("artist")).To(Equal(track.Artist))
+				Expect(love.Get("track")).To(Equal(track.Title))
+				Expect(love.Get("sk")).To(Equal("SK-1"))
+			})
+
+			It("does not love a starred track when favorite sync is off", func() {
+				track.Starred = true
+				Expect(ds.UserProps().Put(ctx, "user-1", syncFavoritesProperty, "false")).To(Succeed())
+				recorder := &recordingHttpClient{}
+				agent.client = newClient("API_KEY", "SECRET", recorder)
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(recorder.methods()).To(Equal([]string{"track.scrobble"}))
+			})
+
+			It("still scrobbles when loving the track fails", func() {
+				track.Starred = true
+				Expect(ds.UserProps().Put(ctx, "user-1", syncFavoritesProperty, "true")).To(Succeed())
+				recorder := &recordingHttpClient{fail: map[string]bool{"track.love": true}}
+				agent.client = newClient("API_KEY", "SECRET", recorder)
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(recorder.methods()).To(Equal([]string{"track.scrobble", "track.love"}))
+			})
+
 			When("ScrobbleFirstArtistOnly is true", func() {
 				BeforeEach(func() {
 					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
@@ -469,6 +521,20 @@ var _ = Describe("lastfmAgent", func() {
 					Expect(sentParams.Get("artist")).To(Equal("First Artist"))
 					Expect(sentParams.Get("albumArtist")).To(Equal("First Album Artist"))
 				})
+
+				It("loves the track under the first artist", func() {
+					track.Starred = true
+					Expect(ds.UserProps().Put(ctx, "user-1", syncFavoritesProperty, "true")).To(Succeed())
+					recorder := &recordingHttpClient{}
+					agent.client = newClient("API_KEY", "SECRET", recorder)
+
+					err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+					Expect(err).ToNot(HaveOccurred())
+					Expect(recorder.methods()).To(Equal([]string{"track.scrobble", "track.love"}))
+					Expect(recorder.params[1].Get("artist")).To(Equal("First Artist"))
+					Expect(recorder.params[1].Get("track")).To(Equal(track.Title))
+				})
 			})
 
 			It("skips songs with less than 31 seconds", func() {
@@ -479,6 +545,17 @@ var _ = Describe("lastfmAgent", func() {
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("does not love a short song even when it is starred", func() {
+				track.Duration = 29
+				track.Starred = true
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.RequestCount).To(BeZero())
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {
@@ -727,5 +804,41 @@ func (c *langAwareHttpClient) Do(req *http.Request) (*http.Response, error) {
 	return &http.Response{
 		StatusCode: 200,
 		Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
+	}, nil
+}
+
+type recordingHttpClient struct {
+	params []url.Values
+	fail   map[string]bool
+}
+
+func (c *recordingHttpClient) methods() []string {
+	methods := make([]string, len(c.params))
+	for i, p := range c.params {
+		methods[i] = p.Get("method")
+	}
+	return methods
+}
+
+func (c *recordingHttpClient) Do(req *http.Request) (*http.Response, error) {
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, err
+	}
+	params, err := url.ParseQuery(string(body))
+	if err != nil {
+		return nil, err
+	}
+	c.params = append(c.params, params)
+
+	status := http.StatusOK
+	payload := `{}`
+	if c.fail[params.Get("method")] {
+		status = http.StatusBadRequest
+		payload = `{"error":11,"message":"Service Offline - This service is temporarily offline. Try again later."}`
+	}
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(bytes.NewBufferString(payload)),
 	}, nil
 }
