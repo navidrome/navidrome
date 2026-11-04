@@ -366,7 +366,26 @@ func (a *Agents) GetAlbumImages(ctx context.Context, name, artist, mbid string) 
 
 // GetSimilarSongsByTrack returns similar songs for a given track.
 func (a *Agents) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
-	return callAgentSliceMethod(ctx, a, "GetSimilarSongsByTrack", func(ag Interface) ([]Song, error) {
+	return a.getSimilarSongsByTrack(ctx, id, name, artist, mbid, count, nil)
+}
+
+// GetSimilarSongsByTrackFromExternalAgents excludes the local genre-based agent while preserving
+// the configured order and fallback behavior of external agents.
+func (a *Agents) GetSimilarSongsByTrackFromExternalAgents(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	return a.getSimilarSongsByTrack(ctx, id, name, artist, mbid, count, func(ea enabledAgent) bool {
+		return ea.name != LocalAgentName
+	})
+}
+
+// GetSimilarSongsByTrackFromLocalAgent retrieves recommendations from the local genre-based agent only.
+func (a *Agents) GetSimilarSongsByTrackFromLocalAgent(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
+	return a.getSimilarSongsByTrack(ctx, id, name, artist, mbid, count, func(ea enabledAgent) bool {
+		return ea.name == LocalAgentName
+	})
+}
+
+func (a *Agents) getSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int, include func(enabledAgent) bool) ([]Song, error) {
+	return callAgentSliceMethodWhere(ctx, a, "GetSimilarSongsByTrack", include, func(ag Interface) ([]Song, error) {
 		retriever, ok := ag.(SimilarSongsByTrackRetriever)
 		if !ok {
 			return nil, errUnsupported
@@ -446,10 +465,17 @@ func (t *agentAttempts) noResultErr() error {
 
 // callAgent tries each enabled agent in order until found reports a usable result.
 func callAgent[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) (T, error), found func(T) bool) (T, error) {
+	return callAgentWhere(ctx, agents, methodName, nil, fn, found)
+}
+
+func callAgentWhere[T any](ctx context.Context, agents *Agents, methodName string, include func(enabledAgent) bool, fn func(Interface) (T, error), found func(T) bool) (T, error) {
 	var zero T
 	start := time.Now()
 	attempts := newAttempts(&agents.cooldowns)
 	for _, enabledAgent := range agents.getEnabledAgentNames() {
+		if include != nil && !include(enabledAgent) {
+			continue
+		}
 		if attempts.skip(enabledAgent.name) {
 			continue
 		}
@@ -483,7 +509,11 @@ func callAgentMethod[T comparable](ctx context.Context, agents *Agents, methodNa
 }
 
 func callAgentSliceMethod[T any](ctx context.Context, agents *Agents, methodName string, fn func(Interface) ([]T, error)) ([]T, error) {
-	return callAgent(ctx, agents, methodName, fn, func(results []T) bool { return len(results) > 0 })
+	return callAgentSliceMethodWhere(ctx, agents, methodName, nil, fn)
+}
+
+func callAgentSliceMethodWhere[T any](ctx context.Context, agents *Agents, methodName string, include func(enabledAgent) bool, fn func(Interface) ([]T, error)) ([]T, error) {
+	return callAgentWhere(ctx, agents, methodName, include, fn, func(results []T) bool { return len(results) > 0 })
 }
 
 var _ Interface = (*Agents)(nil)
