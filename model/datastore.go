@@ -37,6 +37,14 @@ type DataStore interface {
 	Plugin() PluginRepository
 	Artwork() ArtworkRepository
 	ArtworkQueue() ArtworkQueueRepository
+	PodcastChannel() PodcastChannelRepository
+	PodcastEpisode() PodcastEpisodeRepository
+	PodcastTranscript() PodcastTranscriptRepository
+	PodcastPerson() PodcastPersonRepository
+	PodcastPodroll() PodcastPodrollRepository
+	PodcastLiveItem() PodcastLiveItemRepository
+	PodcastFunding() PodcastFundingRepository
+	PodcastImage() PodcastImageRepository
 
 	WithTx(block func(tx DataStore) error, scope ...string) error
 	WithTxImmediate(block func(tx DataStore) error, scope ...string) error
