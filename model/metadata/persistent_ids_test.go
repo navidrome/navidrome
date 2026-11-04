@@ -1,11 +1,11 @@
 package metadata
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -80,11 +80,12 @@ var _ = Describe("getPID", func() {
 		})
 		When("field is folder", func() {
 			It("should return the pid", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-metadata)")
 				spec := "folder|title"
 				md.tags = map[model.TagName][]string{"title": {"title"}}
 				mf.Path = "/path/to/file.mp3"
-				Expect(getPID(mf, md, spec, false)).To(Equal("(/path/to)"))
+				// The folder comes from filepath.Dir and is hashed with the OS separator.
+				// These IDs are persisted, so changing that on Windows would need a migration.
+				Expect(getPID(mf, md, spec, false)).To(Equal("(" + filepath.FromSlash("/path/to") + ")"))
 			})
 		})
 		When("field is albumid", func() {
