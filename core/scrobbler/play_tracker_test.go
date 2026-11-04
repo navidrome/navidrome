@@ -315,10 +315,14 @@ var _ = Describe("PlayTracker", func() {
 			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 		})
 
-		It("does not send track to agent if player is not enabled to send scrobbles", func() {
+		It("does not send track to agent if player is not enabled to send scrobbles (but should still track internally)", func() {
 			ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: false})
 
 			err := tracker.Submit(ctx, []Submission{{TrackID: "123", Timestamp: time.Now()}})
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(track.PlayCount).To(Equal(int64(1)))
+			Expect(album.PlayCount).To(Equal(int64(1)))
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
@@ -811,7 +815,7 @@ var _ = Describe("PlayTracker", func() {
 					MediaId: "123", PositionMs: 90000, State: "stopped", PlaybackRate: 1.0, ClientId: defaultClientId,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(track.PlayCount).To(Equal(int64(0)))
+				Expect(track.PlayCount).To(Equal(int64(1)))
 			})
 
 			It("scrobbles twice for two separate sessions of same song", func() {

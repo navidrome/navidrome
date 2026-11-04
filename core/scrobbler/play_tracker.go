@@ -363,9 +363,10 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	case StateStopped:
 		var loadedMF *model.MediaFile
 		haveVerdict := false
-		if !params.IgnoreScrobble && player.ScrobbleEnabled {
+		if !params.IgnoreScrobble {
 			mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 			if err != nil {
+				log.Error(ctx, "Cannot find track for scrobbling", "id", params.MediaId, "user", user.UserName, err)
 				return err
 			}
 			loadedMF = mf
@@ -374,11 +375,15 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			trackDurationMs := int64(mf.Duration * 1000)
 			threshold := min(trackDurationMs*50/100, 240_000)
 			if params.PositionMs >= threshold {
+				// To be consistent with Submit (/rest/scrobble?submission=true), play should be incremented even if
+				// scrobbling is disabled
 				err = p.incPlay(ctx, mf, now)
 				if err != nil {
 					log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
 				}
-				p.dispatchScrobble(ctx, mf, now, filtered)
+				if player.ScrobbleEnabled {
+					p.dispatchScrobble(ctx, mf, now, filtered)
+				}
 			}
 		}
 		p.sessionsMu.Lock()
