@@ -1,3 +1,4 @@
+export * from './balancedShuffle'
 export * from './formatters'
 export * from './intersperse'
 export * from './notifications'
