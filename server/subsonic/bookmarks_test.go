@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -43,6 +44,61 @@ var _ = Describe("Bookmarks", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfRepo.BookmarksAdded).To(ConsistOf("visible"))
+		})
+
+		It("accepts a zero position", func() {
+			r := newGetRequest("id=visible", "position=0").WithContext(ctx)
+
+			_, err := router.CreateBookmark(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfRepo.BookmarksAdded).To(ConsistOf("visible"))
+		})
+
+		DescribeTable("rejects negative positions instead of storing them",
+			func(position string) {
+				r := newGetRequest("id=visible", "position="+position).WithContext(ctx)
+
+				_, err := router.CreateBookmark(r)
+
+				Expect(err).To(MatchError(errSubsonic))
+				var subErr subError
+				Expect(errors.As(err, &subErr)).To(BeTrue())
+				Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+				Expect(mfRepo.BookmarksAdded).To(BeEmpty())
+			},
+			Entry("minus one", "-1"),
+			Entry("large negative", "-9223372036854775808"),
+		)
+	})
+
+	Describe("SavePlayQueue", func() {
+		var pqRepo *tests.MockPlayQueueRepo
+
+		BeforeEach(func() {
+			pqRepo = ds.PlayQueue().(*tests.MockPlayQueueRepo)
+		})
+
+		It("rejects a negative position without storing the queue", func() {
+			r := newGetRequest("id=1", "current=1", "position=-5").WithContext(ctx)
+
+			_, err := router.SavePlayQueue(r)
+
+			Expect(err).To(MatchError(errSubsonic))
+			var subErr subError
+			Expect(errors.As(err, &subErr)).To(BeTrue())
+			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+			Expect(pqRepo.Queue).To(BeNil())
+		})
+
+		It("stores a zero position", func() {
+			r := newGetRequest("id=1", "current=1", "position=0").WithContext(ctx)
+
+			_, err := router.SavePlayQueue(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pqRepo.Queue).ToNot(BeNil())
+			Expect(pqRepo.Queue.Position).To(BeEquivalentTo(0))
 		})
 	})
 })
