@@ -270,9 +270,12 @@ const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
         rows,
         Math.max(0, Math.floor(above / rowH) - OVERSCAN_ROWS),
       )
-      const end = Math.min(
-        rows,
-        Math.ceil((above + viewH) / rowH) + OVERSCAN_ROWS,
+      // Floored at 0: with the grid far below the viewport (under a long
+      // artist biography) this goes negative, and slice() would count it from
+      // the tail.
+      const end = Math.max(
+        0,
+        Math.min(rows, Math.ceil((above + viewH) / rowH) + OVERSCAN_ROWS),
       )
       setRange((prev) =>
         prev.start === start && prev.end === end ? prev : { start, end },

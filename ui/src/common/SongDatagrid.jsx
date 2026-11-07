@@ -351,9 +351,11 @@ const VirtualizedDatagridBody = ({
         viewH = srect.height
       }
       const start = Math.max(0, Math.floor(above / rowH) - OVERSCAN)
-      const end = Math.min(
-        total,
-        Math.ceil((above + viewH) / rowH) + OVERSCAN,
+      // Floored at 0 so a table far below the viewport doesn't hand slice() a
+      // negative end, which it would count from the tail.
+      const end = Math.max(
+        0,
+        Math.min(total, Math.ceil((above + viewH) / rowH) + OVERSCAN),
       )
       setRange((prev) =>
         prev.start === start && prev.end === end ? prev : { start, end },
@@ -400,7 +402,7 @@ const VirtualizedDatagridBody = ({
   const visible = ids ? ids.slice(range.start, range.end) : []
 
   return (
-    <TableBody ref={tbodyRef} className={className}>
+    <TableBody ref={tbodyRef} className={clsx('datagrid-body', className)}>
       {topH > 0 && (
         <TableRow style={{ height: topH }}>
           <TableCell
@@ -415,8 +417,13 @@ const VirtualizedDatagridBody = ({
           {
             basePath,
             classes,
+            className: clsx(classes.row, {
+              [classes.rowEven]: (range.start + i) % 2 === 0,
+              [classes.rowOdd]: (range.start + i) % 2 !== 0,
+              [classes.clickableRow]: rowClick,
+            }),
             expand,
-            hasBulkActions,
+            hasBulkActions: hasBulkActions && !!selectedIds,
             hover,
             id,
             key: id,

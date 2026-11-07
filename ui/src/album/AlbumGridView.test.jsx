@@ -79,6 +79,20 @@ describe('AlbumGridView', () => {
       expect(gridRoot(container).style.paddingTop).toBe(`${8 * 300}px`)
     })
 
+    // ArtistShow puts the grid under the biography, which can push it well
+    // below the viewport. A negative end row would slice ids from the tail.
+    it('draws nothing while the grid is far below the viewport', () => {
+      const { container } = renderGrid(256, 'xl')
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+        top: 5000,
+      })
+      act(() => {
+        fireEvent.scroll(window)
+      })
+      expect(tileNames(container)).toHaveLength(0)
+      expect(gridRoot(container).style.paddingBottom).toBe(`${29 * 300}px`)
+    })
+
     it('draws a short final row without padding below', () => {
       const { container } = renderGrid(11, 'xl')
       expect(tileNames(container)).toHaveLength(11)
