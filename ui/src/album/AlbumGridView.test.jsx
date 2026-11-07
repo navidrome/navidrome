@@ -20,6 +20,22 @@ vi.mock('../common', () => ({
 }))
 vi.mock('../common/Artwork', () => ({ Artwork: () => null }))
 
+// jsdom has no ResizeObserver. Keep the callbacks watching the body so a test
+// can fire a page height change by hand (tile internals observe their own
+// nodes, which jsdom can't measure).
+let resizeCallbacks = []
+window.ResizeObserver = class {
+  constructor(cb) {
+    this.cb = cb
+  }
+  observe(el) {
+    if (el === document.body) {
+      resizeCallbacks.push(this.cb)
+    }
+  }
+  disconnect() {}
+}
+
 const albums = (n) => {
   const ids = Array.from({ length: n }, (_, i) => `a${i}`)
   const data = Object.fromEntries(
@@ -50,7 +66,10 @@ describe('AlbumGridView', () => {
   })
 
   describe('windowing', () => {
-    afterEach(() => vi.restoreAllMocks())
+    afterEach(() => {
+      vi.restoreAllMocks()
+      resizeCallbacks = []
+    })
 
     // jsdom lays nothing out, so rows keep the 300px starting guess: a 768px
     // viewport plus 2 overscan rows each side covers 5 rows of 9 at xl.
@@ -91,6 +110,20 @@ describe('AlbumGridView', () => {
       })
       expect(tileNames(container)).toHaveLength(0)
       expect(gridRoot(container).style.paddingBottom).toBe(`${29 * 300}px`)
+    })
+
+    // Collapsing the biography above moves the grid up without scrolling.
+    it('moves the window when the page changes height', () => {
+      const rect = vi
+        .spyOn(Element.prototype, 'getBoundingClientRect')
+        .mockReturnValue({ top: 5000 })
+      const { container } = renderGrid(256, 'xl')
+      expect(tileNames(container)).toHaveLength(0)
+      rect.mockReturnValue({ top: 0 })
+      act(() => {
+        resizeCallbacks.forEach((cb) => cb([]))
+      })
+      expect(tileNames(container)).toHaveLength(45)
     })
 
     it('draws a short final row without padding below', () => {

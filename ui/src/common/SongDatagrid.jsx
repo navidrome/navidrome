@@ -365,9 +365,15 @@ const VirtualizedDatagridBody = ({
     const target = scroller === window ? window : scroller
     target.addEventListener('scroll', recompute, { passive: true })
     window.addEventListener('resize', recompute)
+    // Content above the table can change height without a scroll event
+    // (album notes collapsing), moving the table into view. The page height changes
+    // with it, so watching the body catches that.
+    const resizeObserver = new ResizeObserver(recompute)
+    resizeObserver.observe(document.body)
     return () => {
       target.removeEventListener('scroll', recompute)
       window.removeEventListener('resize', recompute)
+      resizeObserver.disconnect()
     }
   }, [total])
 
