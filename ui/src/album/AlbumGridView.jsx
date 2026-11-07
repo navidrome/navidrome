@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useLayoutEffect, useRef, useState } from 'react'
 import {
   GridList,
   GridListTile,
@@ -208,19 +208,127 @@ const AlbumGridTile = ({ showArtist, record, basePath, ...props }) => {
   )
 }
 
+// Nearest scrollable ancestor, or window. Same detection as the album track
+// list's VirtualizedDatagridBody (SongDatagrid.jsx).
+const getScrollParent = (node) => {
+  let el = node?.parentElement
+  while (el) {
+    const { overflowY } = window.getComputedStyle(el)
+    if (overflowY === 'auto' || overflowY === 'scroll') {
+      return el
+    }
+    el = el.parentElement
+  }
+  return window
+}
+
+// Rows of tiles drawn beyond each edge of the viewport.
+const OVERSCAN_ROWS = 2
+
+// Windowed grid: renders only the visible rows of tiles, with padding above
+// and below standing in for the rest so the scrollbar stays correct. Lets the
+// list run at 256 albums per page: the stock grid mounts every tile, and every
+// tile queues a cover fetch behind useImageUrl's 4-at-a-time limit, so the
+// covers in view wait for all those above them. Unmounting a tile aborts its
+// queued fetch.
 const LoadedAlbumGrid = ({ ids, data, basePath, width }) => {
   const classes = useStyles()
   const { filterValues } = useListContext()
   const isArtistView = !!(filterValues && filterValues.artist_id)
+  const cols = getColsForWidth(width)
+  const rows = Math.ceil(ids.length / cols)
+  const rootRef = useRef(null)
+  const gridRef = useRef(null)
+  // Rough guess, replaced by the measured row pitch after the first render.
+  const rowHeightRef = useRef(300)
+  const measuredRef = useRef(false)
+  const recomputeRef = useRef(null)
+  const [range, setRange] = useState({ start: 0, end: 1 })
+
+  useLayoutEffect(() => {
+    const scroller = getScrollParent(rootRef.current)
+    const recompute = () => {
+      const el = rootRef.current
+      if (!el) {
+        return
+      }
+      const rowH = rowHeightRef.current
+      const rect = el.getBoundingClientRect()
+      // How far the grid's top has scrolled above the viewport top, and how
+      // tall the viewport is, in the scroller's coordinate space.
+      let above
+      let viewH
+      if (scroller === window) {
+        above = -rect.top
+        viewH = window.innerHeight
+      } else {
+        const srect = scroller.getBoundingClientRect()
+        above = srect.top - rect.top
+        viewH = srect.height
+      }
+      const start = Math.min(
+        rows,
+        Math.max(0, Math.floor(above / rowH) - OVERSCAN_ROWS),
+      )
+      const end = Math.min(
+        rows,
+        Math.ceil((above + viewH) / rowH) + OVERSCAN_ROWS,
+      )
+      setRange((prev) =>
+        prev.start === start && prev.end === end ? prev : { start, end },
+      )
+    }
+    recomputeRef.current = recompute
+    measuredRef.current = false
+    recompute()
+    const target = scroller === window ? window : scroller
+    target.addEventListener('scroll', recompute, { passive: true })
+    window.addEventListener('resize', recompute)
+    return () => {
+      target.removeEventListener('scroll', recompute)
+      window.removeEventListener('resize', recompute)
+    }
+  }, [rows, cols])
+
+  // Row pitch is the column width (square cover) plus one to three text
+  // lines, so take it from what rendered. Only the first measurement re-windows
+  // at once: rows differ in height (album version line), so later corrections
+  // wait for the next scroll rather than risk re-windowing back and forth.
+  useLayoutEffect(() => {
+    const rendered = range.end - range.start
+    if (!gridRef.current || rendered <= 0) {
+      return
+    }
+    const avg = gridRef.current.offsetHeight / rendered
+    if (avg > 0 && Math.abs(avg - rowHeightRef.current) > 4) {
+      rowHeightRef.current = avg
+      if (!measuredRef.current) {
+        measuredRef.current = true
+        recomputeRef.current()
+      }
+    }
+  }, [range, cols])
+
+  const rowH = rowHeightRef.current
+  const start = Math.min(range.start, rows)
+  const end = Math.min(range.end, rows)
   return (
-    <div className={classes.root}>
+    <div
+      ref={rootRef}
+      className={classes.root}
+      style={{
+        paddingTop: start * rowH,
+        paddingBottom: (rows - end) * rowH,
+      }}
+    >
       <GridList
+        ref={gridRef}
         component={'div'}
         cellHeight={'auto'}
-        cols={getColsForWidth(width)}
+        cols={cols}
         spacing={20}
       >
-        {ids.map((id) => (
+        {ids.slice(start * cols, end * cols).map((id) => (
           <GridListTile className={classes.gridListTile} key={id}>
             <AlbumGridTile
               record={data[id]}

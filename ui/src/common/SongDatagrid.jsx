@@ -1,8 +1,12 @@
 import React, {
   isValidElement,
+  cloneElement,
   useMemo,
   useCallback,
   useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
   forwardRef,
 } from 'react'
 import { useDispatch } from 'react-redux'
@@ -13,6 +17,7 @@ import {
   useTranslate,
 } from 'react-admin'
 import {
+  TableBody,
   TableCell,
   TableRow,
   Typography,
@@ -271,9 +276,177 @@ SongDatagridRow.defaultProps = {
   onClickSubset: () => {},
 }
 
+// Nearest scrollable ancestor, or window. The album view historically scrolls
+// the page (react-admin layout), but a themed/embedded layout could introduce
+// an overflow container, so detect rather than assume window.
+const getScrollParent = (node) => {
+  let el = node?.parentElement
+  while (el) {
+    const { overflowY } = window.getComputedStyle(el)
+    if (overflowY === 'auto' || overflowY === 'scroll') {
+      return el
+    }
+    el = el.parentElement
+  }
+  return window
+}
+
+// Rough starting guess; corrected at runtime by measuring rendered rows. Only
+// affects how many rows are drawn per frame, never correctness.
+const ESTIMATED_ROW_HEIGHT = 52
+const OVERSCAN = 10
+
+// Windowed TableBody: renders only the visible slice of rows, padding the rest
+// with two spacer <tr>s so the scrollbar/height stay correct. This is what
+// stops 300+ track albums from freezing the tab: react-admin's default body
+// mounts every row (each with 2 useDrag hooks + ~8 field components), which is
+// O(n) DOM + JS on open. See navidrome issue #1186 (non-virtualized Datagrid).
+//
+// Deliberately reuses `row` (the <SongDatagridRow/>) and clones it with the
+// exact same per-row props react-admin's PureDatagridBody would, so row
+// internals (selection, disc subtitles, drag, context menu) are unchanged.
+const VirtualizedDatagridBody = ({
+  row,
+  children,
+  ids,
+  data,
+  basePath,
+  resource,
+  hasBulkActions,
+  onToggleItem,
+  rowClick,
+  selectedIds,
+  isRowSelectable,
+  expand,
+  hover,
+  classes,
+  className,
+  rowStyle,
+}) => {
+  const tbodyRef = useRef(null)
+  const rowHeightRef = useRef(ESTIMATED_ROW_HEIGHT)
+  const [range, setRange] = useState({ start: 0, end: OVERSCAN * 3 })
+
+  const total = ids ? ids.length : 0
+
+  useLayoutEffect(() => {
+    const scroller = getScrollParent(tbodyRef.current)
+    const recompute = () => {
+      const el = tbodyRef.current
+      if (!el) {
+        return
+      }
+      const rowH = rowHeightRef.current || ESTIMATED_ROW_HEIGHT
+      const rect = el.getBoundingClientRect()
+      // How far the table's top has scrolled above the viewport top, and how
+      // tall the viewport is, in the scroller's coordinate space.
+      let above
+      let viewH
+      if (scroller === window) {
+        above = -rect.top
+        viewH = window.innerHeight
+      } else {
+        const srect = scroller.getBoundingClientRect()
+        above = srect.top - rect.top
+        viewH = srect.height
+      }
+      const start = Math.max(0, Math.floor(above / rowH) - OVERSCAN)
+      const end = Math.min(
+        total,
+        Math.ceil((above + viewH) / rowH) + OVERSCAN,
+      )
+      setRange((prev) =>
+        prev.start === start && prev.end === end ? prev : { start, end },
+      )
+    }
+    recompute()
+    const target = scroller === window ? window : scroller
+    target.addEventListener('scroll', recompute, { passive: true })
+    window.addEventListener('resize', recompute)
+    return () => {
+      target.removeEventListener('scroll', recompute)
+      window.removeEventListener('resize', recompute)
+    }
+  }, [total])
+
+  // Correct the row-height estimate from what actually rendered, then let the
+  // next scroll/paint pick up the better value. Guards against the estimate
+  // being so far off that the visible window leaves blank gaps.
+  useEffect(() => {
+    const el = tbodyRef.current
+    const rendered = range.end - range.start
+    if (el && rendered > 0) {
+      // Take the spacer rows' height off, leaving only the rendered rows.
+      const measured = el.getBoundingClientRect().height
+      const spacerH =
+        range.start * rowHeightRef.current +
+        (total - range.end) * rowHeightRef.current
+      const bodyH = measured - spacerH
+      if (bodyH > 0) {
+        const avg = bodyH / rendered
+        if (avg > 0 && Math.abs(avg - rowHeightRef.current) > 4) {
+          rowHeightRef.current = avg
+        }
+      }
+    }
+  }, [range, total])
+
+  const colSpan =
+    React.Children.count(children) + (hasBulkActions ? 1 : 0) + (expand ? 1 : 0)
+
+  const topH = range.start * rowHeightRef.current
+  const bottomH = (total - range.end) * rowHeightRef.current
+
+  const visible = ids ? ids.slice(range.start, range.end) : []
+
+  return (
+    <TableBody ref={tbodyRef} className={className}>
+      {topH > 0 && (
+        <TableRow style={{ height: topH }}>
+          <TableCell
+            colSpan={colSpan}
+            style={{ height: topH, padding: 0, border: 0 }}
+          />
+        </TableRow>
+      )}
+      {visible.map((id, i) =>
+        cloneElement(
+          row,
+          {
+            basePath,
+            classes,
+            expand,
+            hasBulkActions,
+            hover,
+            id,
+            key: id,
+            onToggleItem,
+            record: data[id],
+            resource,
+            rowClick,
+            selectable: !isRowSelectable || isRowSelectable(data[id]),
+            selected: selectedIds?.includes(id),
+            style: rowStyle ? rowStyle(data[id], range.start + i) : null,
+          },
+          children,
+        ),
+      )}
+      {bottomH > 0 && (
+        <TableRow style={{ height: bottomH }}>
+          <TableCell
+            colSpan={colSpan}
+            style={{ height: bottomH, padding: 0, border: 0 }}
+          />
+        </TableRow>
+      )}
+    </TableBody>
+  )
+}
+
 const SongDatagridBody = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  virtualize,
   ...rest
 }) => {
   const dispatch = useDispatch()
@@ -321,23 +494,29 @@ const SongDatagridBody = ({
     return set
   }, [ids, data, showDiscSubtitles])
 
-  return (
-    <PureDatagridBody
-      {...rest}
-      row={
-        <SongDatagridRow
-          firstTracksOfDiscs={firstTracksOfDiscs}
-          contextAlwaysVisible={contextAlwaysVisible}
-          onClickSubset={playSubset}
-        />
-      }
+  const row = (
+    <SongDatagridRow
+      firstTracksOfDiscs={firstTracksOfDiscs}
+      contextAlwaysVisible={contextAlwaysVisible}
+      onClickSubset={playSubset}
     />
   )
+
+  // Virtualization is opt-in (album view only). SongList is paginated and
+  // PlaylistSongs wraps this in <ReorderableList nodeSelector="tr"> which needs
+  // every row present in the DOM to drag-reorder, so both keep the default
+  // body that renders all rows.
+  if (virtualize) {
+    return <VirtualizedDatagridBody {...rest} row={row} />
+  }
+
+  return <PureDatagridBody {...rest} row={row} />
 }
 
 export const SongDatagrid = ({
   contextAlwaysVisible,
   showDiscSubtitles,
+  virtualize,
   ...rest
 }) => {
   const classes = useStyles()
@@ -350,6 +529,7 @@ export const SongDatagrid = ({
         <SongDatagridBody
           contextAlwaysVisible={contextAlwaysVisible}
           showDiscSubtitles={showDiscSubtitles}
+          virtualize={virtualize}
         />
       }
     />
@@ -359,5 +539,6 @@ export const SongDatagrid = ({
 SongDatagrid.propTypes = {
   contextAlwaysVisible: PropTypes.bool,
   showDiscSubtitles: PropTypes.bool,
+  virtualize: PropTypes.bool,
   classes: PropTypes.object,
 }

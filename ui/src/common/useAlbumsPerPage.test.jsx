@@ -44,18 +44,18 @@ describe('useAlbumsPerPage', () => {
     setReduxPerPage(undefined)
     setStoredPerPage('album', 72) // valid for lg, not for md
     const { result } = renderHook(() => useAlbumsPerPage('md'))
-    expect(result.current[0]).toEqual(12)
+    expect(result.current[0]).toEqual(256)
   })
 
-  it('returns the responsive default when nothing is stored', () => {
+  it('returns the 256 default when nothing is stored', () => {
     setReduxPerPage(undefined)
     const { result } = renderHook(() => useAlbumsPerPage('xl'))
-    expect(result.current).toEqual([36, [18, 36, 72]])
+    expect(result.current).toEqual([256, [18, 36, 72, 256]])
   })
 
   it('ignores a redux value invalid for the current width', () => {
     setReduxPerPage(72) // valid for lg, not for md
     const { result } = renderHook(() => useAlbumsPerPage('md'))
-    expect(result.current[0]).toEqual(12)
+    expect(result.current[0]).toEqual(256)
   })
 })

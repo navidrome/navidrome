@@ -191,6 +191,7 @@ const AlbumSongs = (props) => {
             showDiscSubtitles={true}
             contextAlwaysVisible={!isDesktop}
             classes={{ row: classes.row }}
+            virtualize={true}
           >
             {columns}
             <SongContextMenu
