@@ -361,6 +361,8 @@ var _ = Describe("Items", func() {
 			Entry("IsFavorite", "Filters=IsFavorite", []string{"starred"}, nil),
 			Entry("IsFavorite,IsUnplayed combined", "Filters=IsFavorite,IsUnplayed",
 				[]string{"starred", "play_count"}, nil),
+			Entry("repeated Filters=IsFavorite&Filters=IsUnplayed", "Filters=IsFavorite&Filters=IsUnplayed",
+				[]string{"starred", "play_count"}, nil),
 			Entry("IsUnplayed", "Filters=IsUnplayed", []string{"play_count"}, []string{"starred"}),
 			Entry("IsPlayed", "Filters=IsPlayed", []string{"play_count"}, []string{"starred"}),
 			Entry("IsFavoriteOrLikes is treated as favorites", "Filters=IsFavoriteOrLikes", []string{"starred"}, nil),
@@ -728,6 +730,16 @@ var _ = Describe("Items", func() {
 			)
 		})
 
+		It("accepts repeated SortBy query parameters", func() {
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET",
+				"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime&SortBy=SortName&SortOrder=Descending", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Order).To(Equal("desc"))
+		})
 		Describe("library scoping", func() {
 			It("scopes a MusicAlbum listing (no ParentId) to the user's accessible libraries", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
@@ -905,6 +917,33 @@ var _ = Describe("Items", func() {
 				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 				got := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type, res.Items[3].Type}
 				Expect(got).To(Equal([]string{"Audio", "MusicAlbum", "Audio", "MusicAlbum"}))
+			})
+
+			It("accepts repeated IncludeItemTypes query parameters (e.g. from Jellify)", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&IncludeItemTypes=MusicAlbum&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(4))
+				Expect(res.TotalRecordCount).To(Equal(4))
+				got := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type, res.Items[3].Type}
+				Expect(got).To(Equal([]string{"Audio", "MusicAlbum", "Audio", "MusicAlbum"}))
+			})
+
+			It("accepts mixed repeated and comma-separated IncludeItemTypes query parameters", func() {
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&IncludeItemTypes=MusicAlbum,Playlist&Recursive=true&Limit=4", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				Expect(res.Items).To(HaveLen(4))
+				types := map[string]int{}
+				for _, it := range res.Items {
+					types[it.Type]++
+				}
+				Expect(types["Audio"]).To(Equal(2))
+				Expect(types["MusicAlbum"]).To(Equal(2))
 			})
 
 			It("honors Limit across the merged set", func() {

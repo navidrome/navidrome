@@ -42,14 +42,16 @@ type itemFilters struct {
 // Jellyfin. Tokens with no Navidrome equivalent (Likes, IsFolder, IsResumable) are dropped.
 func parseItemFilters(p *req.Values) itemFilters {
 	f := itemFilters{favorite: p.BoolPtr("isfavorite"), played: p.BoolPtr("isplayed")}
-	for token := range strings.SplitSeq(p.StringOr("filters", ""), ",") {
-		switch strings.TrimSpace(token) {
-		case "IsFavorite", "IsFavoriteOrLikes":
-			f.favorite = new(true)
-		case "IsPlayed":
-			f.played = new(true)
-		case "IsUnplayed":
-			f.played = new(false)
+	for _, csv := range p.Strings("filters") {
+		for token := range strings.SplitSeq(csv, ",") {
+			switch strings.TrimSpace(token) {
+			case "IsFavorite", "IsFavoriteOrLikes":
+				f.favorite = new(true)
+			case "IsPlayed":
+				f.played = new(true)
+			case "IsUnplayed":
+				f.played = new(false)
+			}
 		}
 	}
 	return f
@@ -309,7 +311,7 @@ func listParams(p *req.Values) itemsQuery {
 	return itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
 		search:    searchTerm(p),
-		sortBy:    p.StringOr("sortby", ""),
+		sortBy:    strings.Join(p.Strings("sortby"), ","),
 		sortOrder: p.StringOr("sortorder", ""),
 		offset:    p.IntOr("startindex", 0),
 		limit:     p.IntOr("limit", 0),
@@ -349,7 +351,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	}
 	q := listParams(p)
 	q.ids = ids
-	q.rawTypes = knownItemKinds(p.StringOr("includeitemtypes", ""))
+	q.rawTypes = knownItemKinds(strings.Join(p.Strings("includeitemtypes"), ","))
 	q.parentId = parentId
 	q.genreIds = genreIds
 	q.albumIds = albumIds
