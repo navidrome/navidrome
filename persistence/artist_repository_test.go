@@ -857,6 +857,13 @@ var _ = Describe("ArtistRepository", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(BeEmpty(), "LIKE search should respect the requested library")
+
+					results, err = repo.Search(ctx, "Folder Scope", model.QueryOptions{
+						Max:     100,
+						Filters: squirrel.Eq{"library_id": []int{lib2.ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(1), "LIKE search should find the artist in the requested library")
 				})
 
 				It("narrows the CJK LIKE fallback to the requested library", func() {
@@ -881,6 +888,13 @@ var _ = Describe("ArtistRepository", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(BeEmpty(), "CJK search should respect the requested library")
+
+					results, err = repo.Search(ctx, "文件夹", model.QueryOptions{
+						Max:     100,
+						Filters: squirrel.Eq{"library_id": []int{lib2.ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(1), "CJK search should find the artist in the requested library")
 				})
 
 				// The MBID branch of doSearch is the third path that runs the full SELECT directly.
@@ -905,6 +919,13 @@ var _ = Describe("ArtistRepository", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(results).To(BeEmpty(), "MBID search should respect the requested library")
+
+					results, err = repo.Search(ctx, mbid, model.QueryOptions{
+						Max:     100,
+						Filters: squirrel.Eq{"library_id": []int{lib2.ID}},
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(results).To(HaveLen(1), "MBID search should find the artist in the requested library")
 				})
 			})
 
