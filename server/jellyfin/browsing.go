@@ -57,7 +57,8 @@ func (api *Router) listArtistsByRole(w http.ResponseWriter, r *http.Request, rol
 func (api *Router) getGenres(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p := req.Params(r)
-	opts := model.QueryOptions{Offset: max(p.IntOr("startindex", 0), 0), Max: p.IntOr("limit", 0)}
+	offset, limit := pageParams(p)
+	opts := model.QueryOptions{Offset: offset, Max: limit}
 	res, err := api.listGenres(ctx, opts)
 	if err != nil {
 		api.internalError(w, r, err)
@@ -83,7 +84,7 @@ func (api *Router) getStudios(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	items := slice.Map(labels, dto.StudioToBaseItem)
-	offset, limit := max(p.IntOr("startindex", 0), 0), p.IntOr("limit", 0)
+	offset, limit := pageParams(p)
 	api.ok(w, r, result(paginate(items, offset, limit), len(items), offset))
 }
 

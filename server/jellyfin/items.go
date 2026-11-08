@@ -306,13 +306,14 @@ type itemsQuery struct {
 
 // listParams reads the itemsQuery fields that come straight from query params.
 func listParams(p *req.Values) itemsQuery {
+	offset, limit := pageParams(p)
 	return itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
 		search:    searchTerm(p),
 		sortBy:    p.StringOr("sortby", ""),
 		sortOrder: p.StringOr("sortorder", ""),
-		offset:    max(p.IntOr("startindex", 0), 0),
-		limit:     p.IntOr("limit", 0),
+		offset:    offset,
+		limit:     limit,
 		filters:   parseItemFilters(p),
 	}
 }
@@ -630,6 +631,11 @@ func parseTypes(types string) []string {
 	}
 	// Dedupe: a repeated type would duplicate items in the merge and spawn a redundant query.
 	return slice.Unique(recognized)
+}
+
+// pageParams reads StartIndex/Limit; Jellyfin treats a negative StartIndex as 0.
+func pageParams(p *req.Values) (offset, limit int) {
+	return max(p.IntOr("startindex", 0), 0), p.IntOr("limit", 0)
 }
 
 // paginate applies StartIndex/Limit to an in-memory item list, for the multi-type merge path only
