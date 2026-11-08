@@ -663,6 +663,11 @@
       "options": {
         "theme": "Thème",
         "language": "Langue",
+        "dateFormat": "Format de date",
+        "dateFormats": {
+          "language": "Selon la langue",
+          "browser": "Selon le navigateur"
+        },
         "defaultView": "Vue par défaut",
         "desktop_notifications": "Notifications de bureau",
         "lastfmScrobbling": "Scrobbler vers Last.fm",
