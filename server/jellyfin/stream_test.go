@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"

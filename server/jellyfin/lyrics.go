@@ -26,6 +26,11 @@ func (api *Router) playbackLyrics(ctx context.Context, mf *model.MediaFile) mode
 	}
 	resCh := make(chan model.LyricList, 1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error(ctx, "Panic recovered in playback lyrics lookup", "id", mf.ID, "err", r)
+			}
+		}()
 		resCh <- api.cachedLyrics(ctx, mf)
 	}()
 	select {
