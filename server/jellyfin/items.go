@@ -856,7 +856,14 @@ func (api *Router) listGenres(ctx context.Context, opts model.QueryOptions) (ite
 // listPlaylists lists playlists visible to the current user. Visibility (public or owned) is
 // enforced by playlistRepository, not scopeIDs.
 func (api *Router) listPlaylists(ctx context.Context, opts model.QueryOptions, q itemsQuery) (itemsResult, error) {
-	if preds := q.filters.predicates(); len(preds) > 0 {
+	var preds []squirrel.Sqlizer
+	if q.search != "" {
+		preds = append(preds, squirrel.Like{"playlist.name": "%" + q.search + "%"})
+	}
+	if p := q.filters.predicates(); len(p) > 0 {
+		preds = append(preds, p...)
+	}
+	if len(preds) > 0 {
 		opts.Filters = squirrel.And(preds)
 	}
 	repo := api.ds.Playlist()
