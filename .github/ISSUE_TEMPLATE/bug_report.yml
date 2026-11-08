@@ -16,11 +16,18 @@ body:
       description: Describe what you observed and how it affected you. Include any error message you saw. You do not need to diagnose the cause or suggest code changes.
     validations:
       required: true
+  - type: checkboxes
+    id: requirements
+    attributes:
+      label: "I confirm that:"
+      options:
+        - label: I'm using the latest Navidrome release and can reproduce the issue on it.
+          required: true
   - type: input
     id: version
     attributes:
       label: Navidrome version
-      description: Which Navidrome version or build are you using? If you cannot find it, enter 'not sure'. If you tried another version, mention whether the behavior changed. Upgrading is helpful when practical, but is not required to submit a report.
+      description: Which Navidrome version or build are you using? If you cannot find it, enter 'not sure'. If you tried another version, mention whether the behavior changed.
     validations:
       required: true
   - type: textarea
