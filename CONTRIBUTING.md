@@ -38,7 +38,7 @@ AI-assisted work must meet the personal full-diff review and functional testing 
 
 Declare whether AI was used to generate or modify submitted code or tests, draft substantive PR text, or create the PR. A simple Yes or No in the PR description is enough. Tool names, prompts, and transcripts are not required.
 
-AI tools may help you draft, edit, or translate PR explanations and review replies. Review the final text before you send it, make sure you agree with it, and take responsibility for it. Do not send AI-generated text that you have not reviewed to maintainers or other contributors.
+AI tools may help you draft, edit, or translate PR explanations and review replies. Review the final text before you send it, make sure you agree with it, and take responsibility for it. Do not send AI-generated text that you have not reviewed to maintainers or other contributors. Please be mindful of the maintainer's time.
 
 ## Keep the result maintainable
 

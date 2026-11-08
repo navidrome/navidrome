@@ -1,5 +1,5 @@
 ### Description
-<!-- Please provide a clear and concise description of what this PR does and why it is needed. AI tools may help you draft, edit, or translate it, but review the final text and make sure you agree with it. -->
+<!-- Please provide a clear and concise description of what this PR does and why it is needed. AI tools may help you draft, edit, or translate it, but review the final text and make sure you agree with it. Please be mindful of the maintainer's time. -->
 
 **AI use:** Yes / No
 <!-- Select Yes if AI helped generate or modify submitted code or tests, draft substantive PR text, or create the PR. Tool names and prompts are not required. -->
