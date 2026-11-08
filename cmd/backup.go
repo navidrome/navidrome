@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	backupCount int
-	backupDir   string
-	force       bool
-	restorePath string
+	backupCount    int
+	backupDir      string
+	force          bool
+	integrityCheck bool
+	restorePath    string
 )
 
 func init() {
@@ -31,6 +32,7 @@ func init() {
 
 	restoreCommand.Flags().StringVarP(&restorePath, "backup-file", "b", "", "file name of the backup database to restore (resolved against the backup directory unless it is an absolute path)")
 	restoreCommand.Flags().BoolVarP(&force, "force", "f", false, "bypass restore warning")
+	restoreCommand.Flags().BoolVarP(&integrityCheck, "integrity-check", "i", false, "check the backup file with a full integrity check before restoring. Finds more kinds of damage, but takes longer")
 	_ = restoreCommand.MarkFlagRequired("backup-file")
 	backupRoot.AddCommand(restoreCommand)
 }
@@ -136,7 +138,7 @@ func runRestore(ctx context.Context) {
 	}
 
 	start := time.Now()
-	err := db.Restore(ctx, restorePath)
+	err := db.Restore(ctx, restorePath, integrityCheck)
 	if err != nil {
 		log.Fatal("Error restoring database", "backupFile", restorePath, err)
 	}
