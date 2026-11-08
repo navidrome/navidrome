@@ -50,7 +50,7 @@ The maintainer must be able to understand and maintain the result without depend
 
 ## Submitting and review
 
-- Check existing [open and closed PRs](https://github.com/navidrome/navidrome/pulls?q=is%3Apr) to avoid duplicate work.
+- Check existing [open and closed PRs](https://github.com/navidrome/navidrome/pulls?q=is%3Apr) to avoid duplicate work. If the issue author or another contributor has offered to submit a fix, ask in the issue before you start.
 - Use the [development environment instructions](https://www.navidrome.org/docs/developers/dev-environment/). Work on a branch in your fork.
 - Complete the [PR template](.github/pull_request_template.md) with the scope agreement or why agreement is not needed, verification evidence, and maintenance implications. Keep each PR focused.
 - Follow the [commit conventions and DCO requirements](#commit-conventions-and-dco) below.
