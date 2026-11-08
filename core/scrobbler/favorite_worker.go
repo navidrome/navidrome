@@ -29,7 +29,7 @@ type favoriteKey struct {
 }
 
 type favoriteEntry struct {
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // queued work item carries the detached request ctx to the worker
 	userId   string
 	track    *model.MediaFile
 	starred  bool
