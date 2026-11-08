@@ -282,8 +282,8 @@ track share one pipeline run. That run is detached from the request, so a cancel
 fail it for other waiters, and its context has a one-minute deadline.
 
 Finamp opens its lyrics view only when the track has a `Lyric` `MediaStream` (`HasLyrics` is just a
-list badge). Browse lists set both from embedded lyrics only. `PlaybackInfo` runs the full pipeline
-per track, so sidecar and plugin lyrics show up there. Feishin also requires server version ≥ 10.9
+list badge). Browse lists set both from embedded lyrics only. `PlaybackInfo` checks cached or fast local lyrics with a bounded timeout (so sidecar and
+previously loaded plugin lyrics show up there without blocking playback start on slow external plugins; #6423). Feishin also requires server version ≥ 10.9
 (we advertise 12.1.0).
 
 ## AudioMuse-AI compatible endpoints
@@ -426,4 +426,4 @@ make test PKG=./server/jellyfin/...
   reconnecting in a loop. It never pushes session, playstate or library-change events.
 - **List lyric badges only see embedded lyrics.** Tracks with only sidecar or plugin lyrics show no
   `HasLyrics` badge in lists, because those sources can't be known at list time without per-row I/O.
-  `PlaybackInfo` and `Audio/{id}/Lyrics` still find them (see "Lyrics").
+  `PlaybackInfo` (bounded) and `Audio/{id}/Lyrics` still find them (see "Lyrics").

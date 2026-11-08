@@ -12,6 +12,32 @@ import (
 
 const lyricsLoadTimeout = time.Minute
 
+// playbackInfoLyricsTimeout bounds the time getPlaybackInfo will wait for lyrics before
+// serving direct playback info, preventing slow or hanging external plugins from stalling
+// track playback start (#6423).
+var playbackInfoLyricsTimeout = 100 * time.Millisecond
+
+// playbackLyrics resolves lyrics for getPlaybackInfo without blocking the critical playback
+// start path on slow external plugin network timeouts. If already cached, it returns immediately;
+// otherwise it bounds the lookup so PlaybackInfo returns promptly.
+func (api *Router) playbackLyrics(ctx context.Context, mf *model.MediaFile) model.LyricList {
+	if list, err := api.lyricsCache.Get(mf.ID); err == nil {
+		return list
+	}
+	resCh := make(chan model.LyricList, 1)
+	go func() {
+		resCh <- api.cachedLyrics(ctx, mf)
+	}()
+	select {
+	case list := <-resCh:
+		return list
+	case <-ctx.Done():
+		return nil
+	case <-time.After(playbackInfoLyricsTimeout):
+		return nil
+	}
+}
+
 // cachedLyrics resolves lyrics through the full source pipeline (embedded, sidecar, plugins),
 // caching results — including empty: clients poll per played track, so misses are the hot path.
 func (api *Router) cachedLyrics(ctx context.Context, mf *model.MediaFile) model.LyricList {
