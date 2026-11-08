@@ -8,21 +8,23 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a problem. Describe what you observed in your own words. Search existing [open and closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) first, and add new details to a matching open report if you find one. If the matching issue is closed, open a new report and link to it. If you are unsure whether this is a bug, say so. Please do not include passwords, tokens, API keys, session cookies, or other private information. For a possible security vulnerability, use [private reporting](https://github.com/navidrome/navidrome/security/advisories/new).
-  - type: textarea
-    id: what-happened
-    attributes:
-      label: What happened
-      description: Describe what you observed and how it affected you. Include any error message you saw. You do not need to diagnose the cause or suggest code changes.
-    validations:
-      required: true
+        Thanks for reporting a problem. For a possible security vulnerability, use [private reporting](https://github.com/navidrome/navidrome/security/advisories/new).
   - type: checkboxes
     id: requirements
     attributes:
       label: "I confirm that:"
       options:
+        - label: I have searched the existing [open and closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) and found no matching open report.
+          required: true
         - label: I'm using the latest Navidrome release and can reproduce the issue on it.
           required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe what you observed and how it affected you. Include any error message you saw. You do not need to diagnose the cause or suggest code changes. If a closed issue matches, link it here.
+    validations:
+      required: true
   - type: input
     id: version
     attributes:
@@ -41,7 +43,7 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: List the steps, relevant settings, and how often the problem occurs. If it is intermittent or you cannot reproduce it reliably, describe what was happening when you noticed it and what you have already tried.
+      description: List the steps, relevant settings, and how often the problem occurs. If it happens only sometimes, describe what was happening when you noticed it and what you have already tried.
     validations:
       required: false
   - type: textarea
