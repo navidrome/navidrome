@@ -62,6 +62,21 @@ var _ = Describe("sqlRepository", func() {
 			sql, _, _ := sq.ToSql()
 			Expect(sql).To(Equal("SELECT * FROM test ORDER BY title desc LIMIT 1 OFFSET 2"))
 		})
+
+		// SortOrders is absolute per logical key. A mapping that expands into several columns
+		// (album "name") takes that key's direction on every column, and a key past the end of
+		// the slice reuses the first direction. Order is not consulted once SortOrders is set.
+		It("applies a per-key SortOrder after mappings expand", func() {
+			r.sortMappings["max_year"] = "coalesce(nullif(original_date,''), cast(max_year as text)), release_date"
+			sq = r.applyOptions(sq, model.QueryOptions{
+				Sort:       "duration, name, max_year, play_count",
+				Order:      "desc",
+				SortOrders: []string{"desc", "asc", "desc"},
+			})
+			sql, _, _ := sq.ToSql()
+			Expect(sql).To(Equal("SELECT * FROM test ORDER BY duration desc, title asc, " +
+				"coalesce(nullif(original_date,''), cast(max_year as text)) desc, release_date desc, play_count desc"))
+		})
 	})
 
 	Describe("toSQL", func() {

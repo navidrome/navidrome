@@ -155,7 +155,15 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 			sq = sq.Offset(uint64(options[0].Offset))
 		}
 		if options[0].Sort != "" {
-			sq = sq.OrderBy(r.buildSortOrder(options[0].Sort, options[0].Order))
+			sort, order := options[0].Sort, options[0].Order
+			// Per-key directions are absolute, so the baseline passed to buildSortOrder stays
+			// ascending and a " desc" suffix selects the opposite. Random is matched by exact
+			// string, and resetSeededRandom has already rewritten it to SEEDEDRAND by here.
+			if len(options[0].SortOrders) > 0 && sort != "random" && !strings.HasPrefix(sort, "SEEDEDRAND(") {
+				sort = r.sortWithKeyOrders(sort, options[0].SortOrders)
+				order = ""
+			}
+			sq = sq.OrderBy(r.buildSortOrder(sort, order))
 		}
 	}
 	return sq
@@ -194,6 +202,39 @@ func (r sqlRepository) lookupSortMapping(sort string) (mapping, snakeCased strin
 	snakeCased = toSnakeCase(sort)
 	mapping, ok = r.sortMappings[snakeCased]
 	return mapping, snakeCased, ok
+}
+
+// sortWithKeyOrders maps each logical sort key, then marks descending keys so buildSortOrder
+// keeps that direction on every column the mapping expands into.
+func (r sqlRepository) sortWithKeyOrders(sort string, orders []string) string {
+	keys := strings.FieldsFunc(sort, splitFunc(','))
+	out := make([]string, 0, len(keys))
+	for i, key := range keys {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		mapped := r.sortMapping(key)
+		if !descendingOrder(i, orders) {
+			out = append(out, mapped)
+			continue
+		}
+		for _, col := range strings.FieldsFunc(mapped, splitFunc(',')) {
+			out = append(out, strings.TrimSpace(col)+" desc")
+		}
+	}
+	return strings.Join(out, ", ")
+}
+
+func descendingOrder(i int, orders []string) bool {
+	if len(orders) == 0 {
+		return false
+	}
+	raw := orders[0]
+	if i < len(orders) {
+		raw = orders[i]
+	}
+	return raw == "desc"
 }
 
 func (r sqlRepository) buildSortOrder(sort, order string) string {

@@ -31,6 +31,13 @@ func searchTerm(p *req.Values) string {
 	return strings.TrimSpace(p.StringOr("searchterm", ""))
 }
 
+// joinedStrings reads every value of a query param and joins them with commas. Jellyfin binds a
+// list either comma-separated in one value (Finamp) or as repeated keys (@jellyfin/sdk), and the
+// parsers below already split on commas, so both spellings reach them the same way.
+func joinedStrings(p *req.Values, key string) string {
+	return strings.Join(p.Strings(key), ",")
+}
+
 // itemFilters is the parsed Filters=... list together with the standalone isFavorite/isPlayed params
 // clients may send instead. A nil field means the client asked for no filtering on that dimension.
 type itemFilters struct {
@@ -39,20 +46,18 @@ type itemFilters struct {
 }
 
 // parseItemFilters reads the standalone params first and lets the Filters list win, matching real
-// Jellyfin. Tokens with no Navidrome equivalent (Likes, IsFolder, IsResumable) are dropped. Filters is
-// a list param, so both spellings count: comma-separated in one value and repeated keys.
+// Jellyfin. Tokens with no Navidrome equivalent (Likes, IsFolder, IsResumable) are dropped.
+// joinedStrings folds a repeated Filters key into the comma-separated spelling this loop splits.
 func parseItemFilters(p *req.Values) itemFilters {
 	f := itemFilters{favorite: p.BoolPtr("isfavorite"), played: p.BoolPtr("isplayed")}
-	for _, filter := range p.Strings("filters") {
-		for token := range strings.SplitSeq(filter, ",") {
-			switch strings.TrimSpace(token) {
-			case "IsFavorite", "IsFavoriteOrLikes":
-				f.favorite = new(true)
-			case "IsPlayed":
-				f.played = new(true)
-			case "IsUnplayed":
-				f.played = new(false)
-			}
+	for token := range strings.SplitSeq(joinedStrings(p, "filters"), ",") {
+		switch strings.TrimSpace(token) {
+		case "IsFavorite", "IsFavoriteOrLikes":
+			f.favorite = new(true)
+		case "IsPlayed":
+			f.played = new(true)
+		case "IsUnplayed":
+			f.played = new(false)
 		}
 	}
 	return f
@@ -297,9 +302,9 @@ type itemsQuery struct {
 	entityParent    string
 	isLibraryParent bool
 	scopeIDs        []int
-	// artistId selects that artist's own discography; contributingOnly means albums they merely
-	// appear on (Jellyfin's "Featured On"), which must exclude that discography.
-	artistId         string
+	// artistIds selects those artists' own discography (any of them). contributingOnly means albums
+	// they merely appear on (Jellyfin's "Featured On"), which must exclude that discography.
+	artistIds        []string
 	contributingOnly bool
 	genreIds         []string
 	albumIds         []string
@@ -312,8 +317,8 @@ func listParams(p *req.Values) itemsQuery {
 	return itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
 		search:    searchTerm(p),
-		sortBy:    p.StringOr("sortby", ""),
-		sortOrder: p.StringOr("sortorder", ""),
+		sortBy:    joinedStrings(p, "sortby"),
+		sortOrder: joinedStrings(p, "sortorder"),
 		offset:    p.IntOr("startindex", 0),
 		limit:     p.IntOr("limit", 0),
 		filters:   parseItemFilters(p),
@@ -352,22 +357,24 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	}
 	q := listParams(p)
 	q.ids = ids
-	q.rawTypes = knownItemKinds(p.Strings("includeitemtypes"))
+	q.rawTypes = knownItemKinds(joinedStrings(p, "includeitemtypes"))
 	q.parentId = parentId
 	q.genreIds = genreIds
 	q.albumIds = albumIds
 	q.years = parseYears(r)
 	q.studioIds = studioIds
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
-	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
-	albumArtistScope := firstNonEmpty(p.StringOr("albumartistids", ""), p.StringOr("artistids", ""))
-	contributingScope := p.StringOr("contributingartistids", "")
-	artistId, ok := firstDecodedID(firstNonEmpty(albumArtistScope, contributingScope))
+	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist. Each is a list, and every
+	// id in the chosen list counts — a repeated key is not truncated to its first artist.
+	albumArtistScope := joinedStrings(p, "albumartistids")
+	artistScope := joinedStrings(p, "artistids")
+	contributingScope := joinedStrings(p, "contributingartistids")
+	artistIds, ok := decodedIDList(firstNonEmpty(albumArtistScope, artistScope, contributingScope))
 	if !ok {
 		return itemsQuery{}, model.ErrNotFound
 	}
-	q.artistId = artistId
-	q.contributingOnly = albumArtistScope == "" && contributingScope != ""
+	q.artistIds = artistIds
+	q.contributingOnly = albumArtistScope == "" && artistScope == "" && contributingScope != ""
 
 	q.types = parseTypes(q.rawTypes)
 	q.scopeIDs, q.isLibraryParent = resolveLibraryScope(ctx, q.parentId)
@@ -563,14 +570,25 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// firstDecodedID decodes the first id from a (possibly comma-separated) Jellyfin id list, reporting
-// whether it decoded successfully (see decodeFilterParam).
-func firstDecodedID(s string) (string, bool) {
-	if s == "" {
-		return "", true
+// decodedIDList decodes every id in a comma-joined Jellyfin id list. ok is false when any entry is
+// malformed, so a later bad id can't be dropped and widen the query (see decodeFilterParam).
+func decodedIDList(s string) ([]string, bool) {
+	if strings.TrimSpace(s) == "" {
+		return nil, true
 	}
-	first, _, _ := strings.Cut(s, ",")
-	return decodeFilterParam(strings.TrimSpace(first))
+	var ids []string
+	for part := range strings.SplitSeq(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, ok := decodeFilterParam(part)
+		if !ok {
+			return nil, false
+		}
+		ids = append(ids, id)
+	}
+	return ids, true
 }
 
 // decodedQueryIDs reads an id-list param in both client spellings (see queryIDs). ok is false if
@@ -608,16 +626,13 @@ var jellyfinItemKinds = map[string]bool{
 }
 
 // knownItemKinds drops IncludeItemTypes entries that aren't BaseItemKind names, as Jellyfin's binder
-// does, so an all-unknown list (JellyBox sends "music") behaves like an absent one. It takes every
-// value of the param: Jellyfin's binder accepts a list either comma-separated in one value (Finamp) or
-// as repeated keys (Jellify's @jellyfin/sdk).
-func knownItemKinds(values []string) string {
+// does, so an all-unknown list (JellyBox sends "music") behaves like an absent one. Callers pass
+// joinedStrings, so a repeated key arrives already comma-joined with the single-value spelling.
+func knownItemKinds(types string) string {
 	var known []string
-	for _, value := range values {
-		for t := range strings.SplitSeq(value, ",") {
-			if t = strings.TrimSpace(t); jellyfinItemKinds[strings.ToLower(t)] {
-				known = append(known, t)
-			}
+	for t := range strings.SplitSeq(types, ",") {
+		if t = strings.TrimSpace(t); jellyfinItemKinds[strings.ToLower(t)] {
+			known = append(known, t)
 		}
 	}
 	return strings.Join(known, ",")
@@ -714,10 +729,16 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	// For albums, ParentId (browse an artist) and AlbumArtistIds/ArtistIds both mean "this artist's
 	// albums"; contributingArtistIds means "albums they only appear on" (Featured On).
 	switch {
-	case q.contributingOnly && q.artistId != "":
-		filters = append(filters, filter.AlbumsByContributingArtistID(q.artistId).Filters)
-	case firstNonEmpty(q.artistId, q.entityParent) != "":
-		filters = append(filters, filter.AlbumsByArtistID(firstNonEmpty(q.artistId, q.entityParent)).Filters)
+	case q.contributingOnly && len(q.artistIds) > 0:
+		filters = append(filters, anyArtist(q.artistIds, func(id string) squirrel.Sqlizer {
+			return filter.AlbumsByContributingArtistID(id).Filters
+		}))
+	case len(q.artistIds) > 0:
+		filters = append(filters, anyArtist(q.artistIds, func(id string) squirrel.Sqlizer {
+			return filter.AlbumsByArtistID(id).Filters
+		}))
+	case q.entityParent != "":
+		filters = append(filters, filter.AlbumsByArtistID(q.entityParent).Filters)
 	default:
 		filters = append(filters, notMissing)
 	}
@@ -760,8 +781,10 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	filters := squirrel.And{}
 	// For songs, ArtistIds/AlbumArtistIds selects an artist's tracks; ParentId selects an album's.
 	switch {
-	case q.artistId != "":
-		filters = append(filters, filter.SongsByArtistID(q.artistId).Filters)
+	case len(q.artistIds) > 0:
+		filters = append(filters, anyArtist(q.artistIds, func(id string) squirrel.Sqlizer {
+			return filter.SongsByArtistID(id).Filters
+		}))
 	case q.entityParent != "":
 		filters = append(filters, filter.SongsByAlbum(q.entityParent).Filters)
 	default:
@@ -798,7 +821,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	}
 	// When browsing an album's tracks, default to disc+track order (like Subsonic's GetAlbum); an
 	// explicit client SortBy still wins, since applySort already set opts.Sort.
-	if q.artistId == "" && q.entityParent != "" && opts.Sort == "" {
+	if len(q.artistIds) == 0 && q.entityParent != "" && opts.Sort == "" {
 		opts.Sort = filter.SongsByAlbum(q.entityParent).Sort
 	}
 	// A full-library request (Finamp's sync, with MediaSources) is tens of thousands of fat rows.
@@ -1020,15 +1043,26 @@ func result(items []dto.BaseItemDto, total, start int) dto.QueryResult {
 
 // applySort keeps every recognized SortBy key, so secondary keys break ties as Jellyfin intends.
 // Unrecognized keys are skipped, not passed through raw where they could make an invalid ORDER BY.
+//
+// SortOrder is paired with SortBy by index, the way Jellyfin's GetOrderBy does. Keys past the end
+// of the list reuse the first direction. A single direction stays on Order, which the repo applies
+// to every column a mapping expands a key into; mixed directions go on SortOrders.
 func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
-	var cols []string
-	for key := range strings.SplitSeq(sortBy, ",") {
+	dirs := listParts(order)
+	var cols, colOrders []string
+	for i, key := range strings.Split(sortBy, ",") {
+		// An absent SortBy splits to one empty part; that is "no sort", not a key to count.
+		if sortBy == "" {
+			break
+		}
+		dir := sortDirection(i, dirs)
 		col, ok := sortColumn(itemType, strings.TrimSpace(key))
 		// The repo matches random by exact string equality, so it can only ever sort alone.
 		if !ok || slices.Contains(cols, col) || (col == "random" && len(cols) > 0) {
 			continue
 		}
 		cols = append(cols, col)
+		colOrders = append(colOrders, dir)
 		if col == "random" {
 			break
 		}
@@ -1036,16 +1070,75 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 	switch {
 	case len(cols) > 0:
 		opts.Sort = strings.Join(cols, ", ")
-	case sortBy != "":
+	case strings.TrimSpace(sortBy) != "":
 		log.Debug("Jellyfin API: no usable SortBy key, falling back to the default order",
 			"itemType", itemType, "sortBy", sortBy)
 	}
-	// Jellyfin allows a per-key SortOrder list, which one Order can't express; honor the first value
-	// for every key, as Jellyfin does for keys past the end of the list.
-	first, _, _ := strings.Cut(order, ",")
-	if strings.EqualFold(first, "Descending") {
-		opts.Order = "desc"
+	if !mixedDirections(colOrders) {
+		// No kept key still records a lone SortOrder, matching the previous single-value read.
+		dir := sortDirection(0, dirs)
+		if len(colOrders) > 0 {
+			dir = colOrders[0]
+		}
+		if dir == "desc" {
+			opts.Order = "desc"
+		}
+		return
 	}
+	opts.SortOrders = colOrders
+}
+
+// listParts splits a comma-joined query value. An absent value is nil, not a single empty part.
+func listParts(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	for i, part := range parts {
+		parts[i] = strings.TrimSpace(part)
+	}
+	return parts
+}
+
+// sortDirection is "desc" only for Jellyfin's Descending. Keys past the end of dirs reuse the first
+// entry, which is what Jellyfin does for a SortOrder list shorter than SortBy.
+func sortDirection(i int, dirs []string) string {
+	if len(dirs) == 0 {
+		return "asc"
+	}
+	raw := dirs[0]
+	if i < len(dirs) {
+		raw = dirs[i]
+	}
+	if strings.EqualFold(raw, "Descending") {
+		return "desc"
+	}
+	return "asc"
+}
+
+func mixedDirections(orders []string) bool {
+	if len(orders) < 2 {
+		return false
+	}
+	for _, order := range orders[1:] {
+		if order != orders[0] {
+			return true
+		}
+	}
+	return false
+}
+
+// anyArtist ORs one artist filter per id. A single id stays that filter unchanged, so the
+// one-artist query keeps its current SQL.
+func anyArtist(ids []string, one func(string) squirrel.Sqlizer) squirrel.Sqlizer {
+	if len(ids) == 1 {
+		return one(ids[0])
+	}
+	parts := make(squirrel.Or, len(ids))
+	for i, id := range ids {
+		parts[i] = one(id)
+	}
+	return parts
 }
 
 // sortColumnsByType maps lowercased-SortBy -> repo-sort-key per item type (repos map logical fields
