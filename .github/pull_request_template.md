@@ -1,8 +1,10 @@
 ### Description
 <!-- Please provide a clear and concise description of what this PR does and why it is needed. AI tools may help you draft, edit, or translate it, but review the final text and make sure you agree with it. Please be mindful of the maintainer's time. -->
 
-**AI use:** Yes / No
-<!-- Select Yes if AI helped generate or modify submitted code or tests, draft substantive PR text, or create the PR. Tool names and prompts are not required. -->
+**AI use** (check one):
+- [ ] Yes, AI helped generate or modify code or tests, draft substantive PR text, or create this PR
+- [ ] No
+<!-- Tool names and prompts are not required. -->
 
 ### Related Issues
 <!-- List related issues, such as "Fixes #123" or "Related to #456". When prior agreement is required, link the maintainer's agreement on the intended behavior and scope. Otherwise, explain why agreement is not needed, such as the small-change exception or a translation update. For a larger change, link the agreed design and identify this phase. -->
