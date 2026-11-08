@@ -660,11 +660,14 @@ func (r *artistRepository) Search(ctx context.Context, q string, options ...mode
 	if isLibraryIDFilter(opts.Filters) {
 		opts.Filters = nil
 	}
-	cfg := r.searchCfg(scope)
-	// Also scope the full SELECT, like albums/songs do: the LIKE and MBID paths have no Phase 1.
-	sq := cfg.LibraryFilter(r.selectArtist(ctx, opts))
+	sq := r.selectArtist(ctx, opts)
+	if scope != nil {
+		// Scopes the full SELECT (LIKE and MBID have no Phase 1) and narrows the library_artist join,
+		// so stats and the LIKE ranking cover only the scoped libraries.
+		sq = sq.Where(artistLibraryIdFilter("library_id", scope))
+	}
 	var res dbArtists
-	err := r.doSearch(ctx, sq, q, &res, cfg, opts)
+	err := r.doSearch(ctx, sq, q, &res, r.searchCfg(scope), opts)
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
