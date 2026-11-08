@@ -8,7 +8,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a problem. Describe what you observed in your own words. Search existing [open and closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) first, and add new details to a matching report if you find one. If you are unsure whether this is a bug, say so. Please do not include passwords, tokens, API keys, session cookies, or other private information. For a possible security vulnerability, use [private reporting](https://github.com/navidrome/navidrome/security/advisories/new).
+        Thanks for reporting a problem. Describe what you observed in your own words. Search existing [open and closed issues](https://github.com/navidrome/navidrome/issues?q=is%3Aissue) first, and add new details to a matching open report if you find one. If the matching issue is closed, open a new report and link to it. If you are unsure whether this is a bug, say so. Please do not include passwords, tokens, API keys, session cookies, or other private information. For a possible security vulnerability, use [private reporting](https://github.com/navidrome/navidrome/security/advisories/new).
   - type: textarea
     id: what-happened
     attributes:

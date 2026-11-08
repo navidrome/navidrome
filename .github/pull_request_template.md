@@ -5,7 +5,7 @@
 <!-- Select Yes if AI helped generate or modify submitted code or tests, draft substantive PR text, or create the PR. Tool names and prompts are not required. -->
 
 ### Related Issues
-<!-- List related issues, such as "Fixes #123" or "Related to #456". When prior agreement is required, link the maintainer's agreement on the intended behavior and scope. Otherwise, explain the small-change exception. For a larger change, link the agreed design and identify this phase. -->
+<!-- List related issues, such as "Fixes #123" or "Related to #456". When prior agreement is required, link the maintainer's agreement on the intended behavior and scope. Otherwise, explain why agreement is not needed, such as the small-change exception or a translation update. For a larger change, link the agreed design and identify this phase. -->
 
 ### Type of Change
 - [ ] Bug fix

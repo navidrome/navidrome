@@ -52,7 +52,7 @@ The maintainer must be able to understand and maintain the result without depend
 
 - Check existing [open and closed PRs](https://github.com/navidrome/navidrome/pulls?q=is%3Apr) to avoid duplicate work.
 - Use the [development environment instructions](https://www.navidrome.org/docs/developers/dev-environment/). Work on a branch in your fork.
-- Complete the [PR template](.github/pull_request_template.md) with the scope agreement or applicable exception, verification evidence, and maintenance implications. Keep each PR focused.
+- Complete the [PR template](.github/pull_request_template.md) with the scope agreement or why agreement is not needed, verification evidence, and maintenance implications. Keep each PR focused.
 - Follow the [commit conventions and DCO requirements](#commit-conventions-and-dco) below.
 
 Review and merge are discretionary. Proposals may be declined, simplified, split, or deferred. PRs that do not fit Navidrome's direction, the agreed scope, or the maintainer's capacity to maintain them may be closed without detailed code review or prolonged discussion. PRs lacking evidence or left with unresolved questions may also be closed. Agreement to pursue work does not guarantee review or merge. Please do not tag the maintainer, send private messages, or post status requests to obtain faster review.
