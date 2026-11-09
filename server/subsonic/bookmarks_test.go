@@ -2,7 +2,6 @@ package subsonic
 
 import (
 	"context"
-	"errors"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -61,10 +60,8 @@ var _ = Describe("Bookmarks", func() {
 
 				_, err := router.CreateBookmark(r)
 
-				Expect(err).To(MatchError(errSubsonic))
-				var subErr subError
-				Expect(errors.As(err, &subErr)).To(BeTrue())
-				Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+				Expect(err).To(HaveOccurred())
+				Expect(mapToSubsonicError(err).code).To(Equal(responses.ErrorGeneric))
 				Expect(mfRepo.BookmarksAdded).To(BeEmpty())
 			},
 			Entry("minus one", "-1"),
@@ -79,22 +76,38 @@ var _ = Describe("Bookmarks", func() {
 			pqRepo = ds.PlayQueue().(*tests.MockPlayQueueRepo)
 		})
 
-		It("rejects a negative position without storing the queue", func() {
+		It("clamps a negative position to zero and stores the queue", func() {
 			r := newGetRequest("id=1", "current=1", "position=-5").WithContext(ctx)
 
 			_, err := router.SavePlayQueue(r)
 
-			Expect(err).To(MatchError(errSubsonic))
-			var subErr subError
-			Expect(errors.As(err, &subErr)).To(BeTrue())
-			Expect(subErr.code).To(Equal(responses.ErrorGeneric))
-			Expect(pqRepo.Queue).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pqRepo.Queue).ToNot(BeNil())
+			Expect(pqRepo.Queue.Position).To(BeEquivalentTo(0))
 		})
 
 		It("stores a zero position", func() {
 			r := newGetRequest("id=1", "current=1", "position=0").WithContext(ctx)
 
 			_, err := router.SavePlayQueue(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pqRepo.Queue).ToNot(BeNil())
+			Expect(pqRepo.Queue.Position).To(BeEquivalentTo(0))
+		})
+	})
+
+	Describe("SavePlayQueueByIndex", func() {
+		var pqRepo *tests.MockPlayQueueRepo
+
+		BeforeEach(func() {
+			pqRepo = ds.PlayQueue().(*tests.MockPlayQueueRepo)
+		})
+
+		It("clamps a negative position to zero and stores the queue", func() {
+			r := newGetRequest("id=1", "currentIndex=0", "position=-5").WithContext(ctx)
+
+			_, err := router.SavePlayQueueByIndex(r)
 
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pqRepo.Queue).ToNot(BeNil())

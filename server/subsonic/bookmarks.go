@@ -116,10 +116,7 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	ids := p.Strings("id")
 	currentID, _ := p.String("current")
-	position, err := positionMillis(p)
-	if err != nil {
-		return nil, err
-	}
+	position := playQueuePosition(p)
 
 	user, _ := request.UserFrom(r.Context())
 	client, _ := request.ClientFrom(r.Context())
@@ -147,7 +144,7 @@ func (api *Router) SavePlayQueue(r *http.Request) (*responses.Subsonic, error) {
 	}
 
 	repo := api.ds.PlayQueue()
-	err = repo.Store(r.Context(), pq)
+	err := repo.Store(r.Context(), pq)
 	if err != nil {
 		return nil, err
 	}
@@ -192,11 +189,9 @@ func (api *Router) SavePlayQueueByIndex(r *http.Request) (*responses.Subsonic, e
 	p := req.Params(r)
 	ids := p.Strings("id")
 
-	position, err := positionMillis(p)
-	if err != nil {
-		return nil, err
-	}
+	position := playQueuePosition(p)
 
+	var err error
 	var currentIndex int
 
 	if len(ids) > 0 {
@@ -231,13 +226,16 @@ func (api *Router) SavePlayQueueByIndex(r *http.Request) (*responses.Subsonic, e
 	return newResponse(), nil
 }
 
-// positionMillis reads the `position` param shared by the bookmark and play queue
-// endpoints. Negative values are stored as-is and handed back to clients, which
-// pass them to the player's currentTime — out-of-range values are rejected there.
+// positionMillis rejects a negative position: clients pass it to the player's currentTime, which rejects values below zero.
 func positionMillis(p *req.Values) (int64, error) {
 	position := p.Int64Or("position", 0)
 	if position < 0 {
 		return 0, newError(responses.ErrorGeneric, "Invalid position: %d. Must not be negative", position)
 	}
 	return position, nil
+}
+
+// playQueuePosition clamps a negative position to 0 so a slightly negative value still saves the queue.
+func playQueuePosition(p *req.Values) int64 {
+	return max(p.Int64Or("position", 0), 0)
 }
