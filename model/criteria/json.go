@@ -59,7 +59,6 @@ func (o *optionalConjunction) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, &o.rules)
 }
 
-// unmarshalExpression handles criteria JSON marshaling.
 func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
 	m := make(map[string]any)
 	err := json.Unmarshal(rawValue, &m)
@@ -108,14 +107,12 @@ func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
 	return nil
 }
 
-// normalizeAllBoolFields handles criteria JSON marshaling.
 func normalizeAllBoolFields(m map[string]any) {
 	for k, v := range m {
 		m[k] = normalizeBoolValue(v)
 	}
 }
 
-// normalizeBoolFields handles criteria JSON marshaling.
 func normalizeBoolFields(m map[string]any) {
 	for field, value := range m {
 		info, ok := LookupField(field)
@@ -128,7 +125,6 @@ func normalizeBoolFields(m map[string]any) {
 // ToBool coerces a criteria value to a bool, accepting the forms criteria values take: a real bool,
 // a strconv.ParseBool-parseable string, or a JSON number that is exactly 0 or 1. Any other value
 // (other numbers, slices, nil, unparseable strings) returns ok=false so callers can handle it.
-// ToBool handles criteria JSON marshaling.
 func ToBool(v any) (bool, bool) {
 	switch val := v.(type) {
 	case bool:
@@ -148,7 +144,6 @@ func ToBool(v any) (bool, bool) {
 }
 
 // normalizeBoolValue leaves non-boolean values unchanged so they flow through to their own validation.
-// normalizeBoolValue handles criteria JSON marshaling.
 func normalizeBoolValue(v any) any {
 	if b, ok := ToBool(v); ok {
 		return b
@@ -156,7 +151,6 @@ func normalizeBoolValue(v any) any {
 	return v
 }
 
-// unmarshalConjunction handles criteria JSON marshaling.
 func unmarshalConjunction(conjName string, rawValue json.RawMessage) Expression {
 	var items unmarshalConjunctionType
 	err := json.Unmarshal(rawValue, &items)
@@ -172,7 +166,6 @@ func unmarshalConjunction(conjName string, rawValue json.RawMessage) Expression 
 	return nil
 }
 
-// marshalExpression handles criteria JSON marshaling.
 func marshalExpression(name string, value map[string]any) ([]byte, error) {
 	if len(value) != 1 {
 		return nil, fmt.Errorf(`invalid %s expression length %d for values %v`, name, len(value), value)
@@ -192,7 +185,6 @@ func marshalExpression(name string, value map[string]any) ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
-// marshalConjunction handles criteria JSON marshaling.
 func marshalConjunction(name string, conj []Expression) ([]byte, error) {
 	if conj == nil {
 		conj = []Expression{}
