@@ -10,35 +10,35 @@ import (
 type unmarshalConjunctionType []Expression
 
 func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
-trimmed := strings.TrimSpace(string(data))
-if trimmed == "{}" || trimmed == "null" {
-*uc = nil
-return nil
-}
-var raw []map[string]json.RawMessage
-if err := json.Unmarshal(data, &raw); err != nil {
-return err
-}
-var es unmarshalConjunctionType
-for _, e := range raw {
-if len(e) == 0 {
-es = append(es, All{})
-continue
-}
-for k, v := range e {
-k = strings.ToLower(k)
-expr := unmarshalExpression(k, v)
-if expr == nil {
-expr = unmarshalConjunction(k, v)
-}
-if expr == nil {
-return fmt.Errorf(`invalid expression key '%s'`, k)
-}
-es = append(es, expr)
-}
-}
-*uc = es
-return nil
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "{}" || trimmed == "null" {
+		*uc = nil
+		return nil
+	}
+	var raw []map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	var es unmarshalConjunctionType
+	for _, e := range raw {
+		if len(e) == 0 {
+			es = append(es, All{})
+			continue
+		}
+		for k, v := range e {
+			k = strings.ToLower(k)
+			expr := unmarshalExpression(k, v)
+			if expr == nil {
+				expr = unmarshalConjunction(k, v)
+			}
+			if expr == nil {
+				return fmt.Errorf(`invalid expression key '%s'`, k)
+			}
+			es = append(es, expr)
+		}
+	}
+	*uc = es
+	return nil
 }
 
 // optionalConjunction is a top-level "all"/"any" value that remembers whether its
