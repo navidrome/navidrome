@@ -5,7 +5,7 @@
       "name": "歌曲 |||| 歌曲",
       "fields": {
         "albumArtist": "專輯藝人",
-        "duration": "長度",
+        "duration": "時長",
         "trackNumber": "#",
         "playCount": "播放次數",
         "title": "標題",
@@ -59,7 +59,7 @@
       "fields": {
         "albumArtist": "專輯藝人",
         "artist": "藝人",
-        "duration": "長度",
+        "duration": "時長",
         "songCount": "歌曲數",
         "playCount": "播放次數",
         "name": "名稱",
@@ -94,7 +94,7 @@
         "download": "下載",
         "info": "取得資訊",
         "share": "分享",
-        "refresh": "重新整理中繼資料"
+        "refresh": "重新整理詮釋資料"
       },
       "lists": {
         "all": "所有",
@@ -162,7 +162,7 @@
       "helperTexts": {
         "name": "您的名稱會在下次登入時生效",
         "libraries": "為該使用者選擇指定媒體庫，留空則使用預設媒體庫",
-        "scrobbleFilter": "符合這些智慧播放清單規則的歌曲將不會傳送至 Last.fm、ListenBrainz 或 Scrobbler 插件。語法與行為皆與智慧播放清單的 JSON 格式相同。範例：{\"all\":[{\"lt\":{\"rating\":4}}]}。若留空則會記錄所有播放紀錄。本機播放次數不受影響。"
+        "scrobbleFilter": "符合這些智慧播放清單規則的歌曲將不會傳送至 Last.fm、ListenBrainz 或 Scrobbler 外掛。語法與行為皆與智慧播放清單的 JSON 格式相同。範例：{\"all\":[{\"lt\":{\"rating\":4}}]}。若留空則會記錄所有播放紀錄。本機播放次數不受影響。"
       },
       "notifications": {
         "created": "使用者已建立",
@@ -209,7 +209,7 @@
       "name": "播放清單 |||| 播放清單",
       "fields": {
         "name": "名稱",
-        "duration": "長度",
+        "duration": "時長",
         "ownerName": "擁有者",
         "public": "公開",
         "updatedAt": "更新於",
@@ -277,11 +277,11 @@
         "libraryName": "媒體庫"
       },
       "actions": {
-        "remove": "刪除",
-        "remove_all": "刪除所有"
+        "remove": "移除",
+        "remove_all": "移除所有"
       },
       "notifications": {
-        "removed": "遺失檔案已刪除"
+        "removed": "遺失檔案已移除"
       },
       "empty": "無遺失檔案"
     },
@@ -370,7 +370,7 @@
       "sections": {
         "status": "狀態",
         "info": "外掛資訊",
-        "configuration": "設定",
+        "configuration": "配置",
         "manifest": "資訊清單",
         "usersPermission": "使用者權限",
         "libraryPermission": "媒體庫權限"
@@ -385,7 +385,7 @@
         "disabledDueToError": "修復錯誤後才能啟用",
         "disabledUsersRequired": "啟用前請先選擇使用者",
         "disabledLibrariesRequired": "啟用前請先選擇媒體庫",
-        "addConfig": "新增設定",
+        "addConfig": "新增配置",
         "rescan": "重新掃描"
       },
       "notifications": {
@@ -395,12 +395,12 @@
         "error": "更新外掛時發生錯誤"
       },
       "validation": {
-        "invalidJson": "設定必須是有效的 JSON"
+        "invalidJson": "配置必須是有效的 JSON"
       },
       "messages": {
         "configHelp": "使用鍵值對設定外掛。若外掛無需設定則留空。",
         "clickPermissions": "點擊權限以查看詳細資訊",
-        "noConfig": "無設定",
+        "noConfig": "無配置",
         "allUsersHelp": "啟用後，外掛將可存取所有使用者，包含未來建立的使用者。",
         "noUsers": "未選擇使用者",
         "permissionReason": "原因",
@@ -409,10 +409,10 @@
         "noLibraries": "未選擇媒體庫",
         "librariesRequired": "此外掛需要存取媒體庫資訊。請選擇外掛可存取的媒體庫，或啟用「允許所有媒體庫」。",
         "requiredHosts": "必要的 Hosts",
-        "configValidationError": "設定驗證失敗：",
+        "configValidationError": "配置驗證失敗：",
         "schemaRenderError": "無法顯示設定表單。外掛的 schema 可能無效。",
         "allowWriteAccessHelp": "啟用後，外掛可以修改媒體庫目錄中的檔案。 預設情況下，外掛具有唯讀權限。",
-        "idHelp": "插件 ID，衍生自其檔案名稱。在 Agents 等設定選項中參照此插件時請使用此 ID。"
+        "idHelp": "外掛 ID，衍生自其檔案名稱。在 Agents 等設定選項中參照此外掛時請使用此 ID。"
       },
       "placeholders": {
         "configKey": "鍵",
@@ -465,7 +465,7 @@
       "export": "匯出",
       "list": "清單",
       "refresh": "重新整理",
-      "remove_filter": "清除此條件",
+      "remove_filter": "移除此條件",
       "remove": "移除",
       "save": "儲存",
       "search": "搜尋",
@@ -596,10 +596,10 @@
     "shareFailure": "分享連結複製失敗：%{url}",
     "downloadDialogTitle": "下載 %{resource} '%{name}' (%{size})",
     "shareCopyToClipboard": "複製到剪貼簿：Ctrl+C, Enter",
-    "remove_missing_title": "刪除遺失檔案",
-    "remove_missing_content": "您確定要從媒體庫中刪除所選的遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括其播放次數和評分。",
-    "remove_all_missing_title": "刪除所有遺失檔案",
-    "remove_all_missing_content": "您確定要從媒體庫中刪除所有遺失的檔案嗎？這將永久刪除它們的所有相關資訊，包括它們的播放次數和評分。",
+    "remove_missing_title": "移除遺失檔案",
+    "remove_missing_content": "您確定要從媒體庫中移除所選的遺失的檔案嗎？這將永久移除它們的所有相關資訊，包括其播放次數和評分。",
+    "remove_all_missing_title": "移除所有遺失檔案",
+    "remove_all_missing_content": "您確定要從媒體庫中移除所有遺失的檔案嗎？這將永久移除它們的所有相關資訊，包括它們的播放次數和評分。",
     "noSimilarSongsFound": "找不到相似歌曲",
     "noTopSongsFound": "找不到熱門歌曲",
     "startingInstantMix": "正在載入即時混音...",
@@ -609,7 +609,7 @@
     "coverRemoved": "已移除封面圖",
     "coverUploadError": "上傳封面圖時發生錯誤",
     "coverRemoveError": "移除封面圖時發生錯誤",
-    "metadataRefreshStarted": "正在背景重新整理中繼資料"
+    "metadataRefreshStarted": "正在背景重新整理詮釋資料"
   },
   "menu": {
     "library": "媒體庫",
@@ -662,8 +662,8 @@
     "toggleMiniModeText": "最小化",
     "destroyText": "關閉",
     "downloadText": "下載",
-    "removeAudioListsText": "清空播放佇列",
-    "clickToDeleteText": "點擊刪除 %{name}",
+    "removeAudioListsText": "刪除播放佇列",
+    "clickToDeleteText": "點擊以刪除 %{name}",
     "emptyLyricText": "無歌詞",
     "playModeText": {
       "order": "順序播放",
@@ -685,19 +685,19 @@
     },
     "tabs": {
       "about": "關於",
-      "config": "設定"
+      "config": "配置"
     },
     "config": {
-      "configName": "設定名稱",
+      "configName": "配置名稱",
       "environmentVariable": "環境變數",
-      "currentValue": "目前值",
-      "configurationFile": "設定檔案",
-      "exportToml": "匯出設定（TOML 格式）",
-      "exportSuccess": "設定已以 TOML 格式匯出至剪貼簿",
-      "exportFailed": "設定複製失敗",
+      "currentValue": "當前值",
+      "configurationFile": "配置檔案",
+      "exportToml": "匯出配置（TOML）",
+      "exportSuccess": "配置已以 TOML 格式匯出至剪貼簿",
+      "exportFailed": "配置複製失敗",
       "devFlagsHeader": "開發旗標（可能會更改/刪除）",
       "devFlagsComment": "這些是實驗性設定，可能會在未來版本中刪除",
-      "downloadToml": "下載設定檔 (TOML)"
+      "downloadToml": "下載配置檔案 (TOML)"
     }
   },
   "activity": {
@@ -713,7 +713,7 @@
     "selectiveScan": "選擇性掃描"
   },
   "help": {
-    "title": "Navidrome 快捷鍵",
+    "title": "Navidrome 快速鍵",
     "hotkeys": {
       "show_help": "顯示此說明",
       "toggle_menu": "顯示/隱藏選單側欄",
