@@ -174,14 +174,8 @@ func marshalExpression(name string, value map[string]any) ([]byte, error) {
 }
 
 func marshalConjunction(name string, conj []Expression) ([]byte, error) {
-	aux := struct {
-		All []Expression `json:"all,omitempty"`
-		Any []Expression `json:"any,omitempty"`
-	}{}
-	if name == "any" {
-		aux.Any = conj
-	} else {
-		aux.All = conj
+	m := map[string][]Expression{
+		name: conj,
 	}
-	return json.Marshal(aux)
+	return json.Marshal(m)
 }
