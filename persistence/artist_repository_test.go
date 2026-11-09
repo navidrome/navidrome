@@ -831,102 +831,35 @@ var _ = Describe("ArtistRepository", func() {
 					}
 				})
 
-				// The library scope for artists is carried in searchConfig.LibraryFilter (they have no
-				// library_id column), which only the FTS strategy's Phase 1 used to apply. These specs
-				// cover the two strategies that run the full SELECT: the legacy backend and the LIKE
-				// fallback used for CJK queries.
-				It("narrows a legacy (LIKE) artist search to the requested library", func() {
-					DeferCleanup(configtest.SetupConfig())
-					artist := model.Artist{ID: "legacy-search-lib2-artist", Name: "Folder Scope Zeta Artist"}
-					Expect(repo.Put(ctx, &artist)).To(Succeed())
-					Expect(lr.AddArtist(lrCtx, lib2.ID, artist.ID)).To(Succeed())
-					DeferCleanup(func() {
-						if raw, ok := repo.(*artistRepository); ok {
-							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artist.ID}))
+				DescribeTable("narrows artist search to the requested library",
+					func(backend string, artist model.Artist, query string) {
+						DeferCleanup(configtest.SetupConfig())
+						if backend != "" {
+							conf.Server.Search.Backend = backend
 						}
-					})
-
-					conf.Server.Search.Backend = "legacy"
-					results, err := repo.Search(ctx, "Folder Scope", model.QueryOptions{Max: 100})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(HaveLen(1), "LIKE search should find the artist when no library is requested")
-
-					results, err = repo.Search(ctx, "Folder Scope", model.QueryOptions{
-						Max:     100,
-						Filters: squirrel.Eq{"library_id": []int{1}},
-					})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(BeEmpty(), "LIKE search should respect the requested library")
-
-					results, err = repo.Search(ctx, "Folder Scope", model.QueryOptions{
-						Max:     100,
-						Filters: squirrel.Eq{"library_id": []int{lib2.ID}},
-					})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(HaveLen(1), "LIKE search should find the artist in the requested library")
-				})
-
-				It("narrows the CJK LIKE fallback to the requested library", func() {
-					DeferCleanup(configtest.SetupConfig())
-					artist := model.Artist{ID: "cjk-search-lib2-artist", Name: "文件夹范围测试艺术家"}
-					Expect(repo.Put(ctx, &artist)).To(Succeed())
-					Expect(lr.AddArtist(lrCtx, lib2.ID, artist.ID)).To(Succeed())
-					DeferCleanup(func() {
-						if raw, ok := repo.(*artistRepository); ok {
+						Expect(createArtistWithLibrary(ctx, repo, &artist, lib2.ID)).To(Succeed())
+						DeferCleanup(func() {
+							raw := repo.(*artistRepository)
 							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artist.ID}))
+						})
+
+						search := func(filters squirrel.Sqlizer) model.Artists {
+							results, err := repo.Search(ctx, query, model.QueryOptions{Max: 100, Filters: filters})
+							Expect(err).ToNot(HaveOccurred())
+							return results
 						}
-					})
-
-					// Default FTS backend falls back to LIKE for CJK queries.
-					results, err := repo.Search(ctx, "文件夹", model.QueryOptions{Max: 100})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(HaveLen(1), "CJK search should find the artist when no library is requested")
-
-					results, err = repo.Search(ctx, "文件夹", model.QueryOptions{
-						Max:     100,
-						Filters: squirrel.Eq{"library_id": []int{1}},
-					})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(BeEmpty(), "CJK search should respect the requested library")
-
-					results, err = repo.Search(ctx, "文件夹", model.QueryOptions{
-						Max:     100,
-						Filters: squirrel.Eq{"library_id": []int{lib2.ID}},
-					})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(HaveLen(1), "CJK search should find the artist in the requested library")
-				})
-
-				// The MBID branch of doSearch is the third path that runs the full SELECT directly.
-				It("narrows an MBID artist search to the requested library", func() {
-					const mbid = "3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"
-					artist := createTestArtistWithMBID("mbid-search-lib2-artist", "Folder Scope MBID Artist", mbid)
-					Expect(repo.Put(ctx, &artist)).To(Succeed())
-					Expect(lr.AddArtist(lrCtx, lib2.ID, artist.ID)).To(Succeed())
-					DeferCleanup(func() {
-						if raw, ok := repo.(*artistRepository); ok {
-							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artist.ID}))
-						}
-					})
-
-					results, err := repo.Search(ctx, mbid, model.QueryOptions{Max: 100})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(HaveLen(1), "MBID search should find the artist when no library is requested")
-
-					results, err = repo.Search(ctx, mbid, model.QueryOptions{
-						Max:     100,
-						Filters: squirrel.Eq{"library_id": []int{1}},
-					})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(BeEmpty(), "MBID search should respect the requested library")
-
-					results, err = repo.Search(ctx, mbid, model.QueryOptions{
-						Max:     100,
-						Filters: squirrel.Eq{"library_id": []int{lib2.ID}},
-					})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(results).To(HaveLen(1), "MBID search should find the artist in the requested library")
-				})
+						Expect(search(nil)).To(HaveLen(1))
+						Expect(search(squirrel.Eq{"library_id": []int{1}})).To(BeEmpty())
+						Expect(search(squirrel.Eq{"library_id": []int{lib2.ID}})).To(HaveLen(1))
+					},
+					Entry("legacy (LIKE) backend", "legacy",
+						model.Artist{ID: "legacy-search-lib2-artist", Name: "Folder Scope Zeta Artist"}, "Folder Scope"),
+					Entry("CJK LIKE fallback", "",
+						model.Artist{ID: "cjk-search-lib2-artist", Name: "文件夹范围测试艺术家"}, "文件夹"),
+					Entry("MBID match", "",
+						createTestArtistWithMBID("mbid-search-lib2-artist", "Folder Scope MBID Artist", "3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
+						"3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
+				)
 			})
 
 			Context("Empty Query (sync pagination)", func() {

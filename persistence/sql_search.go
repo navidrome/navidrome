@@ -22,11 +22,9 @@ type searchConfig struct {
 	NaturalOrder string   // ORDER BY for empty-query results (e.g. "album.rowid")
 	OrderBy      []string // ORDER BY for text search results (e.g. ["name"])
 	MBIDFields   []string // columns to match when query is a UUID
-	// LibraryFilter narrows a search to the requested libraries, overriding the default applyLibraryFilter,
-	// for entities whose library access goes through a junction table (e.g. artist → library_artist). Every
-	// search path applies it: the rowid Phase 1 of the two-phase strategy, and the single-query paths (the
-	// LIKE strategy and the MBID match). It MUST be join-free (Phase 1 has no DISTINCT, so a fan-out JOIN
-	// would corrupt offset pagination). See [artistLibraryFilter].
+	// LibraryFilter overrides the default applyLibraryFilter for the rowid Phase 1, for entities whose
+	// library access goes through a junction table (e.g. artist → library_artist). It MUST be join-free
+	// (Phase 1 has no DISTINCT, so a fan-out JOIN would corrupt offset pagination). See [artistLibraryFilter].
 	LibraryFilter func(sq SelectBuilder) SelectBuilder
 }
 
@@ -69,11 +67,6 @@ func (r sqlRepository) doSearch(ctx context.Context, sq SelectBuilder, q string,
 	// MBID search: if query is a valid UUID, search by MBID fields instead
 	if uuid.Validate(q) == nil && len(cfg.MBIDFields) > 0 {
 		sq = sq.Where(mbidExpr(r.tableName, q, cfg.MBIDFields...))
-		// Like the LIKE strategy, this path runs the full SELECT with no Phase 1, so it has to
-		// apply the library scope itself: artists carry it only in cfg.LibraryFilter.
-		if cfg.LibraryFilter != nil {
-			sq = cfg.LibraryFilter(sq)
-		}
 		return r.queryAll(ctx, sq, results)
 	}
 

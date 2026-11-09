@@ -23,11 +23,6 @@ func (s *likeSearch) ToSql() (string, []any, error) {
 
 func (s *likeSearch) execute(ctx context.Context, r sqlRepository, sq SelectBuilder, dest any, cfg searchConfig, options model.QueryOptions) error {
 	sq = sq.Where(s.filter)
-	// Unlike the FTS strategy, the LIKE path has no Phase 1 rowid query, so it has to apply the
-	// library scope here: artists consume the library_id filter and carry it only in cfg.LibraryFilter.
-	if cfg.LibraryFilter != nil {
-		sq = cfg.LibraryFilter(sq)
-	}
 	sq = sq.OrderBy(cfg.OrderBy...)
 	return r.queryAll(ctx, sq, dest, options)
 }

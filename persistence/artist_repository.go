@@ -613,7 +613,7 @@ func (r *artistRepository) RefreshStats(ctx context.Context, allArtists bool) (i
 	return totalRowsAffected, nil
 }
 
-// searchCfg builds the per-search config. scope is the set of library IDs the rowid Phase 1 must
+// searchCfg builds the per-search config. scope is the set of library IDs the search must
 // restrict artists to, or nil to skip the filter (fast-path). See [artistRepository.searchScope].
 func (r *artistRepository) searchCfg(scope []int) searchConfig {
 	return searchConfig{
@@ -655,13 +655,16 @@ func (r *artistRepository) Search(ctx context.Context, q string, options ...mode
 		opts = options[0]
 	}
 	// Artists have no library_id column, so the library_id filter callers pass (same as albums/songs)
-	// can't be applied directly: consume it and realize it as a join-free Phase-1 scope (searchCfg).
+	// can't be applied directly: consume it and realize it as a join-free scope (searchCfg).
 	scope := r.searchScope(ctx, opts.Filters)
 	if isLibraryIDFilter(opts.Filters) {
 		opts.Filters = nil
 	}
+	cfg := r.searchCfg(scope)
+	// Also scope the full SELECT, like albums/songs do: the LIKE and MBID paths have no Phase 1.
+	sq := cfg.LibraryFilter(r.selectArtist(ctx, opts))
 	var res dbArtists
-	err := r.doSearch(ctx, r.selectArtist(ctx, opts), q, &res, r.searchCfg(scope), opts)
+	err := r.doSearch(ctx, sq, q, &res, cfg, opts)
 	if err != nil {
 		return nil, fmt.Errorf("searching artist %q: %w", q, err)
 	}
