@@ -730,13 +730,11 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	// albums"; contributingArtistIds means "albums they only appear on" (Featured On).
 	switch {
 	case q.contributingOnly && len(q.artistIds) > 0:
-		filters = append(filters, anyArtist(q.artistIds, func(id string) squirrel.Sqlizer {
-			return filter.AlbumsByContributingArtistID(id).Filters
-		}))
+		// One IN/NOT IN pair over the whole id list (not one OR'd pair per id): otherwise an
+		// album whose album artist is one of the ids can still match as "Featured On" via another.
+		filters = append(filters, filter.AlbumsByContributingArtistID(q.artistIds).Filters)
 	case len(q.artistIds) > 0:
-		filters = append(filters, anyArtist(q.artistIds, func(id string) squirrel.Sqlizer {
-			return filter.AlbumsByArtistID(id).Filters
-		}))
+		filters = append(filters, filter.AlbumsByArtistID(q.artistIds).Filters)
 	case q.entityParent != "":
 		filters = append(filters, filter.AlbumsByArtistID(q.entityParent).Filters)
 	default:
@@ -782,9 +780,7 @@ func (api *Router) listSongs(ctx context.Context, opts model.QueryOptions, q ite
 	// For songs, ArtistIds/AlbumArtistIds selects an artist's tracks; ParentId selects an album's.
 	switch {
 	case len(q.artistIds) > 0:
-		filters = append(filters, anyArtist(q.artistIds, func(id string) squirrel.Sqlizer {
-			return filter.SongsByArtistID(id).Filters
-		}))
+		filters = append(filters, filter.SongsByArtistID(q.artistIds).Filters)
 	case q.entityParent != "":
 		filters = append(filters, filter.SongsByAlbum(q.entityParent).Filters)
 	default:
@@ -1126,19 +1122,6 @@ func mixedDirections(orders []string) bool {
 		}
 	}
 	return false
-}
-
-// anyArtist ORs one artist filter per id. A single id stays that filter unchanged, so the
-// one-artist query keeps its current SQL.
-func anyArtist(ids []string, one func(string) squirrel.Sqlizer) squirrel.Sqlizer {
-	if len(ids) == 1 {
-		return one(ids[0])
-	}
-	parts := make(squirrel.Or, len(ids))
-	for i, id := range ids {
-		parts[i] = one(id)
-	}
-	return parts
 }
 
 // sortColumnsByType maps lowercased-SortBy -> repo-sort-key per item type (repos map logical fields

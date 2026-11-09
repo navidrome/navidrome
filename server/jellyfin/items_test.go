@@ -971,6 +971,22 @@ var _ = Describe("Items", func() {
 				Expect(args).To(ContainElements(testID("ar1"), testID("ar2")))
 			})
 
+			It("excludes an album artist from a multi-id contributingArtistIds Featured On filter", func() {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=MusicAlbum&contributingArtistIds="+dto.EncodeID(testID("ar1"))+","+dto.EncodeID(testID("ar2")), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("NOT IN"))
+				Expect(args).To(ContainElements(testID("ar1"), testID("ar2")))
+				// One IN + one NOT IN over the whole list, not one OR'd pair per id.
+				Expect(strings.Count(sql, "album_artists")).To(Equal(2))
+			})
+
 			It("still applies the artist filter (rather than dropping it) for a well-formed but unknown AlbumArtistIds", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
