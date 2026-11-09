@@ -20,9 +20,10 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	var es unmarshalConjunctionType
+	sawEmpty := false
 	for _, e := range raw {
 		if len(e) == 0 {
-			es = append(es, All{})
+			sawEmpty = true
 			continue
 		}
 		for k, v := range e {
@@ -36,6 +37,9 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 			}
 			es = append(es, expr)
 		}
+	}
+	if len(es) == 0 && sawEmpty {
+		es = append(es, All{})
 	}
 	*uc = es
 	return nil
@@ -182,6 +186,9 @@ func marshalExpression(name string, value map[string]any) ([]byte, error) {
 }
 
 func marshalConjunction(name string, conj []Expression) ([]byte, error) {
+	if conj == nil {
+		conj = []Expression{}
+	}
 	m := map[string][]Expression{
 		name: conj,
 	}
