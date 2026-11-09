@@ -830,6 +830,36 @@ var _ = Describe("ArtistRepository", func() {
 						_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
 					}
 				})
+
+				DescribeTable("narrows artist search to the requested library",
+					func(backend string, artist model.Artist, query string) {
+						DeferCleanup(configtest.SetupConfig())
+						if backend != "" {
+							conf.Server.Search.Backend = backend
+						}
+						Expect(createArtistWithLibrary(ctx, repo, &artist, lib2.ID)).To(Succeed())
+						DeferCleanup(func() {
+							raw := repo.(*artistRepository)
+							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artist.ID}))
+						})
+
+						search := func(filters squirrel.Sqlizer) model.Artists {
+							results, err := repo.Search(ctx, query, model.QueryOptions{Max: 100, Filters: filters})
+							Expect(err).ToNot(HaveOccurred())
+							return results
+						}
+						Expect(search(nil)).To(HaveLen(1))
+						Expect(search(squirrel.Eq{"library_id": []int{1}})).To(BeEmpty())
+						Expect(search(squirrel.Eq{"library_id": []int{lib2.ID}})).To(HaveLen(1))
+					},
+					Entry("legacy (LIKE) backend", "legacy",
+						model.Artist{ID: "legacy-search-lib2-artist", Name: "Folder Scope Zeta Artist"}, "Folder Scope"),
+					Entry("CJK LIKE fallback", "",
+						model.Artist{ID: "cjk-search-lib2-artist", Name: "文件夹范围测试艺术家"}, "文件夹"),
+					Entry("MBID match", "",
+						createTestArtistWithMBID("mbid-search-lib2-artist", "Folder Scope MBID Artist", "3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
+						"3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
+				)
 			})
 
 			Context("Empty Query (sync pagination)", func() {
