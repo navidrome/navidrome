@@ -860,6 +860,75 @@ var _ = Describe("ArtistRepository", func() {
 						createTestArtistWithMBID("mbid-search-lib2-artist", "Folder Scope MBID Artist", "3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
 						"3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
 				)
+
+				Describe("library-scoped counts", func() {
+					const scopedMBID = "0b8e5d2a-6c1f-4e7b-9a3d-2f4c6e8a0b1d"
+
+					seedArtist := func(id, name, mbid string, statsByLib map[int]string) {
+						raw := repo.(*artistRepository)
+						artist := createTestArtistWithMBID(id, name, mbid)
+						Expect(raw.Put(ctx, &artist)).To(Succeed())
+						for libID, stats := range statsByLib {
+							_, err := raw.executeSQL(ctx, squirrel.Insert("library_artist").
+								Columns("library_id", "artist_id", "stats").
+								Values(libID, id, stats))
+							Expect(err).ToNot(HaveOccurred())
+						}
+						DeferCleanup(func() {
+							_, _ = raw.executeSQL(ctx, squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": id}))
+							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": id}))
+						})
+					}
+
+					BeforeEach(func() {
+						seedArtist("scoped-counts-artist", "Scoped Counts Artist", scopedMBID, map[int]string{
+							1:       `{"total":{"m":3,"a":1,"s":300}}`,
+							lib2.ID: `{"total":{"m":50,"a":5,"s":5000}}`,
+						})
+					})
+
+					DescribeTable("reports only the requested libraries' songs and albums",
+						func(backend, query string) {
+							DeferCleanup(configtest.SetupConfig())
+							conf.Server.Search.Backend = backend
+
+							counts := func(libIDs ...int) []int64 {
+								opts := model.QueryOptions{Max: 100}
+								if len(libIDs) > 0 {
+									opts.Filters = squirrel.Eq{"library_id": libIDs}
+								}
+								results, err := repo.Search(ctx, query, opts)
+								Expect(err).ToNot(HaveOccurred())
+								Expect(results).To(HaveLen(1))
+								a := results[0]
+								return []int64{int64(a.SongCount), int64(a.AlbumCount), a.Size}
+							}
+
+							Expect(counts(1)).To(Equal([]int64{3, 1, 300}))
+							Expect(counts(lib2.ID)).To(Equal([]int64{50, 5, 5000}))
+							Expect(counts()).To(Equal([]int64{53, 6, 5300}))
+						},
+						Entry("FTS", "fts", "Scoped Counts"),
+						Entry("legacy LIKE", "legacy", "Scoped Counts"),
+						Entry("MBID", "fts", scopedMBID),
+					)
+
+					It("ranks LIKE results by the requested library's song count", func() {
+						DeferCleanup(configtest.SetupConfig())
+						conf.Server.Search.Backend = "legacy"
+						seedArtist("scoped-counts-artist-b", "Scoped Counts Artist B", "", map[int]string{
+							1: `{"total":{"m":10,"a":2,"s":1000}}`,
+						})
+
+						results, err := repo.Search(ctx, "Scoped Counts", model.QueryOptions{
+							Max:     100,
+							Filters: squirrel.Eq{"library_id": []int{1}},
+						})
+						Expect(err).ToNot(HaveOccurred())
+						Expect(results).To(HaveLen(2))
+						Expect(results[0].ID).To(Equal("scoped-counts-artist-b"))
+					})
+				})
 			})
 
 			Context("Empty Query (sync pagination)", func() {
