@@ -423,39 +423,16 @@ var _ = Describe("Criteria", func() {
 			gomega.Expect(ids).To(gomega.Equal([]string{sharedID}))
 		})
 	})
-})
 
-var _ = Describe("Criteria JSON round-trip", func() {
 	DescribeTable("empty nested groups",
-		func(input string) {
+		func(input, expected string) {
 			var c Criteria
 			gomega.Expect(json.Unmarshal([]byte(input), &c)).To(gomega.Succeed())
 			out, err := json.Marshal(c)
 			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			var c2 Criteria
-			gomega.Expect(json.Unmarshal(out, &c2)).To(gomega.Succeed())
-			out2, err := json.Marshal(c2)
-			gomega.Expect(err).ToNot(gomega.HaveOccurred())
-			gomega.Expect(string(out2)).To(gomega.Equal(string(out)))
+			gomega.Expect(string(out)).To(gomega.Equal(expected))
 		},
-		Entry("nested empty", `{"all":[{"all":[]}]}`),
-		Entry("legacy empty object alone", `{"all":[{}]}`),
-		Entry("mixed skips empty object", `{"any":[{},{"contains":{"title":"a"}}]}`),
+		Entry("keeps a nested empty group", `{"all":[{"all":[]}]}`, `{"all":[{"all":[]}]}`),
+		Entry("keeps a nested empty any group", `{"all":[{"any":[]}]}`, `{"all":[{"any":[]}]}`),
 	)
-
-	It("keeps a nested empty group as an empty array", func() {
-		var c Criteria
-		gomega.Expect(json.Unmarshal([]byte(`{"all":[{"all":[]}]}`), &c)).To(gomega.Succeed())
-		out, err := json.Marshal(c)
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-		gomega.Expect(string(out)).To(gomega.ContainSubstring(`{"all":[{"all":[]}]}`))
-	})
-
-	It("ignores a legacy empty object when the group has other rules", func() {
-		var c Criteria
-		gomega.Expect(json.Unmarshal([]byte(`{"any":[{},{"contains":{"title":"a"}}]}`), &c)).To(gomega.Succeed())
-		out, err := json.Marshal(c)
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-		gomega.Expect(string(out)).To(gomega.ContainSubstring(`{"any":[{"contains":{"title":"a"}}]}`))
-	})
 })

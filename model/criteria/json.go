@@ -9,24 +9,14 @@ import (
 
 type unmarshalConjunctionType []Expression
 
-// UnmarshalJSON parses an optional conjunction from JSON.
 func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
-	trimmed := strings.TrimSpace(string(data))
-	if trimmed == "{}" || trimmed == "null" {
-		*uc = nil
-		return nil
-	}
 	var raw []map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
+
 	var es unmarshalConjunctionType
-	sawEmpty := false
 	for _, e := range raw {
-		if len(e) == 0 {
-			sawEmpty = true
-			continue
-		}
 		for k, v := range e {
 			k = strings.ToLower(k)
 			expr := unmarshalExpression(k, v)
@@ -38,9 +28,6 @@ func (uc *unmarshalConjunctionType) UnmarshalJSON(data []byte) error {
 			}
 			es = append(es, expr)
 		}
-	}
-	if len(es) == 0 && sawEmpty {
-		es = append(es, All{})
 	}
 	*uc = es
 	return nil
@@ -55,13 +42,11 @@ type optionalConjunction struct {
 	rules   unmarshalConjunctionType
 }
 
-// UnmarshalJSON parses an optional conjunction from JSON.
 func (o *optionalConjunction) UnmarshalJSON(data []byte) error {
 	o.present = true
 	return json.Unmarshal(data, &o.rules)
 }
 
-// unmarshalExpression parses a single criteria expression from raw JSON.
 func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
 	m := make(map[string]any)
 	err := json.Unmarshal(rawValue, &m)
@@ -110,14 +95,12 @@ func unmarshalExpression(opName string, rawValue json.RawMessage) Expression {
 	return nil
 }
 
-// normalizeAllBoolFields converts boolean fields to a consistent form.
 func normalizeAllBoolFields(m map[string]any) {
 	for k, v := range m {
 		m[k] = normalizeBoolValue(v)
 	}
 }
 
-// normalizeBoolFields normalizes boolean fields in a criteria map.
 func normalizeBoolFields(m map[string]any) {
 	for field, value := range m {
 		info, ok := LookupField(field)
@@ -156,7 +139,6 @@ func normalizeBoolValue(v any) any {
 	return v
 }
 
-// unmarshalConjunction parses a conjunction group, treating empty objects as empty groups.
 func unmarshalConjunction(conjName string, rawValue json.RawMessage) Expression {
 	var items unmarshalConjunctionType
 	err := json.Unmarshal(rawValue, &items)
@@ -172,7 +154,6 @@ func unmarshalConjunction(conjName string, rawValue json.RawMessage) Expression 
 	return nil
 }
 
-// marshalExpression serializes a criteria expression to JSON.
 func marshalExpression(name string, value map[string]any) ([]byte, error) {
 	if len(value) != 1 {
 		return nil, fmt.Errorf(`invalid %s expression length %d for values %v`, name, len(value), value)
@@ -192,13 +173,9 @@ func marshalExpression(name string, value map[string]any) ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
-// marshalConjunction serializes a conjunction, normalizing nil slices to empty slices.
 func marshalConjunction(name string, conj []Expression) ([]byte, error) {
 	if conj == nil {
 		conj = []Expression{}
 	}
-	m := map[string][]Expression{
-		name: conj,
-	}
-	return json.Marshal(m)
+	return json.Marshal(map[string][]Expression{name: conj})
 }
