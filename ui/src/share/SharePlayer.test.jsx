@@ -46,6 +46,13 @@ describe('SharePlayer', () => {
     vi.restoreAllMocks()
   })
 
+  it('adds a volume control, since the share layout has none of its own', () => {
+    render(<SharePlayer />)
+
+    expect(playerProps.getAudioInstance).toBeInstanceOf(Function)
+    expect(playerProps.extendsContent).toBeTruthy()
+  })
+
   it('downloads via an anchor so the service worker does not intercept it', () => {
     render(<SharePlayer />)
 
