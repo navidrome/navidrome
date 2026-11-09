@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { playerReducer } from './playerReducer'
 import {
+  PLAYER_ADD_TRACKS,
+  PLAYER_CLEAR_QUEUE,
   PLAYER_SYNC_QUEUE,
   PLAYER_CURRENT,
   PLAYER_REFRESH_QUEUE,
+  PLAYER_CAST_CURRENT,
 } from '../actions'
 
 describe('playerReducer', () => {
@@ -222,6 +225,62 @@ describe('playerReducer', () => {
       const action = { type: PLAYER_REFRESH_QUEUE, data: {} }
       const result = playerReducer(state, action)
       expect(result.playIndex).toBe(0)
+    })
+  })
+
+  describe('PLAYER_CLEAR_QUEUE after PLAYER_ADD_TRACKS', () => {
+    it('does not mutate initialState.queue when adding tracks after clearing', () => {
+      const clearedOnce = playerReducer(undefined, { type: PLAYER_CLEAR_QUEUE })
+      expect(clearedOnce.queue).toEqual([])
+
+      const afterAdd = playerReducer(clearedOnce, {
+        type: PLAYER_ADD_TRACKS,
+        data: {
+          'song-1': {
+            id: 'song-1',
+            title: 'Track 1',
+            artist: 'Artist',
+            album: 'Album',
+            duration: 180,
+          },
+        },
+      })
+      expect(afterAdd.queue).toHaveLength(1)
+
+      const clearedTwice = playerReducer(afterAdd, { type: PLAYER_CLEAR_QUEUE })
+      expect(clearedTwice.queue).toEqual([])
+      expect(clearedTwice.clear).toBe(true)
+    })
+  })
+
+  describe('Cast receiver track after a page reload', () => {
+    it('PLAYER_CAST_CURRENT resolves the selection restored by PLAYER_REFRESH_QUEUE', () => {
+      const queue = ['a', 'b', 'c'].map((trackId) => ({
+        trackId,
+        uuid: `uuid-${trackId}`,
+      }))
+      const restored = playerReducer(
+        { queue, current: {}, savedPlayIndex: 0, volume: 0.5 },
+        { type: PLAYER_REFRESH_QUEUE, data: {} },
+      )
+      expect(restored.playIndex).toBe(0)
+      expect(restored.clear).toBe(true)
+
+      // A plain CURRENT for another track keeps the restored selection pending
+      const pending = playerReducer(restored, {
+        type: PLAYER_CURRENT,
+        data: { ...restored.queue[2], volume: 0.5 },
+      })
+      expect(pending.playIndex).toBe(0)
+
+      const adopted = playerReducer(restored, {
+        type: PLAYER_CAST_CURRENT,
+        data: { ...restored.queue[2], volume: 0.5 },
+      })
+      expect(adopted.playIndex).toBeUndefined()
+      expect(adopted.clear).toBe(false)
+      expect(adopted.savedPlayIndex).toBe(2)
+      expect(adopted.current.uuid).toBe('uuid-c')
     })
   })
 })
