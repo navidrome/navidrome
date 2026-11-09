@@ -424,3 +424,24 @@ var _ = Describe("Criteria", func() {
 		})
 	})
 })
+
+var _ = Describe("Criteria JSON round-trip", func() {
+	DescribeTable("empty nested groups",
+		func(input string) {
+			expr, err := Parse(input)
+			Expect(err).ToNot(HaveOccurred())
+			out, err := json.Marshal(expr)
+			Expect(err).ToNot(HaveOccurred())
+			expr2, err := Parse(string(out))
+			Expect(err).ToNot(HaveOccurred())
+			out2, err := json.Marshal(expr2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(out2).To(Equal(out))
+		},
+		Entry("empty all", `{"all":[]}`),
+		Entry("empty any", `{"any":[]}`),
+		Entry("nested empty", `{"all":[{"all":[]}]}`),
+		Entry("legacy empty object alone", `{"all":[{}]}`),
+		Entry("mixed skips empty object", `{"any":[{},{"contains":{"title":"a"}}]}`),
+	)
+})
