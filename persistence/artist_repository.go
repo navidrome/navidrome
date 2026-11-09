@@ -655,7 +655,7 @@ func (r *artistRepository) Search(ctx context.Context, q string, options ...mode
 		opts = options[0]
 	}
 	// Artists have no library_id column, so the library_id filter callers pass (same as albums/songs)
-	// can't be applied directly: consume it and realize it as a join-free scope (searchCfg).
+	// can't be applied directly: consume it as the search scope.
 	scope := r.searchScope(ctx, opts.Filters)
 	if isLibraryIDFilter(opts.Filters) {
 		opts.Filters = nil

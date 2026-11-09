@@ -865,17 +865,16 @@ var _ = Describe("ArtistRepository", func() {
 					const scopedMBID = "0b8e5d2a-6c1f-4e7b-9a3d-2f4c6e8a0b1d"
 
 					seedArtist := func(id, name, mbid string, statsByLib map[int]string) {
+						raw := repo.(*artistRepository)
 						artist := createTestArtistWithMBID(id, name, mbid)
-						Expect(repo.Put(ctx, &artist)).To(Succeed())
+						Expect(raw.Put(ctx, &artist)).To(Succeed())
 						for libID, stats := range statsByLib {
-							_, err := repo.(*artistRepository).executeSQL(ctx, squirrel.Insert("library_artist").
+							_, err := raw.executeSQL(ctx, squirrel.Insert("library_artist").
 								Columns("library_id", "artist_id", "stats").
-								Values(libID, id, stats).
-								Suffix("ON CONFLICT(library_id, artist_id) DO UPDATE SET stats = excluded.stats"))
+								Values(libID, id, stats))
 							Expect(err).ToNot(HaveOccurred())
 						}
 						DeferCleanup(func() {
-							raw := repo.(*artistRepository)
 							_, _ = raw.executeSQL(ctx, squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": id}))
 							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": id}))
 						})
@@ -893,7 +892,7 @@ var _ = Describe("ArtistRepository", func() {
 							DeferCleanup(configtest.SetupConfig())
 							conf.Server.Search.Backend = backend
 
-							search := func(libIDs ...int) model.Artist {
+							counts := func(libIDs ...int) []int64 {
 								opts := model.QueryOptions{Max: 100}
 								if len(libIDs) > 0 {
 									opts.Filters = squirrel.Eq{"library_id": libIDs}
@@ -901,18 +900,13 @@ var _ = Describe("ArtistRepository", func() {
 								results, err := repo.Search(ctx, query, opts)
 								Expect(err).ToNot(HaveOccurred())
 								Expect(results).To(HaveLen(1))
-								return results[0]
+								a := results[0]
+								return []int64{int64(a.SongCount), int64(a.AlbumCount), a.Size}
 							}
 
-							a := search(1)
-							Expect([]int{a.SongCount, a.AlbumCount}).To(Equal([]int{3, 1}))
-							Expect(a.Size).To(BeEquivalentTo(300))
-
-							a = search(lib2.ID)
-							Expect([]int{a.SongCount, a.AlbumCount}).To(Equal([]int{50, 5}))
-
-							a = search()
-							Expect([]int{a.SongCount, a.AlbumCount}).To(Equal([]int{53, 6}))
+							Expect(counts(1)).To(Equal([]int64{3, 1, 300}))
+							Expect(counts(lib2.ID)).To(Equal([]int64{50, 5, 5000}))
+							Expect(counts()).To(Equal([]int64{53, 6, 5300}))
 						},
 						Entry("FTS", "fts", "Scoped Counts"),
 						Entry("legacy LIKE", "legacy", "Scoped Counts"),
