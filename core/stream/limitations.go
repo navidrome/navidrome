@@ -62,13 +62,33 @@ func audioCodecProfiles(clientInfo *ClientInfo, codec string) iter.Seq[CodecProf
 	}
 }
 
-func hasCodecLimitation(clientInfo *ClientInfo, codec, name string) bool {
+func hasUpperBoundLimitation(clientInfo *ClientInfo, codec, name string) bool {
 	for cp := range audioCodecProfiles(clientInfo, codec) {
-		if slices.ContainsFunc(cp.Limitations, func(lim Limitation) bool { return strings.EqualFold(lim.Name, name) }) {
+		if slices.ContainsFunc(cp.Limitations, func(lim Limitation) bool {
+			return strings.EqualFold(lim.Name, name) && len(upperBounds(lim.Comparison, lim.Values)) > 0
+		}) {
 			return true
 		}
 	}
 	return false
+}
+
+// upperBounds returns the values a limitation can lower a number to, none for >=, != or non-numeric limits.
+func upperBounds(comparison string, values []string) []int {
+	switch comparison {
+	case ComparisonLessThanEqual:
+		values = values[:min(len(values), 1)]
+	case ComparisonEquals:
+	default:
+		return nil
+	}
+	var bounds []int
+	for _, s := range values {
+		if v, ok := parseInt(s); ok {
+			bounds = append(bounds, v)
+		}
+	}
+	return bounds
 }
 
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
@@ -104,14 +124,11 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 
 	switch comparison {
 	case ComparisonLessThanEqual:
-		limit, ok := parseInt(values[0])
-		if !ok {
+		bounds := upperBounds(comparison, values)
+		if len(bounds) == 0 || current <= bounds[0] {
 			return adjustNone
 		}
-		if current <= limit {
-			return adjustNone
-		}
-		setter(limit)
+		setter(bounds[0])
 		return adjustAdjusted
 	case ComparisonGreaterThanEqual:
 		limit, ok := parseInt(values[0])
@@ -124,21 +141,17 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		// Cannot upscale
 		return adjustCannotFit
 	case ComparisonEquals:
-		// Check if current value matches any allowed value
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && current == limit {
-				return adjustNone
-			}
+		bounds := upperBounds(comparison, values)
+		if slices.Contains(bounds, current) {
+			return adjustNone
 		}
 		// Find the closest allowed value below current (don't upscale)
 		var closest int
 		found := false
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && limit < current {
-				if !found || limit > closest {
-					closest = limit
-					found = true
-				}
+		for _, limit := range bounds {
+			if limit < current && (!found || limit > closest) {
+				closest = limit
+				found = true
 			}
 		}
 		if found {
