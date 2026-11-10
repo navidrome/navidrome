@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"path"
 	"slices"
@@ -247,12 +248,20 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 	// Get list of files to import, based on modtime (or all if fullScan),
 	// leave in dbTracks only tracks that are missing (not found in the FS)
 	filesToImport := make(map[string]*model.MediaFile, len(entry.audioFiles))
+	changedAudioPaths := make(map[string]struct{})
 	for afPath, af := range entry.audioFiles {
 		fullPath := path.Join(entry.path, afPath)
 		dbTrack, foundInDB := dbTracks[fullPath]
-		if !foundInDB || entry.job.lib.FullScanInProgress {
+		switch {
+		case !foundInDB:
 			filesToImport[fullPath] = dbTrack
-		} else {
+			changedAudioPaths[fullPath] = struct{}{}
+		case entry.job.lib.FullScanInProgress:
+			filesToImport[fullPath] = dbTrack
+			if audioFileContentChanged(p.ctx, entry, af, dbTrack) {
+				changedAudioPaths[fullPath] = struct{}{}
+			}
+		default:
 			info, err := af.Info()
 			if err != nil {
 				log.Warn(p.ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
@@ -261,10 +270,12 @@ func (p *phaseFolders) processFolder(entry *folderEntry) (*folderEntry, error) {
 			}
 			if info.ModTime().After(dbTrack.UpdatedAt) || dbTrack.Missing {
 				filesToImport[fullPath] = dbTrack
+				changedAudioPaths[fullPath] = struct{}{}
 			}
 		}
 		delete(dbTracks, fullPath)
 	}
+	entry.changedAudioPaths = changedAudioPaths
 
 	// Remaining dbTracks are tracks that were not found in the FS, so they should be marked as missing
 	entry.missingTracks = slices.Collect(maps.Values(dbTracks))
@@ -460,18 +471,79 @@ func (p *phaseFolders) persistFolder(ctx context.Context, tx model.DataStore, en
 	}
 
 	// Enqueue artwork resolution for changed albums/artists. Never fails the scan.
-	// A full scan re-imports every track, so a re-import is no evidence the art changed.
+	// A full scan re-imports every track, so a re-import alone is no evidence the
+	// art changed. Tracks whose files actually changed still need a forced enqueue,
+	// matching the incremental path; other items stay EnqueueIfMissing.
 	if len(queueItems) > 0 {
 		queue := tx.ArtworkQueue()
-		enqueue := queue.Enqueue
-		if entry.job.lib.FullScanInProgress {
-			enqueue = queue.EnqueueIfMissing
-		}
-		if err := enqueue(ctx, queueItems...); err != nil {
+		if err := enqueueScanArtwork(ctx, queue, entry, queueItems); err != nil {
 			log.Warn(ctx, "Scanner: could not enqueue artwork resolution", err)
 		}
 	}
 	return nil
+}
+
+// audioFileContentChanged reports whether an already-known file is missing or newer
+// than the stored row. A Stat error is treated as "unchanged" so a full scan can
+// still re-import the file; incremental scans handle that error in the caller.
+func audioFileContentChanged(ctx context.Context, entry *folderEntry, af fs.DirEntry, dbTrack *model.MediaFile) bool {
+	if dbTrack.Missing {
+		return true
+	}
+	info, err := af.Info()
+	if err != nil {
+		log.Warn(ctx, "Scanner: Error getting file info", "folder", entry.path, "file", af.Name(), err)
+		return false
+	}
+	return info.ModTime().After(dbTrack.UpdatedAt)
+}
+
+// enqueueScanArtwork queues artwork for albums and artists persisted in this folder.
+// On an incremental scan every item is forced. On a full scan, only items tied to
+// files that actually changed are forced; the rest are queued only if unresolved.
+func enqueueScanArtwork(ctx context.Context, queue model.ArtworkQueueRepository, entry *folderEntry, items []model.ArtworkQueueItem) error {
+	if !entry.job.lib.FullScanInProgress {
+		return queue.Enqueue(ctx, items...)
+	}
+
+	changedAlbums, changedArtists := changedArtworkIDs(entry)
+	var force, ifMissing []model.ArtworkQueueItem
+	for _, item := range items {
+		forceItem := false
+		switch item.ItemKind {
+		case model.KindAlbumArtwork.Prefix():
+			_, forceItem = changedAlbums[item.ItemID]
+		case model.KindArtistArtwork.Prefix():
+			_, forceItem = changedArtists[item.ItemID]
+		}
+		if forceItem {
+			force = append(force, item)
+		} else {
+			ifMissing = append(ifMissing, item)
+		}
+	}
+	if err := queue.Enqueue(ctx, force...); err != nil {
+		return err
+	}
+	return queue.EnqueueIfMissing(ctx, ifMissing...)
+}
+
+func changedArtworkIDs(entry *folderEntry) (albums, artists map[string]struct{}) {
+	albums = make(map[string]struct{})
+	artists = make(map[string]struct{})
+	if len(entry.changedAudioPaths) == 0 {
+		return albums, artists
+	}
+	for _, track := range entry.tracks {
+		if _, ok := entry.changedAudioPaths[track.Path]; !ok {
+			continue
+		}
+		albums[track.AlbumID] = struct{}{}
+		for _, artist := range track.Participants.AllArtists() {
+			artists[artist.ID] = struct{}{}
+		}
+	}
+	return albums, artists
 }
 
 // persistAlbum persists the given album to the database, and reassigns annotations from the previous album ID
