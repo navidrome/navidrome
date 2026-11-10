@@ -299,6 +299,14 @@ var _ = Describe("Stream", func() {
 			Expect(decider.client.MaxTranscodingAudioBitrate).To(Equal(128))
 		})
 
+		It("accepts repeated Container query parameters", func() {
+			universal("Container=mp3&Container=m4a|aac&TranscodingContainer=m4a&AudioCodec=aac")
+			Expect(decider.client.DirectPlayProfiles).To(Equal([]stream.DirectPlayProfile{
+				{Containers: []string{"mp3"}, Protocols: []string{stream.ProtocolHTTP}},
+				{Containers: []string{"m4a"}, AudioCodecs: []string{"aac"}, Protocols: []string{stream.ProtocolHTTP}},
+			}))
+		})
+
 		It("uses AudioCodec as the target when no TranscodingContainer is given", func() {
 			universal("Container=mp3&AudioCodec=aac")
 			Expect(decider.client.TranscodingProfiles).To(Equal([]stream.Profile{
