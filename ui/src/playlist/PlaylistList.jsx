@@ -38,6 +38,18 @@ const useStyles = makeStyles((theme) => ({
   button: {
     color: theme.palette.type === 'dark' ? 'white' : undefined,
   },
+  // RA's layout root is min-width: fit-content; capping the card keeps the page width
+  content: {
+    [theme.breakpoints.down('xs')]: {
+      overflowX: 'auto',
+      maxWidth: '100vw',
+    },
+  },
+  name: {
+    [theme.breakpoints.down('xs')]: {
+      overflowWrap: 'anywhere',
+    },
+  },
 }))
 
 const PlaylistFilter = (props) => {
@@ -134,6 +146,7 @@ export const PlaylistLove = ({ record, className }) => (
 PlaylistLove.defaultProps = { source: 'starred', sortable: false }
 
 const PlaylistList = (props) => {
+  const classes = useStyles()
   const isXsmall = useMediaQuery((theme) => theme.breakpoints.down('xs'))
   const isDesktop = useMediaQuery((theme) => theme.breakpoints.up('md'))
   useResourceRefresh('playlist')
@@ -165,6 +178,7 @@ const PlaylistList = (props) => {
   return (
     <List
       {...props}
+      classes={{ content: classes.content }}
       exporter={false}
       sort={{ field: 'name', order: 'ASC' }}
       filters={<PlaylistFilter />}
@@ -173,7 +187,7 @@ const PlaylistList = (props) => {
     >
       <Datagrid rowClick="show" isRowSelectable={(r) => isWritable(r?.ownerId)}>
         <ArtworkAvatar source="id" variant="square" />
-        <TextField source="name" />
+        <TextField source="name" className={classes.name} />
         {columns}
         <Writable>
           <EditButton />
