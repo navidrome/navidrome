@@ -160,18 +160,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
 				conf.Server.EnableDownloads = true
-
-				doReq("ping")
-				player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
-				Expect(err).ToNot(HaveOccurred())
-				trc, err := ds.Transcoding().FindByFormat(ctx, "opus")
-				Expect(err).ToNot(HaveOccurred())
-				player.TranscodingId = trc.ID
-				Expect(ds.Player().Put(ctx, player)).To(Succeed())
-				DeferCleanup(func() {
-					player.TranscodingId = ""
-					Expect(ds.Player().Put(ctx, player)).To(Succeed())
-				})
+				setPlayerForcedFormat("opus")
 			})
 
 			It("uses the explicitly requested format", func() {

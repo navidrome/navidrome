@@ -212,6 +212,23 @@ func buildTestFS() storagetest.FakeFS {
 	})
 }
 
+// setPlayerForcedFormat forces the test-client player to transcode to format until the current spec ends.
+func setPlayerForcedFormat(format string) {
+	doReq("ping")
+	player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
+	Expect(err).ToNot(HaveOccurred())
+	trc, err := ds.Transcoding().FindByFormat(ctx, format)
+	Expect(err).ToNot(HaveOccurred())
+	player.TranscodingId = trc.ID
+	Expect(ds.Player().Put(ctx, player)).To(Succeed())
+	DeferCleanup(func() {
+		player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
+		Expect(err).ToNot(HaveOccurred())
+		player.TranscodingId = ""
+		Expect(ds.Player().Put(ctx, player)).To(Succeed())
+	})
+}
+
 // createUser creates a user in the database with the given properties, assigns them to the test
 // library, and returns the fully-loaded user (with Libraries populated).
 func createUser(id, username, name string, isAdmin bool) model.User {
