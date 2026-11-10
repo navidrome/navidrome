@@ -48,6 +48,20 @@ func checkLimitations(src *Details, limitations []Limitation) string {
 	return ""
 }
 
+func hasCodecLimitation(clientInfo *ClientInfo, codec, name string) bool {
+	for _, cp := range clientInfo.CodecProfiles {
+		if !strings.EqualFold(cp.Type, CodecProfileTypeAudio) || !matchesCodec(codec, []string{cp.Name}) {
+			continue
+		}
+		for _, lim := range cp.Limitations {
+			if strings.EqualFold(lim.Name, name) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
 // Returns the adjustment result.
 func applyLimitation(sourceBitrate int, lim *Limitation, ts *Details) adjustResult {

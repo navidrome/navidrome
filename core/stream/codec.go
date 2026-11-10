@@ -50,9 +50,10 @@ func normalizeSourceSampleRate(sampleRate int, codec string) int {
 const dsdMaxPCMSampleRate = 88200
 
 // targetSampleRate returns the sample rate for a transcoded stream before codec
-// and client limits are applied, with DSD capped when the target is lossless.
-func targetSampleRate(srcSampleRate int, srcCodec string, targetIsLossless bool) int {
-	if targetIsLossless && strings.EqualFold(srcCodec, "dsd") {
+// and client limits are applied. DSD to lossless is capped unless the client
+// declared its own sample rate limit for the target codec.
+func targetSampleRate(srcSampleRate int, srcCodec string, targetIsLossless, clientLimitsRate bool) int {
+	if targetIsLossless && !clientLimitsRate && strings.EqualFold(srcCodec, "dsd") {
 		return min(srcSampleRate, dsdMaxPCMSampleRate)
 	}
 	return srcSampleRate

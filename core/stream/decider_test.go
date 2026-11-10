@@ -789,7 +789,7 @@ var _ = Describe("Decider", func() {
 				Expect(decision.TargetBitDepth).To(Equal(24))
 			})
 
-			It("does not raise DSD sample rate to a looser codec profile limit", func() {
+			It("uses the client's declared sample rate limit instead of the DSD cap", func() {
 				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 352800, BitDepth: new(8)})
 				ci := &ClientInfo{
 					TranscodingProfiles: []Profile{
@@ -801,6 +801,58 @@ var _ = Describe("Decider", func() {
 							Name: "flac",
 							Limitations: []Limitation{
 								{Name: LimitationAudioSamplerate, Comparison: ComparisonLessThanEqual, Values: []string{"192000"}, Required: true},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetSampleRate).To(Equal(192000))
+				Expect(decision.TargetBitDepth).To(Equal(24))
+			})
+
+			It("picks the closest allowed rate from a client's list of DSD sample rates", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 352800, BitDepth: new(8)})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "flac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioSamplerate, Comparison: ComparisonEquals, Values: []string{"96000", "192000"}, Required: true},
+							},
+						},
+					},
+				}
+				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(decision.CanTranscode).To(BeTrue())
+				Expect(decision.TargetSampleRate).To(Equal(192000))
+			})
+
+			It("keeps the DSD cap when the sample rate limit is for another codec", func() {
+				mf := withProbe(&model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 352800, BitDepth: new(8)})
+				ci := &ClientInfo{
+					TranscodingProfiles: []Profile{
+						{Container: "flac", AudioCodec: "flac", Protocol: ProtocolHTTP},
+					},
+					CodecProfiles: []CodecProfile{
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "mp3",
+							Limitations: []Limitation{
+								{Name: LimitationAudioSamplerate, Comparison: ComparisonLessThanEqual, Values: []string{"192000"}, Required: true},
+							},
+						},
+						{
+							Type: CodecProfileTypeAudio,
+							Name: "flac",
+							Limitations: []Limitation{
+								{Name: LimitationAudioChannels, Comparison: ComparisonLessThanEqual, Values: []string{"2"}, Required: true},
 							},
 						},
 					},
@@ -830,7 +882,7 @@ var _ = Describe("Decider", func() {
 				decision, err := svc.MakeDecision(ctx, mf, ci, TranscodeOptions{})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(decision.CanTranscode).To(BeTrue())
-				// DSD64 probes as 352800, capped at 88200, then by codec profile limit of 48000
+				// DSD64 probes as 352800, limited by the codec profile to 48000
 				Expect(decision.TranscodeStream.SampleRate).To(Equal(48000))
 				Expect(decision.TargetSampleRate).To(Equal(48000))
 				// DSD → 24-bit PCM

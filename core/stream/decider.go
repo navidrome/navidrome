@@ -265,16 +265,19 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 		return nil, ""
 	}
 
+	targetCodec := strings.ToLower(profile.AudioCodec)
+	if targetCodec == "" {
+		targetCodec = targetFormat
+	}
+	clientLimitsRate := hasCodecLimitation(clientInfo, targetCodec, LimitationAudioSamplerate)
+
 	ts := &Details{
 		Container:  responseContainer,
-		Codec:      strings.ToLower(profile.AudioCodec),
-		SampleRate: targetSampleRate(src.SampleRate, src.Codec, targetIsLossless),
+		Codec:      targetCodec,
+		SampleRate: targetSampleRate(src.SampleRate, src.Codec, targetIsLossless, clientLimitsRate),
 		Channels:   src.Channels,
 		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
 		IsLossless: targetIsLossless,
-	}
-	if ts.Codec == "" {
-		ts.Codec = targetFormat
 	}
 
 	// Apply codec-intrinsic sample rate adjustments before codec profile limitations
