@@ -137,7 +137,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 
 		artRouter = buildArtworkRouter(artSvc)
 		router = artRouter // so the shared doReq/doRawReq helpers hit the artwork-wired router
-		pubRouter = public.New(ds, artSvc, streamerSpy, core.NewShare(ds), noopArchiver{})
+		pubRouter = public.New(ds, artSvc, streamerSpy, stream.NewTranscodeDecider(ds, ffm), core.NewShare(ds), noopArchiver{})
 	})
 
 	It("emits a bare optimistic coverArt id before the queue is drained", func() {

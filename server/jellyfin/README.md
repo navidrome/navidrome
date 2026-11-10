@@ -158,8 +158,8 @@ and `MusicArtist` queries accept it too, matching artists credited on an album o
 `Years`; `StudioIds` (record labels, as listed by `GET Studios`); `SearchTerm`;
 `Filters` (`IsFavorite`, `IsFavoriteOrLikes`, `IsPlayed`, `IsUnplayed`) and the standalone
 `isFavorite`/`isPlayed` booleans it can also be expressed as — `Filters` wins when both are sent, as
-in Jellyfin; `Likes`, `Dislikes`, `IsFolder`, `IsNotFolder` and `IsResumable` have no Navidrome
-equivalent and are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
+in Jellyfin; `Likes` and `Dislikes` are not supported, and `IsFolder`, `IsNotFolder` and
+`IsResumable` have no Navidrome equivalent, so all five are ignored; `SortBy`/`SortOrder` (every recognized key is applied in order, so secondary keys break ties;
 unrecognized keys are skipped, and `Random` always sorts alone);
 `StartIndex`/`Limit`; and `Ids` (batch fetch by id). `Recursive=false` with a library `ParentId`
 returns direct children only (no tracks — no track is a library's direct child).
@@ -176,7 +176,7 @@ returns direct children only (no tracks — no track is a library's direct child
 | Artists / genres / labels | `GET Artists`, `GET Artists/AlbumArtists`, `GET Genres`, `GET MusicGenres`, `GET Studios`, `GET Items/Filters` |
 | Similar / mixes | `GET Artists/{itemId}/Similar`, `GET Items/{itemId}/Similar`, `GET Albums/{itemId}/Similar`, `GET {Items,Songs,Albums,Artists,Playlists}/{itemId}/InstantMix`, `GET Artists/InstantMix?id=`, `GET MusicGenres/InstantMix?id=` |
 | Images | `GET Items/{itemId}/Images/{type}[/{index}]` (public), `POST`/`DELETE Items/{itemId}/Images/{type}` (playlist cover, authenticated) |
-| Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET UserItems/{itemId}/UserData`, `GET Users/{userId}/Items/{itemId}/UserData` |
+| Favorites / ratings for songs, albums, artists, and playlists | `POST`/`DELETE UserFavoriteItems/{itemId}`, `POST`/`DELETE Users/{userId}/FavoriteItems/{itemId}`, `POST`/`DELETE UserItems/{itemId}/Rating`, `POST`/`DELETE Users/{userId}/Items/{itemId}/Rating`, `GET`/`POST UserItems/{itemId}/UserData`, `GET`/`POST Users/{userId}/Items/{itemId}/UserData` |
 | Streaming | `GET Audio/{itemId}/stream[.{container}]`, `GET Audio/{itemId}/universal`, `GET Audio/{itemId}/main.m3u8`, `GET Items/{itemId}/File`, `GET Items/{itemId}/Download`, `GET`/`POST Items/{itemId}/PlaybackInfo` (`HEAD` too on stream, universal, File, Download and images; a transcode HEAD answers without starting it) |
 | Lyrics | `GET Audio/{itemId}/Lyrics` |
 | Playback reporting | `POST Sessions/Playing`, `POST Sessions/Playing/Progress`, `POST Sessions/Playing/Stopped`, `POST Sessions/Playing/Ping` (no-op), `POST Sessions/Capabilities[/Full]` |
@@ -402,12 +402,20 @@ make test PKG=./server/jellyfin/...
   in the playlist, so ids change when entries are inserted or removed; re-read the list after an
   edit. Real Jellyfin uses the song id. Clients that echo `PlaylistItemId` back (Finamp) work;
   clients that send the song id as `EntryIds` or to `Move` (Jellify) get `404`.
-- **Rating uses the `rating` param.** `POST Users/{userId}/Items/{itemId}/Rating` reads a `rating`
-  (0-10) and stores it as 0-5 stars. Jellyfin's `likes` boolean is not read, so a client that sends
-  only `likes` clears the rating.
-- **Missing endpoints.** `UserPlayedItems` (mark played/unplayed), `Search/Hints` and the non-legacy
-  `UserItems/{itemId}/Rating` are not implemented. Play counts only change through playback
-  reporting.
+- **Ratings are stored as 0-5 stars.** Jellyfin's 0-10 `Rating` is rounded to the nearest star
+  (any nonzero value keeps at least one), so it reads back as an even number. `likes=true` stores
+  5 stars and `likes=false` 1 star, like Jellyfin's 10 and 1. A rating of 0 clears the rating.
+- **`POST .../Rating` needs a value.** Jellyfin clears the rating when `likes` is missing; Navidrome
+  answers `400` and keeps it, as it does for a malformed or out-of-range value. Use
+  `DELETE .../Rating` to clear. A numeric `rating` param (0-10) is also accepted when `likes` is
+  absent.
+- **`POST .../UserData` writes only `Rating`, `Likes` and `IsFavorite`.** `Played`, `PlayCount`,
+  `LastPlayedDate` and `PlaybackPositionTicks` are ignored. A body that is not a single JSON
+  object, or a `Rating` outside 0-10, is a `400` and nothing is written.
+- **Annotation writes can't target another user.** Rating and UserData writes whose `userId` names
+  a different user get `403`, even for admins; Jellyfin lets admins edit other users' data.
+- **Missing endpoints.** `UserPlayedItems` (mark played/unplayed) and `Search/Hints` are not
+  implemented. Play counts only change through playback reporting.
 - **Some `Fields` are never emitted.** `ProviderIds`, `People`, `Etag` and `DateLastMediaAdded` are
   accepted but never returned.
 - **Blurhashes can be missing.** `ImageBlurHashes` carries the real blurhash that the artwork

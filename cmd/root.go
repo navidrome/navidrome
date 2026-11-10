@@ -190,16 +190,20 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	}
 }
 
-func pidHashChanged(ds model.DataStore) (bool, error) {
-	pidAlbum, err := ds.Property().DefaultGet(context.Background(), consts.PIDAlbumKey, "")
+// librariesWithChangedPID returns the names of the libraries whose effective PID config differs from
+// the one used by their last finished scan
+func librariesWithChangedPID(ctx context.Context, ds model.DataStore) ([]string, error) {
+	libs, err := ds.Library().GetAll(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	pidTrack, err := ds.Property().DefaultGet(context.Background(), consts.PIDTrackKey, "")
-	if err != nil {
-		return false, err
+	var names []string
+	for _, lib := range libs {
+		if lib.PIDChanged() {
+			names = append(names, lib.Name)
+		}
 	}
-	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
+	return names, nil
 }
 
 // runInitialScan runs an initial scan of the music library if needed.
@@ -214,12 +218,12 @@ func runInitialScan(ctx context.Context) func() error {
 		if err != nil {
 			return err
 		}
-		pidHasChanged, err := pidHashChanged(ds)
+		pidChangedLibs, err := librariesWithChangedPID(ctx, ds)
 		if err != nil {
 			return err
 		}
 		scanOnStartup := conf.Server.Scanner.Enabled && conf.Server.Scanner.ScanOnStartup
-		scanNeeded := scanOnStartup || inProgress || fullScanRequired == "1" || pidHasChanged
+		scanNeeded := scanOnStartup || inProgress || fullScanRequired == "1" || len(pidChangedLibs) > 0
 		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 		if scanNeeded {
 			s := CreateScanner(ctx)
@@ -227,9 +231,9 @@ func runInitialScan(ctx context.Context) func() error {
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
 				_ = ds.Property().Delete(ctx, consts.FullScanAfterMigrationFlagKey)
-			case pidHasChanged:
-				log.Warn(ctx, "PID config changed, performing full scan")
-				fullScanRequired = "1"
+			case len(pidChangedLibs) > 0:
+				// Includes never-scanned libraries. The scanner rescans in full only the ones that need it
+				log.Warn(ctx, "Libraries with a new or changed PID config, scanning", "libraries", pidChangedLibs)
 			case inProgress:
 				log.Warn(ctx, "Resuming interrupted scan")
 			default:

@@ -146,6 +146,8 @@ func (api *Router) routes() http.Handler {
 		r.Delete("/userfavoriteitems/{itemId}", api.unmarkFavorite)
 		r.Post("/users/{userId}/favoriteitems/{itemId}", api.markFavorite)
 		r.Delete("/users/{userId}/favoriteitems/{itemId}", api.unmarkFavorite)
+		r.Post("/useritems/{itemId}/rating", api.setRating)
+		r.Delete("/useritems/{itemId}/rating", api.removeRating)
 		r.Post("/users/{userId}/items/{itemId}/rating", api.setRating)
 		r.Delete("/users/{userId}/items/{itemId}/rating", api.removeRating)
 
@@ -153,6 +155,8 @@ func (api *Router) routes() http.Handler {
 		// /Users/{userId}/Items is the legacy spelling.
 		r.Get("/useritems/{itemId}/userdata", api.getUserItemData)
 		r.Get("/users/{userId}/items/{itemId}/userdata", api.getUserItemData)
+		r.Post("/useritems/{itemId}/userdata", api.updateUserItemData)
+		r.Post("/users/{userId}/items/{itemId}/userdata", api.updateUserItemData)
 
 		r.Get("/artists/{itemId}/similar", api.getSimilarArtists)
 		r.Get("/items/{itemId}/similar", api.getSimilarItems)

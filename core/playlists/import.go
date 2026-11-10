@@ -78,8 +78,8 @@ func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folde
 	if err != nil {
 		return nil, err
 	}
-	matcher := newLibraryMatcher(libs)
-	lib, ok := matcher.findLibrary(dir)
+	matcher := model.NewLibraryMatcher(libs)
+	lib, ok := matcher.FindLibrary(dir)
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", errNotInLibrary, dir)
 	}

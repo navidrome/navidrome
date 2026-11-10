@@ -835,4 +835,170 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			Expect(lastError).To(BeEmpty())
 		})
 	})
+
+	Context("Per-library PID config", func() {
+		albumsOf := func(libID int) model.Albums {
+			// The mock datastore's GC is a no-op, so run the real one to purge the albums left
+			// empty by a regroup, as the scanner does in production
+			Expect(ds.RealDS.GC(ctx)).To(Succeed())
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
+				Filters: squirrel.Eq{"library_id": libID, "missing": false},
+				Sort:    "name",
+			})
+			Expect(err).ToNot(HaveOccurred())
+			return albums
+		}
+		trackByTitle := func(libID int, title string) model.MediaFile {
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
+				Filters: squirrel.Eq{"library_id": libID, "title": title},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfs).To(HaveLen(1))
+			return mfs[0]
+		}
+		rockTitles := func() []string {
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"library_id": lib1.ID}})
+			Expect(err).ToNot(HaveOccurred())
+			return slice.Map(mfs, func(mf model.MediaFile) string { return mf.Title })
+		}
+		// changeRockInDB edits the rock track in the DB only. A full rescan of the rock library would
+		// restore the title from the file tags, a quick scan leaves it alone.
+		changeRockInDB := func() {
+			_, err := db.Db().ExecContext(ctx, "update media_file set title = 'Changed In DB' where library_id = ?", lib1.ID)
+			Expect(err).ToNot(HaveOccurred())
+		}
+		// changeBlueTrainInDB does the same for one jazz track
+		changeBlueTrainInDB := func() {
+			_, err := db.Db().ExecContext(ctx, "update media_file set title = 'Blue Train In DB' where library_id = ? and title = 'Blue Train'", lib2.ID)
+			Expect(err).ToNot(HaveOccurred())
+		}
+
+		BeforeEach(func() {
+			beatles := template(_t{"albumartist": "The Beatles", "album": "Abbey Road", "year": 1969})
+			_ = createFS("rock", fstest.MapFS{
+				"The Beatles/Abbey Road/01 - Come Together.mp3": beatles(track(1, "Come Together")),
+			})
+
+			miles := template(_t{"albumartist": "Miles Davis", "album": "Kind of Blue", "year": 1959})
+			coltrane := template(_t{"albumartist": "John Coltrane", "album": "Giant Steps", "year": 1960})
+			blueTrain := template(_t{"albumartist": "John Coltrane", "album": "Blue Train", "year": 1957})
+			_ = createFS("jazz", fstest.MapFS{
+				"Loose/01 - So What.mp3":                  miles(track(1, "So What")),
+				"Loose/02 - Giant Steps.mp3":              coltrane(track(1, "Giant Steps")),
+				"Coltrane/Blue Train/01 - Blue Train.mp3": blueTrain(track(1, "Blue Train")),
+			})
+		})
+
+		It("regroups only the library whose PID config changed, keeping annotations", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			Expect(albumsOf(lib2.ID)).To(HaveLen(3))
+
+			// Star Blue Train, to check the star follows the album to its new ID
+			oldBlueTrain := trackByTitle(lib2.ID, "Blue Train")
+			Expect(ds.Album().SetStar(ctx, true, oldBlueTrain.AlbumID)).To(Succeed())
+			changeRockInDB()
+
+			lib2.PIDAlbum = "folder"
+			Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			// Jazz is grouped by folder now: "Loose" is one album
+			Expect(albumsOf(lib2.ID)).To(HaveLen(2))
+			Expect(trackByTitle(lib2.ID, "So What").AlbumID).To(Equal(trackByTitle(lib2.ID, "Giant Steps").AlbumID))
+
+			newBlueTrain := trackByTitle(lib2.ID, "Blue Train")
+			Expect(newBlueTrain.AlbumID).ToNot(Equal(oldBlueTrain.AlbumID))
+			album, err := ds.Album().Get(ctx, newBlueTrain.AlbumID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(album.Starred).To(BeTrue())
+
+			// Rock only got a quick scan
+			Expect(rockTitles()).To(ConsistOf("Changed In DB"))
+
+			jazz, err := ds.Library().Get(ctx, lib2.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(jazz.ScannedPIDAlbum).To(Equal("folder"))
+			Expect(jazz.PIDChanged()).To(BeFalse())
+			rock, err := ds.Library().Get(ctx, lib1.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(rock.PIDChanged()).To(BeFalse())
+		})
+
+		It("rescans only libraries that follow the global config", func() {
+			lib2.PIDAlbum = "folder"
+			Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
+			Expect(runScanner(ctx, true)).To(Succeed())
+			changeRockInDB()
+			changeBlueTrainInDB()
+
+			conf.Server.PID.Album = "album"
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			// Rock follows the global config, so it was rescanned in full and its title restored
+			Expect(rockTitles()).To(ConsistOf("Come Together"))
+			// Jazz has its own override, so it only got a quick scan
+			trackByTitle(lib2.ID, "Blue Train In DB")
+			jazz, err := ds.Library().Get(ctx, lib2.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(jazz.ScannedPIDAlbum).To(Equal("folder"))
+		})
+
+		It("restarts an interrupted scan when the PID config changed meanwhile", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+
+			// Simulate a quick scan of jazz that was interrupted after it had processed every folder:
+			// the folders were updated after the (old) scan start time
+			_, err := db.Db().ExecContext(ctx, "update library set last_scan_started_at = ?, full_scan_in_progress = false where id = ?",
+				time.Now().Add(-time.Hour), lib2.ID)
+			Expect(err).ToNot(HaveOccurred())
+
+			lib2.PIDAlbum = "folder"
+			Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			// Every folder was revisited with the new config
+			Expect(albumsOf(lib2.ID)).To(HaveLen(2))
+		})
+
+		It("does not turn an interrupted PID rescan into a full scan of every library", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			changeRockInDB()
+			lib2.PIDAlbum = "folder"
+			Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
+
+			// Simulate a PID full scan of jazz that was interrupted
+			Expect(ds.Library().ScanBegin(ctx, lib2.ID, true)).To(Succeed())
+			Expect(runScanner(ctx, false)).To(Succeed())
+
+			// Rock only got a quick scan, jazz was rescanned with the new config
+			Expect(rockTitles()).To(ConsistOf("Changed In DB"))
+			Expect(albumsOf(lib2.ID)).To(HaveLen(2))
+		})
+
+		It("does not record the PID config for a library that could not be scanned", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			broken := model.Library{Name: "Broken", Path: "unregistered:///music", PIDAlbum: "folder"}
+			Expect(ds.Library().Put(ctx, &broken)).To(Succeed())
+
+			// The scan reports an error for the broken library, and still finishes the others
+			_ = runScanner(ctx, false)
+
+			reloaded, err := ds.Library().Get(ctx, broken.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(reloaded.PIDChanged()).To(BeTrue())
+		})
+
+		It("does not record the PID config after a selective scan", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			lib2.PIDAlbum = "folder"
+			Expect(ds.Library().Put(ctx, &lib2)).To(Succeed())
+
+			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{{LibraryID: lib2.ID, FolderPath: "Loose"}})
+			Expect(err).ToNot(HaveOccurred())
+
+			jazz, err := ds.Library().Get(ctx, lib2.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(jazz.PIDChanged()).To(BeTrue())
+		})
+	})
 })

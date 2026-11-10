@@ -60,9 +60,8 @@ func (pub *Router) handleStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := pub.streamer.NewStream(ctx, mf, streampkg.Request{
-		Format: info.format, BitRate: info.bitrate,
-	})
+	streamReq := pub.decider.ResolveRequest(ctx, mf, info.format, info.bitrate, 0)
+	stream, err := pub.streamer.NewStream(ctx, mf, streamReq)
 	if err != nil {
 		if errors.Is(err, streampkg.ErrTooManyTranscodes) {
 			w.Header().Set("Retry-After", strconv.Itoa(streampkg.RetryAfterSeconds))

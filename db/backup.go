@@ -33,59 +33,41 @@ func backupPath(t time.Time) string {
 	)
 }
 
-func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
-	// heavily inspired by https://codingrabbits.dev/posts/go_and_sqlite_backup_and_maybe_restore/
-	existingConn, err := Db().Conn(ctx)
-	if err != nil {
-		return fmt.Errorf("getting existing connection: %w", err)
-	}
-	defer existingConn.Close()
-
-	// The driver opens with SQLITE_OPEN_CREATE, so without this check a typo in the
-	// path would create an empty database and "restore" it over the live one.
-	if !isBackup {
-		// The driver splits the DSN at '?', so such a path would open a different file.
-		if strings.ContainsRune(path, '?') {
-			return fmt.Errorf("backup path cannot contain '?': %s", path)
-		}
-		if _, err := os.Stat(path); err != nil {
-			return fmt.Errorf("backup file not available: %w", err)
-		}
-	}
-
+func openBackupFile(path string) (*sql.DB, error) {
+	Db() // Registers Driver, which the CLI commands haven't done at this point.
 	backupDb, err := sql.Open(Driver, path)
 	if err != nil {
-		return fmt.Errorf("opening backup database in '%s': %w", path, err)
+		return nil, fmt.Errorf("opening backup database in '%s': %w", path, err)
 	}
-	defer backupDb.Close()
+	return backupDb, nil
+}
 
-	backupConn, err := backupDb.Conn(ctx)
+func copyDatabase(ctx context.Context, dest, source *sql.DB) error {
+	// heavily inspired by https://codingrabbits.dev/posts/go_and_sqlite_backup_and_maybe_restore/
+	destConn, err := dest.Conn(ctx)
 	if err != nil {
-		return fmt.Errorf("getting backup connection: %w", err)
+		return fmt.Errorf("getting destination connection: %w", err)
 	}
-	defer backupConn.Close()
+	defer destConn.Close()
 
-	err = existingConn.Raw(func(existing any) error {
-		return backupConn.Raw(func(backup any) error {
-			var sourceOk, destOk bool
-			var sourceConn, destConn *sqlite3.SQLiteConn
+	sourceConn, err := source.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("getting source connection: %w", err)
+	}
+	defer sourceConn.Close()
 
-			if isBackup {
-				sourceConn, sourceOk = existing.(*sqlite3.SQLiteConn)
-				destConn, destOk = backup.(*sqlite3.SQLiteConn)
-			} else {
-				sourceConn, sourceOk = backup.(*sqlite3.SQLiteConn)
-				destConn, destOk = existing.(*sqlite3.SQLiteConn)
-			}
-
-			if !sourceOk {
-				return fmt.Errorf("error trying to convert source to sqlite connection")
-			}
+	return destConn.Raw(func(rawDest any) error {
+		return sourceConn.Raw(func(rawSource any) error {
+			sqliteDest, destOk := rawDest.(*sqlite3.SQLiteConn)
 			if !destOk {
 				return fmt.Errorf("error trying to convert destination to sqlite connection")
 			}
+			sqliteSource, sourceOk := rawSource.(*sqlite3.SQLiteConn)
+			if !sourceOk {
+				return fmt.Errorf("error trying to convert source to sqlite connection")
+			}
 
-			backupOp, err := destConn.Backup("main", sourceConn, "main")
+			backupOp, err := sqliteDest.Backup("main", sqliteSource, "main")
 			if err != nil {
 				return fmt.Errorf("error starting sqlite backup: %w", err)
 			}
@@ -109,24 +91,89 @@ func backupOrRestore(ctx context.Context, isBackup bool, path string) error {
 			return nil
 		})
 	})
+}
 
-	return err
+// checkRestoreSource runs sanity checks on a file about to be restored over the live
+// database. They catch the common ways a backup goes bad, not every kind of damage.
+func checkRestoreSource(ctx context.Context, backupDb *sql.DB, path string, integrityCheck bool) error {
+	// SQLite opens an empty file as an empty database, and restoring it would wipe the live one.
+	// user and media_file exist since the first migration, so backups of any age have them.
+	var tables int
+	err := backupDb.QueryRowContext(ctx,
+		"SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name IN ('goose_db_version', 'user', 'media_file')").Scan(&tables)
+	if err != nil {
+		return fmt.Errorf("reading backup file '%s': %w", path, err)
+	}
+	if tables != 3 {
+		return fmt.Errorf("backup file '%s' is not a Navidrome database", path)
+	}
+
+	// The table can be there with nothing in it, or with only the row goose adds when it creates it.
+	var applied int
+	err = backupDb.QueryRowContext(ctx,
+		"SELECT count(*) FROM goose_db_version WHERE is_applied = 1 AND version_id > 0").Scan(&applied)
+	if err != nil {
+		return fmt.Errorf("reading backup file '%s': %w", path, err)
+	}
+	if applied == 0 {
+		return fmt.Errorf("backup file '%s' has no applied migrations", path)
+	}
+
+	// The queries above only read the first pages. Both checks walk the whole file, and
+	// integrity_check also compares indexes to their tables, which is much slower.
+	check := "PRAGMA quick_check(1)"
+	if integrityCheck {
+		check = "PRAGMA integrity_check(1)"
+	}
+	var result string
+	if err := backupDb.QueryRowContext(ctx, check).Scan(&result); err != nil {
+		return fmt.Errorf("checking backup file '%s': %w", path, err)
+	}
+	if result != "ok" {
+		return fmt.Errorf("backup file '%s' is damaged: %s", path, result)
+	}
+	return nil
 }
 
 func Backup(ctx context.Context) (string, error) {
 	destPath := backupPath(time.Now())
 	log.Debug(ctx, "Creating backup", "path", destPath)
-	err := backupOrRestore(ctx, true, destPath)
+	backupDb, err := openBackupFile(destPath)
 	if err != nil {
+		return "", err
+	}
+	defer backupDb.Close()
+
+	if err := copyDatabase(ctx, backupDb, Db()); err != nil {
 		return "", err
 	}
 
 	return destPath, nil
 }
 
-func Restore(ctx context.Context, path string) error {
+func Restore(ctx context.Context, path string, integrityCheck bool) error {
 	log.Debug(ctx, "Restoring backup", "path", path)
-	return backupOrRestore(ctx, false, path)
+
+	// The driver splits the DSN at '?', so such a path would open a different file.
+	if strings.ContainsRune(path, '?') {
+		return fmt.Errorf("backup path cannot contain '?': %s", path)
+	}
+	// The driver opens with SQLITE_OPEN_CREATE, so without this check a typo in the
+	// path would create an empty database and "restore" it over the live one.
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("backup file not available: %w", err)
+	}
+
+	backupDb, err := openBackupFile(path)
+	if err != nil {
+		return err
+	}
+	defer backupDb.Close()
+
+	if err := checkRestoreSource(ctx, backupDb, path, integrityCheck); err != nil {
+		return err
+	}
+	return copyDatabase(ctx, Db(), backupDb)
 }
 
 func Prune(ctx context.Context) (int, error) {

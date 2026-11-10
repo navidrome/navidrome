@@ -270,6 +270,38 @@ var _ = Describe("LibraryRepository", func() {
 		})
 	})
 
+	Describe("PID config", func() {
+		It("stores the overrides, and Put never touches the scanned specs", func() {
+			lib := &model.Library{Name: "PID Library", Path: "/music/pid", PIDAlbum: "folder", PIDTrack: "title"}
+			Expect(repo.Put(ctx, lib)).To(Succeed())
+			Expect(repo.SetScannedPID(ctx, lib.ID, model.PIDConfig{Album: "folder", Track: "title"})).To(Succeed())
+
+			// An update coming from the REST API has no scanned specs. It must not clear them
+			update := &model.Library{ID: lib.ID, Name: "PID Library", Path: "/music/pid", PIDTrack: "title"}
+			Expect(repo.Put(ctx, update)).To(Succeed())
+
+			saved, err := repo.Get(ctx, lib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.PIDAlbum).To(BeEmpty())
+			Expect(saved.PIDTrack).To(Equal("title"))
+			Expect(saved.ScannedPIDAlbum).To(Equal("folder"))
+			Expect(saved.ScannedPIDTrack).To(Equal("title"))
+		})
+
+		It("keeps the overrides when a partial update does not send them", func() {
+			lib := &model.Library{Name: "Partial", Path: "/music/partial", PIDAlbum: "folder", PIDTrack: "title"}
+			Expect(repo.Put(ctx, lib)).To(Succeed())
+
+			Expect(repo.Put(ctx, &model.Library{ID: lib.ID, Name: "Renamed"}, "name")).To(Succeed())
+
+			saved, err := repo.Get(ctx, lib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.Name).To(Equal("Renamed"))
+			Expect(saved.PIDAlbum).To(Equal("folder"))
+			Expect(saved.PIDTrack).To(Equal("title"))
+		})
+	})
+
 	Describe("Delete", func() {
 		var adminRepo model.LibraryRepository
 		var artistRepo model.ArtistRepository
