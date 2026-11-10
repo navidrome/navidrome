@@ -62,11 +62,10 @@ func audioCodecProfiles(clientInfo *ClientInfo, codec string) iter.Seq[CodecProf
 	}
 }
 
-// Only limits that applyIntLimitation can lower a value with count, so >=, != or bad values don't.
 func hasUpperBoundLimitation(clientInfo *ClientInfo, codec, name string) bool {
 	for cp := range audioCodecProfiles(clientInfo, codec) {
 		if slices.ContainsFunc(cp.Limitations, func(lim Limitation) bool {
-			return strings.EqualFold(lim.Name, name) && isUpperBound(lim)
+			return strings.EqualFold(lim.Name, name) && len(upperBounds(lim.Comparison, lim.Values)) > 0
 		}) {
 			return true
 		}
@@ -74,18 +73,22 @@ func hasUpperBoundLimitation(clientInfo *ClientInfo, codec, name string) bool {
 	return false
 }
 
-func isUpperBound(lim Limitation) bool {
-	switch lim.Comparison {
+// upperBounds returns the values a limitation can lower a number to, none for >=, != or non-numeric limits.
+func upperBounds(comparison string, values []string) []int {
+	switch comparison {
 	case ComparisonLessThanEqual:
-		if len(lim.Values) == 0 {
-			return false
-		}
-		_, ok := parseInt(lim.Values[0])
-		return ok
+		values = values[:min(len(values), 1)]
 	case ComparisonEquals:
-		return slices.ContainsFunc(lim.Values, func(v string) bool { _, ok := parseInt(v); return ok })
+	default:
+		return nil
 	}
-	return false
+	var bounds []int
+	for _, s := range values {
+		if v, ok := parseInt(s); ok {
+			bounds = append(bounds, v)
+		}
+	}
+	return bounds
 }
 
 // applyLimitation adjusts a transcoded stream parameter to satisfy the limitation.
@@ -121,14 +124,11 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 
 	switch comparison {
 	case ComparisonLessThanEqual:
-		limit, ok := parseInt(values[0])
-		if !ok {
+		bounds := upperBounds(comparison, values)
+		if len(bounds) == 0 || current <= bounds[0] {
 			return adjustNone
 		}
-		if current <= limit {
-			return adjustNone
-		}
-		setter(limit)
+		setter(bounds[0])
 		return adjustAdjusted
 	case ComparisonGreaterThanEqual:
 		limit, ok := parseInt(values[0])
@@ -141,21 +141,17 @@ func applyIntLimitation(comparison string, values []string, current int, setter 
 		// Cannot upscale
 		return adjustCannotFit
 	case ComparisonEquals:
-		// Check if current value matches any allowed value
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && current == limit {
-				return adjustNone
-			}
+		bounds := upperBounds(comparison, values)
+		if slices.Contains(bounds, current) {
+			return adjustNone
 		}
 		// Find the closest allowed value below current (don't upscale)
 		var closest int
 		found := false
-		for _, v := range values {
-			if limit, ok := parseInt(v); ok && limit < current {
-				if !found || limit > closest {
-					closest = limit
-					found = true
-				}
+		for _, limit := range bounds {
+			if limit < current && (!found || limit > closest) {
+				closest = limit
+				found = true
 			}
 		}
 		if found {
