@@ -19,12 +19,15 @@ import RosePineTheme from './rosePine'
 import RosePineDawnTheme from './rosePineDawn'
 import RosePineMoonTheme from './rosePineMoon'
 import AmusicTheme from './amusic'
+import CaveTheme from './cave'
 import SquiddiesGlassTheme from './SquiddiesGlass'
 import NautilineTheme from './nautiline'
 import MoonbaseAlphaTheme from './moonbaseAlpha'
 import MoonbaseBravoTheme from './moonbaseBravo'
 import TokyoNightLightTheme from './tokyoNightLight'
 import TokyoNightTheme from './tokyoNight'
+import SolarizedDarkTheme from './solarizedDark'
+import SolarizedLightTheme from './solarizedLight'
 
 export default {
   // Classic default themes
@@ -37,6 +40,7 @@ export default {
   CatppuccinLatteTheme,
   CatppuccinMacchiatoTheme,
   CatppuccinMochaTheme,
+  CaveTheme,
   DraculaTheme,
   ElectricPurpleTheme,
   ExtraDarkTheme,
@@ -53,6 +57,8 @@ export default {
   RosePineDawnTheme,
   RosePineMoonTheme,
   RosePineTheme,
+  SolarizedDarkTheme,
+  SolarizedLightTheme,
   SpotifyTheme,
   SquiddiesGlassTheme,
   TokyoNightLightTheme,

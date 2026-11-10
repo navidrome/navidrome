@@ -1,12 +1,12 @@
 import React from 'react'
 import { isDateSet } from '../utils/validations'
-import { DateField as RADateField } from 'react-admin'
+import { DateField as RADateField, useRecordContext } from 'react-admin'
 import { useDateLocale } from '../i18n/useDateLocale'
 
 export const DateField = (props) => {
-  const { record, source } = props
+  const record = useRecordContext(props)
   const locale = useDateLocale()
-  const value = record?.[source]
+  const value = record?.[props.source]
   if (!isDateSet(value)) return null
   return <RADateField locales={locale} {...props} />
 }

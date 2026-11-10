@@ -519,13 +519,18 @@ jobs:
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.docker.outputs.version }}
 
   push-manifest-dockerhub:
-    name: Push to Docker Hub
+    name: Push to Docker Hub (${{ matrix.repository }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
     needs: [build, check-push-enabled]
     if: needs.check-push-enabled.outputs.is_enabled == 'true' && vars.DOCKER_HUB_REPO != ''
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # Always push to DOCKER_HUB_REPO. The upstream repository also pushes to the navidrome/navidrome org repository.
+        repository: ${{ fromJSON(github.repository == 'navidrome/navidrome' && format('["{0}","navidrome/navidrome"]', vars.DOCKER_HUB_REPO) || format('["{0}"]', vars.DOCKER_HUB_REPO)) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -541,7 +546,7 @@ jobs:
         id: docker
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          hub_repository: ${{ vars.DOCKER_HUB_REPO }}
+          hub_repository: ${{ matrix.repository }}
           hub_username: ${{ secrets.DOCKER_HUB_USERNAME }}
           hub_password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
@@ -558,7 +563,7 @@ jobs:
 
       - name: Inspect image in Docker Hub
         run: |
-          docker buildx imagetools inspect ${{ vars.DOCKER_HUB_REPO }}:${{ steps.docker.outputs.version }}
+          docker buildx imagetools inspect ${{ matrix.repository }}:${{ steps.docker.outputs.version }}
 
   cleanup-digests:
     name: Cleanup digest artifacts
