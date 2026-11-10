@@ -62,11 +62,28 @@ func audioCodecProfiles(clientInfo *ClientInfo, codec string) iter.Seq[CodecProf
 	}
 }
 
-func hasCodecLimitation(clientInfo *ClientInfo, codec, name string) bool {
+// Only limits that applyIntLimitation can lower a value with count, so >=, != or bad values don't.
+func hasUpperBoundLimitation(clientInfo *ClientInfo, codec, name string) bool {
 	for cp := range audioCodecProfiles(clientInfo, codec) {
-		if slices.ContainsFunc(cp.Limitations, func(lim Limitation) bool { return strings.EqualFold(lim.Name, name) }) {
+		if slices.ContainsFunc(cp.Limitations, func(lim Limitation) bool {
+			return strings.EqualFold(lim.Name, name) && isUpperBound(lim)
+		}) {
 			return true
 		}
+	}
+	return false
+}
+
+func isUpperBound(lim Limitation) bool {
+	switch lim.Comparison {
+	case ComparisonLessThanEqual:
+		if len(lim.Values) == 0 {
+			return false
+		}
+		_, ok := parseInt(lim.Values[0])
+		return ok
+	case ComparisonEquals:
+		return slices.ContainsFunc(lim.Values, func(v string) bool { _, ok := parseInt(v); return ok })
 	}
 	return false
 }
