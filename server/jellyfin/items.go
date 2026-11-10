@@ -31,9 +31,8 @@ func searchTerm(p *req.Values) string {
 	return strings.TrimSpace(p.StringOr("searchterm", ""))
 }
 
-// joinedStrings reads every value of a query param and joins them with commas. Jellyfin binds a
-// list either comma-separated in one value (Finamp) or as repeated keys (@jellyfin/sdk), and the
-// parsers below already split on commas, so both spellings reach them the same way.
+// joinedStrings joins repeated values of a query param with commas. Clients send lists either
+// comma-separated (Finamp) or as repeated keys (@jellyfin/sdk), and the parsers split on commas.
 func joinedStrings(p *req.Values, key string) string {
 	return strings.Join(p.Strings(key), ",")
 }
@@ -47,7 +46,6 @@ type itemFilters struct {
 
 // parseItemFilters reads the standalone params first and lets the Filters list win, matching real
 // Jellyfin. Tokens with no Navidrome equivalent (Likes, IsFolder, IsResumable) are dropped.
-// joinedStrings folds a repeated Filters key into the comma-separated spelling this loop splits.
 func parseItemFilters(p *req.Values) itemFilters {
 	f := itemFilters{favorite: p.BoolPtr("isfavorite"), played: p.BoolPtr("isplayed")}
 	for token := range strings.SplitSeq(joinedStrings(p, "filters"), ",") {
@@ -364,8 +362,7 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	q.years = parseYears(r)
 	q.studioIds = studioIds
 	// An artist's page filters by artist, not ParentId: Finamp sends ParentId=<libraryId> for scoping
-	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist. Each is a list, and every
-	// id in the chosen list counts — a repeated key is not truncated to its first artist.
+	// plus AlbumArtistIds/ArtistIds/contributingArtistIds for the artist.
 	albumArtistScope := joinedStrings(p, "albumartistids")
 	artistScope := joinedStrings(p, "artistids")
 	contributingScope := joinedStrings(p, "contributingartistids")
@@ -626,8 +623,7 @@ var jellyfinItemKinds = map[string]bool{
 }
 
 // knownItemKinds drops IncludeItemTypes entries that aren't BaseItemKind names, as Jellyfin's binder
-// does, so an all-unknown list (JellyBox sends "music") behaves like an absent one. Callers pass
-// joinedStrings, so a repeated key arrives already comma-joined with the single-value spelling.
+// does, so an all-unknown list (JellyBox sends "music") behaves like an absent one.
 func knownItemKinds(types string) string {
 	var known []string
 	for t := range strings.SplitSeq(types, ",") {
@@ -730,8 +726,6 @@ func (api *Router) listAlbums(ctx context.Context, opts model.QueryOptions, q it
 	// albums"; contributingArtistIds means "albums they only appear on" (Featured On).
 	switch {
 	case q.contributingOnly && len(q.artistIds) > 0:
-		// One IN/NOT IN pair over the whole id list (not one OR'd pair per id): otherwise an
-		// album whose album artist is one of the ids can still match as "Featured On" via another.
 		filters = append(filters, filter.AlbumsByContributingArtistID(q.artistIds).Filters)
 	case len(q.artistIds) > 0:
 		filters = append(filters, filter.AlbumsByArtistID(q.artistIds).Filters)
@@ -1037,12 +1031,8 @@ func result(items []dto.BaseItemDto, total, start int) dto.QueryResult {
 	return dto.QueryResult{Items: items, TotalRecordCount: total, StartIndex: start}
 }
 
-// applySort keeps every recognized SortBy key, so secondary keys break ties as Jellyfin intends.
-// Unrecognized keys are skipped, not passed through raw where they could make an invalid ORDER BY.
-//
-// SortOrder is paired with SortBy by index, the way Jellyfin's GetOrderBy does. Keys past the end
-// of the list reuse the first direction. A single direction stays on Order, which the repo applies
-// to every column a mapping expands a key into; mixed directions go on SortOrders.
+// applySort keeps every recognized SortBy key, paired with SortOrder by index as Jellyfin's GetOrderBy
+// does. Unrecognized keys are skipped, not passed through raw where they could make an invalid ORDER BY.
 func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 	dirs := listParts(order)
 	var cols, colOrders []string
@@ -1071,7 +1061,7 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 			"itemType", itemType, "sortBy", sortBy)
 	}
 	if !mixedDirections(colOrders) {
-		// No kept key still records a lone SortOrder, matching the previous single-value read.
+		// With no kept key, a lone SortOrder still sets Order.
 		dir := sortDirection(0, dirs)
 		if len(colOrders) > 0 {
 			dir = colOrders[0]

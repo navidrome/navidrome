@@ -57,11 +57,8 @@ func AlbumsByArtistID(artistId any) Options {
 	})
 }
 
-// AlbumsByContributingArtistID matches albums where the artist (a single id or a slice) performs
-// on a track but is not the album artist — Jellyfin's "Featured On". The disjoint complement of
-// AlbumsByArtistID, so an artist's own discography never leaks into it. A slice applies both the
-// match and the exclusion to the whole list, so an album whose album artist is one of the ids
-// cannot appear as "Featured On" via another id.
+// AlbumsByContributingArtistID matches albums where the artist (an id or a slice of ids) performs on
+// a track but is not the album artist: Jellyfin's "Featured On", the complement of AlbumsByArtistID.
 func AlbumsByContributingArtistID(artistId any) Options {
 	return addDefaultFilters(Options{
 		Sort: "max_year",

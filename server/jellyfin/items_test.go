@@ -289,8 +289,7 @@ var _ = Describe("Items", func() {
 			Expect(res.TotalRecordCount).To(Equal(2))
 		})
 
-		// Jellify's @jellyfin/sdk spells array params as repeated keys. Honouring only the first
-		// turned a search for every type into an artist-only search.
+		// @jellyfin/sdk (Jellify) sends array params as repeated keys.
 		It("merges results from every repeated IncludeItemTypes key", func() {
 			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Salt"}})
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Salt"}})
@@ -346,8 +345,6 @@ var _ = Describe("Items", func() {
 			Expect(playlistSQL).To(ContainSubstring("starred"))
 		})
 
-		// Same param, same repeated-key spelling: Filters=IsFavorite&Filters=IsPlayed has to apply
-		// both conditions, not only the first.
 		It("applies every repeated Filters key", func() {
 			albumRepo := ds.Album().(*tests.MockAlbumRepo)
 			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
@@ -756,8 +753,7 @@ var _ = Describe("Items", func() {
 				Entry("nothing recognized leaves the repo default", "MusicAlbum", "SeriesSortName", ""),
 			)
 
-			// One direction, or a list shorter than SortBy, applies to every key. Jellyfin reuses the
-			// first SortOrder for keys past the end of the list, and one Order already does that.
+			// Jellyfin reuses the first SortOrder for keys past the end of the list.
 			DescribeTable("applies one SortOrder to every sort key",
 				func(sortOrder, want string) {
 					albumRepo := ds.Album().(*tests.MockAlbumRepo)
@@ -775,8 +771,6 @@ var _ = Describe("Items", func() {
 				Entry("descending", "Descending", "desc"),
 			)
 
-			// Jellyfin pairs SortOrder[i] with SortBy[i]. A later direction has to survive, and a
-			// key past the end of the list reuses the first direction rather than the last.
 			It("pairs each SortOrder with its SortBy key", func() {
 				albumRepo := ds.Album().(*tests.MockAlbumRepo)
 				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
@@ -983,7 +977,6 @@ var _ = Describe("Items", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(sql).To(ContainSubstring("NOT IN"))
 				Expect(args).To(ContainElements(testID("ar1"), testID("ar2")))
-				// One IN + one NOT IN over the whole list, not one OR'd pair per id.
 				Expect(strings.Count(sql, "album_artists")).To(Equal(2))
 			})
 

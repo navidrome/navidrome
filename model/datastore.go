@@ -13,9 +13,8 @@ type QueryOptions struct {
 	Offset  int
 	Filters squirrel.Sqlizer
 	Seed    string // for random sorting
-	// SortOrders is one "asc" or "desc" per comma-separated Sort key, applied after a sort mapping
-	// expands a key into several columns. Empty means Order applies to every key. A key past the
-	// end of the slice reuses the first entry.
+	// SortOrders is one "asc"/"desc" per Sort key, kept on every column its mapping expands into.
+	// Empty means Order applies to every key; a key past the end reuses the first entry.
 	SortOrders []string
 }
 

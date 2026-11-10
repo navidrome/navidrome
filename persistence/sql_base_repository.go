@@ -156,9 +156,8 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 		}
 		if options[0].Sort != "" {
 			sort, order := options[0].Sort, options[0].Order
-			// Per-key directions are absolute, so the baseline passed to buildSortOrder stays
-			// ascending and a " desc" suffix selects the opposite. Random is matched by exact
-			// string, and resetSeededRandom has already rewritten it to SEEDEDRAND by here.
+			// Per-key directions are absolute, so buildSortOrder gets an ascending baseline.
+			// resetSeededRandom has already rewritten "random" to SEEDEDRAND by here.
 			if len(options[0].SortOrders) > 0 && sort != "random" && !strings.HasPrefix(sort, "SEEDEDRAND(") {
 				sort = r.sortWithKeyOrders(sort, options[0].SortOrders)
 				order = ""
