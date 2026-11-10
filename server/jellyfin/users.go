@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -13,14 +14,21 @@ import (
 // getUserViews returns one CollectionFolder view per accessible library, so clients browse each
 // library as its own top-level view rather than one aggregate.
 func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	views, err := api.userViews(r.Context())
+	if err != nil {
+		api.internalError(w, r, err)
+		return
+	}
+	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})
+}
+
+func (api *Router) userViews(ctx context.Context) ([]dto.BaseItemDto, error) {
 	u, _ := request.UserFrom(ctx)
 	// u.Libraries comes from a projection without counts or stats, and clients hide a library that
 	// looks empty, so the rows are re-read in full here.
 	libs, err := api.ds.Library().GetAll(ctx)
 	if err != nil {
-		api.internalError(w, r, err)
-		return
+		return nil, err
 	}
 	views := make([]dto.BaseItemDto, 0, len(libs))
 	for _, lib := range libs {
@@ -28,7 +36,7 @@ func (api *Router) getUserViews(w http.ResponseWriter, r *http.Request) {
 			views = append(views, dto.LibraryToBaseItem(lib))
 		}
 	}
-	api.ok(w, r, dto.QueryResult{Items: views, TotalRecordCount: len(views), StartIndex: 0})
+	return views, nil
 }
 
 func (api *Router) getCurrentUser(w http.ResponseWriter, r *http.Request) {

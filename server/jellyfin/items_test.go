@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
+	"github.com/navidrome/navidrome/utils/req"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -50,6 +52,72 @@ var _ = Describe("Items", func() {
 	})
 
 	Describe("getItems", func() {
+		Describe("at the user root", func() {
+			libs := model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}}
+			getRoot := func(query string, ctx context.Context) dto.QueryResult {
+				w := httptest.NewRecorder()
+				invoke(api.getItems, w, httptest.NewRequest("GET", "/Items?"+query, nil).WithContext(ctx))
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				return res
+			}
+			BeforeEach(func() {
+				ds.Library().(*tests.MockLibraryRepo).SetData(libs)
+				ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			})
+
+			It("lists the user's libraries for an unfiltered, non-recursive query", func() {
+				res := getRoot("UserId="+testID("u1"), ctxUser())
+				Expect(res.TotalRecordCount).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(1)))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+				Expect(res.Items[0].CollectionType).To(Equal("music"))
+			})
+
+			It("pages the libraries by StartIndex and Limit", func() {
+				res := getRoot("StartIndex=1&Limit=1", ctxUserWithLibraries(libs))
+				Expect(res.TotalRecordCount).To(Equal(2))
+				Expect(res.StartIndex).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(2)))
+			})
+
+			DescribeTable("sorts the libraries before paging them",
+				func(query string, wantID int) {
+					res := getRoot(query, ctxUserWithLibraries(libs))
+					Expect(res.TotalRecordCount).To(Equal(2))
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(wantID)))
+				},
+				Entry("by name ascending", "SortBy=SortName&Limit=1", 2),
+				Entry("by name descending", "SortBy=SortName&SortOrder=Descending&Limit=1", 1),
+				Entry("descending, second page", "SortBy=Name&SortOrder=Descending&StartIndex=1&Limit=1", 2),
+				Entry("unknown key keeps the repository order", "SortBy=Bogus&Limit=1", 1),
+				Entry("SortOrder pairs with SortBy by index", "SortBy=DateCreated,SortName&SortOrder=Ascending,Descending&Limit=1", 1),
+			)
+
+			It("treats an unknown IncludeItemTypes as absent", func() {
+				res := getRoot("IncludeItemTypes=music", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+			})
+
+			DescribeTable("queries the library contents when the request is recursive or filtered",
+				func(query string) {
+					res := getRoot(query, ctxUser())
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
+				},
+				Entry("Recursive=true", "Recursive=true"),
+				Entry("IncludeItemTypes", "IncludeItemTypes=MusicAlbum"),
+				Entry("SearchTerm", "SearchTerm=one"),
+				Entry("Filters", "Filters=IsUnplayed"),
+				Entry("Years", "Years=2020"),
+			)
+		})
+
 		It("lists albums when IncludeItemTypes=MusicAlbum", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()
@@ -288,6 +356,37 @@ var _ = Describe("Items", func() {
 			Expect(res.TotalRecordCount).To(Equal(2))
 		})
 
+		// @jellyfin/sdk (Jellify) sends array params as repeated keys.
+		It("merges results from every repeated IncludeItemTypes key", func() {
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Salt"}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Salt"}})
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "Salt"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?SearchTerm=Salt&IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio&IncludeItemTypes=MusicAlbum", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.Items).To(HaveLen(3))
+			types := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type}
+			Expect(types).To(ConsistOf("MusicArtist", "Audio", "MusicAlbum"))
+			Expect(res.TotalRecordCount).To(Equal(3))
+		})
+
+		It("mixes a repeated IncludeItemTypes key with a comma-separated one", func() {
+			ds.Artist().(*tests.MockArtistRepo).SetData(model.Artists{{ID: testID("ar1"), Name: "Salt"}})
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Salt"}})
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "Salt"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicArtist&IncludeItemTypes=Audio,MusicAlbum", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			types := []string{res.Items[0].Type, res.Items[1].Type, res.Items[2].Type}
+			Expect(types).To(ConsistOf("MusicArtist", "Audio", "MusicAlbum"))
+		})
+
 		It("merges favorite songs, albums, and playlists", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
@@ -311,6 +410,19 @@ var _ = Describe("Items", func() {
 			playlistSQL, _, err := playlistRepo.Options.Filters.ToSql()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(playlistSQL).To(ContainSubstring("starred"))
+		})
+
+		It("applies every repeated Filters key", func() {
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&Filters=IsFavorite&Filters=IsPlayed", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, _, err := albumRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("starred"))
+			Expect(sql).To(ContainSubstring("play_count"))
 		})
 
 		It("applies StartIndex/Limit to the merged multi-type result set", func() {
@@ -339,6 +451,39 @@ var _ = Describe("Items", func() {
 			// The merged window is [1, 3): each type needs at most its first 3 rows, not the table.
 			Expect(mfRepo.Options.Max).To(Equal(3))
 			Expect(albumRepo.Options.Max).To(Equal(3))
+		})
+
+		It("treats a negative StartIndex as 0 on the multi-type merge instead of panicking", func() {
+			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
+			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}, {ID: testID("s2"), Title: "Song2"}})
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&StartIndex=-1&Limit=2", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.StartIndex).To(Equal(0))
+			Expect(res.Items).To(HaveLen(2))
+			Expect(res.TotalRecordCount).To(Equal(4))
+			// The clamped offset must feed the per-type window too: 0+Limit, not -1+Limit.
+			Expect(mfRepo.Options.Max).To(Equal(2))
+			Expect(albumRepo.Options.Max).To(Equal(2))
+		})
+
+		It("clamps a negative StartIndex to 0 on the single-type path", func() {
+			albumRepo := ds.Album().(*tests.MockAlbumRepo)
+			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=MusicAlbum&StartIndex=-1&Limit=10", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(albumRepo.Options.Offset).To(Equal(0))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.StartIndex).To(Equal(0))
+			Expect(res.Items).To(HaveLen(1))
 		})
 
 		DescribeTable("translates the Filters list and its standalone equivalents",
@@ -487,18 +632,22 @@ var _ = Describe("Items", func() {
 			Expect(res.TotalRecordCount).To(BeNumerically(">", 10))
 		})
 
-		It("bounds the multi-type search window however large StartIndex is", func() {
-			albumRepo := ds.Album().(*tests.MockAlbumRepo)
-			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=500000&Limit=1", nil).
-				WithContext(ctxUser())
-			invoke(api.getItems, w, r)
-			Expect(w.Code).To(Equal(http.StatusOK))
-			// Without the bound this asks each type for ~500001 rows.
-			Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
-		})
+		DescribeTable("bounds the multi-type search window however large StartIndex is",
+			func(startIndex int) {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", startIndex), nil).
+					WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
+			},
+			Entry("large", 500000),
+			// StartIndex+Limit would wrap negative and slice out of range in a worker goroutine.
+			Entry("near the int limit", math.MaxInt),
+		)
 
 		It("stops a multi-type search at the ceiling rather than serving another type's rows", func() {
 			// Bounding the per-type window is what keeps StartIndex from driving it without limit, and
@@ -708,9 +857,8 @@ var _ = Describe("Items", func() {
 				Entry("nothing recognized leaves the repo default", "MusicAlbum", "SeriesSortName", ""),
 			)
 
-			// Jellyfin allows a per-key SortOrder list; we cannot express that through one Order, so
-			// we honor the first value for all keys, matching Jellyfin's fallback for extra keys.
-			DescribeTable("reads the first SortOrder value for the whole sort",
+			// Jellyfin reuses the first SortOrder for keys past the end of the list.
+			DescribeTable("applies one SortOrder to every sort key",
 				func(sortOrder, want string) {
 					albumRepo := ds.Album().(*tests.MockAlbumRepo)
 					albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
@@ -719,13 +867,50 @@ var _ = Describe("Items", func() {
 						"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder="+sortOrder, nil).WithContext(ctxUser())
 					invoke(api.getItems, w, r)
 					Expect(w.Code).To(Equal(http.StatusOK))
+					Expect(albumRepo.Options.Sort).To(Equal("duration, name"))
 					Expect(albumRepo.Options.Order).To(Equal(want))
+					Expect(albumRepo.Options.SortOrders).To(BeEmpty())
 				},
 				Entry("ascending", "Ascending", ""),
 				Entry("descending", "Descending", "desc"),
-				Entry("descending leading a list", "Descending,Ascending", "desc"),
-				Entry("ascending leading a list", "Ascending,Descending", ""),
 			)
+
+			It("pairs each SortOrder with its SortBy key", func() {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName,PlayCount&SortOrder=Descending,Ascending", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal("duration, name, play_count"))
+				Expect(albumRepo.Options.Order).To(BeEmpty())
+				Expect(albumRepo.Options.SortOrders).To(Equal([]string{"desc", "asc", "desc"}))
+			})
+
+			It("keeps every key of a repeated SortBy", func() {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime&SortBy=SortName", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal("duration, name"))
+			})
+
+			It("pairs a repeated SortOrder key with its SortBy key", func() {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=MusicAlbum&SortBy=Runtime,SortName&SortOrder=Ascending&SortOrder=Descending", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Sort).To(Equal("duration, name"))
+				Expect(albumRepo.Options.Order).To(BeEmpty())
+				Expect(albumRepo.Options.SortOrders).To(Equal([]string{"asc", "desc"}))
+			})
 		})
 
 		Describe("library scoping", func() {
@@ -847,6 +1032,56 @@ var _ = Describe("Items", func() {
 				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio&ArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
 				invoke(api.getItems, w, r)
 				Expect(w.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("404s when a later repeated ArtistIds value is malformed", func() {
+				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=Audio&ArtistIds="+dto.EncodeID(testID("ar1"))+"&ArtistIds=not-a-valid-id", nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusNotFound))
+			})
+
+			It("filters songs by every repeated ArtistIds key", func() {
+				mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
+				mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=Audio&ArtistIds="+dto.EncodeID(testID("ar1"))+"&ArtistIds="+dto.EncodeID(testID("ar2")), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				_, args, err := mfRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(args).To(ContainElements(testID("ar1"), testID("ar2")))
+			})
+
+			It("filters albums by every artist in a comma-separated AlbumArtistIds", func() {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=MusicAlbum&AlbumArtistIds="+dto.EncodeID(testID("ar1"))+","+dto.EncodeID(testID("ar2")), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				_, args, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(args).To(ContainElements(testID("ar1"), testID("ar2")))
+			})
+
+			It("excludes an album artist from a multi-id contributingArtistIds Featured On filter", func() {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET",
+					"/Items?IncludeItemTypes=MusicAlbum&contributingArtistIds="+dto.EncodeID(testID("ar1"))+","+dto.EncodeID(testID("ar2")), nil).WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				sql, args, err := albumRepo.Options.Filters.ToSql()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(sql).To(ContainSubstring("NOT IN"))
+				Expect(args).To(ContainElements(testID("ar1"), testID("ar2")))
+				Expect(strings.Count(sql, "album_artists")).To(Equal(2))
 			})
 
 			It("still applies the artist filter (rather than dropping it) for a well-formed but unknown AlbumArtistIds", func() {
@@ -1152,6 +1387,17 @@ var _ = Describe("Items", func() {
 		It("drops names that aren't Jellyfin item kinds, case-insensitively", func() {
 			Expect(knownItemKinds("music")).To(BeEmpty())
 			Expect(knownItemKinds("music, audio,MUSICVIDEO")).To(Equal("audio,MUSICVIDEO"))
+		})
+
+		It("keeps entries from every value of a repeated param", func() {
+			repeated := func(rawURL string) string {
+				r := httptest.NewRequest("GET", rawURL, nil)
+				return knownItemKinds(joinedStrings(req.Params(r), "includeitemtypes"))
+			}
+			Expect(repeated("/Items?includeitemtypes=MusicArtist&includeitemtypes=Audio&includeitemtypes=MusicAlbum")).
+				To(Equal("MusicArtist,Audio,MusicAlbum"))
+			Expect(repeated("/Items?includeitemtypes=Nonsense&includeitemtypes=music")).To(BeEmpty())
+			Expect(repeated("/Items")).To(BeEmpty())
 		})
 
 		It("defaults to albums only when IncludeItemTypes is absent", func() {
