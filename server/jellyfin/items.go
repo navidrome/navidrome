@@ -505,7 +505,8 @@ func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, offset int
 	// Each per-type query needs at most offset+limit rows (worst case: one type fills the whole window).
 	window := offset + q.limit
 	if q.search != "" {
-		window = min(window, maxSearchLimit)
+		// Capping offset before the sum keeps a huge StartIndex from wrapping the window negative.
+		window = min(min(offset, maxSearchLimit)+q.limit, maxSearchLimit)
 	}
 	lists := make([][]dto.BaseItemDto, len(q.types))
 	totals := make([]int, len(q.types))

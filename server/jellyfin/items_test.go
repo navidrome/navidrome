@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -565,18 +566,22 @@ var _ = Describe("Items", func() {
 			Expect(res.TotalRecordCount).To(BeNumerically(">", 10))
 		})
 
-		It("bounds the multi-type search window however large StartIndex is", func() {
-			albumRepo := ds.Album().(*tests.MockAlbumRepo)
-			albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
-			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=500000&Limit=1", nil).
-				WithContext(ctxUser())
-			invoke(api.getItems, w, r)
-			Expect(w.Code).To(Equal(http.StatusOK))
-			// Without the bound this asks each type for ~500001 rows.
-			Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
-		})
+		DescribeTable("bounds the multi-type search window however large StartIndex is",
+			func(startIndex int) {
+				albumRepo := ds.Album().(*tests.MockAlbumRepo)
+				albumRepo.SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+				ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
+				w := httptest.NewRecorder()
+				r := httptest.NewRequest("GET", fmt.Sprintf("/Items?IncludeItemTypes=Audio,MusicAlbum&SearchTerm=song&StartIndex=%d&Limit=1", startIndex), nil).
+					WithContext(ctxUser())
+				invoke(api.getItems, w, r)
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(albumRepo.Options.Max).To(Equal(maxSearchLimit + 1))
+			},
+			Entry("large", 500000),
+			// StartIndex+Limit would wrap negative and slice out of range in a worker goroutine.
+			Entry("near the int limit", math.MaxInt),
+		)
 
 		It("stops a multi-type search at the ceiling rather than serving another type's rows", func() {
 			// Bounding the per-type window is what keeps StartIndex from driving it without limit, and
