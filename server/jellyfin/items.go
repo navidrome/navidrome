@@ -308,6 +308,14 @@ type itemsQuery struct {
 	albumIds         []string
 	years            []int
 	studioIds        []string
+	userRoot         bool
+}
+
+// hasFilters reports the params that make a ParentId-less /Items a content query, not the user root.
+func (q itemsQuery) hasFilters() bool {
+	return q.rawTypes != "" || len(q.ids) > 0 || q.search != "" || len(q.artistIds) > 0 ||
+		len(q.genreIds) > 0 || len(q.albumIds) > 0 || len(q.studioIds) > 0 || len(q.years) > 0 ||
+		q.filters != (itemFilters{})
 }
 
 // listParams reads the itemsQuery fields that come straight from query params.
@@ -374,12 +382,15 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	q.artistIds = artistIds
 	q.contributingOnly = albumArtistScope == "" && artistScope == "" && contributingScope != ""
 
+	recursive := p.BoolOr("recursive", false)
+	q.userRoot = q.parentId == "" && !recursive && !q.hasFilters()
+
 	q.types = parseTypes(q.rawTypes)
 	q.scopeIDs, q.isLibraryParent = resolveLibraryScope(ctx, q.parentId)
 
 	// Recursive=false asks for direct children only, and no track is a library's direct child.
 	// Finamp's sync probes a library this way, and every track is a wrong, unbounded answer.
-	if q.isLibraryParent && !p.BoolOr("recursive", false) {
+	if q.isLibraryParent && !recursive {
 		q.types = slices.DeleteFunc(q.types, func(t string) bool { return t == "Audio" })
 	}
 
@@ -418,6 +429,14 @@ func (api *Router) queryItems(ctx context.Context, r *http.Request) (itemsResult
 	// A ManualPlaylistsFolder query asks for the synthetic "playlists library" container, not real items.
 	case strings.Contains(strings.ToLower(q.rawTypes), "manualplaylistsfolder"):
 		return materialized(result([]dto.BaseItemDto{playlistsFolder()}, 1, 0)), nil
+	// Symfonium's sync reads the libraries this way; answering with albums makes it sync nothing.
+	case q.userRoot:
+		views, err := api.userViews(ctx)
+		if err != nil {
+			return itemsResult{}, err
+		}
+		sortViews(views, q.sortBy, q.sortOrder)
+		return materialized(result(paginate(views, q.offset, q.limit), len(views), q.offset)), nil
 	}
 	if repo, ok := api.playlistTracksRepo(ctx, q); ok {
 		return api.playlistTrackPage(ctx, repo, q.fields, q.offset, q.limit)
@@ -657,8 +676,8 @@ func pageParams(p *req.Values) (offset, limit int) {
 	return max(p.IntOr("startindex", 0), 0), p.IntOr("limit", 0)
 }
 
-// paginate applies StartIndex/Limit to an in-memory item list, for the multi-type merge path only
-// (single-type queries push Offset/Max down to SQL instead).
+// paginate applies StartIndex/Limit to an in-memory item list (single-type queries push Offset/Max
+// down to SQL instead).
 func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	// A negative offset would panic the slice below; Jellyfin treats it as 0.
 	offset = max(offset, 0)
@@ -670,6 +689,40 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 		items = items[:limit]
 	}
 	return items
+}
+
+// sortViews applies SortBy/SortOrder to the user-root libraries, sorted in memory since a user only
+// has a handful; without a usable key they keep the repository order.
+func sortViews(views []dto.BaseItemDto, sortBy, order string) {
+	type sortKey struct {
+		value func(dto.BaseItemDto) string
+		desc  bool
+	}
+	dirs := listParts(order)
+	var keys []sortKey
+	for i, key := range listParts(sortBy) {
+		desc := sortDirection(i, dirs) == "desc"
+		switch strings.ToLower(key) {
+		case "sortname", "name":
+			keys = append(keys, sortKey{func(v dto.BaseItemDto) string { return strings.ToLower(v.SortName) }, desc})
+		case "datecreated":
+			keys = append(keys, sortKey{func(v dto.BaseItemDto) string { return v.DateCreated }, desc})
+		}
+	}
+	if len(keys) == 0 {
+		return
+	}
+	slices.SortStableFunc(views, func(a, b dto.BaseItemDto) int {
+		for _, k := range keys {
+			if r := strings.Compare(k.value(a), k.value(b)); r != 0 {
+				if k.desc {
+					r = -r
+				}
+				return r
+			}
+		}
+		return 0
+	})
 }
 
 // interleave merges per-type item lists round-robin: one item from each list in turn, preserving

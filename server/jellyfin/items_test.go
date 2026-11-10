@@ -52,6 +52,72 @@ var _ = Describe("Items", func() {
 	})
 
 	Describe("getItems", func() {
+		Describe("at the user root", func() {
+			libs := model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}}
+			getRoot := func(query string, ctx context.Context) dto.QueryResult {
+				w := httptest.NewRecorder()
+				invoke(api.getItems, w, httptest.NewRequest("GET", "/Items?"+query, nil).WithContext(ctx))
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				return res
+			}
+			BeforeEach(func() {
+				ds.Library().(*tests.MockLibraryRepo).SetData(libs)
+				ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			})
+
+			It("lists the user's libraries for an unfiltered, non-recursive query", func() {
+				res := getRoot("UserId="+testID("u1"), ctxUser())
+				Expect(res.TotalRecordCount).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(1)))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+				Expect(res.Items[0].CollectionType).To(Equal("music"))
+			})
+
+			It("pages the libraries by StartIndex and Limit", func() {
+				res := getRoot("StartIndex=1&Limit=1", ctxUserWithLibraries(libs))
+				Expect(res.TotalRecordCount).To(Equal(2))
+				Expect(res.StartIndex).To(Equal(1))
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(2)))
+			})
+
+			DescribeTable("sorts the libraries before paging them",
+				func(query string, wantID int) {
+					res := getRoot(query, ctxUserWithLibraries(libs))
+					Expect(res.TotalRecordCount).To(Equal(2))
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(wantID)))
+				},
+				Entry("by name ascending", "SortBy=SortName&Limit=1", 2),
+				Entry("by name descending", "SortBy=SortName&SortOrder=Descending&Limit=1", 1),
+				Entry("descending, second page", "SortBy=Name&SortOrder=Descending&StartIndex=1&Limit=1", 2),
+				Entry("unknown key keeps the repository order", "SortBy=Bogus&Limit=1", 1),
+				Entry("SortOrder pairs with SortBy by index", "SortBy=DateCreated,SortName&SortOrder=Ascending,Descending&Limit=1", 1),
+			)
+
+			It("treats an unknown IncludeItemTypes as absent", func() {
+				res := getRoot("IncludeItemTypes=music", ctxUser())
+				Expect(res.Items).To(HaveLen(1))
+				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
+			})
+
+			DescribeTable("queries the library contents when the request is recursive or filtered",
+				func(query string) {
+					res := getRoot(query, ctxUser())
+					Expect(res.Items).To(HaveLen(1))
+					Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
+				},
+				Entry("Recursive=true", "Recursive=true"),
+				Entry("IncludeItemTypes", "IncludeItemTypes=MusicAlbum"),
+				Entry("SearchTerm", "SearchTerm=one"),
+				Entry("Filters", "Filters=IsUnplayed"),
+				Entry("Years", "Years=2020"),
+			)
+		})
+
 		It("lists albums when IncludeItemTypes=MusicAlbum", func() {
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}, {ID: testID("a2"), Name: "Two"}})
 			w := httptest.NewRecorder()
