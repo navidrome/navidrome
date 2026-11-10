@@ -48,20 +48,23 @@ var _ = Describe("Items", func() {
 	})
 
 	Describe("getItems", func() {
-		// Symfonium syncs nothing unless the user root lists the libraries, as Jellyfin does.
 		Describe("at the user root", func() {
+			libs := model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}}
+			getRoot := func(query string, ctx context.Context) dto.QueryResult {
+				w := httptest.NewRecorder()
+				invoke(api.getItems, w, httptest.NewRequest("GET", "/Items?"+query, nil).WithContext(ctx))
+				Expect(w.Code).To(Equal(http.StatusOK))
+				var res dto.QueryResult
+				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				return res
+			}
 			BeforeEach(func() {
-				ds.Library().(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Other"}})
+				ds.Library().(*tests.MockLibraryRepo).SetData(libs)
 				ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			})
 
 			It("lists the user's libraries for an unfiltered, non-recursive query", func() {
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?UserId="+testID("u1"), nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				Expect(w.Code).To(Equal(http.StatusOK))
-				var res dto.QueryResult
-				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				res := getRoot("UserId="+testID("u1"), ctxUser())
 				Expect(res.TotalRecordCount).To(Equal(1))
 				Expect(res.Items).To(HaveLen(1))
 				Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(1)))
@@ -70,12 +73,7 @@ var _ = Describe("Items", func() {
 			})
 
 			It("pages the libraries by StartIndex and Limit", func() {
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?StartIndex=1&Limit=1", nil).
-					WithContext(ctxUserWithLibraries(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Other"}}))
-				invoke(api.getItems, w, r)
-				var res dto.QueryResult
-				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				res := getRoot("StartIndex=1&Limit=1", ctxUserWithLibraries(libs))
 				Expect(res.TotalRecordCount).To(Equal(2))
 				Expect(res.StartIndex).To(Equal(1))
 				Expect(res.Items).To(HaveLen(1))
@@ -84,13 +82,7 @@ var _ = Describe("Items", func() {
 
 			DescribeTable("sorts the libraries before paging them",
 				func(query string, wantID int) {
-					ds.Library().(*tests.MockLibraryRepo).SetData(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}})
-					w := httptest.NewRecorder()
-					r := httptest.NewRequest("GET", "/Items?"+query, nil).
-						WithContext(ctxUserWithLibraries(model.Libraries{{ID: 1, Name: "Music"}, {ID: 2, Name: "Audiobooks"}}))
-					invoke(api.getItems, w, r)
-					var res dto.QueryResult
-					Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+					res := getRoot(query, ctxUserWithLibraries(libs))
 					Expect(res.TotalRecordCount).To(Equal(2))
 					Expect(res.Items).To(HaveLen(1))
 					Expect(res.Items[0].Id).To(Equal(dto.EncodeLibraryID(wantID)))
@@ -102,23 +94,14 @@ var _ = Describe("Items", func() {
 			)
 
 			It("treats an unknown IncludeItemTypes as absent", func() {
-				w := httptest.NewRecorder()
-				r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=music", nil).WithContext(ctxUser())
-				invoke(api.getItems, w, r)
-				var res dto.QueryResult
-				Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+				res := getRoot("IncludeItemTypes=music", ctxUser())
 				Expect(res.Items).To(HaveLen(1))
 				Expect(res.Items[0].Type).To(Equal("CollectionFolder"))
 			})
 
 			DescribeTable("queries the library contents when the request is recursive or filtered",
 				func(query string) {
-					w := httptest.NewRecorder()
-					r := httptest.NewRequest("GET", "/Items?"+query, nil).WithContext(ctxUser())
-					invoke(api.getItems, w, r)
-					Expect(w.Code).To(Equal(http.StatusOK))
-					var res dto.QueryResult
-					Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+					res := getRoot(query, ctxUser())
 					Expect(res.Items).To(HaveLen(1))
 					Expect(res.Items[0].Type).To(Equal("MusicAlbum"))
 				},

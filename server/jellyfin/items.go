@@ -302,16 +302,14 @@ type itemsQuery struct {
 	albumIds         []string
 	years            []int
 	studioIds        []string
-	// userRoot is an unfiltered, non-recursive query with no ParentId: Jellyfin answers it with the
-	// user's libraries, not their contents.
-	userRoot bool
+	userRoot         bool
 }
 
-// hasFilters mirrors Jellyfin's InternalItemsQuery.HasFilters for the params Navidrome understands.
+// hasFilters reports the params that make a ParentId-less /Items a content query, not the user root.
 func (q itemsQuery) hasFilters() bool {
 	return q.rawTypes != "" || len(q.ids) > 0 || q.search != "" || q.artistId != "" ||
 		len(q.genreIds) > 0 || len(q.albumIds) > 0 || len(q.studioIds) > 0 || len(q.years) > 0 ||
-		q.filters.favorite != nil || q.filters.played != nil
+		q.filters != (itemFilters{})
 }
 
 // listParams reads the itemsQuery fields that come straight from query params.
@@ -376,14 +374,15 @@ func (api *Router) parseItemsQuery(ctx context.Context, r *http.Request) (itemsQ
 	q.artistId = artistId
 	q.contributingOnly = albumArtistScope == "" && contributingScope != ""
 
-	q.userRoot = q.parentId == "" && !p.BoolOr("recursive", false) && !q.hasFilters()
+	recursive := p.BoolOr("recursive", false)
+	q.userRoot = q.parentId == "" && !recursive && !q.hasFilters()
 
 	q.types = parseTypes(q.rawTypes)
 	q.scopeIDs, q.isLibraryParent = resolveLibraryScope(ctx, q.parentId)
 
 	// Recursive=false asks for direct children only, and no track is a library's direct child.
 	// Finamp's sync probes a library this way, and every track is a wrong, unbounded answer.
-	if q.isLibraryParent && !p.BoolOr("recursive", false) {
+	if q.isLibraryParent && !recursive {
 		q.types = slices.DeleteFunc(q.types, func(t string) bool { return t == "Audio" })
 	}
 
@@ -653,8 +652,8 @@ func parseTypes(types string) []string {
 	return slice.Unique(recognized)
 }
 
-// paginate applies StartIndex/Limit to an in-memory item list, for the multi-type merge path only
-// (single-type queries push Offset/Max down to SQL instead).
+// paginate applies StartIndex/Limit to an in-memory item list (single-type queries push Offset/Max
+// down to SQL instead).
 func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 	if offset >= len(items) {
 		return []dto.BaseItemDto{}
@@ -669,28 +668,24 @@ func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
 // sortViews applies SortBy/SortOrder to the user-root libraries, sorted in memory since a user only
 // has a handful; without a usable key they keep the repository order.
 func sortViews(views []dto.BaseItemDto, sortBy, order string) {
-	var cmps []func(a, b dto.BaseItemDto) int
+	var keys []func(dto.BaseItemDto) string
 	for key := range strings.SplitSeq(sortBy, ",") {
 		switch strings.ToLower(strings.TrimSpace(key)) {
 		case "sortname", "name":
-			cmps = append(cmps, func(a, b dto.BaseItemDto) int {
-				return strings.Compare(strings.ToLower(a.SortName), strings.ToLower(b.SortName))
-			})
+			keys = append(keys, func(v dto.BaseItemDto) string { return strings.ToLower(v.SortName) })
 		case "datecreated":
-			cmps = append(cmps, func(a, b dto.BaseItemDto) int { return strings.Compare(a.DateCreated, b.DateCreated) })
+			keys = append(keys, func(v dto.BaseItemDto) string { return v.DateCreated })
 		}
 	}
-	if len(cmps) == 0 {
+	if len(keys) == 0 {
 		return
 	}
-	// As in applySort, the first SortOrder value applies to every key.
-	first, _, _ := strings.Cut(order, ",")
-	desc := strings.EqualFold(first, "Descending")
+	desc := isDescending(order)
 	slices.SortStableFunc(views, func(a, b dto.BaseItemDto) int {
-		for _, c := range cmps {
-			if r := c(a, b); r != 0 {
+		for _, k := range keys {
+			if r := strings.Compare(k(a), k(b)); r != 0 {
 				if desc {
-					return -r
+					r = -r
 				}
 				return r
 			}
@@ -1087,12 +1082,16 @@ func applySort(opts *model.QueryOptions, itemType, sortBy, order string) {
 		log.Debug("Jellyfin API: no usable SortBy key, falling back to the default order",
 			"itemType", itemType, "sortBy", sortBy)
 	}
-	// Jellyfin allows a per-key SortOrder list, which one Order can't express; honor the first value
-	// for every key, as Jellyfin does for keys past the end of the list.
-	first, _, _ := strings.Cut(order, ",")
-	if strings.EqualFold(first, "Descending") {
+	if isDescending(order) {
 		opts.Order = "desc"
 	}
+}
+
+// isDescending reads a SortOrder list. Jellyfin allows one value per key, which one Order can't
+// express; the first value applies to every key, as Jellyfin does for keys past the end of the list.
+func isDescending(order string) bool {
+	first, _, _ := strings.Cut(order, ",")
+	return strings.EqualFold(first, "Descending")
 }
 
 // sortColumnsByType maps lowercased-SortBy -> repo-sort-key per item type (repos map logical fields
