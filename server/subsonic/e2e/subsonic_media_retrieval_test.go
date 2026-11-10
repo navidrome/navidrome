@@ -155,6 +155,42 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 			Expect(resp.Status).To(Equal(responses.StatusFailed))
 		})
+
+		Context("when the player has a forced transcoding", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.EnableDownloads = true
+
+				doReq("ping")
+				player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
+				Expect(err).ToNot(HaveOccurred())
+				trc, err := ds.Transcoding().FindByFormat(ctx, "opus")
+				Expect(err).ToNot(HaveOccurred())
+				player.TranscodingId = trc.ID
+				Expect(ds.Player().Put(ctx, player)).To(Succeed())
+				DeferCleanup(func() {
+					player.TranscodingId = ""
+					Expect(ds.Player().Put(ctx, player)).To(Succeed())
+				})
+			})
+
+			It("uses the explicitly requested format", func() {
+				w := doRawReq("download", "id", trackID, "format", "aac", "bitrate", "128")
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("aac"))
+				Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
+			})
+
+			It("uses the player's format when no format is requested and AutoTranscodeDownload is true", func() {
+				conf.Server.AutoTranscodeDownload = true
+
+				w := doRawReq("download", "id", trackID)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+			})
+		})
 	})
 
 	Describe("GetCoverArt", func() {
