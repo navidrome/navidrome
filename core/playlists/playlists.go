@@ -81,7 +81,7 @@ func InPath(folder model.Folder) bool {
 	// doublestar splits only on / and treats \ as an escape, so normalize OS separators first.
 	rel = filepath.ToSlash(rel)
 	for path := range strings.SplitSeq(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
-		if match, _ := doublestar.Match(filepath.ToSlash(path), rel); match {
+		if match, _ := doublestar.Match(conf.NormalizePlaylistsPattern(path), rel); match {
 			return true
 		}
 	}

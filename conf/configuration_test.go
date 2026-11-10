@@ -355,6 +355,42 @@ var _ = Describe("Configuration", func() {
 
 	})
 
+	DescribeTable("NormalizePlaylistsPattern",
+		func(input, expected string) {
+			Expect(conf.NormalizePlaylistsPattern(input)).To(Equal(expected))
+		},
+		Entry("forward slashes unchanged", "Playlists/navidrome", "Playlists/navidrome"),
+		Entry("backslash separators", `Playlists\navidrome`, "Playlists/navidrome"),
+		Entry("trailing backslash", `Playlists\navidrome\`, "Playlists/navidrome"),
+		Entry("escaped brackets kept", `\[Mix\]`, `\[Mix\]`),
+		Entry("escaped glob then separator", `\[Mix\]\**`, `\[Mix\]/**`),
+		Entry("backslash before a wildcard", `Playlists\**`, "Playlists/**"),
+		Entry("escaped backslash kept", `a\\b`, `a\\b`),
+		Entry("root pattern kept", "/", "/"),
+		Entry("current dir", ".", "."),
+	)
+
+	Describe("validatePlaylistsPath", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+		})
+
+		It("accepts a Windows path with a trailing backslash", func() {
+			conf.Server.PlaylistsPath = `Playlists\navidrome\`
+			Expect(conf.ValidatePlaylistsPath()).To(Succeed())
+		})
+
+		It("accepts escaped glob characters", func() {
+			conf.Server.PlaylistsPath = `\[Mix\]`
+			Expect(conf.ValidatePlaylistsPath()).To(Succeed())
+		})
+
+		It("rejects an invalid pattern", func() {
+			conf.Server.PlaylistsPath = "Playlists/[navidrome"
+			Expect(conf.ValidatePlaylistsPath()).To(MatchError(ContainSubstring("invalid PlaylistsPath")))
+		})
+	})
+
 	Describe("ValidateByteSize", func() {
 		DescribeTable("accepts valid size values",
 			func(input string) {

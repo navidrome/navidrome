@@ -818,12 +818,41 @@ func disableExternalServices() {
 
 func validatePlaylistsPath() error {
 	for path := range strings.SplitSeq(Server.PlaylistsPath, string(filepath.ListSeparator)) {
-		_, err := doublestar.Match(path, "")
+		_, err := doublestar.Match(NormalizePlaylistsPattern(path), "")
 		if err != nil {
 			return fmt.Errorf("invalid PlaylistsPath %q: %w", path, err)
 		}
 	}
 	return nil
+}
+
+// NormalizePlaylistsPattern converts one PlaylistsPath pattern to the form doublestar expects.
+// doublestar splits only on '/' and treats '\' as an escape. A backslash followed by a bracket,
+// a brace or another backslash stays an escape (so `\[Mix\]` still matches "[Mix]"); any other
+// backslash, including one before '*' or '?' (as in `Playlists\**`), is a Windows path separator
+// and becomes '/'. Trailing separators are dropped.
+func NormalizePlaylistsPattern(pattern string) string {
+	var b strings.Builder
+	b.Grow(len(pattern))
+	for i := 0; i < len(pattern); i++ {
+		c := pattern[i]
+		if c != '\\' {
+			b.WriteByte(c)
+			continue
+		}
+		if i+1 < len(pattern) && strings.IndexByte(`[]{}\`, pattern[i+1]) >= 0 {
+			b.WriteByte(c)
+			b.WriteByte(pattern[i+1])
+			i++
+			continue
+		}
+		b.WriteByte('/')
+	}
+	normalized := b.String()
+	if trimmed := strings.TrimRight(normalized, "/"); trimmed != "" {
+		return trimmed
+	}
+	return normalized
 }
 
 // parseLanguages parses a comma-separated language string into a slice.
