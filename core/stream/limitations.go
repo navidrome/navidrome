@@ -1,6 +1,8 @@
 package stream
 
 import (
+	"iter"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -48,15 +50,22 @@ func checkLimitations(src *Details, limitations []Limitation) string {
 	return ""
 }
 
-func hasCodecLimitation(clientInfo *ClientInfo, codec, name string) bool {
-	for _, cp := range clientInfo.CodecProfiles {
-		if !strings.EqualFold(cp.Type, CodecProfileTypeAudio) || !matchesCodec(codec, []string{cp.Name}) {
-			continue
-		}
-		for _, lim := range cp.Limitations {
-			if strings.EqualFold(lim.Name, name) {
-				return true
+func audioCodecProfiles(clientInfo *ClientInfo, codec string) iter.Seq[CodecProfile] {
+	return func(yield func(CodecProfile) bool) {
+		for _, cp := range clientInfo.CodecProfiles {
+			if strings.EqualFold(cp.Type, CodecProfileTypeAudio) && matchesCodec(codec, []string{cp.Name}) {
+				if !yield(cp) {
+					return
+				}
 			}
+		}
+	}
+}
+
+func hasCodecLimitation(clientInfo *ClientInfo, codec, name string) bool {
+	for cp := range audioCodecProfiles(clientInfo, codec) {
+		if slices.ContainsFunc(cp.Limitations, func(lim Limitation) bool { return strings.EqualFold(lim.Name, name) }) {
+			return true
 		}
 	}
 	return false
