@@ -312,13 +312,14 @@ type itemsQuery struct {
 
 // listParams reads the itemsQuery fields that come straight from query params.
 func listParams(p *req.Values) itemsQuery {
+	offset, limit := pageParams(p)
 	return itemsQuery{
 		fields:    dto.ParseFields(p.Strings("fields")...),
 		search:    searchTerm(p),
 		sortBy:    joinedStrings(p, "sortby"),
 		sortOrder: joinedStrings(p, "sortorder"),
-		offset:    p.IntOr("startindex", 0),
-		limit:     p.IntOr("limit", 0),
+		offset:    offset,
+		limit:     limit,
 		filters:   parseItemFilters(p),
 	}
 }
@@ -504,7 +505,8 @@ func (api *Router) mergeTypesPaged(ctx context.Context, q itemsQuery, offset int
 	// Each per-type query needs at most offset+limit rows (worst case: one type fills the whole window).
 	window := offset + q.limit
 	if q.search != "" {
-		window = min(window, maxSearchLimit)
+		// Capping offset before the sum keeps a huge StartIndex from wrapping the window negative.
+		window = min(min(offset, maxSearchLimit)+q.limit, maxSearchLimit)
 	}
 	lists := make([][]dto.BaseItemDto, len(q.types))
 	totals := make([]int, len(q.types))
@@ -650,9 +652,16 @@ func parseTypes(types string) []string {
 	return slice.Unique(recognized)
 }
 
+// pageParams reads StartIndex/Limit; Jellyfin treats a negative StartIndex as 0.
+func pageParams(p *req.Values) (offset, limit int) {
+	return max(p.IntOr("startindex", 0), 0), p.IntOr("limit", 0)
+}
+
 // paginate applies StartIndex/Limit to an in-memory item list, for the multi-type merge path only
 // (single-type queries push Offset/Max down to SQL instead).
 func paginate(items []dto.BaseItemDto, offset, limit int) []dto.BaseItemDto {
+	// A negative offset would panic the slice below; Jellyfin treats it as 0.
+	offset = max(offset, 0)
 	if offset >= len(items) {
 		return []dto.BaseItemDto{}
 	}
