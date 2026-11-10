@@ -366,6 +366,10 @@ var _ = Describe("Configuration", func() {
 		Entry("escaped glob then separator", `\[Mix\]\**`, `\[Mix\]/**`),
 		Entry("backslash before a wildcard", `Playlists\**`, "Playlists/**"),
 		Entry("escaped backslash kept", `a\\b`, `a\\b`),
+		Entry("separator before a bracket class", `Playlists\[0-9]*`, "Playlists/[0-9]*"),
+		Entry("separator before a brace alternation", `Playlists\{Rock,Jazz}`, "Playlists/{Rock,Jazz}"),
+		Entry("escaped braces kept", `\{Live\}`, `\{Live\}`),
+		Entry("unclosed escaped bracket kept", `\[Mix`, `\[Mix`),
 		Entry("root pattern kept", "/", "/"),
 		Entry("current dir", ".", "."),
 	)

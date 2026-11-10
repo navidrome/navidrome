@@ -1193,6 +1193,22 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(playlists.InPath(mix)).To(BeTrue())
 		})
 
+		It("keeps a glob after a Windows separator", func() {
+			nested := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "Rock",
+			}
+			conf.Server.PlaylistsPath = `Playlists\[QR]ock`
+			Expect(playlists.InPath(nested)).To(BeTrue())
+
+			conf.Server.PlaylistsPath = `Playlists\{Rock,Jazz}`
+			Expect(playlists.InPath(nested)).To(BeTrue())
+
+			conf.Server.PlaylistsPath = `Playlists\{Pop,Jazz}`
+			Expect(playlists.InPath(nested)).To(BeFalse())
+		})
+
 		It("returns false if folder is not in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other"
 			Expect(playlists.InPath(folder)).To(BeFalse())

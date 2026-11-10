@@ -827,10 +827,12 @@ func validatePlaylistsPath() error {
 }
 
 // NormalizePlaylistsPattern converts one PlaylistsPath pattern to the form doublestar expects.
-// doublestar splits only on '/' and treats '\' as an escape. A backslash followed by a bracket,
-// a brace or another backslash stays an escape (so `\[Mix\]` still matches "[Mix]"); any other
-// backslash, including one before '*' or '?' (as in `Playlists\**`), is a Windows path separator
-// and becomes '/'. Trailing separators are dropped.
+// doublestar splits only on '/' and treats '\' as an escape. A backslash followed by a closing
+// bracket or brace, or by another backslash, stays an escape. A backslash before an opening '['
+// or '{' stays an escape only when the matching close is escaped too, so `\[Mix\]` still matches
+// "[Mix]" while `Playlists\[0-9]*` and `Playlists\{a,b}` keep their glob after a Windows
+// separator. Any other backslash, including one before '*' or '?' (as in `Playlists\**`), is a
+// Windows path separator and becomes '/'. Trailing separators are dropped.
 func NormalizePlaylistsPattern(pattern string) string {
 	var b strings.Builder
 	b.Grow(len(pattern))
@@ -840,7 +842,7 @@ func NormalizePlaylistsPattern(pattern string) string {
 			b.WriteByte(c)
 			continue
 		}
-		if i+1 < len(pattern) && strings.IndexByte(`[]{}\`, pattern[i+1]) >= 0 {
+		if i+1 < len(pattern) && isPlaylistsPatternEscape(pattern, i+1) {
 			b.WriteByte(c)
 			b.WriteByte(pattern[i+1])
 			i++
@@ -853,6 +855,35 @@ func NormalizePlaylistsPattern(pattern string) string {
 		return trimmed
 	}
 	return normalized
+}
+
+// isPlaylistsPatternEscape reports whether the backslash before pattern[next] escapes it. An
+// opening '[' or '{' is escaped only when its closing ']' or '}' is escaped as well; an unescaped
+// close means the backslash was a separator in front of a glob.
+func isPlaylistsPatternEscape(pattern string, next int) bool {
+	var closer byte
+	switch pattern[next] {
+	case ']', '}', '\\':
+		return true
+	case '[':
+		closer = ']'
+	case '{':
+		closer = '}'
+	default:
+		return false
+	}
+	for j := next + 1; j < len(pattern); j++ {
+		switch pattern[j] {
+		case '\\':
+			if j+1 < len(pattern) && pattern[j+1] == closer {
+				return true
+			}
+			j++
+		case closer:
+			return false
+		}
+	}
+	return true
 }
 
 // parseLanguages parses a comma-separated language string into a slice.
