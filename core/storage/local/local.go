@@ -76,6 +76,17 @@ func (lfs *localFS) ResolveSymlink(name string) (string, error) {
 	return filepath.EvalSymlinks(filepath.Join(lfs.root, filepath.FromSlash(name)))
 }
 
+// ReadLink and Lstat implement fs.ReadLinkFS, so callers can detect symlinks without following them.
+var _ fs.ReadLinkFS = (*localFS)(nil)
+
+func (lfs *localFS) ReadLink(name string) (string, error) {
+	return fs.ReadLink(lfs.FS, name)
+}
+
+func (lfs *localFS) Lstat(name string) (fs.FileInfo, error) {
+	return fs.Lstat(lfs.FS, name)
+}
+
 func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {
 	res, err := lfs.extractor.Parse(path...)
 	if err != nil {

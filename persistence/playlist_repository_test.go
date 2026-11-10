@@ -469,6 +469,26 @@ var _ = Describe("PlaylistRepository", func() {
 		})
 	})
 
+	Describe("removeOrphans", func() {
+		It("deletes rows pointing to no track and renumbers the rest", func() {
+			pls := model.Playlist{Name: "Orphans", OwnerID: "userid"}
+			Expect(repo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { Expect(repo.Delete(ctx, pls.ID)).To(Succeed()) })
+			// Rows as an older version stored them, with an unknown id between real tracks
+			_, err := GetDBXBuilder().NewQuery(`INSERT INTO playlist_tracks (playlist_id, media_file_id, id)
+				VALUES ({:id}, '1001', 1), ({:id}, 'no-such-track', 2), ({:id}, '1002', 3)`).
+				Bind(dbx.Params{"id": pls.ID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(repo.(*playlistRepository).removeOrphans(ctx)).To(Succeed())
+
+			Expect(storedRows(pls.ID)).To(Equal([]string{"1:1001", "2:1002"}))
+			got, err := repo.Get(ctx, pls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.SongCount).To(Equal(2))
+		})
+	})
+
 	// Exists is ctx-sensitive through userFilter, so callers that only want "does it still exist"
 	// -- the public image route serving a share -- must elevate, or a private playlist looks gone.
 	Describe("Exists visibility", func() {
