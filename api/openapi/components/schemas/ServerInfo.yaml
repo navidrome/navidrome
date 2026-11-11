@@ -1,0 +1,22 @@
+type: object
+description: Public server description. Everything an add-server screen needs before login.
+required: [name, serverVersion, specVersion, setupRequired, loginMethods]
+properties:
+  name:
+    type: string
+    description: Human-readable server product name.
+  serverVersion:
+    type: string
+    description: Version of the running server build.
+  specVersion:
+    type: string
+    description: Version of the OpenAPI document this server implements.
+  setupRequired:
+    type: boolean
+    description: True until the first admin user has been created.
+  loginMethods:
+    type: array
+    description: Login methods this server accepts. New methods may be added; clients ignore values they do not recognise.
+    items:
+      type: string
+      enum: [password]

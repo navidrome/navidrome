@@ -78,11 +78,11 @@ var _ = Describe("Tag Library Filtering", func() {
 
 		// Create test tags
 		adminCtx := request.WithUser(log.NewContext(context.TODO()), adminUser)
-		tagRepo := NewTagRepository(adminCtx, GetDBXBuilder())
+		tagRepo := NewTagRepository(GetDBXBuilder())
 
 		createTag := func(libraryID int, name, value string) {
 			tag := model.Tag{ID: id.NewTagID(name, value), TagName: model.TagName(name), TagValue: value}
-			err := tagRepo.Add(libraryID, tag)
+			err := tagRepo.Add(adminCtx, libraryID, tag)
 			Expect(err).ToNot(HaveOccurred())
 		}
 
@@ -119,17 +119,16 @@ var _ = Describe("Tag Library Filtering", func() {
 				ctx = context.Background() // Headless context
 			}
 
-			tagRepo := NewTagRepository(ctx, GetDBXBuilder())
-			repo := tagRepo.(model.ResourceRepository)
+			repo := NewTagRepository(GetDBXBuilder())
 
 			var opts rest.QueryOptions
 			if len(filters) > 0 {
 				opts = filters[0]
 			}
 
-			tags, err := repo.ReadAll(opts)
+			tags, err := repo.ReadAll(ctx, opts)
 			Expect(err).ToNot(HaveOccurred())
-			return tags.(model.TagList)
+			return tags
 		}
 
 		// Helper to count tags
@@ -141,10 +140,9 @@ var _ = Describe("Tag Library Filtering", func() {
 				ctx = context.Background()
 			}
 
-			tagRepo := NewTagRepository(ctx, GetDBXBuilder())
-			repo := tagRepo.(model.ResourceRepository)
+			repo := NewTagRepository(GetDBXBuilder())
 
-			count, err := repo.Count()
+			count, err := repo.Count(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			return count
 		}

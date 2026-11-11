@@ -2,6 +2,7 @@ package subsonic
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -77,7 +78,7 @@ var _ = Describe("MediaAnnotationController", func() {
 		Context("submission=false", func() {
 			var req *http.Request
 			BeforeEach(func() {
-				_ = ds.MediaFile(ctx).Put(&model.MediaFile{ID: "12"})
+				_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: "12"})
 				ctx = request.WithPlayer(ctx, model.Player{ID: "player-1"})
 				req = newGetRequest("id=12", "submission=false")
 				req = req.WithContext(ctx)
@@ -231,6 +232,53 @@ var _ = Describe("MediaAnnotationController", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
 		})
+	})
+
+	Describe("SetRating range validation", func() {
+		var plRepo *tests.MockPlaylistRepo
+
+		BeforeEach(func() {
+			plRepo = tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl-1", Name: "My Playlist", OwnerID: "u1"}})
+			ds.(*tests.MockDataStore).MockedPlaylist = plRepo
+		})
+
+		DescribeTable("rejects ratings outside the 0-5 range allowed by the Subsonic spec",
+			func(rating string) {
+				_, err := router.SetRating(newGetRequest("id=pl-1", "rating=4"))
+				Expect(err).ToNot(HaveOccurred())
+
+				r := newGetRequest("id=pl-1", "rating="+rating)
+
+				_, err = router.SetRating(r)
+
+				Expect(err).To(MatchError(errSubsonic))
+				var subErr subError
+				Expect(errors.As(err, &subErr)).To(BeTrue())
+				Expect(subErr.code).To(Equal(responses.ErrorGeneric))
+				Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", 4))
+			},
+			Entry("above maximum", "6"),
+			Entry("well above maximum", "1000"),
+			Entry("negative", "-3"),
+			// These wrap to 0 and 5 when narrowed to a 32-bit int.
+			Entry("2^32 (wraps to 0 on 32-bit)", "4294967296"),
+			Entry("2^32+5 (wraps to 5 on 32-bit)", "4294967301"),
+		)
+
+		DescribeTable("accepts ratings inside the 0-5 range",
+			func(rating int) {
+				r := newGetRequest("id=pl-1", fmt.Sprintf("rating=%d", rating))
+
+				_, err := router.SetRating(r)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(plRepo.Ratings).To(HaveKeyWithValue("pl-1", rating))
+			},
+			Entry("zero clears the rating", 0),
+			Entry("middle of the range", 3),
+			Entry("maximum", 5),
+		)
 	})
 
 	Describe("Star with an unresolvable id", func() {

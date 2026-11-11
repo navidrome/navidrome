@@ -1,6 +1,7 @@
 package persistence
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -59,8 +60,8 @@ func filtersNeedAnnotation(query SelectBuilder) bool {
 	return annotationColumnRE().MatchString(sql)
 }
 
-func (r sqlRepository) withAnnotation(query SelectBuilder, idField string) SelectBuilder {
-	userID := loggedUser(r.ctx).ID
+func (r sqlRepository) withAnnotation(ctx context.Context, query SelectBuilder, idField string) SelectBuilder {
+	userID := loggedUser(ctx).ID
 	if userID == invalidUserId {
 		return query.Columns(fmt.Sprintf("%s.average_rating", r.tableName))
 	}
@@ -102,8 +103,8 @@ func annotationBoolFilter(field string) func(string, any) Sqlizer {
 	}
 }
 
-func (r sqlRepository) annId(itemID ...string) And {
-	userID := loggedUser(r.ctx).ID
+func (r sqlRepository) annId(ctx context.Context, itemID ...string) And {
+	userID := loggedUser(ctx).ID
 	return And{
 		Eq{annotationTable + ".user_id": userID},
 		Eq{annotationTable + ".item_type": r.tableName},
@@ -111,20 +112,20 @@ func (r sqlRepository) annId(itemID ...string) And {
 	}
 }
 
-func (r sqlRepository) annUpsert(values map[string]any, itemIDs ...string) error {
-	upd := Update(annotationTable).Where(r.annId(itemIDs...))
+func (r sqlRepository) annUpsert(ctx context.Context, values map[string]any, itemIDs ...string) error {
+	upd := Update(annotationTable).Where(r.annId(ctx, itemIDs...))
 	for f, v := range values {
 		upd = upd.Set(f, v)
 	}
-	c, err := r.executeSQL(upd)
+	c, err := r.executeSQL(ctx, upd)
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
-		userID := loggedUser(r.ctx).ID
+		userID := loggedUser(ctx).ID
 		for _, itemID := range itemIDs {
 			values["user_id"] = userID
 			values["item_type"] = r.tableName
 			values["item_id"] = itemID
 			ins := Insert(annotationTable).SetMap(values)
-			_, err = r.executeSQL(ins)
+			_, err = r.executeSQL(ctx, ins)
 			if err != nil {
 				return err
 			}
@@ -133,39 +134,39 @@ func (r sqlRepository) annUpsert(values map[string]any, itemIDs ...string) error
 	return err
 }
 
-func (r sqlRepository) SetStar(starred bool, ids ...string) error {
+func (r sqlRepository) SetStar(ctx context.Context, starred bool, ids ...string) error {
 	starredAt := time.Now()
-	return r.annUpsert(map[string]any{"starred": starred, "starred_at": starredAt}, ids...)
+	return r.annUpsert(ctx, map[string]any{"starred": starred, "starred_at": starredAt}, ids...)
 }
 
-func (r sqlRepository) SetRating(rating int, itemID string) error {
+func (r sqlRepository) SetRating(ctx context.Context, rating int, itemID string) error {
 	ratedAt := time.Now()
-	err := r.annUpsert(map[string]any{"rating": rating, "rated_at": ratedAt}, itemID)
+	err := r.annUpsert(ctx, map[string]any{"rating": rating, "rated_at": ratedAt}, itemID)
 	if err != nil {
 		return err
 	}
-	return r.updateAvgRating(itemID)
+	return r.updateAvgRating(ctx, itemID)
 }
 
-func (r sqlRepository) updateAvgRating(itemID string) error {
+func (r sqlRepository) updateAvgRating(ctx context.Context, itemID string) error {
 	upd := Update(r.tableName).
 		Where(Eq{"id": itemID}).
 		Set("average_rating", Expr(
 			"coalesce((select round(avg(rating), 2) from annotation where item_id = ? and item_type = ? and rating > 0), 0)",
 			itemID, r.tableName,
 		))
-	_, err := r.executeSQL(upd)
+	_, err := r.executeSQL(ctx, upd)
 	return err
 }
 
-func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
-	upd := Update(annotationTable).Where(r.annId(itemID)).
+func (r sqlRepository) IncPlayCount(ctx context.Context, itemID string, ts time.Time) error {
+	upd := Update(annotationTable).Where(r.annId(ctx, itemID)).
 		Set("play_count", Expr("play_count+1")).
 		Set("play_date", Expr("max(ifnull(play_date,''),?)", ts))
-	c, err := r.executeSQL(upd)
+	c, err := r.executeSQL(ctx, upd)
 
 	if c == 0 || errors.Is(err, sql.ErrNoRows) {
-		userID := loggedUser(r.ctx).ID
+		userID := loggedUser(ctx).ID
 		values := map[string]any{}
 		values["user_id"] = userID
 		values["item_type"] = r.tableName
@@ -173,7 +174,7 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 		values["play_count"] = 1
 		values["play_date"] = ts
 		ins := Insert(annotationTable).SetMap(values)
-		_, err = r.executeSQL(ins)
+		_, err = r.executeSQL(ctx, ins)
 		if err != nil {
 			return err
 		}
@@ -181,28 +182,28 @@ func (r sqlRepository) IncPlayCount(itemID string, ts time.Time) error {
 	return err
 }
 
-func (r sqlRepository) ReassignAnnotation(prevID string, newID string) error {
+func (r sqlRepository) ReassignAnnotation(ctx context.Context, prevID string, newID string) error {
 	if prevID == newID || prevID == "" || newID == "" {
 		return nil
 	}
 	// OR IGNORE keeps newID's own row where a user annotated both, instead of aborting the whole statement
 	upd := Expr("update or ignore "+annotationTable+" set item_id = ? where item_type = ? and item_id = ?",
 		newID, r.tableName, prevID)
-	if _, err := r.executeSQL(upd); err != nil {
+	if _, err := r.executeSQL(ctx, upd); err != nil {
 		return err
 	}
 	// The moved rows change newID's rating population, so its cached average no longer matches
-	return r.updateAvgRating(newID)
+	return r.updateAvgRating(ctx, newID)
 }
 
-func (r sqlRepository) cleanAnnotations() error {
+func (r sqlRepository) cleanAnnotations(ctx context.Context) error {
 	del := Delete(annotationTable).Where(Eq{"item_type": r.tableName}).Where("item_id not in (select id from " + r.tableName + ")")
-	c, err := r.executeSQL(del)
+	c, err := r.executeSQL(ctx, del)
 	if err != nil {
 		return fmt.Errorf("error cleaning up %s annotations: %w", r.tableName, err)
 	}
 	if c > 0 {
-		log.Debug(r.ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)
+		log.Debug(ctx, "Clean-up annotations", "table", r.tableName, "totalDeleted", c)
 	}
 	return nil
 }

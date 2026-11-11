@@ -1,15 +1,18 @@
 package model
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Bookmarkable struct {
 	BookmarkPosition int64 `structs:"-" json:"bookmarkPosition"`
 }
 
 type BookmarkableRepository interface {
-	AddBookmark(id, comment string, position int64) error
-	DeleteBookmark(id string) error
-	GetBookmarks() (Bookmarks, error)
+	AddBookmark(ctx context.Context, id, comment string, position int64) error
+	DeleteBookmark(ctx context.Context, id string) error
+	GetBookmarks(ctx context.Context) (Bookmarks, error)
 }
 
 type Bookmark struct {

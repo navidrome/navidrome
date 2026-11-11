@@ -54,7 +54,7 @@ func (c *imageChangeCollector) enqueue(ctx context.Context) {
 		if len(items) == 0 {
 			continue
 		}
-		if err := c.ds.ArtworkQueue(ctx).Enqueue(items...); err != nil {
+		if err := c.ds.ArtworkQueue().Enqueue(ctx, items...); err != nil {
 			log.Warn(ctx, "Scanner: could not enqueue artwork for image changes", "lib", lib.Name, err)
 			continue
 		}
@@ -77,7 +77,7 @@ func (c *imageChangeCollector) queueItems(ctx context.Context, lib model.Library
 
 	var items []model.ArtworkQueueItem
 
-	albumIDs, err := c.ds.MediaFile(ctx).GetAlbumIDsByFolder(lib, folderIDs...)
+	albumIDs, err := c.ds.MediaFile().GetAlbumIDsByFolder(ctx, lib, folderIDs...)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (c *imageChangeCollector) queueItems(ctx context.Context, lib model.Library
 	}
 	// The resolver climbs to the library root, so the subtree below the folder is the affected set.
 	// A failure here must not discard the album items already collected.
-	artistIDs, err := c.ds.Album(ctx).GetSoleAlbumArtistIDsInSubtrees(lib, artistFolderPaths...)
+	artistIDs, err := c.ds.Album().GetSoleAlbumArtistIDsInSubtrees(ctx, lib, artistFolderPaths...)
 	if err != nil {
 		log.Warn(ctx, "Scanner: could not map image changes to artists", "lib", lib.Name, err)
 		return items, nil

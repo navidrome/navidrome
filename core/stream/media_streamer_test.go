@@ -37,7 +37,7 @@ var _ = Describe("MediaStreamer", func() {
 		conf.Server.CacheFolder = conf.NewDir(cacheDir)
 		conf.Server.TranscodingCacheSize = "100MB"
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
-		ds.MediaFile(ctx).(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
 		})
 		testCache := stream.NewTranscodingCache()
@@ -52,7 +52,7 @@ var _ = Describe("MediaStreamer", func() {
 		var mf *model.MediaFile
 		BeforeEach(func() {
 			var err error
-			mf, err = ds.MediaFile(ctx).Get("123")
+			mf, err = ds.MediaFile().Get(ctx, "123")
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("returns a seekable stream if format is 'raw'", func() {
@@ -152,7 +152,7 @@ var _ = Describe("MediaStreamer", func() {
 		var mf *model.MediaFile
 		BeforeEach(func() {
 			var err error
-			mf, err = ds.MediaFile(ctx).Get("123")
+			mf, err = ds.MediaFile().Get(ctx, "123")
 			Expect(err).ToNot(HaveOccurred())
 		})
 

@@ -18,11 +18,16 @@ import (
 	"github.com/navidrome/navidrome/persistence"
 )
 
-// requireExistingDB aborts the command when the database file (DbPath minus DSN
-// params) does not exist.
-func requireExistingDB() {
+// existingDBFile returns the database file (DbPath minus DSN params), and whether it exists.
+func existingDBFile() (string, bool) {
 	path, _, _ := strings.Cut(conf.Server.DbPath, "?")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	_, err := os.Stat(path)
+	return path, err == nil
+}
+
+// requireExistingDB aborts the command when the database file does not exist.
+func requireExistingDB() {
+	if path, ok := existingDBFile(); !ok {
 		log.Fatal("No existing database", "path", path)
 	}
 }
@@ -52,14 +57,14 @@ func getAdminContext(ctx context.Context) (model.DataStore, context.Context) {
 }
 
 func getUser(ctx context.Context, id string, ds model.DataStore) (*model.User, error) {
-	user, err := ds.User(ctx).FindByUsername(id)
+	user, err := ds.User().FindByUsername(ctx, id)
 
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		return nil, fmt.Errorf("finding user by name: %w", err)
 	}
 
 	if errors.Is(err, model.ErrNotFound) {
-		user, err = ds.User(ctx).Get(id)
+		user, err = ds.User().Get(ctx, id)
 		if err != nil {
 			return nil, fmt.Errorf("finding user by id: %w", err)
 		}

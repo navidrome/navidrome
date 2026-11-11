@@ -97,7 +97,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(&testUser)
+		err := userRepo.Put(GinkgoT().Context(), &testUser)
 		Expect(err).ToNot(HaveOccurred())
 
 		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
@@ -235,23 +235,15 @@ type mockPlaylistTrackRepo struct {
 	tracks model.PlaylistTracks
 }
 
-func (m *mockPlaylistTrackRepo) Count(...rest.QueryOptions) (int64, error) {
+func (m *mockPlaylistTrackRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
 	return int64(len(m.tracks)), nil
 }
 
-func (m *mockPlaylistTrackRepo) ReadAll(...rest.QueryOptions) (any, error) {
+func (m *mockPlaylistTrackRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]model.PlaylistTrack, error) {
 	return m.tracks, nil
 }
 
-func (m *mockPlaylistTrackRepo) EntityName() string {
-	return "playlist_track"
-}
-
-func (m *mockPlaylistTrackRepo) NewInstance() any {
-	return &model.PlaylistTrack{}
-}
-
-func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
+func (m *mockPlaylistTrackRepo) Read(_ context.Context, id string) (*model.PlaylistTrack, error) {
 	for _, t := range m.tracks {
 		if t.ID == id {
 			return &t, nil
@@ -262,7 +254,8 @@ func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
 
 type mockPlaylistsService struct {
 	playlists.Playlists
-	tracksRepo    rest.Repository
+	repo          rest.Repository[model.Playlist]
+	tracksRepo    rest.Repository[model.PlaylistTrack]
 	playlist      *model.Playlist
 	removeImageFn func(ctx context.Context, id string) error
 	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
@@ -282,6 +275,10 @@ func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader i
 	return model.ErrNotFound
 }
 
+func (m *mockPlaylistsService) Repository() rest.Repository[model.Playlist] {
+	return m.repo
+}
+
 func (m *mockPlaylistsService) GetWithTracks(_ context.Context, _ string) (*model.Playlist, error) {
 	if m.playlist == nil {
 		return nil, model.ErrNotFound
@@ -289,6 +286,6 @@ func (m *mockPlaylistsService) GetWithTracks(_ context.Context, _ string) (*mode
 	return m.playlist, nil
 }
 
-func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
+func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository[model.PlaylistTrack] {
 	return m.tracksRepo
 }

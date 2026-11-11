@@ -77,7 +77,7 @@ func (api *Router) quickConnectAuthorize(w http.ResponseWriter, r *http.Request)
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-		usr, err := api.ds.User(ctx).Get(userID)
+		usr, err := api.ds.User().Get(ctx, userID)
 		if errors.Is(err, model.ErrNotFound) {
 			http.Error(w, "Unknown user", http.StatusNotFound)
 			return
@@ -118,7 +118,7 @@ func (api *Router) authenticateWithQuickConnect(w http.ResponseWriter, r *http.R
 		http.Error(w, "Unknown secret", http.StatusNotFound)
 		return
 	}
-	usr, err := api.ds.User(ctx).Get(userID)
+	usr, err := api.ds.User().Get(ctx, userID)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Warn(ctx, "Jellyfin API: Quick Connect user not found", "userID", userID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

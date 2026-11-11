@@ -65,7 +65,7 @@ func (m *Manager) addPluginToDB(ctx context.Context, repo model.PluginRepository
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-	if err := repo.Put(newPlugin); err != nil {
+	if err := repo.Put(ctx, newPlugin); err != nil {
 		return fmt.Errorf("adding plugin to DB: %w", err)
 	}
 	log.Info(ctx, "Discovered new plugin", "plugin", name)
@@ -88,7 +88,7 @@ func (m *Manager) updatePluginInDB(ctx context.Context, repo model.PluginReposit
 	dbPlugin.Enabled = false
 	dbPlugin.LastError = ""
 	dbPlugin.UpdatedAt = time.Now()
-	if err := repo.Put(dbPlugin); err != nil {
+	if err := repo.Put(ctx, dbPlugin); err != nil {
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 	log.Info(ctx, "Plugin file changed", "plugin", dbPlugin.ID, "wasEnabled", wasEnabled)
@@ -105,7 +105,7 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 			log.Debug(ctx, "Plugin not loaded during removal", "plugin", pluginID, err)
 		}
 	}
-	if err := repo.Delete(pluginID); err != nil {
+	if err := repo.Delete(ctx, pluginID); err != nil {
 		return fmt.Errorf("deleting plugin from DB: %w", err)
 	}
 	// Discard any scrobbles still buffered for the removed plugin, so they are
@@ -115,7 +115,7 @@ func (m *Manager) removePluginFromDB(ctx context.Context, repo model.PluginRepos
 	// wipe the builtin Last.fm retry queue.
 	if scrobbler.IsBuiltinScrobbler(pluginID) {
 		log.Debug(ctx, "Keeping buffered scrobbles: name is owned by a builtin scrobbler", "plugin", pluginID)
-	} else if err := m.ds.ScrobbleBuffer(ctx).Discard(pluginID); err != nil {
+	} else if err := m.ds.ScrobbleBuffer().Discard(ctx, pluginID); err != nil {
 		log.Error(ctx, "Error discarding buffered scrobbles for removed plugin", "plugin", pluginID, err)
 	}
 	log.Info(ctx, "Plugin removed", "plugin", pluginID)
@@ -162,8 +162,8 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 	log.Debug(ctx, "Plugin sync: scanned folder", "folder", folder, "entriesTotal", len(entries), "pluginsFound", len(filesOnDisk))
 
 	// Get all plugins from DB
-	repo := m.ds.Plugin(adminCtx)
-	dbPlugins, err := repo.GetAll()
+	repo := m.ds.Plugin()
+	dbPlugins, err := repo.GetAll(adminCtx)
 	if err != nil {
 		return fmt.Errorf("reading plugins from DB: %w", err)
 	}
@@ -192,7 +192,7 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 			if dbPlugin.Path != path {
 				dbPlugin.Path = path
 				dbPlugin.UpdatedAt = now
-				if err := repo.Put(dbPlugin); err != nil {
+				if err := repo.Put(adminCtx, dbPlugin); err != nil {
 					log.Error(ctx, "Failed to update plugin path in DB", "plugin", name, err)
 				}
 			}
@@ -215,7 +215,7 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 					}
 					dbPlugin.Enabled = false
 				}
-				if putErr := repo.Put(dbPlugin); putErr != nil {
+				if putErr := repo.Put(adminCtx, dbPlugin); putErr != nil {
 					log.Error(ctx, "Failed to update plugin in DB", "plugin", name, err)
 				}
 			}
@@ -225,12 +225,12 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 
 		if !exists {
 			// New plugin - add to DB as disabled
-			if err := m.addPluginToDB(ctx, repo, name, path, metadata); err != nil {
+			if err := m.addPluginToDB(adminCtx, repo, name, path, metadata); err != nil {
 				log.Error(ctx, "Failed to add plugin to DB", "plugin", name, err)
 			}
 		} else {
 			// Plugin changed - update DB
-			if err := m.updatePluginInDB(ctx, repo, dbPlugin, path, metadata); err != nil {
+			if err := m.updatePluginInDB(adminCtx, repo, dbPlugin, path, metadata); err != nil {
 				log.Error(ctx, "Failed to update plugin in DB", "plugin", name, err)
 			}
 		}
@@ -240,7 +240,7 @@ func (m *Manager) syncPlugins(ctx context.Context, folder string) error {
 
 	// Remove plugins no longer on disk
 	for _, dbPlugin := range pluginsInDB {
-		if err := m.removePluginFromDB(ctx, repo, dbPlugin); err != nil {
+		if err := m.removePluginFromDB(adminCtx, repo, dbPlugin); err != nil {
 			log.Error(ctx, "Failed to delete plugin from DB", "plugin", dbPlugin.ID, err)
 		}
 	}

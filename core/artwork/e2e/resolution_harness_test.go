@@ -99,11 +99,11 @@ func setupResolutionHarness() {
 	rds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
 	adminUser := model.User{ID: "admin-1", UserName: "admin", Name: "Admin", IsAdmin: true, NewPassword: "password"}
-	Expect(rds.User(rctx).Put(&adminUser)).To(Succeed())
+	Expect(rds.User().Put(rctx, &adminUser)).To(Succeed())
 
 	lib := model.Library{ID: 1, Name: "Music", Path: fakeLibPath}
-	Expect(rds.Library(rctx).Put(&lib)).To(Succeed())
-	Expect(rds.User(rctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(rds.Library().Put(rctx, &lib)).To(Succeed())
+	Expect(rds.User().SetUserLibraries(rctx, adminUser.ID, []int{lib.ID})).To(Succeed())
 
 	loadEmbeddedFixture()
 
@@ -140,13 +140,13 @@ func scan() {
 func acquire(kind model.Kind, id string) model.ItemArtwork {
 	GinkgoHelper()
 	// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
-	Expect(rds.ArtworkQueue(rctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
+	Expect(rds.ArtworkQueue().EnqueuePreservingBackoff(rctx, model.ArtworkQueueItem{
 		ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary,
 		Priority: model.ArtworkPriorityBump,
 	})).To(Succeed())
 	var ia *model.ItemArtwork
 	runResolutionWorkerUntil(func() bool {
-		got, err := rds.Artwork(rctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+		got, err := rds.Artwork().GetItemArtwork(rctx, kind, id, model.ImageTypePrimary)
 		if err != nil {
 			return false
 		}
@@ -211,7 +211,7 @@ func expectAlbumFolderCover(al model.Album, suffix string) {
 // A drain settles every ready item, so byte-level folder assertions must precede any acquire.
 func requireNoStateRow(kind model.Kind, id string) {
 	GinkgoHelper()
-	_, err := rds.Artwork(rctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+	_, err := rds.Artwork().GetItemArtwork(rctx, kind, id, model.ImageTypePrimary)
 	Expect(err).To(MatchError(model.ErrNotFound),
 		"assert %s %q before acquiring any other entity in this spec", kind, id)
 }
@@ -266,7 +266,7 @@ func gridQuadrants(data []byte) [4]color.RGBA {
 // Store-backed sources only (embedded/generated); file-backed ones assert on ia.SourcePath.
 func storedBytes(ia model.ItemArtwork) []byte {
 	GinkgoHelper()
-	art, err := rds.Artwork(rctx).GetImage(ia.Hash)
+	art, err := rds.Artwork().GetImage(rctx, ia.Hash)
 	Expect(err).ToNot(HaveOccurred())
 	r, err := rstore.Open(ia.Hash, art.Mime)
 	Expect(err).ToNot(HaveOccurred())
@@ -345,7 +345,7 @@ func replaceWithRealMP3(relPath string) {
 
 func firstAlbum() model.Album {
 	GinkgoHelper()
-	albums, err := rds.Album(rctx).GetAll(model.QueryOptions{})
+	albums, err := rds.Album().GetAll(rctx, model.QueryOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(albums).To(HaveLen(1), "expected exactly one album, got %d", len(albums))
 	return albums[0]
@@ -353,7 +353,7 @@ func firstAlbum() model.Album {
 
 func albumByName(name string) model.Album {
 	GinkgoHelper()
-	albums, err := rds.Album(rctx).GetAll(model.QueryOptions{})
+	albums, err := rds.Album().GetAll(rctx, model.QueryOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	for _, al := range albums {
 		if al.Name == name {

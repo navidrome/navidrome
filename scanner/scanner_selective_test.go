@@ -63,13 +63,13 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			IsAdmin:     true,
 			NewPassword: "password",
 		}
-		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
 
 		// Initialize fake filesystem
 		fsys = storagetest.FakeFS{}
@@ -101,7 +101,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			Expect(warnings).To(BeEmpty())
 
 			// Verify all tracks in rock and jazz folders (including subdirectories) were imported
-			allFiles, err := ds.MediaFile(ctx).GetAll()
+			allFiles, err := ds.MediaFile().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Should have 5 tracks (all rock and jazz tracks including subdirectories)
@@ -123,7 +123,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 			// Verify files in the pop folder were NOT scanned
 			Expect(paths).ToNot(ContainElement("pop/track6.mp3"))
-			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("1"))
+			Expect(ds.Property().Get(ctx, consts.DBAnalyzePendingKey)).To(Equal("1"))
 		})
 	})
 
@@ -135,26 +135,26 @@ var _ = Describe("ScanFolders", Ordered, func() {
 			})
 			_, err := s.ScanAll(ctx, true)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("0"))
+			Expect(ds.Property().Get(ctx, consts.DBAnalyzePendingKey)).To(Equal("0"))
 
 			fsys.Add("rock/track2.mp3", rock(track(2, "Rock Track 2")), time.Now().Add(time.Second))
 			_, err = s.ScanAll(ctx, false)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.Property(ctx).Get(consts.DBAnalyzePendingKey)).To(Equal("0"))
+			Expect(ds.Property().Get(ctx, consts.DBAnalyzePendingKey)).To(Equal("0"))
 		})
 
 		It("does not treat an interrupted scan in an untargeted library as a full scan", func() {
 			otherLib := model.Library{ID: 2, Name: "Other Library", Path: "fake:///other"}
-			Expect(ds.Library(ctx).Put(&otherLib)).To(Succeed())
-			Expect(ds.Library(ctx).ScanBegin(lib.ID, true)).To(Succeed())
+			Expect(ds.Library().Put(ctx, &otherLib)).To(Succeed())
+			Expect(ds.Library().ScanBegin(ctx, lib.ID, true)).To(Succeed())
 
 			lastAnalyze := "2026-07-09T12:00:00Z"
-			Expect(ds.Property(ctx).Put(consts.LastDBAnalyzeAtKey, lastAnalyze)).To(Succeed())
-			Expect(ds.Property(ctx).Put(consts.DBAnalyzePendingKey, "0")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.LastDBAnalyzeAtKey, lastAnalyze)).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.DBAnalyzePendingKey, "0")).To(Succeed())
 
 			_, err := s.ScanFolders(ctx, false, []model.ScanTarget{{LibraryID: otherLib.ID, FolderPath: "."}})
 			Expect(err).ToNot(HaveOccurred())
-			Expect(ds.Property(ctx).Get(consts.LastDBAnalyzeAtKey)).To(Equal(lastAnalyze))
+			Expect(ds.Property().Get(ctx, consts.LastDBAnalyzeAtKey)).To(Equal(lastAnalyze))
 		})
 	})
 
@@ -187,7 +187,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify initial state - all folders exist
-				folders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
+				folders, err := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(folders).To(HaveLen(4)) // root, Artist, Album1, Album2
 
@@ -204,7 +204,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				}
 
 				// Verify all tracks exist
-				allTracks, err := ds.MediaFile(ctx).GetAll()
+				allTracks, err := ds.MediaFile().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(allTracks).To(HaveLen(4))
 
@@ -239,29 +239,29 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify the deleted child folder is now marked as missing
-				deletedFolder, err := ds.Folder(ctx).Get(album2FolderID)
+				deletedFolder, err := ds.Folder().Get(ctx, album2FolderID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(deletedFolder.Missing).To(BeTrue(), "Deleted child folder should be marked as missing")
 
 				// Verify the deleted folder's tracks are marked as missing
 				for _, trackID := range album2TrackIDs {
-					track, err := ds.MediaFile(ctx).Get(trackID)
+					track, err := ds.MediaFile().Get(ctx, trackID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(track.Missing).To(BeTrue(), "Track in deleted folder should be marked as missing")
 				}
 
 				// Verify the parent folder is still present and not marked as missing
-				parentFolder, err := ds.Folder(ctx).Get(artistFolderID)
+				parentFolder, err := ds.Folder().Get(ctx, artistFolderID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(parentFolder.Missing).To(BeFalse(), "Parent folder should not be marked as missing")
 
 				// Verify the sibling folder and its tracks are still present and not missing
-				siblingFolder, err := ds.Folder(ctx).Get(album1FolderID)
+				siblingFolder, err := ds.Folder().Get(ctx, album1FolderID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(siblingFolder.Missing).To(BeFalse(), "Sibling folder should not be marked as missing")
 
 				for _, trackID := range album1TrackIDs {
-					track, err := ds.MediaFile(ctx).Get(trackID)
+					track, err := ds.MediaFile().Get(ctx, trackID)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(track.Missing).To(BeFalse(), "Track in sibling folder should not be marked as missing")
 				}
@@ -283,7 +283,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify nested folders were created
-				allFolders, err := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
+				allFolders, err := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(len(allFolders)).To(BeNumerically(">", 4), "Should have more folders with nested structure")
 
@@ -301,7 +301,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// Verify all Help! folders (including nested ones) are marked as missing
-				missingFolders, err := ds.Folder(ctx).GetAll(model.QueryOptions{
+				missingFolders, err := ds.Folder().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.And{
 						squirrel.Eq{"library_id": lib.ID},
 						squirrel.Eq{"missing": true},
@@ -311,7 +311,7 @@ var _ = Describe("ScanFolders", Ordered, func() {
 				Expect(len(missingFolders)).To(BeNumerically(">", 0), "At least one folder should be marked as missing")
 
 				// Verify all tracks in deleted folders are marked as missing
-				allTracks, err := ds.MediaFile(ctx).GetAll()
+				allTracks, err := ds.MediaFile().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(allTracks).To(HaveLen(6))
 

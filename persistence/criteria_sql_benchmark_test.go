@@ -189,11 +189,11 @@ func setupBenchData(b *testing.B, ctx context.Context, conn *dbx.DB, user model.
 
 	sqlDB := db.Db()
 
-	ur := NewUserRepository(ctx, conn)
-	if err := ur.Put(&user); err != nil {
+	ur := NewUserRepository(conn)
+	if err := ur.Put(ctx, &user); err != nil {
 		b.Fatal(err)
 	}
-	if err := ur.SetUserLibraries(user.ID, []int{1}); err != nil {
+	if err := ur.SetUserLibraries(ctx, user.ID, []int{1}); err != nil {
 		b.Fatal(err)
 	}
 

@@ -70,7 +70,7 @@ func ConfigFingerprint() string {
 // resolved under it. Nothing re-resolves on its own; applying a change is an explicit reprocess.
 func ReconcileConfigFingerprint(ctx context.Context, ds model.DataStore) error {
 	current := ConfigFingerprint()
-	stored, err := ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, "")
+	stored, err := ds.Property().DefaultGet(ctx, consts.ArtConfFingerprintPropertyKey, "")
 	if err != nil {
 		return err
 	}
@@ -89,14 +89,14 @@ func ReconcileConfigFingerprint(ctx context.Context, ds model.DataStore) error {
 
 // MarkConfigApplied records the current fingerprint as the one the library is resolved under.
 func MarkConfigApplied(ctx context.Context, ds model.DataStore) error {
-	return ds.Property(ctx).Put(consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())
+	return ds.Property().Put(ctx, consts.ArtConfFingerprintPropertyKey, ConfigFingerprint())
 }
 
 // enqueueMissingAll is the safety net for entities a scan never enqueued (added between scans, or scanner off).
 func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
-	queue := ds.ArtworkQueue(ctx)
+	queue := ds.ArtworkQueue()
 	for _, kind := range ReprocessKinds {
-		if _, err := queue.EnqueueAllMissing(kind, model.ArtworkPriorityRecheck); err != nil {
+		if _, err := queue.EnqueueAllMissing(ctx, kind, model.ArtworkPriorityRecheck); err != nil {
 			return err
 		}
 	}
@@ -108,31 +108,31 @@ func enqueueMissingAll(ctx context.Context, ds model.DataStore) error {
 func ItemName(ctx context.Context, ds model.DataStore, kind model.Kind, id string) (string, error) {
 	switch kind {
 	case model.KindArtistArtwork:
-		ar, err := ds.Artist(ctx).Get(id)
+		ar, err := ds.Artist().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return ar.Name, nil
 	case model.KindAlbumArtwork:
-		al, err := ds.Album(ctx).Get(id)
+		al, err := ds.Album().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return al.Name, nil
 	case model.KindPlaylistArtwork:
-		pls, err := ds.Playlist(ctx).Get(id)
+		pls, err := ds.Playlist().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return pls.Name, nil
 	case model.KindRadioArtwork:
-		rd, err := ds.Radio(ctx).Get(id)
+		rd, err := ds.Radio().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
 		return rd.Name, nil
 	case model.KindMediaFileArtwork:
-		mf, err := ds.MediaFile(ctx).Get(id)
+		mf, err := ds.MediaFile().Get(ctx, id)
 		if err != nil {
 			return "", err
 		}
@@ -148,7 +148,7 @@ func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string
 	if err != nil {
 		return "", err
 	}
-	al, err := ds.Album(ctx).Get(albumID)
+	al, err := ds.Album().Get(ctx, albumID)
 	if err != nil {
 		return "", err
 	}
@@ -162,11 +162,11 @@ func discArtworkName(ctx context.Context, ds model.DataStore, id string) (string
 
 // Refresh drops an item's resolved artwork state and re-queues it at Bump priority.
 func Refresh(ctx context.Context, ds model.DataStore, kind model.Kind, id string) error {
-	if err := ds.Artwork(ctx).DeleteForItems(kind, []string{id}); err != nil {
+	if err := ds.Artwork().DeleteForItems(ctx, kind, []string{id}); err != nil {
 		return fmt.Errorf("clearing artwork state: %w", err)
 	}
 	item := model.ArtworkQueueItem{ItemKind: kind.Prefix(), ItemID: id, ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump}
-	if err := ds.ArtworkQueue(ctx).Enqueue(item); err != nil {
+	if err := ds.ArtworkQueue().Enqueue(ctx, item); err != nil {
 		return fmt.Errorf("enqueuing artwork refresh: %w", err)
 	}
 	return nil

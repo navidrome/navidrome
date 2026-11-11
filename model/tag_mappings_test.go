@@ -192,3 +192,22 @@ var _ = Describe("TagConf", func() {
 		})
 	})
 })
+
+var _ = Describe("CanonicalTagName", func() {
+	DescribeTable("resolves tag names and aliases",
+		func(name string, expected TagName) {
+			tagName, ok := CanonicalTagName(name)
+			Expect(ok).To(BeTrue())
+			Expect(tagName).To(Equal(expected))
+		},
+		Entry("tag name", "album", TagAlbum),
+		Entry("alias", "talb", TagAlbum),
+		Entry("mixed case alias", "TALB", TagAlbum),
+		Entry("tag name that is also an alias of another tag", "musicbrainz_trackid", TagMusicBrainzTrackID),
+	)
+
+	It("does not resolve an unknown name", func() {
+		_, ok := CanonicalTagName("nosuchtag")
+		Expect(ok).To(BeFalse())
+	})
+})

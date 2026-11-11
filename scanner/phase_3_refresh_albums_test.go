@@ -104,7 +104,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 
 	Describe("refreshAlbum", func() {
 		It("refreshes the album in the database", func() {
-			Expect(albumRepo.CountAll()).To(Equal(int64(0)))
+			Expect(albumRepo.CountAll(ctx)).To(Equal(int64(0)))
 
 			album := &model.Album{ID: "album1", Name: "Album 1"}
 			result, err := phase.refreshAlbum(album)
@@ -112,7 +112,7 @@ var _ = Describe("phaseRefreshAlbums", func() {
 			Expect(result).ToNot(BeNil())
 			Expect(result.ID).To(Equal("album1"))
 
-			savedAlbum, err := albumRepo.Get("album1")
+			savedAlbum, err := albumRepo.Get(ctx, "album1")
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(savedAlbum).ToNot(BeNil())

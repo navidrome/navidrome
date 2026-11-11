@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -88,6 +89,8 @@ var _ = Describe("serveIndex", func() {
 		Entry("uiSearchDebounceMs", func() { conf.Server.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
 		Entry("uiCoverArtSize", func() { conf.Server.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
 		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
+		Entry("pidAlbum", func() { conf.Server.PID.Album = "folder" }, "pidAlbum", "folder"),
+		Entry("pidTrack", func() { conf.Server.PID.Track = "title" }, "pidTrack", "title"),
 		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
 		Entry("gaTrackingId", func() { conf.Server.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),
 		Entry("defaultDownloadableShare", func() { conf.Server.DefaultDownloadableShare = true }, "defaultDownloadableShare", true),
@@ -341,7 +344,7 @@ type mockedUserRepo struct {
 	empty bool
 }
 
-func (u *mockedUserRepo) CountAll(...model.QueryOptions) (int64, error) {
+func (u *mockedUserRepo) CountAll(context.Context, ...model.QueryOptions) (int64, error) {
 	if u.empty {
 		return 0, nil
 	}

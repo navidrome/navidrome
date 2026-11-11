@@ -21,14 +21,15 @@ type Router struct {
 	http.Handler
 	artwork       artwork.Artwork
 	streamer      stream.MediaStreamer
+	decider       stream.TranscodeDecider
 	archiver      core.Archiver
 	share         core.Share
 	assetsHandler http.Handler
 	ds            model.DataStore
 }
 
-func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, share core.Share, archiver core.Archiver) *Router {
-	p := &Router{ds: ds, artwork: artwork, streamer: streamer, share: share, archiver: archiver}
+func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStreamer, decider stream.TranscodeDecider, share core.Share, archiver core.Archiver) *Router {
+	p := &Router{ds: ds, artwork: artwork, streamer: streamer, decider: decider, share: share, archiver: archiver}
 	shareRoot := path.Join(conf.Server.BasePath, consts.URLPathPublic)
 	p.assetsHandler = http.StripPrefix(shareRoot, http.FileServer(http.FS(ui.BuildAssets())))
 	p.Handler = p.routes()

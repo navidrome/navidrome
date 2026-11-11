@@ -95,15 +95,15 @@ var _ = Describe("Housekeeping", func() {
 		It("records the current fingerprint when none was ever stored", func() {
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
+			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
 		})
 
 		It("leaves a stale fingerprint stored, so the warning survives a restart", func() {
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
+			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
 		})
 	})
 
@@ -153,7 +153,7 @@ var _ = Describe("ItemName", func() {
 			{ID: "al-2", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}},
 		})
 		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
-		Expect(ds.Artist(ctx).(*tests.MockArtistRepo).Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		Expect(ds.Artist().(*tests.MockArtistRepo).Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
 	})
 
 	It("returns the album name", func() {

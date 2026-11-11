@@ -1172,7 +1172,7 @@ type mockedMediaFileRepo struct {
 	data map[string]model.MediaFile
 }
 
-func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+func (r *mockedMediaFileRepo) FindByPaths(ctx context.Context, paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
 	// If data map provided, look up files
@@ -1212,7 +1212,7 @@ type mockedMediaFileFromListRepo struct {
 	data []string
 }
 
-func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+func (r *mockedMediaFileFromListRepo) FindByPaths(ctx context.Context, paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
@@ -1247,7 +1247,7 @@ type mockFolderRepoForImport struct {
 	folder *model.Folder
 }
 
-func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.Folder, error) {
+func (m *mockFolderRepoForImport) GetByPath(_ context.Context, _ model.Library, _ string) (*model.Folder, error) {
 	if m.folder != nil {
 		return m.folder, nil
 	}

@@ -111,7 +111,7 @@ func (ps *playbackServer) getDefaultDevice() (*playbackDevice, error) {
 
 // GetMediaFile retrieves the MediaFile given by the id parameter
 func (ps *playbackServer) GetMediaFile(id string) (*model.MediaFile, error) {
-	return ps.datastore.MediaFile(*ps.ctx).Get(id)
+	return ps.datastore.MediaFile().Get(*ps.ctx, id)
 }
 
 // GetDeviceForUser returns the audio playback device for the given user. As of now this is but only the default device.

@@ -707,6 +707,16 @@ var _ = Describe("resolveItem", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(res).To(Equal(resolution{}))
 		})
+
+		It("returns an error when the playlist tracks cannot be loaded", func() {
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl4", Name: "Playlist"}})
+			ds.MockedPlaylist = plRepo
+
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl4"})
+			Expect(err).To(HaveOccurred())
+			Expect(res).To(Equal(resolution{}))
+		})
 	})
 })
 
