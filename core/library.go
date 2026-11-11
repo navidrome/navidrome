@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -369,7 +370,7 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 		return errors.New(classifyLibraryPathError(err))
 	}
 
-	// Check if root directory exists and is accessible
+	// Check if root directory exists
 	info, err := fs.Stat(fsys, ".")
 	if err != nil {
 		log.Warn(ctx, "Error stating library.path", "path", library.Path, err)
@@ -383,19 +384,15 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 	return nil
 }
 
-// classifyLibraryPathError maps a filesystem error from opening or stating a
-// library path to the specific i18n validation code, so the UI can show an
-// actionable message instead of the generic "invalid path" catch-all. It uses
-// errors.Is (not os.IsNotExist/os.IsPermission) because the storage layer wraps
-// the underlying error with %w, which those helpers do not unwrap.
+// classifyLibraryPathError maps a path error to its i18n key. It uses errors.Is because storage FS() wraps with %w.
+// Windows ERROR_DIRECTORY has no syscall constant, so it is matched by its message text.
 func classifyLibraryPathError(err error) string {
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return "resources.library.validation.pathNotFound"
 	case errors.Is(err, fs.ErrPermission):
 		return "resources.library.validation.pathNotAccessible"
-	case strings.Contains(err.Error(), "not a directory") ||
-		strings.Contains(err.Error(), "The directory name is invalid."):
+	case errors.Is(err, syscall.ENOTDIR) || strings.Contains(err.Error(), "The directory name is invalid."):
 		return "resources.library.validation.pathNotDirectory"
 	default:
 		return "resources.library.validation.pathInvalid"
