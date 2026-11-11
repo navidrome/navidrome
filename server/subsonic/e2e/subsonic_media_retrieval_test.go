@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"archive/zip"
+	"bytes"
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
@@ -106,7 +108,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 	})
 
 	Describe("Download", func() {
-		var trackID, trackTitle string
+		var trackID, trackTitle, albumID string
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
@@ -115,6 +117,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID
 			trackTitle = songs[0].Title
+			albumID = songs[0].AlbumID
 		})
 
 		It("returns error when id parameter is missing", func() {
@@ -154,6 +157,43 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 			resp := doReq("download", "id", trackID)
 
 			Expect(resp.Status).To(Equal(responses.StatusFailed))
+		})
+
+		Context("when the player has a forced transcoding", func() {
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.EnableDownloads = true
+				setPlayerForcedFormat("opus")
+			})
+
+			It("uses the explicitly requested format", func() {
+				w := doRawReq("download", "id", trackID, "format", "aac", "bitrate", "128")
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("aac"))
+				Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
+			})
+
+			It("uses the explicitly requested format for album zips", func() {
+				w := doRawReq("download", "id", albumID, "format", "aac", "bitrate", "128")
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				z, err := zip.NewReader(bytes.NewReader(w.Body.Bytes()), int64(w.Body.Len()))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(z.File).ToNot(BeEmpty())
+				for _, f := range z.File {
+					Expect(f.Name).To(HaveSuffix(".aac"))
+				}
+			})
+
+			It("uses the player's format when no format is requested and AutoTranscodeDownload is true", func() {
+				conf.Server.AutoTranscodeDownload = true
+
+				w := doRawReq("download", "id", trackID)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+			})
 		})
 	})
 
