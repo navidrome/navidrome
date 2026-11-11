@@ -324,7 +324,6 @@ var _ = Describe("PlayTracker", func() {
 			Expect(track.PlayCount).To(Equal(int64(1)))
 			Expect(album.PlayCount).To(Equal(int64(1)))
 
-			Expect(err).ToNot(HaveOccurred())
 			Expect(fake.ScrobbleCalled.Load()).To(BeFalse())
 		})
 
@@ -816,6 +815,7 @@ var _ = Describe("PlayTracker", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(track.PlayCount).To(Equal(int64(1)))
+				Consistently(func() bool { return fake.ScrobbleCalled.Load() }).Should(BeFalse())
 			})
 
 			It("scrobbles twice for two separate sessions of same song", func() {
