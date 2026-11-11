@@ -426,7 +426,7 @@ func setupTestDB() {
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 	auth.Init(ds)
 
-	// Create the Subsonic Router with real DS, streamer spy, and real Decider
+	// Create the Subsonic Router with real DS, streamer spy, and real Decider and Archiver
 	streamerSpy = &harness.SpyStreamer{}
 	decider := stream.NewTranscodeDecider(ds, harness.NoopFFmpeg{})
 	s := scanner.New(ctx, ds, events.NoopBroker(),
@@ -435,7 +435,7 @@ func setupTestDB() {
 		ds,
 		noopArtwork{},
 		streamerSpy,
-		noopArchiver{},
+		core.NewArchiver(streamerSpy, decider, ds, core.NewShare(ds), noopArtwork{}),
 		core.NewPlayers(ds),
 		noopProvider{},
 		s,
