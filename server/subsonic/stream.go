@@ -90,6 +90,9 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		} else {
 			format = "raw"
 		}
+	} else {
+		// An explicit download format must win over the player's forced transcoding
+		ctx = request.WithTranscoding(ctx, model.Transcoding{})
 	}
 
 	setHeaders := func(name string) {
