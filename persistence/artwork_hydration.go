@@ -41,7 +41,10 @@ func streamByIDs[S ~[]T, T any](ids []string, fetch func(chunk []string) (S, err
 func chunkOptions(options []model.QueryOptions, idField string) func([]string) model.QueryOptions {
 	var base model.QueryOptions
 	if len(options) > 0 {
-		base = model.QueryOptions{Sort: options[0].Sort, Order: options[0].Order, Filters: options[0].Filters}
+		base = model.QueryOptions{
+			Sort: options[0].Sort, Order: options[0].Order, SortOrders: options[0].SortOrders,
+			Filters: options[0].Filters,
+		}
 	}
 	return func(chunk []string) model.QueryOptions {
 		opts := base

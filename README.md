@@ -21,9 +21,11 @@ the `master` branch in order to get a stable set of binaries.
 
 ## [Check out our Live Demo!](https://www.navidrome.org/demo/)
 
-__Any feedback is welcome!__ If you need/want a new feature, find a bug or think of any way to improve Navidrome, 
-please file a [GitHub issue](https://github.com/navidrome/navidrome/issues) or join the discussion in our 
-[Subreddit](https://www.reddit.com/r/navidrome/). If you want to contribute to the project in any other way 
+__Any feedback is welcome!__ If you find a bug, please file a [GitHub issue](https://github.com/navidrome/navidrome/issues/new/choose). 
+If you need/want a new feature or think of any way to improve Navidrome, please share it in 
+[Discussions](https://github.com/navidrome/navidrome/discussions/categories/ideas) or join the discussion in our 
+[Subreddit](https://www.reddit.com/r/navidrome/). Before contributing code, please read the 
+[Contribution Guide](CONTRIBUTING.md). If you want to contribute to the project in any other way 
 ([ui/backend dev](https://www.navidrome.org/docs/developers/), 
 [translations](https://www.navidrome.org/docs/developers/translations/), 
 [themes](https://www.navidrome.org/docs/developers/creating-themes)), please join the chat in our 
