@@ -163,7 +163,8 @@ func (s *Stream) EstimatedContentLength() int64 {
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
 // (supporting range requests). For non-seekable streams it writes directly and logs any errors.
-// Returns the number of bytes written and an error only when it fails with 0 bytes written
+// Returns the number of bytes written, or -1 when it does not count them (http.ServeContent and HEAD
+// requests), and an error only when it fails with 0 bytes written
 // (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
 // Once bytes are on the wire it panics with http.ErrAbortHandler instead, aborting the response.
 // Empty output (0 bytes, no error) is logged but not treated as an error.
@@ -195,7 +196,7 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	if r.Method == http.MethodHead {
 		go func() { _, _ = io.Copy(io.Discard, s) }()
-		return 0, nil
+		return -1, nil
 	}
 
 	var src io.Reader = s
