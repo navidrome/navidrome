@@ -206,6 +206,16 @@ var _ = Describe("Browsing", func() {
 			invoke(api.getGenres, w, r)
 			Expect(w.Code).To(Equal(http.StatusOK))
 		})
+
+		It("treats a negative StartIndex as 0 instead of panicking", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Genres?StartIndex=-1&Limit=5", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			invoke(api.getGenres, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.StartIndex).To(Equal(0))
+		})
 	})
 
 	Describe("getStudios", func() {
@@ -237,6 +247,16 @@ var _ = Describe("Browsing", func() {
 			r := httptest.NewRequest("GET", "/Studios?ParentId=not-a-valid-id", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
 			invoke(api.getStudios, w, r)
 			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
+
+		It("treats a negative StartIndex as 0 instead of panicking", func() {
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Studios?StartIndex=-1&Limit=5", nil).WithContext(ctxUser(model.Libraries{{ID: 1}}))
+			invoke(api.getStudios, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var res dto.QueryResult
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.StartIndex).To(Equal(0))
 		})
 	})
 
