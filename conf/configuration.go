@@ -443,6 +443,8 @@ func Load(noConfigDump bool) {
 	durationNonNegativeOrDefault(&Server.DevInsightsInitialDelay, consts.InsightsInitialDelay)
 	durationNonNegativeOrDefault(&Server.DevPluginCompilationTimeout, consts.DefaultPluginCompilationTimeout)
 
+	durationNonNegativeOrDefault(&Server.LastFM.MinScrobbleDuration, consts.DefaultMinScrobbleDuration)
+
 	// Log deprecated, removed and unknown options
 	for _, o := range deprecatedOptions {
 		logDeprecatedOptions(o.name, o.replacement)
@@ -514,12 +516,6 @@ func Load(noConfigDump bool) {
 		newValue := max(200, min(1200, Server.UICoverArtSize))
 		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
 		Server.UICoverArtSize = newValue
-	}
-
-	// Check for negative values in durations and set to default (TODO: more than just LastFM.MinScrobbleduration)
-	if Server.LastFM.MinScrobbleDuration < 0 {
-		log.Warn("MinScrobbleDuration must be non-negative, setting to default", "value", Server.LastFM.MinScrobbleDuration, "newValue", consts.DefaultMinScrobbleDuration)
-		Server.LastFM.MinScrobbleDuration = consts.DefaultMinScrobbleDuration
 	}
 
 	if Server.Scanner.Extractor != consts.DefaultScannerExtractor {
