@@ -161,6 +161,7 @@ type configOptions struct {
 	DevExternalArtistFetchMultiplier  float64
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
+	DevMatchEstimatedContentLength    bool
 	DevAPIv1                          bool
 }
 
@@ -1152,6 +1153,7 @@ func setViperDefaults() {
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
+	viper.SetDefault("devmatchestimatedcontentlength", true)
 }
 
 func init() {

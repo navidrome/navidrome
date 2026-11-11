@@ -80,7 +80,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 		format = "raw"
 		bitRate = 0
 	}
-	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
+	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate, offset: req.Offset}
 	filePath := mf.AbsolutePath()
 
 	if format == "raw" {
@@ -137,6 +137,7 @@ type Stream struct {
 	mf      *model.MediaFile
 	bitRate int
 	format  string
+	offset  int
 	io.ReadCloser
 	io.Seeker
 }
@@ -146,8 +147,18 @@ func (s *Stream) Duration() float32   { return s.mf.Duration }
 func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.format) }
 func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
-func (s *Stream) EstimatedContentLength() int {
-	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
+
+// estimateHeadroom inflates the declared Content-Length when DevMatchEstimatedContentLength is on, so
+// output over the estimate is padded instead of cut. Measured MP3 to Opus outputs (VBR) came in at up
+// to 1.074 of EstimatedContentLength. Without padding, a larger estimate only makes the body come up
+// short more often, so the headroom goes with the flag.
+const estimateHeadroom = 1.10
+
+// EstimatedContentLength returns the expected size of the transcoded output, from the part of the track
+// after the requested offset. It returns 0 when the track has no duration left to estimate from.
+func (s *Stream) EstimatedContentLength() int64 {
+	remaining := max(float64(s.mf.Duration)-float64(s.offset), 0)
+	return int64(remaining * float64(s.bitRate) / 8 * 1024)
 }
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
@@ -156,6 +167,9 @@ func (s *Stream) EstimatedContentLength() int {
 // (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
 // Once bytes are on the wire it panics with http.ErrAbortHandler instead, aborting the response.
 // Empty output (0 bytes, no error) is logged but not treated as an error.
+// With estimateContentLength=true, a non-seekable stream declares an estimated Content-Length. With
+// DevMatchEstimatedContentLength, the body is also cut or zero-padded to match it, so clients never
+// see a body that disagrees with the header.
 func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
 	if s.Seekable() {
 		http.ServeContent(w, r, s.Name(), s.ModTime(), s)
@@ -165,10 +179,18 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Accept-Ranges", "none")
 	w.Header().Set("Content-Type", s.ContentType())
 
+	// limit > 0 only when the body must match the declared Content-Length.
+	var limit int64
 	if req.Params(r).BoolOr("estimateContentLength", false) {
-		length := strconv.Itoa(s.EstimatedContentLength())
-		log.Trace(ctx, "Estimated content-length", "contentLength", length)
-		w.Header().Set("Content-Length", length)
+		length := s.EstimatedContentLength()
+		if conf.Server.DevMatchEstimatedContentLength {
+			length = int64(float64(length) * estimateHeadroom)
+			limit = length
+		}
+		if length > 0 {
+			log.Trace(ctx, "Estimated content-length", "contentLength", length)
+			w.Header().Set("Content-Length", strconv.FormatInt(length, 10))
+		}
 	}
 
 	if r.Method == http.MethodHead {
@@ -176,8 +198,13 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return 0, nil
 	}
 
+	var src io.Reader = s
+	if limit > 0 {
+		src = io.LimitReader(s, limit)
+	}
+
 	id := s.mf.ID
-	c, err := io.Copy(w, s)
+	c, err := io.Copy(w, src)
 	if err != nil {
 		log.Error(ctx, "Error sending transcoded file", "id", id, err)
 		if c == 0 {
@@ -188,13 +215,39 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		panic(http.ErrAbortHandler)
 	}
 	if c == 0 {
+		// Nothing is sent yet, so drop the estimate instead of padding a body that holds no audio.
+		w.Header().Del("Content-Length")
 		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
 			"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
 			"id", id, "format", s.ContentType())
-	} else {
-		log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
+		return 0, nil
 	}
+	switch {
+	case c < limit:
+		padding, err := io.CopyN(w, zeroReader{}, limit-c)
+		if err != nil {
+			log.Debug(ctx, "Error padding transcoded file to the estimated length", "id", id, err)
+		}
+		c += padding
+	case limit > 0:
+		// The body is complete. Send it now, then read the rest, so a transcode tied to this request
+		// can finish and complete its cache entry. That only holds while the client keeps the
+		// connection open: a hang-up cancels the request, and cutBytes is then a lower bound.
+		_ = http.NewResponseController(w).Flush()
+		if cut, _ := io.Copy(io.Discard, s); cut > 0 {
+			log.Warn(ctx, "Transcoded output is longer than the estimated length, the end of the file was cut",
+				"id", id, "estimatedLength", limit, "cutBytes", cut)
+		}
+	}
+	log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
 	return c, nil
+}
+
+type zeroReader struct{}
+
+func (zeroReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
 }
 
 // NewStream creates a non-seekable Stream from the given components.
