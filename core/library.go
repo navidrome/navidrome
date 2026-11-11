@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -385,14 +384,15 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 }
 
 // classifyLibraryPathError maps a path error to its i18n key. It uses errors.Is because storage FS() wraps with %w.
-// Windows ERROR_DIRECTORY has no syscall constant, so it is matched by its message text.
+// Not-a-directory is matched by text: syscall.ENOTDIR means ERROR_PATH_NOT_FOUND on Windows, and ERROR_DIRECTORY is not exported.
 func classifyLibraryPathError(err error) string {
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return "resources.library.validation.pathNotFound"
 	case errors.Is(err, fs.ErrPermission):
 		return "resources.library.validation.pathNotAccessible"
-	case errors.Is(err, syscall.ENOTDIR) || strings.Contains(err.Error(), "The directory name is invalid."):
+	case strings.Contains(err.Error(), "not a directory") ||
+		strings.Contains(err.Error(), "The directory name is invalid."):
 		return "resources.library.validation.pathNotDirectory"
 	default:
 		return "resources.library.validation.pathInvalid"

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"syscall"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,7 +19,7 @@ var _ = Describe("classifyLibraryPathError", func() {
 		Entry("permission denied", fs.ErrPermission, "resources.library.validation.pathNotAccessible"),
 		Entry("wrapped permission denied", fmt.Errorf("open /music: %w", fs.ErrPermission), "resources.library.validation.pathNotAccessible"),
 		Entry("file instead of a directory on Unix",
-			&fs.PathError{Op: "stat", Path: "/music/song.mp3/.", Err: syscall.ENOTDIR},
+			&fs.PathError{Op: "open", Path: "/music/song.mp3", Err: errors.New("not a directory")},
 			"resources.library.validation.pathNotDirectory"),
 		Entry("file instead of a directory on Windows",
 			&fs.PathError{Op: "open", Path: `C:\music\song.mp3`, Err: errors.New("The directory name is invalid.")},
