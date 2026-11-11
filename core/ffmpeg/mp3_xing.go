@@ -15,9 +15,8 @@ const (
 	mp3MaxPrefix  = 64 << 10 // ffmpeg cannot write an attached picture to a pipe, so the tag stays small
 )
 
-// mp3Prefix returns the head of the stream with an Info frame inserted before the first
-// audio frame, which ffmpeg omits on a pipe since it only knows the frame count once it
-// can rewind. It returns the head unchanged when it cannot make sense of what ffmpeg wrote.
+// mp3Prefix inserts an Info frame before the first audio frame, returning the head
+// unchanged when it cannot make sense of what ffmpeg wrote.
 func (h *headerPatcher) mp3Prefix(buf []byte) ([]byte, error) {
 	buf, err := h.fill(buf, mp3ID3Len)
 	if err != nil || len(buf) < mp3ID3Len {
@@ -88,14 +87,14 @@ func parseMP3Header(h []byte) (mp3Frame, bool) {
 	if sampleRate == 0 || bitRate == 0 {
 		return mp3Frame{}, false
 	}
-	f := mp3Frame{sampleRate: sampleRate, samples: 576}
+	f := mp3Frame{sampleRate: sampleRate, samples: gg.If(mpeg1, 1152, 576)}
 	var sideInfo int
 	mono := (h[3]>>6)&0x03 == 3
 	switch {
 	case mpeg1 && mono:
-		f.samples, sideInfo = 1152, 17
+		sideInfo = 17
 	case mpeg1:
-		f.samples, sideInfo = 1152, 32
+		sideInfo = 32
 	case mono:
 		sideInfo = 9
 	default:
