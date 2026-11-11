@@ -37,7 +37,8 @@ var _ = Describe("ScanFolders", Ordered, func() {
 
 	BeforeAll(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		// The DB stays open until the suite ends, and Windows can't delete an open file
+		// db.Db() is a process-wide singleton, so this dir may hold the open DB until
+		// the suite ends, and Windows can't delete an open file
 		tmpDir, err := os.MkdirTemp("", "scanner-test")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
