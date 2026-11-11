@@ -148,17 +148,11 @@ func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.form
 func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 
-// estimateHeadroom inflates the declared Content-Length when DevMatchEstimatedContentLength is on, so
-// output over the estimate is padded instead of cut. Measured MP3 to Opus outputs (VBR) came in at up
-// to 1.074 of EstimatedContentLength. Without padding, a larger estimate only makes the body come up
-// short more often, so the headroom goes with the flag.
-const estimateHeadroom = 1.10
-
 // EstimatedContentLength returns the expected size of the transcoded output, from the part of the track
 // after the requested offset. It returns 0 when the track has no duration left to estimate from.
 func (s *Stream) EstimatedContentLength() int64 {
 	remaining := max(float64(s.mf.Duration)-float64(s.offset), 0)
-	return int64(remaining * float64(s.bitRate) / 8 * 1024)
+	return int64(remaining * float64(s.bitRate) * 1000 / 8)
 }
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
@@ -185,7 +179,6 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	if req.Params(r).BoolOr("estimateContentLength", false) {
 		length := s.EstimatedContentLength()
 		if conf.Server.DevMatchEstimatedContentLength {
-			length = int64(float64(length) * estimateHeadroom)
 			limit = length
 		}
 		if length > 0 {

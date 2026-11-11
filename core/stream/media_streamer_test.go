@@ -186,8 +186,8 @@ var _ = Describe("MediaStreamer", func() {
 		})
 
 		Context("with estimateContentLength=true", func() {
-			// 10s at 128kbps: the bare estimate is 163840 bytes, before any headroom.
-			const bareEstimate = 10 * 128 / 8 * 1024
+			// 10s at 128kbps, where a kbps is 1000 bits per second.
+			const estimate = 10 * 128 * 1000 / 8
 
 			BeforeEach(func() {
 				mf.Duration = 10
@@ -220,7 +220,7 @@ var _ = Describe("MediaStreamer", func() {
 			})
 
 			It("truncates output longer than the estimate at the declared length", func() {
-				src := bytes.Repeat([]byte("a"), 2*bareEstimate)
+				src := bytes.Repeat([]byte("a"), 2*estimate)
 				w := serve(newStream(src))
 
 				declared := declaredLength(w)
@@ -229,18 +229,16 @@ var _ = Describe("MediaStreamer", func() {
 			})
 
 			It("reads the rest of output longer than the estimate, so a transcode tied to the request can finish", func() {
-				src := bytes.NewReader(bytes.Repeat([]byte("a"), 2*bareEstimate))
+				src := bytes.NewReader(bytes.Repeat([]byte("a"), 2*estimate))
 				serve(stream.NewStream(mf, "mp3", 128, io.NopCloser(src)))
 
 				Expect(src.Len()).To(BeZero())
 			})
 
-			It("declares a few percent more than the bare estimate, so output slightly over it is not cut", func() {
-				src := bytes.Repeat([]byte("a"), bareEstimate*101/100)
-				w := serve(newStream(src))
+			It("declares duration times bitrate, with no headroom", func() {
+				w := serve(newStream(bytes.Repeat([]byte("a"), 1000)))
 
-				Expect(declaredLength(w)).To(BeNumerically(">", len(src)))
-				Expect(w.Body.Bytes()[:len(src)]).To(Equal(src))
+				Expect(declaredLength(w)).To(Equal(estimate))
 			})
 
 			It("estimates only the part of the track after the requested offset", func() {
@@ -275,16 +273,16 @@ var _ = Describe("MediaStreamer", func() {
 					conf.Server.DevMatchEstimatedContentLength = false
 				})
 
-				It("declares the bare estimate and sends shorter output as is, without padding", func() {
+				It("declares the estimate and sends shorter output as is, without padding", func() {
 					src := bytes.Repeat([]byte("a"), 1000)
 					w := serve(newStream(src))
 
-					Expect(declaredLength(w)).To(Equal(bareEstimate))
+					Expect(declaredLength(w)).To(Equal(estimate))
 					Expect(w.Body.Bytes()).To(Equal(src))
 				})
 
 				It("does not cut output longer than the estimate", func() {
-					src := bytes.Repeat([]byte("a"), 2*bareEstimate)
+					src := bytes.Repeat([]byte("a"), 2*estimate)
 					w := serve(newStream(src))
 
 					Expect(w.Body.Bytes()).To(Equal(src))
