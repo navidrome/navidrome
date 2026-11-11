@@ -1,6 +1,7 @@
 package podcasts_test
 
 import (
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/core/podcasts"
@@ -815,5 +816,24 @@ var _ = Describe("ParseRSSFeed — new metadata tags", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result.FundingItems).To(BeEmpty())
 		})
+	})
+})
+
+var _ = Describe("ParseRSSFeed — resource limits", func() {
+	It("rejects a feed with too many elements", func() {
+		var b strings.Builder
+		b.WriteString(`<?xml version="1.0"?><rss version="2.0"><channel><title>T</title>`)
+		for i := 0; i < 100_001; i++ {
+			b.WriteString("<item/>")
+		}
+		b.WriteString(`</channel></rss>`)
+		_, err := podcasts.ParseRSSFeed([]byte(b.String()))
+		Expect(err).To(MatchError(ContainSubstring("elements")))
+	})
+
+	It("rejects a feed nested too deeply", func() {
+		deep := strings.Repeat("<a>", 101) + strings.Repeat("</a>", 101)
+		_, err := podcasts.ParseRSSFeed([]byte(`<?xml version="1.0"?><rss version="2.0"><channel><title>T</title>` + deep + `</channel></rss>`))
+		Expect(err).To(MatchError(ContainSubstring("nesting")))
 	})
 })

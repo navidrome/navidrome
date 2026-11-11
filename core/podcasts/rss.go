@@ -1,8 +1,10 @@
 package podcasts
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"net/url"
 	"path"
 	"regexp"
@@ -304,7 +306,48 @@ type podcastImageTag struct {
 
 // ---- Parsing ----
 
+// maxFeedElements and maxFeedDepth bound the memory and work a feed can force
+// the parser to allocate. The byte cap in fetchAndParse limits bytes but not
+// element count: millions of tiny elements still decode into large slices, and
+// each podcast:image element becomes a database row on persist.
+const (
+	maxFeedElements = 100_000
+	maxFeedDepth    = 100
+)
+
+// checkFeedLimits walks the feed with a streaming decoder and rejects it before
+// xml.Unmarshal materializes the whole element tree.
+func checkFeedLimits(data []byte) error {
+	dec := xml.NewDecoder(bytes.NewReader(data))
+	depth, elements := 0, 0
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("scanning RSS feed: %w", err)
+		}
+		switch tok.(type) {
+		case xml.StartElement:
+			elements++
+			depth++
+			if depth > maxFeedDepth {
+				return fmt.Errorf("RSS feed nesting exceeds %d levels", maxFeedDepth)
+			}
+			if elements > maxFeedElements {
+				return fmt.Errorf("RSS feed exceeds %d elements", maxFeedElements)
+			}
+		case xml.EndElement:
+			depth--
+		}
+	}
+}
+
 func ParseRSSFeed(data []byte) (*rssFeed, error) {
+	if err := checkFeedLimits(data); err != nil {
+		return nil, err
+	}
 	var root rssRoot
 	if err := xml.Unmarshal(data, &root); err != nil {
 		return nil, fmt.Errorf("parsing RSS feed: %w", err)

@@ -138,6 +138,21 @@ var _ = Describe("PodcastService", func() {
 			episodeRepo.Data[episode.ID] = episode
 		})
 
+		It("rejects an episode whose declared size exceeds the cap and leaves no file", func() {
+			huge := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Length", "3221225472") // 3 GiB
+				w.WriteHeader(http.StatusOK)
+			}))
+			DeferCleanup(huge.Close)
+			episode.EnclosureURL = huge.URL + "/huge.mp3"
+			_ = svc.DownloadEpisode(ctx, "ep-1")
+			Eventually(func() model.PodcastStatus {
+				return episodeRepo.Data["ep-1"].Status
+			}, "3s").Should(Equal(model.PodcastStatusError))
+			_, err := os.Stat(filepath.Join(conf.Server.DataFolder.String(), "podcasts", "ch-1", "ep-1.mp3"))
+			Expect(os.IsNotExist(err)).To(BeTrue())
+		})
+
 		It("immediately sets status to downloading", func() {
 			_ = svc.DownloadEpisode(ctx, "ep-1")
 			Expect(episodeRepo.Data["ep-1"].Status).To(Equal(model.PodcastStatusDownloading))

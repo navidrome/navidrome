@@ -190,40 +190,17 @@ func (s *podcastService) AddChannel(ctx context.Context, rssURL string) error {
 		}
 	}
 
-	for i := range feed.Episodes {
-		ep := feed.Episodes[i]
-		ep.ChannelID = ch.ID
-		ep.Status = model.PodcastStatusNew
-		transcripts := ep.Transcripts
-		persons := ep.Persons
-		images := ep.Images
-		ep.Transcripts = nil
-		ep.Persons = nil
-		ep.Images = nil
-		if err := s.ds.PodcastEpisode().Create(ctx, &ep); err != nil {
-			return err
-		}
-		// Save episode transcripts
-		if len(transcripts) > 0 {
-			for j := range transcripts {
-				transcripts[j].EpisodeID = ep.ID
-			}
-			if err := s.ds.PodcastTranscript().Save(ctx, transcripts); err != nil {
-				log.Warn(ctx, "Failed to save podcast episode transcripts", "episode", ep.ID, err)
+	// One transaction for all episode rows: a feed with many items must not turn
+	// a single add into hundreds of thousands of separate statements.
+	if err := s.ds.WithTx(func(tx model.DataStore) error {
+		for i := range feed.Episodes {
+			if err := saveNewEpisode(ctx, tx, ch.ID, feed.Episodes[i]); err != nil {
+				return err
 			}
 		}
-		// Save episode persons
-		if len(persons) > 0 {
-			if err := s.ds.PodcastPerson().SaveForEpisode(ctx, ep.ID, persons); err != nil {
-				log.Warn(ctx, "Failed to save podcast episode persons", "episode", ep.ID, err)
-			}
-		}
-		// Save episode images
-		if len(images) > 0 {
-			if err := s.ds.PodcastImage().SaveForEpisode(ctx, ep.ID, images); err != nil {
-				log.Warn(ctx, "Failed to save podcast episode images", "episode", ep.ID, err)
-			}
-		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	ch.Status = model.PodcastStatusCompleted
@@ -273,44 +250,50 @@ func (s *podcastService) refreshChannel(ctx context.Context, ch model.PodcastCha
 		}
 	}
 
-	epRepo := s.ds.PodcastEpisode()
-	for i := range feed.Episodes {
-		ep := feed.Episodes[i]
-		_, err := epRepo.GetByGUID(ctx, ch.ID, ep.GUID)
-		if err == nil {
-			continue // already exists
-		}
-		ep.ChannelID = ch.ID
-		ep.Status = model.PodcastStatusNew
-		transcripts := ep.Transcripts
-		persons := ep.Persons
-		images := ep.Images
-		ep.Transcripts = nil
-		ep.Persons = nil
-		ep.Images = nil
-		if err := epRepo.Create(ctx, &ep); err != nil {
-			return err
-		}
-		// Save episode transcripts
-		if len(transcripts) > 0 {
-			for j := range transcripts {
-				transcripts[j].EpisodeID = ep.ID
+	return s.ds.WithTx(func(tx model.DataStore) error {
+		epRepo := tx.PodcastEpisode()
+		for i := range feed.Episodes {
+			ep := feed.Episodes[i]
+			if _, err := epRepo.GetByGUID(ctx, ch.ID, ep.GUID); err == nil {
+				continue // already exists
 			}
-			if err := s.ds.PodcastTranscript().Save(ctx, transcripts); err != nil {
-				log.Warn(ctx, "Failed to save podcast episode transcripts", "episode", ep.ID, err)
+			if err := saveNewEpisode(ctx, tx, ch.ID, ep); err != nil {
+				return err
 			}
 		}
-		// Save episode persons
-		if len(persons) > 0 {
-			if err := s.ds.PodcastPerson().SaveForEpisode(ctx, ep.ID, persons); err != nil {
-				log.Warn(ctx, "Failed to save podcast episode persons", "episode", ep.ID, err)
-			}
+		return nil
+	})
+}
+
+// saveNewEpisode persists an episode and its transcripts, persons and images.
+func saveNewEpisode(ctx context.Context, ds model.DataStore, channelID string, ep model.PodcastEpisode) error {
+	ep.ChannelID = channelID
+	ep.Status = model.PodcastStatusNew
+	transcripts := ep.Transcripts
+	persons := ep.Persons
+	images := ep.Images
+	ep.Transcripts = nil
+	ep.Persons = nil
+	ep.Images = nil
+	if err := ds.PodcastEpisode().Create(ctx, &ep); err != nil {
+		return err
+	}
+	if len(transcripts) > 0 {
+		for j := range transcripts {
+			transcripts[j].EpisodeID = ep.ID
 		}
-		// Save episode images
-		if len(images) > 0 {
-			if err := s.ds.PodcastImage().SaveForEpisode(ctx, ep.ID, images); err != nil {
-				log.Warn(ctx, "Failed to save podcast episode images", "episode", ep.ID, err)
-			}
+		if err := ds.PodcastTranscript().Save(ctx, transcripts); err != nil {
+			log.Warn(ctx, "Failed to save podcast episode transcripts", "episode", ep.ID, err)
+		}
+	}
+	if len(persons) > 0 {
+		if err := ds.PodcastPerson().SaveForEpisode(ctx, ep.ID, persons); err != nil {
+			log.Warn(ctx, "Failed to save podcast episode persons", "episode", ep.ID, err)
+		}
+	}
+	if len(images) > 0 {
+		if err := ds.PodcastImage().SaveForEpisode(ctx, ep.ID, images); err != nil {
+			log.Warn(ctx, "Failed to save podcast episode images", "episode", ep.ID, err)
 		}
 	}
 	return nil
@@ -336,6 +319,30 @@ func (s *podcastService) DownloadEpisode(ctx context.Context, id string) error {
 	return nil
 }
 
+// maxEpisodeSize caps a single episode download. Real podcast episodes are far
+// below this; without a cap a hostile or broken enclosure URL can stream until
+// the filesystem holding the database is full.
+const maxEpisodeSize = 2 << 30 // 2 GiB
+
+// downloadIdleTimeout aborts a transfer that receives no bytes for this long,
+// while leaving the total duration unbounded so large episodes still complete.
+const downloadIdleTimeout = 60 * time.Second
+
+// idleReader cancels the request context when no data arrives within timeout.
+type idleReader struct {
+	r     io.Reader
+	timer *time.Timer
+	d     time.Duration
+}
+
+func (ir *idleReader) Read(p []byte) (int, error) {
+	n, err := ir.r.Read(p)
+	if n > 0 {
+		ir.timer.Reset(ir.d)
+	}
+	return n, err
+}
+
 func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisode, ch *model.PodcastChannel) {
 	suffix := ep.Suffix
 	if suffix == "" {
@@ -355,7 +362,11 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 	// No total Client.Timeout here: it would also cover reading the body and
 	// abort large episodes. Connection-phase limits live on safeHTTPTransport.
 	httpClient := &http.Client{Transport: safeHTTPTransport}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ep.EnclosureURL, nil)
+	reqCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	idle := time.AfterFunc(downloadIdleTimeout, cancel)
+	defer idle.Stop()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, ep.EnclosureURL, nil)
 	if err != nil {
 		s.setEpisodeError(ctx, ep, err)
 		return
@@ -373,6 +384,11 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 		return
 	}
 
+	if resp.ContentLength > maxEpisodeSize {
+		s.setEpisodeError(ctx, ep, fmt.Errorf("episode exceeds maximum size of %d bytes", int64(maxEpisodeSize)))
+		return
+	}
+
 	// Create the file only once we have a 200 response, so failed requests
 	// don't leave empty files behind.
 	f, err := os.Create(dest)
@@ -387,7 +403,11 @@ func (s *podcastService) doDownload(ctx context.Context, ep *model.PodcastEpisod
 		ep.Size = resp.ContentLength
 	}
 
-	size, err := io.Copy(&progressWriter{ep: ep, ds: s.ds, broker: s.broker, ctx: ctx, w: f}, resp.Body)
+	body := &idleReader{r: io.LimitReader(resp.Body, maxEpisodeSize+1), timer: idle, d: downloadIdleTimeout}
+	size, err := io.Copy(&progressWriter{ep: ep, ds: s.ds, broker: s.broker, ctx: ctx, w: f}, body)
+	if err == nil && size > maxEpisodeSize {
+		err = fmt.Errorf("episode exceeds maximum size of %d bytes", int64(maxEpisodeSize))
+	}
 	if err != nil {
 		f.Close()
 		_ = os.Remove(dest) // don't leave a partial file behind
