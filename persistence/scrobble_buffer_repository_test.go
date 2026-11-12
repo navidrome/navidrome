@@ -189,6 +189,55 @@ var _ = Describe("ScrobbleBufferRepository", func() {
 				Entry("Service with one user", "b", "2222", timeD, "1004", "2"),
 			)
 
+			It("returns the owner's starred flag", func() {
+				insertManually("a", "userid", "1001", timeA.Add(-time.Hour))
+				ins := squirrel.Insert("annotation").SetMap(map[string]any{
+					"user_id":   "userid",
+					"item_id":   "1001",
+					"item_type": "media_file",
+					"starred":   true,
+				})
+				_, err := rawRepo.executeSQL(ctx, ins)
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() {
+					del := squirrel.Delete("annotation").Where(squirrel.Eq{
+						"user_id": "userid", "item_id": "1001", "item_type": "media_file",
+					})
+					_, err := rawRepo.executeSQL(ctx, del)
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				entry, err := scrobble.Next(ctx, "a", "userid")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entry).ToNot(BeNil())
+				Expect(entry.MediaFileID).To(Equal("1001"))
+				Expect(entry.Starred).To(BeTrue())
+			})
+
+			It("ignores a star that belongs to someone else", func() {
+				insertManually("a", "userid", "1001", timeA.Add(-time.Hour))
+				ins := squirrel.Insert("annotation").SetMap(map[string]any{
+					"user_id":   "2222",
+					"item_id":   "1001",
+					"item_type": "media_file",
+					"starred":   true,
+				})
+				_, err := rawRepo.executeSQL(ctx, ins)
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(func() {
+					del := squirrel.Delete("annotation").Where(squirrel.Eq{
+						"user_id": "2222", "item_id": "1001", "item_type": "media_file",
+					})
+					_, err := rawRepo.executeSQL(ctx, del)
+					Expect(err).ToNot(HaveOccurred())
+				})
+
+				entry, err := scrobble.Next(ctx, "a", "userid")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(entry).ToNot(BeNil())
+				Expect(entry.MediaFileID).To(Equal("1001"))
+				Expect(entry.Starred).To(BeFalse())
+			})
 		})
 
 		Describe("Discard", func() {
