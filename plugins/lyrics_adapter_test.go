@@ -56,6 +56,188 @@ var _ = Describe("LyricsPlugin", Ordered, func() {
 			Expect(result[0].Line[0].Value).To(ContainSubstring("Test Song"))
 		})
 
+		It("coalesces concurrent requests for the same track", func() {
+			metrics := &mockMetricsRecorder{}
+			manager, _ := createTestManagerWithPluginsAndMetrics(
+				nil,
+				metrics,
+				"test-lyrics"+PackageExtension,
+			)
+
+			first, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+			second, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+			firstProvider := first.(*LyricsPlugin)
+			secondProvider := second.(*LyricsPlugin)
+			Expect(firstProvider).ToNot(BeIdenticalTo(secondProvider))
+
+			sem := firstProvider.plugin.lyricsSem
+			for range cap(sem) {
+				sem <- struct{}{}
+			}
+			DeferCleanup(func() {
+				for len(sem) > 0 {
+					<-sem
+				}
+			})
+
+			type callResult struct {
+				lyrics model.LyricList
+				err    error
+			}
+			start := make(chan struct{})
+			results := make(chan callResult, 2)
+			track := &model.MediaFile{ID: "shared-track", Title: "Test Song", Artist: "Test Artist"}
+			for _, provider := range []*LyricsPlugin{firstProvider, secondProvider} {
+				go func() {
+					<-start
+					lyrics, err := provider.GetLyrics(GinkgoT().Context(), track)
+					results <- callResult{lyrics: lyrics, err: err}
+				}()
+			}
+			close(start)
+
+			Consistently(results, "500ms").ShouldNot(Receive())
+			<-sem
+
+			for range 2 {
+				var result callResult
+				Eventually(results).Should(Receive(&result))
+				Expect(result.err).ToNot(HaveOccurred())
+				Expect(result.lyrics).To(HaveLen(1))
+			}
+
+			calls := metrics.getCalls()
+			Expect(calls).To(HaveLen(1))
+			Expect(calls[0].method).To(Equal(FuncLyricsGetLyrics))
+		})
+
+		It("does not coalesce requests with different plugin metadata", func() {
+			metrics := &mockMetricsRecorder{}
+			manager, _ := createTestManagerWithPluginsAndMetrics(
+				nil,
+				metrics,
+				"test-lyrics"+PackageExtension,
+			)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+			coalescingProvider := p.(*LyricsPlugin)
+
+			sem := coalescingProvider.plugin.lyricsSem
+			for range cap(sem) {
+				sem <- struct{}{}
+			}
+			DeferCleanup(func() {
+				for len(sem) > 0 {
+					<-sem
+				}
+			})
+
+			start := make(chan struct{})
+			results := make(chan error, 2)
+			tracks := []*model.MediaFile{
+				{ID: "same-id", Title: "Test Song", Artist: "Test Artist", TrackNumber: 1},
+				{ID: "same-id", Title: "Test Song", Artist: "Test Artist", TrackNumber: 2},
+			}
+			for _, track := range tracks {
+				go func() {
+					<-start
+					_, err := coalescingProvider.GetLyrics(GinkgoT().Context(), track)
+					results <- err
+				}()
+			}
+			close(start)
+
+			Consistently(results, "500ms").ShouldNot(Receive())
+			for range cap(sem) {
+				<-sem
+			}
+
+			for range tracks {
+				Eventually(results).Should(Receive(BeNil()))
+			}
+			Expect(metrics.getCalls()).To(HaveLen(2))
+		})
+
+		It("keeps a shared request alive when one caller cancels", func() {
+			metrics := &mockMetricsRecorder{}
+			manager, _ := createTestManagerWithPluginsAndMetrics(
+				nil,
+				metrics,
+				"test-lyrics"+PackageExtension,
+			)
+
+			p, ok := manager.LoadLyricsProvider("test-lyrics")
+			Expect(ok).To(BeTrue())
+			coalescingProvider := p.(*LyricsPlugin)
+
+			sem := coalescingProvider.plugin.lyricsSem
+			for range cap(sem) {
+				sem <- struct{}{}
+			}
+			DeferCleanup(func() {
+				for len(sem) > 0 {
+					<-sem
+				}
+			})
+
+			track := &model.MediaFile{ID: "shared-track", Title: "Test Song", Artist: "Test Artist"}
+			firstCtx, cancelFirst := context.WithCancel(GinkgoT().Context())
+			firstDone := make(chan error, 1)
+			go func() {
+				_, err := coalescingProvider.GetLyrics(firstCtx, track)
+				firstDone <- err
+			}()
+			Consistently(firstDone, "100ms").ShouldNot(Receive())
+
+			secondDone := make(chan error, 1)
+			go func() {
+				_, err := coalescingProvider.GetLyrics(GinkgoT().Context(), track)
+				secondDone <- err
+			}()
+			Consistently(secondDone, "100ms").ShouldNot(Receive())
+
+			cancelFirst()
+			Eventually(firstDone).Should(Receive(MatchError(context.Canceled)))
+			Consistently(secondDone, "100ms").ShouldNot(Receive())
+
+			<-sem
+			Eventually(secondDone).Should(Receive(BeNil()))
+			Expect(metrics.getCalls()).To(HaveLen(1))
+		})
+
+		It("cancels a shared request after its last caller leaves", func() {
+			var group lyricsCallGroup
+			firstCtx, cancelFirst := context.WithCancel(GinkgoT().Context())
+			secondCtx, cancelSecond := context.WithCancel(GinkgoT().Context())
+			started := make(chan struct{})
+			stopped := make(chan error, 1)
+
+			firstCall := group.join(firstCtx, "shared", func(ctx context.Context) (model.LyricList, error) {
+				close(started)
+				<-ctx.Done()
+				stopped <- ctx.Err()
+				return nil, ctx.Err()
+			})
+			Eventually(started).Should(BeClosed())
+
+			secondCall := group.join(secondCtx, "shared", func(context.Context) (model.LyricList, error) {
+				Fail("started a second lookup for the same key")
+				return nil, nil
+			})
+			Expect(secondCall).To(BeIdenticalTo(firstCall))
+
+			cancelFirst()
+			firstCall.release()
+			Consistently(stopped, "100ms").ShouldNot(Receive())
+
+			cancelSecond()
+			secondCall.release()
+			Eventually(stopped).Should(Receive(MatchError(context.Canceled)))
+		})
+
 		It("defaults language to 'xxx' when plugin does not provide one", func() {
 			manager, _ := createTestManagerWithPlugins(map[string]map[string]string{
 				"test-lyrics": {"no_lang": "true"},
