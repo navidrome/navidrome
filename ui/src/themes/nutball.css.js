@@ -1,3 +1,5 @@
+import { PLAYER_MOBILE_MAX_WIDTH } from '../audioplayer/playerBreakpoints'
+
 const stylesheet = `
 html { 
     scrollbar-width: none; 
@@ -136,7 +138,7 @@ button[data-testid="save-queue-button"] {
     stroke: #fff;
     height: .8em;
 }
-@media screen and (max-width: 810px) {
+@media screen and (max-width: ${PLAYER_MOBILE_MAX_WIDTH}px) {
     .react-jinke-music-player-main .music-player-panel .panel-content .player-content .play-sounds .sounds-icon {
         margin-left: 5px;
         margin-right: 0;
