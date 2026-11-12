@@ -36,13 +36,11 @@ const useStyle = makeStyles({
       alignContent: 'space-evenly',
     },
     '@media (min-width: 768px)': {
-      '& .react-jinke-music-player-mobile > div': {
-        width: 768,
-        margin: 'auto',
-      },
-      '& .react-jinke-music-player-mobile-cover': {
-        width: 'auto !important',
-      },
+      '& .react-jinke-music-player-mobile > div:not(.react-jinke-music-player-mobile-cover)':
+        {
+          width: 768,
+          margin: 'auto',
+        },
     },
   },
 })
