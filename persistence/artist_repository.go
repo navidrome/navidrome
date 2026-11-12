@@ -492,49 +492,52 @@ func (r *artistRepository) RefreshStats(ctx context.Context, allArtists bool) (i
 	// Template for the batch update with placeholder markers that we'll replace
 	// This now calculates per-library statistics and stores them in library_artist.stats
 	batchUpdateStatsSQL := `
-    WITH artist_role_counters AS (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               mfa.role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        GROUP BY mfa.artist_id, mf.library_id, mfa.role
+    WITH artist_files AS (
+        -- One row per artist and file, so a file counts once even when the artist has several roles in it
+        SELECT artist_id, media_file_id, max(role IN ('albumartist', 'artist')) AS main_credit
+        FROM media_file_artists
+        WHERE artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
+        GROUP BY artist_id, media_file_id
     ),
-    artist_total_counters AS (
-        SELECT mfa.artist_id,
-               mf.library_id,
-               'total' AS role,
-               count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
-               sum(mf.size) AS size
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        GROUP BY mfa.artist_id, mf.library_id
+    artist_file_roles AS (
+        -- One row per artist, file and role, as media_file_artists also has one row per sub-role
+        SELECT DISTINCT artist_id, media_file_id, role
+        FROM media_file_artists
+        WHERE artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
     ),
-    artist_participant_counter AS (
-        SELECT mfa.artist_id,
+    artist_role_counters AS (
+        SELECT afr.artist_id,
                mf.library_id,
-               'maincredit' AS role,
+               afr.role,
                count(DISTINCT mf.album_id) AS album_count,
-               count(DISTINCT mf.id) AS count,
+               count(*) AS count,
                sum(mf.size) AS size
-        FROM media_file_artists mfa
-        JOIN media_file mf ON mfa.media_file_id = mf.id
-        WHERE mfa.artist_id IN (ROLE_IDS_PLACEHOLDER) -- Will replace with actual placeholders
-        AND mfa.role IN ('albumartist', 'artist')
-        GROUP BY mfa.artist_id, mf.library_id
+        FROM artist_file_roles afr
+        JOIN media_file mf ON afr.media_file_id = mf.id
+        GROUP BY afr.artist_id, mf.library_id, afr.role
+    ),
+    -- Counts total and maincredit in a single pass. Separate passes over artist_files make SQLite
+    -- fall back to full scans of media_file inside the UPDATE below
+    artist_file_counters AS (
+        SELECT af.artist_id,
+               mf.library_id,
+               count(DISTINCT mf.album_id) AS album_count,
+               count(*) AS count,
+               sum(mf.size) AS size,
+               count(DISTINCT CASE WHEN af.main_credit THEN mf.album_id END) AS main_album_count,
+               sum(af.main_credit) AS main_count,
+               sum(CASE WHEN af.main_credit THEN mf.size ELSE 0 END) AS main_size
+        FROM artist_files af
+        JOIN media_file mf ON af.media_file_id = mf.id
+        GROUP BY af.artist_id, mf.library_id
     ),
     combined_counters AS (
         SELECT artist_id, library_id, role, album_count, count, size FROM artist_role_counters
         UNION ALL
-        SELECT artist_id, library_id, role, album_count, count, size FROM artist_total_counters
+        SELECT artist_id, library_id, 'total', album_count, count, size FROM artist_file_counters
         UNION ALL
-        SELECT artist_id, library_id, role, album_count, count, size FROM artist_participant_counter
+        SELECT artist_id, library_id, 'maincredit', main_album_count, main_count, main_size FROM artist_file_counters
+        WHERE main_count > 0
     ),
     library_artist_counters AS (
         SELECT artist_id,
@@ -569,13 +572,13 @@ func (r *artistRepository) RefreshStats(ctx context.Context, allArtists bool) (i
 		inClause := strings.Join(placeholders, ",")
 
 		// Replace the placeholder markers with actual SQL placeholders
-		batchSQL := strings.Replace(batchUpdateStatsSQL, "ROLE_IDS_PLACEHOLDER", inClause, 4)
+		batchSQL := strings.Replace(batchUpdateStatsSQL, "ROLE_IDS_PLACEHOLDER", inClause, 3)
 
-		// Create a single parameter array with all IDs (repeated 4 times for each IN clause)
-		// We need to repeat each ID 4 times (once for each IN clause)
-		args := make([]any, 4*len(artistIDBatch))
+		// Create a single parameter array with all IDs (repeated 3 times for each IN clause)
+		// We need to repeat each ID 3 times (once for each IN clause)
+		args := make([]any, 3*len(artistIDBatch))
 		for idx, id := range artistIDBatch {
-			for i := range 4 {
+			for i := range 3 {
 				startIdx := i * len(artistIDBatch)
 				args[startIdx+idx] = id
 			}
