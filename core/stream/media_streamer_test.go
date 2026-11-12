@@ -252,6 +252,14 @@ var _ = Describe("MediaStreamer", func() {
 				Expect(half.EstimatedContentLength()).To(BeNumerically("~", full.EstimatedContentLength()/2, 1))
 			})
 
+			It("estimates the whole track for a negative offset, as the transcode starts from the beginning", func() {
+				s, err := streamer.NewStream(ctx, mf, stream.Request{Format: "mp3", BitRate: 128, Offset: -1000000000})
+				Expect(err).ToNot(HaveOccurred())
+				DeferCleanup(s.Close)
+
+				Expect(s.EstimatedContentLength()).To(Equal(int64(estimate)))
+			})
+
 			It("does not declare a Content-Length when the track has no duration", func() {
 				mf.Duration = 0
 				src := []byte("some audio")

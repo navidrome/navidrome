@@ -151,7 +151,7 @@ func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
 // EstimatedContentLength returns the expected size of the transcoded output, from the part of the track
 // after the requested offset. It returns 0 when the track has no duration left to estimate from.
 func (s *Stream) EstimatedContentLength() int64 {
-	remaining := max(float64(s.mf.Duration)-float64(s.offset), 0)
+	remaining := max(float64(s.mf.Duration)-float64(max(s.offset, 0)), 0)
 	return int64(remaining * float64(s.bitRate) * 1000 / 8)
 }
 
