@@ -441,6 +441,25 @@ var _ = Describe("folder_entry", func() {
 				Expect(hash1).ToNot(Equal(hash2))
 			})
 
+			It("produces different hash when the folder moves in or out of PlaylistsPath", func() {
+				entry.playlistFiles["list.nsp"] = &fakeDirEntry{name: "list.nsp"}
+				conf.Server.PlaylistsPath = "other"
+				outside := entry.hash()
+
+				conf.Server.PlaylistsPath = `test\folder`
+				inside := entry.hash()
+
+				Expect(inside).ToNot(Equal(outside))
+			})
+
+			It("ignores PlaylistsPath when the folder has no playlist files", func() {
+				conf.Server.PlaylistsPath = "other"
+				outside := entry.hash()
+
+				conf.Server.PlaylistsPath = "test/folder"
+				Expect(entry.hash()).To(Equal(outside))
+			})
+
 			It("produces valid hex-encoded hash", func() {
 				hash := entry.hash()
 				Expect(hash).To(HaveLen(32)) // MD5 hash should be 32 hex characters

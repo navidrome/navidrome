@@ -16,6 +16,8 @@ var ToPascalCase = toPascalCase
 
 var ValidateByteSize = validateByteSize
 
+var ValidatePlaylistsPath = validatePlaylistsPath
+
 func SetRuntimeInfoForTest(goos string, euid int) func() {
 	oldGOOS := currentGOOS
 	oldEUID := getEUID

@@ -147,5 +147,11 @@ func (f *folderEntry) hash() string {
 		}
 	}
 
+	// Include whether the folder is in PlaylistsPath, so a quick scan picks up folders whose
+	// playlists were skipped before a PlaylistsPath change or a matching fix.
+	if len(playlistKeys) > 0 {
+		_, _ = fmt.Fprintf(h, ":inPlaylistsPath:%t", playlists.InPath(*model.NewFolder(f.job.lib, f.path)))
+	}
+
 	return hex.EncodeToString(h.Sum(nil))
 }

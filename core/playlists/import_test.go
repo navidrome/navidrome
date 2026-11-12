@@ -1140,14 +1140,96 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
-			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			conf.Server.PlaylistsPath = strings.Join([]string{"other/**", "playlists/**"}, string(filepath.ListSeparator))
 			Expect(playlists.InPath(folder)).To(BeTrue())
+		})
+
+		It("returns true if folder matches a PlaylistsPath joined with the OS separator", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			conf.Server.PlaylistsPath = filepath.Join("Playlists", "navidrome")
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+		})
+
+		It("returns true if folder matches a forward-slash PlaylistsPath", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			conf.Server.PlaylistsPath = "Playlists/navidrome"
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+		})
+
+		It("returns true if folder matches a backslash PlaylistsPath on any OS", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			conf.Server.PlaylistsPath = `Playlists\navidrome`
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+
+			conf.Server.PlaylistsPath = `Playlists\navidrome\`
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+
+			conf.Server.PlaylistsPath = `Playlists\**`
+			Expect(playlists.InPath(nsp)).To(BeTrue())
+		})
+
+		It("keeps backslash escapes of glob characters", func() {
+			mix := model.Folder{
+				LibraryPath: "/music",
+				Path:        "",
+				Name:        "[Mix]",
+			}
+			conf.Server.PlaylistsPath = `\[Mix\]`
+			Expect(playlists.InPath(mix)).To(BeTrue())
+
+			conf.Server.PlaylistsPath = `\[Mix\]\**`
+			Expect(playlists.InPath(mix)).To(BeTrue())
+		})
+
+		It("keeps a glob after a Windows separator", func() {
+			nested := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "Rock",
+			}
+			conf.Server.PlaylistsPath = `Playlists\[QR]ock`
+			Expect(playlists.InPath(nested)).To(BeTrue())
+
+			conf.Server.PlaylistsPath = `Playlists\{Rock,Jazz}`
+			Expect(playlists.InPath(nested)).To(BeTrue())
+
+			conf.Server.PlaylistsPath = `Playlists\{Pop,Jazz}`
+			Expect(playlists.InPath(nested)).To(BeFalse())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
 			conf.Server.PlaylistsPath = "other"
 			Expect(playlists.InPath(folder)).To(BeFalse())
+		})
+
+		It("returns false for a different directory after normalization", func() {
+			nsp := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "navidrome",
+			}
+			sibling := model.Folder{
+				LibraryPath: "/music",
+				Path:        "Playlists",
+				Name:        "other",
+			}
+			conf.Server.PlaylistsPath = filepath.Join("Other", "dir")
+			Expect(playlists.InPath(nsp)).To(BeFalse())
+
+			conf.Server.PlaylistsPath = filepath.Join("Playlists", "navidrome", "**")
+			Expect(playlists.InPath(sibling)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
