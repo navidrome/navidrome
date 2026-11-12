@@ -186,7 +186,7 @@ const reduceSyncQueue = (state, { data: { audioInfo, audioLists } }) => {
 }
 
 const reduceCurrent = (state, { data }) => {
-  const current = data.ended ? {} : data
+  const current = data.ended ? { ...data, paused: true } : data
   const savedPlayIndex = state.queue.findIndex(
     (item) => item.uuid === current.uuid,
   )
