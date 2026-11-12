@@ -411,3 +411,61 @@ describe('AlbumDetails cover animation', () => {
     expect(cover.className).not.toMatch(/noCoverAnimation/)
   })
 })
+
+describe('AlbumDetails genres', () => {
+  const albumRecord = {
+    id: '123',
+    name: 'Test Album',
+    songCount: 12,
+    duration: 3600,
+    size: 102400,
+    genre: 'Folk Metal',
+    genres: [
+      { id: 'g1', name: 'Folk Metal' },
+      { id: 'g2', name: 'Progressive Metal' },
+      { id: 'g3', name: 'Folk Rock' },
+    ],
+  }
+
+  const { breakpoints } = createTheme()
+
+  // Resolve the media queries against a viewport width instead of a fixed value,
+  // so a single case can cover both sides of the `lg` breakpoint.
+  const mockViewportWidth = (width) =>
+    vi.mocked(useMediaQuery).mockImplementation((query) => {
+      const media = query({ breakpoints })
+      const min = /min-width:\s*([\d.]+)px/.exec(media)
+      if (min) return width >= parseFloat(min[1])
+      const max = /max-width:\s*([\d.]+)px/.exec(media)
+      if (max) return width <= parseFloat(max[1])
+      return false
+    })
+
+  const renderAlbum = () =>
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <RecordContextProvider value={albumRecord}>
+          <AlbumDetails />
+        </RecordContextProvider>
+      </ThemeProvider>,
+    )
+
+  // The genre chips used to be swapped for the single `record.genre` string
+  // whenever the viewport was below the `lg` breakpoint, so a multi-genre album
+  // showed only its primary genre. See #6243.
+  test.each([
+    ['xs', 400],
+    ['sm', 800],
+    ['md', 1000],
+    ['lg', 1400],
+  ])('renders the genre chip list at the %s breakpoint', (_, width) => {
+    mockViewportWidth(width)
+
+    const { container } = renderAlbum()
+
+    expect(container.querySelector('[class*="genreList"]')).not.toBeNull()
+    // The collapsed fallback rendered `record.genre` as a bare <p>. No other
+    // <Typography component="p"> is left in AlbumDetails.
+    expect(container.querySelector('p')).toBeNull()
+  })
+})
