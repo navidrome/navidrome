@@ -39,6 +39,7 @@ type MockMediaFileRepo struct {
 	MatchesCriteriaValue            bool
 	MatchesCriteriaErr              error
 	BookmarksAdded                  []string
+	GetAllFn                        func(qo ...model.QueryOptions) (model.MediaFiles, error)
 }
 
 func (m *MockMediaFileRepo) SetError(err bool) {
@@ -103,6 +104,9 @@ func (m *MockMediaFileRepo) GetAllByTags(ctx context.Context, _ model.TagName, _
 func (m *MockMediaFileRepo) GetAll(_ context.Context, qo ...model.QueryOptions) (model.MediaFiles, error) {
 	if len(qo) > 0 {
 		m.Options = qo[0]
+	}
+	if m.GetAllFn != nil {
+		return m.GetAllFn(qo...)
 	}
 	if m.Err {
 		return nil, errors.New("error")
