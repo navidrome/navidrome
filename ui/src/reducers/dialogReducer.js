@@ -63,6 +63,7 @@ export const addToPlaylistDialogReducer = (
         ...previousState,
         open: true,
         selectedIds: payload.selectedIds,
+        albumIds: payload.albumIds,
         onSuccess: payload.onSuccess,
       }
     case ADD_TO_PLAYLIST_CLOSE:
