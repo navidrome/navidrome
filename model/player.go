@@ -1,7 +1,10 @@
 package model
 
 import (
+	"context"
 	"time"
+
+	"github.com/deluan/rest"
 )
 
 type Player struct {
@@ -18,14 +21,20 @@ type Player struct {
 	MaxBitRate      int       `structs:"max_bit_rate" json:"maxBitRate"`
 	ReportRealPath  bool      `structs:"report_real_path" json:"reportRealPath"`
 	ScrobbleEnabled bool      `structs:"scrobble_enabled" json:"scrobbleEnabled"`
+	HasAPIKey       bool      `structs:"-" db:"has_api_key" json:"hasApiKey"`
+	APIKey          *string   `structs:"-" json:"apiKey,omitempty"`
 }
 
 type Players []Player
 
 type PlayerRepository interface {
-	Get(id string) (*Player, error)
-	FindMatch(userId, client, userAgent string) (*Player, error)
-	Put(p *Player) error
-	CountAll(...QueryOptions) (int64, error)
-	CountByClient(...QueryOptions) (map[string]int64, error)
+	rest.Repository[Player]
+	rest.Persistable[Player]
+	Get(ctx context.Context, id string) (*Player, error)
+	FindMatch(ctx context.Context, userId, client, userAgent string) (*Player, error)
+	Put(ctx context.Context, p *Player) error
+	CountAll(ctx context.Context, options ...QueryOptions) (int64, error)
+	CountByClient(ctx context.Context, options ...QueryOptions) (map[string]int64, error)
+	FindByAPIKey(ctx context.Context, key string) (*Player, error)
+	SetAPIKey(ctx context.Context, playerID, key string) error
 }

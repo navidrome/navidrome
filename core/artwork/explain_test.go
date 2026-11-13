@@ -114,11 +114,11 @@ var _ = Describe("Explain", func() {
 	var ctx context.Context
 
 	BeforeEach(func() {
-		ctx = context.Background()
+		ctx = GinkgoT().Context()
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		ds = &tests.MockDataStore{MockedArtwork: artRepo, MockedArtworkQueue: queueRepo}
-		Expect(ds.Artist(ctx).Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		Expect(ds.Artist().Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
 	})
 
 	It("returns an error when the item does not exist", func() {
@@ -129,7 +129,7 @@ var _ = Describe("Explain", func() {
 	It("reads the recorded trace when no walker is supplied", func() {
 		// Storage shape mirrors storedStep in trace.go: c=candidate, o=outcome, d=detail.
 		trace := `[{"c":"external:deezer","o":"hit","d":"https://cdn/x.jpg"}]`
-		Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+		Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 			ItemKind: model.KindArtistArtwork.Prefix(), ItemID: "ar-1", ImageType: model.ImageTypePrimary,
 			Hash: "abc", Source: "external:deezer",
 			Trace:       trace,
@@ -163,7 +163,7 @@ var _ = Describe("Explain", func() {
 
 	It("includes the queue row and its failure trace", func() {
 		failure := `[{"c":"external:lastfm","o":"error","d":"429"}]`
-		Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+		Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{
 			ItemKind: model.KindArtistArtwork.Prefix(), ItemID: "ar-1", ImageType: model.ImageTypePrimary,
 			Priority: model.ArtworkPriorityScan,
 		})).To(Succeed())
@@ -179,7 +179,7 @@ var _ = Describe("Explain", func() {
 	})
 
 	It("records nothing for a kind that keeps no state and has no walker", func() {
-		Expect(ds.Album(ctx).Put(&model.Album{ID: "al-1", Name: "OK Computer"})).To(Succeed())
+		Expect(ds.Album().Put(ctx, &model.Album{ID: "al-1", Name: "OK Computer"})).To(Succeed())
 
 		rep, err := artwork.Explain(ctx, ds, nil, model.KindDiscArtwork, "al-1:2", artwork.ExplainOptions{})
 		Expect(err).ToNot(HaveOccurred())
@@ -189,7 +189,7 @@ var _ = Describe("Explain", func() {
 
 	It("performs a fresh walk and reports its outcome, including a failed one, when a walker is supplied", func() {
 		// GetAll erroring mid-walk is a deterministic way to force ResolveErr without a real library.
-		ds.Album(ctx).(*tests.MockAlbumRepo).SetError(true)
+		ds.Album().(*tests.MockAlbumRepo).SetError(true)
 		opts := artwork.ExplainOptions{Walk: func(t *artwork.ChainTrace) *artwork.TracingResolver {
 			return artwork.NewTracingResolver(ds, nil, nil, t, false)
 		}}
@@ -201,7 +201,7 @@ var _ = Describe("Explain", func() {
 	})
 
 	It("still reports Walked for a kind with no chain to walk, when a walker is supplied", func() {
-		Expect(ds.Playlist(ctx).Put(&model.Playlist{ID: "pl-1", Name: "Favorites"})).To(Succeed())
+		Expect(ds.Playlist().Put(ctx, &model.Playlist{ID: "pl-1", Name: "Favorites"})).To(Succeed())
 		opts := artwork.ExplainOptions{Walk: func(*artwork.ChainTrace) *artwork.TracingResolver {
 			panic("a kind that cannot walk must never be handed to the walker")
 		}}

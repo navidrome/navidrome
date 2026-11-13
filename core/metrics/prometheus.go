@@ -30,7 +30,7 @@ type metrics struct {
 }
 
 func GetPrometheusInstance(ds model.DataStore) Metrics {
-	if !conf.Server.Prometheus.Enabled {
+	if !conf.Server().Prometheus.Enabled {
 		return noopMetrics{}
 	}
 
@@ -91,9 +91,9 @@ func (m *metrics) RecordPluginRequest(_ context.Context, plugin, method string, 
 func (m *metrics) GetHandler() http.Handler {
 	r := chi.NewRouter()
 
-	if conf.Server.Prometheus.Password != "" {
+	if conf.Server().Prometheus.Password != "" {
 		r.Use(middleware.BasicAuth("metrics", map[string]string{
-			consts.PrometheusAuthUser: conf.Server.Prometheus.Password,
+			consts.PrometheusAuthUser: conf.Server().Prometheus.Password,
 		}))
 	}
 
@@ -197,28 +197,28 @@ var getPrometheusMetrics = sync.OnceValue(func() *prometheusMetrics {
 })
 
 func processSqlAggregateMetrics(ctx context.Context, ds model.DataStore, targetGauge *prometheus.GaugeVec) {
-	albumsCount, err := ds.Album(ctx).CountAll()
+	albumsCount, err := ds.Album().CountAll(ctx)
 	if err != nil {
 		log.Warn("album CountAll error", err)
 		return
 	}
 	targetGauge.With(prometheus.Labels{"model": "album"}).Set(float64(albumsCount))
 
-	artistCount, err := ds.Artist(ctx).CountAll()
+	artistCount, err := ds.Artist().CountAll(ctx)
 	if err != nil {
 		log.Warn("artist CountAll error", err)
 		return
 	}
 	targetGauge.With(prometheus.Labels{"model": "artist"}).Set(float64(artistCount))
 
-	songsCount, err := ds.MediaFile(ctx).CountAll()
+	songsCount, err := ds.MediaFile().CountAll(ctx)
 	if err != nil {
 		log.Warn("media CountAll error", err)
 		return
 	}
 	targetGauge.With(prometheus.Labels{"model": "media"}).Set(float64(songsCount))
 
-	usersCount, err := ds.User(ctx).CountAll()
+	usersCount, err := ds.User().CountAll(ctx)
 	if err != nil {
 		log.Warn("user CountAll error", err)
 		return

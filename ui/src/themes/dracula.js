@@ -185,16 +185,6 @@ export default {
         color: `${foreground} !important`,
       },
     },
-    MuiSwitch: {
-      colorSecondary: {
-        '&$checked': {
-          color: green,
-        },
-        '&$checked + $track': {
-          backgroundColor: green,
-        },
-      },
-    },
     NDAlbumGridView: {
       albumName: {
         marginTop: '0.5rem',

@@ -35,6 +35,15 @@ var _ = Describe("client", func() {
 			Expect(album.Name).To(Equal("Believe"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?album=Believe&api_key=API_KEY&artist=U2&format=json&lang=pt&mbid=mbid-1234&method=album.getInfo"))
 		})
+
+		It("does not double-encode plus signs", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.album.getinfo.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			_, err := client.albumGetInfo(context.Background(), "Lungs", "Florence + the Machine", "", "en")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("Florence + the Machine"))
+		})
 	})
 
 	Describe("artistGetInfo", func() {
@@ -46,6 +55,15 @@ var _ = Describe("client", func() {
 			Expect(err).To(BeNil())
 			Expect(artist.Name).To(Equal("U2"))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&lang=pt&method=artist.getInfo"))
+		})
+
+		It("double-encodes plus signs in the artist name", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			_, err := client.artistGetInfo(context.Background(), "Florence + the Machine", "en")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("Florence %2B the Machine"))
 		})
 
 		It("fails if Last.fm returns an http status != 200", func() {
@@ -107,6 +125,15 @@ var _ = Describe("client", func() {
 			Expect(len(similar.Artists)).To(Equal(2))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getSimilar"))
 		})
+
+		It("double-encodes plus signs in the artist name", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.artist.getsimilar.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			_, err := client.artistGetSimilar(context.Background(), "+44", 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("%2B44"))
+		})
 	})
 
 	Describe("artistGetTopTracks", func() {
@@ -118,6 +145,15 @@ var _ = Describe("client", func() {
 			Expect(err).To(BeNil())
 			Expect(len(top.Track)).To(Equal(2))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=U2&format=json&limit=2&method=artist.getTopTracks"))
+		})
+
+		It("double-encodes plus signs in the artist name", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.artist.gettoptracks.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			_, err := client.artistGetTopTracks(context.Background(), "C+C Music Factory", 2)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(httpClient.SavedRequest.URL.Query().Get("artist")).To(Equal("C%2BC Music Factory"))
 		})
 	})
 
@@ -133,6 +169,17 @@ var _ = Describe("client", func() {
 			Expect(similar.Track[0].Artist.Name).To(Equal("Depeche Mode"))
 			Expect(similar.Track[0].Match).To(Equal(1.0))
 			Expect(httpClient.SavedRequest.URL.String()).To(Equal(apiBaseUrl + "?api_key=API_KEY&artist=Depeche+Mode&format=json&limit=5&method=track.getSimilar&track=Just+Can%27t+Get+Enough"))
+		})
+
+		It("double-encodes plus signs in the track and artist names", func() {
+			f, _ := os.Open("tests/fixtures/lastfm.track.getsimilar.json")
+			httpClient.Res = http.Response{Body: f, StatusCode: 200}
+
+			_, err := client.trackGetSimilar(context.Background(), "1+1", "Queen + Paul Rodgers", 5)
+			Expect(err).ToNot(HaveOccurred())
+			query := httpClient.SavedRequest.URL.Query()
+			Expect(query.Get("track")).To(Equal("1%2B1"))
+			Expect(query.Get("artist")).To(Equal("Queen %2B Paul Rodgers"))
 		})
 
 		It("returns empty list when no similar tracks found", func() {

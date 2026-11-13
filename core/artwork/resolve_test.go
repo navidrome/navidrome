@@ -13,7 +13,6 @@ import (
 	"sync/atomic"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -22,25 +21,22 @@ import (
 )
 
 var _ = Describe("IsArtistImageFile", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("matches bare and album/-prefixed glob tokens, case-insensitively", func() {
-		conf.Server.ArtistArtPriority = "artist.*, album/artistfolder.*, external"
+		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artistfolder.*, external" })
 		Expect(IsArtistImageFile("Artist.jpg")).To(BeTrue())
 		Expect(IsArtistImageFile("artistfolder.png")).To(BeTrue())
 		Expect(IsArtistImageFile("cover.jpg")).To(BeFalse())
 	})
 
 	It("matches a directory-bearing glob by its basename", func() {
-		conf.Server.ArtistArtPriority = "images/artist.*, external"
+		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "images/artist.*, external" })
 		Expect(IsArtistImageFile("artist.jpg")).To(BeTrue())
 		Expect(IsArtistImageFile("cover.jpg")).To(BeFalse())
 	})
 
 	It("does not treat non-file tokens as globs", func() {
-		conf.Server.ArtistArtPriority = "image-folder, external"
+		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "image-folder, external" })
 		Expect(IsArtistImageFile("image-folder")).To(BeFalse())
 		Expect(IsArtistImageFile("external")).To(BeFalse())
 	})
@@ -58,7 +54,6 @@ var _ = Describe("resolveItem", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
 		var err error
 		repoRoot, err = os.Getwd()
@@ -84,7 +79,7 @@ var _ = Describe("resolveItem", func() {
 
 	Describe("media file", func() {
 		BeforeEach(func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 		})
 
@@ -115,7 +110,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("resolves absent when media file cover art is disabled", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: "mf3", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
 			})
@@ -134,7 +129,7 @@ var _ = Describe("resolveItem", func() {
 
 	Describe("album", func() {
 		BeforeEach(func() {
-			conf.Server.CoverArtPriority = "cover.jpg, embedded"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 			ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		})
 
@@ -173,7 +168,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("sets extErr when the external source errors without being not-found", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "al3", Name: "Album"},
 			})
@@ -186,7 +181,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("does not set extErr when the external source reports not-found", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "al4", Name: "Album"},
 			})
@@ -199,7 +194,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("carries extErr onto a fallback folder hit after a transient external failure", func() {
-			conf.Server.CoverArtPriority = "external, cover.jpg"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",
 				ImageFiles: []string{"cover.jpg"},
@@ -218,7 +213,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("does not carry extErr onto a fallback folder hit after a definitive external not-found", func() {
-			conf.Server.CoverArtPriority = "external, cover.jpg"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",
 				ImageFiles: []string{"cover.jpg"},
@@ -237,7 +232,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "al5", Name: "Album"},
 			})
@@ -258,7 +253,7 @@ var _ = Describe("resolveItem", func() {
 	Describe("artist", func() {
 		It("resolves the uploaded image before any priority chain lookup", func() {
 			tmpDir := GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 			Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "artist"), 0755)).To(Succeed())
 			imgPath := filepath.Join(tmpDir, "artwork", "artist", "ar1_test.jpg")
 			Expect(os.WriteFile(imgPath, []byte("uploaded artist image"), 0600)).To(Succeed())
@@ -276,7 +271,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("falls through to the ArtistArtPriority chain when there is no upload", func() {
-			conf.Server.ArtistArtPriority = "album/artist.*"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "album/artist.*" })
 			folderRepo.result = []model.Folder{{
 				LibraryPath: testFileLibPath(repoRoot),
 				Path:        "tests/fixtures/artist/an-album",
@@ -299,7 +294,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("sets extErr when the external source errors without being not-found", func() {
-			conf.Server.ArtistArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
 			artistRepo := tests.CreateMockArtistRepo()
 			artistRepo.SetData(model.Artists{{ID: "ar3", Name: "Artist"}})
 			ds.MockedArtist = artistRepo
@@ -312,7 +307,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("does not set extErr when the external source reports not-found", func() {
-			conf.Server.ArtistArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
 			artistRepo := tests.CreateMockArtistRepo()
 			artistRepo.SetData(model.Artists{{ID: "ar4", Name: "Artist"}})
 			ds.MockedArtist = artistRepo
@@ -325,7 +320,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("routes the external step through the injected gate, keyed by agent name", func() {
-			conf.Server.ArtistArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
 			artistRepo := tests.CreateMockArtistRepo()
 			artistRepo.SetData(model.Artists{{ID: "ar5", Name: "Artist"}})
 			ds.MockedArtist = artistRepo
@@ -346,7 +341,7 @@ var _ = Describe("resolveItem", func() {
 	Describe("radio", func() {
 		It("yields an empty resolution when there is no uploaded image", func() {
 			tmpDir := GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			radioRepo := tests.CreateMockedRadioRepo()
 			radioRepo.Data = map[string]*model.Radio{"ra1": {ID: "ra1", Name: "Radio"}}
@@ -359,7 +354,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("resolves the uploaded image when set", func() {
 			tmpDir := GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 			Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "radio"), 0755)).To(Succeed())
 			imgPath := filepath.Join(tmpDir, "artwork", "radio", "ra2_test.jpg")
 			Expect(os.WriteFile(imgPath, []byte("uploaded radio image"), 0600)).To(Succeed())
@@ -379,7 +374,7 @@ var _ = Describe("resolveItem", func() {
 
 	Describe("playlist", func() {
 		BeforeEach(func() {
-			conf.Server.CoverArtPriority = "cover.jpg"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg" })
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",
 				ImageFiles: []string{"cover.jpg"},
@@ -422,8 +417,10 @@ var _ = Describe("resolveItem", func() {
 		// The grid samples album art through the full album chain, so a playlist reaches the
 		// network even with the m3u fetch off.
 		It("calls the album image agents for its grid tiles when m3u art is disabled", func() {
-			conf.Server.EnableM3UExternalAlbumArt = false
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) {
+				c.EnableM3UExternalAlbumArt = false
+				c.CoverArtPriority = "external"
+			})
 			folderRepo.result = nil
 			plRepo := tests.CreateMockPlaylistRepo()
 			plRepo.SetData(model.Playlists{{ID: "plgrid", Name: "Playlist"}})
@@ -443,7 +440,7 @@ var _ = Describe("resolveItem", func() {
 
 		It("resolves the uploaded image before the generated grid", func() {
 			tmpDir := GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 			Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "playlist"), 0755)).To(Succeed())
 			imgPath := filepath.Join(tmpDir, "artwork", "playlist", "plu_test.jpg")
 			Expect(os.WriteFile(imgPath, []byte("uploaded playlist image"), 0600)).To(Succeed())
@@ -498,8 +495,25 @@ var _ = Describe("resolveItem", func() {
 			Expect(res.refMtime).To(BeNumerically(">", 0))
 		})
 
+		It("never opens a local ExternalImageURL that is not an image file", func() {
+			folderRepo.result = nil // no grid tiles, so only the local file could produce a reader
+			dir := GinkgoT().TempDir()
+			secretPath := filepath.Join(dir, "config.ini")
+			Expect(os.WriteFile(secretPath, []byte("password=secret"), 0600)).To(Succeed())
+
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "plni", Name: "Playlist", ExternalImageURL: secretPath}})
+			plRepo.TracksRepo = &tests.MockPlaylistTrackRepo{AlbumIDs: []string{"t1"}}
+			ds.MockedPlaylist = plRepo
+
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "plni"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res.reader).To(BeNil())
+			Expect(res.sourcePath).ToNot(Equal(secretPath))
+		})
+
 		It("routes ExternalImageURL through extGate and sets extError on transient failure", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
 
 			plRepo := tests.CreateMockPlaylistRepo()
@@ -521,7 +535,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("records the m3u failure in the trace even when album sampling adds its own steps", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 			folderRepo.result = nil // the sampled album yields no tile, so the m3u failure is what forced the retry
 
 			plRepo := tests.CreateMockPlaylistRepo()
@@ -566,7 +580,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("treats an ExternalImageURL 404 as a definitive miss and falls through to the grid", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusNotFound)
 			}))
@@ -587,7 +601,7 @@ var _ = Describe("resolveItem", func() {
 
 		// A local resolver holds no agents: reaching the external branch would panic, not degrade.
 		It("skips the external step instead of dereferencing absent agents", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum = tests.CreateMockAlbumRepo()
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album"}})
 
@@ -599,7 +613,7 @@ var _ = Describe("resolveItem", func() {
 
 		// The worker resolving the same playlist is asserted alongside, so this cannot pass vacuously.
 		It("resolves a playlist locally without fetching remotely or building the grid", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 			var hits atomic.Int32
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				hits.Add(1)
@@ -627,7 +641,7 @@ var _ = Describe("resolveItem", func() {
 		})
 
 		It("treats an ExternalImageURL 500 as a transient failure and sets extError", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 			folderRepo.result = nil // no grid tiles, so the external failure is what surfaces
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -690,6 +704,16 @@ var _ = Describe("resolveItem", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(res).To(Equal(resolution{}))
 		})
+
+		It("returns an error when the playlist tracks cannot be loaded", func() {
+			plRepo := tests.CreateMockPlaylistRepo()
+			plRepo.SetData(model.Playlists{{ID: "pl4", Name: "Playlist"}})
+			ds.MockedPlaylist = plRepo
+
+			res, err := newResolver(ds, ag, ffm, nil).resolve(ctx, model.ArtworkQueueItem{ItemKind: "pl", ItemID: "pl4"})
+			Expect(err).To(HaveOccurred())
+			Expect(res).To(Equal(resolution{}))
+		})
 	})
 })
 
@@ -725,15 +749,18 @@ var _ = Describe("Explainable", func() {
 
 var _ = Describe("MayFetchExternal", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CoverArtPriority = "cover.*, embedded"
-		conf.Server.ArtistArtPriority = "artist.*"
-		conf.Server.EnableM3UExternalAlbumArt = false
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*, embedded"
+			c.ArtistArtPriority = "artist.*"
+			c.EnableM3UExternalAlbumArt = false
+		})
 	})
 
 	It("is true for the kinds whose chain includes the external candidate", func() {
-		conf.Server.CoverArtPriority = "cover.*, external"
-		conf.Server.ArtistArtPriority = "artist.*, external"
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*, external"
+			c.ArtistArtPriority = "artist.*, external"
+		})
 		Expect(MayFetchExternal(model.KindAlbumArtwork)).To(BeTrue())
 		Expect(MayFetchExternal(model.KindArtistArtwork)).To(BeTrue())
 	})
@@ -744,12 +771,12 @@ var _ = Describe("MayFetchExternal", func() {
 	})
 
 	It("is true for playlists when the m3u image fetch is enabled", func() {
-		conf.Server.EnableM3UExternalAlbumArt = true
+		conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeTrue())
 	})
 
 	It("is true for playlists whose grid tiles resolve through an external album chain", func() {
-		conf.Server.CoverArtPriority = "cover.*, external"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*, external" })
 		Expect(MayFetchExternal(model.KindPlaylistArtwork)).To(BeTrue())
 	})
 
@@ -758,9 +785,11 @@ var _ = Describe("MayFetchExternal", func() {
 	})
 
 	It("is false for the kinds that only read local files", func() {
-		conf.Server.CoverArtPriority = "external"
-		conf.Server.ArtistArtPriority = "external"
-		conf.Server.EnableM3UExternalAlbumArt = true
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "external"
+			c.ArtistArtPriority = "external"
+			c.EnableM3UExternalAlbumArt = true
+		})
 		Expect(MayFetchExternal(model.KindRadioArtwork)).To(BeFalse())
 		Expect(MayFetchExternal(model.KindMediaFileArtwork)).To(BeFalse())
 	})
@@ -770,10 +799,11 @@ var _ = Describe("ExternalLookupsPerItem", func() {
 	count := ImageAgentCount{Artist: 3, Album: 2}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.CoverArtPriority = "cover.*, external"
-		conf.Server.ArtistArtPriority = "artist.*, external"
-		conf.Server.EnableM3UExternalAlbumArt = false
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*, external"
+			c.ArtistArtPriority = "artist.*, external"
+			c.EnableM3UExternalAlbumArt = false
+		})
 	})
 
 	It("bills one call per agent, since the walk only stops early on a hit", func() {
@@ -787,14 +817,16 @@ var _ = Describe("ExternalLookupsPerItem", func() {
 	})
 
 	It("adds the m3u image fetch on top of the grid", func() {
-		conf.Server.EnableM3UExternalAlbumArt = true
+		conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).
 			To(Equal(int64(PlaylistGridSamples)*2 + 1))
 	})
 
 	It("bills only the m3u fetch when the album chain stays local", func() {
-		conf.Server.CoverArtPriority = "cover.*"
-		conf.Server.EnableM3UExternalAlbumArt = true
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*"
+			c.EnableM3UExternalAlbumArt = true
+		})
 		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).To(Equal(int64(1)))
 	})
 
@@ -807,8 +839,10 @@ var _ = Describe("ExternalLookupsPerItem", func() {
 	})
 
 	It("is zero whenever the kind reaches no agent at all", func() {
-		conf.Server.CoverArtPriority = "cover.*"
-		conf.Server.ArtistArtPriority = "artist.*"
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.*"
+			c.ArtistArtPriority = "artist.*"
+		})
 		Expect(ExternalLookupsPerItem(model.KindArtistArtwork, count)).To(BeZero())
 		Expect(ExternalLookupsPerItem(model.KindAlbumArtwork, count)).To(BeZero())
 		Expect(ExternalLookupsPerItem(model.KindPlaylistArtwork, count)).To(BeZero())

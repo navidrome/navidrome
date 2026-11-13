@@ -172,28 +172,28 @@ func queueTotal(stats []model.ArtworkQueueStat) int64 {
 }
 
 func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error) {
-	q := ds.ArtworkQueue(ctx)
+	q := ds.ArtworkQueue()
 	var rep statusReport
 	var err error
-	if rep.queue, err = q.CountQueued(nil, nil); err != nil {
+	if rep.queue, err = q.CountQueued(ctx, nil, nil); err != nil {
 		return rep, fmt.Errorf("breaking the artwork queue down by kind: %w", err)
 	}
 
 	for _, k := range artwork.ReprocessKinds {
-		sources, err := q.SourcesInUse(k)
+		sources, err := q.SourcesInUse(ctx, k)
 		if err != nil {
 			return rep, fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
 		}
 		slices.Sort(sources)
 		for _, s := range sources {
-			n, err := q.CountBySource(k, []string{s})
+			n, err := q.CountBySource(ctx, k, []string{s})
 			if err != nil {
 				return rep, fmt.Errorf("counting %s artwork resolved from %s: %w", k, displaySource(s), err)
 			}
 			rep.sources = append(rep.sources, sourceCount{kind: k, source: s, count: n})
 			// An absent state is exactly a row with no source, so it needs no second query.
 			if s == "" {
-				failed, err := q.CountBySource(k, []string{model.ArtworkSourceFailed})
+				failed, err := q.CountBySource(ctx, k, []string{model.ArtworkSourceFailed})
 				if err != nil {
 					return rep, fmt.Errorf("counting failed %s artwork: %w", k, err)
 				}
@@ -203,7 +203,7 @@ func collectStatus(ctx context.Context, ds model.DataStore) (statusReport, error
 	}
 
 	rep.current, rep.inputs = artwork.ConfigFingerprint(), artwork.FingerprintInputs()
-	if rep.stored, err = ds.Property(ctx).DefaultGet(consts.ArtConfFingerprintPropertyKey, ""); err != nil {
+	if rep.stored, err = ds.Property().DefaultGet(ctx, consts.ArtConfFingerprintPropertyKey, ""); err != nil {
 		return rep, fmt.Errorf("reading the stored artwork fingerprint: %w", err)
 	}
 	return rep, nil
@@ -391,7 +391,7 @@ func needsImageAgents(kinds []model.Kind) bool {
 // configuredAgents names the agents in priority order; one absent from it can never supply an image.
 func configuredAgents() []string {
 	var names []string
-	for name := range strings.SplitSeq(conf.Server.Agents, ",") {
+	for name := range strings.SplitSeq(conf.Server().Agents, ",") {
 		if name = strings.TrimSpace(name); name != "" {
 			names = append(names, name)
 		}
@@ -417,13 +417,13 @@ func promptConfirm(in io.Reader, verb string) confirmFunc {
 
 // validateSources rejects a typo'd source: matching nothing silently reads as "nothing to do" when
 // it means the filter was wrong. Checked table-wide, so a filter is never a typo for one --kind only.
-func validateSources(q model.ArtworkQueueRepository, sources []string) error {
+func validateSources(ctx context.Context, q model.ArtworkQueueRepository, sources []string) error {
 	if len(sources) == 0 {
 		return nil
 	}
 	var inUse []string
 	for _, k := range artwork.ReprocessKinds {
-		found, err := q.SourcesInUse(k)
+		found, err := q.SourcesInUse(ctx, k)
 		if err != nil {
 			return fmt.Errorf("listing the sources in use by %s artwork: %w", k, err)
 		}
@@ -450,8 +450,8 @@ func validateSources(q model.ArtworkQueueRepository, sources []string) error {
 // actually inserted; the two differ because an already-queued row is left untouched.
 func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, sources []string,
 	imageAgents artwork.ImageAgentCount, dryRun bool, confirm confirmFunc, out io.Writer) error {
-	q := ds.ArtworkQueue(ctx)
-	if err := validateSources(q, sources); err != nil {
+	q := ds.ArtworkQueue()
+	if err := validateSources(ctx, q, sources); err != nil {
 		return err
 	}
 
@@ -470,7 +470,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 	matched := make([]int64, len(kinds))
 	var total, external int64
 	for i, k := range kinds {
-		n, err := q.CountBySource(k, sources)
+		n, err := q.CountBySource(ctx, k, sources)
 		if err != nil {
 			return fmt.Errorf("counting %s artwork: %w", k, err)
 		}
@@ -498,7 +498,7 @@ func reprocessArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kin
 		if matched[i] == 0 {
 			continue
 		}
-		n, err := q.EnqueueBySource(k, sources, model.ArtworkPriorityRecheck)
+		n, err := q.EnqueueBySource(ctx, k, sources, model.ArtworkPriorityRecheck)
 		if err != nil {
 			return fmt.Errorf("queueing %s artwork: %w", k, err)
 		}
@@ -565,8 +565,8 @@ func parseAll[T comparable](values []string, parse func(string) (T, error)) ([]T
 
 func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, priorities []int,
 	dryRun bool, confirm confirmFunc, out io.Writer) error {
-	q := ds.ArtworkQueue(ctx)
-	matched, err := q.CountQueued(kinds, priorities)
+	q := ds.ArtworkQueue()
+	matched, err := q.CountQueued(ctx, kinds, priorities)
 	if err != nil {
 		return fmt.Errorf("counting queued artwork: %w", err)
 	}
@@ -587,7 +587,7 @@ func cancelArtwork(ctx context.Context, ds model.DataStore, kinds []model.Kind, 
 		return nil
 	}
 
-	cancelled, err := q.PurgeQueued(kinds, priorities)
+	cancelled, err := q.PurgeQueued(ctx, kinds, priorities)
 	if err != nil {
 		return fmt.Errorf("cancelling queued artwork: %w", err)
 	}

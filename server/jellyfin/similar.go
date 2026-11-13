@@ -111,11 +111,26 @@ func (api *Router) getSimilarAlbums(w http.ResponseWriter, r *http.Request) {
 // a track seed leads its own mix; provider errors and unknown seeds degrade to seed-only/empty
 // results, never a 404 the client would surface as an error.
 func (api *Router) getInstantMix(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	id, ok := itemIDParam(w, r, "itemId")
 	if !ok {
 		return
 	}
+	api.instantMix(w, r, id)
+}
+
+// getInstantMixByQuery serves the legacy Artists/InstantMix and MusicGenres/InstantMix forms,
+// which take the seed as ?id= instead of a path segment.
+func (api *Router) getInstantMixByQuery(w http.ResponseWriter, r *http.Request) {
+	id, ok := dto.DecodeID(req.Params(r).StringOr("id", ""))
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	api.instantMix(w, r, id)
+}
+
+func (api *Router) instantMix(w http.ResponseWriter, r *http.Request, id string) {
+	ctx := r.Context()
 	limit := clampLimit(req.Params(r).IntOr("limit", 0), defaultSimilarLimit, maxInstantMixLimit)
 
 	// Genre ids don't resolve via GetEntityByID, so a not-found entity is fine: it is just "not a
@@ -201,7 +216,7 @@ func (api *Router) similarAlbums(ctx context.Context, id string, limit int) dto.
 			continue
 		}
 		seen[s.AlbumID] = true
-		if al, err := api.ds.Album(ctx).Get(s.AlbumID); err == nil && u.HasLibraryAccess(al.LibraryID) {
+		if al, err := api.ds.Album().Get(ctx, s.AlbumID); err == nil && u.HasLibraryAccess(al.LibraryID) {
 			items = append(items, dto.AlbumToBaseItem(*al, nil))
 			if len(items) >= limit {
 				break

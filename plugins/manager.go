@@ -49,7 +49,7 @@ type PluginMetricsRecorder interface {
 type Manager struct {
 	mu      sync.RWMutex
 	plugins map[string]*plugin
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // manager lifecycle ctx, cancelled by Stop
 	cancel  context.CancelFunc
 	cache   wazero.CompilationCache
 	stopped atomic.Bool    // Set to true when Stop() is called
@@ -107,7 +107,7 @@ func (m *Manager) SetSubsonicRouter(router SubsonicRouter) {
 // 1. Sync plugins folder with DB (discover new, update changed, remove deleted)
 // 2. Load only enabled plugins from DB
 func (m *Manager) Start(ctx context.Context) error {
-	if !conf.Server.Plugins.Enabled {
+	if !conf.Server().Plugins.Enabled {
 		log.Debug(ctx, "Plugin system is disabled")
 		return nil
 	}
@@ -116,25 +116,25 @@ func (m *Manager) Start(ctx context.Context) error {
 		log.Fatal(ctx, "Plugin manager requires the SubsonicAPI router to be configured")
 	}
 
-	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
-	purgeCacheBySize(ctx, cacheDir, conf.Server.Plugins.CacheSize)
+	cacheDir := filepath.Join(conf.Server().CacheFolder.MustPath(), "plugins")
+	purgeCacheBySize(ctx, cacheDir, conf.Server().Plugins.CacheSize)
 
 	if err := m.initRuntime(ctx, cacheDir); err != nil {
 		return err
 	}
 
-	if conf.Server.Plugins.Folder.String() == "" {
+	if conf.Server().Plugins.Folder.String() == "" {
 		log.Debug(ctx, "No plugins folder configured")
 		return nil
 	}
 
-	folder := conf.Server.Plugins.Folder.MustPath()
+	folder := conf.Server().Plugins.Folder.MustPath()
 
 	log.Info(ctx, "Starting plugin manager", "folder", folder)
 
 	// Clear previous error states so plugins can be retried on restart
 	adminCtx := adminContext(ctx)
-	if err := m.ds.Plugin(adminCtx).ClearErrors(); err != nil {
+	if err := m.ds.Plugin().ClearErrors(adminCtx); err != nil {
 		log.Error(ctx, "Error clearing plugin errors", err)
 	}
 
@@ -151,7 +151,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// Start file watcher if auto-reload is enabled
-	if conf.Server.Plugins.AutoReload {
+	if conf.Server().Plugins.AutoReload {
 		if err := m.startWatcher(); err != nil {
 			log.Error(ctx, "Failed to start plugin file watcher", err)
 			// Non-fatal - plugins are still loaded, just no auto-reload
@@ -163,9 +163,9 @@ func (m *Manager) Start(ctx context.Context) error {
 
 // initRuntime prepares the extism/wazero runtime that instantiating a plugin needs.
 func (m *Manager) initRuntime(ctx context.Context, cacheDir string) error {
-	pluginLogLevel := conf.Server.Plugins.LogLevel
+	pluginLogLevel := conf.Server().Plugins.LogLevel
 	if pluginLogLevel == "" {
-		pluginLogLevel = conf.Server.LogLevel
+		pluginLogLevel = conf.Server().LogLevel
 	}
 	extism.SetLogLevel(toExtismLogLevel(log.ParseLogLevel(pluginLogLevel)))
 
@@ -189,12 +189,12 @@ type transientLoad struct {
 // LoadPlugins loads the plugins named in only, so a CLI sees the agents a server would. Each is
 // instantiated, creating any KVStore, TaskQueue or Storage it declares; call Stop when done.
 func (m *Manager) LoadPlugins(ctx context.Context, only []string, runInit bool) error {
-	if !conf.Server.Plugins.Enabled || conf.Server.Plugins.Folder.String() == "" || len(only) == 0 {
+	if !conf.Server().Plugins.Enabled || conf.Server().Plugins.Folder.String() == "" || len(only) == 0 {
 		return nil
 	}
 	m.transient = &transientLoad{only: only, runInit: runInit}
 
-	cacheDir := filepath.Join(conf.Server.CacheFolder.MustPath(), "plugins")
+	cacheDir := filepath.Join(conf.Server().CacheFolder.MustPath(), "plugins")
 	if err := m.initRuntime(ctx, cacheDir); err != nil {
 		return err
 	}
@@ -323,9 +323,9 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
@@ -344,7 +344,7 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 		// Store error and return
 		plugin.LastError = err.Error()
 		plugin.UpdatedAt = time.Now()
-		_ = repo.Put(plugin)
+		_ = repo.Put(adminCtx, plugin)
 		return fmt.Errorf("loading plugin: %w", err)
 	}
 
@@ -352,7 +352,7 @@ func (m *Manager) EnablePlugin(ctx context.Context, id string) error {
 	plugin.Enabled = true
 	plugin.LastError = ""
 	plugin.UpdatedAt = time.Now()
-	if err := repo.Put(plugin); err != nil {
+	if err := repo.Put(adminCtx, plugin); err != nil {
 		// Unload since we couldn't update DB
 		_ = m.unloadPlugin(id)
 		return fmt.Errorf("updating plugin in DB: %w", err)
@@ -371,9 +371,9 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
@@ -390,7 +390,7 @@ func (m *Manager) DisablePlugin(ctx context.Context, id string) error {
 	// Update DB
 	plugin.Enabled = false
 	plugin.UpdatedAt = time.Now()
-	if err := repo.Put(plugin); err != nil {
+	if err := repo.Put(adminCtx, plugin); err != nil {
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 
@@ -408,9 +408,9 @@ func (m *Manager) ValidatePluginConfig(ctx context.Context, id, configJSON strin
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
@@ -458,7 +458,7 @@ func (m *Manager) UpdatePluginLibraries(ctx context.Context, id, librariesJSON s
 // This synchronizes the database with the filesystem, discovering new plugins,
 // updating changed ones, and removing deleted ones.
 func (m *Manager) RescanPlugins(ctx context.Context) error {
-	folder := conf.Server.Plugins.Folder.String()
+	folder := conf.Server().Plugins.Folder.String()
 	if folder == "" {
 		return fmt.Errorf("plugins folder not configured")
 	}
@@ -476,9 +476,9 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
-	plugin, err := repo.Get(id)
+	plugin, err := repo.Get(adminCtx, id)
 	if err != nil {
 		return fmt.Errorf("getting plugin from DB: %w", err)
 	}
@@ -512,7 +512,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 			log.Debug(ctx, "Plugin was not loaded", "plugin", id)
 		}
 		plugin.Enabled = false
-		if err := repo.Put(plugin); err != nil {
+		if err := repo.Put(adminCtx, plugin); err != nil {
 			return fmt.Errorf("updating plugin in DB: %w", err)
 		}
 		log.Info(ctx, "Disabled plugin due to "+disableReason, "plugin", id)
@@ -520,7 +520,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 		return nil
 	}
 
-	if err := repo.Put(plugin); err != nil {
+	if err := repo.Put(adminCtx, plugin); err != nil {
 		return fmt.Errorf("updating plugin in DB: %w", err)
 	}
 
@@ -532,7 +532,7 @@ func (m *Manager) updatePluginSettings(ctx context.Context, id string, updateFn 
 		if err := m.loadPluginWithConfig(plugin); err != nil {
 			plugin.LastError = err.Error()
 			plugin.Enabled = false
-			_ = repo.Put(plugin)
+			_ = repo.Put(adminCtx, plugin)
 			return fmt.Errorf("reloading plugin: %w", err)
 		}
 	}
@@ -586,10 +586,10 @@ func (m *Manager) UnloadDisabledPlugins(ctx context.Context) {
 	}
 
 	adminCtx := adminContext(ctx)
-	repo := m.ds.Plugin(adminCtx)
+	repo := m.ds.Plugin()
 
 	// Get all disabled plugins from the database
-	plugins, err := repo.GetAll(model.QueryOptions{
+	plugins, err := repo.GetAll(adminCtx, model.QueryOptions{
 		Filters: squirrel.Eq{"enabled": false},
 	})
 	if err != nil {

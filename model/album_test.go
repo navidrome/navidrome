@@ -4,19 +4,15 @@ import (
 	"encoding/json"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Album", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 	DescribeTable("FullName",
 		func(enabled bool, tags Tags, expected string) {
-			conf.Server.Subsonic.AppendAlbumVersion = enabled
+			conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = enabled })
 			a := Album{Name: "Album", Tags: tags}
 			Expect(a.FullName()).To(Equal(expected))
 		},

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/model"
@@ -32,15 +31,16 @@ var _ = Describe("lastfmAgent", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		ctx = context.Background()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LastFM.Enabled = true
-		conf.Server.LastFM.ApiKey = "123"
-		conf.Server.LastFM.Secret = "secret"
+		conf.Update(func(c *conf.Options) {
+			c.LastFM.Enabled = true
+			c.LastFM.ApiKey = "123"
+			c.LastFM.Secret = "secret"
+		})
 	})
 	Describe("lastFMConstructor", func() {
 		When("Agent is properly configured", func() {
 			It("uses configured api key and languages", func() {
-				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"pt", "en"} })
 				agent := lastFMConstructor(ds)
 				Expect(agent.apiKey).To(Equal("123"))
 				Expect(agent.secret).To(Equal("secret"))
@@ -49,19 +49,19 @@ var _ = Describe("lastfmAgent", func() {
 		})
 		When("Agent is disabled", func() {
 			It("returns nil", func() {
-				conf.Server.LastFM.Enabled = false
+				conf.Update(func(c *conf.Options) { c.LastFM.Enabled = false })
 				Expect(lastFMConstructor(ds)).To(BeNil())
 			})
 		})
 		When("ApiKey is empty", func() {
 			It("returns nil", func() {
-				conf.Server.LastFM.ApiKey = ""
+				conf.Update(func(c *conf.Options) { c.LastFM.ApiKey = "" })
 				Expect(lastFMConstructor(ds)).To(BeNil())
 			})
 		})
 		When("Secret is empty", func() {
 			It("returns nil", func() {
-				conf.Server.LastFM.Secret = ""
+				conf.Update(func(c *conf.Options) { c.LastFM.Secret = "" })
 				Expect(lastFMConstructor(ds)).To(BeNil())
 			})
 		})
@@ -121,7 +121,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns content in first language when available (1 API call)", func() {
-				conf.Server.LastFM.Languages = []string{"pt", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"pt", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -138,7 +138,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("falls back to second language when first returns empty (2 API calls)", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -159,7 +159,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns ErrNotFound when all languages return empty", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "xx"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -186,7 +186,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("falls back to second language when first returns empty description (2 API calls)", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "en"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "en"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -208,7 +208,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("returns album without description when all languages return empty", func() {
-				conf.Server.LastFM.Languages = []string{"ja", "xx"}
+				conf.Update(func(c *conf.Options) { c.LastFM.Languages = []string{"ja", "xx"} })
 				agent = lastFMConstructor(ds)
 				agent.client = newClient("API_KEY", "SECRET", httpClient)
 
@@ -357,7 +357,7 @@ var _ = Describe("lastfmAgent", func() {
 		var httpClient *tests.FakeHttpClient
 		var track *model.MediaFile
 		BeforeEach(func() {
-			_ = ds.UserProps(ctx).Put("user-1", sessionKeyProperty, "SK-1")
+			_ = ds.UserProps().Put(ctx, "user-1", sessionKeyProperty, "SK-1")
 			httpClient = &tests.FakeHttpClient{}
 			client := newClient("API_KEY", "SECRET", httpClient)
 			agent = lastFMConstructor(ds)
@@ -412,7 +412,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			When("ScrobbleFirstArtistOnly is true", func() {
 				BeforeEach(func() {
-					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+					conf.Update(func(c *conf.Options) { c.LastFM.ScrobbleFirstArtistOnly = true })
 				})
 
 				It("uses only the first artist", func() {
@@ -454,7 +454,7 @@ var _ = Describe("lastfmAgent", func() {
 
 			When("ScrobbleFirstArtistOnly is true", func() {
 				BeforeEach(func() {
-					conf.Server.LastFM.ScrobbleFirstArtistOnly = true
+					conf.Update(func(c *conf.Options) { c.LastFM.ScrobbleFirstArtistOnly = true })
 				})
 
 				It("uses only the first artist", func() {
@@ -648,16 +648,39 @@ var _ = Describe("lastfmAgent", func() {
 			Expect(images).To(BeEmpty())
 		})
 
-		It("returns empty list if page has no meta tags", func() {
+		It("errors when the page has no meta tags", func() {
 			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
 			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
 
 			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.no_meta.html")
 			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
 
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(err).To(MatchError(errNoArtistPage))
+		})
+
+		It("errors when Last.fm serves a bot challenge page", func() {
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
 			images, err := agent.GetArtistImages(ctx, "123", "U2", "")
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(MatchError(errNoArtistPage))
 			Expect(images).To(BeEmpty())
+		})
+
+		It("does not park the agent: the failure is not a retry-later", func() {
+			// A RetryLaterError would cool down the agent's API-backed methods too.
+			fApi, _ := os.Open("tests/fixtures/lastfm.artist.getinfo.json")
+			apiClient.Res = http.Response{Body: fApi, StatusCode: 200}
+
+			fScraper, _ := os.Open("tests/fixtures/lastfm.artist.page.challenge.html")
+			httpClient.Res = http.Response{Body: fScraper, StatusCode: 200}
+
+			_, err := agent.GetArtistImages(ctx, "123", "U2", "")
+			Expect(errors.Is(err, agents.ErrRetryLater)).To(BeFalse())
 		})
 
 		It("returns error if API call fails", func() {

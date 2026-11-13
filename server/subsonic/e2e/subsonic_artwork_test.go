@@ -13,7 +13,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // registers the "taglib" local-storage extractor
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
@@ -79,7 +78,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 	}
 
 	BeforeAll(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		DeferCleanup(func() { Eventually(scanner.IsScanning).Should(BeFalse()) })
 		ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
@@ -87,18 +86,20 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		writeArtworkTrack(musicDir, "Artful Artist", "Artful Album", "01 - Come Together", true)
 		writeArtworkTrack(musicDir, "Artless Artist", "Artless Album", "01 - Lonely", false)
 
-		conf.Server.MusicFolder = musicDir
-		conf.Server.DevExternalScanner = false
-		conf.Server.DevEnableMediaFileProbe = false
-		conf.Server.CoverArtPriority = "cover.jpg"
-		conf.Server.ArtistArtPriority = "artist.png" // offline: artists resolve absent, out of scope here
-		conf.Server.EnableMediaFileCoverArt = false
-		conf.Server.DevArtworkWorkerConcurrency = 1
-		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
-		conf.Server.EnableSharing = true
-		conf.Server.DevArtworkMaxRequests = 100
-		conf.Server.DevArtworkThrottleBacklogLimit = 100
-		conf.Server.DevArtworkThrottleBacklogTimeout = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = musicDir
+			c.DevExternalScanner = false
+			c.DevEnableMediaFileProbe = false
+			c.CoverArtPriority = "cover.jpg"
+			c.ArtistArtPriority = "artist.png" // offline: artists resolve absent, out of scope here
+			c.EnableMediaFileCoverArt = false
+			c.DevArtworkWorkerConcurrency = 1
+			c.CacheFolder = conf.NewDir(GinkgoT().TempDir())
+			c.EnableSharing = true
+			c.DevArtworkMaxRequests = 100
+			c.DevArtworkThrottleBacklogLimit = 100
+			c.DevArtworkThrottleBacklogTimeout = time.Minute
+		})
 
 		goldenDB.Restore()
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
@@ -108,8 +109,8 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		// harness's MaxOpenConns=1, so wipe the golden content and import this library fresh.
 		wipeScannedContent()
 		artLib := model.Library{Name: "Artwork Library", Path: musicDir}
-		Expect(ds.Library(ctx).Put(&artLib)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(adminUser.ID, []int{artLib.ID})).To(Succeed())
+		Expect(ds.Library().Put(ctx, &artLib)).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, adminUser.ID, []int{artLib.ID})).To(Succeed())
 
 		s := scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
@@ -137,7 +138,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 
 		artRouter = buildArtworkRouter(artSvc)
 		router = artRouter // so the shared doReq/doRawReq helpers hit the artwork-wired router
-		pubRouter = public.New(ds, artSvc, streamerSpy, core.NewShare(ds), noopArchiver{})
+		pubRouter = public.New(ds, artSvc, streamerSpy, stream.NewTranscodeDecider(ds, ffm), core.NewShare(ds), noopArchiver{})
 	})
 
 	It("emits a bare optimistic coverArt id before the queue is drained", func() {
@@ -148,20 +149,20 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 	It("drains the queue: folder art is acquired, the artless album settles absent", func() {
 		// Enqueues the way the serving paths do, so the drain is driven by a plain queue row.
 		for _, id := range []string{artfulID, artlessID} {
-			Expect(ds.ArtworkQueue(ctx).EnqueuePreservingBackoff(model.ArtworkQueueItem{
+			Expect(ds.ArtworkQueue().EnqueuePreservingBackoff(ctx, model.ArtworkQueueItem{
 				ItemKind: model.KindAlbumArtwork.Prefix(), ItemID: id,
 				ImageType: model.ImageTypePrimary, Priority: model.ArtworkPriorityBump,
 			})).To(Succeed())
 		}
 		runWorkerUntil(ctx, worker, func() bool {
-			found, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
+			found, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
 			if err != nil || found.Hash == "" {
 				return false
 			}
-			absent, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artlessID, model.ImageTypePrimary)
+			absent, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, artlessID, model.ImageTypePrimary)
 			return err == nil && absent.Hash == ""
 		})
-		ia, err := ds.Artwork(ctx).GetItemArtwork(model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
+		ia, err := ds.Artwork().GetItemArtwork(ctx, model.KindAlbumArtwork, artfulID, model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("folder"))
 		artfulHash = ia.Hash
@@ -277,7 +278,7 @@ func wipeScannedContent() {
 
 func albumIDByName(name string) string {
 	GinkgoHelper()
-	albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
+	albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(albums).To(HaveLen(1), "expected exactly one album named %q", name)
 	return albums[0].ID

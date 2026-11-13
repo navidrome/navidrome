@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -44,7 +43,6 @@ var _ = Describe("Playlists - Import", func() {
 	Describe("ImportFromFolder", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
@@ -101,7 +99,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("parses #EXTALBUMARTURL with HTTP URL", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "pls-with-art-url.m3u")
 				Expect(err).ToNot(HaveOccurred())
@@ -236,8 +234,26 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.ExternalImageURL).To(BeEmpty())
 			})
 
+			It("rejects #EXTALBUMARTURL pointing at a non-image file inside the library", func() {
+				tmpDir := GinkgoT().TempDir()
+				Expect(os.WriteFile(filepath.Join(tmpDir, "config.ini"), []byte("password=secret"), 0600)).To(Succeed())
+
+				m3u := "#EXTALBUMARTURL:config.ini\ntest.mp3\n"
+				plsFile := filepath.Join(tmpDir, "test.m3u")
+				Expect(os.WriteFile(plsFile, []byte(m3u), 0600)).To(Succeed())
+
+				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
+				ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3"}}
+				ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+
+				plsFolder := &model.Folder{ID: "1", LibraryID: 1, LibraryPath: tmpDir, Path: "", Name: ""}
+				pls, err := ps.ImportFromFolder(ctx, plsFolder, "test.m3u")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(BeEmpty())
+			})
+
 			It("ignores HTTP #EXTALBUMARTURL when EnableM3UExternalAlbumArt is false", func() {
-				conf.Server.EnableM3UExternalAlbumArt = false
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = false })
 
 				tmpDir := GinkgoT().TempDir()
 				m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\ntest.mp3\n"
@@ -255,7 +271,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("updates ExternalImageURL on re-scan even when UploadedImage is set", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
@@ -393,7 +409,7 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Public).To(BeFalse())
 			})
 			It("uses server default when public field is absent", func() {
-				conf.Server.DefaultPlaylistPublicVisibility = true
+				conf.Update(func(c *conf.Options) { c.DefaultPlaylistPublicVisibility = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
@@ -752,7 +768,6 @@ var _ = Describe("Playlists - Import", func() {
 
 	Describe("ImportFile", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
 		})
 
@@ -994,7 +1009,7 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("parses #EXTALBUMARTURL with HTTP URL via ImportM3U", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 			repo.data = []string{"tests/test.mp3"}
 			m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\n/music/tests/test.mp3\n"
@@ -1010,6 +1025,19 @@ var _ = Describe("Playlists - Import", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pls.ExternalImageURL).To(BeEmpty())
 		})
+
+		DescribeTable("restricts a local #EXTALBUMARTURL to the owner's libraries",
+			func(imageURL, expected string) {
+				ctx = request.WithUser(ctx, model.User{ID: "123", Libraries: model.Libraries{{ID: 1, Path: "/music"}}})
+				repo.data = []string{"tests/test.mp3"}
+				m3u := "#EXTALBUMARTURL:" + imageURL + "\n/music/tests/test.mp3\n"
+				pls, err := ps.ImportM3U(ctx, strings.NewReader(m3u))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(pls.ExternalImageURL).To(Equal(expected))
+			},
+			Entry("accepts a library the owner can access", "file:///music/cover.jpg", filepath.Clean("/music/cover.jpg")),
+			Entry("ignores a library the owner cannot access", "file:///new/cover.jpg", ""),
+		)
 
 		// Fullwidth characters (e.g., ＡＢＣＤ) are not handled by SQLite's NOCASE collation,
 		// so we need exact matching for non-ASCII characters.
@@ -1090,7 +1118,6 @@ var _ = Describe("Playlists - Import", func() {
 		var folder model.Folder
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			folder = model.Folder{
 				LibraryPath: "/music",
 				Path:        "playlists/abc",
@@ -1099,28 +1126,28 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if PlaylistsPath is empty", func() {
-			conf.Server.PlaylistsPath = ""
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if PlaylistsPath is any (**/**)", func() {
-			conf.Server.PlaylistsPath = "**/**"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "**/**" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
 			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other/**:playlists/**" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
-			conf.Server.PlaylistsPath = "other"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other" })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
-			conf.Server.PlaylistsPath = "."
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "." })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 
 			folder2 := model.Folder{
@@ -1141,7 +1168,7 @@ type mockedMediaFileRepo struct {
 	data map[string]model.MediaFile
 }
 
-func (r *mockedMediaFileRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+func (r *mockedMediaFileRepo) FindByPaths(ctx context.Context, paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
 	// If data map provided, look up files
@@ -1181,7 +1208,7 @@ type mockedMediaFileFromListRepo struct {
 	data []string
 }
 
-func (r *mockedMediaFileFromListRepo) FindByPaths(paths []string) (model.MediaFiles, error) {
+func (r *mockedMediaFileFromListRepo) FindByPaths(ctx context.Context, paths []string) (model.MediaFiles, error) {
 	var mfs model.MediaFiles
 
 	for idx, dataPath := range r.data {
@@ -1216,7 +1243,7 @@ type mockFolderRepoForImport struct {
 	folder *model.Folder
 }
 
-func (m *mockFolderRepoForImport) GetByPath(_ model.Library, _ string) (*model.Folder, error) {
+func (m *mockFolderRepoForImport) GetByPath(_ context.Context, _ model.Library, _ string) (*model.Folder, error) {
 	if m.folder != nil {
 		return m.folder, nil
 	}

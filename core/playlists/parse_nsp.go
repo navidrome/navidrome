@@ -75,7 +75,7 @@ func (s *playlists) parseNSP(_ context.Context, pls *model.Playlist, reader io.R
 	if nsp.Public != nil {
 		pls.Public = *nsp.Public
 	} else {
-		pls.Public = conf.Server.DefaultPlaylistPublicVisibility
+		pls.Public = conf.Server().DefaultPlaylistPublicVisibility
 	}
 	return nil
 }

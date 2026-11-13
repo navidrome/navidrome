@@ -10,6 +10,7 @@ import (
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
@@ -23,24 +24,26 @@ var _ = Describe("GET /artwork/explain", func() {
 	var artRepo *tests.MockArtworkRepo
 	var queueRepo *tests.MockArtworkQueueRepo
 	var adminToken, userToken string
+	var ctx context.Context
 
 	BeforeEach(func() {
+		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.EnableSharing = false
 		conf.Server.ArtistArtPriority = "external"
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		ds = &tests.MockDataStore{MockedArtwork: artRepo, MockedArtworkQueue: queueRepo}
-		Expect(ds.Artist(context.Background()).Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		Expect(ds.Artist().Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
 		auth.Init(ds)
 
-		nativeRouter := New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
+		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil, nil)
 		router = server.JWTVerifier(nativeRouter)
 
 		adminUser := model.User{ID: "admin-1", UserName: "admin", IsAdmin: true, NewPassword: "adminpass"}
 		regularUser := model.User{ID: "user-1", UserName: "regular", IsAdmin: false, NewPassword: "userpass"}
-		Expect(ds.User(context.Background()).Put(&adminUser)).To(Succeed())
-		Expect(ds.User(context.Background()).Put(&regularUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &regularUser)).To(Succeed())
 
 		var err error
 		adminToken, err = auth.CreateToken(&adminUser)
@@ -75,7 +78,7 @@ var _ = Describe("GET /artwork/explain", func() {
 		trace := `[{"c":"external:deezer","o":"hit","d":"https://cdn/x.jpg"}]`
 		gaveUpTrace := `[{"c":"external:deezer","o":"error","d":"connection reset"}]`
 		attemptedAt := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
-		Expect(artRepo.PutItemArtwork(&model.ItemArtwork{
+		Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 			ItemKind: model.KindArtistArtwork.Prefix(), ItemID: "ar-1", ImageType: model.ImageTypePrimary,
 			Hash: "abc", Source: "external:deezer", SourcePath: "/music/Radiohead/folder.jpg", Trace: trace,
 			LastFailure: gaveUpTrace, AttemptedAt: attemptedAt,
@@ -106,16 +109,16 @@ var _ = Describe("GET /artwork/explain", func() {
 	})
 
 	It("returns the queue state and the last-attempt trace", func() {
-		Expect(queueRepo.Enqueue(model.ArtworkQueueItem{
+		Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{
 			ItemKind: model.KindArtistArtwork.Prefix(), ItemID: "ar-1", ImageType: model.ImageTypePrimary,
 			Priority: model.ArtworkPriorityScan,
 		})).To(Succeed())
-		seen, err := queueRepo.Get(model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
+		seen, err := queueRepo.Get(ctx, model.KindArtistArtwork, "ar-1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 
 		retryAt := time.Date(2026, 9, 2, 8, 0, 0, 0, time.UTC)
 		failTrace := `[{"c":"external:deezer","o":"error","d":"timeout"}]`
-		Expect(queueRepo.MarkFailedIfUnchanged(model.KindArtistArtwork.Prefix(), "ar-1", model.ImageTypePrimary,
+		Expect(queueRepo.MarkFailedIfUnchanged(ctx, model.KindArtistArtwork.Prefix(), "ar-1", model.ImageTypePrimary,
 			seen.RetryAt, retryAt, failTrace)).To(Succeed())
 
 		req := createAuthenticatedRequest("GET", "/artwork/explain?kind=ar&id=ar-1", nil, adminToken)

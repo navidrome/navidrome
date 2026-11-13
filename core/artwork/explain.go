@@ -119,11 +119,11 @@ func Explain(ctx context.Context, ds model.DataStore, ag *agents.Agents, kind mo
 	rep := ExplainReport{Kind: kind, ID: id, Name: name}
 
 	if KeepsState(kind) {
-		rep.Stored, err = ds.Artwork(ctx).GetItemArtwork(kind, id, model.ImageTypePrimary)
+		rep.Stored, err = ds.Artwork().GetItemArtwork(ctx, kind, id, model.ImageTypePrimary)
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
 			return ExplainReport{}, fmt.Errorf("reading artwork state: %w", err)
 		}
-		rep.Queued, err = ds.ArtworkQueue(ctx).Get(kind, id, model.ImageTypePrimary)
+		rep.Queued, err = ds.ArtworkQueue().Get(ctx, kind, id, model.ImageTypePrimary)
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
 			return ExplainReport{}, fmt.Errorf("reading the artwork queue: %w", err)
 		}

@@ -9,6 +9,7 @@ linters:
     - asciicheck
     - bidichk
     - bodyclose
+    - containedctx
     - copyloopvar
     - dogsled
     - durationcheck
@@ -57,6 +58,9 @@ linters:
           - gosec
         path: _test\.go
         text: "G703"
+      - path: _test\.go
+        linters:
+          - containedctx
       - path-except: 'db/migrations/'
         linters:
           - forbidigo

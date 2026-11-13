@@ -33,7 +33,7 @@ func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCach
 		ds:         ds,
 		transcoder: t,
 		cache:      cache,
-		limiter:    NewTranscodeLimiter(conf.Server.Transcoding.MaxConcurrent, conf.Server.Transcoding.MaxConcurrentPerUser),
+		limiter:    NewTranscodeLimiter(conf.Server().Transcoding.MaxConcurrent, conf.Server().Transcoding.MaxConcurrentPerUser),
 	}
 }
 
@@ -80,7 +80,7 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 		format = "raw"
 		bitRate = 0
 	}
-	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate}
+	s := &Stream{ctx: ctx, mf: mf, format: format, bitRate: bitRate, offset: req.Offset}
 	filePath := mf.AbsolutePath()
 
 	if format == "raw" {
@@ -133,10 +133,11 @@ func (ms *mediaStreamer) NewStream(ctx context.Context, mf *model.MediaFile, req
 }
 
 type Stream struct {
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // stream outlives the call that built it; Read has no ctx
 	mf      *model.MediaFile
 	bitRate int
 	format  string
+	offset  int
 	io.ReadCloser
 	io.Seeker
 }
@@ -146,16 +147,24 @@ func (s *Stream) Duration() float32   { return s.mf.Duration }
 func (s *Stream) ContentType() string { return mime.TypeByExtension("." + s.format) }
 func (s *Stream) Name() string        { return s.mf.Title + "." + s.format }
 func (s *Stream) ModTime() time.Time  { return s.mf.UpdatedAt }
-func (s *Stream) EstimatedContentLength() int {
-	return int(s.mf.Duration * float32(s.bitRate) / 8 * 1024)
+
+// EstimatedContentLength returns the expected size of the transcoded output, from the part of the track
+// after the requested offset. It returns 0 when the track has no duration left to estimate from.
+func (s *Stream) EstimatedContentLength() int64 {
+	remaining := max(float64(s.mf.Duration)-float64(max(s.offset, 0)), 0)
+	return int64(remaining * float64(s.bitRate) * 1000 / 8)
 }
 
 // Serve writes the stream to the HTTP response. For seekable streams it uses http.ServeContent
 // (supporting range requests). For non-seekable streams it writes directly and logs any errors.
-// Returns the number of bytes written and an error only when it fails with 0 bytes written
+// Returns the number of bytes written, or -1 when it does not count them (http.ServeContent and HEAD
+// requests), and an error only when it fails with 0 bytes written
 // (meaning the HTTP 200 status has not been flushed yet and the caller can still send an error response).
 // Once bytes are on the wire it panics with http.ErrAbortHandler instead, aborting the response.
 // Empty output (0 bytes, no error) is logged but not treated as an error.
+// With estimateContentLength=true, a non-seekable stream declares an estimated Content-Length. With
+// DevMatchEstimatedContentLength, the body is also cut or zero-padded to match it, so clients never
+// see a body that disagrees with the header.
 func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Request) (int64, error) {
 	if s.Seekable() {
 		http.ServeContent(w, r, s.Name(), s.ModTime(), s)
@@ -165,19 +174,31 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Accept-Ranges", "none")
 	w.Header().Set("Content-Type", s.ContentType())
 
+	// limit > 0 only when the body must match the declared Content-Length.
+	var limit int64
 	if req.Params(r).BoolOr("estimateContentLength", false) {
-		length := strconv.Itoa(s.EstimatedContentLength())
-		log.Trace(ctx, "Estimated content-length", "contentLength", length)
-		w.Header().Set("Content-Length", length)
+		length := s.EstimatedContentLength()
+		if conf.Server().DevMatchEstimatedContentLength {
+			limit = length
+		}
+		if length > 0 {
+			log.Trace(ctx, "Estimated content-length", "contentLength", length)
+			w.Header().Set("Content-Length", strconv.FormatInt(length, 10))
+		}
 	}
 
 	if r.Method == http.MethodHead {
 		go func() { _, _ = io.Copy(io.Discard, s) }()
-		return 0, nil
+		return -1, nil
+	}
+
+	var src io.Reader = s
+	if limit > 0 {
+		src = io.LimitReader(s, limit)
 	}
 
 	id := s.mf.ID
-	c, err := io.Copy(w, s)
+	c, err := io.Copy(w, src)
 	if err != nil {
 		log.Error(ctx, "Error sending transcoded file", "id", id, err)
 		if c == 0 {
@@ -188,13 +209,39 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		panic(http.ErrAbortHandler)
 	}
 	if c == 0 {
+		// Nothing is sent yet, so drop the estimate instead of padding a body that holds no audio.
+		w.Header().Del("Content-Length")
 		log.Error(ctx, "Transcoding returned empty output, ffmpeg may have failed. "+
 			"Check that ffmpeg supports the requested codec. Enable Trace logging for ffmpeg stderr details",
 			"id", id, "format", s.ContentType())
-	} else {
-		log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
+		return 0, nil
 	}
+	switch {
+	case c < limit:
+		padding, err := io.CopyN(w, zeroReader{}, limit-c)
+		if err != nil {
+			log.Debug(ctx, "Error padding transcoded file to the estimated length", "id", id, err)
+		}
+		c += padding
+	case limit > 0:
+		// The body is complete. Send it now, then read the rest, so a transcode tied to this request
+		// can finish and complete its cache entry. That only holds while the client keeps the
+		// connection open: a hang-up cancels the request, and cutBytes is then a lower bound.
+		_ = http.NewResponseController(w).Flush()
+		if cut, _ := io.Copy(io.Discard, s); cut > 0 {
+			log.Warn(ctx, "Transcoded output is longer than the estimated length, the end of the file was cut",
+				"id", id, "estimatedLength", limit, "cutBytes", cut)
+		}
+	}
+	log.Trace(ctx, "Success sending transcoded file", "id", id, "size", c)
 	return c, nil
+}
+
+type zeroReader struct{}
+
+func (zeroReader) Read(p []byte) (int, error) {
+	clear(p)
+	return len(p), nil
 }
 
 // NewStream creates a non-seekable Stream from the given components.
@@ -221,7 +268,7 @@ func GetTranscodingCache() TranscodingCache {
 }
 
 func NewTranscodingCache() TranscodingCache {
-	return cache.NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
+	return cache.NewFileCache("Transcoding", conf.Server().TranscodingCacheSize,
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
@@ -235,8 +282,8 @@ func NewTranscodingCache() TranscodingCache {
 			if err != nil {
 				log.Warn(ctx, "Refusing transcode: concurrent transcode limit reached",
 					"id", job.mf.ID, "user", userName(ctx),
-					"maxConcurrent", conf.Server.Transcoding.MaxConcurrent,
-					"maxPerUser", conf.Server.Transcoding.MaxConcurrentPerUser)
+					"maxConcurrent", conf.Server().Transcoding.MaxConcurrent,
+					"maxPerUser", conf.Server().Transcoding.MaxConcurrentPerUser)
 				return nil, err
 			}
 
@@ -253,7 +300,7 @@ func NewTranscodingCache() TranscodingCache {
 			// governed by Transcoding.EnableCancellation so unchanged configs
 			// keep their previous observable behavior.
 			var transcodingCtx context.Context
-			if job.ms.limiter.Enabled() || conf.Server.Transcoding.EnableCancellation {
+			if job.ms.limiter.Enabled() || conf.Server().Transcoding.EnableCancellation {
 				transcodingCtx = ctx
 			} else {
 				transcodingCtx = request.AddValues(context.Background(), ctx)
@@ -268,6 +315,7 @@ func NewTranscodingCache() TranscodingCache {
 				BitDepth:   job.bitDepth,
 				Channels:   job.channels,
 				Offset:     job.offset,
+				Duration:   job.mf.Duration,
 			})
 			if err != nil {
 				release()

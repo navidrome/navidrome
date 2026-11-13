@@ -7,7 +7,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/go-chi/chi/v5"
-	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/utils/req"
@@ -73,17 +72,4 @@ func libraryScopeFilter(scope []int) squirrel.Sqlizer {
 		return nil
 	}
 	return squirrel.Eq{"library_tag.library_id": scope}
-}
-
-// libraryView builds the CollectionFolder BaseItemDto representing a library as a top-level node.
-// Shared by getUserViews and getItem, since Finamp fetches a UserView's id as a plain item.
-func libraryView(lib model.Library) dto.BaseItemDto {
-	return dto.BaseItemDto{
-		Id:                dto.EncodeLibraryID(lib.ID),
-		Name:              lib.Name,
-		Type:              "CollectionFolder",
-		CollectionType:    "music",
-		IsFolder:          true,
-		BackdropImageTags: []string{},
-	}
 }

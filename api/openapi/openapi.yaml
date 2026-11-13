@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info:
+  title: Navidrome API
+  version: 1.0.0
+  description: |
+    Navidrome API v1. Spec-first, additive within v1. Clients discover implemented
+    capability modules through `GET /server` and never sniff versions.
+
+    Enums are open: new values may be added to any enum within v1. Clients must
+    accept values they do not recognise instead of failing.
+
+    Every operation declares `x-stability-level`: `alpha` operations may change or
+    disappear without notice, `beta` and `stable` operations only change additively.
+    A level is only ever raised, never lowered.
+
+    `HEAD` is accepted wherever `GET` is. A `405` response lists the allowed methods
+    in its `Allow` header.
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+servers:
+  - url: /api/v1
+tags:
+  - name: server
+    description: Server discovery and the published OpenAPI document.
+paths:
+  /server:
+    $ref: ./paths/server.yaml
+  /openapi.json:
+    $ref: ./paths/openapi.yaml#/json
+  /openapi.yaml:
+    $ref: ./paths/openapi.yaml#/yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived access token minted from a device grant. Not yet applied to any operation.

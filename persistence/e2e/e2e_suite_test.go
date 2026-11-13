@@ -38,6 +38,8 @@ func TestSmartPlaylistE2E(t *testing.T) {
 	RunSpecs(t, "Smart Playlist E2E Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 type _t = map[string]any
 
 var template = storagetest.Template
@@ -143,7 +145,7 @@ func buildTestFS() {
 }
 
 func findMediaFileByTitle(title string) string {
-	mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"media_file.title": title},
 	})
 	Expect(err).ToNot(HaveOccurred())
@@ -178,10 +180,10 @@ func evaluateRuleOrderedAs(owner model.User, jsonRule string) []string {
 		OwnerID: owner.ID,
 		Rules:   &rules,
 	}
-	err = ds.Playlist(userCtx).Put(pls)
+	err = ds.Playlist().Put(userCtx, pls)
 	Expect(err).ToNot(HaveOccurred())
 
-	loaded, err := ds.Playlist(userCtx).GetWithTracks(pls.ID, true, false)
+	loaded, err := ds.Playlist().GetWithTracks(userCtx, pls.ID, true, false)
 	Expect(err).ToNot(HaveOccurred())
 
 	titles := make([]string, len(loaded.Tracks))
@@ -201,7 +203,7 @@ func createPlaylist(owner model.User, public bool, titles ...string) string {
 		mfID := findMediaFileByTitle(title)
 		pls.AddMediaFilesByID([]string{mfID})
 	}
-	Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())
+	Expect(ds.Playlist().Put(ctx, pls)).To(Succeed())
 	return pls.ID
 }
 
@@ -230,7 +232,7 @@ func createSmartPlaylist(owner model.User, public bool, jsonRule string) string 
 		Public:  public,
 		Rules:   &rules,
 	}
-	Expect(ds.Playlist(ctx).Put(pls)).To(Succeed())
+	Expect(ds.Playlist().Put(ctx, pls)).To(Succeed())
 	return pls.ID
 }
 
@@ -239,12 +241,14 @@ var _ = BeforeSuite(func() {
 	tmpDir := GinkgoT().TempDir()
 	dbFilePath = filepath.Join(tmpDir, "smartplaylist-e2e.db")
 	snapshotPath = filepath.Join(tmpDir, "smartplaylist-e2e.db.snapshot")
-	conf.Server.DbPath = dbFilePath + "?_journal_mode=WAL"
+	conf.Update(func(c *conf.Options) { c.DbPath = dbFilePath + "?_journal_mode=WAL" })
 	db.Db().SetMaxOpenConns(1)
 
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DevExternalScanner = false
-	conf.Server.SmartPlaylistRefreshDelay = 0
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DevExternalScanner = false
+		c.SmartPlaylistRefreshDelay = 0
+	})
 
 	db.Init(ctx)
 
@@ -252,22 +256,22 @@ var _ = BeforeSuite(func() {
 
 	userWithPass := adminUser
 	userWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&userWithPass)).To(Succeed())
+	Expect(initDS.User().Put(ctx, &userWithPass)).To(Succeed())
 
 	regularUserWithPass := regularUser
 	regularUserWithPass.NewPassword = "password"
-	Expect(initDS.User(ctx).Put(&regularUserWithPass)).To(Succeed())
+	Expect(initDS.User().Put(ctx, &regularUserWithPass)).To(Succeed())
 
 	lib = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(initDS.Library(ctx).Put(&lib)).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(adminUser.ID, []int{lib.ID})).To(Succeed())
-	Expect(initDS.User(ctx).SetUserLibraries(regularUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.Library().Put(ctx, &lib)).To(Succeed())
+	Expect(initDS.User().SetUserLibraries(ctx, adminUser.ID, []int{lib.ID})).To(Succeed())
+	Expect(initDS.User().SetUserLibraries(ctx, regularUser.ID, []int{lib.ID})).To(Succeed())
 
-	loadedUser, err := initDS.User(ctx).FindByUsername(adminUser.UserName)
+	loadedUser, err := initDS.User().FindByUsername(ctx, adminUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	adminUser.Libraries = loadedUser.Libraries
 
-	loadedOther, err := initDS.User(ctx).FindByUsername(regularUser.UserName)
+	loadedOther, err := initDS.User().FindByUsername(ctx, regularUser.UserName)
 	Expect(err).ToNot(HaveOccurred())
 	regularUser.Libraries = loadedOther.Libraries
 
@@ -282,14 +286,14 @@ var _ = BeforeSuite(func() {
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 
 	comeTogetherID := findMediaFileByTitle("Come Together")
-	Expect(ds.MediaFile(ctx).SetStar(true, comeTogetherID)).To(Succeed())
-	Expect(ds.MediaFile(ctx).SetStar(true, findMediaFileByTitle("So What"))).To(Succeed())
-	Expect(ds.MediaFile(ctx).SetRating(3, findMediaFileByTitle("Stairway To Heaven"))).To(Succeed())
-	Expect(ds.MediaFile(ctx).SetRating(5, findMediaFileByTitle("Bohemian Rhapsody"))).To(Succeed())
+	Expect(ds.MediaFile().SetStar(ctx, true, comeTogetherID)).To(Succeed())
+	Expect(ds.MediaFile().SetStar(ctx, true, findMediaFileByTitle("So What"))).To(Succeed())
+	Expect(ds.MediaFile().SetRating(ctx, 3, findMediaFileByTitle("Stairway To Heaven"))).To(Succeed())
+	Expect(ds.MediaFile().SetRating(ctx, 5, findMediaFileByTitle("Bohemian Rhapsody"))).To(Succeed())
 	for range 10 {
-		Expect(ds.MediaFile(ctx).IncPlayCount(comeTogetherID, time.Now())).To(Succeed())
+		Expect(ds.MediaFile().IncPlayCount(ctx, comeTogetherID, time.Now())).To(Succeed())
 	}
-	Expect(ds.MediaFile(ctx).IncPlayCount(findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
+	Expect(ds.MediaFile().IncPlayCount(ctx, findMediaFileByTitle("Black Dog"), time.Now())).To(Succeed())
 
 	rows, err := db.Db().Query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts' AND name NOT LIKE '%_fts_%'")
 	Expect(err).ToNot(HaveOccurred())
@@ -340,10 +344,12 @@ func restoreDB() {
 
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DevExternalScanner = false
-	conf.Server.SmartPlaylistRefreshDelay = 0
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DevExternalScanner = false
+		c.SmartPlaylistRefreshDelay = 0
+	})
 
 	restoreDB()
 	ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}

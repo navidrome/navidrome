@@ -24,7 +24,7 @@ func (p *localAgent) AgentName() string {
 }
 
 func (p *localAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid string, count int) ([]Song, error) {
-	top, err := p.ds.MediaFile(ctx).GetAll(model.QueryOptions{
+	top, err := p.ds.MediaFile().GetAll(ctx, model.QueryOptions{
 		Sort:  "playCount",
 		Order: "desc",
 		Max:   count,
@@ -43,7 +43,7 @@ func (p *localAgent) GetArtistTopSongs(ctx context.Context, id, artistName, mbid
 }
 
 func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artist, mbid string, count int) ([]Song, error) {
-	seed, err := p.ds.MediaFile(ctx).Get(id)
+	seed, err := p.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (p *localAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, artis
 		return nil, nil
 	}
 	// Ask for extra so we can drop the seed itself and still fill the count.
-	candidates, err := p.ds.MediaFile(ctx).GetRandom(model.QueryOptions{
+	candidates, err := p.ds.MediaFile().GetRandom(ctx, model.QueryOptions{
 		Filters: squirrel.And{
 			persistence.SongGenres.ByID(genreIDs),
 			squirrel.Eq{"missing": false},
