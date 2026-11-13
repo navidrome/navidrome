@@ -43,6 +43,13 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				continue
 			}
 
+			// A full walk never descends into symlinked folders when following is disabled, so a
+			// target reached through one (e.g. a watcher event for a new link) is skipped too.
+			if !conf.Server.Scanner.FollowSymlinks && isSymlinkedPath(job.fs, folderPath) {
+				log.Debug(ctx, "Scanner: Skipping symlinked target folder, following is disabled", "path", folderPath)
+				continue
+			}
+
 			// walkFolder pushes the target folder's own patterns, so only its parents are pushed here
 			checker := newIgnoreChecker(job.fs)
 			if target := path.Clean(folderPath); target != "." {
@@ -55,6 +62,9 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 
 			// Recursively walk this folder and all its children
 			err = walkFolder(ctx, job, folderPath, checker, results)
+			if utils.IsCtxDone(ctx) {
+				return
+			}
 			if err != nil {
 				log.Error(ctx, "Scanner: Error walking target folder", "path", folderPath, err)
 				continue
@@ -94,9 +104,12 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 	folder.path = dir
 	folder.elapsed.Start()
 
-	results <- folder
-
-	return nil
+	select {
+	case results <- folder:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func readDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderEntry, entries []fs.DirEntry, err error) {
@@ -229,6 +242,18 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 	return fileInfo.IsDir(), nil
 }
 
+// isSymlinkedPath returns true if folderPath, or any of its parent folders, is a symbolic link.
+// It needs fsys to implement fs.ReadLinkFS, otherwise links are followed and never detected.
+func isSymlinkedPath(fsys fs.FS, folderPath string) bool {
+	for p := path.Clean(folderPath); p != "." && p != "/"; p = path.Dir(p) {
+		info, err := fs.Lstat(fsys, p)
+		if err == nil && info.Mode()&fs.ModeSymlink != 0 {
+			return true
+		}
+	}
+	return false
+}
+
 const maxSymlinkHops = 40
 
 // resolveEntryName returns the name to classify the entry by, and whether to
@@ -301,6 +326,7 @@ var ignoredDirs = []string{
 	"$RECYCLE.BIN",
 	"#snapshot",
 	"@Recycle",
+	"@eaDir",
 	"@Recently-Snapshot",
 	".git",
 	".streams",

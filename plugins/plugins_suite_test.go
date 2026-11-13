@@ -46,6 +46,12 @@ func TestPlugins(t *testing.T) {
 	RunSpecs(t, "Plugins Suite")
 }
 
+// stubLocalhostDNS resolves "localhost." without real DNS: the trailing dot never matches /etc/hosts.
+func stubLocalhostDNS() {
+	dialResolver = tests.StubResolver(map[string]string{"localhost.": "127.0.0.1"})
+	DeferCleanup(func() { dialResolver = nil })
+}
+
 // createTestManager creates a new plugin Manager with the given plugin config.
 // It creates a temp directory, copies the test-metadata-agent plugin, and starts the manager.
 // Returns the manager, temp directory path, and a cleanup function.

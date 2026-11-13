@@ -137,7 +137,7 @@ var _ = Describe("MediaFile artwork resolution", func() {
 
 func mediafileOn(relPath string) model.MediaFile {
 	GinkgoHelper()
-	mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{
+	mfs, err := rds.MediaFile().GetAll(rctx, model.QueryOptions{
 		Filters: squirrel.Like{"media_file.path": relPath},
 	})
 	Expect(err).ToNot(HaveOccurred())

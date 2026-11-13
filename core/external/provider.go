@@ -182,7 +182,7 @@ func (e *provider) populateAlbumInfo(ctx context.Context, album auxAlbum) (auxAl
 		}
 	}
 
-	err = e.ds.Album(ctx).UpdateExternalInfo(&album.Album)
+	err = e.ds.Album().UpdateExternalInfo(ctx, &album.Album)
 	if err != nil {
 		log.Error(ctx, "Error trying to update album external information", "id", album.ID, "name", albumName,
 			"elapsed", time.Since(start), err)
@@ -285,7 +285,7 @@ func (e *provider) populateArtistInfo(ctx context.Context, artist auxArtist) (au
 	if !throttled {
 		artist.ExternalInfoUpdatedAt = new(time.Now())
 	}
-	err := e.ds.Artist(ctx).UpdateExternalInfo(&artist.Artist)
+	err := e.ds.Artist().UpdateExternalInfo(ctx, &artist.Artist)
 	if err != nil {
 		log.Error(ctx, "Error trying to update artist external information", "id", artist.ID, "name", artistName,
 			"elapsed", time.Since(start), err)
@@ -548,7 +548,7 @@ func (e *provider) loadArtistsByID(ctx context.Context, similar []agents.Artist)
 	if len(ids) == 0 {
 		return matches, nil
 	}
-	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	res, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"artist.id": ids},
 	})
 	if err != nil {
@@ -577,7 +577,7 @@ func (e *provider) loadArtistsByMBID(ctx context.Context, similar []agents.Artis
 	if len(mbids) == 0 {
 		return matches, nil
 	}
-	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	res, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"mbz_artist_id": mbids},
 	})
 	if err != nil {
@@ -612,7 +612,7 @@ func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artis
 	clauses := slice.Map(names, func(name string) squirrel.Sqlizer {
 		return squirrel.Like{"artist.name": name}
 	})
-	res, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	res, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Or(clauses),
 	})
 	if err != nil {
@@ -628,7 +628,7 @@ func (e *provider) loadArtistsByName(ctx context.Context, similar []agents.Artis
 
 func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxArtist, error) {
 	if id != "" {
-		artist, err := e.ds.Artist(ctx).Get(id)
+		artist, err := e.ds.Artist().Get(ctx, id)
 		if err == nil {
 			return &auxArtist{Artist: *artist}, nil
 		}
@@ -644,7 +644,7 @@ func (e *provider) findArtist(ctx context.Context, artistName, id string) (*auxA
 		return nil, model.ErrNotFound
 	}
 
-	artists, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	artists, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Like{"artist.name": artistName},
 		Max:     1,
 	})
@@ -666,7 +666,7 @@ func (e *provider) loadSimilar(ctx context.Context, artist *auxArtist, count int
 		ids = append(ids, sa.ID)
 	}
 
-	similar, err := e.ds.Artist(ctx).GetAll(model.QueryOptions{
+	similar, err := e.ds.Artist().GetAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"artist.id": ids},
 	})
 	if err != nil {

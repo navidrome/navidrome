@@ -32,7 +32,7 @@ func validateCurrentIndex(w http.ResponseWriter, current int, itemsLength int) b
 // retrieveExistingQueue retrieves an existing play queue for a user with proper error handling.
 // Returns the queue (nil if not found) and false if an error occurred and response was sent.
 func retrieveExistingQueue(ctx context.Context, w http.ResponseWriter, ds model.DataStore, userID string) (*model.PlayQueue, bool) {
-	existing, err := ds.PlayQueue(ctx).Retrieve(userID)
+	existing, err := ds.PlayQueue().Retrieve(ctx, userID)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		log.Error(ctx, "Error retrieving queue", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -70,8 +70,8 @@ func getQueue(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, _ := request.UserFrom(ctx)
-		repo := ds.PlayQueue(ctx)
-		pq, err := repo.RetrieveWithMediaFiles(user.ID)
+		repo := ds.PlayQueue()
+		pq, err := repo.RetrieveWithMediaFiles(ctx, user.ID)
 		if err != nil && !errors.Is(err, model.ErrNotFound) {
 			log.Error(ctx, "Error retrieving queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -112,7 +112,7 @@ func saveQueue(ds model.DataStore) http.HandlerFunc {
 			ChangedBy: client,
 			Items:     items,
 		}
-		if err := ds.PlayQueue(ctx).Store(pq); err != nil {
+		if err := ds.PlayQueue().Store(ctx, pq); err != nil {
 			log.Error(ctx, "Error saving queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -191,7 +191,7 @@ func updateQueue(ds model.DataStore) http.HandlerFunc {
 		}
 
 		// Perform partial update of the specified columns only
-		if err := ds.PlayQueue(ctx).Store(pq, cols...); err != nil {
+		if err := ds.PlayQueue().Store(ctx, pq, cols...); err != nil {
 			log.Error(ctx, "Error updating queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -204,7 +204,7 @@ func clearQueue(ds model.DataStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, _ := request.UserFrom(ctx)
-		if err := ds.PlayQueue(ctx).Clear(user.ID); err != nil {
+		if err := ds.PlayQueue().Clear(ctx, user.ID); err != nil {
 			log.Error(ctx, "Error clearing queue", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

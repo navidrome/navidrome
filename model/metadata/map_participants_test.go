@@ -38,7 +38,7 @@ var _ = Describe("Participants", func() {
 	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile(1, "folderID")
+		return md.ToMediaFile(model.Library{ID: 1}, "folderID")
 	}
 
 	Describe("ARTIST(S) tags", func() {

@@ -143,7 +143,7 @@ func buildSourceStream(mf *model.MediaFile, probe *ffmpeg.AudioProbeResult) Deta
 	} else {
 		sd.Codec = mf.AudioCodec()
 		sd.Bitrate = mf.BitRate
-		sd.SampleRate = mf.SampleRate
+		sd.SampleRate = normalizeSourceSampleRate(mf.SampleRate, sd.Codec)
 		sd.BitDepth = gg.V(mf.BitDepth)
 		sd.Channels = mf.Channels
 	}
@@ -224,11 +224,9 @@ func (s *deciderService) checkDirectPlayProfile(src *Details, profile *DirectPla
 	}
 
 	// Check codec-specific limitations
-	for _, codecProfile := range clientInfo.CodecProfiles {
-		if strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) && matchesCodec(src.Codec, []string{codecProfile.Name}) {
-			if reason := checkLimitations(src, codecProfile.Limitations); reason != "" {
-				return reason
-			}
+	for codecProfile := range audioCodecProfiles(clientInfo, src.Codec) {
+		if reason := checkLimitations(src, codecProfile.Limitations); reason != "" {
+			return reason
 		}
 	}
 
@@ -265,16 +263,19 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 		return nil, ""
 	}
 
+	targetCodec := strings.ToLower(profile.AudioCodec)
+	if targetCodec == "" {
+		targetCodec = targetFormat
+	}
+	capDSD := targetIsLossless && !hasUpperBoundLimitation(clientInfo, targetCodec, LimitationAudioSamplerate)
+
 	ts := &Details{
 		Container:  responseContainer,
-		Codec:      strings.ToLower(profile.AudioCodec),
-		SampleRate: normalizeSourceSampleRate(src.SampleRate, src.Codec),
+		Codec:      targetCodec,
+		SampleRate: targetSampleRate(src.SampleRate, src.Codec, capDSD),
 		Channels:   src.Channels,
 		BitDepth:   targetBitDepth(src.BitDepth, src.Codec, targetIsLossless),
 		IsLossless: targetIsLossless,
-	}
-	if ts.Codec == "" {
-		ts.Codec = targetFormat
 	}
 
 	// Apply codec-intrinsic sample rate adjustments before codec profile limitations
@@ -312,7 +313,7 @@ func (s *deciderService) computeTranscodedStream(ctx context.Context, src *Detai
 // It checks the DB first (for user-customized values), then falls back to
 // the built-in defaults, and finally to fallbackBitrate.
 func lookupDefaultBitrate(ctx context.Context, ds model.DataStore, format string) int {
-	if t, err := ds.Transcoding(ctx).FindByFormat(format); err == nil && t.DefaultBitRate > 0 {
+	if t, err := ds.Transcoding().FindByFormat(ctx, format); err == nil && t.DefaultBitRate > 0 {
 		return t.DefaultBitRate
 	}
 	for _, dt := range consts.DefaultTranscodings {
@@ -327,7 +328,7 @@ func lookupDefaultBitrate(ctx context.Context, ds model.DataStore, format string
 // It checks the DB first (for user-customized commands), then falls back to
 // the built-in default command. Returns "" if the format is unknown.
 func LookupTranscodeCommand(ctx context.Context, ds model.DataStore, format string) string {
-	t, err := ds.Transcoding(ctx).FindByFormat(format)
+	t, err := ds.Transcoding().FindByFormat(ctx, format)
 	if err == nil && t.Command != "" {
 		return t.Command
 	}
@@ -400,13 +401,7 @@ func (s *deciderService) computeBitrate(ctx context.Context, src *Details, targe
 // Returns false if the profile should be rejected.
 func (s *deciderService) applyCodecLimitations(ctx context.Context, sourceBitrate int, targetFormat string, targetIsLossless bool, clientInfo *ClientInfo, ts *Details) bool {
 	targetCodec := ts.Codec
-	for _, codecProfile := range clientInfo.CodecProfiles {
-		if !strings.EqualFold(codecProfile.Type, CodecProfileTypeAudio) {
-			continue
-		}
-		if !matchesCodec(targetCodec, []string{codecProfile.Name}) {
-			continue
-		}
+	for codecProfile := range audioCodecProfiles(clientInfo, targetCodec) {
 		for _, lim := range codecProfile.Limitations {
 			result := applyLimitation(sourceBitrate, &lim, ts)
 			if strings.EqualFold(lim.Name, LimitationAudioBitrate) && targetIsLossless && result == adjustAdjusted {
@@ -447,7 +442,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	}
 	mf.ProbeData = string(data)
 
-	if err := s.ds.MediaFile(ctx).UpdateProbeData(mf.ID, mf.ProbeData); err != nil {
+	if err := s.ds.MediaFile().UpdateProbeData(ctx, mf.ID, mf.ProbeData); err != nil {
 		log.Error(ctx, "Failed to persist probe data", "mediaID", mf.ID, err)
 		// Don't fail the decision — we have the data in memory
 	}

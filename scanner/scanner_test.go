@@ -4,12 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing/fstest"
 	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
+	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
@@ -52,7 +56,10 @@ var _ = Describe("Scanner", Ordered, func() {
 
 	BeforeAll(func() {
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
-		tmpDir := GinkgoT().TempDir()
+		// The DB stays open until the suite ends, and Windows can't delete an open file
+		tmpDir, err := os.MkdirTemp("", "scanner-test")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
 		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
 		log.Warn("Using DB at " + conf.Server.DbPath)
 		//conf.Server.DbPath = ":memory:"
@@ -71,7 +78,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}
 		mfRepo = &mockMediaFileRepo{
-			MediaFileRepository: ds.RealDS.MediaFile(ctx),
+			MediaFileRepository: ds.RealDS.MediaFile(),
 		}
 		ds.MockedMediaFile = mfRepo
 
@@ -83,13 +90,13 @@ var _ = Describe("Scanner", Ordered, func() {
 			IsAdmin:     true,
 			NewPassword: "password",
 		}
-		Expect(ds.User(ctx).Put(&adminUser)).To(Succeed())
+		Expect(ds.User().Put(ctx, &adminUser)).To(Succeed())
 
 		s = scanner.New(ctx, ds, events.NoopBroker(),
 			playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
 		lib = model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-		Expect(ds.Library(ctx).Put(&lib)).To(Succeed())
+		Expect(ds.Library().Put(ctx, &lib)).To(Succeed())
 	})
 
 	runScanner := func(ctx context.Context, fullScan bool) error {
@@ -101,14 +108,14 @@ var _ = Describe("Scanner", Ordered, func() {
 	// so a later scan can only queue genuine reprocessing.
 	resolveQueuedArtwork := func() []model.ArtworkQueueItem {
 		GinkgoHelper()
-		queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+		queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 		Expect(err).ToNot(HaveOccurred())
 		for _, it := range queued {
-			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: it.ItemKind, ItemID: it.ItemID, ImageType: it.ImageType,
 				Hash: "resolved", Source: "embedded", UpdatedAt: time.Now(),
 			})).To(Succeed())
-			Expect(ds.ArtworkQueue(ctx).DeleteIfUnchanged(it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
+			Expect(ds.ArtworkQueue().DeleteIfUnchanged(ctx, it.ItemKind, it.ItemID, it.ImageType, it.RetryAt)).To(Succeed())
 		}
 		return queued
 	}
@@ -133,7 +140,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should import all folders", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				folders, _ := ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
+				folders, _ := ds.Folder().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"library_id": lib.ID}})
 				paths := slice.Map(folders, func(f model.Folder) string { return f.Name })
 				Expect(paths).To(SatisfyAll(
 					HaveLen(4),
@@ -143,7 +150,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should import all mediafiles", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				mfs, _ := ds.MediaFile(ctx).GetAll()
+				mfs, _ := ds.MediaFile().GetAll(ctx)
 				paths := slice.Map(mfs, func(f model.MediaFile) string { return f.Title })
 				Expect(paths).To(SatisfyAll(
 					HaveLen(7),
@@ -156,7 +163,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should import all albums", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				albums, _ := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "name"})
+				albums, _ := ds.Album().GetAll(ctx, model.QueryOptions{Sort: "name"})
 				Expect(albums).To(HaveLen(2))
 				Expect(albums[0]).To(SatisfyAll(
 					HaveField("Name", Equal("Help!")),
@@ -170,9 +177,9 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should enqueue artwork resolution for the scanned albums and artists", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				albums, _ := ds.Album(ctx).GetAll()
-				artists, _ := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
-				queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				albums, _ := ds.Album().GetAll(ctx)
+				artists, _ := ds.Artist().GetAll(ctx, model.QueryOptions{Filters: squirrel.NotEq{"name": consts.UnknownArtist}})
+				queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
 
 				for _, al := range albums {
@@ -197,7 +204,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				requeued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(requeued).To(BeEmpty())
 			})
@@ -206,14 +213,14 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("should update the media_file", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				mf, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+				mf, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf[0].Tags).ToNot(HaveKey("barcode"))
 
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"barcode": "123"})
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				mf, err = ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+				mf, err = ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf[0].Tags).To(HaveKeyWithValue(model.TagName("barcode"), []string{"123"}))
 			})
@@ -227,9 +234,9 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
 				Expect(runScanner(ctx, false)).To(Succeed())
 
-				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
-				requeued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+				requeued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(requeued).To(ContainElement(SatisfyAll(
 					HaveField("ItemKind", "al"),
@@ -241,7 +248,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums).ToNot(BeEmpty())
 				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(BeEmpty())
@@ -250,7 +257,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
 				Expect(runScanner(ctx, false)).To(Succeed())
 
-				albums, err = ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				albums, err = ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(albums[0].Participants.First(model.RoleProducer).Name).To(Equal("George Martin"))
 				Expect(albums[0].SongCount).To(Equal(3))
@@ -259,12 +266,12 @@ var _ = Describe("Scanner", Ordered, func() {
 			It("invalidates the media_file artwork state so new embedded art is picked up lazily", func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				mf, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
+				mf, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"title": "Help!"}})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mf).ToNot(BeEmpty())
 				trackID := mf[0].ID
 
-				Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+				Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 					ItemKind: "mf", ItemID: trackID, ImageType: model.ImageTypePrimary,
 					Source: "embedded", Hash: "stalehash",
 				})).To(Succeed())
@@ -272,7 +279,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"comment": "reimport"})
 				Expect(runScanner(ctx, true)).To(Succeed())
 
-				_, err = ds.Artwork(ctx).GetItemArtwork(model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
+				_, err = ds.Artwork().GetItemArtwork(ctx, model.KindMediaFileArtwork, trackID, model.ImageTypePrimary)
 				Expect(err).To(MatchError(model.ErrNotFound))
 			})
 		})
@@ -284,21 +291,21 @@ var _ = Describe("Scanner", Ordered, func() {
 
 		albumID := func(name string) string {
 			GinkgoHelper()
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": name}})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(1))
 			return albums[0].ID
 		}
 		artistID := func(name string) string {
 			GinkgoHelper()
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"artist.name": name}})
+			artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"artist.name": name}})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(artists).To(HaveLen(1))
 			return artists[0].ID
 		}
 		queuedItems := func() []model.ArtworkQueueItem {
 			GinkgoHelper()
-			queued, err := ds.ArtworkQueue(ctx).DequeueBatch(1000)
+			queued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
 			Expect(err).ToNot(HaveOccurred())
 			return queued
 		}
@@ -457,7 +464,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		It("should not import the ignored file", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			mfs, err := ds.MediaFile(ctx).GetAll()
+			mfs, err := ds.MediaFile().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(1))
 			for _, mf := range mfs {
@@ -479,11 +486,11 @@ var _ = Describe("Scanner", Ordered, func() {
 		It("should import as one album", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			albums, err := ds.Album(ctx).GetAll()
+			albums, err := ds.Album().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(1))
 
-			mfs, err := ds.MediaFile(ctx).GetAll()
+			mfs, err := ds.MediaFile().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(2))
 			for _, mf := range mfs {
@@ -505,7 +512,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		It("should import as two distinct albums", func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			albums, err := ds.Album(ctx).GetAll(model.QueryOptions{Sort: "release_date"})
+			albums, err := ds.Album().GetAll(ctx, model.QueryOptions{Sort: "release_date"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(2))
 			Expect(albums[0]).To(SatisfyAll(
@@ -544,7 +551,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			By("Doing a full scan")
 			Expect(runScanner(ctx, true)).To(Succeed())
-			Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+			Expect(ds.MediaFile().CountAll(ctx)).To(Equal(int64(4)))
 			findByPath = createFindByPath(ctx, ds)
 		})
 
@@ -552,7 +559,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			fsys.Add("The Beatles/Revolver/03 - I'm Only Sleeping.mp3", revolver(track(3, "I'm Only Sleeping")))
 
 			Expect(runScanner(ctx, false)).To(Succeed())
-			Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(5)))
+			Expect(ds.MediaFile().CountAll(ctx)).To(Equal(int64(5)))
 			mf, err := findByPath("The Beatles/Revolver/03 - I'm Only Sleeping.mp3")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mf.Title).To(Equal("I'm Only Sleeping"))
@@ -562,7 +569,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			fsys.UpdateTags("The Beatles/Revolver/02 - Eleanor Rigby.mp3", _t{"title": "Eleanor Rigby (remix)"})
 
 			Expect(runScanner(ctx, false)).To(Succeed())
-			Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+			Expect(ds.MediaFile().CountAll(ctx)).To(Equal(int64(4)))
 			mf, _ := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 			Expect(mf.Title).To(Equal("Eleanor Rigby (remix)"))
 		})
@@ -571,7 +578,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			fsys.Add("The Beatles/Revolver/01 - Taxman.mp3", revolver(track(1, "Taxman", _t{"bitrate": 640})))
 
 			Expect(runScanner(ctx, false)).To(Succeed())
-			Expect(ds.MediaFile(ctx).CountAll()).To(Equal(int64(4)))
+			Expect(ds.MediaFile().CountAll(ctx)).To(Equal(int64(4)))
 			mf, _ := findByPath("The Beatles/Revolver/01 - Taxman.mp3")
 			Expect(mf.BitRate).To(Equal(640))
 		})
@@ -584,7 +591,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the file is marked as missing")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(3)))
 			mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
@@ -605,14 +612,14 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the old file is not in the library")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(4)))
 			_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 			Expect(err).To(MatchError(model.ErrNotFound))
 
 			By("Checking the new file is in the library")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": true},
 			})).To(BeZero())
 			mf, err := findByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
@@ -634,7 +641,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(MatchError(ContainSubstring("I/O read error")))
 
 			By("Checking the both instances of the file are in the lib")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Taxman"},
 			})).To(Equal(int64(2)))
 
@@ -643,7 +650,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the old file is not in the library")
-			mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"title": "Taxman"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -664,14 +671,14 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the old file is not in the library")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": true},
 			})).To(BeZero())
 			_, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
 			Expect(err).To(MatchError(model.ErrNotFound))
 
 			By("Checking the new file is in the library")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(4)))
 			mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.flac")
@@ -691,7 +698,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the file is marked as missing")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(3)))
 			mf, err := findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
@@ -705,7 +712,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the file is not marked as missing")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(4)))
 			mf, err = findByPath("The Beatles/Revolver/02 - Eleanor Rigby.mp3")
@@ -730,7 +737,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Checking the file was found in the new folder")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(4)))
 			mf, err = findByPath("The Beatles/Help!/02 - Eleanor Rigby.mp3")
@@ -744,7 +751,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			By("Verifying initial state has 5 tracks")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(5)))
 
@@ -783,7 +790,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(mf.Missing).To(BeFalse())
 
 			By("Verifying only 2 non-missing tracks remain (Help! tracks)")
-			Expect(ds.MediaFile(ctx).CountAll(model.QueryOptions{
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"missing": false},
 			})).To(Equal(int64(2)))
 		})
@@ -808,7 +815,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			nonMissingArtists := func() []string {
-				aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"missing": false}})
+				aa, err := ds.Artist().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"missing": false}})
 				Expect(err).ToNot(HaveOccurred())
 				return slice.Map(aa, func(a model.Artist) string { return a.Name })
 			}
@@ -853,7 +860,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 		It("does not override artist fields when importing an undertagged file", func() {
 			By("Making sure artist in the DB contains MBID and sort name")
-			aa, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+			aa, err := ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -880,7 +887,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(mf.SortArtistName).To(BeEmpty())
 
 			By("Makingsure the artist in the DB has not changed")
-			aa, err = ds.Artist(ctx).GetAll(model.QueryOptions{
+			aa, err = ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -908,7 +915,7 @@ var _ = Describe("Scanner", Ordered, func() {
 					Expect(runScanner(ctx, true)).To(Succeed())
 
 					By("Checking files are marked as missing but not deleted")
-					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					count, err := ds.MediaFile().CountAll(ctx, model.QueryOptions{
 						Filters: squirrel.Eq{"missing": true},
 					})
 					Expect(err).ToNot(HaveOccurred())
@@ -936,7 +943,7 @@ var _ = Describe("Scanner", Ordered, func() {
 					Expect(runScanner(ctx, false)).To(Succeed())
 
 					By("Checking missing files are deleted")
-					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					count, err := ds.MediaFile().CountAll(ctx, model.QueryOptions{
 						Filters: squirrel.Eq{"missing": true},
 					})
 					Expect(err).ToNot(HaveOccurred())
@@ -963,7 +970,7 @@ var _ = Describe("Scanner", Ordered, func() {
 					Expect(runScanner(ctx, false)).To(Succeed())
 
 					By("Checking files are marked as missing but not deleted")
-					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					count, err := ds.MediaFile().CountAll(ctx, model.QueryOptions{
 						Filters: squirrel.Eq{"missing": true},
 					})
 					Expect(err).ToNot(HaveOccurred())
@@ -985,7 +992,7 @@ var _ = Describe("Scanner", Ordered, func() {
 					Expect(runScanner(ctx, true)).To(Succeed())
 
 					By("Checking missing files are deleted")
-					count, err := ds.MediaFile(ctx).CountAll(model.QueryOptions{
+					count, err := ds.MediaFile().CountAll(ctx, model.QueryOptions{
 						Filters: squirrel.Eq{"missing": true},
 					})
 					Expect(err).ToNot(HaveOccurred())
@@ -1013,10 +1020,10 @@ var _ = Describe("Scanner", Ordered, func() {
 		simulateInterruptedScan := func(fullScan bool) {
 			// Call ScanBegin to properly set LastScanStartedAt and FullScanInProgress
 			// This simulates what would happen if a scan was interrupted (ScanBegin called but ScanEnd not)
-			Expect(ds.Library(ctx).ScanBegin(lib.ID, fullScan)).To(Succeed())
+			Expect(ds.Library().ScanBegin(ctx, lib.ID, fullScan)).To(Succeed())
 
 			// Verify the update was persisted
-			reloaded, err := ds.Library(ctx).Get(lib.ID)
+			reloaded, err := ds.Library().Get(ctx, lib.ID)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(reloaded.LastScanStartedAt).ToNot(BeZero())
 			Expect(reloaded.FullScanInProgress).To(Equal(fullScan))
@@ -1028,7 +1035,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Verify files were imported
-				mfs, err := ds.MediaFile(ctx).GetAll()
+				mfs, err := ds.MediaFile().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mfs).To(HaveLen(2))
 
@@ -1049,7 +1056,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Verify the comment was updated (which means the folder was processed and file re-imported)
-				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"title": "Help!"},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -1064,7 +1071,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Verify files were imported
-				mfs, err := ds.MediaFile(ctx).GetAll()
+				mfs, err := ds.MediaFile().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mfs).To(HaveLen(2))
 
@@ -1083,7 +1090,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, false)).To(Succeed())
 
 				// Verify the comment was updated (folder was processed despite unchanged hash)
-				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"title": "Help!"},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -1098,12 +1105,12 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Verify files were imported
-				mfs, err := ds.MediaFile(ctx).GetAll()
+				mfs, err := ds.MediaFile().GetAll(ctx)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(mfs).To(HaveLen(2))
 
 				// Library should have LastScanStartedAt cleared after successful scan
-				updatedLib, err := ds.Library(ctx).Get(lib.ID)
+				updatedLib, err := ds.Library().Get(ctx, lib.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(updatedLib.LastScanStartedAt).To(BeZero())
 				Expect(updatedLib.FullScanInProgress).To(BeFalse())
@@ -1118,7 +1125,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, true)).To(Succeed())
 
 				// Verify the comment was updated
-				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"title": "Help!"},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -1137,7 +1144,7 @@ var _ = Describe("Scanner", Ordered, func() {
 				Expect(runScanner(ctx, false)).To(Succeed())
 
 				// Verify the comment was NOT updated (folder was skipped)
-				mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{
+				mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{
 					Filters: squirrel.Eq{"title": "Help!"},
 				})
 				Expect(err).ToNot(HaveOccurred())
@@ -1156,7 +1163,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			refreshStatsCalls = nil
 
 			// Create a mock artist repository that tracks RefreshStats calls
-			originalArtistRepo := ds.RealDS.Artist(ctx)
+			originalArtistRepo := ds.RealDS.Artist()
 			ds.MockedArtist = &testArtistRepo{
 				ArtistRepository: originalArtistRepo,
 				callTracker:      &refreshStatsCalls,
@@ -1202,7 +1209,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(runScanner(ctx, true)).To(Succeed())
 
 			// Verify initial artist stats - should have 1 album, 1 song
-			artists, err := ds.Artist(ctx).GetAll(model.QueryOptions{
+			artists, err := ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -1221,7 +1228,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			By("Verifying artist stats were updated correctly")
 			// Fetch the artist again to check updated stats
-			artists, err = ds.Artist(ctx).GetAll(model.QueryOptions{
+			artists, err = ds.Artist().GetAll(ctx, model.QueryOptions{
 				Filters: squirrel.Eq{"name": "The Beatles"},
 			})
 			Expect(err).ToNot(HaveOccurred())
@@ -1240,11 +1247,58 @@ var _ = Describe("Scanner", Ordered, func() {
 			Expect(albumArtistStats.SongCount).To(Equal(3))  // 3 songs
 		})
 	})
+
+	Context("when the database is busy", func() {
+		var busyDS *busyPersistDS
+		BeforeEach(func() {
+			// One album across many folders: the suite's single DB connection deadlocks phase 3 on many albums
+			album := template(_t{"albumartist": "Artist", "album": "Album"})
+			files := fstest.MapFS{}
+			for i := range 30 {
+				files[fmt.Sprintf("Artist/Part %02d/%02d - Song.mp3", i, i+1)] = album(track(i+1, fmt.Sprintf("Song %02d", i+1)))
+			}
+			createFS(files)
+			busyDS = &busyPersistDS{MockDataStore: ds}
+			s = scanner.New(ctx, busyDS, events.NoopBroker(),
+				playlists.NewPlaylists(busyDS, artwork.NewUploader(busyDS)), metrics.NewNoopInstance())
+		})
+
+		It("gives up and stops walking the library when the database stays busy", func() {
+			busyDS.failures.Store(1000)
+
+			Expect(runScanner(ctx, true)).To(MatchError(ContainSubstring("database is locked")))
+
+			Expect(mfRepo.cursorCalls.Load()).To(BeNumerically("<", 30))
+		})
+
+		It("does not mark unvisited folders missing when the scan gives up", func() {
+			Expect(runScanner(ctx, true)).To(Succeed())
+			busyDS.failures.Store(1000)
+
+			Expect(runScanner(ctx, true)).ToNot(Succeed())
+
+			Expect(ds.Folder().CountAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"missing": true}})).To(BeZero())
+			Expect(ds.MediaFile().CountAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"missing": true}})).To(BeZero())
+		})
+	})
 })
+
+// busyPersistDS fails the scanner's folder saves with SQLITE_BUSY, as if WithTxRetry ran out of retries.
+type busyPersistDS struct {
+	*tests.MockDataStore
+	failures atomic.Int32
+}
+
+func (b *busyPersistDS) WithTxRetry(ctx context.Context, block func(context.Context, model.DataStore) error, label ...string) error {
+	if len(label) > 0 && label[0] == "scanner: persist changes" && b.failures.Add(-1) >= 0 {
+		return sqlite3.Error{Code: sqlite3.ErrBusy}
+	}
+	return b.MockDataStore.WithTxRetry(ctx, block, label...)
+}
 
 func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*model.MediaFile, error) {
 	return func(path string) (*model.MediaFile, error) {
-		list, err := ds.MediaFile(ctx).FindByPaths([]string{path})
+		list, err := ds.MediaFile().FindByPaths(ctx, []string{path})
 		if err != nil {
 			return nil, err
 		}
@@ -1258,13 +1312,19 @@ func createFindByPath(ctx context.Context, ds model.DataStore) func(string) (*mo
 type mockMediaFileRepo struct {
 	model.MediaFileRepository
 	GetMissingAndMatchingError error
+	cursorCalls                atomic.Int32
 }
 
-func (m *mockMediaFileRepo) GetMissingAndMatching(libId int) (model.MediaFileCursor, error) {
+func (m *mockMediaFileRepo) GetCursor(ctx context.Context, options ...model.QueryOptions) (model.MediaFileCursor, error) {
+	m.cursorCalls.Add(1)
+	return m.MediaFileRepository.GetCursor(ctx, options...)
+}
+
+func (m *mockMediaFileRepo) GetMissingAndMatching(ctx context.Context, libId int) (model.MediaFileCursor, error) {
 	if m.GetMissingAndMatchingError != nil {
 		return nil, m.GetMissingAndMatchingError
 	}
-	return m.MediaFileRepository.GetMissingAndMatching(libId)
+	return m.MediaFileRepository.GetMissingAndMatching(ctx, libId)
 }
 
 type testArtistRepo struct {
@@ -1272,7 +1332,7 @@ type testArtistRepo struct {
 	callTracker *[]bool
 }
 
-func (m *testArtistRepo) RefreshStats(allArtists bool) (int64, error) {
+func (m *testArtistRepo) RefreshStats(ctx context.Context, allArtists bool) (int64, error) {
 	*m.callTracker = append(*m.callTracker, allArtists)
-	return m.ArtistRepository.RefreshStats(allArtists)
+	return m.ArtistRepository.RefreshStats(ctx, allArtists)
 }

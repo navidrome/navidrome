@@ -87,10 +87,10 @@ var _ = Describe("Authentication", func() {
 			Expect(pw.Code).To(Equal(http.StatusOK))
 
 			// A real password change through the repository, which is what revokes in production.
-			admin, err := ds.User(ctx).Get(testID("admin-1"))
+			admin, err := ds.User().Get(ctx, testID("admin-1"))
 			Expect(err).ToNot(HaveOccurred())
 			admin.NewPassword = "rotated"
-			Expect(ds.User(ctx).Put(admin)).To(Succeed())
+			Expect(ds.User().Put(ctx, admin)).To(Succeed())
 
 			r = httptest.NewRequest("GET", "/Users/Me", nil)
 			r.Header.Set("X-Emby-Token", res.AccessToken)

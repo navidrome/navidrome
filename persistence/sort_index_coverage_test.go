@@ -52,7 +52,7 @@ var _ = Describe("Sort index coverage", func() {
 		{
 			table: "media_file",
 			newRepo: func(ctx context.Context) *sqlRepository {
-				return &NewMediaFileRepository(ctx, GetDBXBuilder()).(*mediaFileRepository).sqlRepository
+				return &NewMediaFileRepository(GetDBXBuilder()).(*mediaFileRepository).sqlRepository
 			},
 			exceptions: map[string]string{
 				"random":     "not a column sort",
@@ -67,7 +67,7 @@ var _ = Describe("Sort index coverage", func() {
 		{
 			table: "album",
 			newRepo: func(ctx context.Context) *sqlRepository {
-				return &NewAlbumRepository(ctx, GetDBXBuilder()).(*albumRepository).sqlRepository
+				return &NewAlbumRepository(GetDBXBuilder()).(*albumRepository).sqlRepository
 			},
 			exceptions: map[string]string{
 				"random":     "not a column sort",
@@ -79,7 +79,7 @@ var _ = Describe("Sort index coverage", func() {
 		{
 			table: "artist",
 			newRepo: func(ctx context.Context) *sqlRepository {
-				return &NewArtistRepository(ctx, GetDBXBuilder()).(*artistRepository).sqlRepository
+				return &NewArtistRepository(GetDBXBuilder()).(*artistRepository).sqlRepository
 			},
 			exceptions: map[string]string{ //nolint:gosec // G101 false positive, same as the artist sortMappings
 				"starred_at":             "sorts on annotation join columns",

@@ -241,6 +241,10 @@ func (l *lastfmAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, arti
 var (
 	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
+
+	// Not a RetryLaterError on purpose: parking the agent would also stall its API-backed
+	// methods, which the page block does not affect.
+	errNoArtistPage = errors.New("no artist image in Last.fm page")
 )
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
@@ -267,7 +271,9 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	var res []agents.ExternalImage
 	n := cascadia.Query(node, artistOpenGraphQuery)
 	if n == nil {
-		return res, nil
+		// A real artist page always has og:image; its absence means a bot challenge or a redesign.
+		log.Warn(ctx, "Last.fm did not return a usable artist page", "name", name, "url", a.URL)
+		return nil, errNoArtistPage
 	}
 	for _, attr := range n.Attr {
 		if attr.Key != "content" {

@@ -16,6 +16,7 @@ import {
   useRecordContext,
   useTranslate,
 } from 'react-admin'
+import clsx from 'clsx'
 import Lightbox from 'react-image-lightbox'
 import config from '../config'
 import 'react-image-lightbox/style.css'
@@ -78,6 +79,9 @@ const useStyles = makeStyles(
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    noCoverAnimation: {
+      '&, &::before, &::after': { animation: 'none' },
     },
     cover: {
       objectFit: 'contain',
@@ -250,7 +254,12 @@ const AlbumDetails = (props) => {
   return (
     <Card className={classes.root}>
       <div className={classes.cardContents}>
-        <div className={classes.coverParent}>
+        <div
+          className={clsx(
+            classes.coverParent,
+            !config.enableCoverAnimation && classes.noCoverAnimation,
+          )}
+        >
           <Artwork
             record={record}
             fit="contain"

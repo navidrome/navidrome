@@ -157,7 +157,7 @@ func (m *Manager) processPluginEvent(pluginName string) {
 	log.Debug(m.ctx, "Plugin event action", "plugin", pluginName, "action", action, "path", ndpPath)
 
 	ctx := adminContext(m.ctx)
-	repo := m.ds.Plugin(ctx)
+	repo := m.ds.Plugin()
 
 	switch action {
 	case actionUpdate:
@@ -168,7 +168,7 @@ func (m *Manager) processPluginEvent(pluginName string) {
 			return
 		}
 
-		dbPlugin, err := repo.Get(pluginName)
+		dbPlugin, err := repo.Get(ctx, pluginName)
 		if err != nil {
 			// Plugin not in DB yet, need full manifest extraction to add it
 			metadata, extractErr := m.extractManifest(ndpPath)
@@ -176,7 +176,7 @@ func (m *Manager) processPluginEvent(pluginName string) {
 				log.Error(m.ctx, "Failed to extract manifest from new plugin", "plugin", pluginName, extractErr)
 				return
 			}
-			if addErr := m.addPluginToDB(m.ctx, repo, pluginName, ndpPath, metadata); addErr != nil {
+			if addErr := m.addPluginToDB(ctx, repo, pluginName, ndpPath, metadata); addErr != nil {
 				log.Error(m.ctx, "Failed to add plugin to DB", "plugin", pluginName, addErr)
 			}
 			return
@@ -198,23 +198,23 @@ func (m *Manager) processPluginEvent(pluginName string) {
 				_ = m.unloadPlugin(pluginName)
 				dbPlugin.Enabled = false
 			}
-			_ = repo.Put(dbPlugin)
+			_ = repo.Put(ctx, dbPlugin)
 			return
 		}
 
-		if err := m.updatePluginInDB(m.ctx, repo, dbPlugin, ndpPath, metadata); err != nil {
+		if err := m.updatePluginInDB(ctx, repo, dbPlugin, ndpPath, metadata); err != nil {
 			log.Error(m.ctx, "Failed to update plugin in DB", "plugin", pluginName, err)
 		}
 
 	case actionRemove:
 		// File removed - unload if enabled, delete from DB
-		dbPlugin, err := repo.Get(pluginName)
+		dbPlugin, err := repo.Get(ctx, pluginName)
 		if err != nil {
 			log.Debug(m.ctx, "Removed plugin not in DB", "plugin", pluginName)
 			return
 		}
 
-		if err := m.removePluginFromDB(m.ctx, repo, dbPlugin); err != nil {
+		if err := m.removePluginFromDB(ctx, repo, dbPlugin); err != nil {
 			log.Error(m.ctx, "Failed to delete plugin from DB", "plugin", pluginName, err)
 		}
 	}

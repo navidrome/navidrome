@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -88,6 +89,8 @@ var _ = Describe("serveIndex", func() {
 		Entry("uiSearchDebounceMs", func() { conf.Server.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
 		Entry("uiCoverArtSize", func() { conf.Server.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
 		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
+		Entry("pidAlbum", func() { conf.Server.PID.Album = "folder" }, "pidAlbum", "folder"),
+		Entry("pidTrack", func() { conf.Server.PID.Track = "title" }, "pidTrack", "title"),
 		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
 		Entry("gaTrackingId", func() { conf.Server.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),
 		Entry("defaultDownloadableShare", func() { conf.Server.DefaultDownloadableShare = true }, "defaultDownloadableShare", true),
@@ -97,6 +100,8 @@ var _ = Describe("serveIndex", func() {
 		Entry("devUIShowConfig", func() { conf.Server.DevUIShowConfig = true }, "devUIShowConfig", true),
 		Entry("listenBrainzEnabled", func() { conf.Server.ListenBrainz.Enabled = true }, "listenBrainzEnabled", true),
 		Entry("enableReplayGain", func() { conf.Server.EnableReplayGain = true }, "enableReplayGain", true),
+		Entry("enableQuickConnect", func() { conf.Server.Jellyfin.Enabled = true; conf.Server.Jellyfin.QuickConnect = true }, "enableQuickConnect", true),
+		Entry("enableQuickConnect without the Jellyfin API", func() { conf.Server.Jellyfin.Enabled = false; conf.Server.Jellyfin.QuickConnect = true }, "enableQuickConnect", false),
 		Entry("enableExternalServices", func() { conf.Server.EnableExternalServices = true }, "enableExternalServices", true),
 		Entry("devActivityPanel", func() { conf.Server.DevActivityPanel = true }, "devActivityPanel", true),
 		Entry("shareURL", func() { conf.Server.ShareURL = "https://share.example.com" }, "shareURL", "https://share.example.com"),
@@ -339,7 +344,7 @@ type mockedUserRepo struct {
 	empty bool
 }
 
-func (u *mockedUserRepo) CountAll(...model.QueryOptions) (int64, error) {
+func (u *mockedUserRepo) CountAll(context.Context, ...model.QueryOptions) (int64, error) {
 	if u.empty {
 		return 0, nil
 	}

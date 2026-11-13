@@ -3,7 +3,29 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { RecordContextProvider } from 'react-admin'
 import { useMediaQuery } from '@material-ui/core'
-import { Details } from './AlbumDetails'
+import { createTheme, ThemeProvider } from '@material-ui/core/styles'
+import config from '../config'
+import AlbumDetails, { Details } from './AlbumDetails'
+
+vi.mock('../subsonic', () => ({
+  default: {
+    getAlbumInfo: () =>
+      Promise.resolve({
+        json: { 'subsonic-response': { status: 'ok', albumInfo: {} } },
+      }),
+    getCoverArtUrl: () => '',
+  },
+}))
+
+vi.mock('react-admin', async () => {
+  const actual = await vi.importActual('react-admin')
+  return {
+    ...actual,
+    useDataProvider: () => ({ getOne: vi.fn() }),
+    useNotify: () => vi.fn(),
+    useRefresh: () => vi.fn(),
+  }
+})
 
 // Mock useMediaQuery
 vi.mock('@material-ui/core', async () => {
@@ -341,5 +363,51 @@ describe('Details component', () => {
 
       expect(container).toMatchSnapshot()
     })
+  })
+})
+
+describe('AlbumDetails cover animation', () => {
+  const albumRecord = {
+    id: '123',
+    name: 'Test Album',
+    songCount: 12,
+    duration: 3600,
+    size: 102400,
+  }
+  const originalEnableCoverAnimation = config.enableCoverAnimation
+
+  beforeEach(() => {
+    vi.mocked(useMediaQuery).mockReturnValue(false)
+  })
+
+  afterEach(() => {
+    config.enableCoverAnimation = originalEnableCoverAnimation
+  })
+
+  const renderAlbum = () =>
+    render(
+      <ThemeProvider theme={createTheme()}>
+        <RecordContextProvider value={albumRecord}>
+          <AlbumDetails />
+        </RecordContextProvider>
+      </ThemeProvider>,
+    )
+
+  test('applies noCoverAnimation when enableCoverAnimation is false', () => {
+    config.enableCoverAnimation = false
+    const { container } = renderAlbum()
+    const cover = container.querySelector('[class*="coverParent"]')
+
+    expect(cover).not.toBeNull()
+    expect(cover.className).toMatch(/noCoverAnimation/)
+  })
+
+  test('omits noCoverAnimation when enableCoverAnimation is true', () => {
+    config.enableCoverAnimation = true
+    const { container } = renderAlbum()
+    const cover = container.querySelector('[class*="coverParent"]')
+
+    expect(cover).not.toBeNull()
+    expect(cover.className).not.toMatch(/noCoverAnimation/)
   })
 })

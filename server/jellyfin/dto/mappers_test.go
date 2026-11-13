@@ -17,10 +17,10 @@ var _ = Describe("mappers", func() {
 			ID: testID("song-1"), Title: "Song", Album: "Alb", AlbumID: testID("alb-1"),
 			Artist: "Art", AlbumArtist: "AA", TrackNumber: 3, DiscNumber: 1,
 			Year: 1999, Duration: 60, Size: 2_500_000,
-			Genres: []model.Genre{{ID: testID("1"), Name: "genre 1"}, {ID: testID("2"), Name: "genre 2"}},
+			Genres:    []model.Genre{{ID: testID("1"), Name: "genre 1"}, {ID: testID("2"), Name: "genre 2"}},
+			PlayCount: 2,
+			Starred:   true,
 		}
-		mf.PlayCount = 2
-		mf.Starred = true
 		item := SongToBaseItem(mf, nil)
 		Expect(item.Type).To(Equal("Audio"))
 		Expect(item.MediaType).To(Equal("Audio"))
@@ -476,6 +476,30 @@ var _ = Describe("mappers", func() {
 		Expect(*item.UserData.Rating).To(Equal(8.0))
 		Expect(item.ImageTags).To(HaveKeyWithValue("Primary", testID("pl-1")))
 		Expect(item.ImageBlurHashes).To(BeNil())
+	})
+
+	DescribeTable("UserData derives Likes from the rating like Jellyfin (rating >= 6.5)",
+		func(stars int, expected *bool) {
+			d := UserData(model.Annotations{Rating: stars}, testID("s1"))
+			Expect(d.Likes).To(Equal(expected))
+		},
+		Entry("unrated has no Likes", 0, nil),
+		Entry("1 star (Jellyfin 2) dislikes", 1, new(false)),
+		Entry("3 stars (Jellyfin 6) dislikes", 3, new(false)),
+		Entry("4 stars (Jellyfin 8) likes", 4, new(true)),
+		Entry("5 stars (Jellyfin 10) likes", 5, new(true)),
+	)
+
+	It("emits Rating as a whole number and omits Likes when unrated", func() {
+		rated, err := json.Marshal(UserData(model.Annotations{Rating: 4}, testID("s1")))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(rated)).To(ContainSubstring(`"Rating":8,`))
+		Expect(string(rated)).To(ContainSubstring(`"Likes":true`))
+
+		unrated, err := json.Marshal(UserData(model.Annotations{}, testID("s1")))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(unrated)).ToNot(ContainSubstring(`"Rating"`))
+		Expect(string(unrated)).ToNot(ContainSubstring(`"Likes"`))
 	})
 
 	It("emits DateCreated and SortName on playlists, like albums and artists", func() {
