@@ -382,7 +382,6 @@ var _ = Describe("Watcher", func() {
 			})
 
 			It("should NOT send notification when nested ignored folder is deleted", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				startEventProcessing()
 
 				// Simulate deletion of music/rock/artist/temp (matches **/temp)
@@ -396,7 +395,6 @@ var _ = Describe("Watcher", func() {
 			})
 
 			It("should send notification for non-ignored nested folder", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				startEventProcessing()
 
 				// Simulate change in music/rock/artist (doesn't match any pattern)
@@ -421,7 +419,6 @@ var _ = Describe("Watcher", func() {
 			})
 
 			It("should NOT send notification for file changes in ignored folders", func() {
-				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				startEventProcessing()
 
 				// Simulate file change in rock/_TEMP/file.mp3
@@ -504,13 +501,11 @@ var _ = Describe("resolveFolderPath", func() {
 	})
 
 	It("walks up to parent directory when given a file path", func() {
-		tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 		result := resolveFolderPath(mockFS, "artist1/album1/track1.mp3")
 		Expect(result).To(Equal("artist1/album1"))
 	})
 
 	It("walks up multiple levels if needed", func() {
-		tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 		result := resolveFolderPath(mockFS, "artist1/album1/nonexistent/file.mp3")
 		Expect(result).To(Equal("artist1/album1"))
 	})
@@ -531,7 +526,6 @@ var _ = Describe("resolveFolderPath", func() {
 	})
 
 	It("handles nested file paths correctly", func() {
-		tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 		result := resolveFolderPath(mockFS, "artist1/album2/song.flac")
 		Expect(result).To(Equal("artist1/album2"))
 	})
