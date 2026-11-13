@@ -17,12 +17,13 @@ describe('useAlbumsPerPage', () => {
     mockUseSelector = vi.mocked(useSelector)
   })
 
-  const setReduxPerPage = (value) =>
+  const setReduxPerPage = (value, grid = true) =>
     mockUseSelector.mockImplementation((selector) =>
       selector({
         admin: {
           resources: { album: { list: { params: { perPage: value } } } },
         },
+        albumView: { grid },
       }),
     )
 
@@ -44,18 +45,25 @@ describe('useAlbumsPerPage', () => {
     setReduxPerPage(undefined)
     setStoredPerPage('album', 72) // valid for lg, not for md
     const { result } = renderHook(() => useAlbumsPerPage('md'))
-    expect(result.current[0]).toEqual(12)
+    expect(result.current[0]).toEqual(256)
   })
 
-  it('returns the responsive default when nothing is stored', () => {
+  it('returns the 256 default when nothing is stored', () => {
     setReduxPerPage(undefined)
     const { result } = renderHook(() => useAlbumsPerPage('xl'))
-    expect(result.current).toEqual([36, [18, 36, 72]])
+    expect(result.current).toEqual([256, [18, 36, 72, 256]])
+  })
+
+  // The table renders every row, so 256 there would mount 256 albums at once.
+  it('keeps the responsive default for the table view', () => {
+    setReduxPerPage(undefined, false)
+    const { result } = renderHook(() => useAlbumsPerPage('xl'))
+    expect(result.current).toEqual([36, [18, 36, 72, 256]])
   })
 
   it('ignores a redux value invalid for the current width', () => {
     setReduxPerPage(72) // valid for lg, not for md
     const { result } = renderHook(() => useAlbumsPerPage('md'))
-    expect(result.current[0]).toEqual(12)
+    expect(result.current[0]).toEqual(256)
   })
 })
