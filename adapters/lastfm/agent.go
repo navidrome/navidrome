@@ -50,14 +50,14 @@ type lastfmAgent struct {
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
-	if !conf.Server.LastFM.Enabled || conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
+	if !conf.Server().LastFM.Enabled || conf.Server().LastFM.ApiKey == "" || conf.Server().LastFM.Secret == "" {
 		return nil
 	}
 	l := &lastfmAgent{
 		ds:          ds,
-		languages:   conf.Server.LastFM.Languages,
-		apiKey:      conf.Server.LastFM.ApiKey,
-		secret:      conf.Server.LastFM.Secret,
+		languages:   conf.Server().LastFM.Languages,
+		apiKey:      conf.Server().LastFM.ApiKey,
+		secret:      conf.Server().LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
@@ -354,7 +354,7 @@ func (l *lastfmAgent) callTrackGetSimilar(ctx context.Context, name, artist stri
 }
 
 func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile, role model.Role, displayName string) string {
-	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
+	if conf.Server().LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
 		return track.Participants[role][0].Name
 	}
 	return displayName

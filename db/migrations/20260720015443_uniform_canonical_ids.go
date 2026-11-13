@@ -107,7 +107,7 @@ func upUniformCanonicalIds(ctx context.Context, tx *sql.Tx) error {
 	}
 	// Legacy PID specs embed old-shaped album/track ids into composite pids; a full rescan
 	// rewrites every pid with the new encoding so path-based move matching stays consistent.
-	if strings.Contains(conf.Server.PID.Track, "legacy") || strings.Contains(conf.Server.PID.Album, "legacy") {
+	if strings.Contains(conf.Server().PID.Track, "legacy") || strings.Contains(conf.Server().PID.Album, "legacy") {
 		if err := forceFullRescan(ctx, tx); err != nil {
 			return err
 		}

@@ -28,7 +28,7 @@ const backupSuffixLayout = "2006.01.02_15.04.05"
 
 func backupPath(t time.Time) string {
 	return filepath.Join(
-		conf.Server.Backup.Path.MustPath(),
+		conf.Server().Backup.Path.MustPath(),
 		fmt.Sprintf("%s_%s.db", backupPrefix, t.Format(backupSuffixLayout)),
 	)
 }
@@ -177,7 +177,7 @@ func Restore(ctx context.Context, path string, integrityCheck bool) error {
 }
 
 func Prune(ctx context.Context) (int, error) {
-	backupDir, err := conf.Server.Backup.Path.Path()
+	backupDir, err := conf.Server().Backup.Path.Path()
 	if err != nil {
 		return 0, fmt.Errorf("backup directory not available: %w", err)
 	}
@@ -200,7 +200,7 @@ func Prune(ctx context.Context) (int, error) {
 		}
 	}
 
-	if len(backupTimes) <= conf.Server.Backup.Count {
+	if len(backupTimes) <= conf.Server().Backup.Count {
 		return 0, nil
 	}
 
@@ -211,7 +211,7 @@ func Prune(ctx context.Context) (int, error) {
 	pruneCount := 0
 	var errs []error
 
-	for _, timeToPrune := range backupTimes[conf.Server.Backup.Count:] {
+	for _, timeToPrune := range backupTimes[conf.Server().Backup.Count:] {
 		log.Debug(ctx, "Pruning backup", "time", timeToPrune)
 		path := backupPath(timeToPrune)
 		err = os.Remove(path)

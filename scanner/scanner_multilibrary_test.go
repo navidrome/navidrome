@@ -10,7 +10,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -49,15 +48,19 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 		tmpDir, err := os.MkdirTemp("", "scanner-test")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner-multilibrary.db?_journal_mode=WAL")
-		log.Warn("Using DB at " + conf.Server.DbPath)
+		conf.Update(func(c *conf.Options) {
+			c.DbPath = filepath.Join(tmpDir, "test-scanner-multilibrary.db?_journal_mode=WAL")
+		})
+		log.Warn("Using DB at " + conf.Server().DbPath)
 		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MusicFolder = "default:///music" // Use a distinct schema for the default library
-		conf.Server.DevExternalScanner = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = "default:///music" // Use a distinct schema for the default library
+			c.DevExternalScanner = false
+		})
 
 		// Register an empty fake storage for the default library
 		emptyFS := storagetest.FakeFS{}
@@ -935,7 +938,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			changeRockInDB()
 			changeBlueTrainInDB()
 
-			conf.Server.PID.Album = "album"
+			conf.Update(func(c *conf.Options) { c.PID.Album = "album" })
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			// Rock follows the global config, so it was rescanned in full and its title restored

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -24,8 +23,7 @@ var _ = Describe("Radio", func() {
 
 	Describe("UploadedImagePath", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DataFolder = conf.NewDir("/data")
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir("/data") })
 		})
 
 		It("returns empty string when no image uploaded", func() {

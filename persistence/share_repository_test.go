@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,7 +19,6 @@ var _ = Describe("ShareRepository", func() {
 	var adminUser = model.User{ID: "admin", UserName: "admin", IsAdmin: true}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
 		repo = NewShareRepository(GetDBXBuilder())
 

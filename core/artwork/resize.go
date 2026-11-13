@@ -48,7 +48,7 @@ func resizeImageData(ctx context.Context, ffm ffmpeg.FFmpeg, data []byte, size i
 	if isAnimatedGIF(data) {
 		if ffm.IsAvailable() {
 			// Animated GIF: convert to animated WebP via ffmpeg (with optional resize)
-			r, err := ffm.ConvertAnimatedImage(ctx, bytes.NewReader(data), size, conf.Server.CoverArtQuality)
+			r, err := ffm.ConvertAnimatedImage(ctx, bytes.NewReader(data), size, conf.Server().CoverArtQuality)
 			if err == nil {
 				return r, 0, nil
 			}
@@ -117,12 +117,12 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 
 	buf := bufPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	if conf.Server.EnableWebPEncoding {
-		err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server.CoverArtQuality})
+	if conf.Server().EnableWebPEncoding {
+		err = webp.Encode(buf, dst, webp.Options{Quality: conf.Server().CoverArtQuality})
 	} else if format == "png" || square {
 		err = png.Encode(buf, dst)
 	} else {
-		err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server.CoverArtQuality})
+		err = jpeg.Encode(buf, dst, &jpeg.Options{Quality: conf.Server().CoverArtQuality})
 	}
 	if err != nil {
 		bufPool.Put(buf)
@@ -137,8 +137,8 @@ func resizeStaticImage(data []byte, size int, square bool) (io.Reader, int, erro
 // formatQualityTag folds the encoder config (WebP toggle + quality) into a cache-key
 // fragment, so flipping either setting invalidates previously-encoded sized artwork.
 func formatQualityTag() string {
-	if conf.Server.EnableWebPEncoding {
-		return fmt.Sprintf("webp%d", conf.Server.CoverArtQuality)
+	if conf.Server().EnableWebPEncoding {
+		return fmt.Sprintf("webp%d", conf.Server().CoverArtQuality)
 	}
-	return fmt.Sprintf("q%d", conf.Server.CoverArtQuality)
+	return fmt.Sprintf("q%d", conf.Server().CoverArtQuality)
 }

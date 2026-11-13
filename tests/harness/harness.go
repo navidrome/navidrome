@@ -47,13 +47,13 @@ func CreateFS(files fstest.MapFS) storagetest.FakeFS {
 
 // SetupDB boots the golden database: a temp SQLite file, the given users (password "password",
 // all with access to the seeded "Music Library"), a full scan of the registered fake FS, and a
-// snapshot for per-test restore. Callers must set conf.Server.MusicFolder and register the FS
+// snapshot for per-test restore. Callers must set MusicFolder and register the FS
 // first; each user's Libraries field is populated in place.
 func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	tmpDir := ginkgo.GinkgoT().TempDir()
 	h := &DB{FilePath: filepath.Join(tmpDir, "test-e2e.db")}
 	h.SnapshotPath = h.FilePath + ".snapshot"
-	conf.Server.DbPath = h.FilePath + "?_journal_mode=WAL"
+	conf.Update(func(c *conf.Options) { c.DbPath = h.FilePath + "?_journal_mode=WAL" })
 	db.Db().SetMaxOpenConns(1)
 	db.Init(ctx)
 
