@@ -27,7 +27,6 @@ type watcher struct {
 	ds              model.DataStore
 	scanner         model.Scanner
 	triggerWait     time.Duration
-	respectNoMedia  bool
 	watcherNotify   chan scanNotification
 	libraryWatchers map[int]*libraryWatcherInstance
 	mu              sync.RWMutex
@@ -49,8 +48,7 @@ func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 		return &watcher{
 			ds:              ds,
 			scanner:         s,
-			triggerWait:     conf.Server.Scanner.WatcherWait,
-			respectNoMedia:  conf.Server.Scanner.RespectNoMedia,
+			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 500),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
@@ -103,7 +101,7 @@ func (w *watcher) Run(ctx context.Context) error {
 
 			go func() {
 				var err error
-				if conf.Server.DevSelectiveWatcher {
+				if conf.Server().DevSelectiveWatcher {
 					_, err = w.scanner.ScanFolders(ctx, false, targetSlice)
 				} else {
 					_, err = w.scanner.ScanAll(ctx, false)
@@ -314,7 +312,7 @@ func resolveFolderPath(fsys fs.FS, path string) string {
 // shouldIgnoreFolderPath checks if the given folderPath should be ignored based on .ndignore patterns
 // in the library. It pushes all parent folders onto the IgnoreChecker stack before checking.
 func (w *watcher) shouldIgnoreFolderPath(ctx context.Context, fsys storage.MusicFS, folderPath string) bool {
-	checker := newIgnoreChecker(fsys, w.respectNoMedia)
+	checker := newIgnoreChecker(fsys)
 	err := checker.PushAllParents(ctx, folderPath)
 	if err != nil {
 		log.Warn(ctx, "Watcher: Error pushing ignore patterns for folder", "path", folderPath, err)

@@ -33,7 +33,7 @@ func NewMediaStreamer(ds model.DataStore, t ffmpeg.FFmpeg, cache TranscodingCach
 		ds:         ds,
 		transcoder: t,
 		cache:      cache,
-		limiter:    NewTranscodeLimiter(conf.Server.Transcoding.MaxConcurrent, conf.Server.Transcoding.MaxConcurrentPerUser),
+		limiter:    NewTranscodeLimiter(conf.Server().Transcoding.MaxConcurrent, conf.Server().Transcoding.MaxConcurrentPerUser),
 	}
 }
 
@@ -178,7 +178,7 @@ func (s *Stream) Serve(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	var limit int64
 	if req.Params(r).BoolOr("estimateContentLength", false) {
 		length := s.EstimatedContentLength()
-		if conf.Server.DevMatchEstimatedContentLength {
+		if conf.Server().DevMatchEstimatedContentLength {
 			limit = length
 		}
 		if length > 0 {
@@ -268,7 +268,7 @@ func GetTranscodingCache() TranscodingCache {
 }
 
 func NewTranscodingCache() TranscodingCache {
-	return cache.NewFileCache("Transcoding", conf.Server.TranscodingCacheSize,
+	return cache.NewFileCache("Transcoding", conf.Server().TranscodingCacheSize,
 		consts.TranscodingCacheDir, consts.DefaultTranscodingCacheMaxItems,
 		func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 			job := arg.(*streamJob)
@@ -282,8 +282,8 @@ func NewTranscodingCache() TranscodingCache {
 			if err != nil {
 				log.Warn(ctx, "Refusing transcode: concurrent transcode limit reached",
 					"id", job.mf.ID, "user", userName(ctx),
-					"maxConcurrent", conf.Server.Transcoding.MaxConcurrent,
-					"maxPerUser", conf.Server.Transcoding.MaxConcurrentPerUser)
+					"maxConcurrent", conf.Server().Transcoding.MaxConcurrent,
+					"maxPerUser", conf.Server().Transcoding.MaxConcurrentPerUser)
 				return nil, err
 			}
 
@@ -300,7 +300,7 @@ func NewTranscodingCache() TranscodingCache {
 			// governed by Transcoding.EnableCancellation so unchanged configs
 			// keep their previous observable behavior.
 			var transcodingCtx context.Context
-			if job.ms.limiter.Enabled() || conf.Server.Transcoding.EnableCancellation {
+			if job.ms.limiter.Enabled() || conf.Server().Transcoding.EnableCancellation {
 				transcodingCtx = ctx
 			} else {
 				transcodingCtx = request.AddValues(context.Background(), ctx)

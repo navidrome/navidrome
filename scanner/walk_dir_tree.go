@@ -27,8 +27,6 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 		// No specific folders provided, scan the root folder
 		folders = []string{"."}
 	}
-	// Read before the goroutine starts: a canceled scan can leave it running after the scan returns
-	respectNoMedia := conf.Server.Scanner.RespectNoMedia
 	go func() {
 		defer close(results)
 		for _, folderPath := range folders {
@@ -47,13 +45,13 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 
 			// A full walk never descends into symlinked folders when following is disabled, so a
 			// target reached through one (e.g. a watcher event for a new link) is skipped too.
-			if !conf.Server.Scanner.FollowSymlinks && isSymlinkedPath(job.fs, folderPath) {
+			if !conf.Server().Scanner.FollowSymlinks && isSymlinkedPath(job.fs, folderPath) {
 				log.Debug(ctx, "Scanner: Skipping symlinked target folder, following is disabled", "path", folderPath)
 				continue
 			}
 
 			// walkFolder pushes the target folder's own patterns, so only its parents are pushed here
-			checker := newIgnoreChecker(job.fs, respectNoMedia)
+			checker := newIgnoreChecker(job.fs)
 			if target := path.Clean(folderPath); target != "." && checker.PushParents(ctx, target) {
 				log.Debug(ctx, "Scanner: Skipping target folder ignored by its parents", "path", folderPath)
 				continue
@@ -230,7 +228,7 @@ func isDirOrSymlinkToDir(fsys fs.FS, baseDir string, dirEnt fs.DirEntry) (bool, 
 		return false, nil
 	}
 	// If symlinks are disabled, return false for symlinks
-	if !conf.Server.Scanner.FollowSymlinks {
+	if !conf.Server().Scanner.FollowSymlinks {
 		return false, nil
 	}
 	// Does this symlink point to a directory?
@@ -264,7 +262,7 @@ func resolveEntryName(ctx context.Context, fsys fs.FS, dirPath string, entry fs.
 		return entry.Name(), true
 	}
 	linkPath := path.Join(dirPath, entry.Name())
-	if !conf.Server.Scanner.FollowSymlinks {
+	if !conf.Server().Scanner.FollowSymlinks {
 		log.Trace(ctx, "Scanner: Skipping symlink, following is disabled", "path", linkPath)
 		return "", false
 	}
@@ -342,7 +340,7 @@ func isIgnoredEntry(name string, isDir bool) bool {
 	if isDir && isDirIgnored(name) {
 		return true
 	}
-	return isDotEntry(name) && (!isDir || conf.Server.Scanner.IgnoreDotFolders)
+	return isDotEntry(name) && (!isDir || conf.Server().Scanner.IgnoreDotFolders)
 }
 
 // isDirIgnored returns true if the directory name is in the explicit ignoredDirs

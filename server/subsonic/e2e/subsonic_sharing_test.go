@@ -15,7 +15,7 @@ var _ = Describe("Sharing Endpoints", Ordered, func() {
 	var songID string
 
 	BeforeAll(func() {
-		conf.Server.EnableSharing = true
+		conf.Update(func(c *conf.Options) { c.EnableSharing = true })
 		setupTestDB()
 
 		albums, err := ds.Album().GetAll(ctx, model.QueryOptions{
@@ -133,7 +133,7 @@ var _ = Describe("Sharing Cross-User Isolation", Ordered, func() {
 	var albumID string
 
 	BeforeAll(func() {
-		conf.Server.EnableSharing = true
+		conf.Update(func(c *conf.Options) { c.EnableSharing = true })
 		setupTestDB()
 
 		userA = createUser("share-user-a", "share-user-a", "Share User A", false)
@@ -210,9 +210,9 @@ var _ = Describe("Sharing Downloadable Default", func() {
 	var albumID string
 
 	BeforeEach(func() {
-		conf.Server.EnableSharing = true
+		conf.Update(func(c *conf.Options) { c.EnableSharing = true })
 		setupTestDB()
-		conf.Server.EnableDownloads = true
+		conf.Update(func(c *conf.Options) { c.EnableDownloads = true })
 		albumID = albumIDByName("Abbey Road")
 	})
 
@@ -228,8 +228,10 @@ var _ = Describe("Sharing Downloadable Default", func() {
 
 	DescribeTable("createShare resolves downloadable",
 		func(defaultDownloadable, enableDownloads bool, params []string, expected bool) {
-			conf.Server.DefaultDownloadableShare = defaultDownloadable
-			conf.Server.EnableDownloads = enableDownloads
+			conf.Update(func(c *conf.Options) {
+				c.DefaultDownloadableShare = defaultDownloadable
+				c.EnableDownloads = enableDownloads
+			})
 
 			Expect(createShare(params...).Downloadable).To(Equal(expected))
 		},
@@ -241,7 +243,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 	)
 
 	It("updateShare keeps the current downloadable when the param is absent", func() {
-		conf.Server.DefaultDownloadableShare = true
+		conf.Update(func(c *conf.Options) { c.DefaultDownloadableShare = true })
 		share := createShare()
 		Expect(share.Downloadable).To(BeTrue())
 
@@ -255,7 +257,7 @@ var _ = Describe("Sharing Downloadable Default", func() {
 	})
 
 	It("updateShare applies an explicit downloadable and keeps the description", func() {
-		conf.Server.DefaultDownloadableShare = true
+		conf.Update(func(c *conf.Options) { c.DefaultDownloadableShare = true })
 		share := createShare("description", "Keep me")
 
 		resp := doReq("updateShare", "id", share.ID, "downloadable", "false")

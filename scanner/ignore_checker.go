@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	ignore "github.com/sabhiram/go-gitignore"
@@ -26,12 +27,12 @@ type IgnoreChecker struct {
 	matcher         *ignore.GitIgnore // Compiled matcher for current patterns
 }
 
-// newIgnoreChecker creates a new IgnoreChecker for the given filesystem. With respectNoMedia,
+// newIgnoreChecker creates a new IgnoreChecker for the given filesystem. With Scanner.RespectNoMedia,
 // a .nomedia file ignores its whole folder.
-func newIgnoreChecker(fsys fs.FS, respectNoMedia bool) *IgnoreChecker {
+func newIgnoreChecker(fsys fs.FS) *IgnoreChecker {
 	return &IgnoreChecker{
 		fsys:           fsys,
-		respectNoMedia: respectNoMedia,
+		respectNoMedia: conf.Server().Scanner.RespectNoMedia,
 		patternStack:   make([][]string, 0),
 	}
 }

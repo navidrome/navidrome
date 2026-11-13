@@ -84,7 +84,7 @@ type taskQueueServiceImpl struct {
 // newTaskQueueService creates a new taskQueueServiceImpl with its own SQLite database.
 // The given ctx bounds the service's background work (queue workers, cleanup loop).
 func newTaskQueueService(ctx context.Context, pluginName string, manager *Manager, maxConcurrency int32) (*taskQueueServiceImpl, error) {
-	dataDir := filepath.Join(conf.Server.DataFolder.String(), "plugins", pluginName)
+	dataDir := filepath.Join(conf.Server().DataFolder.String(), "plugins", pluginName)
 	if err := os.MkdirAll(dataDir, 0700); err != nil {
 		return nil, fmt.Errorf("creating plugin data directory: %w", err)
 	}

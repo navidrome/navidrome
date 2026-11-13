@@ -9,7 +9,6 @@ import (
 	"slices"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -125,8 +124,7 @@ var _ = Describe("Sort index coverage", func() {
 	}
 
 	It("uses an index for recently_added when RecentlyAddedByModTime is enabled", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.RecentlyAddedByModTime = true
+		conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 		for _, c := range cases[:2] { // media_file and album
 			r := c.newRepo(newCtx())
 			for _, dir := range []string{"asc", "desc"} {

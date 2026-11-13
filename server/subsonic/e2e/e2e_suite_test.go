@@ -50,6 +50,8 @@ func TestSubsonicE2E(t *testing.T) {
 	RunSpecs(t, "Subsonic API E2E Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 // Easy aliases for the storagetest package
 type _t = map[string]any
 
@@ -388,9 +390,11 @@ var (
 var _ = BeforeSuite(func() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.LyricsPriority = "embedded,.lrc,.srt,.yaml"
-	conf.Server.DevExternalScanner = false
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.LyricsPriority = "embedded,.lrc,.srt,.yaml"
+		c.DevExternalScanner = false
+	})
 
 	buildTestFS()
 	goldenDB = harness.SetupDB(ctx, &adminUser, &regularUser)
@@ -410,15 +414,17 @@ var _ = AfterSuite(func() {
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 	DeferCleanup(func() {
 		// Wait for any background scan (e.g. from startScan endpoint) to finish
-		// before config cleanup runs, to avoid a data race on conf.Server.
+		// before the next spec starts.
 		Eventually(scanner.IsScanning).Should(BeFalse())
 	})
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DevExternalScanner = false
-	conf.Server.DevEnableMediaFileProbe = false
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DevExternalScanner = false
+		c.DevEnableMediaFileProbe = false
+	})
 
 	// Restore DB to golden state (no scan needed)
 	goldenDB.Restore()

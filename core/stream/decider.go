@@ -427,7 +427,7 @@ func (s *deciderService) ensureProbed(ctx context.Context, mf *model.MediaFile) 
 	if mf.ProbeData != "" {
 		return nil, nil
 	}
-	if !conf.Server.DevEnableMediaFileProbe {
+	if !conf.Server().DevEnableMediaFileProbe {
 		return nil, nil
 	}
 

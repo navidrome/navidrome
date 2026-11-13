@@ -20,12 +20,12 @@ func buildLegacyClientInfo(mf *model.MediaFile, reqFormat string, reqBitRate int
 	switch {
 	case reqFormat != "":
 		targetFormat = reqFormat
-	case reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "":
-		targetFormat = conf.Server.DefaultDownsamplingFormat
-	case playerMaxBitRate > 0 && playerMaxBitRate < mf.BitRate && conf.Server.DefaultDownsamplingFormat != "":
+	case reqBitRate > 0 && reqBitRate < mf.BitRate && conf.Server().DefaultDownsamplingFormat != "":
+		targetFormat = conf.Server().DefaultDownsamplingFormat
+	case playerMaxBitRate > 0 && playerMaxBitRate < mf.BitRate && conf.Server().DefaultDownsamplingFormat != "":
 		// Server-side player MaxBitRate alone forces downsampling, even when the
 		// client sent no format/bitrate params (issue #5583, legacy /stream path).
-		targetFormat = conf.Server.DefaultDownsamplingFormat
+		targetFormat = conf.Server().DefaultDownsamplingFormat
 	}
 
 	if targetFormat != "" {
@@ -79,7 +79,7 @@ func (s *deciderService) ResolveRequest(ctx context.Context, mf *model.MediaFile
 
 	// No compatible profile for the requested format — retry with DefaultDownsamplingFormat
 	// TODO: validate DefaultDownsamplingFormat at startup to warn about unsupported values
-	fallbackFormat := conf.Server.DefaultDownsamplingFormat
+	fallbackFormat := conf.Server().DefaultDownsamplingFormat
 	if reqFormat != "" && fallbackFormat != "" && !strings.EqualFold(reqFormat, fallbackFormat) {
 		log.Warn(ctx, "Requested format not available, falling back to default downsampling format",
 			"requestedFormat", reqFormat, "fallbackFormat", fallbackFormat, "id", mf.ID)
