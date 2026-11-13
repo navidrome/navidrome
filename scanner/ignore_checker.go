@@ -104,6 +104,23 @@ func (ic *IgnoreChecker) PushAllParents(ctx context.Context, targetPath string) 
 	return nil
 }
 
+// PushParents pushes the patterns of each folder above target, from the root down. It returns true,
+// and stops, when target or a folder above it is ignored, as a full walk would never reach target.
+func (ic *IgnoreChecker) PushParents(ctx context.Context, target string) bool {
+	dir := "."
+	ic.push(ic.loadPatternsFromFolder(ctx, dir))
+	for part := range strings.SplitSeq(path.Clean(target), "/") {
+		dir = path.Join(dir, part)
+		if ic.ShouldIgnore(ctx, dir) {
+			return true
+		}
+		if dir != target {
+			ic.push(ic.loadPatternsFromFolder(ctx, dir))
+		}
+	}
+	return false
+}
+
 // ShouldIgnore checks if the given path should be ignored based on the current patterns.
 // Returns true if the path matches any ignore pattern, false otherwise.
 func (ic *IgnoreChecker) ShouldIgnore(ctx context.Context, relPath string) bool {

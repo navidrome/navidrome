@@ -230,16 +230,18 @@ var _ = Describe("walk_dir_tree", func() {
 			DescribeTable("skips a folder ignored by its parent, even if it re-includes files",
 				func(targets []string) {
 					spy = newSpyMusicFS(fstest.MapFS{
-						"a/.nomedia":    {},
-						"a/b/.ndignore": {Data: []byte("!song.mp3")},
-						"a/b/song.mp3":  {},
+						"a/.nomedia":     {},
+						"a/b/.ndignore":  {Data: []byte("!song.mp3\n!c")},
+						"a/b/song.mp3":   {},
+						"a/b/c/song.mp3": {},
 					})
 					job = &scanJob{fs: spy, lib: model.Library{Path: "/music"}}
 
-					Expect(getFolders(targets...)).ToNot(HaveKey("a/b"))
+					Expect(getFolders(targets...)).ToNot(SatisfyAny(HaveKey("a/b"), HaveKey("a/b/c")))
 				},
 				Entry("full scan", nil),
 				Entry("targeted scan", []string{"a/b"}),
+				Entry("targeted scan of a deeper folder", []string{"a/b/c"}),
 			)
 
 			It("keeps the parent's patterns when a child folder cannot be read", func() {

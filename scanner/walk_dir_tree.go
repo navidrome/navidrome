@@ -54,17 +54,9 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 
 			// walkFolder pushes the target folder's own patterns, so only its parents are pushed here
 			checker := newIgnoreChecker(job.fs, respectNoMedia)
-			if target := path.Clean(folderPath); target != "." {
-				err = checker.PushAllParents(ctx, path.Dir(target))
-				if err != nil {
-					log.Error(ctx, "Scanner: Error pushing ignore patterns for target folder", "path", folderPath, err)
-					continue
-				}
-				// A full walk never enters a folder its parents ignore, so a negation inside it can't re-include files
-				if checker.ShouldIgnore(ctx, target) {
-					log.Debug(ctx, "Scanner: Skipping target folder ignored by its parents", "path", folderPath)
-					continue
-				}
+			if target := path.Clean(folderPath); target != "." && checker.PushParents(ctx, target) {
+				log.Debug(ctx, "Scanner: Skipping target folder ignored by its parents", "path", folderPath)
+				continue
 			}
 
 			// Recursively walk this folder and all its children
