@@ -20,8 +20,8 @@ describe('useSearchRefocus', () => {
 
     container = document.createElement('div')
     container.innerHTML = `
-      <div class="RaSearchInput-input">
-        <input type="text" />
+      <div class="filter-field jss42" data-source="name">
+        <input type="text" name="name" />
       </div>
     `
     document.body.appendChild(container)
