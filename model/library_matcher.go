@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/navidrome/navidrome/utils"
 )
 
 // LibraryMatcher finds the library that contains an absolute path.
@@ -49,7 +51,7 @@ func LibraryRelativePath(libPath, path string) string {
 	if err != nil {
 		return path
 	}
-	rel, err := filepath.Rel(absLib, path)
+	rel, err := utils.RelPath(absLib, path)
 	if err != nil || !filepath.IsLocal(rel) {
 		return path
 	}
