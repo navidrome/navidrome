@@ -20,32 +20,26 @@ const ignoreAllPattern = "**/*"
 // and ShouldIgnore() to check if a path should be ignored.
 type IgnoreChecker struct {
 	fsys            fs.FS
-	respectNoMedia  bool
 	patternStack    [][]string        // Stack of patterns for each folder level
 	currentPatterns []string          // Flattened current patterns
 	matcher         *ignore.GitIgnore // Compiled matcher for current patterns
 }
 
-// newIgnoreChecker creates a new IgnoreChecker for the given filesystem. With Scanner.RespectNoMedia,
-// a .nomedia file ignores its whole folder.
+// newIgnoreChecker creates a new IgnoreChecker for the given filesystem.
 func newIgnoreChecker(fsys fs.FS) *IgnoreChecker {
 	return &IgnoreChecker{
-		fsys:           fsys,
-		respectNoMedia: conf.Server().Scanner.RespectNoMedia,
-		patternStack:   make([][]string, 0),
+		fsys:         fsys,
+		patternStack: make([][]string, 0),
 	}
 }
 
 // Push loads .ndignore patterns from the specified folder and adds them to the pattern stack.
 // Use this when entering a folder during directory tree traversal.
 func (ic *IgnoreChecker) Push(ctx context.Context, folder string) error {
-	ic.push(ic.loadPatternsFromFolder(ctx, folder))
-	return nil
-}
-
-func (ic *IgnoreChecker) push(patterns []string) {
+	patterns := ic.loadPatternsFromFolder(ctx, folder)
 	ic.patternStack = append(ic.patternStack, patterns)
 	ic.rebuildCurrentPatterns()
+	return nil
 }
 
 // Pop removes the most recent patterns from the stack.
@@ -92,15 +86,16 @@ func (ic *IgnoreChecker) PushAllParents(ctx context.Context, targetPath string) 
 // PushParents pushes the patterns of each folder above target, from the root down. It returns true,
 // and stops, when target or a folder above it is ignored, as a full walk would never reach target.
 func (ic *IgnoreChecker) PushParents(ctx context.Context, target string) bool {
+	target = path.Clean(target)
+	if target == "." {
+		return false
+	}
 	dir := "."
-	ic.push(ic.loadPatternsFromFolder(ctx, dir))
-	for part := range strings.SplitSeq(path.Clean(target), "/") {
+	for part := range strings.SplitSeq(target, "/") {
+		_ = ic.Push(ctx, dir)
 		dir = path.Join(dir, part)
 		if ic.ShouldIgnore(ctx, dir) {
 			return true
-		}
-		if dir != target {
-			ic.push(ic.loadPatternsFromFolder(ctx, dir))
 		}
 	}
 	return false
@@ -128,9 +123,9 @@ func (ic *IgnoreChecker) ShouldIgnore(ctx context.Context, relPath string) bool 
 
 // loadPatternsFromFolder reads the .ndignore file in the specified folder and returns the patterns.
 // If the file doesn't exist, returns an empty slice.
-// If the file exists but is empty, or there is a .nomedia file with respectNoMedia, ignores everything.
+// If the file exists but is empty, or there is a .nomedia file with Scanner.RespectNoMedia, ignores everything.
 func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder string) []string {
-	if ic.respectNoMedia {
+	if conf.Server().Scanner.RespectNoMedia {
 		if _, err := fs.Stat(ic.fsys, path.Join(folder, consts.NoMediaFile)); err == nil {
 			log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
 			return []string{ignoreAllPattern}

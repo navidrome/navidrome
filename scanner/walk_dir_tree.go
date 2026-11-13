@@ -52,7 +52,7 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 
 			// walkFolder pushes the target folder's own patterns, so only its parents are pushed here
 			checker := newIgnoreChecker(job.fs)
-			if target := path.Clean(folderPath); target != "." && checker.PushParents(ctx, target) {
+			if checker.PushParents(ctx, folderPath) {
 				log.Debug(ctx, "Scanner: Skipping target folder ignored by its parents", "path", folderPath)
 				continue
 			}
