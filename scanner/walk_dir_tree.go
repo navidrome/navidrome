@@ -73,16 +73,11 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 }
 
 func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker *IgnoreChecker, results chan<- *folderEntry) error {
-	folder, entries, err := readDir(ctx, job, currentFolder)
-	if err != nil {
-		log.Warn(ctx, "Scanner: Error reading dir. Skipping", "path", currentFolder, err)
-		return nil
-	}
+	// Push patterns for this folder onto the stack
+	_ = checker.Push(ctx, currentFolder)
+	defer checker.Pop() // Pop patterns when leaving this folder
 
-	checker.PushEntries(ctx, currentFolder, entries)
-	defer checker.Pop()
-
-	children, err := classifyEntries(ctx, folder, entries, checker)
+	folder, children, err := loadDir(ctx, job, currentFolder, checker)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
 		return nil
@@ -109,7 +104,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 	}
 }
 
-func readDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderEntry, entries []fs.DirEntry, err error) {
+func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
 	// Check if directory exists before creating the folder entry
 	// This is important to avoid removing the folder from lastUpdates if it doesn't exist
 	dirInfo, err := fs.Stat(job.fs, dirPath)
@@ -125,19 +120,16 @@ func readDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderE
 	dir, err := job.fs.Open(dirPath)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error in Opening directory", "path", dirPath, err)
-		return folder, nil, err
+		return folder, children, err
 	}
 	defer dir.Close()
 	dirFile, ok := dir.(fs.ReadDirFile)
 	if !ok {
 		log.Error(ctx, "Not a directory", "path", dirPath)
-		return folder, nil, nil
+		return folder, children, err
 	}
-	return folder, fullReadDir(ctx, dirFile), nil
-}
 
-func classifyEntries(ctx context.Context, folder *folderEntry, entries []fs.DirEntry, checker *IgnoreChecker) (children []string, err error) {
-	job, dirPath := folder.job, folder.path
+	entries := fullReadDir(ctx, dirFile)
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
 		entryPath := path.Join(dirPath, entry.Name())
@@ -146,7 +138,7 @@ func classifyEntries(ctx context.Context, folder *folderEntry, entries []fs.DirE
 			continue
 		}
 		if ctx.Err() != nil {
-			return children, ctx.Err()
+			return folder, children, ctx.Err()
 		}
 		isDir, err := isDirOrSymlinkToDir(job.fs, dirPath, entry)
 		// Skip invalid symlinks
@@ -164,7 +156,7 @@ func classifyEntries(ctx context.Context, folder *folderEntry, entries []fs.DirE
 			fileInfo, err := entry.Info()
 			if err != nil {
 				log.Warn(ctx, "Scanner: Error getting fileInfo", "name", entry.Name(), err)
-				return children, err
+				return folder, children, err
 			}
 			if fileInfo.ModTime().After(folder.modTime) {
 				folder.modTime = fileInfo.ModTime()
@@ -184,7 +176,7 @@ func classifyEntries(ctx context.Context, folder *folderEntry, entries []fs.DirE
 			}
 		}
 	}
-	return children, nil
+	return folder, children, nil
 }
 
 // fullReadDir reads all files in the folder, skipping the ones with errors.

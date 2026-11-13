@@ -5,7 +5,6 @@ import (
 	"context"
 	"io/fs"
 	"path"
-	"slices"
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
@@ -17,7 +16,7 @@ import (
 const ignoreAllPattern = "**/*"
 
 // IgnoreChecker manages .ndignore patterns using a stack-based approach.
-// Use Push() or PushEntries() to add patterns when entering a folder, Pop() when leaving,
+// Use Push() to add patterns when entering a folder, Pop() when leaving,
 // and ShouldIgnore() to check if a path should be ignored.
 type IgnoreChecker struct {
 	fsys            fs.FS
@@ -42,22 +41,6 @@ func newIgnoreChecker(fsys fs.FS) *IgnoreChecker {
 func (ic *IgnoreChecker) Push(ctx context.Context, folder string) error {
 	ic.push(ic.loadPatternsFromFolder(ctx, folder))
 	return nil
-}
-
-// PushEntries is Push for a folder whose listing was already read, so it needs no fs.Stat.
-func (ic *IgnoreChecker) PushEntries(ctx context.Context, folder string, entries []fs.DirEntry) {
-	ic.push(ic.loadPatterns(ctx, folder, func(name string) bool {
-		i := slices.IndexFunc(entries, func(e fs.DirEntry) bool { return e.Name() == name })
-		if i >= 0 && entries[i].Type()&fs.ModeSymlink == 0 {
-			return true
-		}
-		// Ask fs.Stat for a symlink (it may dangle) or an odd-case name (found only on case-insensitive filesystems)
-		if i >= 0 || slices.ContainsFunc(entries, func(e fs.DirEntry) bool { return strings.EqualFold(e.Name(), name) }) {
-			_, err := fs.Stat(ic.fsys, path.Join(folder, name))
-			return err == nil
-		}
-		return false
-	}))
 }
 
 func (ic *IgnoreChecker) push(patterns []string) {
@@ -143,28 +126,25 @@ func (ic *IgnoreChecker) ShouldIgnore(ctx context.Context, relPath string) bool 
 	return matches
 }
 
+// loadPatternsFromFolder reads the .ndignore file in the specified folder and returns the patterns.
+// If the file doesn't exist, returns an empty slice.
+// If the file exists but is empty, or there is a .nomedia file with respectNoMedia, ignores everything.
 func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder string) []string {
-	return ic.loadPatterns(ctx, folder, func(name string) bool {
-		_, err := fs.Stat(ic.fsys, path.Join(folder, name))
-		return err == nil
-	})
-}
-
-// loadPatterns returns the folder's .ndignore patterns, or ignoreAllPattern if the folder has an
-// empty .ndignore, or a .nomedia file with respectNoMedia. exists reports if a marker file is there.
-func (ic *IgnoreChecker) loadPatterns(ctx context.Context, folder string, exists func(name string) bool) []string {
 	if ic.respectNoMedia {
-		if exists(consts.NoMediaFile) {
+		if _, err := fs.Stat(ic.fsys, path.Join(folder, consts.NoMediaFile)); err == nil {
 			log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
 			return []string{ignoreAllPattern}
 		}
 	}
 
+	ignoreFilePath := path.Join(folder, consts.ScanIgnoreFile)
 	var patterns []string
-	if !exists(consts.ScanIgnoreFile) {
+
+	// Check if .ndignore file exists
+	if _, err := fs.Stat(ic.fsys, ignoreFilePath); err != nil {
+		// No .ndignore file in this folder
 		return patterns
 	}
-	ignoreFilePath := path.Join(folder, consts.ScanIgnoreFile)
 
 	// Read and parse the .ndignore file
 	ignoreFile, err := ic.fsys.Open(ignoreFilePath)

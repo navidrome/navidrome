@@ -6,14 +6,11 @@ import (
 	"io/fs"
 	"maps"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
-	"strings"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -169,72 +166,20 @@ var _ = Describe("walk_dir_tree", func() {
 			})
 		})
 
-		Context("ignore marker files", func() {
-			var spy *spyMusicFS
-
-			walk := func() map[string]*folderEntry {
-				job = &scanJob{fs: spy, lib: model.Library{Path: "/music"}}
-				return getFolders()
-			}
-
+		Context("targeted scans", func() {
 			BeforeEach(func() {
 				conf.Update(func(c *conf.Options) { c.Scanner.RespectNoMedia = true })
 				ctx = GinkgoT().Context()
 			})
 
-			It("reads only the marker files present in the folder listing", func() {
-				spy = newSpyMusicFS(fstest.MapFS{
-					"a/.ndignore":       {Data: []byte("ignored/*")},
-					"a/ignored/bad.mp3": {},
-					"b/song.mp3":        {},
-					"c/.nomedia":        {},
-					"c/song.mp3":        {},
-				})
-				folders := walk()
-
-				Expect(folders["a/ignored"].audioFiles).To(BeEmpty())
-				Expect(folders["b"].audioFiles).To(HaveKey("song.mp3"))
-				Expect(folders["c"].audioFiles).To(BeEmpty())
-				Expect(spy.markerAccesses()).To(ConsistOf("a/.ndignore"))
-			})
-
-			DescribeTable("honors odd-case marker names only on case-insensitive filesystems",
-				func(foldCase bool, targets []string, aSub, bSub []string) {
-					spy = newSpyMusicFS(fstest.MapFS{
-						"a/.NDIGNORE":    {Data: []byte("skip.mp3")},
-						"a/sub/skip.mp3": {},
-						"a/sub/song.mp3": {},
-						"b/.NoMedia":     {},
-						"b/sub/song.mp3": {},
-					})
-					spy.foldCase = foldCase
-					job = &scanJob{fs: spy, lib: model.Library{Path: "/music"}}
-					folders := getFolders(targets...)
-					audioIn := func(dir string) []string {
-						if f := folders[dir]; f != nil {
-							return slices.Sorted(maps.Keys(f.audioFiles))
-						}
-						return nil
-					}
-
-					Expect(audioIn("a/sub")).To(Equal(aSub))
-					Expect(audioIn("b/sub")).To(Equal(bSub))
-				},
-				Entry("case-insensitive, full scan", true, nil, []string{"song.mp3"}, []string(nil)),
-				Entry("case-insensitive, targeted scan", true, []string{"a/sub", "b/sub"}, []string{"song.mp3"}, []string(nil)),
-				Entry("case-sensitive, full scan", false, nil, []string{"skip.mp3", "song.mp3"}, []string{"song.mp3"}),
-				Entry("case-sensitive, targeted scan", false, []string{"a/sub", "b/sub"}, []string{"skip.mp3", "song.mp3"}, []string{"song.mp3"}),
-			)
-
 			DescribeTable("skips a folder ignored by its parent, even if it re-includes files",
 				func(targets []string) {
-					spy = newSpyMusicFS(fstest.MapFS{
+					job = &scanJob{fs: &mockMusicFS{FS: fstest.MapFS{
 						"a/.nomedia":     {},
 						"a/b/.ndignore":  {Data: []byte("!song.mp3\n!c")},
 						"a/b/song.mp3":   {},
 						"a/b/c/song.mp3": {},
-					})
-					job = &scanJob{fs: spy, lib: model.Library{Path: "/music"}}
+					}}, lib: model.Library{Path: "/music"}}
 
 					Expect(getFolders(targets...)).ToNot(SatisfyAny(HaveKey("a/b"), HaveKey("a/b/c")))
 				},
@@ -242,30 +187,6 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("targeted scan", []string{"a/b"}),
 				Entry("targeted scan of a deeper folder", []string{"a/b/c"}),
 			)
-
-			It("ignores a marker that is a dangling symlink, as fs.Stat does", func() {
-				spy = newSpyMusicFS(fstest.MapFS{
-					"a/.nomedia": {Mode: fs.ModeSymlink, Data: []byte("missing")},
-					"a/song.mp3": {},
-				})
-				folders := walk()
-
-				Expect(folders["a"].audioFiles).To(HaveKey("song.mp3"))
-			})
-
-			It("keeps the parent's patterns when a child folder cannot be read", func() {
-				spy = newSpyMusicFS(fstest.MapFS{
-					"a/.ndignore":    {Data: []byte("skip.mp3")},
-					"a/bad/song.mp3": {},
-					"a/zz/song.mp3":  {},
-					"a/zz/skip.mp3":  {},
-				})
-				spy.failStat = "a/bad"
-				folders := walk()
-
-				Expect(folders).ToNot(HaveKey("a/bad"))
-				Expect(folders["a/zz"].audioFiles).To(SatisfyAll(HaveKey("song.mp3"), Not(HaveKey("skip.mp3"))))
-			})
 		})
 
 		Context("with target folders", func() {
@@ -930,50 +851,4 @@ func (m *mockMusicFS) Lstat(name string) (fs.FileInfo, error) {
 	}
 	defer f.Close()
 	return f.Stat()
-}
-
-// spyMusicFS records every Open and Stat, and can fail Stat for one path.
-type spyMusicFS struct {
-	*mockMusicFS
-	accessed []string
-	failStat string
-	foldCase bool // resolve file names ignoring case, like macOS and Windows
-}
-
-func newSpyMusicFS(files fstest.MapFS) *spyMusicFS {
-	return &spyMusicFS{mockMusicFS: &mockMusicFS{FS: files}}
-}
-
-func (s *spyMusicFS) Open(name string) (fs.File, error) {
-	s.accessed = append(s.accessed, name)
-	return s.mockMusicFS.Open(s.resolve(name))
-}
-
-func (s *spyMusicFS) Stat(name string) (fs.FileInfo, error) {
-	s.accessed = append(s.accessed, name)
-	if name == s.failStat {
-		return nil, fs.ErrPermission
-	}
-	return s.mockMusicFS.Stat(s.resolve(name))
-}
-
-func (s *spyMusicFS) resolve(name string) string {
-	if s.foldCase {
-		for key := range s.FS.(fstest.MapFS) {
-			if strings.EqualFold(key, name) {
-				return key
-			}
-		}
-	}
-	return name
-}
-
-func (s *spyMusicFS) markerAccesses() []string {
-	var res []string
-	for _, name := range s.accessed {
-		if base := path.Base(name); base == consts.ScanIgnoreFile || base == consts.NoMediaFile {
-			res = append(res, name)
-		}
-	}
-	return res
 }
