@@ -53,7 +53,7 @@ func (api *Router) getPublicUsers(w http.ResponseWriter, r *http.Request) {
 	serverID := api.serverID(ctx)
 	seen := make(map[string]bool)
 	users := []dto.UserDto{}
-	for name := range strings.SplitSeq(conf.Server.Jellyfin.ExposedPublicUsers, ",") {
+	for name := range strings.SplitSeq(conf.Server().Jellyfin.ExposedPublicUsers, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			continue

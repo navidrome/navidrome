@@ -33,10 +33,10 @@ func ImageURL(ctx context.Context, artID model.ArtworkID, size int) string {
 // It uses ShareURL from config if available, otherwise falls back to the address the
 // client used to reach the server, recorded in the context.
 func PublicURL(ctx context.Context, u string, params url.Values) string {
-	if conf.Server.ShareURL == "" {
+	if conf.Server().ShareURL == "" {
 		return AbsoluteURL(ctx, u, params)
 	}
-	shareUrl, err := url.Parse(conf.Server.ShareURL)
+	shareUrl, err := url.Parse(conf.Server().ShareURL)
 	if err != nil {
 		return AbsoluteURL(ctx, u, params)
 	}
@@ -65,17 +65,17 @@ func AbsoluteURL(ctx context.Context, u string, params url.Values) string {
 		return ""
 	}
 	if strings.HasPrefix(u, "/") {
-		buildUrl.Path = path.Join(conf.Server.BasePath, buildUrl.Path)
-		if conf.Server.BaseHost != "" {
-			buildUrl.Scheme = cmp.Or(conf.Server.BaseScheme, "http")
-			buildUrl.Host = conf.Server.BaseHost
+		buildUrl.Path = path.Join(conf.Server().BasePath, buildUrl.Path)
+		if conf.Server().BaseHost != "" {
+			buildUrl.Scheme = cmp.Or(conf.Server().BaseScheme, "http")
+			buildUrl.Host = conf.Server().BaseHost
 		} else if scheme, host, ok := request.ServerAddressFrom(ctx); ok {
 			buildUrl.Scheme = scheme
 			buildUrl.Host = host
 		} else {
 			log.Debug(ctx, "Building a public URL with no public address available; set ShareURL to make it reachable", "url", u)
-			buildUrl.Scheme = gg.If(conf.Server.TLSEnabled(), "https", "http")
-			buildUrl.Host = "localhost:" + strconv.Itoa(conf.Server.Port)
+			buildUrl.Scheme = gg.If(conf.Server().TLSEnabled(), "https", "http")
+			buildUrl.Host = "localhost:" + strconv.Itoa(conf.Server().Port)
 		}
 	}
 	if len(params) > 0 {

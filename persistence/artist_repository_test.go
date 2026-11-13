@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -59,12 +58,11 @@ var _ = Describe("ArtistRepository", func() {
 	Context("Core Functionality", func() {
 		Describe("GetIndexKey", func() {
 			// Note: OrderArtistName should never be empty, so we don't need to test for that
-			r := artistRepository{indexGroups: utils.ParseIndexGroups(conf.Server.IndexGroups)}
+			r := artistRepository{indexGroups: utils.ParseIndexGroups(conf.Server().IndexGroups)}
 
 			DescribeTable("returns correct index key based on PreferSortTags setting",
 				func(preferSortTags bool, sortArtistName, orderArtistName, expectedKey string) {
-					DeferCleanup(configtest.SetupConfig())
-					conf.Server.PreferSortTags = preferSortTags
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = preferSortTags })
 					a := model.Artist{SortArtistName: sortArtistName, OrderArtistName: orderArtistName, Name: "Test"}
 					idx := GetIndexKey(&r, a)
 					Expect(idx).To(Equal(expectedKey))
@@ -453,7 +451,7 @@ var _ = Describe("ArtistRepository", func() {
 		Describe("GetIndex", func() {
 			When("PreferSortTags is true", func() {
 				BeforeEach(func() {
-					conf.Server.PreferSortTags = true
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 				})
 				It("returns the index when PreferSortTags is true and SortArtistName is not empty", func() {
 					// Set SortArtistName to "Foo" for Beatles
@@ -505,7 +503,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			When("PreferSortTags is false", func() {
 				BeforeEach(func() {
-					conf.Server.PreferSortTags = false
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = false })
 				})
 				It("returns the index when SortArtistName is NOT empty", func() {
 					// Set SortArtistName to "Foo" for Beatles
@@ -833,9 +831,8 @@ var _ = Describe("ArtistRepository", func() {
 
 				DescribeTable("narrows artist search to the requested library",
 					func(backend string, artist model.Artist, query string) {
-						DeferCleanup(configtest.SetupConfig())
 						if backend != "" {
-							conf.Server.Search.Backend = backend
+							conf.Update(func(c *conf.Options) { c.Search.Backend = backend })
 						}
 						Expect(createArtistWithLibrary(ctx, repo, &artist, lib2.ID)).To(Succeed())
 						DeferCleanup(func() {
@@ -889,8 +886,7 @@ var _ = Describe("ArtistRepository", func() {
 
 					DescribeTable("reports only the requested libraries' songs and albums",
 						func(backend, query string) {
-							DeferCleanup(configtest.SetupConfig())
-							conf.Server.Search.Backend = backend
+							conf.Update(func(c *conf.Options) { c.Search.Backend = backend })
 
 							counts := func(libIDs ...int) []int64 {
 								opts := model.QueryOptions{Max: 100}
@@ -914,8 +910,7 @@ var _ = Describe("ArtistRepository", func() {
 					)
 
 					It("ranks LIKE results by the requested library's song count", func() {
-						DeferCleanup(configtest.SetupConfig())
-						conf.Server.Search.Backend = "legacy"
+						conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 						seedArtist("scoped-counts-artist-b", "Scoped Counts Artist B", "", map[int]string{
 							1: `{"total":{"m":10,"a":2,"s":1000}}`,
 						})
@@ -1308,9 +1303,8 @@ var _ = Describe("ArtistRepository", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			ctx = request.WithUser(ctx, adminUser)
 			repo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)

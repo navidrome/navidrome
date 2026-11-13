@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -110,8 +109,10 @@ var _ = Describe("Auth", func() {
 				req = httptest.NewRequest("GET", "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
-				conf.Server.UILoginBackgroundURL = ""
-				conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16,2001:4860:4860::/48"
+				conf.Update(func(c *conf.Options) {
+					c.UILoginBackgroundURL = ""
+					c.ExtAuth.TrustedSources = "192.168.0.0/16,2001:4860:4860::/48"
+				})
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
@@ -185,8 +186,10 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("does not set auth data when listening on unix socket without whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ExtAuth.TrustedSources = ""
+				conf.Update(func(c *conf.Options) {
+					c.Address = "unix:/tmp/navidrome-test"
+					c.ExtAuth.TrustedSources = ""
+				})
 
 				// No ReverseProxyIp in request context
 				serveIndex(ds, fs, nil)(resp, req)
@@ -196,7 +199,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("does not set auth data when listening on unix socket with incorrect whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
+				conf.Update(func(c *conf.Options) { c.Address = "unix:/tmp/navidrome-test" })
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
 				serveIndex(ds, fs, nil)(resp, req)
@@ -206,8 +209,10 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data when listening on unix socket with correct whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ExtAuth.TrustedSources = conf.Server.ExtAuth.TrustedSources + ",@"
+				conf.Update(func(c *conf.Options) {
+					c.Address = "unix:/tmp/navidrome-test"
+					c.ExtAuth.TrustedSources = c.ExtAuth.TrustedSources + ",@"
+				})
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
 				serveIndex(ds, fs, nil)(resp, req)
@@ -260,7 +265,7 @@ var _ = Describe("Auth", func() {
 		var r *http.Request
 
 		BeforeEach(func() {
-			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
+			conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "192.168.0.0/16" })
 			prevLevel := log.CurrentLevel()
 			l, h := test.NewNullLogger()
 			hook = h
@@ -390,8 +395,10 @@ var _ = Describe("Auth", func() {
 			ds = &tests.MockDataStore{}
 			req = httptest.NewRequest("GET", "/", nil)
 			req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIP))
-			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
-			conf.Server.ExtAuth.UserHeader = "Remote-User"
+			conf.Update(func(c *conf.Options) {
+				c.ExtAuth.TrustedSources = "192.168.0.0/16"
+				c.ExtAuth.UserHeader = "Remote-User"
+			})
 		})
 
 		It("makes the first user an admin", func() {
@@ -436,8 +443,7 @@ var _ = Describe("Auth", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SessionTimeout = time.Hour
+			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			ds = &tests.MockDataStore{}
 			auth.Init(ds)
 			ur := ds.User().(*tests.MockedUserRepo)
@@ -476,7 +482,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("ignores a stray token for someone else when config auto-login resolves the user", func() {
-			conf.Server.DevAutoLoginUsername = usr.UserName
+			conf.Update(func(c *conf.Options) { c.DevAutoLoginUsername = usr.UserName })
 			tokenStr, err := auth.CreateToken(&model.User{UserName: "someone-else"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
@@ -492,9 +498,8 @@ var _ = Describe("Auth", func() {
 
 	Describe("JWTRefresher", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
-			conf.Server.SessionTimeout = time.Hour
+			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			auth.Init(&tests.MockDataStore{})
 		})
 
