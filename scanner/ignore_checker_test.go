@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing/fstest"
 
-	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +20,7 @@ var _ = Describe("IgnoreChecker", func() {
 		Context("when .ndignore file does not exist", func() {
 			It("should return empty patterns", func() {
 				fsys := fstest.MapFS{}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 				patterns := ic.loadPatternsFromFolder(ctx, ".")
 				Expect(patterns).To(BeEmpty())
 			})
@@ -33,7 +31,7 @@ var _ = Describe("IgnoreChecker", func() {
 				fsys := fstest.MapFS{
 					".ndignore": &fstest.MapFile{Data: []byte("")},
 				}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 				patterns := ic.loadPatternsFromFolder(ctx, ".")
 				Expect(patterns).To(Equal([]string{"**/*"}))
 			})
@@ -41,9 +39,7 @@ var _ = Describe("IgnoreChecker", func() {
 
 		DescribeTable("when .nomedia file exists",
 			func(respectNoMedia bool, files fstest.MapFS, expected []string) {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Scanner.RespectNoMedia = respectNoMedia
-				ic = newIgnoreChecker(files)
+				ic = newIgnoreChecker(files, respectNoMedia)
 				patterns := ic.loadPatternsFromFolder(ctx, ".")
 				Expect(patterns).To(Equal(expected))
 			},
@@ -65,7 +61,7 @@ var _ = Describe("IgnoreChecker", func() {
 				fsys := fstest.MapFS{
 					".ndignore": &fstest.MapFile{Data: []byte(content)},
 				}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 				patterns := ic.loadPatternsFromFolder(ctx, ".")
 				Expect(patterns).To(Equal(expectedPatterns))
 			},
@@ -98,7 +94,7 @@ var _ = Describe("IgnoreChecker", func() {
 				"folder1/.ndignore": &fstest.MapFile{Data: []byte("*.mp3")},
 				"folder2/.ndignore": &fstest.MapFile{Data: []byte("*.flac")},
 			}
-			ic = newIgnoreChecker(fsys)
+			ic = newIgnoreChecker(fsys, false)
 		})
 
 		Context("Push", func() {
@@ -206,7 +202,7 @@ var _ = Describe("IgnoreChecker", func() {
 				"folder1/folder2/.ndignore":         &fstest.MapFile{Data: []byte("level2.txt")},
 				"folder1/folder2/folder3/.ndignore": &fstest.MapFile{Data: []byte("level3.txt")},
 			}
-			ic = newIgnoreChecker(fsys)
+			ic = newIgnoreChecker(fsys, false)
 		})
 
 		DescribeTable("loading parent patterns",
@@ -242,7 +238,7 @@ var _ = Describe("IgnoreChecker", func() {
 					".ndignore":                 &fstest.MapFile{Data: []byte("root.txt")},
 					"folder1/folder2/.ndignore": &fstest.MapFile{Data: []byte("level2.txt")},
 				}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 			})
 
 			It("should still push all parent levels", func() {
@@ -265,7 +261,7 @@ var _ = Describe("IgnoreChecker", func() {
 		Context("with no patterns loaded", func() {
 			It("should not ignore any path", func() {
 				fsys := fstest.MapFS{}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 				Expect(ic.ShouldIgnore(ctx, "anything.txt")).To(BeFalse())
 				Expect(ic.ShouldIgnore(ctx, "folder/file.mp3")).To(BeFalse())
 			})
@@ -276,7 +272,7 @@ var _ = Describe("IgnoreChecker", func() {
 				fsys := fstest.MapFS{
 					".ndignore": &fstest.MapFile{Data: []byte("**/*")},
 				}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 				err := ic.Push(ctx, ".")
 				Expect(err).ToNot(HaveOccurred())
 			})
@@ -297,7 +293,7 @@ var _ = Describe("IgnoreChecker", func() {
 				fsys := fstest.MapFS{
 					".ndignore": &fstest.MapFile{Data: []byte(pattern)},
 				}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 				err := ic.Push(ctx, ".")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(ic.ShouldIgnore(ctx, path)).To(Equal(shouldMatch))
@@ -320,7 +316,7 @@ var _ = Describe("IgnoreChecker", func() {
 				fsys := fstest.MapFS{
 					".ndignore": &fstest.MapFile{Data: []byte("*.txt\n*.log\ntemp/")},
 				}
-				ic = newIgnoreChecker(fsys)
+				ic = newIgnoreChecker(fsys, false)
 				err := ic.Push(ctx, ".")
 				Expect(err).ToNot(HaveOccurred())
 			})

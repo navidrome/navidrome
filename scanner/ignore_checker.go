@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	ignore "github.com/sabhiram/go-gitignore"
@@ -21,16 +20,19 @@ const ignoreAllPattern = "**/*"
 // and ShouldIgnore() to check if a path should be ignored.
 type IgnoreChecker struct {
 	fsys            fs.FS
+	respectNoMedia  bool
 	patternStack    [][]string        // Stack of patterns for each folder level
 	currentPatterns []string          // Flattened current patterns
 	matcher         *ignore.GitIgnore // Compiled matcher for current patterns
 }
 
-// newIgnoreChecker creates a new IgnoreChecker for the given filesystem.
-func newIgnoreChecker(fsys fs.FS) *IgnoreChecker {
+// newIgnoreChecker creates a new IgnoreChecker for the given filesystem. With respectNoMedia,
+// a .nomedia file ignores its whole folder.
+func newIgnoreChecker(fsys fs.FS, respectNoMedia bool) *IgnoreChecker {
 	return &IgnoreChecker{
-		fsys:         fsys,
-		patternStack: make([][]string, 0),
+		fsys:           fsys,
+		respectNoMedia: respectNoMedia,
+		patternStack:   make([][]string, 0),
 	}
 }
 
@@ -128,9 +130,9 @@ func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder stri
 }
 
 // loadPatterns returns the folder's .ndignore patterns, or ignoreAllPattern if the folder has an
-// empty .ndignore, or a .nomedia file with Scanner.RespectNoMedia. find returns a marker's path.
+// empty .ndignore, or a .nomedia file with respectNoMedia. find returns a marker's path.
 func (ic *IgnoreChecker) loadPatterns(ctx context.Context, folder string, find func(name string) (string, bool)) []string {
-	if conf.Server.Scanner.RespectNoMedia {
+	if ic.respectNoMedia {
 		if _, ok := find(consts.NoMediaFile); ok {
 			log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
 			return []string{ignoreAllPattern}

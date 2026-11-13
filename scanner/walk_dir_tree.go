@@ -27,6 +27,8 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 		// No specific folders provided, scan the root folder
 		folders = []string{"."}
 	}
+	// Read before the goroutine starts: a canceled scan can leave it running after the scan returns
+	respectNoMedia := conf.Server.Scanner.RespectNoMedia
 	go func() {
 		defer close(results)
 		for _, folderPath := range folders {
@@ -51,7 +53,7 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 			}
 
 			// walkFolder pushes the target folder's own patterns, so only its parents are pushed here
-			checker := newIgnoreChecker(job.fs)
+			checker := newIgnoreChecker(job.fs, respectNoMedia)
 			if target := path.Clean(folderPath); target != "." {
 				err = checker.PushAllParents(ctx, path.Dir(target))
 				if err != nil {
