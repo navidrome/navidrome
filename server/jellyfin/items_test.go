@@ -341,6 +341,46 @@ var _ = Describe("Items", func() {
 			Expect(res.TotalRecordCount).To(Equal(1))
 		})
 
+		It("filters playlists by SearchTerm", func() {
+			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
+			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "Rock Hits", SongCount: 10}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Playlist&SearchTerm=Rock", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, args, err := playlistRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("name LIKE ? ESCAPE '\\'"))
+			Expect(args).To(ContainElement("%Rock%"))
+		})
+
+		It("escapes LIKE wildcards in SearchTerm for playlists", func() {
+			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
+			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "100% Hits", SongCount: 10}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Playlist&SearchTerm=100%25", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, args, err := playlistRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("name LIKE ? ESCAPE '\\'"))
+			Expect(args).To(ContainElement("%100\\%%"))
+		})
+
+		It("combines SearchTerm and filter predicates for playlists", func() {
+			playlistRepo := ds.Playlist().(*tests.MockPlaylistRepo)
+			playlistRepo.SetData(model.Playlists{{ID: testID("p1"), Name: "Rock Favorites", Annotations: model.Annotations{Starred: true}}})
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/Items?IncludeItemTypes=Playlist&SearchTerm=Rock&Filters=IsFavorite", nil).WithContext(ctxUser())
+			invoke(api.getItems, w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			sql, args, err := playlistRepo.Options.Filters.ToSql()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(sql).To(ContainSubstring("name LIKE ? ESCAPE '\\'"))
+			Expect(sql).To(ContainSubstring("starred"))
+			Expect(args).To(ContainElement("%Rock%"))
+		})
+
 		It("merges results from every requested type in IncludeItemTypes", func() {
 			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song"}})
 			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})

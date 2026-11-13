@@ -391,10 +391,10 @@ make test PKG=./server/jellyfin/...
   `Items?IncludeItemTypes=MusicGenre` list the genres of every library the user can access, never
   only the `ParentId` library. `Items?IncludeItemTypes=MusicGenre` also ignores `SearchTerm`.
   `GET Items/Filters` is the exception: its genres follow `ParentId`.
-- **Search skips some filters.** With `SearchTerm`, `Filters=IsFavorite`, `IsPlayed`, `IsUnplayed`
-  and `isFavorite`/`isPlayed` are skipped, so the response holds every search match. The full-text
+- **Search skips some filters for library items.** With `SearchTerm`, `Filters=IsFavorite`, `IsPlayed`, `IsUnplayed`
+  and `isFavorite`/`isPlayed` are skipped for albums, artists and songs, so the response holds every search match. The full-text
   search's first phase has no annotation join to filter on. Artist searches also skip the role (album
-  artist vs. artist) and `GenreIds`. Playlist lists ignore `SearchTerm`.
+  artist vs. artist) and `GenreIds`. Playlist searches honour `SearchTerm` and apply favorite/played filters.
 - **Search pages are capped at 2,000 items.** A larger `Limit` is lowered to 2,000. Jellyfin has no
   cap.
 - **One-character searches return nothing.** The shared search layer ignores terms shorter than two
