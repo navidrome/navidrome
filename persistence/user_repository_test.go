@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -125,9 +124,8 @@ var _ = Describe("UserRepository", func() {
 
 	Describe("initPasswordEncryptionKey", func() {
 		It("never logs the encryption key checksum, but still logs its property id", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.PasswordEncryptionKey = "a-new-password-encryption-key"
-			keySum := fmt.Sprintf("%x", sha256.Sum256(keyTo32Bytes(conf.Server.PasswordEncryptionKey)))
+			conf.Update(func(c *conf.Options) { c.PasswordEncryptionKey = "a-new-password-encryption-key" })
+			keySum := fmt.Sprintf("%x", sha256.Sum256(keyTo32Bytes(conf.Server().PasswordEncryptionKey)))
 			previousKey := encKey
 			DeferCleanup(func() { encKey = previousKey })
 			tx, err := GetDBXBuilder().Begin()

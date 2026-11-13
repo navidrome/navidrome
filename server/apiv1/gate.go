@@ -81,8 +81,8 @@ func newGate(doc *openapi3.T, mux chi.Routes, auth authenticator, rules gateRule
 	if err := rules.check(ids); err != nil {
 		return nil, err
 	}
-	if conf.Server.AuthRequestLimit > 0 {
-		g.limiter = server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength,
+	if cfg := conf.Server(); cfg.AuthRequestLimit > 0 {
+		g.limiter = server.ClientIPRateLimiter(cfg.AuthRequestLimit, cfg.AuthWindowLength,
 			// Counts are per node, so X-RateLimit-Remaining would mislead clients of a scaled-out server.
 			httprate.WithResponseHeaders(httprate.ResponseHeaders{RetryAfter: "Retry-After"}),
 			httprate.WithLimitHandler(func(w http.ResponseWriter, r *http.Request) {

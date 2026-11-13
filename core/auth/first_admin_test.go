@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/model"
@@ -22,8 +21,10 @@ var _ = Describe("CreateFirstAdmin", Ordered, func() {
 	var ds model.DataStore
 
 	BeforeAll(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DbPath = filepath.Join(GinkgoT().TempDir(), "first-admin.db") + "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000"
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.DbPath = filepath.Join(GinkgoT().TempDir(), "first-admin.db") + "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000"
+		})
 		DeferCleanup(db.Init(GinkgoT().Context()))
 		ds = persistence.New(db.Db())
 	})

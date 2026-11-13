@@ -495,7 +495,7 @@ var _ = Describe("middlewares", func() {
 		var addr, ip string
 		BeforeEach(func() {
 			ctx = GinkgoT().Context()
-			conf.Server.ExtAuth.TrustedSources = "10.0.0.0/8"
+			conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "10.0.0.0/8" })
 		})
 		call := func(h http.Handler, peer, xff string) {
 			r := httptest.NewRequestWithContext(ctx, "POST", "/auth/login", nil)

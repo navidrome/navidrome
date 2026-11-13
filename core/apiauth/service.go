@@ -60,7 +60,7 @@ func New(ds model.DataStore) *Service {
 }
 
 func PasswordChangeable(u model.User) bool {
-	return u.IsAdmin || conf.Server.EnableUserEditing
+	return u.IsAdmin || conf.Server().EnableUserEditing
 }
 
 func (s *Service) Login(ctx context.Context, username, password string, meta ClientMeta, scopes []string) (*Issued, error) {

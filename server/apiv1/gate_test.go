@@ -12,7 +12,6 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/apiauth"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -321,8 +320,7 @@ var _ = Describe("spec gate", func() {
 	})
 
 	It("rate-limits the listed operations with a 429 problem", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AuthRequestLimit = 1
+		conf.Update(func(c *conf.Options) { c.AuthRequestLimit = 1 })
 		var err error
 		mux, err = build(gateSpec)
 		Expect(err).ToNot(HaveOccurred())

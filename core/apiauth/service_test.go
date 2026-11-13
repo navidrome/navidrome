@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -24,7 +23,6 @@ var _ = Describe("Service", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
 		now = time.Now().UTC().Truncate(time.Second)
 		svc = New(realDS)
 		svc.SetClock(func() time.Time { return now })
@@ -331,7 +329,7 @@ var _ = Describe("Service", func() {
 		})
 
 		It("is forbidden for non-admins when user editing is off", func() {
-			conf.Server.EnableUserEditing = false
+			conf.Update(func(c *conf.Options) { c.EnableUserEditing = false })
 			u := createUser(ctx, "pw", false)
 			_, p := login(ctx, svc, u, "pw", nil)
 			err := svc.ChangePassword(request.WithUser(ctx, p.User), p, "pw", "pw2", true)
@@ -391,10 +389,10 @@ var _ = Describe("Service", func() {
 
 	Describe("PasswordChangeable", func() {
 		It("follows EnableUserEditing for non-admins only", func() {
-			conf.Server.EnableUserEditing = false
+			conf.Update(func(c *conf.Options) { c.EnableUserEditing = false })
 			Expect(PasswordChangeable(model.User{IsAdmin: true})).To(BeTrue())
 			Expect(PasswordChangeable(model.User{})).To(BeFalse())
-			conf.Server.EnableUserEditing = true
+			conf.Update(func(c *conf.Options) { c.EnableUserEditing = true })
 			Expect(PasswordChangeable(model.User{})).To(BeTrue())
 		})
 	})
