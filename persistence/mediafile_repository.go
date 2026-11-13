@@ -141,7 +141,7 @@ func mediaFileArtistFilter(_ string, value any) Sqlizer {
 }
 
 func mediaFileRecentlyAddedSort() string {
-	if conf.Server.RecentlyAddedByModTime {
+	if conf.Server().RecentlyAddedByModTime {
 		return "media_file.updated_at, media_file.id"
 	}
 	return "media_file.created_at, media_file.id"

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -239,8 +238,7 @@ var _ = Describe("Artwork hydration", func() {
 
 		BeforeEach(func() {
 			repo = NewMediaFileRepository(GetDBXBuilder())
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		})
 
 		It("resolves the embedded-eligible fallback matrix", func() {
@@ -360,7 +358,7 @@ var _ = Describe("Artwork hydration", func() {
 		})
 
 		It("uses album info for an eligible file when EnableMediaFileCoverArt is off", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			setCover("1001", true)
 			DeferCleanup(func() { setCover("1001", false) })
 

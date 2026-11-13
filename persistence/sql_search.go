@@ -39,7 +39,7 @@ type searchStrategy interface {
 // getSearchStrategy returns the appropriate search strategy based on config and query content.
 // Returns nil when the query produces no searchable tokens.
 func getSearchStrategy(tableName, query string) searchStrategy {
-	if conf.Server.Search.Backend == "legacy" || conf.Server.Search.FullString {
+	if conf.Server().Search.Backend == "legacy" || conf.Server().Search.FullString {
 		return newLegacySearch(tableName, query)
 	}
 	if containsCJK(query) {

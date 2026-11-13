@@ -24,7 +24,7 @@ var _ = Describe("Multi-Library Support", Ordered, func() {
 	var userLib1Only model.User  // non-admin with lib1 access only
 
 	BeforeAll(func() {
-		conf.Server.EnableSharing = true
+		conf.Update(func(c *conf.Options) { c.EnableSharing = true })
 		setupTestDB()
 
 		// Create a second FakeFS with Classical music content

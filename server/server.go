@@ -48,7 +48,7 @@ func New(ds model.DataStore, broker events.Broker, insights metrics.Insights) *S
 }
 
 func (s *Server) MountRouter(description, urlPath string, subRouter http.Handler) {
-	urlPath = path.Join(conf.Server.BasePath, urlPath)
+	urlPath = path.Join(conf.Server().BasePath, urlPath)
 	log.Info(fmt.Sprintf("Mounting %s routes", description), "path", urlPath)
 	s.router.Group(func(r chi.Router) {
 		r.Mount(urlPath, subRouter)
@@ -81,7 +81,7 @@ func (s *Server) Run(ctx context.Context, addr string, port int, tlsCert string,
 	var err error
 	if after, ok := strings.CutPrefix(addr, "unix:"); ok {
 		socketPath := after
-		listener, err = createUnixSocketFile(socketPath, conf.Server.UnixSocketPerm)
+		listener, err = createUnixSocketFile(socketPath, conf.Server().UnixSocketPerm)
 		if err != nil {
 			return err
 		}
@@ -164,7 +164,7 @@ func createUnixSocketFile(socketPath string, socketPerm string) (net.Listener, e
 }
 
 func (s *Server) initRoutes() {
-	s.appRoot = path.Join(conf.Server.BasePath, consts.URLPathUI)
+	s.appRoot = path.Join(conf.Server().BasePath, consts.URLPathUI)
 
 	r := chi.NewRouter()
 
@@ -184,12 +184,12 @@ func (s *Server) initRoutes() {
 	}
 
 	// Mount the Native API /events endpoint with all default middlewares, adding the authentication middlewares
-	if conf.Server.DevActivityPanel {
+	if conf.Server().DevActivityPanel {
 		r.Group(func(r chi.Router) {
 			r.Use(defaultMiddlewares...)
 			r.Use(Authenticator(s.ds))
 			r.Use(JWTRefresher)
-			r.Handle(path.Join(conf.Server.BasePath, consts.URLPathNativeAPI, "events"), s.broker)
+			r.Handle(path.Join(conf.Server().BasePath, consts.URLPathNativeAPI, "events"), s.broker)
 		})
 	}
 
@@ -203,13 +203,13 @@ func (s *Server) initRoutes() {
 
 func (s *Server) mountAuthenticationRoutes() chi.Router {
 	r := s.router
-	return r.Route(path.Join(conf.Server.BasePath, "/auth"), func(r chi.Router) {
+	return r.Route(path.Join(conf.Server().BasePath, "/auth"), func(r chi.Router) {
 		r.Use(LimitLoginBody)
-		if conf.Server.AuthRequestLimit > 0 {
-			log.Info("Login rate limit set", "requestLimit", conf.Server.AuthRequestLimit,
-				"windowLength", conf.Server.AuthWindowLength)
+		if conf.Server().AuthRequestLimit > 0 {
+			log.Info("Login rate limit set", "requestLimit", conf.Server().AuthRequestLimit,
+				"windowLength", conf.Server().AuthWindowLength)
 
-			rateLimiter := ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength)
+			rateLimiter := ClientIPRateLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength)
 			r.With(rateLimiter).Post("/login", login(s.ds))
 		} else {
 			log.Warn("Login rate limit is disabled! Consider enabling it to be protected against brute-force attacks")

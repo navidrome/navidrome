@@ -3,6 +3,7 @@ package dto
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -14,7 +15,7 @@ import (
 // sortName must match the persistence ORDER BY key (see setSortMappings): Finamp's A-Z jump
 // scans SortName client-side, and any mismatch with the server's sort order scrolls to the top.
 func sortName(sortTag, orderName, displayName string) string {
-	if conf.Server.PreferSortTags {
+	if conf.Server().PreferSortTags {
 		return cmp.Or(sortTag, orderName, displayName)
 	}
 	return cmp.Or(orderName, displayName)
@@ -121,6 +122,30 @@ func MediaSourceFromMediaFile(mf model.MediaFile) MediaSourceInfo {
 	}
 }
 
+// minLikeRating is Jellyfin's UserItemData.MinLikeValue: a rating at or above it reads as Likes.
+const minLikeRating = 6.5
+
+// StarsFromRating maps Jellyfin's 0-10 rating to 0-5 stars, rejecting out-of-range values and NaN.
+// A nonzero rating floors at one star, since 0 stars means "not rated".
+func StarsFromRating(rating float64) (int, bool) {
+	if !(rating >= 0 && rating <= 10) {
+		return 0, false
+	}
+	stars := int(math.Round(rating / 2))
+	if rating > 0 {
+		stars = max(stars, 1)
+	}
+	return stars, true
+}
+
+// StarsFromLikes mirrors Jellyfin, which stores likes as Rating 10 and dislikes as Rating 1.
+func StarsFromLikes(likes bool) int {
+	if likes {
+		return 5
+	}
+	return 1
+}
+
 func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	// Callers pass the raw model id; encode here so Key/ItemId match the encoded Id on the BaseItemDto.
 	encodedID := EncodeID(itemID)
@@ -134,6 +159,7 @@ func UserData(a model.Annotations, itemID string) *UserItemDataDto {
 	if a.Rating > 0 {
 		r := float64(a.Rating) * 2 // Navidrome 0-5 -> Jellyfin 0-10
 		d.Rating = &r
+		d.Likes = new(r >= minLikeRating)
 	}
 	if s := JellyfinDate(a.PlayDate); s != "" {
 		d.LastPlayedDate = &s
@@ -231,7 +257,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 }
 
 func embeddedArtPending(mf model.MediaFile) bool {
-	return mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt &&
+	return mf.HasCoverArt && conf.Server().EnableMediaFileCoverArt &&
 		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 

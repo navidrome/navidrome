@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -31,9 +30,10 @@ var _ = Describe("Plugin API", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
-		conf.Server.Plugins.Enabled = true
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.Plugins.Enabled = true
+		})
 		ds = &tests.MockDataStore{}
 		mockManager = &tests.MockPluginManager{}
 		auth.Init(ds)
@@ -80,7 +80,7 @@ var _ = Describe("Plugin API", func() {
 
 	Context("when plugins are disabled", func() {
 		BeforeEach(func() {
-			conf.Server.Plugins.Enabled = false
+			conf.Update(func(c *conf.Options) { c.Plugins.Enabled = false })
 		})
 
 		It("returns 404 for all plugin endpoints", func() {

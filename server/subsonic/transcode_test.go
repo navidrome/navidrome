@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/stream"
@@ -546,6 +548,60 @@ var _ = Describe("Transcode endpoints", func() {
 			Expect(fakeStreamer.captured.Channels).To(Equal(2))
 			Expect(fakeStreamer.captured.Offset).To(Equal(10))
 		})
+
+		Describe("serving the stream", func() {
+			transcoded := []byte("transcoded audio")
+
+			serve := func(method string, newStream func(*model.MediaFile) *stream.Stream, params ...string) {
+				router = New(ds, nil, &fakeMediaStreamer{newStream: newStream}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, mockTD, nil)
+				mockMFRepo.SetData(model.MediaFiles{{ID: "song-1", Title: "Song", Duration: 10}})
+				mockTD.resolvedReq = stream.Request{Format: "mp3", BitRate: 128}
+				r := newGetRequest(append([]string{"mediaId=song-1", "mediaType=song", "transcodeParams=valid-token"}, params...)...)
+				r.Method = method
+				_, _ = router.GetTranscodeStream(w, r)
+			}
+			inProgress := func(mf *model.MediaFile) *stream.Stream {
+				return stream.NewStream(mf, "mp3", 128, io.NopCloser(bytes.NewReader(transcoded)))
+			}
+			completed := func(mf *model.MediaFile) *stream.Stream {
+				rs := bytes.NewReader(transcoded)
+				s := stream.NewStream(mf, "mp3", 128, io.NopCloser(rs))
+				s.Seeker = rs
+				return s
+			}
+
+			It("returns 200 on HEAD for a transcode that is not cached yet", func() {
+				serve(http.MethodHead, inProgress)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).To(Equal("audio/mpeg"))
+				Expect(w.Body.Len()).To(BeZero())
+			})
+
+			It("declares the estimated length on HEAD for a transcode not cached yet, when asked", func() {
+				serve(http.MethodHead, inProgress, "estimateContentLength=true")
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Length")).ToNot(BeEmpty())
+			})
+
+			// Guards the seekable path, which must keep answering HEAD with 200 and the real length.
+			It("returns 200 with the real length on HEAD for a transcode completed in the cache", func() {
+				serve(http.MethodHead, completed)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Length")).To(Equal(strconv.Itoa(len(transcoded))))
+				Expect(w.Header().Get("Accept-Ranges")).To(Equal("bytes"))
+			})
+
+			It("still returns 500 on GET when the transcoder produces no output", func() {
+				serve(http.MethodGet, func(mf *model.MediaFile) *stream.Stream {
+					return stream.NewStream(mf, "mp3", 128, io.NopCloser(bytes.NewReader(nil)))
+				})
+
+				Expect(w.Code).To(Equal(http.StatusInternalServerError))
+			})
+		})
 	})
 
 	Describe("bpsToKbps", func() {
@@ -642,15 +698,20 @@ func (m *mockTranscodeDecision) ResolveRequestFromToken(_ context.Context, _ str
 	return req, nil
 }
 
-// fakeMediaStreamer captures the StreamRequest and returns a sentinel error,
-// allowing tests to verify parameter passing without constructing a real Stream.
+// fakeMediaStreamer captures the StreamRequest. Without newStream it returns a sentinel error,
+// allowing tests to verify parameter passing without constructing a real Stream. With newStream
+// it hands the handler a real Stream, so tests can check what Serve writes.
 var errStreamCaptured = errors.New("stream request captured")
 
 type fakeMediaStreamer struct {
-	captured *stream.Request
+	captured  *stream.Request
+	newStream func(*model.MediaFile) *stream.Stream
 }
 
-func (f *fakeMediaStreamer) NewStream(_ context.Context, _ *model.MediaFile, req stream.Request) (*stream.Stream, error) {
+func (f *fakeMediaStreamer) NewStream(_ context.Context, mf *model.MediaFile, req stream.Request) (*stream.Stream, error) {
 	f.captured = &req
+	if f.newStream != nil {
+		return f.newStream(mf), nil
+	}
 	return nil, errStreamCaptured
 }
