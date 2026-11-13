@@ -65,7 +65,7 @@ func imageAgents(fakes ...*fakeImageAgent) *agents.Agents {
 		agents.Register(fake.name, func(model.DataStore) agents.Interface { return fake })
 		names = append(names, fake.name)
 	}
-	conf.Server.Agents = strings.Join(names, ",")
+	conf.Update(func(c *conf.Options) { c.Agents = strings.Join(names, ",") })
 	return agents.GetAgents(&tests.MockDataStore{}, nil)
 }
 
@@ -200,7 +200,7 @@ var _ = Describe("agent images", func() {
 		})
 
 		It("clears typographic characters from the query name unless preserving unicode", func() {
-			conf.Server.DevPreserveUnicodeInExternalCalls = false
+			conf.Update(func(c *conf.Options) { c.DevPreserveUnicodeInExternalCalls = false })
 			a := &fakeImageAgent{name: "agentA"}
 			ag := imageAgents(a)
 

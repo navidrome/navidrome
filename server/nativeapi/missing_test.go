@@ -23,8 +23,10 @@ var _ = Describe("Missing Files Endpoint", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.SessionTimeout = time.Minute
-		conf.Server.EnableSharing = false
+		conf.Update(func(c *conf.Options) {
+			c.SessionTimeout = time.Minute
+			c.EnableSharing = false
+		})
 
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{

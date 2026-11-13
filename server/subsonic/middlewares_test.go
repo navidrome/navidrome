@@ -100,8 +100,10 @@ var _ = Describe("Middlewares", func() {
 		})
 
 		It("passes when all required params are available (reverse-proxy case)", func() {
-			conf.Server.ExtAuth.TrustedSources = "127.0.0.234/32"
-			conf.Server.ExtAuth.UserHeader = "Remote-User"
+			conf.Update(func(c *conf.Options) {
+				c.ExtAuth.TrustedSources = "127.0.0.234/32"
+				c.ExtAuth.UserHeader = "Remote-User"
+			})
 
 			r := newGetRequest("v=1.15", "c=test")
 			r.Header.Add("Remote-User", "user")
@@ -235,7 +237,7 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.SessionTimeout = time.Minute
+				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 			})
 
@@ -267,8 +269,10 @@ var _ = Describe("Middlewares", func() {
 		When("using reverse proxy authentication", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.ExtAuth.TrustedSources = "192.168.1.1/24"
-				conf.Server.ExtAuth.UserHeader = "Remote-User"
+				conf.Update(func(c *conf.Options) {
+					c.ExtAuth.TrustedSources = "192.168.1.1/24"
+					c.ExtAuth.UserHeader = "Remote-User"
+				})
 			})
 
 			It("passes authentication with correct IP and header", func() {
@@ -420,8 +424,10 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.AuthRequestLimit = 3
-				conf.Server.AuthWindowLength = time.Minute
+				conf.Update(func(c *conf.Options) {
+					c.AuthRequestLimit = 3
+					c.AuthWindowLength = time.Minute
+				})
 				cp = authenticate(ds)(next)
 			})
 
@@ -513,8 +519,10 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("does not limit reverse proxy authentication", func() {
-				conf.Server.ExtAuth.TrustedSources = "192.168.1.1/24"
-				conf.Server.ExtAuth.UserHeader = "Remote-User"
+				conf.Update(func(c *conf.Options) {
+					c.ExtAuth.TrustedSources = "192.168.1.1/24"
+					c.ExtAuth.UserHeader = "Remote-User"
+				})
 				failTimes(3, "u=admin", "p=WRONG")
 
 				r := newGetRequest()
@@ -544,7 +552,7 @@ var _ = Describe("Middlewares", func() {
 			})
 
 			It("is disabled when AuthRequestLimit is 0", func() {
-				conf.Server.AuthRequestLimit = 0
+				conf.Update(func(c *conf.Options) { c.AuthRequestLimit = 0 })
 				cp = authenticate(ds)(next)
 				failTimes(10, "u=admin", "p=WRONG")
 
@@ -559,8 +567,10 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.AuthRequestLimit = 5
-				conf.Server.AuthWindowLength = time.Minute
+				conf.Update(func(c *conf.Options) {
+					c.AuthRequestLimit = 5
+					c.AuthWindowLength = time.Minute
+				})
 				gate = &gatedUserRepo{
 					UserRepository: ds.User(),
 					entered:        make(chan struct{}, 64),
@@ -583,7 +593,7 @@ var _ = Describe("Middlewares", func() {
 						}
 					})
 				}
-				for range conf.Server.AuthRequestLimit {
+				for range conf.Server().AuthRequestLimit {
 					Eventually(gate.entered).Should(Receive())
 				}
 				close(gate.proceed)
@@ -601,7 +611,7 @@ var _ = Describe("Middlewares", func() {
 					})
 				}
 
-				limit := int32(conf.Server.AuthRequestLimit)
+				limit := int32(conf.Server().AuthRequestLimit)
 				Eventually(gate.lookups.Load).Should(Equal(limit))
 				Consistently(gate.lookups.Load, 100*time.Millisecond).Should(Equal(limit))
 				close(gate.proceed)
@@ -791,7 +801,7 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.SessionTimeout = time.Minute
+				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 
 				usr = &model.User{UserName: "admin"}
@@ -826,7 +836,7 @@ var _ = Describe("Middlewares", func() {
 
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.SessionTimeout = time.Minute
+				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 				usr = &model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}
 			})

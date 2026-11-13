@@ -25,7 +25,7 @@ var _ = Describe("Radio", func() {
 	Describe("UploadedImagePath", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DataFolder = conf.NewDir("/data")
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir("/data") })
 		})
 
 		It("returns empty string when no image uploaded", func() {

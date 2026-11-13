@@ -60,8 +60,10 @@ var _ = Describe("AlbumRepository", func() {
 
 		DescribeTable("sorts albums by name",
 			func(naturalSorting, preferSortTags bool, expected []string) {
-				conf.Server.EnableNaturalSorting = naturalSorting
-				conf.Server.PreferSortTags = preferSortTags
+				conf.Update(func(c *conf.Options) {
+					c.EnableNaturalSorting = naturalSorting
+					c.PreferSortTags = preferSortTags
+				})
 				albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
 				albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 					Sort: "name", Filters: squirrel.Eq{"album.id": ids},
@@ -497,7 +499,7 @@ var _ = Describe("AlbumRepository", func() {
 		// Implementation is in withAnnotation() method
 		DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute })
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
@@ -520,7 +522,7 @@ var _ = Describe("AlbumRepository", func() {
 
 		DescribeTable("normalizes play count when AlbumPlayCountMode is normalized",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized })
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())

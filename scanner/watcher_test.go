@@ -27,14 +27,13 @@ var _ = Describe("Watcher", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		// Must dwarf the 20ms Consistently windows below, or a loaded runner's delayed timer reset flakes the debouncing spec.
-		conf.Server.Scanner.WatcherWait = 200 * time.Millisecond
+		conf.Update(func(c *conf.Options) { c.Scanner.WatcherWait = 200 * time.Millisecond })
 
 		ctx, cancel = context.WithCancel(GinkgoT().Context())
 		DeferCleanup(cancel)
 
 		// Use a fake storage scheme: watchLibrary goroutines spawned by Run/Watch are not
-		// joined on spec teardown, and the real file:// storage reads conf.Server on
-		// construction, racing with the configtest cleanup that restores the config.
+		// joined on spec teardown.
 		storagetest.Register("fake-watcher", &storagetest.FakeFS{})
 		lib = &model.Library{
 			ID:   1,
@@ -53,7 +52,7 @@ var _ = Describe("Watcher", func() {
 		w = &watcher{
 			ds:              mockDS,
 			scanner:         mockScanner,
-			triggerWait:     conf.Server.Scanner.WatcherWait,
+			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 10),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 			mainCtx:         ctx,
@@ -445,7 +444,7 @@ var _ = Describe("isIgnoredPath", func() {
 
 	Context("with IgnoreDotFolders enabled (default)", func() {
 		BeforeEach(func() {
-			conf.Server.Scanner.IgnoreDotFolders = true
+			conf.Update(func(c *conf.Options) { c.Scanner.IgnoreDotFolders = true })
 		})
 
 		DescribeTable("returns expected result",
@@ -465,7 +464,7 @@ var _ = Describe("isIgnoredPath", func() {
 
 	Context("with IgnoreDotFolders disabled", func() {
 		BeforeEach(func() {
-			conf.Server.Scanner.IgnoreDotFolders = false
+			conf.Update(func(c *conf.Options) { c.Scanner.IgnoreDotFolders = false })
 		})
 
 		DescribeTable("returns expected result",

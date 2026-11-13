@@ -843,7 +843,7 @@ var _ = Describe("Participants", func() {
 
 		It("does not split a whitelisted artist name on the default separators", func() {
 			// " feat. " is a default artists separator (mappings.yaml)
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"Someone feat. Else"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"Someone feat. Else"} })
 			mf = toMediaFile(model.RawTags{
 				"ARTIST": {"Artist Name feat. Someone feat. Else"},
 			})
@@ -856,7 +856,7 @@ var _ = Describe("Participants", func() {
 
 		It("does not split a whitelisted name in role tags", func() {
 			// "/" is a default roles separator (mappings.yaml)
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"AC/DC"} })
 			mf = toMediaFile(model.RawTags{
 				"COMPOSER": {"AC/DC/John Doe"},
 			})
@@ -868,7 +868,7 @@ var _ = Describe("Participants", func() {
 		})
 
 		It("splits normally when the exception does not match", func() {
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"} })
 			mf = toMediaFile(model.RawTags{
 				"ARTIST": {"Artist Name feat. Someone Else"},
 			})
@@ -880,7 +880,7 @@ var _ = Describe("Participants", func() {
 		})
 
 		It("does not split a whitelisted name in performer tags", func() {
-			conf.Server.Scanner.ArtistSplitExceptions = []string{"AC/DC"}
+			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"AC/DC"} })
 			mf = toMediaFile(model.RawTags{
 				"PERFORMER:GUITAR": {"AC/DC/Brian Johnson"},
 			})

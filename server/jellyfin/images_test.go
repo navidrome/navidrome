@@ -338,7 +338,7 @@ var _ = Describe("postItemImage", func() {
 
 	It("rejects an oversized body with 400, like the native endpoint", func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MaxImageUploadSize = "16" // 16 bytes
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "16" }) // 16 bytes
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
@@ -354,7 +354,7 @@ var _ = Describe("postItemImage", func() {
 		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
 		// The raw image is exactly at the limit; its base64 form is 4/3 bigger.
-		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img))
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img)) })
 		body := []byte(base64.StdEncoding.EncodeToString(img))
 		Expect(len(body)).To(BeNumerically(">", len(img)))
 		w := httptest.NewRecorder()
@@ -371,7 +371,7 @@ var _ = Describe("postItemImage", func() {
 	It("rejects a base64 body whose decoded image exceeds the limit with 400", func() {
 		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
-		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img) - 1)
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img) - 1) })
 		body := []byte(base64.StdEncoding.EncodeToString(img))
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
@@ -411,7 +411,7 @@ var _ = Describe("postItemImage", func() {
 
 	It("forbids a non-admin upload when artwork upload is disabled", func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableArtworkUpload = false
+		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
@@ -426,7 +426,7 @@ var _ = Describe("postItemImage", func() {
 
 	It("still allows an admin upload when artwork upload is disabled", func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableArtworkUpload = false
+		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")

@@ -34,8 +34,10 @@ var _ = Describe("MediaStreamer", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		cacheDir, _ := os.MkdirTemp("", "file_caches")
-		conf.Server.CacheFolder = conf.NewDir(cacheDir)
-		conf.Server.TranscodingCacheSize = "100MB"
+		conf.Update(func(c *conf.Options) {
+			c.CacheFolder = conf.NewDir(cacheDir)
+			c.TranscodingCacheSize = "100MB"
+		})
 		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 			{ID: "123", Path: "tests/fixtures/test.mp3", Suffix: "mp3", BitRate: 128, Duration: 257.0},
@@ -45,7 +47,7 @@ var _ = Describe("MediaStreamer", func() {
 		streamer = stream.NewMediaStreamer(ds, ffmpeg, testCache)
 	})
 	AfterEach(func() {
-		_ = os.RemoveAll(conf.Server.CacheFolder.String())
+		_ = os.RemoveAll(conf.Server().CacheFolder.String())
 	})
 
 	Context("NewStream", func() {
@@ -80,8 +82,10 @@ var _ = Describe("MediaStreamer", func() {
 			blockingFFmpeg := tests.NewMockFFmpeg("")
 			blockingFFmpeg.Reader = pr
 
-			conf.Server.Transcoding.MaxConcurrent = 1
-			conf.Server.Transcoding.MaxConcurrentPerUser = 0
+			conf.Update(func(c *conf.Options) {
+				c.Transcoding.MaxConcurrent = 1
+				c.Transcoding.MaxConcurrentPerUser = 0
+			})
 			tightCache := stream.NewTranscodingCache()
 			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, blockingFFmpeg, tightCache)
@@ -97,8 +101,10 @@ var _ = Describe("MediaStreamer", func() {
 		})
 
 		It("releases the slot once the stream is closed", func() {
-			conf.Server.Transcoding.MaxConcurrent = 1
-			conf.Server.Transcoding.MaxConcurrentPerUser = 0
+			conf.Update(func(c *conf.Options) {
+				c.Transcoding.MaxConcurrent = 1
+				c.Transcoding.MaxConcurrentPerUser = 0
+			})
 			tightCache := stream.NewTranscodingCache()
 			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
@@ -117,8 +123,10 @@ var _ = Describe("MediaStreamer", func() {
 		})
 
 		It("does not consume a slot for raw streams", func() {
-			conf.Server.Transcoding.MaxConcurrent = 1
-			conf.Server.Transcoding.MaxConcurrentPerUser = 0
+			conf.Update(func(c *conf.Options) {
+				c.Transcoding.MaxConcurrent = 1
+				c.Transcoding.MaxConcurrentPerUser = 0
+			})
 			tightCache := stream.NewTranscodingCache()
 			Eventually(func() bool { return tightCache.Available(context.TODO()) }, 10*time.Second).Should(BeTrue())
 			tightStreamer := stream.NewMediaStreamer(ds, ffmpeg, tightCache)
@@ -278,7 +286,7 @@ var _ = Describe("MediaStreamer", func() {
 
 			Context("with DevMatchEstimatedContentLength=false", func() {
 				BeforeEach(func() {
-					conf.Server.DevMatchEstimatedContentLength = false
+					conf.Update(func(c *conf.Options) { c.DevMatchEstimatedContentLength = false })
 				})
 
 				It("declares the estimate and sends shorter output as is, without padding", func() {

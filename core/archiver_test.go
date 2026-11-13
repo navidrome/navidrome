@@ -179,7 +179,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("prefers the album version over the year when it is not part of the name", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001,
 						Tags: model.Tags{model.TagAlbumVersion: {"Original"}}},
@@ -190,7 +190,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("leaves the one album without the field unsuffixed", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
 					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
@@ -200,7 +200,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("skips a field that is empty on more than one album", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
 					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005},
@@ -235,7 +235,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("sanitizes the suffix", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"Vinyl"}}},
 					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"CD/Digital"}}},

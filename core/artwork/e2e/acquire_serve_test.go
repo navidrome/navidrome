@@ -70,12 +70,14 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(err).ToNot(HaveOccurred())
 		coverBytes = readFixture(coverFixture)
 
-		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
-		conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
-		conf.Server.CoverArtPriority = "cover.jpg"
-		conf.Server.ArtistArtPriority = "artist.png" // keeps artist resolution offline
-		conf.Server.EnableMediaFileCoverArt = true
-		conf.Server.DevArtworkWorkerConcurrency = 1
+		conf.Update(func(c *conf.Options) {
+			c.CacheFolder = conf.NewDir(GinkgoT().TempDir())
+			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
+			c.CoverArtPriority = "cover.jpg"
+			c.ArtistArtPriority = "artist.png" // keeps artist resolution offline
+			c.EnableMediaFileCoverArt = true
+			c.DevArtworkWorkerConcurrency = 1
+		})
 
 		folderRepo = &fakeFolderRepo{}
 		libRepo = &tests.MockLibraryRepo{}
@@ -122,7 +124,7 @@ var _ = Describe("Acquisition → serve loop", func() {
 		Expect(os.MkdirAll(filepath.Join(libDir, "an-album"), 0755)).To(Succeed())
 		Expect(os.WriteFile(filepath.Join(libDir, "an-album", "cover.jxl"), jxlFixture, 0600)).To(Succeed())
 
-		conf.Server.CoverArtPriority = "cover.*"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 		libRepo.SetData(model.Libraries{{ID: 0, Path: libDir}})
 		folderRepo.result = []model.Folder{{Path: "an-album", ImageFiles: []string{"cover.jxl"}}}
 		albumRepo.SetData(model.Albums{{ID: "al1", Name: "Album", FolderIDs: []string{"f1"}, LibraryID: 0}})

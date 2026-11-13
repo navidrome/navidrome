@@ -53,7 +53,7 @@ var _ = Describe("Playlist", func() {
 	Describe("RefreshDelay", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SmartPlaylistRefreshDelay = 5 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = 5 * time.Second })
 		})
 
 		It("returns the global config value when rules have no refreshDelay", func() {

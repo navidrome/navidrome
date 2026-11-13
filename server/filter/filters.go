@@ -48,7 +48,7 @@ func AlbumsByArtist() Options {
 
 func AlbumsByArtistID(artistId any) Options {
 	roles := []model.Role{model.RoleAlbumArtist}
-	if conf.Server.Subsonic.ArtistParticipations {
+	if conf.Server().Subsonic.ArtistParticipations {
 		roles = append(roles, model.RoleArtist)
 	}
 	return addDefaultFilters(Options{

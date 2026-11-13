@@ -38,15 +38,17 @@ var _ = Describe("ScanFolders", Ordered, func() {
 		tests.SkipOnWindows("SQLite file lock blocks TempDir cleanup (#TBD-path-sep-scanner)")
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
 		tmpDir := GinkgoT().TempDir()
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL")
-		log.Warn("Using DB at " + conf.Server.DbPath)
+		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-selective-scan.db?_journal_mode=WAL") })
+		log.Warn("Using DB at " + conf.Server().DbPath)
 		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MusicFolder = "fake:///music"
-		conf.Server.DevExternalScanner = false
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = "fake:///music"
+			c.DevExternalScanner = false
+		})
 
 		db.Init(ctx)
 		DeferCleanup(func() {

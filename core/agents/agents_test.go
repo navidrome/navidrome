@@ -54,7 +54,7 @@ var _ = Describe("Agents", func() {
 	Describe("Local", func() {
 		var ag *Agents
 		BeforeEach(func() {
-			conf.Server.Agents = ""
+			conf.Update(func(c *conf.Options) { c.Agents = "" })
 			ag = createAgents(ds, nil)
 		})
 
@@ -74,7 +74,7 @@ var _ = Describe("Agents", func() {
 			Register("fake", func(model.DataStore) Interface { return mock })
 			Register("disabled", func(model.DataStore) Interface { return nil })
 			Register("empty", func(model.DataStore) Interface { return &emptyAgent{} })
-			conf.Server.Agents = "empty,fake,disabled"
+			conf.Update(func(c *conf.Options) { c.Agents = "empty,fake,disabled" })
 			ag = createAgents(ds, nil)
 			Expect(ag.AgentName()).To(Equal("agents"))
 		})
@@ -252,7 +252,7 @@ var _ = Describe("Agents", func() {
 			It("returns ErrNotFound when another agent answered with a definitive miss", func() {
 				other := &mockAgent{Err: ErrNotFound}
 				Register("fake2", func(model.DataStore) Interface { return other })
-				conf.Server.Agents = "fake,fake2"
+				conf.Update(func(c *conf.Options) { c.Agents = "fake,fake2" })
 				ag = createAgents(ds, nil)
 				mock.Err = &RetryLaterError{RetryIn: time.Hour}
 
@@ -269,7 +269,7 @@ var _ = Describe("Agents", func() {
 			It("returns ErrNotFound when another agent answered with an empty slice", func() {
 				empty := &testImageAgent{Name: "emptyImages"}
 				Register("emptyImages", func(model.DataStore) Interface { return empty })
-				conf.Server.Agents = "fake,emptyImages"
+				conf.Update(func(c *conf.Options) { c.Agents = "fake,emptyImages" })
 				ag = createAgents(ds, nil)
 				mock.Err = &RetryLaterError{RetryIn: time.Hour}
 
@@ -287,7 +287,7 @@ var _ = Describe("Agents", func() {
 			It("returns ErrNotFound from GetSimilarArtists when another agent answered", func() {
 				other := &mockAgent{Err: ErrNotFound}
 				Register("fake2", func(model.DataStore) Interface { return other })
-				conf.Server.Agents = "fake,fake2"
+				conf.Update(func(c *conf.Options) { c.Agents = "fake,fake2" })
 				ag = createAgents(ds, nil)
 				mock.Err = &RetryLaterError{RetryIn: time.Hour}
 
@@ -330,7 +330,7 @@ var _ = Describe("Agents", func() {
 				})
 
 				It("falls back to the next agent on error", func() {
-					conf.Server.Agents = "imgFail,imgOk"
+					conf.Update(func(c *conf.Options) { c.Agents = "imgFail,imgOk" })
 					ag = createAgents(ds, nil)
 
 					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
@@ -343,7 +343,7 @@ var _ = Describe("Agents", func() {
 				It("falls back if the first agent returns no images", func() {
 					first.Err = nil
 					first.Images = []ExternalImage{}
-					conf.Server.Agents = "imgFail,imgOk"
+					conf.Update(func(c *conf.Options) { c.Agents = "imgFail,imgOk" })
 					ag = createAgents(ds, nil)
 
 					images, err := ag.GetArtistImages(ctx, "id", "artist", "mbid")
@@ -379,7 +379,7 @@ var _ = Describe("Agents", func() {
 
 		Describe("GetArtistTopSongs", func() {
 			It("returns on first match", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
+				conf.Update(func(c *conf.Options) { c.DevExternalArtistFetchMultiplier = 1 })
 				Expect(ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)).To(Equal([]Song{{
 					Name: "A Song",
 					MBID: "mbid444",
@@ -387,7 +387,7 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(HaveExactElements("123", "test", "mb123", 2))
 			})
 			It("skips the agent if it returns an error", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 1
+				conf.Update(func(c *conf.Options) { c.DevExternalArtistFetchMultiplier = 1 })
 				mock.Err = errors.New("error")
 				_, err := ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)
 				Expect(err).To(MatchError(ErrNotFound))
@@ -400,7 +400,7 @@ var _ = Describe("Agents", func() {
 				Expect(mock.Args).To(BeEmpty())
 			})
 			It("fetches with multiplier", func() {
-				conf.Server.DevExternalArtistFetchMultiplier = 2
+				conf.Update(func(c *conf.Options) { c.DevExternalArtistFetchMultiplier = 2 })
 				Expect(ag.GetArtistTopSongs(ctx, "123", "test", "mb123", 2)).To(Equal([]Song{{
 					Name: "A Song",
 					MBID: "mbid444",
@@ -519,7 +519,7 @@ var _ = Describe("Agents", func() {
 
 		Describe("ArtistImageAgents", func() {
 			It("returns only ArtistImageRetriever agents, named, in configured order", func() {
-				conf.Server.Agents = "artistImg,noImages,artistImg2"
+				conf.Update(func(c *conf.Options) { c.Agents = "artistImg,noImages,artistImg2" })
 				ag = createAgents(ds, nil)
 
 				result := ag.ArtistImageAgents()
@@ -531,7 +531,7 @@ var _ = Describe("Agents", func() {
 			})
 
 			It("is empty when external services are disabled", func() {
-				conf.Server.Agents = "" // what disableExternalServices() sets when EnableExternalServices=false
+				conf.Update(func(c *conf.Options) { c.Agents = "" }) // what disableExternalServices() sets when EnableExternalServices=false
 				ag = createAgents(ds, nil)
 				Expect(ag.ArtistImageAgents()).To(BeEmpty())
 			})
@@ -539,7 +539,7 @@ var _ = Describe("Agents", func() {
 
 		Describe("AlbumImageAgents", func() {
 			It("returns only AlbumImageRetriever agents, named, in configured order", func() {
-				conf.Server.Agents = "albumImg,noImages,albumImg2"
+				conf.Update(func(c *conf.Options) { c.Agents = "albumImg,noImages,albumImg2" })
 				ag = createAgents(ds, nil)
 
 				result := ag.AlbumImageAgents()
@@ -551,7 +551,7 @@ var _ = Describe("Agents", func() {
 			})
 
 			It("is empty when external services are disabled", func() {
-				conf.Server.Agents = "" // what disableExternalServices() sets when EnableExternalServices=false
+				conf.Update(func(c *conf.Options) { c.Agents = "" }) // what disableExternalServices() sets when EnableExternalServices=false
 				ag = createAgents(ds, nil)
 				Expect(ag.AlbumImageAgents()).To(BeEmpty())
 			})

@@ -395,7 +395,7 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
@@ -459,7 +459,7 @@ var _ = Describe("Playlists", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			// Create a real image file on disk
 			imgDir := filepath.Join(tmpDir, "artwork", "playlist")

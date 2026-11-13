@@ -101,7 +101,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("parses #EXTALBUMARTURL with HTTP URL", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "pls-with-art-url.m3u")
 				Expect(err).ToNot(HaveOccurred())
@@ -255,7 +255,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("ignores HTTP #EXTALBUMARTURL when EnableM3UExternalAlbumArt is false", func() {
-				conf.Server.EnableM3UExternalAlbumArt = false
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = false })
 
 				tmpDir := GinkgoT().TempDir()
 				m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\ntest.mp3\n"
@@ -273,7 +273,7 @@ var _ = Describe("Playlists - Import", func() {
 			})
 
 			It("updates ExternalImageURL on re-scan even when UploadedImage is set", func() {
-				conf.Server.EnableM3UExternalAlbumArt = true
+				conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 				tmpDir := GinkgoT().TempDir()
 				mockLibRepo.SetData([]model.Library{{ID: 1, Path: tmpDir}})
@@ -411,7 +411,7 @@ var _ = Describe("Playlists - Import", func() {
 				Expect(pls.Public).To(BeFalse())
 			})
 			It("uses server default when public field is absent", func() {
-				conf.Server.DefaultPlaylistPublicVisibility = true
+				conf.Update(func(c *conf.Options) { c.DefaultPlaylistPublicVisibility = true })
 
 				pls, err := ps.ImportFromFolder(ctx, folder, "recently_played.nsp")
 				Expect(err).ToNot(HaveOccurred())
@@ -1012,7 +1012,7 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("parses #EXTALBUMARTURL with HTTP URL via ImportM3U", func() {
-			conf.Server.EnableM3UExternalAlbumArt = true
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true })
 
 			repo.data = []string{"tests/test.mp3"}
 			m3u := "#EXTALBUMARTURL:https://example.com/cover.jpg\n/music/tests/test.mp3\n"
@@ -1130,28 +1130,28 @@ var _ = Describe("Playlists - Import", func() {
 		})
 
 		It("returns true if PlaylistsPath is empty", func() {
-			conf.Server.PlaylistsPath = ""
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if PlaylistsPath is any (**/**)", func() {
-			conf.Server.PlaylistsPath = "**/**"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "**/**" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns true if folder is in PlaylistsPath", func() {
 			tests.SkipOnWindows("path separator bug (#TBD-path-sep-playlists)")
-			conf.Server.PlaylistsPath = "other/**:playlists/**"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other/**:playlists/**" })
 			Expect(playlists.InPath(folder)).To(BeTrue())
 		})
 
 		It("returns false if folder is not in PlaylistsPath", func() {
-			conf.Server.PlaylistsPath = "other"
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "other" })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 		})
 
 		It("returns true if for a playlist in root of MusicFolder if PlaylistsPath is '.'", func() {
-			conf.Server.PlaylistsPath = "."
+			conf.Update(func(c *conf.Options) { c.PlaylistsPath = "." })
 			Expect(playlists.InPath(folder)).To(BeFalse())
 
 			folder2 := model.Folder{

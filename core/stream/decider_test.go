@@ -793,7 +793,7 @@ var _ = Describe("Decider", func() {
 
 			It("normalizes DSD sample rate from tags when there is no probe data", func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.DevEnableMediaFileProbe = false
+				conf.Update(func(c *conf.Options) { c.DevEnableMediaFileProbe = false })
 
 				mf := &model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: new(1)}
 				ci := &ClientInfo{
@@ -1304,7 +1304,7 @@ var _ = Describe("Decider", func() {
 
 		It("skips ffprobe when DevEnableMediaFileProbe is false", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DevEnableMediaFileProbe = false
+			conf.Update(func(c *conf.Options) { c.DevEnableMediaFileProbe = false })
 
 			mf := &model.MediaFile{ID: "probe-4", Suffix: "mp3"}
 			// Set a result — if ffprobe were called, ProbeData would be populated

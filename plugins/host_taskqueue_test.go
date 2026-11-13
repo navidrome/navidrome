@@ -38,7 +38,7 @@ var _ = Describe("TaskQueueService", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
@@ -841,11 +841,13 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+			c.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
+			c.DataFolder = conf.NewDir(tmpDir)
+		})
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()

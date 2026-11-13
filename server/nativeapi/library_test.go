@@ -31,7 +31,7 @@ var _ = Describe("Library API", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
+		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
 		nativeRouter := New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)

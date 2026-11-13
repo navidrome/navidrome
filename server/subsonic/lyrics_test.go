@@ -25,7 +25,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LyricsPriority = "embedded,.lrc"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.lrc" })
 	})
 
 	const syncedLyrics = "[00:18.80]We're no strangers to love\n[00:22.801]You know the rules and so do I"
@@ -200,7 +200,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 	})
 
 	It("should return multilingual TTML sidecar lyrics", func() {
-		conf.Server.LyricsPriority = ".ttml,embedded"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".ttml,embedded" })
 		r := newGetRequest("id=1")
 
 		fixturesDir, err := filepath.Abs("tests/fixtures")
@@ -256,7 +256,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 	})
 
 	It("should return metadata-linked translation and pronunciation tracks from TTML", func() {
-		conf.Server.LyricsPriority = ".ttml,embedded"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = ".ttml,embedded" })
 		r := newGetRequest("id=1&enhanced=true")
 
 		fixturesDir, err := filepath.Abs("tests/fixtures")

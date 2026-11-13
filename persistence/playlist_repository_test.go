@@ -32,7 +32,7 @@ var _ = Describe("PlaylistRepository", func() {
 
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableNaturalSorting = true
+			conf.Update(func(c *conf.Options) { c.EnableNaturalSorting = true })
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 			repo = NewPlaylistRepository(GetDBXBuilder())

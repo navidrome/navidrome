@@ -65,7 +65,7 @@ var _ = Describe("helpers", func() {
 		})
 		When("PreferSortTags is false", func() {
 			BeforeEach(func() {
-				conf.Server.PreferSortTags = false
+				conf.Update(func(c *conf.Options) { c.PreferSortTags = false })
 			})
 			It("returns the order name even if sort name is provided", func() {
 				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Order Album Name"))
@@ -76,7 +76,7 @@ var _ = Describe("helpers", func() {
 		})
 		When("PreferSortTags is true", func() {
 			BeforeEach(func() {
-				conf.Server.PreferSortTags = true
+				conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 			})
 			It("returns the sort name if provided", func() {
 				Expect(sortName("Sort Album Name", "Order Album Name")).To(Equal("Sort Album Name"))
@@ -179,13 +179,13 @@ var _ = Describe("helpers", func() {
 		}
 
 		It("Handles album count without artist participations", func() {
-			conf.Server.Subsonic.ArtistParticipations = false
+			conf.Update(func(c *conf.Options) { c.Subsonic.ArtistParticipations = false })
 			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(3)))
 		})
 
 		It("Handles album count without with participations", func() {
-			conf.Server.Subsonic.ArtistParticipations = true
+			conf.Update(func(c *conf.Options) { c.Subsonic.ArtistParticipations = true })
 			result := getArtistAlbumCount(&artist)
 			Expect(result).To(Equal(int32(4)))
 		})
@@ -232,7 +232,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "minimal-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -267,7 +267,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with non-minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -292,7 +292,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when minimal clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -413,7 +413,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -426,7 +426,7 @@ var _ = Describe("helpers", func() {
 
 		Context("with non-legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -486,7 +486,7 @@ var _ = Describe("helpers", func() {
 
 		Context("when legacy clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -614,7 +614,7 @@ var _ = Describe("helpers", func() {
 
 		BeforeEach(func() {
 			ctx = context.Background()
-			conf.Server.Subsonic.EnableAverageRating = true
+			conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 		})
 
 		Describe("childFromMediaFile", func() {
@@ -665,7 +665,7 @@ var _ = Describe("helpers", func() {
 
 		Describe("toArtist", func() {
 			It("includes averageRating when set", func() {
-				conf.Server.Subsonic.EnableAverageRating = true
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 				r := httptest.NewRequest("GET", "/test", nil)
 				a := model.Artist{
 					ID:   "ar-avg-1",
@@ -681,7 +681,7 @@ var _ = Describe("helpers", func() {
 
 		Describe("toArtistID3", func() {
 			It("includes averageRating when set", func() {
-				conf.Server.Subsonic.EnableAverageRating = true
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = true })
 				r := httptest.NewRequest("GET", "/test", nil)
 				a := model.Artist{
 					ID:   "ar-avg-2",
@@ -698,7 +698,7 @@ var _ = Describe("helpers", func() {
 		Describe("buildAlbumID3 Created field", func() {
 			When("RecentlyAddedByModTime is false", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				})
 
 				It("uses CreatedAt when set", func() {
@@ -731,7 +731,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is true", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {
@@ -769,7 +769,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is false", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				})
 
 				It("uses CreatedAt, not BirthTime", func() {
@@ -795,7 +795,7 @@ var _ = Describe("helpers", func() {
 
 			When("RecentlyAddedByModTime is true", func() {
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 				})
 
 				It("uses UpdatedAt even when CreatedAt is also set", func() {
@@ -817,7 +817,7 @@ var _ = Describe("helpers", func() {
 
 		Describe("EnableAverageRating config", func() {
 			It("excludes averageRating when disabled", func() {
-				conf.Server.Subsonic.EnableAverageRating = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.EnableAverageRating = false })
 
 				mf := model.MediaFile{
 					ID:    "mf-cfg-1",

@@ -119,7 +119,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 			When("refresh delay has expired", func() {
 				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
-					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+					conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 
 					childRules := &criteria.Criteria{
 						Expression: criteria.All{
@@ -177,7 +177,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			})
 
 			It("does not recurse forever when two smart playlists reference each other", func() {
-				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+				conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 
 				plsA := model.Playlist{Name: "Cycle A", OwnerID: "userid", Public: true, Rules: &criteria.Criteria{
 					Expression: criteria.All{criteria.Contains{"title": "Day"}},
@@ -199,7 +199,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			})
 
 			It("does not treat an empty path as a reference to every playlist without a path", func() {
-				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+				conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 
 				bystander := model.Playlist{Name: "Bystander", OwnerID: "userid", Public: true, Rules: &criteria.Criteria{
 					Expression: criteria.All{criteria.Contains{"title": "Day"}},
@@ -222,7 +222,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			})
 
 			It("matches a child path stored in a different Unicode normalization form", func() {
-				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+				conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 
 				child := model.Playlist{Name: "NFD Child", OwnerID: "userid", Public: true, Path: filepath.FromSlash("/mu\u0301sica/child.nsp"), Rules: &criteria.Criteria{
 					Expression: criteria.All{criteria.Contains{"title": "Day"}},
@@ -244,7 +244,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 			When("refresh delay has not expired", func() {
 				It("should NOT refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
-					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+					conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = 1 * time.Hour })
 					childEvaluatedAt := time.Now().Add(-30 * time.Minute)
 
 					childRules := &criteria.Criteria{
@@ -290,7 +290,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				})
 
 				It("does NOT refresh when the per-playlist delay has not elapsed, even if global has", func() {
-					conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+					conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 					evaluatedAt := time.Now().Add(-1 * time.Hour)
 
 					rules := &criteria.Criteria{
@@ -309,7 +309,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 				})
 
 				It("refreshes when the per-playlist delay has elapsed, even if global has not", func() {
-					conf.Server.SmartPlaylistRefreshDelay = 1 * time.Hour
+					conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = 1 * time.Hour })
 					evaluatedAt := time.Now().Add(-10 * time.Minute)
 
 					rules := &criteria.Criteria{
@@ -385,7 +385,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -408,7 +408,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -433,7 +433,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -455,7 +455,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -475,7 +475,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Expect(repo.Put(ctx, &newPls)).To(Succeed())
 			testPlaylistID = newPls.ID
 
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -510,7 +510,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			Expect(repo.Put(ctx, &stringPls)).To(Succeed())
 			testPlaylistID = stringPls.ID
 
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 			boolResult, err := repo.GetWithTracks(ctx, boolPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 			stringResult, err := repo.GetWithTracks(ctx, stringPls.ID, true, false)
@@ -531,7 +531,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 	Describe("Smart Playlists with Album Aggregate Criteria", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 		})
 
 		trackIDsOf := func(rules *criteria.Criteria) []string {
@@ -634,7 +634,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			testPlaylistID = newPls.ID
 
 			By("refreshing the smart playlist")
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second }) // Force refresh
 			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -655,7 +655,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			testPlaylistID = newPls.ID
 
 			By("refreshing the smart playlist")
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second }) // Force refresh
 			pls, err := repo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -775,7 +775,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			testPlaylistID = newPls.ID
 
 			By("refreshing the smart playlist")
-			conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second // Force refresh
+			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second }) // Force refresh
 			pls, err := restrictedRepo.GetWithTracks(ctx, newPls.ID, true, false)
 			Expect(err).ToNot(HaveOccurred())
 

@@ -161,7 +161,7 @@ var _ = Describe("LibraryRepository", func() {
 		})
 
 		It("skips updating the default library when the configured path is unchanged", func() {
-			conf.Server.MusicFolder = libBefore.Path
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path })
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 
 			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
@@ -171,12 +171,12 @@ var _ = Describe("LibraryRepository", func() {
 		})
 
 		It("updates the default library only when the configured path changes", func() {
-			conf.Server.MusicFolder = libBefore.Path + "-updated"
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path + "-updated" })
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 
 			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(libAfter.Path).To(Equal(conf.Server.MusicFolder))
+			Expect(libAfter.Path).To(Equal(conf.Server().MusicFolder))
 			Expect(libAfter.UpdatedAt).ToNot(Equal(libBefore.UpdatedAt))
 		})
 	})

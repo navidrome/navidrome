@@ -11,7 +11,7 @@ import (
 func BenchmarkResizeFullPipeline(b *testing.B) {
 	cleanup := configtest.SetupConfig()
 	b.Cleanup(cleanup)
-	conf.Server.CoverArtQuality = 75
+	conf.Update(func(c *conf.Options) { c.CoverArtQuality = 75 })
 
 	sourceSizes := []int{1000, 3000}
 	targetSize := 300

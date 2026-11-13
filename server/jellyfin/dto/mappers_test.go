@@ -81,7 +81,7 @@ var _ = Describe("mappers", func() {
 
 			Context("with PreferSortTags", func() {
 				BeforeEach(func() {
-					conf.Server.PreferSortTags = true
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 				})
 
 				It("prefers the sort tags", func() {
@@ -535,7 +535,7 @@ var _ = Describe("mappers", func() {
 	Describe("unresolved embedded art", func() {
 		BeforeEach(func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		})
 
 		It("advertises the track id so the client triggers the read-through", func() {
@@ -568,7 +568,7 @@ var _ = Describe("mappers", func() {
 		})
 
 		It("falls back to the album when per-track art is disabled", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			mf := model.MediaFile{ID: testID("mf-4"), AlbumID: testID("alb-1"), HasCoverArt: true}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"
 

@@ -37,10 +37,12 @@ var _ = Describe("Housekeeping", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
-		conf.Server.CoverArtPriority = "embedded, folder"
-		conf.Server.ArtistArtPriority = "artist.jpg"
-		conf.Server.Agents = "spotify"
-		conf.Server.EnableExternalServices = true
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "embedded, folder"
+			c.ArtistArtPriority = "artist.jpg"
+			c.Agents = "spotify"
+			c.EnableExternalServices = true
+		})
 
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		propRepo = &tests.MockedPropertyRepo{}
@@ -49,31 +51,35 @@ var _ = Describe("Housekeeping", func() {
 
 	Describe("Fingerprint", func() {
 		DescribeTable("changes when a fingerprint-affecting config value changes",
-			func(change func()) {
+			func(change func(*conf.Options)) {
 				before := ConfigFingerprint()
-				change()
+				conf.Update(change)
 				Expect(ConfigFingerprint()).NotTo(Equal(before))
 			},
-			Entry("CoverArtPriority", func() { conf.Server.CoverArtPriority = "folder, embedded" }),
-			Entry("ArtistImageFolder", func() { conf.Server.ArtistImageFolder = "/after" }),
-			Entry("EnableM3UExternalAlbumArt", func() { conf.Server.EnableM3UExternalAlbumArt = true }),
+			Entry("CoverArtPriority", func(c *conf.Options) { c.CoverArtPriority = "folder, embedded" }),
+			Entry("ArtistImageFolder", func(c *conf.Options) { c.ArtistImageFolder = "/after" }),
+			Entry("EnableM3UExternalAlbumArt", func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true }),
 		)
 
 		// Pinned: a changed formula tells every existing install its artwork config went stale.
 		It("hashes a given config to a stable value", func() {
-			conf.Server.CoverArtPriority = "cover.*, embedded"
-			conf.Server.ArtistArtPriority = "artist.*, external"
-			conf.Server.ArtistImageFolder = ""
-			conf.Server.Agents = "lastfm,spotify"
-			conf.Server.EnableExternalServices = true
-			conf.Server.EnableM3UExternalAlbumArt = false
+			conf.Update(func(c *conf.Options) {
+				c.CoverArtPriority = "cover.*, embedded"
+				c.ArtistArtPriority = "artist.*, external"
+				c.ArtistImageFolder = ""
+				c.Agents = "lastfm,spotify"
+				c.EnableExternalServices = true
+				c.EnableM3UExternalAlbumArt = false
+			})
 
 			Expect(ConfigFingerprint()).To(Equal("7b538a83a870c16d"))
 		})
 
 		It("reports the config inputs it hashes, so a change can be traced to a setting", func() {
-			conf.Server.Agents = "lastfm,spotify"
-			conf.Server.CoverArtPriority = "cover.*, embedded"
+			conf.Update(func(c *conf.Options) {
+				c.Agents = "lastfm,spotify"
+				c.CoverArtPriority = "cover.*, embedded"
+			})
 
 			Expect(FingerprintInputs()).To(ContainElements(
 				FingerprintInput{Name: "Agents", Value: "lastfm,spotify"},

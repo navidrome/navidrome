@@ -245,8 +245,10 @@ var _ = Describe("LibraryService", Ordered, func() {
 			// Note: Since we don't have WASM test plugins yet, we can test
 			// the service registration and configuration without full plugin execution
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Plugins.Enabled = true
-			conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) {
+				c.Plugins.Enabled = true
+				c.Plugins.Folder = conf.NewDir(tmpDir)
+			})
 
 			// Create mock &tests.MockLibraryRepo{}
 			mockLibRepo := &tests.MockLibraryRepo{}
@@ -339,9 +341,11 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		// Setup mock DataStore with pre-enabled plugin and library
 		mockPluginRepo := tests.CreateMockPluginRepo()

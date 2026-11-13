@@ -32,7 +32,7 @@ const (
 func BenchmarkSmartPlaylistRole(b *testing.B) {
 	configtest.SetupConfig()
 	tmpDir := b.TempDir()
-	conf.Server.DbPath = filepath.Join(tmpDir, "bench-smartpl.db")
+	conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "bench-smartpl.db") })
 	cleanup := db.Init(context.Background())
 	defer cleanup()
 	log.SetLevel(log.LevelFatal)
@@ -67,7 +67,7 @@ func BenchmarkSmartPlaylistRole(b *testing.B) {
 func BenchmarkSmartPlaylistNegatedRole(b *testing.B) {
 	configtest.SetupConfig()
 	tmpDir := b.TempDir()
-	conf.Server.DbPath = filepath.Join(tmpDir, "bench-smartpl-neg.db")
+	conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "bench-smartpl-neg.db") })
 	cleanup := db.Init(context.Background())
 	defer cleanup()
 	log.SetLevel(log.LevelFatal)

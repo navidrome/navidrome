@@ -14,8 +14,10 @@ import (
 var _ = Describe("Library PID config", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.PID.Album = "global_album"
-		conf.Server.PID.Track = "global_track"
+		conf.Update(func(c *conf.Options) {
+			c.PID.Album = "global_album"
+			c.PID.Track = "global_track"
+		})
 	})
 
 	Describe("EffectivePID", func() {

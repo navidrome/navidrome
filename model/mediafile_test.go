@@ -521,11 +521,11 @@ var _ = Describe("MediaFiles", func() {
 var _ = Describe("MediaFile", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableMediaFileCoverArt = true
+		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 	})
 	DescribeTable("FullTitle",
 		func(enabled bool, tags Tags, expected string) {
-			conf.Server.Subsonic.AppendSubtitle = enabled
+			conf.Update(func(c *conf.Options) { c.Subsonic.AppendSubtitle = enabled })
 			mf := MediaFile{Title: "Song", Tags: tags}
 			Expect(mf.FullTitle()).To(Equal(expected))
 		},
@@ -543,7 +543,7 @@ var _ = Describe("MediaFile", func() {
 	)
 	DescribeTable("FullAlbumName",
 		func(enabled bool, tags Tags, expected string) {
-			conf.Server.Subsonic.AppendAlbumVersion = enabled
+			conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = enabled })
 			mf := MediaFile{Album: "Album", Tags: tags}
 			Expect(mf.FullAlbumName()).To(Equal(expected))
 		},
@@ -574,14 +574,14 @@ var _ = Describe("MediaFile", func() {
 			Expect(id.ID).To(Equal(mf.AlbumID))
 		})
 		It("returns disc art id if EnableMediaFileCoverArt is disabled and DiscNumber > 0", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true, DiscNumber: 3}
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindDiscArtwork))
 			Expect(id.ID).To(Equal("1:3"))
 		})
 		It("returns its album id if EnableMediaFileCoverArt is disabled and DiscNumber is 0", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			mf := MediaFile{ID: "111", AlbumID: "1", HasCoverArt: true}
 			id := mf.CoverArtID()
 			Expect(id.Kind).To(Equal(KindAlbumArtwork))

@@ -606,7 +606,7 @@ var _ = Describe("MediaRepository", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -648,7 +648,7 @@ var _ = Describe("MediaRepository", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -671,7 +671,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("breaks ties deterministically when files share the same created_at", func() {
-				conf.Server.RecentlyAddedByModTime = false
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				ctx := log.NewContext(GinkgoT().Context())
 				ctx = request.WithUser(ctx, model.User{ID: "userid"})
 				repo := NewMediaFileRepository(GetDBXBuilder())

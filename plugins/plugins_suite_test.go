@@ -38,8 +38,10 @@ func TestPlugins(t *testing.T) {
 
 	// Set globally so tests using configtest.SetupConfig inherit it. The cache
 	// persists between runs; entries are content-addressed, so a stale one only misses.
-	conf.Server.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
-	conf.Server.Plugins.CacheSize = "1GB" // the default evicts the cache mid-run
+	conf.Update(func(c *conf.Options) {
+		c.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
+		c.Plugins.CacheSize = "1GB"
+	}) // the default evicts the cache mid-run
 
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
@@ -107,9 +109,11 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 
 	// Setup config
 	DeferCleanup(configtest.SetupConfig())
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 
 	// Setup mock DataStore with pre-enabled plugins
 	mockPluginRepo := tests.CreateMockPluginRepo()

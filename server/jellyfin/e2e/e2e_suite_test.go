@@ -298,9 +298,11 @@ var _ = BeforeSuite(func() {
 	dataFolder = filepath.Join(GinkgoT().TempDir(), "data")
 	Expect(os.MkdirAll(dataFolder, 0o755)).To(Succeed())
 
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DataFolder = conf.NewDir(dataFolder)
-	conf.Server.DevExternalScanner = false
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DataFolder = conf.NewDir(dataFolder)
+		c.DevExternalScanner = false
+	})
 
 	buildTestFS()
 	goldenDB = harness.SetupDB(ctx, &adminUser, &regularUser)
@@ -317,10 +319,12 @@ func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
 	DeferCleanup(configtest.SetupConfig())
-	conf.Server.MusicFolder = "fake:///music"
-	conf.Server.DataFolder = conf.NewDir(dataFolder)
-	conf.Server.DevExternalScanner = false
-	conf.Server.DevEnableMediaFileProbe = false
+	conf.Update(func(c *conf.Options) {
+		c.MusicFolder = "fake:///music"
+		c.DataFolder = conf.NewDir(dataFolder)
+		c.DevExternalScanner = false
+		c.DevEnableMediaFileProbe = false
+	})
 
 	goldenDB.Restore()
 

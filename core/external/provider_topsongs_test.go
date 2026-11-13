@@ -30,7 +30,7 @@ var _ = Describe("Provider - TopSongs", func() {
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
 		// Disable fuzzy matching for these tests to avoid unexpected GetAll calls
-		conf.Server.Matcher.FuzzyThreshold = 100
+		conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 
 		ctx = GinkgoT().Context()
 

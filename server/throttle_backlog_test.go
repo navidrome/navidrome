@@ -191,7 +191,7 @@ var _ = Describe("ThrottleBacklog", func() {
 
 		It("starves concurrent requests with Chi's original middleware", func() {
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DevArtworkThrottleBuffered = false
+			conf.Update(func(c *conf.Options) { c.DevArtworkThrottleBuffered = false })
 
 			router, unblocked, reqDone := slowClientTest(ThrottleBacklog(1, 1, 500*time.Millisecond))
 

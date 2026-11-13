@@ -42,7 +42,7 @@ var _ = Describe("LocalStorage", func() {
 		RegisterExtractor("test", func(fs.FS, string) Extractor {
 			return testExtractor
 		})
-		conf.Server.Scanner.Extractor = "test"
+		conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "test" })
 	})
 
 	Describe("newLocalStorage", func() {
@@ -157,7 +157,7 @@ var _ = Describe("LocalStorage", func() {
 			})
 
 			It("falls back to the default extractor instead of crashing", func() {
-				conf.Server.Scanner.Extractor = "nonexistent-extractor"
+				conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "nonexistent-extractor" })
 
 				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())

@@ -31,10 +31,12 @@ var _ = Describe("loadPluginWithConfig", func() {
 		hash := sha256.Sum256(data)
 
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(pluginsDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.DataFolder = conf.NewDir(dataDir)
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(pluginsDir)
+			c.Plugins.AutoReload = false
+			c.DataFolder = conf.NewDir(dataDir)
+		})
 
 		repo := tests.CreateMockPluginRepo()
 		repo.Permitted = true

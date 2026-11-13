@@ -603,8 +603,8 @@ func ffprobePath(ffmpegCmd string) string {
 
 func ffmpegCmd() (string, error) {
 	ffOnce.Do(func() {
-		if conf.Server.FFmpegPath != "" {
-			ffmpegPath = conf.Server.FFmpegPath
+		if conf.Server().FFmpegPath != "" {
+			ffmpegPath = conf.Server().FFmpegPath
 			ffmpegPath, ffmpegErr = exec.LookPath(ffmpegPath)
 		} else {
 			ffmpegPath, ffmpegErr = exec.LookPath("ffmpeg")

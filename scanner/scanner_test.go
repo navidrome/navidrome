@@ -60,16 +60,18 @@ var _ = Describe("Scanner", Ordered, func() {
 		tmpDir, err := os.MkdirTemp("", "scanner-test")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
-		log.Warn("Using DB at " + conf.Server.DbPath)
+		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL") })
+		log.Warn("Using DB at " + conf.Server().DbPath)
 		//conf.Server.DbPath = ":memory:"
 		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MusicFolder = "fake:///music" // Set to match test library path
-		conf.Server.DevExternalScanner = false
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = "fake:///music" // Set to match test library path
+			c.DevExternalScanner = false
+		})
 
 		db.Init(ctx)
 		DeferCleanup(func() {
@@ -801,7 +803,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			// drops its last library_artist row — leaving the artist row alive but orphaned. RefreshStats
 			// must then mark it missing (see markOrphansMissing).
 			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
+			conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingAlways })
 
 			By("Starting from a library where Pink Floyd has its own single album")
 			floyd := template(_t{"artist": "Pink Floyd", "album": "The Wall", "year": 1979})
@@ -901,7 +903,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			When("PurgeMissing is set to 'never'", func() {
 				BeforeEach(func() {
 					DeferCleanup(configtest.SetupConfig())
-					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+					conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingNever })
 				})
 
 				It("should mark files as missing but not delete them", func() {
@@ -929,7 +931,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			When("PurgeMissing is set to 'always'", func() {
 				BeforeEach(func() {
-					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
+					conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingAlways })
 				})
 
 				It("should purge missing files on any scan", func() {
@@ -956,7 +958,7 @@ var _ = Describe("Scanner", Ordered, func() {
 
 			When("PurgeMissing is set to 'full'", func() {
 				BeforeEach(func() {
-					conf.Server.Scanner.PurgeMissing = consts.PurgeMissingFull
+					conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingFull })
 				})
 
 				It("should not purge missing files on incremental scans", func() {

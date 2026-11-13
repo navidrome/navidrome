@@ -97,8 +97,10 @@ var _ = Describe("Helpers", func() {
 
 		DescribeTable("maps order columns to a collated expression",
 			func(preferSortTags, naturalSorting bool, expected string) {
-				conf.Server.PreferSortTags = preferSortTags
-				conf.Server.EnableNaturalSorting = naturalSorting
+				conf.Update(func(c *conf.Options) {
+					c.PreferSortTags = preferSortTags
+					c.EnableNaturalSorting = naturalSorting
+				})
 				Expect(mapSortOrder("album", "ORDER_ALBUM_NAME asc")).To(Equal(expected))
 			},
 			Entry("qualified column", false, false,
@@ -112,7 +114,7 @@ var _ = Describe("Helpers", func() {
 		)
 
 		It("changes multiple order columns to sort expressions", func() {
-			conf.Server.PreferSortTags = true
+			conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 			sort := "compilation, order_title asc, order_album_artist_name desc, year desc"
 			Expect(mapSortOrder("album", sort)).To(Equal(
 				`compilation, (coalesce(nullif(album.sort_title,''),album.order_title) collate nocase) asc,` +
@@ -130,7 +132,7 @@ var _ = Describe("Helpers", func() {
 		})
 
 		It("applies the natural collation when enabled", func() {
-			conf.Server.EnableNaturalSorting = true
+			conf.Update(func(c *conf.Options) { c.EnableNaturalSorting = true })
 			Expect(naturalSort("media_file.title")).To(Equal("(media_file.title collate NATSORT)"))
 		})
 	})

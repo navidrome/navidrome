@@ -53,7 +53,7 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "scrobble-retriever-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
+		conf.Update(func(c *conf.Options) { c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL") })
 
 		db.Init(ctx)
 		DeferCleanup(func() {
@@ -71,9 +71,11 @@ var _ = Describe("Scrobble Retriever Host Function", Ordered, func() {
 
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		userRepo := dataStore.User()
 		// Add test users

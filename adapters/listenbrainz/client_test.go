@@ -307,7 +307,7 @@ var _ = Describe("client", func() {
 
 		It("fetches a different endpoint when algorithm changes", func() {
 			algorithm = "session_based_days_1825_session_300_contribution_3_threshold_10_limit_100_filter_True_skip_30"
-			conf.Server.ListenBrainz.ArtistAlgorithm = algorithm
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.ArtistAlgorithm = algorithm })
 
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-artists.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}
@@ -444,7 +444,7 @@ var _ = Describe("client", func() {
 
 		It("uses a different algorithm when configured", func() {
 			algorithm = "session_based_days_180_session_300_contribution_5_threshold_15_limit_50_skip_30"
-			conf.Server.ListenBrainz.TrackAlgorithm = algorithm
+			conf.Update(func(c *conf.Options) { c.ListenBrainz.TrackAlgorithm = algorithm })
 
 			f, _ := os.Open("tests/fixtures/listenbrainz.labs.similar-recordings.json")
 			httpClient.Res = http.Response{Body: f, StatusCode: 200}

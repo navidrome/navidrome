@@ -373,9 +373,11 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		mockPluginRepo := tests.CreateMockPluginRepo()
 		mockPluginRepo.Permitted = true

@@ -79,11 +79,13 @@ var _ = Describe("Artwork", func() {
 		coverBytes, err = os.ReadFile(filepath.Join(repoRoot, "tests/fixtures/artist/an-album/cover.jpg"))
 		Expect(err).ToNot(HaveOccurred())
 
-		conf.Server.EnableWebPEncoding = false
-		conf.Server.CoverArtQuality = 75
-		conf.Server.CoverArtPriority = "cover.*"
-		conf.Server.DiscArtPriority = "cover.*"
-		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
+		conf.Update(func(c *conf.Options) {
+			c.EnableWebPEncoding = false
+			c.CoverArtQuality = 75
+			c.CoverArtPriority = "cover.*"
+			c.DiscArtPriority = "cover.*"
+			c.CacheFolder = conf.NewDir(GinkgoT().TempDir())
+		})
 
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
@@ -298,7 +300,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("ignores a resolved mf row and delegates to the album when per-track art is disabled", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			seedFoundStore("mf", "mf7", []byte("stale embedded track art"))
 			seedFoundStore("al", "albz", coverBytes)
 			mfRepo.SetData(model.MediaFiles{{ID: "mf7", AlbumID: "albz"}})
@@ -321,7 +323,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("delegates to the album (no enqueue) when the track is not embedded-eligible", func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			seedFoundStore("al", "albn", coverBytes)
 			mfRepo.SetData(model.MediaFiles{{ID: "mf3", AlbumID: "albn", HasCoverArt: false}})
 
@@ -333,7 +335,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("extracts embedded art provisionally and enqueues the track when eligible", func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			mfRepo.SetData(model.MediaFiles{{
 				ID: "mf4", AlbumID: "albo", HasCoverArt: true,
 				Path: "tests/fixtures/artist/an-album/test.mp3", LibraryID: 0,
@@ -360,7 +362,7 @@ var _ = Describe("Artwork", func() {
 		})
 
 		It("falls back to the album when an eligible track's embedded art will not extract", func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			// HasCoverArt is set, but the file is not audio, so nothing extracts.
 			mfRepo.SetData(model.MediaFiles{{
 				ID: "mfbad", AlbumID: "albad", LibraryID: 0, HasCoverArt: true,

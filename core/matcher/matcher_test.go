@@ -105,7 +105,7 @@ var _ = Describe("Matcher", func() {
 	Describe("MatchSongs", func() {
 		Context("matching by direct ID", func() {
 			It("matches songs with an ID field to MediaFiles by ID", func() {
-				conf.Server.Matcher.FuzzyThreshold = 100
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 				songs := []agents.Song{
 					{ID: "track-1", Name: "Some Song", Artists: []agents.Artist{{Name: "Some Artist"}}},
 				}
@@ -123,7 +123,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("matching by MBID", func() {
 			It("matches songs with MBID to tracks with matching mbz_recording_id", func() {
-				conf.Server.Matcher.FuzzyThreshold = 100
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 				songs := []agents.Song{
 					{Name: "Paranoid Android", MBID: "abc-123", Artists: []agents.Artist{{Name: "Radiohead"}}},
 				}
@@ -142,7 +142,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("matching by ISRC", func() {
 			It("matches songs with ISRC to tracks with matching ISRC tag", func() {
-				conf.Server.Matcher.FuzzyThreshold = 100
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 				songs := []agents.Song{
 					{Name: "Paranoid Android", ISRC: "GBAYE0000351", Artists: []agents.Artist{{Name: "Radiohead"}}},
 				}
@@ -161,7 +161,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("fuzzy title+artist matching", func() {
 			It("matches songs by title and artist name", func() {
-				conf.Server.Matcher.FuzzyThreshold = 100
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 				songs := []agents.Song{
 					{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}},
 				}
@@ -177,7 +177,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("matches songs with fuzzy title similarity", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}},
 				}
@@ -193,7 +193,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("does not match completely different titles", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 				songs := []agents.Song{
 					{Name: "Yesterday", Artists: []agents.Artist{{Name: "The Beatles"}}},
 				}
@@ -211,7 +211,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("deduplication", func() {
 			It("removes duplicates when different input songs match the same library track", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody (Live)", Artists: []agents.Artist{{Name: "Queen"}}},
 					{Name: "Bohemian Rhapsody (Original Mix)", Artists: []agents.Artist{{Name: "Queen"}}},
@@ -228,7 +228,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("preserves duplicates when identical input songs match the same library track", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}, Album: "A Night at the Opera"},
 					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}, Album: "A Night at the Opera"},
@@ -248,7 +248,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("priority ordering", func() {
 			It("prefers ID match over MBID match", func() {
-				conf.Server.Matcher.FuzzyThreshold = 100
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 				// Song has both ID and MBID set. The matcher should resolve via ID
 				// and short-circuit the MBID phase entirely, so no MBID fetch should
 				// occur even though an mbz_recording_id exists in the input.
@@ -269,7 +269,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("count limit", func() {
 			It("returns at most 'count' results", func() {
-				conf.Server.Matcher.FuzzyThreshold = 100
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 				songs := []agents.Song{
 					{Name: "Song A", Artists: []agents.Artist{{Name: "Artist"}}},
 					{Name: "Song B", Artists: []agents.Artist{{Name: "Artist"}}},
@@ -469,7 +469,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("multiple artists", func() {
 			It("prefers the track that shares more of the song's artists", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 				songs := []agents.Song{
 					{Name: "Life Is Good", Artists: []agents.Artist{{Name: "Drake"}, {Name: "Future"}}},
 				}
@@ -498,7 +498,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("matches a single-artist song against a track crediting several artists", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 				songs := []agents.Song{
 					{Name: "Life Is Good", Artists: []agents.Artist{{Name: "Future"}}},
 				}
@@ -518,7 +518,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("matches by a directly-supplied Navidrome artist ID (fast-path)", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 				songs := []agents.Song{
 					{Name: "Song A", Artists: []agents.Artist{{ID: "ar-x"}}},
 				}
@@ -537,8 +537,10 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("prefers a higher artist-overlap track over a starred lower-overlap track", func() {
-				conf.Server.Matcher.PreferStarred = true
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) {
+					c.Matcher.PreferStarred = true
+					c.Matcher.FuzzyThreshold = 85
+				})
 				songs := []agents.Song{
 					{Name: "Collab Hit", Artists: []agents.Artist{{Name: "Drake"}, {Name: "Future"}}},
 				}
@@ -614,7 +616,7 @@ var _ = Describe("Matcher", func() {
 
 	Describe("specificity level matching", func() {
 		BeforeEach(func() {
-			conf.Server.Matcher.FuzzyThreshold = 100
+			conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 		})
 
 		It("matches by title + artist MBID + album MBID (highest priority)", func() {
@@ -785,7 +787,7 @@ var _ = Describe("Matcher", func() {
 	Describe("fuzzy matching thresholds", func() {
 		Context("with default threshold (85%)", func() {
 			It("matches songs with remastered suffix", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 
 				songs := []agents.Song{
 					{Name: "Paranoid Android", Artists: []agents.Artist{{Name: "Radiohead"}}},
@@ -806,7 +808,7 @@ var _ = Describe("Matcher", func() {
 			})
 
 			It("matches songs with live suffix", func() {
-				conf.Server.Matcher.FuzzyThreshold = 85
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 
 				songs := []agents.Song{
 					{Name: "Bohemian Rhapsody", Artists: []agents.Artist{{Name: "Queen"}}},
@@ -829,7 +831,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("with threshold set to 100 (exact match only)", func() {
 			It("only matches exact titles", func() {
-				conf.Server.Matcher.FuzzyThreshold = 100
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 
 				songs := []agents.Song{
 					{Name: "Paranoid Android", Artists: []agents.Artist{{Name: "Radiohead"}}},
@@ -851,7 +853,7 @@ var _ = Describe("Matcher", func() {
 
 		Context("with lower threshold (75%)", func() {
 			It("matches more aggressively", func() {
-				conf.Server.Matcher.FuzzyThreshold = 75
+				conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 75 })
 
 				songs := []agents.Song{
 					{Name: "Song", Artists: []agents.Artist{{Name: "Artist"}}},
@@ -875,8 +877,10 @@ var _ = Describe("Matcher", func() {
 
 	Describe("fuzzy album matching", func() {
 		BeforeEach(func() {
-			conf.Server.Matcher.FuzzyThreshold = 85
-			conf.Server.Matcher.PreferStarred = false
+			conf.Update(func(c *conf.Options) {
+				c.Matcher.FuzzyThreshold = 85
+				c.Matcher.PreferStarred = false
+			})
 		})
 
 		It("matches album with (Remaster) suffix", func() {
@@ -946,7 +950,7 @@ var _ = Describe("Matcher", func() {
 		})
 
 		It("prefers a more specific match over a starred track when PreferStarred is enabled", func() {
-			conf.Server.Matcher.PreferStarred = true
+			conf.Update(func(c *conf.Options) { c.Matcher.PreferStarred = true })
 			songs := []agents.Song{
 				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
@@ -967,7 +971,7 @@ var _ = Describe("Matcher", func() {
 		})
 
 		It("prefers a more specific match over a 4-star track when PreferStarred is enabled", func() {
-			conf.Server.Matcher.PreferStarred = true
+			conf.Update(func(c *conf.Options) { c.Matcher.PreferStarred = true })
 			songs := []agents.Song{
 				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
@@ -988,7 +992,7 @@ var _ = Describe("Matcher", func() {
 		})
 
 		It("prefers a starred track when specificity and overlap are equal", func() {
-			conf.Server.Matcher.PreferStarred = true
+			conf.Update(func(c *conf.Options) { c.Matcher.PreferStarred = true })
 			songs := []agents.Song{
 				{Name: "Enjoy the Silence", Artists: []agents.Artist{{Name: "Depeche Mode"}}, Album: "Violator"},
 			}
@@ -1012,7 +1016,7 @@ var _ = Describe("Matcher", func() {
 
 	Describe("duration matching", func() {
 		BeforeEach(func() {
-			conf.Server.Matcher.FuzzyThreshold = 100
+			conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 100 })
 		})
 
 		It("prefers tracks with matching duration", func() {
@@ -1180,7 +1184,7 @@ var _ = Describe("Matcher", func() {
 
 	Describe("deduplication edge cases", func() {
 		BeforeEach(func() {
-			conf.Server.Matcher.FuzzyThreshold = 85
+			conf.Update(func(c *conf.Options) { c.Matcher.FuzzyThreshold = 85 })
 		})
 
 		It("handles mixed scenario with both identical and different input songs", func() {

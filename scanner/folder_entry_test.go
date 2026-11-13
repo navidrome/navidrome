@@ -171,9 +171,7 @@ var _ = Describe("folder_entry", func() {
 
 			It("sets NumPlaylists when folder is in playlists path", func() {
 				// Mock InPlaylistsPath to return true by setting empty PlaylistsPath
-				originalPath := conf.Server.PlaylistsPath
-				conf.Server.PlaylistsPath = ""
-				DeferCleanup(func() { conf.Server.PlaylistsPath = originalPath })
+				conf.Update(func(c *conf.Options) { c.PlaylistsPath = "" })
 
 				folder := entry.toFolder()
 				Expect(folder.NumPlaylists).To(Equal(3))
@@ -181,9 +179,7 @@ var _ = Describe("folder_entry", func() {
 
 			It("does not set NumPlaylists when folder is not in playlists path", func() {
 				// Mock InPlaylistsPath to return false by setting a different path
-				originalPath := conf.Server.PlaylistsPath
-				conf.Server.PlaylistsPath = "different/path"
-				DeferCleanup(func() { conf.Server.PlaylistsPath = originalPath })
+				conf.Update(func(c *conf.Options) { c.PlaylistsPath = "different/path" })
 
 				folder := entry.toFolder()
 				Expect(folder.NumPlaylists).To(BeZero())

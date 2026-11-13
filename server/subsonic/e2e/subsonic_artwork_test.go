@@ -87,18 +87,20 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 		writeArtworkTrack(musicDir, "Artful Artist", "Artful Album", "01 - Come Together", true)
 		writeArtworkTrack(musicDir, "Artless Artist", "Artless Album", "01 - Lonely", false)
 
-		conf.Server.MusicFolder = musicDir
-		conf.Server.DevExternalScanner = false
-		conf.Server.DevEnableMediaFileProbe = false
-		conf.Server.CoverArtPriority = "cover.jpg"
-		conf.Server.ArtistArtPriority = "artist.png" // offline: artists resolve absent, out of scope here
-		conf.Server.EnableMediaFileCoverArt = false
-		conf.Server.DevArtworkWorkerConcurrency = 1
-		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
-		conf.Server.EnableSharing = true
-		conf.Server.DevArtworkMaxRequests = 100
-		conf.Server.DevArtworkThrottleBacklogLimit = 100
-		conf.Server.DevArtworkThrottleBacklogTimeout = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = musicDir
+			c.DevExternalScanner = false
+			c.DevEnableMediaFileProbe = false
+			c.CoverArtPriority = "cover.jpg"
+			c.ArtistArtPriority = "artist.png" // offline: artists resolve absent, out of scope here
+			c.EnableMediaFileCoverArt = false
+			c.DevArtworkWorkerConcurrency = 1
+			c.CacheFolder = conf.NewDir(GinkgoT().TempDir())
+			c.EnableSharing = true
+			c.DevArtworkMaxRequests = 100
+			c.DevArtworkThrottleBacklogLimit = 100
+			c.DevArtworkThrottleBacklogTimeout = time.Minute
+		})
 
 		goldenDB.Restore()
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}

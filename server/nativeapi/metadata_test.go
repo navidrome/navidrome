@@ -51,7 +51,7 @@ var _ = Describe("Metadata API", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
+		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		albumRepo = tests.CreateMockAlbumRepo()

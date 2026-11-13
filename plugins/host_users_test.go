@@ -481,9 +481,11 @@ func createTestUsers(ctx context.Context, mockUserRepo *tests.MockedUserRepo) {
 
 // setupTestUsersConfig sets up common plugin configuration
 func setupTestUsersConfig(tmpDir string) {
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 }
 
 // testUsersInput represents input for test-users plugin calls

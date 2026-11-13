@@ -30,7 +30,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 
 	DescribeTable("uploadPlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
@@ -49,7 +49,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 
 	DescribeTable("deletePlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)
@@ -77,8 +77,10 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
-		conf.Server.SessionTimeout = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.SessionTimeout = time.Minute
+		})
 
 		plsSvc = &mockPlaylistsService{}
 		userRepo = tests.CreateMockUserRepo()

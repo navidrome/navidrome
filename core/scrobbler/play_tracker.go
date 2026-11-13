@@ -141,7 +141,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		prSignal:          make(chan struct{}, 1),
 		prWorkerDone:      make(chan struct{}),
 	}
-	enableNowPlaying := conf.Server.EnableNowPlaying
+	enableNowPlaying := conf.Server().EnableNowPlaying
 	m.OnExpiration(func(_ string, info PlaybackSession) {
 		log.Debug("PlaybackSession expired", "clientId", info.PlayerId, "mediaId", info.MediaFile.ID, "state",
 			info.State, "username", info.Username, "userId", info.UserId)
@@ -429,7 +429,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.enqueuePlaybackReport(ctx, stoppedInfo, filtered)
 	}
 
-	if conf.Server.EnableNowPlaying {
+	if conf.Server().EnableNowPlaying {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 
@@ -525,7 +525,7 @@ func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, times
 				return err
 			}
 		}
-		if conf.Server.EnableScrobbleHistory {
+		if conf.Server().EnableScrobbleHistory {
 			return tx.Scrobble().RecordScrobble(ctx, track.ID, timestamp)
 		}
 		return nil

@@ -16,7 +16,7 @@ var _ = Describe("Album", func() {
 	})
 	DescribeTable("FullName",
 		func(enabled bool, tags Tags, expected string) {
-			conf.Server.Subsonic.AppendAlbumVersion = enabled
+			conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = enabled })
 			a := Album{Name: "Album", Tags: tags}
 			Expect(a.FullName()).To(Equal(expected))
 		},

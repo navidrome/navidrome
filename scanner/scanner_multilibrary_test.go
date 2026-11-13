@@ -45,15 +45,19 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 		tests.SkipOnWindows("SQLite file lock blocks TempDir cleanup (#TBD-path-sep-scanner)")
 		ctx = request.WithUser(GinkgoT().Context(), model.User{ID: "123", IsAdmin: true})
 		tmpDir := GinkgoT().TempDir()
-		conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner-multilibrary.db?_journal_mode=WAL")
-		log.Warn("Using DB at " + conf.Server.DbPath)
+		conf.Update(func(c *conf.Options) {
+			c.DbPath = filepath.Join(tmpDir, "test-scanner-multilibrary.db?_journal_mode=WAL")
+		})
+		log.Warn("Using DB at " + conf.Server().DbPath)
 		db.Db().SetMaxOpenConns(1)
 	})
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MusicFolder = "default:///music" // Use a distinct schema for the default library
-		conf.Server.DevExternalScanner = false
+		conf.Update(func(c *conf.Options) {
+			c.MusicFolder = "default:///music" // Use a distinct schema for the default library
+			c.DevExternalScanner = false
+		})
 
 		// Register an empty fake storage for the default library
 		emptyFS := storagetest.FakeFS{}
@@ -931,7 +935,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 			changeRockInDB()
 			changeBlueTrainInDB()
 
-			conf.Server.PID.Album = "album"
+			conf.Update(func(c *conf.Options) { c.PID.Album = "album" })
 			Expect(runScanner(ctx, false)).To(Succeed())
 
 			// Rock follows the global config, so it was rescanned in full and its title restored

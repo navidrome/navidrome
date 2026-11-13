@@ -32,9 +32,11 @@ var _ = Describe("Users", func() {
 
 	Describe("Happy path", func() {
 		It("should return consistent user data in both GetUser and GetUsers", func() {
-			conf.Server.EnableDownloads = true
-			conf.Server.EnableSharing = true
-			conf.Server.Jukebox.Enabled = false
+			conf.Update(func(c *conf.Options) {
+				c.EnableDownloads = true
+				c.EnableSharing = true
+				c.Jukebox.Enabled = false
+			})
 
 			// Set up user with libraries
 			testUser.Libraries = model.Libraries{
@@ -90,8 +92,10 @@ var _ = Describe("Users", func() {
 
 	DescribeTable("Jukebox role permissions",
 		func(jukeboxEnabled, adminOnly, isAdmin, expectedJukeboxRole bool) {
-			conf.Server.Jukebox.Enabled = jukeboxEnabled
-			conf.Server.Jukebox.AdminOnly = adminOnly
+			conf.Update(func(c *conf.Options) {
+				c.Jukebox.Enabled = jukeboxEnabled
+				c.Jukebox.AdminOnly = adminOnly
+			})
 			testUser.IsAdmin = isAdmin
 
 			response := buildUserResponse(testUser)
@@ -106,7 +110,7 @@ var _ = Describe("Users", func() {
 
 	DescribeTable("CoverArt role permissions",
 		func(enableArtworkUpload, isAdmin, expectedCoverArtRole bool) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			testUser.IsAdmin = isAdmin
 
 			response := buildUserResponse(testUser)

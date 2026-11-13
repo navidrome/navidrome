@@ -16,7 +16,7 @@ var _ = Describe("QuickConnect", func() {
 	BeforeEach(func() {
 		setupTestDB()
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.QuickConnect = true
+		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
 	})
 
 	clientReq := func(deviceID, method, path, body string) *httptest.ResponseRecorder {
@@ -81,7 +81,7 @@ var _ = Describe("QuickConnect", func() {
 	})
 
 	It("answers 401 on every Quick Connect call when disabled", func() {
-		conf.Server.Jellyfin.QuickConnect = false
+		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = false })
 		Expect(rawReq("GET", "/QuickConnect/Enabled", "").Body.String()).To(MatchJSON("false"))
 		Expect(clientReq("new-device", "POST", "/QuickConnect/Initiate", "").Code).To(Equal(http.StatusUnauthorized))
 		Expect(rawReq("GET", "/QuickConnect/Connect?Secret=x", "").Code).To(Equal(http.StatusUnauthorized))

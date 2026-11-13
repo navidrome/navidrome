@@ -38,10 +38,12 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 		ctx = GinkgoT().Context()
 		// db.Db() is a process-wide singleton that this DeferCleanup closes for the whole binary; keep this the only real-DB spec in this package.
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableUserEditing = true
-		conf.Server.EnableSharing = false
-		conf.Server.SessionTimeout = time.Hour
-		conf.Server.DbPath = filepath.Join(GinkgoT().TempDir(), "nativeapi-user-refresh.db") + "?_journal_mode=WAL"
+		conf.Update(func(c *conf.Options) {
+			c.EnableUserEditing = true
+			c.EnableSharing = false
+			c.SessionTimeout = time.Hour
+			c.DbPath = filepath.Join(GinkgoT().TempDir(), "nativeapi-user-refresh.db") + "?_journal_mode=WAL"
+		})
 		DeferCleanup(db.Init(GinkgoT().Context()))
 
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}

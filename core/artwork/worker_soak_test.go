@@ -58,7 +58,7 @@ var _ = Describe("Worker soak", func() {
 		}
 		store := NewImageStore(GinkgoT().TempDir())
 		proc := &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
-		conf.Server.CoverArtPriority = "cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 
 		// Dangling refs mirror an entity deleted after being enqueued.
 		items := []model.ArtworkQueueItem{

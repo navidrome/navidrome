@@ -229,7 +229,7 @@ var _ = Describe("PlayTracker", func() {
 		})
 
 		It("does not send event when disabled", func() {
-			conf.Server.EnableNowPlaying = false
+			conf.Update(func(c *conf.Options) { c.EnableNowPlaying = false })
 			tracker = newPlayTracker(ds, eventBroker, nil)
 			info := PlaybackSession{MediaFile: track, Start: time.Now(), Username: "user"}
 			_ = tracker.playMap.AddWithTTL("player-2", info, 10*time.Millisecond)
@@ -354,7 +354,7 @@ var _ = Describe("PlayTracker", func() {
 
 		Context("Scrobble History", func() {
 			It("records scrobble in repository", func() {
-				conf.Server.EnableScrobbleHistory = true
+				conf.Update(func(c *conf.Options) { c.EnableScrobbleHistory = true })
 				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 				ts := time.Now()
 
@@ -371,7 +371,7 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("does not record scrobble when history is disabled", func() {
-				conf.Server.EnableScrobbleHistory = false
+				conf.Update(func(c *conf.Options) { c.EnableScrobbleHistory = false })
 				ctx = request.WithUser(ctx, model.User{ID: "u-1", UserName: "user-1"})
 				ts := time.Now()
 
@@ -724,7 +724,7 @@ var _ = Describe("PlayTracker", func() {
 			})
 
 			It("does NOT broadcast when EnableNowPlaying is false", func() {
-				conf.Server.EnableNowPlaying = false
+				conf.Update(func(c *conf.Options) { c.EnableNowPlaying = false })
 				tracker = newPlayTracker(ds, eventBroker, nil)
 				tracker.builtinScrobblers["fake"] = fake
 

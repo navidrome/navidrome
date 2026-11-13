@@ -22,7 +22,7 @@ var _ = Describe("profilerHandler", func() {
 	// Mirrors how server.MountRouter mounts the handler.
 	mount := func() http.Handler {
 		router := chi.NewRouter()
-		router.Mount(path.Join(conf.Server.BasePath, "/debug"), profilerHandler())
+		router.Mount(path.Join(conf.Server().BasePath, "/debug"), profilerHandler())
 		return router
 	}
 
@@ -32,7 +32,7 @@ var _ = Describe("profilerHandler", func() {
 
 	DescribeTable("serves a named profile",
 		func(basePath string) {
-			conf.Server.BasePath = basePath
+			conf.Update(func(c *conf.Options) { c.BasePath = basePath })
 
 			w := httptest.NewRecorder()
 			target := path.Join(basePath, "/debug/pprof/nd-profiler-test") + "?debug=1"

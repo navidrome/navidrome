@@ -68,8 +68,10 @@ var _ = BeforeSuite(func() {
 	suiteDBTempDir = GinkgoT().TempDir()
 
 	DeferCleanup(configtest.SetupConfig())
-	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = conf.NewDir(GinkgoT().TempDir())
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
+		c.DataFolder = conf.NewDir(GinkgoT().TempDir())
+	})
 	db.Db().SetMaxOpenConns(1)
 	db.Init(request.WithUser(context.Background(), model.User{ID: "admin-1", IsAdmin: true}))
 
@@ -84,14 +86,16 @@ func setupResolutionHarness() {
 	DeferCleanup(configtest.SetupConfig())
 
 	tempDir := GinkgoT().TempDir()
-	conf.Server.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
-	conf.Server.DataFolder = conf.NewDir(tempDir)
-	conf.Server.MusicFolder = fakeLibPath
-	conf.Server.DevExternalScanner = false
-	conf.Server.ImageCacheSize = "0"
-	conf.Server.EnableExternalServices = false
-	conf.Server.EnableMediaFileCoverArt = true
-	conf.Server.DevArtworkWorkerConcurrency = 1
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
+		c.DataFolder = conf.NewDir(tempDir)
+		c.MusicFolder = fakeLibPath
+		c.DevExternalScanner = false
+		c.ImageCacheSize = "0"
+		c.EnableExternalServices = false
+		c.EnableMediaFileCoverArt = true
+		c.DevArtworkWorkerConcurrency = 1
+	})
 
 	rctx = request.WithUser(GinkgoT().Context(), model.User{ID: "admin-1", UserName: "admin", IsAdmin: true})
 	harness.TruncateDB(userTables)

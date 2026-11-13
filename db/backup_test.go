@@ -78,7 +78,7 @@ var _ = Describe("database backups", func() {
 
 			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
 			Expect(err).ToNot(HaveOccurred())
-			conf.Server.Backup.Path = conf.NewDir(tempFolder)
+			conf.Update(func(c *conf.Options) { c.Backup.Path = conf.NewDir(tempFolder) })
 
 			DeferCleanup(func() {
 				_ = os.RemoveAll(tempFolder)
@@ -102,12 +102,12 @@ var _ = Describe("database backups", func() {
 		})
 
 		DescribeTable("prune", func(count, expected int) {
-			conf.Server.Backup.Count = count
+			conf.Update(func(c *conf.Options) { c.Backup.Count = count })
 			pruneCount, err := Prune(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			for idx, time := range timesDecreasingChronologically {
 				_, err := os.Stat(BackupPath(time))
-				shouldExist := idx < conf.Server.Backup.Count
+				shouldExist := idx < conf.Server().Backup.Count
 				if shouldExist {
 					Expect(err).ToNot(HaveOccurred())
 				} else {
@@ -129,7 +129,7 @@ var _ = Describe("database backups", func() {
 				_ = file.Close()
 			}
 
-			conf.Server.Backup.Count = len(timesDecreasingChronologically)
+			conf.Update(func(c *conf.Options) { c.Backup.Count = len(timesDecreasingChronologically) })
 			pruneCount, err := Prune(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(pruneCount).To(BeZero())
@@ -143,14 +143,14 @@ var _ = Describe("database backups", func() {
 			ctx = context.Background()
 			DeferCleanup(configtest.SetupConfig())
 
-			conf.Server.DbPath = "file::memory:?cache=shared&_foreign_keys=on"
+			conf.Update(func(c *conf.Options) { c.DbPath = "file::memory:?cache=shared&_foreign_keys=on" })
 			DeferCleanup(Init(ctx))
 		})
 
 		BeforeEach(func() {
 			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
 			Expect(err).ToNot(HaveOccurred())
-			conf.Server.Backup.Path = conf.NewDir(tempFolder)
+			conf.Update(func(c *conf.Options) { c.Backup.Path = conf.NewDir(tempFolder) })
 
 			DeferCleanup(func() {
 				_ = os.RemoveAll(tempFolder)
@@ -192,7 +192,7 @@ var _ = Describe("database backups", func() {
 			var err error
 			tempFolder, err = os.MkdirTemp("", "navidrome_restore")
 			Expect(err).ToNot(HaveOccurred())
-			conf.Server.Backup.Path = conf.NewDir(tempFolder)
+			conf.Update(func(c *conf.Options) { c.Backup.Path = conf.NewDir(tempFolder) })
 			DeferCleanup(func() {
 				Close(ctx)
 				_ = os.RemoveAll(tempFolder)
@@ -200,7 +200,9 @@ var _ = Describe("database backups", func() {
 
 			// Mimic the production DSN (consts.DefaultDbPath): a file database in WAL mode.
 			dbFilePath = filepath.Join(tempFolder, "navidrome.db")
-			conf.Server.DbPath = dbFilePath + "?_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on&synchronous=normal"
+			conf.Update(func(c *conf.Options) {
+				c.DbPath = dbFilePath + "?_busy_timeout=15000&_journal_mode=WAL&_foreign_keys=on&synchronous=normal"
+			})
 			// The previous container's cleanup closed the shared *sql.DB without
 			// dropping the singleton; force a fresh connection for this container.
 			singleton.DeleteInstance[*sql.DB]()

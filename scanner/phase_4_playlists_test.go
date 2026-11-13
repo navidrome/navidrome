@@ -33,7 +33,7 @@ var _ = Describe("phasePlaylists", func() {
 
 	BeforeEach(func() {
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AutoImportPlaylists = true
+		conf.Update(func(c *conf.Options) { c.AutoImportPlaylists = true })
 		ctx = context.Background()
 		folderRepo = &mockFolderRepository{}
 		userRepo = tests.CreateMockUserRepo()

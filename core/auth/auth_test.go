@@ -25,7 +25,7 @@ const (
 )
 
 var _ = BeforeSuite(func() {
-	conf.Server.SessionTimeout = 2 * oneDay
+	conf.Update(func(c *conf.Options) { c.SessionTimeout = 2 * oneDay })
 })
 
 var _ = Describe("Auth", func() {

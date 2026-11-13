@@ -252,7 +252,7 @@ var _ = Describe("Search Endpoints", func() {
 		Describe("Legacy backend", func() {
 			It("returns results using legacy LIKE-based search when configured", func() {
 				DeferCleanup(configtest.SetupConfig())
-				conf.Server.Search.Backend = "legacy"
+				conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 
 				resp := doReq("search3", "query", "Beatles")
 

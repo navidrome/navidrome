@@ -26,7 +26,7 @@ var _ = Describe("utility functions", Ordered, func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 		DeferCleanup(func() {
 			_ = os.RemoveAll(tmpDir)
@@ -90,10 +90,12 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 
 		// Setup config
 		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		conf.Update(func(c *conf.Options) {
+			c.DataFolder = conf.NewDir(tmpDir)
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		pluginPaths := []string{ID, ID + "-2"}
 		plugins := []model.Plugin{}
