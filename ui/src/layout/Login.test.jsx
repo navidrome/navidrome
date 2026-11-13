@@ -9,6 +9,7 @@ import Login from './Login'
 const mocks = vi.hoisted(() => ({
   checkAuth: vi.fn(),
   push: vi.fn(),
+  replace: vi.fn(),
 }))
 
 vi.mock('react-admin', () => ({
@@ -21,7 +22,7 @@ vi.mock('react-admin', () => ({
 }))
 
 vi.mock('react-router-dom', () => ({
-  useHistory: () => ({ push: mocks.push }),
+  useHistory: () => ({ push: mocks.push, replace: mocks.replace }),
 }))
 
 vi.mock('../themes/useCurrentTheme', () => ({
@@ -43,15 +44,17 @@ describe('<Login />', () => {
   beforeEach(() => {
     mocks.checkAuth.mockReset()
     mocks.push.mockReset()
+    mocks.replace.mockReset()
   })
 
-  it('redirects to the home page when the user is already signed in', async () => {
+  it('replaces the login page with the home page when already signed in', async () => {
     mocks.checkAuth.mockResolvedValue()
 
     renderLogin()
 
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/'))
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/'))
     expect(mocks.checkAuth).toHaveBeenCalledWith({}, false)
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
   it('shows the login form when the user is not signed in', async () => {
@@ -61,6 +64,7 @@ describe('<Login />', () => {
 
     await waitFor(() => expect(mocks.checkAuth).toHaveBeenCalledWith({}, false))
     expect(screen.getByText('ra.auth.sign_in')).toBeInTheDocument()
+    expect(mocks.replace).not.toHaveBeenCalled()
     expect(mocks.push).not.toHaveBeenCalled()
   })
 })

@@ -330,9 +330,10 @@ const Login = ({ location }) => {
   // Opening #/login while already signed in (a bookmark, or the URL the
   // browser autocompletes after a past login) goes to the app instead of
   // asking for the password again, as react-admin's default login page does.
+  // replace, not push, so Back does not land on #/login and redirect again.
   useEffect(() => {
     checkAuth({}, false)
-      .then(() => history.push('/'))
+      .then(() => history.replace('/'))
       .catch(() => {})
   }, [checkAuth, history])
 
