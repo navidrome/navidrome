@@ -227,6 +227,21 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("case-sensitive, targeted scan", false, []string{"a/sub", "b/sub"}, []string{"skip.mp3", "song.mp3"}, []string{"song.mp3"}),
 			)
 
+			DescribeTable("skips a folder ignored by its parent, even if it re-includes files",
+				func(targets []string) {
+					spy = newSpyMusicFS(fstest.MapFS{
+						"a/.nomedia":    {},
+						"a/b/.ndignore": {Data: []byte("!song.mp3")},
+						"a/b/song.mp3":  {},
+					})
+					job = &scanJob{fs: spy, lib: model.Library{Path: "/music"}}
+
+					Expect(getFolders(targets...)).ToNot(HaveKey("a/b"))
+				},
+				Entry("full scan", nil),
+				Entry("targeted scan", []string{"a/b"}),
+			)
+
 			It("keeps the parent's patterns when a child folder cannot be read", func() {
 				spy = newSpyMusicFS(fstest.MapFS{
 					"a/.ndignore":    {Data: []byte("skip.mp3")},
