@@ -130,7 +130,7 @@ var _ = Describe("Plugin Watcher", func() {
 			It("starts file watcher when AutoReload is enabled", func() {
 				_ = manager.Stop()
 
-				conf.Server.Plugins.AutoReload = true
+				conf.Update(func(c *conf.Options) { c.Plugins.AutoReload = true })
 
 				// Set up a mock DataStore for the auto-reload manager
 				mockPluginRepo := tests.CreateMockPluginRepo()

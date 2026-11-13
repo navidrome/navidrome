@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"testing"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
@@ -19,6 +20,8 @@ func TestLyrics(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Lyrics Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // core/storage/local calls log.Fatal if the default scanner extractor is unregistered
 // when constructing any localStorage. Register a no-op so storage.For("file://...") works

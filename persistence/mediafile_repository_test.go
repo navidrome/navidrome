@@ -10,7 +10,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -530,7 +529,6 @@ var _ = Describe("MediaRepository", func() {
 			var testMediaFiles []model.MediaFile
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 
 				// Create test media files with specific timestamps
 				testMediaFiles = []model.MediaFile{
@@ -606,7 +604,7 @@ var _ = Describe("MediaRepository", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = false
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -648,7 +646,7 @@ var _ = Describe("MediaRepository", func() {
 				var testRepo model.MediaFileRepository
 
 				BeforeEach(func() {
-					conf.Server.RecentlyAddedByModTime = true
+					conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = true })
 					// Create repository AFTER setting config
 					testRepo = NewMediaFileRepository(GetDBXBuilder())
 				})
@@ -671,7 +669,7 @@ var _ = Describe("MediaRepository", func() {
 			})
 
 			It("breaks ties deterministically when files share the same created_at", func() {
-				conf.Server.RecentlyAddedByModTime = false
+				conf.Update(func(c *conf.Options) { c.RecentlyAddedByModTime = false })
 				ctx := log.NewContext(GinkgoT().Context())
 				ctx = request.WithUser(ctx, model.User{ID: "userid"})
 				repo := NewMediaFileRepository(GetDBXBuilder())

@@ -393,7 +393,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 		When("PurgeMissing is 'always'", func() {
 			BeforeEach(func() {
-				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingAlways
+				conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingAlways })
 				mr.SetCountAll(3)
 				mr.DeleteAllMissingValue = 3
 			})
@@ -407,7 +407,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 		When("PurgeMissing is 'full'", func() {
 			BeforeEach(func() {
-				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingFull
+				conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingFull })
 				mr.SetCountAll(2)
 				mr.DeleteAllMissingValue = 2
 			})
@@ -428,7 +428,7 @@ var _ = Describe("phaseMissingTracks", func() {
 
 		When("PurgeMissing is 'never'", func() {
 			BeforeEach(func() {
-				conf.Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+				conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingNever })
 				mr.SetCountAll(1)
 				mr.DeleteAllMissingValue = 1
 			})

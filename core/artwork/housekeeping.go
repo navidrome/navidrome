@@ -50,12 +50,12 @@ type FingerprintInput struct {
 // FingerprintInputs is the single listing of what ConfigFingerprint hashes.
 func FingerprintInputs() []FingerprintInput {
 	return []FingerprintInput{
-		{"CoverArtPriority", conf.Server.CoverArtPriority},
-		{"ArtistArtPriority", conf.Server.ArtistArtPriority},
-		{"ArtistImageFolder", conf.Server.ArtistImageFolder},
-		{"Agents", conf.Server.Agents},
-		{"EnableExternalServices", strconv.FormatBool(conf.Server.EnableExternalServices)},
-		{"EnableM3UExternalAlbumArt", strconv.FormatBool(conf.Server.EnableM3UExternalAlbumArt)},
+		{"CoverArtPriority", conf.Server().CoverArtPriority},
+		{"ArtistArtPriority", conf.Server().ArtistArtPriority},
+		{"ArtistImageFolder", conf.Server().ArtistImageFolder},
+		{"Agents", conf.Server().Agents},
+		{"EnableExternalServices", strconv.FormatBool(conf.Server().EnableExternalServices)},
+		{"EnableM3UExternalAlbumArt", strconv.FormatBool(conf.Server().EnableM3UExternalAlbumArt)},
 	}
 }
 

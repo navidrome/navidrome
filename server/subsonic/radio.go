@@ -71,7 +71,7 @@ func (api *Router) GetInternetRadios(r *http.Request) (*responses.Subsonic, erro
 		}
 
 		player, _ := request.PlayerFrom(ctx)
-		if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+		if strings.Contains(conf.Server().Subsonic.LegacyClients, player.Client) {
 			continue
 		}
 		// Add coverArt if not legacy client; only radios have an uploaded image as their sole art source

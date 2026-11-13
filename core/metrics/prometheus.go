@@ -30,7 +30,7 @@ type metrics struct {
 }
 
 func GetPrometheusInstance(ds model.DataStore) Metrics {
-	if !conf.Server.Prometheus.Enabled {
+	if !conf.Server().Prometheus.Enabled {
 		return noopMetrics{}
 	}
 
@@ -91,9 +91,9 @@ func (m *metrics) RecordPluginRequest(_ context.Context, plugin, method string, 
 func (m *metrics) GetHandler() http.Handler {
 	r := chi.NewRouter()
 
-	if conf.Server.Prometheus.Password != "" {
+	if conf.Server().Prometheus.Password != "" {
 		r.Use(middleware.BasicAuth("metrics", map[string]string{
-			consts.PrometheusAuthUser: conf.Server.Prometheus.Password,
+			consts.PrometheusAuthUser: conf.Server().Prometheus.Password,
 		}))
 	}
 

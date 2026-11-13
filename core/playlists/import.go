@@ -218,7 +218,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		newPls.OwnerID = owner.ID
 		// For NSP files, Public may already be set from the file; for M3U, use server default
 		if !newPls.IsSmartPlaylist() {
-			newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
+			newPls.Public = conf.Server().DefaultPlaylistPublicVisibility
 		}
 	}
 	return s.ds.Playlist().Put(ctx, newPls)

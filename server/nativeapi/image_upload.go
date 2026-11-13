@@ -23,7 +23,7 @@ import (
 
 func checkImageUploadPermission(w http.ResponseWriter, r *http.Request) bool {
 	user, _ := request.UserFrom(r.Context())
-	if !conf.Server.EnableArtworkUpload && !user.IsAdmin {
+	if !conf.Server().EnableArtworkUpload && !user.IsAdmin {
 		http.Error(w, "artwork upload is disabled", http.StatusForbidden)
 		return false
 	}
