@@ -122,6 +122,7 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 		return nil
 	}
 	log.Debug(ctx, "Changing starred", "ids", ids, "starred", star)
+	var songIDs []string
 	err := api.ds.WithTxImmediate(func(tx model.DataStore) error {
 		event := &events.RefreshResource{}
 		changed := false
@@ -153,6 +154,9 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 			if err := repo.SetStar(ctx, star, id); err != nil {
 				return err
 			}
+			if resource == "song" {
+				songIDs = append(songIDs, id)
+			}
 			event = event.With(resource, id)
 			changed = true
 		}
@@ -166,6 +170,11 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 	if err != nil {
 		log.Error(ctx, err)
 		return err
+	}
+	if len(songIDs) > 0 {
+		if syncer, ok := api.scrobbler.(scrobbler.FavoriteSyncer); ok {
+			syncer.SyncFavorite(ctx, star, songIDs...)
+		}
 	}
 	return nil
 }

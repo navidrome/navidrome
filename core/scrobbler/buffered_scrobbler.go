@@ -114,6 +114,27 @@ func (b *bufferedScrobbler) PlaybackReport(ctx context.Context, info PlaybackSes
 	return s.PlaybackReport(ctx, info)
 }
 
+func (b *bufferedScrobbler) SetFavorite(ctx context.Context, userId string, track *model.MediaFile, starred bool) error {
+	s, ok := b.loader()
+	if !ok {
+		return errors.New("scrobbler not available")
+	}
+	fs, ok := s.(FavoriteScrobbler)
+	if !ok {
+		return nil
+	}
+	return fs.SetFavorite(ctx, userId, track, starred)
+}
+
+func (b *bufferedScrobbler) SupportsFavorite() bool {
+	s, ok := b.loader()
+	if !ok {
+		return false
+	}
+	_, ok = s.(FavoriteScrobbler)
+	return ok
+}
+
 func (b *bufferedScrobbler) sendWakeSignal() {
 	// Don't block if the previous signal was not read yet
 	select {

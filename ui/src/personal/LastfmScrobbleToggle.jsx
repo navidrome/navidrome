@@ -13,7 +13,7 @@ import { baseUrl, openInNewTab } from '../utils'
 import { httpClient } from '../dataProvider'
 
 const Progress = (props) => {
-  const { setLinked, setCheckingLink, openedTab } = props
+  const { setLinked, setSyncLoved, setCheckingLink, openedTab } = props
   const notify = useNotify()
   let linkCheckDelay = 2000
   let linkChecks = 30
@@ -35,6 +35,7 @@ const Progress = (props) => {
         let result = false
         if (response.json.status === true) {
           result = true
+          setSyncLoved(response.json.syncLoved === true)
           endChecking(true)
         }
         return result
@@ -63,6 +64,7 @@ export const LastfmScrobbleToggle = (props) => {
   const notify = useNotify()
   const translate = useTranslate()
   const [linked, setLinked] = useState(null)
+  const [syncLoved, setSyncLoved] = useState(false)
   const [checkingLink, setCheckingLink] = useState(false)
   const [apiKey, setApiKey] = useState(false)
   const openedTab = useRef()
@@ -71,12 +73,13 @@ export const LastfmScrobbleToggle = (props) => {
     httpClient('/api/lastfm/link')
       .then((response) => {
         setLinked(response.json.status === true)
+        setSyncLoved(response.json.syncLoved === true)
         setApiKey(response.json.apiKey)
       })
       .catch(() => {
         setLinked(false)
       })
-  }, [setLinked, setApiKey])
+  }, [setLinked, setSyncLoved, setApiKey])
 
   const startLink = () => {
     // Open the tab synchronously so popup blockers attribute it to the click.
@@ -118,10 +121,27 @@ export const LastfmScrobbleToggle = (props) => {
       httpClient('/api/lastfm/link', { method: 'DELETE' })
         .then(() => {
           setLinked(false)
+          setSyncLoved(false)
           notify('message.lastfmUnlinkSuccess', 'success')
         })
         .catch(() => notify('message.lastfmUnlinkFailure', 'warning'))
     }
+  }
+
+  const toggleSyncLoved = (event) => {
+    const nextValue = event.target.checked
+    setSyncLoved(nextValue)
+    httpClient('/api/lastfm/link', {
+      method: 'PUT',
+      body: JSON.stringify({ syncLoved: nextValue }),
+    })
+      .then((response) => {
+        setSyncLoved(response.json?.syncLoved === true)
+      })
+      .catch(() => {
+        setSyncLoved(!nextValue)
+        notify('ra.notification.http_error', 'warning')
+      })
   }
 
   return (
@@ -140,9 +160,25 @@ export const LastfmScrobbleToggle = (props) => {
           <span>{translate('menu.personal.options.lastfmScrobbling')}</span>
         }
       />
+      {linked && (
+        <FormControlLabel
+          control={
+            <Switch
+              id={'lastfm-sync-loved'}
+              color="primary"
+              checked={syncLoved}
+              onChange={toggleSyncLoved}
+            />
+          }
+          label={
+            <span>{translate('menu.personal.options.lastfmSyncLoved')}</span>
+          }
+        />
+      )}
       {checkingLink && (
         <Progress
           setLinked={setLinked}
+          setSyncLoved={setSyncLoved}
           setCheckingLink={setCheckingLink}
           openedTab={openedTab}
         />

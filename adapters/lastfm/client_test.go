@@ -293,6 +293,50 @@ var _ = Describe("client", func() {
 		})
 	})
 
+	Describe("love / unlove", func() {
+		It("sends track.love signed POST request", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
+				StatusCode: 200,
+			}
+
+			err := client.love(context.Background(), "SESSION_KEY", "U2", "One")
+			Expect(err).To(BeNil())
+
+			req := httpClient.SavedRequest
+			Expect(req.Method).To(Equal(http.MethodPost))
+			body, _ := io.ReadAll(req.Body)
+			bodyParams, _ := url.ParseQuery(string(body))
+			Expect(bodyParams.Get("method")).To(Equal("track.love"))
+			Expect(bodyParams.Get("artist")).To(Equal("U2"))
+			Expect(bodyParams.Get("track")).To(Equal("One"))
+			Expect(bodyParams.Get("sk")).To(Equal("SESSION_KEY"))
+			Expect(bodyParams.Get("api_key")).To(Equal("API_KEY"))
+			Expect(bodyParams.Get("api_sig")).ToNot(BeEmpty())
+		})
+
+		It("sends track.unlove signed POST request", func() {
+			httpClient.Res = http.Response{
+				Body:       io.NopCloser(bytes.NewBufferString(`{}`)),
+				StatusCode: 200,
+			}
+
+			err := client.unlove(context.Background(), "SESSION_KEY", "U2", "One")
+			Expect(err).To(BeNil())
+
+			req := httpClient.SavedRequest
+			Expect(req.Method).To(Equal(http.MethodPost))
+			body, _ := io.ReadAll(req.Body)
+			bodyParams, _ := url.ParseQuery(string(body))
+			Expect(bodyParams.Get("method")).To(Equal("track.unlove"))
+			Expect(bodyParams.Get("artist")).To(Equal("U2"))
+			Expect(bodyParams.Get("track")).To(Equal("One"))
+			Expect(bodyParams.Get("sk")).To(Equal("SESSION_KEY"))
+			Expect(bodyParams.Get("api_key")).To(Equal("API_KEY"))
+			Expect(bodyParams.Get("api_sig")).ToNot(BeEmpty())
+		})
+	})
+
 	Describe("sign", func() {
 		It("adds an api_sig param with the signature", func() {
 			params := url.Values{}

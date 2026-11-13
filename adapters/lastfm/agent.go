@@ -25,6 +25,7 @@ import (
 const (
 	lastFMAgentName    = "lastfm"
 	sessionKeyProperty = "LastFMSessionKey"
+	syncLovedProperty  = "LastFMSyncLoved"
 )
 
 var ignoredContent = []string{
@@ -41,6 +42,7 @@ func cleanContent(content string) string {
 type lastfmAgent struct {
 	ds           model.DataStore
 	sessionKeys  *agents.SessionKeys
+	syncLoved    *agents.SessionKeys
 	apiKey       string
 	secret       string
 	languages    []string
@@ -59,6 +61,7 @@ func lastFMConstructor(ds model.DataStore) *lastfmAgent {
 		apiKey:      conf.Server().LastFM.ApiKey,
 		secret:      conf.Server().LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
+		syncLoved:   &agents.SessionKeys{DataStore: ds, KeyName: syncLovedProperty},
 	}
 	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
 	chc := cache.NewHTTPClient(hc, consts.DefaultHttpClientTimeOut)
@@ -425,6 +428,46 @@ func (l *lastfmAgent) IsAuthorized(ctx context.Context, userId string) bool {
 
 func (l *lastfmAgent) PlaybackReport(context.Context, scrobbler.PlaybackSession) error {
 	return nil
+}
+
+func isSyncLovedEnabled(ctx context.Context, syncLoved *agents.SessionKeys, userId string) bool {
+	if syncLoved != nil {
+		val, err := syncLoved.Get(ctx, userId)
+		if err == nil && val != "" {
+			return val == "true"
+		}
+	}
+	return conf.Server.LastFM.SyncLovedTracks
+}
+
+func (l *lastfmAgent) SetFavorite(ctx context.Context, userId string, track *model.MediaFile, starred bool) error {
+	if !isSyncLovedEnabled(ctx, l.syncLoved, userId) {
+		return nil
+	}
+	sk, err := l.sessionKeys.Get(ctx, userId)
+	if err != nil || sk == "" {
+		return errors.Join(err, scrobbler.ErrNotAuthorized)
+	}
+
+	artist := l.getArtistForScrobble(track, model.RoleArtist, track.Artist)
+	if starred {
+		err = l.client.love(ctx, sk, artist, track.Title)
+	} else {
+		err = l.client.unlove(ctx, sk, artist, track.Title)
+	}
+	if err == nil {
+		return nil
+	}
+	var lfErr *lastFMError
+	isLastFMError := errors.As(err, &lfErr)
+	if !isLastFMError {
+		log.Warn(ctx, "Last.fm client love/unlove returned error", "track", track.Title, "starred", starred, err)
+		return errors.Join(err, scrobbler.ErrRetryLater)
+	}
+	if lfErr.Code == 11 || lfErr.Code == 16 || errors.Is(err, scrobbler.ErrRetryLater) {
+		return errors.Join(err, scrobbler.ErrRetryLater)
+	}
+	return errors.Join(err, scrobbler.ErrUnrecoverable)
 }
 
 func init() {

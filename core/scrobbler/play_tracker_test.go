@@ -1426,6 +1426,120 @@ var _ = Describe("PlayTracker", func() {
 			Expect(pluginScr.IsAuthorized(ctx, "u-1")).To(BeFalse())
 		})
 	})
+
+	Describe("SyncFavorite", func() {
+		It("dispatches SetFavorite(true) to authorized FavoriteScrobblers", func() {
+			tracker.SyncFavorite(ctx, true, track.ID)
+			Eventually(fake.SetFavoriteCalled.Load).Should(BeTrue())
+			Expect(fake.GetUserID()).To(Equal("u-1"))
+			Expect(fake.GetTrack().ID).To(Equal(track.ID))
+			Expect(fake.FavoriteStarred.Load()).To(BeTrue())
+		})
+
+		It("dispatches SetFavorite(false) when unstarring", func() {
+			tracker.SyncFavorite(ctx, false, track.ID)
+			Eventually(fake.SetFavoriteCalled.Load).Should(BeTrue())
+			Expect(fake.GetUserID()).To(Equal("u-1"))
+			Expect(fake.GetTrack().ID).To(Equal(track.ID))
+			Expect(fake.FavoriteStarred.Load()).To(BeFalse())
+		})
+
+		It("does not dispatch when user is not authorized on the scrobbler", func() {
+			fake.Authorized = false
+			tracker.SyncFavorite(ctx, true, track.ID)
+			Consistently(fake.SetFavoriteCalled.Load, 50*time.Millisecond).Should(BeFalse())
+		})
+
+		It("skips tracks with UnknownArtist", func() {
+			track.Artist = consts.UnknownArtist
+			_ = ds.MediaFile().Put(ctx, &track)
+			tracker.SyncFavorite(ctx, true, track.ID)
+			Consistently(fake.SetFavoriteCalled.Load, 50*time.Millisecond).Should(BeFalse())
+		})
+
+		It("rejects oversized batches exceeding maxFavoriteSyncBatch", func() {
+			ids := make([]string, maxFavoriteSyncBatch+1)
+			for i := range ids {
+				ids[i] = track.ID
+			}
+			tracker.SyncFavorite(ctx, true, ids...)
+			Consistently(fake.SetFavoriteCalled.Load, 50*time.Millisecond).Should(BeFalse())
+		})
+
+		It("retries once when SetFavorite returns ErrRetryLater", func() {
+			var attempts atomic.Int32
+			fake.onSetFavorite = func(_ bool) error {
+				if attempts.Add(1) == 1 {
+					return ErrRetryLater
+				}
+				return nil
+			}
+			tracker.SyncFavorite(ctx, true, track.ID)
+			Eventually(attempts.Load).Should(Equal(int32(2)))
+			Eventually(fake.FavoriteStarred.Load).Should(BeTrue())
+		})
+
+		It("preserves final state when star and unstar are rapidly toggled", func() {
+			unblockFirst := make(chan struct{})
+			var calls atomic.Int32
+			fake.onSetFavorite = func(_ bool) error {
+				if calls.Add(1) == 1 {
+					<-unblockFirst
+				}
+				return nil
+			}
+			tracker.SyncFavorite(ctx, true, track.ID)
+			Eventually(calls.Load).Should(Equal(int32(1)))
+
+			// Rapidly toggle while the first request is in flight; final state is false
+			tracker.SyncFavorite(ctx, false, track.ID)
+			tracker.SyncFavorite(ctx, true, track.ID)
+			tracker.SyncFavorite(ctx, false, track.ID)
+			close(unblockFirst)
+
+			Eventually(calls.Load).Should(Equal(int32(2)))
+			Eventually(fake.FavoriteStarred.Load).Should(BeFalse())
+		})
+
+		It("does not let one user's backlog starve or delay another user's favorite sync", func() {
+			unblockFirst := make(chan struct{})
+			unblockAfterSecond := make(chan struct{})
+			defer close(unblockAfterSecond)
+			var calls atomic.Int32
+			fake.onSetFavorite = func(_ bool) error {
+				switch calls.Add(1) {
+				case 1:
+					<-unblockFirst
+				case 3:
+					<-unblockAfterSecond
+				}
+				return nil
+			}
+			tracker.SyncFavorite(ctx, true, track.ID)
+			Eventually(calls.Load).Should(Equal(int32(1)))
+
+			// Flood the queue from u-1 across multiple batches totaling maxFavoriteQueueSize tracks
+			for b := 0; b < maxFavoriteQueueSize/maxFavoriteSyncBatch; b++ {
+				batch := make([]string, maxFavoriteSyncBatch)
+				for i := 0; i < maxFavoriteSyncBatch; i++ {
+					id := fmt.Sprintf("u1-bulk-%d-%d", b, i)
+					_ = ds.MediaFile().Put(ctx, &model.MediaFile{ID: id, Title: id, Artist: "Artist"})
+					batch[i] = id
+				}
+				tracker.SyncFavorite(ctx, true, batch...)
+			}
+
+			// Enqueue a single track for u-2 while u-1's backlog is full
+			trackU2 := model.MediaFile{ID: "u2-track", Title: "U2 Song", Artist: "Artist"}
+			_ = ds.MediaFile().Put(ctx, &trackU2)
+			ctxU2 := request.WithUser(ctx, model.User{ID: "u-2", UserName: "user-2"})
+			tracker.SyncFavorite(ctxU2, true, trackU2.ID)
+
+			close(unblockFirst)
+			Eventually(fake.GetUserID).Should(Equal("u-2"))
+			Expect(fake.GetTrack().ID).To(Equal("u2-track"))
+		})
+	})
 })
 
 var _ = DescribeTable("remainingTTL",
@@ -1451,6 +1565,9 @@ type fakeScrobbler struct {
 	nowPlayingCalled     atomic.Bool
 	ScrobbleCalled       atomic.Bool
 	PlaybackReportCalled atomic.Bool
+	SetFavoriteCalled    atomic.Bool
+	FavoriteStarred      atomic.Bool
+	onSetFavorite        func(starred bool) error
 	userID               atomic.Pointer[string]
 	username             atomic.Pointer[string]
 	track                atomic.Pointer[model.MediaFile]
@@ -1553,6 +1670,22 @@ func (f *fakeScrobbler) PlaybackReport(ctx context.Context, info PlaybackSession
 	}
 	f.userID.Store(new(info.UserId))
 	f.LastPlaybackReport.Store(&info)
+	return nil
+}
+
+func (f *fakeScrobbler) SetFavorite(ctx context.Context, userId string, track *model.MediaFile, starred bool) error {
+	if err := f.getError(); err != nil {
+		return err
+	}
+	if f.onSetFavorite != nil {
+		if err := f.onSetFavorite(starred); err != nil {
+			return err
+		}
+	}
+	f.userID.Store(&userId)
+	f.track.Store(track)
+	f.FavoriteStarred.Store(starred)
+	f.SetFavoriteCalled.Store(true)
 	return nil
 }
 

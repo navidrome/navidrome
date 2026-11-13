@@ -17,12 +17,18 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+type syncedFav struct {
+	starred bool
+	ids     []string
+}
+
 // fakePlayTracker is a local double for scrobbler.PlayTracker, mirroring
 // server/subsonic's fakePlayTracker.
 type fakePlayTracker struct {
 	scrobbler.PlayTracker
-	reported  []scrobbler.ReportPlaybackParams
-	submitted []scrobbler.Submission
+	reported        []scrobbler.ReportPlaybackParams
+	submitted       []scrobbler.Submission
+	syncedFavorites []syncedFav
 }
 
 func (f *fakePlayTracker) ReportPlayback(_ context.Context, p scrobbler.ReportPlaybackParams) error {
@@ -33,6 +39,10 @@ func (f *fakePlayTracker) ReportPlayback(_ context.Context, p scrobbler.ReportPl
 func (f *fakePlayTracker) Submit(_ context.Context, s []scrobbler.Submission) error {
 	f.submitted = append(f.submitted, s...)
 	return nil
+}
+
+func (f *fakePlayTracker) SyncFavorite(_ context.Context, starred bool, trackIDs ...string) {
+	f.syncedFavorites = append(f.syncedFavorites, syncedFav{starred: starred, ids: append([]string(nil), trackIDs...)})
 }
 
 // fakePlayers is a local double for core.Players, used to exercise withPlayer.

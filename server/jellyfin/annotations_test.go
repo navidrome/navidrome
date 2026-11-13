@@ -21,6 +21,7 @@ var _ = Describe("Annotations", func() {
 	var api *Router
 	var ds *tests.MockDataStore
 	var broker *fakeEventBroker
+	var playTracker *fakePlayTracker
 	// alice has access to library 1 only.
 	ctxUser := func() context.Context {
 		return request.WithUser(GinkgoT().Context(), model.User{ID: testID("u1"), UserName: "alice", Libraries: model.Libraries{{ID: 1, Name: "Music"}}})
@@ -29,7 +30,8 @@ var _ = Describe("Annotations", func() {
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{}
 		broker = &fakeEventBroker{}
-		api = &Router{ds: ds, broker: broker}
+		playTracker = &fakePlayTracker{}
+		api = &Router{ds: ds, broker: broker, scrobbler: playTracker}
 	})
 
 	songWith := func(ann model.Annotations) *tests.MockMediaFileRepo {
@@ -43,7 +45,7 @@ var _ = Describe("Annotations", func() {
 	}
 
 	Describe("markFavorite / unmarkFavorite", func() {
-		It("stars a song and returns IsFavorite=true", func() {
+		It("stars a song, returns IsFavorite=true, and syncs favorite state to PlayTracker", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1}})
 			w := httptest.NewRecorder()
@@ -55,6 +57,7 @@ var _ = Describe("Annotations", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &d)).To(Succeed())
 			Expect(d.IsFavorite).To(BeTrue())
 			Expect(mfRepo.Data[testID("s1")].Starred).To(BeTrue())
+			Expect(playTracker.syncedFavorites).To(Equal([]syncedFav{{starred: true, ids: []string{testID("s1")}}}))
 		})
 
 		It("stars an album and returns IsFavorite=true", func() {
@@ -97,7 +100,7 @@ var _ = Describe("Annotations", func() {
 			Expect(playlistRepo.Starred[testID("p1")]).To(BeTrue())
 		})
 
-		It("unstars a song and returns IsFavorite=false", func() {
+		It("unstars a song, returns IsFavorite=false, and syncs favorite state to PlayTracker", func() {
 			mfRepo := ds.MediaFile().(*tests.MockMediaFileRepo)
 			mfRepo.SetData(model.MediaFiles{{ID: testID("s1"), Title: "Song", LibraryID: 1, Annotations: model.Annotations{Starred: true}}})
 			w := httptest.NewRecorder()
@@ -109,6 +112,7 @@ var _ = Describe("Annotations", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &d)).To(Succeed())
 			Expect(d.IsFavorite).To(BeFalse())
 			Expect(mfRepo.Data[testID("s1")].Starred).To(BeFalse())
+			Expect(playTracker.syncedFavorites).To(Equal([]syncedFav{{starred: false, ids: []string{testID("s1")}}}))
 		})
 
 		It("returns 404 and does not star an album in a library the user can't access", func() {
