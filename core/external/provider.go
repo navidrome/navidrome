@@ -83,6 +83,8 @@ type Agents interface {
 	agents.ArtistTopSongsRetriever
 	agents.ArtistURLRetriever
 	agents.SimilarSongsByTrackRetriever
+	GetSimilarSongsByTrackFromExternalAgents(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error)
+	GetSimilarSongsByTrackFromLocalAgent(ctx context.Context, id, name, artist, mbid string, count int) ([]agents.Song, error)
 	agents.SimilarSongsByAlbumRetriever
 	agents.SimilarSongsByArtistRetriever
 }
