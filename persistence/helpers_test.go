@@ -5,7 +5,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -87,9 +86,6 @@ var _ = Describe("Helpers", func() {
 	})
 
 	Describe("mapSortOrder", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("does not change the sort string if there are no order columns", func() {
 			Expect(mapSortOrder("album", "album_name asc")).To(Equal("album_name asc"))
@@ -123,9 +119,6 @@ var _ = Describe("Helpers", func() {
 	})
 
 	Describe("naturalSort", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("leaves the column alone by default, keeping its declared collation", func() {
 			Expect(naturalSort("media_file.title")).To(Equal("media_file.title"))

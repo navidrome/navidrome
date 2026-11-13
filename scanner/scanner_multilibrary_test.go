@@ -9,7 +9,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -53,7 +52,7 @@ var _ = Describe("Scanner - Multi-Library", Ordered, func() {
 	})
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) {
 			c.MusicFolder = "default:///music" // Use a distinct schema for the default library
 			c.DevExternalScanner = false

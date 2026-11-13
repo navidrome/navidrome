@@ -15,7 +15,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -32,7 +31,6 @@ var _ = Describe("MediaStreamer", func() {
 	ctx := log.NewContext(context.TODO())
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		cacheDir, _ := os.MkdirTemp("", "file_caches")
 		conf.Update(func(c *conf.Options) {
 			c.CacheFolder = conf.NewDir(cacheDir)

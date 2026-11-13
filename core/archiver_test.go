@@ -10,7 +10,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/stream"
@@ -119,9 +118,6 @@ var _ = Describe("Archiver", func() {
 		})
 
 		When("albums that share a name", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			// zipArtistEntries zips the given tracks as artist "1" and returns the entry names in zip order.
 			zipArtistEntries := func(mfs model.MediaFiles) []string {

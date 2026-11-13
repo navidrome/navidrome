@@ -19,7 +19,6 @@ import (
 
 	_ "github.com/navidrome/navidrome/adapters/gotaglib"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
@@ -67,7 +66,6 @@ var userTables []string
 var _ = BeforeSuite(func() {
 	suiteDBTempDir = GinkgoT().TempDir()
 
-	DeferCleanup(configtest.SetupConfig())
 	conf.Update(func(c *conf.Options) {
 		c.DbPath = filepath.Join(suiteDBTempDir, "artwork-resolution-e2e.db") + "?_journal_mode=WAL"
 		c.DataFolder = conf.NewDir(GinkgoT().TempDir())
@@ -83,7 +81,7 @@ var _ = AfterSuite(func() {
 })
 
 func setupResolutionHarness() {
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 
 	tempDir := GinkgoT().TempDir()
 	conf.Update(func(c *conf.Options) {

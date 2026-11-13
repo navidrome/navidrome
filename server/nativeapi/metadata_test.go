@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -50,7 +49,6 @@ var _ = Describe("Metadata API", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.EnableSharing = false })
 		artRepo = tests.CreateMockArtworkRepo()
 		queueRepo = tests.CreateMockArtworkQueueRepo()

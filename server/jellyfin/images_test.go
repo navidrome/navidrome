@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -337,7 +336,6 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("rejects an oversized body with 400, like the native endpoint", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "16" }) // 16 bytes
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
@@ -351,7 +349,6 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("applies the size limit to the decoded image, not the base64 body", func() {
-		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
 		// The raw image is exactly at the limit; its base64 form is 4/3 bigger.
 		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img)) })
@@ -369,7 +366,6 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("rejects a base64 body whose decoded image exceeds the limit with 400", func() {
-		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
 		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img) - 1) })
 		body := []byte(base64.StdEncoding.EncodeToString(img))
@@ -410,7 +406,6 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("forbids a non-admin upload when artwork upload is disabled", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
@@ -425,7 +420,6 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("still allows an admin upload when artwork upload is disabled", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))

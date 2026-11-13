@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
@@ -236,7 +235,6 @@ var _ = Describe("Middlewares", func() {
 			var validToken string
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 			})
@@ -268,7 +266,6 @@ var _ = Describe("Middlewares", func() {
 
 		When("using reverse proxy authentication", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) {
 					c.ExtAuth.TrustedSources = "192.168.1.1/24"
 					c.ExtAuth.UserHeader = "Remote-User"
@@ -423,7 +420,6 @@ var _ = Describe("Middlewares", func() {
 			var cp http.Handler
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) {
 					c.AuthRequestLimit = 3
 					c.AuthWindowLength = time.Minute
@@ -566,7 +562,6 @@ var _ = Describe("Middlewares", func() {
 			var gatedDS model.DataStore
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) {
 					c.AuthRequestLimit = 5
 					c.AuthWindowLength = time.Minute
@@ -800,7 +795,6 @@ var _ = Describe("Middlewares", func() {
 			var validToken string
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 
@@ -835,7 +829,6 @@ var _ = Describe("Middlewares", func() {
 			var usr *model.User
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Minute })
 				auth.Init(ds)
 				usr = &model.User{ID: "u1", UserName: "johndoe", TokenEpoch: 1}

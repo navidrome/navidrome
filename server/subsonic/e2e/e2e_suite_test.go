@@ -50,6 +50,8 @@ func TestSubsonicE2E(t *testing.T) {
 	RunSpecs(t, "Subsonic API E2E Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 // Easy aliases for the storagetest package
 type _t = map[string]any
 
@@ -412,7 +414,7 @@ var _ = AfterSuite(func() {
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 	DeferCleanup(func() {
 		// Wait for any background scan (e.g. from startScan endpoint) to finish
 		// before the next spec starts.

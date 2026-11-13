@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -26,7 +25,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		ctx = context.Background()
 		ds = &tests.MockDataStore{}
 	})
@@ -244,7 +243,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 
 			// Note: Since we don't have WASM test plugins yet, we can test
 			// the service registration and configuration without full plugin execution
-			DeferCleanup(configtest.SetupConfig())
+			DeferCleanup(conf.SnapshotConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Plugins.Enabled = true
 				c.Plugins.Folder = conf.NewDir(tmpDir)
@@ -340,7 +339,7 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) {
 			c.Plugins.Enabled = true
 			c.Plugins.Folder = conf.NewDir(tmpDir)

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -239,7 +238,6 @@ var _ = Describe("Artwork hydration", func() {
 
 		BeforeEach(func() {
 			repo = NewMediaFileRepository(GetDBXBuilder())
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		})
 

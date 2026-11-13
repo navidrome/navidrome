@@ -198,9 +198,7 @@ var _ = Describe("upUniformCanonicalIds", func() {
 
 	Context("with a legacy PID configuration", func() {
 		BeforeEach(func() {
-			prev := conf.Server().PID.Album
 			conf.Update(func(c *conf.Options) { c.PID.Album = "album_legacy" })
-			DeferCleanup(func() { conf.Update(func(c *conf.Options) { c.PID.Album = prev }) })
 		})
 
 		It("forces a full rescan so composite pids are rewritten", func() {

@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
@@ -57,7 +56,6 @@ var _ = Describe("processor.acquire", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
 		var err error
 		repoRoot, err = os.Getwd()
@@ -643,9 +641,6 @@ var _ = Describe("makeThumbnail", func() {
 })
 
 var _ = Describe("maxImageBytes", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("reads MaxImageSize from config", func() {
 		conf.Update(func(c *conf.Options) { c.MaxImageSize = "30MB" })

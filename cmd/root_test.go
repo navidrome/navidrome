@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -25,10 +24,6 @@ var _ = Describe("profilerHandler", func() {
 		router.Mount(path.Join(conf.Server().BasePath, "/debug"), profilerHandler())
 		return router
 	}
-
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	DescribeTable("serves a named profile",
 		func(basePath string) {
@@ -53,7 +48,6 @@ var _ = Describe("librariesWithChangedPID", func() {
 	var libs *tests.MockLibraryRepo
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		libs = &tests.MockLibraryRepo{}
 		ds = &tests.MockDataStore{MockedLibrary: libs}
 	})

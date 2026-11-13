@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,7 +14,6 @@ import (
 var _ = Describe("QuickConnect", func() {
 	BeforeEach(func() {
 		setupTestDB()
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
 	})
 

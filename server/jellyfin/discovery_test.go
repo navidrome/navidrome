@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,7 +31,6 @@ var _ = Describe("Discovery", func() {
 	var d *Discovery
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.Jellyfin.ServerName = "Test Server"
 			c.Address = "0.0.0.0"

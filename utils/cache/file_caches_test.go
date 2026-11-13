@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -27,7 +26,6 @@ var _ = Describe("File Caches", func() {
 	BeforeEach(func() {
 		tmpDir, _ := os.MkdirTemp("", "file_caches")
 		DeferCleanup(func() {
-			configtest.SetupConfig()
 			_ = os.RemoveAll(tmpDir)
 		})
 		conf.Update(func(c *conf.Options) { c.CacheFolder = conf.NewDir(tmpDir) })

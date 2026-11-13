@@ -13,7 +13,6 @@ import (
 	"sync/atomic"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -22,9 +21,6 @@ import (
 )
 
 var _ = Describe("IsArtistImageFile", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("matches bare and album/-prefixed glob tokens, case-insensitively", func() {
 		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artistfolder.*, external" })
@@ -58,7 +54,6 @@ var _ = Describe("resolveItem", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
 		var err error
 		repoRoot, err = os.Getwd()
@@ -754,7 +749,6 @@ var _ = Describe("Explainable", func() {
 
 var _ = Describe("MayFetchExternal", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.CoverArtPriority = "cover.*, embedded"
 			c.ArtistArtPriority = "artist.*"
@@ -805,7 +799,6 @@ var _ = Describe("ExternalLookupsPerItem", func() {
 	count := ImageAgentCount{Artist: 3, Album: 2}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.CoverArtPriority = "cover.*, external"
 			c.ArtistArtPriority = "artist.*, external"

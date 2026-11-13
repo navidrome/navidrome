@@ -15,7 +15,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/mattn/go-sqlite3"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/metrics"
@@ -67,7 +66,7 @@ var _ = Describe("Scanner", Ordered, func() {
 	})
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) {
 			c.MusicFolder = "fake:///music" // Set to match test library path
 			c.DevExternalScanner = false
@@ -802,7 +801,7 @@ var _ = Describe("Scanner", Ordered, func() {
 			// its media_file_artists rows, RefreshStats recomputes its stats to '{}', and the cleanup
 			// drops its last library_artist row — leaving the artist row alive but orphaned. RefreshStats
 			// must then mark it missing (see markOrphansMissing).
-			DeferCleanup(configtest.SetupConfig())
+			DeferCleanup(conf.SnapshotConfig())
 			conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingAlways })
 
 			By("Starting from a library where Pink Floyd has its own single album")
@@ -902,7 +901,7 @@ var _ = Describe("Scanner", Ordered, func() {
 		Context("When PurgeMissing is configured", func() {
 			When("PurgeMissing is set to 'never'", func() {
 				BeforeEach(func() {
-					DeferCleanup(configtest.SetupConfig())
+					DeferCleanup(conf.SnapshotConfig())
 					conf.Update(func(c *conf.Options) { c.Scanner.PurgeMissing = consts.PurgeMissingNever })
 				})
 

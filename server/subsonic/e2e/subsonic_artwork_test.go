@@ -13,7 +13,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // registers the "taglib" local-storage extractor
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
@@ -79,7 +78,7 @@ var _ = Describe("Artwork Serving", Ordered, func() {
 	}
 
 	BeforeAll(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		DeferCleanup(func() { Eventually(scanner.IsScanning).Should(BeFalse()) })
 		ctx = request.WithUser(GinkgoT().Context(), adminUser)
 

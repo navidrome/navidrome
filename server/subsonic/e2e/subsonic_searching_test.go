@@ -3,7 +3,6 @@ package e2e
 import (
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -251,7 +250,6 @@ var _ = Describe("Search Endpoints", func() {
 
 		Describe("Legacy backend", func() {
 			It("returns results using legacy LIKE-based search when configured", func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 
 				resp := doReq("search3", "query", "Beatles")

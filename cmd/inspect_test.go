@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -46,9 +45,6 @@ var _ = Describe("inspect", func() {
 	})
 
 	Describe("loadLibraries", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("does not create a database when there is none", func() {
 			dbFile := filepath.Join(GinkgoT().TempDir(), "navidrome.db")

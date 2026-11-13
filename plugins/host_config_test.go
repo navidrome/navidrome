@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -53,7 +52,7 @@ func setupTestConfigPlugin(configJSON string) (*Manager, func(context.Context, t
 	hashHex := hex.EncodeToString(hash[:])
 
 	// Setup config
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 	conf.Update(func(c *conf.Options) {
 		c.Plugins.Enabled = true
 		c.Plugins.Folder = conf.NewDir(tmpDir)

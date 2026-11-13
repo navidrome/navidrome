@@ -11,7 +11,6 @@ import (
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -24,9 +23,6 @@ import (
 )
 
 var _ = Describe("Playlist Image Endpoints", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	DescribeTable("uploadPlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
@@ -76,7 +72,6 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.EnableSharing = false
 			c.SessionTimeout = time.Minute

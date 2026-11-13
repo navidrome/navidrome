@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -120,7 +119,6 @@ var _ = Describe("Users", func() {
 		}
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ur = api.ds.User().(*tests.MockedUserRepo)
 			Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
 			Expect(ur.Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())

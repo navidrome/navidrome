@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -24,7 +23,6 @@ var _ = Describe("GetLyricsBySongId", func() {
 			MockedMediaFile: mockRepo,
 		}
 		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.lrc" })
 	})
 

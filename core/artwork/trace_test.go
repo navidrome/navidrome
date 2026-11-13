@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
@@ -212,7 +211,6 @@ var _ = Describe("resolveAlbum tracing", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
@@ -298,7 +296,6 @@ var _ = Describe("resolveArtist tracing", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
 			c.ArtistArtPriority = "album/artist.*"
@@ -415,7 +412,6 @@ var _ = Describe("NewTracingResolver", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.DataFolder = conf.NewDir(GinkgoT().TempDir())
 			c.CoverArtPriority = "external, embedded"
@@ -545,7 +541,6 @@ var _ = Describe("resolveDisc tracing", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
 		libRepo := &tests.MockLibraryRepo{}
@@ -619,7 +614,6 @@ var _ = Describe("resolveMediaFile tracing", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())

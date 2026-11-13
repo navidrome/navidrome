@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -16,7 +15,6 @@ var _ = Describe("sqlRepository", func() {
 
 	Describe("getSearchStrategy", func() {
 		It("returns FTS strategy by default", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "fts"
 				c.Search.FullString = false
@@ -30,7 +28,6 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("returns legacy LIKE strategy when SearchBackend is legacy", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "legacy"
 				c.Search.FullString = false
@@ -44,7 +41,6 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("falls back to legacy LIKE strategy when SearchFullString is enabled", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "fts"
 				c.Search.FullString = true
@@ -58,7 +54,6 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("routes CJK queries to LIKE strategy instead of FTS", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "fts"
 				c.Search.FullString = false
@@ -74,7 +69,6 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("routes non-CJK queries to FTS strategy", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "fts"
 				c.Search.FullString = false
@@ -88,7 +82,6 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("returns non-nil for single-character query (no min-length in strategy)", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "fts"
 				c.Search.FullString = false
@@ -99,7 +92,6 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("returns non-nil for single-character query with legacy backend", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "legacy"
 				c.Search.FullString = false
@@ -110,7 +102,6 @@ var _ = Describe("sqlRepository", func() {
 		})
 
 		It("uses legacy for CJK when SearchBackend is legacy", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) {
 				c.Search.Backend = "legacy"
 				c.Search.FullString = false

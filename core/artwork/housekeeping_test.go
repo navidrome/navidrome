@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -35,7 +34,6 @@ var _ = Describe("Housekeeping", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
 		conf.Update(func(c *conf.Options) {
 			c.CoverArtPriority = "embedded, folder"

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -44,7 +43,6 @@ var _ = Describe("Playlists - Import", func() {
 	Describe("ImportFromFolder", func() {
 		var folder *model.Folder
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
 			ds.MockedMediaFile = &mockedMediaFileRepo{}
 			libPath, _ := os.Getwd()
@@ -770,7 +768,6 @@ var _ = Describe("Playlists - Import", func() {
 
 	Describe("ImportFile", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ds.MockedMediaFile = &mockedMediaFileFromListRepo{data: []string{"test.mp3", "test.ogg"}}
 		})
 
@@ -1121,7 +1118,6 @@ var _ = Describe("Playlists - Import", func() {
 		var folder model.Folder
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			folder = model.Folder{
 				LibraryPath: "/music",
 				Path:        "playlists/abc",

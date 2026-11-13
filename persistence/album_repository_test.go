@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -44,7 +43,6 @@ var _ = Describe("AlbumRepository", func() {
 		var ids []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ids = nil
 			for _, n := range []string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"} {
 				aid := "nat-" + n

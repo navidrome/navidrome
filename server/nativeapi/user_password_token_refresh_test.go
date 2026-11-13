@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/auth"
@@ -36,14 +35,13 @@ var _ = Describe("PUT /user/{id}: token refresh on self password change", func()
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		// db.Db() is a process-wide singleton that this DeferCleanup closes for the whole binary; keep this the only real-DB spec in this package.
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.EnableUserEditing = true
 			c.EnableSharing = false
 			c.SessionTimeout = time.Hour
 			c.DbPath = filepath.Join(GinkgoT().TempDir(), "nativeapi-user-refresh.db") + "?_journal_mode=WAL"
 		})
+		// db.Db() is a process-wide singleton that this DeferCleanup closes for the whole binary; keep this the only real-DB spec in this package.
 		DeferCleanup(db.Init(GinkgoT().Context()))
 
 		ds = &tests.MockDataStore{RealDS: persistence.New(db.Db())}

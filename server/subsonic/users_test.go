@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -18,7 +17,6 @@ var _ = Describe("Users", func() {
 	var testUser model.User
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		router = &Router{}
 
 		testUser = model.User{

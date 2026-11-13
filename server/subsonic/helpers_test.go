@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -20,7 +19,6 @@ import (
 
 var _ = Describe("helpers", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		auth.TokenAuth = jwtauth.New("HS256", []byte("test secret"), nil)
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test public secret"), nil)
 	})
@@ -60,9 +58,6 @@ var _ = Describe("helpers", func() {
 	})
 
 	Describe("sortName", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 		When("PreferSortTags is false", func() {
 			BeforeEach(func() {
 				conf.Update(func(c *conf.Options) { c.PreferSortTags = false })

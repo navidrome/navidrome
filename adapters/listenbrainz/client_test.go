@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -257,7 +256,6 @@ var _ = Describe("client", func() {
 
 		BeforeEach(func() {
 			algorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
-			DeferCleanup(configtest.SetupConfig())
 		})
 
 		getUrl := func(mbid string) string {
@@ -328,7 +326,6 @@ var _ = Describe("client", func() {
 
 		BeforeEach(func() {
 			algorithm = "session_based_days_9000_session_300_contribution_5_threshold_15_limit_50_skip_30"
-			DeferCleanup(configtest.SetupConfig())
 		})
 
 		getUrl := func(mbid string) string {

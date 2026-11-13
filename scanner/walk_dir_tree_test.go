@@ -11,7 +11,6 @@ import (
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -30,7 +29,6 @@ var _ = Describe("walk_dir_tree", func() {
 
 		Context("full library", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				ctx = GinkgoT().Context()
 				fsys = &mockMusicFS{
 					FS: fstest.MapFS{
@@ -156,7 +154,6 @@ var _ = Describe("walk_dir_tree", func() {
 
 		Context("with target folders", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				ctx = GinkgoT().Context()
 				fsys = &mockMusicFS{
 					FS: fstest.MapFS{
@@ -311,9 +308,6 @@ var _ = Describe("walk_dir_tree", func() {
 		baseDir := filepath.Join("tests", "fixtures")
 
 		Describe("isDirOrSymlinkToDir", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			Context("with symlinks enabled", func() {
 				BeforeEach(func() {
@@ -354,7 +348,6 @@ var _ = Describe("walk_dir_tree", func() {
 		Describe("resolveEntryName", func() {
 			var fsys fs.FS
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				fsys = fstest.MapFS{
 					"dir/real.mp3":   {Data: []byte("AUDIO")},
 					"dir/mid.mp3":    {Mode: fs.ModeSymlink, Data: []byte("real.mp3")},
@@ -426,7 +419,6 @@ var _ = Describe("walk_dir_tree", func() {
 		Describe("symlink chain (real fs)", func() {
 			BeforeEach(func() {
 				tests.SkipOnWindows("symlink semantics")
-				DeferCleanup(configtest.SetupConfig())
 			})
 
 			classify := func(fsys fs.FS, dirPath, name string) (string, bool) {
@@ -606,9 +598,6 @@ var _ = Describe("walk_dir_tree", func() {
 		})
 
 		Describe("isIgnoredEntry", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			DescribeTable("with IgnoreDotFolders enabled (default)",
 				func(name string, isDir, expected bool) {

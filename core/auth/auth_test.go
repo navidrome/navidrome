@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -19,6 +20,8 @@ func TestAuth(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Auth Test Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 const (
 	oneDay = 24 * time.Hour

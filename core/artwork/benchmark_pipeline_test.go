@@ -5,12 +5,10 @@ import (
 	"testing"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 )
 
 func BenchmarkResizeFullPipeline(b *testing.B) {
-	cleanup := configtest.SetupConfig()
-	b.Cleanup(cleanup)
+	b.Cleanup(conf.SnapshotConfig())
 	conf.Update(func(c *conf.Options) { c.CoverArtQuality = 75 })
 
 	sourceSizes := []int{1000, 3000}

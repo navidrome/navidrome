@@ -10,7 +10,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -530,7 +529,6 @@ var _ = Describe("MediaRepository", func() {
 			var testMediaFiles []model.MediaFile
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 
 				// Create test media files with specific timestamps
 				testMediaFiles = []model.MediaFile{

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/tests"
 	"github.com/navidrome/navidrome/utils/singleton"
@@ -74,7 +73,6 @@ var _ = Describe("database backups", func() {
 		}
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 
 			tempFolder, err := os.MkdirTemp("", "navidrome_backup")
 			Expect(err).ToNot(HaveOccurred())
@@ -141,7 +139,7 @@ var _ = Describe("database backups", func() {
 
 		BeforeAll(func() {
 			ctx = context.Background()
-			DeferCleanup(configtest.SetupConfig())
+			DeferCleanup(conf.SnapshotConfig())
 
 			conf.Update(func(c *conf.Options) { c.DbPath = "file::memory:?cache=shared&_foreign_keys=on" })
 			DeferCleanup(Init(ctx))
@@ -187,7 +185,7 @@ var _ = Describe("database backups", func() {
 
 		BeforeAll(func() {
 			ctx = context.Background()
-			DeferCleanup(configtest.SetupConfig())
+			DeferCleanup(conf.SnapshotConfig())
 
 			var err error
 			tempFolder, err = os.MkdirTemp("", "navidrome_restore")

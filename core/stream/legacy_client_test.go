@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -74,7 +73,6 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("uses default downsampling format for bitrate-only downsampling", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 		ci := buildLegacyClientInfo(mf, "", 128, 0)
@@ -102,7 +100,6 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("uses default downsampling format when player MaxBitRate is below source and no format/bitrate", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 		ci := buildLegacyClientInfo(mf, "", 0, 256)
@@ -115,7 +112,6 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("does not downsample when player MaxBitRate is >= source bitrate", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 		ci := buildLegacyClientInfo(mf, "", 0, 960)
@@ -126,7 +122,6 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("does not downsample when DefaultDownsamplingFormat is empty even with player cap", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "" })
 
 		ci := buildLegacyClientInfo(mf, "", 0, 256)
@@ -137,7 +132,6 @@ var _ = Describe("buildLegacyClientInfo", func() {
 	})
 
 	It("prefers explicit request format over player cap", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 		ci := buildLegacyClientInfo(mf, "mp3", 0, 256)
@@ -211,7 +205,6 @@ var _ = Describe("ResolveRequest", func() {
 	})
 
 	It("downsamples when only bitrate is specified below source", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 		mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
@@ -336,7 +329,6 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("downsamples using DefaultDownsamplingFormat when only player MaxBitRate is set (no format/bitrate)", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
@@ -350,7 +342,6 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("serves raw when only player MaxBitRate is set but no DefaultDownsamplingFormat", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})
@@ -365,7 +356,6 @@ var _ = Describe("ResolveRequest", func() {
 
 	Context("fallback for unknown format", func() {
 		It("falls back to DefaultDownsamplingFormat", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
@@ -377,7 +367,6 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("falls back to raw when DefaultDownsamplingFormat is empty", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
@@ -389,7 +378,6 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("falls back to raw when DefaultDownsamplingFormat is also invalid", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "xyz" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "mp3", Codec: "MP3", BitRate: 320, Channels: 2, SampleRate: 44100})
@@ -401,7 +389,6 @@ var _ = Describe("ResolveRequest", func() {
 		})
 
 		It("preserves bitrate when falling back to DefaultDownsamplingFormat", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 			mf := withProbe(&model.MediaFile{ID: "1", Suffix: "flac", Codec: "FLAC", BitRate: 1000, Channels: 2, SampleRate: 44100, BitDepth: new(16)})

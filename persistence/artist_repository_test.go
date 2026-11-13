@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -63,7 +62,6 @@ var _ = Describe("ArtistRepository", func() {
 
 			DescribeTable("returns correct index key based on PreferSortTags setting",
 				func(preferSortTags bool, sortArtistName, orderArtistName, expectedKey string) {
-					DeferCleanup(configtest.SetupConfig())
 					conf.Update(func(c *conf.Options) { c.PreferSortTags = preferSortTags })
 					a := model.Artist{SortArtistName: sortArtistName, OrderArtistName: orderArtistName, Name: "Test"}
 					idx := GetIndexKey(&r, a)
@@ -833,7 +831,6 @@ var _ = Describe("ArtistRepository", func() {
 
 				DescribeTable("narrows artist search to the requested library",
 					func(backend string, artist model.Artist, query string) {
-						DeferCleanup(configtest.SetupConfig())
 						if backend != "" {
 							conf.Update(func(c *conf.Options) { c.Search.Backend = backend })
 						}
@@ -889,7 +886,6 @@ var _ = Describe("ArtistRepository", func() {
 
 					DescribeTable("reports only the requested libraries' songs and albums",
 						func(backend, query string) {
-							DeferCleanup(configtest.SetupConfig())
 							conf.Update(func(c *conf.Options) { c.Search.Backend = backend })
 
 							counts := func(libIDs ...int) []int64 {
@@ -914,7 +910,6 @@ var _ = Describe("ArtistRepository", func() {
 					)
 
 					It("ranks LIKE results by the requested library's song count", func() {
-						DeferCleanup(configtest.SetupConfig())
 						conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 						seedArtist("scoped-counts-artist-b", "Scoped Counts Artist B", "", map[int]string{
 							1: `{"total":{"m":10,"a":2,"s":1000}}`,
@@ -1308,7 +1303,6 @@ var _ = Describe("ArtistRepository", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
 			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 

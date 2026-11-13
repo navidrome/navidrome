@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -837,9 +836,6 @@ var _ = Describe("Participants", func() {
 	})
 
 	Describe("Artist split exceptions", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("does not split a whitelisted artist name on the default separators", func() {
 			// " feat. " is a default artists separator (mappings.yaml)

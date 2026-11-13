@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 
 	"github.com/navidrome/navidrome/model"
@@ -90,7 +89,6 @@ var _ = Describe("PlayTracker", func() {
 	var fake *fakeScrobbler
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = GinkgoT().Context()
 		ctx = request.WithUser(ctx, model.User{ID: "u-1", Libraries: model.Libraries{{ID: 1}}})
 		ctx = request.WithPlayer(ctx, model.Player{ScrobbleEnabled: true})

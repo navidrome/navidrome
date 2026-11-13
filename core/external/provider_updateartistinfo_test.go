@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/matcher"
@@ -32,7 +31,6 @@ var _ = Describe("Provider - UpdateArtistInfo", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.DevArtistInfoTimeToLive = 1 * time.Hour })
 		ctx = GinkgoT().Context()
 		ds = new(tests.MockDataStore)

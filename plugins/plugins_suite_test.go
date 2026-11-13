@@ -36,7 +36,7 @@ var (
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
 
-	// Set globally so tests using configtest.SetupConfig inherit it. The cache
+	// Set globally so every spec's config snapshot inherits it. The cache
 	// persists between runs; entries are content-addressed, so a stale one only misses.
 	conf.Update(func(c *conf.Options) {
 		c.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
@@ -47,6 +47,8 @@ func TestPlugins(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // stubLocalhostDNS resolves "localhost." without real DNS: the trailing dot never matches /etc/hosts.
 func stubLocalhostDNS() {
@@ -108,7 +110,7 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	}
 
 	// Setup config
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 	conf.Update(func(c *conf.Options) {
 		c.Plugins.Enabled = true
 		c.Plugins.Folder = conf.NewDir(tmpDir)

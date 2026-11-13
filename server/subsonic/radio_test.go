@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -56,7 +55,6 @@ var _ = Describe("Radio", func() {
 
 		Context("with a non-legacy client", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "modern-client"}
 				ctx = request.WithPlayer(ctx, player)
@@ -94,7 +92,6 @@ var _ = Describe("Radio", func() {
 
 		Context("with a legacy client", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
@@ -115,7 +112,6 @@ var _ = Describe("Radio", func() {
 
 		Context("when no player in context", func() {
 			It("does not include coverArt (empty client matches legacy list)", func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 
 				r := httptest.NewRequest("GET", "/rest/getInternetRadios", nil)
@@ -130,7 +126,6 @@ var _ = Describe("Radio", func() {
 
 		Context("when legacy clients list is empty", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)

@@ -72,6 +72,8 @@ func TestJellyfinE2E(t *testing.T) {
 	RunSpecs(t, "Jellyfin API E2E Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 // testID maps a readable label to a deterministic canonical id, so fixtures exercise the same
 // id shape production uses.
 func testID(label string) string { return id.NewHash("jellyfin-test", label) }
@@ -318,7 +320,7 @@ var _ = AfterSuite(func() {
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
 
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 	conf.Update(func(c *conf.Options) {
 		c.MusicFolder = "fake:///music"
 		c.DataFolder = conf.NewDir(dataFolder)

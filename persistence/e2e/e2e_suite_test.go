@@ -38,6 +38,8 @@ func TestSmartPlaylistE2E(t *testing.T) {
 	RunSpecs(t, "Smart Playlist E2E Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 type _t = map[string]any
 
 var template = storagetest.Template
@@ -342,7 +344,7 @@ func restoreDB() {
 
 func setupTestDB() {
 	ctx = request.WithUser(GinkgoT().Context(), adminUser)
-	DeferCleanup(configtest.SetupConfig())
+	DeferCleanup(conf.SnapshotConfig())
 	conf.Update(func(c *conf.Options) {
 		c.MusicFolder = "fake:///music"
 		c.DevExternalScanner = false

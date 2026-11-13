@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -520,7 +519,6 @@ var _ = Describe("MediaFiles", func() {
 
 var _ = Describe("MediaFile", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 	})
 	DescribeTable("FullTitle",

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
@@ -226,7 +225,6 @@ var _ = Describe("formatExplain", func() {
 	var rep explainReport
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external, artist.*" })
 		rep = explainReport{
 			kind:   model.KindArtistArtwork,
@@ -406,7 +404,6 @@ var _ = Describe("formatExplain", func() {
 
 var _ = Describe("explainConfig", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.DiscArtPriority = "cover.jpg"
 			c.EnableMediaFileCoverArt = true
@@ -580,7 +577,6 @@ var _ = Describe("reprocessArtwork", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.CoverArtPriority = "cover.*, external"
 			c.ArtistArtPriority = "artist.*, external"
@@ -1018,7 +1014,6 @@ var _ = Describe("refreshItems", func() {
 
 var _ = Describe("needsImageAgents", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.CoverArtPriority = "cover.*, external"
 			c.ArtistArtPriority = "artist.*, external"
@@ -1050,7 +1045,6 @@ var _ = Describe("needsImageAgents", func() {
 })
 
 var _ = Describe("configuredAgents", func() {
-	BeforeEach(func() { DeferCleanup(configtest.SetupConfig()) })
 
 	It("splits and trims the configured list", func() {
 		conf.Update(func(c *conf.Options) { c.Agents = "lastfm, spotify ,deezer" })

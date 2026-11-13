@@ -7,7 +7,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -31,7 +30,6 @@ var _ = Describe("PlaylistRepository", func() {
 		var ids []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.EnableNaturalSorting = true })
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})

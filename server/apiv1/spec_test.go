@@ -8,7 +8,6 @@ import (
 
 	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -93,7 +92,6 @@ var _ = Describe("OpenAPI document routes", func() {
 
 		BeforeEach(func() {
 			plainETag = get("/api/v1/openapi.json", nil).Header().Get("ETag")
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.BasePath = "/music" })
 			router = New(&tests.MockDataStore{})
 		})

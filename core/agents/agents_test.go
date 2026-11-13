@@ -6,7 +6,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -45,7 +44,6 @@ var _ = Describe("Agents", func() {
 	var ds model.DataStore
 	var mfRepo *tests.MockMediaFileRepo
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx, cancel = context.WithCancel(context.Background())
 		mfRepo = tests.CreateMockMediaFileRepo()
 		ds = &tests.MockDataStore{MockedMediaFile: mfRepo}

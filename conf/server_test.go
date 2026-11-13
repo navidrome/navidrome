@@ -4,14 +4,12 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Server state", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.Tags = map[string]conf.TagConf{"genre": {Aliases: []string{"genre", "style"}}}
 			c.DevLogLevels = map[string]string{"scanner": "info"}

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -28,7 +27,6 @@ var _ = Describe("Manager.LoadPlugins", func() {
 	// newManager builds a manager over rows the caller can corrupt, with no Subsonic router: a CLI
 	// has none, and Start would log.Fatal on that.
 	newManager := func(rows model.Plugins) *Manager {
-		DeferCleanup(configtest.SetupConfig())
 		var err error
 		tmpDir, err = os.MkdirTemp("", "plugins-readonly-*")
 		Expect(err).ToNot(HaveOccurred())

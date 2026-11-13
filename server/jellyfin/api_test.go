@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
@@ -76,7 +75,6 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits AuthenticateByName by IP when a login limit is configured", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.AuthRequestLimit = 2
 			c.AuthWindowLength = time.Minute
@@ -97,7 +95,6 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits Quick Connect approval by IP when a login limit is configured", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.AuthRequestLimit = 2
 			c.AuthWindowLength = time.Minute
@@ -126,7 +123,6 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits AuthenticateByName by resolved client IP, not by the proxy connection", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) {
 			c.AuthRequestLimit = 1
 			c.AuthWindowLength = time.Minute

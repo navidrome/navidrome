@@ -11,7 +11,6 @@ import (
 
 	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -24,7 +23,6 @@ var _ = Describe("LocalStorage", func() {
 	var testExtractor *mockTestExtractor
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		// Create a temporary directory for testing
 		var err error

@@ -7,7 +7,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/matcher"
 	"github.com/navidrome/navidrome/model"
@@ -26,7 +25,6 @@ var _ = Describe("Matcher", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
 		mediaFileRepo = newMockMediaFileRepo()
 		artistRepo = newMockArtistRepo()
 		DeferCleanup(func() {

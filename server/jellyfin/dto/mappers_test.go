@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -62,10 +61,6 @@ var _ = Describe("mappers", func() {
 			song := model.MediaFile{ID: testID("s1"), Title: "The Song", SortTitle: "Song, The", OrderTitle: "song"}
 			ar := model.Artist{ID: testID("art-1"), Name: "The B-52's", SortArtistName: "B-52's, The", OrderArtistName: "b-52's"}
 			al := model.Album{ID: testID("alb-1"), Name: "The Wall", SortAlbumName: "Wall, The", OrderAlbumName: "wall"}
-
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			It("is omitted unless Fields=SortName", func() {
 				Expect(SongToBaseItem(song, nil).SortName).To(BeEmpty())
@@ -534,7 +529,6 @@ var _ = Describe("mappers", func() {
 	// advertising just the album image would leave that cover unreachable.
 	Describe("unresolved embedded art", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		})
 

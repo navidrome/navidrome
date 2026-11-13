@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -113,9 +112,6 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 		})
 
 		Context("child smart playlists", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			When("refresh delay has expired", func() {
 				It("should refresh tracks for smart playlist referenced in parent smart playlist criteria", func() {
@@ -285,9 +281,6 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			})
 
 			Context("per-playlist refreshDelay", func() {
-				BeforeEach(func() {
-					DeferCleanup(configtest.SetupConfig())
-				})
 
 				It("does NOT refresh when the per-playlist delay has not elapsed, even if global has", func() {
 					conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
@@ -530,7 +523,6 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 
 	Describe("Smart Playlists with Album Aggregate Criteria", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 		})
 

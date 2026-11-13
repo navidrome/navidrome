@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -444,7 +443,6 @@ var _ = Describe("Auth", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			ds = &tests.MockDataStore{}
 			auth.Init(ds)
@@ -500,7 +498,6 @@ var _ = Describe("Auth", func() {
 
 	Describe("JWTRefresher", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
 			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			auth.Init(&tests.MockDataStore{})

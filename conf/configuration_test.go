@@ -23,6 +23,8 @@ func TestConfiguration(t *testing.T) {
 	RunSpecs(t, "Configuration Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 var _ = Describe("Configuration", func() {
 	BeforeEach(func() {
 		// Reset viper configuration
@@ -538,9 +540,6 @@ var _ = Describe("Configuration", func() {
 })
 
 var _ = Describe("TLSEnabled", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("is false when neither the certificate nor the key is set", func() {
 		Expect(conf.Server().TLSEnabled()).To(BeFalse())

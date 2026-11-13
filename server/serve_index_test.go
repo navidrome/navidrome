@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -29,7 +28,6 @@ var _ = Describe("serveIndex", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedUser: mockUser}
-		DeferCleanup(configtest.SetupConfig())
 	})
 
 	It("adds app_config to index.html", func() {

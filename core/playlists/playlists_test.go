@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -393,7 +392,6 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
 			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
@@ -457,7 +455,6 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
 			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 

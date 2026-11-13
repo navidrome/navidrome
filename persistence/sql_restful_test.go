@@ -7,7 +7,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -27,7 +26,6 @@ var _ = Describe("sqlRestful", func() {
 		})
 
 		It(`returns nil if tries a filter with legacySearchExpr("'")`, func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 			r.filterMappings = map[string]filterFunc{
 				"name": fullTextFilter("table"),
@@ -78,7 +76,6 @@ var _ = Describe("sqlRestful", func() {
 		var mbidFields []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 			tableName = "test_table"
 			mbidFields = []string{"mbid", "artist_mbid"}

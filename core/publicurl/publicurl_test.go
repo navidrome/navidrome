@@ -25,10 +25,9 @@ func TestPublicURL(t *testing.T) {
 	RunSpecs(t, "Public URL Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 var _ = Describe("Public URL Utilities", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	Describe("PublicURL", func() {
 		When("ShareURL is set", func() {

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -24,7 +23,6 @@ var _ = Describe("Uploader", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
 		tmpDir = GinkgoT().TempDir()
 		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 		artRepo = tests.CreateMockArtworkRepo()
@@ -141,9 +139,6 @@ var _ = Describe("Uploader", func() {
 })
 
 var _ = Describe("MaxImageUploadSize", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("returns the configured size when valid", func() {
 		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "20MB" })

@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -145,9 +144,6 @@ var _ = Describe("TagConf", func() {
 	})
 
 	Describe("artistSplitExceptionsRx", func() {
-		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-		})
 
 		It("returns nil when no exceptions are configured", func() {
 			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = nil })
@@ -175,7 +171,6 @@ var _ = Describe("TagConf", func() {
 
 	Describe("WithParticipantExceptions", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.Scanner.ArtistSplitExceptions = []string{"Iron and Wine"} })
 		})
 

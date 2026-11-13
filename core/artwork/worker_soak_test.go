@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -31,7 +30,6 @@ var _ = Describe("Worker soak", func() {
 		if testing.Short() {
 			Skip("skipping soak test in short mode")
 		}
-		DeferCleanup(configtest.SetupConfig())
 
 		repoRoot, err := os.Getwd()
 		Expect(err).ToNot(HaveOccurred())

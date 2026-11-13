@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/model"
@@ -23,9 +22,6 @@ import (
 )
 
 var _ = Describe("middlewares", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 	Describe("robotsTXT", func() {
 		var nextCalled bool
 		next := func(w http.ResponseWriter, r *http.Request) {

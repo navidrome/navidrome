@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/tests"
@@ -546,7 +545,7 @@ func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUser
 	Expect(err).ToNot(HaveOccurred())
 
 	// Setup config
-	cleanupConfig := configtest.SetupConfig()
+	cleanupConfig := conf.SnapshotConfig()
 	setupTestUsersConfig(setup.tmpDir)
 
 	// Setup mock DataStore with plugin and users

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage/storagetest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -25,7 +24,6 @@ var _ = Describe("Watcher", func() {
 	var lib *model.Library
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		// Must dwarf the 20ms Consistently windows below, or a loaded runner's delayed timer reset flakes the debouncing spec.
 		conf.Update(func(c *conf.Options) { c.Scanner.WatcherWait = 200 * time.Millisecond })
 
@@ -438,9 +436,6 @@ var _ = Describe("Watcher", func() {
 })
 
 var _ = Describe("isIgnoredPath", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	Context("with IgnoreDotFolders enabled (default)", func() {
 		BeforeEach(func() {

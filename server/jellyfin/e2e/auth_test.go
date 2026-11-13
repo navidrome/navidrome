@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	. "github.com/onsi/ginkgo/v2"
@@ -110,13 +109,11 @@ var _ = Describe("Authentication", func() {
 		}
 
 		It("returns an empty list when no users are exposed", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "" })
 			Expect(publicUsers()).To(BeEmpty())
 		})
 
 		It("lists the configured users to an unauthenticated caller, without policy", func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "regular" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(1))

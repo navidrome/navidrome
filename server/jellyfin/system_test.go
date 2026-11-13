@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
@@ -23,7 +22,6 @@ var _ = Describe("System", func() {
 	BeforeEach(func() { api = &Router{} })
 
 	It("returns public system info without auth", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
@@ -41,7 +39,6 @@ var _ = Describe("System", func() {
 	})
 
 	It("returns authenticated system info with the public fields plus library monitor support", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
@@ -62,7 +59,6 @@ var _ = Describe("System", func() {
 	})
 
 	It("advertises a LocalAddress with the request scheme, host and Jellyfin base path", func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
@@ -77,7 +73,6 @@ var _ = Describe("System", func() {
 	})
 
 	It("responds to ping with the server name as plain text", func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()

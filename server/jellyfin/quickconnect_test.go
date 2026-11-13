@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
@@ -37,7 +36,6 @@ var _ = Describe("QuickConnect", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)

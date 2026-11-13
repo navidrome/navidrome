@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -151,7 +150,6 @@ var _ = Describe("Lyrics", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		lyricsJson, _ := json.Marshal(embeddedLyrics)
 
@@ -373,7 +371,6 @@ var _ = Describe("Lyrics", func() {
 		var ds *tests.MockDataStore
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded" })
 			repo = &tests.MockMediaFileRepo{}
 			ds = &tests.MockDataStore{MockedMediaFile: repo}

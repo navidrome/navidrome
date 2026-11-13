@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -149,7 +148,6 @@ var _ = Describe("LibraryRepository", func() {
 			libBefore, err = repo.Get(ctx, model.DefaultLibraryID)
 			Expect(err).ToNot(HaveOccurred())
 
-			DeferCleanup(configtest.SetupConfig())
 			DeferCleanup(func() {
 				_, _ = conn.NewQuery("update library set path = {:path}, updated_at = {:updated_at} where id = {:id}").
 					Bind(dbx.Params{"path": libBefore.Path, "updated_at": libBefore.UpdatedAt, "id": model.DefaultLibraryID}).

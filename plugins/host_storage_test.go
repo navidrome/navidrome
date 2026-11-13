@@ -10,7 +10,6 @@ import (
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -25,7 +24,7 @@ var _ = Describe("utility functions", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "storage-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 		DeferCleanup(func() {
@@ -89,7 +88,7 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		mockPluginRepo.Permitted = true
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		conf.Update(func(c *conf.Options) {
 			c.DataFolder = conf.NewDir(tmpDir)
 			c.Plugins.Enabled = true

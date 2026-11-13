@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,7 +22,6 @@ var _ = Describe("deezerAgent", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.Deezer.Enabled = true })
 	})
 

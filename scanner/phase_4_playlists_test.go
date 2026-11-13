@@ -8,7 +8,6 @@ import (
 	"sort"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -32,7 +31,6 @@ var _ = Describe("phasePlaylists", func() {
 	var propRepo *tests.MockedPropertyRepo
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		conf.Update(func(c *conf.Options) { c.AutoImportPlaylists = true })
 		ctx = context.Background()
 		folderRepo = &mockFolderRepository{}

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -26,7 +25,6 @@ var _ = Describe("MPV", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		// Reset MPV cache
 		mpvOnce = sync.Once{}
@@ -345,7 +343,6 @@ var _ = Describe("MPV", func() {
 		var testMediaFile model.MediaFile
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			conf.Update(func(c *conf.Options) { c.MPVPath = testScript })
 
 			// Create a test media file
