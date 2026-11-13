@@ -67,6 +67,7 @@ func (md Metadata) ToMediaFile(lib model.Library, folderID string) model.MediaFi
 
 	// General properties
 	mf.HasCoverArt = md.HasPicture()
+	mf.EmbedArtHash = md.PictureHash()
 	mf.Duration = md.Length()
 	mf.BitRate = md.AudioProperties().BitRate
 	mf.SampleRate = md.AudioProperties().SampleRate

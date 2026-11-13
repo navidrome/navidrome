@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -112,13 +113,16 @@ func (e extractor) extractMetadata(filePath string) (info *metadata.Info, err er
 	parseTIPL(normalizedTags)
 	delete(normalizedTags, "tmcl") // TMCL is already parsed by TagLib
 
-	// Determine if file has embedded picture
-	hasPicture := len(props.Images) > 0
+	var pictureHash string
+	if len(props.Images) > 0 {
+		pictureHash = props.Images[artwork.BestImageIndex(props.Images)].Hash
+	}
 
 	return &metadata.Info{
 		Tags:            normalizedTags,
 		AudioProperties: ap,
-		HasPicture:      hasPicture,
+		HasPicture:      len(props.Images) > 0,
+		PictureHash:     pictureHash,
 	}, nil
 }
 

@@ -36,8 +36,9 @@ var _ = Describe("Metadata", func() {
 				Duration: time.Minute * 3,
 				BitRate:  320,
 			},
-			HasPicture: true,
-			FileInfo:   testFileInfo{fileInfo},
+			HasPicture:  true,
+			PictureHash: "0123456789abcdef",
+			FileInfo:    testFileInfo{fileInfo},
 		}
 	})
 
@@ -60,6 +61,7 @@ var _ = Describe("Metadata", func() {
 				Expect(md.AudioProperties()).To(Equal(props.AudioProperties))
 				Expect(md.Length()).To(Equal(float32(3 * 60)))
 				Expect(md.HasPicture()).To(Equal(props.HasPicture))
+				Expect(md.PictureHash()).To(Equal(props.PictureHash))
 				Expect(md.Strings(model.TagTrackArtist)).To(Equal([]string{"First Artist", "Second Artist"}))
 				Expect(md.String(model.TagTrackArtist)).To(Equal("First Artist"))
 				Expect(md.Int(model.TagCatalogNumber)).To(Equal(int64(1234)))

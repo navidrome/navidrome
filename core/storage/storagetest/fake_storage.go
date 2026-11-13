@@ -271,10 +271,12 @@ func (ffs *FakeFS) parseFile(filePath string) (*metadata.Info, error) {
 	if err != nil {
 		return nil, err
 	}
+	pictureHash, _ := data["picture_hash"].(string)
 	p := metadata.Info{
 		Tags:            map[string][]string{},
 		AudioProperties: metadata.AudioProperties{},
-		HasPicture:      data["has_picture"] == "true",
+		HasPicture:      data["has_picture"] == "true" || pictureHash != "",
+		PictureHash:     pictureHash,
 	}
 	if d, ok := data["duration"].(float64); ok {
 		p.AudioProperties.Duration = time.Duration(d) * time.Second
