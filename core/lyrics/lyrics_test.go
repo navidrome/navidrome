@@ -59,19 +59,16 @@ var _ = Describe("Lyrics", func() {
 			Line: []model.Line{
 				{
 					Start: new(int64(1000)),
-					End:   new(int64(3000)),
 					Value: "Lead words",
 					Cue: []model.Cue{
 						{
 							Start:     new(int64(1000)),
-							End:       new(int64(1500)),
 							Value:     "Lead ",
 							ByteStart: 0,
 							ByteEnd:   4,
 						},
 						{
 							Start:     new(int64(1500)),
-							End:       new(int64(3000)),
 							Value:     "words",
 							ByteStart: 5,
 							ByteEnd:   9,
@@ -230,7 +227,7 @@ var _ = Describe("Lyrics", func() {
 		}))
 	})
 
-	It("returns a non-Lyricsfile YAML sidecar as plain text, shadowing lower-priority sources", func() {
+	It("skips a non-Lyricsfile YAML sidecar and resolves the next source", func() {
 		dir, err := os.MkdirTemp("", "lyrics-yaml-fallback-*")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() {
@@ -247,15 +244,31 @@ var _ = Describe("Lyrics", func() {
 			Path:        "song.mp3",
 		})
 
-		// ParseLyrics falls back to plain text for any suffix when the content
-		// doesn't match the structured format, so the .yaml hit is non-empty and
-		// shadows the lower-priority .lrc entirely.
 		Expect(err).To(BeNil())
 		Expect(list).To(HaveLen(1))
-		Expect(list[0].Synced).To(BeFalse())
+		Expect(list[0].Synced).To(BeTrue())
 		Expect(list[0].Line).To(Equal([]model.Line{
-			{Value: "title: not lyricsfile"},
+			{Start: new(int64(1000)), Value: "Fallback line"},
 		}))
+	})
+
+	It("skips a malformed claimed sidecar and resolves the next source", func() {
+		dir, err := os.MkdirTemp("", "lyrics-malformed-fallback-*")
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() {
+			Expect(os.RemoveAll(dir)).To(Succeed())
+		})
+
+		Expect(os.WriteFile(filepath.Join(dir, "song.ttml"), []byte(`<tt><body><p>broken`), 0600)).To(Succeed())
+		Expect(os.WriteFile(filepath.Join(dir, "song.lrc"), []byte("[00:01.00]Fallback line"), 0600)).To(Succeed())
+
+		conf.Server.LyricsPriority = ".ttml,.lrc"
+		svc := lyrics.NewLyrics(nil, nil)
+		list, err := svc.GetLyrics(ctx, &model.MediaFile{LibraryPath: dir, Path: "song.mp3"})
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(list).To(HaveLen(1))
+		Expect(list[0].Line).To(Equal([]model.Line{{Start: new(int64(1000)), Value: "Fallback line"}}))
 	})
 
 	Context("Errors", func() {

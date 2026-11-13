@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ func parseSRT(language string, contents []byte) (LyricList, error) {
 		return nil, nil
 	}
 
-	lyrics := normalizeLyrics(Lyrics{
+	lyrics := NormalizeLyrics(Lyrics{
 		Lang:   normalizeLyricLang(language),
 		Line:   lines,
 		Synced: true,
@@ -91,6 +92,9 @@ func parseSRTBlock(block string) (Line, bool, error) {
 	if err != nil {
 		return Line{}, false, err
 	}
+	if endMs < startMs {
+		return Line{}, false, fmt.Errorf("SRT cue end %d precedes start %d", endMs, startMs)
+	}
 
 	textLines := make([]string, 0, len(lines)-startIdx-1)
 	for _, line := range lines[startIdx+1:] {
@@ -129,6 +133,9 @@ func parseSRTTime(value string) (int64, error) {
 	seconds, err := strconv.ParseInt(match[3], 10, 64)
 	if err != nil {
 		return 0, err
+	}
+	if minutes > 59 || seconds > 59 {
+		return 0, fmt.Errorf("SRT timestamp fields out of range: %q", value)
 	}
 	millis, err := strconv.ParseInt(match[4], 10, 64)
 	if err != nil {
