@@ -165,7 +165,7 @@ export const SongContextMenu = ({
           }
         }
 
-        dispatch(openExtendedInfoDialog(fullRecord))
+        dispatch(openExtendedInfoDialog(fullRecord, 'song'))
       },
     },
   }

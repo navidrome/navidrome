@@ -60,10 +60,11 @@ export const closeDuplicateSongDialog = () => ({
   type: DUPLICATE_SONG_WARNING_CLOSE,
 })
 
-export const openExtendedInfoDialog = (record) => {
+export const openExtendedInfoDialog = (record, resource) => {
   return {
     type: EXTENDED_INFO_OPEN,
     record,
+    resource,
   }
 }
 

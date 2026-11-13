@@ -146,9 +146,9 @@ const ContextMenu = ({
     ...(!hideInfo && {
       info: {
         enabled: true,
-        needData: true,
+        needData: false,
         label: translate('resources.album.actions.info'),
-        action: () => dispatch(openExtendedInfoDialog(record)),
+        action: (record) => dispatch(openExtendedInfoDialog(record, resource)),
       },
     }),
   }
@@ -272,7 +272,6 @@ export const ArtistContextMenu = (props) =>
   props.record ? (
     <ContextMenu
       {...props}
-      hideInfo={true}
       resource={'artist'}
       songQueryParams={{
         pagination: { page: 1, perPage: 200 },
