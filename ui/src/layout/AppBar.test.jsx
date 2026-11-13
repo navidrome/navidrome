@@ -9,11 +9,14 @@ import config from '../config'
 
 let store
 
+const mocks = vi.hoisted(() => ({ resources: [] }))
+
 vi.mock('react-admin', () => ({
   AppBar: ({ userMenu }) => <div data-testid="appbar">{userMenu}</div>,
+  MenuItemLink: ({ primaryText }) => <div>{primaryText}</div>,
   useTranslate: () => (x) => x,
   usePermissions: () => ({ permissions: 'admin' }),
-  getResources: () => [],
+  getResources: () => mocks.resources,
 }))
 
 vi.mock('./NowPlayingPanel', () => ({
@@ -33,12 +36,15 @@ vi.mock('../dialogs/Dialogs', () => ({
 }))
 vi.mock('../dialogs', () => ({
   AboutDialog: () => <div />,
+  QuickConnectDialog: () => <div />,
 }))
 
 describe('<AppBar />', () => {
   beforeEach(() => {
     config.devActivityPanel = true
     config.enableNowPlaying = true
+    config.enableQuickConnect = false
+    mocks.resources = []
     store = createStore(combineReducers({ activity: activityReducer }), {
       activity: { nowPlayingCount: 0 },
     })
@@ -61,5 +67,43 @@ describe('<AppBar />', () => {
       </Provider>,
     )
     expect(screen.queryByTestId('now-playing-panel')).toBeNull()
+  })
+
+  it('shows the Quick Connect menu item when enabled', () => {
+    config.enableQuickConnect = true
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.queryAllByText('menu.quickConnect.name')).not.toHaveLength(0)
+  })
+
+  it('hides the Quick Connect menu item when disabled', () => {
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.queryAllByText('menu.quickConnect.name')).toHaveLength(0)
+    expect(screen.queryAllByText('menu.about')).not.toHaveLength(0)
+  })
+
+  it('uses the resource label for settings items when set', () => {
+    mocks.resources = [
+      {
+        name: 'player',
+        hasList: true,
+        options: { subMenu: 'settings', label: 'resources.player.menuName' },
+      },
+      { name: 'transcoding', hasList: true, options: { subMenu: 'settings' } },
+    ]
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.getByText('resources.player.menuName')).toBeInTheDocument()
+    expect(screen.getByText('resources.transcoding.name')).toBeInTheDocument()
   })
 })

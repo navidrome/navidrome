@@ -82,7 +82,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 		// <tempdir>/
 		// └── cover.jpg                ← absolute path stored in ExternalImageURL
 		It("returns the local file regardless of EnableM3UExternalAlbumArt", func() {
-			conf.Server.EnableM3UExternalAlbumArt = false // local paths bypass the toggle
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = false }) // local paths bypass the toggle
 			dir := GinkgoT().TempDir()
 			imgPath := filepath.Join(dir, "cover.jpg")
 			Expect(os.WriteFile(imgPath, pngBytes("external-local"), 0o600)).To(Succeed())
@@ -96,7 +96,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 	When("a playlist has an http(s) ExternalImageURL and EnableM3UExternalAlbumArt is false", func() {
 		// (no local files — the http source is gated off, so resolution settles absent)
 		It("skips the URL and settles absent", func() {
-			conf.Server.EnableM3UExternalAlbumArt = false
+			conf.Update(func(c *conf.Options) { c.EnableM3UExternalAlbumArt = false })
 			pl := putPlaylist(model.Playlist{ID: "pl-5", Name: "HttpGated", ExternalImageURL: "https://example.com/cover.jpg"})
 
 			ia := acquire(model.KindPlaylistArtwork, pl.ID)
@@ -133,7 +133,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 		// Playlist "pl-7" references tracks from both albums, so the worker generates a tiled
 		// cover from 2 distinct album art tiles (mirrored to fill the 2x2 grid).
 		It("generates a tiled cover from album art", func() {
-			conf.Server.CoverArtPriority = "cover.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 			setLayout(fstest.MapFS{
 				"Artist/AlbumA/01 - Track.mp3": trackFile(1, "TA", map[string]any{"album": "AlbumA"}),
 				"Artist/AlbumA/cover.png":      smallPNG("albumA"),
@@ -142,13 +142,13 @@ var _ = Describe("Playlist artwork resolution", func() {
 			})
 			scan()
 
-			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
+			mfs, err := rds.MediaFile().GetAll(rctx, model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(2))
 
 			pl := model.Playlist{ID: "pl-7", Name: "Mix", OwnerID: "admin-1"}
 			pl.AddMediaFilesByID([]string{mfs[0].ID, mfs[1].ID})
-			Expect(rds.Playlist(rctx).Put(&pl)).To(Succeed())
+			Expect(rds.Playlist().Put(rctx, &pl)).To(Succeed())
 
 			ia := acquire(model.KindPlaylistArtwork, pl.ID)
 			Expect(ia.Source).To(Equal("generated"))
@@ -171,7 +171,7 @@ var _ = Describe("Playlist artwork resolution", func() {
 		// ├── AlbumC/{01 - Track.mp3, cover.png}   ← tile 3
 		// └── AlbumD/{01 - Track.mp3, cover.png}   ← tile 4
 		It("fills all four grid quadrants with distinct album art", func() {
-			conf.Server.CoverArtPriority = "cover.*"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" })
 			layout := fstest.MapFS{}
 			for _, name := range []string{"AlbumA", "AlbumB", "AlbumC", "AlbumD"} {
 				layout["Artist/"+name+"/01 - Track.mp3"] = trackFile(1, "T"+name, map[string]any{"album": name})
@@ -180,14 +180,14 @@ var _ = Describe("Playlist artwork resolution", func() {
 			setLayout(layout)
 			scan()
 
-			mfs, err := rds.MediaFile(rctx).GetAll(model.QueryOptions{})
+			mfs, err := rds.MediaFile().GetAll(rctx, model.QueryOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(4))
 			ids := slice.Map(mfs, func(mf model.MediaFile) string { return mf.ID })
 
 			pl := model.Playlist{ID: "pl-8", Name: "Four", OwnerID: "admin-1"}
 			pl.AddMediaFilesByID(ids)
-			Expect(rds.Playlist(rctx).Put(&pl)).To(Succeed())
+			Expect(rds.Playlist().Put(rctx, &pl)).To(Succeed())
 
 			ia := acquire(model.KindPlaylistArtwork, pl.ID)
 			Expect(ia.Source).To(Equal("generated"))
@@ -208,6 +208,6 @@ func putPlaylist(pl model.Playlist) model.Playlist {
 	if pl.OwnerID == "" {
 		pl.OwnerID = "admin-1"
 	}
-	Expect(rds.Playlist(rctx).Put(&pl)).To(Succeed())
+	Expect(rds.Playlist().Put(rctx, &pl)).To(Succeed())
 	return pl
 }

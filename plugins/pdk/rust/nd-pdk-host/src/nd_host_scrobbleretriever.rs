@@ -7,7 +7,7 @@ use extism_pdk::*;
 use serde::{Deserialize, Serialize};
 
 /// ScrobbleCountOptions carries optional parameters for counting user scrobbles
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleCountOptions {
     #[serde(default)]
@@ -17,7 +17,7 @@ pub struct ScrobbleCountOptions {
 }
 
 /// ScrobbleOptions carries optional parameters for retrieving user scrobbles
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleOptions {
     #[serde(default)]
@@ -31,7 +31,7 @@ pub struct ScrobbleOptions {
 }
 
 /// ScrobbleRef represents one instance of a scrobble (instance id, file id, submission time)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrobbleRef {
     pub id: i64,

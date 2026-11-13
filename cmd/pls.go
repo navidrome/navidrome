@@ -109,7 +109,7 @@ func fetchPlaylists(ctx context.Context, ds model.DataStore, sort string) model.
 		}
 		options.Filters = squirrel.Eq{"owner_id": user.ID}
 	}
-	pls, err := ds.Playlist(ctx).GetAll(options)
+	pls, err := ds.Playlist().GetAll(ctx, options)
 	if err != nil {
 		log.Fatal(ctx, "Failed to retrieve playlists", err)
 	}
@@ -117,17 +117,17 @@ func fetchPlaylists(ctx context.Context, ds model.DataStore, sort string) model.
 }
 
 func findPlaylist(ctx context.Context, ds model.DataStore, nameOrID string) *model.Playlist {
-	playlist, err := ds.Playlist(ctx).GetWithTracks(nameOrID, true, false)
+	playlist, err := ds.Playlist().GetWithTracks(ctx, nameOrID, true, false)
 	if err != nil && !errors.Is(err, model.ErrNotFound) {
 		log.Fatal("Error retrieving playlist", "name", nameOrID, err)
 	}
 	if errors.Is(err, model.ErrNotFound) {
-		playlists, err := ds.Playlist(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"playlist.name": nameOrID}})
+		playlists, err := ds.Playlist().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"playlist.name": nameOrID}})
 		if err != nil {
 			log.Fatal("Error retrieving playlist", "name", nameOrID, err)
 		}
 		if len(playlists) > 0 {
-			playlist, err = ds.Playlist(ctx).GetWithTracks(playlists[0].ID, true, false)
+			playlist, err = ds.Playlist().GetWithTracks(ctx, playlists[0].ID, true, false)
 			if err != nil {
 				log.Fatal("Error retrieving playlist", "name", nameOrID, err)
 			}
@@ -194,7 +194,7 @@ func runExport(ctx context.Context) {
 
 	exported := 0
 	for _, pls := range allPls {
-		plsWithTracks, err := ds.Playlist(ctx).GetWithTracks(pls.ID, true, false)
+		plsWithTracks, err := ds.Playlist().GetWithTracks(ctx, pls.ID, true, false)
 		if err != nil {
 			log.Error("Error loading playlist tracks", "playlist", pls.Name, err)
 			continue

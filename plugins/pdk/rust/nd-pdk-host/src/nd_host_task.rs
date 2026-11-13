@@ -30,7 +30,7 @@ mod base64_bytes {
 }
 
 /// QueueConfig holds configuration for a task queue.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QueueConfig {
     pub concurrency: i32,
@@ -41,7 +41,7 @@ pub struct QueueConfig {
 }
 
 /// TaskInfo holds the current state of a task.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TaskInfo {
     pub status: String,

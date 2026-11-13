@@ -50,6 +50,12 @@ type PDKFunc struct {
 	Params     []PDKParam
 	Returns    []PDKReturn
 	IsVariadic bool
+	Deprecated string // Rendered as a "Deprecated:" paragraph when set
+}
+
+// deprecatedPDKFuncs marks extism functions that do not work inside Navidrome, with what to use instead.
+var deprecatedPDKFuncs = map[string]string{
+	"NewHTTPRequest": "Navidrome does not enable extism's http_request host function, so every request sent this way fails. Use host.HTTPSend instead.",
 }
 
 // PDKParam represents a function parameter.
@@ -156,6 +162,7 @@ func ParseExtismPDK() (*PDKSymbols, error) {
 						t.Methods = append(t.Methods, fn)
 					}
 				} else {
+					fn.Deprecated = deprecatedPDKFuncs[fn.Name]
 					symbols.Functions = append(symbols.Functions, fn)
 				}
 			}

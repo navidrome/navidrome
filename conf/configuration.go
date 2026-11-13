@@ -3,7 +3,6 @@ package conf
 import (
 	"cmp"
 	"encoding"
-	"encoding/json"
 	"fmt"
 	"math"
 	"net/url"
@@ -30,7 +29,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type configOptions struct {
+type Options struct {
 	ConfigFile                      string `conf:"-"`
 	Address                         string
 	Port                            int
@@ -161,6 +160,8 @@ type configOptions struct {
 	DevExternalArtistFetchMultiplier  float64
 	DevPreserveUnicodeInExternalCalls bool
 	DevEnableMediaFileProbe           bool
+	DevMatchEstimatedContentLength    bool
+	DevAPIv1                          bool
 }
 
 type scannerOptions struct {
@@ -235,6 +236,8 @@ type jellyfinOptions struct {
 	// ExposedPublicUsers is a comma-separated list of usernames to advertise on the unauthenticated
 	// GET /Users/Public, so Jellyfin clients can show a login user-picker. Empty exposes no users.
 	ExposedPublicUsers string
+	AutoDiscovery      bool
+	QuickConnect       bool
 	// MaxConcurrentStreams bounds how many collection responses can stream at once. Each holds a DB
 	// cursor — and its pooled connection — for the whole client-paced response, so without a bound
 	// enough slow clients would take the entire pool and stall the scanner, scrobbles and the UI.
@@ -317,30 +320,11 @@ var currentGOOS = func() string {
 
 // TLSEnabled reports whether the server serves HTTPS. Both halves are required,
 // so callers cannot infer it from the certificate alone.
-func (c *configOptions) TLSEnabled() bool {
+func (c Options) TLSEnabled() bool {
 	return c.TLSCert != "" && c.TLSKey != ""
 }
 
-var (
-	Server = &configOptions{}
-	hooks  []func()
-)
-
-// SnapshotConfig returns a function that restores Server to its current state.
-// Uses JSON round-tripping so Dir fields get fresh sync.Once values.
-func SnapshotConfig() func() {
-	snapshot, err := json.Marshal(Server)
-	if err != nil {
-		panic(fmt.Sprintf("SnapshotConfig: marshal failed: %v", err))
-	}
-	return func() {
-		var restored configOptions
-		if err := json.Unmarshal(snapshot, &restored); err != nil {
-			panic(fmt.Sprintf("SnapshotConfig: unmarshal failed: %v", err))
-		}
-		Server = &restored
-	}
-}
+var hooks []func()
 
 func LoadFromFile(confFile string) {
 	viper.SetConfigFile(confFile)
@@ -369,7 +353,8 @@ func Load(noConfigDump bool) {
 		}
 	}
 
-	err := viper.Unmarshal(&Server, viper.DecodeHook(
+	s := clone(current.Load())
+	err := viper.Unmarshal(s, viper.DecodeHook(
 		mapstructure.ComposeDecodeHookFunc(
 			mapstructure.TextUnmarshallerHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
@@ -381,35 +366,35 @@ func Load(noConfigDump bool) {
 	}
 
 	// Validate non-root user early, before any filesystem operations
-	if err := validateEnforceNonRootUser(); err != nil {
+	if err := s.validateEnforceNonRootUser(); err != nil {
 		logFatal(err)
 	}
 
-	if Server.CacheFolder.String() == "" {
-		Server.CacheFolder = NewDir(filepath.Join(Server.DataFolder.String(), "cache"))
+	if s.CacheFolder.String() == "" {
+		s.CacheFolder = NewDir(filepath.Join(s.DataFolder.String(), "cache"))
 	}
 
-	if Server.Plugins.Enabled {
-		if Server.Plugins.Folder.String() == "" {
-			Server.Plugins.Folder = NewDirWithPerm(filepath.Join(Server.DataFolder.String(), "plugins"), 0700)
+	if s.Plugins.Enabled {
+		if s.Plugins.Folder.String() == "" {
+			s.Plugins.Folder = NewDirWithPerm(filepath.Join(s.DataFolder.String(), "plugins"), 0700)
 		} else {
-			Server.Plugins.Folder = NewDirWithPerm(Server.Plugins.Folder.String(), 0700)
+			s.Plugins.Folder = NewDirWithPerm(s.Plugins.Folder.String(), 0700)
 		}
 	}
 
-	Server.ConfigFile = viper.GetViper().ConfigFileUsed()
-	if Server.DbPath == "" {
-		Server.DbPath = filepath.Join(Server.DataFolder.String(), consts.DefaultDbPath)
+	s.ConfigFile = viper.GetViper().ConfigFileUsed()
+	if s.DbPath == "" {
+		s.DbPath = filepath.Join(s.DataFolder.String(), consts.DefaultDbPath)
 	}
 
 	out := os.Stderr
-	if Server.LogFile != "" {
-		if mkErr := os.MkdirAll(filepath.Dir(Server.LogFile), os.ModePerm); mkErr != nil {
+	if s.LogFile != "" {
+		if mkErr := os.MkdirAll(filepath.Dir(s.LogFile), os.ModePerm); mkErr != nil {
 			logFatal(fmt.Sprintf("Error creating log file directory: %s", mkErr.Error()))
 		}
-		out, err = os.OpenFile(Server.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		out, err = os.OpenFile(s.LogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
-			logFatal(fmt.Sprintf("Error opening log file %s: %s", Server.LogFile, err.Error()))
+			logFatal(fmt.Sprintf("Error opening log file %s: %s", s.LogFile, err.Error()))
 		}
 		log.SetOutput(out)
 	} else if os.Getenv("ND_SYSTEMD_PRIORITY_LOGGING") != "" && os.Getenv("JOURNAL_STREAM") != "" {
@@ -420,24 +405,24 @@ func Load(noConfigDump bool) {
 		log.EnableJournalFormat()
 	}
 
-	log.SetLevelString(Server.LogLevel)
-	log.SetLogLevels(Server.DevLogLevels)
-	log.SetLogSourceLine(Server.DevLogSourceLine)
-	log.SetRedacting(Server.EnableLogRedacting)
+	log.SetLevelString(s.LogLevel)
+	log.SetLogLevels(s.DevLogLevels)
+	log.SetLogSourceLine(s.DevLogSourceLine)
+	log.SetRedacting(s.EnableLogRedacting)
 
-	durationNonNegativeOrDefault(&Server.SessionTimeout, consts.DefaultSessionTimeout)
-	durationNonNegativeOrDefault(&Server.SmartPlaylistRefreshDelay, consts.DefaultSmartRefresh)
-	durationNonNegativeOrDefault(&Server.DefaultShareExpiration, consts.DefaultShareExpiration)
-	durationNonNegativeOrDefault(&Server.UIPlaybackReportInterval, consts.DefaultUIPlaybackReportInterval)
-	durationNonNegativeOrDefault(&Server.AuthWindowLength, consts.DefaultAuthWindowLength)
-	durationNonNegativeOrDefault(&Server.Scanner.WatcherWait, consts.DefaultWatcherWait)
+	durationNonNegativeOrDefault(&s.SessionTimeout, consts.DefaultSessionTimeout)
+	durationNonNegativeOrDefault(&s.SmartPlaylistRefreshDelay, consts.DefaultSmartRefresh)
+	durationNonNegativeOrDefault(&s.DefaultShareExpiration, consts.DefaultShareExpiration)
+	durationNonNegativeOrDefault(&s.UIPlaybackReportInterval, consts.DefaultUIPlaybackReportInterval)
+	durationNonNegativeOrDefault(&s.AuthWindowLength, consts.DefaultAuthWindowLength)
+	durationNonNegativeOrDefault(&s.Scanner.WatcherWait, consts.DefaultWatcherWait)
 
-	durationNonNegativeOrDefault(&Server.DevActivityPanelUpdateRate, consts.DefaultActivityPanelUpdateRate)
-	durationNonNegativeOrDefault(&Server.DevArtworkThrottleBacklogTimeout, consts.RequestThrottleBacklogTimeout)
-	durationNonNegativeOrDefault(&Server.DevArtistInfoTimeToLive, consts.ArtistInfoTimeToLive)
-	durationNonNegativeOrDefault(&Server.DevAlbumInfoTimeToLive, consts.AlbumInfoTimeToLive)
-	durationNonNegativeOrDefault(&Server.DevInsightsInitialDelay, consts.InsightsInitialDelay)
-	durationNonNegativeOrDefault(&Server.DevPluginCompilationTimeout, consts.DefaultPluginCompilationTimeout)
+	durationNonNegativeOrDefault(&s.DevActivityPanelUpdateRate, consts.DefaultActivityPanelUpdateRate)
+	durationNonNegativeOrDefault(&s.DevArtworkThrottleBacklogTimeout, consts.RequestThrottleBacklogTimeout)
+	durationNonNegativeOrDefault(&s.DevArtistInfoTimeToLive, consts.ArtistInfoTimeToLive)
+	durationNonNegativeOrDefault(&s.DevAlbumInfoTimeToLive, consts.AlbumInfoTimeToLive)
+	durationNonNegativeOrDefault(&s.DevInsightsInitialDelay, consts.InsightsInitialDelay)
+	durationNonNegativeOrDefault(&s.DevPluginCompilationTimeout, consts.DefaultPluginCompilationTimeout)
 
 	// Log deprecated, removed and unknown options
 	for _, o := range deprecatedOptions {
@@ -447,35 +432,35 @@ func Load(noConfigDump bool) {
 	logUnknownOptions()
 
 	err = run.Sequentially(
-		validateScanSchedule,
-		validateBackupSchedule,
-		validatePlaylistsPath,
-		validatePurgeMissingOption,
-		validateByteSize("MaxImageUploadSize", Server.MaxImageUploadSize),
-		validateByteSize("MaxImageSize", Server.MaxImageSize),
-		validateURL("ExtAuth.LogoutURL", Server.ExtAuth.LogoutURL),
+		s.validateScanSchedule,
+		s.validateBackupSchedule,
+		s.validatePlaylistsPath,
+		s.validatePurgeMissingOption,
+		validateByteSize("MaxImageUploadSize", s.MaxImageUploadSize),
+		validateByteSize("MaxImageSize", s.MaxImageSize),
+		validateURL("ExtAuth.LogoutURL", s.ExtAuth.LogoutURL),
 	)
 	if err != nil {
 		logFatal(err)
 	}
 
-	Server.Search.Backend = normalizeSearchBackend(Server.Search.Backend)
+	s.Search.Backend = normalizeSearchBackend(s.Search.Backend)
 
-	if Server.BaseURL != "" {
-		u, err := url.Parse(Server.BaseURL)
+	if s.BaseURL != "" {
+		u, err := url.Parse(s.BaseURL)
 		if err != nil {
 			logFatal("Invalid BaseURL:", err)
 		}
-		Server.BasePath = u.Path
+		s.BasePath = u.Path
 		u.Path = ""
 		u.RawQuery = ""
-		Server.BaseHost = u.Host
-		Server.BaseScheme = u.Scheme
+		s.BaseHost = u.Host
+		s.BaseScheme = u.Scheme
 	}
 
 	// Log configuration source
-	if Server.ConfigFile != "" {
-		log.Info("Loaded configuration", "file", Server.ConfigFile)
+	if s.ConfigFile != "" {
+		log.Info("Loaded configuration", "file", s.ConfigFile)
 	} else if hasNDEnvVars() {
 		log.Info("No configuration file found. Loaded configuration only from environment variables")
 	} else {
@@ -484,41 +469,48 @@ func Load(noConfigDump bool) {
 
 	// Print current configuration if log level is Debug
 	if log.IsGreaterOrEqualTo(log.LevelDebug) && !noConfigDump {
-		prettyConf := pretty.Sprintf("Configuration: %# v", Server)
-		if Server.EnableLogRedacting {
+		prettyConf := pretty.Sprintf("Configuration: %# v", s)
+		if s.EnableLogRedacting {
 			prettyConf = log.Redact(prettyConf)
 		}
 		_, _ = fmt.Fprintln(out, prettyConf)
 	}
 
-	if !Server.EnableExternalServices {
-		disableExternalServices()
+	if !s.EnableExternalServices {
+		s.disableExternalServices()
 	}
 
 	// Make sure we don't have empty PIDs
-	Server.PID.Album = cmp.Or(Server.PID.Album, consts.DefaultAlbumPID)
-	Server.PID.Track = cmp.Or(Server.PID.Track, consts.DefaultTrackPID)
+	s.PID.Album = cmp.Or(s.PID.Album, consts.DefaultAlbumPID)
+	s.PID.Track = cmp.Or(s.PID.Track, consts.DefaultTrackPID)
 
 	// Parse LastFM.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
-	Server.LastFM.Languages = parseLanguages(Server.LastFM.Language)
+	s.LastFM.Languages = parseLanguages(s.LastFM.Language)
 
 	// Parse Deezer.Language into Languages slice (comma-separated, with fallback to DefaultInfoLanguage)
-	Server.Deezer.Languages = parseLanguages(Server.Deezer.Language)
+	s.Deezer.Languages = parseLanguages(s.Deezer.Language)
 
 	// Validate other options
-	if Server.UICoverArtSize < 200 || Server.UICoverArtSize > 1200 {
-		newValue := max(200, min(1200, Server.UICoverArtSize))
-		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", Server.UICoverArtSize, "newValue", newValue)
-		Server.UICoverArtSize = newValue
+	if s.UICoverArtSize < 200 || s.UICoverArtSize > 1200 {
+		newValue := max(200, min(1200, s.UICoverArtSize))
+		log.Warn("UICoverArtSize must be between 200 and 1200, clamping", "value", s.UICoverArtSize, "newValue", newValue)
+		s.UICoverArtSize = newValue
+	}
+
+	if s.Scanner.Extractor != consts.DefaultScannerExtractor {
+		log.Warn("Invalid Scanner.Extractor, using default", "value", s.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		s.Scanner.Extractor = consts.DefaultScannerExtractor
 	}
 
 	// Floor MaxImageSize at MaxImageUploadSize so accepted uploads can always be read back.
-	imgSize, _ := humanize.ParseBytes(Server.MaxImageSize)
-	uploadSize, _ := humanize.ParseBytes(Server.MaxImageUploadSize)
+	imgSize, _ := humanize.ParseBytes(s.MaxImageSize)
+	uploadSize, _ := humanize.ParseBytes(s.MaxImageUploadSize)
 	if imgSize < uploadSize {
-		log.Warn("MaxImageSize must be at least MaxImageUploadSize, raising", "value", Server.MaxImageSize, "newValue", Server.MaxImageUploadSize)
-		Server.MaxImageSize = Server.MaxImageUploadSize
+		log.Warn("MaxImageSize must be at least MaxImageUploadSize, raising", "value", s.MaxImageSize, "newValue", s.MaxImageUploadSize)
+		s.MaxImageSize = s.MaxImageUploadSize
 	}
+
+	current.Store(s)
 
 	// Call init hooks
 	for _, hook := range hooks {
@@ -760,7 +752,7 @@ var configKeys = sync.OnceValues(func() (map[string]string, []string) {
 			}
 		}
 	}
-	collect(reflect.TypeFor[configOptions](), "")
+	collect(reflect.TypeFor[Options](), "")
 
 	for _, o := range deprecatedOptions {
 		keys[strings.ToLower(o.name)] = o.name
@@ -795,21 +787,21 @@ func parseIniFileConfiguration() {
 	}
 }
 
-func disableExternalServices() {
+func (s *Options) disableExternalServices() {
 	log.Info("All external integrations are DISABLED!")
-	Server.EnableInsightsCollector = false
-	Server.EnableM3UExternalAlbumArt = false
-	Server.LastFM.Enabled = false
-	Server.Deezer.Enabled = false
-	Server.ListenBrainz.Enabled = false
-	Server.Agents = ""
-	if Server.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
-		Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+	s.EnableInsightsCollector = false
+	s.EnableM3UExternalAlbumArt = false
+	s.LastFM.Enabled = false
+	s.Deezer.Enabled = false
+	s.ListenBrainz.Enabled = false
+	s.Agents = ""
+	if s.UILoginBackgroundURL == consts.DefaultUILoginBackgroundURL {
+		s.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
 	}
 }
 
-func validatePlaylistsPath() error {
-	for path := range strings.SplitSeq(Server.PlaylistsPath, string(filepath.ListSeparator)) {
+func (s *Options) validatePlaylistsPath() error {
+	for path := range strings.SplitSeq(s.PlaylistsPath, string(filepath.ListSeparator)) {
 		_, err := doublestar.Match(path, "")
 		if err != nil {
 			return fmt.Errorf("invalid PlaylistsPath %q: %w", path, err)
@@ -834,12 +826,12 @@ func parseLanguages(lang string) []string {
 	return languages
 }
 
-func validatePurgeMissingOption() error {
+func (s *Options) validatePurgeMissingOption() error {
 	allowedValues := []string{consts.PurgeMissingNever, consts.PurgeMissingAlways, consts.PurgeMissingFull}
-	valid := slices.Contains(allowedValues, Server.Scanner.PurgeMissing)
+	valid := slices.Contains(allowedValues, s.Scanner.PurgeMissing)
 	if !valid {
-		err := fmt.Errorf("invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", Server.Scanner.PurgeMissing, allowedValues)
-		Server.Scanner.PurgeMissing = consts.PurgeMissingNever
+		err := fmt.Errorf("invalid Scanner.PurgeMissing value: '%s'. Must be one of: %v", s.Scanner.PurgeMissing, allowedValues)
+		s.Scanner.PurgeMissing = consts.PurgeMissingNever
 		return err
 	}
 	return nil
@@ -861,8 +853,8 @@ func validateByteSize(name, value string) func() error {
 	}
 }
 
-func validateEnforceNonRootUser() error {
-	if !Server.EnforceNonRootUser || currentGOOS() == "windows" {
+func (s *Options) validateEnforceNonRootUser() error {
+	if !s.EnforceNonRootUser || currentGOOS() == "windows" {
 		return nil
 	}
 
@@ -873,23 +865,23 @@ func validateEnforceNonRootUser() error {
 	return nil
 }
 
-func validateScanSchedule() error {
-	if Server.Scanner.Schedule == "0" || Server.Scanner.Schedule == "" {
-		Server.Scanner.Schedule = ""
+func (s *Options) validateScanSchedule() error {
+	if s.Scanner.Schedule == "0" || s.Scanner.Schedule == "" {
+		s.Scanner.Schedule = ""
 		return nil
 	}
 	var err error
-	Server.Scanner.Schedule, err = validateSchedule(Server.Scanner.Schedule, "Scanner.Schedule")
+	s.Scanner.Schedule, err = validateSchedule(s.Scanner.Schedule, "Scanner.Schedule")
 	return err
 }
 
-func validateBackupSchedule() error {
-	if Server.Backup.Path.String() == "" || Server.Backup.Schedule == "" || Server.Backup.Count == 0 {
-		Server.Backup.Schedule = ""
+func (s *Options) validateBackupSchedule() error {
+	if s.Backup.Path.String() == "" || s.Backup.Schedule == "" || s.Backup.Count == 0 {
+		s.Backup.Schedule = ""
 		return nil
 	}
 	var err error
-	Server.Backup.Schedule, err = validateSchedule(Server.Backup.Schedule, "Backup.Schedule")
+	s.Backup.Schedule, err = validateSchedule(s.Backup.Schedule, "Backup.Schedule")
 	return err
 }
 
@@ -1087,6 +1079,8 @@ func setViperDefaults() {
 	viper.SetDefault("listenbrainz.trackalgorithm", consts.DefaultListenBrainzTrackAlgorithm)
 	viper.SetDefault("jellyfin.enabled", false)
 	viper.SetDefault("jellyfin.servername", "")
+	viper.SetDefault("jellyfin.autodiscovery", false)
+	viper.SetDefault("jellyfin.quickconnect", true)
 	viper.SetDefault("enablescrobblehistory", true)
 	viper.SetDefault("httpheaders.frameoptions", "DENY")
 	viper.SetDefault("backup.path", "")
@@ -1115,6 +1109,7 @@ func setViperDefaults() {
 	viper.SetDefault("devshowartistpage", true)
 	viper.SetDefault("devuishowconfig", true)
 	viper.SetDefault("devneweventstream", true)
+	viper.SetDefault("devapiv1", false)
 	viper.SetDefault("devoffsetoptimize", 50000)
 	// Half the pool: streams may take up to this many connections, leaving the rest for the scanner,
 	// scrobbles and the UI. See MaxOpenConns.
@@ -1141,6 +1136,7 @@ func setViperDefaults() {
 	viper.SetDefault("devexternalartistfetchmultiplier", 1.5)
 	viper.SetDefault("devpreserveunicodeinexternalcalls", false)
 	viper.SetDefault("devenablemediafileprobe", true)
+	viper.SetDefault("devmatchestimatedcontentlength", true)
 }
 
 func init() {

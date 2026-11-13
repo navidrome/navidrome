@@ -19,7 +19,7 @@ var _ = Describe("Bookmark and PlayQueue Endpoints", Ordered, func() {
 
 		BeforeAll(func() {
 			// Get a media file ID from the database to use for bookmarks
-			mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1})
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).ToNot(BeEmpty())
 			trackID = mfs[0].ID
@@ -69,7 +69,7 @@ var _ = Describe("Bookmark and PlayQueue Endpoints", Ordered, func() {
 
 		BeforeAll(func() {
 			// Get multiple media file IDs from the database
-			mfs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 3, Sort: "title"})
+			mfs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 3, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(mfs)).To(BeNumerically(">=", 2))
 			for _, mf := range mfs {

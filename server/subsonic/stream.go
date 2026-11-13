@@ -3,10 +3,8 @@ package subsonic
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core/stream"
@@ -15,6 +13,7 @@ import (
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/str"
 )
 
 func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Subsonic, error) {
@@ -28,7 +27,7 @@ func (api *Router) Stream(w http.ResponseWriter, r *http.Request) (*responses.Su
 	format, _ := p.String("format")
 	timeOffset := p.IntOr("timeOffset", 0)
 
-	mf, err := api.ds.MediaFile(ctx).Get(id)
+	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +61,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, err
 	}
 
-	if !conf.Server.EnableDownloads {
+	if !conf.Server().EnableDownloads {
 		log.Warn(ctx, "Downloads are disabled", "user", username, "id", id)
 		return nil, newError(responses.ErrorAuthorizationFail, "downloads are disabled")
 	}
@@ -76,7 +75,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	format, _ := p.String("format")
 
 	if format == "" {
-		if conf.Server.AutoTranscodeDownload {
+		if conf.Server().AutoTranscodeDownload {
 			// if we are not provided a format, see if we have requested transcoding for this client
 			// This must be enabled via a config option. For the UI, we are always given an option.
 			// This will impact other clients which do not use the UI
@@ -91,12 +90,13 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		} else {
 			format = "raw"
 		}
+	} else {
+		// An explicit download format must win over the player's forced transcoding
+		ctx = request.WithTranscoding(ctx, model.Transcoding{})
 	}
 
 	setHeaders := func(name string) {
-		name = strings.ReplaceAll(name, ",", "_")
-		disposition := fmt.Sprintf("attachment; filename=\"%s.zip\"", name)
-		w.Header().Set("Content-Disposition", disposition)
+		w.Header().Set("Content-Disposition", str.ContentDispositionAttachment(name+".zip"))
 		w.Header().Set("Content-Type", "application/zip")
 	}
 
@@ -115,8 +115,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 			}
 		}()
 
-		disposition := fmt.Sprintf("attachment; filename=\"%s\"", stream.Name())
-		w.Header().Set("Content-Disposition", disposition)
+		w.Header().Set("Content-Disposition", str.ContentDispositionAttachment(stream.Name()))
 
 		_, err = stream.Serve(ctx, w, r)
 		return nil, err

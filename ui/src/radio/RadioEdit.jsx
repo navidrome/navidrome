@@ -1,5 +1,4 @@
 import {
-  DateField,
   Edit,
   required,
   SimpleForm,
@@ -9,7 +8,12 @@ import {
 import { CardMedia } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { urlValidate } from '../utils/validations'
-import { Title, ImageUploadOverlay, useImageLoadingState } from '../common'
+import {
+  Title,
+  ImageUploadOverlay,
+  ReadOnlyDateField,
+  useImageLoadingState,
+} from '../common'
 import subsonic from '../subsonic'
 import config from '../config'
 import { RADIO_PLACEHOLDER_IMAGE } from '../consts'
@@ -65,8 +69,8 @@ const RadioEdit = (props) => {
           fullWidth
           validate={[urlValidate]}
         />
-        <DateField variant="body1" source="updatedAt" showTime />
-        <DateField variant="body1" source="createdAt" showTime />
+        <ReadOnlyDateField source="updatedAt" />
+        <ReadOnlyDateField source="createdAt" />
       </SimpleForm>
     </Edit>
   )

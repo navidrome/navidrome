@@ -187,7 +187,7 @@ LABEL org.opencontainers.image.source="https://github.com/navidrome/navidrome"
 # - libwebp + symlinks: enables native WebP encoding via purego/dlopen
 # The mesa/LLVM stack mpv pulls in for video output is dropped in this same layer,
 # otherwise the deleted bytes still ship in the image.
-RUN apk add -U --no-cache ffmpeg mpv sqlite libwebp libwebpdemux libwebpmux && \
+RUN apk add -U --no-cache curl ffmpeg mpv sqlite libwebp libwebpdemux libwebpmux && \
     for lib in libwebp libwebpdemux libwebpmux; do \
         target=$(ls /usr/lib/$lib.so.* 2>/dev/null | head -1) && \
         [ -n "$target" ] && ln -sf "$target" /usr/lib/$lib.so; \

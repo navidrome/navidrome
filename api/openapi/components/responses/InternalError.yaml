@@ -1,0 +1,5 @@
+description: Unexpected server failure. Details are in the server log.
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

@@ -36,14 +36,24 @@ var (
 func TestPlugins(t *testing.T) {
 	tests.Init(t, false)
 
-	// Set globally so tests using configtest.SetupConfig inherit it. The cache
+	// Set globally so every spec's config snapshot inherits it. The cache
 	// persists between runs; entries are content-addressed, so a stale one only misses.
-	conf.Server.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
-	conf.Server.Plugins.CacheSize = "1GB" // the default evicts the cache mid-run
+	conf.Update(func(c *conf.Options) {
+		c.CacheFolder = conf.NewDir(filepath.Join(testDataDir, wazeroCacheDir))
+		c.Plugins.CacheSize = "1GB"
+	}) // the default evicts the cache mid-run
 
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Plugins Suite")
+}
+
+var _ = configtest.RestoreAfterEachSpec()
+
+// stubLocalhostDNS resolves "localhost." without real DNS: the trailing dot never matches /etc/hosts.
+func stubLocalhostDNS() {
+	dialResolver = tests.StubResolver(map[string]string{"localhost.": "127.0.0.1"})
+	DeferCleanup(func() { dialResolver = nil })
 }
 
 // createTestManager creates a new plugin Manager with the given plugin config.
@@ -100,10 +110,12 @@ func createTestManagerWithPluginsAndMetrics(pluginConfig map[string]map[string]s
 	}
 
 	// Setup config
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	DeferCleanup(conf.SnapshotConfig())
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 
 	// Setup mock DataStore with pre-enabled plugins
 	mockPluginRepo := tests.CreateMockPluginRepo()

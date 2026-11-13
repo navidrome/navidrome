@@ -1,8 +1,9 @@
 package criteria
 
-// Conjunctions need to implement this interface, to allow Criteria to extract child playlist IDs recursively
+// Conjunctions need to implement this interface, to allow Criteria to extract child playlist references recursively
 type conjunction interface {
 	ChildPlaylistIds() []string
+	ChildPlaylistPaths() []string
 }
 
 type (
@@ -16,9 +17,9 @@ func (all All) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("all", all)
 }
 
-func (all All) ChildPlaylistIds() (ids []string) {
-	return extractPlaylistIds(all)
-}
+func (all All) ChildPlaylistIds() []string { return extractPlaylistField(all, "id") }
+
+func (all All) ChildPlaylistPaths() []string { return extractPlaylistField(all, "path") }
 
 type (
 	Any []Expression
@@ -31,9 +32,9 @@ func (any Any) MarshalJSON() ([]byte, error) {
 	return marshalConjunction("any", any)
 }
 
-func (any Any) ChildPlaylistIds() (ids []string) {
-	return extractPlaylistIds(any)
-}
+func (any Any) ChildPlaylistIds() []string { return extractPlaylistField(any, "id") }
+
+func (any Any) ChildPlaylistPaths() []string { return extractPlaylistField(any, "path") }
 
 type Is map[string]any
 type Eq = Is
@@ -172,28 +173,20 @@ func (ip IsPresent) MarshalJSON() ([]byte, error) {
 
 func (ip IsPresent) fields() map[string]any { return ip }
 
-func extractPlaylistIds(inputRule any) (ids []string) {
-	var id string
-	var ok bool
-
+func extractPlaylistField(inputRule any, field string) (values []string) {
 	switch rule := inputRule.(type) {
 	case Any:
 		for _, rules := range rule {
-			ids = append(ids, extractPlaylistIds(rules)...)
+			values = append(values, extractPlaylistField(rules, field)...)
 		}
 	case All:
 		for _, rules := range rule {
-			ids = append(ids, extractPlaylistIds(rules)...)
+			values = append(values, extractPlaylistField(rules, field)...)
 		}
-	case InPlaylist:
-		if id, ok = rule["id"].(string); ok {
-			ids = append(ids, id)
-		}
-	case NotInPlaylist:
-		if id, ok = rule["id"].(string); ok {
-			ids = append(ids, id)
+	case InPlaylist, NotInPlaylist:
+		if value, ok := rule.(Expression).fields()[field].(string); ok && value != "" {
+			values = append(values, value)
 		}
 	}
-
 	return
 }

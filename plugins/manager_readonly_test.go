@@ -1,11 +1,11 @@
 package plugins
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -14,24 +14,30 @@ import (
 
 var _ = Describe("Manager.LoadPlugins", func() {
 	var (
+		ctx    context.Context
 		mgr    *Manager
 		repo   *tests.MockPluginRepo
 		tmpDir string
 	)
 
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	// newManager builds a manager over rows the caller can corrupt, with no Subsonic router: a CLI
 	// has none, and Start would log.Fatal on that.
 	newManager := func(rows model.Plugins) *Manager {
-		DeferCleanup(configtest.SetupConfig())
 		var err error
 		tmpDir, err = os.MkdirTemp("", "plugins-readonly-*")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+			c.CacheFolder = conf.NewDir(tmpDir)
+		})
 
 		if rows == nil {
 			rows = installTestPlugins(tmpDir, "test-metadata-agent"+PackageExtension)
@@ -54,7 +60,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 	It("detects capabilities without a Subsonic router configured", func() {
 		mgr = newManager(nil)
 
-		Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
+		Expect(mgr.LoadPlugins(ctx, []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
 		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(ContainElement("test-metadata-agent"))
 	})
@@ -70,9 +76,9 @@ var _ = Describe("Manager.LoadPlugins", func() {
 		It("leaves the stored row untouched", func() {
 			mgr = newManager(brokenRows())
 
-			Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
+			Expect(mgr.LoadPlugins(ctx, []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
-			stored, err := repo.Get("broken")
+			stored, err := repo.Get(ctx, "broken")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.Enabled).To(BeTrue(), "inspecting a plugin must never disable it")
 			Expect(stored.LastError).To(BeEmpty())
@@ -83,9 +89,9 @@ var _ = Describe("Manager.LoadPlugins", func() {
 		It("still disables it when not read-only", func() {
 			mgr = newManager(brokenRows())
 
-			Expect(mgr.loadEnabledPlugins(GinkgoT().Context())).To(Succeed())
+			Expect(mgr.loadEnabledPlugins(ctx)).To(Succeed())
 
-			stored, err := repo.Get("broken")
+			stored, err := repo.Get(ctx, "broken")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored.Enabled).To(BeFalse())
 			Expect(stored.LastError).ToNot(BeEmpty())
@@ -97,7 +103,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 	It("does not load a plugin that is not in the agent list", func() {
 		mgr = newManager(nil)
 
-		Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"some-other-agent"}, false)).To(Succeed())
+		Expect(mgr.LoadPlugins(ctx, []string{"some-other-agent"}, false)).To(Succeed())
 
 		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(BeEmpty())
 	})
@@ -105,7 +111,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 	It("does nothing when no agents are configured", func() {
 		mgr = newManager(nil)
 
-		Expect(mgr.LoadPlugins(GinkgoT().Context(), nil, false)).To(Succeed())
+		Expect(mgr.LoadPlugins(ctx, nil, false)).To(Succeed())
 
 		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(BeEmpty())
 		// Not even the wazero cache: with nothing to load there is nothing to compile.
@@ -114,9 +120,9 @@ var _ = Describe("Manager.LoadPlugins", func() {
 
 	It("does nothing when the plugin system is disabled", func() {
 		mgr = newManager(nil)
-		conf.Server.Plugins.Enabled = false
+		conf.Update(func(c *conf.Options) { c.Plugins.Enabled = false })
 
-		Expect(mgr.LoadPlugins(GinkgoT().Context(), []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
+		Expect(mgr.LoadPlugins(ctx, []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 
 		Expect(mgr.PluginNames(string(CapabilityMetadataAgent))).To(BeEmpty())
 	})

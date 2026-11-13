@@ -8,8 +8,8 @@ import {
   useUnselectAll,
 } from 'react-admin'
 import { useSelector } from 'react-redux'
-import SyncIcon from '@material-ui/icons/Sync'
-import CachedIcon from '@material-ui/icons/Cached'
+import { GiMagnifyingGlass } from 'react-icons/gi'
+import { VscSync } from 'react-icons/vsc'
 import subsonic from '../subsonic'
 
 const LibraryScanButton = ({ fullScan, selectedIds, className }) => {
@@ -54,7 +54,7 @@ const LibraryScanButton = ({ fullScan, selectedIds, className }) => {
     ? translate('resources.library.actions.fullScan')
     : translate('resources.library.actions.quickScan')
 
-  const icon = fullScan ? <CachedIcon /> : <SyncIcon />
+  const icon = fullScan ? <GiMagnifyingGlass /> : <VscSync />
 
   return (
     <Button

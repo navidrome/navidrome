@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -324,6 +323,43 @@ var _ = Describe("Playlists", func() {
 		})
 	})
 
+	Describe("InsertTracks", func() {
+		var mockTracks *tests.MockPlaylistTrackRepo
+
+		BeforeEach(func() {
+			mockTracks = &tests.MockPlaylistTrackRepo{AddCount: 2}
+			mockPlsRepo.Data = map[string]*model.Playlist{
+				"pls-1": {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
+				"pls-smart": {ID: "pls-smart", Name: "Smart", OwnerID: "user-1",
+					Rules: &criteria.Criteria{Expression: criteria.Contains{"title": "test"}}},
+			}
+			mockPlsRepo.TracksRepo = mockTracks
+			ps = playlists.NewPlaylists(ds, artwork.NewUploader(ds))
+		})
+
+		It("inserts the tracks at the given position for the owner", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			count, err := ps.InsertTracks(ctx, "pls-1", []string{"song-1", "song-2"}, 3)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(count).To(Equal(2))
+			Expect(mockTracks.AddedIds).To(Equal([]string{"song-1", "song-2"}))
+			Expect(mockTracks.InsertPos).To(Equal(3))
+		})
+
+		It("denies non-owner, non-admin", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "other-user", IsAdmin: false})
+			_, err := ps.InsertTracks(ctx, "pls-1", []string{"song-1"}, 1)
+			Expect(err).To(MatchError(model.ErrNotAuthorized))
+			Expect(mockTracks.AddedIds).To(BeEmpty())
+		})
+
+		It("denies editing smart playlists", func() {
+			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
+			_, err := ps.InsertTracks(ctx, "pls-smart", []string{"song-1"}, 1)
+			Expect(err).To(MatchError(model.ErrPlaylistNotEditable))
+		})
+	})
+
 	Describe("ReorderTrack", func() {
 		var mockTracks *tests.MockPlaylistTrackRepo
 
@@ -356,9 +392,8 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
@@ -420,9 +455,8 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			// Create a real image file on disk
 			imgDir := filepath.Join(tmpDir, "artwork", "playlist")
@@ -456,15 +490,15 @@ var _ = Describe("Playlists", func() {
 
 		It("clears the resolved artwork state and re-queues after removing an upload", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "pl", ItemID: "pls-1", Hash: "oldhash", Source: "upload",
 			})).To(Succeed())
 
 			Expect(ps.RemoveImage(ctx, "pls-1")).To(Succeed())
 
-			_, err := ds.Artwork(ctx).GetItemArtwork(model.KindPlaylistArtwork, "pls-1", model.ImageTypePrimary)
+			_, err := ds.Artwork().GetItemArtwork(ctx, model.KindPlaylistArtwork, "pls-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
-			queued, _ := ds.ArtworkQueue(ctx).DequeueBatch(100)
+			queued, _ := ds.ArtworkQueue().DequeueBatch(ctx, 100)
 			Expect(queued).To(ContainElement(SatisfyAll(
 				HaveField("ItemKind", "pl"),
 				HaveField("ItemID", "pls-1"),

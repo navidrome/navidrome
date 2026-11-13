@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -14,10 +12,11 @@ import (
 )
 
 var (
-	backupCount int
-	backupDir   string
-	force       bool
-	restorePath string
+	backupCount    int
+	backupDir      string
+	force          bool
+	integrityCheck bool
+	restorePath    string
 )
 
 func init() {
@@ -31,8 +30,9 @@ func init() {
 	pruneCmd.Flags().BoolVarP(&force, "force", "f", false, "bypass warning when backup count is zero")
 	backupRoot.AddCommand(pruneCmd)
 
-	restoreCommand.Flags().StringVarP(&restorePath, "backup-file", "b", "", "path of backup database to restore")
+	restoreCommand.Flags().StringVarP(&restorePath, "backup-file", "b", "", "file name of the backup database to restore (resolved against the backup directory unless it is an absolute path)")
 	restoreCommand.Flags().BoolVarP(&force, "force", "f", false, "bypass restore warning")
+	restoreCommand.Flags().BoolVarP(&integrityCheck, "integrity-check", "i", false, "check the backup file with a full integrity check before restoring. Finds more kinds of damage, but takes longer")
 	_ = restoreCommand.MarkFlagRequired("backup-file")
 	backupRoot.AddCommand(restoreCommand)
 }
@@ -75,27 +75,15 @@ var (
 
 func runBackup(ctx context.Context) {
 	if backupDir != "" {
-		conf.Server.Backup.Path = conf.NewDir(backupDir)
+		conf.Update(func(c *conf.Options) { c.Backup.Path = conf.NewDir(backupDir) })
 	}
 
-	idx := strings.LastIndex(conf.Server.DbPath, "?")
-	var path string
-
-	if idx == -1 {
-		path = conf.Server.DbPath
-	} else {
-		path = conf.Server.DbPath[:idx]
-	}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Fatal("No existing database", "path", path)
-		return
-	}
+	requireExistingDB()
 
 	start := time.Now()
 	path, err := db.Backup(ctx)
 	if err != nil {
-		log.Fatal("Error backing up database", "backup path", conf.Server.BasePath, err)
+		log.Fatal("Error backing up database", "backupPath", conf.Server().Backup.Path, err)
 	}
 
 	elapsed := time.Since(start)
@@ -103,44 +91,26 @@ func runBackup(ctx context.Context) {
 }
 
 func runPrune(ctx context.Context) {
-	if backupDir != "" {
-		conf.Server.Backup.Path = conf.NewDir(backupDir)
-	}
-
-	if backupCount != -1 {
-		conf.Server.Backup.Count = backupCount
-	}
-
-	if conf.Server.Backup.Count == 0 && !force {
-		fmt.Println("Warning: pruning ALL backups")
-		fmt.Printf("Please enter YES (all caps) to continue: ")
-		var input string
-		_, err := fmt.Scanln(&input)
-
-		if input != "YES" || err != nil {
-			log.Warn("Prune cancelled")
-			return
+	conf.Update(func(c *conf.Options) {
+		if backupDir != "" {
+			c.Backup.Path = conf.NewDir(backupDir)
 		}
-	}
+		if backupCount != -1 {
+			c.Backup.Count = backupCount
+		}
+	})
 
-	idx := strings.LastIndex(conf.Server.DbPath, "?")
-	var path string
-
-	if idx == -1 {
-		path = conf.Server.DbPath
-	} else {
-		path = conf.Server.DbPath[:idx]
-	}
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Fatal("No existing database", "path", path)
+	if conf.Server().Backup.Count == 0 && !force && !confirmYES("Warning: pruning ALL backups") {
+		log.Warn("Prune cancelled")
 		return
 	}
+
+	requireExistingDB()
 
 	start := time.Now()
 	count, err := db.Prune(ctx)
 	if err != nil {
-		log.Fatal("Error pruning up database", "backup path", conf.Server.BasePath, err)
+		log.Fatal("Error pruning database", "backupPath", conf.Server().Backup.Path, err)
 	}
 
 	elapsed := time.Since(start)
@@ -149,36 +119,29 @@ func runPrune(ctx context.Context) {
 }
 
 func runRestore(ctx context.Context) {
-	idx := strings.LastIndex(conf.Server.DbPath, "?")
-	var path string
+	requireExistingDB()
 
-	if idx == -1 {
-		path = conf.Server.DbPath
-	} else {
-		path = conf.Server.DbPath[:idx]
+	// A relative --backup-file is resolved against Backup.Path, the same folder
+	// `backup create` writes to. Without this, the value was treated as relative
+	// to the working directory, where the file does not exist.
+	if !filepath.IsAbs(restorePath) {
+		backupPath, err := conf.Server().Backup.Path.Path()
+		if err != nil {
+			log.Fatal("Backup directory not available", "backupPath", conf.Server().Backup.Path, err)
+			return
+		}
+		restorePath = filepath.Join(backupPath, restorePath)
 	}
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Fatal("No existing database", "path", path)
+	if !force && !confirmYES("Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.") {
+		log.Warn("Restore cancelled")
 		return
 	}
 
-	if !force {
-		fmt.Println("Warning: restoring the Navidrome database should only be done offline, especially if your backup is very old.")
-		fmt.Printf("Please enter YES (all caps) to continue: ")
-		var input string
-		_, err := fmt.Scanln(&input)
-
-		if input != "YES" || err != nil {
-			log.Warn("Restore cancelled")
-			return
-		}
-	}
-
 	start := time.Now()
-	err := db.Restore(ctx, restorePath)
+	err := db.Restore(ctx, restorePath, integrityCheck)
 	if err != nil {
-		log.Fatal("Error restoring database", "backup path", conf.Server.BasePath, err)
+		log.Fatal("Error restoring database", "backupFile", restorePath, err)
 	}
 
 	elapsed := time.Since(start)

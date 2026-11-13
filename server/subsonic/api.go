@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/core"
@@ -88,7 +87,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	if conf.Server.Prometheus.Enabled {
+	if conf.Server().Prometheus.Enabled {
 		r.Use(recordStats(api.metrics))
 	}
 
@@ -108,6 +107,7 @@ func (api *Router) routes() http.Handler {
 			r.Use(getPlayer(api.players))
 			h(r, "ping", api.Ping)
 			h(r, "getLicense", api.GetLicense)
+			h(r, "tokenInfo", api.TokenInfo)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -191,8 +191,8 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
-			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-				conf.Server.DevArtworkThrottleBacklogTimeout))
+			r.Use(server.ThrottleBacklog(conf.Server().DevArtworkMaxRequests, conf.Server().DevArtworkThrottleBacklogLimit,
+				conf.Server().DevArtworkThrottleBacklogTimeout))
 			hr(r, "getCoverArt", api.GetCoverArt)
 		})
 		r.Group(func(r chi.Router) {
@@ -205,7 +205,7 @@ func (api *Router) routes() http.Handler {
 				h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 			})
 		})
-		if conf.Server.EnableSharing {
+		if conf.Server().EnableSharing {
 			r.Group(func(r chi.Router) {
 				r.Use(getPlayer(api.players))
 				h(r, "getShares", api.GetShares)
@@ -217,7 +217,7 @@ func (api *Router) routes() http.Handler {
 			h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 		}
 
-		if conf.Server.Jukebox.Enabled {
+		if conf.Server().Jukebox.Enabled {
 			r.Group(func(r chi.Router) {
 				r.Use(getPlayer(api.players))
 				h(r, "jukeboxControl", api.JukeboxControl)
@@ -302,10 +302,9 @@ func mapToSubsonicError(err error) subError {
 		err = newError(responses.ErrorMissingParameter, err.Error())
 	case errors.Is(err, req.ErrInvalidParam):
 		err = newError(responses.ErrorGeneric, err.Error())
-	case errors.Is(err, model.ErrNotFound), errors.Is(err, rest.ErrNotFound):
+	case errors.Is(err, model.ErrNotFound):
 		err = newError(responses.ErrorDataNotFound, "data not found")
-	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, rest.ErrPermissionDenied),
-		errors.Is(err, model.ErrPlaylistNotEditable): // Subsonic has no code for "read-only resource"
+	case errors.Is(err, model.ErrNotAuthorized), errors.Is(err, model.ErrPlaylistNotEditable): // Subsonic has no code for "read-only resource"
 		err = newError(responses.ErrorAuthorizationFail)
 	case errors.Is(err, stream.ErrTooManyTranscodes):
 		err = newError(responses.ErrorGeneric, "too many concurrent transcodes, please retry shortly")

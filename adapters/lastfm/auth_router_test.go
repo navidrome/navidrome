@@ -50,7 +50,7 @@ var _ = Describe("auth_router", func() {
 	})
 
 	storedSessionKey := func(userID string) string {
-		key, _ := userProps.Get(userID, sessionKeyProperty)
+		key, _ := userProps.Get(GinkgoT().Context(), userID, sessionKeyProperty)
 		return key
 	}
 

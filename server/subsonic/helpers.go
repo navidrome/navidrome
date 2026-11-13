@@ -72,7 +72,7 @@ func getUser(ctx context.Context) model.User {
 }
 
 func sortName(sortName, orderName string) string {
-	if conf.Server.PreferSortTags {
+	if conf.Server().PreferSortTags {
 		return cmp.Or(
 			sortName,
 			orderName,
@@ -86,7 +86,7 @@ func getArtistAlbumCount(a *model.Artist) int32 {
 	// where the artist is an album artist OR artist. Use the custom stat
 	// main credit for this calculation.
 	// Otherwise, return just the roles as album artist (precise)
-	if conf.Server.Subsonic.ArtistParticipations {
+	if conf.Server().Subsonic.ArtistParticipations {
 		mainCreditStats := a.Stats[model.RoleMainCredit]
 		return int32(mainCreditStats.AlbumCount)
 	} else {
@@ -114,7 +114,7 @@ func toArtist(r *http.Request, a model.Artist) responses.Artist {
 	if !a.ImageAbsent {
 		artist.ArtistImageUrl = publicurl.ImageURL(r.Context(), a.CoverArtID(), 600)
 	}
-	if conf.Server.Subsonic.EnableAverageRating {
+	if conf.Server().Subsonic.EnableAverageRating {
 		artist.AverageRating = a.AverageRating
 	}
 	if a.Starred {
@@ -134,7 +134,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 	if !a.ImageAbsent {
 		artist.ArtistImageUrl = publicurl.ImageURL(r.Context(), a.CoverArtID(), 600)
 	}
-	if conf.Server.Subsonic.EnableAverageRating {
+	if conf.Server().Subsonic.EnableAverageRating {
 		artist.AverageRating = a.AverageRating
 	}
 	if a.Starred {
@@ -146,7 +146,7 @@ func toArtistID3(r *http.Request, a model.Artist) responses.ArtistID3 {
 
 func toOSArtistID3(ctx context.Context, a model.Artist) *responses.OpenSubsonicArtistID3 {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+	if strings.Contains(conf.Server().Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	artist := responses.OpenSubsonicArtistID3{
@@ -207,7 +207,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 	child.IsDir = false
 
 	player, ok := request.PlayerFrom(ctx)
-	if ok && isClientInList(conf.Server.Subsonic.MinimalClients, player.Client) {
+	if ok && isClientInList(conf.Server().Subsonic.MinimalClients, player.Client) {
 		return child
 	}
 
@@ -239,7 +239,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 		child.Starred = mf.StarredAt
 	}
 	child.UserRating = int32(mf.Rating)
-	if conf.Server.Subsonic.EnableAverageRating {
+	if conf.Server().Subsonic.EnableAverageRating {
 		child.AverageRating = mf.AverageRating
 	}
 
@@ -255,7 +255,7 @@ func childFromMediaFile(ctx context.Context, mf model.MediaFile) responses.Child
 
 func osChildFromMediaFile(ctx context.Context, mf model.MediaFile) *responses.OpenSubsonicChild {
 	player, ok := request.PlayerFrom(ctx)
-	if ok && isClientInList(conf.Server.Subsonic.LegacyClients, player.Client) {
+	if ok && isClientInList(conf.Server().Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -345,7 +345,7 @@ func sanitizeSlashes(target string) string {
 // fallbacks for legacy rows; returns zero only when all three are unset.
 func albumCreatedAt(al model.Album) time.Time {
 	candidates := []time.Time{al.CreatedAt, al.UpdatedAt, al.ImportedAt}
-	if conf.Server.RecentlyAddedByModTime {
+	if conf.Server().RecentlyAddedByModTime {
 		candidates = []time.Time{al.UpdatedAt, al.CreatedAt, al.ImportedAt}
 	}
 	for _, t := range candidates {
@@ -360,7 +360,7 @@ func albumCreatedAt(al model.Album) time.Time {
 // mediaFileRecentlyAddedSort; BirthTime is the legacy fallback.
 func mediaFileCreatedAt(mf model.MediaFile) time.Time {
 	candidates := []time.Time{mf.CreatedAt, mf.UpdatedAt, mf.BirthTime}
-	if conf.Server.RecentlyAddedByModTime {
+	if conf.Server().RecentlyAddedByModTime {
 		candidates = []time.Time{mf.UpdatedAt, mf.CreatedAt, mf.BirthTime}
 	}
 	for _, t := range candidates {
@@ -393,7 +393,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 	}
 	child.PlayCount = al.PlayCount
 	child.UserRating = int32(al.Rating)
-	if conf.Server.Subsonic.EnableAverageRating {
+	if conf.Server().Subsonic.EnableAverageRating {
 		child.AverageRating = al.AverageRating
 	}
 	child.OpenSubsonicChild = osChildFromAlbum(ctx, al)
@@ -402,7 +402,7 @@ func childFromAlbum(ctx context.Context, al model.Album) responses.Child {
 
 func osChildFromAlbum(ctx context.Context, al model.Album) *responses.OpenSubsonicChild {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+	if strings.Contains(conf.Server().Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	child := responses.OpenSubsonicChild{}
@@ -489,7 +489,7 @@ func buildAlbumID3(ctx context.Context, album model.Album) responses.AlbumID3 {
 
 func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubsonicAlbumID3 {
 	player, _ := request.PlayerFrom(ctx)
-	if strings.Contains(conf.Server.Subsonic.LegacyClients, player.Client) {
+	if strings.Contains(conf.Server().Subsonic.LegacyClients, player.Client) {
 		return nil
 	}
 	dir := responses.OpenSubsonicAlbumID3{}
@@ -497,7 +497,7 @@ func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubs
 		dir.Played = album.PlayDate
 	}
 	dir.UserRating = int32(album.Rating)
-	if conf.Server.Subsonic.EnableAverageRating {
+	if conf.Server().Subsonic.EnableAverageRating {
 		dir.AverageRating = album.AverageRating
 	}
 	dir.RecordLabels = slice.Map(album.Tags.Values(model.TagRecordLabel), func(s string) responses.RecordLabel {
@@ -515,9 +515,7 @@ func buildOSAlbumID3(ctx context.Context, album model.Album) *responses.OpenSubs
 	dir.IsCompilation = album.Compilation
 	dir.DiscTitles = buildDiscSubtitles(album)
 	dir.ExplicitStatus = mapExplicitStatus(album.ExplicitStatus)
-	if len(album.Tags.Values(model.TagAlbumVersion)) > 0 {
-		dir.Version = album.Tags.Values(model.TagAlbumVersion)[0]
-	}
+	dir.Version = album.Tags.First(model.TagAlbumVersion)
 
 	return &dir
 }

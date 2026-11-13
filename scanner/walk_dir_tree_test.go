@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -28,7 +29,6 @@ var _ = Describe("walk_dir_tree", func() {
 
 		Context("full library", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				ctx = GinkgoT().Context()
 				fsys = &mockMusicFS{
 					FS: fstest.MapFS{
@@ -80,7 +80,7 @@ var _ = Describe("walk_dir_tree", func() {
 
 			DescribeTable("symlink handling",
 				func(followSymlinks bool, expectedFolderCount int) {
-					conf.Server.Scanner.FollowSymlinks = followSymlinks
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = followSymlinks })
 					folders := getFolders()
 
 					Expect(folders).To(HaveLen(expectedFolderCount + 2)) // +2 for `.` and `root`
@@ -128,8 +128,10 @@ var _ = Describe("walk_dir_tree", func() {
 
 			DescribeTable("dot-prefixed folders with IgnoreDotFolders disabled",
 				func(followSymlinks bool) {
-					conf.Server.Scanner.FollowSymlinks = followSymlinks
-					conf.Server.Scanner.IgnoreDotFolders = false
+					conf.Update(func(c *conf.Options) {
+						c.Scanner.FollowSymlinks = followSymlinks
+						c.Scanner.IgnoreDotFolders = false
+					})
 					folders := getFolders()
 
 					// Dot-prefixed album folders are now traversed and indexed
@@ -152,7 +154,6 @@ var _ = Describe("walk_dir_tree", func() {
 
 		Context("with target folders", func() {
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				ctx = GinkgoT().Context()
 				fsys = &mockMusicFS{
 					FS: fstest.MapFS{
@@ -260,6 +261,44 @@ var _ = Describe("walk_dir_tree", func() {
 				// Folders not in targets should remain in lastUpdates
 				Expect(job.lastUpdates).To(HaveKey(model.FolderID(job.lib, "OtherArtist/Album3")))
 			})
+
+			// #6292: a watcher event for a new folder symlink makes the link itself a scan target
+			Context("symlinked target folders (production local storage FS)", func() {
+				BeforeEach(func() {
+					libRoot := GinkgoT().TempDir()
+					Expect(os.MkdirAll(filepath.Join(libRoot, "Mozart", "Album1"), 0755)).To(Succeed())
+					Expect(os.WriteFile(filepath.Join(libRoot, "Mozart", "Album1", "track.mp3"), []byte("AUDIO"), 0600)).To(Succeed())
+					Expect(os.Symlink("Mozart", filepath.Join(libRoot, "Wolfgang Amadeus Mozart"))).To(Succeed())
+					job = &scanJob{fs: newLocalMusicFS(libRoot), lib: model.Library{Path: libRoot}}
+				})
+
+				walkTargets := func(targets ...string) map[string]*folderEntry {
+					results, err := walkDirTree(ctx, job, targets...)
+					Expect(err).ToNot(HaveOccurred())
+					folders := map[string]*folderEntry{}
+					for folder := range results {
+						folders[folder.path] = folder
+					}
+					return folders
+				}
+
+				DescribeTable("with FollowSymlinks disabled",
+					func(target string, expected ...string) {
+						conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = false })
+						Expect(slices.Collect(maps.Keys(walkTargets(target)))).To(ConsistOf(expected))
+					},
+					Entry("skips a target that is a symlink", "Wolfgang Amadeus Mozart"),
+					Entry("skips a target under a symlinked folder", "Wolfgang Amadeus Mozart/Album1"),
+					Entry("walks a regular target", "Mozart", "Mozart", "Mozart/Album1"),
+				)
+
+				It("walks a symlinked target when FollowSymlinks is enabled", func() {
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = true })
+					folders := walkTargets("Wolfgang Amadeus Mozart")
+					Expect(folders).To(HaveKey("Wolfgang Amadeus Mozart/Album1"))
+					Expect(folders["Wolfgang Amadeus Mozart/Album1"].audioFiles).To(HaveKey("track.mp3"))
+				})
+			})
 		})
 	})
 
@@ -269,14 +308,11 @@ var _ = Describe("walk_dir_tree", func() {
 		baseDir := filepath.Join("tests", "fixtures")
 
 		Describe("isDirOrSymlinkToDir", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			Context("with symlinks enabled", func() {
 				BeforeEach(func() {
 					tests.SkipOnWindows("symlink semantics")
-					conf.Server.Scanner.FollowSymlinks = true
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = true })
 				})
 
 				DescribeTable("returns expected result",
@@ -293,7 +329,7 @@ var _ = Describe("walk_dir_tree", func() {
 
 			Context("with symlinks disabled", func() {
 				BeforeEach(func() {
-					conf.Server.Scanner.FollowSymlinks = false
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = false })
 				})
 
 				DescribeTable("returns expected result",
@@ -312,7 +348,6 @@ var _ = Describe("walk_dir_tree", func() {
 		Describe("resolveEntryName", func() {
 			var fsys fs.FS
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
 				fsys = fstest.MapFS{
 					"dir/real.mp3":   {Data: []byte("AUDIO")},
 					"dir/mid.mp3":    {Mode: fs.ModeSymlink, Data: []byte("real.mp3")},
@@ -338,7 +373,7 @@ var _ = Describe("walk_dir_tree", func() {
 			}
 
 			Context("with symlinks enabled", func() {
-				BeforeEach(func() { conf.Server.Scanner.FollowSymlinks = true })
+				BeforeEach(func() { conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = true }) })
 
 				It("returns the entry name for a plain file", func() {
 					name, ok := resolve("real.mp3")
@@ -367,7 +402,7 @@ var _ = Describe("walk_dir_tree", func() {
 			})
 
 			Context("with symlinks disabled", func() {
-				BeforeEach(func() { conf.Server.Scanner.FollowSymlinks = false })
+				BeforeEach(func() { conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = false }) })
 
 				It("returns the entry name for a plain file", func() {
 					name, ok := resolve("real.mp3")
@@ -384,7 +419,6 @@ var _ = Describe("walk_dir_tree", func() {
 		Describe("symlink chain (real fs)", func() {
 			BeforeEach(func() {
 				tests.SkipOnWindows("symlink semantics")
-				DeferCleanup(configtest.SetupConfig())
 			})
 
 			classify := func(fsys fs.FS, dirPath, name string) (string, bool) {
@@ -403,7 +437,7 @@ var _ = Describe("walk_dir_tree", func() {
 				// tests.Init chdirs to the repo root, so the committed fixtures are at "tests/fixtures".
 				var fsys fs.FS
 				BeforeEach(func() {
-					conf.Server.Scanner.FollowSymlinks = true
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = true })
 					wd, err := os.Getwd()
 					Expect(err).ToNot(HaveOccurred())
 					fsys = os.DirFS(wd)
@@ -424,7 +458,7 @@ var _ = Describe("walk_dir_tree", func() {
 				})
 
 				It("skips the chain entirely when FollowSymlinks is disabled", func() {
-					conf.Server.Scanner.FollowSymlinks = false
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = false })
 					_, ok := classify(fsys, "tests/fixtures/symlink_chain", "level3.mp3")
 					Expect(ok).To(BeFalse())
 					_, ok = classify(fsys, "tests/fixtures/symlink_chain", "evil3.mp3")
@@ -433,14 +467,14 @@ var _ = Describe("walk_dir_tree", func() {
 			})
 
 			// Regression for #5752: the production localFS must resolve file symlinks.
-			// It wraps os.DirFS behind the fs.FS interface, so fs.ReadLink-based
-			// resolution is not available and full OS-level resolution is required.
+			// fs.ReadLink-based resolution can't follow targets outside the library
+			// root, so full OS-level resolution is required.
 			Context("production local storage FS", func() {
 				var libRoot string
 				var musicFS storage.MusicFS
 
 				BeforeEach(func() {
-					conf.Server.Scanner.FollowSymlinks = true
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = true })
 
 					// Reproduces the reported layout: a "pool" with the real files and a
 					// library containing only symlinks into the pool.
@@ -460,12 +494,7 @@ var _ = Describe("walk_dir_tree", func() {
 					Expect(os.Symlink(filepath.Join(pool, "mid.wav"), filepath.Join(libRoot, "evil.wav"))).To(Succeed())
 					Expect(os.Symlink(filepath.Join(pool, "missing.mp3"), filepath.Join(libRoot, "broken.mp3"))).To(Succeed())
 
-					u, err := storage.LocalPathToURL(libRoot)
-					Expect(err).ToNot(HaveOccurred())
-					s, err := storage.For(u.String())
-					Expect(err).ToNot(HaveOccurred())
-					musicFS, err = s.FS()
-					Expect(err).ToNot(HaveOccurred())
+					musicFS = newLocalMusicFS(libRoot)
 				})
 
 				walkRoot := func() *folderEntry {
@@ -499,7 +528,7 @@ var _ = Describe("walk_dir_tree", func() {
 				})
 
 				It("skips all file symlinks when FollowSymlinks is disabled", func() {
-					conf.Server.Scanner.FollowSymlinks = false
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = false })
 					root := walkRoot()
 					Expect(root.audioFiles).To(BeEmpty())
 				})
@@ -508,7 +537,7 @@ var _ = Describe("walk_dir_tree", func() {
 			Context("out-of-tree escape (temp dir)", func() {
 				var root string
 				BeforeEach(func() {
-					conf.Server.Scanner.FollowSymlinks = true
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = true })
 					root = GinkgoT().TempDir()
 					outside := GinkgoT().TempDir()
 					Expect(os.WriteFile(filepath.Join(outside, "passwd"), []byte("TOPSECRET"), 0600)).To(Succeed())
@@ -536,7 +565,7 @@ var _ = Describe("walk_dir_tree", func() {
 				})
 
 				It("skips all file symlinks when FollowSymlinks is disabled", func() {
-					conf.Server.Scanner.FollowSymlinks = false
+					conf.Update(func(c *conf.Options) { c.Scanner.FollowSymlinks = false })
 					fsys := os.DirFS(root)
 					entries, err := fs.ReadDir(fsys, ".")
 					Expect(err).ToNot(HaveOccurred())
@@ -564,17 +593,15 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("dir starting with ellipsis", "...unhidden_folder", false),
 				Entry("recycle bin", "$Recycle.Bin", true),
 				Entry("snapshot dir", "#snapshot", true),
+				Entry("synology metadata dir", "@eaDir", true),
 			)
 		})
 
 		Describe("isIgnoredEntry", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			DescribeTable("with IgnoreDotFolders enabled (default)",
 				func(name string, isDir, expected bool) {
-					conf.Server.Scanner.IgnoreDotFolders = true
+					conf.Update(func(c *conf.Options) { c.Scanner.IgnoreDotFolders = true })
 					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
 				},
 				Entry("normal dir", "Album", true, false),
@@ -587,7 +614,7 @@ var _ = Describe("walk_dir_tree", func() {
 
 			DescribeTable("with IgnoreDotFolders disabled",
 				func(name string, isDir, expected bool) {
-					conf.Server.Scanner.IgnoreDotFolders = false
+					conf.Update(func(c *conf.Options) { c.Scanner.IgnoreDotFolders = false })
 					Expect(isIgnoredEntry(name, isDir)).To(Equal(expected))
 				},
 				Entry("normal dir", "Album", true, false),
@@ -697,6 +724,17 @@ func getDirEntry(baseDir, name string) os.DirEntry {
 		}
 	}
 	panic(fmt.Sprintf("Could not find %s in %s", name, baseDir))
+}
+
+// newLocalMusicFS returns the production local storage MusicFS rooted at libRoot
+func newLocalMusicFS(libRoot string) storage.MusicFS {
+	u, err := storage.LocalPathToURL(libRoot)
+	Expect(err).ToNot(HaveOccurred())
+	s, err := storage.For(u.String())
+	Expect(err).ToNot(HaveOccurred())
+	musicFS, err := s.FS()
+	Expect(err).ToNot(HaveOccurred())
+	return musicFS
 }
 
 // mockMusicFS is a mock implementation of the MusicFS interface that supports symlinks

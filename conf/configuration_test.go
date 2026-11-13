@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -21,6 +22,8 @@ func TestConfiguration(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Configuration Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 var _ = Describe("Configuration", func() {
 	BeforeEach(func() {
@@ -66,13 +69,13 @@ var _ = Describe("Configuration", func() {
 	Describe("scheduled DB analysis", func() {
 		It("is enabled by default", func() {
 			conf.Load(true)
-			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeTrue())
+			Expect(conf.Server().EnableScheduledDBAnalyze).To(BeTrue())
 		})
 
 		It("can be disabled", func() {
 			viper.Set("enablescheduleddbanalyze", false)
 			conf.Load(true)
-			Expect(conf.Server.EnableScheduledDBAnalyze).To(BeFalse())
+			Expect(conf.Server().EnableScheduledDBAnalyze).To(BeFalse())
 		})
 	})
 
@@ -157,9 +160,9 @@ var _ = Describe("Configuration", func() {
 			conf.InitConfig(filename, false)
 			conf.Load(true)
 
-			Expect(conf.Server.Address).To(Equal("127.0.0.1"))
-			Expect(conf.Server.Port).To(Equal(4531))
-			Expect(conf.Server.Scanner.Schedule).To(Equal("@every 1h"))
+			Expect(conf.Server().Address).To(Equal("127.0.0.1"))
+			Expect(conf.Server().Port).To(Equal(4531))
+			Expect(conf.Server().Scanner.Schedule).To(Equal("@every 1h"))
 		})
 
 		It("exits with fatal error when both ND_ and canonical key exist", func() {
@@ -179,7 +182,7 @@ var _ = Describe("Configuration", func() {
 			conf.Load(true)
 
 			// Verify normal config loading still works
-			Expect(conf.Server.MusicFolder).To(Equal("/toml/music"))
+			Expect(conf.Server().MusicFolder).To(Equal("/toml/music"))
 		})
 	})
 
@@ -253,14 +256,14 @@ var _ = Describe("Configuration", func() {
 			conf.Load(true)
 
 			Expect(conf.UnknownConfigKeys()).To(ConsistOf("ND_TOTALLY_BOGUS_OPTION"))
-			Expect(conf.Server.Scanner.Schedule).To(Equal("@every 1h"))
+			Expect(conf.Server().Scanner.Schedule).To(Equal("@every 1h"))
 		})
 
 		It("migrates every deprecated option that has a replacement", func() {
 			conf.InitConfig(filepath.Join("testdata", "cfg_deprecated_search.toml"), false)
 			conf.Load(true)
 
-			Expect(conf.Server.Search.FullString).To(BeTrue())
+			Expect(conf.Server().Search.FullString).To(BeTrue())
 			Expect(conf.UnknownConfigKeys()).To(BeEmpty())
 		})
 
@@ -295,7 +298,7 @@ var _ = Describe("Configuration", func() {
 			})
 
 			It("keeps an explicit replacement over the deprecated value", func() {
-				Expect(conf.Server.Search.FullString).To(BeFalse())
+				Expect(conf.Server().Search.FullString).To(BeFalse())
 			})
 		})
 	})
@@ -327,6 +330,21 @@ var _ = Describe("Configuration", func() {
 			Expect(func() {
 				conf.Load(true)
 			}).To(PanicWith(ContainSubstring("Error creating log file directory")))
+		})
+
+		It("creates the log file readable only by the owner", func() {
+			if runtime.GOOS == "windows" {
+				Skip("file modes are not enforced on Windows")
+			}
+			logFile := filepath.Join(GinkgoT().TempDir(), "navidrome.log")
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("logfile", logFile)
+			DeferCleanup(log.SetOutput, os.Stderr)
+			conf.Load(true)
+
+			info, err := os.Stat(logFile)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(info.Mode().Perm()).To(Equal(os.FileMode(0600)))
 		})
 
 		It("is called when BaseURL is invalid", func() {
@@ -376,13 +394,34 @@ var _ = Describe("Configuration", func() {
 			viper.SetDefault("maximagesize", "5MB")
 			viper.SetDefault("maximageuploadsize", "50MB")
 			conf.Load(true)
-			Expect(conf.Server.MaxImageSize).To(Equal("50MB"))
+			Expect(conf.Server().MaxImageSize).To(Equal("50MB"))
 		})
 
 		It("keeps a larger MaxImageSize unchanged", func() {
 			viper.SetDefault("maximagesize", "30MB")
 			conf.Load(true)
-			Expect(conf.Server.MaxImageSize).To(Equal("30MB"))
+			Expect(conf.Server().MaxImageSize).To(Equal("30MB"))
+		})
+	})
+
+	Describe("Scanner.Extractor", func() {
+		BeforeEach(func() {
+			viper.Reset()
+			conf.SetViperDefaults()
+			viper.SetDefault("datafolder", GinkgoT().TempDir())
+			viper.SetDefault("loglevel", "error")
+			conf.ResetConf()
+		})
+
+		It("falls back to taglib for an unknown extractor", func() {
+			viper.SetDefault("scanner.extractor", "ffmpeg")
+			conf.Load(true)
+			Expect(conf.Server().Scanner.Extractor).To(Equal("taglib"))
+		})
+
+		It("keeps taglib", func() {
+			conf.Load(true)
+			Expect(conf.Server().Scanner.Extractor).To(Equal("taglib"))
 		})
 	})
 
@@ -390,7 +429,7 @@ var _ = Describe("Configuration", func() {
 		It("defaults to false", func() {
 			conf.Load(true)
 
-			Expect(conf.Server.EnforceNonRootUser).To(BeFalse())
+			Expect(conf.Server().EnforceNonRootUser).To(BeFalse())
 		})
 
 		It("allows startup for non-root users when enabled", func() {
@@ -399,7 +438,7 @@ var _ = Describe("Configuration", func() {
 
 			conf.Load(true)
 
-			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+			Expect(conf.Server().EnforceNonRootUser).To(BeTrue())
 		})
 
 		It("exits when enabled and running as root without having created a data folder", func() {
@@ -425,7 +464,7 @@ var _ = Describe("Configuration", func() {
 
 			conf.Load(true)
 
-			Expect(conf.Server.EnforceNonRootUser).To(BeTrue())
+			Expect(conf.Server().EnforceNonRootUser).To(BeTrue())
 		})
 	})
 
@@ -439,16 +478,16 @@ var _ = Describe("Configuration", func() {
 			conf.Load(true)
 
 			// Execute the format-specific assertions
-			Expect(conf.Server.MusicFolder).To(Equal(fmt.Sprintf("/%s/music", format)))
-			Expect(conf.Server.UIWelcomeMessage).To(Equal("Welcome " + format))
-			Expect(conf.Server.Tags["custom"].Aliases).To(Equal([]string{format, "test"}))
-			Expect(conf.Server.Tags["artist"].Split).To(Equal([]string{";"}))
+			Expect(conf.Server().MusicFolder).To(Equal(fmt.Sprintf("/%s/music", format)))
+			Expect(conf.Server().UIWelcomeMessage).To(Equal("Welcome " + format))
+			Expect(conf.Server().Tags["custom"].Aliases).To(Equal([]string{format, "test"}))
+			Expect(conf.Server().Tags["artist"].Split).To(Equal([]string{";"}))
 
 			// Check deprecated option mapping
-			Expect(conf.Server.ExtAuth.UserHeader).To(Equal("X-Auth-User"))
+			Expect(conf.Server().ExtAuth.UserHeader).To(Equal("X-Auth-User"))
 
 			// The config file used should be the one we created
-			Expect(conf.Server.ConfigFile).To(Equal(filename))
+			Expect(conf.Server().ConfigFile).To(Equal(filename))
 		},
 		Entry("TOML format", "toml"),
 		Entry("YAML format", "yaml"),
@@ -461,7 +500,7 @@ var _ = Describe("Configuration", func() {
 		conf.InitConfig(filename, false)
 		conf.Load(true)
 
-		server := conf.Server
+		server := conf.Server()
 		Expect(server.SessionTimeout).To(Equal(consts.DefaultSessionTimeout))
 		Expect(server.SmartPlaylistRefreshDelay).To(Equal(consts.DefaultSmartRefresh))
 		Expect(server.DefaultShareExpiration).To(Equal(consts.DefaultShareExpiration))
@@ -483,7 +522,7 @@ var _ = Describe("Configuration", func() {
 
 		configured := 1 * time.Second
 
-		server := conf.Server
+		server := conf.Server()
 		Expect(server.SessionTimeout).To(Equal(configured))
 		Expect(server.SmartPlaylistRefreshDelay).To(Equal(configured))
 		Expect(server.DefaultShareExpiration).To(Equal(configured))
@@ -501,27 +540,26 @@ var _ = Describe("Configuration", func() {
 })
 
 var _ = Describe("TLSEnabled", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("is false when neither the certificate nor the key is set", func() {
-		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+		Expect(conf.Server().TLSEnabled()).To(BeFalse())
 	})
 
 	It("is true when both the certificate and the key are set", func() {
-		conf.Server.TLSCert = "cert.pem"
-		conf.Server.TLSKey = "key.pem"
-		Expect(conf.Server.TLSEnabled()).To(BeTrue())
+		conf.Update(func(c *conf.Options) {
+			c.TLSCert = "cert.pem"
+			c.TLSKey = "key.pem"
+		})
+		Expect(conf.Server().TLSEnabled()).To(BeTrue())
 	})
 
 	It("is false when only the certificate is set", func() {
-		conf.Server.TLSCert = "cert.pem"
-		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+		conf.Update(func(c *conf.Options) { c.TLSCert = "cert.pem" })
+		Expect(conf.Server().TLSEnabled()).To(BeFalse())
 	})
 
 	It("is false when only the key is set", func() {
-		conf.Server.TLSKey = "key.pem"
-		Expect(conf.Server.TLSEnabled()).To(BeFalse())
+		conf.Update(func(c *conf.Options) { c.TLSKey = "key.pem" })
+		Expect(conf.Server().TLSEnabled()).To(BeFalse())
 	})
 })

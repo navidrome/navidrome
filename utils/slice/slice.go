@@ -33,6 +33,23 @@ func Group[T any, K comparable](s []T, keyFunc func(T) K) map[K][]T {
 	return m
 }
 
+// GroupOrdered is Group with the groups in first-seen order.
+func GroupOrdered[T any, K comparable](s []T, keyFunc func(T) K) [][]T {
+	var groups [][]T
+	index := map[K]int{}
+	for _, item := range s {
+		k := keyFunc(item)
+		i, ok := index[k]
+		if !ok {
+			i = len(groups)
+			index[k] = i
+			groups = append(groups, nil)
+		}
+		groups[i] = append(groups[i], item)
+	}
+	return groups
+}
+
 func ToMap[T any, K comparable, V any](s []T, transformFunc func(T) (K, V)) map[K]V {
 	m := make(map[K]V, len(s))
 	for _, item := range s {

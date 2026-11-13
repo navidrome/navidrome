@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/tests"
@@ -37,8 +36,7 @@ var _ = Describe("TaskQueueService", func() {
 		tmpDir, err = os.MkdirTemp("", "taskqueue-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 		manager = &Manager{
 			plugins: make(map[string]*plugin),
@@ -689,11 +687,12 @@ var _ = Describe("TaskQueueService", func() {
 			copy(times, dispatchTimes)
 			mu.Unlock()
 
-			// Consecutive dispatches should have at least ~160ms gap (80% of 200ms)
+			// Wake-up latency varies per worker, so check offsets from the first dispatch, not gaps.
 			for i := 1; i < len(times); i++ {
-				gap := times[i].Sub(times[i-1])
-				Expect(gap).To(BeNumerically(">=", 160*time.Millisecond),
-					fmt.Sprintf("gap between dispatch %d and %d was %v, expected >= 160ms", i-1, i, gap))
+				offset := times[i].Sub(times[0])
+				minOffset := time.Duration(i)*200*time.Millisecond - 50*time.Millisecond
+				Expect(offset).To(BeNumerically(">=", minOffset),
+					fmt.Sprintf("dispatch %d ran %v after the first, expected >= %v", i, offset, minOffset))
 			}
 		})
 	})
@@ -839,12 +838,14 @@ var _ = Describe("TaskQueueService Integration", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+			c.CacheFolder = conf.NewDir(filepath.Join(tmpDir, "cache"))
+			c.DataFolder = conf.NewDir(tmpDir)
+		})
 
 		// Setup mock DataStore with pre-enabled plugin
 		mockPluginRepo := tests.CreateMockPluginRepo()

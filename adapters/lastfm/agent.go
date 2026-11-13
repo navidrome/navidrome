@@ -50,14 +50,14 @@ type lastfmAgent struct {
 }
 
 func lastFMConstructor(ds model.DataStore) *lastfmAgent {
-	if !conf.Server.LastFM.Enabled || conf.Server.LastFM.ApiKey == "" || conf.Server.LastFM.Secret == "" {
+	if !conf.Server().LastFM.Enabled || conf.Server().LastFM.ApiKey == "" || conf.Server().LastFM.Secret == "" {
 		return nil
 	}
 	l := &lastfmAgent{
 		ds:          ds,
-		languages:   conf.Server.LastFM.Languages,
-		apiKey:      conf.Server.LastFM.ApiKey,
-		secret:      conf.Server.LastFM.Secret,
+		languages:   conf.Server().LastFM.Languages,
+		apiKey:      conf.Server().LastFM.ApiKey,
+		secret:      conf.Server().LastFM.Secret,
 		sessionKeys: &agents.SessionKeys{DataStore: ds, KeyName: sessionKeyProperty},
 	}
 	hc := httpclient.New(consts.DefaultHttpClientTimeOut)
@@ -241,6 +241,10 @@ func (l *lastfmAgent) GetSimilarSongsByTrack(ctx context.Context, id, name, arti
 var (
 	artistOpenGraphQuery = cascadia.MustCompile(`html > head > meta[property="og:image"]`)
 	artistIgnoredImage   = "2a96cbd8b46e442fc41c2b86b821562f" // Last.fm artist placeholder image name
+
+	// Not a RetryLaterError on purpose: parking the agent would also stall its API-backed
+	// methods, which the page block does not affect.
+	errNoArtistPage = errors.New("no artist image in Last.fm page")
 )
 
 func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string) ([]agents.ExternalImage, error) {
@@ -267,7 +271,9 @@ func (l *lastfmAgent) GetArtistImages(ctx context.Context, _, name, mbid string)
 	var res []agents.ExternalImage
 	n := cascadia.Query(node, artistOpenGraphQuery)
 	if n == nil {
-		return res, nil
+		// A real artist page always has og:image; its absence means a bot challenge or a redesign.
+		log.Warn(ctx, "Last.fm did not return a usable artist page", "name", name, "url", a.URL)
+		return nil, errNoArtistPage
 	}
 	for _, attr := range n.Attr {
 		if attr.Key != "content" {
@@ -348,7 +354,7 @@ func (l *lastfmAgent) callTrackGetSimilar(ctx context.Context, name, artist stri
 }
 
 func (l *lastfmAgent) getArtistForScrobble(track *model.MediaFile, role model.Role, displayName string) string {
-	if conf.Server.LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
+	if conf.Server().LastFM.ScrobbleFirstArtistOnly && len(track.Participants[role]) > 0 {
 		return track.Participants[role][0].Name
 	}
 	return displayName

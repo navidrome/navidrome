@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
@@ -34,7 +33,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		albumRepo := &tests.MockAlbumRepo{}
 		albumRepo.SetData(model.Albums{{ID: "34"}}) // the id the specs request, made accessible
 		radioRepo := tests.CreateMockedRadioRepo()
-		Expect(radioRepo.Put(&model.Radio{ID: "rd1", Name: "Radio"})).To(Succeed())
+		Expect(radioRepo.Put(GinkgoT().Context(), &model.Radio{ID: "rd1", Name: "Radio"})).To(Succeed())
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mockRepo,
 			MockedAlbum:     albumRepo,
@@ -43,8 +42,7 @@ var _ = Describe("MediaRetrievalController", func() {
 		artwork = &fakeArtwork{data: "image data"}
 		router = New(ds, artwork, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
 		w = httptest.NewRecorder()
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.LyricsPriority = "embedded,.lrc"
+		conf.Update(func(c *conf.Options) { c.LyricsPriority = "embedded,.lrc" })
 	})
 
 	Describe("GetCoverArt", func() {
@@ -293,8 +291,8 @@ type mockedMediaFile struct {
 	tests.MockMediaFileRepo
 }
 
-func (m *mockedMediaFile) GetAll(opts ...model.QueryOptions) (model.MediaFiles, error) {
-	data, err := m.MockMediaFileRepo.GetAll(opts...)
+func (m *mockedMediaFile) GetAll(ctx context.Context, opts ...model.QueryOptions) (model.MediaFiles, error) {
+	data, err := m.MockMediaFileRepo.GetAll(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}

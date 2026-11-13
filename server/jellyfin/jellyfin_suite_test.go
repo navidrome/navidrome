@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model/id"
 	"github.com/navidrome/navidrome/tests"
@@ -17,6 +18,8 @@ func TestJellyfinApi(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Jellyfin API Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // testID maps a readable label to a deterministic canonical id, so fixtures exercise the same
 // id shape production uses.

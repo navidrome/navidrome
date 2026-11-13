@@ -51,7 +51,7 @@ var _ = Describe("Sanitize Strings", func() {
 
 	Describe("SanitizeFieldForSorting", func() {
 		BeforeEach(func() {
-			conf.Server.IgnoredArticles = "The O"
+			conf.Update(func(c *conf.Options) { c.IgnoredArticles = "The O" })
 		})
 		It("sanitize accents", func() {
 			Expect(str.SanitizeFieldForSorting("Céu")).To(Equal("ceu"))
@@ -95,7 +95,7 @@ var _ = Describe("Sanitize Strings", func() {
 
 	Describe("SanitizeFieldForSortingNoArticle", func() {
 		BeforeEach(func() {
-			conf.Server.IgnoredArticles = "The O"
+			conf.Update(func(c *conf.Options) { c.IgnoredArticles = "The O" })
 		})
 		It("sanitize accents", func() {
 			Expect(str.SanitizeFieldForSortingNoArticle("Céu")).To(Equal("ceu"))
@@ -111,7 +111,7 @@ var _ = Describe("Sanitize Strings", func() {
 	Describe("RemoveArticle", func() {
 		Context("Empty articles list", func() {
 			BeforeEach(func() {
-				conf.Server.IgnoredArticles = ""
+				conf.Update(func(c *conf.Options) { c.IgnoredArticles = "" })
 			})
 			It("returns empty if string is empty", func() {
 				Expect(str.RemoveArticle("")).To(BeEmpty())
@@ -122,7 +122,7 @@ var _ = Describe("Sanitize Strings", func() {
 		})
 		Context("Default articles", func() {
 			BeforeEach(func() {
-				conf.Server.IgnoredArticles = "The El La Los Las Le Les Os As O A"
+				conf.Update(func(c *conf.Options) { c.IgnoredArticles = "The El La Los Las Le Les Os As O A" })
 			})
 			It("returns empty if string is empty", func() {
 				Expect(str.RemoveArticle("")).To(BeEmpty())
