@@ -280,7 +280,7 @@ func (r *userRepository) Update(ctx context.Context, id string, entity model.Use
 		return rest.ErrPermissionDenied
 	}
 	if !usr.IsAdmin {
-		if !conf.Server.EnableUserEditing {
+		if !conf.Server().EnableUserEditing {
 			return rest.ErrPermissionDenied
 		}
 		u.IsAdmin = false
@@ -393,11 +393,11 @@ func keyTo32Bytes(input string) []byte {
 
 func (r *userRepository) initPasswordEncryptionKey(ctx context.Context) error {
 	encKey = keyTo32Bytes(consts.DefaultEncryptionKey)
-	if conf.Server.PasswordEncryptionKey == "" {
+	if conf.Server().PasswordEncryptionKey == "" {
 		return nil
 	}
 
-	key := keyTo32Bytes(conf.Server.PasswordEncryptionKey)
+	key := keyTo32Bytes(conf.Server().PasswordEncryptionKey)
 	keySum := fmt.Sprintf("%x", sha256.Sum256(key))
 
 	props := NewPropertyRepository(r.db)

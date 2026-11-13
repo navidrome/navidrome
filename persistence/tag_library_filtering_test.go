@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/deluan/rest"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -44,7 +43,6 @@ var _ = Describe("Tag Library Filtering", func() {
 	}
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		// Generate unique path suffix to avoid conflicts with other tests
 		uniqueSuffix := time.Now().Format("20060102150405.000")

@@ -28,10 +28,10 @@ type localStorage struct {
 }
 
 func newLocalStorage(u url.URL) storage.Storage {
-	newExtractor, ok := extractors[conf.Server.Scanner.Extractor]
+	newExtractor, ok := extractors[conf.Server().Scanner.Extractor]
 	if !ok || newExtractor == nil {
-		if conf.Server.Scanner.Extractor != consts.DefaultScannerExtractor {
-			log.Warn("Extractor not found, using default", "extractor", conf.Server.Scanner.Extractor, "default", consts.DefaultScannerExtractor)
+		if conf.Server().Scanner.Extractor != consts.DefaultScannerExtractor {
+			log.Warn("Extractor not found, using default", "extractor", conf.Server().Scanner.Extractor, "default", consts.DefaultScannerExtractor)
 		}
 		newExtractor = extractors[consts.DefaultScannerExtractor]
 		if newExtractor == nil {
@@ -74,6 +74,17 @@ func (lfs *localFS) ResolveSymlink(name string) (string, error) {
 		return "", &fs.PathError{Op: "resolvesymlink", Path: name, Err: fs.ErrInvalid}
 	}
 	return filepath.EvalSymlinks(filepath.Join(lfs.root, filepath.FromSlash(name)))
+}
+
+// ReadLink and Lstat implement fs.ReadLinkFS, so callers can detect symlinks without following them.
+var _ fs.ReadLinkFS = (*localFS)(nil)
+
+func (lfs *localFS) ReadLink(name string) (string, error) {
+	return fs.ReadLink(lfs.FS, name)
+}
+
+func (lfs *localFS) Lstat(name string) (fs.FileInfo, error) {
+	return fs.Lstat(lfs.FS, name)
 }
 
 func (lfs *localFS) ReadTags(path ...string) (map[string]metadata.Info, error) {

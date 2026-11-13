@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"math/rand/v2"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -83,9 +84,9 @@ func NewWorker(ds model.DataStore, store *ImageStore, ag *agents.Agents, ffmpeg 
 // rate-limit permit, so a sleeping lookup would crowd out a cover sitting on disk.
 func newDrainPools() []*drainPool {
 	budget := conf.MaxOpenConns() // floored at 4, so both remainders below stay positive
-	local := min(max(1, conf.Server.DevArtworkWorkerConcurrency), budget-1)
+	local := min(max(1, conf.Server().DevArtworkWorkerConcurrency), budget-1)
 	// More external slots than the rate allows would only sleep in the limiter.
-	external := min(max(2, 2*conf.Server.DevArtworkExternalMaxRPS), budget-local)
+	external := min(max(2, 2*conf.Server().DevArtworkExternalMaxRPS), budget-local)
 	return []*drainPool{
 		{name: "local", kinds: localDrainKinds, concurrency: local},
 		{name: "external", kinds: externalDrainKinds, concurrency: external},
@@ -280,7 +281,7 @@ func (w *Worker) acquireWithTimeout(ctx context.Context, item model.ArtworkQueue
 		// The deadline stops work that honors ctx; the select below covers work that doesn't.
 		actx, cancel := context.WithTimeout(ctx, itemTimeout)
 		defer cancel()
-		out, got, retryIn := w.proc.acquire(actx, item)
+		out, got, retryIn := w.safeAcquire(actx, item)
 		// Cleared before the send, so the next drain never sees a finished item as busy.
 		w.busy.Delete(key)
 		done <- result{out, got, retryIn}
@@ -342,6 +343,20 @@ func (w *Worker) settle(ctx context.Context, item model.ArtworkQueueItem, out ou
 	}
 }
 
+// safeAcquire turns a panic into a failed attempt: the drain runs on a bare goroutine, so an
+// unrecovered panic would crash the server, and the still-queued row would crash it again on restart.
+func (w *Worker) safeAcquire(ctx context.Context, item model.ArtworkQueueItem) (out outcome, got *acquired, retryIn time.Duration) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Error(ctx, "Artwork: Panic while processing item", "kind", item.ItemKind, "id", item.ItemID,
+				"imageType", item.ImageType, "attempts", item.Attempts, "panic", r, "stack", string(debug.Stack()))
+			traceStage(ctx, "panic", fmt.Errorf("%v", r))
+			out, got, retryIn = outcomeFailed, nil, 0
+		}
+	}()
+	return w.proc.acquire(ctx, item)
+}
+
 // recordGiveUp keeps the last failure on the state row after the queue row is deleted. An item
 // that never resolved has no row to update, and creating one would settle it absent.
 func (w *Worker) recordGiveUp(ctx context.Context, item model.ArtworkQueueItem, trace string) {
@@ -366,7 +381,7 @@ func (w *Worker) hasResolvedArtwork(ctx context.Context, item model.ArtworkQueue
 // precache warms the resize cache at the UI cover size from the bytes just acquired, so the
 // first UI request hits without re-reading the rows or the file.
 func (w *Worker) precache(ctx context.Context, got *acquired) {
-	if !conf.Server.EnableArtworkPrecache || w.cache == nil || w.cache.Disabled(ctx) {
+	if !conf.Server().EnableArtworkPrecache || w.cache == nil || w.cache.Disabled(ctx) {
 		return
 	}
 	precacheStart := time.Now()
@@ -374,7 +389,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	// warms a key nothing reads.
 	item := &resizedItem{
 		hash:   got.ia.Hash,
-		size:   conf.Server.UICoverArtSize,
+		size:   conf.Server().UICoverArtSize,
 		square: true,
 		ffmpeg: w.ffmpeg,
 		open:   func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(got.data)), nil },
@@ -387,7 +402,7 @@ func (w *Worker) precache(ctx context.Context, got *acquired) {
 	_, _ = io.Copy(io.Discard, stream)
 	_ = stream.Close()
 	log.Trace(ctx, "Artwork: Precached UI size", "kind", got.ia.ItemKind, "id", got.ia.ItemID,
-		"size", conf.Server.UICoverArtSize, "elapsed", time.Since(precacheStart))
+		"size", conf.Server().UICoverArtSize, "elapsed", time.Since(precacheStart))
 }
 
 // backoffFor returns min(5s×4^n, giveUpAfter) scaled by (1+jitter), with jitter in [-0.4, 0.4].

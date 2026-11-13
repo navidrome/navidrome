@@ -75,11 +75,11 @@ func NewPlaylists(ds model.DataStore, imgUpload ImageUploadService) Playlists {
 }
 
 func InPath(folder model.Folder) bool {
-	if conf.Server.PlaylistsPath == "" {
+	if conf.Server().PlaylistsPath == "" {
 		return true
 	}
 	rel, _ := utils.RelPath(folder.LibraryPath, folder.AbsolutePath())
-	for path := range strings.SplitSeq(conf.Server.PlaylistsPath, string(filepath.ListSeparator)) {
+	for path := range strings.SplitSeq(conf.Server().PlaylistsPath, string(filepath.ListSeparator)) {
 		if match, _ := doublestar.Match(path, rel); match {
 			return true
 		}

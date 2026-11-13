@@ -3,8 +3,10 @@ package public
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"time"
 
 	"github.com/go-chi/jwtauth/v5"
@@ -17,13 +19,17 @@ import (
 )
 
 type mockStreamer struct {
-	req    stream.Request
-	called bool
+	req       stream.Request
+	called    bool
+	newStream func(*model.MediaFile) *stream.Stream
 }
 
-func (m *mockStreamer) NewStream(_ context.Context, _ *model.MediaFile, r stream.Request) (*stream.Stream, error) {
+func (m *mockStreamer) NewStream(_ context.Context, mf *model.MediaFile, r stream.Request) (*stream.Stream, error) {
 	m.called = true
 	m.req = r
+	if m.newStream != nil {
+		return m.newStream(mf), nil
+	}
 	return nil, errors.New("mock: not implemented")
 }
 
@@ -116,11 +122,11 @@ var _ = Describe("handleStream", func() {
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
 		auth.PublicTokenAuth = jwtauth.New("HS256", []byte("test-secret"), nil)
-		ds = &tests.MockDataStore{}
+		ds = &tests.MockDataStore{MockedTranscoding: &tests.MockTranscodingRepo{}}
 		shareRepo = &tests.MockShareRepo{}
 		ds.MockedShare = shareRepo
 		streamer = &mockStreamer{}
-		pub = &Router{ds: ds, streamer: streamer}
+		pub = &Router{ds: ds, streamer: streamer, decider: stream.NewTranscodeDecider(ds, tests.NewMockFFmpeg(""))}
 	})
 
 	makeRequest := func(token string) *httptest.ResponseRecorder {
@@ -152,8 +158,17 @@ var _ = Describe("handleStream", func() {
 		makeRequest(token)
 
 		Expect(streamer.called).To(BeTrue())
-		Expect(streamer.req.Format).To(Equal("mp3"))
-		Expect(streamer.req.BitRate).To(Equal(192))
+	})
+
+	It("resolves the full stream request like the Subsonic endpoint, so transcodes share the cache", func() {
+		mf := model.MediaFile{ID: "mf-123", Suffix: "flac", BitRate: 1500, SampleRate: 44100, BitDepth: new(24), Channels: 2}
+		shareOwnedBy(model.User{ID: "owner1", UserName: "owner1", IsAdmin: true}, mf)
+
+		claims := auth.Claims{ID: "mf-123", Format: "opus", BitRate: 128, ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		makeRequest(token)
+
+		Expect(streamer.req).To(Equal(stream.Request{Format: "opus", BitRate: 128, SampleRate: 48000, Channels: 2}))
 	})
 
 	It("returns 404 when the track is outside the share owner's libraries", func() {
@@ -200,6 +215,24 @@ var _ = Describe("handleStream", func() {
 		makeRequest(token)
 
 		Expect(streamer.called).To(BeTrue())
+	})
+
+	It("returns 200 on HEAD for a transcode that is not cached yet", func() {
+		shareOwnedBy(
+			model.User{ID: "owner1", UserName: "owner1", IsAdmin: true},
+			model.MediaFile{ID: "mf-123", Title: "Test Song"},
+		)
+		streamer.newStream = func(mf *model.MediaFile) *stream.Stream {
+			return stream.NewStream(mf, "mp3", 192, io.NopCloser(strings.NewReader("transcoded audio")))
+		}
+
+		claims := auth.Claims{ID: "mf-123", Format: "mp3", BitRate: 192, ShareID: "share123"}
+		token, _ := auth.CreateExpiringPublicToken(time.Now().Add(time.Hour), claims)
+		r := httptest.NewRequest(http.MethodHead, "/public/s/token?%3Aid="+token, nil)
+		w := httptest.NewRecorder()
+		pub.handleStream(w, r)
+
+		Expect(w.Code).To(Equal(http.StatusOK))
 	})
 
 	It("returns 400 for an expired token", func() {

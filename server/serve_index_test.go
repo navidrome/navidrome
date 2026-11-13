@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/conf/mime"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
@@ -29,7 +28,6 @@ var _ = Describe("serveIndex", func() {
 
 	BeforeEach(func() {
 		ds = &tests.MockDataStore{MockedUser: mockUser}
-		DeferCleanup(configtest.SetupConfig())
 	})
 
 	It("adds app_config to index.html", func() {
@@ -66,8 +64,8 @@ var _ = Describe("serveIndex", func() {
 	})
 
 	DescribeTable("sets configuration values",
-		func(configSetter func(), configKey string, expectedValue any) {
-			configSetter()
+		func(configSetter func(*conf.Options), configKey string, expectedValue any) {
+			conf.Update(configSetter)
 			r := httptest.NewRequest("GET", "/index.html", nil)
 			w := httptest.NewRecorder()
 
@@ -76,44 +74,48 @@ var _ = Describe("serveIndex", func() {
 			config := extractAppConfig(w.Body.String())
 			Expect(config).To(HaveKeyWithValue(configKey, expectedValue))
 		},
-		Entry("baseURL", func() { conf.Server.BasePath = "base_url_test" }, "baseURL", "base_url_test"),
-		Entry("welcomeMessage", func() { conf.Server.UIWelcomeMessage = "Hello" }, "welcomeMessage", "Hello"),
-		Entry("maxSidebarPlaylists", func() { conf.Server.MaxSidebarPlaylists = 42 }, "maxSidebarPlaylists", float64(42)),
-		Entry("enableTranscodingConfig", func() { conf.Server.EnableTranscodingConfig = true }, "enableTranscodingConfig", true),
-		Entry("enableDownloads", func() { conf.Server.EnableDownloads = true }, "enableDownloads", true),
-		Entry("enableFavourites", func() { conf.Server.EnableFavourites = true }, "enableFavourites", true),
-		Entry("enableStarRating", func() { conf.Server.EnableStarRating = true }, "enableStarRating", true),
-		Entry("defaultTheme", func() { conf.Server.DefaultTheme = "Light" }, "defaultTheme", "Light"),
-		Entry("defaultLanguage", func() { conf.Server.DefaultLanguage = "pt" }, "defaultLanguage", "pt"),
-		Entry("defaultUIVolume", func() { conf.Server.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
-		Entry("uiSearchDebounceMs", func() { conf.Server.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
-		Entry("uiCoverArtSize", func() { conf.Server.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
-		Entry("enableCoverAnimation", func() { conf.Server.EnableCoverAnimation = true }, "enableCoverAnimation", true),
-		Entry("enableNowPlaying", func() { conf.Server.EnableNowPlaying = true }, "enableNowPlaying", true),
-		Entry("gaTrackingId", func() { conf.Server.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),
-		Entry("defaultDownloadableShare", func() { conf.Server.DefaultDownloadableShare = true }, "defaultDownloadableShare", true),
-		Entry("devSidebarPlaylists", func() { conf.Server.DevSidebarPlaylists = true }, "devSidebarPlaylists", true),
-		Entry("lastFMEnabled", func() { conf.Server.LastFM.Enabled = true }, "lastFMEnabled", true),
-		Entry("devShowArtistPage", func() { conf.Server.DevShowArtistPage = true }, "devShowArtistPage", true),
-		Entry("devUIShowConfig", func() { conf.Server.DevUIShowConfig = true }, "devUIShowConfig", true),
-		Entry("listenBrainzEnabled", func() { conf.Server.ListenBrainz.Enabled = true }, "listenBrainzEnabled", true),
-		Entry("enableReplayGain", func() { conf.Server.EnableReplayGain = true }, "enableReplayGain", true),
-		Entry("enableQuickConnect", func() { conf.Server.Jellyfin.Enabled = true; conf.Server.Jellyfin.QuickConnect = true }, "enableQuickConnect", true),
-		Entry("enableQuickConnect without the Jellyfin API", func() { conf.Server.Jellyfin.Enabled = false; conf.Server.Jellyfin.QuickConnect = true }, "enableQuickConnect", false),
-		Entry("enableExternalServices", func() { conf.Server.EnableExternalServices = true }, "enableExternalServices", true),
-		Entry("devActivityPanel", func() { conf.Server.DevActivityPanel = true }, "devActivityPanel", true),
-		Entry("shareURL", func() { conf.Server.ShareURL = "https://share.example.com" }, "shareURL", "https://share.example.com"),
-		Entry("enableInspect", func() { conf.Server.Inspect.Enabled = true }, "enableInspect", true),
-		Entry("defaultDownsamplingFormat", func() { conf.Server.DefaultDownsamplingFormat = "mp3" }, "defaultDownsamplingFormat", "mp3"),
-		Entry("enableUserEditing", func() { conf.Server.EnableUserEditing = false }, "enableUserEditing", false),
-		Entry("enableSharing", func() { conf.Server.EnableSharing = true }, "enableSharing", true),
-		Entry("devNewEventStream", func() { conf.Server.DevNewEventStream = true }, "devNewEventStream", true),
-		Entry("extAuthLogoutURL", func() { conf.Server.ExtAuth.LogoutURL = "https://auth.example.com/logout" }, "extAuthLogoutURL", "https://auth.example.com/logout"),
-		Entry("playbackReportIntervalMs", func() { conf.Server.UIPlaybackReportInterval = 30 * time.Second }, "playbackReportIntervalMs", float64(30000)),
+		Entry("baseURL", func(c *conf.Options) { c.BasePath = "base_url_test" }, "baseURL", "base_url_test"),
+		Entry("welcomeMessage", func(c *conf.Options) { c.UIWelcomeMessage = "Hello" }, "welcomeMessage", "Hello"),
+		Entry("maxSidebarPlaylists", func(c *conf.Options) { c.MaxSidebarPlaylists = 42 }, "maxSidebarPlaylists", float64(42)),
+		Entry("enableTranscodingConfig", func(c *conf.Options) { c.EnableTranscodingConfig = true }, "enableTranscodingConfig", true),
+		Entry("enableDownloads", func(c *conf.Options) { c.EnableDownloads = true }, "enableDownloads", true),
+		Entry("enableFavourites", func(c *conf.Options) { c.EnableFavourites = true }, "enableFavourites", true),
+		Entry("enableStarRating", func(c *conf.Options) { c.EnableStarRating = true }, "enableStarRating", true),
+		Entry("defaultTheme", func(c *conf.Options) { c.DefaultTheme = "Light" }, "defaultTheme", "Light"),
+		Entry("defaultLanguage", func(c *conf.Options) { c.DefaultLanguage = "pt" }, "defaultLanguage", "pt"),
+		Entry("defaultUIVolume", func(c *conf.Options) { c.DefaultUIVolume = 45 }, "defaultUIVolume", float64(45)),
+		Entry("uiSearchDebounceMs", func(c *conf.Options) { c.UISearchDebounceMs = 500 }, "uiSearchDebounceMs", float64(500)),
+		Entry("uiCoverArtSize", func(c *conf.Options) { c.UICoverArtSize = 300 }, "uiCoverArtSize", float64(300)),
+		Entry("enableCoverAnimation", func(c *conf.Options) { c.EnableCoverAnimation = true }, "enableCoverAnimation", true),
+		Entry("pidAlbum", func(c *conf.Options) { c.PID.Album = "folder" }, "pidAlbum", "folder"),
+		Entry("pidTrack", func(c *conf.Options) { c.PID.Track = "title" }, "pidTrack", "title"),
+		Entry("enableNowPlaying", func(c *conf.Options) { c.EnableNowPlaying = true }, "enableNowPlaying", true),
+		Entry("gaTrackingId", func(c *conf.Options) { c.GATrackingID = "UA-12345" }, "gaTrackingId", "UA-12345"),
+		Entry("defaultDownloadableShare", func(c *conf.Options) { c.DefaultDownloadableShare = true }, "defaultDownloadableShare", true),
+		Entry("devSidebarPlaylists", func(c *conf.Options) { c.DevSidebarPlaylists = true }, "devSidebarPlaylists", true),
+		Entry("lastFMEnabled", func(c *conf.Options) { c.LastFM.Enabled = true }, "lastFMEnabled", true),
+		Entry("devShowArtistPage", func(c *conf.Options) { c.DevShowArtistPage = true }, "devShowArtistPage", true),
+		Entry("devUIShowConfig", func(c *conf.Options) { c.DevUIShowConfig = true }, "devUIShowConfig", true),
+		Entry("listenBrainzEnabled", func(c *conf.Options) { c.ListenBrainz.Enabled = true }, "listenBrainzEnabled", true),
+		Entry("enableReplayGain", func(c *conf.Options) { c.EnableReplayGain = true }, "enableReplayGain", true),
+		Entry("enableQuickConnect", func(c *conf.Options) { c.Jellyfin.Enabled = true; c.Jellyfin.QuickConnect = true }, "enableQuickConnect", true),
+		Entry("enableQuickConnect without the Jellyfin API", func(c *conf.Options) { c.Jellyfin.Enabled = false; c.Jellyfin.QuickConnect = true }, "enableQuickConnect", false),
+		Entry("enableExternalServices", func(c *conf.Options) { c.EnableExternalServices = true }, "enableExternalServices", true),
+		Entry("devActivityPanel", func(c *conf.Options) { c.DevActivityPanel = true }, "devActivityPanel", true),
+		Entry("shareURL", func(c *conf.Options) { c.ShareURL = "https://share.example.com" }, "shareURL", "https://share.example.com"),
+		Entry("enableInspect", func(c *conf.Options) { c.Inspect.Enabled = true }, "enableInspect", true),
+		Entry("defaultDownsamplingFormat", func(c *conf.Options) { c.DefaultDownsamplingFormat = "mp3" }, "defaultDownsamplingFormat", "mp3"),
+		Entry("enableUserEditing", func(c *conf.Options) { c.EnableUserEditing = false }, "enableUserEditing", false),
+		Entry("enableSharing", func(c *conf.Options) { c.EnableSharing = true }, "enableSharing", true),
+		Entry("devNewEventStream", func(c *conf.Options) { c.DevNewEventStream = true }, "devNewEventStream", true),
+		Entry("extAuthLogoutURL", func(c *conf.Options) { c.ExtAuth.LogoutURL = "https://auth.example.com/logout" }, "extAuthLogoutURL", "https://auth.example.com/logout"),
+		Entry("playbackReportIntervalMs", func(c *conf.Options) { c.UIPlaybackReportInterval = 30 * time.Second }, "playbackReportIntervalMs", float64(30000)),
 	)
 
 	It("sanitizes entity-encoded welcomeMessage as html", func() {
-		conf.Server.UIWelcomeMessage = `&lt;img src=x onerror=alert(1)&gt;&lt;b&gt;Hello&lt;/b&gt;`
+		conf.Update(func(c *conf.Options) {
+			c.UIWelcomeMessage = `&lt;img src=x onerror=alert(1)&gt;&lt;b&gt;Hello&lt;/b&gt;`
+		})
 		r := httptest.NewRequest("GET", "/index.html", nil)
 		w := httptest.NewRecorder()
 
@@ -145,11 +147,11 @@ var _ = Describe("serveIndex", func() {
 	Describe("loginBackgroundURL", func() {
 		Context("empty BaseURL", func() {
 			BeforeEach(func() {
-				conf.Server.BasePath = "/"
+				conf.Update(func(c *conf.Options) { c.BasePath = "/" })
 			})
 			When("it is the default URL", func() {
 				It("points to the default URL", func() {
-					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL
+					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL })
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
@@ -161,7 +163,7 @@ var _ = Describe("serveIndex", func() {
 			})
 			When("it is the default offline URL", func() {
 				It("points to the offline URL", func() {
-					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline })
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
@@ -173,7 +175,7 @@ var _ = Describe("serveIndex", func() {
 			})
 			When("it is a custom URL", func() {
 				It("points to the offline URL", func() {
-					conf.Server.UILoginBackgroundURL = "https://example.com/images/1.jpg"
+					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = "https://example.com/images/1.jpg" })
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
@@ -186,11 +188,11 @@ var _ = Describe("serveIndex", func() {
 		})
 		Context("with a BaseURL", func() {
 			BeforeEach(func() {
-				conf.Server.BasePath = "/music"
+				conf.Update(func(c *conf.Options) { c.BasePath = "/music" })
 			})
 			When("it is the default URL", func() {
 				It("points to the default URL with BaseURL prefix", func() {
-					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL
+					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURL })
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
@@ -202,7 +204,7 @@ var _ = Describe("serveIndex", func() {
 			})
 			When("it is the default offline URL", func() {
 				It("points to the offline URL", func() {
-					conf.Server.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline
+					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = consts.DefaultUILoginBackgroundURLOffline })
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 
@@ -214,7 +216,7 @@ var _ = Describe("serveIndex", func() {
 			})
 			When("it is a custom URL", func() {
 				It("points to the offline URL", func() {
-					conf.Server.UILoginBackgroundURL = "https://example.com/images/1.jpg"
+					conf.Update(func(c *conf.Options) { c.UILoginBackgroundURL = "https://example.com/images/1.jpg" })
 					r := httptest.NewRequest("GET", "/index.html", nil)
 					w := httptest.NewRecorder()
 

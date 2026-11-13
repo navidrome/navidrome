@@ -128,7 +128,7 @@ func (r *sqlRepository) setSortMappings(mappings map[string]string, tableName ..
 	if len(tableName) > 0 {
 		tn = tableName[0]
 	}
-	if conf.Server.PreferSortTags || conf.Server.EnableNaturalSorting {
+	if conf.Server().PreferSortTags || conf.Server().EnableNaturalSorting {
 		for k, v := range mappings {
 			mappings[k] = mapSortOrder(tn, v)
 		}
@@ -155,7 +155,14 @@ func (r sqlRepository) applyOptions(sq SelectBuilder, options ...model.QueryOpti
 			sq = sq.Offset(uint64(options[0].Offset))
 		}
 		if options[0].Sort != "" {
-			sq = sq.OrderBy(r.buildSortOrder(options[0].Sort, options[0].Order))
+			sort, order := options[0].Sort, options[0].Order
+			// Per-key directions are absolute, so buildSortOrder gets an ascending baseline.
+			// resetSeededRandom has already rewritten "random" to SEEDEDRAND by here.
+			if len(options[0].SortOrders) > 0 && sort != "random" && !strings.HasPrefix(sort, "SEEDEDRAND(") {
+				sort = r.sortWithKeyOrders(sort, options[0].SortOrders)
+				order = ""
+			}
+			sq = sq.OrderBy(r.buildSortOrder(sort, order))
 		}
 	}
 	return sq
@@ -194,6 +201,39 @@ func (r sqlRepository) lookupSortMapping(sort string) (mapping, snakeCased strin
 	snakeCased = toSnakeCase(sort)
 	mapping, ok = r.sortMappings[snakeCased]
 	return mapping, snakeCased, ok
+}
+
+// sortWithKeyOrders maps each logical sort key, then marks descending keys so buildSortOrder
+// keeps that direction on every column the mapping expands into.
+func (r sqlRepository) sortWithKeyOrders(sort string, orders []string) string {
+	keys := strings.FieldsFunc(sort, splitFunc(','))
+	out := make([]string, 0, len(keys))
+	for i, key := range keys {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		mapped := r.sortMapping(key)
+		if !descendingOrder(i, orders) {
+			out = append(out, mapped)
+			continue
+		}
+		for _, col := range strings.FieldsFunc(mapped, splitFunc(',')) {
+			out = append(out, strings.TrimSpace(col)+" desc")
+		}
+	}
+	return strings.Join(out, ", ")
+}
+
+func descendingOrder(i int, orders []string) bool {
+	if len(orders) == 0 {
+		return false
+	}
+	raw := orders[0]
+	if i < len(orders) {
+		raw = orders[i]
+	}
+	return raw == "desc"
 }
 
 func (r sqlRepository) buildSortOrder(sort, order string) string {
@@ -475,7 +515,7 @@ func (r sqlRepository) queryAllSlice(ctx context.Context, sq SelectBuilder, resp
 // optimizePagination uses a less inefficient pagination, by not using OFFSET.
 // See https://gist.github.com/ssokolow/262503
 func (r sqlRepository) optimizePagination(sq SelectBuilder, options model.QueryOptions) SelectBuilder {
-	if options.Offset > conf.Server.DevOffsetOptimize {
+	if options.Offset > conf.Server().DevOffsetOptimize {
 		sq = sq.RemoveOffset()
 		rowidSq := sq.RemoveColumns().Columns(r.tableName + ".rowid")
 		rowidSq = rowidSq.Limit(uint64(options.Offset))

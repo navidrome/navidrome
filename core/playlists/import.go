@@ -78,8 +78,8 @@ func (s *playlists) resolveFolder(ctx context.Context, dir string) (*model.Folde
 	if err != nil {
 		return nil, err
 	}
-	matcher := newLibraryMatcher(libs)
-	lib, ok := matcher.findLibrary(dir)
+	matcher := model.NewLibraryMatcher(libs)
+	lib, ok := matcher.FindLibrary(dir)
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", errNotInLibrary, dir)
 	}
@@ -218,7 +218,7 @@ func (s *playlists) updatePlaylist(ctx context.Context, newPls *model.Playlist, 
 		newPls.OwnerID = owner.ID
 		// For NSP files, Public may already be set from the file; for M3U, use server default
 		if !newPls.IsSmartPlaylist() {
-			newPls.Public = conf.Server.DefaultPlaylistPublicVisibility
+			newPls.Public = conf.Server().DefaultPlaylistPublicVisibility
 		}
 	}
 	return s.ds.Playlist().Put(ctx, newPls)

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -142,6 +141,18 @@ func (v *visibilityPlaylistRepo) Get(ctx context.Context, id string) (*model.Pla
 	return v.MockPlaylistRepo.Get(ctx, id)
 }
 
+type panickingAlbumRepo struct {
+	*tests.MockAlbumRepo
+	panicID string
+}
+
+func (r *panickingAlbumRepo) Get(ctx context.Context, id string) (*model.Album, error) {
+	if id == r.panicID {
+		panic("boom")
+	}
+	return r.MockAlbumRepo.Get(ctx, id)
+}
+
 func adminUserRepo() *tests.MockedUserRepo {
 	repo := tests.CreateMockUserRepo()
 	Expect(repo.Put(GinkgoT().Context(), &model.User{ID: "admin", UserName: "admin", IsAdmin: true})).To(Succeed())
@@ -167,11 +178,10 @@ var _ = Describe("Worker", func() {
 
 	BeforeEach(func() {
 		ctx = GinkgoT().Context()
-		DeferCleanup(configtest.SetupConfig())
 		var err error
 		repoRoot, err = os.Getwd()
 		Expect(err).ToNot(HaveOccurred())
-		conf.Server.CacheFolder = conf.NewDir(GinkgoT().TempDir())
+		conf.Update(func(c *conf.Options) { c.CacheFolder = conf.NewDir(GinkgoT().TempDir()) })
 
 		folderRepo = &fakeFolderRepo{}
 		libRepo = &tests.MockLibraryRepo{}
@@ -188,8 +198,10 @@ var _ = Describe("Worker", func() {
 		}
 		ds.MockedAlbum = tests.CreateMockAlbumRepo()
 		store = NewImageStore(GinkgoT().TempDir())
-		conf.Server.CoverArtPriority = "cover.jpg, embedded"
-		conf.Server.DevArtworkExternalMaxRPS = 1000 // keep the limiter out of the way of behavior tests
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "cover.jpg, embedded"
+			c.DevArtworkExternalMaxRPS = 1000
+		}) // keep the limiter out of the way of behavior tests
 		broker = &fakeEventBroker{}
 		imgCache = &recordingCache{FileCache: cache.NewFileCache("WorkerTest", "100MB", "images", 0,
 			func(ctx context.Context, arg cache.Item) (io.Reader, error) {
@@ -227,7 +239,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("processes an mf queue item, writing state and storing embedded bytes", func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: "mf1", LibraryID: 0, Path: "tests/fixtures/artist/an-album/test.mp3", HasCoverArt: true},
@@ -260,7 +272,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("reschedules a failed item via MarkFailed with a backed-off retry_at", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al4", Name: "Album"}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al4"})).To(Succeed())
@@ -278,8 +290,38 @@ var _ = Describe("Worker", func() {
 			Expect(err).To(MatchError(model.ErrNotFound), "a timeout must never settle on absent")
 		})
 
+		It("fails an item that panics, without stopping the rest of the batch", func() {
+			folderRepo.result = []model.Folder{{
+				Path:       "tests/fixtures/artist/an-album",
+				ImageFiles: []string{"cover.jpg"},
+			}}
+			albums := tests.CreateMockAlbumRepo()
+			albums.SetData(model.Albums{
+				{ID: "alboom", Name: "Album", FolderIDs: []string{"f1"}},
+				{ID: "alok", Name: "Album", FolderIDs: []string{"f1"}},
+			})
+			ds.MockedAlbum = &panickingAlbumRepo{MockAlbumRepo: albums, panicID: "alboom"}
+			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alboom"})).To(Succeed())
+			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alok"})).To(Succeed())
+
+			n, err := w.drain(ctx, 1)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(n).To(Equal(2))
+
+			it := findQueued(queueRepo, "al", "alboom")
+			Expect(it).ToNot(BeNil(), "a panicking item must be rescheduled, not dropped")
+			Expect(it.Attempts).To(Equal(1))
+			Expect(it.RetryAt).To(BeTemporally(">", time.Now()))
+			Expect(it.Trace).To(ContainSubstring("boom"))
+
+			Expect(findQueued(queueRepo, "al", "alok")).To(BeNil())
+			ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alok", model.ImageTypePrimary)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(ia.Source).To(Equal("folder"))
+		})
+
 		It("reschedules past the provider's requested delay when it exceeds the backoff", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
 			// Well above backoff(0)'s jittered ceiling, so only the hint can produce this retry_at.
 			const askedFor = 90 * time.Minute
@@ -296,7 +338,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("reschedules a found-stale item via MarkFailed while keeping its served state", func() {
-			conf.Server.CoverArtPriority = "external, cover.jpg"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",
 				ImageFiles: []string{"cover.jpg"},
@@ -352,7 +394,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("keeps a fresh re-enqueue ahead of a stale failure backoff", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al8", Name: "Album"}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			racing := &reenqueueOnDequeue{MockArtworkQueueRepo: queueRepo}
@@ -373,7 +415,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("gives up and settles absent once the retry budget is exhausted", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al9", Name: "Album"}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
@@ -392,7 +434,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("keeps already-served art when the retry budget is exhausted", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al10", Name: "Album"}})
 			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al10", ImageType: model.ImageTypePrimary,
@@ -414,7 +456,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("records on the queue row why the last attempt failed", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al11", Name: "Album"}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
@@ -435,7 +477,7 @@ var _ = Describe("Worker", func() {
 		// The give-up path settles absent before recording, so the row exists by the time the
 		// failure is written. Recording first would silently lose it for every unresolved item.
 		It("keeps the failure for an item that never resolved at all", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al13", Name: "Album"}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			w = NewWorker(ds, store, ag, ffm, broker, imgCache)
@@ -452,7 +494,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("keeps the failure on the state row after the queue row is deleted", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al12", Name: "Album"}})
 			Expect(artRepo.PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "al", ItemID: "al12", ImageType: model.ImageTypePrimary,
@@ -477,7 +519,7 @@ var _ = Describe("Worker", func() {
 		// Only a view enqueues a media file, and an absent row is exactly what stops a view from
 		// doing so: a transient read error would look permanent.
 		It("does not settle absent on exhaustion for a media file", func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			ds.MockedMediaFile = tests.CreateMockMediaFileRepo()
 			ds.MockedMediaFile.(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
 				{ID: "mfX", LibraryID: 0, Path: "tests/fixtures/artist/an-album/gone.mp3", HasCoverArt: true},
@@ -578,7 +620,7 @@ var _ = Describe("Worker", func() {
 		)
 
 		It("broadcasts a refresh when an item resolves to absent (removed cover)", func() {
-			conf.Server.CoverArtPriority = "cover.*" // local-only; no folder image → absent
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*" }) // local-only; no folder image → absent
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "al3", Name: "Artless"}})
 			folderRepo.result = nil
 			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3", Priority: model.ArtworkPriorityScan})).To(Succeed())
@@ -597,7 +639,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("does not broadcast when no item is found", func() {
-			conf.Server.CoverArtPriority = "external"
+			conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{{ID: "alx", Name: "Album"}})
 			imageAgents(&fakeImageAgent{name: "failAgent", err: errors.New("agent timed out")})
 			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alx"})).To(Succeed())
@@ -733,14 +775,14 @@ var _ = Describe("Worker", func() {
 			ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 				{ID: "alpc", Name: "Album", FolderIDs: []string{"f1"}},
 			})
-			conf.Server.UICoverArtSize = 300
+			conf.Update(func(c *conf.Options) { c.UICoverArtSize = 300 })
 			Expect(queueRepo.Enqueue(ctx, model.ArtworkQueueItem{
 				ItemKind: "al", ItemID: "alpc", Priority: model.ArtworkPriorityScan,
 			})).To(Succeed())
 		})
 
 		It("warms the resize cache at the UI cover size after a found acquisition", func() {
-			conf.Server.EnableArtworkPrecache = true
+			conf.Update(func(c *conf.Options) { c.EnableArtworkPrecache = true })
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -751,7 +793,7 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("skips warming when precache is disabled", func() {
-			conf.Server.EnableArtworkPrecache = false
+			conf.Update(func(c *conf.Options) { c.EnableArtworkPrecache = false })
 
 			n, err := w.drain(ctx, 1)
 			Expect(err).ToNot(HaveOccurred())
@@ -762,7 +804,7 @@ var _ = Describe("Worker", func() {
 
 		// It warms from the bytes acquisition already held, so no state row or store file is needed.
 		It("warms from the acquired bytes without reading them back", func() {
-			conf.Server.EnableArtworkPrecache = true
+			conf.Update(func(c *conf.Options) { c.EnableArtworkPrecache = true })
 			ia := &model.ItemArtwork{
 				ItemKind: "al", ItemID: "unpersisted", ImageType: model.ImageTypePrimary,
 				Hash: "abcdef0123456789", UpdatedAt: time.Now(),
@@ -802,8 +844,10 @@ var _ = Describe("Worker", func() {
 		// Artists resolve through a rate-limited agent that holds its slot while waiting, so one
 		// shared pool would park every album behind them.
 		It("resolves albums while artists are stuck on a slow agent", func() {
-			conf.Server.CoverArtPriority = "cover.jpg"
-			conf.Server.ArtistArtPriority = "external"
+			conf.Update(func(c *conf.Options) {
+				c.CoverArtPriority = "cover.jpg"
+				c.ArtistArtPriority = "external"
+			})
 			folderRepo.result = []model.Folder{{
 				Path:       "tests/fixtures/artist/an-album",
 				ImageFiles: []string{"cover.jpg"},
@@ -833,7 +877,7 @@ var _ = Describe("Worker", func() {
 			runCtx, cancel := context.WithCancel(ctx)
 			done := make(chan struct{})
 			go func() { defer close(done); _ = w.Run(runCtx) }()
-			// Join Run: a leaked pool goroutine would race the config snapshot Ginkgo restores.
+			// Join Run so no pool goroutine outlives the spec.
 			DeferCleanup(func() {
 				cancel()
 				close(block) // unpark the blocked lookups so the pools can unwind
@@ -958,7 +1002,6 @@ var _ = Describe("Worker", func() {
 		})
 
 		It("does not leak goroutines after Run exits", func() {
-			DeferCleanup(configtest.SetupConfig())
 
 			ignore := goleak.IgnoreCurrent()
 			DeferCleanup(func() { goleak.VerifyNone(GinkgoT(), ignore) })

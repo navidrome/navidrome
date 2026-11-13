@@ -79,8 +79,8 @@ func (api *Router) routes() http.Handler {
 	// Rate-limit the password login, mirroring the native /auth/login: it's an unauthenticated
 	// brute-force surface, so it must share the same per-client throttle when one is configured.
 	login := inner.With(server.LimitLoginBody)
-	if conf.Server.AuthRequestLimit > 0 {
-		login = login.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+	if conf.Server().AuthRequestLimit > 0 {
+		login = login.With(server.ClientIPRateLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength))
 	}
 	login.Post("/users/authenticatebyname", api.authenticateByName)
 	quickConnectLogin := login.With(requireQuickConnect)
@@ -94,8 +94,8 @@ func (api *Router) routes() http.Handler {
 	// Bound concurrency like Subsonic's getCoverArt: image decode/resize is CPU- and memory-heavy,
 	// and an unbounded burst (a client fetching artwork across a large library) can exhaust memory.
 	inner.Group(func(r chi.Router) {
-		r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-			conf.Server.DevArtworkThrottleBacklogTimeout))
+		r.Use(server.ThrottleBacklog(conf.Server().DevArtworkMaxRequests, conf.Server().DevArtworkThrottleBacklogLimit,
+			conf.Server().DevArtworkThrottleBacklogTimeout))
 		r.Get("/items/{itemId}/images/{type}", api.getItemImage)
 		r.Get("/items/{itemId}/images/{type}/{index}", api.getItemImage)
 		r.Head("/items/{itemId}/images/{type}", api.getItemImage)
@@ -116,8 +116,8 @@ func (api *Router) routes() http.Handler {
 		r.Get("/users/{userId}", api.getCurrentUser)
 		// Throttled like login so a signed-in user cannot enumerate other people's pending codes.
 		approve := r.With(requireQuickConnect)
-		if conf.Server.AuthRequestLimit > 0 {
-			approve = approve.With(server.ClientIPRateLimiter(conf.Server.AuthRequestLimit, conf.Server.AuthWindowLength))
+		if conf.Server().AuthRequestLimit > 0 {
+			approve = approve.With(server.ClientIPRateLimiter(conf.Server().AuthRequestLimit, conf.Server().AuthWindowLength))
 		}
 		approve.Post("/quickconnect/authorize", api.quickConnectAuthorize)
 
@@ -126,7 +126,7 @@ func (api *Router) routes() http.Handler {
 		// scanner, scrobbles and the UI. Cap them at half the pool (see conf.MaxOpenConns); excess
 		// requests queue rather than fail.
 		r.Group(func(r chi.Router) {
-			r.Use(throttleStreams(conf.Server.Jellyfin.MaxConcurrentStreams))
+			r.Use(throttleStreams(conf.Server().Jellyfin.MaxConcurrentStreams))
 			r.Get("/items", api.getItems)
 			r.Get("/users/{userId}/items", api.getItems)
 			r.Get("/items/latest", api.getLatest)
@@ -146,6 +146,8 @@ func (api *Router) routes() http.Handler {
 		r.Delete("/userfavoriteitems/{itemId}", api.unmarkFavorite)
 		r.Post("/users/{userId}/favoriteitems/{itemId}", api.markFavorite)
 		r.Delete("/users/{userId}/favoriteitems/{itemId}", api.unmarkFavorite)
+		r.Post("/useritems/{itemId}/rating", api.setRating)
+		r.Delete("/useritems/{itemId}/rating", api.removeRating)
 		r.Post("/users/{userId}/items/{itemId}/rating", api.setRating)
 		r.Delete("/users/{userId}/items/{itemId}/rating", api.removeRating)
 
@@ -153,6 +155,8 @@ func (api *Router) routes() http.Handler {
 		// /Users/{userId}/Items is the legacy spelling.
 		r.Get("/useritems/{itemId}/userdata", api.getUserItemData)
 		r.Get("/users/{userId}/items/{itemId}/userdata", api.getUserItemData)
+		r.Post("/useritems/{itemId}/userdata", api.updateUserItemData)
+		r.Post("/users/{userId}/items/{itemId}/userdata", api.updateUserItemData)
 
 		r.Get("/artists/{itemId}/similar", api.getSimilarArtists)
 		r.Get("/items/{itemId}/similar", api.getSimilarItems)

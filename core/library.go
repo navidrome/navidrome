@@ -2,10 +2,11 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -200,23 +202,22 @@ func (r *libraryRepositoryWrapper) Update(ctx context.Context, id string, entity
 	}
 
 	pathChanged := originalLib.Path != lib.Path
+	pidChanged := (updatesColumn(cols, "pidAlbum") && originalLib.PIDAlbum != lib.PIDAlbum) ||
+		(updatesColumn(cols, "pidTrack") && originalLib.PIDTrack != lib.PIDTrack)
 
 	err = r.LibraryRepository.Put(ctx, lib, cols...)
 	if err != nil {
 		return r.mapError(err)
 	}
 
-	// Restart watcher and trigger scan if path was updated
-	if pathChanged {
-		if r.watcher != nil {
-			if err := r.watcher.Watch(ctx, lib); err != nil {
-				log.Warn(ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
-			}
+	if pathChanged && r.watcher != nil {
+		if err := r.watcher.Watch(ctx, lib); err != nil {
+			log.Warn(ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
 		}
+	}
 
-		if r.scanner != nil {
-			go r.triggerScan(ctx, lib, "updated")
-		}
+	if (pathChanged || pidChanged) && r.scanner != nil {
+		go r.triggerScan(ctx, lib, "updated")
 	}
 
 	// Send library refresh event to all clients
@@ -325,11 +326,25 @@ func (r *libraryRepositoryWrapper) validateLibrary(ctx context.Context, library 
 		}
 	}
 
+	library.PIDAlbum = strings.TrimSpace(library.PIDAlbum)
+	library.PIDTrack = strings.TrimSpace(library.PIDTrack)
+	if err := metadata.ValidatePIDSpec(library.PIDAlbum, true); err != nil {
+		validationErrors["pidAlbum"] = err.Error()
+	}
+	if err := metadata.ValidatePIDSpec(library.PIDTrack, false); err != nil {
+		validationErrors["pidTrack"] = err.Error()
+	}
+
 	if len(validationErrors) > 0 {
 		return &rest.ValidationError{Errors: validationErrors}
 	}
 
 	return nil
+}
+
+// updatesColumn reports whether an update with these columns writes col. No columns means all of them.
+func updatesColumn(cols []string, col string) bool {
+	return len(cols) == 0 || slices.Contains(cols, col)
 }
 
 func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, library *model.Library) error {
@@ -351,25 +366,14 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 	fsys, err := fileStore.FS()
 	if err != nil {
 		log.Warn(ctx, "Error validating library.path", "path", library.Path, err)
-		return fmt.Errorf("resources.library.validation.pathInvalid")
+		return errors.New(classifyLibraryPathError(err))
 	}
 
 	// Check if root directory exists
 	info, err := fs.Stat(fsys, ".")
 	if err != nil {
-		// Parse the error message to check for "not a directory"
 		log.Warn(ctx, "Error stating library.path", "path", library.Path, err)
-		errStr := err.Error()
-		if strings.Contains(errStr, "not a directory") ||
-			strings.Contains(errStr, "The directory name is invalid.") {
-			return fmt.Errorf("resources.library.validation.pathNotDirectory")
-		} else if os.IsNotExist(err) {
-			return fmt.Errorf("resources.library.validation.pathNotFound")
-		} else if os.IsPermission(err) {
-			return fmt.Errorf("resources.library.validation.pathNotAccessible")
-		} else {
-			return fmt.Errorf("resources.library.validation.pathInvalid")
-		}
+		return errors.New(classifyLibraryPathError(err))
 	}
 
 	if !info.IsDir() {
@@ -377,6 +381,22 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, libr
 	}
 
 	return nil
+}
+
+// classifyLibraryPathError maps a path error to its i18n key. It uses errors.Is because storage FS() wraps with %w.
+// Not-a-directory is matched by text: syscall.ENOTDIR means ERROR_PATH_NOT_FOUND on Windows, and ERROR_DIRECTORY is not exported.
+func classifyLibraryPathError(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "resources.library.validation.pathNotFound"
+	case errors.Is(err, fs.ErrPermission):
+		return "resources.library.validation.pathNotAccessible"
+	case strings.Contains(err.Error(), "not a directory") ||
+		strings.Contains(err.Error(), "The directory name is invalid."):
+		return "resources.library.validation.pathNotDirectory"
+	default:
+		return "resources.library.validation.pathInvalid"
+	}
 }
 
 func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []int) error {
@@ -399,11 +419,27 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 	return nil
 }
 
+var scanWaitInterval = time.Second
+
 func (r *libraryRepositoryWrapper) triggerScan(ctx context.Context, lib *model.Library, action string) {
+	// Runs in its own goroutine and outlives the HTTP request
+	ctx = context.WithoutCancel(ctx)
+
+	// A running scan loaded the libraries before this change, and would reject a new request
+	for {
+		status, err := r.scanner.Status(ctx)
+		if err != nil || !status.Scanning {
+			break
+		}
+		time.Sleep(scanWaitInterval)
+	}
+
 	log.Info(ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
 	start := time.Now()
-	warnings, err := r.scanner.ScanAll(ctx, false) // Quick scan for new library
-	if err != nil {
+	warnings, err := r.scanner.ScanAll(ctx, false) // Quick scan: the scanner rescans libraries with a changed PID config in full
+	if errors.Is(err, model.ErrAlreadyScanning) {
+		log.Debug(ctx, "Scan already running, it covers this change", "libraryID", lib.ID, "name", lib.Name)
+	} else if err != nil {
 		log.Error(ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)
 	} else {
 		log.Info(ctx, fmt.Sprintf("Scan completed for %s library", action), "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))

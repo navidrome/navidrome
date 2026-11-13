@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -40,6 +41,8 @@ func TestArtwork(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Artwork Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // productionImageClient keeps the guarded client for the specs that assert it refuses loopback.
 var productionImageClient = remoteImageClient

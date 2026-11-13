@@ -131,6 +131,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 		"recently_played": recentlyPlayedFilter,
 		"starred":         annotationBoolFilter("starred"),
 		"has_rating":      annotationBoolFilter("rating"),
+		"played":          annotationBoolFilter("play_count"),
 		"missing":         booleanFilter,
 		"genre_id":        genreFilter(AlbumGenres),
 		"role_total_id":   allRolesFilter,
@@ -149,7 +150,7 @@ var albumFilters = sync.OnceValue(func() map[string]filterFunc {
 })
 
 func recentlyAddedSort() string {
-	if conf.Server.RecentlyAddedByModTime {
+	if conf.Server().RecentlyAddedByModTime {
 		return "album.updated_at, album.id"
 	}
 	return "album.created_at, album.id"

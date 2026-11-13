@@ -93,6 +93,8 @@ func (r *libraryRepository) Put(ctx context.Context, l *model.Library, colsToUpd
 			"path":              l.Path,
 			"remote_path":       l.RemotePath,
 			"default_new_users": l.DefaultNewUsers,
+			"pid_album":         l.PIDAlbum,
+			"pid_track":         l.PIDTrack,
 		}, colsToUpdate...)
 		cols["updated_at"] = l.UpdatedAt
 		sq := Update(r.tableName).SetMap(cols).Where(Eq{"id": l.ID})
@@ -134,15 +136,15 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 // TODO Remove this method when we have a proper UI to add libraries
 // This is a temporary method to store the music folder path from the config in the DB
 func (r *libraryRepository) StoreMusicFolder(ctx context.Context) error {
-	sq := Update(r.tableName).Set("path", conf.Server.MusicFolder).
+	sq := Update(r.tableName).Set("path", conf.Server().MusicFolder).
 		Set("updated_at", time.Now()).
 		Where(Eq{"id": model.DefaultLibraryID}).
-		Where(NotEq{"path": conf.Server.MusicFolder})
+		Where(NotEq{"path": conf.Server().MusicFolder})
 	rowsAffected, err := r.executeSQL(ctx, sq)
 	if err == nil && rowsAffected > 0 {
 		libLock.Lock()
 		defer libLock.Unlock()
-		libCache[model.DefaultLibraryID] = conf.Server.MusicFolder
+		libCache[model.DefaultLibraryID] = conf.Server().MusicFolder
 	}
 	return err
 }
@@ -171,6 +173,15 @@ func (r *libraryRepository) ScanEnd(ctx context.Context, id int) error {
 		Set("last_scan_at", time.Now()).
 		Set("full_scan_in_progress", false).
 		Set("last_scan_started_at", time.Time{}).
+		Where(Eq{"id": id})
+	_, err := r.executeSQL(ctx, sq)
+	return err
+}
+
+func (r *libraryRepository) SetScannedPID(ctx context.Context, id int, pid model.PIDConfig) error {
+	sq := Update(r.tableName).
+		Set("scanned_pid_album", pid.Album).
+		Set("scanned_pid_track", pid.Track).
 		Where(Eq{"id": id})
 	_, err := r.executeSQL(ctx, sq)
 	return err

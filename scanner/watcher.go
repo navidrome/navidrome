@@ -49,7 +49,7 @@ func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 		return &watcher{
 			ds:              ds,
 			scanner:         s,
-			triggerWait:     conf.Server.Scanner.WatcherWait,
+			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 500),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
@@ -102,7 +102,7 @@ func (w *watcher) Run(ctx context.Context) error {
 
 			go func() {
 				var err error
-				if conf.Server.DevSelectiveWatcher {
+				if conf.Server().DevSelectiveWatcher {
 					_, err = w.scanner.ScanFolders(ctx, false, targetSlice)
 				} else {
 					_, err = w.scanner.ScanAll(ctx, false)

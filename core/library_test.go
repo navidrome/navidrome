@@ -10,7 +10,6 @@ import (
 
 	"github.com/deluan/rest"
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // Register taglib extractor
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	_ "github.com/navidrome/navidrome/core/storage/local" // Register local storage
 	"github.com/navidrome/navidrome/model"
@@ -35,7 +34,6 @@ var _ = Describe("Library Service", func() {
 	var pluginManager *mockPluginUnloader
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		ds = &tests.MockDataStore{}
 		libraryRepo = &tests.MockLibraryRepo{}
@@ -322,6 +320,37 @@ var _ = Describe("Library Service", func() {
 			})
 		})
 
+		Describe("PID validation", func() {
+			pidError := func(err error, field string) string {
+				var validationErr *rest.ValidationError
+				Expect(errors.As(err, &validationErr)).To(BeTrue())
+				return validationErr.Errors[field]
+			}
+
+			It("rejects an unknown attribute in the album PID", func() {
+				_, err := repo.Save(ctx, &model.Library{Name: "Lib", Path: tempDir, PIDAlbum: "albmversion"})
+				Expect(pidError(err, "pidAlbum")).To(ContainSubstring(`unknown attribute "albmversion"`))
+			})
+
+			It("rejects albumid in the album PID", func() {
+				_, err := repo.Save(ctx, &model.Library{Name: "Lib", Path: tempDir, PIDAlbum: "albumid"})
+				Expect(pidError(err, "pidAlbum")).To(ContainSubstring("albumid"))
+			})
+
+			It("rejects an unknown attribute in the track PID", func() {
+				_, err := repo.Save(ctx, &model.Library{Name: "Lib", Path: tempDir, PIDTrack: "nosuchtag"})
+				Expect(pidError(err, "pidTrack")).To(ContainSubstring(`unknown attribute "nosuchtag"`))
+			})
+
+			It("trims spaces", func() {
+				library := &model.Library{Name: "Lib", Path: tempDir, PIDAlbum: " folder ", PIDTrack: "  "}
+				_, err := repo.Save(ctx, library)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(library.PIDAlbum).To(Equal("folder"))
+				Expect(library.PIDTrack).To(BeEmpty())
+			})
+		})
+
 		Describe("Path Validation", func() {
 			Context("Create operation", func() {
 				It("fails when path is not absolute", func() {
@@ -344,7 +373,7 @@ var _ = Describe("Library Service", func() {
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
 					Expect(errors.As(err, &validationErr)).To(BeTrue())
-					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathInvalid"))
+					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathNotFound"))
 				})
 
 				It("fails when path is a file instead of directory", func() {
@@ -424,7 +453,7 @@ var _ = Describe("Library Service", func() {
 					Expect(err).To(HaveOccurred())
 					var validationErr *rest.ValidationError
 					Expect(errors.As(err, &validationErr)).To(BeTrue())
-					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathInvalid"))
+					Expect(validationErr.Errors["path"]).To(Equal("resources.library.validation.pathNotFound"))
 				})
 
 				It("fails when updated path is a file instead of directory", func() {
@@ -677,6 +706,48 @@ var _ = Describe("Library Service", func() {
 			Consistently(func() int {
 				return scanner.GetScanAllCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
+		})
+
+		It("triggers scan when updating the library PID config", func() {
+			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir}})
+
+			library := model.Library{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
+			Expect(repo.Update(ctx, "1", library)).To(Succeed())
+
+			Eventually(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "1s", "10ms").Should(Equal(1))
+			// A quick scan: the scanner itself rescans this library in full
+			Expect(scanner.GetScanAllCalls()[0].FullScan).To(BeFalse())
+		})
+
+		It("does not trigger scan when the PID fields were not sent", func() {
+			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}})
+
+			// The REST layer decodes a missing pidAlbum as "". Only the sent fields count.
+			library := model.Library{ID: 1, Name: "Renamed", Path: tempDir}
+			Expect(repo.Update(ctx, "1", library, "name", "path")).To(Succeed())
+
+			Consistently(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "100ms", "10ms").Should(Equal(0))
+		})
+
+		It("waits for a running scan before triggering a new one", func() {
+			libraryRepo.SetData(model.Libraries{{ID: 1, Name: "Library", Path: tempDir}})
+			scanner.SetScanning(true)
+
+			library := model.Library{ID: 1, Name: "Library", Path: tempDir, PIDAlbum: "folder"}
+			Expect(repo.Update(ctx, "1", library)).To(Succeed())
+
+			Consistently(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "200ms", "20ms").Should(Equal(0))
+
+			scanner.SetScanning(false)
+			Eventually(func() int {
+				return scanner.GetScanAllCallCount()
+			}, "3s", "20ms").Should(Equal(1))
 		})
 
 		It("does not trigger scan when library creation fails", func() {

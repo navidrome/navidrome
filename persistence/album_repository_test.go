@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/id"
@@ -44,7 +43,6 @@ var _ = Describe("AlbumRepository", func() {
 		var ids []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ids = nil
 			for _, n := range []string{"foo 1", "foo 10", "foo 2", "foo 20", "foo 3"} {
 				aid := "nat-" + n
@@ -60,8 +58,10 @@ var _ = Describe("AlbumRepository", func() {
 
 		DescribeTable("sorts albums by name",
 			func(naturalSorting, preferSortTags bool, expected []string) {
-				conf.Server.EnableNaturalSorting = naturalSorting
-				conf.Server.PreferSortTags = preferSortTags
+				conf.Update(func(c *conf.Options) {
+					c.EnableNaturalSorting = naturalSorting
+					c.PreferSortTags = preferSortTags
+				})
 				albumRepo = NewAlbumRepository(GetDBXBuilder()).(*albumRepository)
 				albums, err := albumRepo.GetAll(ctx, model.QueryOptions{
 					Sort: "name", Filters: squirrel.Eq{"album.id": ids},
@@ -417,13 +417,87 @@ var _ = Describe("AlbumRepository", func() {
 				}
 			})
 		})
+
+		Describe("played", func() {
+			var playedAlbum model.Album
+
+			BeforeEach(func() {
+				playedAlbum = model.Album{ID: "played-album", Name: "Played Album", LibraryID: 1, SongCount: 1}
+				Expect(albumRepo.Put(ctx, &playedAlbum)).To(Succeed())
+				Expect(albumRepo.IncPlayCount(ctx, playedAlbum.ID, time.Now())).To(Succeed())
+			})
+
+			AfterEach(func() {
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("annotation").Where(squirrel.Eq{"item_id": playedAlbum.ID}))
+				_, _ = albumRepo.executeSQL(ctx, squirrel.Delete("album").Where(squirrel.Eq{"id": playedAlbum.ID}))
+			})
+
+			It("false includes items without annotations", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				var found bool
+				for _, a := range albums {
+					if a.ID == albumWithoutAnnotation.ID {
+						found = true
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "Album without annotation should be included in played=false filter")
+			})
+
+			It("true excludes items without annotations", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				for _, a := range albums {
+					Expect(a.ID).ToNot(Equal(albumWithoutAnnotation.ID))
+				}
+			})
+
+			It("true includes items with play count", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "true"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				var found bool
+				for _, a := range albums {
+					if a.ID == playedAlbum.ID {
+						found = true
+						Expect(a.PlayCount).To(BeNumerically(">", 0))
+						break
+					}
+				}
+				Expect(found).To(BeTrue(), "Album with play count should be included in played=true filter")
+			})
+
+			It("false excludes items with play count", func() {
+				res, err := albumRepo.ReadAll(ctx, rest.QueryOptions{
+					Filters: map[string]any{"played": "false"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				albums := res
+
+				for _, a := range albums {
+					Expect(a.ID).ToNot(Equal(playedAlbum.ID))
+				}
+			})
+		})
 	})
 
 	Describe("Album.PlayCount", func() {
 		// Implementation is in withAnnotation() method
 		DescribeTable("normalizes play count when AlbumPlayCountMode is absolute",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeAbsolute })
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())
@@ -446,7 +520,7 @@ var _ = Describe("AlbumRepository", func() {
 
 		DescribeTable("normalizes play count when AlbumPlayCountMode is normalized",
 			func(songCount, playCount, expected int) {
-				conf.Server.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized
+				conf.Update(func(c *conf.Options) { c.AlbumPlayCountMode = consts.AlbumPlayCountModeNormalized })
 
 				newID := id.NewRandom()
 				Expect(albumRepo.Put(ctx, &model.Album{LibraryID: 1, ID: newID, Name: "name", SongCount: songCount})).To(Succeed())

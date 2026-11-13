@@ -30,8 +30,22 @@ var _ = Describe("ToMediaFile", func() {
 	var toMediaFile = func(tags model.RawTags) model.MediaFile {
 		props.Tags = tags
 		md = metadata.New("filepath", props)
-		return md.ToMediaFile(1, "folderID")
+		return md.ToMediaFile(model.Library{ID: 1}, "folderID")
 	}
+
+	Describe("Persistent IDs", func() {
+		It("uses the library PID config for the album ID and for albumid in the track spec", func() {
+			props.Tags = model.RawTags{"ALBUM": {"Kind of Blue"}, "TITLE": {"So What"}}
+			md = metadata.New("Jazz/Loose/01.mp3", props)
+
+			byTags := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "album", PIDTrack: "albumid,title"}, "folderID")
+			byFolder := md.ToMediaFile(model.Library{ID: 1, PIDAlbum: "folder", PIDTrack: "albumid,title"}, "folderID")
+
+			Expect(byFolder.AlbumID).ToNot(Equal(byTags.AlbumID))
+			Expect(byFolder.AlbumID).To(Equal(md.AlbumID(byFolder, "folder")))
+			Expect(byFolder.PID).ToNot(Equal(byTags.PID))
+		})
+	})
 
 	Describe("Dates", func() {
 		It("should parse properly tagged dates ", func() {
@@ -139,6 +153,27 @@ var _ = Describe("ToMediaFile", func() {
 		})
 		It("keeps the largest 32-bit BPM value", func() {
 			Expect(toMediaFile(model.RawTags{"BPM": {"2147483647"}}).BPM).To(Equal(new(2147483647)))
+		})
+	})
+
+	Describe("Movements", func() {
+		It("splits an ID3 MVIN n/N value into movement number and total", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"Allegro"}, "movementnumber": {"1/4"}})
+			Expect(mf.Tags).To(HaveKeyWithValue(model.TagMovementNumber, []string{"1"}))
+			Expect(mf.Tags).To(HaveKeyWithValue(model.TagMovementTotal, []string{"4"}))
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "Allegro", Number: 1, Count: 4}}))
+		})
+		It("maps MP4 movement number and count", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"Andante"}, "movementnumber": {"2"}, "movementcount": {"4"}})
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "Andante", Number: 2, Count: 4}}))
+		})
+		It("prefers an explicit movement total over the n/N total", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"Allegro"}, "movement": {"2/4"}, "movementtotal": {"5"}})
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "Allegro", Number: 2, Count: 5}}))
+		})
+		It("does not add a total when only some values have one", func() {
+			mf = toMediaFile(model.RawTags{"movementname": {"I", "II"}, "movement": {"1/4", "2"}})
+			Expect(mf.Movements()).To(Equal([]model.Movement{{Name: "I", Number: 1}, {Name: "II", Number: 2}}))
 		})
 	})
 

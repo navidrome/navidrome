@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -149,7 +148,6 @@ var _ = Describe("LibraryRepository", func() {
 			libBefore, err = repo.Get(ctx, model.DefaultLibraryID)
 			Expect(err).ToNot(HaveOccurred())
 
-			DeferCleanup(configtest.SetupConfig())
 			DeferCleanup(func() {
 				_, _ = conn.NewQuery("update library set path = {:path}, updated_at = {:updated_at} where id = {:id}").
 					Bind(dbx.Params{"path": libBefore.Path, "updated_at": libBefore.UpdatedAt, "id": model.DefaultLibraryID}).
@@ -161,7 +159,7 @@ var _ = Describe("LibraryRepository", func() {
 		})
 
 		It("skips updating the default library when the configured path is unchanged", func() {
-			conf.Server.MusicFolder = libBefore.Path
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path })
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 
 			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
@@ -171,12 +169,12 @@ var _ = Describe("LibraryRepository", func() {
 		})
 
 		It("updates the default library only when the configured path changes", func() {
-			conf.Server.MusicFolder = libBefore.Path + "-updated"
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path + "-updated" })
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 
 			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(libAfter.Path).To(Equal(conf.Server.MusicFolder))
+			Expect(libAfter.Path).To(Equal(conf.Server().MusicFolder))
 			Expect(libAfter.UpdatedAt).ToNot(Equal(libBefore.UpdatedAt))
 		})
 	})
@@ -267,6 +265,38 @@ var _ = Describe("LibraryRepository", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(libAfter.LastScanAt).To(BeTemporally(">=", libBefore.LastScanStartedAt))
 			})
+		})
+	})
+
+	Describe("PID config", func() {
+		It("stores the overrides, and Put never touches the scanned specs", func() {
+			lib := &model.Library{Name: "PID Library", Path: "/music/pid", PIDAlbum: "folder", PIDTrack: "title"}
+			Expect(repo.Put(ctx, lib)).To(Succeed())
+			Expect(repo.SetScannedPID(ctx, lib.ID, model.PIDConfig{Album: "folder", Track: "title"})).To(Succeed())
+
+			// An update coming from the REST API has no scanned specs. It must not clear them
+			update := &model.Library{ID: lib.ID, Name: "PID Library", Path: "/music/pid", PIDTrack: "title"}
+			Expect(repo.Put(ctx, update)).To(Succeed())
+
+			saved, err := repo.Get(ctx, lib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.PIDAlbum).To(BeEmpty())
+			Expect(saved.PIDTrack).To(Equal("title"))
+			Expect(saved.ScannedPIDAlbum).To(Equal("folder"))
+			Expect(saved.ScannedPIDTrack).To(Equal("title"))
+		})
+
+		It("keeps the overrides when a partial update does not send them", func() {
+			lib := &model.Library{Name: "Partial", Path: "/music/partial", PIDAlbum: "folder", PIDTrack: "title"}
+			Expect(repo.Put(ctx, lib)).To(Succeed())
+
+			Expect(repo.Put(ctx, &model.Library{ID: lib.ID, Name: "Renamed"}, "name")).To(Succeed())
+
+			saved, err := repo.Get(ctx, lib.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(saved.Name).To(Equal("Renamed"))
+			Expect(saved.PIDAlbum).To(Equal("folder"))
+			Expect(saved.PIDTrack).To(Equal("title"))
 		})
 	})
 
