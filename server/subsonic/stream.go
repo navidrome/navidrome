@@ -61,7 +61,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, err
 	}
 
-	if !conf.Server.EnableDownloads {
+	if !conf.Server().EnableDownloads {
 		log.Warn(ctx, "Downloads are disabled", "user", username, "id", id)
 		return nil, newError(responses.ErrorAuthorizationFail, "downloads are disabled")
 	}
@@ -75,7 +75,7 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	format, _ := p.String("format")
 
 	if format == "" {
-		if conf.Server.AutoTranscodeDownload {
+		if conf.Server().AutoTranscodeDownload {
 			// if we are not provided a format, see if we have requested transcoding for this client
 			// This must be enabled via a config option. For the UI, we are always given an option.
 			// This will impact other clients which do not use the UI
@@ -90,6 +90,9 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		} else {
 			format = "raw"
 		}
+	} else {
+		// An explicit download format must win over the player's forced transcoding
+		ctx = request.WithTranscoding(ctx, model.Transcoding{})
 	}
 
 	setHeaders := func(name string) {

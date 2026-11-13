@@ -15,7 +15,7 @@ import (
 // sortName must match the persistence ORDER BY key (see setSortMappings): Finamp's A-Z jump
 // scans SortName client-side, and any mismatch with the server's sort order scrolls to the top.
 func sortName(sortTag, orderName, displayName string) string {
-	if conf.Server.PreferSortTags {
+	if conf.Server().PreferSortTags {
 		return cmp.Or(sortTag, orderName, displayName)
 	}
 	return cmp.Or(orderName, displayName)
@@ -257,7 +257,7 @@ func SongToBaseItem(mf model.MediaFile, fields Fields) BaseItemDto {
 }
 
 func embeddedArtPending(mf model.MediaFile) bool {
-	return mf.HasCoverArt && conf.Server.EnableMediaFileCoverArt &&
+	return mf.HasCoverArt && conf.Server().EnableMediaFileCoverArt &&
 		mf.ImageHash == "" && !mf.ItemImage.ImageAbsent
 }
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/stream"
@@ -119,9 +118,6 @@ var _ = Describe("Archiver", func() {
 		})
 
 		When("albums that share a name", func() {
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
 
 			// zipArtistEntries zips the given tracks as artist "1" and returns the entry names in zip order.
 			zipArtistEntries := func(mfs model.MediaFiles) []string {
@@ -179,7 +175,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("prefers the album version over the year when it is not part of the name", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001,
 						Tags: model.Tags{model.TagAlbumVersion: {"Original"}}},
@@ -190,7 +186,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("leaves the one album without the field unsuffixed", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
 					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005,
@@ -200,7 +196,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("skips a field that is empty on more than one album", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Greatest Hits", Year: 2001},
 					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Greatest Hits", Year: 2005},
@@ -235,7 +231,7 @@ var _ = Describe("Archiver", func() {
 			})
 
 			It("sanitizes the suffix", func() {
-				conf.Server.Subsonic.AppendAlbumVersion = false
+				conf.Update(func(c *conf.Options) { c.Subsonic.AppendAlbumVersion = false })
 				names := zipArtistEntries(model.MediaFiles{
 					{Path: "a/01.mp3", Suffix: "mp3", AlbumID: "1", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"Vinyl"}}},
 					{Path: "b/01.mp3", Suffix: "mp3", AlbumID: "2", Album: "Hits", Tags: model.Tags{model.TagAlbumVersion: {"CD/Digital"}}},

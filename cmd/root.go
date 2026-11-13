@@ -97,7 +97,7 @@ func runNavidrome(parentCtx context.Context) error {
 	g.Go(startArtworkWorker(ctx, artworkWorker))
 	g.Go(scheduleArtworkHousekeeping(ctx, artworkWorker))
 	g.Go(runInitialScan(ctx))
-	if conf.Server.Scanner.Enabled {
+	if conf.Server().Scanner.Enabled {
 		g.Go(startScanWatcher(ctx))
 		g.Go(schedulePeriodicScan(ctx))
 	} else {
@@ -128,31 +128,31 @@ func startServer(ctx context.Context) func() error {
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter(ctx))
 		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
-		if conf.Server.LastFM.Enabled {
+		if conf.Server().LastFM.Enabled {
 			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
 		}
-		if conf.Server.ListenBrainz.Enabled {
+		if conf.Server().ListenBrainz.Enabled {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
-		if conf.Server.Jellyfin.Enabled {
+		if conf.Server().Jellyfin.Enabled {
 			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
 		}
-		if conf.Server.DevAPIv1 {
+		if conf.Server().DevAPIv1 {
 			a.MountRouter("API v1", consts.URLPathAPIv1, CreateAPIv1Router(ctx))
 		}
-		if conf.Server.Prometheus.Enabled {
+		if conf.Server().Prometheus.Enabled {
 			p := CreatePrometheus()
 			// blocking call because takes <100ms but useful if fails
 			p.WriteInitialMetrics(ctx)
-			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
+			a.MountRouter("Prometheus metrics", conf.Server().Prometheus.MetricsPath, p.GetHandler())
 		}
-		if conf.Server.DevEnableProfiler {
+		if conf.Server().DevEnableProfiler {
 			a.MountRouter("Profiling", "/debug", profilerHandler())
 		}
-		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
-			a.MountRouter("Background images", conf.Server.UILoginBackgroundURL, backgrounds.NewHandler())
+		if strings.HasPrefix(conf.Server().UILoginBackgroundURL, "/") {
+			a.MountRouter("Background images", conf.Server().UILoginBackgroundURL, backgrounds.NewHandler())
 		}
-		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
+		return a.Run(ctx, conf.Server().Address, conf.Server().Port, conf.Server().TLSCert, conf.Server().TLSKey)
 	}
 }
 
@@ -160,14 +160,14 @@ func startServer(ctx context.Context) func() error {
 // name from the raw request path, so the BasePath has to come off first.
 func profilerHandler() http.Handler {
 	// A trailing or root slash would make StripPrefix drop the leading slash chi needs.
-	basePath := strings.TrimRight(conf.Server.BasePath, "/")
+	basePath := strings.TrimRight(conf.Server().BasePath, "/")
 	return http.StripPrefix(basePath, middleware.Profiler())
 }
 
 // schedulePeriodicScan schedules a periodic scan of the music library, if configured.
 func schedulePeriodicScan(ctx context.Context) func() error {
 	return func() error {
-		schedule := conf.Server.Scanner.Schedule
+		schedule := conf.Server().Scanner.Schedule
 		if schedule == "" {
 			log.Info(ctx, "Periodic scan is DISABLED")
 			return nil
@@ -222,7 +222,7 @@ func runInitialScan(ctx context.Context) func() error {
 		if err != nil {
 			return err
 		}
-		scanOnStartup := conf.Server.Scanner.Enabled && conf.Server.Scanner.ScanOnStartup
+		scanOnStartup := conf.Server().Scanner.Enabled && conf.Server().Scanner.ScanOnStartup
 		scanNeeded := scanOnStartup || inProgress || fullScanRequired == "1" || len(pidChangedLibs) > 0
 		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 		if scanNeeded {
@@ -255,7 +255,7 @@ func runInitialScan(ctx context.Context) func() error {
 
 func startScanWatcher(ctx context.Context) func() error {
 	return func() error {
-		if conf.Server.Scanner.WatcherWait == 0 {
+		if conf.Server().Scanner.WatcherWait == 0 {
 			log.Debug("Folder watcher is DISABLED")
 			return nil
 		}
@@ -270,7 +270,7 @@ func startScanWatcher(ctx context.Context) func() error {
 
 func schedulePeriodicBackup(ctx context.Context) func() error {
 	return func() error {
-		schedule := conf.Server.Backup.Schedule
+		schedule := conf.Server().Backup.Schedule
 		if schedule == "" {
 			log.Info(ctx, "Periodic backup is DISABLED")
 			return nil
@@ -305,7 +305,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 
 func scheduleDBAnalyzer(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.EnableScheduledDBAnalyze {
+		if !conf.Server().EnableScheduledDBAnalyze {
 			log.Info(ctx, "Scheduled DB analysis is DISABLED")
 			return nil
 		}
@@ -339,13 +339,13 @@ func startScheduler(ctx context.Context) func() error {
 // startInsightsCollector starts the Navidrome Insight Collector, if configured.
 func startInsightsCollector(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.EnableInsightsCollector {
+		if !conf.Server().EnableInsightsCollector {
 			log.Info(ctx, "Insight Collector is DISABLED")
 			return nil
 		}
 		log.Info(ctx, "Starting Insight Collector")
 		select {
-		case <-time.After(conf.Server.DevInsightsInitialDelay):
+		case <-time.After(conf.Server().DevInsightsInitialDelay):
 		case <-ctx.Done():
 			return nil
 		}
@@ -358,7 +358,7 @@ func startInsightsCollector(ctx context.Context) func() error {
 // startJellyfinDiscovery never returns an error: a discovery failure must not stop the server.
 func startJellyfinDiscovery(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.Jellyfin.Enabled || !conf.Server.Jellyfin.AutoDiscovery {
+		if !conf.Server().Jellyfin.Enabled || !conf.Server().Jellyfin.AutoDiscovery {
 			log.Debug("Jellyfin auto-discovery is DISABLED")
 			return nil
 		}
@@ -371,7 +371,7 @@ func startJellyfinDiscovery(ctx context.Context) func() error {
 // It is responsible for the Jukebox functionality
 func startPlaybackServer(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.Jukebox.Enabled {
+		if !conf.Server().Jukebox.Enabled {
 			log.Debug("Jukebox is DISABLED")
 			return nil
 		}
@@ -439,7 +439,7 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 func startPluginManager(ctx context.Context) func() error {
 	return func() error {
 		manager := GetPluginManager(ctx)
-		if !conf.Server.Plugins.Enabled {
+		if !conf.Server().Plugins.Enabled {
 			log.Debug("Plugin system is DISABLED")
 			return nil
 		}

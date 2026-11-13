@@ -77,7 +77,7 @@ func (a Album) CoverArtID() ArtworkID {
 }
 
 func (a Album) FullName() string {
-	if v := a.Tags.First(TagAlbumVersion); conf.Server.Subsonic.AppendAlbumVersion && v != "" {
+	if v := a.Tags.First(TagAlbumVersion); conf.Server().Subsonic.AppendAlbumVersion && v != "" {
 		return appendSuffix(a.Name, v)
 	}
 	return a.Name

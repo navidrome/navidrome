@@ -109,7 +109,7 @@ func (api *Router) postItemImage(w http.ResponseWriter, r *http.Request) {
 
 	// Honor the same artwork-upload gate and size cap as the native endpoint.
 	u, _ := request.UserFrom(ctx)
-	if !conf.Server.EnableArtworkUpload && !u.IsAdmin {
+	if !conf.Server().EnableArtworkUpload && !u.IsAdmin {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}

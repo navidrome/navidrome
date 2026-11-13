@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -106,8 +105,7 @@ var _ = Describe("Legacy Integration Search", func() {
 
 	BeforeEach(func() {
 		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Search.Backend = "legacy"
+		conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
 
 		conn := GetDBXBuilder()
 		mr = NewMediaFileRepository(conn)

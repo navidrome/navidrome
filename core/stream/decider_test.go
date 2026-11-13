@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/model"
@@ -774,6 +773,14 @@ var _ = Describe("Decider", func() {
 					[]CodecProfile{sampleRateLimit("flac", ComparisonEquals, "96000", "192000")}, 192000),
 				Entry("applies a declared limit below the cap", 352800,
 					[]CodecProfile{sampleRateLimit("flac", ComparisonLessThanEqual, "48000")}, 48000),
+				Entry("keeps the cap when the declared limit is a lower bound", 352800,
+					[]CodecProfile{sampleRateLimit("flac", ComparisonGreaterThanEqual, "44100")}, 88200),
+				Entry("keeps the cap when the declared limit excludes a rate", 352800,
+					[]CodecProfile{sampleRateLimit("flac", ComparisonNotEquals, "48000")}, 88200),
+				Entry("keeps the cap when the declared limit has no values", 352800,
+					[]CodecProfile{sampleRateLimit("flac", ComparisonLessThanEqual)}, 88200),
+				Entry("keeps the cap when the declared limit has no numeric values", 352800,
+					[]CodecProfile{sampleRateLimit("flac", ComparisonLessThanEqual, "high")}, 88200),
 				Entry("keeps the cap when the declared rate limit is for another codec", 352800,
 					[]CodecProfile{
 						sampleRateLimit("mp3", ComparisonLessThanEqual, "192000"),
@@ -784,8 +791,7 @@ var _ = Describe("Decider", func() {
 			)
 
 			It("normalizes DSD sample rate from tags when there is no probe data", func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.DevEnableMediaFileProbe = false
+				conf.Update(func(c *conf.Options) { c.DevEnableMediaFileProbe = false })
 
 				mf := &model.MediaFile{ID: "1", Suffix: "dsf", Codec: "DSD", BitRate: 5644, Channels: 2, SampleRate: 2822400, BitDepth: new(1)}
 				ci := &ClientInfo{
@@ -1295,8 +1301,7 @@ var _ = Describe("Decider", func() {
 		})
 
 		It("skips ffprobe when DevEnableMediaFileProbe is false", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DevEnableMediaFileProbe = false
+			conf.Update(func(c *conf.Options) { c.DevEnableMediaFileProbe = false })
 
 			mf := &model.MediaFile{ID: "probe-4", Suffix: "mp3"}
 			// Set a result — if ffprobe were called, ProbeData would be populated

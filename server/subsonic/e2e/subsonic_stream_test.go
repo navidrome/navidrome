@@ -115,7 +115,7 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 
 	Describe("downsampling with maxBitRate only", func() {
 		It("transcodes using default downsampling format when maxBitRate < source bitrate", func() {
-			conf.Server.DefaultDownsamplingFormat = "opus"
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 			w := doRawReq("stream", "id", flacTrackID, "maxBitRate", "192")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
@@ -123,7 +123,7 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 		})
 
 		It("streams raw when maxBitRate >= source bitrate (no downsampling needed)", func() {
-			conf.Server.DefaultDownsamplingFormat = "opus"
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 			w := doRawReq("stream", "id", mp3TrackID, "maxBitRate", "320")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(streamerSpy.LastRequest.Format).To(BeElementOf("raw", ""))
@@ -157,7 +157,7 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 		})
 
 		It("returns a Subsonic error for download endpoint", func() {
-			conf.Server.EnableDownloads = true
+			conf.Update(func(c *conf.Options) { c.EnableDownloads = true })
 			w := doRawReq("download", "id", flacTrackID, "format", "opus")
 			Expect(w.Code).To(Equal(http.StatusOK))
 
@@ -183,7 +183,7 @@ var _ = Describe("stream.view (legacy streaming)", Ordered, func() {
 		})
 
 		It("returns 200 with empty body for download endpoint", func() {
-			conf.Server.EnableDownloads = true
+			conf.Update(func(c *conf.Options) { c.EnableDownloads = true })
 			w := doRawReq("download", "id", flacTrackID, "format", "opus")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Body.Len()).To(Equal(0))

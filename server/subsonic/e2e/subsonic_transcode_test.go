@@ -159,22 +159,11 @@ var _ = Describe("Transcode Endpoints", Ordered, func() {
 			Expect(ds.Player().Put(ctx, player)).To(Succeed())
 		}
 
-		setPlayerForcedFormat := func(format string) {
-			doReq("ping")
-			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
-			Expect(err).ToNot(HaveOccurred())
-			trc, err := ds.Transcoding().FindByFormat(ctx, format)
-			Expect(err).ToNot(HaveOccurred())
-			player.TranscodingId = trc.ID
-			Expect(ds.Player().Put(ctx, player)).To(Succeed())
-		}
-
 		AfterEach(func() {
 			// Reset player MaxBitRate to 0 after each test
 			player, err := ds.Player().FindMatch(ctx, adminUser.ID, "test-client", "")
 			if err == nil {
 				player.MaxBitRate = 0
-				player.TranscodingId = ""
 				_ = ds.Player().Put(ctx, player)
 			}
 		})

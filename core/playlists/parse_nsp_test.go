@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
 	. "github.com/onsi/ginkgo/v2"
@@ -75,8 +74,7 @@ var _ = Describe("parseNSP", func() {
 	})
 
 	It("uses server default when public field is absent", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DefaultPlaylistPublicVisibility = true
+		conf.Update(func(c *conf.Options) { c.DefaultPlaylistPublicVisibility = true })
 
 		nsp := `{"all": [{"is": {"loved": true}}]}`
 		pls := &model.Playlist{}
@@ -86,8 +84,7 @@ var _ = Describe("parseNSP", func() {
 	})
 
 	It("honors explicit public: false over server default", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DefaultPlaylistPublicVisibility = true
+		conf.Update(func(c *conf.Options) { c.DefaultPlaylistPublicVisibility = true })
 
 		nsp := `{"public": false, "all": [{"is": {"loved": true}}]}`
 		pls := &model.Playlist{}
