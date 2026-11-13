@@ -44,14 +44,17 @@ func (ic *IgnoreChecker) Push(ctx context.Context, folder string) error {
 }
 
 // PushEntries is Push for a folder whose listing was already read, so it needs no fs.Stat.
-// Names match ignoring case, like fs.Stat does on macOS and Windows.
 func (ic *IgnoreChecker) PushEntries(ctx context.Context, folder string, entries []fs.DirEntry) {
-	ic.push(ic.loadPatterns(ctx, folder, func(name string) (string, bool) {
-		i := slices.IndexFunc(entries, func(e fs.DirEntry) bool { return strings.EqualFold(e.Name(), name) })
-		if i < 0 {
-			return "", false
+	ic.push(ic.loadPatterns(ctx, folder, func(name string) bool {
+		if slices.ContainsFunc(entries, func(e fs.DirEntry) bool { return e.Name() == name }) {
+			return true
 		}
-		return path.Join(folder, entries[i].Name()), true
+		// Match fs.Stat, which finds an odd-case marker only on case-insensitive filesystems
+		if slices.ContainsFunc(entries, func(e fs.DirEntry) bool { return strings.EqualFold(e.Name(), name) }) {
+			_, err := fs.Stat(ic.fsys, path.Join(folder, name))
+			return err == nil
+		}
+		return false
 	}))
 }
 
@@ -122,28 +125,27 @@ func (ic *IgnoreChecker) ShouldIgnore(ctx context.Context, relPath string) bool 
 }
 
 func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder string) []string {
-	return ic.loadPatterns(ctx, folder, func(name string) (string, bool) {
-		filePath := path.Join(folder, name)
-		_, err := fs.Stat(ic.fsys, filePath)
-		return filePath, err == nil
+	return ic.loadPatterns(ctx, folder, func(name string) bool {
+		_, err := fs.Stat(ic.fsys, path.Join(folder, name))
+		return err == nil
 	})
 }
 
 // loadPatterns returns the folder's .ndignore patterns, or ignoreAllPattern if the folder has an
-// empty .ndignore, or a .nomedia file with respectNoMedia. find returns a marker's path.
-func (ic *IgnoreChecker) loadPatterns(ctx context.Context, folder string, find func(name string) (string, bool)) []string {
+// empty .ndignore, or a .nomedia file with respectNoMedia. exists reports if a marker file is there.
+func (ic *IgnoreChecker) loadPatterns(ctx context.Context, folder string, exists func(name string) bool) []string {
 	if ic.respectNoMedia {
-		if _, ok := find(consts.NoMediaFile); ok {
+		if exists(consts.NoMediaFile) {
 			log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
 			return []string{ignoreAllPattern}
 		}
 	}
 
 	var patterns []string
-	ignoreFilePath, ok := find(consts.ScanIgnoreFile)
-	if !ok {
+	if !exists(consts.ScanIgnoreFile) {
 		return patterns
 	}
+	ignoreFilePath := path.Join(folder, consts.ScanIgnoreFile)
 
 	// Read and parse the .ndignore file
 	ignoreFile, err := ic.fsys.Open(ignoreFilePath)
