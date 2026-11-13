@@ -205,7 +205,7 @@ func (api *Router) GetStarred2(r *http.Request) (*responses.Subsonic, error) {
 func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	ctx := r.Context()
 	// Return an empty list rather than an error, so clients degrade gracefully
-	if !conf.Server.Subsonic.EnableGetNowPlaying {
+	if !conf.Server().Subsonic.EnableGetNowPlaying {
 		response := newResponse()
 		response.NowPlaying = &responses.NowPlaying{}
 		return response, nil

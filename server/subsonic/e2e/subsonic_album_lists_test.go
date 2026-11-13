@@ -242,7 +242,7 @@ var _ = Describe("Album List Endpoints", func() {
 		})
 
 		It("hides active sessions when Subsonic.EnableGetNowPlaying is disabled", func() {
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 
@@ -250,7 +250,7 @@ var _ = Describe("Album List Endpoints", func() {
 				"positionMs", "0", "state", "playing")
 			Expect(resp.Status).To(Equal(responses.StatusOK))
 
-			conf.Server.Subsonic.EnableGetNowPlaying = false
+			conf.Update(func(c *conf.Options) { c.Subsonic.EnableGetNowPlaying = false })
 
 			resp = doReq("getNowPlaying")
 
