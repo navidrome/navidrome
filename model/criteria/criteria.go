@@ -23,7 +23,7 @@ type Criteria struct {
 	Limit        int
 	LimitPercent int
 	Offset       int
-	RefreshDelay time.Duration // 0 = use conf.Server.SmartPlaylistRefreshDelay
+	RefreshDelay time.Duration // 0 = use conf.Server().SmartPlaylistRefreshDelay
 }
 
 // EffectiveLimit resolves the effective limit for a query. If a fixed Limit is

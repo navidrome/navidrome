@@ -87,23 +87,23 @@ func (d *Discovery) ServeOn(ctx context.Context, conn net.PacketConn) {
 
 // Behind a unix socket nothing listens on Port, so only a BaseURL host gives clients an address.
 func hasAdvertisableAddress() bool {
-	return conf.Server.BaseHost != "" || !strings.HasPrefix(conf.Server.Address, "unix:")
+	return conf.Server().BaseHost != "" || !strings.HasPrefix(conf.Server().Address, "unix:")
 }
 
 func discoveryAddress(ctx context.Context, remote net.Addr) string {
-	scheme := gg.If(conf.Server.TLSEnabled(), "https", "http")
-	host := net.JoinHostPort(localIPFor(remote), strconv.Itoa(conf.Server.Port))
+	scheme := gg.If(conf.Server().TLSEnabled(), "https", "http")
+	host := net.JoinHostPort(localIPFor(remote), strconv.Itoa(conf.Server().Port))
 	return publicurl.AbsoluteURL(request.WithServerAddress(ctx, scheme, host), consts.URLPathJellyfinAPI, nil)
 }
 
 // On a multi-homed host, only the interface that routes to the requester is reachable by it.
 func localIPFor(remote net.Addr) string {
-	if ip := parseIP(conf.Server.Address); ip.IsValid() && !ip.IsUnspecified() {
+	if ip := parseIP(conf.Server().Address); ip.IsValid() && !ip.IsUnspecified() {
 		return ip.String()
 	}
 	c, err := net.Dial("udp", remote.String())
 	if err != nil {
-		return conf.Server.Address
+		return conf.Server().Address
 	}
 	defer c.Close()
 	return c.LocalAddr().(*net.UDPAddr).IP.String()

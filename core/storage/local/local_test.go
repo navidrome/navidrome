@@ -11,7 +11,6 @@ import (
 
 	"github.com/djherbis/times"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model/metadata"
@@ -24,7 +23,6 @@ var _ = Describe("LocalStorage", func() {
 	var testExtractor *mockTestExtractor
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		// Create a temporary directory for testing
 		var err error
@@ -42,7 +40,7 @@ var _ = Describe("LocalStorage", func() {
 		RegisterExtractor("test", func(fs.FS, string) Extractor {
 			return testExtractor
 		})
-		conf.Server.Scanner.Extractor = "test"
+		conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "test" })
 	})
 
 	Describe("newLocalStorage", func() {
@@ -157,7 +155,7 @@ var _ = Describe("LocalStorage", func() {
 			})
 
 			It("falls back to the default extractor instead of crashing", func() {
-				conf.Server.Scanner.Extractor = "nonexistent-extractor"
+				conf.Update(func(c *conf.Options) { c.Scanner.Extractor = "nonexistent-extractor" })
 
 				u, err := storage.LocalPathToURL(tempDir)
 				Expect(err).ToNot(HaveOccurred())

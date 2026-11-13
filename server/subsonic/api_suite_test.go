@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"testing"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
@@ -19,6 +20,8 @@ func TestSubsonicApi(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Subsonic API Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // newLocalStorage fatals if the default extractor is not registered.
 // Register a no-op so storage.For works in sidecar-lyrics tests.

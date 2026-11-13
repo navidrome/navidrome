@@ -217,8 +217,8 @@ func (md Metadata) getArtistValues(single, multi model.TagName) []string {
 
 func (md Metadata) mapDisplayName(singularTagName, pluralTagName model.TagName) string {
 	return cmp.Or(
-		strings.Join(md.tags[singularTagName], conf.Server.Scanner.ArtistJoiner),
-		strings.Join(md.tags[pluralTagName], conf.Server.Scanner.ArtistJoiner),
+		strings.Join(md.tags[singularTagName], conf.Server().Scanner.ArtistJoiner),
+		strings.Join(md.tags[pluralTagName], conf.Server().Scanner.ArtistJoiner),
 	)
 }
 

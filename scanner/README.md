@@ -411,7 +411,7 @@ The scanner implements a sophisticated concurrency model to optimize performance
 
 2. **Within-Phase Concurrency**:
     - Each phase has configurable concurrency for its stages
-    - For example, `phase_1_folders.go` processes folders concurrently: `ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(conf.Server.DevScannerThreads))`
+    - For example, `phase_1_folders.go` processes folders concurrently: `ppl.NewStage(p.processFolder, ppl.Name("process folder"), ppl.Concurrency(conf.Server().DevScannerThreads))`
     - Multiple stages can exist within a phase, each with its own concurrency level
 
 3. **Pipeline Architecture Benefits**:

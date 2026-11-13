@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -120,19 +119,18 @@ var _ = Describe("Users", func() {
 		}
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			ur = api.ds.User().(*tests.MockedUserRepo)
 			Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
 			Expect(ur.Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
 		})
 
 		It("returns an empty list when the config is unset", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = ""
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "" })
 			Expect(publicUsers()).To(BeEmpty())
 		})
 
 		It("lists the configured users in order, without leaking policy", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = "bob, alice"
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "bob, alice" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(2))
 			Expect(users[0].Name).To(Equal("bob"))
@@ -144,14 +142,14 @@ var _ = Describe("Users", func() {
 		})
 
 		It("skips a configured username that does not exist", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = "alice,ghost"
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "alice,ghost" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(1))
 			Expect(users[0].Name).To(Equal("alice"))
 		})
 
 		It("matches usernames case-insensitively and de-duplicates", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = "ALICE, alice"
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "ALICE, alice" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(1))
 			Expect(users[0].Name).To(Equal("alice"))

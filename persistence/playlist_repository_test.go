@@ -7,7 +7,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/criteria"
@@ -31,8 +30,7 @@ var _ = Describe("PlaylistRepository", func() {
 		var ids []string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableNaturalSorting = true
+			conf.Update(func(c *conf.Options) { c.EnableNaturalSorting = true })
 			ctx := log.NewContext(GinkgoT().Context())
 			ctx = request.WithUser(ctx, model.User{ID: "userid", UserName: "userid", IsAdmin: true})
 			repo = NewPlaylistRepository(GetDBXBuilder())
@@ -466,6 +464,26 @@ var _ = Describe("PlaylistRepository", func() {
 			ids, mediaFileIDs := getTrackInfo(newPls.ID)
 			Expect(ids).To(Equal([]string{"1", "2"}))
 			Expect(mediaFileIDs).To(Equal([]string{"1001", "1002"}))
+		})
+	})
+
+	Describe("removeOrphans", func() {
+		It("deletes rows pointing to no track and renumbers the rest", func() {
+			pls := model.Playlist{Name: "Orphans", OwnerID: "userid"}
+			Expect(repo.Put(ctx, &pls)).To(Succeed())
+			DeferCleanup(func() { Expect(repo.Delete(ctx, pls.ID)).To(Succeed()) })
+			// Rows as an older version stored them, with an unknown id between real tracks
+			_, err := GetDBXBuilder().NewQuery(`INSERT INTO playlist_tracks (playlist_id, media_file_id, id)
+				VALUES ({:id}, '1001', 1), ({:id}, 'no-such-track', 2), ({:id}, '1002', 3)`).
+				Bind(dbx.Params{"id": pls.ID}).Execute()
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(repo.(*playlistRepository).removeOrphans(ctx)).To(Succeed())
+
+			Expect(storedRows(pls.ID)).To(Equal([]string{"1:1001", "2:1002"}))
+			got, err := repo.Get(ctx, pls.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(got.SongCount).To(Equal(2))
 		})
 	})
 

@@ -347,7 +347,7 @@ func (p *phaseMissingTracks) finalize(err error) error {
 	}
 
 	// Check if we should purge missing items
-	if conf.Server.Scanner.PurgeMissing == consts.PurgeMissingAlways || (conf.Server.Scanner.PurgeMissing == consts.PurgeMissingFull && p.state.fullScan) {
+	if conf.Server().Scanner.PurgeMissing == consts.PurgeMissingAlways || (conf.Server().Scanner.PurgeMissing == consts.PurgeMissingFull && p.state.fullScan) {
 		if err = p.purgeMissing(); err != nil {
 			log.Error(p.ctx, "Scanner: Error purging missing items", err)
 		}

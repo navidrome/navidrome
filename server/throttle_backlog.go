@@ -38,7 +38,7 @@ func ThrottleBacklog(limit, backlogLimit int, backlogTimeout time.Duration) func
 	if limit <= 0 {
 		return func(next http.Handler) http.Handler { return next }
 	}
-	if !conf.Server.DevArtworkThrottleBuffered {
+	if !conf.Server().DevArtworkThrottleBuffered {
 		return middleware.ThrottleBacklog(limit, backlogLimit, backlogTimeout)
 	}
 	t := &requestThrottle{

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -28,16 +27,17 @@ var _ = Describe("Manager.LoadPlugins", func() {
 	// newManager builds a manager over rows the caller can corrupt, with no Subsonic router: a CLI
 	// has none, and Start would log.Fatal on that.
 	newManager := func(rows model.Plugins) *Manager {
-		DeferCleanup(configtest.SetupConfig())
 		var err error
 		tmpDir, err = os.MkdirTemp("", "plugins-readonly-*")
 		Expect(err).ToNot(HaveOccurred())
 		DeferCleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
-		conf.Server.CacheFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+			c.CacheFolder = conf.NewDir(tmpDir)
+		})
 
 		if rows == nil {
 			rows = installTestPlugins(tmpDir, "test-metadata-agent"+PackageExtension)
@@ -120,7 +120,7 @@ var _ = Describe("Manager.LoadPlugins", func() {
 
 	It("does nothing when the plugin system is disabled", func() {
 		mgr = newManager(nil)
-		conf.Server.Plugins.Enabled = false
+		conf.Update(func(c *conf.Options) { c.Plugins.Enabled = false })
 
 		Expect(mgr.LoadPlugins(ctx, []string{"test-metadata-agent", "broken"}, false)).To(Succeed())
 

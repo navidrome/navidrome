@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -149,7 +148,6 @@ var _ = Describe("LibraryRepository", func() {
 			libBefore, err = repo.Get(ctx, model.DefaultLibraryID)
 			Expect(err).ToNot(HaveOccurred())
 
-			DeferCleanup(configtest.SetupConfig())
 			DeferCleanup(func() {
 				_, _ = conn.NewQuery("update library set path = {:path}, updated_at = {:updated_at} where id = {:id}").
 					Bind(dbx.Params{"path": libBefore.Path, "updated_at": libBefore.UpdatedAt, "id": model.DefaultLibraryID}).
@@ -161,7 +159,7 @@ var _ = Describe("LibraryRepository", func() {
 		})
 
 		It("skips updating the default library when the configured path is unchanged", func() {
-			conf.Server.MusicFolder = libBefore.Path
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path })
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 
 			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
@@ -171,12 +169,12 @@ var _ = Describe("LibraryRepository", func() {
 		})
 
 		It("updates the default library only when the configured path changes", func() {
-			conf.Server.MusicFolder = libBefore.Path + "-updated"
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path + "-updated" })
 			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 
 			libAfter, err := repo.Get(ctx, model.DefaultLibraryID)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(libAfter.Path).To(Equal(conf.Server.MusicFolder))
+			Expect(libAfter.Path).To(Equal(conf.Server().MusicFolder))
 			Expect(libAfter.UpdatedAt).ToNot(Equal(libBefore.UpdatedAt))
 		})
 	})

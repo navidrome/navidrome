@@ -26,8 +26,8 @@ import (
 const jellyfinVersion = "12.1.0"
 
 func serverName() string {
-	if conf.Server.Jellyfin.ServerName != "" {
-		return conf.Server.Jellyfin.ServerName
+	if conf.Server().Jellyfin.ServerName != "" {
+		return conf.Server().Jellyfin.ServerName
 	}
 	return fmt.Sprintf("Navidrome %s", consts.Version)
 }
@@ -90,7 +90,7 @@ func (api *Router) publicInfo(r *http.Request) dto.PublicSystemInfo {
 // its server base URL; without it its SDK api instance is undefined and sign-in crashes.
 func localAddress(r *http.Request) string {
 	scheme, host := server.ServerAddress(r)
-	return scheme + "://" + host + path.Join(conf.Server.BasePath, consts.URLPathJellyfinAPI)
+	return scheme + "://" + host + path.Join(conf.Server().BasePath, consts.URLPathJellyfinAPI)
 }
 
 func (api *Router) getPublicSystemInfo(w http.ResponseWriter, r *http.Request) {

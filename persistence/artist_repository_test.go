@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -59,12 +58,11 @@ var _ = Describe("ArtistRepository", func() {
 	Context("Core Functionality", func() {
 		Describe("GetIndexKey", func() {
 			// Note: OrderArtistName should never be empty, so we don't need to test for that
-			r := artistRepository{indexGroups: utils.ParseIndexGroups(conf.Server.IndexGroups)}
+			r := artistRepository{indexGroups: utils.ParseIndexGroups(conf.Server().IndexGroups)}
 
 			DescribeTable("returns correct index key based on PreferSortTags setting",
 				func(preferSortTags bool, sortArtistName, orderArtistName, expectedKey string) {
-					DeferCleanup(configtest.SetupConfig())
-					conf.Server.PreferSortTags = preferSortTags
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = preferSortTags })
 					a := model.Artist{SortArtistName: sortArtistName, OrderArtistName: orderArtistName, Name: "Test"}
 					idx := GetIndexKey(&r, a)
 					Expect(idx).To(Equal(expectedKey))
@@ -453,7 +451,7 @@ var _ = Describe("ArtistRepository", func() {
 		Describe("GetIndex", func() {
 			When("PreferSortTags is true", func() {
 				BeforeEach(func() {
-					conf.Server.PreferSortTags = true
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 				})
 				It("returns the index when PreferSortTags is true and SortArtistName is not empty", func() {
 					// Set SortArtistName to "Foo" for Beatles
@@ -505,7 +503,7 @@ var _ = Describe("ArtistRepository", func() {
 
 			When("PreferSortTags is false", func() {
 				BeforeEach(func() {
-					conf.Server.PreferSortTags = false
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = false })
 				})
 				It("returns the index when SortArtistName is NOT empty", func() {
 					// Set SortArtistName to "Foo" for Beatles
@@ -829,6 +827,102 @@ var _ = Describe("ArtistRepository", func() {
 					if raw, ok := repo.(*artistRepository); ok {
 						_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": inaccessibleArtist.ID}))
 					}
+				})
+
+				DescribeTable("narrows artist search to the requested library",
+					func(backend string, artist model.Artist, query string) {
+						if backend != "" {
+							conf.Update(func(c *conf.Options) { c.Search.Backend = backend })
+						}
+						Expect(createArtistWithLibrary(ctx, repo, &artist, lib2.ID)).To(Succeed())
+						DeferCleanup(func() {
+							raw := repo.(*artistRepository)
+							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": artist.ID}))
+						})
+
+						search := func(filters squirrel.Sqlizer) model.Artists {
+							results, err := repo.Search(ctx, query, model.QueryOptions{Max: 100, Filters: filters})
+							Expect(err).ToNot(HaveOccurred())
+							return results
+						}
+						Expect(search(nil)).To(HaveLen(1))
+						Expect(search(squirrel.Eq{"library_id": []int{1}})).To(BeEmpty())
+						Expect(search(squirrel.Eq{"library_id": []int{lib2.ID}})).To(HaveLen(1))
+					},
+					Entry("legacy (LIKE) backend", "legacy",
+						model.Artist{ID: "legacy-search-lib2-artist", Name: "Folder Scope Zeta Artist"}, "Folder Scope"),
+					Entry("CJK LIKE fallback", "",
+						model.Artist{ID: "cjk-search-lib2-artist", Name: "文件夹范围测试艺术家"}, "文件夹"),
+					Entry("MBID match", "",
+						createTestArtistWithMBID("mbid-search-lib2-artist", "Folder Scope MBID Artist", "3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
+						"3f2b1e58-8a4c-4a1b-9c3d-7e2f5a1b9c04"),
+				)
+
+				Describe("library-scoped counts", func() {
+					const scopedMBID = "0b8e5d2a-6c1f-4e7b-9a3d-2f4c6e8a0b1d"
+
+					seedArtist := func(id, name, mbid string, statsByLib map[int]string) {
+						raw := repo.(*artistRepository)
+						artist := createTestArtistWithMBID(id, name, mbid)
+						Expect(raw.Put(ctx, &artist)).To(Succeed())
+						for libID, stats := range statsByLib {
+							_, err := raw.executeSQL(ctx, squirrel.Insert("library_artist").
+								Columns("library_id", "artist_id", "stats").
+								Values(libID, id, stats))
+							Expect(err).ToNot(HaveOccurred())
+						}
+						DeferCleanup(func() {
+							_, _ = raw.executeSQL(ctx, squirrel.Delete("library_artist").Where(squirrel.Eq{"artist_id": id}))
+							_, _ = raw.executeSQL(ctx, squirrel.Delete(raw.tableName).Where(squirrel.Eq{"id": id}))
+						})
+					}
+
+					BeforeEach(func() {
+						seedArtist("scoped-counts-artist", "Scoped Counts Artist", scopedMBID, map[int]string{
+							1:       `{"total":{"m":3,"a":1,"s":300}}`,
+							lib2.ID: `{"total":{"m":50,"a":5,"s":5000}}`,
+						})
+					})
+
+					DescribeTable("reports only the requested libraries' songs and albums",
+						func(backend, query string) {
+							conf.Update(func(c *conf.Options) { c.Search.Backend = backend })
+
+							counts := func(libIDs ...int) []int64 {
+								opts := model.QueryOptions{Max: 100}
+								if len(libIDs) > 0 {
+									opts.Filters = squirrel.Eq{"library_id": libIDs}
+								}
+								results, err := repo.Search(ctx, query, opts)
+								Expect(err).ToNot(HaveOccurred())
+								Expect(results).To(HaveLen(1))
+								a := results[0]
+								return []int64{int64(a.SongCount), int64(a.AlbumCount), a.Size}
+							}
+
+							Expect(counts(1)).To(Equal([]int64{3, 1, 300}))
+							Expect(counts(lib2.ID)).To(Equal([]int64{50, 5, 5000}))
+							Expect(counts()).To(Equal([]int64{53, 6, 5300}))
+						},
+						Entry("FTS", "fts", "Scoped Counts"),
+						Entry("legacy LIKE", "legacy", "Scoped Counts"),
+						Entry("MBID", "fts", scopedMBID),
+					)
+
+					It("ranks LIKE results by the requested library's song count", func() {
+						conf.Update(func(c *conf.Options) { c.Search.Backend = "legacy" })
+						seedArtist("scoped-counts-artist-b", "Scoped Counts Artist B", "", map[int]string{
+							1: `{"total":{"m":10,"a":2,"s":1000}}`,
+						})
+
+						results, err := repo.Search(ctx, "Scoped Counts", model.QueryOptions{
+							Max:     100,
+							Filters: squirrel.Eq{"library_id": []int{1}},
+						})
+						Expect(err).ToNot(HaveOccurred())
+						Expect(results).To(HaveLen(2))
+						Expect(results[0].ID).To(Equal("scoped-counts-artist-b"))
+					})
 				})
 			})
 
@@ -1209,9 +1303,8 @@ var _ = Describe("ArtistRepository", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			ctx = request.WithUser(ctx, adminUser)
 			repo = NewArtistRepository(GetDBXBuilder()).(*artistRepository)

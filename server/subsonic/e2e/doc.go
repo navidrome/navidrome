@@ -53,7 +53,7 @@
 //
 //   - noopArtwork: returns [model.ErrNotFound] for all artwork requests.
 //   - noopStreamer: returns [model.ErrNotFound] for all stream requests.
-//   - noopArchiver: returns [model.ErrNotFound] for all archive requests.
+//   - core.NewArchiver: the real archiver, streaming tracks through the streamer spy.
 //   - noopProvider: returns empty results for all external metadata lookups.
 //   - noopPlayTracker: silently discards all scrobble events.
 //

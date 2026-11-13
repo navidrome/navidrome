@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,15 +31,16 @@ var _ = Describe("Discovery", func() {
 	var d *Discovery
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.ServerName = "Test Server"
-		conf.Server.Address = "0.0.0.0"
-		conf.Server.Port = 4533
-		conf.Server.BaseHost = ""
-		conf.Server.BaseScheme = ""
-		conf.Server.BasePath = ""
-		conf.Server.TLSCert = ""
-		conf.Server.TLSKey = ""
+		conf.Update(func(c *conf.Options) {
+			c.Jellyfin.ServerName = "Test Server"
+			c.Address = "0.0.0.0"
+			c.Port = 4533
+			c.BaseHost = ""
+			c.BaseScheme = ""
+			c.BasePath = ""
+			c.TLSCert = ""
+			c.TLSKey = ""
+		})
 		d = &Discovery{}
 	})
 
@@ -51,37 +51,43 @@ var _ = Describe("Discovery", func() {
 			Expect(discoveryAddress(context.Background(), remote)).To(Equal(expected))
 		},
 		Entry("uses the BaseURL host and scheme when set", func() {
-			conf.Server.BaseScheme = "https"
-			conf.Server.BaseHost = "music.example.com"
-			conf.Server.BasePath = "/nd"
+			conf.Update(func(c *conf.Options) {
+				c.BaseScheme = "https"
+				c.BaseHost = "music.example.com"
+				c.BasePath = "/nd"
+			})
 		}, "https://music.example.com/nd/jellyfin"),
 		Entry("uses a specific bind Address with the Port", func() {
-			conf.Server.Address = "192.168.1.10"
+			conf.Update(func(c *conf.Options) { c.Address = "192.168.1.10" })
 		}, "http://192.168.1.10:4533/jellyfin"),
 		Entry("falls back to the interface facing the requester when Address is unspecified", func() {},
 			"http://127.0.0.1:4533/jellyfin"),
 		Entry("falls back to the interface facing the requester when Address is empty", func() {
-			conf.Server.Address = ""
+			conf.Update(func(c *conf.Options) { c.Address = "" })
 		}, "http://127.0.0.1:4533/jellyfin"),
 		Entry("advertises https when TLS is configured", func() {
-			conf.Server.TLSCert = "/path/cert.pem"
-			conf.Server.TLSKey = "/path/key.pem"
+			conf.Update(func(c *conf.Options) {
+				c.TLSCert = "/path/cert.pem"
+				c.TLSKey = "/path/key.pem"
+			})
 		}, "https://127.0.0.1:4533/jellyfin"),
 		Entry("advertises http when only the TLS cert is configured", func() {
-			conf.Server.TLSCert = "/path/cert.pem"
+			conf.Update(func(c *conf.Options) { c.TLSCert = "/path/cert.pem" })
 		}, "http://127.0.0.1:4533/jellyfin"),
 		Entry("keeps a path-only BaseURL as the path prefix", func() {
-			conf.Server.BasePath = "/music"
+			conf.Update(func(c *conf.Options) { c.BasePath = "/music" })
 		}, "http://127.0.0.1:4533/music/jellyfin"),
 		Entry("does not double the slash when BasePath has a trailing slash", func() {
-			conf.Server.BasePath = "/music/"
+			conf.Update(func(c *conf.Options) { c.BasePath = "/music/" })
 		}, "http://127.0.0.1:4533/music/jellyfin"),
 	)
 
 	DescribeTable("hasAdvertisableAddress",
 		func(address, baseHost string, expected bool) {
-			conf.Server.Address = address
-			conf.Server.BaseHost = baseHost
+			conf.Update(func(c *conf.Options) {
+				c.Address = address
+				c.BaseHost = baseHost
+			})
 			Expect(hasAdvertisableAddress()).To(Equal(expected))
 		},
 		Entry("TCP listener", "0.0.0.0", "", true),
