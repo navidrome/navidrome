@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	"github.com/navidrome/navidrome/core/stream"
 	"github.com/navidrome/navidrome/model"
@@ -160,6 +161,37 @@ var _ = Describe("Stream", func() {
 			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
 			Expect(res.MediaSources).To(HaveLen(1))
 			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID(testID("s-err"))))
+			Expect(lyricStreams(res)).To(BeEmpty())
+		})
+
+		It("does not block playback info when lyrics service is slow or hanging (#6423)", func() {
+			origTimeout := playbackInfoLyricsTimeout
+			playbackInfoLyricsTimeout = 20 * time.Millisecond
+			DeferCleanup(func() { playbackInfoLyricsTimeout = origTimeout })
+
+			ds.MediaFile().(*tests.MockMediaFileRepo).SetData(model.MediaFiles{
+				{ID: testID("s-slow"), Title: "Slow Song", Suffix: "mp3", Duration: 100, Size: 1000, LibraryID: 1},
+			})
+			api.lyrics = &fakeLyricsService{
+				lyrics: map[string]model.LyricList{
+					testID("s-slow"): {{Kind: "main", Synced: true, Line: []model.Line{{Value: "delayed"}}}},
+				},
+				delay: 200 * time.Millisecond,
+			}
+
+			start := time.Now()
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("s-slow"))+"/PlaybackInfo", nil).WithContext(ctxUser())
+			r = withChiURLParam(r, "itemId", dto.EncodeID(testID("s-slow")))
+			api.getPlaybackInfo(w, r)
+
+			duration := time.Since(start)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(duration).To(BeNumerically("<", 150*time.Millisecond))
+			var res dto.PlaybackInfoResponse
+			Expect(json.Unmarshal(w.Body.Bytes(), &res)).To(Succeed())
+			Expect(res.MediaSources).To(HaveLen(1))
+			Expect(res.MediaSources[0].Id).To(Equal(dto.EncodeID(testID("s-slow"))))
 			Expect(lyricStreams(res)).To(BeEmpty())
 		})
 	})

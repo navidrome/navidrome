@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -21,11 +22,19 @@ type fakeLyricsService struct {
 	err         error
 	calls       int
 	hadDeadline bool
+	delay       time.Duration
 }
 
 func (f *fakeLyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	f.calls++
 	_, f.hadDeadline = ctx.Deadline()
+	if f.delay > 0 {
+		select {
+		case <-time.After(f.delay):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
