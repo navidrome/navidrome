@@ -6,7 +6,6 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -444,7 +443,6 @@ var _ = Describe("paginated queries", func() {
 
 	BeforeEach(func() {
 		ctx = request.WithUser(log.NewContext(GinkgoT().Context()), adminUser)
-		DeferCleanup(configtest.SetupConfig())
 		mr = NewMediaFileRepository(GetDBXBuilder())
 	})
 
@@ -452,7 +450,7 @@ var _ = Describe("paginated queries", func() {
 		var r sqlRepository
 		BeforeEach(func() {
 			r = sqlRepository{tableName: "media_file", sortMappings: map[string]string{"name": "title"}}
-			conf.Server.DevOffsetOptimize = 10
+			conf.Update(func(o *conf.Options) { o.DevOffsetOptimize = 10 })
 		})
 
 		DescribeTable("adds a rowid tie-breaker in the requested direction",
@@ -499,7 +497,7 @@ var _ = Describe("paginated queries", func() {
 
 	DescribeTable("returns every song exactly once, in the same order as a single page",
 		func(sort string) {
-			conf.Server.DevOffsetOptimize = 2
+			conf.Update(func(o *conf.Options) { o.DevOffsetOptimize = 2 })
 			for _, order := range []string{"asc", "desc"} {
 				expected := walk(ctx, sort, order, 1000)
 				Expect(len(expected)).To(BeNumerically(">=", len(testSongs)))
@@ -528,7 +526,7 @@ var _ = Describe("paginated queries", func() {
 		hidden := model.MediaFile{ID: "paginate-hidden", Title: "Hidden", LibraryID: otherLib.ID, Path: p("other/hidden.mp3")}
 		Expect(mr.Put(ctx, &hidden)).To(Succeed())
 		DeferCleanup(func() { _ = mr.Delete(ctx, hidden.ID) })
-		conf.Server.DevOffsetOptimize = 2
+		conf.Update(func(o *conf.Options) { o.DevOffsetOptimize = 2 })
 
 		Expect(walk(ctx, "id", "asc", 1000)).To(ContainElement(hidden.ID))
 		restrictedCtx := request.WithUser(ctx, restrictedUser)
@@ -540,8 +538,10 @@ var _ = Describe("paginated queries", func() {
 
 	Describe("legacy search", func() {
 		BeforeEach(func() {
-			conf.Server.Search.Backend = "legacy"
-			conf.Server.DevOffsetOptimize = 0
+			conf.Update(func(o *conf.Options) {
+				o.Search.Backend = "legacy"
+				o.DevOffsetOptimize = 0
+			})
 		})
 
 		It("pages albums whose name is shared with the joined library", func() {
