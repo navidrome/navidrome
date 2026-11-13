@@ -245,6 +245,33 @@ var _ = Describe("Scanner", Ordered, func() {
 				)))
 			})
 
+			It("should re-enqueue the album artwork on a full scan when a file changed", func() {
+				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				resolveQueuedArtwork()
+
+				fsys.UpdateTags("The Beatles/Help!/01 - Help!.mp3", _t{"producer": "George Martin"})
+				Expect(runScanner(ctx, true)).To(Succeed())
+
+				helpAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Help!"}})
+				Expect(err).ToNot(HaveOccurred())
+				revolverAlbums, err := ds.Album().GetAll(ctx, model.QueryOptions{Filters: squirrel.Eq{"album.name": "Revolver"}})
+				Expect(err).ToNot(HaveOccurred())
+				requeued, err := ds.ArtworkQueue().DequeueBatch(ctx, 1000)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(requeued).To(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "al"),
+					HaveField("ItemID", helpAlbums[0].ID),
+				)))
+				// Unchanged albums must stay on EnqueueIfMissing so a full scan does not
+				// re-queue every already-resolved cover.
+				Expect(requeued).ToNot(ContainElement(SatisfyAll(
+					HaveField("ItemKind", "al"),
+					HaveField("ItemID", revolverAlbums[0].ID),
+				)))
+			})
+
 			It("should update the album", func() {
 				tests.SkipOnWindows("path separator bug (#TBD-path-sep-scanner)")
 				Expect(runScanner(ctx, true)).To(Succeed())

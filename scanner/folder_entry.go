@@ -25,6 +25,7 @@ func newFolderEntry(job *scanJob, id, path string, info model.FolderUpdateInfo) 
 		imageFiles:          make(map[string]fs.DirEntry),
 		playlistFiles:       make(map[string]fs.DirEntry),
 		albumIDMap:          make(map[string]string),
+		changedAudioPaths:   make(map[string]struct{}),
 		updTime:             info.UpdatedAt,
 		prevHash:            info.Hash,
 		prevImageFiles:      info.ImageFiles,
@@ -52,9 +53,13 @@ type folderEntry struct {
 	tracks              model.MediaFiles
 	albums              model.Albums
 	albumIDMap          map[string]string
-	artists             model.Artists
-	tags                model.TagList
-	missingTracks       []*model.MediaFile
+	// Paths of audio files imported because the file is new, missing, or newer than the DB row.
+	// On a full scan every file is re-imported, so this is how persistFolder tells a real
+	// change from a routine re-read when choosing Enqueue vs EnqueueIfMissing.
+	changedAudioPaths map[string]struct{}
+	artists           model.Artists
+	tags              model.TagList
+	missingTracks     []*model.MediaFile
 }
 
 func (f *folderEntry) hasNoFiles() bool {
