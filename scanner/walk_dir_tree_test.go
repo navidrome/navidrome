@@ -244,6 +244,16 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("targeted scan of a deeper folder", []string{"a/b/c"}),
 			)
 
+			It("ignores a marker that is a dangling symlink, as fs.Stat does", func() {
+				spy = newSpyMusicFS(fstest.MapFS{
+					"a/.nomedia": {Mode: fs.ModeSymlink, Data: []byte("missing")},
+					"a/song.mp3": {},
+				})
+				folders := walk()
+
+				Expect(folders["a"].audioFiles).To(HaveKey("song.mp3"))
+			})
+
 			It("keeps the parent's patterns when a child folder cannot be read", func() {
 				spy = newSpyMusicFS(fstest.MapFS{
 					"a/.ndignore":    {Data: []byte("skip.mp3")},

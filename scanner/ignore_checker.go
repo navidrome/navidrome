@@ -46,11 +46,12 @@ func (ic *IgnoreChecker) Push(ctx context.Context, folder string) error {
 // PushEntries is Push for a folder whose listing was already read, so it needs no fs.Stat.
 func (ic *IgnoreChecker) PushEntries(ctx context.Context, folder string, entries []fs.DirEntry) {
 	ic.push(ic.loadPatterns(ctx, folder, func(name string) bool {
-		if slices.ContainsFunc(entries, func(e fs.DirEntry) bool { return e.Name() == name }) {
+		i := slices.IndexFunc(entries, func(e fs.DirEntry) bool { return e.Name() == name })
+		if i >= 0 && entries[i].Type()&fs.ModeSymlink == 0 {
 			return true
 		}
-		// Match fs.Stat, which finds an odd-case marker only on case-insensitive filesystems
-		if slices.ContainsFunc(entries, func(e fs.DirEntry) bool { return strings.EqualFold(e.Name(), name) }) {
+		// Ask fs.Stat for a symlink (it may dangle) or an odd-case name (found only on case-insensitive filesystems)
+		if i >= 0 || slices.ContainsFunc(entries, func(e fs.DirEntry) bool { return strings.EqualFold(e.Name(), name) }) {
 			_, err := fs.Stat(ic.fsys, path.Join(folder, name))
 			return err == nil
 		}
