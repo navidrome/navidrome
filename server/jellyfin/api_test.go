@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
@@ -18,6 +18,12 @@ import (
 )
 
 var _ = Describe("Router", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	It("serves the public handshake through the mounted handler", func() {
 		ds := &tests.MockDataStore{}
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
@@ -49,8 +55,8 @@ var _ = Describe("Router", func() {
 	It("registers a player on a general authenticated request, not just playback reports", func() {
 		ds := &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(GinkgoT().Context()).(*tests.MockedUserRepo)
-		Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
+		ur := ds.User().(*tests.MockedUserRepo)
+		Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice", NewPassword: "secret"})).To(Succeed())
 		token, err := auth.CreateToken(&model.User{ID: testID("u1"), UserName: "alice"})
 		Expect(err).ToNot(HaveOccurred())
 
@@ -69,9 +75,10 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits AuthenticateByName by IP when a login limit is configured", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AuthRequestLimit = 2
-		conf.Server.AuthWindowLength = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.AuthRequestLimit = 2
+			c.AuthWindowLength = time.Minute
+		})
 		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 		login := func() int {
@@ -88,14 +95,15 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits Quick Connect approval by IP when a login limit is configured", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AuthRequestLimit = 2
-		conf.Server.AuthWindowLength = time.Minute
-		conf.Server.Jellyfin.QuickConnect = true
+		conf.Update(func(c *conf.Options) {
+			c.AuthRequestLimit = 2
+			c.AuthWindowLength = time.Minute
+			c.Jellyfin.QuickConnect = true
+		})
 		ds := &tests.MockDataStore{}
 		auth.Init(ds)
 		usr := model.User{ID: testID("alice"), UserName: "alice"}
-		Expect(ds.User(GinkgoT().Context()).Put(&usr)).To(Succeed())
+		Expect(ds.User().Put(ctx, &usr)).To(Succeed())
 		token, err := auth.CreateAPIToken(&usr, auth.AudienceJellyfin)
 		Expect(err).ToNot(HaveOccurred())
 		api := New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, quickconnect.New())
@@ -115,9 +123,10 @@ var _ = Describe("Router", func() {
 	})
 
 	It("rate-limits AuthenticateByName by resolved client IP, not by the proxy connection", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.AuthRequestLimit = 1
-		conf.Server.AuthWindowLength = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.AuthRequestLimit = 1
+			c.AuthWindowLength = time.Minute
+		})
 		api := New(&tests.MockDataStore{}, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		// Every request arrives on the same proxy connection, so only the resolved client IP
 		// can separate the buckets.

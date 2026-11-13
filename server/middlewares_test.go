@@ -12,7 +12,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/publicurl"
 	"github.com/navidrome/navidrome/model"
@@ -23,9 +22,6 @@ import (
 )
 
 var _ = Describe("middlewares", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 	Describe("robotsTXT", func() {
 		var nextCalled bool
 		next := func(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +207,7 @@ var _ = Describe("middlewares", func() {
 		Context("when the request header has the unique client ID", func() {
 			BeforeEach(func() {
 				req.Header.Set(consts.UIClientUniqueIDHeader, "123456")
-				conf.Server.BasePath = "/music"
+				conf.Update(func(c *conf.Options) { c.BasePath = "/music" })
 			})
 
 			It("sets the unique client ID as a cookie and adds it to the request context", func() {
@@ -381,7 +377,7 @@ var _ = Describe("middlewares", func() {
 			id = uuid.NewString()
 			ds = &tests.MockDataStore{}
 			lastAccessTime = time.Now()
-			Expect(ds.User(ctx).Put(&model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
+			Expect(ds.User().Put(ctx, &model.User{ID: id, UserName: "johndoe", LastAccessAt: &lastAccessTime})).
 				To(Succeed())
 
 			middleware = UpdateLastAccessMiddleware(ds)
@@ -407,14 +403,14 @@ var _ = Describe("middlewares", func() {
 
 				callMiddleware(req)
 
-				user, _ := ds.MockedUser.FindByUsername("johndoe")
+				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
 				Expect(*user.LastAccessAt).To(BeTemporally(">", lastAccessTime, time.Second))
 			})
 
 			It("skip fast successive requests", func() {
 				// First request
 				callMiddleware(req)
-				user, _ := ds.MockedUser.FindByUsername("johndoe")
+				user, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
 				lastAccessTime = *user.LastAccessAt // Store the last access time
 
 				// Second request
@@ -422,7 +418,7 @@ var _ = Describe("middlewares", func() {
 				callMiddleware(req)
 
 				// The second request should not have changed the last access time
-				user, _ = ds.MockedUser.FindByUsername("johndoe")
+				user, _ = ds.MockedUser.FindByUsername(ctx, "johndoe")
 				Expect(user.LastAccessAt).To(Equal(&lastAccessTime))
 			})
 		})
@@ -431,7 +427,7 @@ var _ = Describe("middlewares", func() {
 				req = req.WithContext(context.Background())
 				callMiddleware(req)
 
-				usr, _ := ds.MockedUser.FindByUsername("johndoe")
+				usr, _ := ds.MockedUser.FindByUsername(ctx, "johndoe")
 				Expect(usr.LastAccessAt).To(Equal(&lastAccessTime))
 			})
 		})
@@ -471,7 +467,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("with a trusted proxy", func() {
 			BeforeEach(func() {
-				conf.Server.ExtAuth.TrustedSources = "10.0.0.0/8"
+				conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "10.0.0.0/8" })
 			})
 			It("uses the forwarded client IP when the peer is a trusted proxy", func() {
 				call("10.0.0.1:1234", map[string]string{"X-Forwarded-For": "203.0.113.5, 10.0.0.1"})
@@ -522,7 +518,7 @@ var _ = Describe("middlewares", func() {
 
 		Context("behind a trusted proxy", func() {
 			BeforeEach(func() {
-				conf.Server.ExtAuth.TrustedSources = "10.0.0.0/8"
+				conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "10.0.0.0/8" })
 			})
 			It("gives each real client its own bucket", func() {
 				Expect(attempt("10.0.0.1:1", "X-Forwarded-For", "203.0.113.1")).To(Equal(http.StatusOK))

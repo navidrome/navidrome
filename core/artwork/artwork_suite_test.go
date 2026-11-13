@@ -1,6 +1,7 @@
 package artwork
 
 import (
+	"context"
 	"io/fs"
 	"net/netip"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
@@ -39,6 +41,8 @@ func TestArtwork(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Artwork Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // productionImageClient keeps the guarded client for the specs that assert it refuses loopback.
 var productionImageClient = remoteImageClient
@@ -108,15 +112,15 @@ type fakeFolderRepo struct {
 	otherAudioErr error
 }
 
-func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) {
+func (f *fakeFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
 	return f.result, f.err
 }
 
-func (f *fakeFolderRepo) HasAudioOutsideFolders(model.Folder, []string) (bool, error) {
+func (f *fakeFolderRepo) HasAudioOutsideFolders(context.Context, model.Folder, []string) (bool, error) {
 	return f.hasOtherAudio, f.otherAudioErr
 }
 
-func (f *fakeFolderRepo) Get(string) (*model.Folder, error) {
+func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
 	f.getCallCount++
 	if f.getErr != nil {
 		return nil, f.getErr

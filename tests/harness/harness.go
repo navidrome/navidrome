@@ -47,13 +47,13 @@ func CreateFS(files fstest.MapFS) storagetest.FakeFS {
 
 // SetupDB boots the golden database: a temp SQLite file, the given users (password "password",
 // all with access to the seeded "Music Library"), a full scan of the registered fake FS, and a
-// snapshot for per-test restore. Callers must set conf.Server.MusicFolder and register the FS
+// snapshot for per-test restore. Callers must set MusicFolder and register the FS
 // first; each user's Libraries field is populated in place.
 func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	tmpDir := ginkgo.GinkgoT().TempDir()
 	h := &DB{FilePath: filepath.Join(tmpDir, "test-e2e.db")}
 	h.SnapshotPath = h.FilePath + ".snapshot"
-	conf.Server.DbPath = h.FilePath + "?_journal_mode=WAL"
+	conf.Update(func(c *conf.Options) { c.DbPath = h.FilePath + "?_journal_mode=WAL" })
 	db.Db().SetMaxOpenConns(1)
 	db.Init(ctx)
 
@@ -61,14 +61,14 @@ func SetupDB(ctx context.Context, users ...*model.User) *DB {
 	auth.Init(ds)
 
 	h.Library = model.Library{ID: 1, Name: "Music Library", Path: "fake:///music"}
-	Expect(ds.Library(ctx).Put(&h.Library)).To(Succeed())
+	Expect(ds.Library().Put(ctx, &h.Library)).To(Succeed())
 
 	for _, u := range users {
 		seeded := *u
 		seeded.NewPassword = "password"
-		Expect(ds.User(ctx).Put(&seeded)).To(Succeed())
-		Expect(ds.User(ctx).SetUserLibraries(u.ID, []int{h.Library.ID})).To(Succeed())
-		loaded, err := ds.User(ctx).FindByUsername(u.UserName)
+		Expect(ds.User().Put(ctx, &seeded)).To(Succeed())
+		Expect(ds.User().SetUserLibraries(ctx, u.ID, []int{h.Library.ID})).To(Succeed())
+		loaded, err := ds.User().FindByUsername(ctx, u.UserName)
 		Expect(err).ToNot(HaveOccurred())
 		u.Libraries = loaded.Libraries
 	}
@@ -175,8 +175,6 @@ func (NoopFFmpeg) Transcode(context.Context, ffmpeg.TranscodeOptions) (io.ReadCl
 func (NoopFFmpeg) ExtractImage(context.Context, string) (io.ReadCloser, error) {
 	return nil, errors.New("noop ffmpeg: extract image not supported")
 }
-
-func (NoopFFmpeg) Probe(context.Context, []string) (string, error) { return "", nil }
 
 func (NoopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeResult, error) {
 	return nil, errors.New("noop ffmpeg: probe not supported")

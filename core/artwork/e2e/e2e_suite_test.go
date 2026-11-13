@@ -11,6 +11,7 @@ import (
 	"time"
 
 	_ "github.com/navidrome/navidrome/adapters/gotaglib" // registers the "taglib" local-storage extractor
+	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	_ "github.com/navidrome/navidrome/core/storage/local"
 	"github.com/navidrome/navidrome/log"
@@ -26,6 +27,8 @@ func TestArtworkE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Artwork Pipeline E2E Suite")
 }
+
+var _ = configtest.RestoreAfterEachSpec()
 
 // Fixtures relative to the project root (tests.Init chdirs there).
 const (
@@ -67,13 +70,17 @@ type fakeFolderRepo struct {
 	result []model.Folder
 }
 
-func (f *fakeFolderRepo) GetAll(...model.QueryOptions) ([]model.Folder, error) { return f.result, nil }
+func (f *fakeFolderRepo) GetAll(context.Context, ...model.QueryOptions) ([]model.Folder, error) {
+	return f.result, nil
+}
 
-func (f *fakeFolderRepo) HasAudioOutsideFolders(model.Folder, []string) (bool, error) {
+func (f *fakeFolderRepo) HasAudioOutsideFolders(context.Context, model.Folder, []string) (bool, error) {
 	return false, nil
 }
 
-func (f *fakeFolderRepo) Get(string) (*model.Folder, error) { return nil, model.ErrNotFound }
+func (f *fakeFolderRepo) Get(context.Context, string) (*model.Folder, error) {
+	return nil, model.ErrNotFound
+}
 
 func writeUpload(entityType, name, srcFixture string) string {
 	GinkgoHelper()

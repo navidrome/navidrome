@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/plugins/host"
 	"github.com/navidrome/navidrome/tests"
@@ -35,21 +34,21 @@ var _ = Describe("UsersService", Ordered, func() {
 		var mockUserRepo *tests.MockedUserRepo
 
 		BeforeEach(func() {
-			mockUserRepo = ds.User(ctx).(*tests.MockedUserRepo)
+			mockUserRepo = ds.User().(*tests.MockedUserRepo)
 			// Add test users
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user1",
 				UserName: "alice",
 				Name:     "Alice Admin",
 				IsAdmin:  true,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user2",
 				UserName: "bob",
 				Name:     "Bob User",
 				IsAdmin:  false,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user3",
 				UserName: "charlie",
 				Name:     "Charlie User",
@@ -144,21 +143,21 @@ var _ = Describe("UsersService", Ordered, func() {
 		var mockUserRepo *tests.MockedUserRepo
 
 		BeforeEach(func() {
-			mockUserRepo = ds.User(ctx).(*tests.MockedUserRepo)
+			mockUserRepo = ds.User().(*tests.MockedUserRepo)
 			// Add test users - alice is admin, bob and charlie are not
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user1",
 				UserName: "alice",
 				Name:     "Alice Admin",
 				IsAdmin:  true,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user2",
 				UserName: "bob",
 				Name:     "Bob User",
 				IsAdmin:  false,
 			})
-			_ = mockUserRepo.Put(&model.User{
+			_ = mockUserRepo.Put(ctx, &model.User{
 				ID:       "user3",
 				UserName: "charlie",
 				Name:     "Charlie User",
@@ -458,20 +457,20 @@ func setupTestUsersPlugin() (*testUsersSetup, error) {
 }
 
 // createTestUsers creates standard test users in the mock repo
-func createTestUsers(mockUserRepo *tests.MockedUserRepo) {
-	_ = mockUserRepo.Put(&model.User{
+func createTestUsers(ctx context.Context, mockUserRepo *tests.MockedUserRepo) {
+	_ = mockUserRepo.Put(ctx, &model.User{
 		ID:       "user1",
 		UserName: "alice",
 		Name:     "Alice Admin",
 		IsAdmin:  true,
 	})
-	_ = mockUserRepo.Put(&model.User{
+	_ = mockUserRepo.Put(ctx, &model.User{
 		ID:       "user2",
 		UserName: "bob",
 		Name:     "Bob User",
 		IsAdmin:  false,
 	})
-	_ = mockUserRepo.Put(&model.User{
+	_ = mockUserRepo.Put(ctx, &model.User{
 		ID:       "user3",
 		UserName: "charlie",
 		Name:     "Charlie User",
@@ -481,9 +480,11 @@ func createTestUsers(mockUserRepo *tests.MockedUserRepo) {
 
 // setupTestUsersConfig sets up common plugin configuration
 func setupTestUsersConfig(tmpDir string) {
-	conf.Server.Plugins.Enabled = true
-	conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-	conf.Server.Plugins.AutoReload = false
+	conf.Update(func(c *conf.Options) {
+		c.Plugins.Enabled = true
+		c.Plugins.Folder = conf.NewDir(tmpDir)
+		c.Plugins.AutoReload = false
+	})
 }
 
 // testUsersInput represents input for test-users plugin calls
@@ -544,7 +545,7 @@ func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUser
 	Expect(err).ToNot(HaveOccurred())
 
 	// Setup config
-	cleanupConfig := configtest.SetupConfig()
+	cleanupConfig := conf.SnapshotConfig()
 	setupTestUsersConfig(setup.tmpDir)
 
 	// Setup mock DataStore with plugin and users
@@ -560,7 +561,7 @@ func setupUsersIntegrationManagerWithEnabled(enabled, allUsers bool, allowedUser
 	}})
 
 	mockUserRepo := tests.CreateMockUserRepo()
-	createTestUsers(mockUserRepo)
+	createTestUsers(GinkgoT().Context(), mockUserRepo)
 
 	dataStore := &tests.MockDataStore{
 		MockedPlugin: mockPluginRepo,

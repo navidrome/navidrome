@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -63,10 +62,6 @@ var _ = Describe("mappers", func() {
 			ar := model.Artist{ID: testID("art-1"), Name: "The B-52's", SortArtistName: "B-52's, The", OrderArtistName: "b-52's"}
 			al := model.Album{ID: testID("alb-1"), Name: "The Wall", SortAlbumName: "Wall, The", OrderAlbumName: "wall"}
 
-			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-			})
-
 			It("is omitted unless Fields=SortName", func() {
 				Expect(SongToBaseItem(song, nil).SortName).To(BeEmpty())
 				Expect(ArtistToBaseItem(ar, nil).SortName).To(BeEmpty())
@@ -81,7 +76,7 @@ var _ = Describe("mappers", func() {
 
 			Context("with PreferSortTags", func() {
 				BeforeEach(func() {
-					conf.Server.PreferSortTags = true
+					conf.Update(func(c *conf.Options) { c.PreferSortTags = true })
 				})
 
 				It("prefers the sort tags", func() {
@@ -478,6 +473,30 @@ var _ = Describe("mappers", func() {
 		Expect(item.ImageBlurHashes).To(BeNil())
 	})
 
+	DescribeTable("UserData derives Likes from the rating like Jellyfin (rating >= 6.5)",
+		func(stars int, expected *bool) {
+			d := UserData(model.Annotations{Rating: stars}, testID("s1"))
+			Expect(d.Likes).To(Equal(expected))
+		},
+		Entry("unrated has no Likes", 0, nil),
+		Entry("1 star (Jellyfin 2) dislikes", 1, new(false)),
+		Entry("3 stars (Jellyfin 6) dislikes", 3, new(false)),
+		Entry("4 stars (Jellyfin 8) likes", 4, new(true)),
+		Entry("5 stars (Jellyfin 10) likes", 5, new(true)),
+	)
+
+	It("emits Rating as a whole number and omits Likes when unrated", func() {
+		rated, err := json.Marshal(UserData(model.Annotations{Rating: 4}, testID("s1")))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(rated)).To(ContainSubstring(`"Rating":8,`))
+		Expect(string(rated)).To(ContainSubstring(`"Likes":true`))
+
+		unrated, err := json.Marshal(UserData(model.Annotations{}, testID("s1")))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(string(unrated)).ToNot(ContainSubstring(`"Rating"`))
+		Expect(string(unrated)).ToNot(ContainSubstring(`"Likes"`))
+	})
+
 	It("emits DateCreated and SortName on playlists, like albums and artists", func() {
 		p := model.Playlist{ID: testID("pl-1"), Name: "Chill", CreatedAt: time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)}
 		Expect(PlaylistToBaseItem(p, nil).DateCreated).To(Equal("2026-07-01T12:00:00.0000000Z"))
@@ -510,8 +529,7 @@ var _ = Describe("mappers", func() {
 	// advertising just the album image would leave that cover unreachable.
 	Describe("unresolved embedded art", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 		})
 
 		It("advertises the track id so the client triggers the read-through", func() {
@@ -544,7 +562,7 @@ var _ = Describe("mappers", func() {
 		})
 
 		It("falls back to the album when per-track art is disabled", func() {
-			conf.Server.EnableMediaFileCoverArt = false
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = false })
 			mf := model.MediaFile{ID: testID("mf-4"), AlbumID: testID("alb-1"), HasCoverArt: true}
 			mf.AlbumImage.ImageHash = "0123456789abcdef"
 

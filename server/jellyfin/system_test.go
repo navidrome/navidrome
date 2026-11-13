@@ -10,7 +10,6 @@ import (
 	"sync"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
 	"github.com/navidrome/navidrome/tests"
@@ -23,8 +22,7 @@ var _ = Describe("System", func() {
 	BeforeEach(func() { api = &Router{} })
 
 	It("returns public system info without auth", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.ServerName = ""
+		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
@@ -41,8 +39,7 @@ var _ = Describe("System", func() {
 	})
 
 	It("returns authenticated system info with the public fields plus library monitor support", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.ServerName = ""
+		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Info", nil)
@@ -62,7 +59,6 @@ var _ = Describe("System", func() {
 	})
 
 	It("advertises a LocalAddress with the request scheme, host and Jellyfin base path", func() {
-		DeferCleanup(configtest.SetupConfig())
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Info/Public", nil)
@@ -77,8 +73,7 @@ var _ = Describe("System", func() {
 	})
 
 	It("responds to ping with the server name as plain text", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.ServerName = ""
+		conf.Update(func(c *conf.Options) { c.Jellyfin.ServerName = "" })
 
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/System/Ping", nil)
@@ -182,10 +177,10 @@ var _ = Describe("System", func() {
 		})
 
 		It("does not overwrite or pin over a stored id when the property read fails transiently", func() {
-			Expect(ds.Property(ctx).Put(consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
+			Expect(ds.Property().Put(ctx, consts.JellyfinServerIDKey, "6ba7b8109dad11d180b400c04fd430c8")).To(Succeed())
 
 			r := &Router{ds: ds}
-			props := ds.Property(ctx).(*tests.MockedPropertyRepo)
+			props := ds.Property().(*tests.MockedPropertyRepo)
 			props.Error = errors.New("database is locked")
 			degraded := r.serverID(ctx)
 			Expect(degraded).ToNot(BeEmpty())
@@ -194,7 +189,7 @@ var _ = Describe("System", func() {
 
 			// Once the DB recovers, the stored id is intact and served again.
 			Expect(r.serverID(ctx)).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
-			stored, err := ds.Property(ctx).Get(consts.JellyfinServerIDKey)
+			stored, err := ds.Property().Get(ctx, consts.JellyfinServerIDKey)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(stored).To(Equal("6ba7b8109dad11d180b400c04fd430c8"))
 		})
@@ -205,7 +200,7 @@ var _ = Describe("System", func() {
 		})
 
 		It("strips dashes from an already-persisted id", func() {
-			Expect(ds.Property(ctx).Put(
+			Expect(ds.Property().Put(ctx,
 				consts.JellyfinServerIDKey, "1b4e28ba-2fa1-11d2-883f-0016d3cca427")).To(Succeed())
 			r := &Router{ds: ds}
 			Expect(r.serverID(ctx)).To(Equal("1b4e28ba2fa111d2883f0016d3cca427"))

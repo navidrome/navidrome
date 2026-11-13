@@ -26,7 +26,7 @@ type imageCache struct {
 func GetImageCache() cache.FileCache {
 	return singleton.GetInstance(func() *imageCache {
 		return &imageCache{
-			FileCache: cache.NewFileCache("Image", conf.Server.ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
+			FileCache: cache.NewFileCache("Image", conf.Server().ImageCacheSize, consts.ImageCacheDir, consts.DefaultImageCacheMaxItems,
 				func(ctx context.Context, arg cache.Item) (io.Reader, error) {
 					return arg.(artworkReader).Reader(ctx)
 				}),

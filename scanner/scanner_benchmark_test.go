@@ -44,9 +44,11 @@ func BenchmarkScan(b *testing.B) {
 	tests.Init(b, false)
 
 	tmpDir := b.TempDir()
-	conf.Server.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
-	// The default library is seeded from MusicFolder, and its path cannot be changed afterwards
-	conf.Server.MusicFolder = "fake:///music"
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(tmpDir, "test-scanner.db?_journal_mode=WAL")
+		// The default library is seeded from MusicFolder, and its path cannot be changed afterwards
+		c.MusicFolder = "fake:///music"
+	})
 	// TestScanner may run first and close the shared DB singleton; drop it so db.Init
 	// opens a fresh one whether or not the test suite ran before this benchmark.
 	singleton.DeleteInstance[*sql.DB]()
@@ -54,7 +56,7 @@ func BenchmarkScan(b *testing.B) {
 	defer db.Init(context.Background())()
 
 	ds := persistence.New(db.Db())
-	conf.Server.DevExternalScanner = false
+	conf.Update(func(c *conf.Options) { c.DevExternalScanner = false })
 	s := scanner.New(context.Background(), ds, events.NoopBroker(),
 		playlists.NewPlaylists(ds, artwork.NewUploader(ds)), metrics.NewNoopInstance())
 
@@ -82,7 +84,7 @@ func BenchmarkScan(b *testing.B) {
 	})
 
 	lib := model.Library{ID: 1, Name: "Fake Library", Path: "fake:///music"}
-	err := ds.Library(context.Background()).Put(&lib)
+	err := ds.Library().Put(b.Context(), &lib)
 	if err != nil {
 		b.Fatal(err)
 	}

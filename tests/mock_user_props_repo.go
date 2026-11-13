@@ -1,6 +1,10 @@
 package tests
 
-import "github.com/navidrome/navidrome/model"
+import (
+	"context"
+
+	"github.com/navidrome/navidrome/model"
+)
 
 type MockedUserPropsRepo struct {
 	model.UserPropsRepository
@@ -14,7 +18,7 @@ func (p *MockedUserPropsRepo) init() {
 	}
 }
 
-func (p *MockedUserPropsRepo) Put(userId, key string, value string) error {
+func (p *MockedUserPropsRepo) Put(_ context.Context, userId, key string, value string) error {
 	if p.Error != nil {
 		return p.Error
 	}
@@ -23,7 +27,7 @@ func (p *MockedUserPropsRepo) Put(userId, key string, value string) error {
 	return nil
 }
 
-func (p *MockedUserPropsRepo) Get(userId, key string) (string, error) {
+func (p *MockedUserPropsRepo) Get(_ context.Context, userId, key string) (string, error) {
 	if p.Error != nil {
 		return "", p.Error
 	}
@@ -34,7 +38,7 @@ func (p *MockedUserPropsRepo) Get(userId, key string) (string, error) {
 	return "", model.ErrNotFound
 }
 
-func (p *MockedUserPropsRepo) Delete(userId, key string) error {
+func (p *MockedUserPropsRepo) Delete(_ context.Context, userId, key string) error {
 	if p.Error != nil {
 		return p.Error
 	}
@@ -46,12 +50,12 @@ func (p *MockedUserPropsRepo) Delete(userId, key string) error {
 	return model.ErrNotFound
 }
 
-func (p *MockedUserPropsRepo) DefaultGet(userId, key string, defaultValue string) (string, error) {
+func (p *MockedUserPropsRepo) DefaultGet(ctx context.Context, userId, key string, defaultValue string) (string, error) {
 	if p.Error != nil {
 		return "", p.Error
 	}
 	p.init()
-	v, err := p.Get(userId, key)
+	v, err := p.Get(ctx, userId, key)
 	if err != nil {
 		return defaultValue, nil //nolint:nilerr
 	}

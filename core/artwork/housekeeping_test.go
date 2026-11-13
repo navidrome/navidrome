@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -35,12 +34,13 @@ var _ = Describe("Housekeeping", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
-		conf.Server.CoverArtPriority = "embedded, folder"
-		conf.Server.ArtistArtPriority = "artist.jpg"
-		conf.Server.Agents = "spotify"
-		conf.Server.EnableExternalServices = true
+		conf.Update(func(c *conf.Options) {
+			c.CoverArtPriority = "embedded, folder"
+			c.ArtistArtPriority = "artist.jpg"
+			c.Agents = "spotify"
+			c.EnableExternalServices = true
+		})
 
 		queueRepo = tests.CreateMockArtworkQueueRepo()
 		propRepo = &tests.MockedPropertyRepo{}
@@ -49,31 +49,35 @@ var _ = Describe("Housekeeping", func() {
 
 	Describe("Fingerprint", func() {
 		DescribeTable("changes when a fingerprint-affecting config value changes",
-			func(change func()) {
+			func(change func(*conf.Options)) {
 				before := ConfigFingerprint()
-				change()
+				conf.Update(change)
 				Expect(ConfigFingerprint()).NotTo(Equal(before))
 			},
-			Entry("CoverArtPriority", func() { conf.Server.CoverArtPriority = "folder, embedded" }),
-			Entry("ArtistImageFolder", func() { conf.Server.ArtistImageFolder = "/after" }),
-			Entry("EnableM3UExternalAlbumArt", func() { conf.Server.EnableM3UExternalAlbumArt = true }),
+			Entry("CoverArtPriority", func(c *conf.Options) { c.CoverArtPriority = "folder, embedded" }),
+			Entry("ArtistImageFolder", func(c *conf.Options) { c.ArtistImageFolder = "/after" }),
+			Entry("EnableM3UExternalAlbumArt", func(c *conf.Options) { c.EnableM3UExternalAlbumArt = true }),
 		)
 
 		// Pinned: a changed formula tells every existing install its artwork config went stale.
 		It("hashes a given config to a stable value", func() {
-			conf.Server.CoverArtPriority = "cover.*, embedded"
-			conf.Server.ArtistArtPriority = "artist.*, external"
-			conf.Server.ArtistImageFolder = ""
-			conf.Server.Agents = "lastfm,spotify"
-			conf.Server.EnableExternalServices = true
-			conf.Server.EnableM3UExternalAlbumArt = false
+			conf.Update(func(c *conf.Options) {
+				c.CoverArtPriority = "cover.*, embedded"
+				c.ArtistArtPriority = "artist.*, external"
+				c.ArtistImageFolder = ""
+				c.Agents = "lastfm,spotify"
+				c.EnableExternalServices = true
+				c.EnableM3UExternalAlbumArt = false
+			})
 
 			Expect(ConfigFingerprint()).To(Equal("7b538a83a870c16d"))
 		})
 
 		It("reports the config inputs it hashes, so a change can be traced to a setting", func() {
-			conf.Server.Agents = "lastfm,spotify"
-			conf.Server.CoverArtPriority = "cover.*, embedded"
+			conf.Update(func(c *conf.Options) {
+				c.Agents = "lastfm,spotify"
+				c.CoverArtPriority = "cover.*, embedded"
+			})
 
 			Expect(FingerprintInputs()).To(ContainElements(
 				FingerprintInput{Name: "Agents", Value: "lastfm,spotify"},
@@ -95,15 +99,15 @@ var _ = Describe("Housekeeping", func() {
 		It("records the current fingerprint when none was ever stored", func() {
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
+			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal(ConfigFingerprint()))
 		})
 
 		It("leaves a stale fingerprint stored, so the warning survives a restart", func() {
-			Expect(propRepo.Put(consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
+			Expect(propRepo.Put(ctx, consts.ArtConfFingerprintPropertyKey, "stale-fingerprint")).To(Succeed())
 
 			Expect(ReconcileConfigFingerprint(ctx, ds)).To(Succeed())
 
-			Expect(propRepo.Get(consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
+			Expect(propRepo.Get(ctx, consts.ArtConfFingerprintPropertyKey)).To(Equal("stale-fingerprint"))
 		})
 	})
 
@@ -153,7 +157,7 @@ var _ = Describe("ItemName", func() {
 			{ID: "al-2", Name: "Sandinista!", Discs: model.Discs{2: "Side Three"}},
 		})
 		ds = &tests.MockDataStore{MockedAlbum: albumRepo}
-		Expect(ds.Artist(ctx).(*tests.MockArtistRepo).Put(&model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
+		Expect(ds.Artist().(*tests.MockArtistRepo).Put(ctx, &model.Artist{ID: "ar-1", Name: "Radiohead"})).To(Succeed())
 	})
 
 	It("returns the album name", func() {

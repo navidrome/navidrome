@@ -1,4 +1,4 @@
-package metadata_old
+package api_test
 
 import (
 	"testing"
@@ -9,9 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestMetadata(t *testing.T) {
-	tests.Init(t, true)
+func TestAPI(t *testing.T) {
+	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Metadata Suite")
+	RunSpecs(t, "API Spec Suite")
 }

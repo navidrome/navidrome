@@ -72,14 +72,14 @@ func (api *Router) getAlbumList(r *http.Request) (model.Albums, int64, error) {
 
 	opts.Offset = p.IntOr("offset", 0)
 	opts.Max = min(p.IntOr("size", 10), 500)
-	albums, err := api.ds.Album(r.Context()).GetAll(opts)
+	albums, err := api.ds.Album().GetAll(r.Context(), opts)
 
 	if err != nil {
 		log.Error(r, "Error retrieving albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
 	}
 
-	count, err := api.ds.Album(r.Context()).CountAll(opts)
+	count, err := api.ds.Album().CountAll(r.Context(), opts)
 	if err != nil {
 		log.Error(r, "Error counting albums", err)
 		return nil, 0, newError(responses.ErrorGeneric, "internal error")
@@ -138,7 +138,7 @@ func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums
 		func() error {
 			artistOpts := filter.ApplyArtistLibraryFilter(filter.ArtistsByStarred(), musicFolderIds)
 			var err error
-			artists, err = api.ds.Artist(ctx).GetAll(artistOpts)
+			artists, err = api.ds.Artist().GetAll(ctx, artistOpts)
 			if err != nil {
 				log.Error(r, "Error retrieving starred artists", err)
 			}
@@ -148,7 +148,7 @@ func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums
 		func() error {
 			albumOpts := filter.ApplyLibraryFilter(filter.ByStarred(), musicFolderIds)
 			var err error
-			albums, err = api.ds.Album(ctx).GetAll(albumOpts)
+			albums, err = api.ds.Album().GetAll(ctx, albumOpts)
 			if err != nil {
 				log.Error(r, "Error retrieving starred albums", err)
 			}
@@ -158,7 +158,7 @@ func (api *Router) getStarredItems(r *http.Request) (model.Artists, model.Albums
 		func() error {
 			mediaFileOpts := filter.ApplyLibraryFilter(filter.ByStarred(), musicFolderIds)
 			var err error
-			mediaFiles, err = api.ds.MediaFile(ctx).GetAll(mediaFileOpts)
+			mediaFiles, err = api.ds.MediaFile().GetAll(ctx, mediaFileOpts)
 			if err != nil {
 				log.Error(r, "Error retrieving starred mediaFiles", err)
 			}
@@ -252,7 +252,7 @@ func (api *Router) GetRandomSongs(r *http.Request) (*responses.Subsonic, error) 
 	opts = filter.ApplyLibraryFilter(opts, musicFolderIds)
 	opts.Max = size
 
-	songs, err := api.ds.MediaFile(r.Context()).GetRandom(opts)
+	songs, err := api.ds.MediaFile().GetRandom(r.Context(), opts)
 	if err != nil {
 		log.Error(r, "Error retrieving random songs", err)
 		return nil, err
@@ -294,5 +294,5 @@ func (api *Router) GetSongsByGenre(r *http.Request) (*responses.Subsonic, error)
 func (api *Router) getSongs(ctx context.Context, offset, size int, opts filter.Options) (model.MediaFiles, error) {
 	opts.Offset = offset
 	opts.Max = size
-	return api.ds.MediaFile(ctx).GetAll(opts)
+	return api.ds.MediaFile().GetAll(ctx, opts)
 }

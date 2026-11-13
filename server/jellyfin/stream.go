@@ -29,7 +29,7 @@ func (api *Router) mediaFileForRequest(w http.ResponseWriter, r *http.Request) (
 	if !ok {
 		return nil, false
 	}
-	mf, err := api.ds.MediaFile(ctx).Get(id)
+	mf, err := api.ds.MediaFile().Get(ctx, id)
 	if err != nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return nil, false
@@ -107,7 +107,7 @@ func (api *Router) streamUniversal(w http.ResponseWriter, r *http.Request) {
 
 func universalClientInfo(p *req.Values) *stream.ClientInfo {
 	ci := &stream.ClientInfo{Name: "jellyfin-universal", MaxAudioBitrate: bitRateParam(p)}
-	for entry := range strings.SplitSeq(p.StringOr("container", ""), ",") {
+	for entry := range strings.SplitSeq(joinedStrings(p, "container"), ",") {
 		container, codec, _ := strings.Cut(strings.TrimSpace(entry), "|")
 		if container == "" {
 			continue

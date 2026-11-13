@@ -50,7 +50,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "minimal-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -75,7 +75,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with non-minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -124,7 +124,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("when minimal clients list is empty", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = ""
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "" })
 				player := model.Player{Client: "any-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -153,7 +153,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -207,7 +207,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "minimal-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -233,7 +233,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with non-minimal client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.MinimalClients = "minimal-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.MinimalClients = "minimal-client" })
 				player := model.Player{Client: "regular-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})
@@ -256,7 +256,7 @@ var _ = Describe("buildPlaylist", func() {
 
 		Context("with legacy client", func() {
 			BeforeEach(func() {
-				conf.Server.Subsonic.LegacyClients = "legacy-client"
+				conf.Update(func(c *conf.Options) { c.Subsonic.LegacyClients = "legacy-client" })
 				player := model.Player{Client: "legacy-client"}
 				ctx = request.WithPlayer(ctx, player)
 			})

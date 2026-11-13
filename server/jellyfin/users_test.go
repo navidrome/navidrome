@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/jellyfin/dto"
@@ -18,10 +17,11 @@ import (
 )
 
 var _ = Describe("Users", func() {
+	var ctx context.Context
 	var api *Router
 	// The repo holds the full rows; the user carries the id/name-only copy its projection returns.
 	authedWithLibraries := func(r *http.Request, libs model.Libraries) *http.Request {
-		api.ds.Library(context.Background()).(*tests.MockLibraryRepo).SetData(libs)
+		api.ds.Library().(*tests.MockLibraryRepo).SetData(libs)
 		stripped := make(model.Libraries, len(libs))
 		for i, lib := range libs {
 			stripped[i] = model.Library{ID: lib.ID, Name: lib.Name}
@@ -29,7 +29,10 @@ var _ = Describe("Users", func() {
 		ctx := request.WithUser(context.Background(), model.User{ID: testID("u1"), UserName: "alice", Libraries: stripped})
 		return r.WithContext(ctx)
 	}
-	BeforeEach(func() { api = &Router{ds: &tests.MockDataStore{}} })
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+		api = &Router{ds: &tests.MockDataStore{}}
+	})
 
 	Describe("getUserViews", func() {
 		It("returns one view per accessible library", func() {
@@ -116,19 +119,18 @@ var _ = Describe("Users", func() {
 		}
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			ur = api.ds.User(context.Background()).(*tests.MockedUserRepo)
-			Expect(ur.Put(&model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
-			Expect(ur.Put(&model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
+			ur = api.ds.User().(*tests.MockedUserRepo)
+			Expect(ur.Put(ctx, &model.User{ID: testID("u1"), UserName: "alice"})).To(Succeed())
+			Expect(ur.Put(ctx, &model.User{ID: testID("u2"), UserName: "bob"})).To(Succeed())
 		})
 
 		It("returns an empty list when the config is unset", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = ""
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "" })
 			Expect(publicUsers()).To(BeEmpty())
 		})
 
 		It("lists the configured users in order, without leaking policy", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = "bob, alice"
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "bob, alice" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(2))
 			Expect(users[0].Name).To(Equal("bob"))
@@ -140,14 +142,14 @@ var _ = Describe("Users", func() {
 		})
 
 		It("skips a configured username that does not exist", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = "alice,ghost"
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "alice,ghost" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(1))
 			Expect(users[0].Name).To(Equal("alice"))
 		})
 
 		It("matches usernames case-insensitively and de-duplicates", func() {
-			conf.Server.Jellyfin.ExposedPublicUsers = "ALICE, alice"
+			conf.Update(func(c *conf.Options) { c.Jellyfin.ExposedPublicUsers = "ALICE, alice" })
 			users := publicUsers()
 			Expect(users).To(HaveLen(1))
 			Expect(users[0].Name).To(Equal("alice"))

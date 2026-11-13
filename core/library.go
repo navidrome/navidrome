@@ -2,10 +2,11 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/metadata"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/server/events"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -32,25 +34,28 @@ type Library interface {
 	SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error
 	ValidateLibraryAccess(ctx context.Context, userID string, libraryID int) error
 
-	NewRepository(ctx context.Context) rest.Repository
+	Repository() rest.Repository[model.Library]
 }
 
 type libraryService struct {
-	ds            model.DataStore
-	scanner       model.Scanner
-	watcher       Watcher
-	broker        events.Broker
-	pluginManager PluginUnloader
+	ds     model.DataStore
+	broker events.Broker
+	repo   *libraryRepositoryWrapper
 }
 
 // NewLibrary creates a new Library service
 func NewLibrary(ds model.DataStore, scanner model.Scanner, watcher Watcher, broker events.Broker, pluginManager PluginUnloader) Library {
 	return &libraryService{
-		ds:            ds,
-		scanner:       scanner,
-		watcher:       watcher,
-		broker:        broker,
-		pluginManager: pluginManager,
+		ds:     ds,
+		broker: broker,
+		repo: &libraryRepositoryWrapper{
+			LibraryRepository: ds.Library(),
+			ds:                ds,
+			scanner:           scanner,
+			watcher:           watcher,
+			broker:            broker,
+			pluginManager:     pluginManager,
+		},
 	}
 }
 
@@ -58,16 +63,16 @@ func NewLibrary(ds model.DataStore, scanner model.Scanner, watcher Watcher, brok
 
 func (s *libraryService) GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error) {
 	// Verify user exists
-	if _, err := s.ds.User(ctx).Get(userID); err != nil {
+	if _, err := s.ds.User().Get(ctx, userID); err != nil {
 		return nil, err
 	}
 
-	return s.ds.User(ctx).GetUserLibraries(userID)
+	return s.ds.User().GetUserLibraries(ctx, userID)
 }
 
 func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, libraryIDs []int) error {
 	// Verify user exists
-	user, err := s.ds.User(ctx).Get(userID)
+	user, err := s.ds.User().Get(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -90,7 +95,7 @@ func (s *libraryService) SetUserLibraries(ctx context.Context, userID string, li
 	}
 
 	// Set user libraries
-	err = s.ds.User(ctx).SetUserLibraries(userID, libraryIDs)
+	err = s.ds.User().SetUserLibraries(ctx, userID, libraryIDs)
 	if err != nil {
 		return fmt.Errorf("error setting user libraries: %w", err)
 	}
@@ -115,7 +120,7 @@ func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID strin
 	}
 
 	// Check if user has explicit access to this library
-	libraries, err := s.ds.User(ctx).GetUserLibraries(userID)
+	libraries, err := s.ds.User().GetUserLibraries(ctx, userID)
 	if err != nil {
 		log.Error(ctx, "Error checking library access", "userID", userID, "libraryID", libraryID, err)
 		return fmt.Errorf("error checking library access: %w", err)
@@ -132,25 +137,14 @@ func (s *libraryService) ValidateLibraryAccess(ctx context.Context, userID strin
 
 // REST repository wrapper
 
-func (s *libraryService) NewRepository(ctx context.Context) rest.Repository {
-	repo := s.ds.Library(ctx)
-	wrapper := &libraryRepositoryWrapper{
-		ctx:               ctx,
-		LibraryRepository: repo,
-		Repository:        repo.(rest.Repository),
-		ds:                s.ds,
-		scanner:           s.scanner,
-		watcher:           s.watcher,
-		broker:            s.broker,
-		pluginManager:     s.pluginManager,
-	}
-	return wrapper
+func (s *libraryService) Repository() rest.Repository[model.Library] {
+	return s.repo
 }
 
+var _ rest.Persistable[model.Library] = (*libraryRepositoryWrapper)(nil)
+
 type libraryRepositoryWrapper struct {
-	rest.Repository
 	model.LibraryRepository
-	ctx           context.Context
 	ds            model.DataStore
 	scanner       model.Scanner
 	watcher       Watcher
@@ -158,87 +152,94 @@ type libraryRepositoryWrapper struct {
 	pluginManager PluginUnloader
 }
 
-func (r *libraryRepositoryWrapper) Save(entity any) (string, error) {
-	lib := entity.(*model.Library)
-	if err := r.validateLibrary(lib); err != nil {
+func (r *libraryRepositoryWrapper) Save(ctx context.Context, lib *model.Library) (string, error) {
+	if err := r.validateLibrary(ctx, lib); err != nil {
 		return "", err
 	}
 
-	err := r.LibraryRepository.Put(lib)
+	err := r.LibraryRepository.Put(ctx, lib)
 	if err != nil {
 		return "", r.mapError(err)
 	}
 
 	// Start watcher and trigger scan after successful library creation
 	if r.watcher != nil {
-		if err := r.watcher.Watch(r.ctx, lib); err != nil {
-			log.Warn(r.ctx, "Failed to start watcher for new library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
+		if err := r.watcher.Watch(ctx, lib); err != nil {
+			log.Warn(ctx, "Failed to start watcher for new library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
 		}
 	}
 
 	if r.scanner != nil {
-		go r.triggerScan(lib, "new")
+		go r.triggerScan(ctx, lib, "new")
 	}
 
 	// Send library refresh event to all clients
 	if r.broker != nil {
 		event := &events.RefreshResource{}
-		r.broker.SendBroadcastMessage(r.ctx, event.With("library", strconv.Itoa(lib.ID)))
-		log.Debug(r.ctx, "Library created - sent refresh event", "libraryID", lib.ID, "name", lib.Name)
+		r.broker.SendBroadcastMessage(ctx, event.With("library", strconv.Itoa(lib.ID)))
+		log.Debug(ctx, "Library created - sent refresh event", "libraryID", lib.ID, "name", lib.Name)
 	}
 
 	return strconv.Itoa(lib.ID), nil
 }
 
-func (r *libraryRepositoryWrapper) Update(id string, entity any, cols ...string) error {
-	lib := entity.(*model.Library)
+func (r *libraryRepositoryWrapper) Update(ctx context.Context, id string, entity model.Library, cols ...string) error {
+	lib := &entity
 	libID, err := strconv.Atoi(id)
 	if err != nil {
 		return fmt.Errorf("invalid library ID: %s", id)
 	}
 
 	lib.ID = libID
-	if err := r.validateLibrary(lib); err != nil {
+	if err := r.validateLibrary(ctx, lib); err != nil {
 		return err
 	}
 
 	// Get the original library to check if path changed
-	originalLib, err := r.Get(libID)
+	originalLib, err := r.Get(ctx, libID)
 	if err != nil {
 		return r.mapError(err)
 	}
 
 	pathChanged := originalLib.Path != lib.Path
+	pidChanged := (updatesColumn(cols, "pidAlbum") && originalLib.PIDAlbum != lib.PIDAlbum) ||
+		(updatesColumn(cols, "pidTrack") && originalLib.PIDTrack != lib.PIDTrack)
 
-	err = r.LibraryRepository.Put(lib, cols...)
+	err = r.LibraryRepository.Put(ctx, lib, cols...)
 	if err != nil {
 		return r.mapError(err)
 	}
 
-	// Restart watcher and trigger scan if path was updated
-	if pathChanged {
-		if r.watcher != nil {
-			if err := r.watcher.Watch(r.ctx, lib); err != nil {
-				log.Warn(r.ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
-			}
+	if pathChanged && r.watcher != nil {
+		if err := r.watcher.Watch(ctx, lib); err != nil {
+			log.Warn(ctx, "Failed to restart watcher for updated library", "libraryID", lib.ID, "name", lib.Name, "path", lib.Path, err)
 		}
+	}
 
-		if r.scanner != nil {
-			go r.triggerScan(lib, "updated")
-		}
+	if (pathChanged || pidChanged) && r.scanner != nil {
+		go r.triggerScan(ctx, lib, "updated")
 	}
 
 	// Send library refresh event to all clients
 	if r.broker != nil {
 		event := &events.RefreshResource{}
-		r.broker.SendBroadcastMessage(r.ctx, event.With("library", id))
-		log.Debug(r.ctx, "Library updated - sent refresh event", "libraryID", libID, "name", lib.Name)
+		r.broker.SendBroadcastMessage(ctx, event.With("library", id))
+		log.Debug(ctx, "Library updated - sent refresh event", "libraryID", libID, "name", lib.Name)
 	}
 
 	return nil
 }
 
-func (r *libraryRepositoryWrapper) Delete(id string) error {
+func (r *libraryRepositoryWrapper) Delete(ctx context.Context, ids ...string) error {
+	for _, id := range ids {
+		if err := r.deleteOne(ctx, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *libraryRepositoryWrapper) deleteOne(ctx context.Context, id string) error {
 	libID, err := strconv.Atoi(id)
 	if err != nil {
 		return &rest.ValidationError{Errors: map[string]string{
@@ -247,7 +248,7 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 	}
 
 	// Get library info before deletion for logging
-	lib, err := r.Get(libID)
+	lib, err := r.Get(ctx, libID)
 	if err != nil {
 		return r.mapError(err)
 	}
@@ -255,7 +256,7 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 	// Run the deletion in a transaction so the cascade delete and the orphaned-artist
 	// reconciliation it triggers (see libraryRepository.Delete) commit atomically.
 	err = r.ds.WithTx(func(tx model.DataStore) error {
-		return tx.Library(r.ctx).Delete(libID)
+		return tx.Library().Delete(ctx, libID)
 	}, "delete library")
 	if err != nil {
 		return r.mapError(err)
@@ -263,25 +264,25 @@ func (r *libraryRepositoryWrapper) Delete(id string) error {
 
 	// Stop watcher and trigger scan after successful library deletion to clean up orphaned data
 	if r.watcher != nil {
-		if err := r.watcher.StopWatching(r.ctx, libID); err != nil {
-			log.Warn(r.ctx, "Failed to stop watcher for deleted library", "libraryID", libID, "name", lib.Name, "path", lib.Path, err)
+		if err := r.watcher.StopWatching(ctx, libID); err != nil {
+			log.Warn(ctx, "Failed to stop watcher for deleted library", "libraryID", libID, "name", lib.Name, "path", lib.Path, err)
 		}
 	}
 
 	if r.scanner != nil {
-		go r.triggerScan(lib, "deleted")
+		go r.triggerScan(ctx, lib, "deleted")
 	}
 
 	// Send library refresh event to all clients
 	if r.broker != nil {
 		event := &events.RefreshResource{}
-		r.broker.SendBroadcastMessage(r.ctx, event.With("library", id))
-		log.Debug(r.ctx, "Library deleted - sent refresh event", "libraryID", libID, "name", lib.Name)
+		r.broker.SendBroadcastMessage(ctx, event.With("library", id))
+		log.Debug(ctx, "Library deleted - sent refresh event", "libraryID", libID, "name", lib.Name)
 	}
 
 	// After successful deletion, check if any plugins were auto-disabled
 	// and need to be unloaded from memory
-	r.pluginManager.UnloadDisabledPlugins(r.ctx)
+	r.pluginManager.UnloadDisabledPlugins(ctx)
 
 	return nil
 }
@@ -309,7 +310,7 @@ func (r *libraryRepositoryWrapper) mapError(err error) error {
 	return err
 }
 
-func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error {
+func (r *libraryRepositoryWrapper) validateLibrary(ctx context.Context, library *model.Library) error {
 	validationErrors := make(map[string]string)
 
 	if library.Name == "" {
@@ -320,9 +321,18 @@ func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error
 		validationErrors["path"] = "ra.validation.required"
 	} else {
 		// Validate path format and accessibility
-		if err := r.validateLibraryPath(library); err != nil {
+		if err := r.validateLibraryPath(ctx, library); err != nil {
 			validationErrors["path"] = err.Error()
 		}
+	}
+
+	library.PIDAlbum = strings.TrimSpace(library.PIDAlbum)
+	library.PIDTrack = strings.TrimSpace(library.PIDTrack)
+	if err := metadata.ValidatePIDSpec(library.PIDAlbum, true); err != nil {
+		validationErrors["pidAlbum"] = err.Error()
+	}
+	if err := metadata.ValidatePIDSpec(library.PIDTrack, false); err != nil {
+		validationErrors["pidTrack"] = err.Error()
 	}
 
 	if len(validationErrors) > 0 {
@@ -332,7 +342,12 @@ func (r *libraryRepositoryWrapper) validateLibrary(library *model.Library) error
 	return nil
 }
 
-func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) error {
+// updatesColumn reports whether an update with these columns writes col. No columns means all of them.
+func updatesColumn(cols []string, col string) bool {
+	return len(cols) == 0 || slices.Contains(cols, col)
+}
+
+func (r *libraryRepositoryWrapper) validateLibraryPath(ctx context.Context, library *model.Library) error {
 	// Validate path format
 	if !filepath.IsAbs(library.Path) {
 		return fmt.Errorf("library path must be absolute")
@@ -350,26 +365,15 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) e
 
 	fsys, err := fileStore.FS()
 	if err != nil {
-		log.Warn(r.ctx, "Error validating library.path", "path", library.Path, err)
-		return fmt.Errorf("resources.library.validation.pathInvalid")
+		log.Warn(ctx, "Error validating library.path", "path", library.Path, err)
+		return errors.New(classifyLibraryPathError(err))
 	}
 
 	// Check if root directory exists
 	info, err := fs.Stat(fsys, ".")
 	if err != nil {
-		// Parse the error message to check for "not a directory"
-		log.Warn(r.ctx, "Error stating library.path", "path", library.Path, err)
-		errStr := err.Error()
-		if strings.Contains(errStr, "not a directory") ||
-			strings.Contains(errStr, "The directory name is invalid.") {
-			return fmt.Errorf("resources.library.validation.pathNotDirectory")
-		} else if os.IsNotExist(err) {
-			return fmt.Errorf("resources.library.validation.pathNotFound")
-		} else if os.IsPermission(err) {
-			return fmt.Errorf("resources.library.validation.pathNotAccessible")
-		} else {
-			return fmt.Errorf("resources.library.validation.pathInvalid")
-		}
+		log.Warn(ctx, "Error stating library.path", "path", library.Path, err)
+		return errors.New(classifyLibraryPathError(err))
 	}
 
 	if !info.IsDir() {
@@ -379,13 +383,29 @@ func (r *libraryRepositoryWrapper) validateLibraryPath(library *model.Library) e
 	return nil
 }
 
+// classifyLibraryPathError maps a path error to its i18n key. It uses errors.Is because storage FS() wraps with %w.
+// Not-a-directory is matched by text: syscall.ENOTDIR means ERROR_PATH_NOT_FOUND on Windows, and ERROR_DIRECTORY is not exported.
+func classifyLibraryPathError(err error) string {
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "resources.library.validation.pathNotFound"
+	case errors.Is(err, fs.ErrPermission):
+		return "resources.library.validation.pathNotAccessible"
+	case strings.Contains(err.Error(), "not a directory") ||
+		strings.Contains(err.Error(), "The directory name is invalid."):
+		return "resources.library.validation.pathNotDirectory"
+	default:
+		return "resources.library.validation.pathInvalid"
+	}
+}
+
 func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []int) error {
 	if len(libraryIDs) == 0 {
 		return nil
 	}
 
 	// Use CountAll to efficiently validate library IDs exist
-	count, err := s.ds.Library(ctx).CountAll(model.QueryOptions{
+	count, err := s.ds.Library().CountAll(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"id": libraryIDs},
 	})
 	if err != nil {
@@ -399,13 +419,29 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 	return nil
 }
 
-func (r *libraryRepositoryWrapper) triggerScan(lib *model.Library, action string) {
-	log.Info(r.ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+var scanWaitInterval = time.Second
+
+func (r *libraryRepositoryWrapper) triggerScan(ctx context.Context, lib *model.Library, action string) {
+	// Runs in its own goroutine and outlives the HTTP request
+	ctx = context.WithoutCancel(ctx)
+
+	// A running scan loaded the libraries before this change, and would reject a new request
+	for {
+		status, err := r.scanner.Status(ctx)
+		if err != nil || !status.Scanning {
+			break
+		}
+		time.Sleep(scanWaitInterval)
+	}
+
+	log.Info(ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
 	start := time.Now()
-	warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for new library
-	if err != nil {
-		log.Error(r.ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)
+	warnings, err := r.scanner.ScanAll(ctx, false) // Quick scan: the scanner rescans libraries with a changed PID config in full
+	if errors.Is(err, model.ErrAlreadyScanning) {
+		log.Debug(ctx, "Scan already running, it covers this change", "libraryID", lib.ID, "name", lib.Name)
+	} else if err != nil {
+		log.Error(ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)
 	} else {
-		log.Info(r.ctx, fmt.Sprintf("Scan completed for %s library", action), "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
+		log.Info(ctx, fmt.Sprintf("Scan completed for %s library", action), "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
 	}
 }

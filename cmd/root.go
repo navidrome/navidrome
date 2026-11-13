@@ -44,7 +44,9 @@ Complete documentation is available at https://www.navidrome.org/docs`,
 			preRun()
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			runNavidrome(cmd.Context())
+			if err := runNavidrome(cmd.Context()); err != nil {
+				log.Fatal("Fatal error in Navidrome. Aborting", err)
+			}
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
 			postRun()
@@ -76,12 +78,12 @@ func postRun() {
 }
 
 // runNavidrome is the main entry point for the Navidrome server. It starts all the services and blocks.
-// If any of the services returns an error, it will log it and exit. If the process receives a signal to exit,
-// it will cancel the context and exit gracefully.
-func runNavidrome(ctx context.Context) {
-	defer db.Init(ctx)()
+// If any of the services returns an error, it stops the others and returns that error, so the caller can
+// exit with a non-zero code. If the context is cancelled (a signal or a service stop), it returns nil.
+func runNavidrome(parentCtx context.Context) error {
+	defer db.Init(parentCtx)()
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, ctx := errgroup.WithContext(parentCtx)
 	g.Go(startServer(ctx))
 	g.Go(startSignaller(ctx))
 	g.Go(startScheduler(ctx))
@@ -95,16 +97,18 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startArtworkWorker(ctx, artworkWorker))
 	g.Go(scheduleArtworkHousekeeping(ctx, artworkWorker))
 	g.Go(runInitialScan(ctx))
-	if conf.Server.Scanner.Enabled {
+	if conf.Server().Scanner.Enabled {
 		g.Go(startScanWatcher(ctx))
 		g.Go(schedulePeriodicScan(ctx))
 	} else {
 		log.Warn(ctx, "Automatic Scanning is DISABLED")
 	}
 
-	if err := g.Wait(); err != nil {
-		log.Error("Fatal error in Navidrome. Aborting", err)
+	// Errors caused by a normal shutdown are not failures
+	if err := g.Wait(); err != nil && parentCtx.Err() == nil {
+		return err
 	}
+	return nil
 }
 
 // mainContext returns a context that is cancelled when the process receives a signal to exit.
@@ -124,28 +128,31 @@ func startServer(ctx context.Context) func() error {
 		a.MountRouter("Native API", consts.URLPathNativeAPI, CreateNativeAPIRouter(ctx))
 		a.MountRouter("Subsonic API", consts.URLPathSubsonicAPI, CreateSubsonicAPIRouter(ctx))
 		a.MountRouter("Public Endpoints", consts.URLPathPublic, CreatePublicRouter())
-		if conf.Server.LastFM.Enabled {
+		if conf.Server().LastFM.Enabled {
 			a.MountRouter("LastFM Auth", consts.URLPathNativeAPI+"/lastfm", CreateLastFMRouter())
 		}
-		if conf.Server.ListenBrainz.Enabled {
+		if conf.Server().ListenBrainz.Enabled {
 			a.MountRouter("ListenBrainz Auth", consts.URLPathNativeAPI+"/listenbrainz", CreateListenBrainzRouter())
 		}
-		if conf.Server.Jellyfin.Enabled {
+		if conf.Server().Jellyfin.Enabled {
 			a.MountRouter("Jellyfin API", consts.URLPathJellyfinAPI, CreateJellyfinAPIRouter(ctx))
 		}
-		if conf.Server.Prometheus.Enabled {
+		if conf.Server().DevAPIv1 {
+			a.MountRouter("API v1", consts.URLPathAPIv1, CreateAPIv1Router(ctx))
+		}
+		if conf.Server().Prometheus.Enabled {
 			p := CreatePrometheus()
 			// blocking call because takes <100ms but useful if fails
 			p.WriteInitialMetrics(ctx)
-			a.MountRouter("Prometheus metrics", conf.Server.Prometheus.MetricsPath, p.GetHandler())
+			a.MountRouter("Prometheus metrics", conf.Server().Prometheus.MetricsPath, p.GetHandler())
 		}
-		if conf.Server.DevEnableProfiler {
+		if conf.Server().DevEnableProfiler {
 			a.MountRouter("Profiling", "/debug", profilerHandler())
 		}
-		if strings.HasPrefix(conf.Server.UILoginBackgroundURL, "/") {
-			a.MountRouter("Background images", conf.Server.UILoginBackgroundURL, backgrounds.NewHandler())
+		if strings.HasPrefix(conf.Server().UILoginBackgroundURL, "/") {
+			a.MountRouter("Background images", conf.Server().UILoginBackgroundURL, backgrounds.NewHandler())
 		}
-		return a.Run(ctx, conf.Server.Address, conf.Server.Port, conf.Server.TLSCert, conf.Server.TLSKey)
+		return a.Run(ctx, conf.Server().Address, conf.Server().Port, conf.Server().TLSCert, conf.Server().TLSKey)
 	}
 }
 
@@ -153,14 +160,14 @@ func startServer(ctx context.Context) func() error {
 // name from the raw request path, so the BasePath has to come off first.
 func profilerHandler() http.Handler {
 	// A trailing or root slash would make StripPrefix drop the leading slash chi needs.
-	basePath := strings.TrimRight(conf.Server.BasePath, "/")
+	basePath := strings.TrimRight(conf.Server().BasePath, "/")
 	return http.StripPrefix(basePath, middleware.Profiler())
 }
 
 // schedulePeriodicScan schedules a periodic scan of the music library, if configured.
 func schedulePeriodicScan(ctx context.Context) func() error {
 	return func() error {
-		schedule := conf.Server.Scanner.Schedule
+		schedule := conf.Server().Scanner.Schedule
 		if schedule == "" {
 			log.Info(ctx, "Periodic scan is DISABLED")
 			return nil
@@ -183,46 +190,50 @@ func schedulePeriodicScan(ctx context.Context) func() error {
 	}
 }
 
-func pidHashChanged(ds model.DataStore) (bool, error) {
-	pidAlbum, err := ds.Property(context.Background()).DefaultGet(consts.PIDAlbumKey, "")
+// librariesWithChangedPID returns the names of the libraries whose effective PID config differs from
+// the one used by their last finished scan
+func librariesWithChangedPID(ctx context.Context, ds model.DataStore) ([]string, error) {
+	libs, err := ds.Library().GetAll(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	pidTrack, err := ds.Property(context.Background()).DefaultGet(consts.PIDTrackKey, "")
-	if err != nil {
-		return false, err
+	var names []string
+	for _, lib := range libs {
+		if lib.PIDChanged() {
+			names = append(names, lib.Name)
+		}
 	}
-	return !strings.EqualFold(pidAlbum, conf.Server.PID.Album) || !strings.EqualFold(pidTrack, conf.Server.PID.Track), nil
+	return names, nil
 }
 
 // runInitialScan runs an initial scan of the music library if needed.
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
-		fullScanRequired, err := ds.Property(ctx).DefaultGet(consts.FullScanAfterMigrationFlagKey, "0")
+		fullScanRequired, err := ds.Property().DefaultGet(ctx, consts.FullScanAfterMigrationFlagKey, "0")
 		if err != nil {
 			return err
 		}
-		inProgress, err := ds.Library(ctx).ScanInProgress()
+		inProgress, err := ds.Library().ScanInProgress(ctx)
 		if err != nil {
 			return err
 		}
-		pidHasChanged, err := pidHashChanged(ds)
+		pidChangedLibs, err := librariesWithChangedPID(ctx, ds)
 		if err != nil {
 			return err
 		}
-		scanOnStartup := conf.Server.Scanner.Enabled && conf.Server.Scanner.ScanOnStartup
-		scanNeeded := scanOnStartup || inProgress || fullScanRequired == "1" || pidHasChanged
+		scanOnStartup := conf.Server().Scanner.Enabled && conf.Server().Scanner.ScanOnStartup
+		scanNeeded := scanOnStartup || inProgress || fullScanRequired == "1" || len(pidChangedLibs) > 0
 		time.Sleep(2 * time.Second) // Wait 2 seconds before the initial scan
 		if scanNeeded {
 			s := CreateScanner(ctx)
 			switch {
 			case fullScanRequired == "1":
 				log.Warn(ctx, "Full scan required after migration")
-				_ = ds.Property(ctx).Delete(consts.FullScanAfterMigrationFlagKey)
-			case pidHasChanged:
-				log.Warn(ctx, "PID config changed, performing full scan")
-				fullScanRequired = "1"
+				_ = ds.Property().Delete(ctx, consts.FullScanAfterMigrationFlagKey)
+			case len(pidChangedLibs) > 0:
+				// Includes never-scanned libraries. The scanner rescans in full only the ones that need it
+				log.Warn(ctx, "Libraries with a new or changed PID config, scanning", "libraries", pidChangedLibs)
 			case inProgress:
 				log.Warn(ctx, "Resuming interrupted scan")
 			default:
@@ -244,7 +255,7 @@ func runInitialScan(ctx context.Context) func() error {
 
 func startScanWatcher(ctx context.Context) func() error {
 	return func() error {
-		if conf.Server.Scanner.WatcherWait == 0 {
+		if conf.Server().Scanner.WatcherWait == 0 {
 			log.Debug("Folder watcher is DISABLED")
 			return nil
 		}
@@ -259,7 +270,7 @@ func startScanWatcher(ctx context.Context) func() error {
 
 func schedulePeriodicBackup(ctx context.Context) func() error {
 	return func() error {
-		schedule := conf.Server.Backup.Schedule
+		schedule := conf.Server().Backup.Schedule
 		if schedule == "" {
 			log.Info(ctx, "Periodic backup is DISABLED")
 			return nil
@@ -294,7 +305,7 @@ func schedulePeriodicBackup(ctx context.Context) func() error {
 
 func scheduleDBAnalyzer(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.EnableScheduledDBAnalyze {
+		if !conf.Server().EnableScheduledDBAnalyze {
 			log.Info(ctx, "Scheduled DB analysis is DISABLED")
 			return nil
 		}
@@ -328,13 +339,13 @@ func startScheduler(ctx context.Context) func() error {
 // startInsightsCollector starts the Navidrome Insight Collector, if configured.
 func startInsightsCollector(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.EnableInsightsCollector {
+		if !conf.Server().EnableInsightsCollector {
 			log.Info(ctx, "Insight Collector is DISABLED")
 			return nil
 		}
 		log.Info(ctx, "Starting Insight Collector")
 		select {
-		case <-time.After(conf.Server.DevInsightsInitialDelay):
+		case <-time.After(conf.Server().DevInsightsInitialDelay):
 		case <-ctx.Done():
 			return nil
 		}
@@ -347,7 +358,7 @@ func startInsightsCollector(ctx context.Context) func() error {
 // startJellyfinDiscovery never returns an error: a discovery failure must not stop the server.
 func startJellyfinDiscovery(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.Jellyfin.Enabled || !conf.Server.Jellyfin.AutoDiscovery {
+		if !conf.Server().Jellyfin.Enabled || !conf.Server().Jellyfin.AutoDiscovery {
 			log.Debug("Jellyfin auto-discovery is DISABLED")
 			return nil
 		}
@@ -360,7 +371,7 @@ func startJellyfinDiscovery(ctx context.Context) func() error {
 // It is responsible for the Jukebox functionality
 func startPlaybackServer(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.Jukebox.Enabled {
+		if !conf.Server().Jukebox.Enabled {
 			log.Debug("Jukebox is DISABLED")
 			return nil
 		}
@@ -428,7 +439,7 @@ func scheduleArtworkHousekeeping(ctx context.Context, worker *artwork.Worker) fu
 func startPluginManager(ctx context.Context) func() error {
 	return func() error {
 		manager := GetPluginManager(ctx)
-		if !conf.Server.Plugins.Enabled {
+		if !conf.Server().Plugins.Enabled {
 			log.Debug("Plugin system is DISABLED")
 			return nil
 		}

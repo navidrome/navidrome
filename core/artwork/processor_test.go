@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
@@ -57,7 +56,6 @@ var _ = Describe("processor.acquire", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
 		ctx = context.Background()
 		var err error
 		repoRoot, err = os.Getwd()
@@ -78,7 +76,7 @@ var _ = Describe("processor.acquire", func() {
 		store = NewImageStore(GinkgoT().TempDir())
 		proc = &processor{ds: ds, store: store, resolver: newResolver(ds, ag, ffm, nil)}
 
-		conf.Server.CoverArtPriority = "cover.jpg, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg, embedded" })
 	})
 
 	It("found-folder: persists state from a folder image, writes no store file, keeps sourcePath/refMtime", func() {
@@ -93,14 +91,14 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al1"})
 		Expect(out).To(Equal(outcomeFound))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al1", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).ToNot(BeEmpty())
 		Expect(ia.Source).To(Equal("folder"))
 		Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/cover.jpg"))
 		Expect(ia.RefMtime).To(BeNumerically(">", 0))
 
-		art, err := artRepo.GetImage(ia.Hash)
+		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		// Every placeholder is derived from the one shared thumbnail, so all three land together.
 		Expect(art.BlurHash).ToNot(BeEmpty())
@@ -156,12 +154,12 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al2"})
 		Expect(out).To(Equal(outcomeFound))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al2", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al2", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("embedded"))
 		Expect(filepath.ToSlash(ia.SourcePath)).To(HaveSuffix("tests/fixtures/artist/an-album/test.mp3"))
 
-		art, err := artRepo.GetImage(ia.Hash)
+		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.BlurHash).ToNot(BeEmpty())
 
@@ -179,7 +177,7 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al3"})
 		Expect(out).To(Equal(outcomeAbsent))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al3", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).To(BeEmpty())
 		Expect(ia.Source).To(BeEmpty())
@@ -187,7 +185,7 @@ var _ = Describe("processor.acquire", func() {
 	})
 
 	It("failed-on-unreadable-local: a listed cover that will not open never records absent", func() {
-		conf.Server.CoverArtPriority = "cover.jpg"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.jpg" })
 		// A folder listing that names a cover the FS will not hand over: a stale mount.
 		libRoot := GinkgoT().TempDir()
 		Expect(os.MkdirAll(filepath.Join(libRoot, "an-album"), 0o755)).To(Succeed())
@@ -200,7 +198,7 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al-io"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al-io", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al-io", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "an I/O fault must not be recorded as absent")
 	})
 
@@ -214,7 +212,7 @@ var _ = Describe("processor.acquire", func() {
 		radioRepo.Data = map[string]*model.Radio{}
 		ds.MockedRadio = radioRepo
 		dir := GinkgoT().TempDir()
-		conf.Server.DataFolder = conf.NewDir(dir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(dir) })
 		upload := model.UploadedImagePath(consts.EntityRadio, "ra-io.jpg")
 		Expect(os.MkdirAll(filepath.Dir(upload), 0o755)).To(Succeed())
 		Expect(os.WriteFile(upload, []byte("x"), 0o600)).To(Succeed())
@@ -225,7 +223,7 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra-io"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra-io", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(ctx, model.KindRadioArtwork, "ra-io", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound), "an unreadable upload must not be recorded as absent")
 	})
 
@@ -240,7 +238,7 @@ var _ = Describe("processor.acquire", func() {
 		radioRepo.Data = map[string]*model.Radio{}
 		ds.MockedRadio = radioRepo
 		dir := GinkgoT().TempDir()
-		conf.Server.DataFolder = conf.NewDir(dir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(dir) })
 		upload := model.UploadedImagePath(consts.EntityRadio, "ra-tr.jpg")
 		// A plain file where the upload's parent should be makes os.Open fault with ENOTDIR,
 		// deterministically and regardless of the test user's privileges.
@@ -259,7 +257,7 @@ var _ = Describe("processor.acquire", func() {
 	})
 
 	It("failed-on-extError: leaves the item's state untouched", func() {
-		conf.Server.CoverArtPriority = "external"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: "al4", Name: "Album"},
 		})
@@ -269,12 +267,12 @@ var _ = Describe("processor.acquire", func() {
 		Expect(out).To(Equal(outcomeFailed))
 		Expect(retryIn).To(BeZero(), "a plain failure asks for no particular delay")
 
-		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al4", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	It("failed-on-extError: reports the delay a throttled provider asked for", func() {
-		conf.Server.CoverArtPriority = "external"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 		ds.MockedAlbum.(*tests.MockAlbumRepo).SetData(model.Albums{
 			{ID: "al4r", Name: "Album"},
 		})
@@ -286,7 +284,7 @@ var _ = Describe("processor.acquire", func() {
 	})
 
 	It("found-stale: a fallback hit after a transient external failure persists state and returns outcomeFoundStale", func() {
-		conf.Server.CoverArtPriority = "external, cover.jpg"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external, cover.jpg" })
 		folderRepo.result = []model.Folder{{
 			Path:       "tests/fixtures/artist/an-album",
 			ImageFiles: []string{"cover.jpg"},
@@ -299,7 +297,7 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alstale"})
 		Expect(out).To(Equal(outcomeFoundStale))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alstale", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alstale", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Hash).ToNot(BeEmpty())
 		Expect(ia.Source).To(Equal("folder"))
@@ -316,10 +314,10 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alU"})
 		Expect(out).To(Equal(outcomeFound))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alU", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alU", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("folder"))
-		art, err := artRepo.GetImage(ia.Hash)
+		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(art.Width).To(BeZero())
 		Expect(art.BlurHash).To(BeEmpty())
@@ -336,13 +334,13 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alE"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alE", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alE", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	// An agent answering 200 with a non-image body must keep retrying, not pin garbage as a cover.
 	It("undecodable external body: fails without writing state", func() {
-		conf.Server.CoverArtPriority = "external"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = w.Write([]byte("<html>rate limited</html>"))
 		}))
@@ -354,12 +352,12 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alX"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alX", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alX", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	It("found-external: persists source as external:<agentName> and stores the fetched bytes", func() {
-		conf.Server.CoverArtPriority = "external"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "external" })
 		imgBytes, err := os.ReadFile(filepath.Join(repoRoot, "tests/fixtures/artist/an-album/cover.jpg"))
 		Expect(err).ToNot(HaveOccurred())
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -373,12 +371,12 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alext"})
 		Expect(out).To(Equal(outcomeFound))
 
-		ia, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alext", model.ImageTypePrimary)
+		ia, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alext", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia.Source).To(Equal("external:deezerFake"))
 		Expect(ia.Hash).ToNot(BeEmpty())
 
-		art, err := artRepo.GetImage(ia.Hash)
+		art, err := artRepo.GetImage(ctx, ia.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		rc, err := store.Open(ia.Hash, art.Mime)
 		Expect(err).ToNot(HaveOccurred())
@@ -397,7 +395,7 @@ var _ = Describe("processor.acquire", func() {
 
 		out1, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al5"})
 		Expect(out1).To(Equal(outcomeFound))
-		ia1, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
+		ia1, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al5", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 
 		// A re-decode instead of a hash dedup would overwrite this sentinel.
@@ -407,11 +405,11 @@ var _ = Describe("processor.acquire", func() {
 
 		out2, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al6"})
 		Expect(out2).To(Equal(outcomeFound))
-		ia2, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
+		ia2, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al6", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ia2.Hash).To(Equal(ia1.Hash))
 
-		reused, err := artRepo.GetImage(ia1.Hash)
+		reused, err := artRepo.GetImage(ctx, ia1.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reused.BlurHash).To(Equal("SENTINEL"))
 	})
@@ -437,7 +435,7 @@ var _ = Describe("processor.acquire", func() {
 		folderRepo.result = []model.Folder{{Path: "album-a", ImageFiles: []string{"cover.jpg"}}}
 		outN, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alA"})
 		Expect(outN).To(Equal(outcomeFound))
-		iaA, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
+		iaA, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(iaA.Source).To(Equal("folder"))
 		Expect(filepath.ToSlash(iaA.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
@@ -451,26 +449,26 @@ var _ = Describe("processor.acquire", func() {
 		folderRepo.result = []model.Folder{{Path: "album-b", ImageFiles: []string{"cover.jpg"}}}
 		outN, _, _ = proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alB"})
 		Expect(outN).To(Equal(outcomeFound))
-		iaB, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alB", model.ImageTypePrimary)
+		iaB, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alB", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(iaB.Hash).To(Equal(iaA.Hash))
 		Expect(filepath.ToSlash(iaB.SourcePath)).To(HaveSuffix("album-b/cover.jpg"))
 		Expect(iaB.RefMtime).To(Equal(time.Unix(2000, 0).UnixNano()))
 
-		iaAafter, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
+		iaAafter, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "alA", model.ImageTypePrimary)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(filepath.ToSlash(iaAafter.SourcePath)).To(HaveSuffix("album-a/cover.jpg"))
 		Expect(iaAafter.RefMtime).To(Equal(time.Unix(1000, 0).UnixNano()))
 
 		Expect(artRepo.Data).To(HaveLen(1))
-		reused, err := artRepo.GetImage(iaA.Hash)
+		reused, err := artRepo.GetImage(ctx, iaA.Hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(reused.BlurHash).To(Equal("SENTINEL"))
 	})
 
 	It("decode failure on found bytes: fails without writing state", func() {
 		tmpDir := GinkgoT().TempDir()
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 		Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "radio"), 0755)).To(Succeed())
 		imgPath := filepath.Join(tmpDir, "artwork", "radio", "ra1_test.jpg")
 		// Truncated PNG: a known format, so this is a real decode failure, not a missing decoder.
@@ -483,13 +481,13 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "ra1"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork(model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(ctx, model.KindRadioArtwork, "ra1", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
 	It("oversized read: a resolved image larger than the cap fails without writing state", func() {
 		tmpDir := GinkgoT().TempDir()
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 		Expect(os.MkdirAll(filepath.Join(tmpDir, "artwork", "radio"), 0755)).To(Succeed())
 		imgPath := filepath.Join(tmpDir, "artwork", "radio", "big_test.jpg")
 		f, err := os.Create(imgPath)
@@ -504,7 +502,7 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "ra", ItemID: "big"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err = artRepo.GetItemArtwork(model.KindRadioArtwork, "big", model.ImageTypePrimary)
+		_, err = artRepo.GetItemArtwork(ctx, model.KindRadioArtwork, "big", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 
@@ -565,12 +563,12 @@ var _ = Describe("processor.acquire", func() {
 
 		hash, err := hashImage(bytes.NewReader(imgBytes))
 		Expect(err).ToNot(HaveOccurred())
-		Expect(artRepo.PutImage(&model.Artwork{Hash: hash, Mime: "application/octet-stream"})).To(Succeed())
+		Expect(artRepo.PutImage(ctx, &model.Artwork{Hash: hash, Mime: "application/octet-stream"})).To(Succeed())
 
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "alM"})
 		Expect(out).To(Equal(outcomeFound))
 
-		upgraded, err := artRepo.GetImage(hash)
+		upgraded, err := artRepo.GetImage(ctx, hash)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(upgraded.Width).To(BeNumerically(">", 0))
 		Expect(upgraded.BlurHash).ToNot(BeEmpty())
@@ -590,7 +588,7 @@ var _ = Describe("processor.acquire", func() {
 		out, _, _ := proc.acquire(ctx, model.ArtworkQueueItem{ItemKind: "al", ItemID: "al7"})
 		Expect(out).To(Equal(outcomeFailed))
 
-		_, err := artRepo.GetItemArtwork(model.KindAlbumArtwork, "al7", model.ImageTypePrimary)
+		_, err := artRepo.GetItemArtwork(ctx, model.KindAlbumArtwork, "al7", model.ImageTypePrimary)
 		Expect(err).To(MatchError(model.ErrNotFound))
 	})
 })
@@ -643,12 +641,9 @@ var _ = Describe("makeThumbnail", func() {
 })
 
 var _ = Describe("maxImageBytes", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	It("reads MaxImageSize from config", func() {
-		conf.Server.MaxImageSize = "30MB"
+		conf.Update(func(c *conf.Options) { c.MaxImageSize = "30MB" })
 		Expect(maxImageBytes()).To(Equal(int64(30_000_000)))
 	})
 })

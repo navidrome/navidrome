@@ -72,7 +72,7 @@ func runMissingList(ctx context.Context) {
 	}
 
 	ds, ctx := getAdminContext(ctx)
-	mfs, err := ds.MediaFile(ctx).GetCursor(model.QueryOptions{
+	mfs, err := ds.MediaFile().GetCursor(ctx, model.QueryOptions{
 		Filters: squirrel.Eq{"missing": true},
 		Sort:    "path",
 	})
@@ -128,7 +128,7 @@ func runMissingFix(ctx context.Context, missingRef, targetRef string) {
 
 // resolveMediaFile looks up a media file by ID first, then by path (optionally libraryID:path).
 func resolveMediaFile(ctx context.Context, ds model.DataStore, ref string) *model.MediaFile {
-	mf, err := ds.MediaFile(ctx).Get(ref)
+	mf, err := ds.MediaFile().Get(ctx, ref)
 	if err == nil {
 		return mf
 	}
@@ -136,7 +136,7 @@ func resolveMediaFile(ctx context.Context, ds model.DataStore, ref string) *mode
 		log.Fatal(ctx, "Error looking up media file", "ref", ref, err)
 	}
 
-	mfs, err := ds.MediaFile(ctx).FindByPaths([]string{ref})
+	mfs, err := ds.MediaFile().FindByPaths(ctx, []string{ref})
 	if err != nil {
 		log.Fatal(ctx, "Error looking up media file by path", "ref", ref, err)
 	}

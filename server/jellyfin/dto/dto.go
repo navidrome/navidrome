@@ -40,6 +40,14 @@ type UserItemDataDto struct {
 	Key                   string   `json:"Key"`
 	ItemId                string   `json:"ItemId,omitempty"`
 	LastPlayedDate        *string  `json:"LastPlayedDate,omitempty"`
+	Likes                 *bool    `json:"Likes,omitempty"`
+}
+
+// UpdateUserItemDataDto is the POST .../UserData body; other Jellyfin fields are accepted and ignored.
+type UpdateUserItemDataDto struct {
+	Rating     *float64 `json:"Rating"`
+	Likes      *bool    `json:"Likes"`
+	IsFavorite *bool    `json:"IsFavorite"`
 }
 
 type BaseItemDto struct {

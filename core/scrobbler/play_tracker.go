@@ -68,14 +68,14 @@ type ReportPlaybackParams struct {
 }
 
 type nowPlayingEntry struct {
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // queued work item carries the request ctx to the worker
 	userId   string
 	track    *model.MediaFile
 	position int
 }
 
 type playbackReportEntry struct {
-	ctx      context.Context
+	ctx      context.Context //nolint:containedctx // queued work item carries the request ctx to the worker
 	info     PlaybackSession
 	filtered bool
 }
@@ -141,7 +141,7 @@ func newPlayTracker(ds model.DataStore, broker events.Broker, pluginManager Plug
 		prSignal:          make(chan struct{}, 1),
 		prWorkerDone:      make(chan struct{}),
 	}
-	enableNowPlaying := conf.Server.EnableNowPlaying
+	enableNowPlaying := conf.Server().EnableNowPlaying
 	m.OnExpiration(func(_ string, info PlaybackSession) {
 		log.Debug("PlaybackSession expired", "clientId", info.PlayerId, "mediaId", info.MediaFile.ID, "state",
 			info.State, "username", info.Username, "userId", info.UserId)
@@ -293,7 +293,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			log.Trace(ctx, "Ignoring out-of-order starting report for playing session", "clientId", clientId, "mediaId", params.MediaId)
 			return nil
 		}
-		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+		mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 		if err != nil {
 			return err
 		}
@@ -328,7 +328,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	case StatePlaying, StatePaused:
 		info, getErr := p.playMap.Get(clientId)
 		if getErr != nil || info.MediaFile.ID != params.MediaId {
-			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+			mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 			if err != nil {
 				return err
 			}
@@ -363,22 +363,29 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 	case StateStopped:
 		var loadedMF *model.MediaFile
 		haveVerdict := false
-		if !params.IgnoreScrobble && player.ScrobbleEnabled {
-			mf, err := p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+		if !params.IgnoreScrobble {
+			mf, err := p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 			if err != nil {
-				return err
-			}
-			loadedMF = mf
-			filtered = p.isFilteredOut(ctx, mf)
-			haveVerdict = true
-			trackDurationMs := int64(mf.Duration * 1000)
-			threshold := min(trackDurationMs*50/100, 240_000)
-			if params.PositionMs >= threshold {
-				err = p.incPlay(ctx, mf, now)
-				if err != nil {
-					log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
+				// If the track is not found, do not treat it as a fatal error.
+				// Log it and move on so that the session can still be closed
+				log.Warn(ctx, "Cannot find track for scrobbling", "id", params.MediaId, "user", user.UserName, err)
+			} else {
+				loadedMF = mf
+				filtered = p.isFilteredOut(ctx, mf)
+				haveVerdict = true
+				trackDurationMs := int64(mf.Duration * 1000)
+				threshold := min(trackDurationMs*50/100, 240_000)
+				if params.PositionMs >= threshold {
+					// To be consistent with Submit (/rest/scrobble?submission=true), play should be incremented even if
+					// scrobbling is disabled
+					err = p.incPlay(ctx, mf, now)
+					if err != nil {
+						log.Warn(ctx, "Error updating play counts", "id", mf.ID, "track", mf.Title, "user", user.UserName, err)
+					}
+					if player.ScrobbleEnabled {
+						p.dispatchScrobble(ctx, mf, now, filtered)
+					}
 				}
-				p.dispatchScrobble(ctx, mf, now, filtered)
 			}
 		}
 		p.sessionsMu.Lock()
@@ -409,7 +416,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 			mf := loadedMF
 			if mf == nil {
 				var mfErr error
-				mf, mfErr = p.ds.MediaFile(ctx).GetWithParticipants(params.MediaId)
+				mf, mfErr = p.ds.MediaFile().GetWithParticipants(ctx, params.MediaId)
 				if mfErr != nil {
 					return mfErr
 				}
@@ -422,7 +429,7 @@ func (p *playTracker) ReportPlayback(ctx context.Context, params ReportPlaybackP
 		p.enqueuePlaybackReport(ctx, stoppedInfo, filtered)
 	}
 
-	if conf.Server.EnableNowPlaying {
+	if conf.Server().EnableNowPlaying {
 		p.broker.SendBroadcastMessage(ctx, &events.NowPlayingCount{Count: p.playMap.Len()})
 	}
 
@@ -477,7 +484,7 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 	success := 0
 
 	for _, s := range submissions {
-		mf, err := p.ds.MediaFile(ctx).GetWithParticipants(s.TrackID)
+		mf, err := p.ds.MediaFile().GetWithParticipants(ctx, s.TrackID)
 		if err != nil {
 			log.Error(ctx, "Cannot find track for scrobbling", "id", s.TrackID, "user", username, err)
 			continue
@@ -504,22 +511,22 @@ func (p *playTracker) Submit(ctx context.Context, submissions []Submission) erro
 
 func (p *playTracker) incPlay(ctx context.Context, track *model.MediaFile, timestamp time.Time) error {
 	return p.ds.WithTx(func(tx model.DataStore) error {
-		err := tx.MediaFile(ctx).IncPlayCount(track.ID, timestamp)
+		err := tx.MediaFile().IncPlayCount(ctx, track.ID, timestamp)
 		if err != nil {
 			return err
 		}
-		err = tx.Album(ctx).IncPlayCount(track.AlbumID, timestamp)
+		err = tx.Album().IncPlayCount(ctx, track.AlbumID, timestamp)
 		if err != nil {
 			return err
 		}
 		for _, artist := range track.Participants[model.RoleArtist] {
-			err = tx.Artist(ctx).IncPlayCount(artist.ID, timestamp)
+			err = tx.Artist().IncPlayCount(ctx, artist.ID, timestamp)
 			if err != nil {
 				return err
 			}
 		}
-		if conf.Server.EnableScrobbleHistory {
-			return tx.Scrobble(ctx).RecordScrobble(track.ID, timestamp)
+		if conf.Server().EnableScrobbleHistory {
+			return tx.Scrobble().RecordScrobble(ctx, track.ID, timestamp)
 		}
 		return nil
 	})
@@ -538,7 +545,7 @@ func (p *playTracker) isFilteredOut(ctx context.Context, t *model.MediaFile) boo
 		log.Warn(ctx, "Invalid scrobble filter, ignoring", "user", u.UserName, err)
 		return false
 	}
-	match, err := p.ds.MediaFile(ctx).MatchesCriteria(t.ID, c)
+	match, err := p.ds.MediaFile().MatchesCriteria(ctx, t.ID, c)
 	if err != nil {
 		log.Warn(ctx, "Error evaluating scrobble filter, ignoring", "user", u.UserName, "track", t.Title, err)
 		return false

@@ -75,9 +75,9 @@ func (j *Executor) wait() {
 // Path will always be an absolute path
 func createMPVCommand(deviceName string, filename string, socketName string) []string {
 	// Parse the template structure using shell parsing to handle quoted arguments
-	templateArgs, err := shellquote.Split(conf.Server.MPVCmdTemplate)
+	templateArgs, err := shellquote.Split(conf.Server().MPVCmdTemplate)
 	if err != nil {
-		log.Error("Failed to parse MPV command template", "template", conf.Server.MPVCmdTemplate, err)
+		log.Error("Failed to parse MPV command template", "template", conf.Server().MPVCmdTemplate, err)
 		return nil
 	}
 
@@ -105,8 +105,8 @@ func createMPVCommand(deviceName string, filename string, socketName string) []s
 // This is a 1:1 copy of the stuff in ffmpeg.go, need to be unified.
 func mpvCommand() (string, error) {
 	mpvOnce.Do(func() {
-		if conf.Server.MPVPath != "" {
-			mpvPath = conf.Server.MPVPath
+		if conf.Server().MPVPath != "" {
+			mpvPath = conf.Server().MPVPath
 			mpvPath, mpvErr = exec.LookPath(mpvPath)
 		} else {
 			mpvPath, mpvErr = exec.LookPath("mpv")

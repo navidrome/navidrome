@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
+	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server"
 	"github.com/navidrome/navidrome/tests"
@@ -21,9 +21,10 @@ var _ = Describe("Missing Files Endpoint", func() {
 	var token string
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.SessionTimeout = time.Minute
-		conf.Server.EnableSharing = false
+		conf.Update(func(c *conf.Options) {
+			c.SessionTimeout = time.Minute
+			c.EnableSharing = false
+		})
 
 		mfRepo := tests.CreateMockMediaFileRepo()
 		mfRepo.SetData(model.MediaFiles{
@@ -35,12 +36,12 @@ var _ = Describe("Missing Files Endpoint", func() {
 		auth.Init(ds)
 
 		user := model.User{ID: "user-1", UserName: "user", NewPassword: "pass"}
-		Expect(userRepo.Put(&user)).To(Succeed())
+		Expect(userRepo.Put(GinkgoT().Context(), &user)).To(Succeed())
 		var err error
 		token, err = auth.CreateToken(&user)
 		Expect(err).ToNot(HaveOccurred())
 
-		router = server.JWTVerifier(New(ds, nil, nil, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil))
+		router = server.JWTVerifier(New(ds, nil, playlists.NewPlaylists(ds, nil), nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil))
 	})
 
 	DescribeTable("GET /missing/{id}",

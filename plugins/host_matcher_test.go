@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/plugins/host"
@@ -24,7 +23,7 @@ import (
 
 var _ = Describe("MatcherService", Ordered, func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 	})
 
 	// newConverter returns the service as its concrete type so converter unit
@@ -193,7 +192,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 				mediaFileRepo.SetData(model.MediaFiles{mf})
 
 				userRepo = tests.CreateMockUserRepo()
-				Expect(userRepo.Put(&model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
+				Expect(userRepo.Put(GinkgoT().Context(), &model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
 
 				ds = &tests.MockDataStore{MockedMediaFile: mediaFileRepo, MockedUser: userRepo}
 			})
@@ -269,7 +268,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 				_, err := svc.MatchSongs(callerCtx, input, host.MatchOptions{})
 				Expect(err).ToNot(HaveOccurred())
 
-				usr, ok := request.UserFrom(capturing.lastMediaFileCtx)
+				usr, ok := request.UserFrom(capturing.lastMediaFileCtx())
 				Expect(ok).To(BeTrue())
 				Expect(usr.IsAdmin).To(BeTrue())
 				Expect(usr.ID).ToNot(Equal("u-caller"))
@@ -283,7 +282,7 @@ var _ = Describe("MatcherService", Ordered, func() {
 				_, err := svc.MatchSongs(callerCtx, input, host.MatchOptions{Username: "alice"})
 				Expect(err).ToNot(HaveOccurred())
 
-				usr, ok := request.UserFrom(capturing.lastMediaFileCtx)
+				usr, ok := request.UserFrom(capturing.lastMediaFileCtx())
 				Expect(ok).To(BeTrue())
 				Expect(usr.ID).To(Equal("u-alice"))
 			})
@@ -372,10 +371,12 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		hash := sha256.Sum256(data)
 		hashHex := hex.EncodeToString(hash[:])
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		mockPluginRepo := tests.CreateMockPluginRepo()
 		mockPluginRepo.Permitted = true
@@ -395,7 +396,7 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 		mediaFileRepo.SetData(model.MediaFiles{hit})
 
 		userRepo := tests.CreateMockUserRepo()
-		Expect(userRepo.Put(&model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
+		Expect(userRepo.Put(GinkgoT().Context(), &model.User{ID: "u-alice", UserName: "alice"})).To(Succeed())
 
 		dataStore := &tests.MockDataStore{
 			MockedPlugin:    mockPluginRepo,
@@ -475,14 +476,38 @@ var _ = Describe("MatcherService Integration", Ordered, func() {
 	})
 })
 
-// ctxCapturingDataStore records the context passed to MediaFile so tests can assert
-// which user the matcher resolved before querying the library.
+// ctxCapturingDataStore records the context the media file queries run with, so tests
+// can assert which user the matcher resolved before querying the library.
 type ctxCapturingDataStore struct {
 	*tests.MockDataStore
-	lastMediaFileCtx context.Context
+	repo *ctxCapturingMediaFileRepo
 }
 
-func (d *ctxCapturingDataStore) MediaFile(ctx context.Context) model.MediaFileRepository {
-	d.lastMediaFileCtx = ctx
-	return d.MockDataStore.MediaFile(ctx)
+func (d *ctxCapturingDataStore) MediaFile() model.MediaFileRepository {
+	if d.repo == nil {
+		d.repo = &ctxCapturingMediaFileRepo{MediaFileRepository: d.MockDataStore.MediaFile()}
+	}
+	return d.repo
+}
+
+func (d *ctxCapturingDataStore) lastMediaFileCtx() context.Context {
+	if d.repo == nil {
+		return nil
+	}
+	return d.repo.lastCtx
+}
+
+type ctxCapturingMediaFileRepo struct {
+	model.MediaFileRepository
+	lastCtx context.Context
+}
+
+func (r *ctxCapturingMediaFileRepo) GetAll(ctx context.Context, options ...model.QueryOptions) (model.MediaFiles, error) {
+	r.lastCtx = ctx
+	return r.MediaFileRepository.GetAll(ctx, options...)
+}
+
+func (r *ctxCapturingMediaFileRepo) GetAllByTags(ctx context.Context, tag model.TagName, values []string, options ...model.QueryOptions) (model.MediaFiles, error) {
+	r.lastCtx = ctx
+	return r.MediaFileRepository.GetAllByTags(ctx, tag, values, options...)
 }

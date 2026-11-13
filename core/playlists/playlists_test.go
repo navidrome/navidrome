@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/playlists"
 	"github.com/navidrome/navidrome/model"
@@ -393,9 +392,8 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			mockPlsRepo.Data = map[string]*model.Playlist{
 				"pls-1":     {ID: "pls-1", Name: "My Playlist", OwnerID: "user-1"},
@@ -457,9 +455,8 @@ var _ = Describe("Playlists", func() {
 		var tmpDir string
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			tmpDir = GinkgoT().TempDir()
-			conf.Server.DataFolder = conf.NewDir(tmpDir)
+			conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 			// Create a real image file on disk
 			imgDir := filepath.Join(tmpDir, "artwork", "playlist")
@@ -493,15 +490,15 @@ var _ = Describe("Playlists", func() {
 
 		It("clears the resolved artwork state and re-queues after removing an upload", func() {
 			ctx = request.WithUser(ctx, model.User{ID: "user-1", IsAdmin: false})
-			Expect(ds.Artwork(ctx).PutItemArtwork(&model.ItemArtwork{
+			Expect(ds.Artwork().PutItemArtwork(ctx, &model.ItemArtwork{
 				ItemKind: "pl", ItemID: "pls-1", Hash: "oldhash", Source: "upload",
 			})).To(Succeed())
 
 			Expect(ps.RemoveImage(ctx, "pls-1")).To(Succeed())
 
-			_, err := ds.Artwork(ctx).GetItemArtwork(model.KindPlaylistArtwork, "pls-1", model.ImageTypePrimary)
+			_, err := ds.Artwork().GetItemArtwork(ctx, model.KindPlaylistArtwork, "pls-1", model.ImageTypePrimary)
 			Expect(err).To(MatchError(model.ErrNotFound))
-			queued, _ := ds.ArtworkQueue(ctx).DequeueBatch(100)
+			queued, _ := ds.ArtworkQueue().DequeueBatch(ctx, 100)
 			Expect(queued).To(ContainElement(SatisfyAll(
 				HaveField("ItemKind", "pl"),
 				HaveField("ItemID", "pls-1"),

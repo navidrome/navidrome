@@ -23,7 +23,7 @@ type Watcher interface {
 }
 
 type watcher struct {
-	mainCtx         context.Context
+	mainCtx         context.Context //nolint:containedctx // watcher lifecycle ctx
 	ds              model.DataStore
 	scanner         model.Scanner
 	triggerWait     time.Duration
@@ -48,7 +48,7 @@ func GetWatcher(ds model.DataStore, s model.Scanner) Watcher {
 		return &watcher{
 			ds:              ds,
 			scanner:         s,
-			triggerWait:     conf.Server.Scanner.WatcherWait,
+			triggerWait:     conf.Server().Scanner.WatcherWait,
 			watcherNotify:   make(chan scanNotification, 500),
 			libraryWatchers: make(map[int]*libraryWatcherInstance),
 		}
@@ -60,7 +60,7 @@ func (w *watcher) Run(ctx context.Context) error {
 	w.mainCtx = ctx
 
 	// Start watchers for all existing libraries
-	libs, err := w.ds.Library(ctx).GetAll()
+	libs, err := w.ds.Library().GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("getting libraries: %w", err)
 	}
@@ -101,7 +101,7 @@ func (w *watcher) Run(ctx context.Context) error {
 
 			go func() {
 				var err error
-				if conf.Server.DevSelectiveWatcher {
+				if conf.Server().DevSelectiveWatcher {
 					_, err = w.scanner.ScanFolders(ctx, false, targetSlice)
 				} else {
 					_, err = w.scanner.ScanAll(ctx, false)

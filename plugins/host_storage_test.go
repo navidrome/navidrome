@@ -10,7 +10,6 @@ import (
 
 	extism "github.com/extism/go-sdk"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -25,8 +24,8 @@ var _ = Describe("utility functions", Ordered, func() {
 		tmpDir, err = os.MkdirTemp("", "storage-test-*")
 		Expect(err).ToNot(HaveOccurred())
 
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) { c.DataFolder = conf.NewDir(tmpDir) })
 
 		DeferCleanup(func() {
 			_ = os.RemoveAll(tmpDir)
@@ -85,15 +84,17 @@ var _ = Describe("Storage Host Function", Ordered, func() {
 		}
 		manager.SetSubsonicRouter(router)
 
-		mockPluginRepo := dataStore.Plugin(GinkgoT().Context()).(*tests.MockPluginRepo)
+		mockPluginRepo := dataStore.Plugin().(*tests.MockPluginRepo)
 		mockPluginRepo.Permitted = true
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.DataFolder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.DataFolder = conf.NewDir(tmpDir)
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		pluginPaths := []string{ID, ID + "-2"}
 		plugins := []model.Plugin{}

@@ -11,7 +11,6 @@ import (
 	"github.com/deluan/rest"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/playlists"
@@ -24,13 +23,10 @@ import (
 )
 
 var _ = Describe("Playlist Image Endpoints", func() {
-	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-	})
 
 	DescribeTable("uploadPlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := uploadPlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("POST", "/playlist/pls-1/image", nil)
@@ -49,7 +45,7 @@ var _ = Describe("Playlist Image Endpoints", func() {
 
 	DescribeTable("deletePlaylistImage guard",
 		func(enableArtworkUpload, isAdmin bool, expectedStatus int) {
-			conf.Server.EnableArtworkUpload = enableArtworkUpload
+			conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = enableArtworkUpload })
 			handler := deletePlaylistImage(&mockPlaylistsService{})
 
 			req := httptest.NewRequest("DELETE", "/playlist/pls-1/image", nil)
@@ -76,9 +72,10 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableSharing = false
-		conf.Server.SessionTimeout = time.Minute
+		conf.Update(func(c *conf.Options) {
+			c.EnableSharing = false
+			c.SessionTimeout = time.Minute
+		})
 
 		plsSvc = &mockPlaylistsService{}
 		userRepo = tests.CreateMockUserRepo()
@@ -97,7 +94,7 @@ var _ = Describe("Playlist Tracks Endpoint", func() {
 			IsAdmin:     false,
 			NewPassword: "testpass",
 		}
-		err := userRepo.Put(&testUser)
+		err := userRepo.Put(GinkgoT().Context(), &testUser)
 		Expect(err).ToNot(HaveOccurred())
 
 		nativeRouter := New(ds, nil, plsSvc, nil, tests.NewMockLibraryService(), tests.NewMockUserService(), nil, nil, nil, nil, nil)
@@ -235,23 +232,15 @@ type mockPlaylistTrackRepo struct {
 	tracks model.PlaylistTracks
 }
 
-func (m *mockPlaylistTrackRepo) Count(...rest.QueryOptions) (int64, error) {
+func (m *mockPlaylistTrackRepo) Count(context.Context, ...rest.QueryOptions) (int64, error) {
 	return int64(len(m.tracks)), nil
 }
 
-func (m *mockPlaylistTrackRepo) ReadAll(...rest.QueryOptions) (any, error) {
+func (m *mockPlaylistTrackRepo) ReadAll(context.Context, ...rest.QueryOptions) ([]model.PlaylistTrack, error) {
 	return m.tracks, nil
 }
 
-func (m *mockPlaylistTrackRepo) EntityName() string {
-	return "playlist_track"
-}
-
-func (m *mockPlaylistTrackRepo) NewInstance() any {
-	return &model.PlaylistTrack{}
-}
-
-func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
+func (m *mockPlaylistTrackRepo) Read(_ context.Context, id string) (*model.PlaylistTrack, error) {
 	for _, t := range m.tracks {
 		if t.ID == id {
 			return &t, nil
@@ -262,7 +251,8 @@ func (m *mockPlaylistTrackRepo) Read(id string) (any, error) {
 
 type mockPlaylistsService struct {
 	playlists.Playlists
-	tracksRepo    rest.Repository
+	repo          rest.Repository[model.Playlist]
+	tracksRepo    rest.Repository[model.PlaylistTrack]
 	playlist      *model.Playlist
 	removeImageFn func(ctx context.Context, id string) error
 	setImageFn    func(ctx context.Context, id string, reader io.Reader, ext string) error
@@ -282,6 +272,10 @@ func (m *mockPlaylistsService) SetImage(ctx context.Context, id string, reader i
 	return model.ErrNotFound
 }
 
+func (m *mockPlaylistsService) Repository() rest.Repository[model.Playlist] {
+	return m.repo
+}
+
 func (m *mockPlaylistsService) GetWithTracks(_ context.Context, _ string) (*model.Playlist, error) {
 	if m.playlist == nil {
 		return nil, model.ErrNotFound
@@ -289,6 +283,6 @@ func (m *mockPlaylistsService) GetWithTracks(_ context.Context, _ string) (*mode
 	return m.playlist, nil
 }
 
-func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository {
+func (m *mockPlaylistsService) TracksRepository(_ context.Context, _ string, _ bool) rest.Repository[model.PlaylistTrack] {
 	return m.tracksRepo
 }

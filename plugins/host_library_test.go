@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
@@ -26,7 +25,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
+		DeferCleanup(conf.SnapshotConfig())
 		ctx = context.Background()
 		ds = &tests.MockDataStore{}
 	})
@@ -47,7 +46,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 			}
 			lib.LastScanAt = lib.LastScanAt.Add(0) // Ensure time is set
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(model.Libraries{*lib})
 
 			result, err := service.GetLibrary(ctx, 1)
@@ -77,7 +76,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				TotalDuration: 1800.0,
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(model.Libraries{*lib})
 
 			result, err := service.GetLibrary(ctx, 2)
@@ -91,7 +90,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 		It("should return error for non-existent library", func() {
 			service = newLibraryService(ds, &LibraryPermission{Reason: new("test")}, nil, true).(*libraryServiceImpl)
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(model.Libraries{})
 
 			_, err := service.GetLibrary(ctx, 999)
@@ -109,7 +108,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				{ID: 2, Name: "Jazz", Path: "/music/jazz", TotalSongs: 50},
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(libs)
 
 			results, err := service.GetAllLibraries(ctx)
@@ -131,7 +130,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				{ID: 2, Name: "Jazz", Path: "/music/jazz", TotalSongs: 50},
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(libs)
 
 			results, err := service.GetAllLibraries(ctx)
@@ -154,7 +153,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				{ID: 3, Name: "Classical", Path: "/music/classical", TotalSongs: 75},
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(libs)
 
 			results, err := service.GetAllLibraries(ctx)
@@ -172,7 +171,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				{ID: 2, Name: "Jazz", Path: "/music/jazz", TotalSongs: 50},
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(libs)
 
 			// Requesting library 1 which is not in the allowed list
@@ -189,7 +188,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				{ID: 2, Name: "Jazz", Path: "/music/jazz", TotalSongs: 50},
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(libs)
 
 			result, err := service.GetLibrary(ctx, 2)
@@ -206,7 +205,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				{ID: 2, Name: "Jazz", Path: "/music/jazz", TotalSongs: 50},
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(libs)
 
 			results, err := service.GetAllLibraries(ctx)
@@ -222,7 +221,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 				{ID: 2, Name: "Jazz", Path: "/music/jazz", TotalSongs: 50},
 			}
 
-			mockLibRepo := ds.Library(ctx).(*tests.MockLibraryRepo)
+			mockLibRepo := ds.Library().(*tests.MockLibraryRepo)
 			mockLibRepo.SetData(libs)
 
 			results, err := service.GetAllLibraries(ctx)
@@ -244,9 +243,11 @@ var _ = Describe("LibraryService", Ordered, func() {
 
 			// Note: Since we don't have WASM test plugins yet, we can test
 			// the service registration and configuration without full plugin execution
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Plugins.Enabled = true
-			conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) {
+				c.Plugins.Enabled = true
+				c.Plugins.Folder = conf.NewDir(tmpDir)
+			})
 
 			// Create mock &tests.MockLibraryRepo{}
 			mockLibRepo := &tests.MockLibraryRepo{}
@@ -291,7 +292,7 @@ var _ = Describe("LibraryService", Ordered, func() {
 			Expect(manager.ds).ToNot(BeNil())
 
 			ctx := context.Background()
-			libs, err := manager.ds.Library(adminContext(ctx)).GetAll()
+			libs, err := manager.ds.Library().GetAll(adminContext(ctx))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(libs).To(HaveLen(1))
 			Expect(libs[0].Path).To(Equal("/tmp/test-music"))
@@ -338,10 +339,12 @@ var _ = Describe("LibraryService Integration", Ordered, func() {
 		hashHex := hex.EncodeToString(hash[:])
 
 		// Setup config
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Plugins.Enabled = true
-		conf.Server.Plugins.Folder = conf.NewDir(tmpDir)
-		conf.Server.Plugins.AutoReload = false
+		DeferCleanup(conf.SnapshotConfig())
+		conf.Update(func(c *conf.Options) {
+			c.Plugins.Enabled = true
+			c.Plugins.Folder = conf.NewDir(tmpDir)
+			c.Plugins.AutoReload = false
+		})
 
 		// Setup mock DataStore with pre-enabled plugin and library
 		mockPluginRepo := tests.CreateMockPluginRepo()

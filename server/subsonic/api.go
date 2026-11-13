@@ -87,7 +87,7 @@ func New(ds model.DataStore, artwork artwork.Artwork, streamer stream.MediaStrea
 func (api *Router) routes() http.Handler {
 	r := chi.NewRouter()
 
-	if conf.Server.Prometheus.Enabled {
+	if conf.Server().Prometheus.Enabled {
 		r.Use(recordStats(api.metrics))
 	}
 
@@ -107,6 +107,7 @@ func (api *Router) routes() http.Handler {
 			r.Use(getPlayer(api.players))
 			h(r, "ping", api.Ping)
 			h(r, "getLicense", api.GetLicense)
+			h(r, "tokenInfo", api.TokenInfo)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(getPlayer(api.players))
@@ -190,8 +191,8 @@ func (api *Router) routes() http.Handler {
 			hr(r, "getTranscodeStream", api.GetTranscodeStream)
 		})
 		r.Group(func(r chi.Router) {
-			r.Use(server.ThrottleBacklog(conf.Server.DevArtworkMaxRequests, conf.Server.DevArtworkThrottleBacklogLimit,
-				conf.Server.DevArtworkThrottleBacklogTimeout))
+			r.Use(server.ThrottleBacklog(conf.Server().DevArtworkMaxRequests, conf.Server().DevArtworkThrottleBacklogLimit,
+				conf.Server().DevArtworkThrottleBacklogTimeout))
 			hr(r, "getCoverArt", api.GetCoverArt)
 		})
 		r.Group(func(r chi.Router) {
@@ -204,7 +205,7 @@ func (api *Router) routes() http.Handler {
 				h(r, "updateInternetRadioStation", api.UpdateInternetRadio)
 			})
 		})
-		if conf.Server.EnableSharing {
+		if conf.Server().EnableSharing {
 			r.Group(func(r chi.Router) {
 				r.Use(getPlayer(api.players))
 				h(r, "getShares", api.GetShares)
@@ -216,7 +217,7 @@ func (api *Router) routes() http.Handler {
 			h501(r, "getShares", "createShare", "updateShare", "deleteShare")
 		}
 
-		if conf.Server.Jukebox.Enabled {
+		if conf.Server().Jukebox.Enabled {
 			r.Group(func(r chi.Router) {
 				r.Use(getPlayer(api.players))
 				h(r, "jukeboxControl", api.JukeboxControl)

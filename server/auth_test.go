@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/log"
@@ -28,6 +27,12 @@ import (
 )
 
 var _ = Describe("Auth", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = GinkgoT().Context()
+	})
+
 	Describe("User login", func() {
 		var ds model.DataStore
 		var req *http.Request
@@ -48,8 +53,8 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("creates an admin user with the specified password", func() {
-				usr := ds.User(context.Background())
-				u, err := usr.FindByUsername("johndoe")
+				usr := ds.User()
+				u, err := usr.FindByUsername(ctx, "johndoe")
 				Expect(err).To(BeNil())
 				Expect(u.Password).ToNot(BeEmpty())
 				Expect(u.IsAdmin).To(BeTrue())
@@ -99,13 +104,15 @@ var _ = Describe("Auth", func() {
 			fs := os.DirFS("tests/fixtures")
 
 			BeforeEach(func() {
-				usr := ds.User(context.Background())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				usr := ds.User()
+				_ = usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 				req = httptest.NewRequest("GET", "/index.html", nil)
 				req.Header.Add("Remote-User", "janedoe")
 				resp = httptest.NewRecorder()
-				conf.Server.UILoginBackgroundURL = ""
-				conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16,2001:4860:4860::/48"
+				conf.Update(func(c *conf.Options) {
+					c.UILoginBackgroundURL = ""
+					c.ExtAuth.TrustedSources = "192.168.0.0/16,2001:4860:4860::/48"
+				})
 			})
 
 			It("sets auth data if IPv4 matches whitelist", func() {
@@ -179,8 +186,10 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("does not set auth data when listening on unix socket without whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ExtAuth.TrustedSources = ""
+				conf.Update(func(c *conf.Options) {
+					c.Address = "unix:/tmp/navidrome-test"
+					c.ExtAuth.TrustedSources = ""
+				})
 
 				// No ReverseProxyIp in request context
 				serveIndex(ds, fs, nil)(resp, req)
@@ -190,7 +199,7 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("does not set auth data when listening on unix socket with incorrect whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
+				conf.Update(func(c *conf.Options) { c.Address = "unix:/tmp/navidrome-test" })
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
 				serveIndex(ds, fs, nil)(resp, req)
@@ -200,8 +209,10 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("sets auth data when listening on unix socket with correct whitelist", func() {
-				conf.Server.Address = "unix:/tmp/navidrome-test"
-				conf.Server.ExtAuth.TrustedSources = conf.Server.ExtAuth.TrustedSources + ",@"
+				conf.Update(func(c *conf.Options) {
+					c.Address = "unix:/tmp/navidrome-test"
+					c.ExtAuth.TrustedSources = c.ExtAuth.TrustedSources + ",@"
+				})
 
 				req = req.WithContext(request.WithReverseProxyIp(req.Context(), "@"))
 				serveIndex(ds, fs, nil)(resp, req)
@@ -232,8 +243,8 @@ var _ = Describe("Auth", func() {
 			})
 
 			It("logs in successfully if user exists", func() {
-				usr := ds.User(context.Background())
-				_ = usr.Put(&model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
+				usr := ds.User()
+				_ = usr.Put(ctx, &model.User{ID: "111", UserName: "janedoe", NewPassword: "abc123", Name: "Jane", IsAdmin: false})
 
 				login(ds)(resp, req)
 				Expect(resp.Code).To(Equal(http.StatusOK))
@@ -254,7 +265,7 @@ var _ = Describe("Auth", func() {
 		var r *http.Request
 
 		BeforeEach(func() {
-			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
+			conf.Update(func(c *conf.Options) { c.ExtAuth.TrustedSources = "192.168.0.0/16" })
 			prevLevel := log.CurrentLevel()
 			l, h := test.NewNullLogger()
 			hook = h
@@ -384,8 +395,10 @@ var _ = Describe("Auth", func() {
 			ds = &tests.MockDataStore{}
 			req = httptest.NewRequest("GET", "/", nil)
 			req = req.WithContext(request.WithReverseProxyIp(req.Context(), trustedIP))
-			conf.Server.ExtAuth.TrustedSources = "192.168.0.0/16"
-			conf.Server.ExtAuth.UserHeader = "Remote-User"
+			conf.Update(func(c *conf.Options) {
+				c.ExtAuth.TrustedSources = "192.168.0.0/16"
+				c.ExtAuth.UserHeader = "Remote-User"
+			})
 		})
 
 		It("makes the first user an admin", func() {
@@ -397,14 +410,14 @@ var _ = Describe("Auth", func() {
 			Expect(result["isAdmin"]).To(BeTrue())
 
 			// Verify user was created as admin
-			u, err := ds.User(context.Background()).FindByUsername("firstuser")
+			u, err := ds.User().FindByUsername(ctx, "firstuser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeTrue())
 		})
 
 		It("does not make subsequent users admins", func() {
 			// Create the first user
-			_ = ds.User(context.Background()).Put(&model.User{
+			_ = ds.User().Put(ctx, &model.User{
 				ID:       "existing-user-id",
 				UserName: "existinguser",
 				Name:     "Existing User",
@@ -419,7 +432,7 @@ var _ = Describe("Auth", func() {
 			Expect(result["isAdmin"]).To(BeFalse())
 
 			// Verify user was created as non-admin
-			u, err := ds.User(context.Background()).FindByUsername("seconduser")
+			u, err := ds.User().FindByUsername(ctx, "seconduser")
 			Expect(err).To(BeNil())
 			Expect(u.IsAdmin).To(BeFalse())
 		})
@@ -430,13 +443,12 @@ var _ = Describe("Auth", func() {
 		var usr *model.User
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.SessionTimeout = time.Hour
+			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			ds = &tests.MockDataStore{}
 			auth.Init(ds)
-			ur := ds.User(context.TODO()).(*tests.MockedUserRepo)
+			ur := ds.User().(*tests.MockedUserRepo)
 			usr = &model.User{ID: "u1", UserName: "johndoe", NewPassword: "pw", TokenEpoch: 2}
-			Expect(ur.Put(usr)).To(Succeed())
+			Expect(ur.Put(ctx, usr)).To(Succeed())
 		})
 
 		serve := func(token string) *httptest.ResponseRecorder {
@@ -470,7 +482,7 @@ var _ = Describe("Auth", func() {
 		})
 
 		It("ignores a stray token for someone else when config auto-login resolves the user", func() {
-			conf.Server.DevAutoLoginUsername = usr.UserName
+			conf.Update(func(c *conf.Options) { c.DevAutoLoginUsername = usr.UserName })
 			tokenStr, err := auth.CreateToken(&model.User{UserName: "someone-else"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(serve(tokenStr).Code).To(Equal(http.StatusOK))
@@ -486,9 +498,8 @@ var _ = Describe("Auth", func() {
 
 	Describe("JWTRefresher", func() {
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
 			// TouchClaims reads this; left at zero every refreshed token is born expired.
-			conf.Server.SessionTimeout = time.Hour
+			conf.Update(func(c *conf.Options) { c.SessionTimeout = time.Hour })
 			auth.Init(&tests.MockDataStore{})
 		})
 

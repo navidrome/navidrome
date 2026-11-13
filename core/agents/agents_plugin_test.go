@@ -68,7 +68,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 	Context("Dynamic agent discovery", func() {
 		It("should include ONLY local agent when no config is specified", func() {
 			// Ensure no specific agents are configured
-			conf.Server.Agents = ""
+			conf.Update(func(c *conf.Options) { c.Agents = "" })
 
 			// Add some plugin agents that should be ignored
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent", "another_plugin")
@@ -82,7 +82,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 
 		It("should NOT include plugin agents when no config is specified", func() {
 			// Ensure no specific agents are configured
-			conf.Server.Agents = ""
+			conf.Update(func(c *conf.Options) { c.Agents = "" })
 
 			// Add a plugin agent
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
@@ -99,13 +99,13 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
 
 			// With no config, should not include plugin
-			conf.Server.Agents = ""
+			conf.Update(func(c *conf.Options) { c.Agents = "" })
 			enabledAgents := agents.getEnabledAgentNames()
 			Expect(enabledAgents).To(HaveLen(1))
 			Expect(enabledAgents[0].name).To(Equal(LocalAgentName))
 
 			// When explicitly configured, should include plugin
-			conf.Server.Agents = "plugin_agent"
+			conf.Update(func(c *conf.Options) { c.Agents = "plugin_agent" })
 			enabledAgents = agents.getEnabledAgentNames()
 			var agentNames []string
 			var pluginAgentFound bool
@@ -125,7 +125,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_one", "plugin_two")
 
 			// Configure only one of them
-			conf.Server.Agents = "plugin_one"
+			conf.Update(func(c *conf.Options) { c.Agents = "plugin_one" })
 
 			// Verify only the configured one is included
 			enabledAgents := agents.getEnabledAgentNames()
@@ -147,7 +147,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			ctx := context.Background()
 
 			// Configure to use our plugin
-			conf.Server.Agents = "plugin_agent"
+			conf.Update(func(c *conf.Options) { c.Agents = "plugin_agent" })
 
 			// Add a plugin agent
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
@@ -177,7 +177,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			}()
 
 			// Configure to use both built-in and plugin
-			conf.Server.Agents = "built_in,plugin_agent"
+			conf.Update(func(c *conf.Options) { c.Agents = "built_in,plugin_agent" })
 
 			// Add a plugin agent
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_agent")
@@ -223,7 +223,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			mockLoader.pluginNames = append(mockLoader.pluginNames, "plugin_x", "plugin_y")
 
 			// Configure specific order - plugin first, then built-ins
-			conf.Server.Agents = "plugin_y,agent_b,plugin_x,agent_a"
+			conf.Update(func(c *conf.Options) { c.Agents = "plugin_y,agent_b,plugin_x,agent_a" })
 
 			// Get the agent names
 			enabledAgents := agents.getEnabledAgentNames()
@@ -250,7 +250,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			}()
 
 			// Configure to use only built-in agents
-			conf.Server.Agents = "builtin_agent"
+			conf.Update(func(c *conf.Options) { c.Agents = "builtin_agent" })
 
 			// Call GetArtistMBID which should only use the built-in agent
 			mbid, err := agents.GetArtistMBID(ctx, "123", "Artist")
@@ -266,7 +266,7 @@ var _ = Describe("Agents with Plugin Loading", func() {
 			ctx := context.Background()
 
 			// Configure with an invalid agent name (not built-in, not a plugin)
-			conf.Server.Agents = "invalid_agent"
+			conf.Update(func(c *conf.Options) { c.Agents = "invalid_agent" })
 
 			// This should only result in using the local agent (as the invalid one is ignored)
 			_, err := agents.GetArtistMBID(ctx, "123", "Artist")

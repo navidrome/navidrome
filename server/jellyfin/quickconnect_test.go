@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/auth"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
@@ -38,13 +36,12 @@ var _ = Describe("QuickConnect", func() {
 	)
 
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.Jellyfin.QuickConnect = true
+		conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = true })
 		ds = &tests.MockDataStore{}
 		auth.Init(ds)
-		ur := ds.User(context.Background()).(*tests.MockedUserRepo)
+		ur := ds.User().(*tests.MockedUserRepo)
 		for _, u := range []model.User{alice, bob, admin} {
-			Expect(ur.Put(&u)).To(Succeed())
+			Expect(ur.Put(GinkgoT().Context(), &u)).To(Succeed())
 		}
 		qc = quickconnect.New()
 		api = &Router{ds: ds, quickConnect: qc}
@@ -62,7 +59,7 @@ var _ = Describe("QuickConnect", func() {
 	Describe("GET /QuickConnect/Enabled", func() {
 		DescribeTable("reports the config value",
 			func(enabled bool, expected string) {
-				conf.Server.Jellyfin.QuickConnect = enabled
+				conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = enabled })
 				w := httptest.NewRecorder()
 				api.quickConnectEnabled(w, httptest.NewRequest("GET", "/QuickConnect/Enabled", nil))
 				Expect(w.Code).To(Equal(http.StatusOK))
@@ -77,7 +74,7 @@ var _ = Describe("QuickConnect", func() {
 		next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusTeapot) })
 
 		It("rejects requests with 401 when Quick Connect is disabled", func() {
-			conf.Server.Jellyfin.QuickConnect = false
+			conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = false })
 			w := httptest.NewRecorder()
 			requireQuickConnect(next).ServeHTTP(w, httptest.NewRequest("POST", "/QuickConnect/Initiate", nil))
 			Expect(w.Code).To(Equal(http.StatusUnauthorized))
@@ -294,7 +291,7 @@ var _ = Describe("QuickConnect", func() {
 		It("returns 500 when the user lookup fails", func() {
 			req := initiate()
 			_, _ = qc.Authorize(req.Code, alice.ID)
-			ds.User(context.Background()).(*tests.MockedUserRepo).Error = errors.New("db down")
+			ds.User().(*tests.MockedUserRepo).Error = errors.New("db down")
 			Expect(redeemSecret(req.Secret).Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

@@ -46,7 +46,7 @@ func NewLyrics(ds model.DataStore, pluginLoader PluginLoader) Lyrics {
 }
 
 // GetLyrics returns lyrics for the given media file, trying sources in the
-// order specified by conf.Server.LyricsPriority.
+// order specified by conf.Server().LyricsPriority.
 func (l *lyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
 	return l.getLyricsForCandidates(ctx, []*model.MediaFile{mf})
 }
@@ -57,7 +57,7 @@ func (l *lyricsService) GetLyrics(ctx context.Context, mf *model.MediaFile) (mod
 func (l *lyricsService) GetLyricsByArtistTitle(ctx context.Context, artist, title string) (model.LyricList, error) {
 	opts := songsByArtistTitleWithLyricsFirst(artist, title)
 	opts.Max = maxLegacyLyricsCandidates
-	mediaFiles, err := l.ds.MediaFile(ctx).GetAll(opts)
+	mediaFiles, err := l.ds.MediaFile().GetAll(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func songsByArtistTitleWithLyricsFirst(artist, title string) model.QueryOptions 
 }
 
 func (l *lyricsService) getLyricsForCandidates(ctx context.Context, mediaFiles []*model.MediaFile) (model.LyricList, error) {
-	for pattern := range strings.SplitSeq(conf.Server.LyricsPriority, ",") {
+	for pattern := range strings.SplitSeq(conf.Server().LyricsPriority, ",") {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" {
 			continue

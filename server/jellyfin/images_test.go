@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -68,7 +67,7 @@ var _ = Describe("Images", func() {
 	DescribeTable("derives the requested size from the Jellyfin size params",
 		func(query string, wantSize int) {
 			ds := &tests.MockDataStore{}
-			ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+			ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 			fa := &fakeArtwork{}
 			api := &Router{ds: ds, artwork: fa}
 
@@ -97,7 +96,7 @@ var _ = Describe("Images", func() {
 
 	It("streams album artwork", func() {
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -138,7 +137,7 @@ var _ = Describe("Images", func() {
 
 	It("sniffs the Content-Type instead of hardcoding it", func() {
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 
 		png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, make([]byte, 512)...)
 		fa := &fakeArtwork{data: png}
@@ -153,7 +152,7 @@ var _ = Describe("Images", func() {
 
 	It("resolves a playlist's cover regardless of visibility, even for an anonymous caller", func() {
 		ds := &tests.MockDataStore{}
-		ds.Playlist(context.Background()).(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")}})
+		ds.Playlist().(*tests.MockPlaylistRepo).SetData(model.Playlists{{ID: testID("pl1"), Name: "Mix", OwnerID: testID("someone")}})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -169,7 +168,7 @@ var _ = Describe("Images", func() {
 	// silently falls back to the placeholder.
 	It("resolves artwork under an elevated admin context", func() {
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -185,7 +184,7 @@ var _ = Describe("Images", func() {
 	It("serves immutable when the tag param asserts the current hash", func() {
 		const hash = "0123456789abcdef"
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -203,7 +202,7 @@ var _ = Describe("Images", func() {
 	It("revalidates via no-cache when no tag is provided", func() {
 		const hash = "0123456789abcdef"
 		ds := &tests.MockDataStore{}
-		ds.Album(context.Background()).(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
+		ds.Album().(*tests.MockAlbumRepo).SetData(model.Albums{{ID: testID("a1"), Name: "One"}})
 		fa := &fakeArtwork{hash: hash}
 		api := &Router{ds: ds, artwork: fa}
 
@@ -337,8 +336,7 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("rejects an oversized body with 400, like the native endpoint", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.MaxImageUploadSize = "16" // 16 bytes
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = "16" }) // 16 bytes
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
@@ -351,10 +349,9 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("applies the size limit to the decoded image, not the base64 body", func() {
-		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
 		// The raw image is exactly at the limit; its base64 form is 4/3 bigger.
-		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img))
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img)) })
 		body := []byte(base64.StdEncoding.EncodeToString(img))
 		Expect(len(body)).To(BeNumerically(">", len(img)))
 		w := httptest.NewRecorder()
@@ -369,9 +366,8 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("rejects a base64 body whose decoded image exceeds the limit with 400", func() {
-		DeferCleanup(configtest.SetupConfig())
 		img := pngBytes()
-		conf.Server.MaxImageUploadSize = strconv.Itoa(len(img) - 1)
+		conf.Update(func(c *conf.Options) { c.MaxImageUploadSize = strconv.Itoa(len(img) - 1) })
 		body := []byte(base64.StdEncoding.EncodeToString(img))
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(body))
@@ -410,8 +406,7 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("forbids a non-admin upload when artwork upload is disabled", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableArtworkUpload = false
+		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")
@@ -425,8 +420,7 @@ var _ = Describe("postItemImage", func() {
 	})
 
 	It("still allows an admin upload when artwork upload is disabled", func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.EnableArtworkUpload = false
+		conf.Update(func(c *conf.Options) { c.EnableArtworkUpload = false })
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("POST", "/Items/"+dto.EncodeID(testID("pl1"))+"/Images/Primary", bytes.NewReader(jpegBytes()))
 		r.Header.Set("Content-Type", "image/jpeg")

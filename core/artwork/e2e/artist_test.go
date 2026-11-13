@@ -30,7 +30,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		// └── Album/
 		//     └── 01 - Track.mp3
 		It("returns the artist.* image from the artist folder", func() {
-			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
 				"Artist/artist.jpg":           smallPNG("artist-folder"),
@@ -46,7 +46,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── artist.jpg           ← matched by album/artist.*
 		It("falls through to album/artist.* and returns that image", func() {
-			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
 				"Artist/Album/artist.jpg":     smallPNG("album-artist"),
@@ -63,7 +63,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── artist.jpg
 		It("prefers the artist-folder image (artist.* comes before album/artist.*)", func() {
-			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
 				"Artist/artist.jpg":           smallPNG("artist-folder"),
@@ -80,7 +80,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		// └── Album/
 		//     └── 01 - Track.mp3
 		It("still resolves the artist folder and returns artist.*", func() {
-			conf.Server.ArtistArtPriority = "artist.*"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
 				"Artist/artist.jpg":           smallPNG("artist-folder"),
@@ -99,7 +99,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── 02 - Track.mp3
 		It("resolves the artist folder, not the library root", func() {
-			conf.Server.ArtistArtPriority = "folder.*, artist.*, album/artist.*"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "folder.*, artist.*, album/artist.*" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album"}),
 				"Artist/Album/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album"}),
@@ -120,7 +120,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		//     ├── CD1/01 - Track.mp3
 		//     └── CD2/02 - Track.mp3
 		It("prefers the artist-folder image over the album-folder one", func() {
-			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/CD1/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album"}),
 				"Artist/Album/CD2/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album"}),
@@ -141,7 +141,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		// │   └── CD2/02 - Track.mp3
 		// └── Album2/03 - Track.mp3
 		It("prefers the artist-folder image over the album-folder one", func() {
-			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album1/CD1/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album1"}),
 				"Artist/Album1/CD2/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album1"}),
@@ -165,7 +165,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		//     ├── CD1/03 - Track.mp3
 		//     └── CD2/04 - Track.mp3
 		It("prefers the artist-folder image over the album-folder one", func() {
-			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album1/CD1/01 - Track.mp3": trackFile(1, "Track 1", map[string]any{"albumartist": "Artist", "album": "Album1"}),
 				"Artist/Album1/CD2/02 - Track.mp3": trackFile(2, "Track 2", map[string]any{"albumartist": "Artist", "album": "Album1"}),
@@ -190,7 +190,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		// └── Album/
 		//     └── 01 - Track.mp3
 		It("prefers the uploaded image over any priority-chain match", func() {
-			conf.Server.ArtistArtPriority = "artist.*, album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "artist.*, album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
 				"Artist/artist.jpg":           smallPNG("artist-folder"),
@@ -201,7 +201,7 @@ var _ = Describe("Artist artwork resolution", func() {
 			uploaded := ar.ID + "_upload.jpg"
 			writeUploadedImage(consts.EntityArtist, uploaded, pngBytes("artist-uploaded"))
 			ar.UploadedImage = uploaded
-			Expect(rds.Artist(rctx).Put(&ar)).To(Succeed())
+			Expect(rds.Artist().Put(rctx, &ar)).To(Succeed())
 
 			ia := acquire(model.KindArtistArtwork, ar.ID)
 			Expect(ia.Source).To(Equal("upload"))
@@ -215,7 +215,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── artist.jpg            ← matched by album/artist.*
 		It("resolves the pattern against the artist's album image files", func() {
-			conf.Server.ArtistArtPriority = "album/artist.*, external"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "album/artist.*, external" })
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
 				"Artist/Album/artist.jpg":     smallPNG("album-artist"),
@@ -233,7 +233,7 @@ var _ = Describe("Artist artwork resolution", func() {
 		//     ├── 01 - Track.mp3
 		//     └── artist.jpg           ← must NOT become the artist image
 		It("ignores the album's images and settles absent", func() {
-			conf.Server.ArtistArtPriority = "album/artist.*"
+			conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "album/artist.*" })
 			// " / " is a default artists split separator, so this single tag yields two album artists.
 			setLayout(fstest.MapFS{
 				"Artist/Collab Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist / Collaborator"}),
@@ -261,8 +261,10 @@ var _ = Describe("Artist artwork resolution", func() {
 		It("returns the image from the configured artist image folder", func() {
 			imgFolder := GinkgoT().TempDir()
 			Expect(os.WriteFile(filepath.Join(imgFolder, "Artist.jpg"), pngBytes("image-folder"), 0o600)).To(Succeed())
-			conf.Server.ArtistImageFolder = imgFolder
-			conf.Server.ArtistArtPriority = "image-folder, artist.*, album/artist.*"
+			conf.Update(func(c *conf.Options) {
+				c.ArtistImageFolder = imgFolder
+				c.ArtistArtPriority = "image-folder, artist.*, album/artist.*"
+			})
 
 			setLayout(fstest.MapFS{
 				"Artist/Album/01 - Track.mp3": trackFile(1, "Track", map[string]any{"albumartist": "Artist"}),
@@ -279,7 +281,7 @@ var _ = Describe("Artist artwork resolution", func() {
 
 func soleArtist() model.Artist {
 	GinkgoHelper()
-	artists, err := rds.Artist(rctx).GetAll(model.QueryOptions{
+	artists, err := rds.Artist().GetAll(rctx, model.QueryOptions{
 		Filters: squirrel.Eq{"artist.name": "Artist"},
 	})
 	Expect(err).ToNot(HaveOccurred())

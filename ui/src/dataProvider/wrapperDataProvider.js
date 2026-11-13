@@ -148,6 +148,12 @@ const updateUser = async (params) => {
   return userResponse
 }
 
+// ra-data-json-server merges the request body into the result; re-read so the plaintext key is never cached
+const createPlayer = async (resource, params) => {
+  const { data } = await dataProvider.create(resource, params)
+  return dataProvider.getOne(resource, { id: data.id })
+}
+
 const wrapperDataProvider = {
   ...dataProvider,
   getList: (resource, params) => {
@@ -194,6 +200,9 @@ const wrapperDataProvider = {
       return createUser(params)
     }
     const [r, p] = mapResource(resource, params)
+    if (resource === 'player') {
+      return createPlayer(r, p)
+    }
     return dataProvider.create(r, p)
   },
   delete: (resource, params) => {

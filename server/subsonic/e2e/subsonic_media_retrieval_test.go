@@ -1,10 +1,11 @@
 package e2e
 
 import (
+	"archive/zip"
+	"bytes"
 	"net/http"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 	. "github.com/onsi/ginkgo/v2"
@@ -21,7 +22,7 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID
@@ -57,8 +58,8 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("downsamples when only maxBitRate is specified (lower than source)", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.DefaultDownsamplingFormat = "opus"
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) { c.DefaultDownsamplingFormat = "opus" })
 
 			w := doRawReq("stream", "id", trackID, "maxBitRate", "128")
 
@@ -106,15 +107,16 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 	})
 
 	Describe("Download", func() {
-		var trackID, trackTitle string
+		var trackID, trackTitle, albumID string
 
 		BeforeAll(func() {
 			// All test tracks are mp3 at 320kbps
-			songs, err := ds.MediaFile(ctx).GetAll(model.QueryOptions{Max: 1, Sort: "title"})
+			songs, err := ds.MediaFile().GetAll(ctx, model.QueryOptions{Max: 1, Sort: "title"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(songs).ToNot(BeEmpty())
 			trackID = songs[0].ID
 			trackTitle = songs[0].Title
+			albumID = songs[0].AlbumID
 		})
 
 		It("returns error when id parameter is missing", func() {
@@ -125,9 +127,11 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("downloads raw when no format specified and AutoTranscodeDownload is false", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableDownloads = true
-			conf.Server.AutoTranscodeDownload = false
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) {
+				c.EnableDownloads = true
+				c.AutoTranscodeDownload = false
+			})
 
 			w := doRawReq("download", "id", trackID)
 
@@ -136,8 +140,8 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("downloads with explicit format and bitrate", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableDownloads = true
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) { c.EnableDownloads = true })
 
 			w := doRawReq("download", "id", trackID, "format", "opus", "bitrate", "128")
 
@@ -148,12 +152,49 @@ var _ = Describe("Media Retrieval Endpoints", Ordered, func() {
 		})
 
 		It("returns error when downloads are disabled", func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.EnableDownloads = false
+			DeferCleanup(conf.SnapshotConfig())
+			conf.Update(func(c *conf.Options) { c.EnableDownloads = false })
 
 			resp := doReq("download", "id", trackID)
 
 			Expect(resp.Status).To(Equal(responses.StatusFailed))
+		})
+
+		Context("when the player has a forced transcoding", func() {
+			BeforeEach(func() {
+				DeferCleanup(conf.SnapshotConfig())
+				conf.Update(func(c *conf.Options) { c.EnableDownloads = true })
+				setPlayerForcedFormat("opus")
+			})
+
+			It("uses the explicitly requested format", func() {
+				w := doRawReq("download", "id", trackID, "format", "aac", "bitrate", "128")
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("aac"))
+				Expect(streamerSpy.LastRequest.BitRate).To(Equal(128))
+			})
+
+			It("uses the explicitly requested format for album zips", func() {
+				w := doRawReq("download", "id", albumID, "format", "aac", "bitrate", "128")
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				z, err := zip.NewReader(bytes.NewReader(w.Body.Bytes()), int64(w.Body.Len()))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(z.File).ToNot(BeEmpty())
+				for _, f := range z.File {
+					Expect(f.Name).To(HaveSuffix(".aac"))
+				}
+			})
+
+			It("uses the player's format when no format is requested and AutoTranscodeDownload is true", func() {
+				conf.Update(func(c *conf.Options) { c.AutoTranscodeDownload = true })
+
+				w := doRawReq("download", "id", trackID)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(streamerSpy.LastRequest.Format).To(Equal("opus"))
+			})
 		})
 	})
 

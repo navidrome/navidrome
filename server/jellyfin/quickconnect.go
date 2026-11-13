@@ -15,7 +15,7 @@ import (
 
 func requireQuickConnect(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !conf.Server.Jellyfin.QuickConnect {
+		if !conf.Server().Jellyfin.QuickConnect {
 			http.Error(w, "Quick connect is disabled", http.StatusUnauthorized)
 			return
 		}
@@ -24,7 +24,7 @@ func requireQuickConnect(next http.Handler) http.Handler {
 }
 
 func (api *Router) quickConnectEnabled(w http.ResponseWriter, r *http.Request) {
-	api.ok(w, r, conf.Server.Jellyfin.QuickConnect)
+	api.ok(w, r, conf.Server().Jellyfin.QuickConnect)
 }
 
 // Initiate is unauthenticated and its fields are kept for minutes, so their size must be bounded.
@@ -77,7 +77,7 @@ func (api *Router) quickConnectAuthorize(w http.ResponseWriter, r *http.Request)
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
-		usr, err := api.ds.User(ctx).Get(userID)
+		usr, err := api.ds.User().Get(ctx, userID)
 		if errors.Is(err, model.ErrNotFound) {
 			http.Error(w, "Unknown user", http.StatusNotFound)
 			return
@@ -118,7 +118,7 @@ func (api *Router) authenticateWithQuickConnect(w http.ResponseWriter, r *http.R
 		http.Error(w, "Unknown secret", http.StatusNotFound)
 		return
 	}
-	usr, err := api.ds.User(ctx).Get(userID)
+	usr, err := api.ds.User().Get(ctx, userID)
 	if errors.Is(err, model.ErrNotFound) {
 		log.Warn(ctx, "Jellyfin API: Quick Connect user not found", "userID", userID)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

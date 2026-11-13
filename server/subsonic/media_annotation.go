@@ -17,16 +17,25 @@ import (
 	"github.com/navidrome/navidrome/utils/req"
 )
 
+// maxRating is the highest value accepted by the Subsonic spec for setRating. 0 clears the rating.
+const maxRating = 5
+
 func (api *Router) SetRating(r *http.Request) (*responses.Subsonic, error) {
 	p := req.Params(r)
 	id, err := p.String("id")
 	if err != nil {
 		return nil, err
 	}
-	rating, err := p.Int("rating")
+	rating64, err := p.Int64("rating")
 	if err != nil {
 		return nil, err
 	}
+	// Out-of-range values would otherwise land in average_rating, which every user sees.
+	// Check before narrowing to int, so a value like 4294967296 cannot wrap into range on 32-bit builds.
+	if rating64 < 0 || rating64 > maxRating {
+		return nil, newError(responses.ErrorGeneric, "Invalid rating: %d. Must be between 0 and %d", rating64, maxRating)
+	}
+	rating := int(rating64)
 
 	log.Debug(r, "Setting rating", "rating", rating, "id", id)
 	err = api.setRating(r.Context(), id, rating)
@@ -48,19 +57,19 @@ func (api *Router) setRating(ctx context.Context, id string, rating int) error {
 	}
 	switch entity.(type) {
 	case *model.Artist:
-		repo = api.ds.Artist(ctx)
+		repo = api.ds.Artist()
 		resource = "artist"
 	case *model.Album:
-		repo = api.ds.Album(ctx)
+		repo = api.ds.Album()
 		resource = "album"
 	case *model.Playlist:
-		repo = api.ds.Playlist(ctx)
+		repo = api.ds.Playlist()
 		resource = "playlist"
 	default:
-		repo = api.ds.MediaFile(ctx)
+		repo = api.ds.MediaFile()
 		resource = "song"
 	}
-	err = repo.SetRating(rating, id)
+	err = repo.SetRating(ctx, rating, id)
 	if err != nil {
 		return err
 	}
@@ -129,19 +138,19 @@ func (api *Router) setStar(ctx context.Context, star bool, ids ...string) error 
 			}
 			switch entity.(type) {
 			case *model.Artist:
-				repo = tx.Artist(ctx)
+				repo = tx.Artist()
 				resource = "artist"
 			case *model.Album:
-				repo = tx.Album(ctx)
+				repo = tx.Album()
 				resource = "album"
 			case *model.Playlist:
-				repo = tx.Playlist(ctx)
+				repo = tx.Playlist()
 				resource = "playlist"
 			default:
-				repo = tx.MediaFile(ctx)
+				repo = tx.MediaFile()
 				resource = "song"
 			}
-			if err := repo.SetStar(star, id); err != nil {
+			if err := repo.SetStar(ctx, star, id); err != nil {
 				return err
 			}
 			event = event.With(resource, id)
@@ -210,7 +219,7 @@ func (api *Router) scrobblerSubmit(ctx context.Context, ids []string, times []ti
 }
 
 func (api *Router) scrobblerNowPlaying(ctx context.Context, trackId string, position int) error {
-	mf, err := api.ds.MediaFile(ctx).Get(trackId)
+	mf, err := api.ds.MediaFile().Get(ctx, trackId)
 	if err != nil {
 		return err
 	}
