@@ -464,16 +464,16 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("stores no picture hash and keeps every track on the album art", func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			albums, err := ds.Album(ctx).GetAll()
+			albums, err := ds.Album().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(1))
 			Expect(albums[0].EmbedArtPath).To(BeEmpty())
 			Expect(albums[0].EmbedArtHash).To(BeEmpty())
 
-			mfs, err := ds.MediaFile(ctx).GetAll()
+			mfs, err := ds.MediaFile().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfs).To(HaveLen(2))
 			for _, mf := range mfs {
@@ -495,16 +495,16 @@ var _ = Describe("Scanner", Ordered, func() {
 		})
 
 		It("stores the cover picture hash on the album and points matching tracks at the album art", func() {
-			conf.Server.EnableMediaFileCoverArt = true
+			conf.Update(func(c *conf.Options) { c.EnableMediaFileCoverArt = true })
 			Expect(runScanner(ctx, true)).To(Succeed())
 
-			albums, err := ds.Album(ctx).GetAll()
+			albums, err := ds.Album().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(albums).To(HaveLen(1))
 			Expect(albums[0].EmbedArtPath).To(Equal("The Beatles/Revolver/01 - Taxman.mp3"))
 			Expect(albums[0].EmbedArtHash).To(Equal("aaaaaaaaaaaaaaaa"))
 
-			mfs, err := ds.MediaFile(ctx).GetAll()
+			mfs, err := ds.MediaFile().GetAll(ctx)
 			Expect(err).ToNot(HaveOccurred())
 			byTitle := slice.ToMap(mfs, func(mf model.MediaFile) (string, model.MediaFile) { return mf.Title, mf })
 			Expect(byTitle).To(HaveLen(3))

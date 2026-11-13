@@ -140,7 +140,7 @@ func (mf MediaFile) ContentType() string {
 // HasOwnCoverArt reports whether the track serves its own embedded art. A picture identical to the
 // album's embedded cover defers to the album id instead, so clients cache one image per album.
 func (mf MediaFile) HasOwnCoverArt() bool {
-	if !mf.HasCoverArt || !conf.Server.EnableMediaFileCoverArt {
+	if !mf.HasCoverArt || !conf.Server().EnableMediaFileCoverArt {
 		return false
 	}
 	return mf.EmbedArtHash == "" || mf.EmbedArtHash != mf.AlbumEmbedArtHash

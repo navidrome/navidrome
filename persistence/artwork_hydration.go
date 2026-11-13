@@ -142,7 +142,7 @@ func hydrateMediaFileArtwork(ctx context.Context, db dbx.Builder, mfs model.Medi
 // hydrateAlbumEmbedArtHashes fills AlbumEmbedArtHash for tracks with a hashed embedded picture, the
 // only input HasOwnCoverArt needs beyond the row itself.
 func hydrateAlbumEmbedArtHashes(ctx context.Context, db dbx.Builder, mfs model.MediaFiles) {
-	if !conf.Server.EnableMediaFileCoverArt {
+	if !conf.Server().EnableMediaFileCoverArt {
 		return
 	}
 	var albumIDs []string
@@ -154,12 +154,12 @@ func hydrateAlbumEmbedArtHashes(ctx context.Context, db dbx.Builder, mfs model.M
 	if len(albumIDs) == 0 {
 		return
 	}
-	repo := sqlRepository{ctx: ctx, db: db, tableName: "album"}
+	repo := sqlRepository{db: db, tableName: "album"}
 	hashes := map[string]string{}
 	for chunk := range slices.Chunk(slice.Unique(albumIDs), artworkChunkSize) {
 		var rows []struct{ ID, EmbedArtHash string }
 		sel := Select("id", "embed_art_hash").From("album").Where(Eq{"id": chunk})
-		if err := repo.queryAll(sel, &rows); err != nil {
+		if err := repo.queryAll(ctx, sel, &rows); err != nil {
 			log.Error(ctx, "Failed to hydrate album embedded art hashes onto page", err)
 			return
 		}
