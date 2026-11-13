@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -120,9 +119,11 @@ func TestArtworkGatePerAgentBreakerIsolation(t *testing.T) {
 
 // newStuckItemWorker queues one artist whose agent blocks until the returned channel is closed.
 func newStuckItemWorker(t *testing.T) (*Worker, *tests.MockArtworkQueueRepo, *fakeImageAgent, chan struct{}) {
-	t.Cleanup(configtest.SetupConfig())
-	conf.Server.ArtistArtPriority = "external"
-	conf.Server.DevArtworkExternalMaxRPS = 1000
+	t.Cleanup(conf.SnapshotConfig())
+	conf.Update(func(o *conf.Options) {
+		o.ArtistArtPriority = "external"
+		o.DevArtworkExternalMaxRPS = 1000
+	})
 
 	block := make(chan struct{})
 	agent := &fakeImageAgent{name: "stuckAgent", block: block}
