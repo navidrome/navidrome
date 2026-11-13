@@ -24,6 +24,7 @@ func newFolderEntry(job *scanJob, id, path string, info model.FolderUpdateInfo) 
 		audioFiles:          make(map[string]fs.DirEntry),
 		imageFiles:          make(map[string]fs.DirEntry),
 		playlistFiles:       make(map[string]fs.DirEntry),
+		tagsFiles:           make(map[string]fs.DirEntry),
 		albumIDMap:          make(map[string]string),
 		updTime:             info.UpdatedAt,
 		prevHash:            info.Hash,
@@ -43,6 +44,7 @@ type folderEntry struct {
 	audioFiles      map[string]fs.DirEntry
 	imageFiles      map[string]fs.DirEntry
 	playlistFiles   map[string]fs.DirEntry
+	tagsFiles       map[string]fs.DirEntry
 	numSubFolders   int
 	imagesUpdatedAt time.Time
 	prevHash        string // Previous hash from DB
@@ -89,6 +91,18 @@ func (f *folderEntry) imagesChanged() (changed, artistImage bool) {
 		return false, false
 	}
 	return true, slices.ContainsFunc(slices.Concat(prevNames, newNames), artwork.IsArtistImageFile)
+}
+
+func (f *folderEntry) tagsModTime(audioName string) time.Time {
+	sidecar, ok := f.tagsFiles[audioName]
+	if !ok {
+		return time.Time{}
+	}
+	info, err := sidecar.Info()
+	if err != nil {
+		return time.Time{}
+	}
+	return info.ModTime()
 }
 
 func (f *folderEntry) toFolder() *model.Folder {
@@ -143,6 +157,14 @@ func (f *folderEntry) hash() string {
 	for _, key := range playlistKeys {
 		_, _ = io.WriteString(h, key)
 		if info, err := f.playlistFiles[key].Info(); err == nil {
+			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
+		}
+	}
+
+	// Include tags sidecars, so a content edit is detected even when the folder's mtime is preserved
+	for _, key := range slices.Sorted(maps.Keys(f.tagsFiles)) {
+		_, _ = io.WriteString(h, key+tagsSidecarSuffix)
+		if info, err := f.tagsFiles[key].Info(); err == nil {
 			_, _ = fmt.Fprintf(h, ":%d:%s", info.Size(), info.ModTime().UTC().String())
 		}
 	}
