@@ -425,7 +425,7 @@ func Load(noConfigDump bool) {
 	durationNonNegativeOrDefault(&s.DevInsightsInitialDelay, consts.InsightsInitialDelay)
 	durationNonNegativeOrDefault(&s.DevPluginCompilationTimeout, consts.DefaultPluginCompilationTimeout)
 
-	durationNonNegativeOrDefault(&Server.LastFM.MinScrobbleDuration, consts.DefaultMinScrobbleDuration)
+	durationNonNegativeOrDefault(&s.LastFM.MinScrobbleDuration, consts.DefaultMinScrobbleDuration)
 
 	// Log deprecated, removed and unknown options
 	for _, o := range deprecatedOptions {

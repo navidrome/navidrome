@@ -496,7 +496,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("skips songs according to the configured minimum duration", func() {
-				conf.Server.LastFM.MinScrobbleDuration = 60 * time.Second
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 60 * time.Second })
 				track.Duration = 59
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
@@ -507,7 +507,7 @@ var _ = Describe("lastfmAgent", func() {
 			})
 
 			It("does not skip short songs when the minimum duration is disabled", func() {
-				conf.Server.LastFM.MinScrobbleDuration = 0
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 0 })
 				track.Duration = 29
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
