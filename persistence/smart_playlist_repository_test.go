@@ -73,8 +73,7 @@ var _ = Describe("PlaylistRepository - Smart Playlists", func() {
 			}
 
 			BeforeEach(func() {
-				DeferCleanup(configtest.SetupConfig())
-				conf.Server.SmartPlaylistRefreshDelay = -1 * time.Second
+				conf.Update(func(c *conf.Options) { c.SmartPlaylistRefreshDelay = -1 * time.Second })
 				clearArtworkTables()
 				DeferCleanup(clearArtworkTables)
 				pls = model.Playlist{Name: "Covered", OwnerID: "userid", Rules: &criteria.Criteria{
