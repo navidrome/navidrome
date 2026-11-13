@@ -1,0 +1,4 @@
+type: string
+description: "A requested scope. Scopes the server does not know are dropped, not rejected, so newer clients keep working."
+pattern: '^[a-z][a-z-]*(:write)?$'
+maxLength: 64

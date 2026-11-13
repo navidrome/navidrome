@@ -1,0 +1,12 @@
+overlay: 1.0.0
+info:
+  title: Go type names for the API v1 server
+  version: 1.0.0
+actions:
+  # Ginkgo's dot-imported Offset would clash with a generated Offset type in this package's tests.
+  - target: $.components.parameters.offset
+    update:
+      x-go-name: OffsetParam
+  - target: $.components.parameters.limit
+    update:
+      x-go-name: LimitParam

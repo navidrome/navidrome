@@ -3,6 +3,7 @@ package agents
 import (
 	"context"
 
+	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 )
 
@@ -13,6 +14,7 @@ type SessionKeys struct {
 }
 
 func (sk *SessionKeys) Put(ctx context.Context, userId, sessionKey string) error {
+	ctx = log.WithSecrets(ctx, sessionKey)
 	return sk.DataStore.UserProps().Put(ctx, userId, sk.KeyName, sessionKey)
 }
 

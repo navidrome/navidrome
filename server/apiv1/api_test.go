@@ -3,7 +3,11 @@ package apiv1
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/go-chi/chi/v5"
+	"github.com/navidrome/navidrome/api"
 	"github.com/navidrome/navidrome/tests"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -14,6 +18,40 @@ var _ = Describe("Router", func() {
 
 	BeforeEach(func() {
 		router = New(&tests.MockDataStore{})
+	})
+
+	It("routes every operation in the embedded spec", func() {
+		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
+		Expect(err).ToNot(HaveOccurred())
+		mux := New(&tests.MockDataStore{}).Handler.(chi.Routes)
+		for path, item := range doc.Paths.Map() {
+			for method := range item.Operations() {
+				Expect(mux.Find(chi.NewRouteContext(), method, path)).To(Equal(path), method+" "+path)
+			}
+		}
+	})
+
+	It("declares Cache-Control no-store on the success responses of every no-store operation", func() {
+		doc, err := openapi3.NewLoader().LoadFromData(api.SpecJSON())
+		Expect(err).ToNot(HaveOccurred())
+		checked := map[string]bool{}
+		for _, item := range doc.Paths.Map() {
+			for _, op := range item.Operations() {
+				if !gateRulesV1.noStore[op.OperationID] {
+					continue
+				}
+				for code, resp := range op.Responses.Map() {
+					if !strings.HasPrefix(code, "2") {
+						continue
+					}
+					h := resp.Value.Headers["Cache-Control"]
+					Expect(h).ToNot(BeNil(), op.OperationID+" "+code)
+					Expect(h.Value.Schema.Value.Enum).To(ConsistOf("no-store"), op.OperationID+" "+code)
+					checked[op.OperationID] = true
+				}
+			}
+		}
+		Expect(checked).To(HaveLen(len(gateRulesV1.noStore)))
 	})
 
 	It("returns a 404 problem for unknown paths", func() {
@@ -65,6 +103,19 @@ var _ = Describe("Router", func() {
 		p := decodeProblem(w)
 		Expect(p.Code).To(Equal(ProblemCodeInternal))
 		Expect(p.Detail).To(BeNil())
+	})
+
+	It("tags internal errors with a referenceId that is also on the request's log lines", func() {
+		logs := captureLogs()
+		w := httptest.NewRecorder()
+		h := referenceIDMiddleware(problemRecoverer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic("kaboom")
+		})))
+		h.ServeHTTP(w, httptest.NewRequestWithContext(GinkgoT().Context(), http.MethodGet, "/boom", nil))
+		p := decodeProblem(w)
+		Expect(p.ReferenceId).ToNot(BeNil())
+		Expect(*p.ReferenceId).To(MatchRegexp(`^[0-9A-Za-z]{22}$`))
+		Expect(logs.String()).To(ContainSubstring(*p.ReferenceId))
 	})
 
 	It("re-panics http.ErrAbortHandler so the server can drop the connection", func() {

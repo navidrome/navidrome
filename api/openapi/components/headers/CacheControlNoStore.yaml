@@ -1,0 +1,4 @@
+description: Always `no-store`, because the response carries a secret.
+schema:
+  type: string
+  enum: [no-store]

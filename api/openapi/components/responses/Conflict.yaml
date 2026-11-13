@@ -1,0 +1,5 @@
+description: "The request conflicts with the server's state, for example `setup_complete` or `password_managed_externally`."
+content:
+  application/problem+json:
+    schema:
+      $ref: ../schemas/Problem.yaml

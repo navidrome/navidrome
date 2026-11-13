@@ -16,6 +16,7 @@ import (
 )
 
 func TestAuth(t *testing.T) {
+	tests.Init(t, false)
 	log.SetLevel(log.LevelFatal)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Auth Test Suite")
