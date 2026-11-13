@@ -175,6 +175,7 @@ type scannerOptions struct {
 	GroupAlbumReleases    bool     // Deprecated: Use PID.Album instead
 	FollowSymlinks        bool     // Whether to follow symlinks when scanning directories
 	IgnoreDotFolders      bool     // Whether to ignore folders whose name starts with a dot when scanning
+	RespectNoMedia        bool     // Whether to skip folders (and their subfolders) containing a .nomedia file
 	PurgeMissing          string   // Values: "never", "always", "full"
 }
 
@@ -1063,6 +1064,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
 	viper.SetDefault("scanner.ignoredotfolders", true)
+	viper.SetDefault("scanner.respectnomedia", false)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.appendalbumversion", true)

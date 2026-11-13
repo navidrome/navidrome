@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"testing/fstest"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/storage"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -26,9 +28,27 @@ var _ = Describe("walk_dir_tree", func() {
 			ctx  context.Context
 		)
 
+		// Helper function to call walkDirTree and collect folders from the results channel
+		getFolders := func() map[string]*folderEntry {
+			results, err := walkDirTree(ctx, job)
+			Expect(err).ToNot(HaveOccurred())
+
+			folders := map[string]*folderEntry{}
+			g := errgroup.Group{}
+			g.Go(func() error {
+				for folder := range results {
+					folders[folder.path] = folder
+				}
+				return nil
+			})
+			_ = g.Wait()
+			return folders
+		}
+
 		Context("full library", func() {
 			BeforeEach(func() {
 				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Scanner.RespectNoMedia = true
 				ctx = GinkgoT().Context()
 				fsys = &mockMusicFS{
 					FS: fstest.MapFS{
@@ -63,23 +83,6 @@ var _ = Describe("walk_dir_tree", func() {
 					lib: model.Library{Path: "/music"},
 				}
 			})
-
-			// Helper function to call walkDirTree and collect folders from the results channel
-			getFolders := func() map[string]*folderEntry {
-				results, err := walkDirTree(ctx, job)
-				Expect(err).ToNot(HaveOccurred())
-
-				folders := map[string]*folderEntry{}
-				g := errgroup.Group{}
-				g.Go(func() error {
-					for folder := range results {
-						folders[folder.path] = folder
-					}
-					return nil
-				})
-				_ = g.Wait()
-				return folders
-			}
 
 			DescribeTable("symlink handling",
 				func(followSymlinks bool, expectedFolderCount int) {
@@ -153,6 +156,73 @@ var _ = Describe("walk_dir_tree", func() {
 				Entry("with symlinks enabled", true),
 				Entry("with symlinks disabled", false),
 			)
+
+			It("scans folders containing a .nomedia file when RespectNoMedia is disabled", func() {
+				conf.Server.Scanner.RespectNoMedia = false
+				folders := getFolders()
+
+				Expect(folders["root/j"].audioFiles).To(HaveKey("f1.mp3"))
+				Expect(folders["root/j/sub"].audioFiles).To(HaveKey("f2.mp3"))
+			})
+		})
+
+		Context("ignore marker files", func() {
+			var spy *spyMusicFS
+
+			walk := func() map[string]*folderEntry {
+				job = &scanJob{fs: spy, lib: model.Library{Path: "/music"}}
+				return getFolders()
+			}
+
+			BeforeEach(func() {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Scanner.RespectNoMedia = true
+				ctx = GinkgoT().Context()
+			})
+
+			It("reads only the marker files present in the folder listing", func() {
+				spy = newSpyMusicFS(fstest.MapFS{
+					"a/.ndignore":       {Data: []byte("ignored/*")},
+					"a/ignored/bad.mp3": {},
+					"b/song.mp3":        {},
+					"c/.nomedia":        {},
+					"c/song.mp3":        {},
+				})
+				folders := walk()
+
+				Expect(folders["a/ignored"].audioFiles).To(BeEmpty())
+				Expect(folders["b"].audioFiles).To(HaveKey("song.mp3"))
+				Expect(folders["c"].audioFiles).To(BeEmpty())
+				Expect(spy.markerAccesses()).To(ConsistOf("a/.ndignore"))
+			})
+
+			It("matches marker file names ignoring case", func() {
+				spy = newSpyMusicFS(fstest.MapFS{
+					"a/.NDIGNORE": {Data: []byte("skip.mp3")},
+					"a/skip.mp3":  {},
+					"a/song.mp3":  {},
+					"b/.NoMedia":  {},
+					"b/song.mp3":  {},
+				})
+				folders := walk()
+
+				Expect(folders["a"].audioFiles).To(SatisfyAll(HaveKey("song.mp3"), Not(HaveKey("skip.mp3"))))
+				Expect(folders["b"].audioFiles).To(BeEmpty())
+			})
+
+			It("keeps the parent's patterns when a child folder cannot be read", func() {
+				spy = newSpyMusicFS(fstest.MapFS{
+					"a/.ndignore":    {Data: []byte("skip.mp3")},
+					"a/bad/song.mp3": {},
+					"a/zz/song.mp3":  {},
+					"a/zz/skip.mp3":  {},
+				})
+				spy.failStat = "a/bad"
+				folders := walk()
+
+				Expect(folders).ToNot(HaveKey("a/bad"))
+				Expect(folders["a/zz"].audioFiles).To(SatisfyAll(HaveKey("song.mp3"), Not(HaveKey("skip.mp3"))))
+			})
 		})
 
 		Context("with target folders", func() {
@@ -781,4 +851,38 @@ func (m *mockMusicFS) Lstat(name string) (fs.FileInfo, error) {
 	}
 	defer f.Close()
 	return f.Stat()
+}
+
+// spyMusicFS records every Open and Stat, and can fail Stat for one path.
+type spyMusicFS struct {
+	*mockMusicFS
+	accessed []string
+	failStat string
+}
+
+func newSpyMusicFS(files fstest.MapFS) *spyMusicFS {
+	return &spyMusicFS{mockMusicFS: &mockMusicFS{FS: files}}
+}
+
+func (s *spyMusicFS) Open(name string) (fs.File, error) {
+	s.accessed = append(s.accessed, name)
+	return s.mockMusicFS.Open(name)
+}
+
+func (s *spyMusicFS) Stat(name string) (fs.FileInfo, error) {
+	s.accessed = append(s.accessed, name)
+	if name == s.failStat {
+		return nil, fs.ErrPermission
+	}
+	return s.mockMusicFS.Stat(name)
+}
+
+func (s *spyMusicFS) markerAccesses() []string {
+	var res []string
+	for _, name := range s.accessed {
+		if base := path.Base(name); base == consts.ScanIgnoreFile || base == consts.NoMediaFile {
+			res = append(res, name)
+		}
+	}
+	return res
 }

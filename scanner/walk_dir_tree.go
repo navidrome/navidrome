@@ -43,12 +43,14 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				continue
 			}
 
-			// Create checker and push patterns from root to this folder
+			// walkFolder pushes the target folder's own patterns, so only its parents are pushed here
 			checker := newIgnoreChecker(job.fs)
-			err = checker.PushAllParents(ctx, folderPath)
-			if err != nil {
-				log.Error(ctx, "Scanner: Error pushing ignore patterns for target folder", "path", folderPath, err)
-				continue
+			if target := path.Clean(folderPath); target != "." {
+				err = checker.PushAllParents(ctx, path.Dir(target))
+				if err != nil {
+					log.Error(ctx, "Scanner: Error pushing ignore patterns for target folder", "path", folderPath, err)
+					continue
+				}
 			}
 
 			// Recursively walk this folder and all its children
@@ -64,11 +66,16 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 }
 
 func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker *IgnoreChecker, results chan<- *folderEntry) error {
-	// Push patterns for this folder onto the stack
-	_ = checker.Push(ctx, currentFolder)
-	defer checker.Pop() // Pop patterns when leaving this folder
+	folder, entries, err := readDir(ctx, job, currentFolder)
+	if err != nil {
+		log.Warn(ctx, "Scanner: Error reading dir. Skipping", "path", currentFolder, err)
+		return nil
+	}
 
-	folder, children, err := loadDir(ctx, job, currentFolder, checker)
+	checker.PushEntries(ctx, currentFolder, entries)
+	defer checker.Pop()
+
+	children, err := classifyEntries(ctx, folder, entries, checker)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error loading dir. Skipping", "path", currentFolder, err)
 		return nil
@@ -92,7 +99,7 @@ func walkFolder(ctx context.Context, job *scanJob, currentFolder string, checker
 	return nil
 }
 
-func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreChecker) (folder *folderEntry, children []string, err error) {
+func readDir(ctx context.Context, job *scanJob, dirPath string) (folder *folderEntry, entries []fs.DirEntry, err error) {
 	// Check if directory exists before creating the folder entry
 	// This is important to avoid removing the folder from lastUpdates if it doesn't exist
 	dirInfo, err := fs.Stat(job.fs, dirPath)
@@ -108,16 +115,19 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 	dir, err := job.fs.Open(dirPath)
 	if err != nil {
 		log.Warn(ctx, "Scanner: Error in Opening directory", "path", dirPath, err)
-		return folder, children, err
+		return folder, nil, err
 	}
 	defer dir.Close()
 	dirFile, ok := dir.(fs.ReadDirFile)
 	if !ok {
 		log.Error(ctx, "Not a directory", "path", dirPath)
-		return folder, children, err
+		return folder, nil, nil
 	}
+	return folder, fullReadDir(ctx, dirFile), nil
+}
 
-	entries := fullReadDir(ctx, dirFile)
+func classifyEntries(ctx context.Context, folder *folderEntry, entries []fs.DirEntry, checker *IgnoreChecker) (children []string, err error) {
+	job, dirPath := folder.job, folder.path
 	children = make([]string, 0, len(entries))
 	for _, entry := range entries {
 		entryPath := path.Join(dirPath, entry.Name())
@@ -126,7 +136,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			continue
 		}
 		if ctx.Err() != nil {
-			return folder, children, ctx.Err()
+			return children, ctx.Err()
 		}
 		isDir, err := isDirOrSymlinkToDir(job.fs, dirPath, entry)
 		// Skip invalid symlinks
@@ -144,7 +154,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			fileInfo, err := entry.Info()
 			if err != nil {
 				log.Warn(ctx, "Scanner: Error getting fileInfo", "name", entry.Name(), err)
-				return folder, children, err
+				return children, err
 			}
 			if fileInfo.ModTime().After(folder.modTime) {
 				folder.modTime = fileInfo.ModTime()
@@ -164,7 +174,7 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 			}
 		}
 	}
-	return folder, children, nil
+	return children, nil
 }
 
 // fullReadDir reads all files in the folder, skipping the ones with errors.

@@ -5,8 +5,10 @@ import (
 	"context"
 	"io/fs"
 	"path"
+	"slices"
 	"strings"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	ignore "github.com/sabhiram/go-gitignore"
@@ -15,7 +17,7 @@ import (
 const ignoreAllPattern = "**/*"
 
 // IgnoreChecker manages .ndignore patterns using a stack-based approach.
-// Use Push() to add patterns when entering a folder, Pop() when leaving,
+// Use Push() or PushEntries() to add patterns when entering a folder, Pop() when leaving,
 // and ShouldIgnore() to check if a path should be ignored.
 type IgnoreChecker struct {
 	fsys            fs.FS
@@ -35,10 +37,25 @@ func newIgnoreChecker(fsys fs.FS) *IgnoreChecker {
 // Push loads .ndignore patterns from the specified folder and adds them to the pattern stack.
 // Use this when entering a folder during directory tree traversal.
 func (ic *IgnoreChecker) Push(ctx context.Context, folder string) error {
-	patterns := ic.loadPatternsFromFolder(ctx, folder)
+	ic.push(ic.loadPatternsFromFolder(ctx, folder))
+	return nil
+}
+
+// PushEntries is Push for a folder whose listing was already read, so it needs no fs.Stat.
+// Names match ignoring case, like fs.Stat does on macOS and Windows.
+func (ic *IgnoreChecker) PushEntries(ctx context.Context, folder string, entries []fs.DirEntry) {
+	ic.push(ic.loadPatterns(ctx, folder, func(name string) (string, bool) {
+		i := slices.IndexFunc(entries, func(e fs.DirEntry) bool { return strings.EqualFold(e.Name(), name) })
+		if i < 0 {
+			return "", false
+		}
+		return path.Join(folder, entries[i].Name()), true
+	}))
+}
+
+func (ic *IgnoreChecker) push(patterns []string) {
 	ic.patternStack = append(ic.patternStack, patterns)
 	ic.rebuildCurrentPatterns()
-	return nil
 }
 
 // Pop removes the most recent patterns from the stack.
@@ -97,26 +114,32 @@ func (ic *IgnoreChecker) ShouldIgnore(ctx context.Context, relPath string) bool 
 
 	matches := ic.matcher.MatchesPath(relPath)
 	if matches {
-		log.Trace(ctx, "Scanner: Ignoring entry matching .ndignore", "path", relPath)
+		log.Trace(ctx, "Scanner: Ignoring entry matching ignore rules", "path", relPath)
 	}
 	return matches
 }
 
-// loadPatternsFromFolder reads the .ndignore file in the specified folder and returns the patterns.
-// If the file doesn't exist, returns an empty slice.
-// If the file exists but is empty, or a .nomedia file exists, returns a pattern to ignore everything.
 func (ic *IgnoreChecker) loadPatternsFromFolder(ctx context.Context, folder string) []string {
-	if _, err := fs.Stat(ic.fsys, path.Join(folder, consts.NoMediaFile)); err == nil {
-		log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
-		return []string{ignoreAllPattern}
+	return ic.loadPatterns(ctx, folder, func(name string) (string, bool) {
+		filePath := path.Join(folder, name)
+		_, err := fs.Stat(ic.fsys, filePath)
+		return filePath, err == nil
+	})
+}
+
+// loadPatterns returns the folder's .ndignore patterns, or ignoreAllPattern if the folder has an
+// empty .ndignore, or a .nomedia file with Scanner.RespectNoMedia. find returns a marker's path.
+func (ic *IgnoreChecker) loadPatterns(ctx context.Context, folder string, find func(name string) (string, bool)) []string {
+	if conf.Server.Scanner.RespectNoMedia {
+		if _, ok := find(consts.NoMediaFile); ok {
+			log.Trace(ctx, "Scanner: .nomedia file found, ignoring everything", "path", folder)
+			return []string{ignoreAllPattern}
+		}
 	}
 
-	ignoreFilePath := path.Join(folder, consts.ScanIgnoreFile)
 	var patterns []string
-
-	// Check if .ndignore file exists
-	if _, err := fs.Stat(ic.fsys, ignoreFilePath); err != nil {
-		// No .ndignore file in this folder
+	ignoreFilePath, ok := find(consts.ScanIgnoreFile)
+	if !ok {
 		return patterns
 	}
 

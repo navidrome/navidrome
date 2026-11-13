@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing/fstest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -38,17 +40,24 @@ var _ = Describe("IgnoreChecker", func() {
 		})
 
 		DescribeTable("when .nomedia file exists",
-			func(files fstest.MapFS) {
+			func(respectNoMedia bool, files fstest.MapFS, expected []string) {
+				DeferCleanup(configtest.SetupConfig())
+				conf.Server.Scanner.RespectNoMedia = respectNoMedia
 				ic = newIgnoreChecker(files)
 				patterns := ic.loadPatternsFromFolder(ctx, ".")
-				Expect(patterns).To(Equal([]string{"**/*"}))
+				Expect(patterns).To(Equal(expected))
 			},
-			Entry("empty", fstest.MapFS{".nomedia": &fstest.MapFile{}}),
-			Entry("with content", fstest.MapFS{".nomedia": &fstest.MapFile{Data: []byte("*.txt")}}),
-			Entry("alongside .ndignore", fstest.MapFS{
+			Entry("empty", true, fstest.MapFS{".nomedia": &fstest.MapFile{}}, []string{"**/*"}),
+			Entry("with content", true, fstest.MapFS{".nomedia": &fstest.MapFile{Data: []byte("*.txt")}}, []string{"**/*"}),
+			Entry("alongside .ndignore", true, fstest.MapFS{
 				".nomedia":  &fstest.MapFile{},
 				".ndignore": &fstest.MapFile{Data: []byte("*.txt")},
-			}),
+			}, []string{"**/*"}),
+			Entry("disabled", false, fstest.MapFS{".nomedia": &fstest.MapFile{}}, []string(nil)),
+			Entry("disabled, alongside .ndignore", false, fstest.MapFS{
+				".nomedia":  &fstest.MapFile{},
+				".ndignore": &fstest.MapFile{Data: []byte("*.txt")},
+			}, []string{"*.txt"}),
 		)
 
 		DescribeTable("parsing .ndignore content",
