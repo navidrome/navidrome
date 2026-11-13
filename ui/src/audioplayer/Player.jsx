@@ -27,6 +27,7 @@ import {
   syncQueue,
 } from '../actions'
 import PlayerToolbar from './PlayerToolbar'
+import WaveformBar from './WaveformBar'
 import { sendNotification } from '../utils'
 import subsonic from '../subsonic'
 import locale from './locale'
@@ -48,6 +49,7 @@ const Player = () => {
   const currentTrackIdRef = useRef(null)
   const stoppedRef = useRef(false)
   const [audioInstance, setAudioInstance] = useState(null)
+  const [hasWaveform, setHasWaveform] = useState(false)
   const isDesktop = useMediaQuery('(min-width:810px)')
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -127,10 +129,12 @@ const Player = () => {
 
   const visible = authenticated && playerState.queue.length > 0
   const isRadio = playerState.current?.isRadio || false
+  const showWaveform = config.enableWaveform && visible && !isRadio
   const classes = useStyle({
     isRadio,
     visible,
     enableCoverAnimation: config.enableCoverAnimation,
+    hasWaveform: showWaveform && hasWaveform,
   })
   const showNotifications = useSelector(
     (state) => state.settings.notifications || false,
@@ -471,6 +475,13 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
+      {showWaveform && (
+        <WaveformBar
+          trackId={playerState.current?.trackId}
+          audioInstance={audioInstance}
+          onAvailable={setHasWaveform}
+        />
+      )}
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
     </ThemeProvider>
   )

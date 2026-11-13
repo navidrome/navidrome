@@ -1064,6 +1064,18 @@ var _ = Describe("Responses", func() {
 		})
 	})
 
+	Describe("Waveform", func() {
+		BeforeEach(func() {
+			response.Waveform = &Waveform{ID: "1", Duration: 12.5, Samples: 3, Peaks: []int32{0, 128, 255}}
+		})
+		It("should match .XML", func() {
+			Expect(xml.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+		It("should match .JSON", func() {
+			Expect(json.MarshalIndent(response, "", "  ")).To(MatchSnapshot())
+		})
+	})
+
 	Describe("LyricsList", func() {
 		BeforeEach(func() {
 			response.LyricsList = &LyricsList{}

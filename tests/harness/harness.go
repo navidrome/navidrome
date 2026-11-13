@@ -180,6 +180,10 @@ func (NoopFFmpeg) ProbeAudioStream(context.Context, string) (*ffmpeg.AudioProbeR
 	return nil, errors.New("noop ffmpeg: probe not supported")
 }
 
+func (NoopFFmpeg) DecodePCM(context.Context, string, int) (io.ReadCloser, error) {
+	return nil, errors.New("noop ffmpeg: decode pcm not supported")
+}
+
 func (NoopFFmpeg) ConvertAnimatedImage(context.Context, io.Reader, int, int) (io.ReadCloser, error) {
 	return nil, errors.New("noop ffmpeg: convert animated image not supported")
 }

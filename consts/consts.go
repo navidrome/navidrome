@@ -136,6 +136,9 @@ const (
 	ImageCacheDir             = "images"
 	DefaultImageCacheMaxItems = 0 // Unlimited
 
+	WaveformCacheDir             = "waveforms"
+	DefaultWaveformCacheMaxItems = 0 // Unlimited
+
 	DefaultCacheSize            = 100 * 1024 * 1024 // 100MB
 	DefaultCacheCleanUpInterval = 10 * time.Minute
 )

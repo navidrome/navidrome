@@ -32,6 +32,7 @@ const defaultConfig = {
   listenBrainzEnabled: true,
   enableExternalServices: true,
   enableCoverAnimation: true,
+  enableWaveform: false,
   pidAlbum: 'musicbrainz_albumid|albumartistid,album,albumversion,releasedate', // See consts.DefaultAlbumPID
   pidTrack: 'musicbrainz_trackid|albumid,discnumber,tracknumber,title', // See consts.DefaultTrackPID
   enableNowPlaying: true,

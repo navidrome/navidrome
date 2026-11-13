@@ -3,6 +3,7 @@ package subsonic
 import (
 	"net/http"
 
+	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
 )
 
@@ -21,6 +22,11 @@ func (api *Router) GetOpenSubsonicExtensions(_ *http.Request) (*responses.Subson
 	if api.sonic != nil && api.sonic.HasProvider() {
 		extensions = append(extensions, responses.OpenSubsonicExtension{
 			Name: "sonicSimilarity", Versions: []int32{1},
+		})
+	}
+	if conf.Server.EnableWaveform {
+		extensions = append(extensions, responses.OpenSubsonicExtension{
+			Name: "songWaveform", Versions: []int32{1},
 		})
 	}
 	response.OpenSubsonicExtensions = &extensions

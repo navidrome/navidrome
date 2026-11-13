@@ -23,7 +23,7 @@ var _ = Describe("GetLyricsBySongId", func() {
 		ds = &tests.MockDataStore{
 			MockedMediaFile: mockRepo,
 		}
-		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil)
+		router = New(ds, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lyrics.NewLyrics(ds, nil), nil, nil, nil)
 		DeferCleanup(configtest.SetupConfig())
 		conf.Server.LyricsPriority = "embedded,.lrc"
 	})

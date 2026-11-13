@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/conf/configtest"
 	sonicsvc "github.com/navidrome/navidrome/core/sonic"
 	"github.com/navidrome/navidrome/server/subsonic"
 	"github.com/navidrome/navidrome/server/subsonic/responses"
@@ -41,7 +43,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 
 	Context("without sonic similarity plugin", func() {
 		BeforeEach(func() {
-			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 		})
 
 		It("should return the base 8 OpenSubsonicExtensions without sonicSimilarity", func() {
@@ -74,7 +76,7 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 	Context("with sonic similarity plugin", func() {
 		BeforeEach(func() {
 			sonicService := sonicsvc.New(nil, &mockSonicPluginLoader{names: []string{"test-plugin"}}, nil)
-			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, sonicService)
+			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, sonicService, nil)
 		})
 
 		It("should return 9 extensions including sonicSimilarity", func() {
@@ -97,6 +99,26 @@ var _ = Describe("GetOpenSubsonicExtensions", func() {
 				ContainElement(responses.OpenSubsonicExtension{Name: "sonicSimilarity", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "topSongsByArtistId", Versions: []int32{1}}),
 				ContainElement(responses.OpenSubsonicExtension{Name: "apiKeyAuthentication", Versions: []int32{1}}),
+			))
+		})
+	})
+
+	Context("with waveforms enabled", func() {
+		BeforeEach(func() {
+			DeferCleanup(configtest.SetupConfig())
+			conf.Server.EnableWaveform = true
+			router = subsonic.New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+		})
+
+		It("should include songWaveform", func() {
+			router.ServeHTTP(w, r)
+
+			var response responses.JsonWrapper
+			err := json.Unmarshal(w.Body.Bytes(), &response)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(*response.Subsonic.OpenSubsonicExtensions).To(SatisfyAll(
+				HaveLen(9),
+				ContainElement(responses.OpenSubsonicExtension{Name: "songWaveform", Versions: []int32{1}}),
 			))
 		})
 	})

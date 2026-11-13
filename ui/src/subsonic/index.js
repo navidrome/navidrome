@@ -131,6 +131,10 @@ const getTopSongs = (artist, count = 50) => {
   return httpClient(url('getTopSongs', null, { artist, count }))
 }
 
+const getWaveform = (id, samples, options) => {
+  return httpClient(url('getWaveform', id, { samples }), options)
+}
+
 const streamUrl = (id, options) => {
   return baseUrl(
     url('stream', id, {
@@ -160,4 +164,5 @@ export default {
   getArtistInfo,
   getTopSongs,
   getSimilarSongs2,
+  getWaveform,
 }
