@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -54,8 +53,7 @@ var _ = Describe("Result", func() {
 
 var _ = Describe("ConfigFor", func() {
 	BeforeEach(func() {
-		DeferCleanup(configtest.SetupConfig())
-		conf.Server.ArtistArtPriority = "external"
+		conf.Update(func(c *conf.Options) { c.ArtistArtPriority = "external" })
 	})
 
 	It("names the setting for a kind that has one", func() {
@@ -65,7 +63,7 @@ var _ = Describe("ConfigFor", func() {
 	})
 
 	It("names the setting for the album kind", func() {
-		conf.Server.CoverArtPriority = "cover.*, embedded"
+		conf.Update(func(c *conf.Options) { c.CoverArtPriority = "cover.*, embedded" })
 		setting, value := artwork.ConfigFor(model.KindAlbumArtwork)
 		Expect(setting).To(Equal("CoverArtPriority"))
 		Expect(value).To(Equal("cover.*, embedded"))

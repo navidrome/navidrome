@@ -47,13 +47,13 @@ func Result(source string, steps []TraceStep) string {
 func ConfigFor(kind model.Kind) (setting, value string) {
 	switch kind {
 	case model.KindArtistArtwork:
-		return "ArtistArtPriority", conf.Server.ArtistArtPriority
+		return "ArtistArtPriority", conf.Server().ArtistArtPriority
 	case model.KindAlbumArtwork:
-		return "CoverArtPriority", conf.Server.CoverArtPriority
+		return "CoverArtPriority", conf.Server().CoverArtPriority
 	case model.KindDiscArtwork:
-		return "DiscArtPriority", conf.Server.DiscArtPriority
+		return "DiscArtPriority", conf.Server().DiscArtPriority
 	case model.KindMediaFileArtwork:
-		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server.EnableMediaFileCoverArt)
+		return "EnableMediaFileCoverArt", strconv.FormatBool(conf.Server().EnableMediaFileCoverArt)
 	}
 	return "", ""
 }
@@ -135,7 +135,7 @@ func Explain(ctx context.Context, ds model.DataStore, ag *agents.Agents, kind mo
 		return rep, nil
 	}
 	if ag != nil && (kind == model.KindArtistArtwork || kind == model.KindAlbumArtwork) {
-		rep.Agents, rep.AgentsIncomplete = FormatAgents(conf.Server.Agents, ImageAgentNames(ag, kind))
+		rep.Agents, rep.AgentsIncomplete = FormatAgents(conf.Server().Agents, ImageAgentNames(ag, kind))
 	}
 
 	switch {
