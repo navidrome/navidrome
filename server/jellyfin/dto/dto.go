@@ -78,14 +78,22 @@ type BaseItemDto struct {
 	PremiereDate *string `json:"PremiereDate,omitempty"`
 	// DateCreated is the ISO 8601 date the item was added to the library; clients show it as
 	// "Date Added" and sort "Recently Added" by it.
-	DateCreated            string            `json:"DateCreated,omitempty"`
-	Album                  string            `json:"Album,omitempty"`
-	AlbumId                string            `json:"AlbumId,omitempty"`
-	AlbumArtist            string            `json:"AlbumArtist,omitempty"`
-	AlbumArtists           []NameGuidPair    `json:"AlbumArtists,omitempty"`
-	AlbumPrimaryImageTag   string            `json:"AlbumPrimaryImageTag,omitempty"`
-	Artists                []string          `json:"Artists,omitzero"`
-	ArtistItems            []NameGuidPair    `json:"ArtistItems,omitempty"`
+	DateCreated          string         `json:"DateCreated,omitempty"`
+	Album                string         `json:"Album,omitempty"`
+	AlbumId              string         `json:"AlbumId,omitempty"`
+	AlbumArtist          string         `json:"AlbumArtist,omitempty"`
+	AlbumArtists         []NameGuidPair `json:"AlbumArtists,omitempty"`
+	AlbumPrimaryImageTag string         `json:"AlbumPrimaryImageTag,omitempty"`
+	Artists              []string       `json:"Artists,omitzero"`
+	ArtistItems          []NameGuidPair `json:"ArtistItems,omitempty"`
+	// Overview is the artist biography; attached only when the request's Fields asks for it.
+	Overview string `json:"Overview,omitempty"`
+	// ProviderIds maps a provider name (e.g. "MusicBrainzArtist") to the item's id there; attached
+	// only when the request's Fields asks for it.
+	ProviderIds map[string]string `json:"ProviderIds,omitempty"`
+	// ExternalUrls links out to the item's pages on other sites; attached only when the request's
+	// Fields asks for it.
+	ExternalUrls           []ExternalUrl     `json:"ExternalUrls,omitempty"`
 	Genres                 []string          `json:"Genres,omitzero"`
 	GenreItems             []NameGuidPair    `json:"GenreItems,omitzero"`
 	Studios                []NameGuidPair    `json:"Studios,omitempty"`
@@ -107,6 +115,12 @@ type BaseItemDto struct {
 	MediaSources            []MediaSourceInfo `json:"MediaSources,omitempty"`
 	Container               string            `json:"Container,omitempty"`
 	CanDownload             bool              `json:"CanDownload"`
+}
+
+// ExternalUrl is a named link to an item's page on another site.
+type ExternalUrl struct {
+	Name string `json:"Name"`
+	Url  string `json:"Url"`
 }
 
 // PlaylistUserPermissions is the response shape for GET /Playlists/{id}/Users(/{userId}), which
