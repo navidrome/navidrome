@@ -17,7 +17,7 @@ import (
 
 // MaxImageUploadSize returns the configured max upload size in bytes, or the built-in default.
 func MaxImageUploadSize() int64 {
-	return parseSize(conf.Server.MaxImageUploadSize, consts.DefaultMaxImageUploadSize)
+	return parseSize(conf.Server().MaxImageUploadSize, consts.DefaultMaxImageUploadSize)
 }
 
 func parseSize(value, fallback string) int64 {

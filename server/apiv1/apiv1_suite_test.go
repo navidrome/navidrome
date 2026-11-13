@@ -35,12 +35,15 @@ func TestAPIv1(t *testing.T) {
 	RunSpecs(t, "API v1 Suite")
 }
 
+var _ = configtest.RestoreAfterEachSpec()
+
 var specRouter routers.Router
 
 // One database for the suite (db.Db() is a process-wide singleton); each spec clears users and grants.
 var _ = BeforeSuite(func() {
-	DeferCleanup(configtest.SetupConfig())
-	conf.Server.DbPath = filepath.Join(GinkgoT().TempDir(), "apiv1.db") + "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000"
+	conf.Update(func(c *conf.Options) {
+		c.DbPath = filepath.Join(GinkgoT().TempDir(), "apiv1.db") + "?_journal_mode=WAL&_foreign_keys=on&_busy_timeout=5000"
+	})
 	DeferCleanup(db.Init(GinkgoT().Context()))
 	realDS = persistence.New(db.Db())
 

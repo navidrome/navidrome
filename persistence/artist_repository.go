@@ -133,7 +133,7 @@ func (dba dbArtists) toModels() model.Artists {
 func NewArtistRepository(db dbx.Builder) model.ArtistRepository {
 	r := &artistRepository{}
 	r.db = db
-	r.indexGroups = utils.ParseIndexGroups(conf.Server.IndexGroups)
+	r.indexGroups = utils.ParseIndexGroups(conf.Server().IndexGroups)
 	r.tableName = "artist" // To be used by the idFilter below
 	r.registerModel(&model.Artist{}, map[string]filterFunc{
 		"id":         idFilter(r.tableName),
@@ -309,7 +309,7 @@ func (r *artistRepository) GetCursor(ctx context.Context, options ...model.Query
 
 func (r *artistRepository) getIndexKey(a model.Artist) string {
 	source := a.OrderArtistName
-	if conf.Server.PreferSortTags {
+	if conf.Server().PreferSortTags {
 		source = cmp.Or(a.SortArtistName, a.OrderArtistName)
 	}
 	name := strings.ToLower(source)

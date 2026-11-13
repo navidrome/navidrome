@@ -40,7 +40,7 @@ const (
 func Init(ds model.DataStore) {
 	once.Do(func() {
 		ctx := context.TODO()
-		log.Info("Setting Session Timeout", "value", conf.Server.SessionTimeout)
+		log.Info("Setting Session Timeout", "value", conf.Server().SessionTimeout)
 
 		TokenAuth = jwtauth.New("HS256", []byte(loadOrCreateSecret(ctx, ds, consts.JWTSecretKey)), nil)
 		PublicTokenAuth = jwtauth.New("HS256", []byte(loadOrCreateSecret(ctx, ds, consts.JWTPublicSecretKey)), nil)
@@ -108,7 +108,7 @@ func TouchToken(token jwt.Token) (string, error) {
 }
 
 func TouchClaims(c Claims) (string, error) {
-	c = c.WithExpiresAt(time.Now().UTC().Add(conf.Server.SessionTimeout))
+	c = c.WithExpiresAt(time.Now().UTC().Add(conf.Server().SessionTimeout))
 	_, newToken, err := TokenAuth.Encode(c.ToMap())
 	return newToken, err
 }
@@ -198,7 +198,7 @@ func DecodeAndVerifyToken(tokenStr string) (jwt.Token, error) {
 
 func EncryptionKey() []byte {
 	key := cmp.Or(
-		conf.Server.PasswordEncryptionKey,
+		conf.Server().PasswordEncryptionKey,
 		consts.DefaultEncryptionKey,
 	)
 	sum := sha256.Sum256([]byte(key))

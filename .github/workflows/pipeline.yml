@@ -79,7 +79,7 @@ jobs:
         with:
           version: ${{ steps.golangci-version.outputs.version }}
           problem-matchers: true
-          args: --timeout 2m
+          args: --timeout 3m
 
       - name: Run go goimports
         run: go run golang.org/x/tools/cmd/goimports@latest -w `find . -name '*.go' | grep -v '_gen.go$' | grep -v '.pb.go$'`

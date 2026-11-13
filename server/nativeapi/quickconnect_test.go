@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/conf"
-	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/core/quickconnect"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -109,9 +108,10 @@ var _ = Describe("Quick Connect endpoints", func() {
 		}
 
 		BeforeEach(func() {
-			DeferCleanup(configtest.SetupConfig())
-			conf.Server.Jellyfin.Enabled = true
-			conf.Server.Jellyfin.QuickConnect = true
+			conf.Update(func(c *conf.Options) {
+				c.Jellyfin.Enabled = true
+				c.Jellyfin.QuickConnect = true
+			})
 		})
 
 		It("mounts the routes when Jellyfin Quick Connect is on", func() {
@@ -119,8 +119,10 @@ var _ = Describe("Quick Connect endpoints", func() {
 		})
 
 		It("rate-limits code attempts when a login limit is configured", func() {
-			conf.Server.AuthRequestLimit = 2
-			conf.Server.AuthWindowLength = time.Minute
+			conf.Update(func(c *conf.Options) {
+				c.AuthRequestLimit = 2
+				c.AuthWindowLength = time.Minute
+			})
 			r := chi.NewRouter()
 			(&Router{quickConnect: qc}).addQuickConnectRoute(r)
 			attempt := func() int {
@@ -136,12 +138,12 @@ var _ = Describe("Quick Connect endpoints", func() {
 		})
 
 		It("skips the routes when the Jellyfin API is off", func() {
-			conf.Server.Jellyfin.Enabled = false
+			conf.Update(func(c *conf.Options) { c.Jellyfin.Enabled = false })
 			Expect(serve()).To(Equal(http.StatusNotFound))
 		})
 
 		It("skips the routes when Quick Connect is off", func() {
-			conf.Server.Jellyfin.QuickConnect = false
+			conf.Update(func(c *conf.Options) { c.Jellyfin.QuickConnect = false })
 			Expect(serve()).To(Equal(http.StatusNotFound))
 		})
 	})

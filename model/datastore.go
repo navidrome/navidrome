@@ -13,6 +13,9 @@ type QueryOptions struct {
 	Offset  int
 	Filters squirrel.Sqlizer
 	Seed    string // for random sorting
+	// SortOrders is one "asc"/"desc" per Sort key, kept on every column its mapping expands into.
+	// Empty means Order applies to every key; a key past the end reuses the first entry.
+	SortOrders []string
 }
 
 type DataStore interface {
