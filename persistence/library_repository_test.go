@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
+	"github.com/navidrome/navidrome/db"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
@@ -166,6 +167,18 @@ var _ = Describe("LibraryRepository", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(libAfter.Path).To(Equal(libBefore.Path))
 			Expect(libAfter.UpdatedAt).To(Equal(libBefore.UpdatedAt))
+		})
+
+		It("does not need the write lock when the configured path is unchanged", func() {
+			conf.Update(func(c *conf.Options) { c.MusicFolder = libBefore.Path })
+			lockConn, err := db.Db().Conn(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(lockConn.Close)
+			_, err = lockConn.ExecContext(ctx, "BEGIN IMMEDIATE")
+			Expect(err).ToNot(HaveOccurred())
+			DeferCleanup(func() { _, _ = lockConn.ExecContext(context.Background(), "ROLLBACK") })
+
+			Expect(repo.StoreMusicFolder(ctx)).To(Succeed())
 		})
 
 		It("updates the default library only when the configured path changes", func() {
