@@ -44,5 +44,74 @@ var _ = Describe("Bookmarks", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(mfRepo.BookmarksAdded).To(ConsistOf("visible"))
 		})
+
+		It("accepts a zero position", func() {
+			r := newGetRequest("id=visible", "position=0").WithContext(ctx)
+
+			_, err := router.CreateBookmark(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(mfRepo.BookmarksAdded).To(ConsistOf("visible"))
+		})
+
+		DescribeTable("rejects negative positions instead of storing them",
+			func(position string) {
+				r := newGetRequest("id=visible", "position="+position).WithContext(ctx)
+
+				_, err := router.CreateBookmark(r)
+
+				Expect(err).To(HaveOccurred())
+				Expect(mapToSubsonicError(err).code).To(Equal(responses.ErrorGeneric))
+				Expect(mfRepo.BookmarksAdded).To(BeEmpty())
+			},
+			Entry("minus one", "-1"),
+			Entry("large negative", "-9223372036854775808"),
+		)
+	})
+
+	Describe("SavePlayQueue", func() {
+		var pqRepo *tests.MockPlayQueueRepo
+
+		BeforeEach(func() {
+			pqRepo = ds.PlayQueue().(*tests.MockPlayQueueRepo)
+		})
+
+		It("clamps a negative position to zero and stores the queue", func() {
+			r := newGetRequest("id=1", "current=1", "position=-5").WithContext(ctx)
+
+			_, err := router.SavePlayQueue(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pqRepo.Queue).ToNot(BeNil())
+			Expect(pqRepo.Queue.Position).To(BeEquivalentTo(0))
+		})
+
+		It("stores a zero position", func() {
+			r := newGetRequest("id=1", "current=1", "position=0").WithContext(ctx)
+
+			_, err := router.SavePlayQueue(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pqRepo.Queue).ToNot(BeNil())
+			Expect(pqRepo.Queue.Position).To(BeEquivalentTo(0))
+		})
+	})
+
+	Describe("SavePlayQueueByIndex", func() {
+		var pqRepo *tests.MockPlayQueueRepo
+
+		BeforeEach(func() {
+			pqRepo = ds.PlayQueue().(*tests.MockPlayQueueRepo)
+		})
+
+		It("clamps a negative position to zero and stores the queue", func() {
+			r := newGetRequest("id=1", "currentIndex=0", "position=-5").WithContext(ctx)
+
+			_, err := router.SavePlayQueueByIndex(r)
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(pqRepo.Queue).ToNot(BeNil())
+			Expect(pqRepo.Queue.Position).To(BeEquivalentTo(0))
+		})
 	})
 })
