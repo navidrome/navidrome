@@ -85,7 +85,6 @@ func (r *playQueueRepository) RetrieveWithMediaFiles(ctx context.Context, userId
 	q.Items, loadErr = r.loadTracks(ctx, stored)
 	if loadErr == nil && len(q.Items) < len(stored) {
 		q.Current, q.Position = remapCurrent(stored, q.Items, q.Current, q.Position)
-		go r.saveCleanedQueue(context.WithoutCancel(ctx), res, r.fromModel(&q))
 	}
 	return &q, err
 }
@@ -107,18 +106,6 @@ func remapCurrent(stored, loaded model.MediaFiles, current int, position int64) 
 		kept++
 	}
 	return max(len(loaded)-1, 0), 0
-}
-
-// saveCleanedQueue only writes if the queue was not changed since it was read, so it never undoes a newer save.
-func (r *playQueueRepository) saveCleanedQueue(ctx context.Context, read, cleaned playQueue) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	upd := Update(r.tableName).
-		Set("items", cleaned.Items).Set("current", cleaned.Current).Set("position", cleaned.Position).
-		Where(Eq{"id": read.ID, "items": read.Items, "current": read.Current, "position": read.Position})
-	if _, err := r.executeSQL(ctx, upd); err != nil {
-		log.Warn(ctx, "Could not remove missing tracks from playqueue", "user", read.UserID, err)
-	}
 }
 
 func (r *playQueueRepository) Retrieve(ctx context.Context, userId string) (*model.PlayQueue, error) {

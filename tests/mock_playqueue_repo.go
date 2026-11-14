@@ -9,9 +9,11 @@ import (
 
 type MockPlayQueueRepo struct {
 	model.PlayQueueRepository
-	Queue    *model.PlayQueue
-	Err      bool
-	LastCols []string
+	Queue *model.PlayQueue
+	// QueueWithMediaFiles, when set, is what RetrieveWithMediaFiles returns, to simulate tracks the user can't see
+	QueueWithMediaFiles *model.PlayQueue
+	Err                 bool
+	LastCols            []string
 }
 
 func (m *MockPlayQueueRepo) Store(_ context.Context, q *model.PlayQueue, cols ...string) error {
@@ -31,12 +33,16 @@ func (m *MockPlayQueueRepo) RetrieveWithMediaFiles(_ context.Context, userId str
 	if m.Err {
 		return nil, errors.New("error")
 	}
-	if m.Queue == nil || m.Queue.UserID != userId {
+	src := m.Queue
+	if m.QueueWithMediaFiles != nil {
+		src = m.QueueWithMediaFiles
+	}
+	if src == nil || src.UserID != userId {
 		return nil, model.ErrNotFound
 	}
-	copyItems := make(model.MediaFiles, len(m.Queue.Items))
-	copy(copyItems, m.Queue.Items)
-	qCopy := *m.Queue
+	copyItems := make(model.MediaFiles, len(src.Items))
+	copy(copyItems, src.Items)
+	qCopy := *src
 	qCopy.Items = copyItems
 	return &qCopy, nil
 }

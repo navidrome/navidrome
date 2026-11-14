@@ -343,33 +343,17 @@ var _ = Describe("PlayQueueRepository", func() {
 				Entry("moving to the last track when the removed current one was the last", 1, []model.MediaFile{songComeTogether, gone}, songComeTogether.ID, int64(0)),
 			)
 
-			It("saves the cleaned queue", func() {
+			It("leaves the stored queue untouched", func() {
 				retrieveAfterRemoval(1, 45, gone, songComeTogether, songDayInALife)
 
-				Eventually(func(g Gomega) {
+				Consistently(func(g Gomega) {
 					stored, err := repo.Retrieve(ctx, "userid")
 					g.Expect(err).ToNot(HaveOccurred())
-					g.Expect(stored.Items).To(HaveLen(2))
-					g.Expect(stored.Items[0].ID).To(Equal(songComeTogether.ID))
-					g.Expect(stored.Current).To(BeZero())
+					g.Expect(stored.Items).To(HaveLen(3))
+					g.Expect(stored.Items[0].ID).To(Equal(gone.ID))
+					g.Expect(stored.Current).To(Equal(1))
 					g.Expect(stored.Position).To(Equal(int64(45)))
 				}).Should(Succeed())
-			})
-
-			It("does not overwrite a queue that changed after it was read", func() {
-				r := repo.(*playQueueRepository)
-				read := aPlayQueue("userid", 1, 45, gone, songComeTogether)
-				Expect(repo.Store(ctx, read)).To(Succeed())
-
-				By("Saving a new queue from a client before the cleanup runs")
-				Expect(repo.Store(ctx, aPlayQueue("userid", 0, 10, songAntenna))).To(Succeed())
-				r.saveCleanedQueue(ctx, r.fromModel(read), playQueue{Items: songComeTogether.ID, Position: 45})
-
-				stored, err := repo.Retrieve(ctx, "userid")
-				Expect(err).ToNot(HaveOccurred())
-				Expect(stored.Items).To(HaveLen(1))
-				Expect(stored.Items[0].ID).To(Equal(songAntenna.ID))
-				Expect(stored.Position).To(Equal(int64(10)))
 			})
 		})
 	})

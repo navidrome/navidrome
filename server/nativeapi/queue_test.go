@@ -192,7 +192,49 @@ var _ = Describe("Queue Endpoints", func() {
 			updateQueue(ds)(w, req)
 			Expect(w.Code).To(Equal(http.StatusNoContent))
 			Expect(repo.Queue.Items).To(HaveLen(2))
-			Expect(repo.LastCols).To(ConsistOf("items"))
+			Expect(repo.Queue.Current).To(Equal(1))
+			Expect(repo.LastCols).To(ConsistOf("items", "current", "position"))
+		})
+
+		Context("when the stored queue has tracks the user can't see", func() {
+			BeforeEach(func() {
+				repo.Queue = &model.PlayQueue{UserID: user.ID, Current: 2, Position: 45,
+					Items: model.MediaFiles{{ID: "gone1"}, {ID: "s1"}, {ID: "gone2"}, {ID: "s2"}}}
+				repo.QueueWithMediaFiles = &model.PlayQueue{UserID: user.ID, Current: 1, Position: 0,
+					Items: model.MediaFiles{{ID: "s1"}, {ID: "s2"}}}
+			})
+
+			put := func(payload updateQueuePayload) int {
+				body, _ := json.Marshal(payload)
+				req := httptest.NewRequest("PUT", "/queue", bytes.NewReader(body))
+				req = req.WithContext(request.WithUser(req.Context(), user))
+				w := httptest.NewRecorder()
+				updateQueue(ds)(w, req)
+				return w.Code
+			}
+
+			It("stores current as the index of the same track in the stored queue", func() {
+				Expect(put(updateQueuePayload{Current: new(1)})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(3))
+				Expect(repo.LastCols).To(ConsistOf("current"))
+			})
+
+			It("rejects a current that is only valid for the stored queue", func() {
+				Expect(put(updateQueuePayload{Current: new(2)})).To(Equal(http.StatusBadRequest))
+			})
+
+			It("keeps the current track and position the client saw when only ids change", func() {
+				Expect(put(updateQueuePayload{Ids: new([]string{"s1", "s2", "s3"})})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(1))
+				Expect(repo.Queue.Position).To(BeZero())
+				Expect(repo.LastCols).To(ConsistOf("items", "current", "position"))
+			})
+
+			It("uses the position from the request when ids and position change", func() {
+				Expect(put(updateQueuePayload{Ids: new([]string{"s1", "s2"}), Position: new(int64(10))})).To(Equal(http.StatusNoContent))
+				Expect(repo.Queue.Current).To(Equal(1))
+				Expect(repo.Queue.Position).To(Equal(int64(10)))
+			})
 		})
 
 		It("updates ids and current", func() {
