@@ -1,8 +1,6 @@
 package model
 
 import (
-	"strings"
-
 	"github.com/navidrome/navidrome/log"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -34,6 +32,19 @@ var _ = Describe("ParseLyrics", func() {
 		Expect(list[0].Line[0].Value).To(Equal("auto ttml"))
 	})
 
+	DescribeTable("accepts valid TTML XML prologs",
+		func(suffix, prolog string) {
+			contents := prolog + `<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="00:00.000" end="00:01.000">prolog ttml</p></div></body></tt>`
+			list, err := ParseLyrics(GinkgoT().Context(), suffix, "eng", []byte(contents))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line[0].Value).To(Equal("prolog ttml"))
+		},
+		Entry("explicit suffix with processing instruction", ".ttml", `<?xml version="1.0"?><?lyrics source="test"?>`),
+		Entry("content sniffing with doctype", "", `<!DOCTYPE tt>`),
+	)
+
 	It("empty suffix content-sniffs (YAML)", func() {
 		yaml := "version: \"1.0\"\nmetadata:\n  language: eng\nlines:\n  - text: auto yaml\n    start_ms: 1000\n"
 		list, err := ParseLyrics(GinkgoT().Context(), "auto", "eng", []byte(yaml))
@@ -42,13 +53,61 @@ var _ = Describe("ParseLyrics", func() {
 		Expect(list[0].Line[0].Value).To(Equal("auto yaml"))
 	})
 
-	It("falls back to plain text when a known suffix fails to parse structurally", func() {
+	DescribeTable("accepts quoted Lyricsfile version keys",
+		func(suffix string) {
+			contents := "\"version\": \"1.0\"\nmetadata:\n  language: eng\nlines:\n  - text: quoted version\n    start_ms: 1000\n"
+			list, err := ParseLyrics(GinkgoT().Context(), suffix, "eng", []byte(contents))
+
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Line[0].Value).To(Equal("quoted version"))
+		},
+		Entry("explicit YAML", ".yaml"),
+		Entry("content sniffing", "auto"),
+	)
+
+	It("returns an error when an explicit structured suffix does not match", func() {
 		list, err := ParseLyrics(GinkgoT().Context(), ".srt", "eng", []byte("not actually an srt file"))
+		Expect(err).To(MatchError(ContainSubstring("declared SRT lyrics do not match")))
+		Expect(list).To(BeNil())
+	})
+
+	It("retains LRC/plain fallback for textual suffixes", func() {
+		list, err := ParseLyrics(GinkgoT().Context(), ".lrc", "eng", []byte("not actually timed"))
 		Expect(err).ToNot(HaveOccurred())
 		Expect(list).To(HaveLen(1))
 		Expect(list[0].Synced).To(BeFalse())
-		Expect(list[0].Line[0].Value).To(Equal("not actually an srt file"))
+		Expect(list[0].Line[0].Value).To(Equal("not actually timed"))
 	})
+
+	DescribeTable("recognized valid-empty structured documents stop sniffing",
+		func(contents string) {
+			list, err := ParseLyrics(GinkgoT().Context(), "", "eng", []byte(contents))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(BeEmpty())
+		},
+		Entry("TTML", `<tt xmlns="http://www.w3.org/ns/ttml"><body /></tt>`),
+		Entry("SRT", "1\n00:00:01,000 --> 00:00:02,000\n"),
+		Entry("Lyricsfile", "version: \"1.0\"\nmetadata:\n  language: eng\n"),
+	)
+
+	It("does not reinterpret malformed claimed structured content as plain text", func() {
+		list, err := ParseLyrics(GinkgoT().Context(), "", "eng", []byte(`<tt><body><p>Broken`))
+		Expect(err).To(MatchError(ContainSubstring("parsing claimed TTML lyrics")))
+		Expect(list).To(BeNil())
+	})
+
+	DescribeTable("generic content remains eligible for plain fallback",
+		func(contents string) {
+			list, err := ParseLyrics(GinkgoT().Context(), "", "eng", []byte(contents))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(list).To(HaveLen(1))
+			Expect(list[0].Synced).To(BeFalse())
+		},
+		Entry("prose", "A plain lyric"),
+		Entry("generic XML", "<lyrics>A generic lyric</lyrics>"),
+		Entry("generic YAML", "title: A generic lyric"),
+	)
 
 	Describe("logging on parser probe failures", func() {
 		var hook *test.Hook
@@ -92,10 +151,10 @@ var _ = Describe("ParseLyrics", func() {
 		// failure is worth surfacing loudly — and it must name the file.
 		It("warns and names the file when a requested suffix fails to parse", func() {
 			ctx := log.NewContext(GinkgoT().Context(), "file", "/music/song.yaml")
-			list, err := ParseLyrics(ctx, ".yaml", "eng", []byte("not: [valid, yaml\n"))
+			list, err := ParseLyrics(ctx, ".yaml", "eng", []byte("version: \"1.0\"\nnot: [valid, yaml\n"))
 
-			Expect(err).ToNot(HaveOccurred())
-			Expect(list).To(HaveLen(1)) // still falls back to plain text
+			Expect(err).To(HaveOccurred())
+			Expect(list).To(BeNil())
 			entry := hook.LastEntry()
 			Expect(entry).ToNot(BeNil())
 			Expect(entry.Level).To(Equal(logrus.WarnLevel))
@@ -234,25 +293,13 @@ Another subtitle line`
 		Expect(list[0].Line[0].Cue).To(HaveLen(2))
 	})
 
-	It("should fall back to plain lyrics when embedded TTML is invalid", func() {
-		content := `<tt xmlns="http://www.w3.org/ns/ttml">
-  <body>
-    <p begin="not-a-time">Broken</p>
-  </body>
-</tt>`
+	It("should reject malformed embedded TTML instead of returning raw markup", func() {
+		content := `<tt xmlns="http://www.w3.org/ns/ttml"><body><p>Broken`
 
 		list, err := ParseLyrics(GinkgoT().Context(), "", "eng", []byte(content))
 
-		Expect(err).ToNot(HaveOccurred())
-		Expect(list).To(HaveLen(1))
-		Expect(list[0].Lang).To(Equal("eng"))
-		Expect(list[0].Synced).To(BeFalse())
-		Expect(list[0].Line).ToNot(BeEmpty())
-		values := make([]string, 0, len(list[0].Line))
-		for _, line := range list[0].Line {
-			values = append(values, line.Value)
-		}
-		Expect(strings.Join(values, "\n")).To(ContainSubstring("Broken"))
+		Expect(err).To(HaveOccurred())
+		Expect(list).To(BeNil())
 	})
 
 	It("detects a Lyricsfile YAML payload via content-sniffing", func() {
