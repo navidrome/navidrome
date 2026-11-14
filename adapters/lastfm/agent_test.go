@@ -471,14 +471,54 @@ var _ = Describe("lastfmAgent", func() {
 				})
 			})
 
-			It("skips songs with less than 31 seconds", func() {
-				track.Duration = 29
+			It("skips songs at the 30-second minimum", func() {
+				track.Duration = 30
 				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
 
 				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("sends the duration parameter for a 30.5-second song", func() {
+				track.Duration = 30.5
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString(`{"scrobbles":{"scrobble":{"ignoredMessage":{"code":"0"}},"@attr":{"accepted":1}}}`)), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeTrue())
+				Expect(sentParams.Get("duration")).To(Equal("30"))
+			})
+
+			It("skips songs according to the configured minimum duration", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 60 * time.Second })
+				track.Duration = 59
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).To(BeNil())
+			})
+
+			It("does not skip short songs when the minimum duration is disabled", func() {
+				conf.Update(func(c *conf.Options) { c.LastFM.MinScrobbleDuration = 0 })
+				track.Duration = 29
+				httpClient.Res = http.Response{Body: io.NopCloser(bytes.NewBufferString("{}")), StatusCode: 200}
+
+				err := agent.Scrobble(ctx, "user-1", scrobbler.Scrobble{MediaFile: *track, TimeStamp: time.Now()})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(httpClient.SavedRequest).ToNot(BeNil())
+
+				body, _ := io.ReadAll(httpClient.SavedRequest.Body)
+				sentParams, _ := url.ParseQuery(string(body))
+				Expect(sentParams.Has("duration")).To(BeFalse())
 			})
 
 			It("returns ErrNotAuthorized if user is not linked", func() {
