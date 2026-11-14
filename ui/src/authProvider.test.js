@@ -48,14 +48,19 @@ describe('authProvider.logout', () => {
 
 describe('authProvider.checkError', () => {
   const logoutURL = 'https://auth.example.com/signout'
+  const networkError = () => new TypeError('Failed to fetch')
+  const PENDING = Symbol('pending')
+  const settled = (promise) => Promise.race([promise, Promise.resolve(PENDING)])
 
   beforeEach(() => {
+    vi.stubGlobal('location', { href: '', reload: vi.fn() })
     sessionStorage.clear()
     localStorage.setItem('is-authenticated', 'true')
     localStorage.setItem('token', 'abc')
   })
 
   afterEach(() => {
+    vi.unstubAllGlobals()
     localStorage.clear()
     sessionStorage.clear()
     delete config.extAuthLogoutURL
@@ -77,56 +82,62 @@ describe('authProvider.checkError', () => {
   })
 
   it('resolves on network error without extAuth configured', async () => {
+    config.auth = { id: '1' }
     await expect(
-      authProvider.checkError(new TypeError('Failed to fetch')),
+      authProvider.checkError(networkError()),
     ).resolves.toBeUndefined()
     expect(localStorage.getItem('is-authenticated')).toBe('true')
+    expect(window.location.reload).not.toHaveBeenCalled()
   })
 
-  it('clears auth and sets reload guard on TypeError with extAuth', () => {
+  it('resolves on network error when the page was not authenticated by the proxy', async () => {
     config.extAuthLogoutURL = logoutURL
-    // window.location.reload throws in jsdom, so we catch it
-    try {
-      authProvider.checkError(new TypeError('Failed to fetch'))
-    } catch {
-      // jsdom "Not implemented: navigation" is expected
-    }
-    expect(localStorage.getItem('is-authenticated')).toBeNull()
-    expect(sessionStorage.getItem('ext-auth-reload-ts')).not.toBeNull()
+    expect(await settled(authProvider.checkError(networkError()))).toBe(
+      undefined,
+    )
+    expect(localStorage.getItem('is-authenticated')).toBe('true')
+    expect(sessionStorage.getItem('ext-auth-reload-ts')).toBeNull()
+    expect(window.location.reload).not.toHaveBeenCalled()
   })
 
-  it('clears auth on Firefox NetworkError with extAuth', () => {
-    config.extAuthLogoutURL = logoutURL
-    const error = new Error('NetworkError when attempting to fetch resource')
-    try {
-      authProvider.checkError(error)
-    } catch {
-      // jsdom "Not implemented: navigation" is expected
-    }
-    expect(localStorage.getItem('is-authenticated')).toBeNull()
-    expect(sessionStorage.getItem('ext-auth-reload-ts')).not.toBeNull()
-  })
+  it.each([
+    ['Chrome', networkError()],
+    [
+      'Firefox',
+      new TypeError('NetworkError when attempting to fetch resource'),
+    ],
+  ])(
+    'clears auth and reloads on %s network error with proxy auth',
+    async (_, error) => {
+      config.extAuthLogoutURL = logoutURL
+      config.auth = { id: '1' }
+      expect(await settled(authProvider.checkError(error))).toBe(PENDING)
+      expect(localStorage.getItem('is-authenticated')).toBeNull()
+      expect(sessionStorage.getItem('ext-auth-reload-ts')).not.toBeNull()
+      expect(window.location.reload).toHaveBeenCalledOnce()
+    },
+  )
 
   it('does not reload-loop within 30 seconds', async () => {
     config.extAuthLogoutURL = logoutURL
+    config.auth = { id: '1' }
     sessionStorage.setItem('ext-auth-reload-ts', String(Date.now() - 10000))
-    await expect(
-      authProvider.checkError(new TypeError('Failed to fetch')),
-    ).resolves.toBeUndefined()
+    expect(await settled(authProvider.checkError(networkError()))).toBe(
+      undefined,
+    )
     expect(localStorage.getItem('is-authenticated')).toBe('true')
+    expect(window.location.reload).not.toHaveBeenCalled()
   })
 
-  it('allows reload again after 30 seconds', () => {
+  it('allows reload again after 30 seconds', async () => {
     config.extAuthLogoutURL = logoutURL
+    config.auth = { id: '1' }
     sessionStorage.setItem('ext-auth-reload-ts', String(Date.now() - 31000))
-    try {
-      authProvider.checkError(new TypeError('Failed to fetch'))
-    } catch {
-      // jsdom "Not implemented: navigation" is expected
-    }
+    expect(await settled(authProvider.checkError(networkError()))).toBe(PENDING)
     expect(localStorage.getItem('is-authenticated')).toBeNull()
-    const ts = parseInt(sessionStorage.getItem('ext-auth-reload-ts'), 10)
+    const ts = Number(sessionStorage.getItem('ext-auth-reload-ts'))
     expect(Date.now() - ts).toBeLessThan(5000)
+    expect(window.location.reload).toHaveBeenCalledOnce()
   })
 })
 

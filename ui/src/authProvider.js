@@ -84,7 +84,7 @@ const authProvider = {
       removeItems()
       return Promise.reject()
     }
-    if (config.extAuthLogoutURL && isNetworkError(error)) {
+    if (config.extAuthLogoutURL && config.auth && isNetworkError(error)) {
       const now = Date.now()
       const lastReload =
         Number(sessionStorage.getItem('ext-auth-reload-ts')) || 0
