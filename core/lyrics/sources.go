@@ -12,6 +12,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/ioutils"
+	"golang.org/x/text/unicode/norm"
 )
 
 func fromEmbedded(ctx context.Context, mf *model.MediaFile) (model.LyricList, error) {
@@ -39,7 +40,7 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 		return nil, fmt.Errorf("opening library filesystem: %w", err)
 	}
 
-	f, err := fsys.Open(sidecarRelPath)
+	f, err := openSidecar(fsys, sidecarRelPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		log.Trace(ctx, "no lyrics found at path")
 		return nil, nil
@@ -66,6 +67,32 @@ func fromExternalFile(ctx context.Context, mf *model.MediaFile, suffix string) (
 
 	log.Trace(ctx, "retrieved lyrics from external file")
 	return list, nil
+}
+
+// openSidecar opens the sidecar lyrics file, retrying with the alternate Unicode
+// normalization forms of its file name when the exact path is missing. A sidecar
+// written next to a track can use a different form than the path stored for the
+// media file (macOS commonly yields NFD, while Linux and Windows typically keep
+// NFC), so a byte-exact lookup would miss a file that is really on disk. Only the
+// base name is converted: the directories were read from disk by the scanner, so
+// they are already correct as stored. Issue #4148.
+func openSidecar(fsys fs.FS, relPath string) (fs.File, error) {
+	f, err := fsys.Open(relPath)
+	if !errors.Is(err, fs.ErrNotExist) {
+		return f, err
+	}
+
+	dir, base := path.Split(relPath)
+	for _, form := range []norm.Form{norm.NFD, norm.NFC} {
+		altPath := dir + form.String(base)
+		if altPath == relPath {
+			continue
+		}
+		if altFile, altErr := fsys.Open(altPath); !errors.Is(altErr, fs.ErrNotExist) {
+			return altFile, altErr
+		}
+	}
+	return f, err
 }
 
 // fromPlugin attempts to load lyrics from a plugin with the given name.
