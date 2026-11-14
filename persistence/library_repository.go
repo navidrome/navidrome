@@ -136,10 +136,14 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 // TODO Remove this method when we have a proper UI to add libraries
 // This is a temporary method to store the music folder path from the config in the DB
 func (r *libraryRepository) StoreMusicFolder(ctx context.Context) error {
+	changed := And{Eq{"id": model.DefaultLibraryID}, NotEq{"path": conf.Server().MusicFolder}}
+	// An UPDATE takes the write lock even when nothing matches, and a startup scan may be holding it
+	if needsUpdate, err := r.exists(ctx, changed); err != nil || !needsUpdate {
+		return err
+	}
 	sq := Update(r.tableName).Set("path", conf.Server().MusicFolder).
 		Set("updated_at", time.Now()).
-		Where(Eq{"id": model.DefaultLibraryID}).
-		Where(NotEq{"path": conf.Server().MusicFolder})
+		Where(changed)
 	rowsAffected, err := r.executeSQL(ctx, sq)
 	if err == nil && rowsAffected > 0 {
 		libLock.Lock()

@@ -176,6 +176,7 @@ type scannerOptions struct {
 	GroupAlbumReleases    bool     // Deprecated: Use PID.Album instead
 	FollowSymlinks        bool     // Whether to follow symlinks when scanning directories
 	IgnoreDotFolders      bool     // Whether to ignore folders whose name starts with a dot when scanning
+	RespectNoMedia        bool     // Whether to skip folders (and their subfolders) containing a .nomedia file
 	PurgeMissing          string   // Values: "never", "always", "full"
 }
 
@@ -210,6 +211,7 @@ type lastfmOptions struct {
 	Secret                  string //nolint:gosec
 	Language                string
 	ScrobbleFirstArtistOnly bool
+	MinScrobbleDuration     time.Duration
 
 	// Computed values
 	Languages []string `conf:"-"` // Computed from Language, split by comma
@@ -423,6 +425,8 @@ func Load(noConfigDump bool) {
 	durationNonNegativeOrDefault(&s.DevAlbumInfoTimeToLive, consts.AlbumInfoTimeToLive)
 	durationNonNegativeOrDefault(&s.DevInsightsInitialDelay, consts.InsightsInitialDelay)
 	durationNonNegativeOrDefault(&s.DevPluginCompilationTimeout, consts.DefaultPluginCompilationTimeout)
+
+	durationNonNegativeOrDefault(&s.LastFM.MinScrobbleDuration, consts.DefaultMinScrobbleDuration)
 
 	// Log deprecated, removed and unknown options
 	for _, o := range deprecatedOptions {
@@ -1054,6 +1058,7 @@ func setViperDefaults() {
 	viper.SetDefault("scanner.groupalbumreleases", false)
 	viper.SetDefault("scanner.followsymlinks", true)
 	viper.SetDefault("scanner.ignoredotfolders", true)
+	viper.SetDefault("scanner.respectnomedia", false)
 	viper.SetDefault("scanner.purgemissing", consts.PurgeMissingNever)
 	viper.SetDefault("subsonic.appendsubtitle", true)
 	viper.SetDefault("subsonic.appendalbumversion", true)
@@ -1071,6 +1076,7 @@ func setViperDefaults() {
 	viper.SetDefault("lastfm.apikey", "")
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
+	viper.SetDefault("lastfm.minscrobbleduration", consts.DefaultMinScrobbleDuration)
 	viper.SetDefault("deezer.enabled", true)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)
