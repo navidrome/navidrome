@@ -1,6 +1,6 @@
 import ReactGA from 'react-ga'
 import { Provider } from 'react-redux'
-import { createHashHistory } from 'history'
+import history from './history'
 import {
   Admin as RAAdmin,
   Resource,
@@ -50,8 +50,6 @@ import { HTML5Backend } from 'react-dnd-html5-backend'
 import { DndProvider } from 'react-dnd'
 import missing from './missing/index.js'
 import { useEffect } from 'react'
-
-const history = createHashHistory()
 
 if (config.gaTrackingId) {
   ReactGA.initialize(config.gaTrackingId)
