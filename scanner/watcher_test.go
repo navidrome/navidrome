@@ -432,6 +432,18 @@ var _ = Describe("Watcher", func() {
 			})
 		})
 
+		DescribeTable("with a .nomedia file in a parent folder",
+			func(respectNoMedia bool, expected bool) {
+				conf.Update(func(c *conf.Options) { c.Scanner.RespectNoMedia = respectNoMedia })
+				fsys := &mockMusicFS{FS: fstest.MapFS{
+					"rock/.nomedia":       &fstest.MapFile{},
+					"rock/album/song.mp3": &fstest.MapFile{},
+				}}
+				Expect(w.shouldIgnoreFolderPath(ctx, fsys, "rock/album")).To(Equal(expected))
+			},
+			Entry("ignores the folder when RespectNoMedia is enabled", true, true),
+			Entry("scans the folder when RespectNoMedia is disabled", false, false),
+		)
 	})
 })
 
